@@ -130,7 +130,7 @@ private struct StepButton: View {
     }
 }
 
-/// The current unit choice as tappable accent text; tapping opens the four exclusive options.
+/// The current unit choice as tappable accent text; tapping opens the three exclusive options.
 private struct UnitsMenu: View {
     let system: UnitSystem
     let onChange: (UnitSystem) -> Void

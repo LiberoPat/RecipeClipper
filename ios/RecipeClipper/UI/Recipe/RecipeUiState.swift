@@ -24,13 +24,16 @@ struct CookState: Equatable {
 
 /// `ingredients` and `instructions` are what the screen shows: scaled and converted.
 /// `servings` is nil when the yield has no usable number. `stepTimerSeconds` lines up with
-/// the steps: the duration each one states, or nil.
+/// the steps: the duration each one states, or nil. `sourceDomain` is the site credited under
+/// the title ("smittenkitchen.com"), or nil when the source link has no recognisable host
+/// (then no credit is shown).
 struct RecipeSuccess: Equatable {
     var recipe: Recipe
     var servings: ServingsScale?
     var ingredients: [String]
     var instructions: [String]
     var stepTimerSeconds: [Int?]
+    var sourceDomain: String?
 }
 
 enum RecipeContent: Equatable {

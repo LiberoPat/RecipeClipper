@@ -42,8 +42,8 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  *
  * Every control signals its own behaviour: exclusive choices are [RadioButton] rows, toggles
  * are [Switch] rows — never a bare checkmark for either, which is the whole reason this
- * screen exists (see CLAUDE.md). Three sections: Units (the four [UnitSystem] options, plus
- * "Also convert liquids" for Grams/Ounces only), Oven temperature (the three
+ * screen exists (see CLAUDE.md). Three sections: Units (the three [UnitSystem] options, plus
+ * "Also convert liquids" for Ounces only), Oven temperature (the three
  * [TemperatureUnit] options, independent of Units), and Appearance ("Dark while cooking").
  */
 @Composable
@@ -77,7 +77,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                     )
                 }
 
-                if (state.unitSystem == UnitSystem.GRAMS || state.unitSystem == UnitSystem.OUNCES) {
+                if (state.unitSystem == UnitSystem.OUNCES) {
                     item {
                         SwitchRow(
                             title = stringResource(R.string.convert_liquids_title),
@@ -180,7 +180,6 @@ private fun SwitchRow(
 private fun UnitSystem.settingsLabel(): String = stringResource(
     when (this) {
         UnitSystem.AS_WRITTEN -> R.string.unit_as_written
-        UnitSystem.GRAMS -> R.string.unit_grams
         UnitSystem.OUNCES -> R.string.unit_ounces
         UnitSystem.METRIC -> R.string.unit_metric
     }
@@ -190,7 +189,6 @@ private fun UnitSystem.settingsLabel(): String = stringResource(
 private fun UnitSystem.settingsDescription(): String = stringResource(
     when (this) {
         UnitSystem.AS_WRITTEN -> R.string.unit_as_written_description
-        UnitSystem.GRAMS -> R.string.unit_grams_description
         UnitSystem.OUNCES -> R.string.unit_ounces_description
         UnitSystem.METRIC -> R.string.unit_metric_description
     }

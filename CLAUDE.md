@@ -33,8 +33,8 @@ timers (in memory); sharing a recipe out as text; failure handling and
 offline; the microdata fallback. iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
-background timer alerts (#10), Reddit (#11), other languages (#13–#16), the
-three-option unit menu (#17), release setup (#18–#22).
+background timer alerts (#10), Reddit (#11), other languages (#13–#16),
+release setup (#18–#22).
 
 ## Commands
 
@@ -71,9 +71,10 @@ di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, Plat
 data/          RecipeRepository, ListRepository (interfaces; Default* are the Room-backed ones),
                Connectivity, ErrorLog, Clock (seams for tests)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
-               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText
+               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
+               SourceDomain
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
@@ -136,12 +137,14 @@ Settled; don't reintroduce what they removed. The history behind each is in
 `docs/decisions.md`.
 
 - **The reading view opens on the recipe:** photo, title, times, one
-  servings-and-units row, ingredients. No segmented pickers, filled chips or
-  radio lists above the ingredients. Times are plain labelled numbers, not
-  chips.
+  servings-and-units row, ingredients. Under the title, quietly, the source's
+  domain and "Open original" (reading view only, not cook mode). No segmented
+  pickers, filled chips or radio lists above the ingredients. Times are plain
+  labelled numbers, not chips.
 - **Servings and units: one always-visible row, adjusted in place.**
-  `Serves − 6 +` (per recipe) on the left, the unit dropdown (a global
-  default for "every recipe", exclusive choices only) on the right. Don't
+  `Serves − 6 +` (per recipe) on the left, the unit dropdown (As written,
+  Metric, Ounces: a global default for "every recipe", exclusive choices
+  only) on the right. Don't
   bring back the old "Adjust" bottom sheet without asking.
 - **Cook mode is a highlighted scroll, not a pager,** because steps overlap,
   cooks scroll back to re-check amounts, and source steps range from 12 clean
@@ -159,7 +162,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   opts into dark. Don't restore an always-dark cook mode without asking.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
-  Grams and Ounces), Oven temperature (independent of units, default As
+  Ounces only), Oven temperature (independent of units, default As
   written), Appearance ("Dark while cooking"). Reached from the gear beside
   the Home title. It could now open from elsewhere too (the recipe screen
   follows `AppPreferences.settings`), but adding an entry point is the
@@ -238,6 +241,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (it fails at once), a timeout (a dead Wi-Fi costs one 15 s timeout, not
   two) or `NoRecipeFound`. A cancelled import writes nothing, even during the
   pause.
+- **Then, only if still `Blocked` or `NoRecipeFound`, one rendered fetch:**
+  the page loaded off screen (`RenderedPageSource`: Android `WebView`, iOS
+  `WKWebView`, JavaScript on, a short settle, capped at 20 s, cancelled with
+  the import), its HTML through the same parsers. Never after `Offline` or a
+  timeout; nothing is shown. No recipe there keeps the original cause.
 - After any failure, a link saved before opens from the saved copy. Photos
   are cached (Coil; iOS `ImageLoader`), so they show offline too.
 - **Every error screen offers Try again, `NoRecipeFound` included**: a
@@ -267,7 +275,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   - The photo falls back to `og:image`.
 - **A recipe needs a name, plus ingredients or steps.**
 - **Pages behind a login, or rendered by JavaScript,** expose no recipe data
-  to the fetch.
+  to the direct fetch. Only the rendered fetch can see the latter.
 - Every extracted string except `sourceUrl` goes through `stripHtml` (Jsoup's
   `text()`; iOS has a Jsoup-compatible port). A plain-string instructions
   block is split on `\n` **before** stripping, so `<br>`-separated steps stay
@@ -294,8 +302,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 Each one exists to avoid showing a confident wrong number.
 
-- `UnitSystem` is As written (the default), Grams, Ounces or Metric; #17
-  drops Grams. Oven temperatures follow the separate `TemperatureUnit` (As
+- `UnitSystem` is As written (the default), Metric or Ounces. Grams was
+  dropped (#17): a stored `GRAMS` reads as Metric on both platforms, never As
+  written. Oven temperatures follow the separate `TemperatureUnit` (As
   written, Celsius, Fahrenheit). Each ingredient is scaled first, then
   converted.
 - Weight to weight (oz, lb, g, kg) is exact. Volume to weight needs a density
@@ -320,8 +329,8 @@ Each one exists to avoid showing a confident wrong number.
 - **A unit's trailing period ("tsp.", "oz.") belongs to the unit.** The
   `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative.
-- **Liquids.** Grams and Ounces leave pourable liquids as written unless
-  "Also convert liquids" is on. Metric ignores that flag: liquids, spoons and
+- **Liquids.** Ounces leaves pourable liquids as written unless "Also
+  convert liquids" is on. Metric ignores that flag: liquids, spoons and
   cups become ml (a cup is 240 ml, a tbsp 15 ml, a tsp 5 ml), and known
   solids become g.
   - In Metric, a spooned or cupped non-liquid with a site weight keeps that

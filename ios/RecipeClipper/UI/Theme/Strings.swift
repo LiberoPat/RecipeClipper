@@ -27,6 +27,8 @@ enum Strings {
     static let labelTotal = "Total"
     static let headingIngredients = "Ingredients"
     static let headingInstructions = "Instructions"
+    static let openOriginal = "Open original"
+    static func openOriginalHint(_ domain: String) -> String { "Open the original recipe on \(domain)" }
 
     // Errors
     static let errorNoRecipeFound = "Couldn't find recipe data on this page. Some sites don't tag their recipes in a way this app can read yet."
@@ -65,7 +67,6 @@ enum Strings {
     static func unitLabel(_ system: UnitSystem) -> String {
         switch system {
         case .asWritten: return "As written"
-        case .grams: return "Grams"
         case .ounces: return "Ounces"
         case .metric: return "Metric"
         }
@@ -74,7 +75,6 @@ enum Strings {
     static func unitDescription(_ system: UnitSystem) -> String {
         switch system {
         case .asWritten: return "Exactly the units the recipe uses"
-        case .grams: return "Cups and spoons in grams"
         case .ounces: return "Cups and spoons in ounces and pounds"
         case .metric: return "Grams and millilitres"
         }
