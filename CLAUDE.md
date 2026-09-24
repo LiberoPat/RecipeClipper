@@ -216,6 +216,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.
+- **Backup is an include list** (`res/xml/data_extraction_rules.xml` and
+  `backup_rules.xml`): the database with its `-wal`/`-shm`, and
+  `unit_preferences.xml`. Anything else, a new file or a renamed one, is not
+  backed up until it's added to both. iOS keeps the database in Application
+  Support, which backups include. Proof and the adb recipe: `docs/testing.md`.
 - Ticked ingredients are written as they change. Cook progress, timers and
   the chosen servings are in memory only (#10).
 
