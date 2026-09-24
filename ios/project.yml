@@ -102,8 +102,13 @@ targets:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
           NSExtensionAttributes:
+            # #35: run against the shared page in Safari (the only app that supports it) before
+            # the extension launches; SharedItems prefers its result (the rendered HTML plus the
+            # URL JavaScript resolved) over the plain URL/text attachments every other app sends.
+            NSExtensionJavaScriptPreprocessingFile: Preprocessing
             NSExtensionActivationRule:
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsWebPageWithMaxCount: 1
               NSExtensionActivationSupportsText: true
         ITSAppUsesNonExemptEncryption: false
     settings:

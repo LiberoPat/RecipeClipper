@@ -18,7 +18,7 @@ private final class GatedRecipeRepository: RecipeRepository {
         waiting.removeFirst().resume(returning: result)
     }
 
-    @MainActor func importFromUrl(_ sharedUrl: String) async -> ParseResult {
+    @MainActor func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult {
         let result = await withCheckedContinuation { waiting.append($0) }
         if Task.isCancelled { cancelledImports += 1 }
         return result

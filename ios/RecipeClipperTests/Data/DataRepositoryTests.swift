@@ -432,6 +432,66 @@ final class DataRepositoryTests: XCTestCase {
         XCTAssertEqual(count, 1)
     }
 
+    // MARK: - importFromUrl: a rendered page from Safari (#35)
+
+    /// A rendered page (Safari's copy, past whatever blocked a plain fetch) with a recipe in it
+    /// is parsed directly: no fetch at all, retry or off-screen browser included.
+    func testARenderedPageWithARecipeIsParsedInsteadOfFetching() async throws {
+        let url = "https://a.com/soup"
+
+        let result = await recipes.importFromUrl(url, renderedPage: renderedRecipePage)
+
+        XCTAssertEqual(source.fetched, [], "the fetch never ran")
+        guard case .success(let recipe) = result else { return XCTFail("\(result)") }
+        XCTAssertEqual(recipe.name, "Rendered Soup")
+        XCTAssertEqual(recipe.sourceUrl, url)
+        let stored = try await db.get(recipe.id)
+        XCTAssertEqual(stored?.title, "Rendered Soup")
+    }
+
+    /// The rendered page is parsed under the cleaned link, exactly as a fetched one would be.
+    func testARenderedPageIsSavedUnderTheCleanedLink() async throws {
+        let cleaned = "https://a.com/soup"
+
+        _ = await recipes.importFromUrl("https://a.com/soup?utm_source=share#jump", renderedPage: renderedRecipePage)
+
+        let saved = try await db.read { try RecipeDao(db: $0).findByUrl(cleaned) }
+        XCTAssertNotNil(saved)
+    }
+
+    /// A rendered page with no recipe in it (the JavaScript preprocessing ran on a page that
+    /// isn't a recipe, or Safari's copy is stale) falls back to the ordinary fetch path — retry
+    /// and off-screen browser included — exactly as if nothing had been given.
+    func testARenderedPageWithNoRecipeFallsBackToFetching() async throws {
+        source.results["https://a.com/soup"] = .success(dataRecipe("https://a.com/soup", title: "Fetched Soup"))
+
+        let result = await recipes.importFromUrl("https://a.com/soup", renderedPage: renderedStoryPage)
+
+        XCTAssertEqual(source.fetched, ["https://a.com/soup"])
+        guard case .success(let recipe) = result else { return XCTFail("\(result)") }
+        XCTAssertEqual(recipe.name, "Fetched Soup")
+    }
+
+    /// The user's own version (#29) is still never refreshed, rendered page or not: no fetch,
+    /// no parse, the page is never even looked at.
+    func testARenderedPageNeverOverwritesTheUsersOwnVersion() async throws {
+        let saved = await importSuccess("https://a.com/soup", at: 1_000)!
+        _ = try await db.write { conn in
+            try RecipeDao(db: conn).saveEdit(
+                saved.id,
+                edited: dataRecipeRecord("https://a.com/soup", viewedAt: 1_000, title: "My Soup"),
+                origin: "MANUAL", editedAt: 2_000
+            )
+        }
+
+        let fetchedBefore = source.fetched.count
+        let result = await recipes.importFromUrl("https://a.com/soup", renderedPage: renderedRecipePage)
+
+        XCTAssertEqual(source.fetched.count, fetchedBefore, "no further fetch for the user's own version")
+        guard case .success(let recipe) = result else { return XCTFail("\(result)") }
+        XCTAssertEqual(recipe.name, "My Soup")
+    }
+
     // MARK: - open / delete / restore
 
     func testOpenTouchesAndReturns() async throws {
