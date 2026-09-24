@@ -71,9 +71,10 @@ di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, Plat
 data/          RecipeRepository, ListRepository (interfaces; Default* are the Room-backed ones),
                Connectivity, ErrorLog, Clock (seams for tests)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
-               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText
+               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
+               SourceDomain
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
@@ -136,9 +137,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
 `docs/decisions.md`.
 
 - **The reading view opens on the recipe:** photo, title, times, one
-  servings-and-units row, ingredients. No segmented pickers, filled chips or
-  radio lists above the ingredients. Times are plain labelled numbers, not
-  chips.
+  servings-and-units row, ingredients. Under the title, quietly, the source's
+  domain and "Open original" (reading view only, not cook mode). No segmented
+  pickers, filled chips or radio lists above the ingredients. Times are plain
+  labelled numbers, not chips.
 - **Servings and units: one always-visible row, adjusted in place.**
   `Serves − 6 +` (per recipe) on the left, the unit dropdown (a global
   default for "every recipe", exclusive choices only) on the right. Don't
@@ -160,9 +162,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
   Grams and Ounces), Oven temperature (independent of units, default As
-  written), Appearance ("Dark while cooking"). Reached **only** from the gear
-  beside the Home title, because `RecipeViewModel` reads `AppPreferences` once
-  (#24).
+  written), Appearance ("Dark while cooking"). Reached from the gear beside
+  the Home title. It could now open from elsewhere too (the recipe screen
+  follows `AppPreferences.settings`), but adding an entry point is the
+  owner's call.
 - **Home:** link field, "Continue cooking" (the most recent), "Recently
   viewed" (the five before it), History and Lists rows (always shown), the
   Settings gear. Empty sections hide. **No "Saved" section**: it duplicated
@@ -210,8 +213,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   matches ingredients as stored, not as converted.
 - Settings live in the SharedPreferences file `unit_preferences` (never
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
-  under the same keys: `unitSystem`, `convertLiquids`, `temperatureUnit`,
-  `darkWhileCooking`, each enum stored by name.
+  under the same keys: `unit_system`, `convert_liquids`, `temperature_unit`,
+  `dark_while_cooking`, each enum stored by name. `AppPreferences.settings`
+  (a Flow over the change listener; iOS a publisher over
+  `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
+  preference collect it rather than reading once.
 - Ticked ingredients are written as they change. Cook progress, timers and
   the chosen servings are in memory only (#10).
 
@@ -229,6 +235,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (it fails at once), a timeout (a dead Wi-Fi costs one 15 s timeout, not
   two) or `NoRecipeFound`. A cancelled import writes nothing, even during the
   pause.
+- **Then, only if still `Blocked` or `NoRecipeFound`, one rendered fetch:**
+  the page loaded off screen (`RenderedPageSource`: Android `WebView`, iOS
+  `WKWebView`, JavaScript on, a short settle, capped at 20 s, cancelled with
+  the import), its HTML through the same parsers. Never after `Offline` or a
+  timeout; nothing is shown. No recipe there keeps the original cause.
 - After any failure, a link saved before opens from the saved copy. Photos
   are cached (Coil; iOS `ImageLoader`), so they show offline too.
 - **Every error screen offers Try again, `NoRecipeFound` included**: a
@@ -258,7 +269,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   - The photo falls back to `og:image`.
 - **A recipe needs a name, plus ingredients or steps.**
 - **Pages behind a login, or rendered by JavaScript,** expose no recipe data
-  to the fetch.
+  to the direct fetch. Only the rendered fetch can see the latter.
 - Every extracted string except `sourceUrl` goes through `stripHtml` (Jsoup's
   `text()`; iOS has a Jsoup-compatible port). A plain-string instructions
   block is split on `\n` **before** stripping, so `<br>`-separated steps stay

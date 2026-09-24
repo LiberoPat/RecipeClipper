@@ -2,11 +2,12 @@ package com.example.recipeclipper.data.local
 
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
+import kotlinx.coroutines.flow.Flow
 
 /**
  * The user's global defaults: set once, applied to every recipe, and kept between sessions.
  * Named for the app rather than for units because [darkWhileCooking] is a display choice,
- * not a measurement one, even though the menu that sets it is reached from the unit label.
+ * not a measurement one.
  *
  * An interface so a ViewModel test can hand it a fake: [SharedPrefsAppPreferences] is the
  * only class holding a `Context`, which a plain-JUnit test cannot construct.
@@ -27,4 +28,22 @@ interface AppPreferences {
      * always-dark behaviour the app shipped with.
      */
     var darkWhileCooking: Boolean
+
+    /**
+     * The current values first, then every change, never repeating a value. A screen that
+     * collects this stays current when Settings changes a default while it is open (#24).
+     */
+    val settings: Flow<AppSettings>
+
+    /** The four values as they are right now. */
+    val current: AppSettings
+        get() = AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking)
 }
+
+/** One snapshot of [AppPreferences], as its [AppPreferences.settings] flow emits them. */
+data class AppSettings(
+    val unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
+    val convertLiquids: Boolean = false,
+    val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
+    val darkWhileCooking: Boolean = false
+)

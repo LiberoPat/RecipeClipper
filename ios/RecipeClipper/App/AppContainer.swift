@@ -41,7 +41,10 @@ final class AppContainer {
         }
         let defaults = testing ? (UserDefaults(suiteName: "RecipeClipperTestHost") ?? .standard) : .standard
         return AppContainer(
-            recipeRepository: DefaultRecipeRepository(db: database, source: BlogRecipeSource(), clock: clock),
+            recipeRepository: DefaultRecipeRepository(
+                db: database, source: BlogRecipeSource(), clock: clock,
+                renderedPages: WebViewRenderedPageSource()
+            ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
