@@ -117,7 +117,7 @@ private fun ServesStepper(servings: ServingsScale, kind: YieldKind, onChange: (I
 }
 
 /**
- * The current unit choice as tappable text; tapping opens the four, mutually exclusive
+ * The current unit choice as tappable text; tapping opens the three mutually exclusive
  * options. Everything else that used to live in this menu ("Also convert liquids", "Dark
  * while cooking") has moved to the Settings screen — this menu is exclusive-choice only now,
  * so a plain ✓ on each row is unambiguous.
@@ -193,7 +193,6 @@ private fun UnitsMenu(
 private fun UnitSystem.shortLabel(): String = stringResource(
     when (this) {
         UnitSystem.AS_WRITTEN -> R.string.unit_as_written
-        UnitSystem.GRAMS -> R.string.unit_grams
         UnitSystem.OUNCES -> R.string.unit_ounces
         UnitSystem.METRIC -> R.string.unit_metric
     }
@@ -205,7 +204,6 @@ private fun UnitSystem.shortLabel(): String = stringResource(
 private fun UnitSystem.description(): String = stringResource(
     when (this) {
         UnitSystem.AS_WRITTEN -> R.string.unit_as_written_description
-        UnitSystem.GRAMS -> R.string.unit_grams_description
         UnitSystem.OUNCES -> R.string.unit_ounces_description
         UnitSystem.METRIC -> R.string.unit_metric_description
     }

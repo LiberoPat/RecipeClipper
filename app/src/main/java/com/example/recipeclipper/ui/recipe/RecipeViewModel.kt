@@ -3,24 +3,31 @@ package com.example.recipeclipper.ui.recipe
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.IngredientScaler
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.SiteReportLink
 import com.example.recipeclipper.data.model.ServingsScale
+import com.example.recipeclipper.data.model.SourceDomain
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitConverter
 import com.example.recipeclipper.data.model.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +36,7 @@ import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.math.ceil
 
@@ -42,30 +50,42 @@ class RecipeViewModel @Inject constructor(
     private val repository: RecipeRepository,
     private val unitPreferences: AppPreferences,
     private val clock: Clock,
-    private val connectivity: Connectivity
+    private val connectivity: Connectivity,
+    private val appInfo: AppInfo
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
     private val shareUrl: String? = savedStateHandle.get<String>(URL_ARG)?.takeIf { it.isNotBlank() }
 
-    private val _uiState = MutableStateFlow(
-        RecipeUiState(
-            unitSystem = unitPreferences.unitSystem,
-            convertLiquids = unitPreferences.convertLiquids,
-            temperatureUnit = unitPreferences.temperatureUnit,
-            darkWhileCooking = unitPreferences.darkWhileCooking
+    // Seeded synchronously so the first render already uses the user's units; kept current
+    // afterwards by collecting [AppPreferences.settings] in [init].
+    private val _uiState = unitPreferences.current.let {
+        MutableStateFlow(
+            RecipeUiState(
+                unitSystem = it.unitSystem,
+                convertLiquids = it.convertLiquids,
+                temperatureUnit = it.temperatureUnit,
+                darkWhileCooking = it.darkWhileCooking
+            )
         )
-    )
+    }
     val uiState: StateFlow<RecipeUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
     private var reconnectJob: Job? = null
+
+    // The note as typed but not yet written, and the debounced write that will save it.
+    private var pendingNotes: String? = null
+    private var notesJob: Job? = null
 
     // Step index -> wall-clock time its timer ends. Only running timers are in here.
     private val deadlines = mutableMapOf<Int, Long>()
     private var tickJob: Job? = null
 
     init {
+        // Settings can change a default while this screen is alive underneath it; this keeps
+        // the open recipe in step instead of showing the units it was opened with (#24).
+        viewModelScope.launch { unitPreferences.settings.collect(::applySettings) }
         load()
     }
 
@@ -76,7 +96,7 @@ class RecipeViewModel @Inject constructor(
     private fun load() {
         loadJob?.cancel()
         reconnectJob?.cancel()
-        _uiState.update { it.copy(content = RecipeContent.Loading) }
+        _uiState.update { it.copy(content = RecipeContent.Loading, reportSiteUrl = null) }
         loadJob = viewModelScope.launch {
             val result = when {
                 recipeId != null -> repository.open(recipeId)
@@ -91,13 +111,28 @@ class RecipeViewModel @Inject constructor(
                         content = successContent(
                             result.recipe, state.unitSystem, state.convertLiquids, state.temperatureUnit
                         ),
-                        checkedIngredients = result.recipe.checkedIngredients
+                        checkedIngredients = result.recipe.checkedIngredients,
+                        notes = result.recipe.notes.orEmpty()
                     )
-                    is ParseResult.Error -> state.copy(content = RecipeContent.Error(result.error))
+                    is ParseResult.Error -> state.copy(
+                        content = RecipeContent.Error(result.error),
+                        reportSiteUrl = reportSiteUrl(result.error)
+                    )
                 }
             }
             if (result is ParseResult.Error && result.error.reloadsOnReconnect) reloadOnReconnect()
         }
+    }
+
+    /**
+     * Only a shared link that loaded but held no recipe is worth reporting: a block, being
+     * offline or a failed fetch usually lifts on its own, and a saved recipe has no page to
+     * report.
+     */
+    private fun reportSiteUrl(error: ParseError): String? {
+        if (error != ParseError.NoRecipeFound) return null
+        val link = shareUrl ?: return null
+        return SiteReportLink.issueUrl(link, appInfo.platform, appInfo.appVersion)
     }
 
     /**
@@ -121,6 +156,29 @@ class RecipeViewModel @Inject constructor(
         // Saved as they change, so closing the app mid-cook doesn't lose the ticks.
         val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id ?: return
         viewModelScope.launch { repository.setChecked(id, next) }
+    }
+
+    /**
+     * The user's note, edited in place. The screen shows every keystroke at once; the write
+     * waits until typing pauses for [NOTES_SAVE_DELAY_MS], so a sentence is one write rather
+     * than one per letter. Leaving the screen before then still saves it (see [onCleared]).
+     */
+    fun onNotesChange(text: String) {
+        _uiState.update { it.copy(notes = text) }
+        val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id ?: return
+        pendingNotes = text
+        notesJob?.cancel()
+        notesJob = viewModelScope.launch {
+            delay(NOTES_SAVE_DELAY_MS)
+            flushNotes(id)
+        }
+    }
+
+    private suspend fun flushNotes(id: Long) {
+        val text = pendingNotes ?: return
+        pendingNotes = null
+        // Once taken off pendingNotes it must land: leaving the screen mid-write can't drop it.
+        withContext(NonCancellable) { repository.setNotes(id, text) }
     }
 
     /**
@@ -165,39 +223,53 @@ class RecipeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * The units dropdown on this screen. It is a global default, so it writes through; the
+     * state updates at once too, rather than waiting for [AppPreferences.settings] to echo it.
+     * The other preferences are set only in Settings and reach this screen through
+     * [applySettings].
+     */
     fun onUnitSystemChange(system: UnitSystem) {
         unitPreferences.unitSystem = system
         updateUnits { it.copy(unitSystem = system) }
     }
 
-    fun onConvertLiquidsChange(enabled: Boolean) {
-        unitPreferences.convertLiquids = enabled
-        updateUnits { it.copy(convertLiquids = enabled) }
-    }
-
     /**
-     * A display choice, not a unit one, so it changes nothing about the rendered text and
-     * does not go through [updateUnits]. It rides in the units menu only because that is
-     * the app's one settings surface today.
+     * A change to the global defaults, from Settings or from this screen's own dropdown,
+     * arriving while the recipe is open. Only a change that affects the text re-renders it:
+     * [RecipeUiState.darkWhileCooking] is a display choice and leaves the recipe alone, and
+     * scaled servings, ticks and cook progress are kept either way.
      */
-    fun onDarkWhileCookingChange(enabled: Boolean) {
-        unitPreferences.darkWhileCooking = enabled
-        _uiState.update { it.copy(darkWhileCooking = enabled) }
+    private fun applySettings(settings: AppSettings) {
+        _uiState.update { state ->
+            val next = state.copy(
+                unitSystem = settings.unitSystem,
+                convertLiquids = settings.convertLiquids,
+                temperatureUnit = settings.temperatureUnit,
+                darkWhileCooking = settings.darkWhileCooking
+            )
+            val rendersDifferently = next.unitSystem != state.unitSystem ||
+                next.convertLiquids != state.convertLiquids ||
+                next.temperatureUnit != state.temperatureUnit
+            if (rendersDifferently) rerender(next) else next
+        }
     }
 
     private fun updateUnits(change: (RecipeUiState) -> RecipeUiState) {
-        _uiState.update { old ->
-            val state = change(old)
-            val content = state.content as? RecipeContent.Success ?: return@update state
-            state.copy(
-                content = content.copy(
-                    ingredients = render(
-                        content.recipe, content.servings, state.unitSystem, state.convertLiquids
-                    ),
-                    instructions = renderInstructions(content.recipe, state.temperatureUnit)
-                )
+        _uiState.update { rerender(change(it)) }
+    }
+
+    // Re-renders the loaded recipe under [state]'s units, keeping its chosen servings.
+    private fun rerender(state: RecipeUiState): RecipeUiState {
+        val content = state.content as? RecipeContent.Success ?: return state
+        return state.copy(
+            content = content.copy(
+                ingredients = render(
+                    content.recipe, content.servings, state.unitSystem, state.convertLiquids
+                ),
+                instructions = renderInstructions(content.recipe, state.temperatureUnit)
             )
-        }
+        )
     }
 
     // --- Cook mode ---
@@ -309,6 +381,12 @@ class RecipeViewModel @Inject constructor(
     override fun onCleared() {
         deadlines.clear()
         tickJob?.cancel()
+        // viewModelScope is already cancelled here, so a note typed just before leaving is
+        // written on a scope of its own. One short write that nothing needs to wait for.
+        val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id
+        if (id != null && pendingNotes != null) {
+            CoroutineScope(Dispatchers.Unconfined).launch { flushNotes(id) }
+        }
     }
 
     // --- Turning a recipe into what the screen shows ---
@@ -326,7 +404,8 @@ class RecipeViewModel @Inject constructor(
             servings = servings,
             ingredients = render(recipe, servings, system, convertLiquids),
             instructions = renderInstructions(recipe, temperatureUnit),
-            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it) }
+            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it) },
+            sourceDomain = SourceDomain.of(recipe.sourceUrl)
         )
     }
 
@@ -351,5 +430,8 @@ class RecipeViewModel @Inject constructor(
     companion object {
         const val RECIPE_ID_ARG = "recipeId"
         const val URL_ARG = "url"
+
+        /** How long typing must pause before the note is written. */
+        const val NOTES_SAVE_DELAY_MS = 500L
     }
 }

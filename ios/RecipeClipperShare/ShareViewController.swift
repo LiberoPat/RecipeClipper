@@ -28,6 +28,8 @@ final class ShareViewController: UIViewController {
 
     /// The same repository the app builds, over the shared database file. Nil if the App
     /// Group container is missing (this build isn't entitled to it) or the file won't open.
+    /// No rendered (off-screen WebView) fallback here: it would cost the extension memory it
+    /// doesn't have, so a page that needs it fails in the card and works from the app.
     private static func makeRepository() -> RecipeRepository? {
         guard let path = AppDatabase.sharedPath() else {
             shareLog.error("App Group container unavailable; can't save")

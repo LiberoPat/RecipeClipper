@@ -124,9 +124,12 @@ final class AppDatabase: @unchecked Sendable {
     // with the version bump, so a crash mid-migration leaves the previous version intact.
     private static let migrations: [(SQLiteConnection) throws -> Void] = [
         createVersion1,
+        addNotes,
     ]
 
-    private static func migrate(_ db: SQLiteConnection) throws {
+    /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
+    /// build an old database the way an old build would have and then migrate it for real).
+    static func migrate(_ db: SQLiteConnection, upTo target: Int = migrations.count) throws {
         let current = try db.queryOne("PRAGMA user_version") { $0.int(0) } ?? 0
         guard current <= migrations.count else {
             // A newer build wrote this file. Refuse rather than guess (and never wipe it).
@@ -135,7 +138,7 @@ final class AppDatabase: @unchecked Sendable {
                 message: "database is at schema version \(current); this build knows \(migrations.count)"
             )
         }
-        for version in current..<migrations.count {
+        for version in current..<max(current, target) {
             try db.transaction {
                 // Re-read under the write lock (BEGIN IMMEDIATE): the app and the share
                 // extension can open a new file at the same moment, and the second must not
@@ -189,6 +192,12 @@ final class AppDatabase: @unchecked Sendable {
             CREATE INDEX index_recipe_list_cross_ref_listId ON recipe_list_cross_ref (listId);
             """)
         try seedBuiltInLists(db)
+    }
+
+    /// Version 2 (Android's Room version 3, `MIGRATION_2_3`): the user's personal note on a
+    /// recipe. Nullable with no default, so every existing recipe simply has no note yet.
+    private static func addNotes(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN notes TEXT")
     }
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its

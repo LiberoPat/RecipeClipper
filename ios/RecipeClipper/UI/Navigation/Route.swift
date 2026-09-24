@@ -1,7 +1,7 @@
 import Foundation
 
 /// Every destination above Home. Mirrors Android's nav graph: `recipe/{recipeId}`,
-/// `recipe/import?url={url}` (Home's link field and the deep link), `history`, `settings` (Home only), `lists`,
+/// `recipe/import?url={url}` (Home's link field and the deep link), `history`, `settings` (from Home's gear), `lists`,
 /// `lists/{listId}`.
 enum Route: Hashable {
     case recipe(id: Int64)

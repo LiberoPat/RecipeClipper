@@ -9,6 +9,7 @@ final class AppContainer {
     let preferences: AppPreferences
     let clock: Clock
     let connectivity: Connectivity
+    let appInfo: AppInfo
     /// The live database, when there is one on disk that another process (the share
     /// extension) can also write to.
     private let sharedDatabase: AppDatabase?
@@ -19,6 +20,7 @@ final class AppContainer {
         preferences: AppPreferences,
         clock: Clock,
         connectivity: Connectivity = StaticConnectivity(),
+        appInfo: AppInfo = BundleAppInfo(),
         sharedDatabase: AppDatabase? = nil
     ) {
         self.recipeRepository = recipeRepository
@@ -26,6 +28,7 @@ final class AppContainer {
         self.preferences = preferences
         self.clock = clock
         self.connectivity = connectivity
+        self.appInfo = appInfo
         self.sharedDatabase = sharedDatabase
     }
 
@@ -54,7 +57,10 @@ final class AppContainer {
         }
         let defaults = UserDefaults(suiteName: testing ? "RecipeClipperTestHost" : AppGroup.identifier) ?? .standard
         return AppContainer(
-            recipeRepository: DefaultRecipeRepository(db: database, source: BlogRecipeSource(), clock: clock),
+            recipeRepository: DefaultRecipeRepository(
+                db: database, source: BlogRecipeSource(), clock: clock,
+                renderedPages: WebViewRenderedPageSource()
+            ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
@@ -74,7 +80,7 @@ final class AppContainer {
     func makeRecipeViewModel(recipeId: Int64?, url: String?) -> RecipeViewModel {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
-            clock: clock, connectivity: connectivity
+            clock: clock, connectivity: connectivity, appInfo: appInfo
         )
     }
 

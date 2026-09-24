@@ -62,10 +62,12 @@ targets:
       - path: RecipeClipperShare
       # The import runs here, on the app's own code (dual target membership, not a copy):
       # the data layer, the share card and the theme it is drawn with. UserDefaults stays out,
-      # so the extension uses no required-reason API and needs no privacy manifest.
+      # so the extension uses no required-reason API and needs no privacy manifest. The
+      # off-screen WebView fallback stays out too (memory): the extension has no rendered fetch.
       - path: RecipeClipper/Data
         excludes:
           - Local/UserDefaultsAppPreferences.swift
+          - Remote/WebViewRenderedPageSource.swift
       - path: RecipeClipper/ShareImport
       - path: RecipeClipper/UI/Theme
       - path: RecipeClipper/UI/Common/Components.swift

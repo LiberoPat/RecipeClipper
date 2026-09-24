@@ -42,14 +42,16 @@ sealed class RecipeContent {
      * with servings scaling and unit/temperature conversion applied. [servings] is null
      * when the recipe's yield has no usable number, in which case there is nothing to
      * scale from. [stepTimerSeconds] lines up with the steps: the duration each one states,
-     * or null.
+     * or null. [sourceDomain] is the site credited under the title ("smittenkitchen.com"),
+     * or null when the source link has no recognisable host (then no credit is shown).
      */
     data class Success(
         val recipe: Recipe,
         val servings: ServingsScale?,
         val ingredients: List<String>,
         val instructions: List<String>,
-        val stepTimerSeconds: List<Int?>
+        val stepTimerSeconds: List<Int?>,
+        val sourceDomain: String?
     ) : RecipeContent()
 
     data class Error(val error: ParseError) : RecipeContent()
@@ -58,19 +60,27 @@ sealed class RecipeContent {
 /**
  * [unitSystem], [convertLiquids] and [temperatureUnit] are the user's global defaults: set
  * once (now from the Settings screen), applied to every recipe, and saved between sessions.
- * Servings, by contrast, belong to one recipe. [convertLiquids] only matters for GRAMS and
- * OUNCES. [temperatureUnit] is independent of [unitSystem] — see [TemperatureUnit]'s doc.
+ * Servings, by contrast, belong to one recipe. [convertLiquids] only matters for OUNCES.
+ * [temperatureUnit] is independent of [unitSystem] — see [TemperatureUnit]'s doc.
  * [darkWhileCooking] forces the ink scheme in cook mode even in light mode; off by default,
  * so cook mode follows the system theme like every other screen.
  */
 data class RecipeUiState(
     val content: RecipeContent = RecipeContent.Loading,
     val checkedIngredients: Set<Int> = emptySet(),
+    /** The user's note as typed; empty when there is none. Saved by the ViewModel. */
+    val notes: String = "",
     val unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
     val cook: CookState = CookState(),
     /** Set once the recipe has been deleted, so the screen can navigate back. */
-    val deleted: Boolean = false
+    val deleted: Boolean = false,
+    /**
+     * The prefilled "Report this site" issue link. Non-null only while a shared link's
+     * [ParseError.NoRecipeFound] is on screen: never for a block, offline or a failed fetch,
+     * which mean "try again", not "unsupported". The screen opens it; nothing is sent.
+     */
+    val reportSiteUrl: String? = null
 )
