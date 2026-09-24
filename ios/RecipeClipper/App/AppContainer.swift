@@ -13,6 +13,9 @@ final class AppContainer {
     let backupFiles: BackupFiles
     let appInfo: AppInfo
     let alarms: TimerAlarmScheduler
+    /// The live database, when there is one on disk that another process (the share
+    /// extension) can also write to.
+    private let sharedDatabase: AppDatabase?
 
     init(
         recipeRepository: RecipeRepository,
@@ -23,7 +26,8 @@ final class AppContainer {
         connectivity: Connectivity = StaticConnectivity(),
         backupFiles: BackupFiles = FileBackupFiles(),
         appInfo: AppInfo = BundleAppInfo(),
-        alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler()
+        alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler(),
+        sharedDatabase: AppDatabase? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -34,11 +38,20 @@ final class AppContainer {
         self.backupFiles = backupFiles
         self.appInfo = appInfo
         self.alarms = alarms
+        self.sharedDatabase = sharedDatabase
     }
 
-    /// The real graph: SQLite on disk, the blog source, UserDefaults. Under XCTest (the unit
-    /// tests are hosted by the app) the database is in memory and preferences are a
-    /// throwaway suite, so a test run never touches a real user's data.
+    /// Called when the app comes to the foreground. The share extension saves recipes into the
+    /// same database from its own process, which this process's observers never hear about, so
+    /// every open list re-queries (Home's "Continue cooking" then shows what was just shared).
+    func refreshAfterExternalChanges() {
+        sharedDatabase?.refreshObservers()
+    }
+
+    /// The real graph: SQLite on disk, the blog source, UserDefaults. The database and the
+    /// settings suite are in the App Group container the share extension also writes to. Under
+    /// XCTest (the unit tests are hosted by the app) the database is in memory and preferences
+    /// are a throwaway suite, so a test run never touches a real user's data.
     static func live() -> AppContainer {
         #if DEBUG
         if let uiTest = UITestSeeding.makeContainer() { return uiTest }
@@ -51,7 +64,7 @@ final class AppContainer {
         } catch {
             fatalError("Couldn't open the recipe database: \(error)")
         }
-        let defaults = testing ? (UserDefaults(suiteName: "RecipeClipperTestHost") ?? .standard) : .standard
+        let defaults = UserDefaults(suiteName: testing ? "RecipeClipperTestHost" : AppGroup.identifier) ?? .standard
         return AppContainer(
             recipeRepository: DefaultRecipeRepository(
                 db: database, source: BlogRecipeSource(), clock: clock,
@@ -64,7 +77,8 @@ final class AppContainer {
             connectivity: PathConnectivity(),
             // Under XCTest nothing is scheduled, so a test run never raises the notification
             // prompt (UI-test seeding above takes the default, which is the same no-op).
-            alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock)
+            alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock),
+            sharedDatabase: testing ? nil : database
         )
     }
 
