@@ -23,6 +23,8 @@ data class Recipe(
     /** Indexes into [ingredients] the user has ticked off. Persisted so cooking can resume. */
     val checkedIngredients: Set<Int> = emptySet(),
     val lastViewedAt: Long = 0,
+    /** The user's own free-text note, or null. Never parsed, so re-sharing keeps it. */
+    val notes: String? = null,
     /**
      * The recipe's language tag as the parser chose it ("en", "de-de"; see [LanguageWords]),
      * which picks the words its lines are read with. Null for a recipe stored before #14,

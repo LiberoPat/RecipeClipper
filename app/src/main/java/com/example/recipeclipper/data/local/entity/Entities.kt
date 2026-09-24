@@ -22,7 +22,8 @@ data class RecipeEntity(
     val servings: String?,          // the recipe's yield text as published
     val sourceType: String,         // BLOG | REDDIT, for re-fetch
     val lastViewedAt: Long,
-    val checkedIngredients: Set<Int> = emptySet()
+    val checkedIngredients: Set<Int> = emptySet(),
+    val notes: String? = null       // the user's own note; kept across re-shares
 )
 
 @Entity(tableName = "lists")

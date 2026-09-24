@@ -36,7 +36,8 @@ Built on both platforms: share → parse → show; automatic history (capped at
 50, searchable, delete with undo); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers (in memory); sharing a recipe out as text; failure handling and
-offline; the microdata fallback. iOS also honours Dynamic Type.
+offline; the microdata fallback; a personal note per recipe. iOS also
+honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
 background timer alerts (#10), Reddit (#11), other languages (#13–#16),
@@ -193,19 +194,19 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 2**: `recipes`, `lists` and
-  `recipe_list_cross_ref` (cascading). The schema is exported to
-  `app/schemas/`: commit it. **Never use destructive migration**, and give
-  every migration a `MigrationTest`. iOS mirrors the schema in SQLite, with
-  `PRAGMA user_version` migrations.
+- Room database `recipe_clipper.db`, **version 3** (iOS `user_version` 2):
+  `recipes` (with a nullable `notes`), `lists` and `recipe_list_cross_ref`
+  (cascading). The schema is exported to `app/schemas/`: commit it. **Never
+  use destructive migration**, and give every migration a `MigrationTest`.
+  iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
   strips only `utm_*`, known click ids (`fbclid`, `gclid`, …) and the
   `#fragment`, lowercases the scheme and host, upgrades `http` to `https`,
   and keeps every other parameter in order. Add a name only when you're sure
   it's tracking.
-- **Re-sharing upserts:** same id and list membership, refreshed content,
-  bumped `lastViewedAt`, ticked ingredients kept only if the ingredient list
-  is unchanged. In the same transaction, recipes in no list beyond the 50
+- **Re-sharing upserts:** same id, list membership and note, refreshed
+  content, bumped `lastViewedAt`, ticked ingredients kept only if the
+  ingredient list is unchanged. In the same transaction, recipes in no list beyond the 50
   most recently viewed are deleted. Opening from history counts as a view.
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
@@ -225,8 +226,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.
-- Ticked ingredients are written as they change. Cook progress, timers and
-  the chosen servings are in memory only (#10).
+- Ticked ingredients are written as they change; the note once typing pauses
+  (500 ms), or on leaving the screen. History search ignores notes. Cook
+  progress, timers and the chosen servings are in memory only (#10).
 
 ## Failure handling
 

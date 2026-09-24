@@ -72,6 +72,7 @@ internal class RecipeActions(
     val onRetry: () -> Unit,
     val onReportSite: () -> Unit,
     val onIngredientChecked: (Int, Boolean) -> Unit,
+    val onNotesChange: (String) -> Unit,
     val onServingsChange: (Int) -> Unit,
     val onUnitSystemChange: (UnitSystem) -> Unit,
     val onCookStart: () -> Unit,
@@ -119,6 +120,7 @@ fun RecipeScreen(
                 }
             },
             onIngredientChecked = viewModel::onIngredientChecked,
+            onNotesChange = viewModel::onNotesChange,
             onServingsChange = viewModel::onServingsChange,
             onUnitSystemChange = viewModel::onUnitSystemChange,
             onCookStart = viewModel::onCookStart,
@@ -277,6 +279,9 @@ private fun ReadingView(
     isSaved: Boolean
 ) {
     val recipe = content.recipe
+    // Only whether the keyboard is up for the note, so the cooking bar steps aside for it.
+    // Focus doesn't survive rotation anyway, so plain remember is right here.
+    var editingNotes by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 112.dp),
@@ -374,9 +379,20 @@ private fun ReadingView(
                     Text(step, style = MaterialTheme.typography.bodyLarge)
                 }
             }
+
+            // After the steps: the reading view still opens on the recipe, and a note like
+            // "needs 10 more minutes" is read once the method is.
+            item {
+                Spacer(Modifier.height(24.dp))
+                NotesSection(
+                    notes = state.notes,
+                    onNotesChange = actions.onNotesChange,
+                    onFocusChange = { editingNotes = it }
+                )
+            }
         }
 
-        if (content.instructions.isNotEmpty()) {
+        if (content.instructions.isNotEmpty() && !editingNotes) {
             Column(
                 Modifier
                     .align(Alignment.BottomCenter)
