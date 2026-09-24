@@ -276,21 +276,7 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.unitSystem, .grams)
     }
 
-    func testTogglingConvertLiquidsReRendersIngredientsAndWritesThroughPreferences() async {
-        let preferences = FakeAppPreferences()
-        let (vm, _) = await loaded(preferences: preferences)
-        vm.onUnitSystemChange(.grams)
-
-        vm.onConvertLiquidsChange(true)
-
-        let expected = testRecipe().ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .grams, includeLiquids: true)
-        }
-        XCTAssertEqual(success(vm)?.ingredients, expected)
-        XCTAssertTrue(preferences.convertLiquids)
-    }
-
-    func testUnitPreferencesAreReadOnceAtInit() async {
+    func testUnitPreferencesAreSeededAtInit() async {
         let preferences = FakeAppPreferences(unitSystem: .metric, convertLiquids: true)
         let (vm, _) = await loaded(preferences: preferences)
 
@@ -302,40 +288,146 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertEqual(success(vm)?.ingredients, expected)
     }
 
-    func testDarkWhileCookingIsOffByDefaultAndWritesThroughWhenTurnedOn() async {
-        let preferences = FakeAppPreferences()
-        let (vm, _) = await loaded(preferences: preferences)
+    func testDarkWhileCookingIsOffByDefault() async {
+        let (vm, _) = await loaded()
 
         // Off by default: cook mode follows the system theme like every other screen.
         XCTAssertFalse(vm.uiState.darkWhileCooking)
-
-        vm.onDarkWhileCookingChange(true)
-
-        XCTAssertTrue(vm.uiState.darkWhileCooking)
-        XCTAssertTrue(preferences.darkWhileCooking)
     }
 
-    func testDarkWhileCookingIsSeededFromPreferencesAndLeavesTheRecipeTextAlone() async {
-        let preferences = FakeAppPreferences(darkWhileCooking: true)
-        let (vm, _) = await loaded(preferences: preferences)
+    func testDarkWhileCookingIsSeededFromPreferences() async {
+        let (vm, _) = await loaded(preferences: FakeAppPreferences(darkWhileCooking: true))
+
         XCTAssertTrue(vm.uiState.darkWhileCooking)
-
-        let before = success(vm)?.ingredients
-        vm.onDarkWhileCookingChange(false)
-
-        // A display choice, so nothing about the rendered recipe may change.
-        XCTAssertEqual(success(vm)?.ingredients, before)
     }
 
     func testTheScreenIsForcedDarkOnlyWhenCookingWithDarkWhileCookingOn() async {
-        let (vm, _) = await loaded(preferences: FakeAppPreferences(darkWhileCooking: true))
+        let preferences = FakeAppPreferences(darkWhileCooking: true)
+        let (vm, _) = await loaded(preferences: preferences)
         XCTAssertFalse(vm.uiState.forceDark) // reading
 
         vm.onCookStart()
         XCTAssertTrue(vm.uiState.forceDark)
 
-        vm.onDarkWhileCookingChange(false)
+        preferences.darkWhileCooking = false // turned off in Settings mid-cook
+        await settleMain()
         XCTAssertFalse(vm.uiState.forceDark)
+    }
+
+    // MARK: A settings change arriving while the recipe is open (#24)
+    //
+    // Writing to the fake directly is Settings changing a default while this screen sits
+    // underneath it: the fake re-emits on `settings`, as the UserDefaults notification does.
+
+    func testAUnitSystemChangeMadeInSettingsReRendersTheOpenRecipe() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(preferences: preferences)
+
+        preferences.unitSystem = .metric
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.unitSystem, .metric)
+        let expected = testRecipe().ingredients.map {
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .metric, includeLiquids: false)
+        }
+        XCTAssertEqual(success(vm)?.ingredients, expected)
+    }
+
+    func testTurningOnConvertLiquidsInSettingsReRendersTheOpenRecipe() async {
+        let preferences = FakeAppPreferences(unitSystem: .grams)
+        let (vm, _) = await loaded(preferences: preferences)
+
+        preferences.convertLiquids = true
+        await settleMain()
+
+        XCTAssertTrue(vm.uiState.convertLiquids)
+        let expected = testRecipe().ingredients.map {
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .grams, includeLiquids: true)
+        }
+        XCTAssertEqual(success(vm)?.ingredients, expected)
+    }
+
+    func testAnOvenTemperatureChangeMadeInSettingsConvertsTheOpenRecipesSteps() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(testRecipe(instructions: ["Bake at 350°F"]), preferences: preferences)
+
+        preferences.temperatureUnit = .celsius
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.temperatureUnit, .celsius)
+        XCTAssertEqual(success(vm)?.instructions, ["Bake at 180°C"])
+    }
+
+    func testDarkWhileCookingChangedInSettingsReachesTheScreenAndLeavesTheTextAlone() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(preferences: preferences)
+        let before = vm.uiState.content
+
+        preferences.darkWhileCooking = true
+        await settleMain()
+
+        XCTAssertTrue(vm.uiState.darkWhileCooking)
+        // A display choice, so nothing about the rendered recipe may change.
+        XCTAssertEqual(vm.uiState.content, before)
+    }
+
+    func testASettingsChangeKeepsTheChosenServingsTheTicksAndCookProgress() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(preferences: preferences)
+        vm.onServingsChange(8) // base 4 -> 8, factor 2
+        vm.onIngredientChecked(0, true)
+        vm.onCookStart()
+        vm.onStepDone()
+        let cookBefore = vm.uiState.cook
+
+        preferences.unitSystem = .metric
+        await settleMain()
+
+        XCTAssertEqual(success(vm)?.servings?.target, 8)
+        let expected = testRecipe().ingredients.map {
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 2.0), system: .metric, includeLiquids: false)
+        }
+        XCTAssertEqual(success(vm)?.ingredients, expected)
+        XCTAssertEqual(vm.uiState.checkedIngredients, [0])
+        XCTAssertEqual(vm.uiState.cook, cookBefore)
+    }
+
+    func testADecimalCommaLineKeepsItsCommaWhenAUnitsChangeArrivesWhileItIsScaled() async {
+        // Doubled, "2,5 lb" is "5 lb", which no longer shows a comma: the re-render must take
+        // the separator from the unscaled line, as the first render does (#42).
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(testRecipe(ingredients: ["2,5 lb potatoes"]), preferences: preferences)
+        vm.onServingsChange(8) // base 4 -> 8, factor 2
+
+        preferences.unitSystem = .metric
+        await settleMain()
+
+        XCTAssertEqual(success(vm)?.ingredients, ["2,27 kg potatoes"])
+    }
+
+    func testASettingsChangeMadeWhileTheRecipeIsStillLoadingIsUsedWhenItArrives() async {
+        let preferences = FakeAppPreferences()
+        let vm = makeViewModel(id: 1, repository: repository(testRecipe()), preferences: preferences)
+
+        preferences.unitSystem = .metric
+        await settleMain()
+
+        let expected = testRecipe().ingredients.map {
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .metric, includeLiquids: false)
+        }
+        XCTAssertEqual(success(vm)?.ingredients, expected)
+    }
+
+    func testTheUnitsDropdownsWriteComesBackThroughSettingsWithoutChangingAnything() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(preferences: preferences)
+
+        vm.onUnitSystemChange(.grams)
+        let immediately = vm.uiState // before the echo is delivered
+        await settleMain()
+
+        XCTAssertEqual(immediately.unitSystem, .grams)
+        XCTAssertEqual(vm.uiState, immediately)
     }
 
     func testTemperatureUnitIsSeededFromPreferencesAndConvertsInstructions() async {

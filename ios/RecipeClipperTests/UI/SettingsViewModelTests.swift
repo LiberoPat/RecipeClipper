@@ -67,6 +67,31 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertTrue(preferences.darkWhileCooking)
     }
 
+    func testAChangeWrittenElsewhereWhileSettingsIsOpenReachesItsState() async {
+        let preferences = FakeAppPreferences()
+        let vm = SettingsViewModel(preferences: preferences)
+        await settleMain()
+
+        // e.g. the recipe screen's units dropdown, with Settings on the back stack
+        preferences.unitSystem = .ounces
+        preferences.temperatureUnit = .celsius
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.unitSystem, .ounces)
+        XCTAssertEqual(vm.uiState.temperatureUnit, .celsius)
+    }
+
+    func testASettersWriteEchoingBackThroughSettingsLeavesTheStateAsSet() async {
+        let vm = SettingsViewModel(preferences: FakeAppPreferences())
+        await settleMain()
+
+        vm.onUnitSystemChange(.metric)
+        vm.onConvertLiquidsChange(true)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState, SettingsUiState(unitSystem: .metric, convertLiquids: true))
+    }
+
     func testConvertLiquidsIsOfferedOnlyForGramsAndOunces() {
         let vm = SettingsViewModel(preferences: FakeAppPreferences())
         let offered = UnitSystem.allCases.filter { system in

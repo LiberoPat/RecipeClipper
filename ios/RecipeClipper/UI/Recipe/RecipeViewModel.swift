@@ -1,8 +1,10 @@
+import Combine
 import Foundation
 import Observation
 
 /// One recipe screen, opened either by id (history, home, a list) or by URL (the share
-/// target). Preferences are read once here, which is why Settings is reachable from Home only.
+/// target). It follows `AppPreferences.settings`, so a default changed in Settings while the
+/// recipe is open re-renders it in place.
 @MainActor
 @Observable
 final class RecipeViewModel {
@@ -29,6 +31,7 @@ final class RecipeViewModel {
     // The note as typed but not yet written (with its recipe), and the debounced write.
     @ObservationIgnored private var pendingNotes: (id: Int64, text: String)?
     @ObservationIgnored private var notesTask: Task<Void, Never>?
+    @ObservationIgnored private var settingsSubscription: AnyCancellable?
 
     init(
         recipeId: Int64?,
@@ -46,12 +49,19 @@ final class RecipeViewModel {
         self.clock = clock
         self.sleep = sleep
         self.connectivity = connectivity
+        // Seeded synchronously so the first render already uses the user's units.
+        let settings = preferences.current
         uiState = RecipeUiState(
-            unitSystem: preferences.unitSystem,
-            convertLiquids: preferences.convertLiquids,
-            temperatureUnit: preferences.temperatureUnit,
-            darkWhileCooking: preferences.darkWhileCooking
+            unitSystem: settings.unitSystem,
+            convertLiquids: settings.convertLiquids,
+            temperatureUnit: settings.temperatureUnit,
+            darkWhileCooking: settings.darkWhileCooking
         )
+        // Settings can change a default while this screen is alive underneath it; this keeps
+        // the open recipe in step instead of showing the units it was opened with (#24).
+        settingsSubscription = preferences.settings
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] settings in self?.applySettings(settings) }
         load()
     }
 
@@ -188,22 +198,33 @@ final class RecipeViewModel {
         uiState.content = .success(content)
     }
 
+    /// The units dropdown on this screen. It is a global default, so it writes through; the
+    /// state updates at once too, rather than waiting for `preferences.settings` to echo it.
+    /// The other preferences are set only in Settings and reach this screen through
+    /// `applySettings`.
     func onUnitSystemChange(_ system: UnitSystem) {
         preferences.unitSystem = system
         uiState.unitSystem = system
         rerender()
     }
 
-    func onConvertLiquidsChange(_ enabled: Bool) {
-        preferences.convertLiquids = enabled
-        uiState.convertLiquids = enabled
-        rerender()
-    }
-
-    /// A display choice: changes nothing about the rendered text.
-    func onDarkWhileCookingChange(_ enabled: Bool) {
-        preferences.darkWhileCooking = enabled
-        uiState.darkWhileCooking = enabled
+    /// A change to the global defaults, from Settings or from this screen's own dropdown,
+    /// arriving while the recipe is open. Only a change that affects the text re-renders it:
+    /// darkWhileCooking is a display choice and leaves the recipe alone, and scaled servings,
+    /// ticks and cook progress are kept either way.
+    private func applySettings(_ settings: AppSettings) {
+        let rendersDifferently = settings.unitSystem != uiState.unitSystem
+            || settings.convertLiquids != uiState.convertLiquids
+            || settings.temperatureUnit != uiState.temperatureUnit
+        var state = uiState
+        state.unitSystem = settings.unitSystem
+        state.convertLiquids = settings.convertLiquids
+        state.temperatureUnit = settings.temperatureUnit
+        state.darkWhileCooking = settings.darkWhileCooking
+        // Assigned only when something changed, so an echo of our own write notifies no view.
+        guard state != uiState else { return }
+        uiState = state
+        if rendersDifferently { rerender() }
     }
 
     private func rerender() {
