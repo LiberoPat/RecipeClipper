@@ -27,7 +27,7 @@ struct ReadingView: View {
                     .foregroundStyle(Palette.onBackground)
                     .padding(.bottom, sourceUrl == nil ? 14 : 0)
                 if let domain = content.sourceDomain, let sourceUrl {
-                    SourceCredit(domain: domain, url: sourceUrl)
+                    SourceCredit(domain: domain, url: sourceUrl, clipped: recipe.origin == .clipped)
                         .padding(.bottom, 4)
                 }
                 Times(prep: recipe.prepTime, cook: recipe.cookTime, total: recipe.totalTime)
@@ -161,6 +161,9 @@ private struct RecipePhoto: View {
 private struct SourceCredit: View {
     let domain: String
     let url: URL
+    /// A clip (#37) says whose selection it is, so a difference from the page, and a re-share
+    /// that doesn't refresh it, both make sense.
+    var clipped = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -179,7 +182,7 @@ private struct SourceCredit: View {
     }
 
     private var domainText: some View {
-        Text(domain)
+        Text(clipped ? Strings.clippedByYou(on: domain) : domain)
             .textStyle(Typography.bodyMedium)
             .foregroundStyle(Palette.muted)
             .accessibilityIdentifier("recipe.sourceDomain")

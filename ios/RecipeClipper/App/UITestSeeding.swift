@@ -51,9 +51,29 @@ enum UITestSeeding {
             listRepository: DefaultListRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
-            clock: clock
+            clock: clock,
+            clipFixtureHTML: clipFixtureHTML
         )
     }
+
+    /// The page "Clip it yourself" shows under test, in place of the live one. XCUITest can't
+    /// drag a selection in a web view reliably, so the page carries buttons that select a block
+    /// by script, as a finger would; the app hears it through the page's `selectionchange`, the
+    /// same path a person's selection takes. Android's ClipScreenTest uses the same page.
+    static let clipFixtureHTML = """
+    <!doctype html><html><head><meta name="viewport" content="width=device-width">
+    <style>body{font:16px -apple-system,sans-serif;margin:16px}button{font-size:14px;margin:2px}</style>
+    <script>function sel(id){var r=document.createRange();r.selectNodeContents(document.getElementById(id));
+    var s=getSelection();s.removeAllRanges();s.addRange(r);}</script></head><body>
+    <p><button onclick="sel('title')">Select title</button><button onclick="sel('ingredients')">Select ingredients</button><button onclick="sel('steps')">Select steps</button><button onclick="sel('step2')">Select last step</button></p>
+    <h1 id="title">Brown Butter Oat Cookies</h1>
+    <img id="photo" src="/img/cookies.jpg" width="200" height="120" alt="Cookies photo" style="background:#c98b4e">
+    <h2>Ingredients</h2>
+    <ul id="ingredients"><li>1 cup (226 g) unsalted butter</li><li>1 cup packed brown sugar</li><li>3 cups rolled oats</li></ul>
+    <h2>Method</h2>
+    <ol id="steps"><li id="step1">Brown the butter until it smells nutty.</li><li id="step2">Bake at 350°F for 11 to 13 minutes.</li></ol>
+    </body></html>
+    """
 
     /// Seeds synchronously so the first frame already shows the scenario: the write runs on
     /// the database's own queue while launch waits for it.

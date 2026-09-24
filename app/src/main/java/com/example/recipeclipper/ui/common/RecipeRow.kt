@@ -54,6 +54,7 @@ fun RecipeRow(recipe: RecipeSummary, now: Long, onClick: () -> Unit, modifier: M
                 overflow = TextOverflow.Ellipsis
             )
             val details = listOfNotNull(
+                if (recipe.isClipped) stringResource(R.string.clipped_by_you) else null,
                 recipe.totalTime,
                 TimeAgo.since(recipe.lastViewedAt, now).text()
             ).joinToString("  ·  ")

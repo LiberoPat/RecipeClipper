@@ -106,6 +106,12 @@ protocol RecipeRepository: AnyObject {
     /// rendered-browser fallback) run, exactly as if nothing had been given.
     func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult
 
+    /// Saves a recipe the user clipped by hand from a page with no recipe data (#37), keyed on
+    /// the cleaned `sourceUrl` like an import: a link seen before keeps its id, note and list
+    /// membership, and its content is replaced by the clip. Counts as a view. Returns the saved
+    /// recipe, or `.error(.saveFailed)`.
+    func saveClip(_ recipe: Recipe) async -> ParseResult
+
     /// "Update from source" (#29): fetches the recipe's link again and replaces the user's
     /// version with the site's, keeping the id, note and list membership, and making it PARSED.
     /// On any failure nothing changes and the cause is returned.

@@ -27,6 +27,10 @@ targets:
       - path: ../shared/tables
         type: folder
         buildPhase: resources
+      # "Clip it yourself" (#37): clipper.js, the one script both apps inject.
+      - path: ../shared/web
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: RecipeClipperShare
         embed: true

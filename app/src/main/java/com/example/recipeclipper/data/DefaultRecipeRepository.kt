@@ -29,7 +29,7 @@ import javax.inject.Singleton
  * The real, Room-backed [RecipeRepository]. Bound to the interface with `@Binds`.
  *
  * Database failures never escape: each call runs through [ErrorLog.guard], is logged, and
- * degrades to what the contract already allows — `Error(SaveFailed)` from an import, null from
+ * degrades to what the contract already allows — `Error(SaveFailed)` from an import or a clip, null from
  * [open] and [delete], nothing from [setChecked], [setNotes], [setCookProgress],
  * [setServingsTarget] and [restore], none from [runningTimers], an empty list from a Flow —
  * rather than crashing `viewModelScope`. The iOS repository does the same.
@@ -150,6 +150,20 @@ class DefaultRecipeRepository @Inject constructor(
         delay(RETRY_PAUSE_MS)
         return source.fetch(url)
     }
+
+    override suspend fun saveClip(recipe: Recipe): ParseResult =
+        log.guard("saveClip", ParseResult.Error(ParseError.SaveFailed)) {
+            // CLIPPED, so a re-share opens the clip rather than fetching the page again (#29's
+            // rule); a clip replaces whatever the row held, as "Update from source" does.
+            val clip = recipe.copy(
+                sourceUrl = UrlCleaner.clean(recipe.sourceUrl),
+                origin = ContentOrigin.CLIPPED,
+                editedAt = null
+            )
+            val id = recipeDao.upsert(clip.toEntity(clock.now()), HISTORY_LIMIT, replaceUsersVersion = true)
+            recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
+                ?: ParseResult.Error(ParseError.SaveFailed)
+        }
 
     override suspend fun open(id: Long): Recipe? = log.guard("open", null) {
         val entity = recipeDao.get(id) ?: return@guard null

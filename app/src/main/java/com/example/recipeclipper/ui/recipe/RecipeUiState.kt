@@ -92,5 +92,10 @@ data class RecipeUiState(
     val updatingFromSource: Boolean = false,
     /** Why the last "Update from source" failed, until the screen has shown it. The recipe
      *  on screen is unchanged. */
-    val updateError: ParseError? = null
+    val updateError: ParseError? = null,
+    /**
+     * The shared link to clip by hand ("Clip it yourself", #37). Set exactly when
+     * [reportSiteUrl] is: only a page that loaded with no recipe data can be clipped.
+     */
+    val clipUrl: String? = null
 )
