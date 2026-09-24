@@ -927,3 +927,38 @@ reads it.
   covered; `DifferentialCorpusTest(s)` passed unchanged across the move.
 - Still in code, as English: `IngredientScaler`'s "plus"/"and" continuation,
   and the words the app writes out (e.g. `StepTimers.label`'s "hr" and "min").
+
+## Clip it yourself (#37)
+
+A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or
+FetchFailed) offers **Clip it yourself**: the page opens live in a web view, the user selects
+the name, ingredients and steps and taps where each goes, then reviews and saves. The design was
+approved as a mock-up (six frames); the owner's nine decisions are in the issue's comments.
+
+- **Error screen:** Try again stays first, outlined; under a hairline, one line of explanation,
+  then Clip it yourself (the one filled button), then Report this site (#30) as a text button.
+- **Assigning replaces** what a field held, for every field. The toolbar count shows the
+  replacement ("Ingredients 4", never "8 + 4").
+- **Undo, both ways:** a snackbar Undo after each assignment or clear, and tapping a field's tag
+  on the page clears that field (with Undo).
+- **Nothing is guessed.** No field is suggested for a selection. A selection splits one item per
+  line (`getSelection().toString()` breaks between blocks); a name joins its lines. Serves and
+  Total time are typed in Review, optional, never read from the page.
+- **Photo:** a Photo button, then the next tapped image. No long-press. Lazy-loading
+  placeholders (`data:` URIs) are skipped for the image's real `http(s)` address.
+- **Session draft per URL:** Cancel keeps the draft in memory (`ClipDraftStore`, keyed by the
+  cleaned URL; Android also mirrors it into `SavedStateHandle`); reopening restores it with a
+  "Draft restored" snackbar offering Discard. Save or Discard drops it. Never on disk.
+- **One script, `shared/web/clipper.js`,** injected by both apps (Android as a Java resource, iOS
+  from the bundled `web/` folder). The page only reports (selection, tag tapped, image tapped);
+  native code pushes the draft's marks back with one declarative `RC.sync(...)`, so replace,
+  undo and clear all redraw from state. Mark ids come from the draft, so an undo can show a mark
+  again. Marks don't survive a page reload (rotation on Android, a restored draft); the draft does.
+- **Links to other pages are blocked** in the clip view (redirects and fragment jumps load), so
+  a clip is always saved under the page it came from.
+- **Save** upserts on the cleaned URL like an import (same id, note and list membership), then
+  the recipe replaces both the clip and the error screen in the back stack.
+- **UI tests** use a fixed local page, never the network: Android's `ClipScreenTest` makes the
+  selection by script in a real WebView; iOS's `ClipUITests` taps buttons on the fixture page
+  (`UITestSeeding.clipFixtureHTML`) that select by script, since XCUITest can't drag a web
+  selection reliably. Either way the app hears it through the page's `selectionchange`.

@@ -36,7 +36,8 @@ Built on both platforms: share → parse → show; automatic history (capped at
 50, searchable, delete with undo); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers (in memory); sharing a recipe out as text; failure handling and
-offline; the microdata fallback; a personal note per recipe. iOS also
+offline; the microdata fallback; a personal note per recipe; "Clip it yourself"
+(select a recipe by hand on a page with no recipe data, #37). iOS also
 honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
@@ -81,14 +82,15 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
-               SiteReportLink, SourceDomain, SharedTables (loads shared/tables)
-ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
-               theme, common
+               SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
+               ClipSelection, ClipDraft
+ui/            navigation, home, history, recipe, clip, savetolist, lists, listdetail,
+               settings, theme, common
 ```
 
 Routes: `home`, `history`, `settings`, `lists`, `lists/{listId}`,
-`recipe/{recipeId}`, and `recipe/import?url={url}` (the share target: parse,
-then upsert with no list membership).
+`recipe/{recipeId}`, `recipe/import?url={url}` (the share target: parse,
+then upsert with no list membership), and `clip?url={url}` (Clip it yourself).
 
 ## Conventions
 
@@ -259,6 +261,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (never `Blocked`, `Offline` or `FetchFailed`): a prefilled GitHub issue
   (`SiteReportLink`, label `site-report`) opened in the browser. Nothing is sent
   unless the user submits it.
+- **`NoRecipeFound` from a shared link also offers "Clip it yourself"** (#37,
+  `docs/decisions.md`): the page live in a web view with `shared/web/clipper.js`
+  (one copy, both apps). Assigning a selection replaces the field, one item per
+  line, nothing guessed; Undo by snackbar or by tapping the field's tag; a
+  session draft per cleaned URL, in memory only.
 - Database errors degrade instead of crashing. The Android repositories run
   every DAO call through `ErrorLog.guard`, which returns a safe fallback
   (`SaveFailed`, null, a no-op, or `CREATE_FAILED` = -1), and every Flow
