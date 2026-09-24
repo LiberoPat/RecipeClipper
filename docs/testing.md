@@ -10,7 +10,8 @@ the commands; iOS test commands and the simulator rules are in
 Tests: `app/src/test/` has the JVM ones (`IngredientScalerTest` scaling,
 servings and yield parsing; `UnitConverterTest`; `TemperatureConverterTest`;
 `StepTimersTest`; `ConvertersTest`; `TimeAgoAndUrlInputTest`; `UrlCleanerTest`,
-now also covering the http→https upgrade; `JsonLdRecipeParserTest`, covering
+now also covering the http→https upgrade; `SourceDomainTest`, the domain the
+reading view credits (one leading "www." dropped, other subdomains kept); `JsonLdRecipeParserTest`, covering
 entity/tag stripping, blank-after-strip lines being dropped, `<br>`-split
 steps staying separate, and the deep-JSON depth guard; `RecipeShareTextTest`,
 covering the labelled-vs-unlabelled serves line (built from a `ServingsScale?`),
@@ -38,7 +39,7 @@ call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
-**257 JVM tests pass.**
+**272 JVM tests pass.**
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -65,7 +66,8 @@ migration" checkable rather than an intention.
 
 **All 89 device tests have been run on an emulator and pass**: 26
 `RecipeDaoTest`, 22 `ListDaoTest`, 3 `MigrationTest`, and 38 Compose UI tests
-(see below).
+(see below). `RecipeSourceCreditTest` (3, the source credit under the recipe
+title) was added after that run and has so far only been compiled.
 
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
 `MigrationTestHelper` reads the exported JSON from the test APK's **assets**,
@@ -114,12 +116,13 @@ Three things that cost real time and will again:
   every `SemanticsProperties.Text` in the tree — before changing production
   code.
 
-Still without Android UI tests: the recipe screen itself (reading and cook
-views, the bookmark icon, share), History (search, swipe-to-dismiss, the undo
-snackbar), the Lists screen, and the Settings screen. The iOS UI tests
-(`ios/RecipeClipperUITests`, 61 tests) do cover Home, History (search,
-swipe-to-delete, the batched undo), Settings, list detail, the save-to-list
-sheet with the bookmark it fills, and the import error screens. Cook mode and
+Still without Android UI tests: most of the recipe screen (reading and cook
+views, the bookmark icon, share; only the source credit is covered), History
+(search, swipe-to-dismiss, the undo snackbar), the Lists screen, and the
+Settings screen. The iOS UI tests (`ios/RecipeClipperUITests`, 64 tests) do
+cover Home, History (search, swipe-to-delete, the batched undo), Settings, list
+detail, the save-to-list sheet with the bookmark it fills, the source credit,
+and the import error screens. Cook mode and
 sharing have no UI tests on either platform.
 
 Two dependency versions are pinned on purpose: `navigation-compose` 2.7.7 and

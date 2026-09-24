@@ -300,7 +300,8 @@ final class RecipeViewModel {
             servings: servings,
             ingredients: render(recipe, servings, uiState.unitSystem, uiState.convertLiquids),
             instructions: renderInstructions(recipe, uiState.temperatureUnit),
-            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0) }
+            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0) },
+            sourceDomain: SourceDomain.of(recipe.sourceUrl)
         )
     }
 

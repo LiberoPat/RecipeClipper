@@ -81,6 +81,21 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertNotNil(vm.uiState.content.success)
     }
 
+    func testTheSourceDomainIsCreditedFromTheSourceLink() async {
+        var recipe = testRecipe()
+        recipe.sourceUrl = "https://www.smittenkitchen.com/2024/01/soup/"
+        let (vm, _) = await loaded(recipe)
+        XCTAssertEqual(success(vm)?.sourceDomain, "smittenkitchen.com")
+    }
+
+    func testASourceLinkWithNoHostCreditsNoDomain() async {
+        var recipe = testRecipe()
+        recipe.sourceUrl = "not a link"
+        let (vm, _) = await loaded(recipe)
+        XCTAssertNotNil(success(vm))
+        XCTAssertNil(success(vm)?.sourceDomain)
+    }
+
     func testAnImportFailureShowsItsCause() async {
         let repository = FakeRecipeRepository()
         repository.importResult = .error(.fetchFailed("HTTP 403"))

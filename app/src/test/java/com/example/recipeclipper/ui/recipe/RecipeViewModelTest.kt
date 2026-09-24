@@ -97,6 +97,25 @@ class RecipeViewModelTest {
         assertTrue(vm.uiState.value.content is RecipeContent.Success)
     }
 
+    @Test fun `the source domain is credited from the source link`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply {
+            openResult = testRecipe().copy(sourceUrl = "https://www.smittenkitchen.com/2024/01/soup/")
+        }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        val content = vm.uiState.value.content as RecipeContent.Success
+        assertEquals("smittenkitchen.com", content.sourceDomain)
+    }
+
+    @Test fun `a source link with no host credits no domain`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe().copy(sourceUrl = "not a link") }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        assertNull((vm.uiState.value.content as RecipeContent.Success).sourceDomain)
+    }
+
     @Test fun `errors when neither id nor url is present`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = buildViewModel(noArgs(), FakeRecipeRepository())
         advanceUntilIdle()
