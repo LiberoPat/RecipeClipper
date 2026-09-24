@@ -31,7 +31,54 @@ final class RecipeDaoTests: XCTestCase {
     func testSchemaVersionIsRecorded() async throws {
         let version = try await db.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
         XCTAssertEqual(version, AppDatabase.schemaVersion)
-        XCTAssertEqual(AppDatabase.schemaVersion, 1)
+        XCTAssertEqual(AppDatabase.schemaVersion, 2)
+    }
+
+    /// Version 2 adds the personal note. A version-1 file, built by the real version-1
+    /// migration exactly as an old build left it, opens with its recipe, ticks and list
+    /// membership intact and no note — the iOS counterpart of Android's MigrationTest.
+    func testAVersion1DatabaseMigratesToVersion2KeepingItsData() async throws {
+        let path = NSTemporaryDirectory() + "rc-\(UUID().uuidString).sqlite"
+        defer {
+            for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) }
+        }
+        do {
+            let old = try SQLiteConnection(path: path)
+            try old.execute("PRAGMA foreign_keys = ON")
+            try AppDatabase.migrate(old, upTo: 1)
+            // Written with version 1's own columns: there is no notes column yet.
+            try old.run(
+                """
+                INSERT INTO recipes (id, sourceUrl, title, imageUrl, ingredients, instructions,
+                    prepTime, cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients)
+                VALUES (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]', '["Simmer."]',
+                    NULL, NULL, NULL, '4', 'BLOG', 123, '[0]')
+                """
+            )
+            try old.run("INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (7, 1, 5)")
+            XCTAssertEqual(try old.queryOne("PRAGMA user_version") { $0.int(0) }, 1)
+        } // closed here, as the old build would have left it
+
+        let migrated = try AppDatabase(path: path)
+
+        let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
+        XCTAssertEqual(version, 2)
+        let row = try await migrated.get(7)
+        XCTAssertEqual(row?.title, "Adobo")
+        XCTAssertEqual(row?.ingredients, ["1 cup soy sauce"])
+        XCTAssertEqual(row?.checkedIngredients, [0])
+        XCTAssertEqual(row?.lastViewedAt, 123)
+        XCTAssertNil(row?.notes)
+        let refs = try await migrated.crossRefs(7)
+        XCTAssertEqual(refs.map(\.listId), [1])
+        let lists = try await migrated.allLists()
+        XCTAssertEqual(lists.count, 6, "migrating must not reseed the built-in lists")
+
+        // The new column is writable and survives a re-share.
+        try await migrated.write { try RecipeDao(db: $0).setNotes(7, notes: "Less salt") }
+        try await migrated.upsert(dataRecipeRecord("https://example.com/a", viewedAt: 900, title: "Chicken adobo"))
+        let notes = try await migrated.get(7)?.notes
+        XCTAssertEqual(notes, "Less salt")
     }
 
     func testReopeningAFileDatabaseKeepsItsDataAndDoesNotReseed() async throws {
@@ -91,6 +138,33 @@ final class RecipeDaoTests: XCTestCase {
 
         let checked = try await db.get(id)?.checkedIngredients
         XCTAssertEqual(checked, [0, 1])
+    }
+
+    func testANoteSurvivesAReShareEvenWhenTheContentChanges() async throws {
+        let id = try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 100))
+        try await db.write { try RecipeDao(db: $0).setNotes(id, notes: "Used half the sugar") }
+
+        try await db.upsert(
+            dataRecipeRecord("https://a.com/1", viewedAt: 900, title: "New title", ingredients: ["3 apples"])
+        )
+
+        let row = try await db.get(id)
+        XCTAssertEqual(row?.title, "New title")
+        XCTAssertEqual(row?.notes, "Used half the sugar")
+    }
+
+    func testSetNotesWritesAndClearsTheNote() async throws {
+        let id = try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 100))
+        let initial = try await db.get(id)?.notes
+        XCTAssertNil(initial)
+
+        try await db.write { try RecipeDao(db: $0).setNotes(id, notes: "Needs 10 more minutes") }
+        let written = try await db.get(id)?.notes
+        XCTAssertEqual(written, "Needs 10 more minutes")
+
+        try await db.write { try RecipeDao(db: $0).setNotes(id, notes: nil) }
+        let cleared = try await db.get(id)?.notes
+        XCTAssertNil(cleared)
     }
 
     func testTickedIngredientsResetWhenTheIngredientsChange() async throws {

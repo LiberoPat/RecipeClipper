@@ -22,7 +22,7 @@ object DatabaseModule {
         Room.databaseBuilder(context, RecipeDatabase::class.java, RecipeDatabase.NAME)
             .addCallback(RecipeDatabase.SeedBuiltInLists)
             // Never fallbackToDestructiveMigration: every version bump gets a real migration.
-            .addMigrations(RecipeDatabase.MIGRATION_1_2)
+            .addMigrations(*RecipeDatabase.ALL_MIGRATIONS)
             .build()
 
     @Provides

@@ -9,19 +9,22 @@ final class AppContainer {
     let preferences: AppPreferences
     let clock: Clock
     let connectivity: Connectivity
+    let appInfo: AppInfo
 
     init(
         recipeRepository: RecipeRepository,
         listRepository: ListRepository,
         preferences: AppPreferences,
         clock: Clock,
-        connectivity: Connectivity = StaticConnectivity()
+        connectivity: Connectivity = StaticConnectivity(),
+        appInfo: AppInfo = BundleAppInfo()
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
         self.preferences = preferences
         self.clock = clock
         self.connectivity = connectivity
+        self.appInfo = appInfo
     }
 
     /// The real graph: SQLite on disk, the blog source, UserDefaults. Under XCTest (the unit
@@ -63,7 +66,7 @@ final class AppContainer {
     func makeRecipeViewModel(recipeId: Int64?, url: String?) -> RecipeViewModel {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
-            clock: clock, connectivity: connectivity
+            clock: clock, connectivity: connectivity, appInfo: appInfo
         )
     }
 

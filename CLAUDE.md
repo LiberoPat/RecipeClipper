@@ -18,6 +18,12 @@ hand-edit them. The JVM `DifferentialCorpusTest` fails while that file is stale
 and writes the regenerated one to `app/build/differential-corpus/`; a new row
 needs only its input (`Ing("1,5 kg flour"),`).
 
+**The word and density tables live once, in `shared/tables/`** (JSON: densities,
+unit, timer, temperature, yield and range words, condensed section names,
+tracking parameters), loaded by both apps (Android as Java resources through
+`SharedTables`, iOS as a bundled `tables/` folder). Edit a table there, never in
+code; the logic that reads it stays written twice.
+
 **Keep this file short: it is loaded into every session.** Add only what an
 agent needs almost every time. Rationale and history go in
 `docs/decisions.md`, test and device detail in `docs/testing.md`, plans and
@@ -30,7 +36,8 @@ Built on both platforms: share → parse → show; automatic history (capped at
 50, searchable, delete with undo); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers (in memory); sharing a recipe out as text; failure handling and
-offline; the microdata fallback. iOS also honours Dynamic Type.
+offline; the microdata fallback; a personal note per recipe. iOS also
+honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
 background timer alerts (#10), Reddit (#11), other languages (#13–#16),
@@ -74,7 +81,7 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
-               SourceDomain
+               SiteReportLink, SourceDomain, SharedTables (loads shared/tables)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
@@ -96,8 +103,8 @@ then upsert with no list membership).
 - Parsers are pure: text in, data out, no network, no Android APIs.
 - **Causes, not copy.** Sources and repositories return a `ParseError`; the
   screen picks the words. Every UI string lives in `res/values/strings.xml`
-  (iOS: `Strings.swift`). The one exception is `RecipeShareText`, a message
-  body with English wording by design.
+  (iOS: `Strings.swift`). The exceptions are `RecipeShareText` and
+  `SiteReportLink`, message bodies with English wording by design.
 - Tests use hand-written fakes (`app/src/test/.../fake/`,
   `ios/RecipeClipperTests/Fakes`), never mocks. Screens take their ViewModel
   as a parameter defaulting to `hiltViewModel()`, so UI tests pass a real
@@ -187,19 +194,19 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 2**: `recipes`, `lists` and
-  `recipe_list_cross_ref` (cascading). The schema is exported to
-  `app/schemas/`: commit it. **Never use destructive migration**, and give
-  every migration a `MigrationTest`. iOS mirrors the schema in SQLite, with
-  `PRAGMA user_version` migrations.
+- Room database `recipe_clipper.db`, **version 3** (iOS `user_version` 2):
+  `recipes` (with a nullable `notes`), `lists` and `recipe_list_cross_ref`
+  (cascading). The schema is exported to `app/schemas/`: commit it. **Never
+  use destructive migration**, and give every migration a `MigrationTest`.
+  iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
   strips only `utm_*`, known click ids (`fbclid`, `gclid`, …) and the
   `#fragment`, lowercases the scheme and host, upgrades `http` to `https`,
   and keeps every other parameter in order. Add a name only when you're sure
   it's tracking.
-- **Re-sharing upserts:** same id and list membership, refreshed content,
-  bumped `lastViewedAt`, ticked ingredients kept only if the ingredient list
-  is unchanged. In the same transaction, recipes in no list beyond the 50
+- **Re-sharing upserts:** same id, list membership and note, refreshed
+  content, bumped `lastViewedAt`, ticked ingredients kept only if the
+  ingredient list is unchanged. In the same transaction, recipes in no list beyond the 50
   most recently viewed are deleted. Opening from history counts as a view.
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
@@ -224,8 +231,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   `unit_preferences.xml`. Anything else, a new file or a renamed one, is not
   backed up until it's added to both. iOS keeps the database in Application
   Support, which backups include. Proof and the adb recipe: `docs/testing.md`.
-- Ticked ingredients are written as they change. Cook progress, timers and
-  the chosen servings are in memory only (#10).
+- Ticked ingredients are written as they change; the note once typing pauses
+  (500 ms), or on leaving the screen. History search ignores notes. Cook
+  progress, timers and the chosen servings are in memory only (#10).
 
 ## Failure handling
 
@@ -252,6 +260,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
   captive portal's login page parses as a page with no recipe. While
   `Offline` or `FetchFailed` shows, the screen reloads once on a real
   offline→online transition.
+- **`NoRecipeFound` from a shared link also offers "Report this site"**
+  (never `Blocked`, `Offline` or `FetchFailed`): a prefilled GitHub issue
+  (`SiteReportLink`, label `site-report`) opened in the browser. Nothing is sent
+  unless the user submits it.
 - Database errors degrade instead of crashing. The Android repositories run
   every DAO call through `ErrorLog.guard`, which returns a safe fallback
   (`SaveFailed`, null, a no-op, or `CREATE_FAILED` = -1), and every Flow

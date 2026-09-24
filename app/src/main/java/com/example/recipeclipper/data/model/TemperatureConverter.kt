@@ -27,10 +27,18 @@ object TemperatureConverter {
         val scale: Scale
     )
 
+    // The scale, degree and range words are shared with iOS: shared/tables/en/temperature.json
+    // and ranges.json.
+    private val TABLE = SharedTables.load("temperature")
+    private val FAHRENHEIT_WORDS = SharedTables.strings(TABLE.getJSONArray("fahrenheit"))
+    private val SCALE_WORDS = FAHRENHEIT_WORDS + SharedTables.strings(TABLE.getJSONArray("celsius"))
+    private val FAHRENHEIT_WORD = Regex(SharedTables.alternation(FAHRENHEIT_WORDS), RegexOption.IGNORE_CASE)
+    private val DEGREES = SharedTables.alternation(SharedTables.strings(TABLE.getJSONArray("degrees")))
+
     // groups: 1 low, 2 range separator, 3 high, 4 connector, 5 unit
-    private const val TEMP =
-        """(\d{2,3})(?:(\s*(?:[-–—]|to)\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+degrees?\s+|\s?)""" +
-                """((?i:fahrenheit|celsius|centigrade)|[FC])(?![A-Za-z])"""
+    private val TEMP =
+        """(\d{2,3})(?:(\s*(?:[-–—]|${SharedTables.RANGE_WORDS})\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+$DEGREES\s+|\s?)""" +
+                """((?i:${SCALE_WORDS.joinToString("|")})|[FC])(?![A-Za-z])"""
 
     private val TEMP_ANYWHERE = Regex("""(?<![\d.,/])$TEMP""")
     private val TEMP_AT_START = Regex("""^$TEMP""")
@@ -96,7 +104,7 @@ object TemperatureConverter {
         val low = match.groupValues[1].toInt()
         val high = match.groupValues[3].takeIf { it.isNotEmpty() }?.toInt()
         val unit = match.groupValues[5]
-        val scale = if (unit.first().equals('F', ignoreCase = true)) Scale.F else Scale.C
+        val scale = if (unit == "F" || FAHRENHEIT_WORD.matches(unit)) Scale.F else Scale.C
 
         val connector = match.groupValues[4]
         val explicit = unit.length > 1 || connector.any { it in "°º˚" } || connector.isNotBlank()

@@ -5,6 +5,7 @@
     <string name="action_back">‹  Back</string>
     <string name="action_exit">✕  Exit</string>
     <string name="action_try_again">Try again</string>
+    <string name="action_report_site">Report this site</string>
     <string name="action_start_cooking">Start cooking</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
@@ -24,6 +25,8 @@
     <string name="label_total">Total</string>
     <string name="heading_ingredients">Ingredients</string>
     <string name="heading_instructions">Instructions</string>
+    <string name="heading_notes">Notes</string>
+    <string name="notes_placeholder">Add a note</string>
     <string name="action_open_original">Open original</string>
     <string name="cd_open_original">Open the original recipe on %1$s</string>
 

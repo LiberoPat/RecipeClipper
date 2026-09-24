@@ -9,6 +9,7 @@ struct RecipeScreen: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
+    @Environment(\.openURL) private var openURL
     @State private var sheetOpen = false
     @State private var confirmingDelete = false
 
@@ -38,9 +39,12 @@ struct RecipeScreen: View {
                     // Every error offers "Try again", no-recipe included: a café or hotel captive
                     // portal serves its login page, which parses as a page with no recipe, and
                     // the same link works once you're through it.
-                    Button(Strings.tryAgain, action: vm.onRetry)
-                        .buttonStyle(PrimaryButtonStyle())
-                        .padding(.top, 16)
+                    // Side by side; stacked when an accessibility text size won't fit them.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) { errorActions(state) }
+                        VStack(alignment: .leading, spacing: 8) { errorActions(state) }
+                    }
+                    .padding(.top, 16)
                 }
             }
         }
@@ -84,6 +88,19 @@ struct RecipeScreen: View {
             Button(Strings.cancel, role: .cancel) {}
         } message: {
             Text(Strings.deleteRecipeBody)
+        }
+    }
+
+    /// "Try again", and beside it "Report this site" only for a page with no recipe (the
+    /// ViewModel decides): the one error that means "unsupported" rather than "try again".
+    /// Secondary, so it reads as a text action next to the filled button.
+    @ViewBuilder
+    private func errorActions(_ state: RecipeUiState) -> some View {
+        Button(Strings.tryAgain, action: vm.onRetry)
+            .buttonStyle(PrimaryButtonStyle())
+        if let report = state.reportSiteUrl.flatMap(URL.init(string:)) {
+            Button(Strings.reportSite) { openURL(report) }
+                .buttonStyle(TextActionStyle(color: Palette.muted))
         }
     }
 
