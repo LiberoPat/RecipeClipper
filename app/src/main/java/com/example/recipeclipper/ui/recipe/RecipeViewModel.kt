@@ -377,7 +377,7 @@ class RecipeViewModel @Inject constructor(
     ): List<String> {
         val factor = servings?.let { it.target.toDouble() / it.base } ?: 1.0
         return recipe.ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale(it, factor), system, convertLiquids)
+            UnitConverter.convert(IngredientScaler.scale(it, factor), system, convertLiquids, separatorFrom = it)
         }
     }
 

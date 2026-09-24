@@ -38,7 +38,12 @@ call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
-**266 JVM tests pass.**
+`DifferentialCorpusTest` recomputes every ingredient and instruction row of
+the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
+stale, and writes the regenerated file to
+`app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
+(`app/build.gradle.kts` declares the Swift file as a test input, so editing
+it alone reruns the tests). **274 JVM tests pass.**
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -136,6 +141,32 @@ with the BOM.
 `JsonLdRecipeParser` uses `org.json`, which is an Android framework class.
 Plain JUnit tests will need `testImplementation("org.json:json:<version>")`
 or the calls will fail as "not mocked".
+
+## CI
+
+GitHub Actions, in `.github/workflows/`:
+
+- **Android** (`android.yml`, check `Android unit tests and lint`), on every
+  pull request and push to `main`, on `ubuntu-latest` with JetBrains Runtime
+  25 (Android Studio's bundled JDK): `./gradlew testDebugUnitTest lintDebug
+  compileDebugAndroidTestKotlin`. A lint error fails the build;
+  `.github/scripts/check_lint.py` then fails on any finding, at any severity,
+  that isn't one of the four version-advisory ids. It checks ids, not the
+  count, because `NewerVersionAvailable` drifts as libraries release. Reports
+  are uploaded as the `android-reports` artifact on failure. Device tests
+  don't run in CI yet.
+- **iOS** (`ios.yml`, check `iOS unit tests`), same triggers, on the
+  `xcode-27` runner image (arm64, macOS 27, Xcode 27 only; in public preview
+  as of September 2026). `DEVELOPER_DIR` selects Xcode 27 explicitly. It runs
+  `RecipeClipperTests` on the image's iPhone 17 / iOS 27.0 simulator and
+  uploads the `.xcresult` on failure.
+- **iOS UI tests** (`ios-ui-tests.yml`), about 18 minutes: nightly at 03:00
+  UTC and on demand (Actions → iOS UI tests → Run workflow).
+
+When a new Xcode major comes out, GitHub ships it as a new image label
+(`xcode-28`), so the label, `DEVELOPER_DIR`, the simulator `OS=` and
+`.github/actionlint.yaml` move together. Check workflow edits with
+`actionlint`.
 
 ## Lint
 
