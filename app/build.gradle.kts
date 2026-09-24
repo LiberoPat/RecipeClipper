@@ -184,6 +184,13 @@ dependencies {
     // MigrationTestHelper, which opens a database at an old version from the exported schema
     // in app/schemas and runs a real migration against it. Device-only: it needs real SQLite.
     androidTestImplementation("androidx.room:room-testing:$room")
+    // navigation 2.10 puts kotlinx-serialization-core 1.7.3 on the app's runtime classpath,
+    // and AGP pins the test APK to the app's versions, which drags room-testing's
+    // kotlinx-serialization-json 1.8.1 onto core 1.7.3: every MigrationTest then dies in an
+    // AbstractMethodError (GeneratedSerializer.typeParametersSerializers). Raise core to match.
+    constraints {
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1")
+    }
 
     // Fetch + parse the shared page (also reads embedded JSON-LD recipe data).
     // Held at 1.17.2 on purpose; it is not part of the toolchain. Newer releases need core
