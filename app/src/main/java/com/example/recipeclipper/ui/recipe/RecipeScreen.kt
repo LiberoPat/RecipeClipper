@@ -1,5 +1,7 @@
 package com.example.recipeclipper.ui.recipe
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,8 +51,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -77,6 +82,7 @@ internal class RecipeActions(
     val onTimerReset: (Int) -> Unit,
     val onTimerAlerted: (Int) -> Unit,
     val onShare: () -> Unit,
+    val onOpenOriginal: (url: String) -> Unit,
     val onSaveToList: () -> Unit,
     val onDelete: () -> Unit
 )
@@ -117,6 +123,15 @@ fun RecipeScreen(
                         .setText(text)
                         .setChooserTitle(title)
                         .startChooser()
+                }
+            },
+            // A platform effect, so it lives here rather than in the ViewModel. With no app
+            // to open a web link (rare, but possible on a locked-down device) the tap does
+            // nothing rather than crash.
+            onOpenOriginal = { url ->
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                } catch (_: ActivityNotFoundException) {
                 }
             },
             onSaveToList = { sheetOpen = true },
@@ -281,7 +296,13 @@ private fun ReadingView(
 
             item {
                 Text(recipe.name, style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.height(14.dp))
+                val domain = content.sourceDomain
+                if (domain != null) {
+                    SourceCredit(domain, onOpen = { actions.onOpenOriginal(recipe.sourceUrl) })
+                    Spacer(Modifier.height(4.dp))
+                } else {
+                    Spacer(Modifier.height(14.dp))
+                }
                 Times(recipe.prepTime, recipe.cookTime, recipe.totalTime)
                 Spacer(Modifier.height(16.dp))
                 ServesUnitsRow(
@@ -377,6 +398,38 @@ private fun RecipeOverflowMenu(recipeName: String, onDelete: () -> Unit) {
             dismissButton = {
                 TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.action_cancel)) }
             }
+        )
+    }
+}
+
+/**
+ * Credits the site under the title: its domain in muted text, then "Open original" as a quiet
+ * paprika link to the page in the browser. Reading view only; cook mode has no room for it.
+ */
+@Composable
+private fun SourceCredit(domain: String, onOpen: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            domain,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
+        )
+        Spacer(Modifier.width(14.dp))
+        Text(
+            stringResource(R.string.action_open_original),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.tertiary,
+            maxLines = 1,
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .clickable(
+                    onClickLabel = stringResource(R.string.cd_open_original, domain),
+                    role = Role.Button,
+                    onClick = onOpen
+                )
         )
     }
 }
