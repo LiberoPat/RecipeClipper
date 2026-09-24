@@ -63,7 +63,7 @@ in-memory database and a throwaway defaults suite, so tests never touch real dat
 | Jsoup fetch + `JsonLdRecipeParser` | `URLSession` (`BlogRecipeSource`) + the same parser, with a hand-written Jsoup-compatible `stripHtml` |
 | `ACTION_SEND` share target | `RecipeClipperShare` extension → `recipeclipper://import?url=…` → `.onOpenURL` |
 | Navigation Compose routes | `NavigationStack` + `Route` enum (`UI/Navigation`) |
-| `strings.xml` | `UI/Theme/Strings.swift` |
+| `strings.xml` + `values-xx/` | `Resources/Localizable.xcstrings` (keys are the Android names), read through `UI/Theme/Strings.swift` |
 | `Theme.kt` | `UI/Theme/Theme.swift` (same tokens; Fraunces/Karla bundled) |
 
 ViewModels import only Foundation, Combine and Observation — no SwiftUI, no UIKit — so they

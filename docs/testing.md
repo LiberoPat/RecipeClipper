@@ -167,15 +167,28 @@ Three things that cost real time and will again:
   every `SemanticsProperties.Text` in the tree — before changing production
   code.
 
-Still without Android UI tests: most of the recipe screen (reading and cook
-views, the bookmark icon, share; only the source credit and the import error
-screen, including "Report this site", are covered), History (search,
-swipe-to-dismiss, the undo snackbar), the Lists screen, and the Settings
-screen. The iOS UI tests (`ios/RecipeClipperUITests`) do cover Home, History
-(search, swipe-to-delete, the batched undo), Settings, list detail, the
-save-to-list sheet with the bookmark it fills, the source credit, and the
-import error screens (including "Report this site" opening Safari). Cook mode
-and sharing have no UI tests on either platform.
+Also `RecipeScreenTest` (reading view, servings and units, bookmark, delete,
+and the share text after scaling and converting through the UI; the source
+credit has its own `RecipeSourceCreditTest`, and the import error screen,
+including "Report this site", has `RecipeErrorScreenTest`), `CookModeTest`
+(step states, tap to jump, "Done — next step", timers), `HistoryScreenTest`
+(search, swipe-to-dismiss, the batched undo snackbar) and `ListsScreenTest`.
+`RecipeScreenFixture` gives the recipe tests a `Clock` the test moves
+forward, so a 20-minute timer finishes as soon as the test says so; the
+ViewModel's 250 ms tick is real time, so wait with `compose.waitUntil`, not a
+bare assert. Done steps are only drawn struck through, not exposed to
+semantics, so `isStruckThrough()` reads the text's layout style. Share itself
+opens the system chooser, so the tests stop at `RecipeViewModel.shareText()`.
+
+Still without Android UI tests: the Settings screen. The iOS UI tests
+(`ios/RecipeClipperUITests`) cover Home, History (search, swipe-to-delete, the
+batched undo), Settings, list detail, the save-to-list sheet with the bookmark
+it fills, the source credit, the import error screens (including "Report this
+site" opening Safari) and cook mode (`CookModeUITests`, on the `cook` seed
+scenario). XCUITest drives the app from outside and can't move its clock, so
+the one timer that has to finish there is a real 3-second step. The share
+sheet is left to the hosted `RecipeViewModelTests`, which pin the exact share
+text.
 
 Two dependency versions are pinned on purpose: `navigation-compose` 2.7.7 and
 `hilt-navigation-compose` 1.2.0. The newest releases need a newer Compose than
@@ -303,6 +316,59 @@ To carry them across, run the backup half of the round-trip above with
 the restore half with `P=com.liberopat.recipeclipper`. If the old install's
 database is an older version, Room migrates it on first open. Check the recipes are there, then
 `adb uninstall com.example.recipeclipper`.
+
+### Backup and restore to a new phone (#25)
+
+What goes is an include list: `app/src/main/res/xml/data_extraction_rules.xml`
+(API 31+, both `cloud-backup` and `device-transfer`) and `backup_rules.xml`
+(API 23–30, Auto Backup). Both name `recipe_clipper.db`, `-wal`, `-shm` and
+`unit_preferences.xml`, so recipes, lists, ticked ingredients and settings
+travel, and nothing else does. Coil's image cache is in `cacheDir`, which is
+never backed up; photos refill from the network.
+
+Proven on an API 37 emulator (September 2026) with the local transport. The
+app was seeded through its UI (a shared recipe, two ingredients ticked, the
+recipe in Favorites and Breakfast, Metric / Celsius / Dark while cooking), with
+canary files outside the include list, then backed up, uninstalled and
+reinstalled. The database, all in the `-wal` at the time (the `.db` was 4 KB),
+and the settings came back and showed in the app; the canaries didn't:
+
+```
+A="adb -s <serial>"; P=com.liberopat.recipeclipper
+# Canaries that must NOT survive:
+$A shell "run-as $P sh -c 'mkdir -p files cache && echo x > files/canary.txt && echo x > cache/canary && echo \"<map/>\" > shared_prefs/other_prefs.xml'"
+$A shell bmgr enable true
+$A shell bmgr transport com.android.localtransport/.LocalTransport
+# A force-stopped app is ineligible: backupnow then reports "Backup is not
+# allowed". Start it and leave it in the background (backupnow kills it).
+$A shell am start -W -n $P/com.example.recipeclipper.MainActivity
+$A shell input keyevent HOME
+$A shell bmgr backupnow $P            # "... with result: Success"
+$A uninstall $P
+$A install app/build/outputs/apk/debug/app-debug.apk   # restores on install
+$A shell run-as $P ls -lR databases shared_prefs files cache
+# (or, with the app installed: bmgr list sets; bmgr restore <token> $P)
+# Then pull the three database files and the prefs as in the round-trip above
+# and query: recipes.checkedIngredients, recipe_list_cross_ref, the prefs XML.
+# Put things back:
+$A shell bmgr wipe com.android.localtransport/.LocalTransport $P
+$A shell bmgr transport com.google.android.gms/.backup.BackupTransportService
+$A shell bmgr enable false
+```
+
+Not exercised on the emulator: Google's cloud transport (it needs a signed-in
+account and uploads on Google's schedule) and a real device-to-device transfer.
+Both read the same rules; the local transport runs the same file selection.
+Android 12+ reads `dataExtractionRules` because `targetSdk` is 31 or more;
+API 23–30 devices read `fullBackupContent`, which wasn't run here.
+
+iOS: the database is `Application Support/recipe_clipper.sqlite`
+(`AppDatabase.defaultPath()`), settings are in `UserDefaults.standard`, and
+both are in iCloud and Finder backups. `BackupLocationTests` pins the location
+and that neither the directory nor the database and its WAL are flagged
+`isExcludedFromBackup`. If the database moves to an App Group container (the
+share extension, #19), that is backed up too; move the test with it. Photos are
+in Caches (`ImageLoader`), which isn't backed up, as intended.
 
 A single test:
 `./gradlew testDebugUnitTest --tests "com.example.recipeclipper.data.model.IngredientScalerTest"`

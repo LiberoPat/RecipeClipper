@@ -104,4 +104,35 @@ class RecipeShareTextTest {
         assertFalse(text.contains("##"))
         assertFalse(text.contains("- "))
     }
+
+    @Test fun `the labels passed in replace every English word`() {
+        val german = RecipeShareText.Labels(
+            serves = { "Portionen: $it" },
+            makes = { "Ergibt $it" },
+            scaled = { line, original -> "$line (ursprünglich $original)" },
+            prep = "Vorbereitung",
+            cook = "Garzeit",
+            total = "Gesamt",
+            ingredients = "ZUTATEN",
+            instructions = "ZUBEREITUNG"
+        )
+        val text = RecipeShareText.format(
+            recipe, ServingsScale(base = 6, target = 3), recipe.ingredients, recipe.instructions, german
+        )
+        assertEquals(
+            listOf(
+                "Chicken Adobo", "",
+                "Portionen: 3 (ursprünglich 6)",
+                "Vorbereitung 10m · Garzeit 30m · Gesamt 40m", "",
+                "ZUTATEN", "2 lb chicken thighs", "1/2 cup soy sauce", "",
+                "ZUBEREITUNG", "1. Marinate the chicken.", "2. Simmer 30 minutes."
+            ),
+            text.lines()
+        )
+        val makes = RecipeShareText.format(
+            recipe.copy(yield = "Makes 16"), ServingsScale(base = 16, target = 16),
+            recipe.ingredients, recipe.instructions, german
+        )
+        assertTrue(makes.contains("Ergibt 16"))
+    }
 }
