@@ -25,36 +25,39 @@ internal object IngredientDensities {
 
     private class Entry(val aliases: List<String>, val density: Density)
 
-    private val TABLE = SharedTables.load("densities")
-
-    // The table is shared with iOS: shared/tables/en/densities.json. A null gramsPerCup is a
-    // skip entry, which matches by name but converts nothing, beating a shorter alias like
+    // The table is shared with iOS: shared/tables/<language>/densities.json. A null gramsPerCup
+    // is a skip entry, which matches by name but converts nothing, beating a shorter alias like
     // plain "flour".
-    private val ENTRIES: List<Entry> = SharedTables.objects(TABLE.getJSONArray("entries")).map { e ->
-        Entry(
-            SharedTables.strings(e.getJSONArray("aliases")),
-            Density(
-                gramsPerCup = if (e.isNull("gramsPerCup")) null else e.getDouble("gramsPerCup"),
-                liquid = e.optBoolean("liquid", false),
-                stickable = e.optBoolean("stickable", false)
+    private class Table(words: LanguageWords) {
+        private val table = words.table("densities")
+
+        private val entries: List<Entry> = SharedTables.objects(table.getJSONArray("entries")).map { e ->
+            Entry(
+                SharedTables.strings(e.getJSONArray("aliases")),
+                Density(
+                    gramsPerCup = if (e.isNull("gramsPerCup")) null else e.getDouble("gramsPerCup"),
+                    liquid = e.optBoolean("liquid", false),
+                    stickable = e.optBoolean("stickable", false)
+                )
             )
-        )
+        }
+
+        // Longest alias first, so "brown sugar" wins over "sugar" and "peanut butter" over "butter".
+        val aliases: List<Pair<String, Density>> = entries
+            .flatMap { entry -> entry.aliases.map { it to entry.density } }
+            .sortedByDescending { it.first.length }
+
+        val trailingModifiers = SharedTables.strings(table.getJSONArray("trailingModifiers")).toSet()
     }
-
-    // Longest alias first, so "brown sugar" wins over "sugar" and "peanut butter" over "butter".
-    private val ALIASES: List<Pair<String, Density>> = ENTRIES
-        .flatMap { entry -> entry.aliases.map { it to entry.density } }
-        .sortedByDescending { it.first.length }
-
-    private val TRAILING_MODIFIERS = SharedTables.strings(TABLE.getJSONArray("trailingModifiers")).toSet()
 
     /**
      * Looks the ingredient up by the *end* of its name, so "unsalted butter" and "light
      * brown sugar" match while "butter beans" and "flour tortillas" don't.
      */
-    fun find(ingredientText: String): Density? {
-        val phrase = headPhrase(ingredientText)
-        return ALIASES.firstOrNull { (alias, _) -> phrase == alias || phrase.endsWith(" $alias") }?.second
+    fun find(ingredientText: String, words: LanguageWords = LanguageWords.ENGLISH): Density? {
+        val table = words.compiled(Table::class) { Table(it) }
+        val phrase = headPhrase(ingredientText, table.trailingModifiers)
+        return table.aliases.firstOrNull { (alias, _) -> phrase == alias || phrase.endsWith(" $alias") }?.second
     }
 
     private val INNERMOST_PARENS = Regex("""\([^()]*\)""")
@@ -74,7 +77,7 @@ internal object IngredientDensities {
     }
 
     /** The ingredient name: text before the first comma, without parentheses or modifiers. */
-    private fun headPhrase(text: String): String {
+    private fun headPhrase(text: String, trailingModifiers: Set<String>): String {
         val words = stripParentheses(text)
             .substringBefore(',')
             .lowercase()
@@ -83,6 +86,6 @@ internal object IngredientDensities {
             .replace('-', ' ')
             .split(Regex("""\s+"""))
             .filter { it.isNotEmpty() }
-        return words.dropLastWhile { it in TRAILING_MODIFIERS }.joinToString(" ")
+        return words.dropLastWhile { it in trailingModifiers }.joinToString(" ")
     }
 }

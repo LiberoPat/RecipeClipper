@@ -30,7 +30,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ServingsScale
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.data.model.YieldKind
@@ -44,6 +46,7 @@ import com.example.recipeclipper.data.model.YieldKind
 internal fun ServesUnitsRow(
     servings: ServingsScale?,
     yieldText: String?,
+    words: LanguageWords?,
     unitSystem: UnitSystem,
     onServingsChange: (Int) -> Unit,
     onUnitSystemChange: (UnitSystem) -> Unit
@@ -56,7 +59,7 @@ internal fun ServesUnitsRow(
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
         ) {
             if (servings != null) {
-                ServesStepper(servings, Servings.kind(yieldText), onServingsChange)
+                ServesStepper(servings, Servings.kind(yieldText, words), onServingsChange)
             } else {
                 // No number in the yield to scale from: show what the recipe says, if anything.
                 Text(yieldText.orEmpty(), style = MaterialTheme.typography.bodyLarge)

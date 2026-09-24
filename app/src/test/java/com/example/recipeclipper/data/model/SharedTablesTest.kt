@@ -9,30 +9,48 @@ import java.io.File
 /** Every shared table (#9) loads from the classpath, as the app loads it, and is well formed. */
 class SharedTablesTest {
 
-    private val languageTables = listOf("densities", "units", "timers", "temperature", "yield", "ranges", "sections")
+    private val languageTables = listOf(
+        "densities", "units", "timers", "temperature", "yield", "ranges", "sections",
+        "amounts", "durations", "language"
+    )
 
     @Test
-    fun everyTableOnDiskIsCoveredHere() {
-        val onDisk = File("../shared/tables/${SharedTables.LANGUAGE}").list()!!
-            .map { it.removeSuffix(".json") }.toSet()
-        assertEquals(languageTables.toSet(), onDisk)
+    fun everyLanguageOnDiskIsShippedWithEveryTable() {
+        val languages = File("../shared/tables").listFiles()!!.filter { it.isDirectory }.map { it.name }
+        assertEquals(LanguageWords.SHIPPED.toSet(), languages.toSet())
+        for (language in languages) {
+            val onDisk = File("../shared/tables/$language").list()!!.map { it.removeSuffix(".json") }.toSet()
+            assertEquals(language, languageTables.toSet(), onDisk)
+        }
     }
 
     @Test
     fun everyTableLoadsWithItsSchemaVersion() {
-        for (name in languageTables) {
-            val table = SharedTables.load(name)
-            assertEquals(name, 1, table.getInt("schemaVersion"))
-            assertEquals(name, SharedTables.LANGUAGE, table.getString("language"))
+        for (language in LanguageWords.SHIPPED) for (name in languageTables) {
+            val table = SharedTables.load(name, language)
+            assertEquals("$language/$name", 1, table.getInt("schemaVersion"))
+            assertEquals("$language/$name", language, table.getString("language"))
         }
         assertEquals(1, SharedTables.read("url").getInt("schemaVersion"))
     }
 
     @Test
     fun everyUnitNameIsAMeasureUnit() {
-        val names = SharedTables.objects(SharedTables.load("units").getJSONArray("names"))
-        for (name in names) MeasureUnit.valueOf(name.getString("unit"))
-        assertEquals(MeasureUnit.values().toSet(), names.map { MeasureUnit.valueOf(it.getString("unit")) }.toSet())
+        for (language in LanguageWords.SHIPPED) {
+            val names = SharedTables.objects(SharedTables.load("units", language).getJSONArray("names"))
+            for (name in names) MeasureUnit.valueOf(name.getString("unit"))
+        }
+        val english = SharedTables.objects(SharedTables.load("units", "en").getJSONArray("names"))
+        assertEquals(MeasureUnit.values().toSet(), english.map { MeasureUnit.valueOf(it.getString("unit")) }.toSet())
+    }
+
+    @Test
+    fun everyTimerTableLabelsHoursMinutesAndSeconds() {
+        for (language in LanguageWords.SHIPPED) {
+            val units = SharedTables.objects(SharedTables.load("timers", language).getJSONArray("units"))
+            assertEquals(language, setOf(3600, 60, 1), units.map { it.getInt("seconds") }.toSet())
+            for (unit in units) assertTrue(language, unit.getString("label").isNotBlank())
+        }
     }
 
     @Test
@@ -43,6 +61,6 @@ class SharedTablesTest {
         assertEquals("Preheat to 180°C", TemperatureConverter.convert("Preheat to 350 degrees Fahrenheit", TemperatureUnit.CELSIUS))
         assertEquals(YieldKind.MAKES, Servings.kind("Makes 12"))
         assertEquals("https://a.com/r?id=1", UrlCleaner.clean("https://a.com/r?id=1&utm_source=x&fbclid=y"))
-        assertTrue(Regex(UnitPatterns.CAPTURED).containsMatchIn("2 cups"))
+        assertTrue(Regex(UnitPatterns.of().captured).containsMatchIn("2 cups"))
     }
 }

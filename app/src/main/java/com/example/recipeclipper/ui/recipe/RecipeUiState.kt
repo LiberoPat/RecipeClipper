@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.recipe
 
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.ServingsScale
@@ -44,6 +45,8 @@ sealed class RecipeContent {
      * scale from. [stepTimerSeconds] lines up with the steps: the duration each one states,
      * or null. [sourceDomain] is the site credited under the title ("smittenkitchen.com"),
      * or null when the source link has no recognisable host (then no credit is shown).
+     * [words] are the recipe's language's (#14), which the view uses for the yield's kind and
+     * the timer labels; null for a language the app has no words for.
      */
     data class Success(
         val recipe: Recipe,
@@ -51,7 +54,8 @@ sealed class RecipeContent {
         val ingredients: List<String>,
         val instructions: List<String>,
         val stepTimerSeconds: List<Int?>,
-        val sourceDomain: String?
+        val sourceDomain: String?,
+        val words: LanguageWords? = LanguageWords.forRecipe(recipe)
     ) : RecipeContent()
 
     data class Error(val error: ParseError) : RecipeContent()

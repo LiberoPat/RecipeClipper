@@ -339,6 +339,7 @@ private fun ReadingView(
                 ServesUnitsRow(
                     servings = content.servings,
                     yieldText = recipe.yield,
+                    words = content.words,
                     unitSystem = state.unitSystem,
                     onServingsChange = actions.onServingsChange,
                     onUnitSystemChange = actions.onUnitSystemChange

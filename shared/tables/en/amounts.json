@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "IngredientScaler's and UnitConverter's amount words. continuation: regex fragments, each ending in its own whitespace, that join the two parts of a compound amount ('1 cup plus 2 tbsp'); the '+' is in the code. sizes: regex fragments, each ending in its own boundary, for what makes a leading number a size rather than an amount ('1-inch piece'); '%', 'cm' and 'mm' are in the code.",
+  "continuation": ["plus\\s+", "and\\s+"],
+  "sizes": ["inch(?:es)?\\b"]
+}

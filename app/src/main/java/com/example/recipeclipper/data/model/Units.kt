@@ -42,11 +42,11 @@ internal enum class MeasureUnit(
     companion object {
         private val WHITESPACE = Regex("""\s+""")
 
-        // shared/tables/en/units.json "names": the first rule the text satisfies wins.
+        // shared/tables/<language>/units.json "names": the first rule the text satisfies wins.
         private class Name(val unit: MeasureUnit, val exact: List<String>, val prefixes: List<String>)
 
-        private val NAMES: List<Name> by lazy {
-            SharedTables.objects(SharedTables.load("units").getJSONArray("names")).map {
+        private class Names(words: LanguageWords) {
+            val names: List<Name> = SharedTables.objects(words.table("units").getJSONArray("names")).map {
                 Name(
                     valueOf(it.getString("unit")),
                     SharedTables.strings(it.optJSONArray("exact")),
@@ -55,9 +55,9 @@ internal enum class MeasureUnit(
             }
         }
 
-        fun fromText(text: String): MeasureUnit? {
+        fun fromText(text: String, words: LanguageWords = LanguageWords.ENGLISH): MeasureUnit? {
             val s = text.lowercase().replace(".", "").replace(WHITESPACE, " ")
-            return NAMES.firstOrNull { name ->
+            return words.compiled(Names::class) { Names(it) }.names.firstOrNull { name ->
                 s in name.exact || name.prefixes.any { s.startsWith(it) }
             }?.unit
         }
@@ -68,17 +68,22 @@ internal enum class MeasureUnit(
  * Regex fragments matching a unit word. The trailing lookahead makes them match whole
  * words only, so "g" doesn't match the start of "garlic" or "l" the start of "large".
  */
-internal object UnitPatterns {
-    // The unit words are shared with iOS: shared/tables/en/units.json "patterns", in order.
-    private val ALTERNATIVES =
-        SharedTables.strings(SharedTables.load("units").getJSONArray("patterns")).joinToString("|")
+internal class UnitPatterns private constructor(words: LanguageWords) {
+    // The unit words are shared with iOS: shared/tables/<language>/units.json "patterns", in order.
+    // (No units at all never matches, rather than matching an empty unit.)
+    private val alternatives = words.strings("units", "patterns").ifEmpty { listOf("(?!)") }.joinToString("|")
 
     // The alternation is wrapped in its own group so the optional trailing period applies to
     // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
 
     /** One capturing group holding the unit text. */
-    val CAPTURED = """((?:$ALTERNATIVES)\.?)(?![A-Za-z])"""
+    val captured = """((?:$alternatives)\.?)(?![A-Za-z])"""
 
     /** Same match, no capturing group. */
-    val PLAIN = """(?:(?:$ALTERNATIVES)\.?)(?![A-Za-z])"""
+    val plain = """(?:(?:$alternatives)\.?)(?![A-Za-z])"""
+
+    companion object {
+        fun of(words: LanguageWords = LanguageWords.ENGLISH): UnitPatterns =
+            words.compiled(UnitPatterns::class) { UnitPatterns(it) }
+    }
 }
