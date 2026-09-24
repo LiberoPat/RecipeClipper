@@ -184,4 +184,30 @@ class IngredientScalerTest {
         assertEquals("1,000 ml water", IngredientScaler.scale("1,000 ml water", 0.5))
         assertEquals("2 cups (1,250 g) flour", IngredientScaler.scale("2 cups (1,250 g) flour", 2.0))
     }
+
+    // --- Shapes found in real ingredient lines (#33) ---
+
+    @Test fun `a fraction written with the fraction slash scales as a whole`() {
+        // BBC Good Food writes "1⁄2" with U+2044; "1⁄2 lemon" doubled once read "2⁄2 lemon".
+        assertEquals("1 lemon zested and juiced", IngredientScaler.scale("1⁄2 lemon zested and juiced", 2.0))
+        assertEquals("1/4 tsp olive oil", IngredientScaler.scale("1⁄2 tsp olive oil", 0.5))
+        assertEquals("3 cups flour", IngredientScaler.scale("1 1⁄2 cups flour", 2.0))
+    }
+
+    @Test fun `a mixed number joined by and scales as a whole`() {
+        // "2 and 1/2 cups" doubled once read "4 and 1/2 cups".
+        assertEquals("5 cups flour", IngredientScaler.scale("2 and 1/2 cups flour", 2.0))
+        assertEquals("3/4 cups milk", IngredientScaler.scale("1 and ½ cups milk", 0.5))
+        // "and" between two amounts with units is still a compound, not a mixed number.
+        assertEquals("2 cups and 4 tbsp flour", IngredientScaler.scale("1 cups and 2 tbsp flour", 2.0))
+    }
+
+    @Test fun `a range after a slash scales at both ends`() {
+        // RecipeTin Eats: doubling once left "/ 8 - 10 oz" as written beside "500 - 600 g".
+        assertEquals(
+            "500 - 600 g / 16 - 20 oz pasta",
+            IngredientScaler.scale("250 - 300 g / 8 - 10 oz pasta", 2.0)
+        )
+        assertEquals("1 cup / 240 to 250 g flour", IngredientScaler.scale("2 cup / 480 to 500 g flour", 0.5))
+    }
 }

@@ -14,7 +14,8 @@ import kotlin.math.round
  * - Volume to weight needs [IngredientDensities]; an ingredient not in the table is left
  *   as written rather than guessed.
  * - If the line already carries the target unit in parentheses or after a slash, as in
- *   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one.
+ *   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one. So is a
+ *   range after a slash ("250 - 300 g / 8 - 10 oz pasta" in ounces is "8 - 10 oz pasta").
  * - Pourable liquids are left alone in GRAMS/OUNCES unless [includeLiquids] is set.
  *   METRIC turns them into ml, which is exact and needs no density, so it ignores the flag.
  * - METRIC otherwise gives spoons and cups as ml, except that a line carrying the site's own
@@ -47,6 +48,14 @@ object UnitConverter {
     private val PAREN_AT_START = Regex("""^\s*\(([^)]*)\)""")
     private val SLASH_AT_START = Regex(
         """^\s*/\s*(${IngredientScaler.QTY})(\s*)${UnitPatterns.CAPTURED}""",
+        RegexOption.IGNORE_CASE
+    )
+
+    // "250 - 300 g / 8 - 10 oz pasta": a range written a second way.
+    // groups: 1 low, 2 range separator, 3 high, 4 space, 5 unit
+    private val SLASH_RANGE_AT_START = Regex(
+        """^\s*/\s*(${IngredientScaler.QTY})(\s*[-–—]\s*|\s+to\s+)(${IngredientScaler.QTY})(\s*)""" +
+                UnitPatterns.CAPTURED,
         RegexOption.IGNORE_CASE
     )
 
@@ -101,7 +110,21 @@ object UnitConverter {
             after = after.substring(c.range.last + 1)
         }
 
-        val alternate = findAlternate(after)
+        // "/ 8 - 10 oz": the site's range in another unit. It is consumed like "/120 g", and
+        // shown instead of a calculated range when it is already in the target unit.
+        var siteRange: Pair<MeasureUnit, String>? = null
+        if (extra == null) {
+            SLASH_RANGE_AT_START.find(after)?.let { r ->
+                val rangeUnit = MeasureUnit.fromText(r.groupValues[5]) ?: return line
+                if (IngredientScaler.parse(r.groupValues[1]) == null ||
+                    IngredientScaler.parse(r.groupValues[3]) == null
+                ) return line
+                siteRange = rangeUnit to r.value.substringAfter('/').trim()
+                after = after.substring(r.range.last + 1)
+            }
+        }
+
+        val alternate = if (siteRange == null) findAlternate(after) else null
         if (alternate != null) after = after.substring(alternate.length)
 
         val density = IngredientDensities.find(after)
@@ -125,11 +148,20 @@ object UnitConverter {
         val asWeight = system != UnitSystem.METRIC || !allVolume ||
                 (!isLiquid && (density?.gramsPerCup != null || siteWeight))
 
-        val converted = if (asWeight) {
+        val site = siteRange?.takeIf { (rangeUnit, _) ->
+            rangeUnit in ownUnits(system) && if (asWeight) {
+                rangeUnit.kind == MeasureKind.WEIGHT && !(rangeUnit == MeasureUnit.OZ && isLiquid)
+            } else {
+                rangeUnit == MeasureUnit.ML || rangeUnit == MeasureUnit.L
+            }
+        }?.second
+
+        val calculated = if (asWeight) {
             weightAmount(amount, effective, extraPart, density, alternate?.weight, isLiquid, system)
         } else {
             volumeAmount(amount, effective, extraPart, alternate?.volume)
-        } ?: return line
+        }
+        val converted = site ?: calculated ?: return line
 
         val comma = IngredientScaler.DECIMAL_COMMA.containsMatchIn(separatorFrom)
         return lead.groupValues[1] + IngredientScaler.withSeparator(converted, comma) + after

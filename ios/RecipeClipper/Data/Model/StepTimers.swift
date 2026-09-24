@@ -12,7 +12,7 @@ enum StepTimers {
 
     // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer".
     private static let duration = JRegex(
-        #"(?<![\d.,/])("# + qty + #")(?:\s*(?:[-–—]|to)\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
+        #"(?<![\d.,/⁄])("# + qty + #")(?:\s*(?:[-–—]|to)\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
         ignoreCase: true
     )
 

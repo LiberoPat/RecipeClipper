@@ -25,11 +25,14 @@ object IngredientScaler {
         '⅜' to 3 / 8.0, '⅝' to 5 / 8.0, '⅞' to 7 / 8.0
     )
 
-    // "1 1/2", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that order. A comma followed by
-    // one or two digits is a decimal comma; one followed by three ("1,500") may be a thousands
-    // separator, so it is never read as part of a quantity, and AMBIGUOUS_COMMA leaves the line.
+    // "1 1/2", "2 and 1/2", "1 and ½", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that
+    // order. A fraction's slash may be the typographic U+2044 ("1⁄2", as BBC Good Food writes
+    // it). A comma followed by one or two digits is a decimal comma; one followed by three
+    // ("1,500") may be a thousands separator, so it is never read as part of a quantity, and
+    // AMBIGUOUS_COMMA leaves the line.
     internal const val QTY =
-        """(?:\d+\s+\d+/\d+|\d+\s*[$UNICODE_FRACTIONS]|\d+/\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|[$UNICODE_FRACTIONS])"""
+        """(?:\d+\s+(?:and\s+)?\d+[/⁄]\d+|\d+\s+and\s+[$UNICODE_FRACTIONS]|\d+\s*[$UNICODE_FRACTIONS]|""" +
+            """\d+[/⁄]\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|[$UNICODE_FRACTIONS])"""
 
     /** "1,5": the line writes decimals with a comma, so its output does too. */
     internal val DECIMAL_COMMA = Regex("""\d,\d{1,2}(?!\d)""")
@@ -59,9 +62,10 @@ object IngredientScaler {
     private val ALT_PAREN =
         Regex("""^(\s*${UnitPatterns.PLAIN}\s*\()([^)]*)(\))""", RegexOption.IGNORE_CASE)
 
-    // "1 cup/120 grams flour". groups: 1 prefix, 2 quantity, 3 space, 4 unit
+    // "1 cup/120 grams flour", or a range "250 - 300 g / 8 - 10 oz pasta".
+    // groups: 1 prefix, 2 quantity, 3 range separator, 4 range upper bound, 5 space, 6 unit
     private val ALT_SLASH = Regex(
-        """^(\s*${UnitPatterns.PLAIN}\s*/\s*)($QTY)(\s*)${UnitPatterns.CAPTURED}""",
+        """^(\s*${UnitPatterns.PLAIN}\s*/\s*)($QTY)(?:(\s*[-–—]\s*|\s+to\s+)($QTY))?(\s*)${UnitPatterns.CAPTURED}""",
         RegexOption.IGNORE_CASE
     )
 
@@ -127,11 +131,14 @@ object IngredientScaler {
             return m.groupValues[1] + inner + m.groupValues[3] + rest.substring(m.range.last + 1)
         }
         ALT_SLASH.find(rest)?.let { m ->
-            val unit = MeasureUnit.fromText(m.groupValues[4])
+            val unit = MeasureUnit.fromText(m.groupValues[6])
             val value = parse(m.groupValues[2])
-            if (unit != null && value != null) {
-                return m.groupValues[1] + formatFor(unit, value * factor, comma) + m.groupValues[3] +
-                        m.groupValues[4] + rest.substring(m.range.last + 1)
+            val upper = m.groupValues[4]
+            val high = if (upper.isEmpty()) null else parse(upper)
+            if (unit != null && value != null && (upper.isEmpty() || high != null)) {
+                val range = if (high == null) "" else m.groupValues[3] + formatFor(unit, high * factor, comma)
+                return m.groupValues[1] + formatFor(unit, value * factor, comma) + range + m.groupValues[5] +
+                        m.groupValues[6] + rest.substring(m.range.last + 1)
             }
         }
         return rest
@@ -155,9 +162,12 @@ object IngredientScaler {
         return BigDecimal(value).setScale(scale, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
     }
 
+    private val AND = Regex("""\s+and\s+""", RegexOption.IGNORE_CASE)
+
     internal fun parse(quantity: String): Double? {
         // QTY only lets a comma through as a decimal comma, never before three digits.
-        val q = quantity.trim().replace(',', '.')
+        // "2 and 1/2" is "2 1/2", and "1⁄2" (U+2044) is "1/2".
+        val q = quantity.trim().replace(',', '.').replace('⁄', '/').replace(AND, " ")
         val last = q.last()
         UNICODE_VALUES[last]?.let { fraction ->
             val whole = q.dropLast(1).trim()

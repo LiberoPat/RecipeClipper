@@ -301,4 +301,22 @@ final class UnitConverterTests: XCTestCase {
         XCTAssertEqual("1,500 lb beef", grams("1,500 lb beef"))
         XCTAssertEqual("2 cups (1,250 g) flour", ounces("2 cups (1,250 g) flour"))
     }
+
+    // MARK: - Shapes found in real ingredient lines (#33)
+
+    func testAFractionSlashAndAMixedNumberWithAndConvert() {
+        XCTAssertEqual("2.5 ml olive oil", metric("1⁄2 tsp olive oil"))
+        XCTAssertEqual("180 g flour", grams("1 1⁄2 cups flour"))
+        XCTAssertEqual("300 g flour", grams("2 and 1/2 cups flour"))
+        XCTAssertEqual("360 ml milk", metric("1 and ½ cups milk"))
+    }
+
+    func testARangeAfterASlashUsesTheSitesRangeInTheTargetUnit() {
+        XCTAssertEqual("8 - 10 oz pasta", ounces("250 - 300 g / 8 - 10 oz pasta"))
+        // In grams and metric the leading range is already the target unit.
+        XCTAssertEqual("250 - 300 g / 8 - 10 oz pasta", grams("250 - 300 g / 8 - 10 oz pasta"))
+        XCTAssertEqual("250 - 300 g / 8 - 10 oz pasta", metric("250 - 300 g / 8 - 10 oz pasta"))
+        // Neither half in the target unit: the calculated range replaces both.
+        XCTAssertEqual("225 - 285 g spaghetti", grams("8 - 10 oz / 1/2 - 5/8 lb spaghetti"))
+    }
 }

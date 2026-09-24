@@ -16,7 +16,7 @@ object StepTimers {
 
     // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer".
     private val DURATION = Regex(
-        """(?<![\d.,/])($QTY)(?:\s*(?:[-–—]|to)\s*(?:$QTY))?\s*-?\s*$UNIT\b""",
+        """(?<![\d.,/⁄])($QTY)(?:\s*(?:[-–—]|to)\s*(?:$QTY))?\s*-?\s*$UNIT\b""",
         RegexOption.IGNORE_CASE
     )
 

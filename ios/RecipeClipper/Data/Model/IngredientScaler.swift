@@ -18,12 +18,14 @@ enum IngredientScaler {
         "⅜": 3 / 8.0, "⅝": 5 / 8.0, "⅞": 7 / 8.0,
     ]
 
-    // "1 1/2", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that order. A comma followed by
-    // one or two digits is a decimal comma; one followed by three ("1,500") may be a thousands
-    // separator, so it is never read as part of a quantity, and `ambiguousComma` leaves the line.
+    // "1 1/2", "2 and 1/2", "1 and ½", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that
+    // order. A fraction's slash may be the typographic U+2044 ("1⁄2", as BBC Good Food writes
+    // it). A comma followed by one or two digits is a decimal comma; one followed by three
+    // ("1,500") may be a thousands separator, so it is never read as part of a quantity, and
+    // `ambiguousComma` leaves the line.
     static let qty =
-        #"(?:\d+\s+\d+/\d+|\d+\s*["# + unicodeFractions + #"]|\d+/\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# +
-        unicodeFractions + #"])"#
+        #"(?:\d+\s+(?:and\s+)?\d+[/⁄]\d+|\d+\s+and\s+["# + unicodeFractions + #"]|\d+\s*["# +
+        unicodeFractions + #"]|\d+[/⁄]\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# + unicodeFractions + #"])"#
 
     /// "1,5": the line writes decimals with a comma, so its output does too.
     static let decimalComma = JRegex(#"\d,\d{1,2}(?!\d)"#)
@@ -53,9 +55,11 @@ enum IngredientScaler {
     private static let altParen =
         JRegex(#"^(\s*"# + UnitPatterns.plain + #"\s*\()([^)]*)(\))"#, ignoreCase: true)
 
-    // "1 cup/120 grams flour". groups: 1 prefix, 2 quantity, 3 space, 4 unit
+    // "1 cup/120 grams flour", or a range "250 - 300 g / 8 - 10 oz pasta".
+    // groups: 1 prefix, 2 quantity, 3 range separator, 4 range upper bound, 5 space, 6 unit
     private static let altSlash = JRegex(
-        #"^(\s*"# + UnitPatterns.plain + #"\s*/\s*)("# + qty + #")(\s*)"# + UnitPatterns.captured,
+        #"^(\s*"# + UnitPatterns.plain + #"\s*/\s*)("# + qty + #")(?:(\s*[-–—]\s*|\s+to\s+)("# + qty +
+            #"))?(\s*)"# + UnitPatterns.captured,
         ignoreCase: true
     )
 
@@ -122,9 +126,15 @@ enum IngredientScaler {
             return m[1] + inner + m[3] + rest.u16Substring(from: m.end)
         }
         if let m = altSlash.find(rest),
-           let unit = MeasureUnit.fromText(m[4]),
+           let unit = MeasureUnit.fromText(m[6]),
            let value = parse(m[2]) {
-            return m[1] + formatFor(unit, value * factor, comma: comma) + m[3] + m[4] + rest.u16Substring(from: m.end)
+            let upper = m[4]
+            let high = upper.isEmpty ? nil : parse(upper)
+            if upper.isEmpty || high != nil {
+                let range = high.map { m[3] + formatFor(unit, $0 * factor, comma: comma) } ?? ""
+                return m[1] + formatFor(unit, value * factor, comma: comma) + range + m[5] + m[6] +
+                    rest.u16Substring(from: m.end)
+            }
         }
         return rest
     }
@@ -146,9 +156,15 @@ enum IngredientScaler {
         plainDecimal(value, scale: value >= 10 ? 0 : 1)
     }
 
+    private static let and = JRegex(#"\s+and\s+"#, ignoreCase: true)
+
     static func parse(_ quantity: String) -> Double? {
         // `qty` only lets a comma through as a decimal comma, never before three digits.
-        let q = quantity.kTrimmed.replacingOccurrences(of: ",", with: ".")
+        // "2 and 1/2" is "2 1/2", and "1⁄2" (U+2044) is "1/2".
+        let q = and.replace(
+            quantity.kTrimmed.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "⁄", with: "/"),
+            with: " "
+        )
         guard let last = q.last else { return nil }
         if let fraction = unicodeValues[last] {
             let whole = String(q.dropLast()).kTrimmed

@@ -194,4 +194,30 @@ final class IngredientScalerTests: XCTestCase {
         XCTAssertEqual("1,000 ml water", IngredientScaler.scale("1,000 ml water", factor: 0.5))
         XCTAssertEqual("2 cups (1,250 g) flour", IngredientScaler.scale("2 cups (1,250 g) flour", factor: 2.0))
     }
+
+    // MARK: - Shapes found in real ingredient lines (#33)
+
+    func testAFractionWrittenWithTheFractionSlashScalesAsAWhole() {
+        // BBC Good Food writes "1⁄2" with U+2044; "1⁄2 lemon" doubled once read "2⁄2 lemon".
+        XCTAssertEqual("1 lemon zested and juiced", IngredientScaler.scale("1⁄2 lemon zested and juiced", factor: 2.0))
+        XCTAssertEqual("1/4 tsp olive oil", IngredientScaler.scale("1⁄2 tsp olive oil", factor: 0.5))
+        XCTAssertEqual("3 cups flour", IngredientScaler.scale("1 1⁄2 cups flour", factor: 2.0))
+    }
+
+    func testAMixedNumberJoinedByAndScalesAsAWhole() {
+        // "2 and 1/2 cups" doubled once read "4 and 1/2 cups".
+        XCTAssertEqual("5 cups flour", IngredientScaler.scale("2 and 1/2 cups flour", factor: 2.0))
+        XCTAssertEqual("3/4 cups milk", IngredientScaler.scale("1 and ½ cups milk", factor: 0.5))
+        // "and" between two amounts with units is still a compound, not a mixed number.
+        XCTAssertEqual("2 cups and 4 tbsp flour", IngredientScaler.scale("1 cups and 2 tbsp flour", factor: 2.0))
+    }
+
+    func testARangeAfterASlashScalesAtBothEnds() {
+        // RecipeTin Eats: doubling once left "/ 8 - 10 oz" as written beside "500 - 600 g".
+        XCTAssertEqual(
+            "500 - 600 g / 16 - 20 oz pasta",
+            IngredientScaler.scale("250 - 300 g / 8 - 10 oz pasta", factor: 2.0)
+        )
+        XCTAssertEqual("1 cup / 240 to 250 g flour", IngredientScaler.scale("2 cup / 480 to 500 g flour", factor: 0.5))
+    }
 }
