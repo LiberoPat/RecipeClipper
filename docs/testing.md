@@ -63,7 +63,9 @@ the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to
 `app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
 (`app/build.gradle.kts` declares the Swift file as a test input, so editing
-it alone reruns the tests). `SiteReportTest` covers the weekly site check's
+it alone reruns the tests). A row read with another language's words names it
+after the input (`Ing("2 EL Zucker", lang: "de"),`); a row without one is
+English. `SiteReportTest` covers the weekly site check's
 report and URL list offline (see CI below). `SiteReportLinkTest` pins the
 "Report this site" issue link byte for byte (percent-encoding, the cleaned
 link), and `RecipeViewModelTest` offers it only for `NoRecipeFound` on a
@@ -200,7 +202,9 @@ site" opening Safari) and cook mode (`CookModeUITests`, on the `cook` seed
 scenario). XCUITest drives the app from outside and can't move its clock, so
 the one timer that has to finish there is a real 3-second step. The share
 sheet is left to the hosted `RecipeViewModelTests`, which pin the exact share
-text.
+text. Sharing into the app has one more iOS suite, `ShareExtensionUITests`,
+which runs only on request (see "iOS share extension: end to end and memory"
+below).
 
 `navigation-compose` has no BOM of its own and is built against a particular
 Compose: bump it with the Compose BOM, or the app pulls in a mix of Compose
@@ -215,6 +219,47 @@ change timing; do it with a device run to check.
 `JsonLdRecipeParser` uses `org.json`, which is an Android framework class.
 Plain JUnit tests will need `testImplementation("org.json:json:<version>")`
 or the calls will fail as "not mocked".
+
+## iOS share extension: end to end and memory
+
+The extension's logic is unit-tested (`RecipeClipperTests/Share`). What
+needs the real share sheet is `ShareExtensionUITests`. It drives Safari to a
+page, shares it to Recipe Clipper, checks the card, then checks that the app
+shows the recipe. It is skipped unless `RC_SHARE_E2E_BASE` is set, so CI
+never runs it. It writes to the app's real App Group database, so use a
+simulator of your own:
+
+```
+# A certificate for localhost, trusted by the simulator
+openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 30 \
+  -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
+  -addext "basicConstraints=critical,CA:TRUE" -addext "extendedKeyUsage=serverAuth"
+xcrun simctl keychain <device> add-root-cert cert.pem
+# Serve small.html (a JSON-LD recipe titled "E2E Guacamole Small") over HTTPS
+# on localhost:8443, answering 403 at /blocked (Python's http.server wrapped
+# in an ssl context will do), then:
+TEST_RUNNER_RC_SHARE_E2E_BASE=https://localhost:8443 xcodebuild ... test \
+  -only-testing:RecipeClipperUITests/ShareExtensionUITests
+```
+
+Plain `http://` pages won't do: `UrlCleaner` upgrades them to `https`, and
+real sites block the Mac's fetches often enough to make them useless as
+fixtures.
+
+**Memory.** Apple doesn't document a share extension's limit; it's commonly
+about 120 MB on a device, and the simulator enforces none. Debug builds log
+the extension's footprint and its peak at launch, after reading the shared
+items, and after the import. On a device, open Console.app, pick the phone,
+and filter on subsystem `com.liberopat.recipeclipper`, category `share`. On
+a simulator: `xcrun simctl spawn <device> log show --last 10m --predicate
+'subsystem == "com.liberopat.recipeclipper" AND category == "share"'`.
+
+Measured on a simulator (debug build, no team; the simulator enforces no
+ceiling, so treat these as a rough guide and re-check on a device before
+release): peak footprint at "import finished" was 41.8 MB for a 250 KB page,
+44.3 MB for a 2 MB page, 51.0 MB for the `/blocked` (403) page, and 67.8 MB
+for a 10 MB page — all comfortably under the ~120 MB estimate, and run to
+run this varies by several MB on the simulator.
 
 ## CI
 

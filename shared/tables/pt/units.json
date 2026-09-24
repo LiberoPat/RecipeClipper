@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "language": "pt",
+  "about": "Unit words (UnitPatterns and MeasureUnit.fromText). patterns: regex fragments, tried in this order as one alternation; each must stay a whole word (the code adds an optional trailing period and a no-letter lookahead). names: how matched text maps to a unit, first rule wins; the text is lowercased, its periods removed and its whitespace collapsed, then it names the unit when it equals one of exact or starts with one of prefixes. unit is the code's MeasureUnit name.",
+  "patterns": ["colher(?:es)?\\s*\\(sopa\\)", "colher(?:es)?\\s+de\\s+sopa", "colher(?:es)?\\s*\\(chá\\)", "colher(?:es)?\\s+de\\s+chá", "colher(?:es)?\\s*\\(café\\)", "colher(?:es)?\\s+de\\s+café", "colher(?:es)?\\s*\\(sobremesa\\)", "colher(?:es)?\\s+de\\s+sobremesa", "colher(?:es)?", "xícaras?\\s*\\(chá\\)", "xícaras?\\s+de\\s+chá", "xícaras?\\s*\\(café\\)", "xícaras?\\s+de\\s+café", "xícaras?", "mililitros?", "ml", "cl", "dl", "quilogramas?", "quilos?", "kg", "gramas?", "gr", "g", "litros?", "l"],
+  "names": [
+    {"unit": "TBSP", "prefixes": ["colher (sopa", "colheres (sopa", "colher de sopa", "colheres de sopa"]},
+    {"unit": "TSP", "prefixes": ["colher (chá", "colheres (chá", "colher de chá", "colheres de chá"]},
+    {"unit": "VARIES", "prefixes": ["colher", "xícara (café", "xícaras (café", "xícara de café", "xícaras de café"]},
+    {"unit": "CUP", "prefixes": ["xícara"]},
+    {"unit": "ML", "exact": ["ml"], "prefixes": ["millil"]},
+    {"unit": "CL", "exact": ["cl"]},
+    {"unit": "DL", "exact": ["dl"]},
+    {"unit": "KG", "exact": ["kg"], "prefixes": ["quilo"]},
+    {"unit": "G", "exact": ["g", "gr"], "prefixes": ["grama"]},
+    {"unit": "L", "exact": ["l"], "prefixes": ["litro"]}
+  ]
+}

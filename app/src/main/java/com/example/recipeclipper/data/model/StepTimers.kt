@@ -29,11 +29,13 @@ object StepTimers {
             .joinToString("|", "(", ")")
         private val followOnWords = SharedTables.alternation(words.strings("timers", "followOn"))
         private val range = words.rangeWords
-        private val qty = IngredientScaler.patterns(words).qty
+        val scaler = IngredientScaler.patterns(words)
+        private val qty = scaler.qty
 
-        // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer".
+        // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer". A number after
+        // a colon is the minutes of a clock time ("1:30 Stunden"), never hours on its own (#15).
         val duration = Regex(
-            """(?<![\d.,/⁄])($qty)(?:\s*(?:[-–—]|$range)\s*(?:$qty))?\s*-?\s*$unit\b""",
+            """(?<![\d.,/⁄:])($qty)(?:\s*(?:[-–—]|$range)\s*(?:$qty))?\s*-?\s*$unit\b""",
             RegexOption.IGNORE_CASE
         )
 
@@ -68,7 +70,7 @@ object StepTimers {
     }
 
     private fun toSeconds(p: Patterns, quantity: String, unit: String): Int? {
-        val amount = IngredientScaler.parse(quantity) ?: return null
+        val amount = p.scaler.parse(quantity) ?: return null
         return (amount * p.secondsOf(unit)).toInt()
     }
 

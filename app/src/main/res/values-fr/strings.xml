@@ -209,7 +209,7 @@
     <!-- Clip it yourself (#37) -->
     <string name="clip_offer">Ouvrez la page, sélectionnez le nom, les ingrédients et les étapes, puis touchez l\'endroit où va chacun.</string>
     <string name="action_clip_it_yourself">Découper à la main</string>
-    <string name="action_done">OK</string>
+    <string name="action_done">Terminé</string>
     <string name="action_discard">Supprimer</string>
     <string name="action_remove">Retirer</string>
     <string name="clip_field_name">Nom</string>

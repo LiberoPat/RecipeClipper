@@ -187,16 +187,7 @@ final class RecipeViewModel {
     /// Any new load (including Try again) cancels it.
     private func reloadOnReconnect() {
         reconnectTask = Task { [weak self, connectivity] in
-            var sawOffline = false
-            var reconnected = false
-            for await online in connectivity.onlineUpdates() {
-                if !online {
-                    sawOffline = true
-                } else if sawOffline {
-                    reconnected = true
-                    break
-                }
-            }
+            let reconnected = await connectivity.waitForReconnect()
             guard reconnected, !Task.isCancelled, let self else { return }
             load()
         }

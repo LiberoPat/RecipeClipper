@@ -209,7 +209,7 @@
     <!-- Clip it yourself (#37) -->
     <string name="clip_offer">Apri la pagina, seleziona il nome, gli ingredienti e i passaggi e tocca dove va ciascuno.</string>
     <string name="action_clip_it_yourself">Ritaglia a mano</string>
-    <string name="action_done">Fine</string>
+    <string name="action_done">Fatto</string>
     <string name="action_discard">Scarta</string>
     <string name="action_remove">Rimuovi</string>
     <string name="clip_field_name">Nome</string>

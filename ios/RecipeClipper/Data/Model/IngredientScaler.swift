@@ -23,10 +23,13 @@ enum IngredientScaler {
     // be the typographic U+2044 ("1⁄2", as BBC Good Food writes it), a symbol rather than a
     // word, so it stays here. A comma followed by one or two digits is a decimal comma; one
     // followed by three ("1,500") may be a thousands separator, so it is never read as part
-    // of a quantity, and `ambiguousComma` leaves the line.
-    private static func qtyPattern(_ joiner: String) -> String {
+    // of a quantity, and `ambiguousComma` leaves the line. Where the language writes thousands
+    // with a dot (amounts.json "thousandsDot"), "1.500" is 1500 (#76): only a dot before
+    // exactly three digits, so "1.5" and "0.25" stay decimals.
+    private static func qtyPattern(_ joiner: String, thousandsDot: Bool) -> String {
         #"(?:\d+\s+(?:"# + joiner + #"\s+)?\d+[/⁄]\d+|\d+\s+"# + joiner + #"\s+["# + unicodeFractions + #"]|\d+\s*["# +
-            unicodeFractions + #"]|\d+[/⁄]\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# + unicodeFractions + #"])"#
+            unicodeFractions + #"]|\d+[/⁄]\d+|"# + (thousandsDot ? #"\d{1,3}\.\d{3}(?![\d.,])|"# : "") +
+            #"\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# + unicodeFractions + #"])"#
     }
 
     /// "1,5": the line writes decimals with a comma, so its output does too.
@@ -34,6 +37,11 @@ enum IngredientScaler {
 
     /// "1,500" is 1.5 or 1500 depending on who wrote it: a line holding one is left as written.
     static let ambiguousComma = JRegex(#"\d,\d{3}"#)
+
+    /// Where dots mark thousands, "1.500,5" or "1.2345" is no amount the pattern reads whole.
+    private static let ambiguousDot = JRegex(#"\d\.\d{3}[\d.,]"#)
+
+    private static let thousandsDotSeparator = JRegex(#"(?<=\d)\.(?=\d{3}(?!\d))"#)
 
     private static let decimalPoint = JRegex(#"(?<=\d)\.(?=\d)"#)
 
@@ -46,8 +54,14 @@ enum IngredientScaler {
     final class Patterns {
         let words: LanguageWords
 
+        /// "1.500 g" is 1500 g (amounts.json "thousandsDot").
+        let thousandsDot: Bool
+
         /// A quantity, in this language's words ("2 and 1/2"). No capturing group.
         let qty: String
+
+        // "1 taza y media", "2 e meia": a half in words, which the quantity pattern can't read.
+        private let spelledHalf: JRegex
 
         // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
         let leading: JRegex
@@ -76,8 +90,16 @@ enum IngredientScaler {
 
         init(_ words: LanguageWords) {
             self.words = words
-            let qty = IngredientScaler.qtyPattern(SharedTables.alternation(words.strings("amounts", "mixedJoiners")))
+            let thousandsDot = words.table("amounts")["thousandsDot"] as? Bool ?? false
+            self.thousandsDot = thousandsDot
+            let qty = IngredientScaler.qtyPattern(
+                SharedTables.alternation(words.strings("amounts", "mixedJoiners")), thousandsDot: thousandsDot
+            )
             self.qty = qty
+            spelledHalf = JRegex(
+                #"(?<!\p{L})"# + SharedTables.alternation(words.strings("amounts", "spelledHalves")) + #"(?!\p{L})"#,
+                ignoreCase: true
+            )
             let units = UnitPatterns.of(words)
             leading = JRegex(#"^(\s*)("# + qty + #")(?:(\s*[-–—]\s*|\s+"# + words.rangeWords + #"\s+)("# + qty + #"))?"#)
             notAnAmount = JRegex(
@@ -97,6 +119,16 @@ enum IngredientScaler {
                 ignoreCase: true
             )
         }
+
+        /// A line whose amount can't be read without guessing: "1,500" (1.5 or 1500?), a half in
+        /// words, or where dots mark thousands a number like "1.500,5". It stays as written.
+        func unreadable(_ line: String) -> Bool {
+            IngredientScaler.ambiguousComma.containsMatch(in: line) || spelledHalf.containsMatch(in: line) ||
+                (thousandsDot && IngredientScaler.ambiguousDot.containsMatch(in: line))
+        }
+
+        /// A quantity this pattern matched, read with this language's thousands separator.
+        func parse(_ quantity: String) -> Double? { IngredientScaler.parse(quantity, thousandsDot: thousandsDot) }
     }
 
     static func patterns(_ words: LanguageWords) -> Patterns { words.compiled(Patterns.self, Patterns.init) }
@@ -115,20 +147,20 @@ enum IngredientScaler {
     /// `words` nil: a language the app has no words for, so the line stays as written.
     static func scale(_ line: String, factor: Double, words: LanguageWords? = .english) -> String {
         guard factor != 1.0, let words else { return line }
-        if ambiguousComma.containsMatch(in: line) { return line }
         let p = patterns(words)
+        if p.unreadable(line) { return line }
         guard let match = p.leading.find(line) else { return line }
         let rest = line.u16Substring(from: match.end)
         if p.notAnAmount.containsMatch(in: rest) { return line }
 
         let comma = decimalComma.containsMatch(in: line)
-        guard let low = parse(match[2]) else { return line }
+        guard let low = p.parse(match[2]) else { return line }
         let upperRaw = match[4]
         let scaled: String
         if upperRaw.isEmpty {
             scaled = formatLeading(low * factor, comma: comma)
         } else {
-            guard let high = parse(upperRaw) else { return line }
+            guard let high = p.parse(upperRaw) else { return line }
             scaled = formatLeading(low * factor, comma: comma) + match[3] + formatLeading(high * factor, comma: comma)
         }
         return match[1] + scaled + scaleContinuation(p, rest, factor: factor, comma: comma)
@@ -143,7 +175,7 @@ enum IngredientScaler {
     private static func scaleContinuation(_ p: Patterns, _ rest: String, factor: Double, comma: Bool) -> String {
         guard let m = p.continued.find(rest),
               let unit = MeasureUnit.fromText(m[4], words: p.words),
-              let value = parse(m[2]) else { return scaleAlternateMeasure(p, rest, factor: factor, comma: comma) }
+              let value = p.parse(m[2]) else { return scaleAlternateMeasure(p, rest, factor: factor, comma: comma) }
         let tail = m[3] + m[4] + rest.u16Substring(from: m.end)
         return m[1] + formatFor(unit, value * factor, comma: comma) +
             scaleAlternateMeasure(p, tail, factor: factor, comma: comma)
@@ -157,9 +189,9 @@ enum IngredientScaler {
         }
         if let m = p.altSlash.find(rest),
            let unit = MeasureUnit.fromText(m[6], words: p.words),
-           let value = parse(m[2]) {
+           let value = p.parse(m[2]) {
             let upper = m[4]
-            let high = upper.isEmpty ? nil : parse(upper)
+            let high = upper.isEmpty ? nil : p.parse(upper)
             if upper.isEmpty || high != nil {
                 let range = high.map { m[3] + formatFor(unit, $0 * factor, comma: comma) } ?? ""
                 return m[1] + formatFor(unit, value * factor, comma: comma) + range + m[5] + m[6] +
@@ -171,7 +203,7 @@ enum IngredientScaler {
 
     private static func scalePair(_ p: Patterns, _ match: JMatch, factor: Double, comma: Bool) -> String {
         guard let unit = MeasureUnit.fromText(match[3], words: p.words) else { return match.value }
-        guard let value = parse(match[1]) else { return match.value }
+        guard let value = p.parse(match[1]) else { return match.value }
         return formatFor(unit, value * factor, comma: comma) + match[2] + match[3]
     }
 
@@ -190,11 +222,13 @@ enum IngredientScaler {
     // has already checked: "2 and 1/2" is "2 1/2" in any language.
     private static let joiner = JRegex(#"\s+\p{L}[\p{L}\s]*?\s+(?=[\d"# + unicodeFractions + #"])"#)
 
-    static func parse(_ quantity: String) -> Double? {
+    /// `thousandsDot`: the quantity comes from a language that writes "1.500" for 1500.
+    static func parse(_ quantity: String, thousandsDot: Bool = false) -> Double? {
         // `qty` only lets a comma through as a decimal comma, never before three digits.
         // "2 and 1/2" is "2 1/2", and "1⁄2" (U+2044) is "1/2".
+        let digits = thousandsDot ? thousandsDotSeparator.replace(quantity.kTrimmed, with: "") : quantity.kTrimmed
         let q = joiner.replace(
-            quantity.kTrimmed.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "⁄", with: "/"),
+            digits.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "⁄", with: "/"),
             with: " "
         )
         guard let last = q.last else { return nil }

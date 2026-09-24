@@ -24,9 +24,9 @@ unit, timer, temperature, yield, range, amount, duration, detection and
 ingredient-name words, condensed section names; tracking parameters), loaded by both apps (Android as
 Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
 table there, never in code; the logic that reads it stays written twice. **Each
-language has its own folder** (`shared/tables/en/`), read through
-`LanguageWords`: the recipe's language picks it, never the phone's, and
-languages are never merged.
+language has its own folder** (`shared/tables/<code>/`: en, de, es, fr, it,
+pt), read through `LanguageWords`: the recipe's language picks it, never the
+phone's, and languages are never merged.
 
 **Keep this file short: it is loaded into every session.** Add only what an
 agent needs almost every time. Rationale and history go in
@@ -48,8 +48,8 @@ with no recipe data, #37); the UI in English, Spanish, French, German,
 Italian and Brazilian Portuguese (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
-Not built, all tracked as issues: Reddit (#11), reading recipes in other
-languages (#12, #14–#16), release setup (#18–#22).
+Not built, all tracked as issues: Reddit (#11), recipes in languages beyond
+en, de, es, fr, it, pt (#16), release setup (#18, #20–#22).
 
 ## Commands
 
@@ -144,7 +144,8 @@ the error screen under it with `recipe/{id}`).
 Decisions, not suggestions. Don't relitigate them in code.
 
 - **Capture is frictionless.** Sharing a link parses and shows it. No save
-  prompt.
+  prompt. On iOS the share extension parses and saves it, then shows a small
+  "Saved" card that dismisses itself; the recipe tops "Continue cooking".
 - **History is automatic,** newest first, capped at the 50 most recently
   viewed.
 - **Lists are deliberate:** adding to one is an explicit second act.
@@ -235,7 +236,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   and lists carry a unique, never-changing `uid`: what an export file calls
   them. The schema is exported to `app/schemas/`: commit it. **Never use
   destructive migration**, and give every migration a `MigrationTest`.
-  iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations.
+  iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations, in
+  the App Group container that the share extension writes to as well.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
   strips only `utm_*`, known click ids (`fbclid`, `gclid`, …) and the
   `#fragment`, lowercases the scheme and host, upgrades `http` to `https`,
@@ -425,6 +427,17 @@ Each one exists to avoid showing a confident wrong number.
   line's output keeps the comma, as decimals rather than fractions
   ("1,5 kg" ×1.5 is "2,25 kg"). Followed by 3 digits ("1,500 g") it may be a
   thousands separator, so the whole line stays as written.
+- **Other languages' amounts** (#15), each a table setting, never a guess:
+  - Dot thousands only where the language writes them (de, es, it, pt) and
+    only before exactly 3 digits: "1.500 g" is 1500 g, "0.5 TL" is 0.5.
+  - The mixed-number "and" is per language ("2 e 1/2", "1 und 1/2").
+  - A half in words ("1 taza y media", "2 e meia") keeps the line as written.
+  - `VARIES` units (French "tasse", German "Tasse", "tazza", "colher (café)",
+    bare "colheres") scale but never convert; "taza" and "xícara" are cups.
+  - A trailing amount ("Burro 100 g") and a German compound the table
+    doesn't list whole ("Mandelmehl") stay as written.
+  - Bare degrees ("180 Grad", "165°") stay as written; a number after a
+    colon ("1:30 Stunden") is a clock time, never a timer.
 - **Temperatures:**
   - They need 2–3 digits, then F or C.
   - Without a degree sign, "degrees" or a full word, the number must also be
@@ -456,8 +469,10 @@ Each one exists to avoid showing a confident wrong number.
   default), else `setAndAllowWhileIdle()`, which can be minutes late. No
   Settings prompt, by decision. The receiver re-checks the database, so a
   reset or deleted timer never rings. Details in `docs/decisions.md`.
-- **The iOS share extension opens the app through an unsupported
-  workaround** (#19).
+- **The iOS share extension imports and saves by itself, in its own
+  process** (it can't open the app). The app's observers never see those
+  writes, so the app re-queries when it becomes active. Anything new that
+  holds recipe data in memory must catch up the same way.
 
 ## Deliberately deferred
 

@@ -21,16 +21,21 @@ enum UnitSystem: String, CaseIterable, Equatable {
 /// `asWritten` (the default) leaves the text alone.
 enum TemperatureUnit: String, CaseIterable, Equatable { case asWritten = "AS_WRITTEN", celsius = "CELSIUS", fahrenheit = "FAHRENHEIT" }
 
-enum MeasureKind { case volume, weight }
+/// `none`: a unit whose size varies from cook to cook (`MeasureUnit.varies`).
+enum MeasureKind { case volume, weight, none }
 
-/// `base` is millilitres for volume units and grams for weight units.
+/// `base` is millilitres for volume units and grams for weight units. `varies` is a unit word
+/// whose size differs between cooks and countries (a French "tasse", a German "Tasse", an Italian
+/// "tazza", a Portuguese "colher (café)"): its amount scales, so "250 ml (1 tasse)" doubles as a
+/// whole, but it is never converted.
 enum MeasureUnit: CaseIterable {
-    case tsp, tbsp, cup, flOz, stick, ml, l, g, kg, oz, lb
+    case tsp, tbsp, cup, flOz, stick, ml, l, cl, dl, g, kg, oz, lb, varies
 
     var kind: MeasureKind {
         switch self {
-        case .tsp, .tbsp, .cup, .flOz, .stick, .ml, .l: return .volume
+        case .tsp, .tbsp, .cup, .flOz, .stick, .ml, .l, .cl, .dl: return .volume
         case .g, .kg, .oz, .lb: return .weight
+        case .varies: return .none
         }
     }
 
@@ -43,16 +48,19 @@ enum MeasureUnit: CaseIterable {
         case .stick: return 118.294 // US butter stick = 8 tbsp
         case .ml: return 1.0
         case .l: return 1000.0
+        case .cl: return 10.0
+        case .dl: return 100.0
         case .g: return 1.0
         case .kg: return 1000.0
         case .oz: return 28.3495
         case .lb: return 453.592
+        case .varies: return 0.0
         }
     }
 
     var metric: Bool {
         switch self {
-        case .ml, .l, .g, .kg: return true
+        case .ml, .l, .cl, .dl, .g, .kg: return true
         default: return false
         }
     }
@@ -62,7 +70,7 @@ enum MeasureUnit: CaseIterable {
     /// The name Kotlin gives the unit, which the shared tables use.
     static let byTableName: [String: MeasureUnit] = [
         "TSP": .tsp, "TBSP": .tbsp, "CUP": .cup, "FL_OZ": .flOz, "STICK": .stick, "ML": .ml,
-        "L": .l, "G": .g, "KG": .kg, "OZ": .oz, "LB": .lb,
+        "L": .l, "CL": .cl, "DL": .dl, "G": .g, "KG": .kg, "OZ": .oz, "LB": .lb, "VARIES": .varies,
     ]
 
     // shared/tables/<language>/units.json "names": the first rule the text satisfies wins.
@@ -84,7 +92,8 @@ enum MeasureUnit: CaseIterable {
 }
 
 /// Regex fragments matching a unit word. The trailing lookahead makes them match whole
-/// words only, so "g" doesn't match the start of "garlic" or "l" the start of "large".
+/// words only, so "g" doesn't match the start of "garlic" or "l" the start of "large". It
+/// looks for any letter, not just A-Z, so "g" isn't read in "gélatine" either (#15).
 final class UnitPatterns {
     /// One capturing group holding the unit text.
     let captured: String
@@ -100,8 +109,8 @@ final class UnitPatterns {
 
         // The alternation is wrapped in its own group so the optional trailing period applies to
         // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
-        captured = "((?:\(alternatives))\\.?)(?![A-Za-z])"
-        plain = "(?:(?:\(alternatives))\\.?)(?![A-Za-z])"
+        captured = "((?:\(alternatives))\\.?)(?!\\p{L})"
+        plain = "(?:(?:\(alternatives))\\.?)(?!\\p{L})"
     }
 
     static func of(_ words: LanguageWords = .english) -> UnitPatterns {

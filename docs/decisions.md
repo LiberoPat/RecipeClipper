@@ -940,6 +940,39 @@ did there was nothing to tap.
   Known gap: deleting a recipe from History with a timer running leaves its
   pending notification.
 
+## iOS: importing inside the share extension (#19)
+
+The extension used to find the link and open the app with
+`recipeclipper://import?url=…`, reaching `UIApplication` through the
+responder chain. That was an App Review risk (guideline 2.5.1), and iOS 18
+had already broken it once. Now the extension does the import itself.
+
+- **Same code, not a copy.** The extension compiles the app's `Data/` (minus
+  `UserDefaultsAppPreferences`), `ShareImport/`, the theme and the button
+  styles through dual target membership in `project.yml`. A framework target
+  was the alternative. It would have meant `public` on most of the data layer
+  for no gain at this size.
+- **One database, two processes.** The SQLite file and the settings suite
+  moved to the App Group container. Nothing was migrated: #40's new bundle
+  IDs had already started everyone on an empty container. WAL plus
+  `busy_timeout` let both processes write. Migrations re-check
+  `user_version` under the write lock. The app re-queries on becoming active,
+  because its observers only hear its own writes. A Darwin notification
+  would also cover the iPad side-by-side case, but that wasn't worth it yet.
+- **The card, not the recipe.** After saving, the extension shows a compact
+  "Saved" card that dismisses itself after 2.5 s. Errors keep the app's
+  causes and copy, with Try again, and reload on reconnect. Showing the whole
+  recipe in the extension was the other option the issue named. It would
+  have meant the reading view, scaling and conversion inside the extension's
+  memory budget. The app doesn't jump to the recipe on its next launch
+  either, since that would surprise someone who opens it hours later.
+  "Continue cooking" already puts it one tap away.
+- **What only a device shows.** The memory ceiling (about 120 MB, which the
+  simulator doesn't enforce). And iOS kills a suspended process that holds a
+  file lock in a shared container (`0xdead10cc`). Writes are short
+  transactions, so this shouldn't bite, but it has to be watched for on a
+  device.
+
 ## Export and import (#26)
 
 The owner's decision: import **merges, never replaces**, and deletes nothing.
@@ -1082,6 +1115,50 @@ and on both platforms.
 - The differential corpus pins both: every `Ing` row now ends with the
   Kotlin's `IngredientName.of`, and its rendered columns are computed through
   `IngredientRendering`.
+
+## Reading recipes in de, es, fr, it and pt (#15)
+
+The five languages #14 could only detect now ship every table, filled from
+real lines on 25 sites (September 2026). Each rule below is pinned by real
+lines in the differential corpus, with a `lang:` argument.
+
+- **Dot thousands** (#76) are an `amounts.json` flag, on for de, es, it and
+  pt and off for fr (which writes a space) and en. Only a dot before exactly
+  three digits is a separator, so generator output like "0.5 TL" stays a
+  decimal; a number that fits neither ("1.500,5") leaves the line alone.
+- **Mixed numbers** (#75): each language's "and" is in `mixedJoiners`
+  ("2 e 1/2 xícaras"). A half in words ("1 taza y media", "2 e meia") can't
+  be read by the pattern, so `spelledHalves` keeps those lines as written.
+- **Units without one size** are `MeasureUnit.VARIES`: French "tasse" (a
+  Québec cup, a vague French one), German "Tasse", Italian "tazza",
+  Portuguese "colher (café)" and bare "colheres". They scale, so Ricardo's
+  "250 ml (1 tasse)" doubles as a whole, but never convert. Spanish "taza"
+  and Brazilian "xícara (chá)" are the 240 ml cup their sites mean. `cl` and
+  `dl` are metric units (French and Italian write them constantly); Metric
+  leaves them as written.
+- **Compounds and head-first names.** The density table still matches whole
+  trailing words. German compounds are listed whole where safe
+  ("weizenmehl", "puderzucker"); anything else ("Mandelmehl") stays as
+  written rather than matching "mehl". In the Romance languages the head
+  noun comes first, so "farine de riz" ends in "riz" and matches nothing,
+  which is the safe side. Elided articles ("d'huile d'olive") aren't
+  undone, so those lines keep their units in Ounces.
+- **Spanish "o"** is a range word: "1 o 2 minutos" and "160 o 165 °C" are
+  alternatives read like a range (both ends scale and convert), which
+  fixed "160 o 325°F".
+- **Whole words by letters**, not `\b`: unit words end with `(?!\p{L})` and
+  yield words use letter lookarounds, because the JDK, Android's ICU and
+  NSRegularExpression disagree on `\b` beside accented letters.
+- **Timers.** A number after a colon is a clock time ("1:30 Stunden" gave
+  a 30-hour timer), so it gets none. Bare degrees ("180 Grad", "165°") stay
+  as written: German turns trays "um 180 Grad", French writes alcohol
+  strength in degrees.
+- **Left as written, on purpose:** GialloZafferano's trailing amounts
+  ("Burro 100 g"), which can't be read without a guess.
+- **Not handled yet:** totals in parentheses after the name ("¾ de taza de
+  queso crema (180 g.)" scales the cups but not the grams, as in English) and
+  French space thousands ("1 500 g", not seen on a site yet, would scale as
+  "1").
 
 ## Editing a recipe, and typing one in (#29)
 
