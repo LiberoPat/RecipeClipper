@@ -1223,6 +1223,59 @@ lines in the differential corpus, with a `lang:` argument.
   under it are replaced by `recipe/{id}`), rather than the recipe screen
   reloading itself, so it can't show the copy it loaded before.
 
+## Reading recipes in Japanese (#16)
+
+Probed in September 2026: 6 of 7 big sites (Cookpad, Delish Kitchen, Rakuten
+Recipe, Nadia, Orange Page, Ajinomoto Park) expose a schema.org Recipe in
+JSON-LD to a plain fetch; Kurashiru is a client-rendered shell (only the
+rendered fetch, #36, could see it). `ja` ships every table, and the real lines
+and steps from those six sites are in the corpus with `lang: "ja"`.
+
+- **Name first, amount last.** Every site writes "鶏もも肉 2枚（約700g）":
+  the name, one space (Orange Page: an ideographic space and a space), the
+  amount. `amounts.json` `amountAfterName` sends a language's lines to
+  `TrailingAmount` instead of the leading-number scaler. The amount is the
+  text after the last space, read only when it is: an optional `beforeNumber`
+  word (各, 約, 大, 中, 小), an optional unit, a number or range, an optional
+  unit, then text with no digit in it, which may hold one measure in brackets.
+  Anything else stays as written. A name ending in a digit ("大さじ2 1/2")
+  may have lost part of its amount to the space, so it stays too.
+- **Units either side of the number:** 大さじ2 and 2カップ, and cookbooks'
+  カップ1/2. 大さじ/小さじ are the 15/5 ml spoons; カップ is `CUP_200`
+  (200 ml) and 合 `RICE_CUP` (180 ml), new `MeasureUnit`s, never the US cup.
+- **A measure in brackets scales with the amount:** "1/2缶（200g）",
+  "2個（240g）", "1/4個分(50g)". Unlike English "1 can (14 oz)", Japanese
+  sites write the weight of the amount itself, so a package reading would
+  halve it wrongly. Converting still needs a unit: a counter (個, 本, 枚, 缶)
+  never converts, even with a weight beside it.
+- **Cookpad's 大3 / 小1/2** (大さじ, 小さじ) scale but never convert: 大 and 小
+  also mean "large" and "small" ("大1/6個"), and scaling the number is right
+  either way.
+- **Left as written:** 少々, 適量, お好みで and other amounts with no digit;
+  kanji numerals ("一丁"); a half in words straight after the number ("1半丁",
+  `spelledHalves`); sizes ("ねぎ 10cm"); headings ("肉だね", "A（混ぜる）").
+- **No spaces between words** (`language.json` `spaced: false`). Timer units
+  need no word boundary ("5分煮る"); 分 before の, 半, 目 or 割 ("2分の1",
+  "1分半", "8分目", "5分割") and 時間 before 半 are not times. The density
+  table matches the end of a name by character ("有塩バター" is バター), so
+  compounds that would match wrongly are skip entries (ポン酢, 黒砂糖), and
+  there is no bare 油 (醤油) or 粉 (片栗粉, パン粉). `IngredientName` takes the
+  text before the amount, dropping group markers (☆ ★ A 【A】, glued to the
+  name), asides in brackets and quote marks; a name with ・ 、 or "or" is two
+  ingredients.
+- **Full-width digits and letters** ("１００ＣＣ", "２０分", yields "４",
+  "５〜６") are read as half-width. The mapping is one UTF-16 unit for one, so
+  offsets found in the read text splice back into the line as written: the
+  scaled number is half-width, the rest keeps its width. Temperatures read
+  half-width digits only.
+- **℃** is a Celsius word in `temperature.json`. A bare "180度" names no
+  scale, so it stays as written, as bare degrees do in de, fr and it.
+- **Yields:** "2人分", "2〜3人分" (the wave dash is a range word), and
+  Ajinomoto Park's "2(servings)", which would otherwise read as "Makes".
+- **Not handled:** "1時間半" gives no timer rather than a guess; a scaled
+  amount converted in Metric is written "30 ml" with a space, as in other
+  languages.
+
 ## Bottom tab shell (#47)
 
 The navigation shell for #46 (weekly meal plan, groceries, pantry), landing

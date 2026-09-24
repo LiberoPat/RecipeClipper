@@ -38,7 +38,7 @@ enum Servings {
     /// to "4"; otherwise keeps the first entry.
     static func pickYield(_ candidates: [String], words: LanguageWords? = .english) -> String? {
         let range = words.map { patterns($0).range } ?? dashRange
-        return candidates.first { range.containsMatch(in: $0) } ?? candidates.first
+        return candidates.first { range.containsMatch(in: words?.readable($0) ?? $0) } ?? candidates.first
     }
 
     /// Sites often publish just a number (`recipeYield: 6`). This only decides *whether* the
@@ -69,7 +69,7 @@ enum Servings {
     /// Returns nil when there is no usable number, which hides the scaling control, and for a
     /// language the app has no words for (`words` nil), whose lines couldn't be scaled.
     static func parse(_ recipeYield: String?, words: LanguageWords? = .english) -> Int? {
-        guard words != nil, let recipeYield, let m = firstNumber.find(recipeYield) else { return nil }
+        guard let words, let recipeYield, let m = firstNumber.find(words.readable(recipeYield)) else { return nil }
         guard let first = Int32(m.value).map(Int.init) else { return nil }
         return (1...max).contains(first) ? first : nil
     }
@@ -82,8 +82,9 @@ enum Servings {
         let text = recipeYield?.kTrimmed ?? ""
         guard !text.isEmpty, bareCount(text) == nil, let words else { return .serves }
         let p = patterns(words)
-        if p.servingWord.containsMatch(in: text) { return .serves }
-        if p.makesWord.containsMatch(in: text) || p.countedNoun.containsMatch(in: text) { return .makes }
+        let read = words.readable(text)
+        if p.servingWord.containsMatch(in: read) { return .serves }
+        if p.makesWord.containsMatch(in: read) || p.countedNoun.containsMatch(in: read) { return .makes }
         return .serves
     }
 }

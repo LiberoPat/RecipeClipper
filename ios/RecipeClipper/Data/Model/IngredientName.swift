@@ -39,6 +39,8 @@ enum IngredientName {
     static func of(_ line: String, words language: LanguageWords? = .english) -> String? {
         guard let language else { return nil }
         if line.kIsBlank || line.kTrimmed.hasSuffix(":") { return nil }
+        // "☆醤油 大さじ1": the name comes first (#16).
+        if IngredientScaler.patterns(language).amountAfterName { return TrailingAmount.nameOfLine(line, words: language) }
         let w = language.compiled(Words.self, Words.init)
         let scaler = IngredientScaler.patterns(language)
         let converter = UnitConverter.patterns(language)
@@ -78,7 +80,8 @@ enum IngredientName {
         let x = IngredientDensities.headPhrase(a, words: words)
         let y = IngredientDensities.headPhrase(b, words: words)
         if x.isEmpty || y.isEmpty { return false }
-        return x.u16Count >= y.u16Count ? IngredientDensities.endsWithName(x, y) : IngredientDensities.endsWithName(y, x)
+        return x.u16Count >= y.u16Count ? IngredientDensities.endsWithName(x, y, spaced: words.spaced)
+            : IngredientDensities.endsWithName(y, x, spaced: words.spaced)
     }
 
     /// Drops "large", "cloves", "pinch of": sizes, containers and cuts before the name.

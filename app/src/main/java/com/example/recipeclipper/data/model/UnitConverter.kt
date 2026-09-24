@@ -39,6 +39,8 @@ object UnitConverter {
         MeasureUnit.TSP to 5.0,
         MeasureUnit.TBSP to 15.0,
         MeasureUnit.CUP to 240.0,
+        MeasureUnit.CUP_200 to 200.0,
+        MeasureUnit.RICE_CUP to 180.0,
         MeasureUnit.FL_OZ to 30.0,
         MeasureUnit.ML to 1.0,
         MeasureUnit.L to 1000.0,
@@ -101,6 +103,7 @@ object UnitConverter {
     ): String {
         if (system == UnitSystem.AS_WRITTEN || words == null) return line
         val p = patterns(words)
+        if (p.scaler.amountAfterName) return convertTrailing(line, system, includeLiquids, words)
         if (p.scaler.unreadable(line)) return line
 
         val lead = p.scaler.leading.find(line) ?: return line
@@ -184,6 +187,39 @@ object UnitConverter {
 
         val comma = IngredientScaler.DECIMAL_COMMA.containsMatchIn(separatorFrom)
         return lead.groupValues[1] + IngredientScaler.withSeparator(converted, comma) + after
+    }
+
+    /**
+     * A "name amount" line ("砂糖 大さじ2", "水 2カップ", #16), by the same rules: a counter (個,
+     * 本) has no unit and stays as written, a liquid follows [includeLiquids], and a measure in
+     * brackets straight after the unit ("1/2カップ（100ml）") is the site's own figure.
+     */
+    private fun convertTrailing(line: String, system: UnitSystem, includeLiquids: Boolean, words: LanguageWords): String {
+        val found = TrailingAmount.find(line, words) ?: return line
+        val unit = found.unit ?: return line
+        if (unit == MeasureUnit.VARIES || unit in ownUnits(system)) return line
+
+        val density = TrailingAmount.nameOf(found.name, words)?.let { IngredientDensities.find(it, words) }
+        val isLiquid = density?.liquid == true
+        val isVolume = unit.kind == MeasureKind.VOLUME
+        if (system != UnitSystem.METRIC && isVolume && isLiquid && !includeLiquids) return line
+
+        val amount = Amount(found.low.value, found.high?.value, found.separator)
+        val alternate = found.measure?.takeIf { it.atStart }
+        fun measure(kind: MeasureKind): Measure? = alternate
+            ?.takeIf { it.unit.kind == kind && (kind == MeasureKind.WEIGHT || it.unit.metric) }
+            ?.let { Measure(it.number.value * it.unit.base, it.unit, it.text) }
+        val weight = measure(MeasureKind.WEIGHT)
+        val siteWeight = weight != null && amount.high == null
+        val asWeight = system != UnitSystem.METRIC || !isVolume ||
+                (!isLiquid && (density?.gramsPerCup != null || siteWeight))
+        val converted = if (asWeight) {
+            weightAmount(amount, unit, null, density, weight, isLiquid, system)
+        } else {
+            volumeAmount(amount, unit, null, measure(MeasureKind.VOLUME))
+        } ?: return line
+        return line.substring(0, found.start) + found.beforeWord + converted +
+                line.substring(alternate?.end ?: found.restStart)
     }
 
     private fun ownUnits(system: UnitSystem): Set<MeasureUnit> = when (system) {

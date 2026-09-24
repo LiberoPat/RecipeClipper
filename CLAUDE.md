@@ -25,7 +25,7 @@ ingredient-name words, condensed section names; tracking parameters), loaded by 
 Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
 table there, never in code; the logic that reads it stays written twice. **Each
 language has its own folder** (`shared/tables/<code>/`: en, de, es, fr, it,
-pt), read through `LanguageWords`: the recipe's language picks it, never the
+pt, ja), read through `LanguageWords`: the recipe's language picks it, never the
 phone's, and languages are never merged.
 
 **Keep this file short: it is loaded into every session.** Add only what an
@@ -49,8 +49,8 @@ UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
-Not built, all tracked as issues: Reddit (#11), recipes in languages beyond
-en, de, es, fr, it, pt (#16), release setup (#18, #20–#22).
+Not built, all tracked as issues: Reddit (#11), other recipe languages,
+release setup (#18, #20–#22).
 
 ## Commands
 
@@ -95,8 +95,8 @@ data/          RecipeRepository, ListRepository, MealPlanRepository (interfaces;
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
                LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
-               ClipSelection, ClipDraft, PlanDays (the plan's epoch-day calendar),
-               MealPlan (MealType, PlannedMeal)
+               TrailingAmount (name-first lines: Japanese), ClipSelection, ClipDraft,
+               PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal)
 ui/            navigation, home, history, recipe, clip, edit, savetolist, lists, listdetail,
                settings, week, plan (Add to plan sheet), mealtypes, theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
@@ -475,6 +475,12 @@ Each one exists to avoid showing a confident wrong number.
     doesn't list whole ("Mandelmehl") stay as written.
   - Bare degrees ("180 Grad", "165°") stay as written; a number after a
     colon ("1:30 Stunden") is a clock time, never a timer.
+- **Japanese** (#16, `TrailingAmount`): the amount comes after the name
+  ("醤油 大さじ1"), units sit either side of the number, カップ is 200 ml and
+  合 180 ml, a measure in brackets ("1/2缶（200g）") scales with the amount,
+  full-width digits read as half-width, and no spaces means no word
+  boundaries (the density table matches the name's last characters).
+  Anything else (少々, 適量, 一丁, "1半丁", "10cm") stays as written.
 - **Temperatures:**
   - They need 2–3 digits, then F or C.
   - Without a degree sign, "degrees" or a full word, the number must also be
