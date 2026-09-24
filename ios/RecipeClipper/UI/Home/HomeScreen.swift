@@ -25,10 +25,10 @@ struct HomeScreen: View {
                 // stays by its first line rather than floating between two.
                 HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center) {
                     ScreenTitle(Strings.homeTitle)
-                    // Settings is reachable from Home ONLY, deliberately not from the recipe
-                    // screen: RecipeViewModel reads preferences once in its initializer, and
-                    // reaching Settings from Home means any recipe screen has been popped, so
-                    // the next recipe opened reads current preferences.
+                    // Settings' only entry point today. It could open from elsewhere too:
+                    // RecipeViewModel follows AppPreferences.settings, so a recipe left
+                    // underneath Settings keeps up with a change (#24). Whether the recipe
+                    // screen offers it is a product call, not a technical constraint.
                     Button(action: onOpenSettings) {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: gearSize))

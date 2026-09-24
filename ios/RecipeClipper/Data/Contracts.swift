@@ -24,6 +24,23 @@ protocol RecipeSource {
     func fetch(url: String) async -> ParseResult
 }
 
+/// Loads a page in an off-screen browser, lets its JavaScript run, and returns the resulting
+/// HTML (Android's RenderedPageSource). The repository's last resort once the direct fetch and
+/// its retry end `.blocked` or `.noRecipeFound`. `WebViewRenderedPageSource` is the real one,
+/// built on the main actor in AppContainer; parsing stays with the pure parsers.
+protocol RenderedPageSource {
+    /// The page's `document.documentElement.outerHTML` once loaded and settled; nil if it
+    /// couldn't be loaded, or when the calling task is cancelled (which stops the load). The
+    /// caller caps the overall time.
+    func render(url: String) async -> String?
+}
+
+/// Renders nothing: the default where the fallback isn't wanted (tests that aren't about it,
+/// the UI-test graph).
+struct NoRenderedPageSource: RenderedPageSource {
+    func render(url: String) async -> String? { nil }
+}
+
 /// Whether the device has a usable network (Android's Connectivity). A seam so RecipeViewModel
 /// never touches Network.framework and a test can drive it; `PathConnectivity` is the real one.
 protocol Connectivity: AnyObject {
@@ -94,11 +111,36 @@ protocol ListRepository: AnyObject {
     func deleteList(listId: Int64) async
 }
 
-/// The user's global defaults. Plain vars (not publishers) exactly like Android:
-/// RecipeViewModel reads them once at init, which is why Settings is reachable from Home only.
+/// The user's global defaults. Read and written through the vars; `settings` publishes them so
+/// a screen left open underneath Settings follows a change as it is made (#24), like
+/// Android's `AppPreferences.settings` Flow.
 protocol AppPreferences: AnyObject {
     var unitSystem: UnitSystem { get set }
     var convertLiquids: Bool { get set }
     var temperatureUnit: TemperatureUnit { get set }
     var darkWhileCooking: Bool { get set }
+
+    /// The current values first, then every change, never repeating a value. Delivery may be
+    /// asynchronous, so a subscriber receives on main.
+    var settings: AnyPublisher<AppSettings, Never> { get }
+}
+
+extension AppPreferences {
+    /// The four values as they are right now.
+    var current: AppSettings {
+        AppSettings(
+            unitSystem: unitSystem,
+            convertLiquids: convertLiquids,
+            temperatureUnit: temperatureUnit,
+            darkWhileCooking: darkWhileCooking
+        )
+    }
+}
+
+/// One snapshot of AppPreferences, as its `settings` publisher emits them.
+struct AppSettings: Equatable {
+    var unitSystem: UnitSystem = .asWritten
+    var convertLiquids = false
+    var temperatureUnit: TemperatureUnit = .asWritten
+    var darkWhileCooking = false
 }

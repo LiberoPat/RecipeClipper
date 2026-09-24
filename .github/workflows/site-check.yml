@@ -1,0 +1,66 @@
+name: Recipe site check
+
+# Fetches about 20 real recipe pages through the real parser (JVM, no device) and
+# reports which parse and why the rest don't (#32). Sites block on and off, so a
+# failed site doesn't fail the job: only a broken harness does. Read the results
+# as a trend, across the uploaded artifacts. Fetched pages are never stored.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  # Also on a pull request that changes the check itself or its URL list, so
+  # an edited list is proven before it merges. Other PRs never hit the network.
+  pull_request:
+    paths:
+      - .github/workflows/site-check.yml
+      - app/src/test/resources/site-check-urls.txt
+      - app/src/test/java/com/example/recipeclipper/sitecheck/**
+
+concurrency:
+  group: site-check
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  site-check:
+    name: Recipe site check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: jetbrains
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # -PsiteCheck runs LiveSiteCheck and nothing else (app/build.gradle.kts).
+      - name: Fetch and parse the listed sites
+        run: ./gradlew testDebugUnitTest -PsiteCheck
+
+      - name: Write the job summary
+        if: always()
+        run: |
+          results=app/build/site-check/results.md
+          if [ -f "$results" ]; then
+            cat "$results" >> "$GITHUB_STEP_SUMMARY"
+            if ! grep -q '| Parsed' "$results"; then
+              echo "::warning::No site parsed. Every site blocking at once is unlikely; check for a parser regression."
+            fi
+          else
+            echo "The site check produced no results: the harness failed." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # One artifact per run, kept 90 days: the trend. Outcomes only, no pages.
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: site-check-${{ github.run_number }}
+          path: app/build/site-check/
+          retention-days: 90
+          if-no-files-found: ignore

@@ -1,0 +1,26 @@
+# Recipe pages the weekly site check fetches through BlogRecipeSource (#32).
+# One URL per line; anything after a # is a comment. Only outcomes are logged,
+# never the pages. Replace a URL when its page is gone for good (a 404 in a
+# browser too), not when a site blocks a run: blocking flips run to run.
+https://smittenkitchen.com/2016/10/pumpkin-bread/  # microdata (Jetpack), no JSON-LD
+https://www.seriouseats.com/the-food-lab-best-chocolate-chip-cookie-recipe
+https://www.bbcgoodfood.com/recipes/easy-pancakes
+https://www.allrecipes.com/recipe/10813/best-chocolate-chip-cookies/
+https://cooking.nytimes.com/recipes/1015819-chocolate-chip-cookies
+https://www.kingarthurbaking.com/recipes/chocolate-chip-cookies-recipe
+https://www.bonappetit.com/recipe/bas-best-chocolate-chip-cookies
+https://www.epicurious.com/recipes/food/views/amaranth-breakfast-porridge
+https://www.budgetbytes.com/pizza-dough/  # 403 to every fetch when added, homepage too
+https://www.recipetineats.com/chicken-chow-mein/
+https://www.foodnetwork.com/recipes/alton-brown/good-eats-roast-turkey-recipe-1950271
+https://www.simplyrecipes.com/recipes/homemade_pizza/
+https://www.foodandwine.com/recipes/classic-chocolate-chip-cookies
+https://www.delish.com/cooking/recipe-ideas/a19636089/best-chocolate-chip-cookies-recipe/
+https://www.tasteofhome.com/recipes/banana-bread/
+https://www.jamieoliver.com/recipes/beef/5-ingredient-steak-sandwich/
+https://www.greatbritishchefs.com/recipes/spaghetti-carbonara-recipe
+https://minimalistbaker.com/easy-vegan-fried-rice/
+https://www.loveandlemons.com/hummus-recipe/
+https://pinchofyum.com/the-best-soft-chocolate-chip-cookies
+https://www.onceuponachef.com/recipes/banana-bread.html
+https://www.skinnytaste.com/air-fryer-chicken-breast/

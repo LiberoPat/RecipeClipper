@@ -25,9 +25,23 @@ object IngredientScaler {
         '⅜' to 3 / 8.0, '⅝' to 5 / 8.0, '⅞' to 7 / 8.0
     )
 
-    // "1 1/2", "1½", "1/2", "1.5", "½", "2" — tried in that order.
+    // "1 1/2", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that order. A comma followed by
+    // one or two digits is a decimal comma; one followed by three ("1,500") may be a thousands
+    // separator, so it is never read as part of a quantity, and AMBIGUOUS_COMMA leaves the line.
     internal const val QTY =
-        """(?:\d+\s+\d+/\d+|\d+\s*[$UNICODE_FRACTIONS]|\d+/\d+|\d+(?:\.\d+)?|[$UNICODE_FRACTIONS])"""
+        """(?:\d+\s+\d+/\d+|\d+\s*[$UNICODE_FRACTIONS]|\d+/\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|[$UNICODE_FRACTIONS])"""
+
+    /** "1,5": the line writes decimals with a comma, so its output does too. */
+    internal val DECIMAL_COMMA = Regex("""\d,\d{1,2}(?!\d)""")
+
+    /** "1,500" is 1.5 or 1500 depending on who wrote it: a line holding one is left as written. */
+    internal val AMBIGUOUS_COMMA = Regex("""\d,\d{3}""")
+
+    private val DECIMAL_POINT = Regex("""(?<=\d)\.(?=\d)""")
+
+    /** "2.25" as "2,25" when [comma], for a line that writes its decimals that way. */
+    internal fun withSeparator(text: String, comma: Boolean): String =
+        if (comma) DECIMAL_POINT.replace(text, ",") else text
 
     // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
     internal val LEADING = Regex("""^(\s*)($QTY)(?:(\s*[-–—]\s*|\s+to\s+)($QTY))?""")
@@ -72,56 +86,69 @@ object IngredientScaler {
 
     fun scale(line: String, factor: Double): String {
         if (factor == 1.0) return line
+        if (AMBIGUOUS_COMMA.containsMatchIn(line)) return line
         val match = LEADING.find(line) ?: return line
         val rest = line.substring(match.range.last + 1)
         if (NOT_AN_AMOUNT.containsMatchIn(rest)) return line
 
+        val comma = DECIMAL_COMMA.containsMatchIn(line)
         val low = parse(match.groupValues[2]) ?: return line
         val upperRaw = match.groupValues[4]
         val scaled = if (upperRaw.isEmpty()) {
-            format(low * factor)
+            formatLeading(low * factor, comma)
         } else {
             val high = parse(upperRaw) ?: return line
-            format(low * factor) + match.groupValues[3] + format(high * factor)
+            formatLeading(low * factor, comma) + match.groupValues[3] + formatLeading(high * factor, comma)
         }
-        return match.groupValues[1] + scaled + scaleContinuation(rest, factor)
+        return match.groupValues[1] + scaled + scaleContinuation(rest, factor, comma)
     }
 
+    // A line that writes "1,5" reads decimals, not fractions: "1,5 kg" x 1.5 is "2,25 kg".
+    private fun formatLeading(value: Double, comma: Boolean): String =
+        if (comma) withSeparator(formatDecimal(value), true) else format(value)
+
+    private fun formatDecimal(value: Double): String =
+        BigDecimal(value).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+
     /** Scales "plus 2 tbsp" and whatever alternate measure follows it, else just the alternate. */
-    private fun scaleContinuation(rest: String, factor: Double): String {
-        val m = CONTINUED.find(rest) ?: return scaleAlternateMeasure(rest, factor)
-        val unit = MeasureUnit.fromText(m.groupValues[4]) ?: return scaleAlternateMeasure(rest, factor)
-        val value = parse(m.groupValues[2]) ?: return scaleAlternateMeasure(rest, factor)
+    private fun scaleContinuation(rest: String, factor: Double, comma: Boolean): String {
+        val m = CONTINUED.find(rest) ?: return scaleAlternateMeasure(rest, factor, comma)
+        val unit = MeasureUnit.fromText(m.groupValues[4]) ?: return scaleAlternateMeasure(rest, factor, comma)
+        val value = parse(m.groupValues[2]) ?: return scaleAlternateMeasure(rest, factor, comma)
         val tail = m.groupValues[3] + m.groupValues[4] + rest.substring(m.range.last + 1)
-        return m.groupValues[1] + formatFor(unit, value * factor) + scaleAlternateMeasure(tail, factor)
+        return m.groupValues[1] + formatFor(unit, value * factor, comma) +
+                scaleAlternateMeasure(tail, factor, comma)
     }
 
     /** Keeps "(120 g)" or "/120 grams" in step with the leading amount that was just scaled. */
-    private fun scaleAlternateMeasure(rest: String, factor: Double): String {
+    private fun scaleAlternateMeasure(rest: String, factor: Double, comma: Boolean): String {
         ALT_PAREN.find(rest)?.let { m ->
-            val inner = QTY_UNIT.replace(m.groupValues[2]) { scalePair(it, factor) }
+            val inner = QTY_UNIT.replace(m.groupValues[2]) { scalePair(it, factor, comma) }
             return m.groupValues[1] + inner + m.groupValues[3] + rest.substring(m.range.last + 1)
         }
         ALT_SLASH.find(rest)?.let { m ->
             val unit = MeasureUnit.fromText(m.groupValues[4])
             val value = parse(m.groupValues[2])
             if (unit != null && value != null) {
-                return m.groupValues[1] + formatFor(unit, value * factor) + m.groupValues[3] +
+                return m.groupValues[1] + formatFor(unit, value * factor, comma) + m.groupValues[3] +
                         m.groupValues[4] + rest.substring(m.range.last + 1)
             }
         }
         return rest
     }
 
-    private fun scalePair(match: MatchResult, factor: Double): String {
+    private fun scalePair(match: MatchResult, factor: Double, comma: Boolean): String {
         val unit = MeasureUnit.fromText(match.groupValues[3]) ?: return match.value
         val value = parse(match.groupValues[1]) ?: return match.value
-        return formatFor(unit, value * factor) + match.groupValues[2] + match.groupValues[3]
+        return formatFor(unit, value * factor, comma) + match.groupValues[2] + match.groupValues[3]
     }
 
     // Metric amounts read better as "240" or "7.5" than as "240" or "7 1/2".
-    private fun formatFor(unit: MeasureUnit, value: Double): String =
-        if (unit.metric) formatMetric(value) else format(value)
+    private fun formatFor(unit: MeasureUnit, value: Double, comma: Boolean): String = when {
+        unit.metric -> withSeparator(formatMetric(value), comma)
+        comma -> withSeparator(formatDecimal(value), true)
+        else -> format(value)
+    }
 
     internal fun formatMetric(value: Double): String {
         val scale = if (value >= 10) 0 else 1
@@ -129,7 +156,8 @@ object IngredientScaler {
     }
 
     internal fun parse(quantity: String): Double? {
-        val q = quantity.trim()
+        // QTY only lets a comma through as a decimal comma, never before three digits.
+        val q = quantity.trim().replace(',', '.')
         val last = q.last()
         UNICODE_VALUES[last]?.let { fraction ->
             val whole = q.dropLast(1).trim()

@@ -9,7 +9,7 @@ import Foundation
 ///   as written rather than guessed.
 /// - If the line already carries the target unit in parentheses or after a slash, as in
 ///   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one.
-/// - Pourable liquids are left alone in grams/ounces unless `includeLiquids` is set.
+/// - Pourable liquids are left alone in ounces unless `includeLiquids` is set.
 ///   Metric turns them into ml, which is exact and needs no density, so it ignores the flag.
 /// - Metric otherwise gives spoons and cups as ml, except that a line carrying the site's own
 ///   weight ("1 tsp (4 g) salt", "1 cup/4 oz walnuts") shows that weight in g/kg, even for an
@@ -19,6 +19,8 @@ import Foundation
 /// - A compound amount ("1 cup plus 2 tbsp flour") is converted as a whole or not at all:
 ///   an alternate measure after the second part is used for the total, otherwise both parts
 ///   are converted and summed, and if either can't be the line is left as written.
+/// - "1,5 kg" is 1.5 kg and converts with a comma ("1,13 kg"); "1,500 g" could be 1.5 g or
+///   1500 g, so a line holding a comma before three digits is left as written.
 enum UnitConverter {
 
     private static let gramsPerOunce = 28.3495
@@ -73,8 +75,14 @@ enum UnitConverter {
         let separator: String
     }
 
-    static func convert(_ line: String, system: UnitSystem, includeLiquids: Bool) -> String {
+    /// `separatorFrom` is the line whose decimal separator the result follows (default: `line`):
+    /// the line as the recipe wrote it, when `line` is that line already scaled ("2,5 lb"
+    /// doubled is "5 lb", which no longer shows its comma).
+    static func convert(
+        _ line: String, system: UnitSystem, includeLiquids: Bool, separatorFrom: String? = nil
+    ) -> String {
         if system == .asWritten { return line }
+        if IngredientScaler.ambiguousComma.containsMatch(in: line) { return line }
 
         guard let lead = IngredientScaler.leading.find(line) else { return line }
         let afterQty = line.u16Substring(from: lead.end)
@@ -136,12 +144,12 @@ enum UnitConverter {
         }
         guard let converted else { return line }
 
-        return lead[1] + converted + after
+        let comma = IngredientScaler.decimalComma.containsMatch(in: separatorFrom ?? line)
+        return lead[1] + IngredientScaler.withSeparator(converted, comma: comma) + after
     }
 
     private static func ownUnits(_ system: UnitSystem) -> Set<MeasureUnit> {
         switch system {
-        case .grams: return [.g, .kg]
         case .ounces: return [.oz, .lb]
         case .metric: return [.g, .kg, .ml, .l]
         case .asWritten: return []

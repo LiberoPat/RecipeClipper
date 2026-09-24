@@ -76,11 +76,10 @@ fun HomeScreen(
                             style = MaterialTheme.typography.headlineMedium,
                             modifier = Modifier.weight(1f)
                         )
-                        // Settings is still reachable from Home only — see the note by the
-                        // nav block below for why the recipe screen must not offer it. The
-                        // gear moved up here because it is a destination you visit rarely and
-                        // on purpose, unlike History and Lists, which are part of the daily
-                        // path and stay as named rows.
+                        // Settings' only entry point today (see the note by the nav block
+                        // below). The gear sits up here because it is a destination you visit
+                        // rarely and on purpose, unlike History and Lists, which are part of
+                        // the daily path and stay as named rows.
                         IconButton(
                             onClick = onOpenSettings,
                             modifier = Modifier.offset(x = 8.dp) // optical edge, past the icon's padding
@@ -146,14 +145,11 @@ fun HomeScreen(
                 // "continue cooking" recipe, so the block changed shape depending on what was
                 // in the database; a fixed block is easier to aim at than one that moves.
                 //
-                // Settings is not here — it's the gear beside the title. It is also reachable
-                // from Home ONLY, deliberately not from the recipe screen: RecipeViewModel
-                // reads preferences once in its initializer, and reaching Settings from Home
-                // means any Recipe destination has already been popped, so the next recipe
-                // opened builds a fresh ViewModel that reads current preferences. A Settings
-                // entry on the recipe screen would leave that ViewModel alive underneath and
-                // showing stale settings, which would need AppPreferences to expose Flows
-                // instead of vars.
+                // Settings is not here — it's the gear beside the title, and today that gear
+                // is its only entry point. It could open from elsewhere too: RecipeViewModel
+                // collects AppPreferences.settings, so a recipe left underneath Settings
+                // follows a change as it is made (#24). Whether the recipe screen offers it
+                // is a product call, not a technical constraint.
                 item {
                     Spacer(Modifier.height(20.dp))
                     Hairline()
