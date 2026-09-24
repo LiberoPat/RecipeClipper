@@ -43,12 +43,12 @@ class LanguageWords private constructor(
 
     companion object {
         /** Languages with every table: their recipes are read with their own words. */
-        val SHIPPED: List<String> = listOf("en")
+        val SHIPPED: List<String> = listOf("en", "de", "es", "fr", "it", "pt")
 
         /**
-         * Languages detection can recognise: every shipped one, plus some with only
-         * `language.json` so far, so a German page that declares `en` is recognised as German
-         * (and shown as written) rather than read with English rules.
+         * Languages detection can recognise: every shipped one, plus any with only
+         * `language.json` so far, whose recipes are recognised (and shown as written) rather
+         * than read with another language's rules.
          */
         val DETECTED: List<String> = listOf("en", "de", "es", "fr", "it", "pt")
 

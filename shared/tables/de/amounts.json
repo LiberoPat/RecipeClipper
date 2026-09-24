@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "language": "en",
+  "language": "de",
   "about": "IngredientScaler's and UnitConverter's amount words. mixedJoiners: regex fragments for the word between a whole number and its fraction ('2 and 1/2', '1 and ½'). continuation: regex fragments, each ending in its own whitespace, that join the two parts of a compound amount ('1 cup plus 2 tbsp'); the '+' is in the code. sizes: regex fragments, each ending in its own boundary, for what makes a leading number a size rather than an amount ('1-inch piece'); '%', 'cm' and 'mm' are in the code. Symbols such as the fraction slash '⁄' (U+2044) are in the code too. thousandsDot: true where the language writes thousands with a dot ('1.500 g' is 1500 g); only a dot followed by exactly three digits is read that way, never '1.5'. spelledHalves: regex fragments for a half written as words after the number ('1 taza y media', '2 e meia'), which the amount pattern can't read: a line holding one stays as written.",
-  "mixedJoiners": ["and"],
-  "continuation": ["plus\\s+", "and\\s+"],
-  "sizes": ["inch(?:es)?\\b"],
-  "thousandsDot": false,
-  "spelledHalves": []
+  "mixedJoiners": ["und"],
+  "continuation": [],
+  "sizes": [],
+  "thousandsDot": true,
+  "spelledHalves": ["und\\s+ein\\s+halb", "einhalb"]
 }

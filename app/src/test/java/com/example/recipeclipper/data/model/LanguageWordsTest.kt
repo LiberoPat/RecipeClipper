@@ -22,7 +22,8 @@ class LanguageWordsTest {
     fun `words are found by the primary subtag, and only for a shipped language`() {
         assertSame(LanguageWords.ENGLISH, LanguageWords.forTag("en"))
         assertSame(LanguageWords.ENGLISH, LanguageWords.forTag("en-GB"))
-        assertNull(LanguageWords.forTag("de-de"))
+        assertEquals("de", LanguageWords.forTag("de-DE")?.language)
+        assertNull(LanguageWords.forTag("nl-nl"))
         assertNull(LanguageWords.forTag(null))
     }
 
@@ -64,8 +65,8 @@ class LanguageWordsTest {
     }
 
     @Test
-    fun `a language detected but without tables is shown as written`() {
-        assertNull(LanguageWords.forTag(LanguageWords.resolve(null, "en") { german }))
+    fun `a German page that declares English is read with German words`() {
+        assertEquals("de", LanguageWords.forTag(LanguageWords.resolve(null, "en") { german })?.language)
     }
 
     @Test
@@ -75,7 +76,8 @@ class LanguageWordsTest {
             prepTime = null, cookTime = null, totalTime = null, yield = "4", sourceUrl = "https://a.com"
         )
         assertSame(LanguageWords.ENGLISH, LanguageWords.forRecipe(recipe))
-        assertNull(LanguageWords.forRecipe(recipe.copy(language = "it-it")))
+        assertEquals("it", LanguageWords.forRecipe(recipe.copy(language = "it-it"))?.language)
+        assertNull(LanguageWords.forRecipe(recipe.copy(language = "nl-nl")))
     }
 
     @Test

@@ -12,12 +12,14 @@ object Servings {
     /** One language's yield words: shared/tables/<language>/yield.json and ranges.json. */
     private class Patterns(words: LanguageWords) {
         val range = Regex("""\d+\s*(?:[-–—]|${words.rangeWords})\s*\d+""", RegexOption.IGNORE_CASE)
+        // Whole words by letters rather than \b, which the JDK, Android's ICU and iOS read
+        // differently beside accented letters ("porções", #15).
         val servingWord = Regex(
-            """\b${SharedTables.alternation(words.strings("yield", "serving"))}\b""",
+            """(?<!\p{L})${SharedTables.alternation(words.strings("yield", "serving"))}(?!\p{L})""",
             RegexOption.IGNORE_CASE
         )
         val makesWord = Regex(
-            """\b${SharedTables.alternation(words.strings("yield", "makes"))}\b""",
+            """(?<!\p{L})${SharedTables.alternation(words.strings("yield", "makes"))}(?!\p{L})""",
             RegexOption.IGNORE_CASE
         )
 
@@ -25,7 +27,7 @@ object Servings {
          * A number followed by some other word: "24 cookies", "1 (9-inch) pie", "2 dozen".
          * The lookahead skips the "to" of a range, so a bare "4 to 6" isn't read as a noun.
          */
-        val countedNoun = Regex("""\d[^\p{L}]*(?!${words.rangeWords}\b)\p{L}""", RegexOption.IGNORE_CASE)
+        val countedNoun = Regex("""\d[^\p{L}]*(?!${words.rangeWords}(?!\p{L}))\p{L}""", RegexOption.IGNORE_CASE)
     }
 
     private fun patterns(words: LanguageWords): Patterns = words.compiled(Patterns::class) { Patterns(it) }

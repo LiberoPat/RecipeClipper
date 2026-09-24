@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "language": "de",
+  "about": "IngredientDensities. An ingredient matches by the END of its name, longest alias first (ties keep file order). gramsPerCup is per US cup (236.6 ml); null is a skip entry: recognised, never converted, and it wins over a shorter alias by being longer. liquid: pourable (the 'Also convert liquids' option). stickable: allows the 'stick' unit. Only ingredients that weigh about the same every time belong here. trailingModifiers are dropped from the end of the name before matching.",
+  "trailingModifiers": ["weich", "zimmerwarm", "geschmolzen", "zerlassen", "gesiebt", "kalt", "warm"],
+  "entries": [
+    {"note": "Flours. German compounds are matched only when listed whole ('weizenmehl'): 'Mandelmehl' or 'Vollkornmehl' is a different flour, so the table matches whole trailing words, as in English.", "gramsPerCup": 120.0, "aliases": ["mehl", "weizenmehl"]},
+    {"gramsPerCup": null, "aliases": ["glutenfreies mehl"]},
+    {"note": "Sugars", "gramsPerCup": 200.0, "aliases": ["zucker", "weißer zucker", "feinster zucker", "kristallzucker"]},
+    {"gramsPerCup": 213.0, "aliases": ["brauner zucker"]},
+    {"gramsPerCup": 113.0, "aliases": ["puderzucker", "staubzucker"]},
+    {"note": "Baking staples", "gramsPerCup": 84.0, "aliases": ["kakao", "kakaopulver"]},
+    {"gramsPerCup": 192.0, "aliases": ["backpulver"]},
+    {"gramsPerCup": 288.0, "aliases": ["natron"]},
+    {"note": "Fats and dairy that isn't pourable", "gramsPerCup": 227.0, "aliases": ["butter", "margarine"]},
+    {"gramsPerCup": 230.0, "aliases": ["saure sahne", "sauerrahm", "schmand"]},
+    {"gramsPerCup": 245.0, "aliases": ["joghurt", "naturjoghurt", "griechischer joghurt"]},
+    {"note": "Pourable", "gramsPerCup": 237.0, "liquid": true, "aliases": ["wasser"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["milch", "vollmilch", "buttermilch"]},
+    {"gramsPerCup": 238.0, "liquid": true, "aliases": ["sahne", "schlagsahne", "schlagobers", "süße sahne"]},
+    {"gramsPerCup": 218.0, "liquid": true, "aliases": ["öl", "olivenöl", "sonnenblumenöl", "rapsöl", "pflanzenöl"]},
+    {"gramsPerCup": 340.0, "liquid": true, "aliases": ["honig"]},
+    {"gramsPerCup": 240.0, "liquid": true, "aliases": ["brühe", "gemüsebrühe", "hühnerbrühe", "fond", "rinderfond"]},
+    {"gramsPerCup": 239.0, "liquid": true, "aliases": ["essig", "weißweinessig", "rotweinessig"]},
+    {"gramsPerCup": 236.0, "liquid": true, "aliases": ["wein", "weißwein", "rotwein"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["saft", "zitronensaft", "limettensaft", "orangensaft"]}
+  ]
+}

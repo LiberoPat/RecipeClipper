@@ -941,7 +941,7 @@ class RecipeViewModelTest {
     // --- The recipe's language (#14) ---
 
     @Test fun `a recipe in a language with no words is shown as written`() = runTest(mainDispatcherRule.dispatcher) {
-        val repository = FakeRecipeRepository().apply { openResult = testRecipe(language = "de-de") }
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(language = "nl-nl") }
         val preferences = FakeAppPreferences(UnitSystem.METRIC, true, TemperatureUnit.CELSIUS)
         val vm = buildViewModel(byId(1L), repository, preferences)
         advanceUntilIdle()
