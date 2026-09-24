@@ -2,10 +2,22 @@ package com.example.recipeclipper.data.model
 
 /**
  * How ingredient amounts are shown. AS_WRITTEN leaves the recipe's own units untouched.
- * GRAMS and OUNCES express everything as weight. METRIC is EU-style: weights in g/kg,
- * volumes (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
+ * OUNCES expresses everything as weight. METRIC is EU-style: weights in g/kg, volumes
+ * (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
  */
-enum class UnitSystem { AS_WRITTEN, GRAMS, OUNCES, METRIC }
+enum class UnitSystem {
+    AS_WRITTEN, METRIC, OUNCES;
+
+    companion object {
+        /**
+         * The system a stored enum name stands for. GRAMS was a fourth option until #17; the
+         * people who chose it wanted weights, so it reads as METRIC rather than falling back
+         * to AS_WRITTEN. Anything unknown (or nothing stored) is AS_WRITTEN.
+         */
+        fun fromStoredName(name: String?): UnitSystem =
+            if (name == "GRAMS") METRIC else values().firstOrNull { it.name == name } ?: AS_WRITTEN
+    }
+}
 
 internal enum class MeasureKind { VOLUME, WEIGHT }
 

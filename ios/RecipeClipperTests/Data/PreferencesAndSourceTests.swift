@@ -56,9 +56,17 @@ final class UserDefaultsAppPreferencesTests: XCTestCase {
         XCTAssertEqual(prefs.unitSystem, .asWritten)
     }
 
+    func testAStoredGramsReadsAsMetric() {
+        // GRAMS was a fourth option until #17. Its users wanted weights, not As written.
+        defaults.set("GRAMS", forKey: "unit_system")
+        let prefs = UserDefaultsAppPreferences(defaults: defaults)
+        XCTAssertEqual(prefs.unitSystem, .metric)
+        XCTAssertEqual(prefs.current.unitSystem, .metric)
+    }
+
     func testSettingsPublishesTheCurrentValuesThenEachChangeWithoutRepeats() {
         let prefs = UserDefaultsAppPreferences(defaults: defaults)
-        prefs.unitSystem = .grams
+        prefs.unitSystem = .ounces
         var received: [AppSettings] = []
         let subscription = prefs.settings.sink { received.append($0) }
         defer { subscription.cancel() }
@@ -69,9 +77,9 @@ final class UserDefaultsAppPreferencesTests: XCTestCase {
         UserDefaultsAppPreferences(defaults: defaults).temperatureUnit = .celsius
 
         XCTAssertEqual(received, [
-            AppSettings(unitSystem: .grams),
-            AppSettings(unitSystem: .grams, darkWhileCooking: true),
-            AppSettings(unitSystem: .grams, temperatureUnit: .celsius, darkWhileCooking: true)
+            AppSettings(unitSystem: .ounces),
+            AppSettings(unitSystem: .ounces, darkWhileCooking: true),
+            AppSettings(unitSystem: .ounces, temperatureUnit: .celsius, darkWhileCooking: true)
         ])
     }
 }
