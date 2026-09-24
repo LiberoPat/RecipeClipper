@@ -69,12 +69,12 @@ enum IngredientDensities {
     static func find(_ ingredientText: String, words: LanguageWords = .english) -> Density? {
         let table = table(words)
         let phrase = headPhrase(ingredientText, table.trailingModifiers)
-        return table.aliases.first { endsWithName(phrase, $0.alias) }?.density
+        return table.aliases.first { endsWithName(phrase, $0.alias, spaced: words.spaced) }?.density
     }
 
     /// The longest alias `phrase` (a head phrase) ends in, as `find` matches it; nil if none.
     static func aliasAtEnd(_ phrase: String, words: LanguageWords = .english) -> String? {
-        table(words).aliases.first { endsWithName(phrase, $0.alias) }?.alias
+        table(words).aliases.first { endsWithName(phrase, $0.alias, spaced: words.spaced) }?.alias
     }
 
     /// The words dropped from the end of a name before matching ("packed", "melted").
@@ -83,7 +83,11 @@ enum IngredientDensities {
     private static func table(_ words: LanguageWords) -> Table { words.compiled(Table.self, Table.init) }
 
     /// True when `phrase` is `name` or ends with it at a word boundary: the table's matching rule.
-    static func endsWithName(_ phrase: String, _ name: String) -> Bool { phrase == name || phrase.hasSuffix(" " + name) }
+    /// Where the language isn't `spaced` (Japanese, #16) any character is a boundary: "有塩バター"
+    /// is "バター".
+    static func endsWithName(_ phrase: String, _ name: String, spaced: Bool = true) -> Bool {
+        phrase == name || phrase.hasSuffix(spaced ? " " + name : name)
+    }
 
     /// Removes parenthesised text, including nested or doubled parentheses ("((all-purpose
     /// flour))"), innermost first until nothing changes, then drops any unmatched paren.

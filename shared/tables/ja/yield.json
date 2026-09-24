@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "Servings' yield words, case-insensitive regex fragments matched as whole words. serving: the yield counts people ('2人分', '4人前'), and wins wherever it appears; Ajinomoto Park writes '2(servings)'. makes: the yield counts things made, as does a number followed by any other word ('20個').",
+  "serving": ["人分", "人前", "人", "名分", "名", "servings?"],
+  "makes": []
+}

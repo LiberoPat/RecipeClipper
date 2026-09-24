@@ -42,7 +42,7 @@ object Servings {
      */
     fun pickYield(candidates: List<String>, words: LanguageWords? = LanguageWords.ENGLISH): String? {
         val range = if (words == null) DASH_RANGE else patterns(words).range
-        return candidates.firstOrNull { range.containsMatchIn(it) } ?: candidates.firstOrNull()
+        return candidates.firstOrNull { range.containsMatchIn(words?.readable(it) ?: it) } ?: candidates.firstOrNull()
     }
 
     /**
@@ -65,7 +65,7 @@ object Servings {
      */
     fun parse(recipeYield: String?, words: LanguageWords? = LanguageWords.ENGLISH): Int? {
         if (words == null) return null
-        val first = Regex("""\d+""").find(recipeYield ?: return null)?.value?.toIntOrNull()
+        val first = Regex("""\d+""").find(words.readable(recipeYield ?: return null))?.value?.toIntOrNull()
         return first?.takeIf { it in 1..MAX }
     }
 
@@ -79,8 +79,9 @@ object Servings {
         val text = recipeYield?.trim().orEmpty()
         if (text.isEmpty() || bareCount(text) != null || words == null) return YieldKind.SERVES
         val p = patterns(words)
-        if (p.servingWord.containsMatchIn(text)) return YieldKind.SERVES
-        if (p.makesWord.containsMatchIn(text) || p.countedNoun.containsMatchIn(text)) return YieldKind.MAKES
+        val read = words.readable(text)
+        if (p.servingWord.containsMatchIn(read)) return YieldKind.SERVES
+        if (p.makesWord.containsMatchIn(read) || p.countedNoun.containsMatchIn(read)) return YieldKind.MAKES
         return YieldKind.SERVES
     }
 }

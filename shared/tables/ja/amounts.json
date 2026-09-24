@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "IngredientScaler's and UnitConverter's amount words. mixedJoiners: regex fragments for the word between a whole number and its fraction ('2 and 1/2', '1 and ½'); in Japanese a character with no spaces ('2と1/2', '2・1/2'). continuation: regex fragments, each ending in its own whitespace, that join the two parts of a compound amount ('1 cup plus 2 tbsp'); the '+' is in the code. sizes: regex fragments, each ending in its own boundary, for what makes a number a size rather than an amount ('1-inch piece'); '%', 'cm' and 'mm' are in the code. thousandsDot: true where the language writes thousands with a dot. spelledHalves: regex fragments for a half written as words after the number ('1半丁'), which the amount pattern can't read: the line stays as written. amountAfterName: true where a line is the name, a space, then the amount ('鶏もも肉 2枚（約700g）', 'だし汁 2と1/2カップ', '醤油 大さじ1'), read by TrailingAmount; missing means false. beforeNumber: regex fragments that may stand before the amount's number without being a unit (各 'each', 約 'about', and 大, 中, 小 'large', 'medium', 'small', which Cookpad also writes for 大さじ and 小さじ): the number scales, but with no unit it never converts.",
+  "mixedJoiners": ["と", "・"],
+  "continuation": [],
+  "sizes": [],
+  "thousandsDot": false,
+  "spelledHalves": ["半"],
+  "amountAfterName": true,
+  "beforeNumber": ["各", "約", "大", "中", "小"]
+}

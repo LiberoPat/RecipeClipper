@@ -36,6 +36,8 @@ internal enum class MeasureUnit(
     TSP(MeasureKind.VOLUME, 4.92892),
     TBSP(MeasureKind.VOLUME, 14.7868),
     CUP(MeasureKind.VOLUME, 236.588),
+    CUP_200(MeasureKind.VOLUME, 200.0), // a Japanese cup, カップ (#16)
+    RICE_CUP(MeasureKind.VOLUME, 180.0), // a Japanese rice cup, 合
     FL_OZ(MeasureKind.VOLUME, 29.5735),
     STICK(MeasureKind.VOLUME, 118.294), // US butter stick = 8 tbsp
     ML(MeasureKind.VOLUME, 1.0, metric = true),
