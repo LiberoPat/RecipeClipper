@@ -50,6 +50,14 @@ enum Strings {
         }
     }
 
+    // Share extension (the confirmation card shown over the app that shared)
+    static let shareGettingRecipe = "Getting the recipe…"
+    static let shareSaved = "Saved"
+    static let shareOpenToCook = "Open Recipe Clipper to cook."
+    static let shareNoLink = "There's no web link in what was shared."
+    static let done = "Done"
+    static let close = "Close"
+
     // Serves / units row
     static let serves = "Serves"
     static let makes = "Makes"

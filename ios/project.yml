@@ -24,6 +24,13 @@ targets:
     dependencies:
       - target: RecipeClipperShare
         embed: true
+    # The App Group holds the database and settings the share extension also uses. Keep the
+    # identifier in step with AppGroup.identifier and the extension's entitlements, and
+    # register it on both App IDs (docs/release.md).
+    entitlements:
+      path: RecipeClipper/RecipeClipper.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.liberopat.recipeclipper]
     info:
       path: RecipeClipper/Info.plist
       properties:
@@ -53,6 +60,19 @@ targets:
     platform: iOS
     sources:
       - path: RecipeClipperShare
+      # The import runs here, on the app's own code (dual target membership, not a copy):
+      # the data layer, the share card and the theme it is drawn with. UserDefaults stays out,
+      # so the extension uses no required-reason API and needs no privacy manifest.
+      - path: RecipeClipper/Data
+        excludes:
+          - Local/UserDefaultsAppPreferences.swift
+      - path: RecipeClipper/ShareImport
+      - path: RecipeClipper/UI/Theme
+      - path: RecipeClipper/UI/Common/Components.swift
+    entitlements:
+      path: RecipeClipperShare/RecipeClipperShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.liberopat.recipeclipper]
     info:
       path: RecipeClipperShare/Info.plist
       properties:

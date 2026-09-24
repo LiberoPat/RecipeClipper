@@ -9,24 +9,37 @@ final class AppContainer {
     let preferences: AppPreferences
     let clock: Clock
     let connectivity: Connectivity
+    /// The live database, when there is one on disk that another process (the share
+    /// extension) can also write to.
+    private let sharedDatabase: AppDatabase?
 
     init(
         recipeRepository: RecipeRepository,
         listRepository: ListRepository,
         preferences: AppPreferences,
         clock: Clock,
-        connectivity: Connectivity = StaticConnectivity()
+        connectivity: Connectivity = StaticConnectivity(),
+        sharedDatabase: AppDatabase? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
         self.preferences = preferences
         self.clock = clock
         self.connectivity = connectivity
+        self.sharedDatabase = sharedDatabase
     }
 
-    /// The real graph: SQLite on disk, the blog source, UserDefaults. Under XCTest (the unit
-    /// tests are hosted by the app) the database is in memory and preferences are a
-    /// throwaway suite, so a test run never touches a real user's data.
+    /// Called when the app comes to the foreground. The share extension saves recipes into the
+    /// same database from its own process, which this process's observers never hear about, so
+    /// every open list re-queries (Home's "Continue cooking" then shows what was just shared).
+    func refreshAfterExternalChanges() {
+        sharedDatabase?.refreshObservers()
+    }
+
+    /// The real graph: SQLite on disk, the blog source, UserDefaults. The database and the
+    /// settings suite are in the App Group container the share extension also writes to. Under
+    /// XCTest (the unit tests are hosted by the app) the database is in memory and preferences
+    /// are a throwaway suite, so a test run never touches a real user's data.
     static func live() -> AppContainer {
         #if DEBUG
         if let uiTest = UITestSeeding.makeContainer() { return uiTest }
@@ -39,13 +52,14 @@ final class AppContainer {
         } catch {
             fatalError("Couldn't open the recipe database: \(error)")
         }
-        let defaults = testing ? (UserDefaults(suiteName: "RecipeClipperTestHost") ?? .standard) : .standard
+        let defaults = UserDefaults(suiteName: testing ? "RecipeClipperTestHost" : AppGroup.identifier) ?? .standard
         return AppContainer(
             recipeRepository: DefaultRecipeRepository(db: database, source: BlogRecipeSource(), clock: clock),
             listRepository: DefaultListRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
-            connectivity: PathConnectivity()
+            connectivity: PathConnectivity(),
+            sharedDatabase: testing ? nil : database
         )
     }
 

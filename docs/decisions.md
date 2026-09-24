@@ -844,3 +844,36 @@ The fix is issue #10.
   countdown notification was the considered alternative; rejected for now as
   a permanent notification plus a `FOREGROUND_SERVICE_*` type declaration
   that Play reviews.
+
+## iOS: importing inside the share extension (#19)
+
+The extension used to find the link and open the app with
+`recipeclipper://import?url=…`, reaching `UIApplication` through the
+responder chain. That was an App Review risk (guideline 2.5.1), and iOS 18
+had already broken it once. Now the extension does the import itself.
+
+- **Same code, not a copy.** The extension compiles the app's `Data/` (minus
+  `UserDefaultsAppPreferences`), `ShareImport/`, the theme and the button
+  styles through dual target membership in `project.yml`. A framework target
+  was the alternative. It would have meant `public` on most of the data layer
+  for no gain at this size.
+- **One database, two processes.** The SQLite file and the settings suite
+  moved to the App Group container. Nothing was migrated: #40's new bundle
+  IDs had already started everyone on an empty container. WAL plus
+  `busy_timeout` let both processes write. Migrations re-check
+  `user_version` under the write lock. The app re-queries on becoming active,
+  because its observers only hear its own writes. A Darwin notification
+  would also cover the iPad side-by-side case, but that wasn't worth it yet.
+- **The card, not the recipe.** After saving, the extension shows a compact
+  "Saved" card that dismisses itself after 2.5 s. Errors keep the app's
+  causes and copy, with Try again, and reload on reconnect. Showing the whole
+  recipe in the extension was the other option the issue named. It would
+  have meant the reading view, scaling and conversion inside the extension's
+  memory budget. The app doesn't jump to the recipe on its next launch
+  either, since that would surprise someone who opens it hours later.
+  "Continue cooking" already puts it one tap away.
+- **What only a device shows.** The memory ceiling (about 120 MB, which the
+  simulator doesn't enforce). And iOS kills a suspended process that holds a
+  file lock in a shared container (`0xdead10cc`). Writes are short
+  transactions, so this shouldn't bite, but it has to be watched for on a
+  device.

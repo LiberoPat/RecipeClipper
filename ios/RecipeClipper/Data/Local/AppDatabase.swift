@@ -30,20 +30,39 @@ final class AppDatabase: @unchecked Sendable {
         // happen. Must be set outside a transaction, hence before migrating.
         try connection.execute("PRAGMA foreign_keys = ON")
         if path != nil {
-            _ = try connection.query("PRAGMA journal_mode = WAL") { $0.optionalString(0) }
+            // The share extension opens this file from its own process, so wait out the other
+            // side's lock (set first: switching to WAL takes a lock too) rather than failing.
             try connection.execute("PRAGMA busy_timeout = 5000")
+            _ = try connection.query("PRAGMA journal_mode = WAL") { $0.optionalString(0) }
         }
         try Self.migrate(connection)
     }
 
-    /// Application Support/recipe_clipper.sqlite, creating the directory if needed.
+    /// `recipe_clipper.sqlite` in the App Group container, which the share extension writes to
+    /// as well; nil when the group container isn't available to this build.
+    static func sharedPath() -> String? {
+        AppGroup.containerURL?.appendingPathComponent("recipe_clipper.sqlite").path
+    }
+
+    /// Where the app keeps its database: the shared container or, if this build isn't
+    /// entitled to the App Group, Application Support, so the app still works on its own (only
+    /// the share extension's saves go missing, and that is logged).
     static func defaultPath() -> String {
+        if let shared = sharedPath() { return shared }
+        dataLog.error("App Group container unavailable; using the app's own database")
         let fm = FileManager.default
         let base = (try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                 appropriateFor: nil, create: true))
             ?? fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? fm.createDirectory(at: base, withIntermediateDirectories: true)
         return base.appendingPathComponent("recipe_clipper.sqlite").path
+    }
+
+    /// Re-runs every `observe` query. The app calls it when it comes to the foreground: the
+    /// share extension writes the same file from its own process, and those writes never fire
+    /// this process's `didChange`.
+    func refreshObservers() {
+        queue.async { self.didChange.send(()) }
     }
 
     // MARK: - Access
@@ -118,6 +137,10 @@ final class AppDatabase: @unchecked Sendable {
         }
         for version in current..<migrations.count {
             try db.transaction {
+                // Re-read under the write lock (BEGIN IMMEDIATE): the app and the share
+                // extension can open a new file at the same moment, and the second must not
+                // rerun a migration the first has just committed.
+                guard try db.queryOne("PRAGMA user_version", map: { $0.int(0) }) == version else { return }
                 try migrations[version](db)
                 try db.execute("PRAGMA user_version = \(version + 1)")
             }

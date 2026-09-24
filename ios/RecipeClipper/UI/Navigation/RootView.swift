@@ -5,6 +5,7 @@ import SwiftUI
 struct RootView: View {
     let container: AppContainer
     @Bindable var router: Router
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack(path: $router.path) {
@@ -22,6 +23,10 @@ struct RootView: View {
         }
         .tint(Palette.accentText)
         .onOpenURL { router.handle($0) }
+        // The share extension saves from its own process; catch up on coming back.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { container.refreshAfterExternalChanges() }
+        }
         #if DEBUG
         .task { if router.path.isEmpty { router.path = DebugLaunch.initialPath } }
         #endif

@@ -34,7 +34,7 @@ offline; the microdata fallback. iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
 background timer alerts (#10), Reddit (#11), other languages (#13–#16), the
-three-option unit menu (#17), release setup (#18–#22).
+three-option unit menu (#17), release setup (#18, #20–#22).
 
 ## Commands
 
@@ -112,7 +112,8 @@ then upsert with no list membership).
 Decisions, not suggestions. Don't relitigate them in code.
 
 - **Capture is frictionless.** Sharing a link parses and shows it. No save
-  prompt.
+  prompt. On iOS the share extension parses and saves it, then shows a small
+  "Saved" card that dismisses itself; the recipe tops "Continue cooking".
 - **History is automatic,** newest first, capped at the 50 most recently
   viewed.
 - **Lists are deliberate:** adding to one is an explicit second act.
@@ -187,7 +188,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   `recipe_list_cross_ref` (cascading). The schema is exported to
   `app/schemas/`: commit it. **Never use destructive migration**, and give
   every migration a `MigrationTest`. iOS mirrors the schema in SQLite, with
-  `PRAGMA user_version` migrations.
+  `PRAGMA user_version` migrations, in the App Group container that the share
+  extension writes to as well.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
   strips only `utm_*`, known click ids (`fbclid`, `gclid`, …) and the
   `#fragment`, lowercases the scheme and host, upgrades `http` to `https`,
@@ -354,8 +356,10 @@ Each one exists to avoid showing a confident wrong number.
 - **Timers are less broken than they look.** Deadlines are wall-clock and
   recomputed on each tick, so elapsed time survives a pause; only the
   background alert is unreliable (#10).
-- **The iOS share extension opens the app through an unsupported
-  workaround** (#19).
+- **The iOS share extension imports and saves by itself, in its own
+  process** (it can't open the app). The app's observers never see those
+  writes, so the app re-queries when it becomes active. Anything new that
+  holds recipe data in memory must catch up the same way.
 
 ## Deliberately deferred
 

@@ -20,7 +20,10 @@ xcodebuild ... test -only-testing:RecipeClipperUITests    # end-to-end, offline,
 ```
 
 Targets: `RecipeClipper` (app), `RecipeClipperShare` (share extension, embedded in the app),
-`RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest).
+`RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest). The extension
+compiles the app's `Data/`, `ShareImport/`, `UI/Theme/` and `UI/Common/Components.swift`
+itself (dual target membership in `project.yml`), so a file added there must build in an
+extension: no `UIApplication.shared`.
 
 **Never run two test sessions on one simulator.** The unit tests are hosted in the app, and
 a run that finishes (or starts) closes that app on its simulator, killing whatever the other
@@ -59,7 +62,7 @@ in-memory database and a throwaway defaults suite, so tests never touch real dat
 | Room (`RecipeDao`, `ListDao`, migrations) | SQLite via the system `SQLite3` module (`Data/Local/`), `PRAGMA user_version` migrations |
 | SharedPreferences (`unit_preferences`) | `UserDefaults`, same key names and enum spellings |
 | Jsoup fetch + `JsonLdRecipeParser` | `URLSession` (`BlogRecipeSource`) + the same parser, with a hand-written Jsoup-compatible `stripHtml` |
-| `ACTION_SEND` share target | `RecipeClipperShare` extension → `recipeclipper://import?url=…` → `.onOpenURL` |
+| `ACTION_SEND` share target | `RecipeClipperShare` extension, which imports and saves itself (`ShareImport/`) |
 | Navigation Compose routes | `NavigationStack` + `Route` enum (`UI/Navigation`) |
 | `strings.xml` | `UI/Theme/Strings.swift` |
 | `Theme.kt` | `UI/Theme/Theme.swift` (same tokens; Fraunces/Karla bundled) |
@@ -77,11 +80,31 @@ tests (in-memory SQLite in the simulator), not device tests.
 
 ## Platform differences worth knowing
 
-- **Share extension → app.** iOS has no supported way for a share extension to open its
-  host app; the extension walks the responder chain to `UIApplication.open` (iOS 18+) or
-  `openURL:` (iOS 17). If Apple closes that path, the fallback is an App Group plus doing
-  the import inside the extension. It is also an App Review risk. The plan to replace it
-  before the App Store is issue #19.
+- **The share extension imports by itself.** iOS has no supported way for a share extension
+  to open its app (the responder-chain `openURL` trick this replaced was an App Review risk
+  and already broke once, in iOS 18). So the extension runs the same
+  `DefaultRecipeRepository.importFromUrl` as the app, with the same cleaning, upsert, cull,
+  retry and "a cancelled import writes nothing" rules. `ShareImportViewModel` drives a small
+  card: Getting the recipe…, then Saved with the title (it dismisses itself after 2.5 s),
+  or the error with Try again. That's one tap more than Android, where sharing opens the
+  recipe. The user opens the app and the recipe is at the top of "Continue cooking".
+  - **App Group `group.com.liberopat.recipeclipper`** holds the database
+    (`recipe_clipper.sqlite`) and the settings suite. Its identifier is in
+    `Data/Local/AppGroup.swift` and in both targets' `entitlements` in `project.yml`, which
+    must agree. Simulator builds get the container without a development team (the
+    entitlements are embedded in the simulator binary, and `SharedDatabaseTests` checks
+    this). A device build needs the group registered on both App IDs (docs/release.md). If
+    the container is missing, the app falls back to its own Application Support and the
+    extension shows "Couldn't save that recipe."
+  - **Two processes, one file.** WAL plus `busy_timeout` let both write. Migrations re-read
+    `user_version` inside their `BEGIN IMMEDIATE`, so two opens of a new file don't both
+    create it. The app's publishers re-query only on its own writes, so `RootView` calls
+    `AppContainer.refreshAfterExternalChanges()` whenever the scene becomes active.
+  - **Memory.** Extensions get far less than apps (about 120 MB for a share extension,
+    undocumented). Debug builds log the footprint and its peak (Console.app, subsystem
+    `com.liberopat.recipeclipper`, category `share`). Measurements are in docs/testing.md.
+  - The `recipeclipper://import?url=…` scheme and `.onOpenURL` stay, as an entry point for
+    Shortcuts and links.
 - **Timer alarm** plays through the silent switch (`.playback` audio session, ducking other
   audio), matching Android's alarm stream and the Clock app. Background alerts are still
   to do (issue #10); on iOS the natural fix is a local notification scheduled
