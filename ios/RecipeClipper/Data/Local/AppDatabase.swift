@@ -139,6 +139,7 @@ final class AppDatabase: @unchecked Sendable {
         addNotes,
         addUids,
         addLanguage,
+        addCookState,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -240,6 +241,14 @@ final class AppDatabase: @unchecked Sendable {
     /// words when shown. A re-share fills it in.
     private static func addLanguage(_ db: SQLiteConnection) throws {
         try db.execute("ALTER TABLE recipes ADD COLUMN language TEXT")
+    }
+
+    /// Version 5 (Android's Room version 6, `MIGRATION_5_6`): saved cook progress and the chosen
+    /// servings (#10). Both nullable with no default: an existing recipe has no cook in
+    /// progress and uses its own yield.
+    private static func addCookState(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN cookState TEXT")
+        try db.execute("ALTER TABLE recipes ADD COLUMN servingsTarget INTEGER")
     }
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its

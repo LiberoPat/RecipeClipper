@@ -31,7 +31,7 @@ final class RecipeDaoTests: XCTestCase {
     func testSchemaVersionIsRecorded() async throws {
         let version = try await db.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
         XCTAssertEqual(version, AppDatabase.schemaVersion)
-        XCTAssertEqual(AppDatabase.schemaVersion, 4)
+        XCTAssertEqual(AppDatabase.schemaVersion, 5)
     }
 
     /// Version 2 adds the personal note (and version 3 the uids). A version-1 file, built by the real version-1
@@ -154,7 +154,7 @@ final class RecipeDaoTests: XCTestCase {
 
         let migrated = try AppDatabase(path: path)
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
-        XCTAssertEqual(version, 4)
+        XCTAssertEqual(version, AppDatabase.schemaVersion)
         let row = try await migrated.get(7)
         XCTAssertEqual(row?.title, "Adobo")
         XCTAssertEqual(row?.checkedIngredients, [0])
@@ -179,6 +179,89 @@ final class RecipeDaoTests: XCTestCase {
         await repo.restore(try XCTUnwrap(deleted))
         let restored = try await db.get(id)?.uid
         XCTAssertEqual(restored, uid)
+    }
+
+    /// Version 5 adds saved cook progress and the chosen servings (Android's MIGRATION_5_6). A
+    /// version-4 file opens with its recipe, uid, language, note, ticks and membership intact and neither.
+    func testAVersion4DatabaseMigratesToVersion5KeepingItsData() async throws {
+        let path = NSTemporaryDirectory() + "rc-\(UUID().uuidString).sqlite"
+        defer {
+            for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) }
+        }
+        do {
+            let old = try SQLiteConnection(path: path)
+            try old.execute("PRAGMA foreign_keys = ON")
+            try AppDatabase.migrate(old, upTo: 4)
+            try old.run(
+                """
+                INSERT INTO recipes (id, sourceUrl, title, imageUrl, ingredients, instructions,
+                    prepTime, cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language)
+                VALUES (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]', '["Simmer."]',
+                    NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt', 'recipe-uid', 'en')
+                """
+            )
+            try old.run("INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (7, 1, 5)")
+        }
+
+        let migrated = try AppDatabase(path: path)
+
+        let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
+        XCTAssertEqual(version, 5)
+        let row = try await migrated.get(7)
+        XCTAssertEqual(row?.title, "Adobo")
+        XCTAssertEqual(row?.checkedIngredients, [0])
+        XCTAssertEqual(row?.notes, "Less salt")
+        XCTAssertEqual(row?.uid, "recipe-uid")
+        XCTAssertEqual(row?.language, "en")
+        XCTAssertNil(row?.cookState)
+        XCTAssertNil(row?.servingsTarget)
+        let refs = try await migrated.crossRefs(7)
+        XCTAssertEqual(refs.map(\.listId), [1])
+
+        try await migrated.write { try RecipeDao(db: $0).setServingsTarget(7, target: 6) }
+        let target = try await migrated.get(7)?.servingsTarget
+        XCTAssertEqual(target, 6)
+    }
+
+    private let cookJSON = #"{"active":true,"currentStep":1,"doneSteps":[0],"timers":[]}"#
+
+    func testCookStateAndServingsSurviveAReShareWithTheSameSteps() async throws {
+        let id = try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 100))
+        try await db.write { conn in
+            try RecipeDao(db: conn).setCookState(id, cookState: self.cookJSON)
+            try RecipeDao(db: conn).setServingsTarget(id, target: 8)
+        }
+
+        try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 900, title: "New title"))
+
+        let row = try await db.get(id)
+        XCTAssertEqual(row?.cookState, cookJSON)
+        XCTAssertEqual(row?.servingsTarget, 8)
+    }
+
+    func testCookStateIsDroppedWhenTheStepsChangeButServingsAreKept() async throws {
+        let id = try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 100))
+        try await db.write { conn in
+            try RecipeDao(db: conn).setCookState(id, cookState: self.cookJSON)
+            try RecipeDao(db: conn).setServingsTarget(id, target: 8)
+        }
+
+        var changed = dataRecipeRecord("https://a.com/1", viewedAt: 900)
+        changed.instructions = ["Stir.", "Chill."]
+        try await db.upsert(changed)
+
+        let row = try await db.get(id)
+        XCTAssertNil(row?.cookState) // step indexes would point at different steps
+        XCTAssertEqual(row?.servingsTarget, 8)
+    }
+
+    func testCookStatesListsOnlyRecipesWithCookProgress() async throws {
+        let cooking = try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 100))
+        try await db.upsert(dataRecipeRecord("https://a.com/2", viewedAt: 200))
+        try await db.write { try RecipeDao(db: $0).setCookState(cooking, cookState: self.cookJSON) }
+
+        let rows = try await db.read { try RecipeDao(db: $0).cookStates() }
+        XCTAssertEqual(rows, [CookStateRecord(id: cooking, title: "Recipe https://a.com/1", cookState: cookJSON)])
     }
 
     func testReopeningAFileDatabaseKeepsItsDataAndDoesNotReseed() async throws {

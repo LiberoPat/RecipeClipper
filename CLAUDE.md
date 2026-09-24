@@ -39,14 +39,14 @@ fix it in place rather than appending an update.
 Built on both platforms: share → parse → show; automatic history (capped at
 50, searchable, delete with undo); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
-timers (in memory); sharing a recipe out as text; failure handling and
-offline; the microdata fallback; a personal note per recipe; export and
-import of everything as one JSON file (Settings); the UI in English,
-Spanish, French, German, Italian and Brazilian Portuguese (drafts awaiting a
-native speaker: `docs/translations.md`). iOS also honours Dynamic Type.
+timers, with cook progress and servings saved and background timer alerts;
+sharing a recipe out as text; failure handling and offline; the microdata
+fallback; a personal note per recipe; export and import of everything as one
+JSON file (Settings); the UI in English, Spanish, French, German, Italian and
+Brazilian Portuguese (drafts awaiting a native speaker:
+`docs/translations.md`). iOS also honours Dynamic Type.
 
-Not built, all tracked as issues: saved cook progress and servings with
-background timer alerts (#10), Reddit (#11), reading recipes in other
+Not built, all tracked as issues: Reddit (#11), reading recipes in other
 languages (#12, #14–#16), release setup (#18, #20–#22).
 
 ## Commands
@@ -81,7 +81,7 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 ## Where things are (Android)
 
 ```
-MainActivity   share intent → queued → navigated once the NavHost exists
+MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
 di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule
 data/          RecipeRepository, ListRepository (interfaces; Default* are the Room-backed ones),
                Connectivity, ErrorLog, Clock (seams for tests)
@@ -94,11 +94,13 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
+timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
 ```
 
 Routes: `home`, `history`, `settings`, `lists`, `lists/{listId}`,
-`recipe/{recipeId}`, and `recipe/import?url={url}` (the share target: parse,
-then upsert with no list membership).
+`recipe/{recipeId}?cook={cook}` (`cook=true` from a timer notification opens
+cook mode), and `recipe/import?url={url}` (the share target: parse, then
+upsert with no list membership).
 
 ## Conventions
 
@@ -216,11 +218,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 5** (iOS `user_version` 4):
-  `recipes` (with nullable `notes` and `language`), `lists` and `recipe_list_cross_ref`
-  (cascading). Recipes and lists carry a unique, never-changing `uid`: what
-  an export file calls them. The schema is exported to `app/schemas/`: commit it. **Never
-  use destructive migration**, and give every migration a `MigrationTest`.
+- Room database `recipe_clipper.db`, **version 6** (iOS `user_version` 5):
+  `recipes` (with nullable `notes`, `language`, `cookState` and
+  `servingsTarget`), `lists` and `recipe_list_cross_ref` (cascading). Recipes
+  and lists carry a unique, never-changing `uid`: what an export file calls
+  them. The schema is exported to `app/schemas/`: commit it. **Never use
+  destructive migration**, and give every migration a `MigrationTest`.
   iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations, in
   the App Group container that the share extension writes to as well.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
@@ -228,10 +231,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   `#fragment`, lowercases the scheme and host, upgrades `http` to `https`,
   and keeps every other parameter in order. Add a name only when you're sure
   it's tracking.
-- **Re-sharing upserts:** same id, list membership and note, refreshed
-  content, bumped `lastViewedAt`, ticked ingredients kept only if the
-  ingredient list is unchanged. In the same transaction, recipes in no list beyond the 50
-  most recently viewed are deleted. Opening from history counts as a view.
+- **Re-sharing upserts:** same id, list membership, note and chosen servings,
+  refreshed content, bumped `lastViewedAt`, ticked ingredients kept only if
+  the ingredient list is unchanged, cook progress only if the steps are. In
+  the same transaction, recipes in no list beyond the 50 most recently viewed
+  are deleted. Opening from history counts as a view.
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
   needs a migration (as `MIGRATION_1_2` did).
@@ -265,7 +269,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. History search ignores notes. Cook
-  progress, timers and the chosen servings are in memory only (#10).
+  progress (`cookState`, JSON: step, done steps, timers) and the chosen
+  servings are written on every action, in order, through one queue; a
+  running timer is saved by its deadline, so ticks never write.
 
 ## Failure handling
 
@@ -418,9 +424,11 @@ Each one exists to avoid showing a confident wrong number.
   `FileNotFoundException` there means a missing file, not a broken migration.
 - **`org.json` is an Android framework class,** so JVM tests need
   `org.json:json` as a test dependency.
-- **Timers are less broken than they look.** Deadlines are wall-clock and
-  recomputed on each tick, so elapsed time survives a pause; only the
-  background alert is unreliable (#10).
+- **Timer alerts:** Android uses `setAlarmClock()` only when exact alarms are
+  allowed (API 31+ needs `SCHEDULE_EXACT_ALARM`, which Android 14 denies by
+  default), else `setAndAllowWhileIdle()`, which can be minutes late. No
+  Settings prompt, by decision. The receiver re-checks the database, so a
+  reset or deleted timer never rings. Details in `docs/decisions.md`.
 - **The iOS share extension imports and saves by itself, in its own
   process** (it can't open the app). The app's observers never see those
   writes, so the app re-queries when it becomes active. Anything new that

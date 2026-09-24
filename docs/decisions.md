@@ -59,7 +59,7 @@ Exists today:
   `temperatureUnit` and `darkWhileCooking`; `SharedPrefsAppPreferences` stores
   each enum by name under its own key (`temperature_unit` for the newest one),
   same pattern as `unitSystem`.
-- Room (`data/local/`): database `recipe_clipper.db`, **version 2**, with the
+- Room (`data/local/`): database `recipe_clipper.db`, **version 6**, with the
   three tables from the schema section (named `recipes`, `lists`,
   `recipe_list_cross_ref`). The schema is exported to `app/schemas/`; commit
   it, it is what future migrations are written against, and never use
@@ -126,8 +126,9 @@ Exists today:
   seen once shows offline, as Coil's do on Android.
 - `di/` — `DatabaseModule` (Room and the DAOs) and `SourceModule` (remote
   sources; the Reddit one joins in phase 4).
-- Cook mode is in memory only: progress and timers survive rotation and leaving
-  cook mode but not the app being closed. Ticked ingredients do persist.
+- Cook progress, timers and the chosen servings are saved as they change and
+  survive the app being closed or killed (#10; see "Background timers and
+  saved cook progress").
   `data/model/StepTimers` finds the duration a step states (lower bound of a
   range, null if none); the ViewModel runs the countdowns against wall-clock
   deadlines, several at once, and `TimerAlerts` plays three beeps on the alarm
@@ -696,7 +697,7 @@ com.example.recipeclipper/
 │   ├── RepositoryModule.kt         @Binds the repositories and AppPreferences
 │   ├── SourceModule.kt             remote sources
 │   ├── ClockModule.kt              the real Clock
-│   └── PlatformModule.kt           Connectivity and ErrorLog
+│   └── PlatformModule.kt           Connectivity, ErrorLog, TimerAlarmScheduler
 ├── data/
 │   ├── Connectivity.kt             online state; AndroidConnectivity is the real one
 │   ├── ErrorLog.kt                 where swallowed database errors are logged
@@ -777,7 +778,7 @@ markup, which an earlier note here had missed.
 
 ## Build order (history)
 
-The remaining work in phases 3 and 4 is tracked as issues #10 and #11.
+The remaining work in phase 4 is tracked as issue #11.
 
 1. **MVVM refactor, no new features.** Move current logic into ViewModel +
    repository. Done when: share flow behaves identically AND rotating
@@ -789,8 +790,8 @@ The remaining work in phases 3 and 4 is tracked as issues #10 and #11.
    mode lands here too — it's a state on the recipe screen, and both it and
    list membership depend on the same persisted recipe. (An in-memory version
    already exists; see Current state. What phase 3 adds is persisting it.)
-   **Still to do in this phase:** persisted cook-mode progress, persisted
-   servings, and background timers.
+   Persisted cook-mode progress, persisted servings and background timers
+   are done too (#10).
    **Background timers land here too, deliberately**, not before. An alarm
    that fires after the process has been killed would otherwise notify about
    a timer the app has no record of, so a background alert needs running
@@ -874,33 +875,70 @@ parsers (JSON-LD, then microdata).
   whose recipe data appears only after JavaScript runs, and on one that
   blocks the plain fetch.
 
-## Background timers: what works and what doesn't
+## Background timers and saved cook progress (#10)
 
-The fix is issue #10.
+Built on both platforms. Before this, cook progress, timers and the chosen
+servings were in memory only, and a timer's alert depended on the process
+surviving: under Doze or a low-memory kill the beep never came, and when it
+did there was nothing to tap.
 
-- **Cook-mode timers in the background.** Less is broken here than it looks,
-  so be precise before "fixing" it. Deadlines are wall-clock
-  (`clock.now() + ms`) and the tick loop recomputes remaining time from
-  `clock.now()` rather than decrementing, so elapsed time is already correct
-  across a pause — freeze the app for three minutes and it shows the right
-  number on return. Cook mode also holds `FLAG_KEEP_SCREEN_ON`, so the case
-  this app is built around (phone propped on the counter, app in front)
-  works today. What is unreliable is the *alert*: the tick job runs in
-  `viewModelScope`, so while the app is merely stopped the process often
-  survives and the beep fires, but under Doze or a low-memory kill it
-  doesn't — unreliable rather than cleanly broken, which is worse, because
-  you can't learn whether to trust it. And when it does fire there is no
-  notification, so it's three beeps from nowhere with nothing to tap.
-  The intended fix (phase 3) is `AlarmManager.setAlarmClock()` plus a
-  notification, **not** `setExactAndAllowWhileIdle`: `setAlarmClock` is
-  Doze-exempt and needs no special permission, which sidesteps the
-  `SCHEDULE_EXACT_ALARM` / Play-policy question entirely, at the cost of an
-  alarm icon in the status bar — honest, since there really is a pending
-  alarm. It still needs `POST_NOTIFICATIONS` on API 33+, which would be the
-  app's first runtime permission prompt. A foreground service with a live
-  countdown notification was the considered alternative; rejected for now as
-  a permanent notification plus a `FOREGROUND_SERVICE_*` type declaration
-  that Play reviews.
+- **What is saved.** Two nullable columns on `recipes` (Room version 6, iOS
+  `user_version` 5): `cookState`, a JSON `CookProgress` (cook mode on, current
+  step, done steps, and each timer's total, remaining seconds and, while it
+  runs, its wall-clock deadline `endsAt`), and `servingsTarget` (null = the
+  recipe's own yield). One column rather than a timers table, so undo-delete
+  and the re-share upsert carry it with the row. `ingredientsExpanded` and
+  `alerted` are screen state and aren't saved.
+- **Every cook action writes, in order.** Start, exit, select, done, and
+  timer start, pause, resume and reset each save the whole `CookProgress`
+  through one queue (Android: a queue drained by one job, each write
+  `NonCancellable`, drained again in `onCleared`; iOS: a chain of tasks that
+  hold the repository, not the ViewModel), so rapid taps can't land out of
+  order and a tap just before leaving still lands. A running timer is saved
+  by its deadline, so ticks never write. A `Channel` was tried first: it
+  drops an element handed to a receiver that is cancelled before running,
+  which is exactly the last tap before leaving.
+- **Re-share.** Cook progress is kept only if the steps are unchanged (its
+  indexes point into them, like ticked ingredients); the chosen servings are
+  always kept.
+- **Restoring.** On opening, a timer whose deadline is still ahead resumes
+  from it (it kept counting while closed) and its alarm is rescheduled,
+  which also recovers one lost to a force-stop. One whose deadline passed
+  shows finished and already alerted: the background alert announced it, so
+  no stale beep on reopening. Indexes past the last step are dropped.
+- **Android alert.** One `AlarmManager` alarm per running timer
+  (`timers/AndroidTimerAlarmScheduler`), to `TimerAlarmReceiver`, which posts
+  a notification (channel "Cook timers", category alarm; a tap opens the
+  recipe in cook mode through `recipe/{id}?cook=true`) only if the database
+  still has that timer running with that deadline, so a reset timer, a
+  deleted recipe or a re-share that changed the steps never rings, and only
+  if that recipe isn't on screen, where the in-app beep sounds instead. A
+  timer that reaches zero in the app keeps its alarm, since cancelling would
+  only race it. `TimerBootReceiver` reschedules after a reboot or an app
+  update.
+- **Exact alarms: `setAlarmClock()` when allowed, else
+  `setAndAllowWhileIdle()`. No Settings prompt (owner's decision).** Issue #10
+  assumed `setAlarmClock()` needs no permission. It does: apps targeting API
+  31+ need `SCHEDULE_EXACT_ALARM`, and for apps targeting 33+ Android 14
+  denies it by default until the user allows "Alarms & reminders". So the
+  alert is exact on Android 7–13, and on 14+ only if the user has allowed it
+  (also the status-bar alarm icon then). Otherwise it is inexact, still fires
+  in Doze, and can be minutes late. `USE_EXACT_ALARM` is Play-restricted to
+  alarm and calendar apps and isn't used. A foreground service with a live
+  countdown was the alternative; rejected as a permanent notification plus a
+  `FOREGROUND_SERVICE_*` type that Play reviews.
+- **Notification permission.** `POST_NOTIFICATIONS` (API 33+) is asked the
+  first time a timer starts, once (remembered in its own preferences file,
+  `permission_prompts`). Refused, the timer still runs and the in-app beep
+  still sounds while the recipe is open. On iOS, notification authorisation
+  is asked on the first timer start in the same way.
+- **iOS alert.** A local notification per running timer at its deadline
+  (`NotificationTimerScheduler`). With no receiver to re-check the database,
+  opening a recipe replaces all its pending alerts with its running timers',
+  and pause, reset and delete remove them. `NotificationRouter` opens cook
+  mode on a tap and suppresses the banner while that recipe is on screen.
+  Known gap: deleting a recipe from History with a timer running leaves its
+  pending notification.
 
 ## iOS: importing inside the share extension (#19)
 

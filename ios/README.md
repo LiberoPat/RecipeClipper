@@ -111,9 +111,11 @@ tests (in-memory SQLite in the simulator), not device tests.
   - The `recipeclipper://import?url=…` scheme and `.onOpenURL` stay, as an entry point for
     Shortcuts and links.
 - **Timer alarm** plays through the silent switch (`.playback` audio session, ducking other
-  audio), matching Android's alarm stream and the Clock app. Background alerts are still
-  to do (issue #10); on iOS the natural fix is a local notification scheduled
-  at the deadline.
+  audio), matching Android's alarm stream and the Clock app. The background alert is a local
+  notification at each running timer's deadline (`NotificationTimerScheduler`; issue #10):
+  authorisation is asked on the first timer start, and `NotificationRouter` (the center's
+  delegate, set in `RecipeClipperApp.init`) opens cook mode on a tap. Under XCTest and
+  UI-test seeding the container uses `NoOpTimerAlarmScheduler`, so tests never prompt.
 - **History delete** uses the native row swipe action rather than Android's swipe-away row;
   undo is the same batched, all-or-nothing snackbar.
 - **Forced-dark cook mode** also sets `preferredColorScheme(.dark)` so the status bar stays

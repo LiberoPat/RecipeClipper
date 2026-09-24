@@ -66,11 +66,17 @@ struct RecipeScreen: View {
         }
         .timerAlerts(state.cook.timers, onAlerted: vm.onTimerAlerted)
         .task(id: recipeId) {
-            if let recipeId { saveVM.setRecipe(recipeId) }
+            if let recipeId {
+                saveVM.setRecipe(recipeId)
+                VisibleRecipe.id = recipeId
+            }
             #if DEBUG
             if recipeId != nil, DebugLaunch.autoCook { vm.onCookStart() }
             #endif
         }
+        // While this recipe is on screen its timers beep here instead of showing a banner.
+        .onAppear { if let recipeId { VisibleRecipe.id = recipeId } }
+        .onDisappear { if let recipeId { VisibleRecipe.clear(recipeId) } }
         // The recipe is gone the moment the delete lands; leave the screen.
         .onChange(of: state.deleted) { _, deleted in
             if deleted { dismiss() }

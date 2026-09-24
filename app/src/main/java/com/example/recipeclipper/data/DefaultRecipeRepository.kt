@@ -1,10 +1,13 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.local.CookStateJson
 import com.example.recipeclipper.data.local.dao.RecipeDao
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.UrlCleaner
 import com.example.recipeclipper.data.remote.BlogRecipeSource
 import com.example.recipeclipper.data.remote.RecipeSource
@@ -23,8 +26,8 @@ import javax.inject.Singleton
  *
  * Database failures never escape: each call runs through [ErrorLog.guard], is logged, and
  * degrades to what the contract already allows — `Error(SaveFailed)` from an import, null from
- * [open] and [delete], nothing from [setChecked], [setNotes] and
- * [restore], an empty list from a Flow —
+ * [open] and [delete], nothing from [setChecked], [setNotes], [setCookProgress],
+ * [setServingsTarget] and [restore], none from [runningTimers], an empty list from a Flow —
  * rather than crashing `viewModelScope`. The iOS repository does the same.
  */
 @Singleton
@@ -101,6 +104,20 @@ class DefaultRecipeRepository @Inject constructor(
 
     override suspend fun setNotes(id: Long, notes: String) =
         log.guard("setNotes", Unit) { recipeDao.setNotes(id, notes.takeIf { it.isNotBlank() }) }
+
+    override suspend fun setCookProgress(id: Long, progress: CookProgress) =
+        log.guard("setCookProgress", Unit) { recipeDao.setCookState(id, CookStateJson.encode(progress)) }
+
+    override suspend fun setServingsTarget(id: Long, target: Int?) =
+        log.guard("setServingsTarget", Unit) { recipeDao.setServingsTarget(id, target) }
+
+    override suspend fun runningTimers(): List<StepAlarm> = log.guard("runningTimers", emptyList()) {
+        recipeDao.cookStates().flatMap { row ->
+            CookStateJson.decode(row.cookState).timers.mapNotNull { (step, timer) ->
+                timer.endsAt?.let { StepAlarm(row.id, row.title, step, it) }
+            }
+        }
+    }
 
     override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? = log.guard("delete", null) {
         val entity = recipeDao.get(id) ?: return@guard null
