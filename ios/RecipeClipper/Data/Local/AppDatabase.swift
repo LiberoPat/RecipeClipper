@@ -33,7 +33,19 @@ final class AppDatabase: @unchecked Sendable {
             // The share extension opens this file from its own process, so wait out the other
             // side's lock (set first: switching to WAL takes a lock too) rather than failing.
             try connection.execute("PRAGMA busy_timeout = 5000")
-            _ = try connection.query("PRAGMA journal_mode = WAL") { $0.optionalString(0) }
+            // Switching to WAL needs an exclusive lock, and SQLite reports that as busy at
+            // once, without the busy handler, when the other process is opening the file too.
+            // So retry it (up to ~5 s, like the timeout); once the file is WAL it's a no-op.
+            var attempt = 0
+            while true {
+                do {
+                    _ = try connection.query("PRAGMA journal_mode = WAL") { $0.optionalString(0) }
+                    break
+                } catch let error as SQLiteError where (error.code & 0xFF) == SQLITE_BUSY && attempt < 100 {
+                    attempt += 1
+                    Thread.sleep(forTimeInterval: 0.05)
+                }
+            }
         }
         try Self.migrate(connection)
     }
