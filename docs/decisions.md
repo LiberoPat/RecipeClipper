@@ -999,10 +999,14 @@ read with its own language's tables only.
   caches each parser's compiled patterns per language. Every parser takes a
   `words` argument defaulting to English, so the differential corpus and every
   English caller are byte-for-byte unchanged; nil means "no words".
-- New tables: `amounts.json` (compound joiners, size words), `durations.json`
+- New tables: `amounts.json` (mixed-number joiners, "2 and 1/2", which make
+  the quantity pattern itself per language; compound joiners; size words),
+  `durations.json`
   (phrase times and the "h"/"m" written back), `language.json` (detection
   words); `timers.json` gained each unit's button label. Symbols (dashes,
-  degree signs, `%`, `cm`/`mm`, `+`) stay in the code.
+  degree signs, `%`, `cm`/`mm`, `+`, the fraction slash `⁄`) stay in the code.
+  `IngredientScaler.parse` holds no words: it drops whatever word the language's
+  quantity pattern already allowed between the whole number and the fraction.
 - An empty word list never matches (`SharedTables.alternation` gives `(?!)`),
   so a language that lacks, say, range words can't turn an empty alternative
   into a match everywhere.
