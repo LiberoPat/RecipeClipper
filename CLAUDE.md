@@ -180,10 +180,9 @@ Exists today:
   (no Markdown: it lands in SMS/WhatsApp/Mail, which don't render it). The
   source link is deliberately left out, on both platforms: what's shared is
   the recipe as clipped, not a pointer back to the page it came from. It
-  takes the already-rendered ingredient/instruction strings plus base/target
-  servings as two `Int?` (not `ServingsScale`, which lives in
-  `ui/recipe/RecipeViewModel.kt` — a data-layer file can't depend on a UI
-  one), so no scaling/conversion logic is duplicated. `RecipeViewModel.shareText()`
+  takes the already-rendered ingredient/instruction strings plus a
+  `ServingsScale?` (a `data/model` type; see the layering-cleanup notes
+  below), so no scaling/conversion logic is duplicated. `RecipeViewModel.shareText()`
   returns the formatted string only; `RecipeScreen` builds and fires the
   `ACTION_SEND` Intent via `ShareCompat.IntentBuilder`, since the ViewModel
   may not touch `Context`. The share icon sits beside Back in the reading
@@ -366,13 +365,14 @@ Layering cleanup + first ViewModel tests (not in the original build order):
   lets a ViewModel test's virtual time and a timer's wall-clock deadline agree.
 - `RecipeRepository` is now an interface (`data/RecipeRepository.kt`); the real,
   Room-backed implementation is `DefaultRecipeRepository`, bound with `@Binds` in
-  `di/RepositoryModule`. `UnitPreferences` is likewise an interface, with
-  `SharedPrefsUnitPreferences` (the one class holding a `Context`) as the real
+  `di/RepositoryModule`. `AppPreferences` is likewise an interface, with
+  `SharedPrefsAppPreferences` (the one class holding a `Context`) as the real
   implementation, bound in the same module. `app/src/test/.../fake/` holds
-  `FakeRecipeRepository` (history/recent/recently-saved as in-memory
+  `FakeRecipeRepository` (history and recent as in-memory
   `MutableStateFlow`s; `importFromUrl`/`open` return whatever a test stages;
-  `setChecked`/`delete`/`restore` calls are recorded for assertions) and
-  `FakeUnitPreferences` (two plain `var`s). Hand-written, not mocks — CLAUDE.md's
+  `setChecked`/`delete`/`restore` calls are recorded for assertions),
+  `FakeAppPreferences` (plain `var`s), `FakeListRepository` and
+  `FakeConnectivity`. Hand-written, not mocks — CLAUDE.md's
   now-satisfied condition for this was "when ViewModel unit tests are actually
   being written".
 - `RecipeViewModelTest`, `HistoryViewModelTest` and `HomeViewModelTest` are the
@@ -578,9 +578,13 @@ Three things that cost real time and will again:
   every `SemanticsProperties.Text` in the tree — before changing production
   code.
 
-Still untested on any surface: the recipe screen itself (reading and cook
+Still without Android UI tests: the recipe screen itself (reading and cook
 views, the bookmark icon, share), History (search, swipe-to-dismiss, the undo
-snackbar), the Lists screen, and the Settings screen.
+snackbar), the Lists screen, and the Settings screen. The iOS UI tests
+(`ios/RecipeClipperUITests`, 61 tests) do cover Home, History (search,
+swipe-to-delete, the batched undo), Settings, list detail, the save-to-list
+sheet with the bookmark it fills, and the import error screens. Cook mode and
+sharing have no UI tests on either platform.
 
 Two dependency versions are pinned on purpose: `navigation-compose` 2.7.7 and
 `hilt-navigation-compose` 1.2.0. The newest releases need a newer Compose than
@@ -624,22 +628,33 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 finishes, so run `installDebug` again afterwards. It also **destroys whatever
 is in the database**, which matters if the emulator holds recipes someone
 cares about or a database at an older version you wanted to migrate for real.
-Back it up first and put it back after (this round-trip has been used and
-works):
+The uninstall takes the unit settings (`shared_prefs`) with it too. Back both
+up first and put them back after (this round-trip has been used and works):
 
 ```
-B=/tmp/recipe-backup && mkdir -p $B
-adb exec-out run-as com.example.recipeclipper cat databases/recipe_clipper.db > $B/db
+B=/tmp/recipe-backup && mkdir -p $B && P=com.example.recipeclipper
+for f in recipe_clipper.db recipe_clipper.db-wal recipe_clipper.db-shm; do
+  adb exec-out run-as $P cat databases/$f > $B/$f
+done
+adb exec-out run-as $P cat shared_prefs/unit_preferences.xml > $B/unit_preferences.xml
+# Merge the -wal into the copy, leaving one self-contained file.
+sqlite3 $B/recipe_clipper.db "PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;"
 # ... run the tests, then installDebug ...
-adb push $B/db /data/local/tmp/db
-adb shell "run-as com.example.recipeclipper sh -c 'cat /data/local/tmp/db > databases/recipe_clipper.db'"
-adb shell "run-as com.example.recipeclipper rm -f databases/recipe_clipper.db-wal databases/recipe_clipper.db-shm"
-adb shell rm -f /data/local/tmp/db
+adb push $B/recipe_clipper.db /data/local/tmp/db
+adb push $B/unit_preferences.xml /data/local/tmp/prefs.xml
+adb shell "run-as $P sh -c 'mkdir -p databases shared_prefs && cat /data/local/tmp/db > databases/recipe_clipper.db && rm -f databases/recipe_clipper.db-wal databases/recipe_clipper.db-shm && cat /data/local/tmp/prefs.xml > shared_prefs/unit_preferences.xml'"
+adb shell rm -f /data/local/tmp/db /data/local/tmp/prefs.xml
 ```
 
-Copy the main `.db` only. Opening the backup with `sqlite3` checkpoints the
-`-wal` into it, so pushing a stale `-wal`/`-shm` alongside is at best
-redundant; deleting them on the device lets SQLite recreate them cleanly.
+**Copy the `-wal` as well as the `.db`.** Room writes go to the `-wal` first,
+and the main file can lag hours behind: the most recent view of a recipe
+once existed only in the `-wal`, and copying the `.db` alone would have
+quietly lost it. Merge on the Mac and push the one merged file; deleting the
+device's `-wal`/`-shm` lets SQLite recreate them cleanly. Check the copies'
+sizes against `adb shell run-as $P ls -l databases` before trusting them:
+straight after an emulator restores from a snapshot, `run-as` can fail with
+`couldn't stat /data/user/0/...`, and the "backup" is then that error text
+(88 bytes). A retry a few seconds later works.
 
 A single test:
 `./gradlew testDebugUnitTest --tests "com.example.recipeclipper.data.model.IngredientScalerTest"`
@@ -779,7 +794,7 @@ unconditional inversion without asking.
 
 **Settings screen.** The toggle used to sit in the units menu because that
 dropdown was the app's only settings surface; it now lives on its own
-Settings screen (`ui/settings/`), reachable from a row on `HomeScreen`,
+Settings screen (`ui/settings/`), reachable from the gear beside the Home title,
 alongside "Also convert liquids" and the new "Oven temperature" choice. See
 "Settings screen" in the Current state section above for the full shape and
 why it's Home-only. Radio rows for exclusive choices, Switch rows for
@@ -795,8 +810,13 @@ com.example.recipeclipper/
 ├── MainActivity.kt                 @AndroidEntryPoint, NavHost, ACTION_SEND
 ├── di/
 │   ├── DatabaseModule.kt           Room db + DAOs (@Singleton)
-│   └── SourceModule.kt             remote sources
+│   ├── RepositoryModule.kt         @Binds the repositories and AppPreferences
+│   ├── SourceModule.kt             remote sources
+│   ├── ClockModule.kt              the real Clock
+│   └── PlatformModule.kt           Connectivity and ErrorLog
 ├── data/
+│   ├── Connectivity.kt             online state; AndroidConnectivity is the real one
+│   ├── ErrorLog.kt                 where swallowed database errors are logged
 │   ├── local/
 │   │   ├── RecipeDatabase.kt
 │   │   ├── entity/                 RecipeEntity, ListEntity, RecipeListCrossRef
@@ -1070,5 +1090,3 @@ Don't add these without a reason to revisit:
 - Ingredient quantity parsing (already built for scaling/conversion) is only
   as good as the source strings. Worth a test corpus of real ingredient lines
   across both sources before trusting it further.
-- The chosen serving size is per-recipe and not persisted yet; decide when
-  Room lands whether it should be.
