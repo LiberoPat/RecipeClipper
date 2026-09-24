@@ -55,11 +55,11 @@ final class LanguageWords: Equatable, @unchecked Sendable {
     }
 
     /// Languages with every table: their recipes are read with their own words.
-    static let shipped = ["en"]
+    static let shipped = ["en", "de", "es", "fr", "it", "pt"]
 
-    /// Languages detection can recognise: every shipped one, plus some with only
-    /// `language.json` so far, so a German page that declares `en` is recognised as German (and
-    /// shown as written) rather than read with English rules.
+    /// Languages detection can recognise: every shipped one, plus any with only `language.json`
+    /// so far, whose recipes are recognised (and shown as written) rather than read with another
+    /// language's rules.
     static let detected = ["en", "de", "es", "fr", "it", "pt"]
 
     private static let detectors: [(language: String, words: JRegex)] = detected.map { language in

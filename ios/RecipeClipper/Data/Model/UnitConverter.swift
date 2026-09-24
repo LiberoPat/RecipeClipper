@@ -35,6 +35,8 @@ enum UnitConverter {
         .flOz: 30.0,
         .ml: 1.0,
         .l: 1000.0,
+        .cl: 10.0,
+        .dl: 100.0,
     ]
 
     private static let parenAtStart = JRegex(#"^\s*\(([^)]*)\)"#)
@@ -111,25 +113,26 @@ enum UnitConverter {
         words: LanguageWords? = .english
     ) -> String {
         guard system != .asWritten, let words else { return line }
-        if IngredientScaler.ambiguousComma.containsMatch(in: line) { return line }
         let p = patterns(words)
+        if p.scaler.unreadable(line) { return line }
 
         guard let lead = p.scaler.leading.find(line) else { return line }
         let afterQty = line.u16Substring(from: lead.end)
         if p.scaler.notAnAmount.containsMatch(in: afterQty) { return line }
 
-        guard let low = IngredientScaler.parse(lead[2]) else { return line }
+        guard let low = p.scaler.parse(lead[2]) else { return line }
         let upperText = lead[4]
         var high: Double? = nil
         if !upperText.isEmpty {
-            guard let h = IngredientScaler.parse(upperText) else { return line }
+            guard let h = p.scaler.parse(upperText) else { return line }
             high = h
         }
         let amount = Amount(low: low, high: high, separator: lead[3])
 
         guard let unitMatch = p.unitAtStart.find(afterQty) else { return line }
         guard let unit = MeasureUnit.fromText(unitMatch[1], words: words) else { return line }
-        if ownUnits(system).contains(unit) { return line }
+        // A "tasse" or "Tasse" has no one size: it scales, but never converts.
+        if unit == .varies || ownUnits(system).contains(unit) { return line }
 
         var after = afterQty.u16Substring(from: unitMatch.end)
 
@@ -137,8 +140,8 @@ enum UnitConverter {
         var extra: Part? = nil
         if let c = p.continuationAtStart.find(after) {
             if amount.high != nil { return line } // a range plus a part: leave it
-            guard let unit2 = MeasureUnit.fromText(c[3], words: words) else { return line }
-            guard let quantity2 = IngredientScaler.parse(c[1]) else { return line }
+            guard let unit2 = MeasureUnit.fromText(c[3], words: words), unit2 != .varies else { return line }
+            guard let quantity2 = p.scaler.parse(c[1]) else { return line }
             extra = Part(quantity: quantity2, unit: unit2)
             after = after.u16Substring(from: c.end)
         }
@@ -148,7 +151,7 @@ enum UnitConverter {
         var siteRange: (unit: MeasureUnit, text: String)? = nil
         if extra == nil, let r = p.slashRangeAtStart.find(after) {
             guard let rangeUnit = MeasureUnit.fromText(r[5], words: words) else { return line }
-            if IngredientScaler.parse(r[1]) == nil || IngredientScaler.parse(r[3]) == nil { return line }
+            if p.scaler.parse(r[1]) == nil || p.scaler.parse(r[3]) == nil { return line }
             let value = r.value
             let slash = value.firstIndex(of: "/")!
             siteRange = (rangeUnit, String(value[value.index(after: slash)...]).kTrimmed)
@@ -182,7 +185,7 @@ enum UnitConverter {
         if let siteRange, ownUnits(system).contains(siteRange.unit) {
             let fits = asWeight
                 ? siteRange.unit.kind == .weight && !(siteRange.unit == .oz && isLiquid)
-                : siteRange.unit == .ml || siteRange.unit == .l
+                : siteRange.unit.kind == .volume && siteRange.unit.metric
             if fits { site = siteRange.text }
         }
 
@@ -201,7 +204,7 @@ enum UnitConverter {
     private static func ownUnits(_ system: UnitSystem) -> Set<MeasureUnit> {
         switch system {
         case .ounces: return [.oz, .lb]
-        case .metric: return [.g, .kg, .ml, .l]
+        case .metric: return [.g, .kg, .ml, .l, .cl, .dl]
         case .asWritten: return []
         }
     }
@@ -294,16 +297,17 @@ enum UnitConverter {
         return nil
     }
 
-    /// A weight (g, kg, oz, lb) or a metric volume (ml, l) from a "quantity unit" match.
+    /// A weight (g, kg, oz, lb) or a metric volume (ml, cl, dl, l) from a "quantity unit" match.
     private static func measureOf(_ p: Patterns, _ match: JMatch, _ kind: MeasureKind) -> Measure? {
         guard let unit = MeasureUnit.fromText(match[3], words: p.words) else { return nil }
         let wanted: Bool
         switch kind {
         case .weight: wanted = unit.kind == .weight
-        case .volume: wanted = unit == .ml || unit == .l
+        case .volume: wanted = unit.kind == .volume && unit.metric
+        case .none: wanted = false
         }
         if !wanted { return nil }
-        guard let quantity = IngredientScaler.parse(match[1]) else { return nil }
+        guard let quantity = p.scaler.parse(match[1]) else { return nil }
         return Measure(base: quantity * unit.base, unit: unit, text: match.value)
     }
 
