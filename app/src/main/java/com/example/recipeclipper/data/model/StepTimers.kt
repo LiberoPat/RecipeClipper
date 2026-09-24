@@ -11,8 +11,6 @@ import java.util.Locale
  */
 object StepTimers {
 
-    private const val QTY = IngredientScaler.QTY
-
     /** One language's duration words: shared/tables/<language>/timers.json. */
     private class Patterns(words: LanguageWords) {
         private val units = SharedTables.objects(words.table("timers").getJSONArray("units"))
@@ -31,16 +29,17 @@ object StepTimers {
             .joinToString("|", "(", ")")
         private val followOnWords = SharedTables.alternation(words.strings("timers", "followOn"))
         private val range = words.rangeWords
+        private val qty = IngredientScaler.patterns(words).qty
 
         // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer".
         val duration = Regex(
-            """(?<![\d.,/])($QTY)(?:\s*(?:[-–—]|$range)\s*(?:$QTY))?\s*-?\s*$unit\b""",
+            """(?<![\d.,/⁄])($qty)(?:\s*(?:[-–—]|$range)\s*(?:$qty))?\s*-?\s*$unit\b""",
             RegexOption.IGNORE_CASE
         )
 
         // "1 hour 30 minutes", "2 minutes and 30 seconds". groups: 1 quantity, 2 unit
         val followOn = Regex(
-            """^\s*(?:$followOnWords\s+)?($QTY)\s*-?\s*$unit\b""",
+            """^\s*(?:$followOnWords\s+)?($qty)\s*-?\s*$unit\b""",
             RegexOption.IGNORE_CASE
         )
 

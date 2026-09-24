@@ -60,4 +60,10 @@ class StepTimersTest {
         assertEquals(150, StepTimers.parse("Simmer 2,5 minutes"))
         assertNull(StepTimers.parse("Rest for 1,500 seconds"))
     }
+
+    @Test fun `a mixed number with and or a fraction slash is read whole`() {
+        // Once "1 and 1/2 hours" gave a 30-minute timer, from the "1/2 hours" alone.
+        assertEquals(5400, StepTimers.parse("Roast for 1 and 1/2 hours."))
+        assertEquals(1800, StepTimers.parse("Rest for 1⁄2 hour."))
+    }
 }

@@ -58,4 +58,10 @@ final class StepTimersTests: XCTestCase {
         XCTAssertEqual(150, StepTimers.parse("Simmer 2,5 minutes"))
         XCTAssertNil(StepTimers.parse("Rest for 1,500 seconds"))
     }
+
+    func testAMixedNumberWithAndOrAFractionSlashIsReadWhole() {
+        // Once "1 and 1/2 hours" gave a 30-minute timer, from the "1/2 hours" alone.
+        XCTAssertEqual(5400, StepTimers.parse("Roast for 1 and 1/2 hours."))
+        XCTAssertEqual(1800, StepTimers.parse("Rest for 1⁄2 hour."))
+    }
 }

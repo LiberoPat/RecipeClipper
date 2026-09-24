@@ -18,12 +18,16 @@ enum IngredientScaler {
         "⅜": 3 / 8.0, "⅝": 5 / 8.0, "⅞": 7 / 8.0,
     ]
 
-    // "1 1/2", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that order. A comma followed by
-    // one or two digits is a decimal comma; one followed by three ("1,500") may be a thousands
-    // separator, so it is never read as part of a quantity, and `ambiguousComma` leaves the line.
-    static let qty =
-        #"(?:\d+\s+\d+/\d+|\d+\s*["# + unicodeFractions + #"]|\d+/\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# +
-        unicodeFractions + #"])"#
+    // "1 1/2", "2 and 1/2", "1 and ½", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that
+    // order. The "and" is the language's (amounts.json "mixedJoiners"). A fraction's slash may
+    // be the typographic U+2044 ("1⁄2", as BBC Good Food writes it), a symbol rather than a
+    // word, so it stays here. A comma followed by one or two digits is a decimal comma; one
+    // followed by three ("1,500") may be a thousands separator, so it is never read as part
+    // of a quantity, and `ambiguousComma` leaves the line.
+    private static func qtyPattern(_ joiner: String) -> String {
+        #"(?:\d+\s+(?:"# + joiner + #"\s+)?\d+[/⁄]\d+|\d+\s+"# + joiner + #"\s+["# + unicodeFractions + #"]|\d+\s*["# +
+            unicodeFractions + #"]|\d+[/⁄]\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# + unicodeFractions + #"])"#
+    }
 
     /// "1,5": the line writes decimals with a comma, so its output does too.
     static let decimalComma = JRegex(#"\d,\d{1,2}(?!\d)"#)
@@ -42,6 +46,9 @@ enum IngredientScaler {
     final class Patterns {
         let words: LanguageWords
 
+        /// A quantity, in this language's words ("2 and 1/2"). No capturing group.
+        let qty: String
+
         // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
         let leading: JRegex
 
@@ -56,7 +63,8 @@ enum IngredientScaler {
         // ("1 can (14 oz)") is a package size, not an alternate measure, and is never scaled.
         let altParen: JRegex
 
-        // "1 cup/120 grams flour". groups: 1 prefix, 2 quantity, 3 space, 4 unit
+        // "1 cup/120 grams flour", or a range "250 - 300 g / 8 - 10 oz pasta".
+        // groups: 1 prefix, 2 quantity, 3 range separator, 4 range upper bound, 5 space, 6 unit
         let altSlash: JRegex
 
         // The word joining the two parts of a compound amount: "1 cup plus 2 tbsp", "1 cup + 2 tbsp".
@@ -68,21 +76,24 @@ enum IngredientScaler {
 
         init(_ words: LanguageWords) {
             self.words = words
+            let qty = IngredientScaler.qtyPattern(SharedTables.alternation(words.strings("amounts", "mixedJoiners")))
+            self.qty = qty
             let units = UnitPatterns.of(words)
-            leading = JRegex(#"^(\s*)("# + IngredientScaler.qty + #")(?:(\s*[-–—]\s*|\s+"# + words.rangeWords + #"\s+)("# + IngredientScaler.qty + #"))?"#)
+            leading = JRegex(#"^(\s*)("# + qty + #")(?:(\s*[-–—]\s*|\s+"# + words.rangeWords + #"\s+)("# + qty + #"))?"#)
             notAnAmount = JRegex(
                 #"^\s*-?\s*(?:"# + (["%"] + words.strings("amounts", "sizes") + [#"cm\b"#, #"mm\b"#]).joined(separator: "|") + ")",
                 ignoreCase: true
             )
-            qtyUnit = JRegex("(" + IngredientScaler.qty + #")(\s*)"# + units.captured, ignoreCase: true)
+            qtyUnit = JRegex("(" + qty + #")(\s*)"# + units.captured, ignoreCase: true)
             altParen = JRegex(#"^(\s*"# + units.plain + #"\s*\()([^)]*)(\))"#, ignoreCase: true)
             altSlash = JRegex(
-                #"^(\s*"# + units.plain + #"\s*/\s*)("# + IngredientScaler.qty + #")(\s*)"# + units.captured,
+                #"^(\s*"# + units.plain + #"\s*/\s*)("# + qty + #")(?:(\s*[-–—]\s*|\s+"# + words.rangeWords + #"\s+)("# +
+                    qty + #"))?(\s*)"# + units.captured,
                 ignoreCase: true
             )
             continuation = "(?:" + (words.strings("amounts", "continuation") + [#"\+\s*"#]).joined(separator: "|") + ")"
             continued = JRegex(
-                #"^(\s*"# + units.plain + #"\s*"# + continuation + #")("# + IngredientScaler.qty + #")(\s*)"# + units.captured,
+                #"^(\s*"# + units.plain + #"\s*"# + continuation + #")("# + qty + #")(\s*)"# + units.captured,
                 ignoreCase: true
             )
         }
@@ -145,9 +156,15 @@ enum IngredientScaler {
             return m[1] + inner + m[3] + rest.u16Substring(from: m.end)
         }
         if let m = p.altSlash.find(rest),
-           let unit = MeasureUnit.fromText(m[4], words: p.words),
+           let unit = MeasureUnit.fromText(m[6], words: p.words),
            let value = parse(m[2]) {
-            return m[1] + formatFor(unit, value * factor, comma: comma) + m[3] + m[4] + rest.u16Substring(from: m.end)
+            let upper = m[4]
+            let high = upper.isEmpty ? nil : parse(upper)
+            if upper.isEmpty || high != nil {
+                let range = high.map { m[3] + formatFor(unit, $0 * factor, comma: comma) } ?? ""
+                return m[1] + formatFor(unit, value * factor, comma: comma) + range + m[5] + m[6] +
+                    rest.u16Substring(from: m.end)
+            }
         }
         return rest
     }
@@ -169,9 +186,17 @@ enum IngredientScaler {
         plainDecimal(value, scale: value >= 10 ? 0 : 1)
     }
 
+    // The language's word between a whole number and its fraction, which the quantity pattern
+    // has already checked: "2 and 1/2" is "2 1/2" in any language.
+    private static let joiner = JRegex(#"\s+\p{L}[\p{L}\s]*?\s+(?=[\d"# + unicodeFractions + #"])"#)
+
     static func parse(_ quantity: String) -> Double? {
         // `qty` only lets a comma through as a decimal comma, never before three digits.
-        let q = quantity.kTrimmed.replacingOccurrences(of: ",", with: ".")
+        // "2 and 1/2" is "2 1/2", and "1⁄2" (U+2044) is "1/2".
+        let q = joiner.replace(
+            quantity.kTrimmed.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "⁄", with: "/"),
+            with: " "
+        )
         guard let last = q.last else { return nil }
         if let fraction = unicodeValues[last] {
             let whole = String(q.dropLast()).kTrimmed

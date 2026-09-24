@@ -348,7 +348,8 @@ Each one exists to avoid showing a confident wrong number.
   read through a summarising fetch, so spot-check values); liquids and fats
   use physical densities.
 - **A line that already carries the target unit uses the site's figure**
-  ("1 cup (120 g) flour", "1 cup/120 grams flour"), and `IngredientScaler`
+  ("1 cup (120 g) flour", "1 cup/120 grams flour", "250 - 300 g / 8 - 10 oz
+  pasta"), and `IngredientScaler`
   scales those figures too. Package sizes ("1 can (14 oz)") are never scaled.
 - **A compound amount converts as a whole or not at all**
   ("1½ cups plus 1 Tbsp. (200 g) flour"). A site figure after the second part

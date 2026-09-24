@@ -31,9 +31,9 @@ enum StepTimers {
             let patterns = table.flatMap { SharedTables.strings($0, "patterns") }
             let unit = "(" + (patterns.isEmpty ? ["(?!)"] : patterns).joined(separator: "|") + ")"
             let followOnWords = SharedTables.alternation(words.strings("timers", "followOn"))
-            let qty = IngredientScaler.qty
+            let qty = IngredientScaler.patterns(words).qty
             duration = JRegex(
-                #"(?<![\d.,/])("# + qty + #")(?:\s*(?:[-–—]|"# + words.rangeWords + #")\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
+                #"(?<![\d.,/⁄])("# + qty + #")(?:\s*(?:[-–—]|"# + words.rangeWords + #")\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
                 ignoreCase: true
             )
             followOn = JRegex(

@@ -8,7 +8,8 @@ import Foundation
 /// - Volume to weight needs `IngredientDensities`; an ingredient not in the table is left
 ///   as written rather than guessed.
 /// - If the line already carries the target unit in parentheses or after a slash, as in
-///   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one.
+///   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one. So is a
+///   range after a slash ("250 - 300 g / 8 - 10 oz pasta" in ounces is "8 - 10 oz pasta").
 /// - Pourable liquids are left alone in ounces unless `includeLiquids` is set.
 ///   Metric turns them into ml, which is exact and needs no density, so it ignores the flag.
 /// - Metric otherwise gives spoons and cups as ml, except that a line carrying the site's own
@@ -45,6 +46,10 @@ enum UnitConverter {
         let unitAtStart: JRegex
         let slashAtStart: JRegex
 
+        // "250 - 300 g / 8 - 10 oz pasta": a range written a second way.
+        // groups: 1 low, 2 range separator, 3 high, 4 space, 5 unit
+        let slashRangeAtStart: JRegex
+
         // "plus 1 Tbsp." straight after the first unit. groups: 1 quantity, 2 space, 3 unit
         let continuationAtStart: JRegex
 
@@ -54,11 +59,16 @@ enum UnitConverter {
             let units = UnitPatterns.of(words)
             unitAtStart = JRegex(#"^\s*"# + units.captured, ignoreCase: true)
             slashAtStart = JRegex(
-                #"^\s*/\s*("# + IngredientScaler.qty + #")(\s*)"# + units.captured,
+                #"^\s*/\s*("# + scaler.qty + #")(\s*)"# + units.captured,
+                ignoreCase: true
+            )
+            slashRangeAtStart = JRegex(
+                #"^\s*/\s*("# + scaler.qty + #")(\s*[-–—]\s*|\s+"# + words.rangeWords + #"\s+)("# + scaler.qty + #")(\s*)"# +
+                    units.captured,
                 ignoreCase: true
             )
             continuationAtStart = JRegex(
-                #"^\s*"# + scaler.continuation + "(" + IngredientScaler.qty + #")(\s*)"# + units.captured,
+                #"^\s*"# + scaler.continuation + "(" + scaler.qty + #")(\s*)"# + units.captured,
                 ignoreCase: true
             )
         }
@@ -131,7 +141,19 @@ enum UnitConverter {
             after = after.u16Substring(from: c.end)
         }
 
-        let alternate = findAlternate(p, after)
+        // "/ 8 - 10 oz": the site's range in another unit. It is consumed like "/120 g", and
+        // shown instead of a calculated range when it is already in the target unit.
+        var siteRange: (unit: MeasureUnit, text: String)? = nil
+        if extra == nil, let r = p.slashRangeAtStart.find(after) {
+            guard let rangeUnit = MeasureUnit.fromText(r[5], words: words) else { return line }
+            if IngredientScaler.parse(r[1]) == nil || IngredientScaler.parse(r[3]) == nil { return line }
+            let value = r.value
+            let slash = value.firstIndex(of: "/")!
+            siteRange = (rangeUnit, String(value[value.index(after: slash)...]).kTrimmed)
+            after = after.u16Substring(from: r.end)
+        }
+
+        let alternate = siteRange == nil ? findAlternate(p, after) : nil
         if let alternate { after = after.u16Substring(from: alternate.length) }
 
         let density = IngredientDensities.find(after, words: words)
@@ -154,13 +176,21 @@ enum UnitConverter {
         let asWeight = system != .metric || !allVolume ||
             (!isLiquid && (density?.gramsPerCup != nil || siteWeight))
 
-        let converted: String?
-        if asWeight {
-            converted = weightAmount(amount, effective, extraPart, density, alternate?.weight, isLiquid, system)
-        } else {
-            converted = volumeAmount(amount, effective, extraPart, alternate?.volume)
+        var site: String? = nil
+        if let siteRange, ownUnits(system).contains(siteRange.unit) {
+            let fits = asWeight
+                ? siteRange.unit.kind == .weight && !(siteRange.unit == .oz && isLiquid)
+                : siteRange.unit == .ml || siteRange.unit == .l
+            if fits { site = siteRange.text }
         }
-        guard let converted else { return line }
+
+        let calculated: String?
+        if asWeight {
+            calculated = weightAmount(amount, effective, extraPart, density, alternate?.weight, isLiquid, system)
+        } else {
+            calculated = volumeAmount(amount, effective, extraPart, alternate?.volume)
+        }
+        guard let converted = site ?? calculated else { return line }
 
         let comma = IngredientScaler.decimalComma.containsMatch(in: separatorFrom ?? line)
         return lead[1] + IngredientScaler.withSeparator(converted, comma: comma) + after

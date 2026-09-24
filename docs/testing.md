@@ -67,7 +67,14 @@ it alone reruns the tests). `SiteReportTest` covers the weekly site check's
 report and URL list offline (see CI below). `SiteReportLinkTest` pins the
 "Report this site" issue link byte for byte (percent-encoding, the cleaned
 link), and `RecipeViewModelTest` offers it only for `NoRecipeFound` on a
-shared link.
+shared link. The corpus's ingredient rows end with real lines (#33),
+taken from sites' JSON-LD `recipeIngredient` (US, UK, Australian, French,
+Italian, Spanish, Portuguese, Brazilian, Dutch, German, Austrian and Swiss
+sites; a comment names each site), so the scaler and converters are pinned on
+what recipes actually write, not only on hand-written lines. A real line that
+shows a wrong number isn't pinned: it's fixed, or left out with a `bug` issue.
+To add some, fetch the page, copy only the ingredient lines (the repo is
+public), and add them as input-only rows under their site's comment.
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
