@@ -9,6 +9,8 @@ struct ReadingView: View {
     /// The step-number column grows with the numbers in it (titleMedium follows .headline).
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// Only whether the keyboard is up for the note, so the cooking bar steps aside for it.
+    @FocusState private var editingNotes: Bool
 
     var body: some View {
         let recipe = content.recipe
@@ -71,13 +73,22 @@ struct ReadingView: View {
                     }
                     .padding(.vertical, 8)
                 }
+
+                // After the steps: the reading view still opens on the recipe, and a note like
+                // "needs 10 more minutes" is read once the method is.
+                NotesSection(
+                    notes: Binding(get: { state.notes }, set: { vm.onNotesChange($0) }),
+                    focused: $editingNotes
+                )
+                .padding(.top, 24)
             }
             .padding(.horizontal, 20)
             .padding(.top, 4)
             .padding(.bottom, 32)
         }
+        .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !content.instructions.isEmpty {
+            if !content.instructions.isEmpty && !editingNotes {
                 VStack(spacing: 0) {
                     Hairline()
                     Button(Strings.startCooking, action: vm.onCookStart)
@@ -87,6 +98,35 @@ struct ReadingView: View {
                 }
                 .background(Palette.background)
             }
+        }
+    }
+}
+
+/// The user's own note, edited in place. No Save button and no sheet: every keystroke goes to
+/// the ViewModel, which writes it once typing pauses. An empty note is just the quiet
+/// "Add a note" prompt, so a recipe without one carries no extra chrome.
+private struct NotesSection: View {
+    @Binding var notes: String
+    var focused: FocusState<Bool>.Binding
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeading(Strings.headingNotes).padding(.bottom, 6)
+            TextField(
+                Strings.headingNotes,
+                text: $notes,
+                prompt: Text(Strings.notesPlaceholder).foregroundStyle(Palette.muted),
+                axis: .vertical
+            )
+            .textStyle(Typography.bodyLarge)
+            .foregroundStyle(Palette.onBackground)
+            .tint(Palette.primary)
+            .textInputAutocapitalization(.sentences)
+            .focused(focused)
+            .frame(minHeight: 44)
+            .padding(.vertical, 6)
+            .accessibilityIdentifier("recipeNotes")
+            Hairline()
         }
     }
 }

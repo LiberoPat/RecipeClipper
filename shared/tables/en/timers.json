@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "StepTimers' duration words. patterns: case-insensitive regex fragments, matched as whole words after a number; seconds is how long one of that unit lasts. A smaller unit straight after a larger one continues the duration ('1 hour 30 minutes'). followOn: regex fragments that may join the two parts ('2 minutes and 30 seconds').",
+  "units": [
+    { "seconds": 3600, "patterns": ["hours?", "hrs?"] },
+    { "seconds": 60, "patterns": ["minutes?", "mins?"] },
+    { "seconds": 1, "patterns": ["seconds?", "secs?"] }
+  ],
+  "followOn": ["and"]
+}

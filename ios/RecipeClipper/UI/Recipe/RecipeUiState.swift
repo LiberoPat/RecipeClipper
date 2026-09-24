@@ -53,6 +53,8 @@ enum RecipeContent: Equatable {
 struct RecipeUiState: Equatable {
     var content: RecipeContent = .loading
     var checkedIngredients: Set<Int> = []
+    /// The user's note as typed; empty when there is none. Saved by the ViewModel.
+    var notes = ""
     var unitSystem: UnitSystem = .asWritten
     var convertLiquids = false
     var temperatureUnit: TemperatureUnit = .asWritten
@@ -60,6 +62,10 @@ struct RecipeUiState: Equatable {
     var cook = CookState()
     /// Set once the recipe has been deleted, so the screen can navigate back.
     var deleted = false
+    /// The prefilled "Report this site" issue link. Non-nil only while a shared link's
+    /// `.noRecipeFound` is on screen: never for a block, offline or a failed fetch, which mean
+    /// "try again", not "unsupported". The view opens it; nothing is sent.
+    var reportSiteUrl: String?
 
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }
