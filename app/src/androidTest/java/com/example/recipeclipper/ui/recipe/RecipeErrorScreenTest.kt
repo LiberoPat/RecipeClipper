@@ -17,6 +17,7 @@ import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
 import com.example.recipeclipper.fake.FakeListRepository
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -50,7 +51,8 @@ class RecipeErrorScreenTest {
             FakeAppPreferences(),
             { 0L },
             FakeConnectivity(),
-            FakeAppInfo()
+            FakeAppInfo(),
+            FakeTimerAlarmScheduler()
         )
         val saveViewModel = SaveToListViewModel(FakeListRepository())
         compose.setContent {

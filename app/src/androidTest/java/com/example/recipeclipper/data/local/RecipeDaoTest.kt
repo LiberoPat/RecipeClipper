@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.HISTORY_LIMIT
+import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.RecipeEntity
@@ -149,6 +150,49 @@ class RecipeDaoTest {
         val row = recipes.get(id)!!
         assertEquals("New title", row.title)
         assertEquals("Used half the sugar", row.notes)
+    }
+
+    private val cookJson = """{"active":true,"currentStep":1,"doneSteps":[0],"timers":[]}"""
+
+    @Test
+    fun cookStateAndServingsSurviveAReShareWithTheSameSteps() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
+        recipes.setCookState(id, cookJson)
+        recipes.setServingsTarget(id, 8)
+
+        recipes.upsert(recipe("https://a.com/1", viewedAt = 900, title = "New title"), HISTORY_LIMIT)
+
+        val row = recipes.get(id)!!
+        assertEquals(cookJson, row.cookState)
+        assertEquals(8, row.servingsTarget)
+    }
+
+    @Test
+    fun cookStateIsDroppedWhenTheStepsChangeButServingsAreKept() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
+        recipes.setCookState(id, cookJson)
+        recipes.setServingsTarget(id, 8)
+
+        recipes.upsert(
+            recipe("https://a.com/1", viewedAt = 900).copy(instructions = listOf("Stir.", "Chill.")),
+            HISTORY_LIMIT
+        )
+
+        val row = recipes.get(id)!!
+        assertNull(row.cookState) // step indexes would point at different steps
+        assertEquals(8, row.servingsTarget)
+    }
+
+    @Test
+    fun cookStatesListsOnlyRecipesWithCookProgress() = runBlocking {
+        val cooking = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
+        recipes.upsert(recipe("https://a.com/2", viewedAt = 200), HISTORY_LIMIT)
+        recipes.setCookState(cooking, cookJson)
+
+        assertEquals(listOf(CookStateRow(cooking, "Recipe https://a.com/1", cookJson)), recipes.cookStates())
+
+        recipes.setCookState(cooking, null)
+        assertEquals(emptyList<CookStateRow>(), recipes.cookStates())
     }
 
     @Test
