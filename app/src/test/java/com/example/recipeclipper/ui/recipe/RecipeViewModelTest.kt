@@ -297,12 +297,12 @@ class RecipeViewModelTest {
             val vm = buildViewModel(byId(1L), repository, unitPreferences)
             advanceUntilIdle()
 
-            vm.onUnitSystemChange(UnitSystem.GRAMS)
+            vm.onUnitSystemChange(UnitSystem.METRIC)
             advanceUntilIdle()
 
             val content = vm.uiState.value.content as RecipeContent.Success
             val expectedIngredients = testRecipe().ingredients.map {
-                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.GRAMS, false)
+                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.METRIC, false)
             }
             // Oven temperature is decoupled from the unit system (defaults AS_WRITTEN), so
             // changing UnitSystem alone must leave instructions untouched.
@@ -311,7 +311,7 @@ class RecipeViewModelTest {
             }
             assertEquals(expectedIngredients, content.ingredients)
             assertEquals(expectedInstructions, content.instructions)
-            assertEquals(UnitSystem.GRAMS, unitPreferences.unitSystem)
+            assertEquals(UnitSystem.METRIC, unitPreferences.unitSystem)
         }
 
     @Test fun `dark while cooking is off by default`() = runTest(mainDispatcherRule.dispatcher) {
@@ -355,7 +355,7 @@ class RecipeViewModelTest {
 
     @Test fun `turning on convert liquids in Settings re-renders the open recipe`() =
         runTest(mainDispatcherRule.dispatcher) {
-            val preferences = FakeAppPreferences(unitSystem = UnitSystem.GRAMS)
+            val preferences = FakeAppPreferences(unitSystem = UnitSystem.OUNCES)
             val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
             val vm = buildViewModel(byId(1L), repository, preferences)
             advanceUntilIdle()
@@ -365,7 +365,7 @@ class RecipeViewModelTest {
 
             assertTrue(vm.uiState.value.convertLiquids)
             val expected = testRecipe().ingredients.map {
-                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.GRAMS, true)
+                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.OUNCES, true)
             }
             assertEquals(expected, (vm.uiState.value.content as RecipeContent.Success).ingredients)
         }
@@ -474,11 +474,11 @@ class RecipeViewModelTest {
             val vm = buildViewModel(byId(1L), repository, preferences)
             advanceUntilIdle()
 
-            vm.onUnitSystemChange(UnitSystem.GRAMS)
+            vm.onUnitSystemChange(UnitSystem.OUNCES)
             val immediately = vm.uiState.value // before the echo is delivered
             advanceUntilIdle()
 
-            assertEquals(UnitSystem.GRAMS, immediately.unitSystem)
+            assertEquals(UnitSystem.OUNCES, immediately.unitSystem)
             assertEquals(immediately, vm.uiState.value)
         }
 

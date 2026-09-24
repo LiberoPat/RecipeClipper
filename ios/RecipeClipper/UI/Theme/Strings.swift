@@ -67,7 +67,6 @@ enum Strings {
     static func unitLabel(_ system: UnitSystem) -> String {
         switch system {
         case .asWritten: return "As written"
-        case .grams: return "Grams"
         case .ounces: return "Ounces"
         case .metric: return "Metric"
         }
@@ -76,7 +75,6 @@ enum Strings {
     static func unitDescription(_ system: UnitSystem) -> String {
         switch system {
         case .asWritten: return "Exactly the units the recipe uses"
-        case .grams: return "Cups and spoons in grams"
         case .ounces: return "Cups and spoons in ounces and pounds"
         case .metric: return "Grams and millilitres"
         }
