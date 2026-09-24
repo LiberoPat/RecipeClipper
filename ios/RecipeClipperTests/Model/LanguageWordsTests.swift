@@ -78,6 +78,8 @@ final class LanguageWordsTests: XCTestCase {
         XCTAssertNil(Servings.parse("4 servings", words: nil))
         XCTAssertEqual(Servings.kind("Makes 12", words: nil), .serves)
         XCTAssertEqual(Servings.pickYield(["4", "4-6"], words: nil), "4-6")
+        XCTAssertNil(IngredientName.of("2 large eggs, beaten", words: nil))
+        XCTAssertEqual(IngredientRendering.render(["2 cups flour"], factor: 2.0, system: .metric, convertLiquids: false, words: nil), ["2 cups flour"])
     }
 
     func testEnglishIsTheDefaultAndReadsAsBefore() {

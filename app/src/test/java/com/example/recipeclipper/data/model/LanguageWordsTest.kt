@@ -88,6 +88,8 @@ class LanguageWordsTest {
         assertNull(Servings.parse("4 servings", null))
         assertEquals(YieldKind.SERVES, Servings.kind("Makes 12", null))
         assertEquals("4-6", Servings.pickYield(listOf("4", "4-6"), null))
+        assertNull(IngredientName.of("2 large eggs, beaten", null))
+        assertEquals(listOf("2 cups flour"), IngredientRendering.render(listOf("2 cups flour"), 2.0, UnitSystem.METRIC, false, null))
     }
 
     @Test

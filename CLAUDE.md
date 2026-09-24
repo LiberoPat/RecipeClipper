@@ -19,8 +19,8 @@ and writes the regenerated one to `app/build/differential-corpus/`; a new row
 needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
-unit, timer, temperature, yield, range, amount, duration and detection words,
-condensed section names; tracking parameters), loaded by both apps (Android as
+unit, timer, temperature, yield, range, amount, duration, detection and
+ingredient-name words, condensed section names; tracking parameters), loaded by both apps (Android as
 Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
 table there, never in code; the logic that reads it stays written twice. **Each
 language has its own folder** (`shared/tables/en/`), read through
@@ -87,6 +87,7 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
                LanguageWords (one language's tables, chosen per recipe)
+               IngredientName (a line's ingredient name), IngredientRendering (scale+convert)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```

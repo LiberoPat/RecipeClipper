@@ -39,8 +39,8 @@ enum UnitConverter {
 
     private static let parenAtStart = JRegex(#"^\s*\(([^)]*)\)"#)
 
-    /// The patterns that read one language's unit and amount words.
-    private final class Patterns {
+    /// The patterns that read one language's unit and amount words (IngredientName reads them too).
+    final class Patterns {
         let words: LanguageWords
         let scaler: IngredientScaler.Patterns
         let unitAtStart: JRegex
@@ -73,6 +73,8 @@ enum UnitConverter {
             )
         }
     }
+
+    static func patterns(_ words: LanguageWords) -> Patterns { words.compiled(Patterns.self, Patterns.init) }
 
     /// The second half of a compound amount, "plus 2 tbsp".
     private struct Part {
@@ -110,7 +112,7 @@ enum UnitConverter {
     ) -> String {
         guard system != .asWritten, let words else { return line }
         if IngredientScaler.ambiguousComma.containsMatch(in: line) { return line }
-        let p = words.compiled(Patterns.self, Patterns.init)
+        let p = patterns(words)
 
         guard let lead = p.scaler.leading.find(line) else { return line }
         let afterQty = line.u16Substring(from: lead.end)

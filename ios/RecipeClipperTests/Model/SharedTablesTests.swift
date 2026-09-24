@@ -6,7 +6,7 @@ final class SharedTablesTests: XCTestCase {
 
     private let languageTables = [
         "densities", "units", "timers", "temperature", "yield", "ranges", "sections",
-        "amounts", "durations", "language",
+        "amounts", "durations", "language", "names",
     ]
 
     func testEveryBundledLanguageIsDetectedAndEveryShippedOneHasEveryTable() throws {

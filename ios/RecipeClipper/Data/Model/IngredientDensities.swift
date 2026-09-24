@@ -67,14 +67,27 @@ enum IngredientDensities {
     /// Looks the ingredient up by the *end* of its name, so "unsalted butter" and "light
     /// brown sugar" match while "butter beans" and "flour tortillas" don't.
     static func find(_ ingredientText: String, words: LanguageWords = .english) -> Density? {
-        let table = words.compiled(Table.self, Table.init)
+        let table = table(words)
         let phrase = headPhrase(ingredientText, table.trailingModifiers)
-        return table.aliases.first { phrase == $0.alias || phrase.hasSuffix(" " + $0.alias) }?.density
+        return table.aliases.first { endsWithName(phrase, $0.alias) }?.density
     }
+
+    /// The longest alias `phrase` (a head phrase) ends in, as `find` matches it; nil if none.
+    static func aliasAtEnd(_ phrase: String, words: LanguageWords = .english) -> String? {
+        table(words).aliases.first { endsWithName(phrase, $0.alias) }?.alias
+    }
+
+    /// The words dropped from the end of a name before matching ("packed", "melted").
+    static func trailingModifiers(_ words: LanguageWords = .english) -> Set<String> { table(words).trailingModifiers }
+
+    private static func table(_ words: LanguageWords) -> Table { words.compiled(Table.self, Table.init) }
+
+    /// True when `phrase` is `name` or ends with it at a word boundary: the table's matching rule.
+    static func endsWithName(_ phrase: String, _ name: String) -> Bool { phrase == name || phrase.hasSuffix(" " + name) }
 
     /// Removes parenthesised text, including nested or doubled parentheses ("((all-purpose
     /// flour))"), innermost first until nothing changes, then drops any unmatched paren.
-    private static func stripParentheses(_ text: String) -> String {
+    static func stripParentheses(_ text: String) -> String {
         var current = text
         while true {
             let next = innermostParens.replace(current, with: " ")
@@ -85,6 +98,10 @@ enum IngredientDensities {
     }
 
     /// The ingredient name: text before the first comma, without parentheses or modifiers.
+    static func headPhrase(_ text: String, words: LanguageWords = .english) -> String {
+        headPhrase(text, table(words).trailingModifiers)
+    }
+
     private static func headPhrase(_ text: String, _ trailingModifiers: Set<String>) -> String {
         var s = stripParentheses(text)
         if let comma = s.firstIndex(of: ",") { s = String(s[..<comma]) }

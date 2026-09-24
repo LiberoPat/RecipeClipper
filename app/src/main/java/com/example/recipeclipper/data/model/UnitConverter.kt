@@ -46,8 +46,8 @@ object UnitConverter {
 
     private val PAREN_AT_START = Regex("""^\s*\(([^)]*)\)""")
 
-    /** The patterns that read one language's unit and amount words. */
-    private class Patterns(val words: LanguageWords) {
+    /** The patterns that read one language's unit and amount words (IngredientName reads them too). */
+    internal class Patterns(val words: LanguageWords) {
         val scaler = IngredientScaler.patterns(words)
         private val units = UnitPatterns.of(words)
 
@@ -70,6 +70,8 @@ object UnitConverter {
             RegexOption.IGNORE_CASE
         )
     }
+
+    internal fun patterns(words: LanguageWords): Patterns = words.compiled(Patterns::class) { Patterns(it) }
 
     /** The second half of a compound amount, "plus 2 tbsp". */
     private class Part(val quantity: Double, val unit: MeasureUnit)
@@ -97,7 +99,7 @@ object UnitConverter {
     ): String {
         if (system == UnitSystem.AS_WRITTEN || words == null) return line
         if (IngredientScaler.AMBIGUOUS_COMMA.containsMatchIn(line)) return line
-        val p = words.compiled(Patterns::class) { Patterns(it) }
+        val p = patterns(words)
 
         val lead = p.scaler.leading.find(line) ?: return line
         val afterQty = line.substring(lead.range.last + 1)
