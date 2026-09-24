@@ -6,12 +6,32 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
+// Release signing, read from outside the repo: Gradle properties (in
+// ~/.gradle/gradle.properties, never this project's gradle.properties) or environment
+// variables, e.g. recipeClipper.storeFile or RECIPECLIPPER_STORE_FILE. When any of the four
+// is missing, the release build is still produced, unsigned. See docs/release.md.
+fun releaseSigning(name: String): String? {
+    val env = "RECIPECLIPPER_" + name.replace(Regex("([A-Z])"), "_$1").uppercase()
+    return providers.gradleProperty("recipeClipper.$name")
+        .orElse(providers.environmentVariable(env))
+        .orNull
+        ?.takeIf { it.isNotBlank() }
+}
+val releaseStoreFile = releaseSigning("storeFile")
+val releaseStorePassword = releaseSigning("storePassword")
+val releaseKeyAlias = releaseSigning("keyAlias")
+val releaseKeyPassword = releaseSigning("keyPassword")
+val hasReleaseSigning =
+    listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { it != null }
+
 android {
+    // The Kotlin package stays com.example.recipeclipper; only the installed ID
+    // (applicationId) is the real one. The two are independent.
     namespace = "com.example.recipeclipper"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.recipeclipper"
+        applicationId = "com.liberopat.recipeclipper"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -32,9 +52,22 @@ android {
         jvmTarget = "1.8"
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Null, so unsigned, when the keystore properties are absent.
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
