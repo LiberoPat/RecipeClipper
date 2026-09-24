@@ -42,7 +42,8 @@ class EditRecipeScreenTest {
         compose.onNodeWithText("New recipe").assertIsDisplayed()
         compose.onNodeWithText("Name").performTextInput("Toast")
         compose.onNodeWithText("Ingredients, one per line").performScrollTo().performTextInput("Bread\nButter")
-        compose.onNodeWithText("Save").performClick()
+        // Save sits at the top of the scrolling column: bring it back before tapping it.
+        compose.onNodeWithText("Save").performScrollTo().performClick()
         compose.waitForIdle()
 
         assertEquals(listOf("Bread", "Butter"), repository.addManualCalls.single().ingredients)
