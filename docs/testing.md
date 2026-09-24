@@ -110,9 +110,9 @@ those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).
 `RecipeSourceCreditTest` (the source credit under the recipe title) was
 added after that run and has so far only been compiled.
 
-The cook-persistence device tests (#10: `MigrationTest` 3→4 and 1→4, and the
-cook-state cases in `RecipeDaoTest`) have been run on the agents' emulator
-(Android 17) and pass. A timer alarm was also checked end to end there: a
+The cook-persistence device tests (#10: the cook-state migration in
+`MigrationTest`, and the cook-state cases in `RecipeDaoTest`) have been run on
+the agents' emulator (Android 17) and pass. A timer alarm was also checked end to end there: a
 recipe seeded with a running timer, opened through the notification's
 `OPEN_COOK` intent, came back in cook mode on the saved step with the timer
 recomputed from its deadline. `AlarmManager` held the alarm at that deadline,
