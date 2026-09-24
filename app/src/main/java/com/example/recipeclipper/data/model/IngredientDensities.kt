@@ -46,7 +46,7 @@ internal object IngredientDensities {
         .flatMap { entry -> entry.aliases.map { it to entry.density } }
         .sortedByDescending { it.first.length }
 
-    private val TRAILING_MODIFIERS = SharedTables.strings(TABLE.getJSONArray("trailingModifiers")).toSet()
+    val TRAILING_MODIFIERS = SharedTables.strings(TABLE.getJSONArray("trailingModifiers")).toSet()
 
     /**
      * Looks the ingredient up by the *end* of its name, so "unsalted butter" and "light
@@ -54,8 +54,14 @@ internal object IngredientDensities {
      */
     fun find(ingredientText: String): Density? {
         val phrase = headPhrase(ingredientText)
-        return ALIASES.firstOrNull { (alias, _) -> phrase == alias || phrase.endsWith(" $alias") }?.second
+        return ALIASES.firstOrNull { (alias, _) -> endsWithName(phrase, alias) }?.second
     }
+
+    /** The longest alias [phrase] (a head phrase) ends in, as [find] matches it; null if none. */
+    fun aliasAtEnd(phrase: String): String? = ALIASES.firstOrNull { (alias, _) -> endsWithName(phrase, alias) }?.first
+
+    /** True when [phrase] is [name] or ends with it at a word boundary: the table's matching rule. */
+    fun endsWithName(phrase: String, name: String): Boolean = phrase == name || phrase.endsWith(" $name")
 
     private val INNERMOST_PARENS = Regex("""\([^()]*\)""")
 
@@ -63,7 +69,7 @@ internal object IngredientDensities {
      * Removes parenthesised text, including nested or doubled parentheses ("((all-purpose
      * flour))"), innermost first until nothing changes, then drops any unmatched paren.
      */
-    private fun stripParentheses(text: String): String {
+    fun stripParentheses(text: String): String {
         var current = text
         while (true) {
             val next = INNERMOST_PARENS.replace(current, " ")
@@ -74,7 +80,7 @@ internal object IngredientDensities {
     }
 
     /** The ingredient name: text before the first comma, without parentheses or modifiers. */
-    private fun headPhrase(text: String): String {
+    fun headPhrase(text: String): String {
         val words = stripParentheses(text)
             .substringBefore(',')
             .lowercase()

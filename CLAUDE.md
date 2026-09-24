@@ -21,7 +21,7 @@ needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
 unit, timer, temperature, yield and range words, condensed section names,
-tracking parameters), loaded by both apps (Android as Java resources through
+ingredient-name words, tracking parameters), loaded by both apps (Android as Java resources through
 `SharedTables`, iOS as a bundled `tables/` folder). Edit a table there, never in
 code; the logic that reads it stays written twice.
 
@@ -85,7 +85,8 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
-               SiteReportLink, SourceDomain, SharedTables (loads shared/tables)
+               SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
+               IngredientName (a line's ingredient name), IngredientRendering (scale+convert)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```

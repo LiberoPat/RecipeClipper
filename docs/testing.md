@@ -158,15 +158,28 @@ Three things that cost real time and will again:
   every `SemanticsProperties.Text` in the tree — before changing production
   code.
 
-Still without Android UI tests: most of the recipe screen (reading and cook
-views, the bookmark icon, share; only the source credit and the import error
-screen, including "Report this site", are covered), History (search,
-swipe-to-dismiss, the undo snackbar), the Lists screen, and the Settings
-screen. The iOS UI tests (`ios/RecipeClipperUITests`) do cover Home, History
-(search, swipe-to-delete, the batched undo), Settings, list detail, the
-save-to-list sheet with the bookmark it fills, the source credit, and the
-import error screens (including "Report this site" opening Safari). Cook mode
-and sharing have no UI tests on either platform.
+Also `RecipeScreenTest` (reading view, servings and units, bookmark, delete,
+and the share text after scaling and converting through the UI; the source
+credit has its own `RecipeSourceCreditTest`, and the import error screen,
+including "Report this site", has `RecipeErrorScreenTest`), `CookModeTest`
+(step states, tap to jump, "Done — next step", timers), `HistoryScreenTest`
+(search, swipe-to-dismiss, the batched undo snackbar) and `ListsScreenTest`.
+`RecipeScreenFixture` gives the recipe tests a `Clock` the test moves
+forward, so a 20-minute timer finishes as soon as the test says so; the
+ViewModel's 250 ms tick is real time, so wait with `compose.waitUntil`, not a
+bare assert. Done steps are only drawn struck through, not exposed to
+semantics, so `isStruckThrough()` reads the text's layout style. Share itself
+opens the system chooser, so the tests stop at `RecipeViewModel.shareText()`.
+
+Still without Android UI tests: the Settings screen. The iOS UI tests
+(`ios/RecipeClipperUITests`) cover Home, History (search, swipe-to-delete, the
+batched undo), Settings, list detail, the save-to-list sheet with the bookmark
+it fills, the source credit, the import error screens (including "Report this
+site" opening Safari) and cook mode (`CookModeUITests`, on the `cook` seed
+scenario). XCUITest drives the app from outside and can't move its clock, so
+the one timer that has to finish there is a real 3-second step. The share
+sheet is left to the hosted `RecipeViewModelTests`, which pin the exact share
+text.
 
 `navigation-compose` has no BOM of its own and is built against a particular
 Compose: bump it with the Compose BOM, or the app pulls in a mix of Compose

@@ -703,6 +703,33 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.shareText(), expected)
     }
 
+    /// The exact text Share hands the share sheet, pinned rather than rebuilt from the state:
+    /// plain text, as shown on screen (scaled and converted), with no source link. Android's
+    /// RecipeScreenTest pins the same shape.
+    func testShareTextIsThePlainTextOfTheScaledConvertedRecipe() async {
+        let (vm, _) = await loaded()
+
+        vm.onServingsChange(8)
+        vm.onUnitSystemChange(.metric)
+
+        XCTAssertEqual(vm.shareText(), """
+            Test Recipe
+
+            Serves 8 (originally 4)
+            Prep 10m · Cook 20m · Total 30m
+
+            INGREDIENTS
+            480 g flour
+            480 ml milk
+
+            INSTRUCTIONS
+            1. Preheat the oven to 350°F.
+            2. Mix for 5 minutes.
+            3. Bake for 10 minutes.
+            4. Cool completely.
+            """)
+    }
+
     func testShareTextIsNilUntilARecipeIsLoaded() {
         let vm = makeViewModel(id: 1, repository: repository(testRecipe()))
         XCTAssertNil(vm.shareText())
