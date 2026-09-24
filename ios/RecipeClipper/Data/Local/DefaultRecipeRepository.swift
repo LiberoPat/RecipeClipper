@@ -5,7 +5,7 @@ import Foundation
 ///
 /// The contract's methods don't throw, so a database failure is logged and surfaced the way
 /// the contract allows: `.error(.saveFailed)` from an import, nil from `open` / `delete`, and
-/// nothing from `setChecked` / `restore`.
+/// nothing from `setChecked` / `setNotes` / `restore`.
 final class DefaultRecipeRepository: RecipeRepository {
     private let db: AppDatabase
     private let source: RecipeSource
@@ -145,6 +145,15 @@ final class DefaultRecipeRepository: RecipeRepository {
             try await db.write { conn in try RecipeDao(db: conn).setChecked(id, checked: checked) }
         } catch {
             dataLog.error("setChecked failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    func setNotes(id: Int64, notes: String) async {
+        let stored: String? = notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
+        do {
+            try await db.write { conn in try RecipeDao(db: conn).setNotes(id, notes: stored) }
+        } catch {
+            dataLog.error("setNotes failed: \(String(describing: error), privacy: .public)")
         }
     }
 

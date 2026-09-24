@@ -137,6 +137,33 @@ class RecipeDaoTest {
     }
 
     @Test
+    fun aNoteSurvivesAReShareEvenWhenTheContentChanges() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
+        recipes.setNotes(id, "Used half the sugar")
+
+        val changed = recipe(
+            "https://a.com/1", viewedAt = 900, title = "New title", ingredients = listOf("3 apples")
+        )
+        recipes.upsert(changed, HISTORY_LIMIT)
+
+        val row = recipes.get(id)!!
+        assertEquals("New title", row.title)
+        assertEquals("Used half the sugar", row.notes)
+    }
+
+    @Test
+    fun setNotesWritesAndClearsTheNote() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
+        assertNull(recipes.get(id)!!.notes)
+
+        recipes.setNotes(id, "Needs 10 more minutes")
+        assertEquals("Needs 10 more minutes", recipes.get(id)!!.notes)
+
+        recipes.setNotes(id, null)
+        assertNull(recipes.get(id)!!.notes)
+    }
+
+    @Test
     fun tickedIngredientsResetWhenTheIngredientsChange() = runBlocking {
         val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
         recipes.setChecked(id, setOf(0, 1))

@@ -46,6 +46,7 @@ class DatabaseErrorTest {
         override suspend fun update(recipe: RecipeEntity) = throw throwable()
         override suspend fun touch(id: Long, now: Long) = throw throwable()
         override suspend fun setChecked(id: Long, checked: Set<Int>) = throw throwable()
+        override suspend fun setNotes(id: Long, notes: String?) = throw throwable()
         override suspend fun delete(id: Long) = throw throwable()
         override suspend fun crossRefsFor(recipeId: Long): List<RecipeListCrossRef> = throw throwable()
         override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) = throw throwable()
@@ -99,7 +100,7 @@ class DatabaseErrorTest {
         assertEquals(1, log.messages.size)
     }
 
-    @Test fun `open, delete, restore and setChecked degrade instead of throwing`() = runTest {
+    @Test fun `open, delete, restore, setChecked and setNotes degrade instead of throwing`() = runTest {
         val log = RecordingLog()
         val repository = recipes(ParseResult.Error(ParseError.NoRecipeFound), log)
 
@@ -107,9 +108,10 @@ class DatabaseErrorTest {
         assertNull(repository.delete(1))
         repository.restore(RecipeRepository.DeletedRecipe(entity, emptyList()))
         repository.setChecked(1, setOf(0))
+        repository.setNotes(1, "Half the sugar")
 
         assertEquals(
-            listOf("open failed", "delete failed", "restore failed", "setChecked failed"),
+            listOf("open failed", "delete failed", "restore failed", "setChecked failed", "setNotes failed"),
             log.messages
         )
     }

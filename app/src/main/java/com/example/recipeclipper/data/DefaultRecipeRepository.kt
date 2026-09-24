@@ -23,7 +23,8 @@ import javax.inject.Singleton
  *
  * Database failures never escape: each call runs through [ErrorLog.guard], is logged, and
  * degrades to what the contract already allows — `Error(SaveFailed)` from an import, null from
- * [open] and [delete], nothing from [setChecked] and [restore], an empty list from a Flow —
+ * [open] and [delete], nothing from [setChecked], [setNotes] and
+ * [restore], an empty list from a Flow —
  * rather than crashing `viewModelScope`. The iOS repository does the same.
  */
 @Singleton
@@ -97,6 +98,9 @@ class DefaultRecipeRepository @Inject constructor(
 
     override suspend fun setChecked(id: Long, checked: Set<Int>) =
         log.guard("setChecked", Unit) { recipeDao.setChecked(id, checked) }
+
+    override suspend fun setNotes(id: Long, notes: String) =
+        log.guard("setNotes", Unit) { recipeDao.setNotes(id, notes.takeIf { it.isNotBlank() }) }
 
     override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? = log.guard("delete", null) {
         val entity = recipeDao.get(id) ?: return@guard null

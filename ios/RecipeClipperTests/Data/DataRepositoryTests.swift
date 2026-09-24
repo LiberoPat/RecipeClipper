@@ -75,6 +75,29 @@ final class DataRepositoryTests: XCTestCase {
         XCTAssertEqual(second.lastViewedAt, 9_000)
     }
 
+    func testReImportKeepsTheNote() async throws {
+        let first = await importSuccess("https://a.com/soup", at: 1_000)!
+        await recipes.setNotes(id: first.id, notes: "Used half the sugar")
+
+        let second = await importSuccess("https://a.com/soup", title: "Better Soup", at: 9_000)!
+
+        XCTAssertEqual(second.id, first.id)
+        XCTAssertEqual(second.name, "Better Soup")
+        XCTAssertEqual(second.notes, "Used half the sugar")
+    }
+
+    func testABlankNoteIsStoredAsNoNote() async throws {
+        let recipe = await importSuccess("https://a.com/soup", at: 1_000)!
+
+        await recipes.setNotes(id: recipe.id, notes: "Needs 10 more minutes")
+        let written = await recipes.open(id: recipe.id)?.notes
+        XCTAssertEqual(written, "Needs 10 more minutes")
+
+        await recipes.setNotes(id: recipe.id, notes: "  \n ")
+        let cleared = try await db.get(recipe.id)?.notes
+        XCTAssertNil(cleared)
+    }
+
     func testOfflineFallbackReturnsTheSavedCopyAndTouchesIt() async throws {
         let saved = await importSuccess("https://a.com/soup", at: 1_000)!
         source.results = [:] // the network is gone
