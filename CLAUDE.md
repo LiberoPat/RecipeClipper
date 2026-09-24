@@ -73,7 +73,8 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
-               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText
+               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
+               SourceDomain
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
@@ -136,9 +137,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
 `docs/decisions.md`.
 
 - **The reading view opens on the recipe:** photo, title, times, one
-  servings-and-units row, ingredients. No segmented pickers, filled chips or
-  radio lists above the ingredients. Times are plain labelled numbers, not
-  chips.
+  servings-and-units row, ingredients. Under the title, quietly, the source's
+  domain and "Open original" (reading view only, not cook mode). No segmented
+  pickers, filled chips or radio lists above the ingredients. Times are plain
+  labelled numbers, not chips.
 - **Servings and units: one always-visible row, adjusted in place.**
   `Serves − 6 +` (per recipe) on the left, the unit dropdown (a global
   default for "every recipe", exclusive choices only) on the right. Don't

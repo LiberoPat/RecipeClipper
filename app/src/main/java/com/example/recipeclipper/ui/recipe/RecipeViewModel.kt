@@ -15,6 +15,7 @@ import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.Servings
 import com.example.recipeclipper.data.model.ServingsScale
+import com.example.recipeclipper.data.model.SourceDomain
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
@@ -348,7 +349,8 @@ class RecipeViewModel @Inject constructor(
             servings = servings,
             ingredients = render(recipe, servings, system, convertLiquids),
             instructions = renderInstructions(recipe, temperatureUnit),
-            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it) }
+            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it) },
+            sourceDomain = SourceDomain.of(recipe.sourceUrl)
         )
     }
 
