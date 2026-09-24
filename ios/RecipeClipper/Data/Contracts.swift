@@ -49,6 +49,23 @@ protocol Connectivity: AnyObject {
     func onlineUpdates() -> AsyncStream<Bool>
 }
 
+extension Connectivity {
+    /// Waits for the connection to go from offline to online. Already online is not a
+    /// transition: a failure while connected waits for a drop and a return. True once that
+    /// happens; false if the stream ends first (or the waiting task is cancelled).
+    func waitForReconnect() async -> Bool {
+        var sawOffline = false
+        for await online in onlineUpdates() {
+            if !online {
+                sawOffline = true
+            } else if sawOffline {
+                return true
+            }
+        }
+        return false
+    }
+}
+
 /// Connectivity that never changes: one value, then silence. The default where no reconnect
 /// behaviour is wanted (previews, and tests that aren't about it).
 final class StaticConnectivity: Connectivity {

@@ -134,6 +134,14 @@ enum Strings {
         }
     }
 
+    // Share extension (the confirmation card shown over the app that shared)
+    static var shareGettingRecipe: String { String(localized: "share_getting_recipe") }
+    static var shareSaved: String { String(localized: "share_saved") }
+    static var shareOpenToCook: String { String(localized: "share_open_to_cook") }
+    static var shareNoLink: String { String(localized: "share_no_link") }
+    static var done: String { String(localized: "action_done") }
+    static var close: String { String(localized: "action_close") }
+
     // Serves / units row
     static var serves: String { String(localized: "label_serves") }
     static var makes: String { String(localized: "label_makes") }

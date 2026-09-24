@@ -5,7 +5,7 @@ and config side is done: the IDs are `com.liberopat.recipeclipper` on both
 platforms (iOS extension `.share`, UI tests `.uitests`), release signing reads
 its keys from outside the repo, the iOS privacy manifest and export-compliance
 key are in place, and `docs/privacy-policy.md` is drafted. The rest of the
-plan is in issues #18 (iOS), #22 (Android), #19–#21 and #23.
+plan is in issues #18 (iOS), #22 (Android), #20–#21 and #23.
 
 ## iOS
 
@@ -16,14 +16,22 @@ plan is in issues #18 (iOS), #22 (Android), #19–#21 and #23.
    (the one place; every target inherits it), then `cd ios && xcodegen
    generate`. Signing is Automatic, so Xcode registers the two bundle IDs
    (`com.liberopat.recipeclipper` and `.share`) on first build to a device.
-3. **Reserve the name.** App Store Connect → Apps → + → New App, bundle ID
+3. **Register the App Group.** The app and the share extension share their
+   database and settings through `group.com.liberopat.recipeclipper`; without
+   it, sharing to Recipe Clipper on a device can't save anything the app
+   sees. On developer.apple.com → Certificates, Identifiers & Profiles →
+   Identifiers → App Groups, add `group.com.liberopat.recipeclipper`, then
+   enable the App Groups capability on both App IDs and tick that group.
+   (Xcode's automatic signing usually does this on the first device build, as
+   the entitlements already name it; check it did.) Then share a recipe from
+   Safari on a device and confirm it appears in the app, and read the
+   extension's memory in Console (see docs/testing.md).
+4. **Reserve the name.** App Store Connect → Apps → + → New App, bundle ID
    `com.liberopat.recipeclipper`. The name must be unique on the store (#21).
-4. **Privacy.** Enter the privacy policy URL (below). In App Privacy, answer
+5. **Privacy.** Enter the privacy policy URL (below). In App Privacy, answer
    "Data Not Collected".
-5. **Build numbers.** Raise `CURRENT_PROJECT_VERSION` in `ios/project.yml`
+6. **Build numbers.** Raise `CURRENT_PROJECT_VERSION` in `ios/project.yml`
    before every upload, and `MARKETING_VERSION` for each release.
-6. **Before the App Store** (TestFlight internal testing is fine without):
-   replace the share extension's app-opening workaround (#19).
 
 ## Android
 

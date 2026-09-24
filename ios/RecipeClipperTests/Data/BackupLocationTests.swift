@@ -3,17 +3,24 @@ import XCTest
 
 /// Issue #25: recipes, lists and ticked ingredients survive a restore to a new iPhone only
 /// because the database sits somewhere iCloud and device backups include. Application Support
-/// is; Caches and tmp are not, and neither is anything flagged `isExcludedFromBackup`.
+/// is, and so is the App Group container (#19) `defaultPath()` prefers when the build is
+/// entitled to it, as every simulator build is; Caches and tmp are not, and neither is
+/// anything flagged `isExcludedFromBackup`.
 final class BackupLocationTests: XCTestCase {
 
-    func testTheDatabaseLivesInApplicationSupport() throws {
+    func testTheDatabaseLivesInApplicationSupportOrTheAppGroupContainer() throws {
         let path = URL(fileURLWithPath: AppDatabase.defaultPath()).standardizedFileURL
         let support = try FileManager.default.url(
             for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false
         ).standardizedFileURL
+        let group = AppGroup.containerURL?.standardizedFileURL
 
         XCTAssertEqual(path.lastPathComponent, "recipe_clipper.sqlite")
-        XCTAssertEqual(path.deletingLastPathComponent().path, support.path)
+        let parent = path.deletingLastPathComponent().path
+        XCTAssertTrue(
+            parent == support.path || parent == group?.path,
+            "\(parent) is neither Application Support nor the App Group container"
+        )
 
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         XCTAssertFalse(path.path.hasPrefix(caches.standardizedFileURL.path))
