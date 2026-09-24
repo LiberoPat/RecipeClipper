@@ -1,0 +1,164 @@
+package com.example.recipeclipper.data.model
+
+import java.math.BigDecimal
+import java.math.RoundingMode
+import kotlin.math.abs
+import kotlin.math.floor
+
+/**
+ * Scales the leading quantity of an ingredient line ("1 1/2 cups flour",
+ * "½ tsp salt", "1-2 tbsp oil"). Pure: string in, string out.
+ *
+ * Only the leading quantity is touched. A line that doesn't start with a number
+ * ("salt to taste"), or whose number is a measurement rather than an amount
+ * ("1-inch piece ginger", "2% milk"), is returned unchanged. Wrong scaling is worse
+ * than no scaling, so anything ambiguous is left alone.
+ */
+object IngredientScaler {
+
+    private const val UNICODE_FRACTIONS = "¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞"
+
+    private val UNICODE_VALUES = mapOf(
+        '¼' to 1 / 4.0, '½' to 1 / 2.0, '¾' to 3 / 4.0, '⅐' to 1 / 7.0, '⅑' to 1 / 9.0,
+        '⅒' to 1 / 10.0, '⅓' to 1 / 3.0, '⅔' to 2 / 3.0, '⅕' to 1 / 5.0, '⅖' to 2 / 5.0,
+        '⅗' to 3 / 5.0, '⅘' to 4 / 5.0, '⅙' to 1 / 6.0, '⅚' to 5 / 6.0, '⅛' to 1 / 8.0,
+        '⅜' to 3 / 8.0, '⅝' to 5 / 8.0, '⅞' to 7 / 8.0
+    )
+
+    // "1 1/2", "1½", "1/2", "1.5", "½", "2" — tried in that order.
+    internal const val QTY =
+        """(?:\d+\s+\d+/\d+|\d+\s*[$UNICODE_FRACTIONS]|\d+/\d+|\d+(?:\.\d+)?|[$UNICODE_FRACTIONS])"""
+
+    // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
+    internal val LEADING = Regex("""^(\s*)($QTY)(?:(\s*[-–—]\s*|\s+to\s+)($QTY))?""")
+
+    // What follows the number when it is a size or a percentage, not an amount.
+    internal val NOT_AN_AMOUNT =
+        Regex("""^\s*-?\s*(?:%|inch(?:es)?\b|cm\b|mm\b)""", RegexOption.IGNORE_CASE)
+
+    // A quantity followed by a unit. groups: 1 quantity, 2 space, 3 unit
+    internal val QTY_UNIT = Regex("""($QTY)(\s*)${UnitPatterns.CAPTURED}""", RegexOption.IGNORE_CASE)
+
+    // "1 cup (120 g) flour": a second measure of the same amount, right after a unit word.
+    // A parenthesis straight after the number ("1 (14 oz) can") or after a container word
+    // ("1 can (14 oz)") is a package size, not an alternate measure, and is never scaled.
+    private val ALT_PAREN =
+        Regex("""^(\s*${UnitPatterns.PLAIN}\s*\()([^)]*)(\))""", RegexOption.IGNORE_CASE)
+
+    // "1 cup/120 grams flour". groups: 1 prefix, 2 quantity, 3 space, 4 unit
+    private val ALT_SLASH = Regex(
+        """^(\s*${UnitPatterns.PLAIN}\s*/\s*)($QTY)(\s*)${UnitPatterns.CAPTURED}""",
+        RegexOption.IGNORE_CASE
+    )
+
+    // The word joining the two parts of a compound amount: "1 cup plus 2 tbsp", "1 cup + 2 tbsp".
+    internal const val CONTINUATION = """(?:plus\s+|and\s+|\+\s*)"""
+
+    // "1 cup plus 2 tbsp (140 g) flour": the second part of a compound amount, which scales
+    // with the first. groups: 1 prefix, 2 quantity, 3 space, 4 unit
+    private val CONTINUED = Regex(
+        """^(\s*${UnitPatterns.PLAIN}\s*$CONTINUATION)($QTY)(\s*)${UnitPatterns.CAPTURED}""",
+        RegexOption.IGNORE_CASE
+    )
+
+    // Nearest-fraction table used when formatting; anything further than TOLERANCE
+    // from all of these falls back to a plain decimal.
+    private val FRACTIONS = listOf(
+        0.0 to "", 1 / 8.0 to "1/8", 1 / 4.0 to "1/4", 1 / 3.0 to "1/3", 3 / 8.0 to "3/8",
+        1 / 2.0 to "1/2", 5 / 8.0 to "5/8", 2 / 3.0 to "2/3", 3 / 4.0 to "3/4",
+        7 / 8.0 to "7/8", 1.0 to ""
+    )
+    private const val TOLERANCE = 0.02
+
+    fun scale(line: String, factor: Double): String {
+        if (factor == 1.0) return line
+        val match = LEADING.find(line) ?: return line
+        val rest = line.substring(match.range.last + 1)
+        if (NOT_AN_AMOUNT.containsMatchIn(rest)) return line
+
+        val low = parse(match.groupValues[2]) ?: return line
+        val upperRaw = match.groupValues[4]
+        val scaled = if (upperRaw.isEmpty()) {
+            format(low * factor)
+        } else {
+            val high = parse(upperRaw) ?: return line
+            format(low * factor) + match.groupValues[3] + format(high * factor)
+        }
+        return match.groupValues[1] + scaled + scaleContinuation(rest, factor)
+    }
+
+    /** Scales "plus 2 tbsp" and whatever alternate measure follows it, else just the alternate. */
+    private fun scaleContinuation(rest: String, factor: Double): String {
+        val m = CONTINUED.find(rest) ?: return scaleAlternateMeasure(rest, factor)
+        val unit = MeasureUnit.fromText(m.groupValues[4]) ?: return scaleAlternateMeasure(rest, factor)
+        val value = parse(m.groupValues[2]) ?: return scaleAlternateMeasure(rest, factor)
+        val tail = m.groupValues[3] + m.groupValues[4] + rest.substring(m.range.last + 1)
+        return m.groupValues[1] + formatFor(unit, value * factor) + scaleAlternateMeasure(tail, factor)
+    }
+
+    /** Keeps "(120 g)" or "/120 grams" in step with the leading amount that was just scaled. */
+    private fun scaleAlternateMeasure(rest: String, factor: Double): String {
+        ALT_PAREN.find(rest)?.let { m ->
+            val inner = QTY_UNIT.replace(m.groupValues[2]) { scalePair(it, factor) }
+            return m.groupValues[1] + inner + m.groupValues[3] + rest.substring(m.range.last + 1)
+        }
+        ALT_SLASH.find(rest)?.let { m ->
+            val unit = MeasureUnit.fromText(m.groupValues[4])
+            val value = parse(m.groupValues[2])
+            if (unit != null && value != null) {
+                return m.groupValues[1] + formatFor(unit, value * factor) + m.groupValues[3] +
+                        m.groupValues[4] + rest.substring(m.range.last + 1)
+            }
+        }
+        return rest
+    }
+
+    private fun scalePair(match: MatchResult, factor: Double): String {
+        val unit = MeasureUnit.fromText(match.groupValues[3]) ?: return match.value
+        val value = parse(match.groupValues[1]) ?: return match.value
+        return formatFor(unit, value * factor) + match.groupValues[2] + match.groupValues[3]
+    }
+
+    // Metric amounts read better as "240" or "7.5" than as "240" or "7 1/2".
+    private fun formatFor(unit: MeasureUnit, value: Double): String =
+        if (unit.metric) formatMetric(value) else format(value)
+
+    internal fun formatMetric(value: Double): String {
+        val scale = if (value >= 10) 0 else 1
+        return BigDecimal(value).setScale(scale, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+    }
+
+    internal fun parse(quantity: String): Double? {
+        val q = quantity.trim()
+        val last = q.last()
+        UNICODE_VALUES[last]?.let { fraction ->
+            val whole = q.dropLast(1).trim()
+            return (if (whole.isEmpty()) 0.0 else whole.toDoubleOrNull() ?: return null) + fraction
+        }
+        var total = 0.0
+        for (part in q.split(Regex("""\s+"""))) {
+            total += if ('/' in part) {
+                val (n, d) = part.split('/').map { it.toDoubleOrNull() ?: return null }
+                if (d == 0.0) return null
+                n / d
+            } else {
+                part.toDoubleOrNull() ?: return null
+            }
+        }
+        return total
+    }
+
+    internal fun format(value: Double): String {
+        val whole = floor(value).toInt()
+        val fraction = value - whole
+        val (nearest, text) = FRACTIONS.minBy { abs(it.first - fraction) }
+        if (abs(nearest - fraction) <= TOLERANCE) {
+            val w = if (nearest == 1.0) whole + 1 else whole
+            when {
+                text.isNotEmpty() -> return if (w == 0) text else "$w $text"
+                w > 0 -> return "$w"
+            }
+        }
+        return BigDecimal(value).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+    }
+}

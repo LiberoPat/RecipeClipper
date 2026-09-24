@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ink ground for system dark mode; also the window background so there is no light
+         flash before Compose draws (see ui/theme/Theme.kt DarkScheme). -->
+    <color name="ground">#1C1917</color>
+</resources>

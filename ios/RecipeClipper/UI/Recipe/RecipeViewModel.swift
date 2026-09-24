@@ -1,0 +1,320 @@
+import Foundation
+import Observation
+
+/// One recipe screen, opened either by id (history, home, a list) or by URL (the share
+/// target). Preferences are read once here, which is why Settings is reachable from Home only.
+@MainActor
+@Observable
+final class RecipeViewModel {
+    static let tick = Duration.milliseconds(250)
+
+    private(set) var uiState: RecipeUiState
+
+    @ObservationIgnored private let recipeId: Int64?
+    @ObservationIgnored private let shareUrl: String?
+    @ObservationIgnored private let repository: RecipeRepository
+    @ObservationIgnored private let preferences: AppPreferences
+    @ObservationIgnored private let clock: Clock
+    @ObservationIgnored private let sleep: Sleep
+    @ObservationIgnored private let connectivity: Connectivity
+
+    @ObservationIgnored private var loadTask: Task<Void, Never>?
+    // Waits for offline -> online while an offline / fetch-failed error is showing.
+    @ObservationIgnored private var reconnectTask: Task<Void, Never>?
+    // Step index -> wall-clock time (ms) its timer ends. Only running timers are in here.
+    @ObservationIgnored private var deadlines: [Int: Int64] = [:]
+    @ObservationIgnored private var tickTask: Task<Void, Never>?
+
+    init(
+        recipeId: Int64?,
+        url: String?,
+        repository: RecipeRepository,
+        preferences: AppPreferences,
+        clock: Clock,
+        sleep: @escaping Sleep = Sleeps.real,
+        connectivity: Connectivity = StaticConnectivity()
+    ) {
+        self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
+        self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+        self.repository = repository
+        self.preferences = preferences
+        self.clock = clock
+        self.sleep = sleep
+        self.connectivity = connectivity
+        uiState = RecipeUiState(
+            unitSystem: preferences.unitSystem,
+            convertLiquids: preferences.convertLiquids,
+            temperatureUnit: preferences.temperatureUnit,
+            darkWhileCooking: preferences.darkWhileCooking
+        )
+        load()
+    }
+
+    /// Android's onCleared: a popped screen stops its import and its tick loop. Neither task
+    /// holds the ViewModel strongly, so popping the screen really does let it go.
+    deinit {
+        loadTask?.cancel()
+        tickTask?.cancel()
+        reconnectTask?.cancel()
+    }
+
+    // MARK: Loading
+
+    func onRetry() { load() }
+
+    private func load() {
+        loadTask?.cancel()
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        uiState.content = .loading
+        // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
+        loadTask = Task { [weak self, recipeId, shareUrl, repository] in
+            let result: ParseResult
+            if let recipeId {
+                if let recipe = await repository.open(id: recipeId) {
+                    result = .success(recipe)
+                } else {
+                    result = .error(.notSaved)
+                }
+            } else if let shareUrl {
+                result = await repository.importFromUrl(shareUrl)
+            } else {
+                result = .error(.nothingToShow)
+            }
+            // A retry started meanwhile owns the screen now; this result is stale.
+            guard !Task.isCancelled, let self else { return }
+            switch result {
+            case .success(let recipe):
+                uiState.content = .success(successContent(recipe))
+                uiState.checkedIngredients = recipe.checkedIngredients
+            case .error(let error):
+                uiState.content = .error(error)
+                if error.reloadsOnReconnect { reloadOnReconnect() }
+            }
+        }
+    }
+
+    /// While an offline or fetch-failed error is on screen, waits for the connection to go from
+    /// offline to online and then loads again, once. Already online is not a transition: a
+    /// fetch failure while connected waits for a drop and a return, never reloading in a loop.
+    /// Any new load (including Try again) cancels it.
+    private func reloadOnReconnect() {
+        reconnectTask = Task { [weak self, connectivity] in
+            var sawOffline = false
+            var reconnected = false
+            for await online in connectivity.onlineUpdates() {
+                if !online {
+                    sawOffline = true
+                } else if sawOffline {
+                    reconnected = true
+                    break
+                }
+            }
+            guard reconnected, !Task.isCancelled, let self else { return }
+            load()
+        }
+    }
+
+    // MARK: Reading view
+
+    func onIngredientChecked(_ index: Int, _ checked: Bool) {
+        var next = uiState.checkedIngredients
+        if checked { next.insert(index) } else { next.remove(index) }
+        uiState.checkedIngredients = next
+        // Saved as they change, so closing the app mid-cook doesn't lose the ticks.
+        guard let id = uiState.content.success?.recipe.id else { return }
+        Task { [repository] in await repository.setChecked(id: id, checked: next) }
+    }
+
+    /// The recipe as currently on screen — scaled servings, converted units — formatted for
+    /// sharing. Nil when nothing is loaded. Presenting the share sheet is the view's job.
+    func shareText() -> String? {
+        guard let content = uiState.content.success else { return nil }
+        return RecipeShareText.format(
+            recipe: content.recipe,
+            servings: content.servings,
+            ingredients: content.ingredients,
+            instructions: content.instructions
+        )
+    }
+
+    /// Deletes the recipe outright, list memberships included, then sets `deleted` so the
+    /// screen can pop. No undo here: the screen showing it is already gone by then.
+    func onDelete() {
+        guard let id = uiState.content.success?.recipe.id else { return }
+        Task {
+            _ = await repository.delete(id: id)
+            uiState.deleted = true
+        }
+    }
+
+    func onServingsChange(_ target: Int) {
+        guard var content = uiState.content.success, let servings = content.servings else { return }
+        let scale = ServingsScale(base: servings.base, target: min(max(target, 1), Servings.max))
+        content.servings = scale
+        content.ingredients = render(content.recipe, scale, uiState.unitSystem, uiState.convertLiquids)
+        uiState.content = .success(content)
+    }
+
+    func onUnitSystemChange(_ system: UnitSystem) {
+        preferences.unitSystem = system
+        uiState.unitSystem = system
+        rerender()
+    }
+
+    func onConvertLiquidsChange(_ enabled: Bool) {
+        preferences.convertLiquids = enabled
+        uiState.convertLiquids = enabled
+        rerender()
+    }
+
+    /// A display choice: changes nothing about the rendered text.
+    func onDarkWhileCookingChange(_ enabled: Bool) {
+        preferences.darkWhileCooking = enabled
+        uiState.darkWhileCooking = enabled
+    }
+
+    private func rerender() {
+        guard var content = uiState.content.success else { return }
+        content.ingredients = render(content.recipe, content.servings, uiState.unitSystem, uiState.convertLiquids)
+        content.instructions = renderInstructions(content.recipe, uiState.temperatureUnit)
+        uiState.content = .success(content)
+    }
+
+    // MARK: Cook mode
+
+    func onCookStart() {
+        guard let content = uiState.content.success else { return }
+        let count = content.instructions.count
+        guard count > 0 else { return }
+        // A finished run starts fresh; anything else resumes where it was left.
+        var cook = uiState.cook.doneSteps.count >= count ? CookState() : uiState.cook
+        cook.active = true
+        cook.currentStep = min(max(cook.currentStep, 0), count - 1)
+        uiState.cook = cook
+    }
+
+    func onCookExit() { uiState.cook.active = false }
+
+    func onIngredientsToggle() { uiState.cook.ingredientsExpanded.toggle() }
+
+    /// Tapping a step makes it current. Only `onStepDone` ever advances or marks progress.
+    func onStepSelected(_ index: Int) { uiState.cook.currentStep = index }
+
+    func onStepDone() {
+        guard let content = uiState.content.success else { return }
+        var cook = uiState.cook
+        let count = content.instructions.count
+        cook.doneSteps.insert(cook.currentStep)
+        // Next unfinished step after this one, else the earliest one skipped, else finished.
+        let done = cook.doneSteps
+        let next = (cook.currentStep + 1 ..< max(count, cook.currentStep + 1)).first { !done.contains($0) }
+            ?? (0 ..< count).first { !done.contains($0) }
+        if let next {
+            cook.currentStep = next
+        } else {
+            cook.active = false
+        }
+        uiState.cook = cook
+    }
+
+    // MARK: Step timers. Several can run at once, since steps overlap.
+
+    func onTimerStart(_ step: Int) {
+        guard let content = uiState.content.success,
+              step >= 0, step < content.stepTimerSeconds.count,
+              let total = content.stepTimerSeconds[step] else { return }
+        deadlines[step] = clock.now() + Int64(total) * 1000
+        uiState.cook.timers[step] = StepTimer(totalSeconds: total, remainingSeconds: total, running: true)
+        ensureTicking()
+    }
+
+    func onTimerToggle(_ step: Int) {
+        guard var timer = uiState.cook.timers[step] else { return }
+        if timer.running {
+            deadlines[step] = nil
+            timer.running = false
+            uiState.cook.timers[step] = timer
+        } else if timer.remainingSeconds > 0 {
+            deadlines[step] = clock.now() + Int64(timer.remainingSeconds) * 1000
+            timer.running = true
+            uiState.cook.timers[step] = timer
+            ensureTicking()
+        }
+    }
+
+    func onTimerReset(_ step: Int) {
+        guard let timer = uiState.cook.timers[step] else { return }
+        deadlines[step] = nil
+        uiState.cook.timers[step] = StepTimer(
+            totalSeconds: timer.totalSeconds, remainingSeconds: timer.totalSeconds, running: false
+        )
+    }
+
+    func onTimerAlerted(_ step: Int) {
+        uiState.cook.timers[step]?.alerted = true
+    }
+
+    /// One tick loop for every running timer. Remaining time is recomputed from the wall
+    /// clock each tick rather than decremented, so a pause in delivery never drifts it. The
+    /// loop ends by itself once no timer is running, and `deinit` cancels it.
+    private func ensureTicking() {
+        guard tickTask == nil else { return }
+        // Weak across the sleep, so a screen popped with a timer running lets its ViewModel go.
+        tickTask = Task { [weak self, sleep] in
+            while self?.hasRunningTimers == true {
+                do { try await sleep(Self.tick) } catch { break }
+                self?.tickOnce()
+            }
+            self?.tickTask = nil
+        }
+    }
+
+    /// Whether the tick loop is alive. For tests: it must not outlive the last running timer.
+    var isTicking: Bool { tickTask != nil }
+
+    private var hasRunningTimers: Bool { !deadlines.isEmpty }
+
+    private func tickOnce() {
+        let now = clock.now()
+        var timers = uiState.cook.timers
+        var changed = false
+        for (step, end) in deadlines {
+            let seconds = max(0, Int((Double(end - now) / 1000).rounded(.up)))
+            if seconds == 0 { deadlines[step] = nil }
+            guard var timer = timers[step], timer.remainingSeconds != seconds else { continue }
+            timer.remainingSeconds = seconds
+            timer.running = seconds > 0
+            timers[step] = timer
+            changed = true
+        }
+        if changed { uiState.cook.timers = timers }
+    }
+
+    // MARK: Turning a recipe into what the screen shows
+
+    private func successContent(_ recipe: Recipe) -> RecipeSuccess {
+        let servings = Servings.parse(recipe.yield).map { ServingsScale(base: $0, target: $0) }
+        return RecipeSuccess(
+            recipe: recipe,
+            servings: servings,
+            ingredients: render(recipe, servings, uiState.unitSystem, uiState.convertLiquids),
+            instructions: renderInstructions(recipe, uiState.temperatureUnit),
+            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0) }
+        )
+    }
+
+    // Scale first, then convert, so a converted amount always matches the chosen servings.
+    private func render(_ recipe: Recipe, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool) -> [String] {
+        let factor = servings.map { Double($0.target) / Double($0.base) } ?? 1.0
+        return recipe.ingredients.map {
+            UnitConverter.convert(IngredientScaler.scale($0, factor: factor), system: system, includeLiquids: convertLiquids)
+        }
+    }
+
+    // Instructions aren't scaled, but oven temperatures follow the chosen temperature unit —
+    // independent of the ingredient unit system.
+    private func renderInstructions(_ recipe: Recipe, _ unit: TemperatureUnit) -> [String] {
+        recipe.instructions.map { TemperatureConverter.convert($0, unit: unit) }
+    }
+}
