@@ -187,9 +187,9 @@ dependencies {
     // navigation 2.10 puts kotlinx-serialization-core 1.7.3 on the app's runtime classpath,
     // and AGP pins the test APK to the app's versions, which drags room-testing's
     // kotlinx-serialization-json 1.8.1 onto core 1.7.3: every MigrationTest then dies in an
-    // AbstractMethodError (GeneratedSerializer.typeParametersSerializers). Raise core to match.
+    // AbstractMethodError (GeneratedSerializer.typeParametersSerializers). Raise core past 1.8.1.
     constraints {
-        implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1")
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.11.0")
     }
 
     // Fetch + parse the shared page (also reads embedded JSON-LD recipe data).
