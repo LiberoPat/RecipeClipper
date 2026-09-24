@@ -18,6 +18,12 @@ hand-edit them. The JVM `DifferentialCorpusTest` fails while that file is stale
 and writes the regenerated one to `app/build/differential-corpus/`; a new row
 needs only its input (`Ing("1,5 kg flour"),`).
 
+**The word and density tables live once, in `shared/tables/`** (JSON: densities,
+unit, timer, temperature, yield and range words, condensed section names,
+tracking parameters), loaded by both apps (Android as Java resources through
+`SharedTables`, iOS as a bundled `tables/` folder). Edit a table there, never in
+code; the logic that reads it stays written twice.
+
 **Keep this file short: it is loaded into every session.** Add only what an
 agent needs almost every time. Rationale and history go in
 `docs/decisions.md`, test and device detail in `docs/testing.md`, plans and
@@ -74,7 +80,7 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
-               SiteReportLink, SourceDomain
+               SiteReportLink, SourceDomain, SharedTables (loads shared/tables)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
