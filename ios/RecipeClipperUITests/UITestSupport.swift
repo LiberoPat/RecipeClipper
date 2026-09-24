@@ -31,10 +31,11 @@ class RecipeUITestCase: XCTestCase {
     }
 
     @discardableResult
-    func launch(_ scenario: Scenario = .standard, keepPrefs: Bool = false) -> XCUIApplication {
+    func launch(_ scenario: Scenario = .standard, keepPrefs: Bool = false, extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestSeed", scenario.rawValue]
         if keepPrefs { app.launchArguments.append("-uiTestKeepPrefs") }
+        app.launchArguments += extraArguments
         app.launch()
         self.app = app
         require(app.textFields["Recipe URL"], "Home to appear")

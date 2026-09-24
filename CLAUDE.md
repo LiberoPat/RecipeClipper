@@ -103,7 +103,13 @@ Routes: `home`, `history`, `settings`, `lists`, `lists/{listId}`,
 cook mode), `recipe/import?url={url}` (the share target: parse, then
 upsert with no list membership), and `edit?recipeId={recipeId}` (no id: a new
 recipe; saving replaces the edit screen, and the recipe screen under it, with
-`recipe/{id}`).
+`recipe/{id}`). Behind `BuildConfig.MEAL_PLAN_TABS` /
+`FeatureFlags.mealPlanTabs` (#47, default off, so the app is unchanged): a
+bottom tab bar nests this same graph under a Recipes tab alongside `week`,
+`groceries` and `pantry` placeholders (`AppShell`/iOS `RootView`'s `tabs`).
+Hidden on the recipe reading view and in cook mode; any route from an
+intent (a shared link, a tapped timer notification) always lands in
+Recipes, whichever tab is open.
 
 ## Conventions
 
@@ -198,14 +204,22 @@ Settled; don't reintroduce what they removed. The history behind each is in
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
   Ounces only), Oven temperature (independent of units, default As
   written), Appearance ("Dark while cooking"). Reached from the gear beside
-  the Home title. It could now open from elsewhere too (the recipe screen
-  follows `AppPreferences.settings`), but adding an entry point is the
-  owner's call.
+  the Home title, on every tab of the shell below. It could now open from
+  elsewhere too (the recipe screen follows `AppPreferences.settings`), but
+  adding an entry point is the owner's call.
 - **Home:** link field, "Continue cooking" (the most recent), "Recently
   viewed" (the five before it), History and Lists rows (always shown), the
   Settings gear, and a small "+ New recipe" text action under the link field.
   Empty sections hide. **No "Saved" section**: it duplicated
-  Recently viewed. Search is on History only.
+  Recently viewed. Search is on History only. Behind the tab-bar flag (#47)
+  this is the Recipes tab, otherwise unchanged.
+- **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry, owner's order,
+  behind a flag default off. Each tab keeps its own back stack; Recipes is
+  Home's stack unchanged. The bar hides on the recipe reading view and in
+  cook mode, so a recipe still opens on the recipe; a shared link always
+  lands in Recipes, whichever tab is open, on top of whatever it held.
+  Settings is not a tab. Week, Groceries and Pantry are "Coming soon"
+  placeholders until #49–#51 ship.
 - **Save-to-list sheet** (Spotify's add-to-playlist): checkboxes, not radios;
   each tick writes immediately, with no Save/Cancel; "+ New list" expands
   inline (no dialog on a sheet) and ticks the current recipe into the new

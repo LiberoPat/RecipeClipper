@@ -76,4 +76,53 @@ final class NavigationTests: XCTestCase {
         router.handle(try XCTUnwrap(DeepLink.importUrl(for: "https://example.com/soup")))
         XCTAssertEqual(router.path, [.recipe(id: 3), .importUrl("https://example.com/soup")])
     }
+
+    // MARK: - Tabs (#47, behind FeatureFlags.mealPlanTabs)
+
+    /// A share lands in Recipes whichever tab is open, on top of the Recipes stack as it was.
+    func testAShareFromAnotherTabSwitchesToRecipes() throws {
+        let router = Router()
+        router.push(.history)
+        router.select(.pantry)
+
+        router.handle(try XCTUnwrap(DeepLink.importUrl(for: "https://example.com/soup")))
+
+        XCTAssertEqual(router.selectedTab, .recipes)
+        XCTAssertEqual(router.path, [.history, .importUrl("https://example.com/soup")])
+    }
+
+    func testAnUnrelatedUrlLeavesTheTabAlone() throws {
+        let router = Router()
+        router.select(.week)
+        router.handle(try XCTUnwrap(URL(string: "recipeclipper://settings")))
+        XCTAssertEqual(router.selectedTab, .week)
+    }
+
+    /// Leaving Recipes and coming back keeps its stack.
+    func testSwitchingTabsKeepsTheRecipesStack() {
+        let router = Router()
+        router.push(.lists)
+        router.push(.listDetail(id: 4))
+
+        router.select(.week)
+        router.select(.recipes)
+
+        XCTAssertEqual(router.selectedTab, .recipes)
+        XCTAssertEqual(router.path, [.lists, .listDetail(id: 4)])
+    }
+
+    /// Choosing Recipes while it is open goes back to Home.
+    func testChoosingTheOpenRecipesTabAgainGoesHome() {
+        let router = Router()
+        router.push(.history)
+
+        router.select(.recipes)
+
+        XCTAssertEqual(router.path, [])
+    }
+
+    func testTheTabsAreInTheOwnersOrderAndTheBarShipsOff() {
+        XCTAssertEqual(AppTab.allCases, [.recipes, .week, .groceries, .pantry])
+        XCTAssertFalse(FeatureFlags.mealPlanTabsDefault)
+    }
 }
