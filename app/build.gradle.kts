@@ -78,13 +78,16 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // shared/ is a main resource dir for its tables (#9); its fixtures/ are test data
+            // (see the test source set below), not something to ship.
+            excludes += "/fixtures/**"
         }
     }
 
     // The word and density tables shared with iOS (#9) live in shared/tables/ at the repo
     // root. As Java resources they land in the APK and on the JVM test classpath alike, so
     // the pure model code reads them with getResourceAsStream and no Context.
-    sourceSets.getByName("main").resources.srcDir("$rootDir/shared")
+    sourceSets.getByName("main").resources.directories += "$rootDir/shared"
 
     // MigrationTestHelper reads the exported schema JSON from the instrumentation APK's
     // assets, not from the project directory, so the schemas have to be packaged into the
@@ -101,6 +104,10 @@ android {
     // kotlinx-coroutines-test and have no business on a device.
     // (`kotlin`, not `java`: built-in Kotlin compiles only the kotlin source directories.)
     sourceSets.getByName("androidTest").kotlin.directories += "src/test/java/com/example/recipeclipper/fake"
+
+    // Fixtures both platforms test against (the iOS tests copy the same folder into their
+    // bundle): the export file format is proven interchangeable by reading the same files.
+    sourceSets.getByName("test").resources.directories += "$rootDir/shared/fixtures"
 }
 
 // The weekly site check (#32, .github/workflows/site-check.yml) fetches real recipe pages, so

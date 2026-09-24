@@ -28,12 +28,12 @@ struct RecipeDao {
         try db.run(
             """
             INSERT INTO recipes (\(RecipeRecord.columns))
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             r.id == 0 ? nil : r.id, r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
-            JSONColumns.encode(r.checkedIngredients), r.notes
+            JSONColumns.encode(r.checkedIngredients), r.notes, r.uid
         )
         return db.lastInsertRowId
     }
@@ -147,7 +147,7 @@ struct RecipeDao {
     }
 
     /// Saves a freshly parsed recipe and returns its id. A link seen before is updated in
-    /// place, keeping its id, its list membership, its note and — only if the ingredients are
+    /// place, keeping its id, its uid (`update` never writes it), its list membership, its note and — only if the ingredients are
     /// unchanged — its ticked ingredients. The history cap is enforced in the same transaction. Call
     /// inside a write.
     func upsert(_ fresh: RecipeRecord, historyLimit: Int) throws -> Int64 {
