@@ -241,8 +241,8 @@ empty, and the old one keeps its recipes, lists and settings.
 To carry them across, run the backup half of the round-trip above with
 `P=com.example.recipeclipper` (all three database files, then the merge), then
 `installDebug` the new build without opening it (or force-stop it), and run
-the restore half with `P=com.liberopat.recipeclipper`. The database is the same
-version, so nothing migrates. Check the recipes are there, then
+the restore half with `P=com.liberopat.recipeclipper`. If the old install's
+database is an older version, Room migrates it on first open. Check the recipes are there, then
 `adb uninstall com.example.recipeclipper`.
 
 A single test:
