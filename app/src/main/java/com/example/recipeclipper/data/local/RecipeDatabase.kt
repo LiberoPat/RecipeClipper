@@ -13,7 +13,7 @@ import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 
 @Database(
     entities = [RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -86,5 +86,19 @@ abstract class RecipeDatabase : RoomDatabase() {
                 }
             }
         }
+
+        /**
+         * Adds the personal note (issue #27). Nullable, no default: every existing recipe
+         * simply has no note yet, and the entity declares no default either, so the migrated
+         * table matches a freshly created one exactly.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recipes ADD COLUMN notes TEXT")
+            }
+        }
+
+        /** Every migration, in order: what the app and the tests open the database with. */
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
     }
 }
