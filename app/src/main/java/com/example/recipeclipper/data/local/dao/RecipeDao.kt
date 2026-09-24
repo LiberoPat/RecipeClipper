@@ -151,36 +151,73 @@ abstract class RecipeDao {
      * its ticked ingredients if the ingredients didn't change, and its cook progress if the
      * steps didn't change (both hold indexes). The history cap is enforced in the same
      * transaction, so the table is never left over the limit.
+     *
+     * A row that is the user's version (#29: edited, clipped or typed in, `contentOrigin` not
+     * PARSED) keeps its content: the re-share only counts as a view. [replaceUsersVersion] is
+     * "Update from source", which does replace it, and makes it PARSED again ([fresh] is).
      */
     @Transaction
-    open suspend fun upsert(fresh: RecipeEntity, historyLimit: Int): Long {
+    open suspend fun upsert(fresh: RecipeEntity, historyLimit: Int, replaceUsersVersion: Boolean = false): Long {
         val existing = findByUrl(fresh.sourceUrl)
         val id = if (existing == null) {
             insert(fresh)
+        } else if (existing.contentOrigin != ORIGIN_PARSED && !replaceUsersVersion) {
+            touch(existing.id, fresh.lastViewedAt)
+            existing.id
         } else {
-            val ticked = if (existing.ingredients == fresh.ingredients) {
-                existing.checkedIngredients
-            } else {
-                emptySet() // the indexes no longer mean the same ingredients
-            }
-            // Step indexes, like ticks, only mean the same steps if the steps are unchanged.
-            val cook = if (existing.instructions == fresh.instructions) existing.cookState else null
-            // The uid is the recipe's identity in exports: a re-share never changes it.
-            // The note and the servings are the user's, not the source's: a fresh parse never
-            // carries them, and neither depends on the exact wording of the steps.
-            update(
-                fresh.copy(
-                    id = existing.id,
-                    uid = existing.uid,
-                    checkedIngredients = ticked,
-                    notes = existing.notes,
-                    cookState = cook,
-                    servingsTarget = existing.servingsTarget
-                )
-            )
+            update(keepingUserState(existing, fresh))
             existing.id
         }
         cullHistory(historyLimit)
         return id
+    }
+
+    /**
+     * Saves the user's edit of recipe [id] (#29): [edited]'s content, with [origin] and
+     * [editedAt] as given. Everything that is the user's rather than the content (id, uid,
+     * link, note, servings, list membership, last view) stays, and ticks and cook progress
+     * follow the same rule as a re-share. False if the recipe is gone.
+     */
+    @Transaction
+    open suspend fun saveEdit(id: Long, edited: RecipeEntity, origin: String, editedAt: Long): Boolean {
+        val existing = get(id) ?: return false
+        update(
+            keepingUserState(existing, edited).copy(
+                sourceUrl = existing.sourceUrl,
+                sourceType = existing.sourceType,
+                language = existing.language,
+                lastViewedAt = existing.lastViewedAt,
+                contentOrigin = origin,
+                editedAt = editedAt
+            )
+        )
+        return true
+    }
+
+    /** [fresh]'s content under [existing]'s identity and user state. */
+    private fun keepingUserState(existing: RecipeEntity, fresh: RecipeEntity): RecipeEntity {
+        val ticked = if (existing.ingredients == fresh.ingredients) {
+            existing.checkedIngredients
+        } else {
+            emptySet() // the indexes no longer mean the same ingredients
+        }
+        // Step indexes, like ticks, only mean the same steps if the steps are unchanged.
+        val cook = if (existing.instructions == fresh.instructions) existing.cookState else null
+        // The uid is the recipe's identity in exports: a re-share never changes it.
+        // The note and the servings are the user's, not the source's: a fresh parse never
+        // carries them, and neither depends on the exact wording of the steps.
+        return fresh.copy(
+            id = existing.id,
+            uid = existing.uid,
+            checkedIngredients = ticked,
+            notes = existing.notes,
+            cookState = cook,
+            servingsTarget = existing.servingsTarget
+        )
+    }
+
+    companion object {
+        /** [com.example.recipeclipper.data.model.ContentOrigin.PARSED], as stored. */
+        const val ORIGIN_PARSED = "PARSED"
     }
 }

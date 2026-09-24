@@ -2,7 +2,11 @@ package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.local.CookStateJson
 import com.example.recipeclipper.data.local.dao.RecipeDao
+import com.example.recipeclipper.data.local.entity.newUid
+import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.CookProgress
+import com.example.recipeclipper.data.model.ManualRecipe
+import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
@@ -42,6 +46,17 @@ class DefaultRecipeRepository @Inject constructor(
     override suspend fun importFromUrl(sharedUrl: String): ParseResult {
         // Saved under the cleaned link, so tracking tags can't make one recipe into two.
         val url = UrlCleaner.clean(sharedUrl)
+        // The user's version is never refreshed by a re-share (#29): open it without a fetch.
+        val usersVersion = log.guard("find user's version", null) {
+            recipeDao.findByUrl(url)?.takeIf { it.contentOrigin != RecipeDao.ORIGIN_PARSED }
+        }
+        if (usersVersion != null) {
+            val viewedAt = clock.now()
+            return log.guard("open user's version", ParseResult.Error(ParseError.SaveFailed)) {
+                recipeDao.upsert(usersVersion.copy(lastViewedAt = viewedAt), HISTORY_LIMIT)
+                ParseResult.Success(usersVersion.copy(lastViewedAt = viewedAt).toDomain())
+            }
+        }
         val parsed = fetchWithFallbacks(url)
         val now = clock.now()
         return when (parsed) {
@@ -57,6 +72,50 @@ class DefaultRecipeRepository @Inject constructor(
                 } ?: return parsed
                 ParseResult.Success(cached.copy(lastViewedAt = now).toDomain())
             }
+        }
+    }
+
+    override suspend fun updateFromSource(id: Long): ParseResult {
+        val existing = log.guard("updateFromSource find", null) { recipeDao.get(id) }
+            ?: return ParseResult.Error(ParseError.NotSaved)
+        if (!existing.toDomain().canUpdateFromSource) return ParseResult.Error(ParseError.NothingToShow)
+        val parsed = fetchWithFallbacks(existing.sourceUrl)
+        if (parsed !is ParseResult.Success) return parsed
+        val now = clock.now()
+        // Filed under the saved link, whatever the parse reports, so it lands on this row.
+        val fresh = parsed.recipe.copy(sourceUrl = existing.sourceUrl).toEntity(now)
+        return log.guard("updateFromSource save", ParseResult.Error(ParseError.SaveFailed)) {
+            recipeDao.upsert(fresh, HISTORY_LIMIT, replaceUsersVersion = true)
+            recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
+                ?: ParseResult.Error(ParseError.SaveFailed)
+        }
+    }
+
+    override suspend fun saveEdit(id: Long, draft: RecipeDraft): Recipe? {
+        if (!draft.isValid) return null
+        return log.guard("saveEdit", null) {
+            val existing = recipeDao.get(id)?.toDomain() ?: return@guard null
+            val edited = draft.applyTo(existing).toEntity(existing.lastViewedAt)
+            val saved = recipeDao.saveEdit(id, edited, existing.origin.afterEdit().name, clock.now())
+            if (saved) recipeDao.get(id)?.toDomain() else null
+        }
+    }
+
+    override suspend fun addManual(draft: RecipeDraft): Recipe? {
+        if (!draft.isValid) return null
+        val now = clock.now()
+        val recipe = draft.applyTo(
+            Recipe(
+                name = "", image = null, ingredients = emptyList(), instructions = emptyList(),
+                prepTime = null, cookTime = null, totalTime = null, yield = null,
+                sourceUrl = ManualRecipe.newSourceUrl(newUid()),
+                origin = ContentOrigin.MANUAL,
+                editedAt = now
+            )
+        )
+        return log.guard("addManual", null) {
+            val id = recipeDao.upsert(recipe.toEntity(now), HISTORY_LIMIT)
+            recipeDao.get(id)?.toDomain()
         }
     }
 

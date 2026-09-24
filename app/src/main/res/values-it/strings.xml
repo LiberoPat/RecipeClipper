@@ -184,4 +184,25 @@
     <string name="timer_channel_name">Timer di cucina</string>
     <string name="timer_channel_description">Quando il timer di un passaggio finisce mentre l\'app è chiusa o in background</string>
     <string name="timer_notification_title">Tempo scaduto: passaggio %1$d</string>
+
+    <!-- Editing a recipe, or typing one in (#29) -->
+    <string name="action_edit">Modifica</string>
+    <string name="action_update_from_source">Aggiorna dalla fonte</string>
+    <string name="action_update">Aggiorna</string>
+    <string name="action_new_recipe">+ Nuova ricetta</string>
+    <string name="update_from_source_title">Sostituire la tua versione?</string>
+    <string name="update_from_source_body">La ricetta verrà scaricata di nuovo dal sito e sostituirà la tua versione. Le tue modifiche andranno perse; la nota e le liste restano.</string>
+    <string name="update_from_source_failed">Impossibile aggiornare dalla fonte. %1$s</string>
+    <string name="edit_title_new">Nuova ricetta</string>
+    <string name="edit_title_edit">Modifica ricetta</string>
+    <string name="edit_label_name">Nome</string>
+    <string name="edit_label_yield">Porzioni o quantità</string>
+    <string name="edit_label_prep">Tempo di preparazione</string>
+    <string name="edit_label_cook">Tempo di cottura</string>
+    <string name="edit_label_total">Tempo totale</string>
+    <string name="edit_label_ingredients">Ingredienti, uno per riga</string>
+    <string name="edit_label_steps">Passaggi, uno per riga</string>
+    <string name="edit_label_photo">Link della foto (facoltativo)</string>
+    <string name="edit_error_invalid">Una ricetta ha bisogno di un nome e di ingredienti o passaggi.</string>
+    <string name="edit_error_save_failed">Impossibile salvare la ricetta. Riprova.</string>
 </resources>

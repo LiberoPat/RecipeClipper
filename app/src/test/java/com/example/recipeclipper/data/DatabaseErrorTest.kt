@@ -95,14 +95,15 @@ class DatabaseErrorTest {
         val log = RecordingLog()
         val result = recipes(ParseResult.Success(recipe), log).importFromUrl(url)
         assertEquals(ParseResult.Error(ParseError.SaveFailed), result)
-        assertEquals(listOf("import save failed"), log.messages)
+        // The lookup for a user's version (#29) fails first; the fetch goes ahead regardless.
+        assertEquals(listOf("find user's version failed", "import save failed"), log.messages)
     }
 
     @Test fun `a failed fetch whose fallback lookup throws still returns the fetch's cause`() = runTest {
         val log = RecordingLog()
         val result = recipes(ParseResult.Error(ParseError.NoRecipeFound), log).importFromUrl(url)
         assertEquals(ParseResult.Error(ParseError.NoRecipeFound), result)
-        assertEquals(1, log.messages.size)
+        assertEquals(2, log.messages.size) // the user's-version lookup (#29), then the fallback
     }
 
     @Test fun `open, delete, restore and the per-recipe writes degrade instead of throwing`() = runTest {

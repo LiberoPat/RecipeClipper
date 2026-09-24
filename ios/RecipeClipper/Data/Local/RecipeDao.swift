@@ -28,12 +28,13 @@ struct RecipeDao {
         try db.run(
             """
             INSERT INTO recipes (\(RecipeRecord.columns))
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             r.id == 0 ? nil : r.id, r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
-            JSONColumns.encode(r.checkedIngredients), r.notes, r.uid, r.language, r.cookState, r.servingsTarget
+            JSONColumns.encode(r.checkedIngredients), r.notes, r.uid, r.language, r.cookState, r.servingsTarget,
+            r.contentOrigin, r.editedAt
         )
         return db.lastInsertRowId
     }
@@ -44,13 +45,14 @@ struct RecipeDao {
             UPDATE recipes SET sourceUrl = ?, title = ?, imageUrl = ?, ingredients = ?,
                 instructions = ?, prepTime = ?, cookTime = ?, totalTime = ?, servings = ?,
                 sourceType = ?, lastViewedAt = ?, checkedIngredients = ?, notes = ?, language = ?,
-                cookState = ?, servingsTarget = ?
+                cookState = ?, servingsTarget = ?, contentOrigin = ?, editedAt = ?
             WHERE id = ?
             """,
             r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
-            JSONColumns.encode(r.checkedIngredients), r.notes, r.language, r.cookState, r.servingsTarget, r.id
+            JSONColumns.encode(r.checkedIngredients), r.notes, r.language, r.cookState, r.servingsTarget,
+            r.contentOrigin, r.editedAt, r.id
         )
     }
 
@@ -168,24 +170,19 @@ struct RecipeDao {
     /// place, keeping its id, its uid (`update` never writes it), its list membership, its
     /// note, its chosen servings, its ticked ingredients only if the ingredients are unchanged,
     /// and its cook progress only if the steps are unchanged (both hold indexes). The history
-    /// cap is enforced in the same transaction. Call
-    /// inside a write.
-    func upsert(_ fresh: RecipeRecord, historyLimit: Int) throws -> Int64 {
+    /// cap is enforced in the same transaction. Call inside a write.
+    ///
+    /// A row that is the user's version (#29: `contentOrigin` not PARSED) keeps its content:
+    /// the re-share only counts as a view. `replaceUsersVersion` is "Update from source", which
+    /// does replace it, and makes it PARSED again (`fresh` is).
+    func upsert(_ fresh: RecipeRecord, historyLimit: Int, replaceUsersVersion: Bool = false) throws -> Int64 {
         let id: Int64
         if let existing = try findByUrl(fresh.sourceUrl) {
-            var updated = fresh
-            updated.id = existing.id
-            // Ticks are indexes; if the ingredients changed they'd point at different lines.
-            updated.checkedIngredients = existing.ingredients == fresh.ingredients
-                ? existing.checkedIngredients
-                : []
-            // The note is the user's, not the source's: a fresh parse never carries one.
-            updated.notes = existing.notes
-            // Step indexes, like ticks, only mean the same steps if the steps are unchanged.
-            updated.cookState = existing.instructions == fresh.instructions ? existing.cookState : nil
-            // The chosen servings are the user's and don't depend on the wording of the steps.
-            updated.servingsTarget = existing.servingsTarget
-            try update(updated)
+            if existing.contentOrigin != Self.originParsed && !replaceUsersVersion {
+                try touch(existing.id, now: fresh.lastViewedAt)
+            } else {
+                try update(keepingUserState(existing, fresh))
+            }
             id = existing.id
         } else {
             var inserted = fresh
@@ -195,4 +192,42 @@ struct RecipeDao {
         try cullHistory(keep: historyLimit)
         return id
     }
+
+    /// Saves the user's edit of recipe `id` (#29): `edited`'s content, with `origin` and
+    /// `editedAt` as given. Everything that is the user's rather than the content (id, uid,
+    /// link, note, servings, list membership, last view) stays, and ticks and cook progress
+    /// follow the same rule as a re-share. False if the recipe is gone. Call inside a write.
+    func saveEdit(_ id: Int64, edited: RecipeRecord, origin: String, editedAt: Int64) throws -> Bool {
+        guard let existing = try get(id) else { return false }
+        var updated = keepingUserState(existing, edited)
+        updated.sourceUrl = existing.sourceUrl
+        updated.sourceType = existing.sourceType
+        updated.language = existing.language
+        updated.lastViewedAt = existing.lastViewedAt
+        updated.contentOrigin = origin
+        updated.editedAt = editedAt
+        try update(updated)
+        return true
+    }
+
+    /// `fresh`'s content under `existing`'s identity and user state.
+    private func keepingUserState(_ existing: RecipeRecord, _ fresh: RecipeRecord) -> RecipeRecord {
+        var updated = fresh
+        updated.id = existing.id
+        updated.uid = existing.uid
+        // Ticks are indexes; if the ingredients changed they'd point at different lines.
+        updated.checkedIngredients = existing.ingredients == fresh.ingredients
+            ? existing.checkedIngredients
+            : []
+        // The note is the user's, not the source's: a fresh parse never carries one.
+        updated.notes = existing.notes
+        // Step indexes, like ticks, only mean the same steps if the steps are unchanged.
+        updated.cookState = existing.instructions == fresh.instructions ? existing.cookState : nil
+        // The chosen servings are the user's and don't depend on the wording of the steps.
+        updated.servingsTarget = existing.servingsTarget
+        return updated
+    }
+
+    /// `ContentOrigin.parsed`, as stored.
+    static let originParsed = "PARSED"
 }

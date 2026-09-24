@@ -27,12 +27,16 @@ struct RecipeRecord: Equatable {
     var language: String? = nil             // the recipe's language tag (#14); nil before user_version 4
     var cookState: String? = nil            // CookProgress as JSON (CookStateJSON); kept if steps unchanged
     var servingsTarget: Int? = nil          // the chosen servings; nil = the recipe's own yield
+    /// `ContentOrigin` by name (#29): PARSED is the source's words, anything else the user's
+    /// version, never refreshed by a re-share.
+    var contentOrigin: String = "PARSED"
+    var editedAt: Int64? = nil              // when the user last saved an edit; nil if never
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
         totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language, \
-        cookState, servingsTarget
+        cookState, servingsTarget, contentOrigin, editedAt
         """
 
     init(
@@ -41,7 +45,8 @@ struct RecipeRecord: Equatable {
         prepTime: String?, cookTime: String?, totalTime: String?, servings: String?,
         sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = [],
         notes: String? = nil, uid: String = newUid(), language: String? = nil,
-        cookState: String? = nil, servingsTarget: Int? = nil
+        cookState: String? = nil, servingsTarget: Int? = nil,
+        contentOrigin: String = "PARSED", editedAt: Int64? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -61,6 +66,8 @@ struct RecipeRecord: Equatable {
         self.language = language
         self.cookState = cookState
         self.servingsTarget = servingsTarget
+        self.contentOrigin = contentOrigin
+        self.editedAt = editedAt
     }
 
     init(row: SQLiteRow) {
@@ -82,6 +89,8 @@ struct RecipeRecord: Equatable {
         language = row.optionalString(15)
         cookState = row.optionalString(16)
         servingsTarget = row.isNull(17) ? nil : row.int(17)
+        contentOrigin = row.string(18)
+        editedAt = row.isNull(19) ? nil : row.int64(19)
     }
 }
 
