@@ -661,7 +661,12 @@ final class DifferentialCorpusTests: XCTestCase {
 
     func testJsonLdMatchesKotlin() {
         for (label, blocks, expected) in Self.jsonLd {
-            XCTAssertEqual(JsonLdRecipeParser.parse(blocks, sourceUrl: "https://src/\(label)"), expected, label)
+            // These rows predate the recipe's language (#14), and the expected values are
+            // never hand-edited, so it is left out here; LanguageWordsTests (and Kotlin's
+            // RecipeLanguageTest) pin how it is chosen.
+            var parsed = JsonLdRecipeParser.parse(blocks, sourceUrl: "https://src/\(label)")
+            parsed?.language = nil
+            XCTAssertEqual(parsed, expected, label)
         }
     }
 }
