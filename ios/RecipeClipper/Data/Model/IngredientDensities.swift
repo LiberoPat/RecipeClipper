@@ -52,7 +52,7 @@ enum IngredientDensities {
         }
         .map { $0.element }
 
-    private static let trailingModifiers = Set(SharedTables.strings(table, "trailingModifiers"))
+    static let trailingModifiers = Set(SharedTables.strings(table, "trailingModifiers"))
 
     private static let innermostParens = JRegex(#"\([^()]*\)"#)
     private static let whitespace = JRegex(#"\s+"#)
@@ -61,12 +61,18 @@ enum IngredientDensities {
     /// brown sugar" match while "butter beans" and "flour tortillas" don't.
     static func find(_ ingredientText: String) -> Density? {
         let phrase = headPhrase(ingredientText)
-        return aliases.first { phrase == $0.alias || phrase.hasSuffix(" " + $0.alias) }?.density
+        return aliases.first { endsWithName(phrase, $0.alias) }?.density
     }
+
+    /// The longest alias `phrase` (a head phrase) ends in, as `find` matches it; nil if none.
+    static func aliasAtEnd(_ phrase: String) -> String? { aliases.first { endsWithName(phrase, $0.alias) }?.alias }
+
+    /// True when `phrase` is `name` or ends with it at a word boundary: the table's matching rule.
+    static func endsWithName(_ phrase: String, _ name: String) -> Bool { phrase == name || phrase.hasSuffix(" " + name) }
 
     /// Removes parenthesised text, including nested or doubled parentheses ("((all-purpose
     /// flour))"), innermost first until nothing changes, then drops any unmatched paren.
-    private static func stripParentheses(_ text: String) -> String {
+    static func stripParentheses(_ text: String) -> String {
         var current = text
         while true {
             let next = innermostParens.replace(current, with: " ")
@@ -77,7 +83,7 @@ enum IngredientDensities {
     }
 
     /// The ingredient name: text before the first comma, without parentheses or modifiers.
-    private static func headPhrase(_ text: String) -> String {
+    static func headPhrase(_ text: String) -> String {
         var s = stripParentheses(text)
         if let comma = s.firstIndex(of: ",") { s = String(s[..<comma]) }
         s = s.lowercased()

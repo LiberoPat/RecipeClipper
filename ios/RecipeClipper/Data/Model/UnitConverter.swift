@@ -36,15 +36,15 @@ enum UnitConverter {
         .l: 1000.0,
     ]
 
-    private static let unitAtStart = JRegex(#"^\s*"# + UnitPatterns.captured, ignoreCase: true)
+    static let unitAtStart = JRegex(#"^\s*"# + UnitPatterns.captured, ignoreCase: true)
     private static let parenAtStart = JRegex(#"^\s*\(([^)]*)\)"#)
-    private static let slashAtStart = JRegex(
+    static let slashAtStart = JRegex(
         #"^\s*/\s*("# + IngredientScaler.qty + #")(\s*)"# + UnitPatterns.captured,
         ignoreCase: true
     )
 
     // "plus 1 Tbsp." straight after the first unit. groups: 1 quantity, 2 space, 3 unit
-    private static let continuationAtStart = JRegex(
+    static let continuationAtStart = JRegex(
         #"^\s*"# + IngredientScaler.continuation + "(" + IngredientScaler.qty + #")(\s*)"# + UnitPatterns.captured,
         ignoreCase: true
     )

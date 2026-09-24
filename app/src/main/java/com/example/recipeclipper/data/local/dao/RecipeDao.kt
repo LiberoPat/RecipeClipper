@@ -127,7 +127,7 @@ abstract class RecipeDao {
 
     /**
      * Saves a freshly parsed recipe and returns its id. A link that has been seen before is
-     * updated in place, so it keeps its id, its list membership, its note and, if the
+     * updated in place, so it keeps its id, its uid, its list membership, its note and, if the
      * ingredients didn't change, its ticked ingredients. The history cap is enforced in the same
      * transaction, so the table is never left over the limit.
      */
@@ -143,7 +143,12 @@ abstract class RecipeDao {
                 emptySet() // the indexes no longer mean the same ingredients
             }
             // The note is the user's, not the source's: a fresh parse never carries one.
-            update(fresh.copy(id = existing.id, checkedIngredients = ticked, notes = existing.notes))
+            // The uid is the recipe's identity in exports: a re-share never changes it.
+            update(
+                fresh.copy(
+                    id = existing.id, checkedIngredients = ticked, notes = existing.notes, uid = existing.uid
+                )
+            )
             existing.id
         }
         cullHistory(historyLimit)

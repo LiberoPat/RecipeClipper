@@ -50,6 +50,14 @@ call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
+Export and import (#26): `BackupJsonTest` and `BackupMergerTest` read the
+shared fixtures in `shared/fixtures/backup/` (a test resource dir on Android,
+bundled resources on iOS), so both platforms decode the same file and plan the
+same merge; `DefaultBackupRepositoryTest` covers the causes and that a failed
+import writes nothing; `SettingsViewModelTest` covers the Your recipes rows.
+The device test `BackupDaoTest` runs the import transaction against real SQL
+(IGNORE keeps `addedAt`, rollback on a bad file); iOS's `BackupDaoTests` do the
+same on in-memory SQLite.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to
@@ -90,7 +98,9 @@ ingredients, `lastViewedAt` and list membership, and a user-created list keeps
 its place after the seeded block. `MIGRATION_2_3` (the `notes` column, #27)
 is run against a real version-2 database the same way: the recipe keeps its
 content, ticks and membership, has no note, and a note written afterwards
-survives a re-share; a version-1 file also goes to 3 in one open. This is
+survives a re-share; a version-1 file also goes to 3 in one open.
+`MIGRATION_3_4` (the `uid` columns, #26) backfills a distinct UUID on every
+recipe and list and keeps the rest of each row. This is
 what makes "never use destructive migration" checkable rather than an
 intention.
 
@@ -148,17 +158,30 @@ Three things that cost real time and will again:
   every `SemanticsProperties.Text` in the tree — before changing production
   code.
 
-Still without Android UI tests: most of the recipe screen (reading and cook
-views, the bookmark icon, share; only the source credit and the import error
-screen, including "Report this site", are covered), History (search,
-swipe-to-dismiss, the undo snackbar), the Lists screen, and the Settings
-screen. The iOS UI tests (`ios/RecipeClipperUITests`) do cover Home, History
-(search, swipe-to-delete, the batched undo), Settings, list detail, the
-save-to-list sheet with the bookmark it fills, the source credit, and the
-import error screens (including "Report this site" opening Safari). Cook mode
-has no UI tests on either platform. Sharing into the app has one iOS suite,
-`ShareExtensionUITests`, which runs only on request (see "iOS share extension:
-end to end and memory" below).
+Also `RecipeScreenTest` (reading view, servings and units, bookmark, delete,
+and the share text after scaling and converting through the UI; the source
+credit has its own `RecipeSourceCreditTest`, and the import error screen,
+including "Report this site", has `RecipeErrorScreenTest`), `CookModeTest`
+(step states, tap to jump, "Done — next step", timers), `HistoryScreenTest`
+(search, swipe-to-dismiss, the batched undo snackbar) and `ListsScreenTest`.
+`RecipeScreenFixture` gives the recipe tests a `Clock` the test moves
+forward, so a 20-minute timer finishes as soon as the test says so; the
+ViewModel's 250 ms tick is real time, so wait with `compose.waitUntil`, not a
+bare assert. Done steps are only drawn struck through, not exposed to
+semantics, so `isStruckThrough()` reads the text's layout style. Share itself
+opens the system chooser, so the tests stop at `RecipeViewModel.shareText()`.
+
+Still without Android UI tests: the Settings screen. The iOS UI tests
+(`ios/RecipeClipperUITests`) cover Home, History (search, swipe-to-delete, the
+batched undo), Settings, list detail, the save-to-list sheet with the bookmark
+it fills, the source credit, the import error screens (including "Report this
+site" opening Safari) and cook mode (`CookModeUITests`, on the `cook` seed
+scenario). XCUITest drives the app from outside and can't move its clock, so
+the one timer that has to finish there is a real 3-second step. The share
+sheet is left to the hosted `RecipeViewModelTests`, which pin the exact share
+text. Sharing into the app has one more iOS suite, `ShareExtensionUITests`,
+which runs only on request (see "iOS share extension: end to end and memory"
+below).
 
 Two dependency versions are pinned on purpose: `navigation-compose` 2.7.7 and
 `hilt-navigation-compose` 1.2.0. The newest releases need a newer Compose than

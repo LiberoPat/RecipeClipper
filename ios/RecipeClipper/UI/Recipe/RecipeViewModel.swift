@@ -365,11 +365,7 @@ final class RecipeViewModel {
     // Scale first, then convert, so a converted amount always matches the chosen servings.
     private func render(_ recipe: Recipe, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool) -> [String] {
         let factor = servings.map { Double($0.target) / Double($0.base) } ?? 1.0
-        return recipe.ingredients.map {
-            UnitConverter.convert(
-                IngredientScaler.scale($0, factor: factor), system: system, includeLiquids: convertLiquids, separatorFrom: $0
-            )
-        }
+        return IngredientRendering.render(recipe.ingredients, factor: factor, system: system, convertLiquids: convertLiquids)
     }
 
     // Instructions aren't scaled, but oven temperatures follow the chosen temperature unit —

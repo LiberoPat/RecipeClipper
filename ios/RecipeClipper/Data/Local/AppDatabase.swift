@@ -137,6 +137,7 @@ final class AppDatabase: @unchecked Sendable {
     private static let migrations: [(SQLiteConnection) throws -> Void] = [
         createVersion1,
         addNotes,
+        addUids,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -211,6 +212,27 @@ final class AppDatabase: @unchecked Sendable {
     private static func addNotes(_ db: SQLiteConnection) throws {
         try db.execute("ALTER TABLE recipes ADD COLUMN notes TEXT")
     }
+
+    /// Version 3 (Android's Room version 4, `MIGRATION_3_4`): a stable `uid` on every recipe and
+    /// list (#26), what an export file calls them, so a list keeps its identity through a rename
+    /// and a later import or sync (#53) can recognise it. Existing rows (the lists seeded by
+    /// version 1 included) are backfilled with random version-4 UUIDs; the `''` default exists
+    /// only so the column can be added NOT NULL. The same SQL as Android.
+    private static func addUids(_ db: SQLiteConnection) throws {
+        for table in ["recipes", "lists"] {
+            try db.execute("ALTER TABLE \(table) ADD COLUMN uid TEXT NOT NULL DEFAULT ''")
+            try db.execute("UPDATE \(table) SET uid = \(randomUuidSql)")
+            try db.execute("CREATE UNIQUE INDEX IF NOT EXISTS index_\(table)_uid ON \(table) (uid)")
+        }
+    }
+
+    /// A random version-4 UUID, lowercase, evaluated afresh for every row.
+    private static let randomUuidSql = """
+        lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || \
+        substr(lower(hex(randomblob(2))), 2) || '-' || \
+        substr('89ab', 1 + (abs(random()) % 4), 1) || substr(lower(hex(randomblob(2))), 2) || '-' || \
+        lower(hex(randomblob(6)))
+        """
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its
     /// `isFavorites` column, never its name or position — all six can be renamed. The rest are

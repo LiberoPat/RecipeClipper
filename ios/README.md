@@ -23,7 +23,9 @@ Targets: `RecipeClipper` (app), `RecipeClipperShare` (share extension, embedded 
 `RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest). The extension
 compiles the app's `Data/`, `ShareImport/`, `UI/Theme/` and `UI/Common/Components.swift`
 itself (dual target membership in `project.yml`), so a file added there must build in an
-extension: no `UIApplication.shared`.
+extension: no `UIApplication.shared`. `RecipeClipperTests` bundles `../shared/fixtures` (the
+export files the Android tests read too), found at `fixtures/backup/<name>.json` in the test
+bundle.
 
 **Never run two test sessions on one simulator.** The unit tests are hosted in the app, and
 a run that finishes (or starts) closes that app on its simulator, killing whatever the other

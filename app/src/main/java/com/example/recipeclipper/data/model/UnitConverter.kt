@@ -43,15 +43,15 @@ object UnitConverter {
         MeasureUnit.L to 1000.0
     )
 
-    private val UNIT_AT_START = Regex("""^\s*${UnitPatterns.CAPTURED}""", RegexOption.IGNORE_CASE)
+    internal val UNIT_AT_START = Regex("""^\s*${UnitPatterns.CAPTURED}""", RegexOption.IGNORE_CASE)
     private val PAREN_AT_START = Regex("""^\s*\(([^)]*)\)""")
-    private val SLASH_AT_START = Regex(
+    internal val SLASH_AT_START = Regex(
         """^\s*/\s*(${IngredientScaler.QTY})(\s*)${UnitPatterns.CAPTURED}""",
         RegexOption.IGNORE_CASE
     )
 
     // "plus 1 Tbsp." straight after the first unit. groups: 1 quantity, 2 space, 3 unit
-    private val CONTINUATION_AT_START = Regex(
+    internal val CONTINUATION_AT_START = Regex(
         """^\s*${IngredientScaler.CONTINUATION}(${IngredientScaler.QTY})(\s*)${UnitPatterns.CAPTURED}""",
         RegexOption.IGNORE_CASE
     )

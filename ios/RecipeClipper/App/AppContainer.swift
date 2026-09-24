@@ -9,6 +9,8 @@ final class AppContainer {
     let preferences: AppPreferences
     let clock: Clock
     let connectivity: Connectivity
+    let backupRepository: BackupRepository
+    let backupFiles: BackupFiles
     let appInfo: AppInfo
     /// The live database, when there is one on disk that another process (the share
     /// extension) can also write to.
@@ -17,17 +19,21 @@ final class AppContainer {
     init(
         recipeRepository: RecipeRepository,
         listRepository: ListRepository,
+        backupRepository: BackupRepository,
         preferences: AppPreferences,
         clock: Clock,
         connectivity: Connectivity = StaticConnectivity(),
+        backupFiles: BackupFiles = FileBackupFiles(),
         appInfo: AppInfo = BundleAppInfo(),
         sharedDatabase: AppDatabase? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
+        self.backupRepository = backupRepository
         self.preferences = preferences
         self.clock = clock
         self.connectivity = connectivity
+        self.backupFiles = backupFiles
         self.appInfo = appInfo
         self.sharedDatabase = sharedDatabase
     }
@@ -62,6 +68,7 @@ final class AppContainer {
                 renderedPages: WebViewRenderedPageSource()
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             connectivity: PathConnectivity(),
@@ -89,7 +96,7 @@ final class AppContainer {
     }
 
     func makeSettingsViewModel() -> SettingsViewModel {
-        SettingsViewModel(preferences: preferences)
+        SettingsViewModel(preferences: preferences, backups: backupRepository, files: backupFiles)
     }
 
     func makeListsViewModel() -> ListsViewModel {
