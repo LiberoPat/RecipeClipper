@@ -38,7 +38,7 @@ class DifferentialCorpusTest {
         assumeTrue("no iOS project beside app/", swiftFile.exists())
         val original = swiftFile.readText()
         val regenerated = original.lines().joinToString("\n") { regenerate(it) }
-        outFile.parentFile.mkdirs()
+        outFile.parentFile?.mkdirs()
         outFile.writeText(regenerated)
         assertEquals(
             "The corpus is stale. Copy app/${outFile.path} over ios/RecipeClipperTests/Model/" +

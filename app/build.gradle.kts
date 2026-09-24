@@ -1,6 +1,6 @@
 plugins {
+    // No org.jetbrains.kotlin.android: AGP 9 compiles Kotlin itself (built-in Kotlin).
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
@@ -28,12 +28,17 @@ android {
     // The Kotlin package stays com.example.recipeclipper; only the installed ID
     // (applicationId) is the real one. The two are independent.
     namespace = "com.example.recipeclipper"
-    compileSdk = 34
+    // compileSdk is ahead of targetSdk because the current AndroidX releases (Compose 1.12,
+    // navigation 2.10, core 1.19) require compiling against 37. targetSdk is what changes
+    // runtime behaviour: 36 is what Google Play requires, and its behaviour changes
+    // (edge-to-edge, predictive back) are handled. Raise it only after reading the next
+    // release's behaviour changes.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.liberopat.recipeclipper"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -44,12 +49,11 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
-    kotlinOptions {
-        jvmTarget = "1.8"
+        // Kotlin's jvmTarget follows targetCompatibility under built-in Kotlin. D8 desugars
+        // Java 17 bytecode for minSdk 24; Java 8 made javac (Hilt's generated code) warn
+        // that source/target 8 is obsolete.
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     signingConfigs {
@@ -82,7 +86,7 @@ android {
     // androidTest APK. Without this every migration test fails with
     // "Cannot find the schema file in the assets folder" — which looks like a broken
     // migration and is really a missing file.
-    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    sourceSets.getByName("androidTest").assets.directories += "$projectDir/schemas"
 
     // The hand-written fakes live in the JVM test source set, and the Compose UI tests want
     // the same ones: a screen test drives a real ViewModel over a fake repository, so the
@@ -90,7 +94,8 @@ android {
     // directory beats keeping two copies of FakeRecipeRepository in step. Only `fake/` is
     // shared — the JVM-only helpers next to it (MainDispatcherRule, collectEagerly) depend on
     // kotlinx-coroutines-test and have no business on a device.
-    sourceSets.getByName("androidTest").java.srcDir("src/test/java/com/example/recipeclipper/fake")
+    // (`kotlin`, not `java`: built-in Kotlin compiles only the kotlin source directories.)
+    sourceSets.getByName("androidTest").kotlin.directories += "src/test/java/com/example/recipeclipper/fake"
 }
 
 // Room writes its schema here on every build; commit the files, they are what future
@@ -100,32 +105,35 @@ ksp {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
 
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
-    implementation("androidx.activity:activity-compose:1.9.2")
+    implementation("androidx.core:core-ktx:1.19.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
 
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    // Icons.Default.*: material3 1.4 stopped pulling this in. The core set only; see
+    // CLAUDE.md on material-icons-extended.
+    implementation("androidx.compose.material:material-icons-core")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
     // org.json is an Android framework class; plain JVM tests need a real implementation.
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
     // viewModelScope posts to Dispatchers.Main, which doesn't exist on the JVM; this lets a
     // test install a StandardTestDispatcher/UnconfinedTestDispatcher in its place.
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
 
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test:runner:1.6.2")
-    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test:core-ktx:1.7.0")
 
-    // Pinned ahead of what compose-ui-test drags in. Espresso 3.6.x reflects into
+    // Kept ahead of what compose-ui-test may drag in. Espresso 3.6.x reflects into
     // android.hardware.input.InputManager#getInstance, which no longer exists on API 36+, so
     // every Compose test dies in Espresso.onIdle() with a NoSuchMethodException before a
     // single assertion runs. The emulator in use is API 37. 3.7.0 drops that reflection.
@@ -141,10 +149,12 @@ dependencies {
     // manifest, which only the debug variant needs.
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
-    // Navigation and Hilt. Pinned to versions built against the Compose BOM above: the
-    // newest navigation-compose needs a newer Compose and would pull in mixed versions.
-    implementation("androidx.navigation:navigation-compose:2.7.7")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    // Navigation and Hilt. navigation-compose has no BOM of its own; bump it with the Compose
+    // BOM so both ask for the same Compose (2.10 is built against Compose 1.12).
+    // hiltViewModel() now lives in hilt-lifecycle-viewmodel-compose; the copy in
+    // hilt-navigation-compose is deprecated, and nothing here needs the navigation-scoped one.
+    implementation("androidx.navigation:navigation-compose:2.10.2")
+    implementation("androidx.hilt:hilt-lifecycle-viewmodel-compose:1.4.0")
     val hilt = "2.60.1"
     implementation("com.google.dagger:hilt-android:$hilt")
     ksp("com.google.dagger:hilt-compiler:$hilt")
@@ -158,14 +168,19 @@ dependencies {
     // in app/schemas and runs a real migration against it. Device-only: it needs real SQLite.
     androidTestImplementation("androidx.room:room-testing:$room")
 
-    // Fetch + parse the shared page (also reads embedded JSON-LD recipe data)
+    // Fetch + parse the shared page (also reads embedded JSON-LD recipe data).
+    // Held at 1.17.2 on purpose; it is not part of the toolchain. Newer releases need core
+    // library desugaring on Android (1.19.1), fetch through java.net.http.HttpClient where it
+    // exists (1.21.1: on the JVM, so unit tests no longer exercise the device's
+    // HttpURLConnection path, and a timeout stops being a SocketTimeoutException), and
+    // change Element.text() boundaries (1.22.2), which the iOS stripHtml port mirrors.
     implementation("org.jsoup:jsoup:1.17.2")
 
     // Recipe photo
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Background thread for the network fetch
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 }
 
 // DifferentialCorpusTest reads the iOS corpus and checks it against the Kotlin, so an edit to

@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.settings
 
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -25,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.TemperatureUnit
@@ -55,6 +56,9 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
             LazyColumn(
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
                 modifier = Modifier.fillMaxSize()
+                    // Edge-to-edge: the background fills behind the bars, the rows stay clear
+                    // of them, the display cutout and the keyboard.
+                    .safeDrawingPadding()
             ) {
                 item {
                     BackButton(onBack)

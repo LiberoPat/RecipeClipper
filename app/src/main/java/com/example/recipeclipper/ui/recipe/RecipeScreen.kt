@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.recipe
 
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,7 +51,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
@@ -150,25 +151,30 @@ fun RecipeScreen(
         ) {
             TimerAlerts(state.cook.timers, actions.onTimerAlerted)
 
-            when (content) {
-                is RecipeContent.Success ->
-                    if (cooking) CookView(content, state, actions)
-                    else ReadingView(content, state, actions, saveState.isSaved)
-                is RecipeContent.Loading -> StatusView(actions.onBack) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-                is RecipeContent.Error -> StatusView(actions.onBack) {
-                    Text(
-                        content.error.toMessage(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    // Every error offers "Try again", no-recipe included: a café or hotel
-                    // captive portal serves its login page, which parses as a page with no
-                    // recipe, and the same link works once you're through it.
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
-                        Text(stringResource(R.string.action_try_again))
+            // Edge-to-edge: the surface's colour fills behind the bars (so forced-dark cook
+            // mode is dark edge to edge); the content stays clear of them, the display
+            // cutout and the keyboard.
+            Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                when (content) {
+                    is RecipeContent.Success ->
+                        if (cooking) CookView(content, state, actions)
+                        else ReadingView(content, state, actions, saveState.isSaved)
+                    is RecipeContent.Loading -> StatusView(actions.onBack) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                    is RecipeContent.Error -> StatusView(actions.onBack) {
+                        Text(
+                            content.error.toMessage(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        // Every error offers "Try again", no-recipe included: a café or hotel
+                        // captive portal serves its login page, which parses as a page with no
+                        // recipe, and the same link works once you're through it.
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                            Text(stringResource(R.string.action_try_again))
+                        }
                     }
                 }
             }
