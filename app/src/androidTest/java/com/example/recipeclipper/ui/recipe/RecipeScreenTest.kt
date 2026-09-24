@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -58,7 +60,10 @@ class RecipeScreenTest {
         compose.onNodeWithContentDescription("Decrease servings").performClick()
         compose.onNodeWithContentDescription("Decrease servings").performClick()
 
-        compose.onNodeWithText("2").assertIsDisplayed()
+        // "2" alone also matches the numbered instruction step ("2. Simmer for 20 minutes."),
+        // which the LazyColumn lays out (and so exposes to semantics) after the servings row,
+        // so the first match is the servings count.
+        compose.onAllNodesWithText("2").onFirst().assertIsDisplayed()
         compose.onNodeWithText("1/2 cup milk").assertIsDisplayed()
         compose.onNodeWithText("Original: 4 servings").assertIsDisplayed()
     }
