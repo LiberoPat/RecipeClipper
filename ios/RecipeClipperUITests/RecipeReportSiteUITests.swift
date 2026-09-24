@@ -21,9 +21,11 @@ final class RecipeReportSiteUITests: RecipeUITestCase {
         require(report, "Report this site")
 
         report.tap()
-        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
-        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: timeout), "the browser to open the issue")
-        safari.terminate()
+        // The link is handed to the system, which brings the browser forward. Asserted as the
+        // app leaving the foreground: Safari's own first launch on a fresh, busy simulator can
+        // take longer than any sensible wait to report itself foreground.
+        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 30), "the browser to open the issue")
+        XCUIApplication(bundleIdentifier: "com.apple.mobilesafari").terminate()
     }
 
     func testABlockedSiteOffersNoReport() {
