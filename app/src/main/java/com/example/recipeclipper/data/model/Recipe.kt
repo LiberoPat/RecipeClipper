@@ -30,7 +30,11 @@ data class Recipe(
      * which picks the words its lines are read with. Null for a recipe stored before #14,
      * which is detected from its words when shown.
      */
-    val language: String? = null
+    val language: String? = null,
+    /** Where the cook stands on this recipe: cook mode, steps done, step timers. */
+    val cook: CookProgress = CookProgress(),
+    /** The servings the user chose, or null for the recipe's own yield. */
+    val servingsTarget: Int? = null
 )
 
 /** What a list row (history, home) needs, without loading every ingredient and step. */

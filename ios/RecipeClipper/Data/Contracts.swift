@@ -91,6 +91,12 @@ protocol RecipeRepository: AnyObject {
     /// Saves the user's note on a recipe. A blank note is stored as no note.
     func setNotes(id: Int64, notes: String) async
 
+    /// Saves where the cook stands. An empty `CookProgress` is stored as none.
+    func setCookProgress(id: Int64, progress: CookProgress) async
+
+    /// Saves the chosen servings; nil goes back to the recipe's own yield.
+    func setServingsTarget(id: Int64, target: Int?) async
+
     /// Hard delete; memberships go with it. Nil if it was already gone.
     func delete(id: Int64) async -> DeletedRecipe?
 
@@ -103,6 +109,20 @@ protocol RecipeRepository: AnyObject {
 
     /// The `limit` most recently viewed. Re-emits on change.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never>
+}
+
+/// Schedules the background "time's up" alert for a running step timer, so it still sounds
+/// with the app in the background or killed (Android's `TimerAlarmScheduler`). A seam: the
+/// ViewModel never touches UserNotifications, and tests pass a fake. The real one is
+/// `NotificationTimerScheduler`. Every call is idempotent.
+@MainActor
+protocol TimerAlarmScheduler: AnyObject {
+    func schedule(_ alarm: StepAlarm)
+    func cancel(recipeId: Int64, step: Int)
+    /// Drops every pending alert for `recipeId` and schedules `alarms` instead. On opening a
+    /// recipe: a local notification has no receiver that could check it is still wanted, so
+    /// one left over from a re-share that changed the steps must be removed here.
+    func replaceAll(recipeId: Int64, with alarms: [StepAlarm])
 }
 
 /// List membership. Separate from RecipeRepository on purpose (see docs/decisions.md, Lists).

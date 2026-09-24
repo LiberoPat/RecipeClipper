@@ -25,11 +25,14 @@ struct RecipeRecord: Equatable {
     /// changes once written — `update` doesn't touch it, and an import keeps the file's.
     var uid: String = newUid()
     var language: String? = nil             // the recipe's language tag (#14); nil before user_version 4
+    var cookState: String? = nil            // CookProgress as JSON (CookStateJSON); kept if steps unchanged
+    var servingsTarget: Int? = nil          // the chosen servings; nil = the recipe's own yield
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
-        totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language
+        totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language, \
+        cookState, servingsTarget
         """
 
     init(
@@ -37,7 +40,8 @@ struct RecipeRecord: Equatable {
         ingredients: [String], instructions: [String],
         prepTime: String?, cookTime: String?, totalTime: String?, servings: String?,
         sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = [],
-        notes: String? = nil, uid: String = newUid(), language: String? = nil
+        notes: String? = nil, uid: String = newUid(), language: String? = nil,
+        cookState: String? = nil, servingsTarget: Int? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -55,6 +59,8 @@ struct RecipeRecord: Equatable {
         self.notes = notes
         self.uid = uid
         self.language = language
+        self.cookState = cookState
+        self.servingsTarget = servingsTarget
     }
 
     init(row: SQLiteRow) {
@@ -74,12 +80,22 @@ struct RecipeRecord: Equatable {
         notes = row.optionalString(13)
         uid = row.string(14)
         language = row.optionalString(15)
+        cookState = row.optionalString(16)
+        servingsTarget = row.isNull(17) ? nil : row.int(17)
     }
 }
 
 /// A fresh stable id for a new row: a lowercase UUID, the same form Android and the
 /// migration's backfill use.
 func newUid() -> String { UUID().uuidString.lowercased() }
+
+/// A recipe's saved cook progress, with what a timer alert needs to name it (Android's
+/// `CookStateRow`).
+struct CookStateRecord: Equatable {
+    let id: Int64
+    let title: String
+    let cookState: String
+}
 
 /// One row of a list of recipes: everything except the ingredients and steps.
 struct RecipeSummaryRecord: Equatable {

@@ -280,4 +280,7 @@ enum Strings {
             instructions: String(localized: "share_heading_instructions")
         )
     }
+
+    // Step timer notifications (#10)
+    static func timerNotificationTitle(step: Int) -> String { String(localized: "timer_notification_title \(step)") }
 }

@@ -1,12 +1,16 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.model.SavedTimer
+import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.remote.RecipeSource
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import com.example.recipeclipper.fake.FakeRenderedPageSource
@@ -79,6 +83,17 @@ class DefaultRecipeRepositoryRetryTest {
         override suspend fun setNotes(id: Long, notes: String?) {
             writes++
             rows[id]?.let { rows[id] = it.copy(notes = notes) }
+        }
+        override suspend fun setCookState(id: Long, cookState: String?) {
+            writes++
+            rows[id]?.let { rows[id] = it.copy(cookState = cookState) }
+        }
+        override suspend fun setServingsTarget(id: Long, target: Int?) {
+            writes++
+            rows[id]?.let { rows[id] = it.copy(servingsTarget = target) }
+        }
+        override suspend fun cookStates() = rows.values.mapNotNull { row ->
+            row.cookState?.let { CookStateRow(row.id, row.title, it) }
         }
         override suspend fun delete(id: Long) {
             writes++
@@ -194,6 +209,53 @@ class DefaultRecipeRepositoryRetryTest {
         assertEquals(id, result.recipe.id)
         assertEquals("Better Soup", result.recipe.name)
         assertEquals("Used half the sugar", result.recipe.notes)
+    }
+
+    // The same rule as RecipeDaoTest on a device, here over the in-memory DAO: cook progress
+    // holds step indexes, so it survives a re-share only if the steps are unchanged; the
+    // chosen servings survive either way.
+    @Test fun `re-sharing keeps cook progress only while the steps are unchanged`() = runTest {
+        val dao = InMemoryRecipeDao()
+        val first = DefaultRecipeRepository(ScriptedSource(success), dao, Clock { 1_000L }, NoLog)
+        val id = (first.importFromUrl(url) as ParseResult.Success).recipe.id
+        val progress = CookProgress(active = true, doneSteps = setOf(0))
+        first.setCookProgress(id, progress)
+        first.setServingsTarget(id, 8)
+
+        val sameSteps = DefaultRecipeRepository(
+            ScriptedSource(ParseResult.Success(recipe(title = "Better Soup"))), dao, Clock { 2_000L }, NoLog
+        ).importFromUrl(url) as ParseResult.Success
+        assertEquals(progress, sameSteps.recipe.cook)
+        assertEquals(8, sameSteps.recipe.servingsTarget)
+
+        val newSteps = recipe().copy(instructions = listOf("Chop.", "Cook."))
+        val changed = DefaultRecipeRepository(
+            ScriptedSource(ParseResult.Success(newSteps)), dao, Clock { 3_000L }, NoLog
+        ).importFromUrl(url) as ParseResult.Success
+        assertEquals(CookProgress(), changed.recipe.cook)
+        assertEquals(8, changed.recipe.servingsTarget)
+    }
+
+    @Test fun `running timers are the saved timers that have a deadline`() = runTest {
+        val dao = InMemoryRecipeDao()
+        val repository = DefaultRecipeRepository(ScriptedSource(success), dao, Clock { 1_000L }, NoLog)
+        val id = (repository.importFromUrl(url) as ParseResult.Success).recipe.id
+        repository.setCookProgress(
+            id,
+            CookProgress(
+                active = true,
+                timers = mapOf(
+                    0 to SavedTimer(totalSeconds = 60, remainingSeconds = 60, endsAt = 61_000L),
+                    1 to SavedTimer(totalSeconds = 60, remainingSeconds = 30, endsAt = null)
+                )
+            )
+        )
+
+        assertEquals(listOf(StepAlarm(id, "Soup", 0, 61_000L)), repository.runningTimers())
+
+        repository.setCookProgress(id, CookProgress())
+        assertEquals(null, dao.rows[id]?.cookState) // empty progress is stored as none
+        assertEquals(emptyList<StepAlarm>(), repository.runningTimers())
     }
 
     @Test fun `a blank note is stored as no note`() = runTest {

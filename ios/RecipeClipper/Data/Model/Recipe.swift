@@ -34,6 +34,10 @@ struct Recipe: Equatable {
     /// which picks the words its lines are read with. Nil for a recipe stored before #14, which
     /// is detected from its words when shown.
     var language: String? = nil
+    /// Where the cook stands on this recipe: cook mode, steps done, step timers.
+    var cook = CookProgress()
+    /// The servings the user chose, or nil for the recipe's own yield.
+    var servingsTarget: Int? = nil
 }
 
 /// What a list row (history, home) needs, without loading every ingredient and step.

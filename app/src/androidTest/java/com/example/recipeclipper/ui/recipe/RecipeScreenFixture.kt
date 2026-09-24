@@ -15,6 +15,7 @@ import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
 import com.example.recipeclipper.fake.FakeListRepository
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
 import java.util.concurrent.atomic.AtomicLong
 
@@ -51,7 +52,8 @@ class RecipeScreenFixture(recipe: Recipe = testRecipe()) {
             preferences,
             Clock { now.get() },
             FakeConnectivity(),
-            FakeAppInfo()
+            FakeAppInfo(),
+            FakeTimerAlarmScheduler()
         )
         val saveViewModel = SaveToListViewModel(lists)
         compose.setContent {
