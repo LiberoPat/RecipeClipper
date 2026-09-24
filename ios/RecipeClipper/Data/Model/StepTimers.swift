@@ -18,6 +18,8 @@ enum StepTimers {
         // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer".
         let duration: JRegex
 
+        let scaler: IngredientScaler.Patterns
+
         // "1 hour 30 minutes", "2 minutes and 30 seconds". groups: 1 quantity, 2 unit
         let followOn: JRegex
 
@@ -31,9 +33,12 @@ enum StepTimers {
             let patterns = table.flatMap { SharedTables.strings($0, "patterns") }
             let unit = "(" + (patterns.isEmpty ? ["(?!)"] : patterns).joined(separator: "|") + ")"
             let followOnWords = SharedTables.alternation(words.strings("timers", "followOn"))
-            let qty = IngredientScaler.patterns(words).qty
+            scaler = IngredientScaler.patterns(words)
+            let qty = scaler.qty
+            // A number after a colon is the minutes of a clock time ("1:30 Stunden"), never hours
+            // on its own (#15).
             duration = JRegex(
-                #"(?<![\d.,/⁄])("# + qty + #")(?:\s*(?:[-–—]|"# + words.rangeWords + #")\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
+                #"(?<![\d.,/⁄:])("# + qty + #")(?:\s*(?:[-–—]|"# + words.rangeWords + #")\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
                 ignoreCase: true
             )
             followOn = JRegex(
@@ -71,7 +76,7 @@ enum StepTimers {
 
     /// Int32 with Kotlin's saturating `Double.toInt()`, so an absurd number can't trap.
     private static func toSeconds(_ p: Patterns, _ quantity: String, _ unit: String) -> Int32? {
-        guard let amount = IngredientScaler.parse(quantity) else { return nil }
+        guard let amount = p.scaler.parse(quantity) else { return nil }
         let seconds = amount * Double(p.seconds(unit))
         if seconds.isNaN { return 0 }
         if seconds >= Double(Int32.max) { return Int32.max }

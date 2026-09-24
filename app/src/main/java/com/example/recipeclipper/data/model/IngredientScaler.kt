@@ -30,16 +30,24 @@ object IngredientScaler {
     // be the typographic U+2044 ("1⁄2", as BBC Good Food writes it), a symbol rather than a
     // word, so it stays here. A comma followed by one or two digits is a decimal comma; one
     // followed by three ("1,500") may be a thousands separator, so it is never read as part
-    // of a quantity, and AMBIGUOUS_COMMA leaves the line.
-    private fun qtyPattern(joiner: String) =
+    // of a quantity, and AMBIGUOUS_COMMA leaves the line. Where the language writes thousands
+    // with a dot (amounts.json "thousandsDot"), "1.500" is 1500 (#76): only a dot before
+    // exactly three digits, so "1.5" and "0.25" stay decimals.
+    private fun qtyPattern(joiner: String, thousandsDot: Boolean) =
         """(?:\d+\s+(?:$joiner\s+)?\d+[/⁄]\d+|\d+\s+$joiner\s+[$UNICODE_FRACTIONS]|\d+\s*[$UNICODE_FRACTIONS]|""" +
-            """\d+[/⁄]\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|[$UNICODE_FRACTIONS])"""
+            """\d+[/⁄]\d+|""" + (if (thousandsDot) """\d{1,3}\.\d{3}(?![\d.,])|""" else "") +
+            """\d+(?:\.\d+|,\d{1,2}(?!\d))?|[$UNICODE_FRACTIONS])"""
 
     /** "1,5": the line writes decimals with a comma, so its output does too. */
     internal val DECIMAL_COMMA = Regex("""\d,\d{1,2}(?!\d)""")
 
     /** "1,500" is 1.5 or 1500 depending on who wrote it: a line holding one is left as written. */
     internal val AMBIGUOUS_COMMA = Regex("""\d,\d{3}""")
+
+    /** Where dots mark thousands, "1.500,5" or "1.2345" is no amount the pattern reads whole. */
+    private val AMBIGUOUS_DOT = Regex("""\d\.\d{3}[\d.,]""")
+
+    private val THOUSANDS_DOT = Regex("""(?<=\d)\.(?=\d{3}(?!\d))""")
 
     private val DECIMAL_POINT = Regex("""(?<=\d)\.(?=\d)""")
 
@@ -51,8 +59,30 @@ object IngredientScaler {
     internal class Patterns(val words: LanguageWords) {
         private val units = UnitPatterns.of(words)
 
+        private val amounts = words.table("amounts")
+
+        /** "1.500 g" is 1500 g (amounts.json "thousandsDot"). */
+        val thousandsDot: Boolean = amounts.getBoolean("thousandsDot")
+
         /** A quantity, in this language's words ("2 and 1/2"). No capturing group. */
-        val qty = qtyPattern(SharedTables.alternation(words.strings("amounts", "mixedJoiners")))
+        val qty = qtyPattern(SharedTables.alternation(words.strings("amounts", "mixedJoiners")), thousandsDot)
+
+        // "1 taza y media", "2 e meia": a half in words, which the quantity pattern can't read.
+        private val spelledHalf = Regex(
+            """(?<!\p{L})${SharedTables.alternation(words.strings("amounts", "spelledHalves"))}(?!\p{L})""",
+            RegexOption.IGNORE_CASE
+        )
+
+        /**
+         * A line whose amount can't be read without guessing: "1,500" (1.5 or 1500?), a half in
+         * words, or where dots mark thousands a number like "1.500,5". It stays as written.
+         */
+        fun unreadable(line: String): Boolean =
+            AMBIGUOUS_COMMA.containsMatchIn(line) || spelledHalf.containsMatchIn(line) ||
+                (thousandsDot && AMBIGUOUS_DOT.containsMatchIn(line))
+
+        /** A quantity this pattern matched, read with this language's thousands separator. */
+        fun parse(quantity: String): Double? = IngredientScaler.parse(quantity, thousandsDot)
 
         // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
         val leading = Regex("""^(\s*)($qty)(?:(\s*[-–—]\s*|\s+${words.rangeWords}\s+)($qty))?""")
@@ -104,19 +134,19 @@ object IngredientScaler {
     /** [words] null: a language the app has no words for, so the line stays as written. */
     fun scale(line: String, factor: Double, words: LanguageWords? = LanguageWords.ENGLISH): String {
         if (factor == 1.0 || words == null) return line
-        if (AMBIGUOUS_COMMA.containsMatchIn(line)) return line
         val p = patterns(words)
+        if (p.unreadable(line)) return line
         val match = p.leading.find(line) ?: return line
         val rest = line.substring(match.range.last + 1)
         if (p.notAnAmount.containsMatchIn(rest)) return line
 
         val comma = DECIMAL_COMMA.containsMatchIn(line)
-        val low = parse(match.groupValues[2]) ?: return line
+        val low = p.parse(match.groupValues[2]) ?: return line
         val upperRaw = match.groupValues[4]
         val scaled = if (upperRaw.isEmpty()) {
             formatLeading(low * factor, comma)
         } else {
-            val high = parse(upperRaw) ?: return line
+            val high = p.parse(upperRaw) ?: return line
             formatLeading(low * factor, comma) + match.groupValues[3] + formatLeading(high * factor, comma)
         }
         return match.groupValues[1] + scaled + scaleContinuation(p, rest, factor, comma)
@@ -133,7 +163,7 @@ object IngredientScaler {
     private fun scaleContinuation(p: Patterns, rest: String, factor: Double, comma: Boolean): String {
         val m = p.continued.find(rest) ?: return scaleAlternateMeasure(p, rest, factor, comma)
         val unit = MeasureUnit.fromText(m.groupValues[4], p.words) ?: return scaleAlternateMeasure(p, rest, factor, comma)
-        val value = parse(m.groupValues[2]) ?: return scaleAlternateMeasure(p, rest, factor, comma)
+        val value = p.parse(m.groupValues[2]) ?: return scaleAlternateMeasure(p, rest, factor, comma)
         val tail = m.groupValues[3] + m.groupValues[4] + rest.substring(m.range.last + 1)
         return m.groupValues[1] + formatFor(unit, value * factor, comma) +
                 scaleAlternateMeasure(p, tail, factor, comma)
@@ -147,9 +177,9 @@ object IngredientScaler {
         }
         p.altSlash.find(rest)?.let { m ->
             val unit = MeasureUnit.fromText(m.groupValues[6], p.words)
-            val value = parse(m.groupValues[2])
+            val value = p.parse(m.groupValues[2])
             val upper = m.groupValues[4]
-            val high = if (upper.isEmpty()) null else parse(upper)
+            val high = if (upper.isEmpty()) null else p.parse(upper)
             if (unit != null && value != null && (upper.isEmpty() || high != null)) {
                 val range = if (high == null) "" else m.groupValues[3] + formatFor(unit, high * factor, comma)
                 return m.groupValues[1] + formatFor(unit, value * factor, comma) + range + m.groupValues[5] +
@@ -161,7 +191,7 @@ object IngredientScaler {
 
     private fun scalePair(p: Patterns, match: MatchResult, factor: Double, comma: Boolean): String {
         val unit = MeasureUnit.fromText(match.groupValues[3], p.words) ?: return match.value
-        val value = parse(match.groupValues[1]) ?: return match.value
+        val value = p.parse(match.groupValues[1]) ?: return match.value
         return formatFor(unit, value * factor, comma) + match.groupValues[2] + match.groupValues[3]
     }
 
@@ -181,10 +211,12 @@ object IngredientScaler {
     // has already checked: "2 and 1/2" is "2 1/2" in any language.
     private val JOINER = Regex("""\s+\p{L}[\p{L}\s]*?\s+(?=[\d$UNICODE_FRACTIONS])""")
 
-    internal fun parse(quantity: String): Double? {
+    /** [thousandsDot]: the quantity comes from a language that writes "1.500" for 1500. */
+    internal fun parse(quantity: String, thousandsDot: Boolean = false): Double? {
         // The quantity pattern only lets a comma through as a decimal comma, never before three digits.
         // "2 and 1/2" is "2 1/2", and "1⁄2" (U+2044) is "1/2".
-        val q = quantity.trim().replace(',', '.').replace('⁄', '/').replace(JOINER, " ")
+        val digits = if (thousandsDot) THOUSANDS_DOT.replace(quantity.trim(), "") else quantity.trim()
+        val q = digits.replace(',', '.').replace('⁄', '/').replace(JOINER, " ")
         val last = q.last()
         UNICODE_VALUES[last]?.let { fraction ->
             val whole = q.dropLast(1).trim()

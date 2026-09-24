@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "language": "es",
+  "about": "IngredientDensities. An ingredient matches by the END of its name, longest alias first (ties keep file order). gramsPerCup is per US cup (236.6 ml); null is a skip entry: recognised, never converted, and it wins over a shorter alias by being longer. liquid: pourable (the 'Also convert liquids' option). stickable: allows the 'stick' unit. Only ingredients that weigh about the same every time belong here. trailingModifiers are dropped from the end of the name before matching.",
+  "trailingModifiers": ["tamizada", "tamizado", "derretida", "derretido", "fría", "frío", "blanda", "ablandada", "pomada", "a", "temperatura", "ambiente"],
+  "entries": [
+    {"note": "Flours. The head noun comes first in Spanish, so 'harina de arroz' ends in 'arroz' and matches nothing.", "gramsPerCup": 120.0, "aliases": ["harina", "harina de trigo", "harina común", "harina todo uso", "harina de todo uso", "harina de fuerza"]},
+    {"note": "Sugars", "gramsPerCup": 200.0, "aliases": ["azúcar", "azúcar blanca", "azúcar blanco", "azúcar granulada", "azúcar granulado"]},
+    {"gramsPerCup": 213.0, "aliases": ["azúcar moreno", "azúcar morena", "azúcar mascabado"]},
+    {"gramsPerCup": 113.0, "aliases": ["azúcar glas", "azúcar glass", "azúcar impalpable", "azúcar en polvo"]},
+    {"note": "Baking staples", "gramsPerCup": 84.0, "aliases": ["cacao", "cacao en polvo"]},
+    {"gramsPerCup": 192.0, "aliases": ["polvo de hornear", "polvos de hornear", "polvo para hornear", "levadura química"]},
+    {"gramsPerCup": 288.0, "aliases": ["bicarbonato", "bicarbonato de sodio", "bicarbonato sódico"]},
+    {"note": "Fats and dairy that isn't pourable", "gramsPerCup": 227.0, "aliases": ["mantequilla", "margarina"]},
+    {"gramsPerCup": 245.0, "aliases": ["yogur", "yogurt", "yogur natural", "yogur griego"]},
+    {"note": "Pourable", "gramsPerCup": 237.0, "liquid": true, "aliases": ["agua"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["leche", "leche entera", "leche desnatada", "leche descremada"]},
+    {"gramsPerCup": 238.0, "liquid": true, "aliases": ["nata", "nata líquida", "nata para montar", "crema de leche", "crema para batir"]},
+    {"gramsPerCup": 218.0, "liquid": true, "aliases": ["aceite", "aceite de oliva", "aceite de oliva virgen extra", "aceite de oliva extra virgen", "aceite vegetal", "aceite de girasol"]},
+    {"gramsPerCup": 340.0, "liquid": true, "aliases": ["miel"]},
+    {"gramsPerCup": 240.0, "liquid": true, "aliases": ["caldo", "caldo de pollo", "caldo de verduras", "caldo de carne"]},
+    {"gramsPerCup": 239.0, "liquid": true, "aliases": ["vinagre"]},
+    {"gramsPerCup": 236.0, "liquid": true, "aliases": ["vino", "vino blanco", "vino tinto"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["zumo", "jugo", "zumo de limón", "jugo de limón", "zumo de naranja", "jugo de naranja"]}
+  ]
+}

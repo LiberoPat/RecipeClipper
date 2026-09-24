@@ -19,9 +19,11 @@ enum Servings {
 
         init(_ words: LanguageWords) {
             range = JRegex(#"\d+\s*(?:[-–—]|"# + words.rangeWords + #")\s*\d+"#, ignoreCase: true)
-            servingWord = JRegex(#"\b"# + SharedTables.alternation(words.strings("yield", "serving")) + #"\b"#, ignoreCase: true)
-            makesWord = JRegex(#"\b"# + SharedTables.alternation(words.strings("yield", "makes")) + #"\b"#, ignoreCase: true)
-            countedNoun = JRegex(#"\d[^\p{L}]*(?!"# + words.rangeWords + #"\b)\p{L}"#, ignoreCase: true)
+            // Whole words by letters rather than \b, which the JDK, Android's ICU and iOS read
+            // differently beside accented letters ("porções", #15).
+            servingWord = JRegex(#"(?<!\p{L})"# + SharedTables.alternation(words.strings("yield", "serving")) + #"(?!\p{L})"#, ignoreCase: true)
+            makesWord = JRegex(#"(?<!\p{L})"# + SharedTables.alternation(words.strings("yield", "makes")) + #"(?!\p{L})"#, ignoreCase: true)
+            countedNoun = JRegex(#"\d[^\p{L}]*(?!"# + words.rangeWords + #"(?!\p{L}))\p{L}"#, ignoreCase: true)
         }
     }
 

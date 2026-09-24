@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "language": "pt",
+  "about": "IngredientDensities. An ingredient matches by the END of its name, longest alias first (ties keep file order). gramsPerCup is per US cup (236.6 ml); null is a skip entry: recognised, never converted, and it wins over a shorter alias by being longer. liquid: pourable (the 'Also convert liquids' option). stickable: allows the 'stick' unit. Only ingredients that weigh about the same every time belong here. trailingModifiers are dropped from the end of the name before matching.",
+  "trailingModifiers": ["peneirada", "peneirado", "derretida", "derretido", "gelada", "gelado", "amolecida", "em", "temperatura", "ambiente"],
+  "entries": [
+    {"note": "Flours. The head noun comes first in Portuguese, so 'farinha de arroz' ends in 'arroz' and matches nothing.", "gramsPerCup": 120.0, "aliases": ["farinha", "farinha de trigo", "farinha de trigo sem fermento"]},
+    {"note": "Sugars", "gramsPerCup": 200.0, "aliases": ["açúcar", "açúcar refinado", "açúcar cristal"]},
+    {"gramsPerCup": 113.0, "aliases": ["açúcar de confeiteiro"]},
+    {"note": "Baking staples", "gramsPerCup": 84.0, "aliases": ["cacau", "cacau em pó"]},
+    {"gramsPerCup": 192.0, "aliases": ["fermento químico", "fermento em pó", "fermento químico em pó"]},
+    {"gramsPerCup": 288.0, "aliases": ["bicarbonato", "bicarbonato de sódio"]},
+    {"note": "Fats and dairy that isn't pourable", "gramsPerCup": 227.0, "aliases": ["manteiga", "manteiga sem sal", "margarina"]},
+    {"gramsPerCup": 245.0, "aliases": ["iogurte", "iogurte natural", "iogurte grego"]},
+    {"note": "Pourable", "gramsPerCup": 237.0, "liquid": true, "aliases": ["água"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["leite", "leite integral", "leite desnatado"]},
+    {"gramsPerCup": 238.0, "liquid": true, "aliases": ["creme de leite", "nata"]},
+    {"gramsPerCup": 218.0, "liquid": true, "aliases": ["óleo", "óleo de soja", "óleo vegetal", "azeite", "azeite de oliva", "azeite extra virgem", "azeite de oliva extra virgem"]},
+    {"gramsPerCup": 340.0, "liquid": true, "aliases": ["mel"]},
+    {"gramsPerCup": 240.0, "liquid": true, "aliases": ["caldo", "caldo de legumes", "caldo de galinha", "caldo de carne"]},
+    {"gramsPerCup": 239.0, "liquid": true, "aliases": ["vinagre"]},
+    {"gramsPerCup": 236.0, "liquid": true, "aliases": ["vinho", "vinho branco", "vinho tinto"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["suco", "sumo", "suco de limão", "sumo de limão", "suco de laranja"]}
+  ]
+}
