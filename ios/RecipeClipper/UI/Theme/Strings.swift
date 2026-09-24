@@ -40,6 +40,53 @@ enum Strings {
     static let errorNothingToShow = "There's no recipe to show."
     static let errorInvalidUrl = "That doesn't look like a link."
 
+    // Settings → Your recipes: export and import (#26)
+    static let settingsSectionYourRecipes = "Your recipes"
+    static let backupExportTitle = "Export recipes"
+    static let backupExportDescription = "Save every recipe and list to one file, to keep or to move to another phone"
+    static let backupImportTitle = "Import recipes"
+    static let backupImportDescription = "Add the recipes and lists from an export file. Nothing here is replaced or deleted."
+    static let backupExporting = "Preparing the file…"
+    static let backupImporting = "Importing…"
+
+    static func backupRecipes(_ n: Int) -> String { n == 1 ? "1 recipe" : "\(n) recipes" }
+    static func backupLists(_ n: Int) -> String { n == 1 ? "1 list" : "\(n) lists" }
+
+    /// "Imported 12 recipes and 3 lists." plus what was already here and what didn't fit.
+    static func importSummary(_ s: ImportSummary) -> String {
+        var parts: [String] = []
+        if s.recipesAdded == 0 && s.listsAdded == 0 {
+            parts.append("Nothing new: everything in that file is already here.")
+        } else if s.listsAdded == 0 {
+            parts.append("Imported \(backupRecipes(s.recipesAdded)).")
+        } else {
+            parts.append("Imported \(backupRecipes(s.recipesAdded)) and \(backupLists(s.listsAdded)).")
+        }
+        if s.recipesAlreadyHere > 0 && (s.recipesAdded > 0 || s.listsAdded > 0) {
+            parts.append(s.recipesAlreadyHere == 1
+                ? "1 recipe was already here."
+                : "\(s.recipesAlreadyHere) recipes were already here.")
+        }
+        if s.recipesSkipped > 0 {
+            parts.append(s.recipesSkipped == 1
+                ? "1 older recipe in no list wasn't added: history keeps the \(historyLimit) most recent."
+                : "\(s.recipesSkipped) older recipes in no list weren't added: history keeps the \(historyLimit) most recent.")
+        }
+        return parts.joined(separator: " ")
+    }
+
+    static func message(for error: BackupError) -> String {
+        switch error {
+        case .notABackup: return "That file isn't a Recipe Clipper export."
+        case .newerVersion(let found):
+            return "That file was made by a newer version of Recipe Clipper (format \(found)). Update the app to import it."
+        case .malformed(let detail): return "That export file is damaged (\(detail)). Nothing was imported."
+        case .readFailed: return "Couldn't open that file."
+        case .saveFailed: return "Couldn't save the imported recipes. Nothing was changed."
+        case .exportFailed: return "Couldn't create the export file."
+        }
+    }
+
     static func message(for error: ParseError) -> String {
         switch error {
         case .noRecipeFound: return errorNoRecipeFound

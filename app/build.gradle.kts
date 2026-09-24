@@ -58,6 +58,10 @@ android {
     // shared — the JVM-only helpers next to it (MainDispatcherRule, collectEagerly) depend on
     // kotlinx-coroutines-test and have no business on a device.
     sourceSets.getByName("androidTest").java.srcDir("src/test/java/com/example/recipeclipper/fake")
+
+    // Fixtures both platforms test against (the iOS tests copy the same folder into their
+    // bundle): the export file format is proven interchangeable by reading the same files.
+    sourceSets.getByName("test").resources.srcDir("$rootDir/shared/fixtures")
 }
 
 // Room writes its schema here on every build; commit the files, they are what future

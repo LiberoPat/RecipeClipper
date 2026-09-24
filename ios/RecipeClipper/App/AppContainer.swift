@@ -9,19 +9,25 @@ final class AppContainer {
     let preferences: AppPreferences
     let clock: Clock
     let connectivity: Connectivity
+    let backupRepository: BackupRepository
+    let backupFiles: BackupFiles
 
     init(
         recipeRepository: RecipeRepository,
         listRepository: ListRepository,
+        backupRepository: BackupRepository,
         preferences: AppPreferences,
         clock: Clock,
-        connectivity: Connectivity = StaticConnectivity()
+        connectivity: Connectivity = StaticConnectivity(),
+        backupFiles: BackupFiles = FileBackupFiles()
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
+        self.backupRepository = backupRepository
         self.preferences = preferences
         self.clock = clock
         self.connectivity = connectivity
+        self.backupFiles = backupFiles
     }
 
     /// The real graph: SQLite on disk, the blog source, UserDefaults. Under XCTest (the unit
@@ -43,6 +49,7 @@ final class AppContainer {
         return AppContainer(
             recipeRepository: DefaultRecipeRepository(db: database, source: BlogRecipeSource(), clock: clock),
             listRepository: DefaultListRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             connectivity: PathConnectivity()
@@ -69,7 +76,7 @@ final class AppContainer {
     }
 
     func makeSettingsViewModel() -> SettingsViewModel {
-        SettingsViewModel(preferences: preferences)
+        SettingsViewModel(preferences: preferences, backups: backupRepository, files: backupFiles)
     }
 
     func makeListsViewModel() -> ListsViewModel {

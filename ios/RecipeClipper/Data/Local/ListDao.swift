@@ -62,10 +62,10 @@ struct ListDao {
     func create(name: String, recipeId: Int64, now: Int64) throws -> Int64 {
         try db.run(
             """
-            INSERT INTO lists (name, isBuiltIn, isFavorites, sortOrder, createdAt)
-            VALUES (?, 0, 0, (SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM lists), ?)
+            INSERT INTO lists (name, isBuiltIn, isFavorites, sortOrder, createdAt, uid)
+            VALUES (?, 0, 0, (SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM lists), ?, ?)
             """,
-            name, now
+            name, now, newUid()
         )
         let id = db.lastInsertRowId
         if recipeId != Self.noRecipe {
