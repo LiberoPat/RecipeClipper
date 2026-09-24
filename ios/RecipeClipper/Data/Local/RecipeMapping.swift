@@ -18,7 +18,9 @@ extension Recipe {
             servings: yield,
             sourceType: sourceType.rawValue,
             lastViewedAt: viewedAt,
-            checkedIngredients: checkedIngredients
+            checkedIngredients: checkedIngredients,
+            notes: notes,
+            language: language
         )
     }
 }
@@ -38,7 +40,9 @@ extension RecipeRecord {
             sourceType: SourceType(rawValue: sourceType) ?? .blog,
             id: id,
             checkedIngredients: checkedIngredients,
-            lastViewedAt: lastViewedAt
+            lastViewedAt: lastViewedAt,
+            notes: notes,
+            language: language
         )
     }
 }

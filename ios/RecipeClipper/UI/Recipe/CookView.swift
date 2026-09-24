@@ -36,6 +36,8 @@ struct CookView: View {
                                 status: index == cook.currentStep ? .current
                                     : cook.doneSteps.contains(index) ? .done : .upcoming,
                                 timerSeconds: index < content.stepTimerSeconds.count ? content.stepTimerSeconds[index] : nil,
+                                // A step has a timer only when the app has the recipe's words.
+                                timerWords: content.words ?? .english,
                                 timer: cook.timers[index],
                                 isLast: index == steps.count - 1,
                                 vm: vm
@@ -44,6 +46,7 @@ struct CookView: View {
                         }
                     }
                     .padding(.horizontal, 20)
+                    .readableColumn()
                     .padding(.top, 12)
                     .padding(.bottom, 64)
                 }
@@ -108,15 +111,17 @@ private struct CookTopBar: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        HStack(spacing: 8) {
+        // At the accessibility sizes Exit and the counter stack: side by side, German's
+        // "Beenden" and "Schritt 1 von 2" were each broken mid-word.
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
+            : AnyLayout(HStackLayout(spacing: 8))
+        layout {
             Button(Strings.exit, action: onExit)
                 .buttonStyle(TextActionStyle(color: Palette.muted))
-            // At the accessibility sizes the title would be squeezed to a letter or two
-            // between Exit and the counter. It is the least useful of the three while cooking
-            // (it was on the screen you came from), so it goes and the counter keeps its place.
-            if dynamicTypeSize.isAccessibilitySize {
-                Spacer(minLength: 0)
-            } else {
+            // At the accessibility sizes the title goes: it is the least useful of the three
+            // while cooking (it was on the screen you came from).
+            if !dynamicTypeSize.isAccessibilitySize {
                 Text(title)
                     .textStyle(Typography.titleSmall)
                     .foregroundStyle(Palette.onBackground)
@@ -126,11 +131,14 @@ private struct CookTopBar: View {
             Text(position)
                 .textStyle(Typography.labelMedium)
                 .foregroundStyle(Palette.muted)
-                // Only where it can wrap: even an unused alignment nudges one-line text.
-                .multilineTextAlignment(dynamicTypeSize.isAccessibilitySize ? .trailing : .leading)
+                .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 12 : 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 8)
         .padding(.trailing, 20)
+        // Exit's own 12pt padding puts its text on the 20pt gutter, so this lines up with
+        // the column below.
+        .readableColumn()
         .padding(.vertical, 4)
     }
 }
@@ -172,6 +180,7 @@ private struct IngredientsBar: View {
                         .foregroundStyle(Palette.muted)
                 }
                 .padding(.horizontal, 20)
+                .readableColumn()
                 .padding(.vertical, 14)
                 .contentShape(Rectangle())
             }
@@ -189,6 +198,7 @@ private struct IngredientsBar: View {
                     }
                 }
                 .padding(.horizontal, 20)
+                .readableColumn()
                 .padding(.bottom, 8)
 
                 ViewThatFits(in: .vertical) {
@@ -207,6 +217,7 @@ private struct CookStep: View {
     let text: String
     let status: StepStatus
     let timerSeconds: Int?
+    let timerWords: LanguageWords
     let timer: StepTimer?
     let isLast: Bool
     let vm: RecipeViewModel
@@ -225,7 +236,7 @@ private struct CookStep: View {
                     .foregroundStyle(Palette.onBackground)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if timerSeconds != nil || timer != nil {
-                    CurrentTimer(step: index, timerSeconds: timerSeconds, timer: timer, vm: vm)
+                    CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
                         .padding(.top, 16)
                 }
                 Button(isLast ? Strings.cookDoneFinish : Strings.cookDoneNext, action: vm.onStepDone)
@@ -280,6 +291,7 @@ private struct CookStep: View {
 private struct CurrentTimer: View {
     let step: Int
     let timerSeconds: Int?
+    let timerWords: LanguageWords
     let timer: StepTimer?
     let vm: RecipeViewModel
 
@@ -303,7 +315,7 @@ private struct CurrentTimer: View {
                 }
             }
         } else if let timerSeconds {
-            Button(Strings.timerStart(StepTimers.label(timerSeconds))) { vm.onTimerStart(step) }
+            Button(Strings.timerStart(StepTimers.label(timerSeconds, words: timerWords))) { vm.onTimerStart(step) }
                 .buttonStyle(OutlinedActionStyle())
         }
     }

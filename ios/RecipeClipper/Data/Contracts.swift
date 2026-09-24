@@ -24,6 +24,23 @@ protocol RecipeSource {
     func fetch(url: String) async -> ParseResult
 }
 
+/// Loads a page in an off-screen browser, lets its JavaScript run, and returns the resulting
+/// HTML (Android's RenderedPageSource). The repository's last resort once the direct fetch and
+/// its retry end `.blocked` or `.noRecipeFound`. `WebViewRenderedPageSource` is the real one,
+/// built on the main actor in AppContainer; parsing stays with the pure parsers.
+protocol RenderedPageSource {
+    /// The page's `document.documentElement.outerHTML` once loaded and settled; nil if it
+    /// couldn't be loaded, or when the calling task is cancelled (which stops the load). The
+    /// caller caps the overall time.
+    func render(url: String) async -> String?
+}
+
+/// Renders nothing: the default where the fallback isn't wanted (tests that aren't about it,
+/// the UI-test graph).
+struct NoRenderedPageSource: RenderedPageSource {
+    func render(url: String) async -> String? { nil }
+}
+
 /// Whether the device has a usable network (Android's Connectivity). A seam so RecipeViewModel
 /// never touches Network.framework and a test can drive it; `PathConnectivity` is the real one.
 protocol Connectivity: AnyObject {
@@ -43,6 +60,22 @@ final class StaticConnectivity: Connectivity {
     }
 }
 
+/// The platform and app version, as a site report states them (Android's AppInfo). A seam so
+/// RecipeViewModel never reads the bundle or the OS and a test can pin the values;
+/// `BundleAppInfo` is the real one.
+protocol AppInfo {
+    /// e.g. "iOS 17.5".
+    var platform: String { get }
+    /// e.g. "1.0 (1)": marketing version, then build number.
+    var appVersion: String { get }
+}
+
+/// Fixed values: the default where the real ones don't matter (previews, and tests).
+struct StaticAppInfo: AppInfo {
+    var platform = "iOS 17.0"
+    var appVersion = "1.0 (1)"
+}
+
 /// Fetches, parses and persists recipes.
 protocol RecipeRepository: AnyObject {
     /// The share-target path: clean the link, fetch, parse, then persist (upsert + history
@@ -54,6 +87,9 @@ protocol RecipeRepository: AnyObject {
     func open(id: Int64) async -> Recipe?
 
     func setChecked(id: Int64, checked: Set<Int>) async
+
+    /// Saves the user's note on a recipe. A blank note is stored as no note.
+    func setNotes(id: Int64, notes: String) async
 
     /// Hard delete; memberships go with it. Nil if it was already gone.
     func delete(id: Int64) async -> DeletedRecipe?
@@ -92,6 +128,40 @@ protocol ListRepository: AnyObject {
 
     /// Refused for Favorites (guard lives in the SQL). Never deletes the recipes in it.
     func deleteList(listId: Int64) async
+}
+
+/// Export and import of every recipe and list as one file (#26; Android's BackupRepository).
+protocol BackupRepository: AnyObject {
+    /// Everything, as the text of one export file.
+    func export() async -> Result<ExportedBackup, BackupError>
+
+    /// Merges an export file into what's here (never replaces, never deletes; see
+    /// BackupMerger). A file that can't be read writes nothing and says why.
+    func importBackup(_ text: String) async -> Result<ImportSummary, BackupError>
+}
+
+/// Where an export file is written and a picked one is read (Android's BackupFiles), so the
+/// Settings ViewModel stays free of the file system and its test can use a fake.
+protocol BackupFiles: AnyObject {
+    /// Writes `json` as `recipe-clipper-YYYY-MM-DD.json` and returns its URL for the share
+    /// sheet, or nil if it couldn't be written.
+    func writeExport(json: String, exportedAt: Int64) async -> URL?
+
+    /// The picked file's text, `.readFailed` if it couldn't be read, or `.notABackup` if it's
+    /// far bigger than any export (or not text).
+    func readText(_ url: URL) async -> Result<String, BackupError>
+}
+
+/// Far beyond any real export (a few hundred recipes is well under 2 MB).
+let backupMaxBytes = 20 * 1024 * 1024
+
+/// `recipe-clipper-YYYY-MM-DD.json`, in the phone's time zone.
+func backupFileName(exportedAt: Int64) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyy-MM-dd"
+    let date = Date(timeIntervalSince1970: TimeInterval(exportedAt) / 1000)
+    return "recipe-clipper-" + formatter.string(from: date) + ".json"
 }
 
 /// The user's global defaults. Read and written through the vars; `settings` publishes them so

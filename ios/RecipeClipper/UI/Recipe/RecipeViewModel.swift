@@ -9,6 +9,8 @@ import Observation
 @Observable
 final class RecipeViewModel {
     static let tick = Duration.milliseconds(250)
+    /// How long typing must pause before the note is written. Android's NOTES_SAVE_DELAY_MS.
+    static let notesSaveDelay = Duration.milliseconds(500)
 
     private(set) var uiState: RecipeUiState
 
@@ -19,6 +21,7 @@ final class RecipeViewModel {
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private let sleep: Sleep
     @ObservationIgnored private let connectivity: Connectivity
+    @ObservationIgnored private let appInfo: AppInfo
 
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     // Waits for offline -> online while an offline / fetch-failed error is showing.
@@ -26,6 +29,9 @@ final class RecipeViewModel {
     // Step index -> wall-clock time (ms) its timer ends. Only running timers are in here.
     @ObservationIgnored private var deadlines: [Int: Int64] = [:]
     @ObservationIgnored private var tickTask: Task<Void, Never>?
+    // The note as typed but not yet written (with its recipe), and the debounced write.
+    @ObservationIgnored private var pendingNotes: (id: Int64, text: String)?
+    @ObservationIgnored private var notesTask: Task<Void, Never>?
     @ObservationIgnored private var settingsSubscription: AnyCancellable?
 
     init(
@@ -35,7 +41,8 @@ final class RecipeViewModel {
         preferences: AppPreferences,
         clock: Clock,
         sleep: @escaping Sleep = Sleeps.real,
-        connectivity: Connectivity = StaticConnectivity()
+        connectivity: Connectivity = StaticConnectivity(),
+        appInfo: AppInfo = StaticAppInfo()
     ) {
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
@@ -44,6 +51,7 @@ final class RecipeViewModel {
         self.clock = clock
         self.sleep = sleep
         self.connectivity = connectivity
+        self.appInfo = appInfo
         // Seeded synchronously so the first render already uses the user's units.
         let settings = preferences.current
         uiState = RecipeUiState(
@@ -66,6 +74,11 @@ final class RecipeViewModel {
         loadTask?.cancel()
         tickTask?.cancel()
         reconnectTask?.cancel()
+        notesTask?.cancel()
+        // A note typed just before leaving is still written: one short write, owned by no one.
+        if let pending = pendingNotes {
+            Task { [repository] in await repository.setNotes(id: pending.id, notes: pending.text) }
+        }
     }
 
     // MARK: Loading
@@ -77,6 +90,7 @@ final class RecipeViewModel {
         reconnectTask?.cancel()
         reconnectTask = nil
         uiState.content = .loading
+        uiState.reportSiteUrl = nil
         // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
         loadTask = Task { [weak self, recipeId, shareUrl, repository] in
             let result: ParseResult
@@ -97,11 +111,21 @@ final class RecipeViewModel {
             case .success(let recipe):
                 uiState.content = .success(successContent(recipe))
                 uiState.checkedIngredients = recipe.checkedIngredients
+                uiState.notes = recipe.notes ?? ""
             case .error(let error):
                 uiState.content = .error(error)
+                uiState.reportSiteUrl = reportSiteUrl(for: error)
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
         }
+    }
+
+    /// Only a shared link that loaded but held no recipe is worth reporting: a block, being
+    /// offline or a failed fetch usually lifts on its own, and a saved recipe has no page to
+    /// report.
+    private func reportSiteUrl(for error: ParseError) -> String? {
+        guard error == .noRecipeFound, let shareUrl else { return nil }
+        return SiteReportLink.issueUrl(link: shareUrl, platform: appInfo.platform, appVersion: appInfo.appVersion)
     }
 
     /// While an offline or fetch-failed error is on screen, waits for the connection to go from
@@ -136,15 +160,38 @@ final class RecipeViewModel {
         Task { [repository] in await repository.setChecked(id: id, checked: next) }
     }
 
+    /// The user's note, edited in place. The screen shows every keystroke at once; the write
+    /// waits until typing pauses for `notesSaveDelay`, so a sentence is one write rather than
+    /// one per letter. Leaving the screen before then still saves it (see `deinit`).
+    func onNotesChange(_ text: String) {
+        uiState.notes = text
+        guard let id = uiState.content.success?.recipe.id else { return }
+        pendingNotes = (id, text)
+        notesTask?.cancel()
+        // Weak across the sleep, so a popped screen still lets its ViewModel (and deinit) go.
+        notesTask = Task { [weak self, sleep] in
+            do { try await sleep(Self.notesSaveDelay) } catch { return }
+            await self?.flushNotes()
+        }
+    }
+
+    private func flushNotes() async {
+        guard let pending = pendingNotes else { return }
+        pendingNotes = nil
+        await repository.setNotes(id: pending.id, notes: pending.text)
+    }
+
     /// The recipe as currently on screen — scaled servings, converted units — formatted for
-    /// sharing. Nil when nothing is loaded. Presenting the share sheet is the view's job.
-    func shareText() -> String? {
+    /// sharing. Nil when nothing is loaded. Presenting the share sheet is the view's job. The
+    /// view passes `labels` from the string catalog, so the words follow the phone's language.
+    func shareText(labels: RecipeShareText.Labels = .english) -> String? {
         guard let content = uiState.content.success else { return nil }
         return RecipeShareText.format(
             recipe: content.recipe,
             servings: content.servings,
             ingredients: content.ingredients,
-            instructions: content.instructions
+            instructions: content.instructions,
+            labels: labels
         )
     }
 
@@ -162,7 +209,7 @@ final class RecipeViewModel {
         guard var content = uiState.content.success, let servings = content.servings else { return }
         let scale = ServingsScale(base: servings.base, target: min(max(target, 1), Servings.max))
         content.servings = scale
-        content.ingredients = render(content.recipe, scale, uiState.unitSystem, uiState.convertLiquids)
+        content.ingredients = render(content.recipe, content.words, scale, uiState.unitSystem, uiState.convertLiquids)
         uiState.content = .success(content)
     }
 
@@ -197,8 +244,8 @@ final class RecipeViewModel {
 
     private func rerender() {
         guard var content = uiState.content.success else { return }
-        content.ingredients = render(content.recipe, content.servings, uiState.unitSystem, uiState.convertLiquids)
-        content.instructions = renderInstructions(content.recipe, uiState.temperatureUnit)
+        content.ingredients = render(content.recipe, content.words, content.servings, uiState.unitSystem, uiState.convertLiquids)
+        content.instructions = renderInstructions(content.recipe, content.words, uiState.temperatureUnit)
         uiState.content = .success(content)
     }
 
@@ -315,29 +362,31 @@ final class RecipeViewModel {
     // MARK: Turning a recipe into what the screen shows
 
     private func successContent(_ recipe: Recipe) -> RecipeSuccess {
-        let servings = Servings.parse(recipe.yield).map { ServingsScale(base: $0, target: $0) }
+        // The recipe's language picks the words, never the phone's (#14).
+        let words = LanguageWords.forRecipe(recipe)
+        let servings = Servings.parse(recipe.yield, words: words).map { ServingsScale(base: $0, target: $0) }
         return RecipeSuccess(
             recipe: recipe,
             servings: servings,
-            ingredients: render(recipe, servings, uiState.unitSystem, uiState.convertLiquids),
-            instructions: renderInstructions(recipe, uiState.temperatureUnit),
-            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0) }
+            ingredients: render(recipe, words, servings, uiState.unitSystem, uiState.convertLiquids),
+            instructions: renderInstructions(recipe, words, uiState.temperatureUnit),
+            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0, words: words) },
+            sourceDomain: SourceDomain.of(recipe.sourceUrl),
+            words: words
         )
     }
 
     // Scale first, then convert, so a converted amount always matches the chosen servings.
-    private func render(_ recipe: Recipe, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool) -> [String] {
+    private func render(
+        _ recipe: Recipe, _ words: LanguageWords?, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool
+    ) -> [String] {
         let factor = servings.map { Double($0.target) / Double($0.base) } ?? 1.0
-        return recipe.ingredients.map {
-            UnitConverter.convert(
-                IngredientScaler.scale($0, factor: factor), system: system, includeLiquids: convertLiquids, separatorFrom: $0
-            )
-        }
+        return IngredientRendering.render(recipe.ingredients, factor: factor, system: system, convertLiquids: convertLiquids, words: words)
     }
 
     // Instructions aren't scaled, but oven temperatures follow the chosen temperature unit —
     // independent of the ingredient unit system.
-    private func renderInstructions(_ recipe: Recipe, _ unit: TemperatureUnit) -> [String] {
-        recipe.instructions.map { TemperatureConverter.convert($0, unit: unit) }
+    private func renderInstructions(_ recipe: Recipe, _ words: LanguageWords?, _ unit: TemperatureUnit) -> [String] {
+        recipe.instructions.map { TemperatureConverter.convert($0, unit: unit, words: words) }
     }
 }

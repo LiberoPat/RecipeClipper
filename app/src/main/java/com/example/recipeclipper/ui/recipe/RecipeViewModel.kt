@@ -3,25 +3,31 @@ package com.example.recipeclipper.ui.recipe
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
-import com.example.recipeclipper.data.model.IngredientScaler
+import com.example.recipeclipper.data.model.IngredientRendering
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.SiteReportLink
 import com.example.recipeclipper.data.model.ServingsScale
+import com.example.recipeclipper.data.model.SourceDomain
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
-import com.example.recipeclipper.data.model.UnitConverter
 import com.example.recipeclipper.data.model.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +36,7 @@ import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.math.ceil
 
@@ -43,7 +50,8 @@ class RecipeViewModel @Inject constructor(
     private val repository: RecipeRepository,
     private val unitPreferences: AppPreferences,
     private val clock: Clock,
-    private val connectivity: Connectivity
+    private val connectivity: Connectivity,
+    private val appInfo: AppInfo
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -66,6 +74,10 @@ class RecipeViewModel @Inject constructor(
     private var loadJob: Job? = null
     private var reconnectJob: Job? = null
 
+    // The note as typed but not yet written, and the debounced write that will save it.
+    private var pendingNotes: String? = null
+    private var notesJob: Job? = null
+
     // Step index -> wall-clock time its timer ends. Only running timers are in here.
     private val deadlines = mutableMapOf<Int, Long>()
     private var tickJob: Job? = null
@@ -84,7 +96,7 @@ class RecipeViewModel @Inject constructor(
     private fun load() {
         loadJob?.cancel()
         reconnectJob?.cancel()
-        _uiState.update { it.copy(content = RecipeContent.Loading) }
+        _uiState.update { it.copy(content = RecipeContent.Loading, reportSiteUrl = null) }
         loadJob = viewModelScope.launch {
             val result = when {
                 recipeId != null -> repository.open(recipeId)
@@ -99,13 +111,28 @@ class RecipeViewModel @Inject constructor(
                         content = successContent(
                             result.recipe, state.unitSystem, state.convertLiquids, state.temperatureUnit
                         ),
-                        checkedIngredients = result.recipe.checkedIngredients
+                        checkedIngredients = result.recipe.checkedIngredients,
+                        notes = result.recipe.notes.orEmpty()
                     )
-                    is ParseResult.Error -> state.copy(content = RecipeContent.Error(result.error))
+                    is ParseResult.Error -> state.copy(
+                        content = RecipeContent.Error(result.error),
+                        reportSiteUrl = reportSiteUrl(result.error)
+                    )
                 }
             }
             if (result is ParseResult.Error && result.error.reloadsOnReconnect) reloadOnReconnect()
         }
+    }
+
+    /**
+     * Only a shared link that loaded but held no recipe is worth reporting: a block, being
+     * offline or a failed fetch usually lifts on its own, and a saved recipe has no page to
+     * report.
+     */
+    private fun reportSiteUrl(error: ParseError): String? {
+        if (error != ParseError.NoRecipeFound) return null
+        val link = shareUrl ?: return null
+        return SiteReportLink.issueUrl(link, appInfo.platform, appInfo.appVersion)
     }
 
     /**
@@ -132,17 +159,42 @@ class RecipeViewModel @Inject constructor(
     }
 
     /**
+     * The user's note, edited in place. The screen shows every keystroke at once; the write
+     * waits until typing pauses for [NOTES_SAVE_DELAY_MS], so a sentence is one write rather
+     * than one per letter. Leaving the screen before then still saves it (see [onCleared]).
+     */
+    fun onNotesChange(text: String) {
+        _uiState.update { it.copy(notes = text) }
+        val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id ?: return
+        pendingNotes = text
+        notesJob?.cancel()
+        notesJob = viewModelScope.launch {
+            delay(NOTES_SAVE_DELAY_MS)
+            flushNotes(id)
+        }
+    }
+
+    private suspend fun flushNotes(id: Long) {
+        val text = pendingNotes ?: return
+        pendingNotes = null
+        // Once taken off pendingNotes it must land: leaving the screen mid-write can't drop it.
+        withContext(NonCancellable) { repository.setNotes(id, text) }
+    }
+
+    /**
      * The recipe as currently on screen — scaled servings, converted units — formatted for
      * sharing outside the app. Null when there's nothing loaded yet. Building and firing the
-     * share Intent is the screen's job: this only returns text.
+     * share Intent is the screen's job: this only returns text. The screen passes [labels]
+     * read from its resources, so the words around the recipe follow the phone's language.
      */
-    fun shareText(): String? {
+    fun shareText(labels: RecipeShareText.Labels = RecipeShareText.Labels.ENGLISH): String? {
         val content = _uiState.value.content as? RecipeContent.Success ?: return null
         return RecipeShareText.format(
             recipe = content.recipe,
             servings = content.servings,
             ingredients = content.ingredients,
-            instructions = content.instructions
+            instructions = content.instructions,
+            labels = labels
         )
     }
 
@@ -167,7 +219,7 @@ class RecipeViewModel @Inject constructor(
             state.copy(
                 content = content.copy(
                     servings = scale,
-                    ingredients = render(content.recipe, scale, state.unitSystem, state.convertLiquids)
+                    ingredients = render(content.recipe, content.words, scale, state.unitSystem, state.convertLiquids)
                 )
             )
         }
@@ -215,9 +267,9 @@ class RecipeViewModel @Inject constructor(
         return state.copy(
             content = content.copy(
                 ingredients = render(
-                    content.recipe, content.servings, state.unitSystem, state.convertLiquids
+                    content.recipe, content.words, content.servings, state.unitSystem, state.convertLiquids
                 ),
-                instructions = renderInstructions(content.recipe, state.temperatureUnit)
+                instructions = renderInstructions(content.recipe, content.words, state.temperatureUnit)
             )
         )
     }
@@ -331,6 +383,12 @@ class RecipeViewModel @Inject constructor(
     override fun onCleared() {
         deadlines.clear()
         tickJob?.cancel()
+        // viewModelScope is already cancelled here, so a note typed just before leaving is
+        // written on a scope of its own. One short write that nothing needs to wait for.
+        val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id
+        if (id != null && pendingNotes != null) {
+            CoroutineScope(Dispatchers.Unconfined).launch { flushNotes(id) }
+        }
     }
 
     // --- Turning a recipe into what the screen shows ---
@@ -341,37 +399,43 @@ class RecipeViewModel @Inject constructor(
         convertLiquids: Boolean,
         temperatureUnit: TemperatureUnit
     ): RecipeContent.Success {
-        val base = Servings.parse(recipe.yield)
+        // The recipe's language picks the words, never the phone's (#14).
+        val words = LanguageWords.forRecipe(recipe)
+        val base = Servings.parse(recipe.yield, words)
         val servings = base?.let { ServingsScale(base = it, target = it) }
         return RecipeContent.Success(
             recipe = recipe,
             servings = servings,
-            ingredients = render(recipe, servings, system, convertLiquids),
-            instructions = renderInstructions(recipe, temperatureUnit),
-            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it) }
+            ingredients = render(recipe, words, servings, system, convertLiquids),
+            instructions = renderInstructions(recipe, words, temperatureUnit),
+            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it, words) },
+            sourceDomain = SourceDomain.of(recipe.sourceUrl),
+            words = words
         )
     }
 
     // Scale first, then convert, so a converted amount always matches the chosen servings.
     private fun render(
         recipe: Recipe,
+        words: LanguageWords?,
         servings: ServingsScale?,
         system: UnitSystem,
         convertLiquids: Boolean
     ): List<String> {
         val factor = servings?.let { it.target.toDouble() / it.base } ?: 1.0
-        return recipe.ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale(it, factor), system, convertLiquids, separatorFrom = it)
-        }
+        return IngredientRendering.render(recipe.ingredients, factor, system, convertLiquids, words)
     }
 
     // Instructions aren't scaled (a step can mention any number), but oven temperatures
     // follow the chosen temperature unit — independent of the ingredient unit system.
-    private fun renderInstructions(recipe: Recipe, temperatureUnit: TemperatureUnit): List<String> =
-        recipe.instructions.map { TemperatureConverter.convert(it, temperatureUnit) }
+    private fun renderInstructions(recipe: Recipe, words: LanguageWords?, temperatureUnit: TemperatureUnit): List<String> =
+        recipe.instructions.map { TemperatureConverter.convert(it, temperatureUnit, words) }
 
     companion object {
         const val RECIPE_ID_ARG = "recipeId"
         const val URL_ARG = "url"
+
+        /** How long typing must pause before the note is written. */
+        const val NOTES_SAVE_DELAY_MS = 500L
     }
 }

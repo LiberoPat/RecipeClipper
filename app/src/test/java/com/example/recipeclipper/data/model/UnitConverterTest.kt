@@ -5,122 +5,119 @@ import org.junit.Test
 
 class UnitConverterTest {
 
-    private fun grams(line: String, liquids: Boolean = false) =
-        UnitConverter.convert(line, UnitSystem.GRAMS, liquids)
-
     private fun ounces(line: String, liquids: Boolean = false) =
         UnitConverter.convert(line, UnitSystem.OUNCES, liquids)
 
     private fun metric(line: String) = UnitConverter.convert(line, UnitSystem.METRIC, false)
 
-    // --- Grams: volume to weight through the density table ---
+    // --- Volume to weight through the density table ---
 
     @Test fun `as written never changes a line`() {
         assertEquals("2 cups flour", UnitConverter.convert("2 cups flour", UnitSystem.AS_WRITTEN, true))
     }
 
     @Test fun `cups of dry goods become grams`() {
-        assertEquals("120 g all-purpose flour", grams("1 cup all-purpose flour"))
-        assertEquals("240 g flour", grams("2 cups flour"))
-        assertEquals("300 g sugar", grams("1 1/2 cups sugar"))
-        assertEquals("225 g whole wheat flour", grams("2 cups whole wheat flour"))
-        assertEquals("170 g semisweet chocolate chips", grams("1 cup semisweet chocolate chips"))
+        assertEquals("120 g all-purpose flour", metric("1 cup all-purpose flour"))
+        assertEquals("240 g flour", metric("2 cups flour"))
+        assertEquals("300 g sugar", metric("1 1/2 cups sugar"))
+        assertEquals("225 g whole wheat flour", metric("2 cups whole wheat flour"))
+        assertEquals("170 g semisweet chocolate chips", metric("1 cup semisweet chocolate chips"))
     }
 
     @Test fun `spoons and sticks become grams`() {
-        assertEquals("7.5 g flour, sifted", grams("1 tbsp flour, sifted"))
-        assertEquals("8 g baking powder", grams("2 tsp baking powder"))
-        assertEquals("115 g butter", grams("1 stick butter"))
-        assertEquals("1.5 g baking soda", grams("1/4 tsp baking soda"))
+        assertEquals("7.5 g flour, sifted", metric("1 tbsp flour, sifted"))
+        assertEquals("8 g baking powder", metric("2 tsp baking powder"))
+        assertEquals("115 g butter", metric("1 stick butter"))
+        assertEquals("1.5 g baking soda", metric("1/4 tsp baking soda"))
     }
 
     @Test fun `ranges convert both ends`() {
-        assertEquals("120-240 g flour", grams("1-2 cups flour"))
+        assertEquals("120-240 g flour", metric("1-2 cups flour"))
     }
 
     @Test fun `modifiers around the name are ignored`() {
-        assertEquals("215 g packed brown sugar", grams("1 cup packed brown sugar"))
-        assertEquals("225 g unsalted butter, softened", grams("1 cup unsalted butter, softened"))
-        assertEquals("260 g peanut butter", grams("1 cup peanut butter"))
+        assertEquals("215 g packed brown sugar", metric("1 cup packed brown sugar"))
+        assertEquals("225 g unsalted butter, softened", metric("1 cup unsalted butter, softened"))
+        assertEquals("260 g peanut butter", metric("1 cup peanut butter"))
     }
 
-    // --- Grams: weight to weight is exact, and needs no table ---
+    // --- Weight to weight is exact, and needs no table ---
 
     @Test fun `ounces and pounds become grams`() {
-        assertEquals("225 g cream cheese", grams("8 oz cream cheese"))
-        assertEquals("455 g ground beef", grams("1 lb ground beef"))
-        assertEquals("2.27 kg potatoes", grams("5 lb potatoes"))
+        assertEquals("225 g cream cheese", metric("8 oz cream cheese"))
+        assertEquals("455 g ground beef", metric("1 lb ground beef"))
+        assertEquals("2.27 kg potatoes", metric("5 lb potatoes"))
     }
 
     @Test fun `amounts already in grams are left exactly as written`() {
-        assertEquals("125 g flour", grams("125 g flour"))
-        assertEquals("1 kg flour", grams("1 kg flour"))
+        assertEquals("125 g flour", metric("125 g flour"))
+        assertEquals("1 kg flour", metric("1 kg flour"))
     }
 
     // --- Things that must NOT convert ---
 
     @Test fun `unknown ingredients stay as written`() {
-        assertEquals("1 tsp salt", grams("1 tsp salt"))
-        assertEquals("1 cup rolled oats", grams("1 cup rolled oats"))
-        assertEquals("1 cup chopped onion", grams("1 cup chopped onion"))
+        assertEquals("1 tsp salt", ounces("1 tsp salt"))
+        assertEquals("1 cup rolled oats", ounces("1 cup rolled oats"))
+        assertEquals("1 cup chopped onion", ounces("1 cup chopped onion"))
     }
 
     @Test fun `names that merely end like a known ingredient are not matched`() {
-        assertEquals("1 cup butter beans", grams("1 cup butter beans"))
-        assertEquals("1 cup apple butter", grams("1 cup apple butter"))
-        assertEquals("1 cup rice flour", grams("1 cup rice flour"))
-        assertEquals("2 cups sweetened condensed milk", grams("2 cups sweetened condensed milk", liquids = true))
+        assertEquals("1 cup butter beans", ounces("1 cup butter beans"))
+        assertEquals("1 cup apple butter", ounces("1 cup apple butter"))
+        assertEquals("1 cup rice flour", ounces("1 cup rice flour"))
+        assertEquals("2 cups sweetened condensed milk", ounces("2 cups sweetened condensed milk", liquids = true))
     }
 
     @Test fun `lines that are not measured amounts stay as written`() {
-        assertEquals("3 cloves garlic", grams("3 cloves garlic"))
-        assertEquals("2 large eggs", grams("2 large eggs"))
-        assertEquals("1 (14 oz) can tomatoes", grams("1 (14 oz) can tomatoes"))
-        assertEquals("Salt to taste", grams("Salt to taste"))
-        assertEquals("1 stick cinnamon", grams("1 stick cinnamon"))
-        assertEquals("1-inch piece ginger", grams("1-inch piece ginger"))
+        assertEquals("3 cloves garlic", ounces("3 cloves garlic"))
+        assertEquals("2 large eggs", ounces("2 large eggs"))
+        assertEquals("1 (14 oz) can tomatoes", ounces("1 (14 oz) can tomatoes"))
+        assertEquals("Salt to taste", ounces("Salt to taste"))
+        assertEquals("1 stick cinnamon", ounces("1 stick cinnamon"))
+        assertEquals("1-inch piece ginger", ounces("1-inch piece ginger"))
     }
 
     // --- Liquids stay as written unless asked ---
 
     @Test fun `bare cream is a liquid, but creams that are not pourable are not matched`() {
-        assertEquals("1 cup cream", grams("1 cup cream"))
-        assertEquals("240 g cream", grams("1 cup cream", liquids = true))
+        assertEquals("1 cup cream", ounces("1 cup cream"))
+        assertEquals("8 1/2 oz cream", ounces("1 cup cream", liquids = true))
         assertEquals("240 ml cream", metric("1 cup cream"))
         assertEquals("240 ml cream", metric("8 oz cream"))
-        assertEquals("1 cup ice cream", grams("1 cup ice cream", liquids = true))
-        assertEquals("1 cup whipped cream", grams("1 cup whipped cream", liquids = true))
-        assertEquals("1/2 cup coconut cream", grams("1/2 cup coconut cream", liquids = true))
-        assertEquals("230 g sour cream", grams("1 cup sour cream"))
-        assertEquals("225 g cream cheese", grams("8 oz cream cheese"))
+        assertEquals("1 cup ice cream", ounces("1 cup ice cream", liquids = true))
+        assertEquals("1 cup whipped cream", ounces("1 cup whipped cream", liquids = true))
+        assertEquals("1/2 cup coconut cream", ounces("1/2 cup coconut cream", liquids = true))
+        assertEquals("230 g sour cream", metric("1 cup sour cream"))
+        assertEquals("225 g cream cheese", metric("8 oz cream cheese"))
     }
 
     @Test fun `liquids are left alone by default`() {
-        assertEquals("1 cup milk", grams("1 cup milk"))
-        assertEquals("8 oz milk", grams("8 oz milk"))
+        assertEquals("1 cup milk", ounces("1 cup milk"))
         assertEquals("1 cup water", ounces("1 cup water"))
-        assertEquals("1 cup (245 g) milk", grams("1 cup (245 g) milk"))
+        assertEquals("1 cup (245 g) milk", ounces("1 cup (245 g) milk"))
     }
 
     @Test fun `liquids convert when the option is on`() {
-        assertEquals("245 g milk", grams("1 cup milk", liquids = true))
-        assertEquals("245 g of milk", grams("1 cup of milk", liquids = true))
+        assertEquals("8 3/4 oz milk", ounces("1 cup milk", liquids = true))
+        assertEquals("8 3/4 oz of milk", ounces("1 cup of milk", liquids = true))
         assertEquals("8 1/4 oz water", ounces("1 cup water", liquids = true))
     }
 
     @Test fun `bare oz beside a liquid means fluid ounces`() {
-        assertEquals("245 g milk", grams("8 oz milk", liquids = true))
+        // As a weight, 8 oz would be 225 g.
+        assertEquals("240 ml milk", metric("8 oz milk"))
     }
 
     // --- The site's own figure beats a calculated one ---
 
     @Test fun `alternate measure in parentheses is used as written`() {
-        assertEquals("120 g flour", grams("1 cup (120 g) flour"))
-        assertEquals("18 g table salt", grams("1 tbsp (18 g) table salt"))
+        assertEquals("120 g flour", metric("1 cup (120 g) flour"))
+        assertEquals("18 g table salt", metric("1 tbsp (18 g) table salt"))
     }
 
     @Test fun `alternate measure after a slash is used as written`() {
-        assertEquals("120 grams flour", grams("1 cup/120 grams flour"))
+        assertEquals("120 grams flour", metric("1 cup/120 grams flour"))
     }
 
     @Test fun `alternate measure in the wrong system is converted`() {
@@ -227,59 +224,59 @@ class UnitConverterTest {
     // --- Abbreviations with a trailing period ("tsp.", "Tbsp.", "oz.", "lb.") ---
 
     @Test fun `a period after the unit is part of the unit`() {
-        assertEquals("4 g baking soda", grams("¾ tsp. (4 g) baking soda"))
-        assertEquals("170 g bittersweet chocolate", grams("6 oz. (170 g) bittersweet chocolate"))
+        assertEquals("4 g baking soda", metric("¾ tsp. (4 g) baking soda"))
+        assertEquals("170 g bittersweet chocolate", metric("6 oz. (170 g) bittersweet chocolate"))
         assertEquals("4 g Diamond Crystal kosher salt", metric("1¼ tsp. (4 g) Diamond Crystal kosher salt"))
-        assertEquals("455 g boneless chicken", grams("1 lb. boneless chicken"))
-        assertEquals("15 g flour", grams("2 Tbsp. flour"))
+        assertEquals("455 g boneless chicken", metric("1 lb. boneless chicken"))
+        assertEquals("15 g flour", metric("2 Tbsp. flour"))
         assertEquals("1 lb. butter", ounces("1 lb. butter"))
     }
 
     // --- Compound amounts: "1 cup plus 2 tbsp" ---
 
     @Test fun `a compound amount uses the site's figure for the whole amount`() {
-        assertEquals("200 g all-purpose flour", grams("1½ cups plus 1 Tbsp. (200 g) all-purpose flour"))
+        assertEquals("200 g all-purpose flour", metric("1½ cups plus 1 Tbsp. (200 g) all-purpose flour"))
         assertEquals("5 oz flour", ounces("1 cup plus 2 tbsp (140 g) flour"))
     }
 
     @Test fun `a compound amount converts the sum of its parts`() {
-        assertEquals("135 g flour", grams("1 cup plus 2 tbsp flour"))
-        assertEquals("135 g flour", grams("1 cup + 2 tbsp flour"))
-        assertEquals("135 g flour", grams("1 cup and 2 tbsp flour"))
+        assertEquals("135 g flour", metric("1 cup plus 2 tbsp flour"))
+        assertEquals("135 g flour", metric("1 cup + 2 tbsp flour"))
+        assertEquals("135 g flour", metric("1 cup and 2 tbsp flour"))
         assertEquals("4 3/4 oz flour", ounces("1 cup plus 2 tbsp flour"))
-        assertEquals("510 g chicken", grams("1 lb plus 2 oz chicken"))
+        assertEquals("510 g chicken", metric("1 lb plus 2 oz chicken"))
         assertEquals("270 ml milk", metric("1 cup plus 2 tbsp milk"))
         assertEquals("135 g flour", metric("1 cup plus 2 tbsp flour"))
         assertEquals("140 g butter", metric("1 stick plus 2 tbsp butter"))
-        assertEquals("275 g milk", grams("1 cup plus 2 tbsp milk", liquids = true))
+        assertEquals("9 3/4 oz milk", ounces("1 cup plus 2 tbsp milk", liquids = true))
     }
 
     @Test fun `a compound amount that cannot be converted whole is left as written`() {
-        assertEquals("1 cup plus 2 tbsp chopped onion", grams("1 cup plus 2 tbsp chopped onion"))
-        assertEquals("1 cup plus 2 tbsp milk", grams("1 cup plus 2 tbsp milk"))
-        assertEquals("1-2 cups plus 1 tbsp flour", grams("1-2 cups plus 1 tbsp flour"))
+        assertEquals("1 cup plus 2 tbsp chopped onion", ounces("1 cup plus 2 tbsp chopped onion"))
+        assertEquals("1 cup plus 2 tbsp milk", ounces("1 cup plus 2 tbsp milk"))
+        assertEquals("1-2 cups plus 1 tbsp flour", ounces("1-2 cups plus 1 tbsp flour"))
     }
 
     // --- Doubled or nested parentheses after the name ---
 
     @Test fun `doubled parentheses do not hide the ingredient name`() {
-        assertEquals("23 g plain flour ((all-purpose flour))", grams("3 tbsp plain flour ((all-purpose flour))"))
-        assertEquals("120 g flour (sifted (optional))", grams("1 cup flour (sifted (optional))"))
-        assertEquals("1 cup butter beans ((canned))", grams("1 cup butter beans ((canned))"))
+        assertEquals("23 g plain flour ((all-purpose flour))", metric("3 tbsp plain flour ((all-purpose flour))"))
+        assertEquals("120 g flour (sifted (optional))", metric("1 cup flour (sifted (optional))"))
+        assertEquals("1 cup butter beans ((canned))", ounces("1 cup butter beans ((canned))"))
     }
 
     @Test fun `single parentheses behave as before`() {
-        assertEquals("215 g (packed) brown sugar", grams("1 cup (packed) brown sugar"))
-        assertEquals("215 g brown sugar (packed)", grams("1 cup brown sugar (packed)"))
-        assertEquals("120 g flour ((sifted))", grams("1 cup (120 g) flour ((sifted))"))
+        assertEquals("215 g (packed) brown sugar", metric("1 cup (packed) brown sugar"))
+        assertEquals("215 g brown sugar (packed)", metric("1 cup brown sugar (packed)"))
+        assertEquals("120 g flour ((sifted))", metric("1 cup (120 g) flour ((sifted))"))
     }
 
     // --- Decimal commas (#12) ---
 
     @Test fun `a decimal comma is converted as a decimal and keeps its comma`() {
         assertEquals("3 lb 5 oz flour", ounces("1,5 kg flour"))
-        assertEquals("680 g pork shoulder", grams("1,5 lb pork shoulder"))
-        assertEquals("1,13 kg potatoes", grams("2,5 lb potatoes"))
+        assertEquals("680 g pork shoulder", metric("1,5 lb pork shoulder"))
+        assertEquals("1,13 kg potatoes", metric("2,5 lb potatoes"))
         assertEquals("7,5 ml water", metric("1,5 tsp water"))
     }
 
@@ -292,7 +289,24 @@ class UnitConverterTest {
 
     @Test fun `a comma before three digits is ambiguous and left as written`() {
         assertEquals("1,500 g flour", ounces("1,500 g flour"))
-        assertEquals("1,500 lb beef", grams("1,500 lb beef"))
+        assertEquals("1,500 lb beef", metric("1,500 lb beef"))
         assertEquals("2 cups (1,250 g) flour", ounces("2 cups (1,250 g) flour"))
+    }
+
+    // --- Shapes found in real ingredient lines (#33) ---
+
+    @Test fun `a fraction slash and a mixed number with and convert`() {
+        assertEquals("2.5 ml olive oil", metric("1⁄2 tsp olive oil"))
+        assertEquals("180 g flour", metric("1 1⁄2 cups flour"))
+        assertEquals("300 g flour", metric("2 and 1/2 cups flour"))
+        assertEquals("360 ml milk", metric("1 and ½ cups milk"))
+    }
+
+    @Test fun `a range after a slash uses the site's range in the target unit`() {
+        assertEquals("8 - 10 oz pasta", ounces("250 - 300 g / 8 - 10 oz pasta"))
+        // In metric the leading range is already the target unit.
+        assertEquals("250 - 300 g / 8 - 10 oz pasta", metric("250 - 300 g / 8 - 10 oz pasta"))
+        // Neither half in the target unit: the calculated range replaces both.
+        assertEquals("225 - 285 g spaghetti", metric("8 - 10 oz / 1/2 - 5/8 lb spaghetti"))
     }
 }

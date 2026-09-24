@@ -20,18 +20,24 @@ struct RecipeRecord: Equatable {
     var sourceType: String            // BLOG | REDDIT, for re-fetch
     var lastViewedAt: Int64
     var checkedIngredients: Set<Int> = []   // JSON text, sorted
+    var notes: String? = nil                // the user's own note; kept across re-shares
+    /// Stable across devices and exports (#26): what an export file calls this recipe. Never
+    /// changes once written — `update` doesn't touch it, and an import keeps the file's.
+    var uid: String = newUid()
+    var language: String? = nil             // the recipe's language tag (#14); nil before user_version 4
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
-        totalTime, servings, sourceType, lastViewedAt, checkedIngredients
+        totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language
         """
 
     init(
         id: Int64 = 0, sourceUrl: String, title: String, imageUrl: String?,
         ingredients: [String], instructions: [String],
         prepTime: String?, cookTime: String?, totalTime: String?, servings: String?,
-        sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = []
+        sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = [],
+        notes: String? = nil, uid: String = newUid(), language: String? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -46,6 +52,9 @@ struct RecipeRecord: Equatable {
         self.sourceType = sourceType
         self.lastViewedAt = lastViewedAt
         self.checkedIngredients = checkedIngredients
+        self.notes = notes
+        self.uid = uid
+        self.language = language
     }
 
     init(row: SQLiteRow) {
@@ -62,8 +71,15 @@ struct RecipeRecord: Equatable {
         sourceType = row.string(10)
         lastViewedAt = row.int64(11)
         checkedIngredients = JSONColumns.decodeInts(row.string(12))
+        notes = row.optionalString(13)
+        uid = row.string(14)
+        language = row.optionalString(15)
     }
 }
+
+/// A fresh stable id for a new row: a lowercase UUID, the same form Android and the
+/// migration's backfill use.
+func newUid() -> String { UUID().uuidString.lowercased() }
 
 /// One row of a list of recipes: everything except the ingredients and steps.
 struct RecipeSummaryRecord: Equatable {

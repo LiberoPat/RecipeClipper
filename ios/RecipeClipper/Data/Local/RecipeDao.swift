@@ -28,12 +28,12 @@ struct RecipeDao {
         try db.run(
             """
             INSERT INTO recipes (\(RecipeRecord.columns))
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             r.id == 0 ? nil : r.id, r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
-            JSONColumns.encode(r.checkedIngredients)
+            JSONColumns.encode(r.checkedIngredients), r.notes, r.uid, r.language
         )
         return db.lastInsertRowId
     }
@@ -43,13 +43,13 @@ struct RecipeDao {
             """
             UPDATE recipes SET sourceUrl = ?, title = ?, imageUrl = ?, ingredients = ?,
                 instructions = ?, prepTime = ?, cookTime = ?, totalTime = ?, servings = ?,
-                sourceType = ?, lastViewedAt = ?, checkedIngredients = ?
+                sourceType = ?, lastViewedAt = ?, checkedIngredients = ?, notes = ?, language = ?
             WHERE id = ?
             """,
             r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
-            JSONColumns.encode(r.checkedIngredients), r.id
+            JSONColumns.encode(r.checkedIngredients), r.notes, r.language, r.id
         )
     }
 
@@ -59,6 +59,11 @@ struct RecipeDao {
 
     func setChecked(_ id: Int64, checked: Set<Int>) throws {
         try db.run("UPDATE recipes SET checkedIngredients = ? WHERE id = ?", JSONColumns.encode(checked), id)
+    }
+
+    /// The user's note; nil clears it.
+    func setNotes(_ id: Int64, notes: String?) throws {
+        try db.run("UPDATE recipes SET notes = ? WHERE id = ?", notes, id)
     }
 
     /// Hard delete. The cross-ref rows go with it by cascade.
@@ -142,8 +147,8 @@ struct RecipeDao {
     }
 
     /// Saves a freshly parsed recipe and returns its id. A link seen before is updated in
-    /// place, keeping its id, its list membership and — only if the ingredients are unchanged —
-    /// its ticked ingredients. The history cap is enforced in the same transaction. Call
+    /// place, keeping its id, its uid (`update` never writes it), its list membership, its note and — only if the ingredients are
+    /// unchanged — its ticked ingredients. The history cap is enforced in the same transaction. Call
     /// inside a write.
     func upsert(_ fresh: RecipeRecord, historyLimit: Int) throws -> Int64 {
         let id: Int64
@@ -154,6 +159,8 @@ struct RecipeDao {
             updated.checkedIngredients = existing.ingredients == fresh.ingredients
                 ? existing.checkedIngredients
                 : []
+            // The note is the user's, not the source's: a fresh parse never carries one.
+            updated.notes = existing.notes
             try update(updated)
             id = existing.id
         } else {

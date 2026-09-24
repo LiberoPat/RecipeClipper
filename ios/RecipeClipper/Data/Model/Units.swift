@@ -1,12 +1,22 @@
 import Foundation
 
 /// How ingredient amounts are shown. `asWritten` leaves the recipe's own units untouched.
-/// `grams` and `ounces` express everything as weight. `metric` is EU-style: weights in g/kg,
-/// volumes (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
-enum UnitSystem: String, CaseIterable, Equatable { case asWritten = "AS_WRITTEN", grams = "GRAMS", ounces = "OUNCES", metric = "METRIC" }
+/// `ounces` expresses everything as weight. `metric` is EU-style: weights in g/kg, volumes
+/// (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
+enum UnitSystem: String, CaseIterable, Equatable {
+    case asWritten = "AS_WRITTEN", metric = "METRIC", ounces = "OUNCES"
+
+    /// The system a stored enum name stands for. GRAMS was a fourth option until #17; the
+    /// people who chose it wanted weights, so it reads as `metric` rather than falling back
+    /// to `asWritten`. Anything unknown (or nothing stored) is `asWritten`.
+    init(storedName: String?) {
+        if storedName == "GRAMS" { self = .metric; return }
+        self = storedName.flatMap(UnitSystem.init(rawValue:)) ?? .asWritten
+    }
+}
 
 /// How oven temperatures in instruction text are shown. Independent of `UnitSystem`: a user
-/// can be a Grams person and still want an oven temperature left exactly as the recipe wrote
+/// can be a Metric person and still want an oven temperature left exactly as the recipe wrote
 /// it (or vice versa), so this is its own setting rather than implied by the unit choice.
 /// `asWritten` (the default) leaves the text alone.
 enum TemperatureUnit: String, CaseIterable, Equatable { case asWritten = "AS_WRITTEN", celsius = "CELSIUS", fahrenheit = "FAHRENHEIT" }
@@ -49,39 +59,54 @@ enum MeasureUnit: CaseIterable {
 
     private static let whitespace = JRegex(#"\s+"#)
 
-    static func fromText(_ text: String) -> MeasureUnit? {
+    /// The name Kotlin gives the unit, which the shared tables use.
+    static let byTableName: [String: MeasureUnit] = [
+        "TSP": .tsp, "TBSP": .tbsp, "CUP": .cup, "FL_OZ": .flOz, "STICK": .stick, "ML": .ml,
+        "L": .l, "G": .g, "KG": .kg, "OZ": .oz, "LB": .lb,
+    ]
+
+    // shared/tables/<language>/units.json "names": the first rule the text satisfies wins.
+    private final class Names {
+        let names: [(unit: MeasureUnit, exact: [String], prefixes: [String])]
+        init(_ words: LanguageWords) {
+            names = SharedTables.objects(words.table("units"), "names").map {
+                (byTableName[$0["unit"] as? String ?? ""]!, SharedTables.strings($0, "exact"), SharedTables.strings($0, "prefixes"))
+            }
+        }
+    }
+
+    static func fromText(_ text: String, words: LanguageWords = .english) -> MeasureUnit? {
         let s = whitespace.replace(text.lowercased().replacingOccurrences(of: ".", with: ""), with: " ")
-        if s.hasPrefix("fl") { return .flOz }
-        if s.hasPrefix("tsp") || s.hasPrefix("teaspoon") { return .tsp }
-        if s.hasPrefix("tbs") || s.hasPrefix("tablespoon") { return .tbsp }
-        if s.hasPrefix("cup") { return .cup }
-        if s == "ml" || s.hasPrefix("millil") { return .ml }
-        if s == "kg" || s.hasPrefix("kilo") { return .kg }
-        if s == "g" || s.hasPrefix("gram") { return .g }
-        if s == "l" || s.hasPrefix("lit") { return .l }
-        if s.hasPrefix("stick") { return .stick }
-        if s == "oz" || s.hasPrefix("ounce") { return .oz }
-        if s == "lb" || s == "lbs" || s.hasPrefix("pound") { return .lb }
-        return nil
+        return words.compiled(Names.self, Names.init).names.first { name in
+            name.exact.contains(s) || name.prefixes.contains { s.hasPrefix($0) }
+        }?.unit
     }
 }
 
 /// Regex fragments matching a unit word. The trailing lookahead makes them match whole
 /// words only, so "g" doesn't match the start of "garlic" or "l" the start of "large".
-enum UnitPatterns {
-    private static let alternatives =
-        #"fl\.?\s*oz|fluid\s+ounces?|tsps?|teaspoons?|tbsps?|tbs|tablespoons?|cups?|"# +
-        #"millilit(?:er|re)s?|ml|kilograms?|kilos?|kg|grams?|g|lit(?:er|re)s?|l|"# +
-        #"sticks?|ounces?|oz|lbs?|pounds?"#
-
-    // The alternation is wrapped in its own group so the optional trailing period applies to
-    // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
-
+final class UnitPatterns {
     /// One capturing group holding the unit text.
-    static let captured = "((?:\(alternatives))\\.?)(?![A-Za-z])"
+    let captured: String
 
     /// Same match, no capturing group.
-    static let plain = "(?:(?:\(alternatives))\\.?)(?![A-Za-z])"
+    let plain: String
+
+    private init(_ words: LanguageWords) {
+        // The unit words are shared with Android: shared/tables/<language>/units.json "patterns",
+        // in order. (No units at all never matches, rather than matching an empty unit.)
+        let patterns = words.strings("units", "patterns")
+        let alternatives = (patterns.isEmpty ? ["(?!)"] : patterns).joined(separator: "|")
+
+        // The alternation is wrapped in its own group so the optional trailing period applies to
+        // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
+        captured = "((?:\(alternatives))\\.?)(?![A-Za-z])"
+        plain = "(?:(?:\(alternatives))\\.?)(?![A-Za-z])"
+    }
+
+    static func of(_ words: LanguageWords = .english) -> UnitPatterns {
+        words.compiled(UnitPatterns.self, UnitPatterns.init)
+    }
 }
 
 // MARK: - Java-compatible regex

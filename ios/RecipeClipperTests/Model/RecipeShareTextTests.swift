@@ -128,4 +128,37 @@ final class RecipeShareTextTests: XCTestCase {
         XCTAssertFalse(text.contains("##"))
         XCTAssertFalse(text.contains("- "))
     }
+
+    func testTheLabelsPassedInReplaceEveryEnglishWord() {
+        let german = RecipeShareText.Labels(
+            serves: { "Portionen: \($0)" },
+            makes: { "Ergibt \($0)" },
+            scaled: { line, original in "\(line) (ursprünglich \(original))" },
+            prep: "Vorbereitung",
+            cook: "Garzeit",
+            total: "Gesamt",
+            ingredients: "ZUTATEN",
+            instructions: "ZUBEREITUNG"
+        )
+        let text = RecipeShareText.format(
+            recipe: recipe, servings: ServingsScale(base: 6, target: 3),
+            ingredients: recipe.ingredients, instructions: recipe.instructions, labels: german
+        )
+        XCTAssertEqual(lines(text), [
+            "Chicken Adobo", "",
+            "Portionen: 3 (ursprünglich 6)",
+            "Vorbereitung 10m · Garzeit 30m · Gesamt 40m", "",
+            "ZUTATEN", "2 lb chicken thighs", "1/2 cup soy sauce", "",
+            "ZUBEREITUNG", "1. Marinate the chicken.", "2. Simmer 30 minutes.",
+        ])
+    }
+
+    func testTheCatalogLabelsInEnglishMatchTheDefaults() {
+        let catalog = Strings.shareTextLabels
+        let english = RecipeShareText.Labels.english
+        XCTAssertEqual(catalog.scaled(catalog.serves(3), 6), english.scaled(english.serves(3), 6))
+        XCTAssertEqual(catalog.makes(16), english.makes(16))
+        XCTAssertEqual([catalog.prep, catalog.cook, catalog.total, catalog.ingredients, catalog.instructions],
+                       [english.prep, english.cook, english.total, english.ingredients, english.instructions])
+    }
 }

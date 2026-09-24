@@ -1,12 +1,12 @@
 package com.example.recipeclipper.ui.common
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.example.recipeclipper.R
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 /**
  * Turns an [Elapsed] into words. Separate from [TimeAgo] because this needs resources and
@@ -21,6 +21,6 @@ fun Elapsed.text(): String = when (this) {
     is Elapsed.Yesterday -> stringResource(R.string.time_yesterday)
     is Elapsed.Days -> pluralStringResource(R.plurals.time_days_ago, count, count)
     is Elapsed.OnDate ->
-        SimpleDateFormat(stringResource(R.string.time_date_format), Locale.getDefault())
+        SimpleDateFormat(stringResource(R.string.time_date_format), LocalLocale.current.platformLocale)
             .format(Date(millis))
 }

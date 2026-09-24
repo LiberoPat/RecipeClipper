@@ -9,9 +9,13 @@ struct ReadingView: View {
     /// The step-number column grows with the numbers in it (titleMedium follows .headline).
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// Only whether the keyboard is up for the note, so the cooking bar steps aside for it.
+    @FocusState private var editingNotes: Bool
 
     var body: some View {
         let recipe = content.recipe
+        // Credited only when there is both a domain to name and a link to open.
+        let sourceUrl = content.sourceDomain == nil ? nil : URL(string: recipe.sourceUrl)
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let image = recipe.image, let url = URL(string: image) {
@@ -21,12 +25,17 @@ struct ReadingView: View {
                 Text(recipe.name)
                     .textStyle(Typography.headlineSmall)
                     .foregroundStyle(Palette.onBackground)
-                    .padding(.bottom, 14)
+                    .padding(.bottom, sourceUrl == nil ? 14 : 0)
+                if let domain = content.sourceDomain, let sourceUrl {
+                    SourceCredit(domain: domain, url: sourceUrl)
+                        .padding(.bottom, 4)
+                }
                 Times(prep: recipe.prepTime, cook: recipe.cookTime, total: recipe.totalTime)
                     .padding(.bottom, 16)
                 ServesUnitsRow(
                     servings: content.servings,
                     yieldText: recipe.yield,
+                    words: content.words,
                     unitSystem: state.unitSystem,
                     onServingsChange: vm.onServingsChange,
                     onUnitSystemChange: vm.onUnitSystemChange
@@ -65,22 +74,62 @@ struct ReadingView: View {
                     }
                     .padding(.vertical, 8)
                 }
+
+                // After the steps: the reading view still opens on the recipe, and a note like
+                // "needs 10 more minutes" is read once the method is.
+                NotesSection(
+                    notes: Binding(get: { state.notes }, set: { vm.onNotesChange($0) }),
+                    focused: $editingNotes
+                )
+                .padding(.top, 24)
             }
             .padding(.horizontal, 20)
+            .readableColumn()
             .padding(.top, 4)
             .padding(.bottom, 32)
         }
+        .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !content.instructions.isEmpty {
+            if !content.instructions.isEmpty && !editingNotes {
                 VStack(spacing: 0) {
                     Hairline()
                     Button(Strings.startCooking, action: vm.onCookStart)
                         .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: true))
                         .padding(.horizontal, 20)
+                        .readableColumn()
                         .padding(.vertical, 12)
                 }
                 .background(Palette.background)
             }
+        }
+    }
+}
+
+/// The user's own note, edited in place. No Save button and no sheet: every keystroke goes to
+/// the ViewModel, which writes it once typing pauses. An empty note is just the quiet
+/// "Add a note" prompt, so a recipe without one carries no extra chrome.
+private struct NotesSection: View {
+    @Binding var notes: String
+    var focused: FocusState<Bool>.Binding
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeading(Strings.headingNotes).padding(.bottom, 6)
+            TextField(
+                Strings.headingNotes,
+                text: $notes,
+                prompt: Text(Strings.notesPlaceholder).foregroundStyle(Palette.muted),
+                axis: .vertical
+            )
+            .textStyle(Typography.bodyLarge)
+            .foregroundStyle(Palette.onBackground)
+            .tint(Palette.primary)
+            .textInputAutocapitalization(.sentences)
+            .focused(focused)
+            .frame(minHeight: 44)
+            .padding(.vertical, 6)
+            .accessibilityIdentifier("recipeNotes")
+            Hairline()
         }
     }
 }
@@ -102,6 +151,53 @@ private struct RecipePhoto: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .accessibilityLabel(name)
+    }
+}
+
+/// Credits the site under the title: its domain in muted text, then "Open original" as a quiet
+/// paprika link to the page in the browser. Reading view only; cook mode has no room for it.
+/// Opening the page is a platform effect, so it happens here through `openURL`, not in the
+/// ViewModel.
+private struct SourceCredit: View {
+    let domain: String
+    let url: URL
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        // Side by side while both fit; stacked at the accessibility sizes, rather than
+        // truncating the domain to a few letters.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 14) {
+                domainText
+                openButton
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                domainText
+                openButton
+            }
+        }
+    }
+
+    private var domainText: some View {
+        Text(domain)
+            .textStyle(Typography.bodyMedium)
+            .foregroundStyle(Palette.muted)
+            .accessibilityIdentifier("recipe.sourceDomain")
+    }
+
+    private var openButton: some View {
+        Button {
+            openURL(url)
+        } label: {
+            Text(Strings.openOriginal)
+                .textStyle(Typography.labelLarge)
+                .foregroundStyle(Palette.accentText)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Strings.openOriginalHint(domain))
+        .accessibilityIdentifier("recipe.openOriginal")
     }
 }
 

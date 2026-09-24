@@ -5,7 +5,8 @@ Recipe Clipper: share a recipe link from any app and get just the recipe
 filler.
 
 - **Android** (`app/`): Kotlin, Jetpack Compose, single Activity. MVVM +
-  repository, Hilt, Room, Compose Navigation. minSdk 24, targetSdk 34.
+  repository, Hilt, Room, Compose Navigation. minSdk 24, targetSdk 36,
+  compileSdk 37.
 - **iOS** (`ios/`): SwiftUI, iOS 17+, no third-party dependencies, at parity
   with Android. iOS specifics (XcodeGen, the Android→iOS type map, the share
   extension, simulator rules, test commands) are in `ios/README.md`.
@@ -17,6 +18,15 @@ whose expectations come from running the Kotlin: regenerate them, never
 hand-edit them. The JVM `DifferentialCorpusTest` fails while that file is stale
 and writes the regenerated one to `app/build/differential-corpus/`; a new row
 needs only its input (`Ing("1,5 kg flour"),`).
+
+**The word and density tables live once, in `shared/tables/`** (JSON: densities,
+unit, timer, temperature, yield, range, amount, duration, detection and
+ingredient-name words, condensed section names; tracking parameters), loaded by both apps (Android as
+Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
+table there, never in code; the logic that reads it stays written twice. **Each
+language has its own folder** (`shared/tables/en/`), read through
+`LanguageWords`: the recipe's language picks it, never the phone's, and
+languages are never merged.
 
 **Keep this file short: it is loaded into every session.** Add only what an
 agent needs almost every time. Rationale and history go in
@@ -30,11 +40,14 @@ Built on both platforms: share → parse → show; automatic history (capped at
 50, searchable, delete with undo); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers (in memory); sharing a recipe out as text; failure handling and
-offline; the microdata fallback. iOS also honours Dynamic Type.
+offline; the microdata fallback; a personal note per recipe; export and
+import of everything as one JSON file (Settings); the UI in English,
+Spanish, French, German, Italian and Brazilian Portuguese (drafts awaiting a
+native speaker: `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
-background timer alerts (#10), Reddit (#11), other languages (#13–#16), the
-three-option unit menu (#17), release setup (#18–#22).
+background timer alerts (#10), Reddit (#11), reading recipes in other languages (#12, #14–#16),
+release setup (#18–#22).
 
 ## Commands
 
@@ -51,17 +64,19 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 - **Device tests uninstall the app and wipe its database and settings.** Back
   them up first and restore after. The procedure (copy the `-wal` too) is in
   `docs/testing.md`, with the adb recipes.
-- **Lint reports exactly 16 warnings, all version advisories**
-  (`GradleDependency`, `NewerVersionAvailable`, `AndroidGradlePluginVersion`,
-  `OldTargetApi`), left on purpose (#23). Don't baseline them; any other
-  finding is real.
+- **Lint reports two warnings, both deliberate version advisories:**
+  `OldTargetApi` (targetSdk 36 while 37 exists; raise it only after reading
+  its behaviour changes) and `NewerVersionAvailable` for jsoup (held at
+  1.17.2; the reason is beside it in `app/build.gradle.kts`). Don't baseline
+  them; any other finding is real.
 - **CI checks every PR** (`docs/testing.md`): merge only when green.
 - **An emulator or simulator may be in use by a person.** Check before
   scripted taps, force-stops or settings changes, and ask. **Never run two iOS
   test sessions on one simulator**: one kills the other's test host.
-- The Android toolchain versions are coupled; bump them together (#23).
-  `navigation-compose` 2.7.7 and `hilt-navigation-compose` 1.2.0 are pinned to
-  the Compose BOM.
+- The Android toolchain versions are coupled; bump them together: Gradle,
+  AGP, Kotlin (the Compose compiler plugin's version sets it), KSP, Hilt,
+  Room, and the Compose BOM with `navigation-compose`. AGP 9 compiles Kotlin
+  itself: there's no `kotlin-android` plugin and no legacy AGP flags.
 
 ## Where things are (Android)
 
@@ -71,9 +86,12 @@ di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, Plat
 data/          RecipeRepository, ListRepository (interfaces; Default* are the Room-backed ones),
                Connectivity, ErrorLog, Clock (seams for tests)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
-               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText
+               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
+               SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
+               LanguageWords (one language's tables, chosen per recipe)
+               IngredientName (a line's ingredient name), IngredientRendering (scale+convert)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
@@ -88,6 +106,10 @@ then upsert with no list membership).
   one `private(set) var uiState`). Screens observe and forward events: no
   coroutines, repository calls or business logic in composables or views.
 - Never hold state in `remember` if it must survive rotation.
+- **Edge-to-edge** (targetSdk 36 enforces it): a screen's root surface fills
+  behind the system bars and pads its content with `safeDrawingPadding()`
+  (History: its Scaffold's `contentWindowInsets = WindowInsets.safeDrawing`).
+  Never set bar colours; the theme only flips the bar icons.
 - ViewModels and repositories never import Compose, SwiftUI or UIKit, and
   never touch `Context`. Platform effects (alarm sound, keep-screen-on, the
   share sheet, opening a URL) live in the view layer.
@@ -95,8 +117,10 @@ then upsert with no list membership).
 - Parsers are pure: text in, data out, no network, no Android APIs.
 - **Causes, not copy.** Sources and repositories return a `ParseError`; the
   screen picks the words. Every UI string lives in `res/values/strings.xml`
-  (iOS: `Strings.swift`). The one exception is `RecipeShareText`, a message
-  body with English wording by design.
+  plus `values-{es,fr,de,it,pt-rBR}` (iOS: `Localizable.xcstrings`, read
+  through `Strings.swift`); a new string needs all six languages on both
+  platforms. `RecipeShareText` takes its words as `Labels` from the screen;
+  `SiteReportLink` is a report body, English by design.
 - Tests use hand-written fakes (`app/src/test/.../fake/`,
   `ios/RecipeClipperTests/Fakes`), never mocks. Screens take their ViewModel
   as a parameter defaulting to `hiltViewModel()`, so UI tests pass a real
@@ -136,12 +160,14 @@ Settled; don't reintroduce what they removed. The history behind each is in
 `docs/decisions.md`.
 
 - **The reading view opens on the recipe:** photo, title, times, one
-  servings-and-units row, ingredients. No segmented pickers, filled chips or
-  radio lists above the ingredients. Times are plain labelled numbers, not
-  chips.
+  servings-and-units row, ingredients. Under the title, quietly, the source's
+  domain and "Open original" (reading view only, not cook mode). No segmented
+  pickers, filled chips or radio lists above the ingredients. Times are plain
+  labelled numbers, not chips.
 - **Servings and units: one always-visible row, adjusted in place.**
-  `Serves − 6 +` (per recipe) on the left, the unit dropdown (a global
-  default for "every recipe", exclusive choices only) on the right. Don't
+  `Serves − 6 +` (per recipe) on the left, the unit dropdown (As written,
+  Metric, Ounces: a global default for "every recipe", exclusive choices
+  only) on the right. Don't
   bring back the old "Adjust" bottom sheet without asking.
 - **Cook mode is a highlighted scroll, not a pager,** because steps overlap,
   cooks scroll back to re-check amounts, and source steps range from 12 clean
@@ -157,9 +183,14 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (`MutedOnInk`, `HairlineOnInk`, `PaprikaTextOnInk`). No Material purple.
   Cook mode follows the system theme; "Dark while cooking" (off by default)
   opts into dark. Don't restore an always-dark cook mode without asking.
+- **iPad (iOS only, #20):** every screen's content sits in a centred ~680pt
+  column (`readableColumn()`, `UI/Common/Components.swift`) so text never
+  runs edge to edge on a wide screen; History, a `List`, sets the same width
+  through row insets instead, since a `List` can't take a frame. iPhone
+  portrait is unchanged.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
-  Grams and Ounces), Oven temperature (independent of units, default As
+  Ounces only), Oven temperature (independent of units, default As
   written), Appearance ("Dark while cooking"). Reached from the gear beside
   the Home title. It could now open from elsewhere too (the recipe screen
   follows `AppPreferences.settings`), but adding an entry point is the
@@ -184,19 +215,20 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 2**: `recipes`, `lists` and
-  `recipe_list_cross_ref` (cascading). The schema is exported to
-  `app/schemas/`: commit it. **Never use destructive migration**, and give
-  every migration a `MigrationTest`. iOS mirrors the schema in SQLite, with
-  `PRAGMA user_version` migrations.
+- Room database `recipe_clipper.db`, **version 5** (iOS `user_version` 4):
+  `recipes` (with nullable `notes` and `language`), `lists` and `recipe_list_cross_ref`
+  (cascading). Recipes and lists carry a unique, never-changing `uid`: what
+  an export file calls them. The schema is exported to `app/schemas/`: commit it. **Never
+  use destructive migration**, and give every migration a `MigrationTest`.
+  iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
   strips only `utm_*`, known click ids (`fbclid`, `gclid`, …) and the
   `#fragment`, lowercases the scheme and host, upgrades `http` to `https`,
   and keeps every other parameter in order. Add a name only when you're sure
   it's tracking.
-- **Re-sharing upserts:** same id and list membership, refreshed content,
-  bumped `lastViewedAt`, ticked ingredients kept only if the ingredient list
-  is unchanged. In the same transaction, recipes in no list beyond the 50
+- **Re-sharing upserts:** same id, list membership and note, refreshed
+  content, bumped `lastViewedAt`, ticked ingredients kept only if the
+  ingredient list is unchanged. In the same transaction, recipes in no list beyond the 50
   most recently viewed are deleted. Opening from history counts as a view.
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
@@ -216,8 +248,22 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.
-- Ticked ingredients are written as they change. Cook progress, timers and
-  the chosen servings are in memory only (#10).
+- **Backup is an include list** (`res/xml/data_extraction_rules.xml` and
+  `backup_rules.xml`): the database with its `-wal`/`-shm`, and
+  `unit_preferences.xml`. Anything else, a new file or a renamed one, is not
+  backed up until it's added to both. That excludes the export/import temp
+  file below, which lives in `cacheDir`, never backed up anyway. iOS keeps the
+  database in Application Support, which backups include. Proof and the adb
+  recipe: `docs/testing.md`.
+- **Export/import** (#26) is one versioned JSON file
+  (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored). Import
+  merges, never replaces or deletes: recipes by cleaned `sourceUrl`,
+  Favorites by `isFavorites`, other lists by uid then trimmed
+  case-insensitive name; unlisted recipes only fill free history slots.
+  Rules in `BackupMerger`, rationale in `docs/decisions.md`.
+- Ticked ingredients are written as they change; the note once typing pauses
+  (500 ms), or on leaving the screen. History search ignores notes. Cook
+  progress, timers and the chosen servings are in memory only (#10).
 
 ## Failure handling
 
@@ -233,12 +279,21 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (it fails at once), a timeout (a dead Wi-Fi costs one 15 s timeout, not
   two) or `NoRecipeFound`. A cancelled import writes nothing, even during the
   pause.
+- **Then, only if still `Blocked` or `NoRecipeFound`, one rendered fetch:**
+  the page loaded off screen (`RenderedPageSource`: Android `WebView`, iOS
+  `WKWebView`, JavaScript on, a short settle, capped at 20 s, cancelled with
+  the import), its HTML through the same parsers. Never after `Offline` or a
+  timeout; nothing is shown. No recipe there keeps the original cause.
 - After any failure, a link saved before opens from the saved copy. Photos
   are cached (Coil; iOS `ImageLoader`), so they show offline too.
 - **Every error screen offers Try again, `NoRecipeFound` included**: a
   captive portal's login page parses as a page with no recipe. While
   `Offline` or `FetchFailed` shows, the screen reloads once on a real
   offline→online transition.
+- **`NoRecipeFound` from a shared link also offers "Report this site"**
+  (never `Blocked`, `Offline` or `FetchFailed`): a prefilled GitHub issue
+  (`SiteReportLink`, label `site-report`) opened in the browser. Nothing is sent
+  unless the user submits it.
 - Database errors degrade instead of crashing. The Android repositories run
   every DAO call through `ErrorLog.guard`, which returns a safe fallback
   (`SaveFailed`, null, a no-op, or `CREATE_FAILED` = -1), and every Flow
@@ -262,7 +317,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   - The photo falls back to `og:image`.
 - **A recipe needs a name, plus ingredients or steps.**
 - **Pages behind a login, or rendered by JavaScript,** expose no recipe data
-  to the fetch.
+  to the direct fetch. Only the rendered fetch can see the latter.
 - Every extracted string except `sourceUrl` goes through `stripHtml` (Jsoup's
   `text()`; iOS has a Jsoup-compatible port). A plain-string instructions
   block is split on `\n` **before** stripping, so `<br>`-separated steps stay
@@ -272,10 +327,14 @@ Settled; don't reintroduce what they removed. The history behind each is in
   because deep nesting overflows the stack there. That's the only `Throwable`
   catch: `BlogRecipeSource.fetch` catches `Exception`, so cancellation
   propagates.
+- **The recipe's language** (`Recipe.language`, stored): JSON-LD `inLanguage`,
+  else `<html lang>`, else English; but words (name and ingredients) that
+  clearly say another language win, and fill in when nothing is declared. A language with no tables stays entirely as written: no scaling,
+  conversion, temperature rewrite, timer, stepper or phrase times.
 - **Times:**
   - An ISO duration totalling zero ("PT0S") is absent.
-  - A whole-string English phrase ("1 hour 30 minutes") renders like ISO
-    ("1h 30m").
+  - A whole-string phrase in the recipe's words ("1 hour 30 minutes") renders
+    like ISO ("1h 30m").
   - Anything else ("Overnight", "20 to 25 minutes") stays as written.
 - **Condensed duplicates are skipped:** a `HowToSection` named as a condensed
   copy of the recipe ("Abbreviated Recipe", "Summary", "TL;DR", …; an exact
@@ -289,8 +348,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 Each one exists to avoid showing a confident wrong number.
 
-- `UnitSystem` is As written (the default), Grams, Ounces or Metric; #17
-  drops Grams. Oven temperatures follow the separate `TemperatureUnit` (As
+- `UnitSystem` is As written (the default), Metric or Ounces. Grams was
+  dropped (#17): a stored `GRAMS` reads as Metric on both platforms, never As
+  written. Oven temperatures follow the separate `TemperatureUnit` (As
   written, Celsius, Fahrenheit). Each ingredient is scaled first, then
   converted.
 - Weight to weight (oz, lb, g, kg) is exact. Volume to weight needs a density
@@ -306,7 +366,8 @@ Each one exists to avoid showing a confident wrong number.
   read through a summarising fetch, so spot-check values); liquids and fats
   use physical densities.
 - **A line that already carries the target unit uses the site's figure**
-  ("1 cup (120 g) flour", "1 cup/120 grams flour"), and `IngredientScaler`
+  ("1 cup (120 g) flour", "1 cup/120 grams flour", "250 - 300 g / 8 - 10 oz
+  pasta"), and `IngredientScaler`
   scales those figures too. Package sizes ("1 can (14 oz)") are never scaled.
 - **A compound amount converts as a whole or not at all**
   ("1½ cups plus 1 Tbsp. (200 g) flour"). A site figure after the second part
@@ -315,8 +376,8 @@ Each one exists to avoid showing a confident wrong number.
 - **A unit's trailing period ("tsp.", "oz.") belongs to the unit.** The
   `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative.
-- **Liquids.** Grams and Ounces leave pourable liquids as written unless
-  "Also convert liquids" is on. Metric ignores that flag: liquids, spoons and
+- **Liquids.** Ounces leaves pourable liquids as written unless "Also
+  convert liquids" is on. Metric ignores that flag: liquids, spoons and
   cups become ml (a cup is 240 ml, a tbsp 15 ml, a tsp 5 ml), and known
   solids become g.
   - In Metric, a spooned or cupped non-liquid with a site weight keeps that
@@ -351,7 +412,7 @@ Each one exists to avoid showing a confident wrong number.
   as `+ New list`, so tests must match one space. When a Compose test can't
   find a node, dump the semantics tree before touching production code.
 - **`MigrationTest` reads the schemas from the test APK's assets**
-  (`androidTest` `assets.srcDir("$projectDir/schemas")`). A
+  (`androidTest` `assets.directories += "$projectDir/schemas"`). A
   `FileNotFoundException` there means a missing file, not a broken migration.
 - **`org.json` is an Android framework class,** so JVM tests need
   `org.json:json` as a test dependency.

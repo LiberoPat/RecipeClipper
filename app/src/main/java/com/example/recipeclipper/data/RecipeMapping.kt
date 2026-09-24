@@ -24,7 +24,9 @@ internal fun Recipe.toEntity(viewedAt: Long) = RecipeEntity(
     servings = yield,
     sourceType = sourceType.name,
     lastViewedAt = viewedAt,
-    checkedIngredients = checkedIngredients
+    checkedIngredients = checkedIngredients,
+    notes = notes,
+    language = language
 )
 
 internal fun RecipeEntity.toDomain() = Recipe(
@@ -40,7 +42,9 @@ internal fun RecipeEntity.toDomain() = Recipe(
     sourceType = SourceType.values().firstOrNull { it.name == sourceType } ?: SourceType.BLOG,
     id = id,
     checkedIngredients = checkedIngredients,
-    lastViewedAt = lastViewedAt
+    lastViewedAt = lastViewedAt,
+    notes = notes,
+    language = language
 )
 
 internal fun ListRow.toDomain() = RecipeList(
