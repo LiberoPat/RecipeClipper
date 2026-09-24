@@ -18,9 +18,25 @@ enum IngredientScaler {
         "⅜": 3 / 8.0, "⅝": 5 / 8.0, "⅞": 7 / 8.0,
     ]
 
-    // "1 1/2", "1½", "1/2", "1.5", "½", "2" — tried in that order.
+    // "1 1/2", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that order. A comma followed by
+    // one or two digits is a decimal comma; one followed by three ("1,500") may be a thousands
+    // separator, so it is never read as part of a quantity, and `ambiguousComma` leaves the line.
     static let qty =
-        #"(?:\d+\s+\d+/\d+|\d+\s*["# + unicodeFractions + #"]|\d+/\d+|\d+(?:\.\d+)?|["# + unicodeFractions + #"])"#
+        #"(?:\d+\s+\d+/\d+|\d+\s*["# + unicodeFractions + #"]|\d+/\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# +
+        unicodeFractions + #"])"#
+
+    /// "1,5": the line writes decimals with a comma, so its output does too.
+    static let decimalComma = JRegex(#"\d,\d{1,2}(?!\d)"#)
+
+    /// "1,500" is 1.5 or 1500 depending on who wrote it: a line holding one is left as written.
+    static let ambiguousComma = JRegex(#"\d,\d{3}"#)
+
+    private static let decimalPoint = JRegex(#"(?<=\d)\.(?=\d)"#)
+
+    /// "2.25" as "2,25" when `comma`, for a line that writes its decimals that way.
+    static func withSeparator(_ text: String, comma: Bool) -> String {
+        comma ? decimalPoint.replace(text, with: ",") : text
+    }
 
     // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
     static let leading = JRegex(#"^(\s*)("# + qty + #")(?:(\s*[-–—]\s*|\s+to\s+)("# + qty + #"))?"#)
@@ -66,54 +82,64 @@ enum IngredientScaler {
 
     static func scale(_ line: String, factor: Double) -> String {
         if factor == 1.0 { return line }
+        if ambiguousComma.containsMatch(in: line) { return line }
         guard let match = leading.find(line) else { return line }
         let rest = line.u16Substring(from: match.end)
         if notAnAmount.containsMatch(in: rest) { return line }
 
+        let comma = decimalComma.containsMatch(in: line)
         guard let low = parse(match[2]) else { return line }
         let upperRaw = match[4]
         let scaled: String
         if upperRaw.isEmpty {
-            scaled = format(low * factor)
+            scaled = formatLeading(low * factor, comma: comma)
         } else {
             guard let high = parse(upperRaw) else { return line }
-            scaled = format(low * factor) + match[3] + format(high * factor)
+            scaled = formatLeading(low * factor, comma: comma) + match[3] + formatLeading(high * factor, comma: comma)
         }
-        return match[1] + scaled + scaleContinuation(rest, factor: factor)
+        return match[1] + scaled + scaleContinuation(rest, factor: factor, comma: comma)
+    }
+
+    // A line that writes "1,5" reads decimals, not fractions: "1,5 kg" x 1.5 is "2,25 kg".
+    private static func formatLeading(_ value: Double, comma: Bool) -> String {
+        comma ? withSeparator(plainDecimal(value, scale: 2), comma: true) : format(value)
     }
 
     /// Scales "plus 2 tbsp" and whatever alternate measure follows it, else just the alternate.
-    private static func scaleContinuation(_ rest: String, factor: Double) -> String {
+    private static func scaleContinuation(_ rest: String, factor: Double, comma: Bool) -> String {
         guard let m = continued.find(rest),
               let unit = MeasureUnit.fromText(m[4]),
-              let value = parse(m[2]) else { return scaleAlternateMeasure(rest, factor: factor) }
+              let value = parse(m[2]) else { return scaleAlternateMeasure(rest, factor: factor, comma: comma) }
         let tail = m[3] + m[4] + rest.u16Substring(from: m.end)
-        return m[1] + formatFor(unit, value * factor) + scaleAlternateMeasure(tail, factor: factor)
+        return m[1] + formatFor(unit, value * factor, comma: comma) +
+            scaleAlternateMeasure(tail, factor: factor, comma: comma)
     }
 
     /// Keeps "(120 g)" or "/120 grams" in step with the leading amount that was just scaled.
-    private static func scaleAlternateMeasure(_ rest: String, factor: Double) -> String {
+    private static func scaleAlternateMeasure(_ rest: String, factor: Double, comma: Bool) -> String {
         if let m = altParen.find(rest) {
-            let inner = qtyUnit.replace(m[2]) { scalePair($0, factor: factor) }
+            let inner = qtyUnit.replace(m[2]) { scalePair($0, factor: factor, comma: comma) }
             return m[1] + inner + m[3] + rest.u16Substring(from: m.end)
         }
         if let m = altSlash.find(rest),
            let unit = MeasureUnit.fromText(m[4]),
            let value = parse(m[2]) {
-            return m[1] + formatFor(unit, value * factor) + m[3] + m[4] + rest.u16Substring(from: m.end)
+            return m[1] + formatFor(unit, value * factor, comma: comma) + m[3] + m[4] + rest.u16Substring(from: m.end)
         }
         return rest
     }
 
-    private static func scalePair(_ match: JMatch, factor: Double) -> String {
+    private static func scalePair(_ match: JMatch, factor: Double, comma: Bool) -> String {
         guard let unit = MeasureUnit.fromText(match[3]) else { return match.value }
         guard let value = parse(match[1]) else { return match.value }
-        return formatFor(unit, value * factor) + match[2] + match[3]
+        return formatFor(unit, value * factor, comma: comma) + match[2] + match[3]
     }
 
     // Metric amounts read better as "240" or "7.5" than as "240" or "7 1/2".
-    private static func formatFor(_ unit: MeasureUnit, _ value: Double) -> String {
-        unit.metric ? formatMetric(value) : format(value)
+    private static func formatFor(_ unit: MeasureUnit, _ value: Double, comma: Bool) -> String {
+        if unit.metric { return withSeparator(formatMetric(value), comma: comma) }
+        if comma { return withSeparator(plainDecimal(value, scale: 2), comma: true) }
+        return format(value)
     }
 
     static func formatMetric(_ value: Double) -> String {
@@ -121,7 +147,8 @@ enum IngredientScaler {
     }
 
     static func parse(_ quantity: String) -> Double? {
-        let q = quantity.kTrimmed
+        // `qty` only lets a comma through as a decimal comma, never before three digits.
+        let q = quantity.kTrimmed.replacingOccurrences(of: ",", with: ".")
         guard let last = q.last else { return nil }
         if let fraction = unicodeValues[last] {
             let whole = String(q.dropLast()).kTrimmed

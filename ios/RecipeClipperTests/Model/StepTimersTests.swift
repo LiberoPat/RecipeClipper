@@ -52,4 +52,10 @@ final class StepTimersTests: XCTestCase {
         XCTAssertEqual("45 sec", StepTimers.label(45))
         XCTAssertEqual("2 min 30 sec", StepTimers.label(150))
     }
+
+    func testADecimalCommaDurationIsReadAsADecimal() {
+        XCTAssertEqual(5400, StepTimers.parse("Bake for 1,5 hours."))
+        XCTAssertEqual(150, StepTimers.parse("Simmer 2,5 minutes"))
+        XCTAssertNil(StepTimers.parse("Rest for 1,500 seconds"))
+    }
 }
