@@ -31,6 +31,7 @@ struct ListsScreen: View {
                 .padding(.top, 16)
             }
             .padding(.horizontal, 20)
+            .readableColumn()
             .padding(.top, 4)
             .padding(.bottom, 32)
         }
