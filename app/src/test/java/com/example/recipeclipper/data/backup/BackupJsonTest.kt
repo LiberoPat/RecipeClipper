@@ -88,6 +88,13 @@ class BackupJsonTest {
         assertEquals(withLanguage, decodeOrFail(BackupJson.encode(withLanguage)))
     }
 
+    @Test fun `a recipe's content origin round-trips, and a file without one reads as parsed`() {
+        val original = decodeOrFail(fixture("backup-v1.json"))
+        assertTrue(original.recipes.all { it.contentOrigin == "PARSED" && it.editedAt == null })
+        val edited = original.copy(recipes = original.recipes.map { it.copy(contentOrigin = "EDITED", editedAt = 42L) })
+        assertEquals(edited, decodeOrFail(BackupJson.encode(edited)))
+    }
+
     @Test fun `the encoded file carries the marker, the version and explicit nulls`() {
         val text = BackupJson.encode(decodeOrFail(fixture("backup-v1.json")))
         val root = org.json.JSONObject(text)

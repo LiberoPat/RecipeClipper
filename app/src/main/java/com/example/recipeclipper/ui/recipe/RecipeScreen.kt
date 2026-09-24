@@ -15,12 +15,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
@@ -32,6 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -89,12 +94,15 @@ internal class RecipeActions(
     val onShare: () -> Unit,
     val onOpenOriginal: (url: String) -> Unit,
     val onSaveToList: () -> Unit,
-    val onDelete: () -> Unit
+    val onDelete: () -> Unit,
+    val onEdit: () -> Unit = {},
+    val onUpdateFromSource: () -> Unit = {}
 )
 
 @Composable
 fun RecipeScreen(
     onBack: () -> Unit,
+    onEdit: (recipeId: Long) -> Unit = {},
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel()
 ) {
@@ -108,7 +116,7 @@ fun RecipeScreen(
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
     // The first timer started asks for permission to post its "time's up" notification.
     val askForNotifications = rememberNotificationPrompt()
-    val actions = remember(viewModel, onBack, context, uriHandler, askForNotifications) {
+    val actions = remember(viewModel, onBack, onEdit, context, uriHandler, askForNotifications) {
         RecipeActions(
             onBack = onBack,
             onRetry = viewModel::onRetry,
@@ -162,7 +170,11 @@ fun RecipeScreen(
                 }
             },
             onSaveToList = { sheetOpen = true },
-            onDelete = viewModel::onDelete
+            onDelete = viewModel::onDelete,
+            onEdit = {
+                (viewModel.uiState.value.content as? RecipeContent.Success)?.recipe?.id?.let(onEdit)
+            },
+            onUpdateFromSource = viewModel::onUpdateFromSource
         )
     }
 
@@ -184,6 +196,17 @@ fun RecipeScreen(
     MarkRecipeVisible(recipeId)
 
     val cooking = content is RecipeContent.Success && state.cook.active
+
+    // "Update from source" failed: the recipe on screen is unchanged; say why, once.
+    val snackbarHostState = remember { SnackbarHostState() }
+    val updateError = state.updateError
+    val updateErrorMessage = updateError?.let { stringResource(R.string.update_from_source_failed, it.toMessage()) }
+    LaunchedEffect(updateError) {
+        if (updateErrorMessage != null) {
+            snackbarHostState.showSnackbar(updateErrorMessage)
+            viewModel.onUpdateErrorShown()
+        }
+    }
 
     // Cook mode follows the system theme like every other screen unless the user has asked
     // for it to stay dark.
@@ -234,6 +257,10 @@ fun RecipeScreen(
                         }
                     }
                 }
+            }
+
+            Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.BottomCenter) {
+                SnackbarHost(snackbarHostState)
             }
 
             // Only reachable once the recipe has an id: there is nothing to put in a list
@@ -326,7 +353,20 @@ private fun ReadingView(
                     IconButton(onClick = actions.onShare) {
                         Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share_recipe))
                     }
-                    RecipeOverflowMenu(recipeName = recipe.name, onDelete = actions.onDelete)
+                    if (state.updatingFromSource) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(12.dp).size(20.dp)
+                        )
+                    }
+                    RecipeOverflowMenu(
+                        recipeName = recipe.name,
+                        canUpdateFromSource = recipe.canUpdateFromSource && !state.updatingFromSource,
+                        onEdit = actions.onEdit,
+                        onUpdateFromSource = actions.onUpdateFromSource,
+                        onDelete = actions.onDelete
+                    )
                 }
             }
 
@@ -429,22 +469,66 @@ private fun ReadingView(
     }
 }
 
-/** Overflow menu: currently just Delete, behind a confirm dialog naming the recipe. */
+/**
+ * Overflow menu: Edit, "Update from source" for the user's version of a linked recipe (#29),
+ * behind a warning that the edits will be lost, and Delete, behind a confirm dialog naming
+ * the recipe.
+ */
 @Composable
-private fun RecipeOverflowMenu(recipeName: String, onDelete: () -> Unit) {
+private fun RecipeOverflowMenu(
+    recipeName: String,
+    canUpdateFromSource: Boolean,
+    onEdit: () -> Unit,
+    onUpdateFromSource: () -> Unit,
+    onDelete: () -> Unit
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var confirming by rememberSaveable { mutableStateOf(false) }
+    var confirmingUpdate by rememberSaveable { mutableStateOf(false) }
 
     IconButton(onClick = { expanded = true }) {
         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
         DropdownMenuItem(
+            text = { Text(stringResource(R.string.action_edit)) },
+            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+            onClick = {
+                expanded = false
+                onEdit()
+            }
+        )
+        if (canUpdateFromSource) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_update_from_source)) },
+                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    confirmingUpdate = true
+                }
+            )
+        }
+        DropdownMenuItem(
             text = { Text(stringResource(R.string.action_delete)) },
             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
             onClick = {
                 expanded = false
                 confirming = true
+            }
+        )
+    }
+    if (confirmingUpdate) {
+        AlertDialog(
+            onDismissRequest = { confirmingUpdate = false },
+            title = { Text(stringResource(R.string.update_from_source_title)) },
+            text = { Text(stringResource(R.string.update_from_source_body)) },
+            confirmButton = {
+                TextButton(onClick = { confirmingUpdate = false; onUpdateFromSource() }) {
+                    Text(stringResource(R.string.action_update))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingUpdate = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }

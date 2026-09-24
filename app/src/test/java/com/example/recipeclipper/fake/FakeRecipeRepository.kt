@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
@@ -60,6 +61,16 @@ class FakeRecipeRepository : RecipeRepository {
     /** Every [RecipeRepository.DeletedRecipe] [restore] was called with, in order. */
     val restoreCalls = mutableListOf<RecipeRepository.DeletedRecipe>()
 
+    /** Staged answer for [updateFromSource]; every id it was called with, in order. */
+    var updateFromSourceResult: ParseResult = ParseResult.Error(ParseError.NothingToShow)
+    val updateFromSourceCalls = mutableListOf<Long>()
+
+    /** Staged answers for [saveEdit] and [addManual]; every draft they were given, in order. */
+    var saveEditResult: Recipe? = null
+    val saveEditCalls = mutableListOf<Pair<Long, RecipeDraft>>()
+    var addManualResult: Recipe? = null
+    val addManualCalls = mutableListOf<RecipeDraft>()
+
     /** How many times [importFromUrl] has been called — for the reload-on-reconnect tests. */
     var importCalls = 0
         private set
@@ -70,6 +81,21 @@ class FakeRecipeRepository : RecipeRepository {
     }
 
     override suspend fun open(id: Long): Recipe? = openResult
+
+    override suspend fun updateFromSource(id: Long): ParseResult {
+        updateFromSourceCalls += id
+        return updateFromSourceResult
+    }
+
+    override suspend fun saveEdit(id: Long, draft: RecipeDraft): Recipe? {
+        saveEditCalls += id to draft
+        return saveEditResult
+    }
+
+    override suspend fun addManual(draft: RecipeDraft): Recipe? {
+        addManualCalls += draft
+        return addManualResult
+    }
 
     override suspend fun setChecked(id: Long, checked: Set<Int>) {
         setCheckedCalls += id to checked

@@ -273,6 +273,41 @@ class RecipeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * "Update from source" (#29), confirmed on screen first: replaces the user's version with
+     * the site's. The recipe stays on screen meanwhile; on success it is shown afresh, on
+     * failure it is kept as it was and [RecipeUiState.updateError] says why.
+     */
+    fun onUpdateFromSource() {
+        val recipe = (_uiState.value.content as? RecipeContent.Success)?.recipe ?: return
+        if (!recipe.canUpdateFromSource || _uiState.value.updatingFromSource) return
+        _uiState.update { it.copy(updatingFromSource = true, updateError = null) }
+        viewModelScope.launch {
+            val result = repository.updateFromSource(recipe.id)
+            if (result is ParseResult.Success) {
+                // Steps may have changed: drop this screen's alarms; restoreCook reschedules
+                // whatever the saved progress still holds.
+                deadlines.keys.forEach { alarms.cancel(recipe.id, it) }
+                _uiState.update { state ->
+                    state.copy(
+                        content = successContent(
+                            result.recipe, state.unitSystem, state.convertLiquids, state.temperatureUnit
+                        ),
+                        checkedIngredients = result.recipe.checkedIngredients,
+                        updatingFromSource = false
+                    )
+                }
+                restoreCook(result.recipe)
+            } else {
+                val error = (result as ParseResult.Error).error
+                _uiState.update { it.copy(updatingFromSource = false, updateError = error) }
+            }
+        }
+    }
+
+    /** The screen has shown [RecipeUiState.updateError]. */
+    fun onUpdateErrorShown() = _uiState.update { it.copy(updateError = null) }
+
     fun onServingsChange(target: Int) {
         _uiState.update { state ->
             val content = state.content as? RecipeContent.Success ?: return@update state

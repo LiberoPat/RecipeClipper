@@ -53,60 +53,6 @@ class DefaultRecipeRepositoryRetryTest {
             script[minOf(fetches++, script.lastIndex)]
     }
 
-    /** Just enough of a RecipeDao for the import path, recording every write. */
-    private class InMemoryRecipeDao : RecipeDao() {
-        val rows = mutableMapOf<Long, RecipeEntity>()
-        var writes = 0
-            private set
-        private var nextId = 1L
-
-        override suspend fun get(id: Long) = rows[id]
-        override suspend fun findByUrl(url: String) = rows.values.firstOrNull { it.sourceUrl == url }
-        override suspend fun insert(recipe: RecipeEntity): Long {
-            writes++
-            val id = if (recipe.id != 0L) recipe.id else nextId++
-            rows[id] = recipe.copy(id = id)
-            return id
-        }
-        override suspend fun update(recipe: RecipeEntity) {
-            writes++
-            rows[recipe.id] = recipe
-        }
-        override suspend fun touch(id: Long, now: Long) {
-            writes++
-            rows[id]?.let { rows[id] = it.copy(lastViewedAt = now) }
-        }
-        override suspend fun setChecked(id: Long, checked: Set<Int>) {
-            writes++
-            rows[id]?.let { rows[id] = it.copy(checkedIngredients = checked) }
-        }
-        override suspend fun setNotes(id: Long, notes: String?) {
-            writes++
-            rows[id]?.let { rows[id] = it.copy(notes = notes) }
-        }
-        override suspend fun setCookState(id: Long, cookState: String?) {
-            writes++
-            rows[id]?.let { rows[id] = it.copy(cookState = cookState) }
-        }
-        override suspend fun setServingsTarget(id: Long, target: Int?) {
-            writes++
-            rows[id]?.let { rows[id] = it.copy(servingsTarget = target) }
-        }
-        override suspend fun cookStates() = rows.values.mapNotNull { row ->
-            row.cookState?.let { CookStateRow(row.id, row.title, it) }
-        }
-        override suspend fun delete(id: Long) {
-            writes++
-            rows.remove(id)
-        }
-        override suspend fun crossRefsFor(recipeId: Long) = emptyList<RecipeListCrossRef>()
-        override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) {}
-        override fun observeHistory(): Flow<List<RecipeSummaryRow>> = emptyFlow()
-        override fun observeHistory(query: String): Flow<List<RecipeSummaryRow>> = emptyFlow()
-        override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
-        override suspend fun cullHistory(keep: Int) {}
-    }
-
     private fun recipe(title: String = "Soup") = Recipe(
         name = title, image = null, ingredients = listOf("1 onion"), instructions = listOf("Cook."),
         prepTime = null, cookTime = null, totalTime = null, yield = "4", sourceUrl = url
