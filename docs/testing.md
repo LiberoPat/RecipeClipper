@@ -38,7 +38,12 @@ call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
-**257 JVM tests pass.**
+`DifferentialCorpusTest` recomputes every ingredient and instruction row of
+the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
+stale, and writes the regenerated file to
+`app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
+(`app/build.gradle.kts` declares the Swift file as a test input, so editing
+it alone reruns the tests). **265 JVM tests pass.**
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a

@@ -167,3 +167,11 @@ dependencies {
     // Background thread for the network fetch
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
+
+// DifferentialCorpusTest reads the iOS corpus and checks it against the Kotlin, so an edit to
+// that Swift file alone must rerun the unit tests rather than leave them "up to date".
+tasks.withType<Test>().configureEach {
+    inputs.files("../ios/RecipeClipperTests/Model/DifferentialCorpusTests.swift")
+        .withPropertyName("differentialCorpus")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}

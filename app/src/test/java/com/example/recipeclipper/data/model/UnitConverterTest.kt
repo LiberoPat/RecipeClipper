@@ -273,4 +273,26 @@ class UnitConverterTest {
         assertEquals("215 g brown sugar (packed)", grams("1 cup brown sugar (packed)"))
         assertEquals("120 g flour ((sifted))", grams("1 cup (120 g) flour ((sifted))"))
     }
+
+    // --- Decimal commas (#12) ---
+
+    @Test fun `a decimal comma is converted as a decimal and keeps its comma`() {
+        assertEquals("3 lb 5 oz flour", ounces("1,5 kg flour"))
+        assertEquals("680 g pork shoulder", grams("1,5 lb pork shoulder"))
+        assertEquals("1,13 kg potatoes", grams("2,5 lb potatoes"))
+        assertEquals("7,5 ml water", metric("1,5 tsp water"))
+    }
+
+    @Test fun `a scaled line keeps the separator of the line it was scaled from`() {
+        // "2,5 lb" doubled is "5 lb", which no longer shows its comma.
+        val scaled = IngredientScaler.scale("2,5 lb potatoes", 2.0)
+        assertEquals("2,27 kg potatoes", UnitConverter.convert(scaled, UnitSystem.METRIC, false, "2,5 lb potatoes"))
+        assertEquals("2.27 kg potatoes", UnitConverter.convert("5 lb potatoes", UnitSystem.METRIC, false))
+    }
+
+    @Test fun `a comma before three digits is ambiguous and left as written`() {
+        assertEquals("1,500 g flour", ounces("1,500 g flour"))
+        assertEquals("1,500 lb beef", grams("1,500 lb beef"))
+        assertEquals("2 cups (1,250 g) flour", ounces("2 cups (1,250 g) flour"))
+    }
 }
