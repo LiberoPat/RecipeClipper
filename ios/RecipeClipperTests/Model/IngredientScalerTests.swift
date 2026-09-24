@@ -172,4 +172,26 @@ final class IngredientScalerTests: XCTestCase {
         XCTAssertEqual("0", plainDecimal(0.001, scale: 2))
         XCTAssertEqual("-1.5", plainDecimal(-1.5, scale: 1))
     }
+
+    // --- Decimal commas (#12): "1,5" is 1.5; "1,500" could be 1500, so it is left alone ---
+
+    func testADecimalCommaIsReadAsADecimal() {
+        XCTAssertEqual("3 kg flour", IngredientScaler.scale("1,5 kg flour", factor: 2.0))
+        XCTAssertEqual("3-4 kg potatoes", IngredientScaler.scale("1,5-2 kg potatoes", factor: 2.0))
+        XCTAssertEqual("2,5 dl water", IngredientScaler.scale("1,25 dl water", factor: 2.0))
+    }
+
+    func testADecimalCommaLineKeepsItsComma() {
+        XCTAssertEqual("2,25 kg flour", IngredientScaler.scale("1,5 kg flour", factor: 1.5))
+        XCTAssertEqual("0,17 l milk", IngredientScaler.scale("0,5 l milk", factor: 1 / 3.0))
+        XCTAssertEqual("3 kg (6,6 lb) potatoes", IngredientScaler.scale("2 kg (4,4 lb) potatoes", factor: 1.5))
+        // A decimal point keeps the fractions it always had.
+        XCTAssertEqual("2 1/4 kg flour", IngredientScaler.scale("1.5 kg flour", factor: 1.5))
+    }
+
+    func testACommaBeforeThreeDigitsIsAmbiguousAndLeftAsWritten() {
+        XCTAssertEqual("1,500 g flour", IngredientScaler.scale("1,500 g flour", factor: 2.0))
+        XCTAssertEqual("1,000 ml water", IngredientScaler.scale("1,000 ml water", factor: 0.5))
+        XCTAssertEqual("2 cups (1,250 g) flour", IngredientScaler.scale("2 cups (1,250 g) flour", factor: 2.0))
+    }
 }

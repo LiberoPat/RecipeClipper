@@ -162,4 +162,26 @@ class IngredientScalerTest {
         assertNull(Servings.parse("0 servings"))
         assertNull(Servings.parse("2024"))
     }
+
+    // --- Decimal commas (#12): "1,5" is 1.5; "1,500" could be 1500, so it is left alone ---
+
+    @Test fun `a decimal comma is read as a decimal`() {
+        assertEquals("3 kg flour", IngredientScaler.scale("1,5 kg flour", 2.0))
+        assertEquals("3-4 kg potatoes", IngredientScaler.scale("1,5-2 kg potatoes", 2.0))
+        assertEquals("2,5 dl water", IngredientScaler.scale("1,25 dl water", 2.0))
+    }
+
+    @Test fun `a decimal comma line keeps its comma`() {
+        assertEquals("2,25 kg flour", IngredientScaler.scale("1,5 kg flour", 1.5))
+        assertEquals("0,17 l milk", IngredientScaler.scale("0,5 l milk", 1 / 3.0))
+        assertEquals("3 kg (6,6 lb) potatoes", IngredientScaler.scale("2 kg (4,4 lb) potatoes", 1.5))
+        // A decimal point keeps the fractions it always had.
+        assertEquals("2 1/4 kg flour", IngredientScaler.scale("1.5 kg flour", 1.5))
+    }
+
+    @Test fun `a comma before three digits is ambiguous and left as written`() {
+        assertEquals("1,500 g flour", IngredientScaler.scale("1,500 g flour", 2.0))
+        assertEquals("1,000 ml water", IngredientScaler.scale("1,000 ml water", 0.5))
+        assertEquals("2 cups (1,250 g) flour", IngredientScaler.scale("2 cups (1,250 g) flour", 2.0))
+    }
 }

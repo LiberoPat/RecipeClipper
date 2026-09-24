@@ -310,6 +310,19 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.cook, cookBefore)
     }
 
+    func testADecimalCommaLineKeepsItsCommaWhenAUnitsChangeArrivesWhileItIsScaled() async {
+        // Doubled, "2,5 lb" is "5 lb", which no longer shows a comma: the re-render must take
+        // the separator from the unscaled line, as the first render does (#42).
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(testRecipe(ingredients: ["2,5 lb potatoes"]), preferences: preferences)
+        vm.onServingsChange(8) // base 4 -> 8, factor 2
+
+        preferences.unitSystem = .metric
+        await settleMain()
+
+        XCTAssertEqual(success(vm)?.ingredients, ["2,27 kg potatoes"])
+    }
+
     func testASettingsChangeMadeWhileTheRecipeIsStillLoadingIsUsedWhenItArrives() async {
         let preferences = FakeAppPreferences()
         let vm = makeViewModel(id: 1, repository: repository(testRecipe()), preferences: preferences)

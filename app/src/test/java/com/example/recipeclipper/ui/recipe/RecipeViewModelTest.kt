@@ -412,6 +412,27 @@ class RecipeViewModelTest {
             assertEquals(cookBefore, vm.uiState.value.cook)
         }
 
+    @Test fun `a decimal-comma line keeps its comma when a units change arrives while it is scaled`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            // Doubled, "2,5 lb" is "5 lb", which no longer shows a comma: the re-render must
+            // take the separator from the unscaled line, as the first render does (#42).
+            val preferences = FakeAppPreferences()
+            val repository = FakeRecipeRepository().apply {
+                openResult = testRecipe(ingredients = listOf("2,5 lb potatoes"))
+            }
+            val vm = buildViewModel(byId(1L), repository, preferences)
+            advanceUntilIdle()
+            vm.onServingsChange(8) // base 4 -> 8, factor 2
+
+            preferences.unitSystem = UnitSystem.METRIC
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("2,27 kg potatoes"),
+                (vm.uiState.value.content as RecipeContent.Success).ingredients
+            )
+        }
+
     @Test fun `a settings change made while the recipe is still loading is used when it arrives`() =
         runTest(mainDispatcherRule.dispatcher) {
             val preferences = FakeAppPreferences()
