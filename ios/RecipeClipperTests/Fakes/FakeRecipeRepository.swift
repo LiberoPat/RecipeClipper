@@ -26,7 +26,7 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var deleteCalls: [Int64] = []
     private(set) var restoreCalls: [DeletedRecipe] = []
 
-    @MainActor func importFromUrl(_ sharedUrl: String) async -> ParseResult { importResult }
+    @MainActor func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult { importResult }
 
     @MainActor func open(id: Int64) async -> Recipe? { openResult }
 

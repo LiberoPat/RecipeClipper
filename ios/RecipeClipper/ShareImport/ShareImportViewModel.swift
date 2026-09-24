@@ -71,8 +71,8 @@ final class ShareImportViewModel {
             return
         }
         uiState = .loading
-        loadTask = Task { [weak self, repository] in
-            let result = await repository.importFromUrl(input.url)
+        loadTask = Task { [weak self, repository, input] in
+            let result = await repository.importFromUrl(input.url, renderedPage: input.page)
             guard !Task.isCancelled, let self else { return }
             switch result {
             case .success(let recipe):

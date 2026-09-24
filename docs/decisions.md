@@ -973,6 +973,43 @@ had already broken it once. Now the extension does the import itself.
   transactions, so this shouldn't bite, but it has to be watched for on a
   device.
 
+## iOS: reading the shared page from Safari instead of fetching it (#35)
+
+Needed #19 (the extension importing itself) first: a rendered page (about
+250 KB for a Smitten Kitchen recipe) is too big for the
+`recipeclipper://import?url=…` deep link, so parsing it has to happen where
+it's saved.
+
+- **Safari's JavaScript preprocessing file**, not a second fetch. `Preprocessing.js`
+  defines `ExtensionPreprocessingJS.run`, which hands `completionFunction`
+  `{url: document.URL, html: document.documentElement.outerHTML}`; Safari runs
+  it against the page it's sharing, before the extension launches. Info.plist
+  (via `project.yml`) names it (`NSExtensionJavaScriptPreprocessingFile`) and
+  adds `NSExtensionActivationSupportsWebPageWithMaxCount` to the activation
+  rule alongside the existing URL and text rules; only Safari acts on it, so
+  Chrome and other apps keep sharing just the URL.
+- **The page never leaves the device.** It's parsed in the extension's own
+  process with the same pure parsers the fetch uses
+  (`BlogRecipeSource.parse(html:url:)`); nothing is sent anywhere for this.
+- **Bypasses the fetch, not just the block-and-retry.** `SharedItems` prefers
+  the preprocessing result (it carries both the rendered HTML and the URL
+  JavaScript actually resolved) over the plain URL/text attachments every
+  other app sends. `RecipeRepository.importFromUrl` grew a `renderedPage`
+  parameter: given one, it parses it directly and skips the fetch, its retry
+  and the off-screen-browser fallback (#36) entirely; only when that page
+  holds no recipe does the ordinary fetch run, exactly as if nothing had been
+  given. A default-argument extension method keeps every other caller
+  (`RecipeViewModel`, the tests) at the one-argument call they already had.
+- **Android has no equivalent.** Chrome's share sheet gives apps only the
+  URL, never the rendered page; the off-screen-browser fallback (#36) is
+  Android's route to a page that needs JavaScript to reveal its recipe data.
+- **Checked so far:** the plumbing (SharedItems reading a real property-list
+  item provider shaped exactly as Apple delivers preprocessing results; the
+  repository using the page's HTML and cleaned URL without fetching; a page
+  with no recipe falling back to fetch; the view model passing the page
+  through). Safari end to end on a device, against a site that blocks the
+  plain fetch, is still owed.
+
 ## Export and import (#26)
 
 The owner's decision: import **merges, never replaces**, and deletes nothing.
