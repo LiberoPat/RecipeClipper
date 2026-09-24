@@ -248,7 +248,8 @@ final class RecipeDaoTests: XCTestCase {
         let migrated = try AppDatabase(path: path)
 
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
-        XCTAssertEqual(version, 6)
+        // Opened by the current build, so it goes all the way up.
+        XCTAssertEqual(version, AppDatabase.schemaVersion)
         let row = try await migrated.get(7)
         XCTAssertEqual(row?.title, "Adobo")
         XCTAssertEqual(row?.notes, "Less salt")
