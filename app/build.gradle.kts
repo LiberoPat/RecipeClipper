@@ -74,6 +74,9 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // shared/ is a main resource dir for its tables (#9); its fixtures/ are test data
+            // (see the test source set below), not something to ship.
+            excludes += "/fixtures/**"
         }
     }
 
@@ -81,8 +84,6 @@ android {
     // root. As Java resources they land in the APK and on the JVM test classpath alike, so
     // the pure model code reads them with getResourceAsStream and no Context.
     sourceSets.getByName("main").resources.srcDir("$rootDir/shared")
-    // shared/fixtures/ is test data (below), not something to ship in the APK.
-    sourceSets.getByName("main").resources.exclude("fixtures/**")
 
     // MigrationTestHelper reads the exported schema JSON from the instrumentation APK's
     // assets, not from the project directory, so the schemas have to be packaged into the
