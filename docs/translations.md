@@ -20,8 +20,8 @@ should review each one before release,** starting with the terms listed below.
   "Prep"…) from the UI layer, which reads them from the resources above, so a recipe
   shared from a German phone reads "Portionen: 4 … ZUTATEN". The recipe's own text is
   never translated.
-- **The site check's report** (`SiteReport`) stays in English: it's a GitHub issue
-  body, not UI.
+- **The site report** (`SiteReportLink`) stays in English: it's a GitHub issue body the
+  maintainer reads, not UI. Its button, "Report this site", is translated.
 
 Adding a string: add the English, then all five translations, on both platforms. Mark
 the new term in the list below if you weren't sure of it.
@@ -45,8 +45,8 @@ The Lists screen still says "Empty" rather than a zero count, in every language.
 - **Dates:** Android's `time_date_format` is a pattern and is translated per language
   (`d. MMM` in German, `d 'de' MMM` in Portuguese). iOS uses a template that
   `DateFormatter` reorders itself, so it isn't in the catalog.
-- **Unit option names** match the metric vocabulary of each language (Gramos, Grammes,
-  Gramm, Grammi, Gramas), and "As written" is the same phrase for units and oven
+- **Unit option names** match the metric vocabulary of each language (Métrico, Métrique,
+  Metrisch, Metrico), and "As written" is the same phrase for units and oven
   temperature ("Wie im Rezept", "Comme dans la recette"…).
 
 ## Terms to check
@@ -75,6 +75,13 @@ Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and
 (Annulla), as the platforms themselves have it; "Delete" is *Excluir* in Portuguese
 (the platform word) rather than *Apagar*.
 
+## Long words
+
+German was checked on iOS at the default size and the largest accessibility size. Text
+wraps rather than truncating; two places needed a change: cook mode's top bar stacks
+Exit above "Schritt 1 von 2" at the accessibility sizes, and a one-word screen title
+("Einstellungen") shrinks to fit its line instead of breaking mid-word.
+
 ## Not translated yet
 
 - **The seeded list names** (Favorites, Lunch, Dinner, Desserts, Breakfast, Snacks) are
@@ -83,3 +90,6 @@ Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and
 - **Times from the recipe** ("1h 30m") are built by the parser with English unit letters,
   and the recipe text itself is shown as the site wrote it. Reading recipes written in
   other languages is #12 and #14–#16.
+- **Timer durations** ("Start 1 hr timer" → "Timer für 1 hr starten") come from
+  `StepTimers` in English ("10 min", "1 hr"); "min" reads fine in all five, "hr" doesn't.
+

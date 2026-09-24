@@ -30,6 +30,10 @@ struct ScreenTitle: View {
         Text(text)
             .textStyle(style)
             .foregroundStyle(Palette.onBackground)
+            // Titles of several words wrap. A single long word ("Einstellungen" at the
+            // largest sizes) would break mid-word instead, so it shrinks to fit its line.
+            .lineLimit(text.contains(" ") ? nil : 1)
+            .minimumScaleFactor(0.5)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
