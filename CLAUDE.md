@@ -5,7 +5,8 @@ Recipe Clipper: share a recipe link from any app and get just the recipe
 filler.
 
 - **Android** (`app/`): Kotlin, Jetpack Compose, single Activity. MVVM +
-  repository, Hilt, Room, Compose Navigation. minSdk 24, targetSdk 34.
+  repository, Hilt, Room, Compose Navigation. minSdk 24, targetSdk 36,
+  compileSdk 37.
 - **iOS** (`ios/`): SwiftUI, iOS 17+, no third-party dependencies, at parity
   with Android. iOS specifics (XcodeGen, the Android→iOS type map, the share
   extension, simulator rules, test commands) are in `ios/README.md`.
@@ -60,17 +61,19 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 - **Device tests uninstall the app and wipe its database and settings.** Back
   them up first and restore after. The procedure (copy the `-wal` too) is in
   `docs/testing.md`, with the adb recipes.
-- **Lint reports exactly 16 warnings, all version advisories**
-  (`GradleDependency`, `NewerVersionAvailable`, `AndroidGradlePluginVersion`,
-  `OldTargetApi`), left on purpose (#23). Don't baseline them; any other
-  finding is real.
+- **Lint reports two warnings, both deliberate version advisories:**
+  `OldTargetApi` (targetSdk 36 while 37 exists; raise it only after reading
+  its behaviour changes) and `NewerVersionAvailable` for jsoup (held at
+  1.17.2; the reason is beside it in `app/build.gradle.kts`). Don't baseline
+  them; any other finding is real.
 - **CI checks every PR** (`docs/testing.md`): merge only when green.
 - **An emulator or simulator may be in use by a person.** Check before
   scripted taps, force-stops or settings changes, and ask. **Never run two iOS
   test sessions on one simulator**: one kills the other's test host.
-- The Android toolchain versions are coupled; bump them together (#23).
-  `navigation-compose` 2.7.7 and `hilt-navigation-compose` 1.2.0 are pinned to
-  the Compose BOM.
+- The Android toolchain versions are coupled; bump them together: Gradle,
+  AGP, Kotlin (the Compose compiler plugin's version sets it), KSP, Hilt,
+  Room, and the Compose BOM with `navigation-compose`. AGP 9 compiles Kotlin
+  itself: there's no `kotlin-android` plugin and no legacy AGP flags.
 
 ## Where things are (Android)
 
@@ -99,6 +102,10 @@ then upsert with no list membership).
   one `private(set) var uiState`). Screens observe and forward events: no
   coroutines, repository calls or business logic in composables or views.
 - Never hold state in `remember` if it must survive rotation.
+- **Edge-to-edge** (targetSdk 36 enforces it): a screen's root surface fills
+  behind the system bars and pads its content with `safeDrawingPadding()`
+  (History: its Scaffold's `contentWindowInsets = WindowInsets.safeDrawing`).
+  Never set bar colours; the theme only flips the bar icons.
 - ViewModels and repositories never import Compose, SwiftUI or UIKit, and
   never touch `Context`. Platform effects (alarm sound, keep-screen-on, the
   share sheet, opening a URL) live in the view layer.
@@ -396,7 +403,7 @@ Each one exists to avoid showing a confident wrong number.
   as `+ New list`, so tests must match one space. When a Compose test can't
   find a node, dump the semantics tree before touching production code.
 - **`MigrationTest` reads the schemas from the test APK's assets**
-  (`androidTest` `assets.srcDir("$projectDir/schemas")`). A
+  (`androidTest` `assets.directories += "$projectDir/schemas"`). A
   `FileNotFoundException` there means a missing file, not a broken migration.
 - **`org.json` is an Android framework class,** so JVM tests need
   `org.json:json` as a test dependency.

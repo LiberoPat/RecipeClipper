@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -32,13 +33,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.HISTORY_LIMIT
@@ -85,6 +87,9 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
             LazyColumn(
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
                 modifier = Modifier.fillMaxSize()
+                    // Edge-to-edge: the background fills behind the bars, the rows stay clear
+                    // of them, the display cutout and the keyboard.
+                    .safeDrawingPadding()
             ) {
                 item {
                     BackButton(onBack)
@@ -220,7 +225,7 @@ private fun ActionRow(title: String, description: String, enabled: Boolean, onCl
 /** Progress, or the outcome of the last export or import, until the next one. */
 @Composable
 private fun BackupStatusText(status: BackupStatus) {
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
     val text = when (status) {
         BackupStatus.Idle, is BackupStatus.ReadyToShare -> null
         BackupStatus.Exporting -> stringResource(R.string.backup_exporting)

@@ -40,8 +40,9 @@ class ListsScreenTest {
     private var opened: Long? = null
 
     private fun show() {
+        val viewModel = ListsViewModel(repository)
         compose.setContent {
-            ListsScreen(onBack = {}, onOpenList = { opened = it }, viewModel = ListsViewModel(repository))
+            ListsScreen(onBack = {}, onOpenList = { opened = it }, viewModel = viewModel)
         }
     }
 
