@@ -1,0 +1,151 @@
+import Combine
+import Foundation
+
+/// The real, SQLite-backed RecipeRepository (Android's DefaultRecipeRepository).
+///
+/// The contract's methods don't throw, so a database failure is logged and surfaced the way
+/// the contract allows: `.error(.saveFailed)` from an import, nil from `open` / `delete`, and
+/// nothing from `setChecked` / `restore`.
+final class DefaultRecipeRepository: RecipeRepository {
+    private let db: AppDatabase
+    private let source: RecipeSource
+    private let clock: Clock
+    private let sleep: RetrySleep
+
+    /// How a failed fetch waits before its single retry. Injected so a test doesn't really wait;
+    /// throws on cancellation, as `Task.sleep` does.
+    typealias RetrySleep = (Duration) async throws -> Void
+
+    /// How long to wait before the single automatic retry: long enough for a momentary block to
+    /// lift, short enough that the spinner doesn't feel stuck. Android's RETRY_PAUSE_MS.
+    static let retryPause: Duration = .seconds(2)
+
+    init(
+        db: AppDatabase,
+        source: RecipeSource,
+        clock: Clock,
+        sleep: @escaping RetrySleep = { try await Task.sleep(for: $0) }
+    ) {
+        self.db = db
+        self.source = source
+        self.clock = clock
+        self.sleep = sleep
+    }
+
+    func importFromUrl(_ sharedUrl: String) async -> ParseResult {
+        // Saved under the cleaned link, so tracking tags can't make one recipe into two.
+        let url = UrlCleaner.clean(sharedUrl)
+        var parsed = await source.fetch(url: url)
+
+        // A block or a network blip often clears on its own: wait, then fetch once more. Offline
+        // fails straight away, a timeout isn't repeated (a dead Wi-Fi costs one timeout, not
+        // two), and a page that loaded with no recipe is never retried.
+        if case .error(let error) = parsed, error.shouldAutoRetry, !Task.isCancelled {
+            do {
+                try await sleep(Self.retryPause)
+            } catch {
+                return parsed // cancelled during the pause: write nothing
+            }
+            if !Task.isCancelled { parsed = await source.fetch(url: url) }
+        }
+
+        // RecipeSource.fetch can't throw, so cancellation can't propagate as it does on
+        // Android. Match Android's outcome instead: a cancelled import writes nothing (not
+        // even a touch). The cancelled caller discards whatever is returned.
+        if Task.isCancelled { return parsed }
+        let now = clock.now()
+
+        switch parsed {
+        case .success(var recipe):
+            // Pin the key to the cleaned link we looked up by, so the offline fallback below
+            // always finds what was saved here. (The parser already sets this; belt and braces.)
+            recipe.sourceUrl = url
+            do {
+                let saved = try await db.write { conn -> RecipeRecord? in
+                    let dao = RecipeDao(db: conn)
+                    let id = try dao.upsert(recipe.toRecord(viewedAt: now), historyLimit: historyLimit)
+                    return try dao.get(id)
+                }
+                guard let saved else { return .error(.saveFailed) }
+                return .success(saved.toDomain())
+            } catch {
+                dataLog.error("import save failed: \(String(describing: error), privacy: .public)")
+                return .error(.saveFailed)
+            }
+
+        case .error:
+            // Offline, blocked or anything else: anything opened once still opens.
+            let cached = try? await db.write { conn -> RecipeRecord? in
+                let dao = RecipeDao(db: conn)
+                guard var row = try dao.findByUrl(url) else { return nil }
+                try dao.touch(row.id, now: now)
+                row.lastViewedAt = now
+                return row
+            }
+            guard let cached = cached ?? nil else { return parsed }
+            return .success(cached.toDomain())
+        }
+    }
+
+    func open(id: Int64) async -> Recipe? {
+        let now = clock.now()
+        do {
+            let row = try await db.write { conn -> RecipeRecord? in
+                let dao = RecipeDao(db: conn)
+                guard var row = try dao.get(id) else { return nil }
+                try dao.touch(id, now: now)
+                row.lastViewedAt = now
+                return row
+            }
+            return row?.toDomain()
+        } catch {
+            dataLog.error("open failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    func setChecked(id: Int64, checked: Set<Int>) async {
+        do {
+            try await db.write { conn in try RecipeDao(db: conn).setChecked(id, checked: checked) }
+        } catch {
+            dataLog.error("setChecked failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    func delete(id: Int64) async -> DeletedRecipe? {
+        do {
+            return try await db.write { conn -> DeletedRecipe? in
+                let dao = RecipeDao(db: conn)
+                guard let row = try dao.get(id) else { return nil }
+                // Read before deleting: the cascade takes them with the row.
+                let memberships = try dao.crossRefsFor(id)
+                try dao.delete(id)
+                return DeletedRecipe(recipe: row.toDomain(), memberships: memberships)
+            }
+        } catch {
+            dataLog.error("delete failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    func restore(_ deleted: DeletedRecipe) async {
+        do {
+            try await db.write { conn in
+                try RecipeDao(db: conn).restore(
+                    deleted.recipe.toRecord(viewedAt: deleted.recipe.lastViewedAt),
+                    crossRefs: deleted.memberships
+                )
+            }
+        } catch {
+            dataLog.error("restore failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> {
+        db.observe { conn in try RecipeDao(db: conn).history(query: query).map { $0.toDomain() } }
+    }
+
+    func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never> {
+        db.observe { conn in try RecipeDao(db: conn).recent(limit: limit).map { $0.toDomain() } }
+    }
+}

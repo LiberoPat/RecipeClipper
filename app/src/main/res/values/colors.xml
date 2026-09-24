@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Warm off-white ground; also the window background so there is no white flash on launch. -->
+    <color name="ground">#FBF9F6</color>
+    <!-- Paprika, the app's one accent. The launcher composes the mark over it. -->
+    <color name="ic_launcher_background">#BF4A2B</color>
+</resources>

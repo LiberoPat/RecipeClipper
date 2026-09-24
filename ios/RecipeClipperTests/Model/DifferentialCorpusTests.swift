@@ -1,0 +1,632 @@
+import XCTest
+@testable import RecipeClipper
+
+// GENERATED differential corpus. Every expected value below was produced by running the
+// ORIGINAL Android Kotlin code (data/model/*.kt, JsonLdRecipeParser, UrlInput) on the JVM,
+// not written by hand. A mismatch here is a Swift port bug unless proven otherwise.
+//
+// Deliberately absent, because the JVM is not a faithful reference for them: a JSON-LD
+// block wrapped in `//<![CDATA[` (the Maven org.json the JVM tests use rejects comments;
+// Android's framework org.json, which the app really runs on and the port follows, skips
+// them) and `&#xD800;` (Jsoup emits a lone surrogate, which a Swift String cannot hold).
+//
+// Ingredient rows: input, scale at [0.5, 1.5, 2, 1/3], convert for
+// [grams, grams+liquids, ounces, ounces+liquids, metric, metric+liquids], then
+// convert(scale(x, 2), metric) and convert(scale(x, 0.5), ounces, liquids).
+// Instruction rows: input, to Celsius, to Fahrenheit, StepTimers.parse.
+final class DifferentialCorpusTests: XCTestCase {
+
+    private struct Ing {
+        let line: String; let scaled: [String]; let converted: [String]; let scaledMetric: String; let halfOunces: String
+        init(_ line: String, _ scaled: [String], _ converted: [String], _ scaledMetric: String, _ halfOunces: String) {
+            self.line = line; self.scaled = scaled; self.converted = converted
+            self.scaledMetric = scaledMetric; self.halfOunces = halfOunces
+        }
+    }
+
+    private struct Ins {
+        let line: String; let celsius: String; let fahrenheit: String; let timer: Int?
+        init(_ line: String, _ celsius: String, _ fahrenheit: String, _ timer: Int?) {
+            self.line = line; self.celsius = celsius; self.fahrenheit = fahrenheit; self.timer = timer
+        }
+    }
+
+    private static let factors: [Double] = [0.5, 1.5, 2.0, 1.0 / 3.0]
+    private static let systems: [(UnitSystem, Bool)] = [
+        (.grams, false), (.grams, true), (.ounces, false), (.ounces, true), (.metric, false), (.metric, true),
+    ]
+
+    private static let ingredients: [Ing] = [
+        Ing("1 cup all-purpose flour", ["1/2 cup all-purpose flour", "1 1/2 cup all-purpose flour", "2 cup all-purpose flour", "1/3 cup all-purpose flour"], ["120 g all-purpose flour", "120 g all-purpose flour", "4 1/4 oz all-purpose flour", "4 1/4 oz all-purpose flour", "120 g all-purpose flour", "120 g all-purpose flour"], "240 g all-purpose flour", "2 1/8 oz all-purpose flour"),
+        Ing("2 cups flour", ["1 cups flour", "3 cups flour", "4 cups flour", "2/3 cups flour"], ["240 g flour", "240 g flour", "8 1/2 oz flour", "8 1/2 oz flour", "240 g flour", "240 g flour"], "480 g flour", "4 1/4 oz flour"),
+        Ing("1 1/2 cups sugar", ["3/4 cups sugar", "2 1/4 cups sugar", "3 cups sugar", "1/2 cups sugar"], ["300 g sugar", "300 g sugar", "10 1/2 oz sugar", "10 1/2 oz sugar", "300 g sugar", "300 g sugar"], "600 g sugar", "5 1/4 oz sugar"),
+        Ing("1½ cups sugar", ["3/4 cups sugar", "2 1/4 cups sugar", "3 cups sugar", "1/2 cups sugar"], ["300 g sugar", "300 g sugar", "10 1/2 oz sugar", "10 1/2 oz sugar", "300 g sugar", "300 g sugar"], "600 g sugar", "5 1/4 oz sugar"),
+        Ing("1 ½ cups granulated sugar", ["3/4 cups granulated sugar", "2 1/4 cups granulated sugar", "3 cups granulated sugar", "1/2 cups granulated sugar"], ["300 g granulated sugar", "300 g granulated sugar", "10 1/2 oz granulated sugar", "10 1/2 oz granulated sugar", "300 g granulated sugar", "300 g granulated sugar"], "600 g granulated sugar", "5 1/4 oz granulated sugar"),
+        Ing("½ cup brown sugar, packed", ["1/4 cup brown sugar, packed", "3/4 cup brown sugar, packed", "1 cup brown sugar, packed", "0.17 cup brown sugar, packed"], ["105 g brown sugar, packed", "105 g brown sugar, packed", "3 3/4 oz brown sugar, packed", "3 3/4 oz brown sugar, packed", "105 g brown sugar, packed", "105 g brown sugar, packed"], "215 g brown sugar, packed", "1 7/8 oz brown sugar, packed"),
+        Ing("¾ cup powdered sugar", ["3/8 cup powdered sugar", "1 1/8 cup powdered sugar", "1 1/2 cup powdered sugar", "1/4 cup powdered sugar"], ["85 g powdered sugar", "85 g powdered sugar", "3 oz powdered sugar", "3 oz powdered sugar", "85 g powdered sugar", "85 g powdered sugar"], "170 g powdered sugar", "1 1/2 oz powdered sugar"),
+        Ing("⅓ cup cocoa powder", ["0.17 cup cocoa powder", "1/2 cup cocoa powder", "2/3 cup cocoa powder", "1/8 cup cocoa powder"], ["28 g cocoa powder", "28 g cocoa powder", "1 oz cocoa powder", "1 oz cocoa powder", "28 g cocoa powder", "28 g cocoa powder"], "56 g cocoa powder", "1/2 oz cocoa powder"),
+        Ing("⅔ cup milk", ["1/3 cup milk", "1 cup milk", "1 1/3 cup milk", "0.22 cup milk"], ["⅔ cup milk", "165 g milk", "⅔ cup milk", "5 3/4 oz milk", "160 ml milk", "160 ml milk"], "320 ml milk", "2 7/8 oz milk"),
+        Ing("⅛ tsp salt", ["0.06 tsp salt", "0.19 tsp salt", "1/4 tsp salt", "0.04 tsp salt"], ["⅛ tsp salt", "⅛ tsp salt", "⅛ tsp salt", "⅛ tsp salt", "0.5 ml salt", "0.5 ml salt"], "1 ml salt", "0.06 tsp salt"),
+        Ing("1/4 teaspoon baking soda", ["1/8 teaspoon baking soda", "3/8 teaspoon baking soda", "1/2 teaspoon baking soda", "0.08 teaspoon baking soda"], ["1.5 g baking soda", "1.5 g baking soda", "1/4 teaspoon baking soda", "1/4 teaspoon baking soda", "1.5 g baking soda", "1.5 g baking soda"], "3 g baking soda", "1/8 teaspoon baking soda"),
+        Ing("1/2 tsp baking powder", ["1/4 tsp baking powder", "3/4 tsp baking powder", "1 tsp baking powder", "0.17 tsp baking powder"], ["2 g baking powder", "2 g baking powder", "1/2 tsp baking powder", "1/2 tsp baking powder", "2 g baking powder", "2 g baking powder"], "4 g baking powder", "1/4 tsp baking powder"),
+        Ing("2 tbsp olive oil", ["1 tbsp olive oil", "3 tbsp olive oil", "4 tbsp olive oil", "2/3 tbsp olive oil"], ["2 tbsp olive oil", "27 g olive oil", "2 tbsp olive oil", "1 oz olive oil", "30 ml olive oil", "30 ml olive oil"], "60 ml olive oil", "1/2 oz olive oil"),
+        Ing("3 Tbsp. unsalted butter, melted", ["1 1/2 Tbsp. unsalted butter, melted", "4 1/2 Tbsp. unsalted butter, melted", "6 Tbsp. unsalted butter, melted", "1 Tbsp. unsalted butter, melted"], ["43 g unsalted butter, melted", "43 g unsalted butter, melted", "1 1/2 oz unsalted butter, melted", "1 1/2 oz unsalted butter, melted", "43 g unsalted butter, melted", "43 g unsalted butter, melted"], "85 g unsalted butter, melted", "3/4 oz unsalted butter, melted"),
+        Ing("1 stick butter", ["1/2 stick butter", "1 1/2 stick butter", "2 stick butter", "1/3 stick butter"], ["115 g butter", "115 g butter", "4 oz butter", "4 oz butter", "115 g butter", "115 g butter"], "225 g butter", "2 oz butter"),
+        Ing("2 sticks unsalted butter, softened", ["1 sticks unsalted butter, softened", "3 sticks unsalted butter, softened", "4 sticks unsalted butter, softened", "2/3 sticks unsalted butter, softened"], ["225 g unsalted butter, softened", "225 g unsalted butter, softened", "8 oz unsalted butter, softened", "8 oz unsalted butter, softened", "225 g unsalted butter, softened", "225 g unsalted butter, softened"], "455 g unsalted butter, softened", "4 oz unsalted butter, softened"),
+        Ing("1/2 stick margarine", ["1/4 stick margarine", "3/4 stick margarine", "1 stick margarine", "0.17 stick margarine"], ["57 g margarine", "57 g margarine", "2 oz margarine", "2 oz margarine", "57 g margarine", "57 g margarine"], "115 g margarine", "1 oz margarine"),
+        Ing("1 stick cinnamon", ["1/2 stick cinnamon", "1 1/2 stick cinnamon", "2 stick cinnamon", "1/3 stick cinnamon"], ["1 stick cinnamon", "1 stick cinnamon", "1 stick cinnamon", "1 stick cinnamon", "1 stick cinnamon", "1 stick cinnamon"], "2 stick cinnamon", "1/2 stick cinnamon"),
+        Ing("8 oz cream cheese", ["4 oz cream cheese", "12 oz cream cheese", "16 oz cream cheese", "2 2/3 oz cream cheese"], ["225 g cream cheese", "225 g cream cheese", "8 oz cream cheese", "8 oz cream cheese", "225 g cream cheese", "225 g cream cheese"], "455 g cream cheese", "4 oz cream cheese"),
+        Ing("8 oz milk", ["4 oz milk", "12 oz milk", "16 oz milk", "2 2/3 oz milk"], ["8 oz milk", "245 g milk", "8 oz milk", "8 oz milk", "240 ml milk", "240 ml milk"], "480 ml milk", "4 oz milk"),
+        Ing("16 oz chicken broth", ["8 oz chicken broth", "24 oz chicken broth", "32 oz chicken broth", "5 1/3 oz chicken broth"], ["16 oz chicken broth", "480 g chicken broth", "16 oz chicken broth", "16 oz chicken broth", "480 ml chicken broth", "480 ml chicken broth"], "960 ml chicken broth", "8 oz chicken broth"),
+        Ing("12 ounces chocolate chips", ["6 ounces chocolate chips", "18 ounces chocolate chips", "24 ounces chocolate chips", "4 ounces chocolate chips"], ["340 g chocolate chips", "340 g chocolate chips", "12 ounces chocolate chips", "12 ounces chocolate chips", "340 g chocolate chips", "340 g chocolate chips"], "680 g chocolate chips", "6 ounces chocolate chips"),
+        Ing("1 lb ground beef", ["1/2 lb ground beef", "1 1/2 lb ground beef", "2 lb ground beef", "1/3 lb ground beef"], ["455 g ground beef", "455 g ground beef", "1 lb ground beef", "1 lb ground beef", "455 g ground beef", "455 g ground beef"], "905 g ground beef", "1/2 lb ground beef"),
+        Ing("2 lbs potatoes", ["1 lbs potatoes", "3 lbs potatoes", "4 lbs potatoes", "2/3 lbs potatoes"], ["905 g potatoes", "905 g potatoes", "2 lbs potatoes", "2 lbs potatoes", "905 g potatoes", "905 g potatoes"], "1.81 kg potatoes", "1 lbs potatoes"),
+        Ing("1.5 lb pork shoulder", ["3/4 lb pork shoulder", "2 1/4 lb pork shoulder", "3 lb pork shoulder", "1/2 lb pork shoulder"], ["680 g pork shoulder", "680 g pork shoulder", "1.5 lb pork shoulder", "1.5 lb pork shoulder", "680 g pork shoulder", "680 g pork shoulder"], "1.36 kg pork shoulder", "3/4 lb pork shoulder"),
+        Ing("2.5 pounds chicken thighs", ["1 1/4 pounds chicken thighs", "3 3/4 pounds chicken thighs", "5 pounds chicken thighs", "0.83 pounds chicken thighs"], ["1.13 kg chicken thighs", "1.13 kg chicken thighs", "2.5 pounds chicken thighs", "2.5 pounds chicken thighs", "1.13 kg chicken thighs", "1.13 kg chicken thighs"], "2.27 kg chicken thighs", "1 1/4 pounds chicken thighs"),
+        Ing("500 g flour", ["250 g flour", "750 g flour", "1000 g flour", "166 2/3 g flour"], ["500 g flour", "500 g flour", "1 lb 1 3/4 oz flour", "1 lb 1 3/4 oz flour", "500 g flour", "500 g flour"], "1000 g flour", "8 3/4 oz flour"),
+        Ing("250g butter", ["125g butter", "375g butter", "500g butter", "83 1/3g butter"], ["250g butter", "250g butter", "8 3/4 oz butter", "8 3/4 oz butter", "250g butter", "250g butter"], "500g butter", "4 1/2 oz butter"),
+        Ing("1 kg potatoes", ["1/2 kg potatoes", "1 1/2 kg potatoes", "2 kg potatoes", "1/3 kg potatoes"], ["1 kg potatoes", "1 kg potatoes", "2 lb 3 1/4 oz potatoes", "2 lb 3 1/4 oz potatoes", "1 kg potatoes", "1 kg potatoes"], "2 kg potatoes", "1 lb 1 3/4 oz potatoes"),
+        Ing("750 ml water", ["375 ml water", "1125 ml water", "1500 ml water", "250 ml water"], ["750 ml water", "750 g water", "750 ml water", "1 lb 10 1/2 oz water", "750 ml water", "750 ml water"], "1500 ml water", "13 1/4 oz water"),
+        Ing("1 l milk", ["1/2 l milk", "1 1/2 l milk", "2 l milk", "1/3 l milk"], ["1 l milk", "1.04 kg milk", "1 l milk", "2 lb 4 1/2 oz milk", "1 l milk", "1 l milk"], "2 l milk", "1 lb 2 1/4 oz milk"),
+        Ing("1 liter chicken stock", ["1/2 liter chicken stock", "1 1/2 liter chicken stock", "2 liter chicken stock", "1/3 liter chicken stock"], ["1 liter chicken stock", "1.01 kg chicken stock", "1 liter chicken stock", "2 lb 3 3/4 oz chicken stock", "1 liter chicken stock", "1 liter chicken stock"], "2 liter chicken stock", "1 lb 2 oz chicken stock"),
+        Ing("200 ml heavy cream", ["100 ml heavy cream", "300 ml heavy cream", "400 ml heavy cream", "66 2/3 ml heavy cream"], ["200 ml heavy cream", "200 g heavy cream", "200 ml heavy cream", "7 oz heavy cream", "200 ml heavy cream", "200 ml heavy cream"], "400 ml heavy cream", "3 1/2 oz heavy cream"),
+        Ing("100 grams sugar", ["50 grams sugar", "150 grams sugar", "200 grams sugar", "33 1/3 grams sugar"], ["100 grams sugar", "100 grams sugar", "3 1/2 oz sugar", "3 1/2 oz sugar", "100 grams sugar", "100 grams sugar"], "200 grams sugar", "1 3/4 oz sugar"),
+        Ing("1 cup (120 g) flour", ["1/2 cup (60 g) flour", "1 1/2 cup (180 g) flour", "2 cup (240 g) flour", "1/3 cup (40 g) flour"], ["120 g flour", "120 g flour", "4 1/4 oz flour", "4 1/4 oz flour", "120 g flour", "120 g flour"], "240 g flour", "2 1/8 oz flour"),
+        Ing("1 cup (240 ml) milk", ["1/2 cup (120 ml) milk", "1 1/2 cup (360 ml) milk", "2 cup (480 ml) milk", "1/3 cup (80 ml) milk"], ["1 cup (240 ml) milk", "245 g milk", "1 cup (240 ml) milk", "8 3/4 oz milk", "240 ml milk", "240 ml milk"], "480 ml milk", "4 1/4 oz milk"),
+        Ing("1 cup/120 grams flour", ["1/2 cup/60 grams flour", "1 1/2 cup/180 grams flour", "2 cup/240 grams flour", "1/3 cup/40 grams flour"], ["120 grams flour", "120 grams flour", "4 1/4 oz flour", "4 1/4 oz flour", "120 grams flour", "120 grams flour"], "240 grams flour", "2 1/8 oz flour"),
+        Ing("1 cup / 125g all-purpose flour", ["1/2 cup / 63g all-purpose flour", "1 1/2 cup / 188g all-purpose flour", "2 cup / 250g all-purpose flour", "1/3 cup / 42g all-purpose flour"], ["125g all-purpose flour", "125g all-purpose flour", "4 1/2 oz all-purpose flour", "4 1/2 oz all-purpose flour", "125g all-purpose flour", "125g all-purpose flour"], "250g all-purpose flour", "2 1/4 oz all-purpose flour"),
+        Ing("2 cups (250g) bread flour", ["1 cups (125g) bread flour", "3 cups (375g) bread flour", "4 cups (500g) bread flour", "2/3 cups (83g) bread flour"], ["250g bread flour", "250g bread flour", "8 3/4 oz bread flour", "8 3/4 oz bread flour", "250g bread flour", "250g bread flour"], "500g bread flour", "4 1/2 oz bread flour"),
+        Ing("1/2 cup (113g) butter", ["1/4 cup (57g) butter", "3/4 cup (170g) butter", "1 cup (226g) butter", "0.17 cup (38g) butter"], ["113g butter", "113g butter", "4 oz butter", "4 oz butter", "113g butter", "113g butter"], "226g butter", "2 oz butter"),
+        Ing("1 cup (8 oz) milk", ["1/2 cup (4 oz) milk", "1 1/2 cup (12 oz) milk", "2 cup (16 oz) milk", "1/3 cup (2 2/3 oz) milk"], ["1 cup (8 oz) milk", "245 g milk", "1 cup (8 oz) milk", "8 3/4 oz milk", "240 ml milk", "240 ml milk"], "480 ml milk", "4 1/4 oz milk"),
+        Ing("1 cup (2 sticks) butter", ["1/2 cup (1 sticks) butter", "1 1/2 cup (3 sticks) butter", "2 cup (4 sticks) butter", "1/3 cup (2/3 sticks) butter"], ["225 g butter", "225 g butter", "8 oz butter", "8 oz butter", "225 g butter", "225 g butter"], "455 g butter", "4 oz butter"),
+        Ing("1 (14 oz) can diced tomatoes", ["1/2 (14 oz) can diced tomatoes", "1 1/2 (14 oz) can diced tomatoes", "2 (14 oz) can diced tomatoes", "1/3 (14 oz) can diced tomatoes"], ["1 (14 oz) can diced tomatoes", "1 (14 oz) can diced tomatoes", "1 (14 oz) can diced tomatoes", "1 (14 oz) can diced tomatoes", "1 (14 oz) can diced tomatoes", "1 (14 oz) can diced tomatoes"], "2 (14 oz) can diced tomatoes", "1/2 (14 oz) can diced tomatoes"),
+        Ing("1 can (14 oz) coconut milk", ["1/2 can (14 oz) coconut milk", "1 1/2 can (14 oz) coconut milk", "2 can (14 oz) coconut milk", "1/3 can (14 oz) coconut milk"], ["1 can (14 oz) coconut milk", "1 can (14 oz) coconut milk", "1 can (14 oz) coconut milk", "1 can (14 oz) coconut milk", "1 can (14 oz) coconut milk", "1 can (14 oz) coconut milk"], "2 can (14 oz) coconut milk", "1/2 can (14 oz) coconut milk"),
+        Ing("2 (15-ounce) cans black beans", ["1 (15-ounce) cans black beans", "3 (15-ounce) cans black beans", "4 (15-ounce) cans black beans", "2/3 (15-ounce) cans black beans"], ["2 (15-ounce) cans black beans", "2 (15-ounce) cans black beans", "2 (15-ounce) cans black beans", "2 (15-ounce) cans black beans", "2 (15-ounce) cans black beans", "2 (15-ounce) cans black beans"], "4 (15-ounce) cans black beans", "1 (15-ounce) cans black beans"),
+        Ing("1 package (8 oz) cream cheese", ["1/2 package (8 oz) cream cheese", "1 1/2 package (8 oz) cream cheese", "2 package (8 oz) cream cheese", "1/3 package (8 oz) cream cheese"], ["1 package (8 oz) cream cheese", "1 package (8 oz) cream cheese", "1 package (8 oz) cream cheese", "1 package (8 oz) cream cheese", "1 package (8 oz) cream cheese", "1 package (8 oz) cream cheese"], "2 package (8 oz) cream cheese", "1/2 package (8 oz) cream cheese"),
+        Ing("1-inch piece ginger", ["1-inch piece ginger", "1-inch piece ginger", "1-inch piece ginger", "1-inch piece ginger"], ["1-inch piece ginger", "1-inch piece ginger", "1-inch piece ginger", "1-inch piece ginger", "1-inch piece ginger", "1-inch piece ginger"], "1-inch piece ginger", "1-inch piece ginger"),
+        Ing("1 inch ginger", ["1 inch ginger", "1 inch ginger", "1 inch ginger", "1 inch ginger"], ["1 inch ginger", "1 inch ginger", "1 inch ginger", "1 inch ginger", "1 inch ginger", "1 inch ginger"], "1 inch ginger", "1 inch ginger"),
+        Ing("2-inch cinnamon stick", ["2-inch cinnamon stick", "2-inch cinnamon stick", "2-inch cinnamon stick", "2-inch cinnamon stick"], ["2-inch cinnamon stick", "2-inch cinnamon stick", "2-inch cinnamon stick", "2-inch cinnamon stick", "2-inch cinnamon stick", "2-inch cinnamon stick"], "2-inch cinnamon stick", "2-inch cinnamon stick"),
+        Ing("2 cm ginger", ["2 cm ginger", "2 cm ginger", "2 cm ginger", "2 cm ginger"], ["2 cm ginger", "2 cm ginger", "2 cm ginger", "2 cm ginger", "2 cm ginger", "2 cm ginger"], "2 cm ginger", "2 cm ginger"),
+        Ing("5 mm slices", ["5 mm slices", "5 mm slices", "5 mm slices", "5 mm slices"], ["5 mm slices", "5 mm slices", "5 mm slices", "5 mm slices", "5 mm slices", "5 mm slices"], "5 mm slices", "5 mm slices"),
+        Ing("2% milk", ["2% milk", "2% milk", "2% milk", "2% milk"], ["2% milk", "2% milk", "2% milk", "2% milk", "2% milk", "2% milk"], "2% milk", "2% milk"),
+        Ing("1 cup 2% milk", ["1/2 cup 2% milk", "1 1/2 cup 2% milk", "2 cup 2% milk", "1/3 cup 2% milk"], ["1 cup 2% milk", "245 g 2% milk", "1 cup 2% milk", "8 3/4 oz 2% milk", "240 ml 2% milk", "240 ml 2% milk"], "480 ml 2% milk", "4 1/4 oz 2% milk"),
+        Ing("1-2 tbsp oil", ["1/2-1 tbsp oil", "1 1/2-3 tbsp oil", "2-4 tbsp oil", "1/3-2/3 tbsp oil"], ["1-2 tbsp oil", "14-27 g oil", "1-2 tbsp oil", "1/2-1 oz oil", "15-30 ml oil", "15-30 ml oil"], "30-60 ml oil", "1/4-1/2 oz oil"),
+        Ing("1 - 2 tablespoons honey", ["1/2 - 1 tablespoons honey", "1 1/2 - 3 tablespoons honey", "2 - 4 tablespoons honey", "1/3 - 2/3 tablespoons honey"], ["1 - 2 tablespoons honey", "21 - 43 g honey", "1 - 2 tablespoons honey", "3/4 - 1 1/2 oz honey", "15 - 30 ml honey", "15 - 30 ml honey"], "30 - 60 ml honey", "3/8 - 3/4 oz honey"),
+        Ing("1–2 cups water", ["1/2–1 cups water", "1 1/2–3 cups water", "2–4 cups water", "1/3–2/3 cups water"], ["1–2 cups water", "235–475 g water", "1–2 cups water", "8 1/4–16 3/4 oz water", "240–480 ml water", "240–480 ml water"], "480–960 ml water", "4 1/4–8 1/4 oz water"),
+        Ing("2 to 3 cups flour", ["1 to 1 1/2 cups flour", "3 to 4 1/2 cups flour", "4 to 6 cups flour", "2/3 to 1 cups flour"], ["240 to 360 g flour", "240 to 360 g flour", "8 1/2 to 12 3/4 oz flour", "8 1/2 to 12 3/4 oz flour", "240 to 360 g flour", "240 to 360 g flour"], "480 to 720 g flour", "4 1/4 to 6 1/4 oz flour"),
+        Ing("3—4 cloves garlic", ["1 1/2—2 cloves garlic", "4 1/2—6 cloves garlic", "6—8 cloves garlic", "1—1 1/3 cloves garlic"], ["3—4 cloves garlic", "3—4 cloves garlic", "3—4 cloves garlic", "3—4 cloves garlic", "3—4 cloves garlic", "3—4 cloves garlic"], "6—8 cloves garlic", "1 1/2—2 cloves garlic"),
+        Ing("2-3 lbs chicken", ["1-1 1/2 lbs chicken", "3-4 1/2 lbs chicken", "4-6 lbs chicken", "2/3-1 lbs chicken"], ["0.91-1.36 kg chicken", "0.91-1.36 kg chicken", "2-3 lbs chicken", "2-3 lbs chicken", "0.91-1.36 kg chicken", "0.91-1.36 kg chicken"], "1.81-2.72 kg chicken", "1-1 1/2 lbs chicken"),
+        Ing("1/2-1 cup sugar", ["1/4-1/2 cup sugar", "3/4-1 1/2 cup sugar", "1-2 cup sugar", "0.17-1/3 cup sugar"], ["100-200 g sugar", "100-200 g sugar", "3 1/2-7 oz sugar", "3 1/2-7 oz sugar", "100-200 g sugar", "100-200 g sugar"], "200-400 g sugar", "1 3/4-3 1/2 oz sugar"),
+        Ing("1 to 1 1/2 cups milk", ["1/2 to 3/4 cups milk", "1 1/2 to 2 1/4 cups milk", "2 to 3 cups milk", "1/3 to 1/2 cups milk"], ["1 to 1 1/2 cups milk", "245 to 370 g milk", "1 to 1 1/2 cups milk", "8 3/4 to 13 oz milk", "240 to 360 ml milk", "240 to 360 ml milk"], "480 to 720 ml milk", "4 1/4 to 6 1/2 oz milk"),
+        Ing("salt to taste", ["salt to taste", "salt to taste", "salt to taste", "salt to taste"], ["salt to taste", "salt to taste", "salt to taste", "salt to taste", "salt to taste", "salt to taste"], "salt to taste", "salt to taste"),
+        Ing("Pinch of salt", ["Pinch of salt", "Pinch of salt", "Pinch of salt", "Pinch of salt"], ["Pinch of salt", "Pinch of salt", "Pinch of salt", "Pinch of salt", "Pinch of salt", "Pinch of salt"], "Pinch of salt", "Pinch of salt"),
+        Ing("a pinch of nutmeg", ["a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg"], ["a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg"], "a pinch of nutmeg", "a pinch of nutmeg"),
+        Ing("Juice of 1 lemon", ["Juice of 1 lemon", "Juice of 1 lemon", "Juice of 1 lemon", "Juice of 1 lemon"], ["Juice of 1 lemon", "Juice of 1 lemon", "Juice of 1 lemon", "Juice of 1 lemon", "Juice of 1 lemon", "Juice of 1 lemon"], "Juice of 1 lemon", "Juice of 1 lemon"),
+        Ing("3 eggs", ["1 1/2 eggs", "4 1/2 eggs", "6 eggs", "1 eggs"], ["3 eggs", "3 eggs", "3 eggs", "3 eggs", "3 eggs", "3 eggs"], "6 eggs", "1 1/2 eggs"),
+        Ing("2 large eggs", ["1 large eggs", "3 large eggs", "4 large eggs", "2/3 large eggs"], ["2 large eggs", "2 large eggs", "2 large eggs", "2 large eggs", "2 large eggs", "2 large eggs"], "4 large eggs", "1 large eggs"),
+        Ing("1 egg yolk", ["1/2 egg yolk", "1 1/2 egg yolk", "2 egg yolk", "1/3 egg yolk"], ["1 egg yolk", "1 egg yolk", "1 egg yolk", "1 egg yolk", "1 egg yolk", "1 egg yolk"], "2 egg yolk", "1/2 egg yolk"),
+        Ing("4 cloves garlic, minced", ["2 cloves garlic, minced", "6 cloves garlic, minced", "8 cloves garlic, minced", "1 1/3 cloves garlic, minced"], ["4 cloves garlic, minced", "4 cloves garlic, minced", "4 cloves garlic, minced", "4 cloves garlic, minced", "4 cloves garlic, minced", "4 cloves garlic, minced"], "8 cloves garlic, minced", "2 cloves garlic, minced"),
+        Ing("1 onion, diced", ["1/2 onion, diced", "1 1/2 onion, diced", "2 onion, diced", "1/3 onion, diced"], ["1 onion, diced", "1 onion, diced", "1 onion, diced", "1 onion, diced", "1 onion, diced", "1 onion, diced"], "2 onion, diced", "1/2 onion, diced"),
+        Ing("2 carrots", ["1 carrots", "3 carrots", "4 carrots", "2/3 carrots"], ["2 carrots", "2 carrots", "2 carrots", "2 carrots", "2 carrots", "2 carrots"], "4 carrots", "1 carrots"),
+        Ing("10 cherry tomatoes", ["5 cherry tomatoes", "15 cherry tomatoes", "20 cherry tomatoes", "3 1/3 cherry tomatoes"], ["10 cherry tomatoes", "10 cherry tomatoes", "10 cherry tomatoes", "10 cherry tomatoes", "10 cherry tomatoes", "10 cherry tomatoes"], "20 cherry tomatoes", "5 cherry tomatoes"),
+        Ing("12 cookies", ["6 cookies", "18 cookies", "24 cookies", "4 cookies"], ["12 cookies", "12 cookies", "12 cookies", "12 cookies", "12 cookies", "12 cookies"], "24 cookies", "6 cookies"),
+        Ing("  2 cups flour", ["  1 cups flour", "  3 cups flour", "  4 cups flour", "  2/3 cups flour"], ["  240 g flour", "  240 g flour", "  8 1/2 oz flour", "  8 1/2 oz flour", "  240 g flour", "  240 g flour"], "  480 g flour", "  4 1/4 oz flour"),
+        Ing("\t1 cup sugar", ["\t1/2 cup sugar", "\t1 1/2 cup sugar", "\t2 cup sugar", "\t1/3 cup sugar"], ["\t200 g sugar", "\t200 g sugar", "\t7 oz sugar", "\t7 oz sugar", "\t200 g sugar", "\t200 g sugar"], "\t400 g sugar", "\t3 1/2 oz sugar"),
+        Ing("2  cups  flour", ["1  cups  flour", "3  cups  flour", "4  cups  flour", "2/3  cups  flour"], ["240 g  flour", "240 g  flour", "8 1/2 oz  flour", "8 1/2 oz  flour", "240 g  flour", "240 g  flour"], "480 g  flour", "4 1/4 oz  flour"),
+        Ing("2cups flour", ["1cups flour", "3cups flour", "4cups flour", "2/3cups flour"], ["240 g flour", "240 g flour", "8 1/2 oz flour", "8 1/2 oz flour", "240 g flour", "240 g flour"], "480 g flour", "4 1/4 oz flour"),
+        Ing("1 cup   water", ["1/2 cup   water", "1 1/2 cup   water", "2 cup   water", "1/3 cup   water"], ["1 cup   water", "235 g   water", "1 cup   water", "8 1/4 oz   water", "240 ml   water", "240 ml   water"], "480 ml   water", "4 1/4 oz   water"),
+        Ing("1\u{a0}cup flour", ["1/2\u{a0}cup flour", "1 1/2\u{a0}cup flour", "2\u{a0}cup flour", "1/3\u{a0}cup flour"], ["1\u{a0}cup flour", "1\u{a0}cup flour", "1\u{a0}cup flour", "1\u{a0}cup flour", "1\u{a0}cup flour", "1\u{a0}cup flour"], "2\u{a0}cup flour", "1/2\u{a0}cup flour"),
+        Ing("1 cup\u{a0}flour", ["1/2 cup\u{a0}flour", "1 1/2 cup\u{a0}flour", "2 cup\u{a0}flour", "1/3 cup\u{a0}flour"], ["1 cup\u{a0}flour", "1 cup\u{a0}flour", "1 cup\u{a0}flour", "1 cup\u{a0}flour", "240 ml\u{a0}flour", "240 ml\u{a0}flour"], "480 ml\u{a0}flour", "1/2 cup\u{a0}flour"),
+        Ing("0.5 cup butter", ["1/4 cup butter", "3/4 cup butter", "1 cup butter", "0.17 cup butter"], ["115 g butter", "115 g butter", "4 oz butter", "4 oz butter", "115 g butter", "115 g butter"], "225 g butter", "2 oz butter"),
+        Ing("0.25 tsp salt", ["1/8 tsp salt", "3/8 tsp salt", "1/2 tsp salt", "0.08 tsp salt"], ["0.25 tsp salt", "0.25 tsp salt", "0.25 tsp salt", "0.25 tsp salt", "1 ml salt", "1 ml salt"], "2.5 ml salt", "1/8 tsp salt"),
+        Ing("1.25 cups flour", ["5/8 cups flour", "1 7/8 cups flour", "2 1/2 cups flour", "0.42 cups flour"], ["150 g flour", "150 g flour", "5 1/4 oz flour", "5 1/4 oz flour", "150 g flour", "150 g flour"], "300 g flour", "2 5/8 oz flour"),
+        Ing("3.5 oz chocolate", ["1 3/4 oz chocolate", "5 1/4 oz chocolate", "7 oz chocolate", "1.17 oz chocolate"], ["99 g chocolate", "99 g chocolate", "3.5 oz chocolate", "3.5 oz chocolate", "99 g chocolate", "99 g chocolate"], "200 g chocolate", "1 3/4 oz chocolate"),
+        Ing("2.75 cups water", ["1 3/8 cups water", "4 1/8 cups water", "5 1/2 cups water", "0.92 cups water"], ["2.75 cups water", "650 g water", "2.75 cups water", "1 lb 7 oz water", "660 ml water", "660 ml water"], "1.32 L water", "11 1/2 oz water"),
+        Ing("1/3 cup vegetable oil", ["0.17 cup vegetable oil", "1/2 cup vegetable oil", "2/3 cup vegetable oil", "1/8 cup vegetable oil"], ["1/3 cup vegetable oil", "73 g vegetable oil", "1/3 cup vegetable oil", "2 5/8 oz vegetable oil", "80 ml vegetable oil", "80 ml vegetable oil"], "160 ml vegetable oil", "1 1/4 oz vegetable oil"),
+        Ing("2/3 cup honey", ["1/3 cup honey", "1 cup honey", "1 1/3 cup honey", "0.22 cup honey"], ["2/3 cup honey", "225 g honey", "2/3 cup honey", "8 oz honey", "160 ml honey", "160 ml honey"], "320 ml honey", "4 oz honey"),
+        Ing("1 1/3 cups buttermilk", ["2/3 cups buttermilk", "2 cups buttermilk", "2 2/3 cups buttermilk", "0.44 cups buttermilk"], ["1 1/3 cups buttermilk", "325 g buttermilk", "1 1/3 cups buttermilk", "11 1/2 oz buttermilk", "320 ml buttermilk", "320 ml buttermilk"], "640 ml buttermilk", "5 3/4 oz buttermilk"),
+        Ing("3/4 cup maple syrup", ["3/8 cup maple syrup", "1 1/8 cup maple syrup", "1 1/2 cup maple syrup", "1/4 cup maple syrup"], ["3/4 cup maple syrup", "235 g maple syrup", "3/4 cup maple syrup", "8 1/4 oz maple syrup", "180 ml maple syrup", "180 ml maple syrup"], "360 ml maple syrup", "4 1/4 oz maple syrup"),
+        Ing("1 cup heavy whipping cream", ["1/2 cup heavy whipping cream", "1 1/2 cup heavy whipping cream", "2 cup heavy whipping cream", "1/3 cup heavy whipping cream"], ["1 cup heavy whipping cream", "240 g heavy whipping cream", "1 cup heavy whipping cream", "8 1/2 oz heavy whipping cream", "240 ml heavy whipping cream", "240 ml heavy whipping cream"], "480 ml heavy whipping cream", "4 1/4 oz heavy whipping cream"),
+        Ing("1 cup half and half", ["1/2 cup half and half", "1 1/2 cup half and half", "2 cup half and half", "1/3 cup half and half"], ["1 cup half and half", "240 g half and half", "1 cup half and half", "8 1/2 oz half and half", "240 ml half and half", "240 ml half and half"], "480 ml half and half", "4 1/4 oz half and half"),
+        Ing("1 cup whole milk", ["1/2 cup whole milk", "1 1/2 cup whole milk", "2 cup whole milk", "1/3 cup whole milk"], ["1 cup whole milk", "245 g whole milk", "1 cup whole milk", "8 3/4 oz whole milk", "240 ml whole milk", "240 ml whole milk"], "480 ml whole milk", "4 1/4 oz whole milk"),
+        Ing("1 cup apple butter", ["1/2 cup apple butter", "1 1/2 cup apple butter", "2 cup apple butter", "1/3 cup apple butter"], ["1 cup apple butter", "1 cup apple butter", "1 cup apple butter", "1 cup apple butter", "240 ml apple butter", "240 ml apple butter"], "480 ml apple butter", "1/2 cup apple butter"),
+        Ing("1 cup peanut butter", ["1/2 cup peanut butter", "1 1/2 cup peanut butter", "2 cup peanut butter", "1/3 cup peanut butter"], ["260 g peanut butter", "260 g peanut butter", "9 1/4 oz peanut butter", "9 1/4 oz peanut butter", "260 g peanut butter", "260 g peanut butter"], "520 g peanut butter", "4 1/2 oz peanut butter"),
+        Ing("1 cup butter beans", ["1/2 cup butter beans", "1 1/2 cup butter beans", "2 cup butter beans", "1/3 cup butter beans"], ["1 cup butter beans", "1 cup butter beans", "1 cup butter beans", "1 cup butter beans", "240 ml butter beans", "240 ml butter beans"], "480 ml butter beans", "1/2 cup butter beans"),
+        Ing("1 cup rice flour", ["1/2 cup rice flour", "1 1/2 cup rice flour", "2 cup rice flour", "1/3 cup rice flour"], ["1 cup rice flour", "1 cup rice flour", "1 cup rice flour", "1 cup rice flour", "240 ml rice flour", "240 ml rice flour"], "480 ml rice flour", "1/2 cup rice flour"),
+        Ing("1 cup almond flour", ["1/2 cup almond flour", "1 1/2 cup almond flour", "2 cup almond flour", "1/3 cup almond flour"], ["96 g almond flour", "96 g almond flour", "3 3/8 oz almond flour", "3 3/8 oz almond flour", "96 g almond flour", "96 g almond flour"], "190 g almond flour", "1 3/4 oz almond flour"),
+        Ing("1 cup cake flour", ["1/2 cup cake flour", "1 1/2 cup cake flour", "2 cup cake flour", "1/3 cup cake flour"], ["115 g cake flour", "115 g cake flour", "4 oz cake flour", "4 oz cake flour", "115 g cake flour", "115 g cake flour"], "230 g cake flour", "2 oz cake flour"),
+        Ing("1 can sweetened condensed milk", ["1/2 can sweetened condensed milk", "1 1/2 can sweetened condensed milk", "2 can sweetened condensed milk", "1/3 can sweetened condensed milk"], ["1 can sweetened condensed milk", "1 can sweetened condensed milk", "1 can sweetened condensed milk", "1 can sweetened condensed milk", "1 can sweetened condensed milk", "1 can sweetened condensed milk"], "2 can sweetened condensed milk", "1/2 can sweetened condensed milk"),
+        Ing("1 cup sweetened condensed milk", ["1/2 cup sweetened condensed milk", "1 1/2 cup sweetened condensed milk", "2 cup sweetened condensed milk", "1/3 cup sweetened condensed milk"], ["1 cup sweetened condensed milk", "1 cup sweetened condensed milk", "1 cup sweetened condensed milk", "1 cup sweetened condensed milk", "240 ml sweetened condensed milk", "240 ml sweetened condensed milk"], "480 ml sweetened condensed milk", "1/2 cup sweetened condensed milk"),
+        Ing("2 cups chopped onions", ["1 cups chopped onions", "3 cups chopped onions", "4 cups chopped onions", "2/3 cups chopped onions"], ["2 cups chopped onions", "2 cups chopped onions", "2 cups chopped onions", "2 cups chopped onions", "480 ml chopped onions", "480 ml chopped onions"], "960 ml chopped onions", "1 cups chopped onions"),
+        Ing("1 cup shredded cheddar cheese", ["1/2 cup shredded cheddar cheese", "1 1/2 cup shredded cheddar cheese", "2 cup shredded cheddar cheese", "1/3 cup shredded cheddar cheese"], ["1 cup shredded cheddar cheese", "1 cup shredded cheddar cheese", "1 cup shredded cheddar cheese", "1 cup shredded cheddar cheese", "240 ml shredded cheddar cheese", "240 ml shredded cheddar cheese"], "480 ml shredded cheddar cheese", "1/2 cup shredded cheddar cheese"),
+        Ing("1 cup rolled oats", ["1/2 cup rolled oats", "1 1/2 cup rolled oats", "2 cup rolled oats", "1/3 cup rolled oats"], ["1 cup rolled oats", "1 cup rolled oats", "1 cup rolled oats", "1 cup rolled oats", "240 ml rolled oats", "240 ml rolled oats"], "480 ml rolled oats", "1/2 cup rolled oats"),
+        Ing("1 cup rice", ["1/2 cup rice", "1 1/2 cup rice", "2 cup rice", "1/3 cup rice"], ["1 cup rice", "1 cup rice", "1 cup rice", "1 cup rice", "240 ml rice", "240 ml rice"], "480 ml rice", "1/2 cup rice"),
+        Ing("1 tsp kosher salt", ["1/2 tsp kosher salt", "1 1/2 tsp kosher salt", "2 tsp kosher salt", "1/3 tsp kosher salt"], ["1 tsp kosher salt", "1 tsp kosher salt", "1 tsp kosher salt", "1 tsp kosher salt", "5 ml kosher salt", "5 ml kosher salt"], "10 ml kosher salt", "1/2 tsp kosher salt"),
+        Ing("1 cup sour cream", ["1/2 cup sour cream", "1 1/2 cup sour cream", "2 cup sour cream", "1/3 cup sour cream"], ["230 g sour cream", "230 g sour cream", "8 oz sour cream", "8 oz sour cream", "230 g sour cream", "230 g sour cream"], "460 g sour cream", "4 oz sour cream"),
+        Ing("1 cup greek yogurt", ["1/2 cup greek yogurt", "1 1/2 cup greek yogurt", "2 cup greek yogurt", "1/3 cup greek yogurt"], ["245 g greek yogurt", "245 g greek yogurt", "8 3/4 oz greek yogurt", "8 3/4 oz greek yogurt", "245 g greek yogurt", "245 g greek yogurt"], "490 g greek yogurt", "4 1/4 oz greek yogurt"),
+        Ing("1 cup water, warm", ["1/2 cup water, warm", "1 1/2 cup water, warm", "2 cup water, warm", "1/3 cup water, warm"], ["1 cup water, warm", "235 g water, warm", "1 cup water, warm", "8 1/4 oz water, warm", "240 ml water, warm", "240 ml water, warm"], "480 ml water, warm", "4 1/4 oz water, warm"),
+        Ing("1 cup milk, at room temperature", ["1/2 cup milk, at room temperature", "1 1/2 cup milk, at room temperature", "2 cup milk, at room temperature", "1/3 cup milk, at room temperature"], ["1 cup milk, at room temperature", "245 g milk, at room temperature", "1 cup milk, at room temperature", "8 3/4 oz milk, at room temperature", "240 ml milk, at room temperature", "240 ml milk, at room temperature"], "480 ml milk, at room temperature", "4 1/4 oz milk, at room temperature"),
+        Ing("1 cup butter (softened)", ["1/2 cup butter (softened)", "1 1/2 cup butter (softened)", "2 cup butter (softened)", "1/3 cup butter (softened)"], ["225 g butter (softened)", "225 g butter (softened)", "8 oz butter (softened)", "8 oz butter (softened)", "225 g butter (softened)", "225 g butter (softened)"], "455 g butter (softened)", "4 oz butter (softened)"),
+        Ing("1 cup confectioners' sugar", ["1/2 cup confectioners' sugar", "1 1/2 cup confectioners' sugar", "2 cup confectioners' sugar", "1/3 cup confectioners' sugar"], ["115 g confectioners' sugar", "115 g confectioners' sugar", "4 oz confectioners' sugar", "4 oz confectioners' sugar", "115 g confectioners' sugar", "115 g confectioners' sugar"], "225 g confectioners' sugar", "2 oz confectioners' sugar"),
+        Ing("1 cup confectioners’ sugar", ["1/2 cup confectioners’ sugar", "1 1/2 cup confectioners’ sugar", "2 cup confectioners’ sugar", "1/3 cup confectioners’ sugar"], ["115 g confectioners’ sugar", "115 g confectioners’ sugar", "4 oz confectioners’ sugar", "4 oz confectioners’ sugar", "115 g confectioners’ sugar", "115 g confectioners’ sugar"], "225 g confectioners’ sugar", "2 oz confectioners’ sugar"),
+        Ing("2 cups all purpose flour, sifted", ["1 cups all purpose flour, sifted", "3 cups all purpose flour, sifted", "4 cups all purpose flour, sifted", "2/3 cups all purpose flour, sifted"], ["240 g all purpose flour, sifted", "240 g all purpose flour, sifted", "8 1/2 oz all purpose flour, sifted", "8 1/2 oz all purpose flour, sifted", "240 g all purpose flour, sifted", "240 g all purpose flour, sifted"], "480 g all purpose flour, sifted", "4 1/4 oz all purpose flour, sifted"),
+        Ing("1 cup flour tortillas", ["1/2 cup flour tortillas", "1 1/2 cup flour tortillas", "2 cup flour tortillas", "1/3 cup flour tortillas"], ["1 cup flour tortillas", "1 cup flour tortillas", "1 cup flour tortillas", "1 cup flour tortillas", "240 ml flour tortillas", "240 ml flour tortillas"], "480 ml flour tortillas", "1/2 cup flour tortillas"),
+        Ing("1 tbsp cornstarch", ["1/2 tbsp cornstarch", "1 1/2 tbsp cornstarch", "2 tbsp cornstarch", "1/3 tbsp cornstarch"], ["7 g cornstarch", "7 g cornstarch", "1/4 oz cornstarch", "1/4 oz cornstarch", "7 g cornstarch", "7 g cornstarch"], "14 g cornstarch", "1/2 tbsp cornstarch"),
+        Ing("2 tbsp corn starch", ["1 tbsp corn starch", "3 tbsp corn starch", "4 tbsp corn starch", "2/3 tbsp corn starch"], ["14 g corn starch", "14 g corn starch", "1/2 oz corn starch", "1/2 oz corn starch", "14 g corn starch", "14 g corn starch"], "28 g corn starch", "1/4 oz corn starch"),
+        Ing("1 cup cornmeal", ["1/2 cup cornmeal", "1 1/2 cup cornmeal", "2 cup cornmeal", "1/3 cup cornmeal"], ["140 g cornmeal", "140 g cornmeal", "4 3/4 oz cornmeal", "4 3/4 oz cornmeal", "140 g cornmeal", "140 g cornmeal"], "275 g cornmeal", "2 3/8 oz cornmeal"),
+        Ing("1 fl oz vanilla", ["1/2 fl oz vanilla", "1 1/2 fl oz vanilla", "2 fl oz vanilla", "1/3 fl oz vanilla"], ["1 fl oz vanilla", "1 fl oz vanilla", "1 fl oz vanilla", "1 fl oz vanilla", "30 ml vanilla", "30 ml vanilla"], "60 ml vanilla", "1/2 fl oz vanilla"),
+        Ing("2 fl. oz. rum", ["1 fl. oz. rum", "3 fl. oz. rum", "4 fl. oz. rum", "2/3 fl. oz. rum"], ["2 fl. oz. rum", "2 fl. oz. rum", "2 fl. oz. rum", "2 fl. oz. rum", "60 ml rum", "60 ml rum"], "120 ml rum", "1 fl. oz. rum"),
+        Ing("1 fluid ounce lime juice", ["1/2 fluid ounce lime juice", "1 1/2 fluid ounce lime juice", "2 fluid ounce lime juice", "1/3 fluid ounce lime juice"], ["1 fluid ounce lime juice", "31 g lime juice", "1 fluid ounce lime juice", "1 1/8 oz lime juice", "30 ml lime juice", "30 ml lime juice"], "60 ml lime juice", "1/2 oz lime juice"),
+        Ing("4 fl oz orange juice", ["2 fl oz orange juice", "6 fl oz orange juice", "8 fl oz orange juice", "1 1/3 fl oz orange juice"], ["4 fl oz orange juice", "125 g orange juice", "4 fl oz orange juice", "4 1/4 oz orange juice", "120 ml orange juice", "120 ml orange juice"], "240 ml orange juice", "2 1/8 oz orange juice"),
+        Ing("1 cup coffee", ["1/2 cup coffee", "1 1/2 cup coffee", "2 cup coffee", "1/3 cup coffee"], ["1 cup coffee", "240 g coffee", "1 cup coffee", "8 1/2 oz coffee", "240 ml coffee", "240 ml coffee"], "480 ml coffee", "4 1/4 oz coffee"),
+        Ing("12 oz beer", ["6 oz beer", "18 oz beer", "24 oz beer", "4 oz beer"], ["12 oz beer", "360 g beer", "12 oz beer", "12 oz beer", "360 ml beer", "360 ml beer"], "720 ml beer", "6 oz beer"),
+        Ing("1 cup red wine", ["1/2 cup red wine", "1 1/2 cup red wine", "2 cup red wine", "1/3 cup red wine"], ["1 cup red wine", "235 g red wine", "1 cup red wine", "8 1/4 oz red wine", "240 ml red wine", "240 ml red wine"], "480 ml red wine", "4 1/4 oz red wine"),
+        Ing("2 tbsp apple cider vinegar", ["1 tbsp apple cider vinegar", "3 tbsp apple cider vinegar", "4 tbsp apple cider vinegar", "2/3 tbsp apple cider vinegar"], ["2 tbsp apple cider vinegar", "30 g apple cider vinegar", "2 tbsp apple cider vinegar", "1 oz apple cider vinegar", "30 ml apple cider vinegar", "30 ml apple cider vinegar"], "60 ml apple cider vinegar", "1/2 oz apple cider vinegar"),
+        Ing("1 tsp vanilla extract", ["1/2 tsp vanilla extract", "1 1/2 tsp vanilla extract", "2 tsp vanilla extract", "1/3 tsp vanilla extract"], ["1 tsp vanilla extract", "1 tsp vanilla extract", "1 tsp vanilla extract", "1 tsp vanilla extract", "5 ml vanilla extract", "5 ml vanilla extract"], "10 ml vanilla extract", "1/2 tsp vanilla extract"),
+        Ing("1 tbsp honey", ["1/2 tbsp honey", "1 1/2 tbsp honey", "2 tbsp honey", "1/3 tbsp honey"], ["1 tbsp honey", "21 g honey", "1 tbsp honey", "3/4 oz honey", "15 ml honey", "15 ml honey"], "30 ml honey", "3/8 oz honey"),
+        Ing("2 tbsp maple syrup", ["1 tbsp maple syrup", "3 tbsp maple syrup", "4 tbsp maple syrup", "2/3 tbsp maple syrup"], ["2 tbsp maple syrup", "39 g maple syrup", "2 tbsp maple syrup", "1 3/8 oz maple syrup", "30 ml maple syrup", "30 ml maple syrup"], "60 ml maple syrup", "3/4 oz maple syrup"),
+        Ing("1 tablespoon coconut oil", ["1/2 tablespoon coconut oil", "1 1/2 tablespoon coconut oil", "2 tablespoon coconut oil", "1/3 tablespoon coconut oil"], ["1 tablespoon coconut oil", "14 g coconut oil", "1 tablespoon coconut oil", "1/2 oz coconut oil", "15 ml coconut oil", "15 ml coconut oil"], "30 ml coconut oil", "1/4 oz coconut oil"),
+        Ing("3 cups chicken broth", ["1 1/2 cups chicken broth", "4 1/2 cups chicken broth", "6 cups chicken broth", "1 cups chicken broth"], ["3 cups chicken broth", "720 g chicken broth", "3 cups chicken broth", "1 lb 9 1/2 oz chicken broth", "720 ml chicken broth", "720 ml chicken broth"], "1.44 L chicken broth", "12 3/4 oz chicken broth"),
+        Ing("2 cups beef stock", ["1 cups beef stock", "3 cups beef stock", "4 cups beef stock", "2/3 cups beef stock"], ["2 cups beef stock", "480 g beef stock", "2 cups beef stock", "1 lb 1 oz beef stock", "480 ml beef stock", "480 ml beef stock"], "960 ml beef stock", "8 1/2 oz beef stock"),
+        Ing("1 quart milk", ["1/2 quart milk", "1 1/2 quart milk", "2 quart milk", "1/3 quart milk"], ["1 quart milk", "1 quart milk", "1 quart milk", "1 quart milk", "1 quart milk", "1 quart milk"], "2 quart milk", "1/2 quart milk"),
+        Ing("1 pint heavy cream", ["1/2 pint heavy cream", "1 1/2 pint heavy cream", "2 pint heavy cream", "1/3 pint heavy cream"], ["1 pint heavy cream", "1 pint heavy cream", "1 pint heavy cream", "1 pint heavy cream", "1 pint heavy cream", "1 pint heavy cream"], "2 pint heavy cream", "1/2 pint heavy cream"),
+        Ing("1 gallon water", ["1/2 gallon water", "1 1/2 gallon water", "2 gallon water", "1/3 gallon water"], ["1 gallon water", "1 gallon water", "1 gallon water", "1 gallon water", "1 gallon water", "1 gallon water"], "2 gallon water", "1/2 gallon water"),
+        Ing("100g dark chocolate", ["50g dark chocolate", "150g dark chocolate", "200g dark chocolate", "33 1/3g dark chocolate"], ["100g dark chocolate", "100g dark chocolate", "3 1/2 oz dark chocolate", "3 1/2 oz dark chocolate", "100g dark chocolate", "100g dark chocolate"], "200g dark chocolate", "1 3/4 oz dark chocolate"),
+        Ing("1.5kg beef brisket", ["3/4kg beef brisket", "2 1/4kg beef brisket", "3kg beef brisket", "1/2kg beef brisket"], ["1.5kg beef brisket", "1.5kg beef brisket", "3 lb 5 oz beef brisket", "3 lb 5 oz beef brisket", "1.5kg beef brisket", "1.5kg beef brisket"], "3kg beef brisket", "1 lb 10 1/2 oz beef brisket"),
+        Ing("0.75 kg flour", ["3/8 kg flour", "1 1/8 kg flour", "1 1/2 kg flour", "1/4 kg flour"], ["0.75 kg flour", "0.75 kg flour", "1 lb 10 1/2 oz flour", "1 lb 10 1/2 oz flour", "0.75 kg flour", "0.75 kg flour"], "1 1/2 kg flour", "13 1/4 oz flour"),
+        Ing("1000 g flour", ["500 g flour", "1500 g flour", "2000 g flour", "333 1/3 g flour"], ["1000 g flour", "1000 g flour", "2 lb 3 1/4 oz flour", "2 lb 3 1/4 oz flour", "1000 g flour", "1000 g flour"], "2000 g flour", "1 lb 1 3/4 oz flour"),
+        Ing("2000 ml water", ["1000 ml water", "3000 ml water", "4000 ml water", "666 2/3 ml water"], ["2000 ml water", "2 kg water", "2000 ml water", "4 lb 6 3/4 oz water", "2000 ml water", "2000 ml water"], "4000 ml water", "2 lb 3 1/4 oz water"),
+        Ing("5 g yeast", ["2 1/2 g yeast", "7 1/2 g yeast", "10 g yeast", "1 2/3 g yeast"], ["5 g yeast", "5 g yeast", "1/8 oz yeast", "1/8 oz yeast", "5 g yeast", "5 g yeast"], "10 g yeast", "2 1/2 g yeast"),
+        Ing("7 g instant yeast", ["3 1/2 g instant yeast", "10 1/2 g instant yeast", "14 g instant yeast", "2 1/3 g instant yeast"], ["7 g instant yeast", "7 g instant yeast", "1/4 oz instant yeast", "1/4 oz instant yeast", "7 g instant yeast", "7 g instant yeast"], "14 g instant yeast", "3 1/2 g instant yeast"),
+        Ing("1 packet (7g) yeast", ["1/2 packet (7g) yeast", "1 1/2 packet (7g) yeast", "2 packet (7g) yeast", "1/3 packet (7g) yeast"], ["1 packet (7g) yeast", "1 packet (7g) yeast", "1 packet (7g) yeast", "1 packet (7g) yeast", "1 packet (7g) yeast", "1 packet (7g) yeast"], "2 packet (7g) yeast", "1/2 packet (7g) yeast"),
+        Ing("1/8 cup sugar", ["0.06 cup sugar", "0.19 cup sugar", "1/4 cup sugar", "0.04 cup sugar"], ["25 g sugar", "25 g sugar", "7/8 oz sugar", "7/8 oz sugar", "25 g sugar", "25 g sugar"], "50 g sugar", "3/8 oz sugar"),
+        Ing("1/16 tsp salt", ["0.03 tsp salt", "0.09 tsp salt", "1/8 tsp salt", "0.02 tsp salt"], ["1/16 tsp salt", "1/16 tsp salt", "1/16 tsp salt", "1/16 tsp salt", "1/16 tsp salt", "1/16 tsp salt"], "0.5 ml salt", "0.03 tsp salt"),
+        Ing("3 cups sugar", ["1 1/2 cups sugar", "4 1/2 cups sugar", "6 cups sugar", "1 cups sugar"], ["600 g sugar", "600 g sugar", "1 lb 5 1/4 oz sugar", "1 lb 5 1/4 oz sugar", "600 g sugar", "600 g sugar"], "1.2 kg sugar", "10 1/2 oz sugar"),
+        Ing("4 cups flour", ["2 cups flour", "6 cups flour", "8 cups flour", "1 1/3 cups flour"], ["480 g flour", "480 g flour", "1 lb 1 oz flour", "1 lb 1 oz flour", "480 g flour", "480 g flour"], "960 g flour", "8 1/2 oz flour"),
+        Ing("10 cups flour", ["5 cups flour", "15 cups flour", "20 cups flour", "3 1/3 cups flour"], ["1.2 kg flour", "1.2 kg flour", "2 lb 10 1/4 oz flour", "2 lb 10 1/4 oz flour", "1.2 kg flour", "1.2 kg flour"], "2.4 kg flour", "1 lb 5 1/4 oz flour"),
+        Ing("16 oz flour", ["8 oz flour", "24 oz flour", "32 oz flour", "5 1/3 oz flour"], ["455 g flour", "455 g flour", "16 oz flour", "16 oz flour", "455 g flour", "455 g flour"], "905 g flour", "8 oz flour"),
+        Ing("20 oz butter", ["10 oz butter", "30 oz butter", "40 oz butter", "6 2/3 oz butter"], ["565 g butter", "565 g butter", "20 oz butter", "20 oz butter", "565 g butter", "565 g butter"], "1.13 kg butter", "10 oz butter"),
+        Ing("32 oz chicken stock", ["16 oz chicken stock", "48 oz chicken stock", "64 oz chicken stock", "10 2/3 oz chicken stock"], ["32 oz chicken stock", "960 g chicken stock", "32 oz chicken stock", "32 oz chicken stock", "960 ml chicken stock", "960 ml chicken stock"], "1.92 L chicken stock", "16 oz chicken stock"),
+        Ing("24 oz milk", ["12 oz milk", "36 oz milk", "48 oz milk", "8 oz milk"], ["24 oz milk", "735 g milk", "24 oz milk", "24 oz milk", "720 ml milk", "720 ml milk"], "1.44 L milk", "12 oz milk"),
+        Ing("1 1/2 lbs butter", ["3/4 lbs butter", "2 1/4 lbs butter", "3 lbs butter", "1/2 lbs butter"], ["680 g butter", "680 g butter", "1 1/2 lbs butter", "1 1/2 lbs butter", "680 g butter", "680 g butter"], "1.36 kg butter", "3/4 lbs butter"),
+        Ing("0.1 oz saffron", ["0.05 oz saffron", "0.15 oz saffron", "0.2 oz saffron", "0.03 oz saffron"], ["3 g saffron", "3 g saffron", "0.1 oz saffron", "0.1 oz saffron", "3 g saffron", "3 g saffron"], "5.5 g saffron", "0.05 oz saffron"),
+        Ing("1 oz butter", ["1/2 oz butter", "1 1/2 oz butter", "2 oz butter", "1/3 oz butter"], ["28 g butter", "28 g butter", "1 oz butter", "1 oz butter", "28 g butter", "28 g butter"], "57 g butter", "1/2 oz butter"),
+        Ing("1 tsp butter", ["1/2 tsp butter", "1 1/2 tsp butter", "2 tsp butter", "1/3 tsp butter"], ["4.5 g butter", "4.5 g butter", "1/8 oz butter", "1/8 oz butter", "4.5 g butter", "4.5 g butter"], "9.5 g butter", "1/2 tsp butter"),
+        Ing("1/2 tsp flour", ["1/4 tsp flour", "3/4 tsp flour", "1 tsp flour", "0.17 tsp flour"], ["1.5 g flour", "1.5 g flour", "1/2 tsp flour", "1/2 tsp flour", "1.5 g flour", "1.5 g flour"], "2.5 g flour", "1/4 tsp flour"),
+        Ing("1 tsp water", ["1/2 tsp water", "1 1/2 tsp water", "2 tsp water", "1/3 tsp water"], ["1 tsp water", "5 g water", "1 tsp water", "1/8 oz water", "5 ml water", "5 ml water"], "10 ml water", "1/2 tsp water"),
+        Ing("1/4 tsp oil", ["1/8 tsp oil", "3/8 tsp oil", "1/2 tsp oil", "0.08 tsp oil"], ["1/4 tsp oil", "1 g oil", "1/4 tsp oil", "1/4 tsp oil", "1 ml oil", "1 ml oil"], "2.5 ml oil", "1/8 tsp oil"),
+        Ing("5 cups water", ["2 1/2 cups water", "7 1/2 cups water", "10 cups water", "1 2/3 cups water"], ["5 cups water", "1.19 kg water", "5 cups water", "2 lb 9 3/4 oz water", "1.2 L water", "1.2 L water"], "2.4 L water", "1 lb 5 oz water"),
+        Ing("6 tbsp butter", ["3 tbsp butter", "9 tbsp butter", "12 tbsp butter", "2 tbsp butter"], ["85 g butter", "85 g butter", "3 oz butter", "3 oz butter", "85 g butter", "85 g butter"], "170 g butter", "1 1/2 oz butter"),
+        Ing("1 cup/240ml milk", ["1/2 cup/120ml milk", "1 1/2 cup/360ml milk", "2 cup/480ml milk", "1/3 cup/80ml milk"], ["1 cup/240ml milk", "245 g milk", "1 cup/240ml milk", "8 3/4 oz milk", "240ml milk", "240ml milk"], "480ml milk", "4 1/4 oz milk"),
+        Ing("1 cup / 8 oz cream", ["1/2 cup / 4 oz cream", "1 1/2 cup / 12 oz cream", "2 cup / 16 oz cream", "1/3 cup / 2 2/3 oz cream"], ["1 cup / 8 oz cream", "240 g cream", "1 cup / 8 oz cream", "8 1/2 oz cream", "240 ml cream", "240 ml cream"], "480 ml cream", "4 1/4 oz cream"),
+        Ing("1/2 cup (1 stick) butter, melted", ["1/4 cup (1/2 stick) butter, melted", "3/4 cup (1 1/2 stick) butter, melted", "1 cup (2 stick) butter, melted", "0.17 cup (1/3 stick) butter, melted"], ["115 g butter, melted", "115 g butter, melted", "4 oz butter, melted", "4 oz butter, melted", "115 g butter, melted", "115 g butter, melted"], "225 g butter, melted", "2 oz butter, melted"),
+        Ing("1 cup (packed) brown sugar", ["1/2 cup (packed) brown sugar", "1 1/2 cup (packed) brown sugar", "2 cup (packed) brown sugar", "1/3 cup (packed) brown sugar"], ["215 g (packed) brown sugar", "215 g (packed) brown sugar", "7 1/2 oz (packed) brown sugar", "7 1/2 oz (packed) brown sugar", "215 g (packed) brown sugar", "215 g (packed) brown sugar"], "425 g (packed) brown sugar", "3 3/4 oz (packed) brown sugar"),
+        Ing("1 cup (about 5 oz) flour", ["1/2 cup (about 2 1/2 oz) flour", "1 1/2 cup (about 7 1/2 oz) flour", "2 cup (about 10 oz) flour", "1/3 cup (about 1 2/3 oz) flour"], ["140 g flour", "140 g flour", "5 oz flour", "5 oz flour", "140 g flour", "140 g flour"], "285 g flour", "2 1/2 oz flour"),
+        Ing("2 cups (500 ml) chicken broth", ["1 cups (250 ml) chicken broth", "3 cups (750 ml) chicken broth", "4 cups (1000 ml) chicken broth", "2/3 cups (167 ml) chicken broth"], ["2 cups (500 ml) chicken broth", "480 g chicken broth", "2 cups (500 ml) chicken broth", "1 lb 1 oz chicken broth", "500 ml chicken broth", "500 ml chicken broth"], "1000 ml chicken broth", "8 1/2 oz chicken broth"),
+        Ing("1 cup (125 g / 4.4 oz) flour", ["1/2 cup (63 g / 2.2 oz) flour", "1 1/2 cup (188 g / 6.6 oz) flour", "2 cup (250 g / 8.8 oz) flour", "1/3 cup (42 g / 1.47 oz) flour"], ["125 g flour", "125 g flour", "4 1/2 oz flour", "4 1/2 oz flour", "125 g flour", "125 g flour"], "250 g flour", "2 1/4 oz flour"),
+        Ing("1 cup light brown sugar", ["1/2 cup light brown sugar", "1 1/2 cup light brown sugar", "2 cup light brown sugar", "1/3 cup light brown sugar"], ["215 g light brown sugar", "215 g light brown sugar", "7 1/2 oz light brown sugar", "7 1/2 oz light brown sugar", "215 g light brown sugar", "215 g light brown sugar"], "425 g light brown sugar", "3 3/4 oz light brown sugar"),
+        Ing("1 cup dark brown sugar, packed", ["1/2 cup dark brown sugar, packed", "1 1/2 cup dark brown sugar, packed", "2 cup dark brown sugar, packed", "1/3 cup dark brown sugar, packed"], ["215 g dark brown sugar, packed", "215 g dark brown sugar, packed", "7 1/2 oz dark brown sugar, packed", "7 1/2 oz dark brown sugar, packed", "215 g dark brown sugar, packed", "215 g dark brown sugar, packed"], "425 g dark brown sugar, packed", "3 3/4 oz dark brown sugar, packed"),
+        Ing("1 Cup Flour", ["1/2 Cup Flour", "1 1/2 Cup Flour", "2 Cup Flour", "1/3 Cup Flour"], ["120 g Flour", "120 g Flour", "4 1/4 oz Flour", "4 1/4 oz Flour", "120 g Flour", "120 g Flour"], "240 g Flour", "2 1/8 oz Flour"),
+        Ing("2 CUPS SUGAR", ["1 CUPS SUGAR", "3 CUPS SUGAR", "4 CUPS SUGAR", "2/3 CUPS SUGAR"], ["400 g SUGAR", "400 g SUGAR", "14 oz SUGAR", "14 oz SUGAR", "400 g SUGAR", "400 g SUGAR"], "800 g SUGAR", "7 oz SUGAR"),
+        Ing("1 TBSP OIL", ["1/2 TBSP OIL", "1 1/2 TBSP OIL", "2 TBSP OIL", "1/3 TBSP OIL"], ["1 TBSP OIL", "14 g OIL", "1 TBSP OIL", "1/2 oz OIL", "15 ml OIL", "15 ml OIL"], "30 ml OIL", "1/4 oz OIL"),
+        Ing("8 OZ. BUTTER", ["4 OZ. BUTTER", "12 OZ. BUTTER", "16 OZ. BUTTER", "2 2/3 OZ. BUTTER"], ["225 g BUTTER", "225 g BUTTER", "8 OZ. BUTTER", "8 OZ. BUTTER", "225 g BUTTER", "225 g BUTTER"], "455 g BUTTER", "4 OZ. BUTTER"),
+        Ing("1 c. flour", ["1/2 c. flour", "1 1/2 c. flour", "2 c. flour", "1/3 c. flour"], ["1 c. flour", "1 c. flour", "1 c. flour", "1 c. flour", "1 c. flour", "1 c. flour"], "2 c. flour", "1/2 c. flour"),
+        Ing("2 C flour", ["1 C flour", "3 C flour", "4 C flour", "2/3 C flour"], ["2 C flour", "2 C flour", "2 C flour", "2 C flour", "2 C flour", "2 C flour"], "4 C flour", "1 C flour"),
+        Ing("1 heaping cup flour", ["1/2 heaping cup flour", "1 1/2 heaping cup flour", "2 heaping cup flour", "1/3 heaping cup flour"], ["1 heaping cup flour", "1 heaping cup flour", "1 heaping cup flour", "1 heaping cup flour", "1 heaping cup flour", "1 heaping cup flour"], "2 heaping cup flour", "1/2 heaping cup flour"),
+        Ing("1 cup plus 2 tbsp flour", ["1/2 cup plus 1 tbsp flour", "1 1/2 cup plus 3 tbsp flour", "2 cup plus 4 tbsp flour", "1/3 cup plus 2/3 tbsp flour"], ["135 g flour", "135 g flour", "4 3/4 oz flour", "4 3/4 oz flour", "135 g flour", "135 g flour"], "270 g flour", "2 3/8 oz flour"),
+        Ing("1 cup + 2 tbsp flour", ["1/2 cup + 1 tbsp flour", "1 1/2 cup + 3 tbsp flour", "2 cup + 4 tbsp flour", "1/3 cup + 2/3 tbsp flour"], ["135 g flour", "135 g flour", "4 3/4 oz flour", "4 3/4 oz flour", "135 g flour", "135 g flour"], "270 g flour", "2 3/8 oz flour"),
+        Ing("1 (8-ounce) package cream cheese", ["1/2 (8-ounce) package cream cheese", "1 1/2 (8-ounce) package cream cheese", "2 (8-ounce) package cream cheese", "1/3 (8-ounce) package cream cheese"], ["1 (8-ounce) package cream cheese", "1 (8-ounce) package cream cheese", "1 (8-ounce) package cream cheese", "1 (8-ounce) package cream cheese", "1 (8-ounce) package cream cheese", "1 (8-ounce) package cream cheese"], "2 (8-ounce) package cream cheese", "1/2 (8-ounce) package cream cheese"),
+        Ing("3 x 400g tins tomatoes", ["1 1/2 x 400g tins tomatoes", "4 1/2 x 400g tins tomatoes", "6 x 400g tins tomatoes", "1 x 400g tins tomatoes"], ["3 x 400g tins tomatoes", "3 x 400g tins tomatoes", "3 x 400g tins tomatoes", "3 x 400g tins tomatoes", "3 x 400g tins tomatoes", "3 x 400g tins tomatoes"], "6 x 400g tins tomatoes", "1 1/2 x 400g tins tomatoes"),
+        Ing("2 x 250 ml milk", ["1 x 250 ml milk", "3 x 250 ml milk", "4 x 250 ml milk", "2/3 x 250 ml milk"], ["2 x 250 ml milk", "2 x 250 ml milk", "2 x 250 ml milk", "2 x 250 ml milk", "2 x 250 ml milk", "2 x 250 ml milk"], "4 x 250 ml milk", "1 x 250 ml milk"),
+        Ing("1lb 2oz flour", ["1/2lb 2oz flour", "1 1/2lb 2oz flour", "2lb 2oz flour", "1/3lb 2oz flour"], ["455 g 2oz flour", "455 g 2oz flour", "1lb 2oz flour", "1lb 2oz flour", "455 g 2oz flour", "455 g 2oz flour"], "905 g 2oz flour", "1/2lb 2oz flour"),
+        Ing("11/2 cups flour", ["2 3/4 cups flour", "8 1/4 cups flour", "11 cups flour", "1.83 cups flour"], ["660 g flour", "660 g flour", "1 lb 7 1/4 oz flour", "1 lb 7 1/4 oz flour", "660 g flour", "660 g flour"], "1.32 kg flour", "11 3/4 oz flour"),
+        Ing("1 1/2cups flour", ["3/4cups flour", "2 1/4cups flour", "3cups flour", "1/2cups flour"], ["180 g flour", "180 g flour", "6 1/4 oz flour", "6 1/4 oz flour", "180 g flour", "180 g flour"], "360 g flour", "3 1/8 oz flour"),
+        Ing("1½cups flour", ["3/4cups flour", "2 1/4cups flour", "3cups flour", "1/2cups flour"], ["180 g flour", "180 g flour", "6 1/4 oz flour", "6 1/4 oz flour", "180 g flour", "180 g flour"], "360 g flour", "3 1/8 oz flour"),
+        Ing("1 ¼ lb beef", ["5/8 lb beef", "1 7/8 lb beef", "2 1/2 lb beef", "0.42 lb beef"], ["565 g beef", "565 g beef", "1 ¼ lb beef", "1 ¼ lb beef", "565 g beef", "565 g beef"], "1.13 kg beef", "5/8 lb beef"),
+        Ing("¼ lb bacon", ["1/8 lb bacon", "3/8 lb bacon", "1/2 lb bacon", "0.08 lb bacon"], ["115 g bacon", "115 g bacon", "¼ lb bacon", "¼ lb bacon", "115 g bacon", "115 g bacon"], "225 g bacon", "1/8 lb bacon"),
+        Ing("2¾ cups flour", ["1 3/8 cups flour", "4 1/8 cups flour", "5 1/2 cups flour", "0.92 cups flour"], ["330 g flour", "330 g flour", "11 3/4 oz flour", "11 3/4 oz flour", "330 g flour", "330 g flour"], "660 g flour", "5 3/4 oz flour"),
+        Ing("⅞ cup milk", ["0.44 cup milk", "1.31 cup milk", "1 3/4 cup milk", "0.29 cup milk"], ["⅞ cup milk", "215 g milk", "⅞ cup milk", "7 1/2 oz milk", "210 ml milk", "210 ml milk"], "420 ml milk", "3 3/4 oz milk"),
+        Ing("1⅛ cups water", ["0.56 cups water", "1.69 cups water", "2 1/4 cups water", "3/8 cups water"], ["1⅛ cups water", "265 g water", "1⅛ cups water", "9 1/2 oz water", "270 ml water", "270 ml water"], "540 ml water", "4 3/4 oz water"),
+        Ing("⅙ cup oil", ["0.08 cup oil", "1/4 cup oil", "1/3 cup oil", "0.06 cup oil"], ["⅙ cup oil", "36 g oil", "⅙ cup oil", "1 1/4 oz oil", "40 ml oil", "40 ml oil"], "80 ml oil", "5/8 oz oil"),
+        Ing("100% whole wheat flour", ["100% whole wheat flour", "100% whole wheat flour", "100% whole wheat flour", "100% whole wheat flour"], ["100% whole wheat flour", "100% whole wheat flour", "100% whole wheat flour", "100% whole wheat flour", "100% whole wheat flour", "100% whole wheat flour"], "100% whole wheat flour", "100% whole wheat flour"),
+        Ing("1-2-3 sauce", ["1/2-1-3 sauce", "1 1/2-3-3 sauce", "2-4-3 sauce", "1/3-2/3-3 sauce"], ["1-2-3 sauce", "1-2-3 sauce", "1-2-3 sauce", "1-2-3 sauce", "1-2-3 sauce", "1-2-3 sauce"], "2-4-3 sauce", "1/2-1-3 sauce"),
+        Ing("12-15 minutes", ["6-7 1/2 minutes", "18-22 1/2 minutes", "24-30 minutes", "4-5 minutes"], ["12-15 minutes", "12-15 minutes", "12-15 minutes", "12-15 minutes", "12-15 minutes", "12-15 minutes"], "24-30 minutes", "6-7 1/2 minutes"),
+        Ing("1/0 cup flour", ["1/0 cup flour", "1/0 cup flour", "1/0 cup flour", "1/0 cup flour"], ["1/0 cup flour", "1/0 cup flour", "1/0 cup flour", "1/0 cup flour", "1/0 cup flour", "1/0 cup flour"], "1/0 cup flour", "1/0 cup flour"),
+        Ing("0 cups flour", ["0 cups flour", "0 cups flour", "0 cups flour", "0 cups flour"], ["0 cups flour", "0 cups flour", "0 cups flour", "0 cups flour", "0 cups flour", "0 cups flour"], "0 cups flour", "0 cups flour"),
+        Ing("99999999999 cups flour", ["49999999999.5 cups flour", "149999999998.5 cups flour", "199999999998 cups flour", "33333333333 cups flour"], ["11999999999.88 kg flour", "11999999999.88 kg flour", "2147483647 lb 423287888687 oz flour", "2147483647 lb 423287888687 oz flour", "11999999999.88 kg flour", "11999999999.88 kg flour"], "23999999999.76 kg flour", "2147483647 lb 211643944351.5 oz flour"),
+        Ing("3 1/2 oz chocolate", ["1 3/4 oz chocolate", "5 1/4 oz chocolate", "7 oz chocolate", "1.17 oz chocolate"], ["99 g chocolate", "99 g chocolate", "3 1/2 oz chocolate", "3 1/2 oz chocolate", "99 g chocolate", "99 g chocolate"], "200 g chocolate", "1 3/4 oz chocolate"),
+        Ing("1 oz milk", ["1/2 oz milk", "1 1/2 oz milk", "2 oz milk", "1/3 oz milk"], ["1 oz milk", "31 g milk", "1 oz milk", "1 oz milk", "30 ml milk", "30 ml milk"], "60 ml milk", "1/2 oz milk"),
+        Ing("2 oz heavy cream", ["1 oz heavy cream", "3 oz heavy cream", "4 oz heavy cream", "2/3 oz heavy cream"], ["2 oz heavy cream", "60 g heavy cream", "2 oz heavy cream", "2 oz heavy cream", "60 ml heavy cream", "60 ml heavy cream"], "120 ml heavy cream", "1 oz heavy cream"),
+        Ing("1 cup oil", ["1/2 cup oil", "1 1/2 cup oil", "2 cup oil", "1/3 cup oil"], ["1 cup oil", "220 g oil", "1 cup oil", "7 3/4 oz oil", "240 ml oil", "240 ml oil"], "480 ml oil", "3 7/8 oz oil"),
+        Ing("1 cup ap flour", ["1/2 cup ap flour", "1 1/2 cup ap flour", "2 cup ap flour", "1/3 cup ap flour"], ["120 g ap flour", "120 g ap flour", "4 1/4 oz ap flour", "4 1/4 oz ap flour", "120 g ap flour", "120 g ap flour"], "240 g ap flour", "2 1/8 oz ap flour"),
+        Ing("1 cup plain flour", ["1/2 cup plain flour", "1 1/2 cup plain flour", "2 cup plain flour", "1/3 cup plain flour"], ["120 g plain flour", "120 g plain flour", "4 1/4 oz plain flour", "4 1/4 oz plain flour", "120 g plain flour", "120 g plain flour"], "240 g plain flour", "2 1/8 oz plain flour"),
+        Ing("250 g (2 cups) flour", ["125 g (1 cups) flour", "375 g (3 cups) flour", "500 g (4 cups) flour", "83 1/3 g (2/3 cups) flour"], ["250 g (2 cups) flour", "250 g (2 cups) flour", "8 3/4 oz flour", "8 3/4 oz flour", "250 g (2 cups) flour", "250 g (2 cups) flour"], "500 g (4 cups) flour", "4 1/2 oz flour"),
+        Ing("1 tablespoon ground almonds", ["1/2 tablespoon ground almonds", "1 1/2 tablespoon ground almonds", "2 tablespoon ground almonds", "1/3 tablespoon ground almonds"], ["6 g ground almonds", "6 g ground almonds", "1/4 oz ground almonds", "1/4 oz ground almonds", "6 g ground almonds", "6 g ground almonds"], "12 g ground almonds", "1/2 tablespoon ground almonds"),
+        Ing("1 cup almond meal", ["1/2 cup almond meal", "1 1/2 cup almond meal", "2 cup almond meal", "1/3 cup almond meal"], ["96 g almond meal", "96 g almond meal", "3 3/8 oz almond meal", "3 3/8 oz almond meal", "96 g almond meal", "96 g almond meal"], "190 g almond meal", "1 3/4 oz almond meal"),
+        Ing("2 cups whole-wheat flour", ["1 cups whole-wheat flour", "3 cups whole-wheat flour", "4 cups whole-wheat flour", "2/3 cups whole-wheat flour"], ["225 g whole-wheat flour", "225 g whole-wheat flour", "8 oz whole-wheat flour", "8 oz whole-wheat flour", "225 g whole-wheat flour", "225 g whole-wheat flour"], "450 g whole-wheat flour", "4 oz whole-wheat flour"),
+        Ing("1 cup bicarbonate of soda", ["1/2 cup bicarbonate of soda", "1 1/2 cup bicarbonate of soda", "2 cup bicarbonate of soda", "1/3 cup bicarbonate of soda"], ["290 g bicarbonate of soda", "290 g bicarbonate of soda", "10 1/4 oz bicarbonate of soda", "10 1/4 oz bicarbonate of soda", "290 g bicarbonate of soda", "290 g bicarbonate of soda"], "575 g bicarbonate of soda", "5 oz bicarbonate of soda"),
+        Ing("1 tsp baking soda", ["1/2 tsp baking soda", "1 1/2 tsp baking soda", "2 tsp baking soda", "1/3 tsp baking soda"], ["6 g baking soda", "6 g baking soda", "1/4 oz baking soda", "1/4 oz baking soda", "6 g baking soda", "6 g baking soda"], "12 g baking soda", "1/2 tsp baking soda"),
+        Ing("1 cup caster sugar", ["1/2 cup caster sugar", "1 1/2 cup caster sugar", "2 cup caster sugar", "1/3 cup caster sugar"], ["200 g caster sugar", "200 g caster sugar", "7 oz caster sugar", "7 oz caster sugar", "200 g caster sugar", "200 g caster sugar"], "400 g caster sugar", "3 1/2 oz caster sugar"),
+        Ing("1 cup icing sugar", ["1/2 cup icing sugar", "1 1/2 cup icing sugar", "2 cup icing sugar", "1/3 cup icing sugar"], ["115 g icing sugar", "115 g icing sugar", "4 oz icing sugar", "4 oz icing sugar", "115 g icing sugar", "115 g icing sugar"], "225 g icing sugar", "2 oz icing sugar"),
+        Ing("1 cup double cream", ["1/2 cup double cream", "1 1/2 cup double cream", "2 cup double cream", "1/3 cup double cream"], ["1 cup double cream", "240 g double cream", "1 cup double cream", "8 1/2 oz double cream", "240 ml double cream", "240 ml double cream"], "480 ml double cream", "4 1/4 oz double cream"),
+        Ing("1 cup gluten-free flour", ["1/2 cup gluten-free flour", "1 1/2 cup gluten-free flour", "2 cup gluten-free flour", "1/3 cup gluten-free flour"], ["1 cup gluten-free flour", "1 cup gluten-free flour", "1 cup gluten-free flour", "1 cup gluten-free flour", "240 ml gluten-free flour", "240 ml gluten-free flour"], "480 ml gluten-free flour", "1/2 cup gluten-free flour"),
+        Ing("1 cup coconut flour", ["1/2 cup coconut flour", "1 1/2 cup coconut flour", "2 cup coconut flour", "1/3 cup coconut flour"], ["1 cup coconut flour", "1 cup coconut flour", "1 cup coconut flour", "1 cup coconut flour", "240 ml coconut flour", "240 ml coconut flour"], "480 ml coconut flour", "1/2 cup coconut flour"),
+        // Regression rows: trailing-period units, compound amounts, doubled parentheses.
+        Ing("¾ tsp. (4 g) baking soda", ["3/8 tsp. (2 g) baking soda", "1 1/8 tsp. (6 g) baking soda", "1 1/2 tsp. (8 g) baking soda", "1/4 tsp. (1.3 g) baking soda"], ["4 g baking soda", "4 g baking soda", "1/8 oz baking soda", "1/8 oz baking soda", "4 g baking soda", "4 g baking soda"], "8 g baking soda", "3/8 tsp. (2 g) baking soda"),
+        Ing("6 oz. (170 g) bittersweet chocolate", ["3 oz. (85 g) bittersweet chocolate", "9 oz. (255 g) bittersweet chocolate", "12 oz. (340 g) bittersweet chocolate", "2 oz. (57 g) bittersweet chocolate"], ["170 g bittersweet chocolate", "170 g bittersweet chocolate", "6 oz. (170 g) bittersweet chocolate", "6 oz. (170 g) bittersweet chocolate", "170 g bittersweet chocolate", "170 g bittersweet chocolate"], "340 g bittersweet chocolate", "3 oz. (85 g) bittersweet chocolate"),
+        Ing("1¼ tsp. (4 g) Diamond Crystal kosher salt", ["5/8 tsp. (2 g) Diamond Crystal kosher salt", "1 7/8 tsp. (6 g) Diamond Crystal kosher salt", "2 1/2 tsp. (8 g) Diamond Crystal kosher salt", "0.42 tsp. (1.3 g) Diamond Crystal kosher salt"], ["4 g Diamond Crystal kosher salt", "4 g Diamond Crystal kosher salt", "1/8 oz Diamond Crystal kosher salt", "1/8 oz Diamond Crystal kosher salt", "4 g Diamond Crystal kosher salt", "4 g Diamond Crystal kosher salt"], "8 g Diamond Crystal kosher salt", "5/8 tsp. (2 g) Diamond Crystal kosher salt"),
+        Ing("1 lb. boneless chicken", ["1/2 lb. boneless chicken", "1 1/2 lb. boneless chicken", "2 lb. boneless chicken", "1/3 lb. boneless chicken"], ["455 g boneless chicken", "455 g boneless chicken", "1 lb. boneless chicken", "1 lb. boneless chicken", "455 g boneless chicken", "455 g boneless chicken"], "905 g boneless chicken", "1/2 lb. boneless chicken"),
+        Ing("1½ cups plus 1 Tbsp. (200 g) all-purpose flour", ["3/4 cups plus 1/2 Tbsp. (100 g) all-purpose flour", "2 1/4 cups plus 1 1/2 Tbsp. (300 g) all-purpose flour", "3 cups plus 2 Tbsp. (400 g) all-purpose flour", "1/2 cups plus 1/3 Tbsp. (67 g) all-purpose flour"], ["200 g all-purpose flour", "200 g all-purpose flour", "7 oz all-purpose flour", "7 oz all-purpose flour", "200 g all-purpose flour", "200 g all-purpose flour"], "400 g all-purpose flour", "3 1/2 oz all-purpose flour"),
+        Ing("1 cup plus 2 tbsp flour", ["1/2 cup plus 1 tbsp flour", "1 1/2 cup plus 3 tbsp flour", "2 cup plus 4 tbsp flour", "1/3 cup plus 2/3 tbsp flour"], ["135 g flour", "135 g flour", "4 3/4 oz flour", "4 3/4 oz flour", "135 g flour", "135 g flour"], "270 g flour", "2 3/8 oz flour"),
+        Ing("1 cup + 2 tbsp milk", ["1/2 cup + 1 tbsp milk", "1 1/2 cup + 3 tbsp milk", "2 cup + 4 tbsp milk", "1/3 cup + 2/3 tbsp milk"], ["1 cup + 2 tbsp milk", "275 g milk", "1 cup + 2 tbsp milk", "9 3/4 oz milk", "270 ml milk", "270 ml milk"], "540 ml milk", "4 3/4 oz milk"),
+        Ing("1 stick plus 2 tbsp butter", ["1/2 stick plus 1 tbsp butter", "1 1/2 stick plus 3 tbsp butter", "2 stick plus 4 tbsp butter", "1/3 stick plus 2/3 tbsp butter"], ["140 g butter", "140 g butter", "5 oz butter", "5 oz butter", "140 g butter", "140 g butter"], "285 g butter", "2 1/2 oz butter"),
+        Ing("1-2 cups plus 1 tbsp flour", ["1/2-1 cups plus 1/2 tbsp flour", "1 1/2-3 cups plus 1 1/2 tbsp flour", "2-4 cups plus 2 tbsp flour", "1/3-2/3 cups plus 1/3 tbsp flour"], ["1-2 cups plus 1 tbsp flour", "1-2 cups plus 1 tbsp flour", "1-2 cups plus 1 tbsp flour", "1-2 cups plus 1 tbsp flour", "1-2 cups plus 1 tbsp flour", "1-2 cups plus 1 tbsp flour"], "2-4 cups plus 2 tbsp flour", "1/2-1 cups plus 1/2 tbsp flour"),
+        Ing("1 cup and 2 tbsp chopped onion", ["1/2 cup and 1 tbsp chopped onion", "1 1/2 cup and 3 tbsp chopped onion", "2 cup and 4 tbsp chopped onion", "1/3 cup and 2/3 tbsp chopped onion"], ["1 cup and 2 tbsp chopped onion", "1 cup and 2 tbsp chopped onion", "1 cup and 2 tbsp chopped onion", "1 cup and 2 tbsp chopped onion", "270 ml chopped onion", "270 ml chopped onion"], "540 ml chopped onion", "1/2 cup and 1 tbsp chopped onion"),
+        Ing("3 tbsp plain flour ((all-purpose flour))", ["1 1/2 tbsp plain flour ((all-purpose flour))", "4 1/2 tbsp plain flour ((all-purpose flour))", "6 tbsp plain flour ((all-purpose flour))", "1 tbsp plain flour ((all-purpose flour))"], ["23 g plain flour ((all-purpose flour))", "23 g plain flour ((all-purpose flour))", "3/4 oz plain flour ((all-purpose flour))", "3/4 oz plain flour ((all-purpose flour))", "23 g plain flour ((all-purpose flour))", "23 g plain flour ((all-purpose flour))"], "45 g plain flour ((all-purpose flour))", "3/8 oz plain flour ((all-purpose flour))"),
+        Ing("1 cup flour (sifted (optional))", ["1/2 cup flour (sifted (optional))", "1 1/2 cup flour (sifted (optional))", "2 cup flour (sifted (optional))", "1/3 cup flour (sifted (optional))"], ["120 g flour (sifted (optional))", "120 g flour (sifted (optional))", "4 1/4 oz flour (sifted (optional))", "4 1/4 oz flour (sifted (optional))", "120 g flour (sifted (optional))", "120 g flour (sifted (optional))"], "240 g flour (sifted (optional))", "2 1/8 oz flour (sifted (optional))"),
+        // Bare "cream" is a liquid; ice/whipped/coconut cream are skip entries.
+        Ing("1 cup cream", ["1/2 cup cream", "1 1/2 cup cream", "2 cup cream", "1/3 cup cream"], ["1 cup cream", "240 g cream", "1 cup cream", "8 1/2 oz cream", "240 ml cream", "240 ml cream"], "480 ml cream", "4 1/4 oz cream"),
+        Ing("1/2 cup light cream", ["1/4 cup light cream", "3/4 cup light cream", "1 cup light cream", "0.17 cup light cream"], ["1/2 cup light cream", "120 g light cream", "1/2 cup light cream", "4 1/4 oz light cream", "120 ml light cream", "120 ml light cream"], "240 ml light cream", "2 1/8 oz light cream"),
+        Ing("1 cup ice cream", ["1/2 cup ice cream", "1 1/2 cup ice cream", "2 cup ice cream", "1/3 cup ice cream"], ["1 cup ice cream", "1 cup ice cream", "1 cup ice cream", "1 cup ice cream", "240 ml ice cream", "240 ml ice cream"], "480 ml ice cream", "1/2 cup ice cream"),
+        Ing("1 cup whipped cream", ["1/2 cup whipped cream", "1 1/2 cup whipped cream", "2 cup whipped cream", "1/3 cup whipped cream"], ["1 cup whipped cream", "1 cup whipped cream", "1 cup whipped cream", "1 cup whipped cream", "240 ml whipped cream", "240 ml whipped cream"], "480 ml whipped cream", "1/2 cup whipped cream"),
+        Ing("1/2 cup coconut cream", ["1/4 cup coconut cream", "3/4 cup coconut cream", "1 cup coconut cream", "0.17 cup coconut cream"], ["1/2 cup coconut cream", "1/2 cup coconut cream", "1/2 cup coconut cream", "1/2 cup coconut cream", "120 ml coconut cream", "120 ml coconut cream"], "240 ml coconut cream", "1/4 cup coconut cream"),
+        Ing("8 oz cream", ["4 oz cream", "12 oz cream", "16 oz cream", "2 2/3 oz cream"], ["8 oz cream", "240 g cream", "8 oz cream", "8 oz cream", "240 ml cream", "240 ml cream"], "480 ml cream", "4 oz cream"),
+    ]
+
+    private static let instructions: [Ins] = [
+        Ins("Preheat the oven to 350°F.", "Preheat the oven to 180°C.", "Preheat the oven to 350°F.", nil),
+        Ins("Preheat oven to 350 °F (180 °C).", "Preheat oven to 180 °C.", "Preheat oven to 350 °F.", nil),
+        Ins("Bake at 180°C/350°F for 25 minutes.", "Bake at 180°C for 25 minutes.", "Bake at 350°F for 25 minutes.", 1500),
+        Ins("Preheat to 350F.", "Preheat to 180°C.", "Preheat to 350F.", nil),
+        Ins("Preheat to 350 F.", "Preheat to 180°C.", "Preheat to 350 F.", nil),
+        Ins("Heat oven to 425 degrees F.", "Heat oven to 220°C.", "Heat oven to 425 degrees F.", nil),
+        Ins("Heat oven to 220 degrees C.", "Heat oven to 220 degrees C.", "Heat oven to 425°F.", nil),
+        Ins("Bake at 200 degrees Celsius.", "Bake at 200 degrees Celsius.", "Bake at 400°F.", nil),
+        Ins("Bake at 400 degrees Fahrenheit for 1 hour.", "Bake at 200°C for 1 hour.", "Bake at 400 degrees Fahrenheit for 1 hour.", 3600),
+        Ins("Roast at 450ºF for 20-25 minutes.", "Roast at 230°C for 20-25 minutes.", "Roast at 450ºF for 20-25 minutes.", 1200),
+        Ins("Cook to 165˚F internal temperature.", "Cook to 74°C internal temperature.", "Cook to 165˚F internal temperature.", nil),
+        Ins("Bake at 350-375°F for 30 to 35 minutes.", "Bake at 180-190°C for 30 to 35 minutes.", "Bake at 350-375°F for 30 to 35 minutes.", 1800),
+        Ins("Bake at 180 to 200°C.", "Bake at 180 to 200°C.", "Bake at 350 to 400°F.", nil),
+        Ins("Add 2 C flour and stir.", "Add 2 C flour and stir.", "Add 2 C flour and stir.", nil),
+        Ins("Add 20 C of sugar.", "Add 20 C of sugar.", "Add 20 C of sugar.", nil),
+        Ins("Use 30C water.", "Use 30C water.", "Use 30C water.", nil),
+        Ins("Proof at 38C for 1 hour.", "Proof at 38C for 1 hour.", "Proof at 38C for 1 hour.", 3600),
+        Ins("Chill to 4°C.", "Chill to 4°C.", "Chill to 4°C.", nil),
+        Ins("Heat oil to 375°F (190°C).", "Heat oil to 190°C.", "Heat oil to 375°F.", nil),
+        Ins("Heat oil to 190°C (375°F) and fry 3 minutes.", "Heat oil to 190°C and fry 3 minutes.", "Heat oil to 375°F and fry 3 minutes.", 180),
+        Ins("Preheat oven to 350°F (175°C) and grease a pan.", "Preheat oven to 175°C and grease a pan.", "Preheat oven to 350°F and grease a pan.", nil),
+        Ins("Preheat oven to 180 C (350 F).", "Preheat oven to 180 C.", "Preheat oven to 350 F.", nil),
+        Ins("Bake 350°F / 180°C for 12 min.", "Bake 180°C for 12 min.", "Bake 350°F for 12 min.", 720),
+        Ins("Bake at 350°F (180°C for 20 minutes.", "Bake at 180°C (180°C for 20 minutes.", "Bake at 350°F (350°F for 20 minutes.", 1200),
+        Ins("Temper chocolate to 88-90°F.", "Temper chocolate to 31-32°C.", "Temper chocolate to 88-90°F.", nil),
+        Ins("Cook sugar to 240°F (115°C), soft ball stage.", "Cook sugar to 115°C, soft ball stage.", "Cook sugar to 240°F, soft ball stage.", nil),
+        Ins("Oven at 1350°F.", "Oven at 1350°F.", "Oven at 1350°F.", nil),
+        Ins("Set to 3500F.", "Set to 3500F.", "Set to 3500F.", nil),
+        Ins("Bake at 325°f.", "Bake at 325°f.", "Bake at 325°f.", nil),
+        Ins("Bake at 325 degree F.", "Bake at 160°C.", "Bake at 325 degree F.", nil),
+        Ins("Heat to 212F.", "Heat to 100°C.", "Heat to 212F.", nil),
+        Ins("Water boils at 100C.", "Water boils at 100C.", "Water boils at 200°F.", nil),
+        Ins("Simmer for 20 minutes.", "Simmer for 20 minutes.", "Simmer for 20 minutes.", 1200),
+        Ins("Bake 25 to 30 minutes, until golden.", "Bake 25 to 30 minutes, until golden.", "Bake 25 to 30 minutes, until golden.", 1500),
+        Ins("Cook for 1 hour 30 minutes.", "Cook for 1 hour 30 minutes.", "Cook for 1 hour 30 minutes.", 5400),
+        Ins("Rest 2 minutes and 30 seconds.", "Rest 2 minutes and 30 seconds.", "Rest 2 minutes and 30 seconds.", 150),
+        Ins("Let it rise for 1-2 hours.", "Let it rise for 1-2 hours.", "Let it rise for 1-2 hours.", 3600),
+        Ins("Give it a 20-minute simmer.", "Give it a 20-minute simmer.", "Give it a 20-minute simmer.", 1200),
+        Ins("Cook 1½ hours.", "Cook 1½ hours.", "Cook 1½ hours.", 5400),
+        Ins("Microwave 30 secs.", "Microwave 30 secs.", "Microwave 30 secs.", 30),
+        Ins("Knead for 10 mins.", "Knead for 10 mins.", "Knead for 10 mins.", 600),
+        Ins("Roast 45 min.", "Roast 45 min.", "Roast 45 min.", 2700),
+        Ins("Braise for 3 hrs.", "Braise for 3 hrs.", "Braise for 3 hrs.", 10800),
+        Ins("Bake 1 hr 15 min.", "Bake 1 hr 15 min.", "Bake 1 hr 15 min.", 4500),
+        Ins("Boil for 2 hours and 15 minutes.", "Boil for 2 hours and 15 minutes.", "Boil for 2 hours and 15 minutes.", 8100),
+        Ins("Whisk until smooth.", "Whisk until smooth.", "Whisk until smooth.", nil),
+        Ins("Stir 3 times.", "Stir 3 times.", "Stir 3 times.", nil),
+        Ins("Cook for 1/2 hour.", "Cook for 1/2 hour.", "Cook for 1/2 hour.", 1800),
+        Ins("Steep 5–7 minutes.", "Steep 5–7 minutes.", "Steep 5–7 minutes.", 300),
+        Ins("Grill 4—5 minutes per side.", "Grill 4—5 minutes per side.", "Grill 4—5 minutes per side.", 240),
+        Ins("Wait 90 seconds then flip.", "Wait 90 seconds then flip.", "Wait 90 seconds then flip.", 90),
+        Ins("Marinate for 48 hours.", "Marinate for 48 hours.", "Marinate for 48 hours.", nil),
+        Ins("Marinate for 25 hours.", "Marinate for 25 hours.", "Marinate for 25 hours.", nil),
+        Ins("Bake 0 minutes.", "Bake 0 minutes.", "Bake 0 minutes.", nil),
+        Ins("Cook for 1.5 hours.", "Cook for 1.5 hours.", "Cook for 1.5 hours.", 5400),
+        Ins("Add 2 cups water and cook 10 minutes.", "Add 2 cups water and cook 10 minutes.", "Add 2 cups water and cook 10 minutes.", 600),
+        Ins("Cook 10 minutes, then 5 minutes more.", "Cook 10 minutes, then 5 minutes more.", "Cook 10 minutes, then 5 minutes more.", 600),
+        Ins("In 1 hour or so, 30 minutes later, check.", "In 1 hour or so, 30 minutes later, check.", "In 1 hour or so, 30 minutes later, check.", 3600),
+        Ins("Cook for 30 minutes 1 hour.", "Cook for 30 minutes 1 hour.", "Cook for 30 minutes 1 hour.", 1800),
+        Ins("Bake for 20Minutes.", "Bake for 20Minutes.", "Bake for 20Minutes.", 1200),
+        Ins("Rest for 10 minutesé.", "Rest for 10 minutesé.", "Rest for 10 minutesé.", 600),
+        Ins("Rest 10 minutes_x.", "Rest 10 minutes_x.", "Rest 10 minutes_x.", nil),
+        Ins("Rest 10 minutes2.", "Rest 10 minutes2.", "Rest 10 minutes2.", nil),
+        Ins("Freeze 2 hours 30 minutes 15 seconds.", "Freeze 2 hours 30 minutes 15 seconds.", "Freeze 2 hours 30 minutes 15 seconds.", 9000),
+        Ins("Cook for 3.5.5 minutes.", "Cook for 3.5.5 minutes.", "Cook for 3.5.5 minutes.", nil),
+        Ins("Bake at 350°F for 1 hour 5 minutes.", "Bake at 180°C for 1 hour 5 minutes.", "Bake at 350°F for 1 hour 5 minutes.", 3900),
+        Ins("Preheat to 400°F. Bake for 15 min, then reduce to 350°F.", "Preheat to 200°C. Bake for 15 min, then reduce to 180°C.", "Preheat to 400°F. Bake for 15 min, then reduce to 350°F.", 900),
+        Ins("It takes 5/10 minutes.", "It takes 5/10 minutes.", "It takes 5/10 minutes.", 30),
+        Ins("Cook 1/2 to 1 hour.", "Cook 1/2 to 1 hour.", "Cook 1/2 to 1 hour.", 1800),
+        Ins("Bake for 10 to 12 Minutes.", "Bake for 10 to 12 Minutes.", "Bake for 10 to 12 Minutes.", 600),
+        Ins("Heat 2 tablespoons oil over medium heat.", "Heat 2 tablespoons oil over medium heat.", "Heat 2 tablespoons oil over medium heat.", nil),
+        Ins("Chill for 30 min (or overnight).", "Chill for 30 min (or overnight).", "Chill for 30 min (or overnight).", 1800),
+        Ins("Let stand 5 min. Serve.", "Let stand 5 min. Serve.", "Let stand 5 min. Serve.", 300),
+        Ins("Sear 2 min per side at 500°F.", "Sear 2 min per side at 260°C.", "Sear 2 min per side at 500°F.", 120),
+    ]
+
+    private static let html: [(String, String)] = [
+        ("Mix &amp; pour", "Mix & pour"),
+        ("<p>Preheat the oven.</p>", "Preheat the oven."),
+        ("Line one<br>Line two", "Line one Line two"),
+        ("Line one<br/>Line two", "Line one Line two"),
+        ("<b>Bold</b>text", "Boldtext"),
+        ("Rock &#39;n&#39; roll", "Rock 'n' roll"),
+        ("It&#8217;s great", "It’s great"),
+        ("Caf&eacute;", "Café"),
+        ("&frac12; cup", "½ cup"),
+        ("1 &lt; 2", "1 < 2"),
+        ("5 > 3", "5 > 3"),
+        ("a &nbsp; b", "a b"),
+        ("a\u{a0}b", "a b"),
+        ("Tom &amp Jerry", "Tom & Jerry"),
+        ("&amplifier", "&amplifier"),
+        ("&notit;", "&notit;"),
+        ("&#x27;quoted&#x27;", "'quoted'"),
+        ("&#146;", "’"),
+        ("<div>One</div><div>Two</div>", "One Two"),
+        ("<ul><li>A</li><li>B</li></ul>", "A B"),
+        ("<script>alert(1)</script>Safe", "Safe"),
+        ("<!-- comment -->Visible", "Visible"),
+        ("  lots   of   space  ", "lots of space"),
+        ("Zero\u{200b}width", "Zerowidth"),
+        ("Soft\u{ad}hyphen", "Softhyphen"),
+        ("<a href=\"x\">link</a> text", "link text"),
+        ("<img src='a.jpg' alt='x'>Pic", "Pic"),
+        ("Brand&trade;", "Brand™"),
+        ("&copy; 2024", "© 2024"),
+        ("&quot;quote&quot;", "\"quote\""),
+        ("&unknown; entity", "&unknown; entity"),
+        ("&#0;", ""),
+        ("a&#0;b", "a\u{0}b"),
+        ("a&#1;b", "a\u{1}b"),
+        ("&#128;", "€"),
+        ("&#x9D;", "\u{9d}"),
+        ("&#65;", "A"),
+        ("&#x1F600;", "😀"),
+        ("&#99999999999;", "�"),
+        ("&#13;x", "x"),
+        ("x&#x0A;y", "x y"),
+        ("&#9;t", "t"),
+        ("&#160;n", "n"),
+        ("&#xAD;s", "s"),
+        ("&#8203;z", "z"),
+        ("&hearts;", "♥"),
+        ("&hearts", "&hearts"),
+        ("&frac13;", "⅓"),
+        ("&rsquor;", "’"),
+        ("&nbspx", "&nbspx"),
+        ("&copyright", "&copyright"),
+        ("&ampx;", "&ampx;"),
+        ("&lt3", "&lt3"),
+        ("&Amp;", "&Amp;"),
+        ("&#x41", "A"),
+        ("&#65abc", "Aabc"),
+        ("&#1114112;", "�"),
+        ("<p>Unclosed", "Unclosed"),
+        ("Text <", "Text <"),
+        ("&", "&"),
+        ("&#", "&#"),
+        ("&#x", "&#x"),
+        ("<3 love", "<3 love"),
+        ("</p>after", "after"),
+        ("</>empty", "empty"),
+        ("<!DOCTYPE html>x", "x"),
+        ("<?xml ?>y", "y"),
+        ("2 &frac14; cups", "2 ¼ cups"),
+        ("Cr&egrave;me br&ucirc;l&eacute;e", "Crème brûlée"),
+        ("&Eacute;clair", "Éclair"),
+        ("&hellip;and more", "…and more"),
+        ("&mdash;dash&ndash;", "—dash–"),
+        ("Salt &amp; pepper &amp;amp; more", "Salt & pepper &amp; more"),
+        ("<span>in</span><span>line</span>", "inline"),
+        ("<h2>Title</h2>Body", "Title Body"),
+        ("tab\there", "tab here"),
+        ("new\nline", "new line"),
+        ("<p>Step 1</p>\n<p>Step 2</p>", "Step 1 Step 2"),
+        ("<style>p{}</style>Text", "Text"),
+        ("<SCRIPT>x</SCRIPT>ok", "ok"),
+        ("<p class=\"a>b\">q</p>", "q"),
+    ]
+
+    private static let yields: [(String, Int?, Int?)] = [
+        ("4", 4, 4),
+        ("4 servings", 4, nil),
+        ("Serves 4-6", 4, nil),
+        ("Makes 24 cookies", 24, nil),
+        ("", nil, nil),
+        ("  6 ", 6, 6),
+        ("0", nil, 0),
+        ("100", nil, 100),
+        ("12 muffins", 12, nil),
+        ("abc", nil, nil),
+        ("4 to 6 servings", 4, nil),
+        ("٦", nil, 6),
+        ("６", nil, 6),
+        ("2147483648", nil, nil),
+        ("007", 7, 7),
+    ]
+
+    private static let urls: [(String, String)] = [
+        ("https://Example.com/Recipe?utm_source=x&id=5#frag", "https://example.com/Recipe?id=5"),
+        ("HTTP://WWW.Site.com/a/B?fbclid=1", "https://www.site.com/a/B"),
+        ("https://a.com", "https://a.com"),
+        ("ftp://x.com/y", "ftp://x.com/y"),
+        ("notalink", "notalink"),
+        ("https://a.com/?&&x=1&UTM_medium=2", "https://a.com/?x=1"),
+        ("https://a.com/p?gclid=1&_ga=2", "https://a.com/p"),
+        ("  https://a.com/x  ", "https://a.com/x"),
+        ("https://a.com#only", "https://a.com"),
+        ("http://a.com?q=1", "https://a.com?q=1"),
+        ("https://a.com/path?fbclid", "https://a.com/path"),
+        ("https://a.com/?=v", "https://a.com/?=v"),
+    ]
+
+    private static let inputs: [(String, String?)] = [
+        ("seriouseats.com/recipe", "https://seriouseats.com/recipe"),
+        ("https://x", "https://x"),
+        ("https://x.co", "https://x.co"),
+        ("HTTP://A.COM/b", "HTTP://A.COM/b"),
+        ("  hello world ", nil),
+        ("example.com. more", nil),
+        (".com", nil),
+        ("abc.", nil),
+        ("no dots", nil),
+        ("https://a.com/x extra words", "https://a.com/x"),
+        ("", nil),
+        ("   ", nil),
+    ]
+
+    private static let formats: [(Double, String, String)] = [
+        (0.0, "0", "0"),
+        (0.125, "1/8", "0.1"),
+        (0.2, "0.2", "0.2"),
+        (0.33, "1/3", "0.3"),
+        (0.34, "1/3", "0.3"),
+        (0.35, "1/3", "0.3"),
+        (0.5, "1/2", "0.5"),
+        (0.66, "2/3", "0.7"),
+        (0.67, "2/3", "0.7"),
+        (0.98, "0.98", "1"),
+        (0.99, "1", "1"),
+        (1.0, "1", "1"),
+        (1.02, "1.02", "1"),
+        (1.03, "1.03", "1"),
+        (1.5, "1 1/2", "1.5"),
+        (2.675, "2 2/3", "2.7"),
+        (2.345, "2 1/3", "2.3"),
+        (0.375, "3/8", "0.4"),
+        (0.875, "7/8", "0.9"),
+        (1e-09, "0", "0"),
+        (12.345, "12 1/3", "12"),
+        (100.005, "100", "100"),
+        (2500000000.0, "2500000000", "2500000000"),
+        (2147483648.5, "2147483648.5", "2147483649"),
+        (0.015, "0.01", "0"),
+        (0.985, "1", "1"),
+    ]
+
+    private static let clocks: [(Int, String, String)] = [
+        (0, "0:00", "0 sec"),
+        (5, "0:05", "5 sec"),
+        (59, "0:59", "59 sec"),
+        (60, "1:00", "1 min"),
+        (61, "1:01", "1 min 1 sec"),
+        (3599, "59:59", "59 min 59 sec"),
+        (3600, "1:00:00", "1 hr"),
+        (3661, "1:01:01", "1 hr 1 min"),
+        (5400, "1:30:00", "1 hr 30 min"),
+        (86400, "24:00:00", "24 hr"),
+        (-5, "0:00", "-5 sec"),
+    ]
+
+    /// JSON-LD blocks and the Recipe the Kotlin parser made of them (nil: no recipe).
+    private static let jsonLd: [(String, [String], Recipe?)] = [
+        ("wprm_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Article\",\"@id\":\"https://x.com/#article\",\"headline\":\"Best Brownies\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"}},{\"@type\":\"WebPage\",\"@id\":\"https://x.com/\"},{\"@type\":\"Recipe\",\"name\":\"Fudgy Brownies &amp; Ice Cream\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"},\"image\":[\"https://x.com/a-1x1.jpg\",\"https://x.com/a-4x3.jpg\"],\"recipeYield\":[\"16\",\"16 brownies\"],\"prepTime\":\"PT15M\",\"cookTime\":\"PT25M\",\"totalTime\":\"PT40M\",\"recipeIngredient\":[\"1 cup (226g) butter\",\"2 cups (400g) sugar\",\"&frac12; cup cocoa\",\"<strong>3</strong> eggs\",\"\"],\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Batter\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Preheat oven to 350&deg;F.\",\"name\":\"Preheat oven to 350&deg;F.\",\"url\":\"https://x.com/#s1\"},{\"@type\":\"HowToStep\",\"text\":\"Melt butter &amp; sugar.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Bake\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"<p>Bake 25 minutes.</p>\"}]}]}]}"], Recipe(name: "Fudgy Brownies & Ice Cream", image: "https://x.com/a-1x1.jpg", ingredients: ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], instructions: ["Preheat oven to 350°F.", "Melt butter & sugar.", "Bake 25 minutes."], prepTime: "15m", cookTime: "25m", totalTime: "40m", yield: "16", sourceUrl: "https://src/wprm_graph")),
+        ("yoast_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":[\"WebPage\",\"ItemPage\"],\"@id\":\"https://y.com/p/\"},{\"@type\":[\"Recipe\"],\"name\":\"Chicken Tikka Masala\",\"image\":[{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img1.jpg\",\"width\":1200},{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img2.jpg\"}],\"recipeYield\":\"4\",\"prepTime\":\"PT1H\",\"cookTime\":\"PT1H30M\",\"totalTime\":\"PT2H30M\",\"recipeIngredient\":[\"1 lb chicken\",\"1 cup yogurt\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Marinate.\",\"name\":\"Marinate\"},{\"@type\":\"HowToStep\",\"name\":\"Grill it\"},{\"@type\":\"HowToStep\",\"text\":\"   \"}]}]}"], Recipe(name: "Chicken Tikka Masala", image: "https://y.com/img1.jpg", ingredients: ["1 lb chicken", "1 cup yogurt"], instructions: ["Marinate.", "Grill it"], prepTime: "1h", cookTime: "1h 30m", totalTime: "2h 30m", yield: "4", sourceUrl: "https://src/yoast_graph")),
+        ("array_type", ["[{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"Site\"},{\"@context\":\"https://schema.org\",\"@type\":[\"Recipe\",\"NewsArticle\"],\"name\":\"Mom&#39;s Pie &ndash; Classic\",\"image\":{\"@type\":\"ImageObject\",\"url\":\"https://z.com/pie.jpg\"},\"recipeYield\":8,\"recipeIngredient\":\"2 cups flour\",\"recipeInstructions\":\"Mix.<br>Roll.\\nBake at 400F for 45 min.\\n\\n  \"}]"], Recipe(name: "Mom's Pie – Classic", image: "https://z.com/pie.jpg", ingredients: ["2 cups flour"], instructions: ["Mix. Roll.", "Bake at 400F for 45 min."], prepTime: nil, cookTime: nil, totalTime: nil, yield: "8", sourceUrl: "https://src/array_type")),
+        ("image_objects_array", ["{\"@type\":\"Recipe\",\"name\":\"Soup\",\"image\":[{\"@type\":\"ImageObject\",\"url\":\"\"},{\"@type\":\"ImageObject\",\"url\":\"https://w.com/2.jpg\"}],\"recipeIngredient\":[\"water\"],\"recipeYield\":{\"@type\":\"QuantitativeValue\",\"value\":\"6 bowls\"},\"totalTime\":\"P1DT2H\"}"], Recipe(name: "Soup", image: nil, ingredients: ["water"], instructions: [], prepTime: nil, cookTime: nil, totalTime: "26h", yield: "6 bowls", sourceUrl: "https://src/image_objects_array")),
+        ("two_blocks_first_bad", ["{not json", "\n{\"@type\":\"Recipe\",\"name\":\"Salad\",\"recipeIngredient\":[\"lettuce\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Toss.\"}],\"prepTime\":\"PT90S\",\"recipeYield\":[\"4\",\"4 to 6 servings\"]}\n"], Recipe(name: "Salad", image: nil, ingredients: ["lettuce"], instructions: ["Toss."], prepTime: "2m", cookTime: nil, totalTime: nil, yield: "4 to 6 servings", sourceUrl: "https://src/two_blocks_first_bad")),
+        ("no_name", ["{\"@type\":\"Recipe\",\"name\":\"  <b> </b> \",\"recipeIngredient\":[\"x\"]}", "{\"@type\":\"recipe\",\"name\":\"Lowercase type\",\"recipeInstructions\":[\"Step &amp; one\",\"<p>Step two</p>\"]}"], Recipe(name: "Lowercase type", image: nil, ingredients: [], instructions: ["Step & one", "Step two"], prepTime: nil, cookTime: nil, totalTime: nil, yield: nil, sourceUrl: "https://src/no_name")),
+        ("entities_in_name", ["{\"@type\":\"Recipe\",\"name\":\"Cr&egrave;me Br&ucirc;l&eacute;e &#8211; &quot;Easy&quot;\",\"recipeIngredient\":[\"1 cup cream\",\"&#189; cup sugar\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Heat &amp; stir\"}],\"cookTime\":\"PT0M\",\"prepTime\":\"PT20M\",\"totalTime\":\"garbage\"}"], Recipe(name: "Crème Brûlée – \"Easy\"", image: nil, ingredients: ["1 cup cream", "½ cup sugar"], instructions: ["Heat & stir"], prepTime: "20m", cookTime: nil, totalTime: "garbage", yield: nil, sourceUrl: "https://src/entities_in_name")),
+        ("nested_mainEntity", ["{\"@context\":\"https://schema.org\",\"@type\":\"WebPage\",\"mainEntity\":{\"@type\":\"Recipe\",\"name\":\"Nested\",\"recipeIngredient\":[\"a\"],\"recipeYield\":[\"\", \"12\"]}}"], Recipe(name: "Nested", image: nil, ingredients: ["a"], instructions: [], prepTime: nil, cookTime: nil, totalTime: nil, yield: "12", sourceUrl: "https://src/nested_mainEntity")),
+        ("howto_itemlist_text", ["{\"@type\":\"Recipe\",\"name\":\"Mixed steps\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Only name section\",\"itemListElement\":[]},\"plain string step\",{\"@type\":\"HowToStep\",\"itemListElement\":[{\"@type\":\"HowToDirection\",\"text\":\"direction\"}],\"text\":\"Outer text\"}],\"recipeYield\":\"Serves 4 &ndash; 6\"}"], Recipe(name: "Mixed steps", image: nil, ingredients: [], instructions: ["plain string step", "Outer text"], prepTime: nil, cookTime: nil, totalTime: nil, yield: "Serves 4 – 6", sourceUrl: "https://src/howto_itemlist_text")),
+        ("yield_number_float", ["{\"@type\":\"Recipe\",\"name\":\"Floaty\",\"recipeIngredient\":[\"a\"],\"recipeYield\":4.0}"], Recipe(name: "Floaty", image: nil, ingredients: ["a"], instructions: [], prepTime: nil, cookTime: nil, totalTime: nil, yield: "4.0", sourceUrl: "https://src/yield_number_float")),
+        ("yield_null", ["{\"@type\":\"Recipe\",\"name\":\"Nully\",\"recipeIngredient\":[\"a\"],\"recipeYield\":[\"4\", null]}"], Recipe(name: "Nully", image: nil, ingredients: ["a"], instructions: [], prepTime: nil, cookTime: nil, totalTime: nil, yield: "4", sourceUrl: "https://src/yield_null")),
+        ("condensed_section_wprm", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"WebPage\",\"@id\":\"https://r.com/x/\"},{\"@type\":\"Recipe\",\"name\":\"Beef Ragu\",\"recipeIngredient\":[\"1 kg beef\"],\"cookTime\":\"PT0S\",\"prepTime\":\"1 hr 5 mins\",\"totalTime\":\"20 to 25 minutes\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\" Abbreviated <b>Recipe</b> \",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Brown, simmer 3 hours, serve.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Ragu\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Brown the beef.\"},{\"@type\":\"HowToStep\",\"text\":\"Simmer 3 hours.\"}]},{\"@type\":\"HowToSection\",\"name\":\"To serve\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Serve.\"}]}]}]}"], Recipe(name: "Beef Ragu", image: nil, ingredients: ["1 kg beef"], instructions: ["Brown the beef.", "Simmer 3 hours.", "Serve."], prepTime: "1h 5m", cookTime: nil, totalTime: "20 to 25 minutes", yield: nil, sourceUrl: "https://src/condensed_section_wprm")),
+        ("condensed_section_alone", ["{\"@type\":\"Recipe\",\"name\":\"Lone\",\"recipeIngredient\":[\"a\"],\"cookTime\":\"P0D\",\"prepTime\":\"1 hour 30 minutes\",\"totalTime\":\"Overnight\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"TL;DR\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Only step.\"}]}]}"], Recipe(name: "Lone", image: nil, ingredients: ["a"], instructions: ["Only step."], prepTime: "1h 30m", cookTime: nil, totalTime: "Overnight", yield: nil, sourceUrl: "https://src/condensed_section_alone")),
+        ("condensed_section_others_empty", ["{\"@type\":\"Recipe\",\"name\":\"Empty others\",\"recipeIngredient\":[\"a\"],\"prepTime\":\"20 minutes\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Summary\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Kept.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Method\",\"itemListElement\":[]}]}"], Recipe(name: "Empty others", image: nil, ingredients: ["a"], instructions: ["Kept."], prepTime: "20m", cookTime: nil, totalTime: nil, yield: nil, sourceUrl: "https://src/condensed_section_others_empty")),
+    ]
+
+    func testCorpusSize() {
+        XCTAssertGreaterThanOrEqual(Self.ingredients.count, 150)
+        XCTAssertGreaterThanOrEqual(Self.instructions.count, 60)
+    }
+
+    func testScalingMatchesKotlin() {
+        for row in Self.ingredients {
+            for (factor, expected) in zip(Self.factors, row.scaled) {
+                XCTAssertEqual(IngredientScaler.scale(row.line, factor: factor), expected, "scale \(factor): \(row.line)")
+            }
+        }
+    }
+
+    func testConversionMatchesKotlin() {
+        for row in Self.ingredients {
+            XCTAssertEqual(UnitConverter.convert(row.line, system: .asWritten, includeLiquids: true), row.line)
+            for ((system, liquids), expected) in zip(Self.systems, row.converted) {
+                XCTAssertEqual(
+                    UnitConverter.convert(row.line, system: system, includeLiquids: liquids), expected,
+                    "\(system) liquids=\(liquids): \(row.line)"
+                )
+            }
+        }
+    }
+
+    func testScaleThenConvertMatchesKotlin() {
+        for row in Self.ingredients {
+            XCTAssertEqual(
+                UnitConverter.convert(IngredientScaler.scale(row.line, factor: 2), system: .metric, includeLiquids: false),
+                row.scaledMetric, "x2 metric: \(row.line)"
+            )
+            XCTAssertEqual(
+                UnitConverter.convert(IngredientScaler.scale(row.line, factor: 0.5), system: .ounces, includeLiquids: true),
+                row.halfOunces, "x0.5 ounces: \(row.line)"
+            )
+        }
+    }
+
+    func testTemperaturesMatchKotlin() {
+        for row in Self.instructions {
+            XCTAssertEqual(TemperatureConverter.convert(row.line, unit: .asWritten), row.line)
+            XCTAssertEqual(TemperatureConverter.convert(row.line, unit: .celsius), row.celsius, "C: \(row.line)")
+            XCTAssertEqual(TemperatureConverter.convert(row.line, unit: .fahrenheit), row.fahrenheit, "F: \(row.line)")
+        }
+    }
+
+    func testStepTimersMatchKotlin() {
+        for row in Self.instructions {
+            XCTAssertEqual(StepTimers.parse(row.line), row.timer, "timer: \(row.line)")
+        }
+        for (seconds, clock, label) in Self.clocks {
+            XCTAssertEqual(StepTimers.clock(seconds), clock, "clock \(seconds)")
+            XCTAssertEqual(StepTimers.label(seconds), label, "label \(seconds)")
+        }
+    }
+
+    func testFormattingMatchesKotlin() {
+        for (value, fraction, metric) in Self.formats {
+            XCTAssertEqual(IngredientScaler.format(value), fraction, "format \(value)")
+            XCTAssertEqual(IngredientScaler.formatMetric(value), metric, "formatMetric \(value)")
+        }
+    }
+
+    func testStripHtmlMatchesJsoup() {
+        for (raw, expected) in Self.html {
+            XCTAssertEqual(JsonLdRecipeParser.stripHtml(raw), expected, "stripHtml: \(raw)")
+        }
+    }
+
+    func testServingsMatchKotlin() {
+        for (text, parsed, bare) in Self.yields {
+            XCTAssertEqual(Servings.parse(text), parsed, "parse: \(text)")
+            XCTAssertEqual(Servings.bareCount(text), bare, "bareCount: \(text)")
+        }
+    }
+
+    func testUrlCleanerAndInputMatchKotlin() {
+        for (raw, expected) in Self.urls { XCTAssertEqual(UrlCleaner.clean(raw), expected, "clean: \(raw)") }
+        for (raw, expected) in Self.inputs { XCTAssertEqual(UrlInput.normalize(raw), expected, "normalize: \(raw)") }
+    }
+
+    func testJsonLdMatchesKotlin() {
+        for (label, blocks, expected) in Self.jsonLd {
+            XCTAssertEqual(JsonLdRecipeParser.parse(blocks, sourceUrl: "https://src/\(label)"), expected, label)
+        }
+    }
+}

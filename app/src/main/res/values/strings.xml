@@ -1,0 +1,168 @@
+<resources>
+    <string name="app_name">Recipe Clipper</string>
+
+    <!-- Common actions -->
+    <string name="action_back">‹  Back</string>
+    <string name="action_exit">✕  Exit</string>
+    <string name="action_try_again">Try again</string>
+    <string name="action_start_cooking">Start cooking</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_undo">Undo</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_go">Go</string>
+
+    <!-- Recipe screen -->
+    <string name="cd_share_recipe">Share recipe</string>
+    <string name="cd_more_options">More options</string>
+    <string name="delete_recipe_title">Delete \"%1$s\"?</string>
+    <string name="delete_recipe_body">This removes it from history and any lists it\'s in. This can\'t be undone.</string>
+    <string name="label_prep">Prep</string>
+    <string name="label_cook">Cook</string>
+    <string name="label_total">Total</string>
+    <string name="heading_ingredients">Ingredients</string>
+    <string name="heading_instructions">Instructions</string>
+
+    <!-- Errors -->
+    <string name="error_no_recipe_found">Couldn\'t find recipe data on this page. Some sites don\'t tag their recipes in a way this app can read yet.</string>
+    <string name="error_fetch_failed">Couldn\'t load that page (%1$s).</string>
+    <string name="error_blocked">The site didn\'t let the app in (HTTP %1$d). Sites often do this for a moment — try again in a minute.</string>
+    <string name="error_offline">You\'re offline. The recipe will load when you\'re back online.</string>
+    <string name="error_fetch_failed_unknown_detail">unknown error</string>
+    <string name="error_save_failed">Couldn\'t save that recipe.</string>
+    <string name="error_not_saved">That recipe is no longer saved.</string>
+    <string name="error_nothing_to_show">There\'s no recipe to show.</string>
+    <string name="error_invalid_url">That doesn\'t look like a link.</string>
+
+    <!-- Serves / units row -->
+    <string name="label_serves">Serves</string>
+    <string name="label_makes">Makes</string>
+    <string name="cd_decrease_servings">Decrease servings</string>
+    <string name="cd_increase_servings">Increase servings</string>
+    <string name="cd_decrease_amount">Decrease amount</string>
+    <string name="cd_increase_amount">Increase amount</string>
+    <string name="original_servings">Original: %1$s</string>
+    <string name="cd_change_units">Change units</string>
+    <string name="units_menu_header">Units  ·   every recipe</string>
+    <string name="unit_as_written">As written</string>
+    <string name="unit_grams">Grams</string>
+    <string name="unit_ounces">Ounces</string>
+    <string name="unit_metric">Metric</string>
+    <string name="unit_as_written_description">Exactly the units the recipe uses</string>
+    <string name="unit_grams_description">Cups and spoons in grams</string>
+    <string name="unit_ounces_description">Cups and spoons in ounces and pounds</string>
+    <string name="unit_metric_description">Grams and millilitres</string>
+    <string name="convert_liquids_title">Also convert liquids</string>
+    <string name="convert_liquids_description">Milk, water, oil and other pourables</string>
+
+    <plurals name="servings">
+        <item quantity="one">%1$d serving</item>
+        <item quantity="other">%1$d servings</item>
+    </plurals>
+
+    <!-- Cook view -->
+    <string name="cook_step_label">STEP %1$d</string>
+    <string name="cook_position">Step %1$d of %2$d</string>
+    <string name="cook_done_next">Done — next step</string>
+    <string name="cook_done_finish">Done — finish</string>
+    <string name="cook_ingredients_count">  ·  %1$d</string>
+    <string name="cd_hide_ingredients">Hide ingredients</string>
+    <string name="cd_show_ingredients">Show ingredients</string>
+    <string name="cd_go_to_step">Go to step %1$d</string>
+    <string name="timer_start">⏱  Start %1$s timer</string>
+    <string name="timer_running">⏱  %1$s</string>
+    <string name="timers_up">Time\'s up</string>
+
+    <!-- Home screen -->
+    <string name="home_title">Recipe Clipper</string>
+    <string name="home_subtitle">Share a recipe link to this app from your browser, or paste one here.</string>
+    <string name="label_recipe_url">Recipe URL</string>
+    <string name="section_continue_cooking">Continue cooking</string>
+    <string name="section_recently_viewed">Recently viewed</string>
+    <string name="home_empty_hint">Recipes you open will show up here.</string>
+    <string name="nav_history">History</string>
+
+    <!-- History screen -->
+    <string name="history_title">History</string>
+    <string name="history_empty">Nothing yet. Recipes you open are kept here automatically.</string>
+    <string name="history_no_results">No recipes match \"%1$s\".</string>
+    <string name="label_search_history">Search titles and ingredients</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="snackbar_deleted_one">Deleted \"%1$s\"</string>
+    <!-- English only ever uses "other" here (the one-item case is snackbar_deleted_one, which
+         names the recipe instead of counting). Declared as plurals anyway: languages with
+         more than two forms need "2" and "5" to differ. -->
+    <plurals name="snackbar_deleted_many">
+        <item quantity="one">%1$d recipe deleted</item>
+        <item quantity="other">%1$d recipes deleted</item>
+    </plurals>
+
+    <!-- Shared -->
+    <string name="tag_saved">Saved</string>
+
+    <!-- Relative times. TimeAgo decides which of these applies; the words live here. -->
+    <string name="time_just_now">Just now</string>
+    <string name="time_yesterday">Yesterday</string>
+    <!-- A date pattern, not a sentence: SimpleDateFormat symbols. Reorder per language. -->
+    <string name="time_date_format">MMM d</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one">%d min ago</item>
+        <item quantity="other">%d min ago</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="one">%d h ago</item>
+        <item quantity="other">%d h ago</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+
+    <string name="dark_while_cooking_title">Dark while cooking</string>
+    <string name="dark_while_cooking_description">Keep cook mode on an ink screen in light mode</string>
+
+    <!-- Settings screen -->
+    <string name="nav_settings">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_units">Units</string>
+    <string name="settings_section_oven_temperature">Oven temperature</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="temperature_as_written">As written</string>
+    <string name="temperature_as_written_description">Exactly the temperature the recipe uses</string>
+    <string name="temperature_celsius">Celsius (°C)</string>
+    <string name="temperature_celsius_description">Oven temperatures converted to °C</string>
+    <string name="temperature_fahrenheit">Fahrenheit (°F)</string>
+    <string name="temperature_fahrenheit_description">Oven temperatures converted to °F</string>
+
+    <!-- Lists -->
+    <string name="nav_lists">Lists</string>
+    <string name="lists_title">Lists</string>
+    <string name="action_new_list">+  New list</string>
+    <string name="action_create">Create</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_save">Save</string>
+    <string name="label_list_name">List name</string>
+    <string name="list_empty">Nothing in this list yet.</string>
+    <!-- The count under each list name on the Lists screen. Zero gets its own wording
+         because "0 recipes" reads like a tally where "Empty" reads like a state. -->
+    <string name="list_count_empty">Empty</string>
+    <plurals name="list_count">
+        <item quantity="one">%1$d recipe</item>
+        <item quantity="other">%1$d recipes</item>
+    </plurals>
+
+    <!-- Save-to-list sheet -->
+    <string name="save_to_list_title">Save to</string>
+    <string name="cd_save_to_list">Save to a list</string>
+    <string name="cd_in_a_list">Saved to a list</string>
+
+    <!-- List detail -->
+    <string name="rename_list_title">Rename list</string>
+    <string name="delete_list_title">Delete \"%1$s\"?</string>
+    <!-- Deliberately says what does NOT happen: deleting a list is not deleting its recipes,
+         and that is the thing someone would hesitate over. -->
+    <string name="delete_list_body">The list is removed. The recipes in it stay in your history.</string>
+    <string name="action_delete_list">Delete list</string>
+</resources>

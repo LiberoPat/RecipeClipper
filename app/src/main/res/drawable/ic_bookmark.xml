@@ -1,0 +1,21 @@
+<!--
+  Filled bookmark: the recipe is in at least one list.
+
+  Drawn here rather than taken from androidx.compose.material:material-icons-extended, which
+  would be a large new dependency for two glyphs. The core icon set that material3 already
+  brings in has no bookmark, and its only outline/filled pair is the heart — wrong here, since
+  Favorites is one built-in list among several, not what "saved" means.
+
+  Standard Material 24dp geometry. No android:tint here: that attribute would want
+  ?attr/colorControlNormal, an AppCompat theme attribute this app's theme doesn't define, and
+  the Icon composable applies the tint anyway.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M17,3H7c-1.1,0 -1.99,0.9 -1.99,2L5,21l7,-3 7,3V5c0,-1.1 -0.9,-2 -2,-2z" />
+</vector>

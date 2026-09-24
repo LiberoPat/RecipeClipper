@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only the window chrome; everything inside is Compose (see ui/theme/Theme.kt).
+         @color/ground resolves to ink here, so the background/status/nav bar items are
+         already correct via the values/themes.xml style; only the icon appearance flips. -->
+    <style name="Theme.RecipeClipper" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/ground</item>
+        <item name="android:statusBarColor">@color/ground</item>
+        <item name="android:navigationBarColor">@color/ground</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

@@ -1,0 +1,76 @@
+package com.example.recipeclipper.ui.recipe
+
+import com.example.recipeclipper.data.model.ParseError
+import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.model.ServingsScale
+import com.example.recipeclipper.data.model.TemperatureUnit
+import com.example.recipeclipper.data.model.UnitSystem
+
+/** A countdown on one step. [alerted] is set once the "time's up" sound has played. */
+data class StepTimer(
+    val totalSeconds: Int,
+    val remainingSeconds: Int,
+    val running: Boolean,
+    val alerted: Boolean = false
+) {
+    val finished: Boolean get() = remainingSeconds == 0 && !running
+}
+
+/**
+ * Cook mode is a boolean on the recipe screen ([active]), not a destination. Progress is
+ * kept when the user leaves and returns, so it is never lost by a stray tap on Exit.
+ * [currentStep] is what is being cooked now; [doneSteps] are struck off. Tapping any step
+ * moves [currentStep] without touching [doneSteps], so jumping back loses nothing.
+ * (Not persisted yet: a closed app forgets its place, though ticked ingredients survive.)
+ *
+ * Screen state, not domain: unlike [ServingsScale] this stays in `ui/`, since `active`,
+ * `ingredientsExpanded` and `alerted` describe what the screen is doing, not the recipe.
+ */
+data class CookState(
+    val active: Boolean = false,
+    val currentStep: Int = 0,
+    val doneSteps: Set<Int> = emptySet(),
+    val timers: Map<Int, StepTimer> = emptyMap(),
+    val ingredientsExpanded: Boolean = false
+)
+
+sealed class RecipeContent {
+    object Loading : RecipeContent()
+
+    /**
+     * [ingredients] and [instructions] are what the screen shows: the recipe's own lists
+     * with servings scaling and unit/temperature conversion applied. [servings] is null
+     * when the recipe's yield has no usable number, in which case there is nothing to
+     * scale from. [stepTimerSeconds] lines up with the steps: the duration each one states,
+     * or null.
+     */
+    data class Success(
+        val recipe: Recipe,
+        val servings: ServingsScale?,
+        val ingredients: List<String>,
+        val instructions: List<String>,
+        val stepTimerSeconds: List<Int?>
+    ) : RecipeContent()
+
+    data class Error(val error: ParseError) : RecipeContent()
+}
+
+/**
+ * [unitSystem], [convertLiquids] and [temperatureUnit] are the user's global defaults: set
+ * once (now from the Settings screen), applied to every recipe, and saved between sessions.
+ * Servings, by contrast, belong to one recipe. [convertLiquids] only matters for GRAMS and
+ * OUNCES. [temperatureUnit] is independent of [unitSystem] — see [TemperatureUnit]'s doc.
+ * [darkWhileCooking] forces the ink scheme in cook mode even in light mode; off by default,
+ * so cook mode follows the system theme like every other screen.
+ */
+data class RecipeUiState(
+    val content: RecipeContent = RecipeContent.Loading,
+    val checkedIngredients: Set<Int> = emptySet(),
+    val unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
+    val convertLiquids: Boolean = false,
+    val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
+    val darkWhileCooking: Boolean = false,
+    val cook: CookState = CookState(),
+    /** Set once the recipe has been deleted, so the screen can navigate back. */
+    val deleted: Boolean = false
+)

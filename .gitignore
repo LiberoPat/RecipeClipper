@@ -1,0 +1,19 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/build
+/.kotlin
+
+# iOS — the Xcode project is generated from ios/project.yml by XcodeGen
+/ios/RecipeClipper.xcodeproj
+xcuserdata/
+*.xcresult
+DerivedData/
+/ios/build
