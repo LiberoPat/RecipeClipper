@@ -8,7 +8,8 @@ import Foundation
 ///
 /// The body is English by design, like `RecipeShareText`: it is read by the maintainer, not
 /// shown as UI. The link is run through `UrlCleaner` first, so tracking tags never end up in a
-/// public issue.
+/// public issue. The title names the site through `SourceDomain`, the same helper the reading
+/// view uses for its source credit.
 enum SiteReportLink {
 
     static let newIssueUrl = "https://github.com/LiberoPat/RecipeClipper/issues/new"
@@ -18,7 +19,7 @@ enum SiteReportLink {
     /// platform through `AppInfo`, so this stays testable.
     static func issueUrl(link: String, platform: String, appVersion: String) -> String {
         let cleaned = UrlCleaner.clean(link)
-        let title = "Site not supported: \(domain(of: cleaned) ?? cleaned)"
+        let title = "Site not supported: \(SourceDomain.of(cleaned) ?? cleaned)"
         let body = [
             "Recipe Clipper found no recipe on this page.",
             "",
@@ -30,21 +31,6 @@ enum SiteReportLink {
             + "?title=" + percentEncode(title)
             + "&body=" + percentEncode(body)
             + "&labels=" + percentEncode(label)
-    }
-
-    /// The host, lowercased, without one leading "www.". Nil when there is none. Deliberately
-    /// minimal: when the reading view's `SourceDomain` helper lands, this should defer to it.
-    static func domain(of url: String) -> String? {
-        guard let schemeEnd = url.range(of: "://"), schemeEnd.lowerBound > url.startIndex else { return nil }
-        var authority = before(before(before(String(url[schemeEnd.upperBound...]), "/"), "?"), "#")
-        if let at = authority.lastIndex(of: "@") { authority = String(authority[authority.index(after: at)...]) }
-        let host = authority.hasPrefix("[")
-            ? before(authority, "]") + (authority.contains("]") ? "]" : "")
-            : before(authority, ":")
-        var domain = host.lowercased()
-        if domain.hasPrefix("www.") { domain.removeFirst(4) }
-        if domain.hasSuffix(".") { domain.removeLast() }
-        return domain.isEmpty ? nil : domain
     }
 
     /// RFC 3986 percent-encoding of UTF-8 bytes: everything but the unreserved characters
@@ -67,10 +53,5 @@ enum SiteReportLink {
             }
         }
         return out
-    }
-
-    /// Kotlin's `substringBefore`: everything before the first `separator`, or all of it.
-    private static func before(_ string: String, _ separator: Character) -> String {
-        string.firstIndex(of: separator).map { String(string[..<$0]) } ?? string
     }
 }

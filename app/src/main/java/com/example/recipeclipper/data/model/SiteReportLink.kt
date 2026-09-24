@@ -8,7 +8,8 @@ package com.example.recipeclipper.data.model
  *
  * The body is English by design, like [RecipeShareText]: it is read by the maintainer, not
  * shown as UI. The link is run through [UrlCleaner] first, so tracking tags never end up in
- * a public issue.
+ * a public issue. The title names the site through [SourceDomain], the same helper the reading
+ * view uses for its source credit.
  */
 object SiteReportLink {
 
@@ -21,7 +22,7 @@ object SiteReportLink {
      */
     fun issueUrl(link: String, platform: String, appVersion: String): String {
         val cleaned = UrlCleaner.clean(link)
-        val title = "Site not supported: ${domainOf(cleaned) ?: cleaned}"
+        val title = "Site not supported: ${SourceDomain.of(cleaned) ?: cleaned}"
         val body = listOf(
             "Recipe Clipper found no recipe on this page.",
             "",
@@ -33,26 +34,6 @@ object SiteReportLink {
             "?title=" + percentEncode(title) +
             "&body=" + percentEncode(body) +
             "&labels=" + percentEncode(LABEL)
-    }
-
-    /**
-     * The host, lowercased, without one leading "www.". Null when there is none. Deliberately
-     * minimal: when the reading view's `SourceDomain` helper lands, this should defer to it.
-     */
-    internal fun domainOf(url: String): String? {
-        val schemeEnd = url.indexOf("://")
-        if (schemeEnd <= 0) return null
-        val authority = url.substring(schemeEnd + 3)
-            .substringBefore('/')
-            .substringBefore('?')
-            .substringBefore('#')
-            .substringAfterLast('@')
-        val host = if (authority.startsWith("[")) {
-            authority.substringBefore(']') + if (authority.contains(']')) "]" else ""
-        } else {
-            authority.substringBefore(':')
-        }
-        return host.lowercase().removePrefix("www.").removeSuffix(".").ifEmpty { null }
     }
 
     /**

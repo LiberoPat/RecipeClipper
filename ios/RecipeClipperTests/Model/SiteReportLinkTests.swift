@@ -73,13 +73,9 @@ final class SiteReportLinkTests: XCTestCase {
         )
     }
 
-    func testTheTitleNamesTheSite() {
-        XCTAssertEqual(SiteReportLink.domain(of: "https://cooking.nytimes.com/recipes/1"), "cooking.nytimes.com")
-        XCTAssertEqual(SiteReportLink.domain(of: "https://user@www.example.com:8443/x"), "example.com")
-        XCTAssertEqual(SiteReportLink.domain(of: "https://example.com"), "example.com")
-        XCTAssertEqual(SiteReportLink.domain(of: "https://example.com?x=1"), "example.com")
-        XCTAssertNil(SiteReportLink.domain(of: "not a link"))
-        XCTAssertNil(SiteReportLink.domain(of: "https:///path"))
+    func testTheTitleNamesTheSiteThroughSourceDomain() {
+        XCTAssertEqual(params(url("https://cooking.nytimes.com/recipes/1"))["title"], "Site not supported: cooking.nytimes.com")
+        XCTAssertEqual(params(url("https://user@www.example.com:8443/x"))["title"], "Site not supported: example.com")
     }
 
     func testALinkWithNoHostIsNamedInFullRatherThanGuessed() {

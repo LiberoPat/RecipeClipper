@@ -2,7 +2,6 @@ package com.example.recipeclipper.data.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.URI
@@ -74,13 +73,9 @@ class SiteReportLinkTest {
         assertEquals("%21%2A%27%28%29%3B%3A%40%26%3D%2B%24%2C%2F%3F%23%5B%5D%25", SiteReportLink.percentEncode("!*'();:@&=+\$,/?#[]%"))
     }
 
-    @Test fun `the title names the site`() {
-        assertEquals("cooking.nytimes.com", SiteReportLink.domainOf("https://cooking.nytimes.com/recipes/1"))
-        assertEquals("example.com", SiteReportLink.domainOf("https://user@www.example.com:8443/x"))
-        assertEquals("example.com", SiteReportLink.domainOf("https://example.com"))
-        assertEquals("example.com", SiteReportLink.domainOf("https://example.com?x=1"))
-        assertNull(SiteReportLink.domainOf("not a link"))
-        assertNull(SiteReportLink.domainOf("https:///path"))
+    @Test fun `the title names the site, through SourceDomain`() {
+        assertEquals("Site not supported: cooking.nytimes.com", params(url("https://cooking.nytimes.com/recipes/1"))["title"])
+        assertEquals("Site not supported: example.com", params(url("https://user@www.example.com:8443/x"))["title"])
     }
 
     @Test fun `a link with no host is named in full rather than guessed`() {
