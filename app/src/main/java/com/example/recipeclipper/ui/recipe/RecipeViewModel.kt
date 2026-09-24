@@ -9,7 +9,7 @@ import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
-import com.example.recipeclipper.data.model.IngredientScaler
+import com.example.recipeclipper.data.model.IngredientRendering
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
@@ -21,7 +21,6 @@ import com.example.recipeclipper.data.model.SourceDomain
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
-import com.example.recipeclipper.data.model.UnitConverter
 import com.example.recipeclipper.data.model.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -419,9 +418,7 @@ class RecipeViewModel @Inject constructor(
         convertLiquids: Boolean
     ): List<String> {
         val factor = servings?.let { it.target.toDouble() / it.base } ?: 1.0
-        return recipe.ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale(it, factor), system, convertLiquids, separatorFrom = it)
-        }
+        return IngredientRendering.render(recipe.ingredients, factor, system, convertLiquids)
     }
 
     // Instructions aren't scaled (a step can mention any number), but oven temperatures
