@@ -23,9 +23,10 @@ Targets: `RecipeClipper` (app), `RecipeClipperShare` (share extension, embedded 
 `RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest). The extension
 compiles the app's `Data/`, `ShareImport/`, `UI/Theme/` and `UI/Common/Components.swift`
 itself (dual target membership in `project.yml`), so a file added there must build in an
-extension: no `UIApplication.shared`. `Resources/Localizable.xcstrings` is in both targets'
-sources too: `Strings.swift`'s `String(localized:)` reads `Bundle.main`, which inside the
-extension is its own bundle, so the catalog has to be compiled into both, not just the app's.
+extension: no `UIApplication.shared`. `Resources/Localizable.xcstrings` and `../shared/tables`
+are in both targets' sources too: `Strings.swift`'s `String(localized:)` and
+`SharedTables.read` both resolve against `Bundle.main`, which inside the extension is its own
+bundle, so the catalog and the word tables have to be compiled into both, not just the app's.
 `RecipeClipperTests` bundles `../shared/fixtures` (the export files the Android tests read
 too), found at `fixtures/backup/<name>.json` in the test bundle.
 

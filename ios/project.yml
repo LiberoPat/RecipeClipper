@@ -84,6 +84,12 @@ targets:
       # extension is its own bundle, not the app's: the catalog must be compiled into both
       # (#13, #19). Translate any new key in all of es, fr, de, it and pt-BR.
       - path: RecipeClipper/Resources/Localizable.xcstrings
+      # SharedTables.read also resolves against Bundle.main (#9, #14): the fetch the extension
+      # runs (BlogRecipeSource → JsonLdRecipeParser → LanguageWords) needs the same tables/
+      # folder the app bundles, or it traps looking up a language's detector words.
+      - path: ../shared/tables
+        type: folder
+        buildPhase: resources
     entitlements:
       path: RecipeClipperShare/RecipeClipperShare.entitlements
       properties:
