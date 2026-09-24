@@ -49,6 +49,7 @@ struct SettingsScreen: View {
                 }
             }
             .padding(.horizontal, 20)
+            .readableColumn()
             .padding(.top, 4)
             .padding(.bottom, 32)
         }
