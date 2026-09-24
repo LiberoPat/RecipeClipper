@@ -22,6 +22,11 @@ writes through to a `FakeAppPreferences` and updates `SettingsUiState`, and
 state is seeded from preferences on construction; `SettingsUiState` is a
 plain `MutableStateFlow`, not `stateIn(WhileSubscribed(...))`, so unlike
 `HomeViewModelTest`/`HistoryViewModelTest` it needs no `collectEagerly`).
+`FakeAppPreferences` keeps its values in one `MutableStateFlow` (iOS: a
+`CurrentValueSubject`), so writing a value on the fake directly stands for
+Settings changing a default while another screen is open; the
+`RecipeViewModelTest` cases under "A settings change arriving while the
+recipe is open" use that (#24).
 and the three list suites — `SaveToListViewModelTest`, `ListsViewModelTest`
 and `ListDetailViewModelTest`. Those run against `FakeListRepository`, which
 deliberately models membership as real state rather than only recording calls:
@@ -44,7 +49,7 @@ stale, and writes the regenerated file to
 `app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
 (`app/build.gradle.kts` declares the Swift file as a test input, so editing
 it alone reruns the tests). `SiteReportTest` covers the weekly site check's
-report and URL list offline (see CI below). **270 JVM tests pass.**
+report and URL list offline (see CI below).
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
