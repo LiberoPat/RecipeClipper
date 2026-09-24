@@ -206,7 +206,11 @@ or the calls will fail as "not mocked".
 
 ## CI
 
-GitHub Actions, in `.github/workflows/`:
+GitHub Actions, in `.github/workflows/`. On a pull request each platform's job
+runs only when the PR touches its files (Android: `app/`, `shared/`, the Gradle
+files, its workflow and `.github/scripts/`; iOS: `ios/`, `shared/`, its
+workflow); otherwise its check reports as skipped. Pushes to `main` always run
+both.
 
 - **Android** (`android.yml`, check `Android unit tests and lint`), on every
   pull request and push to `main`, on `ubuntu-latest` with JetBrains Runtime
