@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.SharedTables
 import com.example.recipeclipper.data.Connectivity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -212,15 +213,8 @@ internal object JsonLdRecipeParser {
      * section that merely mentions "summary" is untouched. Add a name only once a real site
      * is seen publishing it.
      */
-    private val CONDENSED_SECTION_NAMES = setOf(
-        "abbreviated recipe",
-        "quick version",
-        "short version",
-        "summary",
-        "recipe summary",
-        "tl;dr",
-        "at a glance",
-    )
+    private val CONDENSED_SECTION_NAMES: Set<String> =
+        SharedTables.strings(SharedTables.load("sections").getJSONArray("condensed")).toSet()
 
     private fun isCondensedSection(item: Any?): Boolean =
         item is JSONObject &&
