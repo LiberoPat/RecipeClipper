@@ -78,6 +78,9 @@ final class NotificationTimerScheduler: TimerAlarmScheduler {
 /// Schedules nothing. Used under XCTest and UI-test seeding, so a test run never raises the
 /// notification prompt.
 final class NoOpTimerAlarmScheduler: TimerAlarmScheduler {
+    // Nonisolated so it can be a default argument (evaluated outside the main actor).
+    nonisolated init() {}
+
     func schedule(_ alarm: StepAlarm) {}
     func cancel(recipeId: Int64, step: Int) {}
     func replaceAll(recipeId: Int64, with alarms: [StepAlarm]) {}

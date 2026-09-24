@@ -7,11 +7,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.example.recipeclipper.MainActivity
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.StepAlarm
@@ -42,7 +42,7 @@ object TimerNotifications {
             0,
             Intent(context, MainActivity::class.java)
                 .setAction(ACTION_OPEN_COOK)
-                .setData(Uri.parse("recipeclipper://cook/$recipeId"))
+                .setData("recipeclipper://cook/$recipeId".toUri())
                 .putExtra(EXTRA_RECIPE_ID, recipeId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

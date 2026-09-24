@@ -106,6 +106,7 @@ final class AppDatabase: @unchecked Sendable {
     private static let migrations: [(SQLiteConnection) throws -> Void] = [
         createVersion1,
         addNotes,
+        addCookState,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -175,6 +176,14 @@ final class AppDatabase: @unchecked Sendable {
     /// recipe. Nullable with no default, so every existing recipe simply has no note yet.
     private static func addNotes(_ db: SQLiteConnection) throws {
         try db.execute("ALTER TABLE recipes ADD COLUMN notes TEXT")
+    }
+
+    /// Version 3 (Android's Room version 4, `MIGRATION_3_4`): saved cook progress and the chosen
+    /// servings (#10). Both nullable with no default: an existing recipe has no cook in
+    /// progress and uses its own yield.
+    private static func addCookState(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN cookState TEXT")
+        try db.execute("ALTER TABLE recipes ADD COLUMN servingsTarget INTEGER")
     }
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its

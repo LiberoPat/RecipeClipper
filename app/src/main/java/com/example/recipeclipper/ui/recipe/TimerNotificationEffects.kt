@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.recipeclipper.timers.VisibleRecipe
@@ -37,7 +38,7 @@ internal fun rememberNotificationPrompt(): () -> Unit {
             ) == PackageManager.PERMISSION_GRANTED
             val prefs = context.getSharedPreferences(PROMPT_PREFS, Context.MODE_PRIVATE)
             if (!granted && !prefs.getBoolean(KEY_NOTIFICATIONS_ASKED, false)) {
-                prefs.edit().putBoolean(KEY_NOTIFICATIONS_ASKED, true).apply()
+                prefs.edit { putBoolean(KEY_NOTIFICATIONS_ASKED, true) }
                 launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }

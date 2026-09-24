@@ -21,11 +21,14 @@ struct RecipeRecord: Equatable {
     var lastViewedAt: Int64
     var checkedIngredients: Set<Int> = []   // JSON text, sorted
     var notes: String? = nil                // the user's own note; kept across re-shares
+    var cookState: String? = nil            // CookProgress as JSON (CookStateJSON); kept if steps unchanged
+    var servingsTarget: Int? = nil          // the chosen servings; nil = the recipe's own yield
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
-        totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes
+        totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, cookState, \
+        servingsTarget
         """
 
     init(
@@ -33,7 +36,7 @@ struct RecipeRecord: Equatable {
         ingredients: [String], instructions: [String],
         prepTime: String?, cookTime: String?, totalTime: String?, servings: String?,
         sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = [],
-        notes: String? = nil
+        notes: String? = nil, cookState: String? = nil, servingsTarget: Int? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -49,6 +52,8 @@ struct RecipeRecord: Equatable {
         self.lastViewedAt = lastViewedAt
         self.checkedIngredients = checkedIngredients
         self.notes = notes
+        self.cookState = cookState
+        self.servingsTarget = servingsTarget
     }
 
     init(row: SQLiteRow) {
@@ -66,7 +71,17 @@ struct RecipeRecord: Equatable {
         lastViewedAt = row.int64(11)
         checkedIngredients = JSONColumns.decodeInts(row.string(12))
         notes = row.optionalString(13)
+        cookState = row.optionalString(14)
+        servingsTarget = row.isNull(15) ? nil : row.int(15)
     }
+}
+
+/// A recipe's saved cook progress, with what a timer alert needs to name it (Android's
+/// `CookStateRow`).
+struct CookStateRecord: Equatable {
+    let id: Int64
+    let title: String
+    let cookState: String
 }
 
 /// One row of a list of recipes: everything except the ingredients and steps.

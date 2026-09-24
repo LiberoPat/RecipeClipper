@@ -30,6 +30,10 @@ struct Recipe: Equatable {
     var lastViewedAt: Int64 = 0
     /// The user's own free-text note, or nil. Never parsed, so re-sharing keeps it.
     var notes: String? = nil
+    /// Where the cook stands on this recipe: cook mode, steps done, step timers.
+    var cook = CookProgress()
+    /// The servings the user chose, or nil for the recipe's own yield.
+    var servingsTarget: Int? = nil
 }
 
 /// What a list row (history, home) needs, without loading every ingredient and step.

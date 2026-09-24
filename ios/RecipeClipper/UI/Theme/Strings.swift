@@ -210,4 +210,7 @@ enum Strings {
     /// Deliberately says what does NOT happen: the recipes are not deleted.
     static let deleteListBody = "The list is removed. The recipes in it stay in your history."
     static let deleteList = "Delete list"
+
+    // Step timer notifications (#10)
+    static func timerNotificationTitle(step: Int) -> String { "Time's up: step \(step)" }
 }

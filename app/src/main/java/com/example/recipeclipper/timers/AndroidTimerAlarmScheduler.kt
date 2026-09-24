@@ -4,8 +4,8 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
+import androidx.core.net.toUri
 import com.example.recipeclipper.data.TimerAlarmScheduler
 import com.example.recipeclipper.data.model.StepAlarm
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -75,7 +75,7 @@ class AndroidTimerAlarmScheduler @Inject constructor(
 
     private fun alarmIntent(recipeId: Long, step: Int) =
         Intent(context, TimerAlarmReceiver::class.java)
-            .setData(Uri.parse("recipeclipper://timer/$recipeId/$step"))
+            .setData("recipeclipper://timer/$recipeId/$step".toUri())
 
     companion object {
         const val EXTRA_RECIPE_ID = "recipeId"

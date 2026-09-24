@@ -172,5 +172,5 @@
     <!-- Step timer notifications (#10) -->
     <string name="timer_channel_name">Cook timers</string>
     <string name="timer_channel_description">When a step timer ends while the app is closed or in the background</string>
-    <string name="timer_notification_title">Step %1$d timer is done</string>
+    <string name="timer_notification_title">Time\'s up: step %1$d</string>
 </resources>

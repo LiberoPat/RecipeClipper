@@ -13,7 +13,8 @@ struct StepTimer: Equatable {
 /// Cook mode is a boolean on the recipe screen (`active`), not a destination. Progress is kept
 /// when the user leaves and returns. `currentStep` is what is being cooked now; `doneSteps`
 /// are struck off. Tapping a step moves `currentStep` without touching `doneSteps`.
-/// Screen state, not domain (in memory only, like Android today).
+/// Screen state, not domain. Saved as it changes (`CookProgress`), so a closed or killed app
+/// picks up at the same step, with its timers still counting.
 struct CookState: Equatable {
     var active = false
     var currentStep = 0
