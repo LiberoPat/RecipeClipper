@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.map
 
 /**
  * A hand-written fake, not a mock: a recording fake reads better in a failure message than a
- * verification DSL. Backs history/recent/recently-saved with in-memory `MutableStateFlow`s so
+ * verification DSL. Backs history and recent with in-memory `MutableStateFlow`s so
  * a test can push a list and watch a ViewModel react; [importFromUrl] and [open] return
  * whatever the test stages; [setChecked], [delete] and [restore] record every call so tests
  * can assert on them.
