@@ -29,6 +29,16 @@ class LanguageWords private constructor(
     /** Words that join the ends of a range ("4 to 6"), as one alternation. */
     internal val rangeWords: String = SharedTables.alternation(strings("ranges", "words"))
 
+    /**
+     * False for a language written without spaces between words (Japanese, #16): its unit words
+     * need no word boundary after them ("5分煮る"), and it writes full-width digits, which
+     * [readable] turns half-width. language.json "spaced"; missing means true.
+     */
+    internal val spaced: Boolean = table("language").optBoolean("spaced", true)
+
+    /** [text] as the parsers read it: half-width where the language isn't [spaced], same length. */
+    internal fun readable(text: String): String = if (spaced) text else TrailingAmount.halfWidth(text)
+
     private val compiled = ConcurrentHashMap<Any, Any>()
 
     /**
@@ -43,14 +53,14 @@ class LanguageWords private constructor(
 
     companion object {
         /** Languages with every table: their recipes are read with their own words. */
-        val SHIPPED: List<String> = listOf("en", "de", "es", "fr", "it", "pt")
+        val SHIPPED: List<String> = listOf("en", "de", "es", "fr", "it", "pt", "ja")
 
         /**
          * Languages detection can recognise: every shipped one, plus any with only
          * `language.json` so far, whose recipes are recognised (and shown as written) rather
          * than read with another language's rules.
          */
-        val DETECTED: List<String> = listOf("en", "de", "es", "fr", "it", "pt")
+        val DETECTED: List<String> = listOf("en", "de", "es", "fr", "it", "pt", "ja")
 
         private val loaded: Map<String, LanguageWords> by lazy { SHIPPED.associateWith { LanguageWords(it) } }
 

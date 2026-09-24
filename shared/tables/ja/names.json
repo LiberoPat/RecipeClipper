@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "IngredientName: the ingredient's name in a line, for matching against the pantry (#46). A Japanese line is the name, a space, then the amount (amounts.json amountAfterName), so the name is the text before the last space, with its group markers, asides in brackets ('玉ねぎ(みじん切り)', 'パセリ[乾燥]') and quote marks ('「瀬戸のほんじお®」') dropped. groupMarkers: regex fragments for the marks a site puts before the names of one group of ingredients ('☆醤油', 'A牛乳', '【A】砂糖'), with no space after them, dropped from the start, repeatedly. conjunctions: text that makes the name two ingredients ('砂糖・コンソメ', '蓮根、アボカド'), so it has no name; with no spaces, they are matched anywhere in the name. leadingWords, trailingWords and cutPhrases are for spaced languages and stay empty.",
+  "leadingWords": [],
+  "trailingWords": [],
+  "cutPhrases": [],
+  "conjunctions": ["・", "、", "，", ",", "/", "or", "または"],
+  "groupMarkers": ["[☆★◎●○〇◇◆□■▲△▼▽※＊*・]", "【[^】]*】", "[(（][A-Za-z][)）]", "[A-Z](?![A-Za-z])"]
+}

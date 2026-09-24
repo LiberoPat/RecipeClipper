@@ -32,16 +32,19 @@ object StepTimers {
         val scaler = IngredientScaler.patterns(words)
         private val qty = scaler.qty
 
+        // A spaced language's unit is a whole word; Japanese writes "5分煮る" (#16).
+        private val boundary = if (words.spaced) """\b""" else ""
+
         // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer". A number after
         // a colon is the minutes of a clock time ("1:30 Stunden"), never hours on its own (#15).
         val duration = Regex(
-            """(?<![\d.,/⁄:])($qty)(?:\s*(?:[-–—]|$range)\s*(?:$qty))?\s*-?\s*$unit\b""",
+            """(?<![\d.,/⁄:])($qty)(?:\s*(?:[-–—]|$range)\s*(?:$qty))?\s*-?\s*$unit$boundary""",
             RegexOption.IGNORE_CASE
         )
 
         // "1 hour 30 minutes", "2 minutes and 30 seconds". groups: 1 quantity, 2 unit
         val followOn = Regex(
-            """^\s*(?:$followOnWords\s+)?($qty)\s*-?\s*$unit\b""",
+            """^\s*(?:$followOnWords\s+)?($qty)\s*-?\s*$unit$boundary""",
             RegexOption.IGNORE_CASE
         )
 
@@ -55,10 +58,11 @@ object StepTimers {
     /** [words] null: a language the app has no words for, so no timer. */
     fun parse(step: String, words: LanguageWords? = LanguageWords.ENGLISH): Int? {
         val p = patterns(words ?: return null)
-        val first = p.duration.find(step) ?: return null
+        val text = words.readable(step)
+        val first = p.duration.find(text) ?: return null
         var total = toSeconds(p, first.groupValues[1], first.groupValues[2]) ?: return null
 
-        val rest = step.substring(first.range.last + 1)
+        val rest = text.substring(first.range.last + 1)
         p.followOn.find(rest)?.let { follow ->
             val extra = toSeconds(p, follow.groupValues[1], follow.groupValues[2])
             // Only a smaller unit continues the duration ("1 hour" then "30 minutes").

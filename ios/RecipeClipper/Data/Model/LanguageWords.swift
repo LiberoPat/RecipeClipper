@@ -24,6 +24,7 @@ final class LanguageWords: Equatable, @unchecked Sendable {
     private init(_ language: String) {
         self.language = language
         rangeWords = SharedTables.alternation(SharedTables.strings(SharedTables.load("ranges", language), "words"))
+        spaced = SharedTables.load("language", language)["spaced"] as? Bool ?? true
     }
 
     func table(_ name: String) -> SharedTables.Table { SharedTables.load(name, language) }
@@ -32,6 +33,14 @@ final class LanguageWords: Equatable, @unchecked Sendable {
 
     /// Words that join the ends of a range ("4 to 6"), as one alternation.
     let rangeWords: String
+
+    /// False for a language written without spaces between words (Japanese, #16): its unit words
+    /// need no word boundary after them ("5分煮る"), and it writes full-width digits, which
+    /// `readable` turns half-width. language.json "spaced"; missing means true.
+    let spaced: Bool
+
+    /// `text` as the parsers read it: half-width where the language isn't `spaced`, same length.
+    func readable(_ text: String) -> String { spaced ? text : TrailingAmount.halfWidth(text) }
 
     private let lock = NSLock()
     private var compiled: [ObjectIdentifier: Any] = [:]
@@ -55,12 +64,12 @@ final class LanguageWords: Equatable, @unchecked Sendable {
     }
 
     /// Languages with every table: their recipes are read with their own words.
-    static let shipped = ["en", "de", "es", "fr", "it", "pt"]
+    static let shipped = ["en", "de", "es", "fr", "it", "pt", "ja"]
 
     /// Languages detection can recognise: every shipped one, plus any with only `language.json`
     /// so far, whose recipes are recognised (and shown as written) rather than read with another
     /// language's rules.
-    static let detected = ["en", "de", "es", "fr", "it", "pt"]
+    static let detected = ["en", "de", "es", "fr", "it", "pt", "ja"]
 
     private static let detectors: [(language: String, words: JRegex)] = detected.map { language in
         let words = SharedTables.strings(SharedTables.load("language", language), "detect")

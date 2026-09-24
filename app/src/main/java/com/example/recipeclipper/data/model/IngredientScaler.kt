@@ -64,6 +64,9 @@ object IngredientScaler {
         /** "1.500 g" is 1500 g (amounts.json "thousandsDot"). */
         val thousandsDot: Boolean = amounts.getBoolean("thousandsDot")
 
+        /** Lines are "name amount" ("醤油 大さじ1"), read by [TrailingAmount] (amounts.json "amountAfterName"). */
+        val amountAfterName: Boolean = amounts.optBoolean("amountAfterName", false)
+
         /** A quantity, in this language's words ("2 and 1/2"). No capturing group. */
         val qty = qtyPattern(SharedTables.alternation(words.strings("amounts", "mixedJoiners")), thousandsDot)
 
@@ -135,6 +138,7 @@ object IngredientScaler {
     fun scale(line: String, factor: Double, words: LanguageWords? = LanguageWords.ENGLISH): String {
         if (factor == 1.0 || words == null) return line
         val p = patterns(words)
+        if (p.amountAfterName) return TrailingAmount.scale(line, factor, words)
         if (p.unreadable(line)) return line
         val match = p.leading.find(line) ?: return line
         val rest = line.substring(match.range.last + 1)
