@@ -55,6 +55,9 @@ protocol RecipeRepository: AnyObject {
 
     func setChecked(id: Int64, checked: Set<Int>) async
 
+    /// Saves the user's note on a recipe. A blank note is stored as no note.
+    func setNotes(id: Int64, notes: String) async
+
     /// Hard delete; memberships go with it. Nil if it was already gone.
     func delete(id: Int64) async -> DeletedRecipe?
 

@@ -22,7 +22,9 @@ data class Recipe(
     val id: Long = 0,
     /** Indexes into [ingredients] the user has ticked off. Persisted so cooking can resume. */
     val checkedIngredients: Set<Int> = emptySet(),
-    val lastViewedAt: Long = 0
+    val lastViewedAt: Long = 0,
+    /** The user's own free-text note, or null. Never parsed, so re-sharing keeps it. */
+    val notes: String? = null
 )
 
 /** What a list row (history, home) needs, without loading every ingredient and step. */

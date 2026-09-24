@@ -1,6 +1,7 @@
 package com.example.recipeclipper.ui.recipe
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModelStore
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.IngredientScaler
@@ -49,7 +50,8 @@ class RecipeViewModelTest {
             "Bake for 10 minutes.",
             "Cool completely."
         ),
-        checkedIngredients: Set<Int> = emptySet()
+        checkedIngredients: Set<Int> = emptySet(),
+        notes: String? = null
     ) = Recipe(
         name = "Test Recipe",
         image = null,
@@ -61,7 +63,8 @@ class RecipeViewModelTest {
         yield = yield,
         sourceUrl = "https://example.com/recipe",
         id = id,
-        checkedIngredients = checkedIngredients
+        checkedIngredients = checkedIngredients,
+        notes = notes
     )
 
     // The [Clock] reads the same virtual clock the test's own `advanceTimeBy`/`advanceUntilIdle`
@@ -222,6 +225,94 @@ class RecipeViewModelTest {
             assertEquals(setOf(0), vm.uiState.value.checkedIngredients)
             assertEquals(listOf(5L to setOf(0)), repository.setCheckedCalls)
         }
+
+    // --- Notes ---
+
+    @Test fun `the note is seeded from the loaded recipe`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(notes = "Half the sugar") }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        assertEquals("Half the sugar", vm.uiState.value.notes)
+    }
+
+    @Test fun `a recipe without a note shows an empty one`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(notes = null) }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        assertEquals("", vm.uiState.value.notes)
+    }
+
+    @Test fun `typing shows at once and saves once, after the pause`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L) }
+            val vm = buildViewModel(byId(5L), repository)
+            advanceUntilIdle()
+
+            vm.onNotesChange("N")
+            vm.onNotesChange("Ne")
+            advanceTimeBy(RecipeViewModel.NOTES_SAVE_DELAY_MS - 1)
+            vm.onNotesChange("Needs 10 more minutes")
+
+            assertEquals("Needs 10 more minutes", vm.uiState.value.notes)
+            assertEquals(emptyList<Pair<Long, String>>(), repository.setNotesCalls)
+
+            advanceTimeBy(RecipeViewModel.NOTES_SAVE_DELAY_MS + 1)
+            assertEquals(listOf(5L to "Needs 10 more minutes"), repository.setNotesCalls)
+        }
+
+    @Test fun `clearing the note saves the empty text`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L, notes = "Old") }
+        val vm = buildViewModel(byId(5L), repository)
+        advanceUntilIdle()
+
+        vm.onNotesChange("")
+        advanceUntilIdle()
+
+        assertEquals("", vm.uiState.value.notes)
+        assertEquals(listOf(5L to ""), repository.setNotesCalls)
+    }
+
+    @Test fun `leaving the screen mid-pause still saves the note`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L) }
+        val store = ViewModelStore()
+        val vm = buildViewModel(byId(5L), repository)
+        store.put("recipe", vm)
+        advanceUntilIdle()
+
+        vm.onNotesChange("Less salt")
+        store.clear() // what leaving the screen does; viewModelScope is cancelled first
+        advanceUntilIdle()
+
+        assertEquals(listOf(5L to "Less salt"), repository.setNotesCalls)
+    }
+
+    @Test fun `a note saved by the pause is not written again on leaving`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L) }
+            val store = ViewModelStore()
+            val vm = buildViewModel(byId(5L), repository)
+            store.put("recipe", vm)
+            advanceUntilIdle()
+
+            vm.onNotesChange("Less salt")
+            advanceUntilIdle()
+            store.clear()
+            advanceUntilIdle()
+
+            assertEquals(listOf(5L to "Less salt"), repository.setNotesCalls)
+        }
+
+    @Test fun `no note is written before the recipe has loaded`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L) }
+        val vm = buildViewModel(byId(5L), repository)
+
+        vm.onNotesChange("Too early")
+        advanceUntilIdle()
+
+        assertEquals(emptyList<Pair<Long, String>>(), repository.setNotesCalls)
+    }
 
     // --- Servings ---
 

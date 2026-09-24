@@ -28,6 +28,8 @@ struct Recipe: Equatable {
     /// Indexes into `ingredients` the user has ticked off. Persisted so cooking can resume.
     var checkedIngredients: Set<Int> = []
     var lastViewedAt: Int64 = 0
+    /// The user's own free-text note, or nil. Never parsed, so re-sharing keeps it.
+    var notes: String? = nil
 }
 
 /// What a list row (history, home) needs, without loading every ingredient and step.

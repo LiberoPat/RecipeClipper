@@ -24,6 +24,8 @@
     <string name="label_total">Total</string>
     <string name="heading_ingredients">Ingredients</string>
     <string name="heading_instructions">Instructions</string>
+    <string name="heading_notes">Notes</string>
+    <string name="notes_placeholder">Add a note</string>
 
     <!-- Errors -->
     <string name="error_no_recipe_found">Couldn\'t find recipe data on this page. Some sites don\'t tag their recipes in a way this app can read yet.</string>

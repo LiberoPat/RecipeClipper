@@ -38,7 +38,7 @@ call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
-**257 JVM tests pass.**
+**266 JVM tests pass.**
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -60,12 +60,18 @@ regressed to `isBuiltIn = 0` would fail rather than quietly return.
 version-1 database from the exported schema and run `MIGRATION_1_2` against
 it: Breakfast and Snacks arrive, an existing recipe keeps its title,
 ingredients, `lastViewedAt` and list membership, and a user-created list keeps
-its place after the seeded block. This is what makes "never use destructive
-migration" checkable rather than an intention.
+its place after the seeded block. `MIGRATION_2_3` (the `notes` column, #27)
+is run against a real version-2 database the same way: the recipe keeps its
+content, ticks and membership, has no note, and a note written afterwards
+survives a re-share; a version-1 file also goes to 3 in one open. This is
+what makes "never use destructive migration" checkable rather than an
+intention.
 
 **All 89 device tests have been run on an emulator and pass**: 26
 `RecipeDaoTest`, 22 `ListDaoTest`, 3 `MigrationTest`, and 38 Compose UI tests
 (see below).
+The four added with notes (#27: two in `RecipeDaoTest`, two in
+`MigrationTest`) compile but have not yet been run on a device.
 
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
 `MigrationTestHelper` reads the exported JSON from the test APK's **assets**,

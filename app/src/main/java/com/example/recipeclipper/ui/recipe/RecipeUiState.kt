@@ -66,6 +66,8 @@ sealed class RecipeContent {
 data class RecipeUiState(
     val content: RecipeContent = RecipeContent.Loading,
     val checkedIngredients: Set<Int> = emptySet(),
+    /** The user's note as typed; empty when there is none. Saved by the ViewModel. */
+    val notes: String = "",
     val unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,

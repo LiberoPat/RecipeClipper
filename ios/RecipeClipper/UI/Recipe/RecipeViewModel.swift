@@ -7,6 +7,8 @@ import Observation
 @Observable
 final class RecipeViewModel {
     static let tick = Duration.milliseconds(250)
+    /// How long typing must pause before the note is written. Android's NOTES_SAVE_DELAY_MS.
+    static let notesSaveDelay = Duration.milliseconds(500)
 
     private(set) var uiState: RecipeUiState
 
@@ -24,6 +26,9 @@ final class RecipeViewModel {
     // Step index -> wall-clock time (ms) its timer ends. Only running timers are in here.
     @ObservationIgnored private var deadlines: [Int: Int64] = [:]
     @ObservationIgnored private var tickTask: Task<Void, Never>?
+    // The note as typed but not yet written (with its recipe), and the debounced write.
+    @ObservationIgnored private var pendingNotes: (id: Int64, text: String)?
+    @ObservationIgnored private var notesTask: Task<Void, Never>?
 
     init(
         recipeId: Int64?,
@@ -56,6 +61,11 @@ final class RecipeViewModel {
         loadTask?.cancel()
         tickTask?.cancel()
         reconnectTask?.cancel()
+        notesTask?.cancel()
+        // A note typed just before leaving is still written: one short write, owned by no one.
+        if let pending = pendingNotes {
+            Task { [repository] in await repository.setNotes(id: pending.id, notes: pending.text) }
+        }
     }
 
     // MARK: Loading
@@ -87,6 +97,7 @@ final class RecipeViewModel {
             case .success(let recipe):
                 uiState.content = .success(successContent(recipe))
                 uiState.checkedIngredients = recipe.checkedIngredients
+                uiState.notes = recipe.notes ?? ""
             case .error(let error):
                 uiState.content = .error(error)
                 if error.reloadsOnReconnect { reloadOnReconnect() }
@@ -124,6 +135,27 @@ final class RecipeViewModel {
         // Saved as they change, so closing the app mid-cook doesn't lose the ticks.
         guard let id = uiState.content.success?.recipe.id else { return }
         Task { [repository] in await repository.setChecked(id: id, checked: next) }
+    }
+
+    /// The user's note, edited in place. The screen shows every keystroke at once; the write
+    /// waits until typing pauses for `notesSaveDelay`, so a sentence is one write rather than
+    /// one per letter. Leaving the screen before then still saves it (see `deinit`).
+    func onNotesChange(_ text: String) {
+        uiState.notes = text
+        guard let id = uiState.content.success?.recipe.id else { return }
+        pendingNotes = (id, text)
+        notesTask?.cancel()
+        // Weak across the sleep, so a popped screen still lets its ViewModel (and deinit) go.
+        notesTask = Task { [weak self, sleep] in
+            do { try await sleep(Self.notesSaveDelay) } catch { return }
+            await self?.flushNotes()
+        }
+    }
+
+    private func flushNotes() async {
+        guard let pending = pendingNotes else { return }
+        pendingNotes = nil
+        await repository.setNotes(id: pending.id, notes: pending.text)
     }
 
     /// The recipe as currently on screen — scaled servings, converted units — formatted for

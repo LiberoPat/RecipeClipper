@@ -50,6 +50,8 @@ enum RecipeContent: Equatable {
 struct RecipeUiState: Equatable {
     var content: RecipeContent = .loading
     var checkedIngredients: Set<Int> = []
+    /// The user's note as typed; empty when there is none. Saved by the ViewModel.
+    var notes = ""
     var unitSystem: UnitSystem = .asWritten
     var convertLiquids = false
     var temperatureUnit: TemperatureUnit = .asWritten

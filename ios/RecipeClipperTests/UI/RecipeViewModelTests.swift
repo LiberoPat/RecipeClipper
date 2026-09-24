@@ -14,12 +14,14 @@ final class RecipeViewModelTests: XCTestCase {
             "Bake for 10 minutes.",
             "Cool completely."
         ],
-        checkedIngredients: Set<Int> = []
+        checkedIngredients: Set<Int> = [],
+        notes: String? = nil
     ) -> Recipe {
         Recipe(
             name: "Test Recipe", image: nil, ingredients: ingredients, instructions: instructions,
             prepTime: "10m", cookTime: "20m", totalTime: "30m", yield: yield,
-            sourceUrl: "https://example.com/recipe", id: id, checkedIngredients: checkedIngredients
+            sourceUrl: "https://example.com/recipe", id: id, checkedIngredients: checkedIngredients,
+            notes: notes
         )
     }
 
@@ -136,6 +138,86 @@ final class RecipeViewModelTests: XCTestCase {
         vm.onIngredientChecked(0, false)
         await settleMain()
         XCTAssertEqual(vm.uiState.checkedIngredients, [])
+    }
+
+    // MARK: Notes
+
+    func testTheNoteIsSeededFromTheLoadedRecipe() async {
+        let (vm, _) = await loaded(testRecipe(notes: "Half the sugar"))
+        XCTAssertEqual(vm.uiState.notes, "Half the sugar")
+    }
+
+    func testARecipeWithoutANoteShowsAnEmptyOne() async {
+        let (vm, _) = await loaded(testRecipe(notes: nil))
+        XCTAssertEqual(vm.uiState.notes, "")
+    }
+
+    func testTypingShowsAtOnceAndSavesOnceAfterThePause() async {
+        let clock = TestClock()
+        let (vm, repository) = await loaded(testRecipe(id: 5), clock: clock)
+
+        vm.onNotesChange("N")
+        vm.onNotesChange("Ne")
+        await clock.advance(by: 499)
+        vm.onNotesChange("Needs 10 more minutes")
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.notes, "Needs 10 more minutes")
+        XCTAssertTrue(repository.setNotesCalls.isEmpty)
+
+        await clock.advance(by: 501)
+        XCTAssertEqual(repository.setNotesCalls.map(\.id), [5])
+        XCTAssertEqual(repository.setNotesCalls.map(\.notes), ["Needs 10 more minutes"])
+    }
+
+    func testClearingTheNoteSavesTheEmptyText() async {
+        let clock = TestClock()
+        let (vm, repository) = await loaded(testRecipe(id: 5, notes: "Old"), clock: clock)
+
+        vm.onNotesChange("")
+        await clock.runUntilIdle()
+
+        XCTAssertEqual(vm.uiState.notes, "")
+        XCTAssertEqual(repository.setNotesCalls.map(\.notes), [""])
+    }
+
+    func testLeavingTheScreenMidPauseStillSavesTheNote() async {
+        let repository = repository(testRecipe(id: 5))
+        var vm: RecipeViewModel? = makeViewModel(id: 5, repository: repository)
+        weak var weakVm = vm
+        await settleMain()
+
+        vm?.onNotesChange("Less salt")
+        vm = nil // the screen is popped mid-pause
+        await settleMain()
+
+        XCTAssertNil(weakVm, "a pending note must not keep the ViewModel alive")
+        XCTAssertEqual(repository.setNotesCalls.map(\.notes), ["Less salt"])
+    }
+
+    func testANoteSavedByThePauseIsNotWrittenAgainOnLeaving() async {
+        let clock = TestClock()
+        let repository = repository(testRecipe(id: 5))
+        var vm: RecipeViewModel? = makeViewModel(id: 5, repository: repository, clock: clock)
+        await settleMain()
+
+        vm?.onNotesChange("Less salt")
+        await clock.runUntilIdle()
+        vm = nil
+        await settleMain()
+
+        XCTAssertEqual(repository.setNotesCalls.map(\.notes), ["Less salt"])
+    }
+
+    func testNoNoteIsWrittenBeforeTheRecipeHasLoaded() async {
+        let clock = TestClock()
+        let repository = repository(testRecipe(id: 5))
+        let vm = makeViewModel(id: 5, repository: repository, clock: clock)
+
+        vm.onNotesChange("Too early")
+        await clock.runUntilIdle()
+
+        XCTAssertTrue(repository.setNotesCalls.isEmpty)
     }
 
     // MARK: Servings
