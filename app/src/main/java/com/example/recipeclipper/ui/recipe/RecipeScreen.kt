@@ -106,7 +106,9 @@ fun RecipeScreen(
     // not a direct Intent, so a UI test can supply its own and see the link without leaving.
     val uriHandler = LocalUriHandler.current
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
-    val actions = remember(viewModel, onBack, context, uriHandler) {
+    // The first timer started asks for permission to post its "time's up" notification.
+    val askForNotifications = rememberNotificationPrompt()
+    val actions = remember(viewModel, onBack, context, uriHandler, askForNotifications) {
         RecipeActions(
             onBack = onBack,
             onRetry = viewModel::onRetry,
@@ -131,7 +133,10 @@ fun RecipeScreen(
             onStepSelected = viewModel::onStepSelected,
             onStepDone = viewModel::onStepDone,
             onIngredientsToggle = viewModel::onIngredientsToggle,
-            onTimerStart = viewModel::onTimerStart,
+            onTimerStart = { step ->
+                askForNotifications()
+                viewModel.onTimerStart(step)
+            },
             onTimerToggle = viewModel::onTimerToggle,
             onTimerReset = viewModel::onTimerReset,
             onTimerAlerted = viewModel::onTimerAlerted,
@@ -175,6 +180,8 @@ fun RecipeScreen(
     LaunchedEffect(recipeId) {
         if (recipeId != null) saveViewModel.setRecipe(recipeId)
     }
+    // While this recipe is on screen its timers beep here instead of posting a notification.
+    MarkRecipeVisible(recipeId)
 
     val cooking = content is RecipeContent.Success && state.cook.active
 

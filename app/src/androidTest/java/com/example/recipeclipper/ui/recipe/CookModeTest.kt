@@ -1,5 +1,7 @@
 package com.example.recipeclipper.ui.recipe
 
+import android.Manifest
+import android.os.Build
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -7,8 +9,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,6 +30,17 @@ class CookModeTest {
 
     @get:Rule
     val compose = createComposeRule()
+
+    // Starting a timer asks for POST_NOTIFICATIONS on API 33+ (#10). Granted up front, so the
+    // system dialog never covers the screen under test.
+    @Before
+    fun grantNotifications() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.uiAutomation.grantRuntimePermission(
+            instrumentation.targetContext.packageName, Manifest.permission.POST_NOTIFICATIONS
+        )
+    }
 
     private val fixture = RecipeScreenFixture()
 
