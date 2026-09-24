@@ -13,6 +13,7 @@ import Foundation
 ///   empty     no recipes; only the six seeded lists
 ///   many      "Recipe 1" (newest) … "Recipe 10" (oldest), in no list
 ///   standard  four recipes, some in lists — see `seedStandard`
+///   cook      one recipe with timed steps, for cook mode — see `seedCook`
 enum UITestSeeding {
     static let flag = "-uiTestSeed"
     static let keepPrefsFlag = "-uiTestKeepPrefs"
@@ -64,6 +65,7 @@ enum UITestSeeding {
                     switch scenario {
                     case "empty": break
                     case "many": try seedMany(conn, now: now)
+                    case "cook": try seedCook(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
                 }
@@ -92,6 +94,24 @@ enum UITestSeeding {
             try dao.insert(recipe("Recipe \(n)", slug: "recipe-\(n)", viewedAt: now - Int64(n) * minute,
                                   ingredients: ["1 cup water"]))
         }
+    }
+
+    /// One recipe for cook mode, "Weeknight Chili", in no list. Four steps: two state a time
+    /// ("20 minutes" for a timer to start, pause and reset; "3 seconds" for one to finish
+    /// while the test waits, since XCUITest can't move the app's clock) and two don't.
+    private static func seedCook(_ conn: SQLiteConnection, now: Int64) throws {
+        try RecipeDao(db: conn).insert(RecipeRecord(
+            sourceUrl: "https://example.com/chili", title: "Weeknight Chili", imageUrl: nil,
+            ingredients: ["2 cups flour", "1 cup milk"],
+            instructions: [
+                "Brown the beef in a large pot.",
+                "Simmer for 20 minutes.",
+                "Rest off the heat for 3 seconds.",
+                "Serve with rice."
+            ],
+            prepTime: "10m", cookTime: "20m", totalTime: "30m", servings: "4 servings",
+            sourceType: SourceType.blog.rawValue, lastViewedAt: now - minute
+        ))
     }
 
     /// Viewed newest first: Chicken Adobo, Spaghetti Carbonara, Banana Bread, Miso Soup.

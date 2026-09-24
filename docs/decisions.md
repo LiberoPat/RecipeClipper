@@ -946,8 +946,8 @@ Multiplatform, which would cost iOS its no-dependency property and need
 multiplatform replacements for Jsoup and org.json), and move the data, not the
 code. The tables are JSON under `shared/tables/`: `url.json` (tracking
 parameters) and, per language, `en/densities.json`, `units.json`,
-`timers.json`, `temperature.json`, `yield.json`, `ranges.json` and
-`sections.json`. Each has a `schemaVersion` and an `about` saying how the code
+`timers.json`, `temperature.json`, `yield.json`, `ranges.json`,
+`sections.json` and (since #48) `names.json`. Each has a `schemaVersion` and an `about` saying how the code
 reads it.
 
 - Android adds `shared/` as a `main` Java resource directory, so the pure model
@@ -962,3 +962,34 @@ reads it.
   covered; `DifferentialCorpusTest(s)` passed unchanged across the move.
 - Still in code, as English: `IngredientScaler`'s "plus"/"and" continuation,
   and the words the app writes out (e.g. `StepTimers.label`'s "hr" and "min").
+
+## Ingredient names and shared rendering (#48)
+
+The first building blocks of the meal plan, pantry and groceries (#46), pure
+and on both platforms.
+
+- `IngredientName.of(line)` gives the ingredient's name in a line
+  ("2 large eggs, beaten" is "eggs"), or null when it can't tell. It reuses
+  the parsing that already reads amounts: `IngredientScaler.LEADING` and
+  `NOT_AN_AMOUNT`, the converter's unit, continuation ("plus 2 tbsp") and
+  slash-measure regexes, and the density table's `stripParentheses` and
+  `headPhrase`, made `internal` with no change in behaviour. Its own English
+  words (sizes and containers dropped from the front, preparation words from
+  the end, the phrases a name ends before, and the conjunctions) are in
+  `shared/tables/en/names.json`.
+- It answers "which ingredient", never "how much", and prefers no name to a
+  wrong one: a heading, a leftover digit ("juice of 1 lemon") or two
+  ingredients ("salt and pepper", "butter or margarine") give null, unless the
+  conjunction is inside a density-table alias ("half and half"). There's no
+  singulariser: "eggs" and "egg" are different names.
+- `IngredientName.matches(a, b)` is the density table's end-of-name rule
+  (`IngredientDensities.endsWithName`, now shared with `find`): "unsalted
+  butter" matches "butter", "butter beans" doesn't. Both sides go through
+  `headPhrase`, so a typed "Butter" works.
+- `IngredientRendering.render(lines, factor, system, convertLiquids)` is
+  `RecipeViewModel`'s old private `render`, moved unchanged (scale, then
+  convert with the original line's decimal separator), so the week's
+  shopping view (#46) shows lines exactly as the reading view does.
+- The differential corpus pins both: every `Ing` row now ends with the
+  Kotlin's `IngredientName.of`, and its rendered columns are computed through
+  `IngredientRendering`.

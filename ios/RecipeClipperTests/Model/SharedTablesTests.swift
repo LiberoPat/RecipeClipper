@@ -4,7 +4,7 @@ import XCTest
 /// Every shared table (#9) loads from the app bundle, as the app loads it, and is well formed.
 final class SharedTablesTests: XCTestCase {
 
-    private let languageTables = ["densities", "units", "timers", "temperature", "yield", "ranges", "sections"]
+    private let languageTables = ["densities", "units", "timers", "temperature", "yield", "ranges", "sections", "names"]
 
     func testEveryBundledTableIsCoveredHere() throws {
         let dir = try XCTUnwrap(Bundle.main.url(forResource: "tables/\(SharedTables.language)", withExtension: nil))
