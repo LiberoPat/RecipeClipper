@@ -60,6 +60,22 @@ final class StaticConnectivity: Connectivity {
     }
 }
 
+/// The platform and app version, as a site report states them (Android's AppInfo). A seam so
+/// RecipeViewModel never reads the bundle or the OS and a test can pin the values;
+/// `BundleAppInfo` is the real one.
+protocol AppInfo {
+    /// e.g. "iOS 17.5".
+    var platform: String { get }
+    /// e.g. "1.0 (1)": marketing version, then build number.
+    var appVersion: String { get }
+}
+
+/// Fixed values: the default where the real ones don't matter (previews, and tests).
+struct StaticAppInfo: AppInfo {
+    var platform = "iOS 17.0"
+    var appVersion = "1.0 (1)"
+}
+
 /// Fetches, parses and persists recipes.
 protocol RecipeRepository: AnyObject {
     /// The share-target path: clean the link, fetch, parse, then persist (upsert + history
@@ -71,6 +87,9 @@ protocol RecipeRepository: AnyObject {
     func open(id: Int64) async -> Recipe?
 
     func setChecked(id: Int64, checked: Set<Int>) async
+
+    /// Saves the user's note on a recipe. A blank note is stored as no note.
+    func setNotes(id: Int64, notes: String) async
 
     /// Hard delete; memberships go with it. Nil if it was already gone.
     func delete(id: Int64) async -> DeletedRecipe?
