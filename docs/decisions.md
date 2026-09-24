@@ -902,6 +902,41 @@ The fix is issue #10.
   a permanent notification plus a `FOREGROUND_SERVICE_*` type declaration
   that Play reviews.
 
+## Export and import (#26)
+
+The owner's decision: import **merges, never replaces**, and deletes nothing.
+
+- **One file, versioned.** `format: "recipe-clipper-backup"`, `formatVersion: 1`,
+  then `recipes`, `lists` and `memberships`. The canonical example is
+  `shared/fixtures/backup/backup-v1.json`; both platforms' tests decode it and
+  plan the same merge from it. Readers ignore keys they don't know, so a later
+  feature (the meal plan, #46; sync, #53) adds a section or a field without a
+  version bump. Bump only when an older app would *misread* a newer file; an
+  older app refuses a newer version (`NewerVersion`) rather than half-import it.
+- **Stable ids.** Recipes and lists got a `uid` column (Room 4 / iOS
+  `user_version` 3, backfilled with random UUIDs), and the file names records by
+  it; memberships refer to uids, never row ids. A re-share keeps a recipe's uid
+  and a rename keeps a list's, so a list renamed on one phone still finds itself
+  on the other, and sync can build on the same identity.
+- **What's left out:** cached photos (only `imageUrl`), and cook progress
+  (current step, timers, chosen servings), which is a moment in one kitchen
+  rather than part of the recipe, even once #10 persists it.
+- **Merge rules** (`BackupMerger`, pure, the same on both platforms):
+  recipes match by the cleaned `sourceUrl`; a recipe already here keeps its
+  content, ticks and last view, gains the imported memberships, and gains the
+  imported note only if it has none. Favorites maps to Favorites by
+  `isFavorites`, never by name, and a user list called "Favorites" stays a user
+  list. Other lists join the same uid, else the same trimmed, case-insensitive
+  name, else they're created after the existing lists. Memberships are
+  insert-or-ignore, so an existing `addedAt` stands.
+- **History cap: free slots, not a cull.** The issue suggested running the
+  normal cull after import, but that could delete the user's own older history,
+  which "never delete" forbids. So listed recipes always come in, and unlisted
+  ones fill only the places free under 50 (most recently viewed first); the rest
+  are skipped and counted in the summary.
+- **One transaction.** Any failure (a bad file, a database error) writes
+  nothing, and the Settings screen shows the cause.
+
 ## Shared tables, native logic (#9)
 
 Every feature was built twice and kept at parity by hand, and the language
