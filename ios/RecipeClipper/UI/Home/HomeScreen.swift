@@ -94,6 +94,7 @@ struct HomeScreen: View {
                 .padding(.top, 20)
             }
             .padding(.horizontal, 20)
+            .readableColumn()
             .padding(.top, 12)
             .padding(.bottom, 32)
         }
