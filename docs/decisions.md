@@ -1127,7 +1127,6 @@ lines in the differential corpus, with a `lang:` argument.
   French space thousands ("1 500 g", not seen on a site yet, would scale as
   "1").
 
-
 ## Editing a recipe, and typing one in (#29)
 
 - **Owner's decision:** an edited recipe is never auto-refreshed. Re-sharing
