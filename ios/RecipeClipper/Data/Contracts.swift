@@ -83,6 +83,12 @@ protocol RecipeRepository: AnyObject {
     /// (and its lastViewedAt bumped), so anything opened once still opens offline.
     func importFromUrl(_ sharedUrl: String) async -> ParseResult
 
+    /// Saves a recipe the user clipped by hand from a page with no recipe data (#37), keyed on
+    /// the cleaned `sourceUrl` like an import: a link seen before keeps its id, note and list
+    /// membership, and its content is replaced by the clip. Counts as a view. Returns the saved
+    /// recipe, or `.error(.saveFailed)`.
+    func saveClip(_ recipe: Recipe) async -> ParseResult
+
     /// Opens a recipe from history, a list or home. Counts as a view. Nil if it's gone.
     func open(id: Int64) async -> Recipe?
 

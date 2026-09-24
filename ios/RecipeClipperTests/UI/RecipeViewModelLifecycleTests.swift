@@ -24,6 +24,7 @@ private final class GatedRecipeRepository: RecipeRepository {
         return result
     }
 
+    func saveClip(_ recipe: Recipe) async -> ParseResult { .error(.saveFailed) }
     @MainActor func open(id: Int64) async -> Recipe? {
         if case .success(let recipe) = await importFromUrl("") { return recipe }
         return nil

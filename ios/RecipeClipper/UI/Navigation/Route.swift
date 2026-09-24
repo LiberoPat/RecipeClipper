@@ -2,7 +2,7 @@ import Foundation
 
 /// Every destination above Home. Mirrors Android's nav graph: `recipe/{recipeId}`,
 /// `recipe/import?url={url}` (the share target), `history`, `settings` (from Home's gear), `lists`,
-/// `lists/{listId}`.
+/// `lists/{listId}`, `clip?url={url}`.
 enum Route: Hashable {
     case recipe(id: Int64)
     case importUrl(String)
@@ -10,6 +10,8 @@ enum Route: Hashable {
     case settings
     case lists
     case listDetail(id: Int64)
+    /// "Clip it yourself" (#37) on a page with no recipe data.
+    case clip(String)
 }
 
 /// The share extension opens the app with `recipeclipper://import?url=<percent-encoded>`.

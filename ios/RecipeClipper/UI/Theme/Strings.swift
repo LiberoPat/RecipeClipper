@@ -34,6 +34,61 @@ enum Strings {
     static let openOriginal = "Open original"
     static func openOriginalHint(_ domain: String) -> String { "Open the original recipe on \(domain)" }
 
+    // Clip it yourself (#37)
+    static let clipOffer = "Open the page, select the name, ingredients and steps, and tap where each one goes."
+    static let clipItYourself = "Clip it yourself"
+    static let done = "Done"
+    static let discard = "Discard"
+    static let remove = "Remove"
+    static func clipField(_ field: ClipField) -> String {
+        switch field {
+        case .name: return "Name"
+        case .ingredients: return "Ingredients"
+        case .steps: return "Steps"
+        case .photo: return "Photo"
+        }
+    }
+    static func clipTagCount(_ label: String, _ n: Int) -> String { "\(label) · \(n)" }
+    static let clipHint = "Select text on the page, then tap where it goes. For the photo, tap Photo, then the picture."
+    static let clipPickingPhoto = "Tap the picture to use as the photo."
+    static func clipLinesSelected(_ n: Int) -> String {
+        (n == 1 ? "1 line selected" : "\(n) lines selected") + " · each line becomes one item"
+    }
+    static func clipSummary(_ draft: ClipDraft) -> String {
+        let ingredients = draft.count(.ingredients)
+        let steps = draft.count(.steps)
+        return [
+            draft.count(.name) > 0 ? "Name ✓" : "No name",
+            ingredients == 1 ? "1 ingredient" : "\(ingredients) ingredients",
+            steps == 1 ? "1 step" : "\(steps) steps",
+            draft.photo != nil ? "photo" : "no photo",
+        ].joined(separator: " · ")
+    }
+    static let clipReview = "Review"
+    static func clipMessage(_ message: ClipMessage) -> String {
+        switch message {
+        case .assigned(.name, _): return "Name added"
+        case .assigned(.ingredients, let n): return n == 1 ? "1 ingredient added" : "\(n) ingredients added"
+        case .assigned(.steps, let n): return n == 1 ? "1 step added" : "\(n) steps added"
+        case .assigned(.photo, _): return "Photo added"
+        case .cleared(let field): return "\(clipField(field)) cleared"
+        case .draftRestored: return "Draft restored"
+        case .saveFailed: return "Couldn't save the clip. Try again."
+        }
+    }
+    static let clipBackToPage = "‹ Back to page"
+    static let clipPhotoFromPage = "Photo from the page"
+    static let clipNoPhoto = "No photo. Tap Photo on the page, then the picture."
+    static let clipServes = "Serves"
+    static let clipTotalTime = "Total time"
+    static let clipOptional = "optional"
+    static func clipIngredientsHeading(_ n: Int) -> String { "Ingredients · \(n)" }
+    static func clipStepsHeading(_ n: Int) -> String { "Steps · \(n)" }
+    static let clipAddLine = "+ Add a line"
+    static let clipAddStep = "+ Add a step"
+    static func clipRemoveLine(_ n: Int) -> String { "Remove line \(n)" }
+    static let clipSave = "Save recipe"
+
     // Errors
     static let errorNoRecipeFound = "Couldn't find recipe data on this page. Some sites don't tag their recipes in a way this app can read yet."
     static func errorFetchFailed(_ detail: String?) -> String { "Couldn't load that page (\(detail ?? "unknown error"))." }

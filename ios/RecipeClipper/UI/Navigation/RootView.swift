@@ -48,12 +48,16 @@ struct RootView: View {
             ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
                 ListDetailScreen(vm: vm, onOpenRecipe: { router.push(.recipe(id: $0)) })
             }
+        case .clip(let url):
+            ScreenHost({ container.makeClipViewModel(url: url) }) { vm in
+                ClipScreen(vm: vm, fixtureHTML: container.clipFixtureHTML, onSaved: router.openSavedClip)
+            }
         }
     }
 
     private func recipe(_ make: @escaping () -> RecipeViewModel) -> some View {
         ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
-            RecipeScreen(vm: vm, saveVM: saveVM)
+            RecipeScreen(vm: vm, saveVM: saveVM, onClip: { router.push(.clip($0)) })
         }
     }
 }

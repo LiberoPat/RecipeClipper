@@ -123,6 +123,24 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
+    func saveClip(_ recipe: Recipe) async -> ParseResult {
+        var clip = recipe
+        clip.sourceUrl = UrlCleaner.clean(recipe.sourceUrl)
+        let now = clock.now()
+        do {
+            let saved = try await db.write { conn -> RecipeRecord? in
+                let dao = RecipeDao(db: conn)
+                let id = try dao.upsert(clip.toRecord(viewedAt: now), historyLimit: historyLimit)
+                return try dao.get(id)
+            }
+            guard let saved else { return .error(.saveFailed) }
+            return .success(saved.toDomain())
+        } catch {
+            dataLog.error("clip save failed: \(String(describing: error), privacy: .public)")
+            return .error(.saveFailed)
+        }
+    }
+
     func open(id: Int64) async -> Recipe? {
         let now = clock.now()
         do {

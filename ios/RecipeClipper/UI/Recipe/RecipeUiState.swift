@@ -67,6 +67,10 @@ struct RecipeUiState: Equatable {
     /// "try again", not "unsupported". The view opens it; nothing is sent.
     var reportSiteUrl: String?
 
+    /// The shared link to clip by hand ("Clip it yourself", #37). Set exactly when
+    /// `reportSiteUrl` is: only a page that loaded with no recipe data can be clipped.
+    var clipUrl: String?
+
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }
     /// The recipe screen goes onto ink only when cooking with "Dark while cooking" on.

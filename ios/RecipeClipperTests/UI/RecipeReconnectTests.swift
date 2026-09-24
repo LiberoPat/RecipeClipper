@@ -42,6 +42,7 @@ final class ReconnectCountingRepository: RecipeRepository {
         importCalls += 1
         return importResult
     }
+    func saveClip(_ recipe: Recipe) async -> ParseResult { .error(.saveFailed) }
     func open(id: Int64) async -> Recipe? { nil }
     func setChecked(id: Int64, checked: Set<Int>) async {}
     func setNotes(id: Int64, notes: String) async {}

@@ -10,6 +10,10 @@ final class AppContainer {
     let clock: Clock
     let connectivity: Connectivity
     let appInfo: AppInfo
+    /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
+    let clipDrafts = ClipDraftStore()
+    /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
+    let clipFixtureHTML: String?
 
     init(
         recipeRepository: RecipeRepository,
@@ -17,7 +21,8 @@ final class AppContainer {
         preferences: AppPreferences,
         clock: Clock,
         connectivity: Connectivity = StaticConnectivity(),
-        appInfo: AppInfo = BundleAppInfo()
+        appInfo: AppInfo = BundleAppInfo(),
+        clipFixtureHTML: String? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -25,6 +30,7 @@ final class AppContainer {
         self.clock = clock
         self.connectivity = connectivity
         self.appInfo = appInfo
+        self.clipFixtureHTML = clipFixtureHTML
     }
 
     /// The real graph: SQLite on disk, the blog source, UserDefaults. Under XCTest (the unit
@@ -68,6 +74,10 @@ final class AppContainer {
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
             clock: clock, connectivity: connectivity, appInfo: appInfo
         )
+    }
+
+    func makeClipViewModel(url: String) -> ClipViewModel {
+        ClipViewModel(url: url, repository: recipeRepository, drafts: clipDrafts)
     }
 
     func makeSaveToListViewModel() -> SaveToListViewModel {

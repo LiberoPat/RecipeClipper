@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.clip
 
 import android.annotation.SuppressLint
 import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
@@ -109,7 +110,7 @@ private class ClipWebViewClient(
     /** Redirects and fragment jumps load; a link to any other page does not. */
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         if (!request.isForMainFrame || request.isRedirect) return false
-        return !samePage(request.url, Uri.parse(view.url ?: pageUrl))
+        return !samePage(request.url, (view.url ?: pageUrl).toUri())
     }
 
     private fun samePage(a: Uri, b: Uri): Boolean =
