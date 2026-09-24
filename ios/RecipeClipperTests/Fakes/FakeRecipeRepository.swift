@@ -29,7 +29,7 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var deleteCalls: [Int64] = []
     private(set) var restoreCalls: [DeletedRecipe] = []
 
-    @MainActor func importFromUrl(_ sharedUrl: String) async -> ParseResult { importResult }
+    @MainActor func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult { importResult }
 
     @MainActor func saveClip(_ recipe: Recipe) async -> ParseResult {
         saveClipCalls.append(recipe)

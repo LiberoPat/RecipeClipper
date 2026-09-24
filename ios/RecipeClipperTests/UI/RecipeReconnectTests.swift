@@ -35,11 +35,14 @@ final class ReconnectFakeConnectivity: Connectivity {
 final class ReconnectCountingRepository: RecipeRepository {
     var importResult: ParseResult
     private(set) var importCalls = 0
+    /// Every `renderedPage` an import was called with, in order (#35).
+    private(set) var importedRenderedPages: [String?] = []
 
     init(_ result: ParseResult) { importResult = result }
 
-    func importFromUrl(_ sharedUrl: String) async -> ParseResult {
+    func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult {
         importCalls += 1
+        importedRenderedPages.append(renderedPage)
         return importResult
     }
     func updateFromSource(id: Int64) async -> ParseResult { .error(.nothingToShow) }

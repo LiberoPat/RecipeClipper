@@ -98,7 +98,13 @@ protocol RecipeRepository: AnyObject {
     /// The share-target path: clean the link, fetch, parse, then persist (upsert + history
     /// cull). If the fetch fails but the link was saved before, the saved copy is returned
     /// (and its lastViewedAt bumped), so anything opened once still opens offline.
-    func importFromUrl(_ sharedUrl: String) async -> ParseResult
+    ///
+    /// `renderedPage` is Safari's own copy of the page (#35: the share extension's JavaScript
+    /// preprocessing file hands over `document.documentElement.outerHTML`, already past
+    /// whatever blocked a plain fetch). When given, it's parsed directly and the fetch is
+    /// skipped; only if that page holds no recipe does the ordinary fetch (with its retry and
+    /// rendered-browser fallback) run, exactly as if nothing had been given.
+    func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult
 
     /// Saves a recipe the user clipped by hand from a page with no recipe data (#37), keyed on
     /// the cleaned `sourceUrl` like an import: a link seen before keeps its id, note and list
@@ -159,6 +165,14 @@ protocol TimerAlarmScheduler: AnyObject {
     /// recipe: a local notification has no receiver that could check it is still wanted, so
     /// one left over from a re-share that changed the steps must be removed here.
     func replaceAll(recipeId: Int64, with alarms: [StepAlarm])
+}
+
+extension RecipeRepository {
+    /// The ordinary case: nothing rendered already, so the repository fetches. Every caller but
+    /// the Safari share extension (#35) uses this.
+    func importFromUrl(_ sharedUrl: String) async -> ParseResult {
+        await importFromUrl(sharedUrl, renderedPage: nil)
+    }
 }
 
 /// List membership. Separate from RecipeRepository on purpose (see docs/decisions.md, Lists).
