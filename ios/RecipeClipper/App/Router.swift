@@ -7,9 +7,11 @@ enum AppTab: String, CaseIterable, Hashable {
 }
 
 /// Owns the navigation: the Recipes stack's path and, with the tab bar on, which tab is open.
-/// Views push through it; the share extension's deep link lands here via `.onOpenURL`, and every
-/// share pushes a fresh import, even one repeated while the app is running (Android's
-/// onNewIntent). A share always lands in Recipes, whichever tab is open.
+/// Views push through it; a `recipeclipper://import` deep link lands here via `.onOpenURL`, and
+/// every one pushes a fresh import, even one repeated while the app is running (Android's
+/// onNewIntent). The share extension no longer sends these: it imports on its own (issue #19).
+/// The scheme stays as an entry point for Shortcuts and links, and, like a share, always lands
+/// in Recipes, whichever tab is open.
 @MainActor
 @Observable
 final class Router {

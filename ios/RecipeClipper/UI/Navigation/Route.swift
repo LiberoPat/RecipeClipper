@@ -1,7 +1,7 @@
 import Foundation
 
 /// Every destination above Home. Mirrors Android's nav graph: `recipe/{recipeId}`,
-/// `recipe/import?url={url}` (the share target), `history`, `settings` (from Home's gear), `lists`,
+/// `recipe/import?url={url}` (Home's link field and the deep link), `history`, `settings` (from Home's gear), `lists`,
 /// `lists/{listId}`.
 enum Route: Hashable {
     case recipe(id: Int64)
@@ -16,7 +16,9 @@ enum Route: Hashable {
     case editRecipe(id: Int64?)
 }
 
-/// The share extension opens the app with `recipeclipper://import?url=<percent-encoded>`.
+/// `recipeclipper://import?url=<percent-encoded>` opens the import screen. The share extension
+/// used to open the app this way; it now imports on its own (issue #19), so the scheme is
+/// only an entry point for Shortcuts and links.
 enum DeepLink {
     static let scheme = "recipeclipper"
     static let importHost = "import"

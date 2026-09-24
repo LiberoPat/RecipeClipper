@@ -30,6 +30,13 @@ targets:
     dependencies:
       - target: RecipeClipperShare
         embed: true
+    # The App Group holds the database and settings the share extension also uses. Keep the
+    # identifier in step with AppGroup.identifier and the extension's entitlements, and
+    # register it on both App IDs (docs/release.md).
+    entitlements:
+      path: RecipeClipper/RecipeClipper.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.liberopat.recipeclipper]
     info:
       path: RecipeClipper/Info.plist
       properties:
@@ -62,6 +69,31 @@ targets:
     platform: iOS
     sources:
       - path: RecipeClipperShare
+      # The import runs here, on the app's own code (dual target membership, not a copy):
+      # the data layer, the share card and the theme it is drawn with. UserDefaults stays out,
+      # so the extension uses no required-reason API and needs no privacy manifest. The
+      # off-screen WebView fallback stays out too (memory): the extension has no rendered fetch.
+      - path: RecipeClipper/Data
+        excludes:
+          - Local/UserDefaultsAppPreferences.swift
+          - Remote/WebViewRenderedPageSource.swift
+      - path: RecipeClipper/ShareImport
+      - path: RecipeClipper/UI/Theme
+      - path: RecipeClipper/UI/Common/Components.swift
+      # Strings.swift resolves String(localized:) against Bundle.main, which inside the
+      # extension is its own bundle, not the app's: the catalog must be compiled into both
+      # (#13, #19). Translate any new key in all of es, fr, de, it and pt-BR.
+      - path: RecipeClipper/Resources/Localizable.xcstrings
+      # SharedTables.read also resolves against Bundle.main (#9, #14): the fetch the extension
+      # runs (BlogRecipeSource → JsonLdRecipeParser → LanguageWords) needs the same tables/
+      # folder the app bundles, or it traps looking up a language's detector words.
+      - path: ../shared/tables
+        type: folder
+        buildPhase: resources
+    entitlements:
+      path: RecipeClipperShare/RecipeClipperShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.liberopat.recipeclipper]
     info:
       path: RecipeClipperShare/Info.plist
       properties:

@@ -48,7 +48,7 @@ Brazilian Portuguese (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: Reddit (#11), reading recipes in other
-languages (#12, #14–#16), release setup (#18–#22).
+languages (#12, #14–#16), release setup (#18, #20–#22).
 
 ## Commands
 
@@ -147,7 +147,8 @@ Recipes, whichever tab is open.
 Decisions, not suggestions. Don't relitigate them in code.
 
 - **Capture is frictionless.** Sharing a link parses and shows it. No save
-  prompt.
+  prompt. On iOS the share extension parses and saves it, then shows a small
+  "Saved" card that dismisses itself; the recipe tops "Continue cooking".
 - **History is automatic,** newest first, capped at the 50 most recently
   viewed.
 - **Lists are deliberate:** adding to one is an explicit second act.
@@ -246,7 +247,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   and lists carry a unique, never-changing `uid`: what an export file calls
   them. The schema is exported to `app/schemas/`: commit it. **Never use
   destructive migration**, and give every migration a `MigrationTest`.
-  iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations.
+  iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations, in
+  the App Group container that the share extension writes to as well.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
   strips only `utm_*`, known click ids (`fbclid`, `gclid`, …) and the
   `#fragment`, lowercases the scheme and host, upgrades `http` to `https`,
@@ -461,8 +463,10 @@ Each one exists to avoid showing a confident wrong number.
   default), else `setAndAllowWhileIdle()`, which can be minutes late. No
   Settings prompt, by decision. The receiver re-checks the database, so a
   reset or deleted timer never rings. Details in `docs/decisions.md`.
-- **The iOS share extension opens the app through an unsupported
-  workaround** (#19).
+- **The iOS share extension imports and saves by itself, in its own
+  process** (it can't open the app). The app's observers never see those
+  writes, so the app re-queries when it becomes active. Anything new that
+  holds recipe data in memory must catch up the same way.
 
 ## Deliberately deferred
 
