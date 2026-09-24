@@ -276,4 +276,29 @@ final class UnitConverterTests: XCTestCase {
         XCTAssertEqual("215 g brown sugar (packed)", grams("1 cup brown sugar (packed)"))
         XCTAssertEqual("120 g flour ((sifted))", grams("1 cup (120 g) flour ((sifted))"))
     }
+
+    // --- Decimal commas (#12) ---
+
+    func testADecimalCommaIsConvertedAsADecimalAndKeepsItsComma() {
+        XCTAssertEqual("3 lb 5 oz flour", ounces("1,5 kg flour"))
+        XCTAssertEqual("680 g pork shoulder", grams("1,5 lb pork shoulder"))
+        XCTAssertEqual("1,13 kg potatoes", grams("2,5 lb potatoes"))
+        XCTAssertEqual("7,5 ml water", metric("1,5 tsp water"))
+    }
+
+    func testAScaledLineKeepsTheSeparatorOfTheLineItWasScaledFrom() {
+        // "2,5 lb" doubled is "5 lb", which no longer shows its comma.
+        let scaled = IngredientScaler.scale("2,5 lb potatoes", factor: 2.0)
+        XCTAssertEqual(
+            "2,27 kg potatoes",
+            UnitConverter.convert(scaled, system: .metric, includeLiquids: false, separatorFrom: "2,5 lb potatoes")
+        )
+        XCTAssertEqual("2.27 kg potatoes", UnitConverter.convert("5 lb potatoes", system: .metric, includeLiquids: false))
+    }
+
+    func testACommaBeforeThreeDigitsIsAmbiguousAndLeftAsWritten() {
+        XCTAssertEqual("1,500 g flour", ounces("1,500 g flour"))
+        XCTAssertEqual("1,500 lb beef", grams("1,500 lb beef"))
+        XCTAssertEqual("2 cups (1,250 g) flour", ounces("2 cups (1,250 g) flour"))
+    }
 }

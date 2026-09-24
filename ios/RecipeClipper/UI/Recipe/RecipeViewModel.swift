@@ -309,7 +309,9 @@ final class RecipeViewModel {
     private func render(_ recipe: Recipe, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool) -> [String] {
         let factor = servings.map { Double($0.target) / Double($0.base) } ?? 1.0
         return recipe.ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale($0, factor: factor), system: system, includeLiquids: convertLiquids)
+            UnitConverter.convert(
+                IngredientScaler.scale($0, factor: factor), system: system, includeLiquids: convertLiquids, separatorFrom: $0
+            )
         }
     }
 

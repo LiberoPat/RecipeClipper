@@ -11,7 +11,8 @@ Tests: `app/src/test/` has the JVM ones (`IngredientScalerTest` scaling,
 servings and yield parsing; `UnitConverterTest`; `TemperatureConverterTest`;
 `StepTimersTest`; `ConvertersTest`; `TimeAgoAndUrlInputTest`; `UrlCleanerTest`,
 now also covering the http→https upgrade; `SourceDomainTest`, the domain the
-reading view credits (one leading "www." dropped, other subdomains kept); `JsonLdRecipeParserTest`, covering
+reading view credits (one leading "www." dropped, other subdomains kept);
+`JsonLdRecipeParserTest`, covering
 entity/tag stripping, blank-after-strip lines being dropped, `<br>`-split
 steps staying separate, and the deep-JSON depth guard; `RecipeShareTextTest`,
 covering the labelled-vs-unlabelled serves line (built from a `ServingsScale?`),
@@ -39,7 +40,12 @@ call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
-**272 JVM tests pass.**
+`DifferentialCorpusTest` recomputes every ingredient and instruction row of
+the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
+stale, and writes the regenerated file to
+`app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
+(`app/build.gradle.kts` declares the Swift file as a test input, so editing
+it alone reruns the tests).
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -66,7 +72,7 @@ migration" checkable rather than an intention.
 
 **All 89 device tests have been run on an emulator and pass**: 26
 `RecipeDaoTest`, 22 `ListDaoTest`, 3 `MigrationTest`, and 38 Compose UI tests
-(see below). `RecipeSourceCreditTest` (3, the source credit under the recipe
+(see below). `RecipeSourceCreditTest` (the source credit under the recipe
 title) was added after that run and has so far only been compiled.
 
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
@@ -119,7 +125,7 @@ Three things that cost real time and will again:
 Still without Android UI tests: most of the recipe screen (reading and cook
 views, the bookmark icon, share; only the source credit is covered), History
 (search, swipe-to-dismiss, the undo snackbar), the Lists screen, and the
-Settings screen. The iOS UI tests (`ios/RecipeClipperUITests`, 64 tests) do
+Settings screen. The iOS UI tests (`ios/RecipeClipperUITests`) do
 cover Home, History (search, swipe-to-delete, the batched undo), Settings, list
 detail, the save-to-list sheet with the bookmark it fills, the source credit,
 and the import error screens. Cook mode and
@@ -133,6 +139,32 @@ with the BOM.
 `JsonLdRecipeParser` uses `org.json`, which is an Android framework class.
 Plain JUnit tests will need `testImplementation("org.json:json:<version>")`
 or the calls will fail as "not mocked".
+
+## CI
+
+GitHub Actions, in `.github/workflows/`:
+
+- **Android** (`android.yml`, check `Android unit tests and lint`), on every
+  pull request and push to `main`, on `ubuntu-latest` with JetBrains Runtime
+  25 (Android Studio's bundled JDK): `./gradlew testDebugUnitTest lintDebug
+  compileDebugAndroidTestKotlin`. A lint error fails the build;
+  `.github/scripts/check_lint.py` then fails on any finding, at any severity,
+  that isn't one of the four version-advisory ids. It checks ids, not the
+  count, because `NewerVersionAvailable` drifts as libraries release. Reports
+  are uploaded as the `android-reports` artifact on failure. Device tests
+  don't run in CI yet.
+- **iOS** (`ios.yml`, check `iOS unit tests`), same triggers, on the
+  `xcode-27` runner image (arm64, macOS 27, Xcode 27 only; in public preview
+  as of September 2026). `DEVELOPER_DIR` selects Xcode 27 explicitly. It runs
+  `RecipeClipperTests` on the image's iPhone 17 / iOS 27.0 simulator and
+  uploads the `.xcresult` on failure.
+- **iOS UI tests** (`ios-ui-tests.yml`), about 18 minutes: nightly at 03:00
+  UTC and on demand (Actions → iOS UI tests → Run workflow).
+
+When a new Xcode major comes out, GitHub ships it as a new image label
+(`xcode-28`), so the label, `DEVELOPER_DIR`, the simulator `OS=` and
+`.github/actionlint.yaml` move together. Check workflow edits with
+`actionlint`.
 
 ## Lint
 
@@ -171,7 +203,7 @@ The uninstall takes the unit settings (`shared_prefs`) with it too. Back both
 up first and put them back after (this round-trip has been used and works):
 
 ```
-B=/tmp/recipe-backup && mkdir -p $B && P=com.example.recipeclipper
+B=/tmp/recipe-backup && mkdir -p $B && P=com.liberopat.recipeclipper
 for f in recipe_clipper.db recipe_clipper.db-wal recipe_clipper.db-shm; do
   adb exec-out run-as $P cat databases/$f > $B/$f
 done
@@ -195,6 +227,22 @@ straight after an emulator restores from a snapshot, `run-as` can fail with
 `couldn't stat /data/user/0/...`, and the "backup" is then that error text
 (88 bytes). A retry a few seconds later works.
 
+### The application ID changed
+
+The installed ID is `com.liberopat.recipeclipper` (`applicationId`); the
+Kotlin package and `namespace` are still `com.example.recipeclipper`, which is
+why test class names and `am start` use the old spelling. Until September 2026
+the app installed as `com.example.recipeclipper`. To Android that is a
+different app: `installDebug` now puts a second copy beside it, starting
+empty, and the old one keeps its recipes, lists and settings.
+
+To carry them across, run the backup half of the round-trip above with
+`P=com.example.recipeclipper` (all three database files, then the merge), then
+`installDebug` the new build without opening it (or force-stop it), and run
+the restore half with `P=com.liberopat.recipeclipper`. The database is the same
+version, so nothing migrates. Check the recipes are there, then
+`adb uninstall com.example.recipeclipper`.
+
 A single test:
 `./gradlew testDebugUnitTest --tests "com.example.recipeclipper.data.model.IngredientScalerTest"`
 (append `.` and a backticked method name to run one case).
@@ -202,7 +250,7 @@ A single test:
 The emulator may be in use by a person while you work. Scripted taps, force-stops
 and settings changes land in their session, so check for activity first (a
 device clock that jumps, or state you didn't set) and ask before automating.
-Reading the database is gentler: `adb exec-out run-as com.example.recipeclipper
+Reading the database is gentler: `adb exec-out run-as com.liberopat.recipeclipper
 cat databases/recipe_clipper.db` (plus the `-wal` and `-shm` files) gives a copy
 to open read-only with sqlite3.
 
@@ -210,14 +258,17 @@ To try a recipe on a running emulator without the share sheet (adb lives in
 `~/Library/Android/sdk/platform-tools/`):
 
 ```
-adb shell am start -n com.example.recipeclipper/.MainActivity \
+adb shell am start -n com.liberopat.recipeclipper/com.example.recipeclipper.MainActivity \
   -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "<recipe url>"
 adb exec-out screencap -p > shot.png
 ```
 
+The activity needs its full class name: the `.MainActivity` shorthand expands
+against the application ID, which no longer matches the package.
+
 The unit default persists in the app's SharedPreferences and recipes persist in
 the database, so a test run leaves both behind (`adb shell pm clear
-com.example.recipeclipper` resets them). To test rotation from the shell:
+com.liberopat.recipeclipper` resets them). To test rotation from the shell:
 `adb shell settings put system accelerometer_rotation 0` then
 `settings put system user_rotation 1` (0 is portrait); put
 `accelerometer_rotation` back to 1 afterwards.

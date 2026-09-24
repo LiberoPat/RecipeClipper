@@ -25,6 +25,8 @@ import kotlin.math.round
  * - A compound amount ("1 cup plus 2 tbsp flour") is converted as a whole or not at all:
  *   an alternate measure after the second part is used for the total, otherwise both parts
  *   are converted and summed, and if either can't be the line is left as written.
+ * - "1,5 kg" is 1.5 kg and converts with a comma ("1,13 kg"); "1,500 g" could be 1.5 g or
+ *   1500 g, so a line holding a comma before three digits is left as written.
  */
 object UnitConverter {
 
@@ -65,8 +67,14 @@ object UnitConverter {
 
     private class Amount(val low: Double, val high: Double?, val separator: String)
 
-    fun convert(line: String, system: UnitSystem, includeLiquids: Boolean): String {
+    /**
+     * [separatorFrom] is the line whose decimal separator the result follows: the line as the
+     * recipe wrote it, when [line] is that line already scaled ("2,5 lb" doubled is "5 lb",
+     * which no longer shows its comma).
+     */
+    fun convert(line: String, system: UnitSystem, includeLiquids: Boolean, separatorFrom: String = line): String {
         if (system == UnitSystem.AS_WRITTEN) return line
+        if (IngredientScaler.AMBIGUOUS_COMMA.containsMatchIn(line)) return line
 
         val lead = IngredientScaler.LEADING.find(line) ?: return line
         val afterQty = line.substring(lead.range.last + 1)
@@ -123,7 +131,8 @@ object UnitConverter {
             volumeAmount(amount, effective, extraPart, alternate?.volume)
         } ?: return line
 
-        return lead.groupValues[1] + converted + after
+        val comma = IngredientScaler.DECIMAL_COMMA.containsMatchIn(separatorFrom)
+        return lead.groupValues[1] + IngredientScaler.withSeparator(converted, comma) + after
     }
 
     private fun ownUnits(system: UnitSystem): Set<MeasureUnit> = when (system) {
