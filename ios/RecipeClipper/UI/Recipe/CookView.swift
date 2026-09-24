@@ -46,6 +46,7 @@ struct CookView: View {
                         }
                     }
                     .padding(.horizontal, 20)
+                    .readableColumn()
                     .padding(.top, 12)
                     .padding(.bottom, 64)
                 }
@@ -133,6 +134,9 @@ private struct CookTopBar: View {
         }
         .padding(.leading, 8)
         .padding(.trailing, 20)
+        // Exit's own 12pt padding puts its text on the 20pt gutter, so this lines up with
+        // the column below.
+        .readableColumn()
         .padding(.vertical, 4)
     }
 }
@@ -174,6 +178,7 @@ private struct IngredientsBar: View {
                         .foregroundStyle(Palette.muted)
                 }
                 .padding(.horizontal, 20)
+                .readableColumn()
                 .padding(.vertical, 14)
                 .contentShape(Rectangle())
             }
@@ -191,6 +196,7 @@ private struct IngredientsBar: View {
                     }
                 }
                 .padding(.horizontal, 20)
+                .readableColumn()
                 .padding(.bottom, 8)
 
                 ViewThatFits(in: .vertical) {

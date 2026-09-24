@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "37ddfbc1aae2b6a15c7f5929225ce688",
+    "identityHash": "5476f4579279b73ee42b658461d1f01f",
     "entities": [
       {
         "tableName": "recipes",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `imageUrl` TEXT, `ingredients` TEXT NOT NULL, `instructions` TEXT NOT NULL, `prepTime` TEXT, `cookTime` TEXT, `totalTime` TEXT, `servings` TEXT, `sourceType` TEXT NOT NULL, `lastViewedAt` INTEGER NOT NULL, `checkedIngredients` TEXT NOT NULL, `notes` TEXT, `language` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `imageUrl` TEXT, `ingredients` TEXT NOT NULL, `instructions` TEXT NOT NULL, `prepTime` TEXT, `cookTime` TEXT, `totalTime` TEXT, `servings` TEXT, `sourceType` TEXT NOT NULL, `lastViewedAt` INTEGER NOT NULL, `checkedIngredients` TEXT NOT NULL, `notes` TEXT, `uid` TEXT NOT NULL DEFAULT '')",
         "fields": [
           {
             "fieldPath": "id",
@@ -87,9 +87,11 @@
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "language",
-            "columnName": "language",
-            "affinity": "TEXT"
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
           }
         ],
         "primaryKey": {
@@ -107,12 +109,21 @@
             ],
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_recipes_sourceUrl` ON `${TABLE_NAME}` (`sourceUrl`)"
+          },
+          {
+            "name": "index_recipes_uid",
+            "unique": true,
+            "columnNames": [
+              "uid"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_recipes_uid` ON `${TABLE_NAME}` (`uid`)"
           }
         ]
       },
       {
         "tableName": "lists",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `isBuiltIn` INTEGER NOT NULL, `isFavorites` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `isBuiltIn` INTEGER NOT NULL, `isFavorites` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `uid` TEXT NOT NULL DEFAULT '')",
         "fields": [
           {
             "fieldPath": "id",
@@ -149,6 +160,13 @@
             "columnName": "createdAt",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
           }
         ],
         "primaryKey": {
@@ -156,7 +174,18 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_lists_uid",
+            "unique": true,
+            "columnNames": [
+              "uid"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_lists_uid` ON `${TABLE_NAME}` (`uid`)"
+          }
+        ]
       },
       {
         "tableName": "recipe_list_cross_ref",
@@ -227,7 +256,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '37ddfbc1aae2b6a15c7f5929225ce688')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5476f4579279b73ee42b658461d1f01f')"
     ]
   }
 }

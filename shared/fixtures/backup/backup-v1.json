@@ -1,0 +1,103 @@
+{
+  "format": "recipe-clipper-backup",
+  "formatVersion": 1,
+  "exportedAt": 1790000000000,
+  "mealPlan": [{"note": "an unknown section a later version might add: ignored"}],
+  "recipes": [
+    {
+      "id": "r-soup",
+      "sourceUrl": "https://example.com/soup?utm_source=newsletter",
+      "sourceType": "BLOG",
+      "title": "Tomato Soup",
+      "imageUrl": "https://example.com/img/soup.jpg",
+      "ingredients": ["2 lb tomatoes", "1 onion, \"chopped\"", "½ tsp salt"],
+      "instructions": ["Roast the tomatoes.", "Blend with the onion."],
+      "prepTime": "10m",
+      "cookTime": "40m",
+      "totalTime": "50m",
+      "servings": "4 servings",
+      "lastViewedAt": 1789000000500,
+      "checkedIngredients": [1],
+      "notes": "Less salt.\nDouble the onion.",
+      "futureField": "ignored"
+    },
+    {
+      "id": "r-pie",
+      "sourceUrl": "https://example.com/pie",
+      "sourceType": "BLOG",
+      "title": "Apple Pie",
+      "imageUrl": null,
+      "ingredients": ["6 apples", "1 cup (200 g) sugar", "1 crust"],
+      "instructions": ["Fill.", "Bake 45 minutes at 375°F."],
+      "prepTime": null,
+      "cookTime": "45m",
+      "totalTime": null,
+      "servings": "8",
+      "lastViewedAt": 1789000000400,
+      "checkedIngredients": [0, 5],
+      "notes": null
+    },
+    {
+      "id": "r-pie-dup",
+      "sourceUrl": "http://EXAMPLE.com/pie?fbclid=abc#top",
+      "sourceType": "BLOG",
+      "title": "Apple Pie (older copy)",
+      "ingredients": ["6 apples"],
+      "instructions": ["Bake."],
+      "lastViewedAt": 1789000000300,
+      "notes": "Use cold butter."
+    },
+    {
+      "id": "r-bread",
+      "sourceUrl": "https://example.com/bread",
+      "sourceType": "REDDIT",
+      "title": "Bread",
+      "imageUrl": null,
+      "ingredients": ["500 g flour"],
+      "instructions": ["Knead."],
+      "prepTime": null,
+      "cookTime": null,
+      "totalTime": null,
+      "servings": null,
+      "lastViewedAt": 1789000000200,
+      "checkedIngredients": [],
+      "notes": "An imported note that must not replace the one already here."
+    },
+    {
+      "id": "r-old",
+      "sourceUrl": "https://example.com/old-stew",
+      "sourceType": "BLOG",
+      "title": "Old Stew",
+      "ingredients": ["1 kg beef"],
+      "instructions": ["Stew."],
+      "lastViewedAt": 1000
+    },
+    {
+      "id": "e-bread",
+      "sourceUrl": "https://example.com/salad",
+      "sourceType": "SOMETHING_NEW",
+      "title": "Salad",
+      "ingredients": ["1 lettuce"],
+      "instructions": ["Toss."],
+      "lastViewedAt": 1789000000900,
+      "notes": "   "
+    }
+  ],
+  "lists": [
+    {"id": "f-fav", "name": "Faves", "isFavorites": true, "isBuiltIn": true, "sortOrder": 0, "createdAt": 1700000000000},
+    {"id": "f-lunch", "name": "Lunch", "isFavorites": false, "isBuiltIn": true, "sortOrder": 1, "createdAt": 1700000000000},
+    {"id": "l-week", "name": "Midweek", "isFavorites": false, "isBuiltIn": false, "sortOrder": 6, "createdAt": 1700000000100},
+    {"id": "f-fakefav", "name": "Favorites", "isFavorites": false, "isBuiltIn": false, "sortOrder": 7, "createdAt": 1700000000200},
+    {"id": "f-party", "name": " Party food ", "isFavorites": false, "isBuiltIn": false, "sortOrder": 8, "createdAt": 1700000000300},
+    {"id": "f-party2", "name": "PARTY FOOD", "isFavorites": false, "isBuiltIn": false, "sortOrder": 9, "createdAt": 1700000000400}
+  ],
+  "memberships": [
+    {"recipeId": "r-soup", "listId": "f-fav", "addedAt": 10},
+    {"recipeId": "r-pie", "listId": "f-party", "addedAt": 11},
+    {"recipeId": "r-pie-dup", "listId": "f-party2", "addedAt": 12},
+    {"recipeId": "r-pie-dup", "listId": "f-fav", "addedAt": 13},
+    {"recipeId": "r-bread", "listId": "f-lunch", "addedAt": 14},
+    {"recipeId": "r-bread", "listId": "l-week", "addedAt": 15},
+    {"recipeId": "r-pie", "listId": "f-fakefav", "addedAt": 16}
+  ]
+}

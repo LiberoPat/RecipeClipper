@@ -902,6 +902,41 @@ The fix is issue #10.
   a permanent notification plus a `FOREGROUND_SERVICE_*` type declaration
   that Play reviews.
 
+## Export and import (#26)
+
+The owner's decision: import **merges, never replaces**, and deletes nothing.
+
+- **One file, versioned.** `format: "recipe-clipper-backup"`, `formatVersion: 1`,
+  then `recipes`, `lists` and `memberships`. The canonical example is
+  `shared/fixtures/backup/backup-v1.json`; both platforms' tests decode it and
+  plan the same merge from it. Readers ignore keys they don't know, so a later
+  feature (the meal plan, #46; sync, #53) adds a section or a field without a
+  version bump. Bump only when an older app would *misread* a newer file; an
+  older app refuses a newer version (`NewerVersion`) rather than half-import it.
+- **Stable ids.** Recipes and lists got a `uid` column (Room 4 / iOS
+  `user_version` 3, backfilled with random UUIDs), and the file names records by
+  it; memberships refer to uids, never row ids. A re-share keeps a recipe's uid
+  and a rename keeps a list's, so a list renamed on one phone still finds itself
+  on the other, and sync can build on the same identity.
+- **What's left out:** cached photos (only `imageUrl`), and cook progress
+  (current step, timers, chosen servings), which is a moment in one kitchen
+  rather than part of the recipe, even once #10 persists it.
+- **Merge rules** (`BackupMerger`, pure, the same on both platforms):
+  recipes match by the cleaned `sourceUrl`; a recipe already here keeps its
+  content, ticks and last view, gains the imported memberships, and gains the
+  imported note only if it has none. Favorites maps to Favorites by
+  `isFavorites`, never by name, and a user list called "Favorites" stays a user
+  list. Other lists join the same uid, else the same trimmed, case-insensitive
+  name, else they're created after the existing lists. Memberships are
+  insert-or-ignore, so an existing `addedAt` stands.
+- **History cap: free slots, not a cull.** The issue suggested running the
+  normal cull after import, but that could delete the user's own older history,
+  which "never delete" forbids. So listed recipes always come in, and unlisted
+  ones fill only the places free under 50 (most recently viewed first); the rest
+  are skipped and counted in the summary.
+- **One transaction.** Any failure (a bad file, a database error) writes
+  nothing, and the Settings screen shows the cause.
+
 ## Shared tables, native logic (#9)
 
 Every feature was built twice and kept at parity by hand, and the language
@@ -938,18 +973,26 @@ read with its own language's tables only.
 
 - **The language is the recipe's, never the phone's:** JSON-LD `inLanguage`
   (a tag, or a schema.org Language's `alternateName`), else the page's
-  `<html lang>`, else detection from the recipe's name and ingredient lines
-  (`language.json`'s `detect` words: a language needs at least 3 hits and more
-  than twice the runner-up's), else English. #15's survey found `inLanguage`
-  on 1 site in 25 and `<html lang>` on nearly all, but wrong on one
-  (mulherportuguesa.com says `en` on Portuguese pages).
+  `<html lang>`, else English. Detection from the recipe's name and ingredient
+  lines (`language.json`'s `detect` words: a language needs at least 3 hits and
+  more than twice the runner-up's) fills in when nothing is declared, and **the
+  owner's decision on #14: when the words clearly say another language, they
+  beat the declared one; ambiguous words keep it.** #15's survey found
+  `inLanguage` on 1 site in 25 and `<html lang>` on nearly all, but wrong on
+  one (mulherportuguesa.com says `en` on Portuguese pages).
+- **Detection knows more languages than the app reads.** de, es, fr, it and pt
+  have a `language.json` only (`LanguageWords.DETECTED` vs `SHIPPED`), so a
+  German page labelled `en` is recognised as German and shown as written,
+  rather than read with English rules. The words avoid ones the languages
+  share ("de", "sal", "sopa"), and German's `EL`/`TL` are case-sensitive
+  (Spanish "el").
 - **A language with no tables leaves everything as written:** no scaling,
   conversion, temperature rewrite, timer or servings stepper, no phrase times
   (ISO times still read), no condensed-section skipping. English rules on a
   German line would scale "2 bis 3 Eier" to "4 bis 3 Eier".
 - **Stored:** `recipes.language`, the normalised tag ("en-us"), because the
-  declared language can't be rebuilt from what was stored (Room version 4, iOS
-  `user_version` 3). Recipes stored before are NULL and are detected from their
+  declared language can't be rebuilt from what was stored (Room version 5, iOS
+  `user_version` 4, after #26's uids took 4 / 3). Recipes stored before are NULL and are detected from their
   words when shown; a re-share fills it in. Lookup is by primary subtag, so a
   regional table (fr-CA's 250 ml `tasse`) can come later without a migration.
 - **API:** `LanguageWords` (both platforms) loads a language's tables and

@@ -84,6 +84,7 @@ struct ReadingView: View {
                 .padding(.top, 24)
             }
             .padding(.horizontal, 20)
+            .readableColumn()
             .padding(.top, 4)
             .padding(.bottom, 32)
         }
@@ -95,6 +96,7 @@ struct ReadingView: View {
                     Button(Strings.startCooking, action: vm.onCookStart)
                         .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: true))
                         .padding(.horizontal, 20)
+                        .readableColumn()
                         .padding(.vertical, 12)
                 }
                 .background(Palette.background)

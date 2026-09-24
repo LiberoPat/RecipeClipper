@@ -106,6 +106,7 @@ final class AppDatabase: @unchecked Sendable {
     private static let migrations: [(SQLiteConnection) throws -> Void] = [
         createVersion1,
         addNotes,
+        addUids,
         addLanguage,
     ]
 
@@ -178,7 +179,28 @@ final class AppDatabase: @unchecked Sendable {
         try db.execute("ALTER TABLE recipes ADD COLUMN notes TEXT")
     }
 
-    /// Version 3 (Android's Room version 4, `MIGRATION_3_4`): the recipe's language tag (#14).
+    /// Version 3 (Android's Room version 4, `MIGRATION_3_4`): a stable `uid` on every recipe and
+    /// list (#26), what an export file calls them, so a list keeps its identity through a rename
+    /// and a later import or sync (#53) can recognise it. Existing rows (the lists seeded by
+    /// version 1 included) are backfilled with random version-4 UUIDs; the `''` default exists
+    /// only so the column can be added NOT NULL. The same SQL as Android.
+    private static func addUids(_ db: SQLiteConnection) throws {
+        for table in ["recipes", "lists"] {
+            try db.execute("ALTER TABLE \(table) ADD COLUMN uid TEXT NOT NULL DEFAULT ''")
+            try db.execute("UPDATE \(table) SET uid = \(randomUuidSql)")
+            try db.execute("CREATE UNIQUE INDEX IF NOT EXISTS index_\(table)_uid ON \(table) (uid)")
+        }
+    }
+
+    /// A random version-4 UUID, lowercase, evaluated afresh for every row.
+    private static let randomUuidSql = """
+        lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || \
+        substr(lower(hex(randomblob(2))), 2) || '-' || \
+        substr('89ab', 1 + (abs(random()) % 4), 1) || substr(lower(hex(randomblob(2))), 2) || '-' || \
+        lower(hex(randomblob(6)))
+        """
+
+    /// Version 4 (Android's Room version 5, `MIGRATION_4_5`): the recipe's language tag (#14).
     /// Nullable with no default: a recipe stored before has none and is detected from its own
     /// words when shown. A re-share fills it in.
     private static func addLanguage(_ db: SQLiteConnection) throws {
