@@ -150,6 +150,40 @@ protocol ListRepository: AnyObject {
     func deleteList(listId: Int64) async
 }
 
+/// Export and import of every recipe and list as one file (#26; Android's BackupRepository).
+protocol BackupRepository: AnyObject {
+    /// Everything, as the text of one export file.
+    func export() async -> Result<ExportedBackup, BackupError>
+
+    /// Merges an export file into what's here (never replaces, never deletes; see
+    /// BackupMerger). A file that can't be read writes nothing and says why.
+    func importBackup(_ text: String) async -> Result<ImportSummary, BackupError>
+}
+
+/// Where an export file is written and a picked one is read (Android's BackupFiles), so the
+/// Settings ViewModel stays free of the file system and its test can use a fake.
+protocol BackupFiles: AnyObject {
+    /// Writes `json` as `recipe-clipper-YYYY-MM-DD.json` and returns its URL for the share
+    /// sheet, or nil if it couldn't be written.
+    func writeExport(json: String, exportedAt: Int64) async -> URL?
+
+    /// The picked file's text, `.readFailed` if it couldn't be read, or `.notABackup` if it's
+    /// far bigger than any export (or not text).
+    func readText(_ url: URL) async -> Result<String, BackupError>
+}
+
+/// Far beyond any real export (a few hundred recipes is well under 2 MB).
+let backupMaxBytes = 20 * 1024 * 1024
+
+/// `recipe-clipper-YYYY-MM-DD.json`, in the phone's time zone.
+func backupFileName(exportedAt: Int64) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyy-MM-dd"
+    let date = Date(timeIntervalSince1970: TimeInterval(exportedAt) / 1000)
+    return "recipe-clipper-" + formatter.string(from: date) + ".json"
+}
+
 /// The user's global defaults. Read and written through the vars; `settings` publishes them so
 /// a screen left open underneath Settings follows a change as it is made (#24), like
 /// Android's `AppPreferences.settings` Flow.

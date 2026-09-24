@@ -50,6 +50,14 @@ call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
+Export and import (#26): `BackupJsonTest` and `BackupMergerTest` read the
+shared fixtures in `shared/fixtures/backup/` (a test resource dir on Android,
+bundled resources on iOS), so both platforms decode the same file and plan the
+same merge; `DefaultBackupRepositoryTest` covers the causes and that a failed
+import writes nothing; `SettingsViewModelTest` covers the Your recipes rows.
+The device test `BackupDaoTest` runs the import transaction against real SQL
+(IGNORE keeps `addedAt`, rollback on a bad file); iOS's `BackupDaoTests` do the
+same on in-memory SQLite.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to
@@ -90,7 +98,9 @@ ingredients, `lastViewedAt` and list membership, and a user-created list keeps
 its place after the seeded block. `MIGRATION_2_3` (the `notes` column, #27)
 is run against a real version-2 database the same way: the recipe keeps its
 content, ticks and membership, has no note, and a note written afterwards
-survives a re-share; a version-1 file also goes to 3 in one open. This is
+survives a re-share; a version-1 file also goes to 3 in one open.
+`MIGRATION_3_4` (the `uid` columns, #26) backfills a distinct UUID on every
+recipe and list and keeps the rest of each row. This is
 what makes "never use destructive migration" checkable rather than an
 intention.
 

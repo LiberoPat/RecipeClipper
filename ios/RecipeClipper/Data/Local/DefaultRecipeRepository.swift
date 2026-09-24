@@ -182,7 +182,7 @@ final class DefaultRecipeRepository: RecipeRepository {
                 // Read before deleting: the cascade takes them with the row.
                 let memberships = try dao.crossRefsFor(id)
                 try dao.delete(id)
-                return DeletedRecipe(recipe: row.toDomain(), memberships: memberships)
+                return DeletedRecipe(recipe: row.toDomain(), memberships: memberships, uid: row.uid)
             }
         } catch {
             dataLog.error("delete failed: \(String(describing: error), privacy: .public)")
@@ -192,11 +192,10 @@ final class DefaultRecipeRepository: RecipeRepository {
 
     func restore(_ deleted: DeletedRecipe) async {
         do {
-            try await db.write { conn in
-                try RecipeDao(db: conn).restore(
-                    deleted.recipe.toRecord(viewedAt: deleted.recipe.lastViewedAt),
-                    crossRefs: deleted.memberships
-                )
+            var record = deleted.recipe.toRecord(viewedAt: deleted.recipe.lastViewedAt)
+            if let uid = deleted.uid { record.uid = uid }
+            try await db.write { [record] conn in
+                try RecipeDao(db: conn).restore(record, crossRefs: deleted.memberships)
             }
         } catch {
             dataLog.error("restore failed: \(String(describing: error), privacy: .public)")

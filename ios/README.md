@@ -21,6 +21,8 @@ xcodebuild ... test -only-testing:RecipeClipperUITests    # end-to-end, offline,
 
 Targets: `RecipeClipper` (app), `RecipeClipperShare` (share extension, embedded in the app),
 `RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest).
+`RecipeClipperTests` bundles `../shared/fixtures` (the export files the Android tests read
+too), found at `fixtures/backup/<name>.json` in the test bundle.
 
 **Never run two test sessions on one simulator.** The unit tests are hosted in the app, and
 a run that finishes (or starts) closes that app on its simulator, killing whatever the other
@@ -108,3 +110,11 @@ tests (in-memory SQLite in the simulator), not device tests.
   CLAUDE.md, "Failure handling").
 - `JsonLdRecipeParser` treats JSON `null` as absent (Android's org.json yields the text
   "null"), and walks object keys sorted rather than in document order.
+- **iPad (issue #20).** `TARGETED_DEVICE_FAMILY` stays `"1,2"`; every screen calls
+  `readableColumn()` (`UI/Common/Components.swift`) to cap its content at a centred ~680pt
+  column on wide screens, so text never runs edge to edge on an iPad or an iPhone in
+  landscape. `History`, a `List`, can't take a frame, so it measures its own width and sets
+  row insets instead. iPhone portrait is unchanged: every cap is wider than an iPhone in
+  portrait, so both frames resolve to the same width there. `ShareLink`'s popover anchors
+  correctly on iPad (confirmed on a simulator; `ShareUITests` asserts it), and the save-to-list
+  sheet, alerts and menus all present normally at the regular width.

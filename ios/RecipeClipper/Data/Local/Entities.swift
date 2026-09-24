@@ -21,13 +21,16 @@ struct RecipeRecord: Equatable {
     var lastViewedAt: Int64
     var checkedIngredients: Set<Int> = []   // JSON text, sorted
     var notes: String? = nil                // the user's own note; kept across re-shares
+    /// Stable across devices and exports (#26): what an export file calls this recipe. Never
+    /// changes once written — `update` doesn't touch it, and an import keeps the file's.
+    var uid: String = newUid()
     var cookState: String? = nil            // CookProgress as JSON (CookStateJSON); kept if steps unchanged
     var servingsTarget: Int? = nil          // the chosen servings; nil = the recipe's own yield
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
-        totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, cookState, \
+        totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, cookState, \
         servingsTarget
         """
 
@@ -36,7 +39,7 @@ struct RecipeRecord: Equatable {
         ingredients: [String], instructions: [String],
         prepTime: String?, cookTime: String?, totalTime: String?, servings: String?,
         sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = [],
-        notes: String? = nil, cookState: String? = nil, servingsTarget: Int? = nil
+        notes: String? = nil, uid: String = newUid(), cookState: String? = nil, servingsTarget: Int? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -52,6 +55,7 @@ struct RecipeRecord: Equatable {
         self.lastViewedAt = lastViewedAt
         self.checkedIngredients = checkedIngredients
         self.notes = notes
+        self.uid = uid
         self.cookState = cookState
         self.servingsTarget = servingsTarget
     }
@@ -71,10 +75,15 @@ struct RecipeRecord: Equatable {
         lastViewedAt = row.int64(11)
         checkedIngredients = JSONColumns.decodeInts(row.string(12))
         notes = row.optionalString(13)
-        cookState = row.optionalString(14)
-        servingsTarget = row.isNull(15) ? nil : row.int(15)
+        uid = row.string(14)
+        cookState = row.optionalString(15)
+        servingsTarget = row.isNull(16) ? nil : row.int(16)
     }
 }
+
+/// A fresh stable id for a new row: a lowercase UUID, the same form Android and the
+/// migration's backfill use.
+func newUid() -> String { UUID().uuidString.lowercased() }
 
 /// A recipe's saved cook progress, with what a timer alert needs to name it (Android's
 /// `CookStateRow`).

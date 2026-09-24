@@ -132,6 +132,43 @@
     <string name="settings_section_units">Units</string>
     <string name="settings_section_oven_temperature">Oven temperature</string>
     <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_your_recipes">Your recipes</string>
+
+    <!-- Settings → Your recipes: export and import (#26) -->
+    <string name="backup_export_title">Export recipes</string>
+    <string name="backup_export_description">Save every recipe and list to one file, to keep or to move to another phone</string>
+    <string name="backup_import_title">Import recipes</string>
+    <string name="backup_import_description">Add the recipes and lists from an export file. Nothing here is replaced or deleted.</string>
+    <string name="backup_share_title">Export recipes</string>
+    <string name="backup_exporting">Preparing the file…</string>
+    <string name="backup_importing">Importing…</string>
+    <plurals name="backup_recipes">
+        <item quantity="one">%d recipe</item>
+        <item quantity="other">%d recipes</item>
+    </plurals>
+    <plurals name="backup_lists">
+        <item quantity="one">%d list</item>
+        <item quantity="other">%d lists</item>
+    </plurals>
+    <!-- %1$s and %2$s are backup_recipes and backup_lists. -->
+    <string name="backup_imported">Imported %1$s and %2$s.</string>
+    <string name="backup_imported_recipes">Imported %1$s.</string>
+    <string name="backup_imported_nothing">Nothing new: everything in that file is already here.</string>
+    <plurals name="backup_already_here">
+        <item quantity="one">%d recipe was already here.</item>
+        <item quantity="other">%d recipes were already here.</item>
+    </plurals>
+    <!-- %2$d is the history limit (50). -->
+    <plurals name="backup_skipped">
+        <item quantity="one">%1$d older recipe in no list wasn\'t added: history keeps the %2$d most recent.</item>
+        <item quantity="other">%1$d older recipes in no list weren\'t added: history keeps the %2$d most recent.</item>
+    </plurals>
+    <string name="backup_error_not_a_backup">That file isn\'t a Recipe Clipper export.</string>
+    <string name="backup_error_newer_version">That file was made by a newer version of Recipe Clipper (format %1$d). Update the app to import it.</string>
+    <string name="backup_error_malformed">That export file is damaged (%1$s). Nothing was imported.</string>
+    <string name="backup_error_read_failed">Couldn\'t open that file.</string>
+    <string name="backup_error_save_failed">Couldn\'t save the imported recipes. Nothing was changed.</string>
+    <string name="backup_error_export_failed">Couldn\'t create the export file.</string>
     <string name="temperature_as_written">As written</string>
     <string name="temperature_as_written_description">Exactly the temperature the recipe uses</string>
     <string name="temperature_celsius">Celsius (°C)</string>

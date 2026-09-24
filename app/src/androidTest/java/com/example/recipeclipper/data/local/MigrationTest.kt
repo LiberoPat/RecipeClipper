@@ -171,36 +171,86 @@ class MigrationTest {
     }
 
     /**
-     * Version 4 adds saved cook progress and the chosen servings. A recipe from before has
-     * neither (it opens at step one, at its own yield), and nothing else about it changes: its
-     * note, ticks and list membership come across as they were.
+     * Version 4 gives every recipe and list a stable uid (#26). Existing rows get distinct
+     * UUID-shaped ones and keep everything else; new rows get theirs from the entity default.
      */
     @Test
-    fun migration3To4AddsNoCookStateAndKeepsEverythingElse() {
+    fun migration3To4GivesEveryRowADistinctUid() {
         helper.createDatabase(name, 3).use { db ->
-            db.execSQL(
-                "INSERT INTO lists (id, name, isBuiltIn, isFavorites, sortOrder, createdAt) " +
-                        "VALUES (1, 'Favorites', 1, 1, 0, 0)"
-            )
-            db.execSQL(
-                """
-                INSERT INTO recipes
-                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
-                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes)
-                VALUES
-                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
-                   '["Simmer for 30 minutes."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt')
-                """.trimIndent()
-            )
-            db.execSQL("INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (7, 1, 5)")
+            listOf("Favorites", "Lunch").forEachIndexed { index, listName ->
+                db.execSQL(
+                    "INSERT INTO lists (id, name, isBuiltIn, isFavorites, sortOrder, createdAt) VALUES (?, ?, 1, ?, ?, 0)",
+                    arrayOf<Any>(index + 1, listName, if (index == 0) 1 else 0, index)
+                )
+            }
+            for (id in 1..3) {
+                db.execSQL(
+                    """
+                    INSERT INTO recipes
+                      (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime,
+                       totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes)
+                    VALUES (?, ?, 'R', NULL, '[]', '[]', NULL, NULL, NULL, NULL, 'BLOG', ?, '[]', 'n')
+                    """.trimIndent(),
+                    arrayOf<Any>(id, "https://example.com/$id", id * 10)
+                )
+            }
+            db.execSQL("INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (1, 1, 5)")
         }
 
         helper.runMigrationsAndValidate(name, 4, true, RecipeDatabase.MIGRATION_3_4)
 
         val db = openMigrated()
         runBlocking {
+            val snapshot = db.backupDao().snapshot()
+            val uids = snapshot.recipes.map { it.uid } + snapshot.lists.map { it.uid }
+            assertEquals(5, uids.toSet().size)
+            val uuid = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+            assertTrue(uids.all { uuid.matches(it) })
+            assertEquals("n", db.recipeDao().get(1)?.notes)
+            assertEquals(listOf(1L), db.recipeDao().crossRefsFor(1).map { it.listId })
+
+            // A re-share keeps the uid; a new list gets one of its own.
+            val before = db.recipeDao().get(2)!!
+            db.recipeDao().upsert(before.copy(id = 0, uid = "should-not-win", title = "New title"), 50)
+            assertEquals(before.uid, db.recipeDao().get(2)?.uid)
+            db.listDao().create("Mine", ListDao.NO_RECIPE, 0)
+            assertEquals(3, db.backupDao().snapshot().lists.map { it.uid }.toSet().size)
+        }
+    }
+
+    /**
+     * Version 5 adds saved cook progress and the chosen servings (#10). A recipe from before
+     * has neither (it opens at step one, at its own yield), and nothing else about it changes:
+     * its uid, note, ticks and list membership come across as they were.
+     */
+    @Test
+    fun migration4To5AddsNoCookStateAndKeepsEverythingElse() {
+        helper.createDatabase(name, 4).use { db ->
+            db.execSQL(
+                "INSERT INTO lists (id, name, isBuiltIn, isFavorites, sortOrder, createdAt, uid) " +
+                        "VALUES (1, 'Favorites', 1, 1, 0, 0, 'list-uid')"
+            )
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer for 30 minutes."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt',
+                   'recipe-uid')
+                """.trimIndent()
+            )
+            db.execSQL("INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (7, 1, 5)")
+        }
+
+        helper.runMigrationsAndValidate(name, 5, true, RecipeDatabase.MIGRATION_4_5)
+
+        val db = openMigrated()
+        runBlocking {
             val recipe = db.recipeDao().get(7)
             assertEquals("Adobo", recipe?.title)
+            assertEquals("recipe-uid", recipe?.uid)
             assertEquals(setOf(0), recipe?.checkedIngredients)
             assertEquals("Less salt", recipe?.notes)
             assertNull(recipe?.cookState)
@@ -217,10 +267,10 @@ class MigrationTest {
 
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
-    fun migration1To4RunsEveryStep() {
+    fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 4, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 5, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val lists = runBlocking { openMigrated().listDao().observeLists(ListDao.NO_RECIPE).first() }
         assertEquals(listOf("Breakfast", "Snacks"), lists.map { it.name })

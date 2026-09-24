@@ -151,6 +151,7 @@ private struct StatusView<Body: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
+        .readableColumn()
         .padding(.top, 24)
     }
 }

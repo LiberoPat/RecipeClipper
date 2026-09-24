@@ -147,7 +147,7 @@ abstract class RecipeDao {
 
     /**
      * Saves a freshly parsed recipe and returns its id. A link that has been seen before is
-     * updated in place, so it keeps its id, its list membership, its note, its chosen servings,
+     * updated in place, so it keeps its id, its uid, its list membership, its note, its chosen servings,
      * its ticked ingredients if the ingredients didn't change, and its cook progress if the
      * steps didn't change (both hold indexes). The history cap is enforced in the same
      * transaction, so the table is never left over the limit.
@@ -165,11 +165,13 @@ abstract class RecipeDao {
             }
             // Step indexes, like ticks, only mean the same steps if the steps are unchanged.
             val cook = if (existing.instructions == fresh.instructions) existing.cookState else null
+            // The uid is the recipe's identity in exports: a re-share never changes it.
             // The note and the servings are the user's, not the source's: a fresh parse never
             // carries them, and neither depends on the exact wording of the steps.
             update(
                 fresh.copy(
                     id = existing.id,
+                    uid = existing.uid,
                     checkedIngredients = ticked,
                     notes = existing.notes,
                     cookState = cook,
