@@ -9,11 +9,13 @@ import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.SiteReportLink
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitConverter
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -70,9 +72,11 @@ class RecipeViewModelTest {
         savedStateHandle: SavedStateHandle,
         repository: FakeRecipeRepository,
         unitPreferences: FakeAppPreferences = FakeAppPreferences(),
-        connectivity: FakeConnectivity = FakeConnectivity()
+        connectivity: FakeConnectivity = FakeConnectivity(),
+        appInfo: FakeAppInfo = FakeAppInfo()
     ): RecipeViewModel = RecipeViewModel(
-        savedStateHandle, repository, unitPreferences, Clock { testScheduler.currentTime }, connectivity
+        savedStateHandle, repository, unitPreferences, Clock { testScheduler.currentTime }, connectivity,
+        appInfo
     )
 
     // --- Loading ---
@@ -95,6 +99,25 @@ class RecipeViewModelTest {
         advanceUntilIdle()
 
         assertTrue(vm.uiState.value.content is RecipeContent.Success)
+    }
+
+    @Test fun `the source domain is credited from the source link`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply {
+            openResult = testRecipe().copy(sourceUrl = "https://www.smittenkitchen.com/2024/01/soup/")
+        }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        val content = vm.uiState.value.content as RecipeContent.Success
+        assertEquals("smittenkitchen.com", content.sourceDomain)
+    }
+
+    @Test fun `a source link with no host credits no domain`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe().copy(sourceUrl = "not a link") }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        assertNull((vm.uiState.value.content as RecipeContent.Success).sourceDomain)
     }
 
     @Test fun `errors when neither id nor url is present`() = runTest(mainDispatcherRule.dispatcher) {
@@ -130,6 +153,63 @@ class RecipeViewModelTest {
                 advanceUntilIdle()
                 assertEquals(kind, (vm.uiState.value.content as RecipeContent.Error).error)
             }
+        }
+
+    // --- Report this site ---
+
+    @Test fun `a shared link with no recipe offers a report link built from the link and app info`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply {
+                importResult = ParseResult.Error(ParseError.NoRecipeFound)
+            }
+            val appInfo = FakeAppInfo(platform = "Android 15 (API 35)", appVersion = "2.1 (7)")
+            val vm = buildViewModel(byUrl("https://example.com/recipe"), repository, appInfo = appInfo)
+            advanceUntilIdle()
+
+            assertEquals(
+                SiteReportLink.issueUrl("https://example.com/recipe", "Android 15 (API 35)", "2.1 (7)"),
+                vm.uiState.value.reportSiteUrl
+            )
+        }
+
+    @Test fun `errors that mean try again never offer a report`() = runTest(mainDispatcherRule.dispatcher) {
+        val kinds = listOf(
+            ParseError.Blocked(403),
+            ParseError.Offline,
+            ParseError.FetchFailed("HTTP 400"),
+            ParseError.FetchFailed("timeout", timedOut = true),
+            ParseError.SaveFailed
+        )
+        for (kind in kinds) {
+            val repository = FakeRecipeRepository().apply { importResult = ParseResult.Error(kind) }
+            val vm = buildViewModel(byUrl("https://example.com/recipe"), repository)
+            advanceUntilIdle()
+            assertNull("$kind", vm.uiState.value.reportSiteUrl)
+        }
+    }
+
+    @Test fun `a saved recipe that can't be opened has no page to report`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val vm = buildViewModel(byId(1L), FakeRecipeRepository().apply { openResult = null })
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.reportSiteUrl)
+        }
+
+    @Test fun `trying again clears the report link, and a recipe that then loads has none`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply {
+                importResult = ParseResult.Error(ParseError.NoRecipeFound)
+            }
+            val vm = buildViewModel(byUrl("https://example.com/recipe"), repository)
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.reportSiteUrl != null)
+
+            repository.importResult = ParseResult.Success(testRecipe())
+            vm.onRetry()
+            assertNull(vm.uiState.value.reportSiteUrl) // gone while loading, too
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.content is RecipeContent.Success)
+            assertNull(vm.uiState.value.reportSiteUrl)
         }
 
     @Test fun `offline then back online reloads exactly once`() = runTest(mainDispatcherRule.dispatcher) {
@@ -278,12 +358,12 @@ class RecipeViewModelTest {
             val vm = buildViewModel(byId(1L), repository, unitPreferences)
             advanceUntilIdle()
 
-            vm.onUnitSystemChange(UnitSystem.GRAMS)
+            vm.onUnitSystemChange(UnitSystem.METRIC)
             advanceUntilIdle()
 
             val content = vm.uiState.value.content as RecipeContent.Success
             val expectedIngredients = testRecipe().ingredients.map {
-                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.GRAMS, false)
+                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.METRIC, false)
             }
             // Oven temperature is decoupled from the unit system (defaults AS_WRITTEN), so
             // changing UnitSystem alone must leave instructions untouched.
@@ -292,61 +372,175 @@ class RecipeViewModelTest {
             }
             assertEquals(expectedIngredients, content.ingredients)
             assertEquals(expectedInstructions, content.instructions)
-            assertEquals(UnitSystem.GRAMS, unitPreferences.unitSystem)
+            assertEquals(UnitSystem.METRIC, unitPreferences.unitSystem)
         }
 
-    @Test fun `toggling convert liquids re-renders ingredients and writes through preferences`() =
-        runTest(mainDispatcherRule.dispatcher) {
-            val unitPreferences = FakeAppPreferences()
-            val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
-            val vm = buildViewModel(byId(1L), repository, unitPreferences)
-            advanceUntilIdle()
-            vm.onUnitSystemChange(UnitSystem.GRAMS)
-            advanceUntilIdle()
+    @Test fun `dark while cooking is off by default`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
 
-            vm.onConvertLiquidsChange(true)
-            advanceUntilIdle()
+        // Off by default: cook mode follows the system theme like every other screen.
+        assertFalse(vm.uiState.value.darkWhileCooking)
+    }
 
-            val content = vm.uiState.value.content as RecipeContent.Success
-            val expectedIngredients = testRecipe().ingredients.map {
-                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.GRAMS, true)
-            }
-            assertEquals(expectedIngredients, content.ingredients)
-            assertTrue(unitPreferences.convertLiquids)
-        }
+    @Test fun `dark while cooking is seeded from preferences`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
+        val vm = buildViewModel(byId(1L), repository, FakeAppPreferences(darkWhileCooking = true))
+        advanceUntilIdle()
 
-    @Test fun `dark while cooking is off by default and writes through when turned on`() =
+        assertTrue(vm.uiState.value.darkWhileCooking)
+    }
+
+    // --- A settings change arriving while the recipe is open (#24) ---
+    //
+    // Writing to the fake directly is Settings changing a default while this screen sits
+    // underneath it: the fake re-emits on `settings`, as SharedPreferences' listener does.
+
+    @Test fun `a unit system change made in Settings re-renders the open recipe`() =
         runTest(mainDispatcherRule.dispatcher) {
             val preferences = FakeAppPreferences()
             val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
             val vm = buildViewModel(byId(1L), repository, preferences)
             advanceUntilIdle()
 
-            // Off by default: cook mode follows the system theme like every other screen.
-            assertFalse(vm.uiState.value.darkWhileCooking)
-
-            vm.onDarkWhileCookingChange(true)
+            preferences.unitSystem = UnitSystem.METRIC
             advanceUntilIdle()
 
-            assertTrue(vm.uiState.value.darkWhileCooking)
-            assertTrue(preferences.darkWhileCooking)
+            assertEquals(UnitSystem.METRIC, vm.uiState.value.unitSystem)
+            val expected = testRecipe().ingredients.map {
+                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.METRIC, false)
+            }
+            assertEquals(expected, (vm.uiState.value.content as RecipeContent.Success).ingredients)
         }
 
-    @Test fun `dark while cooking is seeded from preferences and leaves the recipe text alone`() =
+    @Test fun `turning on convert liquids in Settings re-renders the open recipe`() =
         runTest(mainDispatcherRule.dispatcher) {
-            val preferences = FakeAppPreferences(darkWhileCooking = true)
+            val preferences = FakeAppPreferences(unitSystem = UnitSystem.OUNCES)
             val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
             val vm = buildViewModel(byId(1L), repository, preferences)
             advanceUntilIdle()
-            assertTrue(vm.uiState.value.darkWhileCooking)
 
-            val before = (vm.uiState.value.content as RecipeContent.Success).ingredients
-            vm.onDarkWhileCookingChange(false)
+            preferences.convertLiquids = true
             advanceUntilIdle()
 
+            assertTrue(vm.uiState.value.convertLiquids)
+            val expected = testRecipe().ingredients.map {
+                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.OUNCES, true)
+            }
+            assertEquals(expected, (vm.uiState.value.content as RecipeContent.Success).ingredients)
+        }
+
+    @Test fun `an oven temperature change made in Settings converts the open recipe's steps`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val preferences = FakeAppPreferences()
+            val repository = FakeRecipeRepository().apply {
+                openResult = testRecipe(instructions = listOf("Bake at 350°F"))
+            }
+            val vm = buildViewModel(byId(1L), repository, preferences)
+            advanceUntilIdle()
+
+            preferences.temperatureUnit = TemperatureUnit.CELSIUS
+            advanceUntilIdle()
+
+            assertEquals(TemperatureUnit.CELSIUS, vm.uiState.value.temperatureUnit)
+            assertEquals(
+                listOf("Bake at 180°C"),
+                (vm.uiState.value.content as RecipeContent.Success).instructions
+            )
+        }
+
+    @Test fun `dark while cooking changed in Settings reaches the screen and leaves the text alone`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val preferences = FakeAppPreferences()
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
+            val vm = buildViewModel(byId(1L), repository, preferences)
+            advanceUntilIdle()
+            val before = vm.uiState.value.content
+
+            preferences.darkWhileCooking = true
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.darkWhileCooking)
             // A display choice, so nothing about the rendered recipe may change.
-            val after = (vm.uiState.value.content as RecipeContent.Success).ingredients
-            assertEquals(before, after)
+            assertEquals(before, vm.uiState.value.content)
+        }
+
+    @Test fun `a settings change keeps the chosen servings, the ticks and cook progress`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val preferences = FakeAppPreferences()
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
+            val vm = buildViewModel(byId(1L), repository, preferences)
+            advanceUntilIdle()
+            vm.onServingsChange(8) // base 4 -> 8, factor 2
+            vm.onIngredientChecked(0, true)
+            vm.onCookStart()
+            vm.onStepDone()
+            advanceUntilIdle()
+            val cookBefore = vm.uiState.value.cook
+
+            preferences.unitSystem = UnitSystem.METRIC
+            advanceUntilIdle()
+
+            val content = vm.uiState.value.content as RecipeContent.Success
+            assertEquals(8, content.servings?.target)
+            val expected = testRecipe().ingredients.map {
+                UnitConverter.convert(IngredientScaler.scale(it, 2.0), UnitSystem.METRIC, false)
+            }
+            assertEquals(expected, content.ingredients)
+            assertEquals(setOf(0), vm.uiState.value.checkedIngredients)
+            assertEquals(cookBefore, vm.uiState.value.cook)
+        }
+
+    @Test fun `a decimal-comma line keeps its comma when a units change arrives while it is scaled`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            // Doubled, "2,5 lb" is "5 lb", which no longer shows a comma: the re-render must
+            // take the separator from the unscaled line, as the first render does (#42).
+            val preferences = FakeAppPreferences()
+            val repository = FakeRecipeRepository().apply {
+                openResult = testRecipe(ingredients = listOf("2,5 lb potatoes"))
+            }
+            val vm = buildViewModel(byId(1L), repository, preferences)
+            advanceUntilIdle()
+            vm.onServingsChange(8) // base 4 -> 8, factor 2
+
+            preferences.unitSystem = UnitSystem.METRIC
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("2,27 kg potatoes"),
+                (vm.uiState.value.content as RecipeContent.Success).ingredients
+            )
+        }
+
+    @Test fun `a settings change made while the recipe is still loading is used when it arrives`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val preferences = FakeAppPreferences()
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
+            val vm = buildViewModel(byId(1L), repository, preferences)
+
+            preferences.unitSystem = UnitSystem.METRIC
+            advanceUntilIdle()
+
+            val expected = testRecipe().ingredients.map {
+                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.METRIC, false)
+            }
+            assertEquals(expected, (vm.uiState.value.content as RecipeContent.Success).ingredients)
+        }
+
+    @Test fun `the units dropdown's write comes back through settings without changing anything`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val preferences = FakeAppPreferences()
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
+            val vm = buildViewModel(byId(1L), repository, preferences)
+            advanceUntilIdle()
+
+            vm.onUnitSystemChange(UnitSystem.OUNCES)
+            val immediately = vm.uiState.value // before the echo is delivered
+            advanceUntilIdle()
+
+            assertEquals(UnitSystem.OUNCES, immediately.unitSystem)
+            assertEquals(immediately, vm.uiState.value)
         }
 
     @Test fun `temperature unit is seeded from preferences and converts instructions`() =

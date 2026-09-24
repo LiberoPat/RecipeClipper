@@ -1,8 +1,10 @@
+import Combine
 import Foundation
 import Observation
 
 /// One recipe screen, opened either by id (history, home, a list) or by URL (the share
-/// target). Preferences are read once here, which is why Settings is reachable from Home only.
+/// target). It follows `AppPreferences.settings`, so a default changed in Settings while the
+/// recipe is open re-renders it in place.
 @MainActor
 @Observable
 final class RecipeViewModel {
@@ -17,6 +19,7 @@ final class RecipeViewModel {
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private let sleep: Sleep
     @ObservationIgnored private let connectivity: Connectivity
+    @ObservationIgnored private let appInfo: AppInfo
 
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     // Waits for offline -> online while an offline / fetch-failed error is showing.
@@ -24,6 +27,7 @@ final class RecipeViewModel {
     // Step index -> wall-clock time (ms) its timer ends. Only running timers are in here.
     @ObservationIgnored private var deadlines: [Int: Int64] = [:]
     @ObservationIgnored private var tickTask: Task<Void, Never>?
+    @ObservationIgnored private var settingsSubscription: AnyCancellable?
 
     init(
         recipeId: Int64?,
@@ -32,7 +36,8 @@ final class RecipeViewModel {
         preferences: AppPreferences,
         clock: Clock,
         sleep: @escaping Sleep = Sleeps.real,
-        connectivity: Connectivity = StaticConnectivity()
+        connectivity: Connectivity = StaticConnectivity(),
+        appInfo: AppInfo = StaticAppInfo()
     ) {
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
@@ -41,12 +46,20 @@ final class RecipeViewModel {
         self.clock = clock
         self.sleep = sleep
         self.connectivity = connectivity
+        self.appInfo = appInfo
+        // Seeded synchronously so the first render already uses the user's units.
+        let settings = preferences.current
         uiState = RecipeUiState(
-            unitSystem: preferences.unitSystem,
-            convertLiquids: preferences.convertLiquids,
-            temperatureUnit: preferences.temperatureUnit,
-            darkWhileCooking: preferences.darkWhileCooking
+            unitSystem: settings.unitSystem,
+            convertLiquids: settings.convertLiquids,
+            temperatureUnit: settings.temperatureUnit,
+            darkWhileCooking: settings.darkWhileCooking
         )
+        // Settings can change a default while this screen is alive underneath it; this keeps
+        // the open recipe in step instead of showing the units it was opened with (#24).
+        settingsSubscription = preferences.settings
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] settings in self?.applySettings(settings) }
         load()
     }
 
@@ -67,6 +80,7 @@ final class RecipeViewModel {
         reconnectTask?.cancel()
         reconnectTask = nil
         uiState.content = .loading
+        uiState.reportSiteUrl = nil
         // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
         loadTask = Task { [weak self, recipeId, shareUrl, repository] in
             let result: ParseResult
@@ -89,9 +103,18 @@ final class RecipeViewModel {
                 uiState.checkedIngredients = recipe.checkedIngredients
             case .error(let error):
                 uiState.content = .error(error)
+                uiState.reportSiteUrl = reportSiteUrl(for: error)
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
         }
+    }
+
+    /// Only a shared link that loaded but held no recipe is worth reporting: a block, being
+    /// offline or a failed fetch usually lifts on its own, and a saved recipe has no page to
+    /// report.
+    private func reportSiteUrl(for error: ParseError) -> String? {
+        guard error == .noRecipeFound, let shareUrl else { return nil }
+        return SiteReportLink.issueUrl(link: shareUrl, platform: appInfo.platform, appVersion: appInfo.appVersion)
     }
 
     /// While an offline or fetch-failed error is on screen, waits for the connection to go from
@@ -156,22 +179,33 @@ final class RecipeViewModel {
         uiState.content = .success(content)
     }
 
+    /// The units dropdown on this screen. It is a global default, so it writes through; the
+    /// state updates at once too, rather than waiting for `preferences.settings` to echo it.
+    /// The other preferences are set only in Settings and reach this screen through
+    /// `applySettings`.
     func onUnitSystemChange(_ system: UnitSystem) {
         preferences.unitSystem = system
         uiState.unitSystem = system
         rerender()
     }
 
-    func onConvertLiquidsChange(_ enabled: Bool) {
-        preferences.convertLiquids = enabled
-        uiState.convertLiquids = enabled
-        rerender()
-    }
-
-    /// A display choice: changes nothing about the rendered text.
-    func onDarkWhileCookingChange(_ enabled: Bool) {
-        preferences.darkWhileCooking = enabled
-        uiState.darkWhileCooking = enabled
+    /// A change to the global defaults, from Settings or from this screen's own dropdown,
+    /// arriving while the recipe is open. Only a change that affects the text re-renders it:
+    /// darkWhileCooking is a display choice and leaves the recipe alone, and scaled servings,
+    /// ticks and cook progress are kept either way.
+    private func applySettings(_ settings: AppSettings) {
+        let rendersDifferently = settings.unitSystem != uiState.unitSystem
+            || settings.convertLiquids != uiState.convertLiquids
+            || settings.temperatureUnit != uiState.temperatureUnit
+        var state = uiState
+        state.unitSystem = settings.unitSystem
+        state.convertLiquids = settings.convertLiquids
+        state.temperatureUnit = settings.temperatureUnit
+        state.darkWhileCooking = settings.darkWhileCooking
+        // Assigned only when something changed, so an echo of our own write notifies no view.
+        guard state != uiState else { return }
+        uiState = state
+        if rendersDifferently { rerender() }
     }
 
     private func rerender() {
@@ -300,7 +334,8 @@ final class RecipeViewModel {
             servings: servings,
             ingredients: render(recipe, servings, uiState.unitSystem, uiState.convertLiquids),
             instructions: renderInstructions(recipe, uiState.temperatureUnit),
-            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0) }
+            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0) },
+            sourceDomain: SourceDomain.of(recipe.sourceUrl)
         )
     }
 
