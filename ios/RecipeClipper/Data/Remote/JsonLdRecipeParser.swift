@@ -299,16 +299,8 @@ enum JsonLdRecipeParser {
     /// out of the summary) followed by the same steps again in full. Compared after
     /// `stripHtml`, trimmed and lowercased; exact matches only, never a substring, so a real
     /// section that merely mentions "summary" is untouched. Add a name only once a real site
-    /// is seen publishing it. Same set as Android's `CONDENSED_SECTION_NAMES`.
-    private static let condensedSectionNames: Set<String> = [
-        "abbreviated recipe",
-        "quick version",
-        "short version",
-        "summary",
-        "recipe summary",
-        "tl;dr",
-        "at a glance",
-    ]
+    /// is seen publishing it. Shared with Android: shared/tables/en/sections.json.
+    private static let condensedSectionNames = Set(SharedTables.strings(SharedTables.load("sections"), "condensed"))
 
     private static func isHowToSection(_ item: Any) -> Bool {
         guard let object = item as? [String: Any] else { return false }

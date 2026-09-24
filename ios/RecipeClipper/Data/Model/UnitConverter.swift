@@ -9,7 +9,7 @@ import Foundation
 ///   as written rather than guessed.
 /// - If the line already carries the target unit in parentheses or after a slash, as in
 ///   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one.
-/// - Pourable liquids are left alone in grams/ounces unless `includeLiquids` is set.
+/// - Pourable liquids are left alone in ounces unless `includeLiquids` is set.
 ///   Metric turns them into ml, which is exact and needs no density, so it ignores the flag.
 /// - Metric otherwise gives spoons and cups as ml, except that a line carrying the site's own
 ///   weight ("1 tsp (4 g) salt", "1 cup/4 oz walnuts") shows that weight in g/kg, even for an
@@ -150,7 +150,6 @@ enum UnitConverter {
 
     private static func ownUnits(_ system: UnitSystem) -> Set<MeasureUnit> {
         switch system {
-        case .grams: return [.g, .kg]
         case .ounces: return [.oz, .lb]
         case .metric: return [.g, .kg, .ml, .l]
         case .asWritten: return []

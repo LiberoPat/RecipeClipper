@@ -56,7 +56,10 @@ stale, and writes the regenerated file to
 `app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
 (`app/build.gradle.kts` declares the Swift file as a test input, so editing
 it alone reruns the tests). `SiteReportTest` covers the weekly site check's
-report and URL list offline (see CI below).
+report and URL list offline (see CI below). `SiteReportLinkTest` pins the
+"Report this site" issue link byte for byte (percent-encoding, the cleaned
+link), and `RecipeViewModelTest` offers it only for `NoRecipeFound` on a
+shared link.
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -84,13 +87,18 @@ and the `outerHTML` decoding; a JVM test can't host a WebView.
 version-1 database from the exported schema and run `MIGRATION_1_2` against
 it: Breakfast and Snacks arrive, an existing recipe keeps its title,
 ingredients, `lastViewedAt` and list membership, and a user-created list keeps
-its place after the seeded block. This is what makes "never use destructive
-migration" checkable rather than an intention.
+its place after the seeded block. `MIGRATION_2_3` (the `notes` column, #27)
+is run against a real version-2 database the same way: the recipe keeps its
+content, ticks and membership, has no note, and a note written afterwards
+survives a re-share; a version-1 file also goes to 3 in one open. This is
+what makes "never use destructive migration" checkable rather than an
+intention.
 
-**All 89 device tests have been run on an emulator and pass**: 26
-`RecipeDaoTest`, 22 `ListDaoTest`, 3 `MigrationTest`, and 38 Compose UI tests
-(see below). `RecipeSourceCreditTest` (the source credit under the recipe
-title) was added after that run and has so far only been compiled.
+**The device tests have been run on an emulator and pass**: `RecipeDaoTest`,
+`ListDaoTest`, `MigrationTest` and the Compose UI tests (see below), including
+those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).
+`RecipeSourceCreditTest` (the source credit under the recipe title) was
+added after that run and has so far only been compiled.
 
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
 `MigrationTestHelper` reads the exported JSON from the test APK's **assets**,
@@ -104,7 +112,8 @@ hunting in the migration when that appears.
 **Compose UI tests** (`androidx.compose.ui:ui-test-junit4`, plus
 `debugImplementation("androidx.compose.ui:ui-test-manifest")` for the empty
 Activity `createComposeRule` launches): `HomeScreenTest` (12),
-`SaveToListBottomSheetTest` (12) and `ListDetailScreenTest` (14). They exist
+`SaveToListBottomSheetTest` (12), `ListDetailScreenTest` (14) and
+`RecipeErrorScreenTest` ("Report this site" on the no-recipe error only). They exist
 because every ViewModel behind Home was already covered and the whole suite
 stayed green through a duplicate-key crash that made the app unusable — that
 bug lived entirely in the view.
@@ -140,13 +149,14 @@ Three things that cost real time and will again:
   code.
 
 Still without Android UI tests: most of the recipe screen (reading and cook
-views, the bookmark icon, share; only the source credit is covered), History
-(search, swipe-to-dismiss, the undo snackbar), the Lists screen, and the
-Settings screen. The iOS UI tests (`ios/RecipeClipperUITests`) do
-cover Home, History (search, swipe-to-delete, the batched undo), Settings, list
-detail, the save-to-list sheet with the bookmark it fills, the source credit,
-and the import error screens. Cook mode and
-sharing have no UI tests on either platform.
+views, the bookmark icon, share; only the source credit and the import error
+screen, including "Report this site", are covered), History (search,
+swipe-to-dismiss, the undo snackbar), the Lists screen, and the Settings
+screen. The iOS UI tests (`ios/RecipeClipperUITests`) do cover Home, History
+(search, swipe-to-delete, the batched undo), Settings, list detail, the
+save-to-list sheet with the bookmark it fills, the source credit, and the
+import error screens (including "Report this site" opening Safari). Cook mode
+and sharing have no UI tests on either platform.
 
 `navigation-compose` has no BOM of its own and is built against a particular
 Compose: bump it with the Compose BOM, or the app pulls in a mix of Compose
@@ -285,8 +295,8 @@ empty, and the old one keeps its recipes, lists and settings.
 To carry them across, run the backup half of the round-trip above with
 `P=com.example.recipeclipper` (all three database files, then the merge), then
 `installDebug` the new build without opening it (or force-stop it), and run
-the restore half with `P=com.liberopat.recipeclipper`. The database is the same
-version, so nothing migrates. Check the recipes are there, then
+the restore half with `P=com.liberopat.recipeclipper`. If the old install's
+database is an older version, Room migrates it on first open. Check the recipes are there, then
 `adb uninstall com.example.recipeclipper`.
 
 A single test:

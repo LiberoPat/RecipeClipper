@@ -10,6 +10,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
 import com.example.recipeclipper.fake.FakeListRepository
@@ -49,7 +50,8 @@ class RecipeSourceCreditTest {
             FakeRecipeRepository().apply { openResult = recipe },
             FakeAppPreferences(),
             Clock { System.currentTimeMillis() },
-            FakeConnectivity()
+            FakeConnectivity(),
+            FakeAppInfo()
         )
         val saveViewModel = SaveToListViewModel(FakeListRepository())
         compose.setContent {

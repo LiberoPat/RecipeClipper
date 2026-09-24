@@ -29,6 +29,9 @@ interface RecipeRepository {
 
     suspend fun setChecked(id: Long, checked: Set<Int>)
 
+    /** Saves the user's note on a recipe. A blank note is stored as no note. */
+    suspend fun setNotes(id: Long, notes: String)
+
     /**
      * What a delete removed: enough for [restore] to undo it, list membership included.
      * Opaque to callers — they hold it and hand it back, nothing more.

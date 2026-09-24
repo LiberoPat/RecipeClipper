@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "about": "Query parameters UrlCleaner strips because they only track the click. Names are exact and lowercase; a prefix strips every name starting with it. Add a name only when you are sure it is tracking.",
+  "trackingPrefixes": ["utm_"],
+  "trackingParameters": [
+    "fbclid", "gclid", "gclsrc", "dclid", "msclkid", "yclid", "twclid", "ttclid",
+    "igshid", "mc_cid", "mc_eid", "mkt_tok", "li_fat_id", "vero_id", "_ga", "_gl",
+    "oly_enc_id", "oly_anon_id", "wickedid"
+  ]
+}

@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -70,7 +71,9 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 internal class RecipeActions(
     val onBack: () -> Unit,
     val onRetry: () -> Unit,
+    val onReportSite: () -> Unit,
     val onIngredientChecked: (Int, Boolean) -> Unit,
+    val onNotesChange: (String) -> Unit,
     val onServingsChange: (Int) -> Unit,
     val onUnitSystemChange: (UnitSystem) -> Unit,
     val onCookStart: () -> Unit,
@@ -97,12 +100,28 @@ fun RecipeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // Android's UriHandler fires ACTION_VIEW, so the browser opens the draft issue. A local,
+    // not a direct Intent, so a UI test can supply its own and see the link without leaving.
+    val uriHandler = LocalUriHandler.current
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
-    val actions = remember(viewModel, onBack, context) {
+    val actions = remember(viewModel, onBack, context, uriHandler) {
         RecipeActions(
             onBack = onBack,
             onRetry = viewModel::onRetry,
+            onReportSite = {
+                viewModel.uiState.value.reportSiteUrl?.let { url ->
+                    // No browser at all: nothing to open, and nothing lost by staying put.
+                    try {
+                        uriHandler.openUri(url)
+                    } catch (e: ActivityNotFoundException) {
+                        // Nothing to do.
+                    } catch (e: IllegalArgumentException) {
+                        // Newer Compose wraps ActivityNotFoundException in this.
+                    }
+                }
+            },
             onIngredientChecked = viewModel::onIngredientChecked,
+            onNotesChange = viewModel::onNotesChange,
             onServingsChange = viewModel::onServingsChange,
             onUnitSystemChange = viewModel::onUnitSystemChange,
             onCookStart = viewModel::onCookStart,
@@ -187,8 +206,22 @@ fun RecipeScreen(
                         // captive portal serves its login page, which parses as a page with no
                         // recipe, and the same link works once you're through it.
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
-                            Text(stringResource(R.string.action_try_again))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                                Text(stringResource(R.string.action_try_again))
+                            }
+                            // Only for a page with no recipe (the ViewModel decides): the one error
+                            // that means "unsupported" rather than "try again". Secondary, beside it.
+                            if (state.reportSiteUrl != null) {
+                                Spacer(Modifier.width(8.dp))
+                                TextButton(onClick = actions.onReportSite) {
+                                    Text(
+                                        stringResource(R.string.action_report_site),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -252,6 +285,9 @@ private fun ReadingView(
     isSaved: Boolean
 ) {
     val recipe = content.recipe
+    // Only whether the keyboard is up for the note, so the cooking bar steps aside for it.
+    // Focus doesn't survive rotation anyway, so plain remember is right here.
+    var editingNotes by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 112.dp),
@@ -348,9 +384,20 @@ private fun ReadingView(
                     Text(step, style = MaterialTheme.typography.bodyLarge)
                 }
             }
+
+            // After the steps: the reading view still opens on the recipe, and a note like
+            // "needs 10 more minutes" is read once the method is.
+            item {
+                Spacer(Modifier.height(24.dp))
+                NotesSection(
+                    notes = state.notes,
+                    onNotesChange = actions.onNotesChange,
+                    onFocusChange = { editingNotes = it }
+                )
+            }
         }
 
-        if (content.instructions.isNotEmpty()) {
+        if (content.instructions.isNotEmpty() && !editingNotes) {
             Column(
                 Modifier
                     .align(Alignment.BottomCenter)

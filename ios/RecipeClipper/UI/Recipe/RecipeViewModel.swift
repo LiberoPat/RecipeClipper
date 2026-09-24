@@ -9,6 +9,8 @@ import Observation
 @Observable
 final class RecipeViewModel {
     static let tick = Duration.milliseconds(250)
+    /// How long typing must pause before the note is written. Android's NOTES_SAVE_DELAY_MS.
+    static let notesSaveDelay = Duration.milliseconds(500)
 
     private(set) var uiState: RecipeUiState
 
@@ -19,6 +21,7 @@ final class RecipeViewModel {
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private let sleep: Sleep
     @ObservationIgnored private let connectivity: Connectivity
+    @ObservationIgnored private let appInfo: AppInfo
 
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     // Waits for offline -> online while an offline / fetch-failed error is showing.
@@ -26,6 +29,9 @@ final class RecipeViewModel {
     // Step index -> wall-clock time (ms) its timer ends. Only running timers are in here.
     @ObservationIgnored private var deadlines: [Int: Int64] = [:]
     @ObservationIgnored private var tickTask: Task<Void, Never>?
+    // The note as typed but not yet written (with its recipe), and the debounced write.
+    @ObservationIgnored private var pendingNotes: (id: Int64, text: String)?
+    @ObservationIgnored private var notesTask: Task<Void, Never>?
     @ObservationIgnored private var settingsSubscription: AnyCancellable?
 
     init(
@@ -35,7 +41,8 @@ final class RecipeViewModel {
         preferences: AppPreferences,
         clock: Clock,
         sleep: @escaping Sleep = Sleeps.real,
-        connectivity: Connectivity = StaticConnectivity()
+        connectivity: Connectivity = StaticConnectivity(),
+        appInfo: AppInfo = StaticAppInfo()
     ) {
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
@@ -44,6 +51,7 @@ final class RecipeViewModel {
         self.clock = clock
         self.sleep = sleep
         self.connectivity = connectivity
+        self.appInfo = appInfo
         // Seeded synchronously so the first render already uses the user's units.
         let settings = preferences.current
         uiState = RecipeUiState(
@@ -66,6 +74,11 @@ final class RecipeViewModel {
         loadTask?.cancel()
         tickTask?.cancel()
         reconnectTask?.cancel()
+        notesTask?.cancel()
+        // A note typed just before leaving is still written: one short write, owned by no one.
+        if let pending = pendingNotes {
+            Task { [repository] in await repository.setNotes(id: pending.id, notes: pending.text) }
+        }
     }
 
     // MARK: Loading
@@ -77,6 +90,7 @@ final class RecipeViewModel {
         reconnectTask?.cancel()
         reconnectTask = nil
         uiState.content = .loading
+        uiState.reportSiteUrl = nil
         // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
         loadTask = Task { [weak self, recipeId, shareUrl, repository] in
             let result: ParseResult
@@ -97,11 +111,21 @@ final class RecipeViewModel {
             case .success(let recipe):
                 uiState.content = .success(successContent(recipe))
                 uiState.checkedIngredients = recipe.checkedIngredients
+                uiState.notes = recipe.notes ?? ""
             case .error(let error):
                 uiState.content = .error(error)
+                uiState.reportSiteUrl = reportSiteUrl(for: error)
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
         }
+    }
+
+    /// Only a shared link that loaded but held no recipe is worth reporting: a block, being
+    /// offline or a failed fetch usually lifts on its own, and a saved recipe has no page to
+    /// report.
+    private func reportSiteUrl(for error: ParseError) -> String? {
+        guard error == .noRecipeFound, let shareUrl else { return nil }
+        return SiteReportLink.issueUrl(link: shareUrl, platform: appInfo.platform, appVersion: appInfo.appVersion)
     }
 
     /// While an offline or fetch-failed error is on screen, waits for the connection to go from
@@ -134,6 +158,27 @@ final class RecipeViewModel {
         // Saved as they change, so closing the app mid-cook doesn't lose the ticks.
         guard let id = uiState.content.success?.recipe.id else { return }
         Task { [repository] in await repository.setChecked(id: id, checked: next) }
+    }
+
+    /// The user's note, edited in place. The screen shows every keystroke at once; the write
+    /// waits until typing pauses for `notesSaveDelay`, so a sentence is one write rather than
+    /// one per letter. Leaving the screen before then still saves it (see `deinit`).
+    func onNotesChange(_ text: String) {
+        uiState.notes = text
+        guard let id = uiState.content.success?.recipe.id else { return }
+        pendingNotes = (id, text)
+        notesTask?.cancel()
+        // Weak across the sleep, so a popped screen still lets its ViewModel (and deinit) go.
+        notesTask = Task { [weak self, sleep] in
+            do { try await sleep(Self.notesSaveDelay) } catch { return }
+            await self?.flushNotes()
+        }
+    }
+
+    private func flushNotes() async {
+        guard let pending = pendingNotes else { return }
+        pendingNotes = nil
+        await repository.setNotes(id: pending.id, notes: pending.text)
     }
 
     /// The recipe as currently on screen — scaled servings, converted units — formatted for

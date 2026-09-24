@@ -24,10 +24,8 @@ class SharedPrefsAppPreferences @Inject constructor(@ApplicationContext context:
     private val prefs = context.getSharedPreferences("unit_preferences", Context.MODE_PRIVATE)
 
     override var unitSystem: UnitSystem
-        get() {
-            val saved = prefs.getString(KEY_SYSTEM, null)
-            return UnitSystem.values().firstOrNull { it.name == saved } ?: UnitSystem.AS_WRITTEN
-        }
+        // A stored GRAMS (the option #17 removed) reads as METRIC.
+        get() = UnitSystem.fromStoredName(prefs.getString(KEY_SYSTEM, null))
         set(value) {
             prefs.edit { putString(KEY_SYSTEM, value.name) }
         }

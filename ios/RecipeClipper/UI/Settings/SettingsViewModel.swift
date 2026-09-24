@@ -58,8 +58,8 @@ final class SettingsViewModel {
         uiState.darkWhileCooking = enabled
     }
 
-    /// "Also convert liquids" only means something for Grams and Ounces.
+    /// "Also convert liquids" only means something for Ounces: Metric always gives liquids in ml.
     var showsConvertLiquids: Bool {
-        uiState.unitSystem == .grams || uiState.unitSystem == .ounces
+        uiState.unitSystem == .ounces
     }
 }

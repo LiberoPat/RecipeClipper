@@ -54,10 +54,10 @@ class SettingsViewModelTest {
         val preferences = FakeAppPreferences()
         val vm = SettingsViewModel(preferences)
 
-        vm.onUnitSystemChange(UnitSystem.GRAMS)
+        vm.onUnitSystemChange(UnitSystem.METRIC)
 
-        assertEquals(UnitSystem.GRAMS, vm.uiState.value.unitSystem)
-        assertEquals(UnitSystem.GRAMS, preferences.unitSystem)
+        assertEquals(UnitSystem.METRIC, vm.uiState.value.unitSystem)
+        assertEquals(UnitSystem.METRIC, preferences.unitSystem)
     }
 
     @Test fun `onConvertLiquidsChange writes through and updates state`() = runTest(mainDispatcherRule.dispatcher) {
