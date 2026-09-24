@@ -5,11 +5,15 @@ import Foundation
 /// `lists/{listId}`, `clip?url={url}`.
 enum Route: Hashable {
     case recipe(id: Int64)
+    /// From a timer notification: the recipe, opened in cook mode (Android's `recipe/{id}?cook=true`).
+    case cookRecipe(id: Int64)
     case importUrl(String)
     case history
     case settings
     case lists
     case listDetail(id: Int64)
+    /// Edit a recipe (#29), or with no id type a new one in (Android's `edit?recipeId=`).
+    case editRecipe(id: Int64?)
     /// "Clip it yourself" (#37) on a page with no recipe data.
     case clip(String)
 }

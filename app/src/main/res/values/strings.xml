@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Recipe Clipper</string>
+    <string name="app_name" translatable="false">Recipe Clipper</string>
 
     <!-- Common actions -->
     <string name="action_back">‹  Back</string>
@@ -40,37 +40,15 @@
     <string name="clip_field_ingredients">Ingredients</string>
     <string name="clip_field_steps">Steps</string>
     <string name="clip_field_photo">Photo</string>
-    <string name="clip_tag_count">%1$s · %2$d</string>
     <string name="clip_hint">Select text on the page, then tap where it goes. For the photo, tap Photo, then the picture.</string>
     <string name="clip_picking_photo">Tap the picture to use as the photo.</string>
-    <plurals name="clip_lines_selected">
-        <item quantity="one">%1$d line selected</item>
-        <item quantity="other">%1$d lines selected</item>
-    </plurals>
     <string name="clip_lines_selected_hint">each line becomes one item</string>
     <string name="clip_summary_name">Name ✓</string>
     <string name="clip_summary_no_name">No name</string>
-    <plurals name="clip_summary_ingredients">
-        <item quantity="one">%1$d ingredient</item>
-        <item quantity="other">%1$d ingredients</item>
-    </plurals>
-    <plurals name="clip_summary_steps">
-        <item quantity="one">%1$d step</item>
-        <item quantity="other">%1$d steps</item>
-    </plurals>
     <string name="clip_summary_photo">photo</string>
     <string name="clip_summary_no_photo">no photo</string>
-    <string name="clip_summary_separator">" · "</string>
     <string name="clip_review">Review</string>
     <string name="clip_added_name">Name added</string>
-    <plurals name="clip_added_ingredients">
-        <item quantity="one">%1$d ingredient added</item>
-        <item quantity="other">%1$d ingredients added</item>
-    </plurals>
-    <plurals name="clip_added_steps">
-        <item quantity="one">%1$d step added</item>
-        <item quantity="other">%1$d steps added</item>
-    </plurals>
     <string name="clip_added_photo">Photo added</string>
     <string name="clip_cleared_name">Name cleared</string>
     <string name="clip_cleared_ingredients">Ingredients cleared</string>
@@ -81,16 +59,40 @@
     <string name="clip_back_to_page">‹  Back to page</string>
     <string name="clip_photo_from_page">Photo from the page</string>
     <string name="clip_no_photo">No photo. Tap Photo on the page, then the picture.</string>
-    <string name="clip_serves">Serves</string>
-    <string name="clip_total_time">Total time</string>
     <string name="clip_optional">optional</string>
     <string name="clip_ingredients_heading">Ingredients · %1$d</string>
     <string name="clip_steps_heading">Steps · %1$d</string>
     <string name="clip_add_line">+ Add a line</string>
     <string name="clip_add_step">+ Add a step</string>
-    <string name="clip_remove_line">✕</string>
     <string name="cd_clip_remove_line">Remove line %1$d</string>
     <string name="clip_save">Save recipe</string>
+    <string name="update_from_source_clip_title">Replace your clip?</string>
+    <string name="update_from_source_clip_body">This loads the page again and replaces the name, ingredients, steps and photo you clipped with the site\'s own recipe data. It stays in your lists and history.</string>
+    <string name="clipped_by_you">Clipped by you</string>
+    <string name="clipped_by_you_on">Clipped by you · %1$s</string>
+    <plurals name="clip_lines_selected">
+        <item quantity="one">%1$d line selected</item>
+        <item quantity="other">%1$d lines selected</item>
+    </plurals>
+    <plurals name="clip_summary_ingredients">
+        <item quantity="one">%1$d ingredient</item>
+        <item quantity="other">%1$d ingredients</item>
+    </plurals>
+    <plurals name="clip_summary_steps">
+        <item quantity="one">%1$d step</item>
+        <item quantity="other">%1$d steps</item>
+    </plurals>
+    <plurals name="clip_added_ingredients">
+        <item quantity="one">%1$d ingredient added</item>
+        <item quantity="other">%1$d ingredients added</item>
+    </plurals>
+    <plurals name="clip_added_steps">
+        <item quantity="one">%1$d step added</item>
+        <item quantity="other">%1$d steps added</item>
+    </plurals>
+    <string name="clip_tag_count" translatable="false">%1$s · %2$d</string>
+    <string name="clip_summary_separator" translatable="false">" · "</string>
+    <string name="clip_remove_line" translatable="false">✕</string>
 
     <!-- Errors -->
     <string name="error_no_recipe_found">Couldn\'t find recipe data on this page. Some sites don\'t tag their recipes in a way this app can read yet.</string>
@@ -132,16 +134,16 @@
     <string name="cook_position">Step %1$d of %2$d</string>
     <string name="cook_done_next">Done — next step</string>
     <string name="cook_done_finish">Done — finish</string>
-    <string name="cook_ingredients_count">  ·  %1$d</string>
+    <string name="cook_ingredients_count" translatable="false">  ·  %1$d</string>
     <string name="cd_hide_ingredients">Hide ingredients</string>
     <string name="cd_show_ingredients">Show ingredients</string>
     <string name="cd_go_to_step">Go to step %1$d</string>
     <string name="timer_start">⏱  Start %1$s timer</string>
-    <string name="timer_running">⏱  %1$s</string>
+    <string name="timer_running" translatable="false">⏱  %1$s</string>
     <string name="timers_up">Time\'s up</string>
 
     <!-- Home screen -->
-    <string name="home_title">Recipe Clipper</string>
+    <string name="home_title" translatable="false">Recipe Clipper</string>
     <string name="home_subtitle">Share a recipe link to this app from your browser, or paste one here.</string>
     <string name="label_recipe_url">Recipe URL</string>
     <string name="section_continue_cooking">Continue cooking</string>
@@ -194,6 +196,43 @@
     <string name="settings_section_units">Units</string>
     <string name="settings_section_oven_temperature">Oven temperature</string>
     <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_your_recipes">Your recipes</string>
+
+    <!-- Settings → Your recipes: export and import (#26) -->
+    <string name="backup_export_title">Export recipes</string>
+    <string name="backup_export_description">Save every recipe and list to one file, to keep or to move to another phone</string>
+    <string name="backup_import_title">Import recipes</string>
+    <string name="backup_import_description">Add the recipes and lists from an export file. Nothing here is replaced or deleted.</string>
+    <string name="backup_share_title">Export recipes</string>
+    <string name="backup_exporting">Preparing the file…</string>
+    <string name="backup_importing">Importing…</string>
+    <plurals name="backup_recipes">
+        <item quantity="one">%d recipe</item>
+        <item quantity="other">%d recipes</item>
+    </plurals>
+    <plurals name="backup_lists">
+        <item quantity="one">%d list</item>
+        <item quantity="other">%d lists</item>
+    </plurals>
+    <!-- %1$s and %2$s are backup_recipes and backup_lists. -->
+    <string name="backup_imported">Imported %1$s and %2$s.</string>
+    <string name="backup_imported_recipes">Imported %1$s.</string>
+    <string name="backup_imported_nothing">Nothing new: everything in that file is already here.</string>
+    <plurals name="backup_already_here">
+        <item quantity="one">%d recipe was already here.</item>
+        <item quantity="other">%d recipes were already here.</item>
+    </plurals>
+    <!-- %2$d is the history limit (50). -->
+    <plurals name="backup_skipped">
+        <item quantity="one">%1$d older recipe in no list wasn\'t added: history keeps the %2$d most recent.</item>
+        <item quantity="other">%1$d older recipes in no list weren\'t added: history keeps the %2$d most recent.</item>
+    </plurals>
+    <string name="backup_error_not_a_backup">That file isn\'t a Recipe Clipper export.</string>
+    <string name="backup_error_newer_version">That file was made by a newer version of Recipe Clipper (format %1$d). Update the app to import it.</string>
+    <string name="backup_error_malformed">That export file is damaged (%1$s). Nothing was imported.</string>
+    <string name="backup_error_read_failed">Couldn\'t open that file.</string>
+    <string name="backup_error_save_failed">Couldn\'t save the imported recipes. Nothing was changed.</string>
+    <string name="backup_error_export_failed">Couldn\'t create the export file.</string>
     <string name="temperature_as_written">As written</string>
     <string name="temperature_as_written_description">Exactly the temperature the recipe uses</string>
     <string name="temperature_celsius">Celsius (°C)</string>
@@ -230,4 +269,38 @@
          and that is the thing someone would hesitate over. -->
     <string name="delete_list_body">The list is removed. The recipes in it stay in your history.</string>
     <string name="action_delete_list">Delete list</string>
+
+    <!-- The shared message body (RecipeShareText): the words around the recipe, in the phone's
+         language. "Prep", "Cook" and "Total" reuse the label_* strings above. -->
+    <string name="share_serves">Serves %1$d</string>
+    <string name="share_makes">Makes %1$d</string>
+    <string name="share_scaled">%1$s (originally %2$d)</string>
+    <string name="share_heading_ingredients">INGREDIENTS</string>
+    <string name="share_heading_instructions">INSTRUCTIONS</string>
+
+    <!-- Step timer notifications (#10) -->
+    <string name="timer_channel_name">Cook timers</string>
+    <string name="timer_channel_description">When a step timer ends while the app is closed or in the background</string>
+    <string name="timer_notification_title">Time\'s up: step %1$d</string>
+
+    <!-- Editing a recipe, or typing one in (#29) -->
+    <string name="action_edit">Edit</string>
+    <string name="action_update_from_source">Update from source</string>
+    <string name="action_update">Update</string>
+    <string name="action_new_recipe">+ New recipe</string>
+    <string name="update_from_source_title">Replace your version?</string>
+    <string name="update_from_source_body">This fetches the recipe from its site again and replaces your version. Your changes to it will be lost; your note and lists stay.</string>
+    <string name="update_from_source_failed">Couldn\'t update from source. %1$s</string>
+    <string name="edit_title_new">New recipe</string>
+    <string name="edit_title_edit">Edit recipe</string>
+    <string name="edit_label_name">Name</string>
+    <string name="edit_label_yield">Serves or makes</string>
+    <string name="edit_label_prep">Prep time</string>
+    <string name="edit_label_cook">Cook time</string>
+    <string name="edit_label_total">Total time</string>
+    <string name="edit_label_ingredients">Ingredients, one per line</string>
+    <string name="edit_label_steps">Steps, one per line</string>
+    <string name="edit_label_photo">Photo link (optional)</string>
+    <string name="edit_error_invalid">A recipe needs a name, and ingredients or steps.</string>
+    <string name="edit_error_save_failed">Couldn\'t save the recipe. Try again.</string>
 </resources>

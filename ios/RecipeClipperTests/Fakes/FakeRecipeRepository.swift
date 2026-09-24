@@ -4,7 +4,7 @@ import Foundation
 
 /// A hand-written fake, not a mock. History and recent are in-memory subjects a test can push
 /// onto; `importFromUrl` and `open` return whatever the test stages; `setChecked`, `setNotes`,
-/// `delete` and `restore` record every call.
+/// `setCookProgress`, `setServingsTarget`, `delete` and `restore` record every call.
 final class FakeRecipeRepository: RecipeRepository {
     /// What `observeHistory` emits, regardless of the query passed.
     let history = CurrentValueSubject<[RecipeSummary], Never>([])
@@ -24,6 +24,8 @@ final class FakeRecipeRepository: RecipeRepository {
 
     private(set) var setCheckedCalls: [(id: Int64, checked: Set<Int>)] = []
     private(set) var setNotesCalls: [(id: Int64, notes: String)] = []
+    private(set) var setCookProgressCalls: [(id: Int64, progress: CookProgress)] = []
+    private(set) var setServingsTargetCalls: [(id: Int64, target: Int?)] = []
     private(set) var deleteCalls: [Int64] = []
     private(set) var restoreCalls: [DeletedRecipe] = []
 
@@ -39,12 +41,43 @@ final class FakeRecipeRepository: RecipeRepository {
 
     @MainActor func open(id: Int64) async -> Recipe? { openResult }
 
+    /// Staged answers for "Update from source", edits and new recipes, and every call made.
+    var updateFromSourceResult: ParseResult = .error(.nothingToShow)
+    private(set) var updateFromSourceCalls: [Int64] = []
+    var saveEditResult: Recipe?
+    private(set) var saveEditCalls: [(id: Int64, draft: RecipeDraft)] = []
+    var addManualResult: Recipe?
+    private(set) var addManualCalls: [RecipeDraft] = []
+
+    @MainActor func updateFromSource(id: Int64) async -> ParseResult {
+        updateFromSourceCalls.append(id)
+        return updateFromSourceResult
+    }
+
+    @MainActor func saveEdit(id: Int64, draft: RecipeDraft) async -> Recipe? {
+        saveEditCalls.append((id, draft))
+        return saveEditResult
+    }
+
+    @MainActor func addManual(draft: RecipeDraft) async -> Recipe? {
+        addManualCalls.append(draft)
+        return addManualResult
+    }
+
     @MainActor func setChecked(id: Int64, checked: Set<Int>) async {
         setCheckedCalls.append((id, checked))
     }
 
     @MainActor func setNotes(id: Int64, notes: String) async {
         setNotesCalls.append((id, notes))
+    }
+
+    @MainActor func setCookProgress(id: Int64, progress: CookProgress) async {
+        setCookProgressCalls.append((id, progress))
+    }
+
+    @MainActor func setServingsTarget(id: Int64, target: Int?) async {
+        setServingsTargetCalls.append((id, target))
     }
 
     @MainActor func delete(id: Int64) async -> DeletedRecipe? {

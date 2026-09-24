@@ -9,6 +9,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.recipeclipper.ui.clip.ClipScreen
 import com.example.recipeclipper.ui.clip.ClipViewModel
+import com.example.recipeclipper.ui.edit.EditRecipeScreen
+import com.example.recipeclipper.ui.edit.EditRecipeViewModel
 import com.example.recipeclipper.ui.history.HistoryScreen
 import com.example.recipeclipper.ui.home.HomeScreen
 import com.example.recipeclipper.ui.listdetail.ListDetailScreen
@@ -24,15 +26,25 @@ object Routes {
     const val SETTINGS = "settings"
     const val LISTS = "lists"
     const val LIST_DETAIL = "lists/{${ListDetailViewModel.LIST_ID_ARG}}"
-    const val RECIPE = "recipe/{${RecipeViewModel.RECIPE_ID_ARG}}"
+    const val RECIPE =
+        "recipe/{${RecipeViewModel.RECIPE_ID_ARG}}?${RecipeViewModel.COOK_ARG}={${RecipeViewModel.COOK_ARG}}"
 
     // The share-target entry: parse, then persist.
     const val IMPORT = "recipe/import?${RecipeViewModel.URL_ARG}={${RecipeViewModel.URL_ARG}}"
 
+    // Edit a recipe (#29), or with no id type a new one in.
+    const val EDIT = "edit?${EditRecipeViewModel.RECIPE_ID_ARG}={${EditRecipeViewModel.RECIPE_ID_ARG}}"
+
+    fun recipe(id: Long) = "recipe/$id"
+    fun edit(id: Long) = "edit?${EditRecipeViewModel.RECIPE_ID_ARG}=$id"
+    const val NEW_RECIPE = "edit"
+
+    // From a timer notification: the recipe, opened in cook mode.
+    fun cookRecipe(id: Long) = "recipe/$id?${RecipeViewModel.COOK_ARG}=true"
+
     // "Clip it yourself" (#37), from a page with no recipe data.
     const val CLIP = "clip?${ClipViewModel.URL_ARG}={${ClipViewModel.URL_ARG}}"
 
-    fun recipe(id: Long) = "recipe/$id"
     fun clip(url: String) = "clip?${ClipViewModel.URL_ARG}=${Uri.encode(url)}"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
@@ -48,7 +60,8 @@ fun RecipeNavHost(navController: NavHostController) {
                 onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
                 onOpenHistory = { navController.navigate(Routes.HISTORY) },
                 onOpenLists = { navController.navigate(Routes.LISTS) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) }
             )
         }
 
@@ -84,9 +97,40 @@ fun RecipeNavHost(navController: NavHostController) {
 
         composable(
             route = Routes.RECIPE,
-            arguments = listOf(navArgument(RecipeViewModel.RECIPE_ID_ARG) { type = NavType.LongType })
+            arguments = listOf(
+                navArgument(RecipeViewModel.RECIPE_ID_ARG) { type = NavType.LongType },
+                navArgument(RecipeViewModel.COOK_ARG) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
+            )
         ) {
-            RecipeScreen(onBack = { navController.popBackStack() })
+            RecipeScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { navController.navigate(Routes.edit(it)) }
+            )
+        }
+
+        // Saving replaces the edit screen and, when editing, the recipe screen under it, so
+        // the recipe opens afresh with its new content instead of the copy it loaded before.
+        composable(
+            route = Routes.EDIT,
+            arguments = listOf(
+                navArgument(EditRecipeViewModel.RECIPE_ID_ARG) {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                }
+            )
+        ) { entry ->
+            val editing = (entry.arguments?.getLong(EditRecipeViewModel.RECIPE_ID_ARG) ?: 0L) > 0
+            EditRecipeScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { id ->
+                    navController.popBackStack()
+                    if (editing) navController.popBackStack()
+                    navController.navigate(Routes.recipe(id))
+                }
+            )
         }
 
         composable(
@@ -101,6 +145,7 @@ fun RecipeNavHost(navController: NavHostController) {
         ) {
             RecipeScreen(
                 onBack = { navController.popBackStack() },
+                onEdit = { navController.navigate(Routes.edit(it)) },
                 onClip = { navController.navigate(Routes.clip(it)) }
             )
         }

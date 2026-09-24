@@ -5,15 +5,17 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.recipeclipper.data.local.dao.BackupDao
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.ListEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.local.entity.newUid
 
 @Database(
     entities = [RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class],
-    version = 3,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -21,6 +23,7 @@ abstract class RecipeDatabase : RoomDatabase() {
 
     abstract fun recipeDao(): RecipeDao
     abstract fun listDao(): ListDao
+    abstract fun backupDao(): BackupDao
 
     companion object {
         const val NAME = "recipe_clipper.db"
@@ -50,9 +53,9 @@ abstract class RecipeDatabase : RoomDatabase() {
                 val now = System.currentTimeMillis()
                 BUILT_IN_LISTS.forEachIndexed { index, name ->
                     db.execSQL(
-                        "INSERT INTO lists (name, isBuiltIn, isFavorites, sortOrder, createdAt) " +
-                                "VALUES (?, 1, ?, ?, ?)",
-                        arrayOf<Any>(name, if (index == 0) 1 else 0, index, now)
+                        "INSERT INTO lists (name, isBuiltIn, isFavorites, sortOrder, createdAt, uid) " +
+                                "VALUES (?, 1, ?, ?, ?, ?)",
+                        arrayOf<Any>(name, if (index == 0) 1 else 0, index, now, newUid())
                     )
                 }
             }
@@ -98,7 +101,67 @@ abstract class RecipeDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Gives every recipe and list a stable `uid` (issue #26): what an export file calls it,
+         * so a list keeps its identity through a rename and a later import or sync (#53) can
+         * recognise it. Existing rows are backfilled with random version-4 UUIDs, the same form
+         * [newUid] makes; the `''` default exists only so the column can be added NOT NULL.
+         * The same SQL is iOS's `addUids`.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (table in listOf("recipes", "lists")) {
+                    db.execSQL("ALTER TABLE $table ADD COLUMN uid TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("UPDATE $table SET uid = $RANDOM_UUID_SQL")
+                    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_${table}_uid ON $table (uid)")
+                }
+            }
+        }
+
+        /** A random version-4 UUID, lowercase, evaluated afresh for every row. */
+        private const val RANDOM_UUID_SQL =
+            "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || " +
+                "substr(lower(hex(randomblob(2))), 2) || '-' || " +
+                "substr('89ab', 1 + (abs(random()) % 4), 1) || substr(lower(hex(randomblob(2))), 2) || '-' || " +
+                "lower(hex(randomblob(6)))"
+
+        /**
+         * Adds the recipe's language tag (issue #14), which picks the words its lines are read
+         * with. Nullable, no default: a recipe stored before has none and is detected from its
+         * own words when shown, since the page's declared language can't be rebuilt from what
+         * was stored. A re-share fills it in.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recipes ADD COLUMN language TEXT")
+            }
+        }
+
+        /**
+         * Adds saved cook progress and the chosen servings (issue #10). Both nullable with no
+         * default, like [MIGRATION_2_3]: an existing recipe has no cook in progress and uses
+         * its own yield.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recipes ADD COLUMN cookState TEXT")
+                db.execSQL("ALTER TABLE recipes ADD COLUMN servingsTarget INTEGER")
+            }
+        }
+
+        /**
+         * Adds whose words a recipe is (#29): `contentOrigin` (PARSED, EDITED, CLIPPED or
+         * MANUAL, by name) and `editedAt`. Every existing recipe was parsed from its link and
+         * never edited, so PARSED and null. The same SQL is iOS's `addContentOrigin`.
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recipes ADD COLUMN contentOrigin TEXT NOT NULL DEFAULT 'PARSED'")
+                db.execSQL("ALTER TABLE recipes ADD COLUMN editedAt INTEGER")
+            }
+        }
+
         /** Every migration, in order: what the app and the tests open the database with. */
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
     }
 }

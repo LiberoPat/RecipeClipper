@@ -89,6 +89,19 @@ protocol RecipeRepository: AnyObject {
     /// recipe, or `.error(.saveFailed)`.
     func saveClip(_ recipe: Recipe) async -> ParseResult
 
+    /// "Update from source" (#29): fetches the recipe's link again and replaces the user's
+    /// version with the site's, keeping the id, note and list membership, and making it PARSED.
+    /// On any failure nothing changes and the cause is returned.
+    func updateFromSource(id: Int64) async -> ParseResult
+
+    /// Saves the user's edit of recipe `id`: the content becomes `draft`'s, `editedAt` is now,
+    /// and a parsed recipe becomes EDITED. Nil if `draft` isn't a recipe (no name, or neither
+    /// ingredients nor steps), the recipe is gone, or the save failed.
+    func saveEdit(id: Int64, draft: RecipeDraft) async -> Recipe?
+
+    /// Saves a recipe typed in by hand (MANUAL, with a `manual:` link). Nil as for `saveEdit`.
+    func addManual(draft: RecipeDraft) async -> Recipe?
+
     /// Opens a recipe from history, a list or home. Counts as a view. Nil if it's gone.
     func open(id: Int64) async -> Recipe?
 
@@ -96,6 +109,12 @@ protocol RecipeRepository: AnyObject {
 
     /// Saves the user's note on a recipe. A blank note is stored as no note.
     func setNotes(id: Int64, notes: String) async
+
+    /// Saves where the cook stands. An empty `CookProgress` is stored as none.
+    func setCookProgress(id: Int64, progress: CookProgress) async
+
+    /// Saves the chosen servings; nil goes back to the recipe's own yield.
+    func setServingsTarget(id: Int64, target: Int?) async
 
     /// Hard delete; memberships go with it. Nil if it was already gone.
     func delete(id: Int64) async -> DeletedRecipe?
@@ -109,6 +128,20 @@ protocol RecipeRepository: AnyObject {
 
     /// The `limit` most recently viewed. Re-emits on change.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never>
+}
+
+/// Schedules the background "time's up" alert for a running step timer, so it still sounds
+/// with the app in the background or killed (Android's `TimerAlarmScheduler`). A seam: the
+/// ViewModel never touches UserNotifications, and tests pass a fake. The real one is
+/// `NotificationTimerScheduler`. Every call is idempotent.
+@MainActor
+protocol TimerAlarmScheduler: AnyObject {
+    func schedule(_ alarm: StepAlarm)
+    func cancel(recipeId: Int64, step: Int)
+    /// Drops every pending alert for `recipeId` and schedules `alarms` instead. On opening a
+    /// recipe: a local notification has no receiver that could check it is still wanted, so
+    /// one left over from a re-share that changed the steps must be removed here.
+    func replaceAll(recipeId: Int64, with alarms: [StepAlarm])
 }
 
 /// List membership. Separate from RecipeRepository on purpose (see docs/decisions.md, Lists).
@@ -134,6 +167,40 @@ protocol ListRepository: AnyObject {
 
     /// Refused for Favorites (guard lives in the SQL). Never deletes the recipes in it.
     func deleteList(listId: Int64) async
+}
+
+/// Export and import of every recipe and list as one file (#26; Android's BackupRepository).
+protocol BackupRepository: AnyObject {
+    /// Everything, as the text of one export file.
+    func export() async -> Result<ExportedBackup, BackupError>
+
+    /// Merges an export file into what's here (never replaces, never deletes; see
+    /// BackupMerger). A file that can't be read writes nothing and says why.
+    func importBackup(_ text: String) async -> Result<ImportSummary, BackupError>
+}
+
+/// Where an export file is written and a picked one is read (Android's BackupFiles), so the
+/// Settings ViewModel stays free of the file system and its test can use a fake.
+protocol BackupFiles: AnyObject {
+    /// Writes `json` as `recipe-clipper-YYYY-MM-DD.json` and returns its URL for the share
+    /// sheet, or nil if it couldn't be written.
+    func writeExport(json: String, exportedAt: Int64) async -> URL?
+
+    /// The picked file's text, `.readFailed` if it couldn't be read, or `.notABackup` if it's
+    /// far bigger than any export (or not text).
+    func readText(_ url: URL) async -> Result<String, BackupError>
+}
+
+/// Far beyond any real export (a few hundred recipes is well under 2 MB).
+let backupMaxBytes = 20 * 1024 * 1024
+
+/// `recipe-clipper-YYYY-MM-DD.json`, in the phone's time zone.
+func backupFileName(exportedAt: Int64) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyy-MM-dd"
+    let date = Date(timeIntervalSince1970: TimeInterval(exportedAt) / 1000)
+    return "recipe-clipper-" + formatter.string(from: date) + ".json"
 }
 
 /// The user's global defaults. Read and written through the vars; `settings` publishes them so

@@ -7,59 +7,72 @@ import Foundation
 /// stated duration ("whisk until smooth") returns nil and gets no timer: never guess one.
 enum StepTimers {
 
-    private static let qty = IngredientScaler.qty
+    /// One language's duration words: shared/tables/<language>/timers.json.
+    private final class Patterns {
+        /// Each unit's words as one case-insensitive whole-string regex, with its length in seconds.
+        let units: [(words: JRegex, seconds: Int32)]
 
-    // The duration words are shared with Android: shared/tables/en/timers.json.
-    private static let table = SharedTables.load("timers")
+        /// How a button writes each unit, by its length in seconds.
+        let labels: [Int32: String]
 
-    /// Each unit's words as one case-insensitive whole-string regex, with its length in seconds.
-    private static let units: [(words: JRegex, seconds: Int32)] = SharedTables.objects(table, "units").map {
-        (JRegex(SharedTables.alternation(SharedTables.strings($0, "patterns")), ignoreCase: true),
-         Int32(($0["seconds"] as? Int) ?? 0))
+        // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer".
+        let duration: JRegex
+
+        // "1 hour 30 minutes", "2 minutes and 30 seconds". groups: 1 quantity, 2 unit
+        let followOn: JRegex
+
+        init(_ words: LanguageWords) {
+            let table = SharedTables.objects(words.table("timers"), "units")
+            units = table.map {
+                (JRegex(SharedTables.alternation(SharedTables.strings($0, "patterns")), ignoreCase: true),
+                 Int32(($0["seconds"] as? Int) ?? 0))
+            }
+            labels = Dictionary(uniqueKeysWithValues: table.map { (Int32(($0["seconds"] as? Int) ?? 0), $0["label"] as? String ?? "") })
+            let patterns = table.flatMap { SharedTables.strings($0, "patterns") }
+            let unit = "(" + (patterns.isEmpty ? ["(?!)"] : patterns).joined(separator: "|") + ")"
+            let followOnWords = SharedTables.alternation(words.strings("timers", "followOn"))
+            let qty = IngredientScaler.patterns(words).qty
+            duration = JRegex(
+                #"(?<![\d.,/⁄])("# + qty + #")(?:\s*(?:[-–—]|"# + words.rangeWords + #")\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
+                ignoreCase: true
+            )
+            followOn = JRegex(
+                #"^\s*(?:"# + followOnWords + #"\s+)?("# + qty + #")\s*-?\s*"# + unit + #"\b"#,
+                ignoreCase: true
+            )
+        }
+
+        func seconds(_ unit: String) -> Int32 {
+            units.first { $0.words.matchEntire(unit) != nil }!.seconds
+        }
     }
 
-    private static let unit = "(" + SharedTables.objects(table, "units")
-        .flatMap { SharedTables.strings($0, "patterns") }
-        .joined(separator: "|") + ")"
-    private static let followOnWords = SharedTables.alternation(SharedTables.strings(table, "followOn"))
-
-    // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer".
-    private static let duration = JRegex(
-        #"(?<![\d.,/])("# + qty + #")(?:\s*(?:[-–—]|"# + SharedTables.rangeWords + #")\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
-        ignoreCase: true
-    )
-
-    // "1 hour 30 minutes", "2 minutes and 30 seconds". groups: 1 quantity, 2 unit
-    private static let followOn = JRegex(
-        #"^\s*(?:"# + followOnWords + #"\s+)?("# + qty + #")\s*-?\s*"# + unit + #"\b"#,
-        ignoreCase: true
-    )
+    private static func patterns(_ words: LanguageWords) -> Patterns { words.compiled(Patterns.self, Patterns.init) }
 
     private static let maxSeconds = 24 * 3600
 
-    static func parse(_ step: String) -> Int? {
-        guard let first = duration.find(step) else { return nil }
-        guard var total = toSeconds(first[1], first[2]) else { return nil }
+    /// `words` nil: a language the app has no words for, so no timer.
+    static func parse(_ step: String, words: LanguageWords? = .english) -> Int? {
+        guard let words else { return nil }
+        let p = patterns(words)
+        guard let first = p.duration.find(step) else { return nil }
+        guard var total = toSeconds(p, first[1], first[2]) else { return nil }
 
         let rest = step.u16Substring(from: first.end)
-        if let follow = followOn.find(rest) {
-            let extra = toSeconds(follow[1], follow[2])
+        if let follow = p.followOn.find(rest) {
+            let extra = toSeconds(p, follow[1], follow[2])
             // Only a smaller unit continues the duration ("1 hour" then "30 minutes").
-            if let extra, unitSeconds(follow[2]) < unitSeconds(first[2]) {
+            if let extra, p.seconds(follow[2]) < p.seconds(first[2]) {
                 total = total &+ extra // Kotlin Int arithmetic wraps rather than trapping
             }
         }
         return (1...maxSeconds).contains(Int(total)) ? Int(total) : nil
     }
 
-    private static func unitSeconds(_ unit: String) -> Int32 {
-        units.first { $0.words.matchEntire(unit) != nil }!.seconds
-    }
-
     /// Int32 with Kotlin's saturating `Double.toInt()`, so an absurd number can't trap.
-    private static func toSeconds(_ quantity: String, _ unit: String) -> Int32? {
+    private static func toSeconds(_ p: Patterns, _ quantity: String, _ unit: String) -> Int32? {
         guard let amount = IngredientScaler.parse(quantity) else { return nil }
-        let seconds = amount * Double(unitSeconds(unit))
+        let seconds = amount * Double(p.seconds(unit))
         if seconds.isNaN { return 0 }
         if seconds >= Double(Int32.max) { return Int32.max }
         if seconds <= Double(Int32.min) { return Int32.min }
@@ -75,15 +88,17 @@ enum StepTimers {
         return String(format: "%d:%02d", s / 60, s % 60)
     }
 
-    /// Short wording for a button: "20 min", "1 hr 30 min", "45 sec".
-    static func label(_ seconds: Int) -> String {
+    /// Short wording for a button, in the recipe's words: "20 min", "1 hr 30 min", "45 sec".
+    static func label(_ seconds: Int, words: LanguageWords = .english) -> String {
+        let labels = patterns(words).labels
+        let hr = labels[3600]!, min = labels[60]!, sec = labels[1]!
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60
         let secs = seconds % 60
-        if hours > 0 && minutes > 0 { return "\(hours) hr \(minutes) min" }
-        if hours > 0 { return "\(hours) hr" }
-        if minutes > 0 && secs > 0 { return "\(minutes) min \(secs) sec" }
-        if minutes > 0 { return "\(minutes) min" }
-        return "\(secs) sec"
+        if hours > 0 && minutes > 0 { return "\(hours) \(hr) \(minutes) \(min)" }
+        if hours > 0 { return "\(hours) \(hr)" }
+        if minutes > 0 && secs > 0 { return "\(minutes) \(min) \(secs) \(sec)" }
+        if minutes > 0 { return "\(minutes) \(min)" }
+        return "\(secs) \(sec)"
     }
 }

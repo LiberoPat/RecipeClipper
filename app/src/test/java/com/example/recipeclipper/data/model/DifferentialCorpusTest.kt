@@ -44,7 +44,7 @@ class DifferentialCorpusTest {
         assumeTrue("no iOS project beside app/", swiftFile.exists())
         val original = swiftFile.readText()
         val regenerated = original.lines().joinToString("\n") { regenerate(it) }
-        outFile.parentFile.mkdirs()
+        outFile.parentFile?.mkdirs()
         outFile.writeText(regenerated)
         assertEquals(
             "The corpus is stale. Copy app/${outFile.path} over ios/RecipeClipperTests/Model/" +
@@ -76,10 +76,11 @@ class DifferentialCorpusTest {
     private fun ingredientRow(line: String): String {
         val scaled = factors.map { IngredientScaler.scale(line, it) }
         val converted = systems.map { (system, liquids) -> UnitConverter.convert(line, system, liquids) }
-        // As RecipeViewModel renders: scale, then convert with the original line's separator.
-        val scaledMetric = UnitConverter.convert(IngredientScaler.scale(line, 2.0), UnitSystem.METRIC, false, line)
-        val halfOunces = UnitConverter.convert(IngredientScaler.scale(line, 0.5), UnitSystem.OUNCES, true, line)
-        return "Ing(${q(line)}, ${list(scaled)}, ${list(converted)}, ${q(scaledMetric)}, ${q(halfOunces)})"
+        // As the reading view renders: scale, then convert with the original line's separator.
+        val scaledMetric = IngredientRendering.render(listOf(line), 2.0, UnitSystem.METRIC, false).single()
+        val halfOunces = IngredientRendering.render(listOf(line), 0.5, UnitSystem.OUNCES, true).single()
+        val name = IngredientName.of(line)?.let { q(it) } ?: "nil"
+        return "Ing(${q(line)}, ${list(scaled)}, ${list(converted)}, ${q(scaledMetric)}, ${q(halfOunces)}, $name)"
     }
 
     private fun instructionRow(line: String): String {

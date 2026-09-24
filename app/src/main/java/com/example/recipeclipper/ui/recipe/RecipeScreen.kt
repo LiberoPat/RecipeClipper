@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.recipe
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,12 +15,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
@@ -33,6 +37,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -58,10 +65,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
 import androidx.core.net.toUri
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
@@ -89,24 +97,30 @@ internal class RecipeActions(
     val onShare: () -> Unit,
     val onOpenOriginal: (url: String) -> Unit,
     val onSaveToList: () -> Unit,
-    val onDelete: () -> Unit
+    val onDelete: () -> Unit,
+    val onEdit: () -> Unit = {},
+    val onUpdateFromSource: () -> Unit = {}
 )
 
 @Composable
 fun RecipeScreen(
     onBack: () -> Unit,
     onClip: (url: String) -> Unit = {},
+    onEdit: (recipeId: Long) -> Unit = {},
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
     // Android's UriHandler fires ACTION_VIEW, so the browser opens the draft issue. A local,
     // not a direct Intent, so a UI test can supply its own and see the link without leaving.
     val uriHandler = LocalUriHandler.current
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
-    val actions = remember(viewModel, onBack, context, uriHandler) {
+    // The first timer started asks for permission to post its "time's up" notification.
+    val askForNotifications = rememberNotificationPrompt()
+    val actions = remember(viewModel, onBack, onEdit, context, uriHandler, askForNotifications) {
         RecipeActions(
             onBack = onBack,
             onRetry = viewModel::onRetry,
@@ -131,12 +145,15 @@ fun RecipeScreen(
             onStepSelected = viewModel::onStepSelected,
             onStepDone = viewModel::onStepDone,
             onIngredientsToggle = viewModel::onIngredientsToggle,
-            onTimerStart = viewModel::onTimerStart,
+            onTimerStart = { step ->
+                askForNotifications()
+                viewModel.onTimerStart(step)
+            },
             onTimerToggle = viewModel::onTimerToggle,
             onTimerReset = viewModel::onTimerReset,
             onTimerAlerted = viewModel::onTimerAlerted,
             onShare = {
-                viewModel.shareText()?.let { text ->
+                viewModel.shareText(shareLabels(resources))?.let { text ->
                     val title = (viewModel.uiState.value.content as? RecipeContent.Success)
                         ?.recipe?.name.orEmpty()
                     ShareCompat.IntentBuilder(context)
@@ -157,7 +174,11 @@ fun RecipeScreen(
                 }
             },
             onSaveToList = { sheetOpen = true },
-            onDelete = viewModel::onDelete
+            onDelete = viewModel::onDelete,
+            onEdit = {
+                (viewModel.uiState.value.content as? RecipeContent.Success)?.recipe?.id?.let(onEdit)
+            },
+            onUpdateFromSource = viewModel::onUpdateFromSource
         )
     }
 
@@ -175,8 +196,21 @@ fun RecipeScreen(
     LaunchedEffect(recipeId) {
         if (recipeId != null) saveViewModel.setRecipe(recipeId)
     }
+    // While this recipe is on screen its timers beep here instead of posting a notification.
+    MarkRecipeVisible(recipeId)
 
     val cooking = content is RecipeContent.Success && state.cook.active
+
+    // "Update from source" failed: the recipe on screen is unchanged; say why, once.
+    val snackbarHostState = remember { SnackbarHostState() }
+    val updateError = state.updateError
+    val updateErrorMessage = updateError?.let { stringResource(R.string.update_from_source_failed, it.toMessage()) }
+    LaunchedEffect(updateError) {
+        if (updateErrorMessage != null) {
+            snackbarHostState.showSnackbar(updateErrorMessage)
+            viewModel.onUpdateErrorShown()
+        }
+    }
 
     // Cook mode follows the system theme like every other screen unless the user has asked
     // for it to stay dark.
@@ -187,60 +221,71 @@ fun RecipeScreen(
         ) {
             TimerAlerts(state.cook.timers, actions.onTimerAlerted)
 
-            when (content) {
-                is RecipeContent.Success ->
-                    if (cooking) CookView(content, state, actions)
-                    else ReadingView(content, state, actions, saveState.isSaved)
-                is RecipeContent.Loading -> StatusView(actions.onBack) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-                is RecipeContent.Error -> StatusView(actions.onBack) {
-                    Text(
-                        content.error.toMessage(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    // Every error offers "Try again", no-recipe included: a café or hotel
-                    // captive portal serves its login page, which parses as a page with no
-                    // recipe, and the same link works once you're through it.
-                    Spacer(Modifier.height(16.dp))
-                    val clipUrl = state.clipUrl
-                    if (clipUrl == null) {
-                        Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
-                            Text(stringResource(R.string.action_try_again))
-                        }
-                    } else {
-                        // A page with no recipe data (#37): Try again stays first, outlined;
-                        // clipping it by hand is the one filled button, and reporting the site
-                        // (#30) is the quiet option under it.
-                        OutlinedButton(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
-                            Text(stringResource(R.string.action_try_again))
-                        }
-                        Spacer(Modifier.height(20.dp))
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Spacer(Modifier.height(16.dp))
+            // Edge-to-edge: the surface's colour fills behind the bars (so forced-dark cook
+            // mode is dark edge to edge); the content stays clear of them, the display
+            // cutout and the keyboard.
+            Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                when (content) {
+                    is RecipeContent.Success ->
+                        if (cooking) CookView(content, state, actions)
+                        else ReadingView(content, state, actions, saveState.isSaved)
+                    is RecipeContent.Loading -> StatusView(actions.onBack) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                    is RecipeContent.Error -> StatusView(actions.onBack) {
                         Text(
-                            stringResource(R.string.clip_offer),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            content.error.toMessage(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
                         )
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = { onClip(clipUrl) }, shape = RoundedCornerShape(12.dp)) {
-                            Text(stringResource(R.string.action_clip_it_yourself))
-                        }
-                    }
-                    // Only for a page with no recipe (the ViewModel decides): the one error
-                    // that means "unsupported" rather than "try again".
-                    if (state.reportSiteUrl != null) {
-                        TextButton(onClick = actions.onReportSite) {
-                            Text(
-                                stringResource(R.string.action_report_site),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        // Every error offers "Try again", no-recipe included: a café or hotel
+                        // captive portal serves its login page, which parses as a page with no
+                        // recipe, and the same link works once you're through it.
+                        Spacer(Modifier.height(16.dp))
+                        Column {
+                            val clipUrl = state.clipUrl
+                            if (clipUrl == null) {
+                                Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                                    Text(stringResource(R.string.action_try_again))
+                                }
+                            } else {
+                                // A page with no recipe data (#37): Try again stays first,
+                                // outlined; clipping it by hand is the one filled button, and
+                                // reporting the site (#30) is the quiet option under it.
+                                OutlinedButton(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                                    Text(stringResource(R.string.action_try_again))
+                                }
+                                Spacer(Modifier.height(20.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    stringResource(R.string.clip_offer),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                Button(onClick = { onClip(clipUrl) }, shape = RoundedCornerShape(12.dp)) {
+                                    Text(stringResource(R.string.action_clip_it_yourself))
+                                }
+                            }
+                            // Only for a page with no recipe (the ViewModel decides): the one
+                            // error that means "unsupported" rather than "try again".
+                            if (state.reportSiteUrl != null) {
+                                TextButton(onClick = actions.onReportSite) {
+                                    Text(
+                                        stringResource(R.string.action_report_site),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }
+            }
+
+            Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.BottomCenter) {
+                SnackbarHost(snackbarHostState)
             }
 
             // Only reachable once the recipe has an id: there is nothing to put in a list
@@ -333,7 +378,21 @@ private fun ReadingView(
                     IconButton(onClick = actions.onShare) {
                         Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share_recipe))
                     }
-                    RecipeOverflowMenu(recipeName = recipe.name, onDelete = actions.onDelete)
+                    if (state.updatingFromSource) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(12.dp).size(20.dp)
+                        )
+                    }
+                    RecipeOverflowMenu(
+                        recipeName = recipe.name,
+                        canUpdateFromSource = recipe.canUpdateFromSource && !state.updatingFromSource,
+                        clipped = recipe.origin == ContentOrigin.CLIPPED,
+                        onEdit = actions.onEdit,
+                        onUpdateFromSource = actions.onUpdateFromSource,
+                        onDelete = actions.onDelete
+                    )
                 }
             }
 
@@ -356,7 +415,11 @@ private fun ReadingView(
                 Text(recipe.name, style = MaterialTheme.typography.headlineSmall)
                 val domain = content.sourceDomain
                 if (domain != null) {
-                    SourceCredit(domain, onOpen = { actions.onOpenOriginal(recipe.sourceUrl) })
+                    SourceCredit(
+                        domain,
+                        clipped = recipe.origin == ContentOrigin.CLIPPED,
+                        onOpen = { actions.onOpenOriginal(recipe.sourceUrl) }
+                    )
                     Spacer(Modifier.height(4.dp))
                 } else {
                     Spacer(Modifier.height(14.dp))
@@ -366,6 +429,7 @@ private fun ReadingView(
                 ServesUnitsRow(
                     servings = content.servings,
                     yieldText = recipe.yield,
+                    words = content.words,
                     unitSystem = state.unitSystem,
                     onServingsChange = actions.onServingsChange,
                     onUnitSystemChange = actions.onUnitSystemChange
@@ -435,22 +499,72 @@ private fun ReadingView(
     }
 }
 
-/** Overflow menu: currently just Delete, behind a confirm dialog naming the recipe. */
+/**
+ * Overflow menu: Edit, "Update from source" for the user's version of a linked recipe (#29),
+ * behind a warning that the edits will be lost, and Delete, behind a confirm dialog naming
+ * the recipe.
+ */
 @Composable
-private fun RecipeOverflowMenu(recipeName: String, onDelete: () -> Unit) {
+private fun RecipeOverflowMenu(
+    recipeName: String,
+    canUpdateFromSource: Boolean,
+    clipped: Boolean,
+    onEdit: () -> Unit,
+    onUpdateFromSource: () -> Unit,
+    onDelete: () -> Unit
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var confirming by rememberSaveable { mutableStateOf(false) }
+    var confirmingUpdate by rememberSaveable { mutableStateOf(false) }
 
     IconButton(onClick = { expanded = true }) {
         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
         DropdownMenuItem(
+            text = { Text(stringResource(R.string.action_edit)) },
+            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+            onClick = {
+                expanded = false
+                onEdit()
+            }
+        )
+        if (canUpdateFromSource) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_update_from_source)) },
+                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    confirmingUpdate = true
+                }
+            )
+        }
+        DropdownMenuItem(
             text = { Text(stringResource(R.string.action_delete)) },
             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
             onClick = {
                 expanded = false
                 confirming = true
+            }
+        )
+    }
+    if (confirmingUpdate) {
+        AlertDialog(
+            onDismissRequest = { confirmingUpdate = false },
+            // A clip (#37) says what it loses in its own words: the parts picked from the page.
+            title = {
+                Text(stringResource(if (clipped) R.string.update_from_source_clip_title else R.string.update_from_source_title))
+            },
+            text = {
+                Text(stringResource(if (clipped) R.string.update_from_source_clip_body else R.string.update_from_source_body))
+            },
+            confirmButton = {
+                TextButton(onClick = { confirmingUpdate = false; onUpdateFromSource() }) {
+                    Text(stringResource(R.string.action_update))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingUpdate = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -476,10 +590,12 @@ private fun RecipeOverflowMenu(recipeName: String, onDelete: () -> Unit) {
  * paprika link to the page in the browser. Reading view only; cook mode has no room for it.
  */
 @Composable
-private fun SourceCredit(domain: String, onOpen: () -> Unit) {
+private fun SourceCredit(domain: String, clipped: Boolean, onOpen: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        // A clip (#37) says whose selection it is, so a difference from the page, and a
+        // re-share that doesn't refresh it, both make sense.
         Text(
-            domain,
+            if (clipped) stringResource(R.string.clipped_by_you_on, domain) else domain,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,

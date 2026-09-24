@@ -19,7 +19,12 @@ extension Recipe {
             sourceType: sourceType.rawValue,
             lastViewedAt: viewedAt,
             checkedIngredients: checkedIngredients,
-            notes: notes
+            notes: notes,
+            language: language,
+            cookState: CookStateJSON.encode(cook),
+            servingsTarget: servingsTarget,
+            contentOrigin: origin.rawValue,
+            editedAt: editedAt
         )
     }
 }
@@ -40,7 +45,12 @@ extension RecipeRecord {
             id: id,
             checkedIngredients: checkedIngredients,
             lastViewedAt: lastViewedAt,
-            notes: notes
+            notes: notes,
+            language: language,
+            cook: CookStateJSON.decode(cookState),
+            servingsTarget: servingsTarget,
+            origin: ContentOrigin.from(name: contentOrigin),
+            editedAt: editedAt
         )
     }
 }

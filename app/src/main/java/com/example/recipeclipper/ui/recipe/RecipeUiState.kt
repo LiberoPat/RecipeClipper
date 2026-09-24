@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.recipe
 
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.ServingsScale
@@ -21,7 +22,8 @@ data class StepTimer(
  * kept when the user leaves and returns, so it is never lost by a stray tap on Exit.
  * [currentStep] is what is being cooked now; [doneSteps] are struck off. Tapping any step
  * moves [currentStep] without touching [doneSteps], so jumping back loses nothing.
- * (Not persisted yet: a closed app forgets its place, though ticked ingredients survive.)
+ * Saved as it changes ([com.example.recipeclipper.data.model.CookProgress]), so a closed or
+ * killed app picks up at the same step, with its timers still counting.
  *
  * Screen state, not domain: unlike [ServingsScale] this stays in `ui/`, since `active`,
  * `ingredientsExpanded` and `alerted` describe what the screen is doing, not the recipe.
@@ -44,6 +46,8 @@ sealed class RecipeContent {
      * scale from. [stepTimerSeconds] lines up with the steps: the duration each one states,
      * or null. [sourceDomain] is the site credited under the title ("smittenkitchen.com"),
      * or null when the source link has no recognisable host (then no credit is shown).
+     * [words] are the recipe's language's (#14), which the view uses for the yield's kind and
+     * the timer labels; null for a language the app has no words for.
      */
     data class Success(
         val recipe: Recipe,
@@ -51,7 +55,8 @@ sealed class RecipeContent {
         val ingredients: List<String>,
         val instructions: List<String>,
         val stepTimerSeconds: List<Int?>,
-        val sourceDomain: String?
+        val sourceDomain: String?,
+        val words: LanguageWords? = LanguageWords.forRecipe(recipe)
     ) : RecipeContent()
 
     data class Error(val error: ParseError) : RecipeContent()
@@ -83,6 +88,11 @@ data class RecipeUiState(
      * which mean "try again", not "unsupported". The screen opens it; nothing is sent.
      */
     val reportSiteUrl: String? = null,
+    /** "Update from source" (#29) is fetching; the recipe stays on screen meanwhile. */
+    val updatingFromSource: Boolean = false,
+    /** Why the last "Update from source" failed, until the screen has shown it. The recipe
+     *  on screen is unchanged. */
+    val updateError: ParseError? = null,
     /**
      * The shared link to clip by hand ("Clip it yourself", #37). Set exactly when
      * [reportSiteUrl] is: only a page that loaded with no recipe data can be clipped.

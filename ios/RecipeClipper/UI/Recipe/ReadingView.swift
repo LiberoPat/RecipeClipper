@@ -35,6 +35,7 @@ struct ReadingView: View {
                 ServesUnitsRow(
                     servings: content.servings,
                     yieldText: recipe.yield,
+                    words: content.words,
                     unitSystem: state.unitSystem,
                     onServingsChange: vm.onServingsChange,
                     onUnitSystemChange: vm.onUnitSystemChange
@@ -83,6 +84,7 @@ struct ReadingView: View {
                 .padding(.top, 24)
             }
             .padding(.horizontal, 20)
+            .readableColumn()
             .padding(.top, 4)
             .padding(.bottom, 32)
         }
@@ -94,6 +96,7 @@ struct ReadingView: View {
                     Button(Strings.startCooking, action: vm.onCookStart)
                         .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: true))
                         .padding(.horizontal, 20)
+                        .readableColumn()
                         .padding(.vertical, 12)
                 }
                 .background(Palette.background)

@@ -1,10 +1,17 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.local.CookStateJson
 import com.example.recipeclipper.data.local.dao.RecipeDao
+import com.example.recipeclipper.data.local.entity.newUid
+import com.example.recipeclipper.data.model.ContentOrigin
+import com.example.recipeclipper.data.model.CookProgress
+import com.example.recipeclipper.data.model.ManualRecipe
+import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.UrlCleaner
 import com.example.recipeclipper.data.remote.BlogRecipeSource
 import com.example.recipeclipper.data.remote.RecipeSource
@@ -23,8 +30,8 @@ import javax.inject.Singleton
  *
  * Database failures never escape: each call runs through [ErrorLog.guard], is logged, and
  * degrades to what the contract already allows — `Error(SaveFailed)` from an import or a clip, null from
- * [open] and [delete], nothing from [setChecked], [setNotes] and
- * [restore], an empty list from a Flow —
+ * [open] and [delete], nothing from [setChecked], [setNotes], [setCookProgress],
+ * [setServingsTarget] and [restore], none from [runningTimers], an empty list from a Flow —
  * rather than crashing `viewModelScope`. The iOS repository does the same.
  */
 @Singleton
@@ -39,6 +46,17 @@ class DefaultRecipeRepository @Inject constructor(
     override suspend fun importFromUrl(sharedUrl: String): ParseResult {
         // Saved under the cleaned link, so tracking tags can't make one recipe into two.
         val url = UrlCleaner.clean(sharedUrl)
+        // The user's version is never refreshed by a re-share (#29): open it without a fetch.
+        val usersVersion = log.guard("find user's version", null) {
+            recipeDao.findByUrl(url)?.takeIf { it.contentOrigin != RecipeDao.ORIGIN_PARSED }
+        }
+        if (usersVersion != null) {
+            val viewedAt = clock.now()
+            return log.guard("open user's version", ParseResult.Error(ParseError.SaveFailed)) {
+                recipeDao.upsert(usersVersion.copy(lastViewedAt = viewedAt), HISTORY_LIMIT)
+                ParseResult.Success(usersVersion.copy(lastViewedAt = viewedAt).toDomain())
+            }
+        }
         val parsed = fetchWithFallbacks(url)
         val now = clock.now()
         return when (parsed) {
@@ -54,6 +72,50 @@ class DefaultRecipeRepository @Inject constructor(
                 } ?: return parsed
                 ParseResult.Success(cached.copy(lastViewedAt = now).toDomain())
             }
+        }
+    }
+
+    override suspend fun updateFromSource(id: Long): ParseResult {
+        val existing = log.guard("updateFromSource find", null) { recipeDao.get(id) }
+            ?: return ParseResult.Error(ParseError.NotSaved)
+        if (!existing.toDomain().canUpdateFromSource) return ParseResult.Error(ParseError.NothingToShow)
+        val parsed = fetchWithFallbacks(existing.sourceUrl)
+        if (parsed !is ParseResult.Success) return parsed
+        val now = clock.now()
+        // Filed under the saved link, whatever the parse reports, so it lands on this row.
+        val fresh = parsed.recipe.copy(sourceUrl = existing.sourceUrl).toEntity(now)
+        return log.guard("updateFromSource save", ParseResult.Error(ParseError.SaveFailed)) {
+            recipeDao.upsert(fresh, HISTORY_LIMIT, replaceUsersVersion = true)
+            recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
+                ?: ParseResult.Error(ParseError.SaveFailed)
+        }
+    }
+
+    override suspend fun saveEdit(id: Long, draft: RecipeDraft): Recipe? {
+        if (!draft.isValid) return null
+        return log.guard("saveEdit", null) {
+            val existing = recipeDao.get(id)?.toDomain() ?: return@guard null
+            val edited = draft.applyTo(existing).toEntity(existing.lastViewedAt)
+            val saved = recipeDao.saveEdit(id, edited, existing.origin.afterEdit().name, clock.now())
+            if (saved) recipeDao.get(id)?.toDomain() else null
+        }
+    }
+
+    override suspend fun addManual(draft: RecipeDraft): Recipe? {
+        if (!draft.isValid) return null
+        val now = clock.now()
+        val recipe = draft.applyTo(
+            Recipe(
+                name = "", image = null, ingredients = emptyList(), instructions = emptyList(),
+                prepTime = null, cookTime = null, totalTime = null, yield = null,
+                sourceUrl = ManualRecipe.newSourceUrl(newUid()),
+                origin = ContentOrigin.MANUAL,
+                editedAt = now
+            )
+        )
+        return log.guard("addManual", null) {
+            val id = recipeDao.upsert(recipe.toEntity(now), HISTORY_LIMIT)
+            recipeDao.get(id)?.toDomain()
         }
     }
 
@@ -91,8 +153,14 @@ class DefaultRecipeRepository @Inject constructor(
 
     override suspend fun saveClip(recipe: Recipe): ParseResult =
         log.guard("saveClip", ParseResult.Error(ParseError.SaveFailed)) {
-            val clip = recipe.copy(sourceUrl = UrlCleaner.clean(recipe.sourceUrl))
-            val id = recipeDao.upsert(clip.toEntity(clock.now()), HISTORY_LIMIT)
+            // CLIPPED, so a re-share opens the clip rather than fetching the page again (#29's
+            // rule); a clip replaces whatever the row held, as "Update from source" does.
+            val clip = recipe.copy(
+                sourceUrl = UrlCleaner.clean(recipe.sourceUrl),
+                origin = ContentOrigin.CLIPPED,
+                editedAt = null
+            )
+            val id = recipeDao.upsert(clip.toEntity(clock.now()), HISTORY_LIMIT, replaceUsersVersion = true)
             recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
                 ?: ParseResult.Error(ParseError.SaveFailed)
         }
@@ -109,6 +177,20 @@ class DefaultRecipeRepository @Inject constructor(
 
     override suspend fun setNotes(id: Long, notes: String) =
         log.guard("setNotes", Unit) { recipeDao.setNotes(id, notes.takeIf { it.isNotBlank() }) }
+
+    override suspend fun setCookProgress(id: Long, progress: CookProgress) =
+        log.guard("setCookProgress", Unit) { recipeDao.setCookState(id, CookStateJson.encode(progress)) }
+
+    override suspend fun setServingsTarget(id: Long, target: Int?) =
+        log.guard("setServingsTarget", Unit) { recipeDao.setServingsTarget(id, target) }
+
+    override suspend fun runningTimers(): List<StepAlarm> = log.guard("runningTimers", emptyList()) {
+        recipeDao.cookStates().flatMap { row ->
+            CookStateJson.decode(row.cookState).timers.mapNotNull { (step, timer) ->
+                timer.endsAt?.let { StepAlarm(row.id, row.title, step, it) }
+            }
+        }
+    }
 
     override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? = log.guard("delete", null) {
         val entity = recipeDao.get(id) ?: return@guard null

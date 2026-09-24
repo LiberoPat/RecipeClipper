@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.HISTORY_LIMIT
+import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.RecipeEntity
@@ -149,6 +150,49 @@ class RecipeDaoTest {
         val row = recipes.get(id)!!
         assertEquals("New title", row.title)
         assertEquals("Used half the sugar", row.notes)
+    }
+
+    private val cookJson = """{"active":true,"currentStep":1,"doneSteps":[0],"timers":[]}"""
+
+    @Test
+    fun cookStateAndServingsSurviveAReShareWithTheSameSteps() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
+        recipes.setCookState(id, cookJson)
+        recipes.setServingsTarget(id, 8)
+
+        recipes.upsert(recipe("https://a.com/1", viewedAt = 900, title = "New title"), HISTORY_LIMIT)
+
+        val row = recipes.get(id)!!
+        assertEquals(cookJson, row.cookState)
+        assertEquals(8, row.servingsTarget)
+    }
+
+    @Test
+    fun cookStateIsDroppedWhenTheStepsChangeButServingsAreKept() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
+        recipes.setCookState(id, cookJson)
+        recipes.setServingsTarget(id, 8)
+
+        recipes.upsert(
+            recipe("https://a.com/1", viewedAt = 900).copy(instructions = listOf("Stir.", "Chill.")),
+            HISTORY_LIMIT
+        )
+
+        val row = recipes.get(id)!!
+        assertNull(row.cookState) // step indexes would point at different steps
+        assertEquals(8, row.servingsTarget)
+    }
+
+    @Test
+    fun cookStatesListsOnlyRecipesWithCookProgress() = runBlocking {
+        val cooking = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
+        recipes.upsert(recipe("https://a.com/2", viewedAt = 200), HISTORY_LIMIT)
+        recipes.setCookState(cooking, cookJson)
+
+        assertEquals(listOf(CookStateRow(cooking, "Recipe https://a.com/1", cookJson)), recipes.cookStates())
+
+        recipes.setCookState(cooking, null)
+        assertEquals(emptyList<CookStateRow>(), recipes.cookStates())
     }
 
     @Test
@@ -398,5 +442,59 @@ class RecipeDaoTest {
 
         assertNotNull(recipes.get(id))
         assertTrue(recipes.crossRefsFor(id).isEmpty())
+    }
+
+    // --- The user's version (#29) ---
+
+    @Test
+    fun reShareOfAnEditedRecipeKeepsItsContentAndOnlyCountsAsAView() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 1), HISTORY_LIMIT)
+        recipes.saveEdit(id, recipe("https://a.com/1", viewedAt = 1, title = "Mine"), "EDITED", editedAt = 2)
+
+        recipes.upsert(recipe("https://a.com/1", viewedAt = 3, title = "Site's"), HISTORY_LIMIT)
+
+        val row = recipes.get(id)!!
+        assertEquals("Mine", row.title)
+        assertEquals("EDITED", row.contentOrigin)
+        assertEquals(2L, row.editedAt)
+        assertEquals(3L, row.lastViewedAt)
+    }
+
+    @Test
+    fun updateFromSourceReplacesTheUsersVersionAndMakesItParsedAgain() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 1), HISTORY_LIMIT)
+        recipes.setNotes(id, "Less salt")
+        putInList(id, listId = 1)
+        recipes.saveEdit(id, recipe("https://a.com/1", viewedAt = 1, title = "Mine"), "EDITED", editedAt = 2)
+
+        recipes.upsert(recipe("https://a.com/1", viewedAt = 3, title = "Site's"), HISTORY_LIMIT, replaceUsersVersion = true)
+
+        val row = recipes.get(id)!!
+        assertEquals("Site's", row.title)
+        assertEquals("PARSED", row.contentOrigin)
+        assertEquals(null, row.editedAt)
+        assertEquals("Less salt", row.notes)
+        assertEquals(listOf(1L), recipes.crossRefsFor(id).map { it.listId })
+    }
+
+    @Test
+    fun saveEditKeepsTheLinkUidNoteAndTicksWhenIngredientsAreUnchanged() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 1, checked = setOf(1)), HISTORY_LIMIT)
+        recipes.setNotes(id, "Less salt")
+        val before = recipes.get(id)!!
+
+        val saved = recipes.saveEdit(
+            id, recipe("manual:ignored", viewedAt = 99, title = "Mine"), "EDITED", editedAt = 5
+        )
+
+        val row = recipes.get(id)!!
+        assertEquals(true, saved)
+        assertEquals("Mine", row.title)
+        assertEquals("https://a.com/1", row.sourceUrl)
+        assertEquals(before.uid, row.uid)
+        assertEquals(1L, row.lastViewedAt)
+        assertEquals("Less salt", row.notes)
+        assertEquals(setOf(1), row.checkedIngredients)
+        assertEquals(false, recipes.saveEdit(12345, row, "EDITED", 6))
     }
 }

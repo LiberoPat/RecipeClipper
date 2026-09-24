@@ -6,6 +6,7 @@ import SwiftUI
 struct RecipeScreen: View {
     let vm: RecipeViewModel
     let saveVM: SaveToListViewModel
+    var onEdit: (Int64) -> Void = { _ in }
     /// Opens "Clip it yourself" on the shared link (#37).
     var onClip: (String) -> Void = { _ in }
 
@@ -14,6 +15,7 @@ struct RecipeScreen: View {
     @Environment(\.openURL) private var openURL
     @State private var sheetOpen = false
     @State private var confirmingDelete = false
+    @State private var confirmingUpdate = false
 
     var body: some View {
         let state = vm.uiState
@@ -64,11 +66,17 @@ struct RecipeScreen: View {
         }
         .timerAlerts(state.cook.timers, onAlerted: vm.onTimerAlerted)
         .task(id: recipeId) {
-            if let recipeId { saveVM.setRecipe(recipeId) }
+            if let recipeId {
+                saveVM.setRecipe(recipeId)
+                VisibleRecipe.id = recipeId
+            }
             #if DEBUG
             if recipeId != nil, DebugLaunch.autoCook { vm.onCookStart() }
             #endif
         }
+        // While this recipe is on screen its timers beep here instead of showing a banner.
+        .onAppear { if let recipeId { VisibleRecipe.id = recipeId } }
+        .onDisappear { if let recipeId { VisibleRecipe.clear(recipeId) } }
         // The recipe is gone the moment the delete lands; leave the screen.
         .onChange(of: state.deleted) { _, deleted in
             if deleted { dismiss() }
@@ -86,6 +94,19 @@ struct RecipeScreen: View {
             Button(Strings.cancel, role: .cancel) {}
         } message: {
             Text(Strings.deleteRecipeBody)
+        }
+        .alert(Strings.updateFromSourceTitle, isPresented: $confirmingUpdate) {
+            Button(Strings.update, role: .destructive, action: vm.onUpdateFromSource)
+            Button(Strings.cancel, role: .cancel) {}
+        } message: {
+            Text(Strings.updateFromSourceBody)
+        }
+        // "Update from source" failed: the recipe on screen is unchanged; say why, once.
+        .alert(
+            state.updateError.map { Strings.updateFromSourceFailed(Strings.message(for: $0)) } ?? "",
+            isPresented: Binding(get: { vm.uiState.updateError != nil }, set: { if !$0 { vm.onUpdateErrorShown() } })
+        ) {
+            // No actions: the system supplies its own, localized OK.
         }
     }
 
@@ -128,14 +149,26 @@ struct RecipeScreen: View {
         .accessibilityLabel(saved ? Strings.inAList : Strings.saveToList)
         .accessibilityIdentifier("recipe.bookmark")
 
-        if let text = vm.shareText() {
+        if let text = vm.shareText(labels: Strings.shareTextLabels) {
             ShareLink(item: text, subject: Text(content.recipe.name), preview: SharePreview(content.recipe.name)) {
                 Image(systemName: "square.and.arrow.up")
             }
             .accessibilityLabel(Strings.shareRecipe)
         }
 
+        if vm.uiState.updatingFromSource {
+            ProgressView().tint(Palette.primary)
+        }
+
         Menu {
+            Button { onEdit(content.recipe.id) } label: {
+                Label(Strings.edit, systemImage: "pencil")
+            }
+            if content.recipe.canUpdateFromSource && !vm.uiState.updatingFromSource {
+                Button { confirmingUpdate = true } label: {
+                    Label(Strings.updateFromSource, systemImage: "arrow.clockwise")
+                }
+            }
             Button(role: .destructive) { confirmingDelete = true } label: {
                 Label(Strings.delete, systemImage: "trash")
             }
@@ -158,6 +191,7 @@ private struct StatusView<Body: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
+        .readableColumn()
         .padding(.top, 24)
     }
 }

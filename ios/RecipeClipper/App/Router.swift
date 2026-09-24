@@ -13,6 +13,13 @@ final class Router {
         path.append(route)
     }
 
+    /// Drops the top `count` entries and pushes `route` in their place: how a saved edit
+    /// reopens the recipe afresh instead of returning to the copy loaded before it.
+    func replace(last count: Int, with route: Route) {
+        path.removeLast(min(count, path.count))
+        path.append(route)
+    }
+
     /// A saved clip replaces both the clip screen and the error screen under it, so Back from
     /// the recipe goes where the share came from.
     func openSavedClip(_ id: Int64) {

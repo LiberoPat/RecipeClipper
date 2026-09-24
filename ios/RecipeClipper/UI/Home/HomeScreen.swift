@@ -10,6 +10,7 @@ struct HomeScreen: View {
     let onOpenHistory: () -> Void
     let onOpenLists: () -> Void
     let onOpenSettings: () -> Void
+    var onNewRecipe: () -> Void = {}
 
     @State private var now = currentMillis()
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -63,6 +64,12 @@ struct HomeScreen: View {
                 }
                 .padding(.top, 20)
 
+                // Typing a recipe in by hand (#29): a small way in, not a section.
+                Button(Strings.newRecipe, action: onNewRecipe)
+                    .buttonStyle(TextActionStyle())
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("home.newRecipe")
+
                 if let latest = state.continueCooking {
                     SectionHeading(Strings.sectionContinueCooking).padding(.top, 24)
                     RecipeRow(recipe: latest, now: now) { onOpenRecipe(latest.id) }
@@ -94,6 +101,7 @@ struct HomeScreen: View {
                 .padding(.top, 20)
             }
             .padding(.horizontal, 20)
+            .readableColumn()
             .padding(.top, 12)
             .padding(.bottom, 32)
         }

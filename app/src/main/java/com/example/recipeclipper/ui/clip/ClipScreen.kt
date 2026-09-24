@@ -10,11 +10,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -37,14 +35,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
@@ -95,18 +93,18 @@ fun ClipScreen(
         viewModel.onNoticeShown(notice.serial)
     }
 
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val syncState = remember(state.draft, state.newMarkId) {
         syncJson(state.draft, state.newMarkId) { field, count ->
-            val label = context.getString(field.labelRes)
+            val label = resources.getString(field.labelRes)
             if (field == ClipField.NAME || count == 0) label
-            else context.getString(R.string.clip_tag_count, label, count)
+            else resources.getString(R.string.clip_tag_count, label, count)
         }
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
                 TopBar(
                     host = SourceDomain.of(state.url).orEmpty(),
                     canFinish = state.draft.canFinish,
@@ -136,7 +134,7 @@ fun ClipScreen(
             }
             SnackbarHost(
                 snackbar,
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 140.dp)
+                modifier = Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 140.dp)
             )
         }
     }
@@ -314,7 +312,7 @@ private fun androidx.compose.foundation.layout.RowScope.FieldButton(
 private fun ReviewPane(state: ClipUiState, viewModel: ClipViewModel, modifier: Modifier) {
     val draft = state.draft
     LazyColumn(
-        modifier = modifier.background(MaterialTheme.colorScheme.background).imePadding(),
+        modifier = modifier.background(MaterialTheme.colorScheme.background),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -352,7 +350,7 @@ private fun ReviewPane(state: ClipUiState, viewModel: ClipViewModel, modifier: M
             OutlinedTextField(
                 value = draft.serves,
                 onValueChange = viewModel::onServesChange,
-                label = { Text(stringResource(R.string.clip_serves)) },
+                label = { Text(stringResource(R.string.label_serves)) },
                 placeholder = { Text(stringResource(R.string.clip_optional)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -362,7 +360,7 @@ private fun ReviewPane(state: ClipUiState, viewModel: ClipViewModel, modifier: M
             OutlinedTextField(
                 value = draft.totalTime,
                 onValueChange = viewModel::onTotalTimeChange,
-                label = { Text(stringResource(R.string.clip_total_time)) },
+                label = { Text(stringResource(R.string.edit_label_total)) },
                 placeholder = { Text(stringResource(R.string.clip_optional)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()

@@ -1,6 +1,7 @@
 package com.example.recipeclipper.ui.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -33,7 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -54,6 +56,7 @@ fun HomeScreen(
     onOpenHistory: () -> Unit,
     onOpenLists: () -> Unit,
     onOpenSettings: () -> Unit,
+    onNewRecipe: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -68,6 +71,9 @@ fun HomeScreen(
             LazyColumn(
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 32.dp),
                 modifier = Modifier.fillMaxSize()
+                    // Edge-to-edge: the background fills behind the bars, the rows stay clear
+                    // of them, the display cutout and the keyboard.
+                    .safeDrawingPadding()
             ) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -117,6 +123,14 @@ fun HomeScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.padding(top = 6.dp)
                         ) { Text(stringResource(R.string.action_go)) }
+                    }
+                    // Typing a recipe in by hand (#29): a small way in, not a section.
+                    TextButton(onClick = onNewRecipe, modifier = Modifier.offset(x = (-12).dp)) {
+                        Text(
+                            stringResource(R.string.action_new_recipe),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
                     }
                 }
 

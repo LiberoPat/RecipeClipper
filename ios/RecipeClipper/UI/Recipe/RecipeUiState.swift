@@ -13,7 +13,8 @@ struct StepTimer: Equatable {
 /// Cook mode is a boolean on the recipe screen (`active`), not a destination. Progress is kept
 /// when the user leaves and returns. `currentStep` is what is being cooked now; `doneSteps`
 /// are struck off. Tapping a step moves `currentStep` without touching `doneSteps`.
-/// Screen state, not domain (in memory only, like Android today).
+/// Screen state, not domain. Saved as it changes (`CookProgress`), so a closed or killed app
+/// picks up at the same step, with its timers still counting.
 struct CookState: Equatable {
     var active = false
     var currentStep = 0
@@ -26,7 +27,8 @@ struct CookState: Equatable {
 /// `servings` is nil when the yield has no usable number. `stepTimerSeconds` lines up with
 /// the steps: the duration each one states, or nil. `sourceDomain` is the site credited under
 /// the title ("smittenkitchen.com"), or nil when the source link has no recognisable host
-/// (then no credit is shown).
+/// (then no credit is shown). `words` are the recipe's language's (#14), which the view uses
+/// for the yield's kind and the timer labels; nil for a language the app has no words for.
 struct RecipeSuccess: Equatable {
     var recipe: Recipe
     var servings: ServingsScale?
@@ -34,6 +36,7 @@ struct RecipeSuccess: Equatable {
     var instructions: [String]
     var stepTimerSeconds: [Int?]
     var sourceDomain: String?
+    var words: LanguageWords?
 }
 
 enum RecipeContent: Equatable {
@@ -66,6 +69,11 @@ struct RecipeUiState: Equatable {
     /// `.noRecipeFound` is on screen: never for a block, offline or a failed fetch, which mean
     /// "try again", not "unsupported". The view opens it; nothing is sent.
     var reportSiteUrl: String?
+    /// "Update from source" (#29) is fetching; the recipe stays on screen meanwhile.
+    var updatingFromSource = false
+    /// Why the last "Update from source" failed, until the view has shown it. The recipe on
+    /// screen is unchanged.
+    var updateError: ParseError?
 
     /// The shared link to clip by hand ("Clip it yourself", #37). Set exactly when
     /// `reportSiteUrl` is: only a page that loaded with no recipe data can be clipped.

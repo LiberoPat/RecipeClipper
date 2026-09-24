@@ -15,6 +15,7 @@ import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
 import com.example.recipeclipper.fake.FakeListRepository
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
 import org.junit.Rule
 import org.junit.Test
@@ -51,13 +52,15 @@ class RecipeSourceCreditTest {
             FakeAppPreferences(),
             Clock { System.currentTimeMillis() },
             FakeConnectivity(),
-            FakeAppInfo()
+            FakeAppInfo(),
+            FakeTimerAlarmScheduler()
         )
+        val saveViewModel = SaveToListViewModel(FakeListRepository())
         compose.setContent {
             RecipeScreen(
                 onBack = {},
                 viewModel = viewModel,
-                saveViewModel = SaveToListViewModel(FakeListRepository())
+                saveViewModel = saveViewModel
             )
         }
         // The recipe loads in a coroutine; wait for the reading view rather than the spinner.

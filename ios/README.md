@@ -21,6 +21,8 @@ xcodebuild ... test -only-testing:RecipeClipperUITests    # end-to-end, offline,
 
 Targets: `RecipeClipper` (app), `RecipeClipperShare` (share extension, embedded in the app),
 `RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest).
+`RecipeClipperTests` bundles `../shared/fixtures` (the export files the Android tests read
+too), found at `fixtures/backup/<name>.json` in the test bundle.
 
 **Never run two test sessions on one simulator.** The unit tests are hosted in the app, and
 a run that finishes (or starts) closes that app on its simulator, killing whatever the other
@@ -61,7 +63,7 @@ in-memory database and a throwaway defaults suite, so tests never touch real dat
 | Jsoup fetch + `JsonLdRecipeParser` | `URLSession` (`BlogRecipeSource`) + the same parser, with a hand-written Jsoup-compatible `stripHtml` |
 | `ACTION_SEND` share target | `RecipeClipperShare` extension → `recipeclipper://import?url=…` → `.onOpenURL` |
 | Navigation Compose routes | `NavigationStack` + `Route` enum (`UI/Navigation`) |
-| `strings.xml` | `UI/Theme/Strings.swift` |
+| `strings.xml` + `values-xx/` | `Resources/Localizable.xcstrings` (keys are the Android names), read through `UI/Theme/Strings.swift` |
 | `Theme.kt` | `UI/Theme/Theme.swift` (same tokens; Fraunces/Karla bundled) |
 
 ViewModels import only Foundation, Combine and Observation — no SwiftUI, no UIKit — so they
@@ -83,9 +85,11 @@ tests (in-memory SQLite in the simulator), not device tests.
   the import inside the extension. It is also an App Review risk. The plan to replace it
   before the App Store is issue #19.
 - **Timer alarm** plays through the silent switch (`.playback` audio session, ducking other
-  audio), matching Android's alarm stream and the Clock app. Background alerts are still
-  to do (issue #10); on iOS the natural fix is a local notification scheduled
-  at the deadline.
+  audio), matching Android's alarm stream and the Clock app. The background alert is a local
+  notification at each running timer's deadline (`NotificationTimerScheduler`; issue #10):
+  authorisation is asked on the first timer start, and `NotificationRouter` (the center's
+  delegate, set in `RecipeClipperApp.init`) opens cook mode on a tap. Under XCTest and
+  UI-test seeding the container uses `NoOpTimerAlarmScheduler`, so tests never prompt.
 - **History delete** uses the native row swipe action rather than Android's swipe-away row;
   undo is the same batched, all-or-nothing snackbar.
 - **Forced-dark cook mode** also sets `preferredColorScheme(.dark)` so the status bar stays
@@ -106,3 +110,11 @@ tests (in-memory SQLite in the simulator), not device tests.
   CLAUDE.md, "Failure handling").
 - `JsonLdRecipeParser` treats JSON `null` as absent (Android's org.json yields the text
   "null"), and walks object keys sorted rather than in document order.
+- **iPad (issue #20).** `TARGETED_DEVICE_FAMILY` stays `"1,2"`; every screen calls
+  `readableColumn()` (`UI/Common/Components.swift`) to cap its content at a centred ~680pt
+  column on wide screens, so text never runs edge to edge on an iPad or an iPhone in
+  landscape. `History`, a `List`, can't take a frame, so it measures its own width and sets
+  row insets instead. iPhone portrait is unchanged: every cap is wider than an iPhone in
+  portrait, so both frames resolve to the same width there. `ShareLink`'s popover anchors
+  correctly on iPad (confirmed on a simulator; `ShareUITests` asserts it), and the save-to-list
+  sheet, alerts and menus all present normally at the regular width.

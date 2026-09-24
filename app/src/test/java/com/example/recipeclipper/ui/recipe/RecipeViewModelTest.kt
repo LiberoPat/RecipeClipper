@@ -6,6 +6,7 @@ import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.IngredientScaler
 import com.example.recipeclipper.data.model.ParseError
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeShareText
@@ -19,6 +20,7 @@ import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
+import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -53,7 +55,8 @@ class RecipeViewModelTest {
             "Cool completely."
         ),
         checkedIngredients: Set<Int> = emptySet(),
-        notes: String? = null
+        notes: String? = null,
+        language: String? = null
     ) = Recipe(
         name = "Test Recipe",
         image = null,
@@ -66,7 +69,8 @@ class RecipeViewModelTest {
         sourceUrl = "https://example.com/recipe",
         id = id,
         checkedIngredients = checkedIngredients,
-        notes = notes
+        notes = notes,
+        language = language
     )
 
     // The [Clock] reads the same virtual clock the test's own `advanceTimeBy`/`advanceUntilIdle`
@@ -76,10 +80,11 @@ class RecipeViewModelTest {
         repository: FakeRecipeRepository,
         unitPreferences: FakeAppPreferences = FakeAppPreferences(),
         connectivity: FakeConnectivity = FakeConnectivity(),
-        appInfo: FakeAppInfo = FakeAppInfo()
+        appInfo: FakeAppInfo = FakeAppInfo(),
+        alarms: FakeTimerAlarmScheduler = FakeTimerAlarmScheduler()
     ): RecipeViewModel = RecipeViewModel(
         savedStateHandle, repository, unitPreferences, Clock { testScheduler.currentTime }, connectivity,
-        appInfo
+        appInfo, alarms
     )
 
     // --- Loading ---
@@ -933,5 +938,35 @@ class RecipeViewModelTest {
             instructions = content.instructions
         )
         assertEquals(expected, vm.shareText())
+    }
+
+    // --- The recipe's language (#14) ---
+
+    @Test fun `a recipe in a language with no words is shown as written`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(language = "de-de") }
+        val preferences = FakeAppPreferences(UnitSystem.METRIC, true, TemperatureUnit.CELSIUS)
+        val vm = buildViewModel(byId(1L), repository, preferences)
+        advanceUntilIdle()
+
+        val content = vm.uiState.value.content as RecipeContent.Success
+        assertEquals(null, content.words)
+        assertEquals(null, content.servings) // no stepper: its lines couldn't be scaled
+        assertEquals(listOf("2 cups flour", "1 cup milk"), content.ingredients)
+        assertEquals(testRecipe().instructions, content.instructions)
+        assertTrue(content.stepTimerSeconds.all { it == null })
+    }
+
+    @Test fun `an English recipe, declared or detected, is read with English words`() = runTest(mainDispatcherRule.dispatcher) {
+        for (language in listOf("en-gb", null)) {
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe(language = language) }
+            val vm = buildViewModel(byId(1L), repository, FakeAppPreferences(UnitSystem.METRIC))
+            advanceUntilIdle()
+
+            val content = vm.uiState.value.content as RecipeContent.Success
+            assertEquals(LanguageWords.ENGLISH, content.words)
+            assertEquals(4, content.servings?.base)
+            assertEquals(listOf("240 g flour", "240 ml milk"), content.ingredients)
+            assertEquals(listOf(null, 300, 600, null), content.stepTimerSeconds)
+        }
     }
 }

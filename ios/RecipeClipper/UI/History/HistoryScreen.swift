@@ -6,6 +6,8 @@ struct HistoryScreen: View {
     let onOpenRecipe: (Int64) -> Void
 
     @State private var now = currentMillis()
+    /// A List's rows take insets, not a frame, so the readable column is made from the width.
+    @State private var sideInset = ReadableWidth.gutter
 
     var body: some View {
         let state = vm.uiState
@@ -50,10 +52,13 @@ struct HistoryScreen: View {
                         }
                 }
             }
-            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+            .listRowInsets(EdgeInsets(top: 0, leading: sideInset, bottom: 0, trailing: sideInset))
             .listRowBackground(Palette.background)
         }
         .listStyle(.plain)
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
+            sideInset = ReadableWidth.inset(in: width)
+        }
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
@@ -61,6 +66,7 @@ struct HistoryScreen: View {
         .overlay(alignment: .bottom) {
             if let message = Strings.deletedMessage(state.pendingDeletes) {
                 Snackbar(message: message, actionLabel: Strings.undo, action: vm.onUndoDelete)
+                    .frame(maxWidth: ReadableWidth.column)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))

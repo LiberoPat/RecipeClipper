@@ -42,10 +42,15 @@ final class ReconnectCountingRepository: RecipeRepository {
         importCalls += 1
         return importResult
     }
+    func updateFromSource(id: Int64) async -> ParseResult { .error(.nothingToShow) }
+    func saveEdit(id: Int64, draft: RecipeDraft) async -> Recipe? { nil }
+    func addManual(draft: RecipeDraft) async -> Recipe? { nil }
     func saveClip(_ recipe: Recipe) async -> ParseResult { .error(.saveFailed) }
     func open(id: Int64) async -> Recipe? { nil }
     func setChecked(id: Int64, checked: Set<Int>) async {}
     func setNotes(id: Int64, notes: String) async {}
+    func setCookProgress(id: Int64, progress: CookProgress) async {}
+    func setServingsTarget(id: Int64, target: Int?) async {}
     func delete(id: Int64) async -> DeletedRecipe? { nil }
     func restore(_ deleted: DeletedRecipe) async {}
     nonisolated func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> {

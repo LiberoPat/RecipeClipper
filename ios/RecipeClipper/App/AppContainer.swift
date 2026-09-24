@@ -9,7 +9,10 @@ final class AppContainer {
     let preferences: AppPreferences
     let clock: Clock
     let connectivity: Connectivity
+    let backupRepository: BackupRepository
+    let backupFiles: BackupFiles
     let appInfo: AppInfo
+    let alarms: TimerAlarmScheduler
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -18,18 +21,24 @@ final class AppContainer {
     init(
         recipeRepository: RecipeRepository,
         listRepository: ListRepository,
+        backupRepository: BackupRepository,
         preferences: AppPreferences,
         clock: Clock,
         connectivity: Connectivity = StaticConnectivity(),
+        backupFiles: BackupFiles = FileBackupFiles(),
         appInfo: AppInfo = BundleAppInfo(),
+        alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler(),
         clipFixtureHTML: String? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
+        self.backupRepository = backupRepository
         self.preferences = preferences
         self.clock = clock
         self.connectivity = connectivity
+        self.backupFiles = backupFiles
         self.appInfo = appInfo
+        self.alarms = alarms
         self.clipFixtureHTML = clipFixtureHTML
     }
 
@@ -55,9 +64,13 @@ final class AppContainer {
                 renderedPages: WebViewRenderedPageSource()
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
-            connectivity: PathConnectivity()
+            connectivity: PathConnectivity(),
+            // Under XCTest nothing is scheduled, so a test run never raises the notification
+            // prompt (UI-test seeding above takes the default, which is the same no-op).
+            alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock)
         )
     }
 
@@ -69,10 +82,11 @@ final class AppContainer {
         HistoryViewModel(repository: recipeRepository)
     }
 
-    func makeRecipeViewModel(recipeId: Int64?, url: String?) -> RecipeViewModel {
+    func makeRecipeViewModel(recipeId: Int64?, url: String?, openInCookMode: Bool = false) -> RecipeViewModel {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
-            clock: clock, connectivity: connectivity, appInfo: appInfo
+            clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
+            openInCookMode: openInCookMode
         )
     }
 
@@ -80,12 +94,16 @@ final class AppContainer {
         ClipViewModel(url: url, repository: recipeRepository, drafts: clipDrafts)
     }
 
+    func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {
+        EditRecipeViewModel(recipeId: recipeId, repository: recipeRepository)
+    }
+
     func makeSaveToListViewModel() -> SaveToListViewModel {
         SaveToListViewModel(repository: listRepository)
     }
 
     func makeSettingsViewModel() -> SettingsViewModel {
-        SettingsViewModel(preferences: preferences)
+        SettingsViewModel(preferences: preferences, backups: backupRepository, files: backupFiles)
     }
 
     func makeListsViewModel() -> ListsViewModel {
