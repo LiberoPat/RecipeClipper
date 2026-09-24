@@ -24,6 +24,23 @@ protocol RecipeSource {
     func fetch(url: String) async -> ParseResult
 }
 
+/// Loads a page in an off-screen browser, lets its JavaScript run, and returns the resulting
+/// HTML (Android's RenderedPageSource). The repository's last resort once the direct fetch and
+/// its retry end `.blocked` or `.noRecipeFound`. `WebViewRenderedPageSource` is the real one,
+/// built on the main actor in AppContainer; parsing stays with the pure parsers.
+protocol RenderedPageSource {
+    /// The page's `document.documentElement.outerHTML` once loaded and settled; nil if it
+    /// couldn't be loaded, or when the calling task is cancelled (which stops the load). The
+    /// caller caps the overall time.
+    func render(url: String) async -> String?
+}
+
+/// Renders nothing: the default where the fallback isn't wanted (tests that aren't about it,
+/// the UI-test graph).
+struct NoRenderedPageSource: RenderedPageSource {
+    func render(url: String) async -> String? { nil }
+}
+
 /// Whether the device has a usable network (Android's Connectivity). A seam so RecipeViewModel
 /// never touches Network.framework and a test can drive it; `PathConnectivity` is the real one.
 protocol Connectivity: AnyObject {

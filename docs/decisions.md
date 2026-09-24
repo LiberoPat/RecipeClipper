@@ -821,6 +821,57 @@ has been run on an emulator and passes.
   offline, and database errors" in Current state). Don't chase a
   user-agent that "works" — there isn't one.
 
+## Rendered fallback: an off-screen browser after the retry (#36)
+
+When the direct fetch and its one retry still end `Blocked`, or the page
+loaded with `NoRecipeFound`, the repository loads the page once in an
+off-screen browser (Android `WebView`, iOS `WKWebView`), takes
+`document.documentElement.outerHTML`, and runs it through the same pure
+parsers (JSON-LD, then microdata).
+
+- **Why.** Bot protection targets plain HTTP clients, and a real browser
+  engine running the site's JavaScript passes many of its checks. Pages that
+  build their recipe data in JavaScript have none in the fetched HTML. This
+  is not the user-agent chase warned against above: the web view keeps its
+  engine's own user agent. Paprika extracts from pages loaded in its own
+  browser the same way.
+- **Why after the retry, and only for those two causes.** The direct fetch
+  is cheap and usually works; the web view costs seconds and memory. `Offline`
+  would fail the same way, a timeout means the network is dead (the rule that
+  a dead Wi-Fi costs one timeout still holds), and other `FetchFailed` causes
+  (DNS, TLS) aren't what a browser fixes.
+- **Why a rendered page with no recipe keeps the original cause.** A block
+  that the browser also can't pass is still a block, and its copy ("try
+  again in a minute") is the right advice. Showing `NoRecipeFound` instead
+  would hide it.
+- **Shape.** `RenderedPageSource` returns HTML, nothing more, so the
+  repository stays `Context`-free and testable with a fake, and parsing stays
+  pure. The implementations need the main thread (and on Android a
+  `Context`), so they sit beside `AndroidConnectivity` / `PathConnectivity`,
+  bound in Hilt and `AppContainer`. The repository caps the whole render at
+  20 s (`RENDER_TIMEOUT_MS` / `renderTimeout`); the implementation waits a
+  1.5 s settle after the last page load (a navigation restarts it) before
+  reading the HTML, runs JavaScript with DOM storage, skips images, and
+  destroys the web view on every way out, cancellation included. Nothing is
+  shown to the user: capture stays frictionless, just slower.
+- **On Android, load errors aren't handled early:** a failed page still ends
+  in `onPageFinished` on the WebView's error page, which parses as no recipe,
+  and finishing on `onReceivedError` would also end a load whose first
+  navigation a script redirect aborted. iOS has no such page, so
+  `didFail`/`didFailProvisionalNavigation` finish at once, except for the
+  cancelled navigation a redirect causes. A crashed renderer
+  (`onRenderProcessGone`, `webViewWebContentProcessDidTerminate`) ends the
+  render without taking the app down.
+- **Limits.** Not a guarantee: some checks detect web views or need a click
+  (a CAPTCHA), and still end `Blocked`; a later step could show the page to
+  the user. The web view has the app's cookies, not the user's browser
+  logins, so paywalls still fail. Not inside the iOS share extension, for
+  memory (#19); Safari shares could use Safari's own page instead (#35).
+- **Checked only by tests so far.** The repository rules are pinned by fakes
+  on both platforms; the web views themselves need a device check on a page
+  whose recipe data appears only after JavaScript runs, and on one that
+  blocks the plain fetch.
+
 ## Background timers: what works and what doesn't
 
 The fix is issue #10.
