@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "Unit words (UnitPatterns and MeasureUnit.fromText). patterns: regex fragments, tried in this order as one alternation; each must stay a whole word (the code adds an optional trailing period and a no-letter lookahead). names: how matched text maps to a unit, first rule wins; the text is lowercased, its periods removed and its whitespace collapsed, then it names the unit when it equals one of exact or starts with one of prefixes. unit is the code's MeasureUnit name.",
+  "patterns": [
+    "fl\\.?\\s*oz", "fluid\\s+ounces?", "tsps?", "teaspoons?", "tbsps?", "tbs", "tablespoons?", "cups?",
+    "millilit(?:er|re)s?", "ml", "kilograms?", "kilos?", "kg", "grams?", "g", "lit(?:er|re)s?", "l",
+    "sticks?", "ounces?", "oz", "lbs?", "pounds?"
+  ],
+  "names": [
+    { "unit": "FL_OZ", "prefixes": ["fl"] },
+    { "unit": "TSP", "prefixes": ["tsp", "teaspoon"] },
+    { "unit": "TBSP", "prefixes": ["tbs", "tablespoon"] },
+    { "unit": "CUP", "prefixes": ["cup"] },
+    { "unit": "ML", "exact": ["ml"], "prefixes": ["millil"] },
+    { "unit": "KG", "exact": ["kg"], "prefixes": ["kilo"] },
+    { "unit": "G", "exact": ["g"], "prefixes": ["gram"] },
+    { "unit": "L", "exact": ["l"], "prefixes": ["lit"] },
+    { "unit": "STICK", "prefixes": ["stick"] },
+    { "unit": "OZ", "exact": ["oz"], "prefixes": ["ounce"] },
+    { "unit": "LB", "exact": ["lb", "lbs"], "prefixes": ["pound"] }
+  ]
+}

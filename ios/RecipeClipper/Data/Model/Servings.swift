@@ -8,14 +8,17 @@ enum Servings {
     static let max = 99
 
     /// Matches a stated range ("4-6", "4 to 6"), which `pickYield` prefers.
-    private static let range = JRegex(#"\d+\s*(?:[-–—]|to)\s*\d+"#, ignoreCase: true)
+    private static let range = JRegex(#"\d+\s*(?:[-–—]|"# + SharedTables.rangeWords + #")\s*\d+"#, ignoreCase: true)
     private static let firstNumber = JRegex(#"\d+"#)
+    // The yield words are shared with Android: shared/tables/en/yield.json.
+    private static let table = SharedTables.load("yield")
     private static let servingWord =
-        JRegex(#"\b(?:serves?|servings?|people|persons?|portions?|feeds?)\b"#, ignoreCase: true)
-    private static let makesWord = JRegex(#"\b(?:makes?|yields?)\b"#, ignoreCase: true)
+        JRegex(#"\b"# + SharedTables.alternation(SharedTables.strings(table, "serving")) + #"\b"#, ignoreCase: true)
+    private static let makesWord =
+        JRegex(#"\b"# + SharedTables.alternation(SharedTables.strings(table, "makes")) + #"\b"#, ignoreCase: true)
     /// A number followed by some other word: "24 cookies", "1 (9-inch) pie", "2 dozen".
     /// The lookahead skips the "to" of a range, so a bare "4 to 6" isn't read as a noun.
-    private static let countedNoun = JRegex(#"\d[^\p{L}]*(?!to\b)\p{L}"#, ignoreCase: true)
+    private static let countedNoun = JRegex(#"\d[^\p{L}]*(?!"# + SharedTables.rangeWords + #"\b)\p{L}"#, ignoreCase: true)
 
     /// Sites often list several forms of the same yield, e.g. `["4", "4 to 6 servings"]`.
     /// Prefers the entry that states a range so "Original: 4-6 servings" isn't cut down
