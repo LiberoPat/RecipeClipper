@@ -240,4 +240,70 @@
     <string name="action_move_up">Sposta su</string>
     <string name="action_move_down">Sposta giù</string>
     <string name="label_meal_type_name">Nome del tipo di pasto</string>
+
+    <!-- Clip it yourself (#37) -->
+    <string name="clip_offer">Apri la pagina, seleziona il nome, gli ingredienti e i passaggi e tocca dove va ciascuno.</string>
+    <string name="action_clip_it_yourself">Ritaglia a mano</string>
+    <string name="action_done">Fatto</string>
+    <string name="action_discard">Scarta</string>
+    <string name="action_remove">Rimuovi</string>
+    <string name="clip_field_name">Nome</string>
+    <string name="clip_field_ingredients">Ingredienti</string>
+    <string name="clip_field_steps">Passaggi</string>
+    <string name="clip_field_photo">Foto</string>
+    <string name="clip_hint">Seleziona il testo nella pagina, poi tocca dove va. Per la foto, tocca Foto e poi l\'immagine.</string>
+    <string name="clip_picking_photo">Tocca l\'immagine da usare come foto.</string>
+    <string name="clip_lines_selected_hint">ogni riga diventa una voce</string>
+    <string name="clip_summary_name">Nome ✓</string>
+    <string name="clip_summary_no_name">Senza nome</string>
+    <string name="clip_summary_photo">foto</string>
+    <string name="clip_summary_no_photo">senza foto</string>
+    <string name="clip_review">Rivedi</string>
+    <string name="clip_added_name">Nome aggiunto</string>
+    <string name="clip_added_photo">Foto aggiunta</string>
+    <string name="clip_cleared_name">Nome cancellato</string>
+    <string name="clip_cleared_ingredients">Ingredienti cancellati</string>
+    <string name="clip_cleared_steps">Passaggi cancellati</string>
+    <string name="clip_cleared_photo">Foto cancellata</string>
+    <string name="clip_draft_restored">Bozza ripristinata</string>
+    <string name="clip_save_failed">Impossibile salvare il ritaglio. Riprova.</string>
+    <string name="clip_back_to_page">‹  Torna alla pagina</string>
+    <string name="clip_photo_from_page">Foto dalla pagina</string>
+    <string name="clip_no_photo">Nessuna foto. Tocca Foto nella pagina, poi l\'immagine.</string>
+    <string name="clip_optional">facoltativo</string>
+    <string name="clip_ingredients_heading">Ingredienti · %1$d</string>
+    <string name="clip_steps_heading">Passaggi · %1$d</string>
+    <string name="clip_add_line">+ Aggiungi una riga</string>
+    <string name="clip_add_step">+ Aggiungi un passaggio</string>
+    <string name="cd_clip_remove_line">Rimuovi la riga %1$d</string>
+    <string name="clip_save">Salva ricetta</string>
+    <string name="update_from_source_clip_title">Sostituire il tuo ritaglio?</string>
+    <string name="update_from_source_clip_body">La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nei tuoi elenchi e nella cronologia.</string>
+    <string name="clipped_by_you">Ritagliata da te</string>
+    <string name="clipped_by_you_on">Ritagliata da te · %1$s</string>
+    <plurals name="clip_lines_selected">
+        <item quantity="one">%1$d riga selezionata</item>
+        <item quantity="many">%1$d di righe selezionate</item>
+        <item quantity="other">%1$d righe selezionate</item>
+    </plurals>
+    <plurals name="clip_summary_ingredients">
+        <item quantity="one">%1$d ingrediente</item>
+        <item quantity="many">%1$d di ingredienti</item>
+        <item quantity="other">%1$d ingredienti</item>
+    </plurals>
+    <plurals name="clip_summary_steps">
+        <item quantity="one">%1$d passaggio</item>
+        <item quantity="many">%1$d di passaggi</item>
+        <item quantity="other">%1$d passaggi</item>
+    </plurals>
+    <plurals name="clip_added_ingredients">
+        <item quantity="one">%1$d ingrediente aggiunto</item>
+        <item quantity="many">%1$d di ingredienti aggiunti</item>
+        <item quantity="other">%1$d ingredienti aggiunti</item>
+    </plurals>
+    <plurals name="clip_added_steps">
+        <item quantity="one">%1$d passaggio aggiunto</item>
+        <item quantity="many">%1$d di passaggi aggiunti</item>
+        <item quantity="other">%1$d passaggi aggiunti</item>
+    </plurals>
 </resources>

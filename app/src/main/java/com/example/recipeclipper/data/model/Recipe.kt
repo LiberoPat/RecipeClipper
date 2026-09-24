@@ -95,7 +95,9 @@ data class RecipeSummary(
     val totalTime: String?,
     val lastViewedAt: Long,
     /** In at least one list. Derived from list membership, never stored. */
-    val isSaved: Boolean
+    val isSaved: Boolean,
+    /** Picked from the page by hand (#37, origin CLIPPED): the row says "Clipped by you". */
+    val isClipped: Boolean = false
 )
 
 /**

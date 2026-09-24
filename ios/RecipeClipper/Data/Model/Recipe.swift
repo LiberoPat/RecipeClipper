@@ -96,6 +96,8 @@ struct RecipeSummary: Equatable, Identifiable {
     let lastViewedAt: Int64
     /// In at least one list. Derived from list membership, never stored.
     let isSaved: Bool
+    /// Picked from the page by hand (#37, origin CLIPPED): the row says "Clipped by you".
+    var isClipped: Bool = false
 }
 
 /// A list of recipes as a screen needs it. `isFavorites` is carried from the column rather

@@ -43,8 +43,10 @@ timers, with cook progress and servings saved and background timer alerts;
 sharing a recipe out as text; failure handling and offline; the microdata
 fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
-JSON file (Settings); the week meal plan, behind the tab flag (#49); the UI in English, Spanish, French, German, Italian and
-Brazilian Portuguese (drafts awaiting a native speaker:
+JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
+with no recipe data, #37); the week meal plan, behind the tab flag (#49); the
+UI in English, Spanish, French, German, Italian and Brazilian Portuguese
+(drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: Reddit (#11), recipes in languages beyond
@@ -93,9 +95,10 @@ data/          RecipeRepository, ListRepository, MealPlanRepository (interfaces;
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
                LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
-               PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal)
-ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
-               week, plan (Add to plan sheet), mealtypes, theme, common
+               ClipSelection, ClipDraft, PlanDays (the plan's epoch-day calendar),
+               MealPlan (MealType, PlannedMeal)
+ui/            navigation, home, history, recipe, clip, edit, savetolist, lists, listdetail,
+               settings, week, plan (Add to plan sheet), mealtypes, theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
 ```
 
@@ -104,7 +107,8 @@ Routes: `home`, `history`, `settings`, `lists`, `lists/{listId}`,
 cook mode), `recipe/import?url={url}` (the share target: parse, then
 upsert with no list membership), and `edit?recipeId={recipeId}` (no id: a new
 recipe; saving replaces the edit screen, and the recipe screen under it, with
-`recipe/{id}`). Behind `BuildConfig.MEAL_PLAN_TABS` /
+`recipe/{id}`), and `clip?url={url}` (Clip it yourself; saving replaces it and
+the error screen under it with `recipe/{id}`). Behind `BuildConfig.MEAL_PLAN_TABS` /
 `FeatureFlags.mealPlanTabs` (#47, default off, so the app is unchanged): a
 bottom tab bar nests this same graph under a Recipes tab alongside `week`
 (with its own `week/recipe/{recipeId}?servings={servings}` and
@@ -358,6 +362,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (never `Blocked`, `Offline` or `FetchFailed`): a prefilled GitHub issue
   (`SiteReportLink`, label `site-report`) opened in the browser. Nothing is sent
   unless the user submits it.
+- **`NoRecipeFound` from a shared link also offers "Clip it yourself"** (#37,
+  `docs/decisions.md`): the page live in a web view with `shared/web/clipper.js`
+  (one copy, both apps). Assigning a selection replaces the field, one item per
+  line, nothing guessed; Undo by snackbar or by tapping the field's tag; a
+  session draft per cleaned URL, in memory only. Saved as CLIPPED: "Clipped by
+  you" under the title and in History rows.
 - Database errors degrade instead of crashing. The Android repositories run
   every DAO call through `ErrorLog.guard`, which returns a safe fallback
   (`SaveFailed`, null, a no-op, or `CREATE_FAILED` = -1), and every Flow

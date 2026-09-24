@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.history
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -45,23 +46,31 @@ class HistoryScreenTest {
     private fun summary(id: Long, title: String) =
         RecipeSummary(id, title, imageUrl = null, totalTime = null, lastViewedAt = 0, isSaved = false)
 
-    private fun captured(recipe: RecipeSummary) = RecipeRepository.DeletedRecipe(
-        RecipeEntity(
-            id = recipe.id,
-            sourceUrl = "https://example.com/${recipe.id}",
-            title = recipe.title,
-            imageUrl = null,
-            ingredients = emptyList(),
-            instructions = emptyList(),
-            prepTime = null,
-            cookTime = null,
-            totalTime = null,
-            servings = null,
-            sourceType = "BLOG",
-            lastViewedAt = 0
-        ),
-        crossRefs = emptyList()
-    )
+    // RecipeEntity's uid defaults to a fresh random one per construction, so the same recipe
+    // must always map to the same captured instance: cached by id rather than rebuilt on every
+    // call, or the entity built for the fake's delete result would never equal the one built for
+    // an assertion.
+    private val capturedById = mutableMapOf<Long, RecipeRepository.DeletedRecipe>()
+
+    private fun captured(recipe: RecipeSummary) = capturedById.getOrPut(recipe.id) {
+        RecipeRepository.DeletedRecipe(
+            RecipeEntity(
+                id = recipe.id,
+                sourceUrl = "https://example.com/${recipe.id}",
+                title = recipe.title,
+                imageUrl = null,
+                ingredients = emptyList(),
+                instructions = emptyList(),
+                prepTime = null,
+                cookTime = null,
+                totalTime = null,
+                servings = null,
+                sourceType = "BLOG",
+                lastViewedAt = 0
+            ),
+            crossRefs = emptyList()
+        )
+    }
 
     private var opened: Long? = null
 
@@ -99,6 +108,16 @@ class HistoryScreenTest {
         compose.onNodeWithText("Chicken Adobo").performClick()
 
         assertEquals(1L, opened)
+    }
+
+    @Test
+    fun aClippedRecipeSaysSoAndOthersDoNot() {
+        show(adobo.copy(isClipped = true), carbonara)
+
+        waitFor("Chicken Adobo")
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasText("Clipped by you", substring = true)).fetchSemanticsNodes().size == 1
+        }
     }
 
     @Test

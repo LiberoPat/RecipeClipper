@@ -230,4 +230,65 @@
     <string name="action_move_up">Nach oben</string>
     <string name="action_move_down">Nach unten</string>
     <string name="label_meal_type_name">Name der Mahlzeit</string>
+
+    <!-- Clip it yourself (#37) -->
+    <string name="clip_offer">Öffne die Seite, markiere Namen, Zutaten und Schritte und tippe an, wohin jedes gehört.</string>
+    <string name="action_clip_it_yourself">Selbst ausschneiden</string>
+    <string name="action_done">Fertig</string>
+    <string name="action_discard">Verwerfen</string>
+    <string name="action_remove">Entfernen</string>
+    <string name="clip_field_name">Name</string>
+    <string name="clip_field_ingredients">Zutaten</string>
+    <string name="clip_field_steps">Schritte</string>
+    <string name="clip_field_photo">Foto</string>
+    <string name="clip_hint">Markiere Text auf der Seite und tippe dann an, wohin er gehört. Für das Foto tippe auf Foto und dann auf das Bild.</string>
+    <string name="clip_picking_photo">Tippe auf das Bild, das du als Foto verwenden willst.</string>
+    <string name="clip_lines_selected_hint">jede Zeile wird ein Eintrag</string>
+    <string name="clip_summary_name">Name ✓</string>
+    <string name="clip_summary_no_name">Kein Name</string>
+    <string name="clip_summary_photo">Foto</string>
+    <string name="clip_summary_no_photo">kein Foto</string>
+    <string name="clip_review">Prüfen</string>
+    <string name="clip_added_name">Name hinzugefügt</string>
+    <string name="clip_added_photo">Foto hinzugefügt</string>
+    <string name="clip_cleared_name">Name entfernt</string>
+    <string name="clip_cleared_ingredients">Zutaten entfernt</string>
+    <string name="clip_cleared_steps">Schritte entfernt</string>
+    <string name="clip_cleared_photo">Foto entfernt</string>
+    <string name="clip_draft_restored">Entwurf wiederhergestellt</string>
+    <string name="clip_save_failed">Der Ausschnitt konnte nicht gespeichert werden. Versuche es noch einmal.</string>
+    <string name="clip_back_to_page">‹  Zurück zur Seite</string>
+    <string name="clip_photo_from_page">Foto von der Seite</string>
+    <string name="clip_no_photo">Kein Foto. Tippe auf der Seite auf Foto und dann auf das Bild.</string>
+    <string name="clip_optional">optional</string>
+    <string name="clip_ingredients_heading">Zutaten · %1$d</string>
+    <string name="clip_steps_heading">Schritte · %1$d</string>
+    <string name="clip_add_line">+ Zeile hinzufügen</string>
+    <string name="clip_add_step">+ Schritt hinzufügen</string>
+    <string name="cd_clip_remove_line">Zeile %1$d entfernen</string>
+    <string name="clip_save">Rezept speichern</string>
+    <string name="update_from_source_clip_title">Deinen Ausschnitt ersetzen?</string>
+    <string name="update_from_source_clip_body">Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und im Verlauf.</string>
+    <string name="clipped_by_you">Von dir ausgeschnitten</string>
+    <string name="clipped_by_you_on">Von dir ausgeschnitten · %1$s</string>
+    <plurals name="clip_lines_selected">
+        <item quantity="one">%1$d Zeile markiert</item>
+        <item quantity="other">%1$d Zeilen markiert</item>
+    </plurals>
+    <plurals name="clip_summary_ingredients">
+        <item quantity="one">%1$d Zutat</item>
+        <item quantity="other">%1$d Zutaten</item>
+    </plurals>
+    <plurals name="clip_summary_steps">
+        <item quantity="one">%1$d Schritt</item>
+        <item quantity="other">%1$d Schritte</item>
+    </plurals>
+    <plurals name="clip_added_ingredients">
+        <item quantity="one">%1$d Zutat hinzugefügt</item>
+        <item quantity="other">%1$d Zutaten hinzugefügt</item>
+    </plurals>
+    <plurals name="clip_added_steps">
+        <item quantity="one">%1$d Schritt hinzugefügt</item>
+        <item quantity="other">%1$d Schritte hinzugefügt</item>
+    </plurals>
 </resources>

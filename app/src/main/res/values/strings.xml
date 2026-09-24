@@ -30,6 +30,70 @@
     <string name="action_open_original">Open original</string>
     <string name="cd_open_original">Open the original recipe on %1$s</string>
 
+    <!-- Clip it yourself (#37) -->
+    <string name="clip_offer">Open the page, select the name, ingredients and steps, and tap where each one goes.</string>
+    <string name="action_clip_it_yourself">Clip it yourself</string>
+    <string name="action_done">Done</string>
+    <string name="action_discard">Discard</string>
+    <string name="action_remove">Remove</string>
+    <string name="clip_field_name">Name</string>
+    <string name="clip_field_ingredients">Ingredients</string>
+    <string name="clip_field_steps">Steps</string>
+    <string name="clip_field_photo">Photo</string>
+    <string name="clip_hint">Select text on the page, then tap where it goes. For the photo, tap Photo, then the picture.</string>
+    <string name="clip_picking_photo">Tap the picture to use as the photo.</string>
+    <string name="clip_lines_selected_hint">each line becomes one item</string>
+    <string name="clip_summary_name">Name ✓</string>
+    <string name="clip_summary_no_name">No name</string>
+    <string name="clip_summary_photo">photo</string>
+    <string name="clip_summary_no_photo">no photo</string>
+    <string name="clip_review">Review</string>
+    <string name="clip_added_name">Name added</string>
+    <string name="clip_added_photo">Photo added</string>
+    <string name="clip_cleared_name">Name cleared</string>
+    <string name="clip_cleared_ingredients">Ingredients cleared</string>
+    <string name="clip_cleared_steps">Steps cleared</string>
+    <string name="clip_cleared_photo">Photo cleared</string>
+    <string name="clip_draft_restored">Draft restored</string>
+    <string name="clip_save_failed">Couldn\'t save the clip. Try again.</string>
+    <string name="clip_back_to_page">‹  Back to page</string>
+    <string name="clip_photo_from_page">Photo from the page</string>
+    <string name="clip_no_photo">No photo. Tap Photo on the page, then the picture.</string>
+    <string name="clip_optional">optional</string>
+    <string name="clip_ingredients_heading">Ingredients · %1$d</string>
+    <string name="clip_steps_heading">Steps · %1$d</string>
+    <string name="clip_add_line">+ Add a line</string>
+    <string name="clip_add_step">+ Add a step</string>
+    <string name="cd_clip_remove_line">Remove line %1$d</string>
+    <string name="clip_save">Save recipe</string>
+    <string name="update_from_source_clip_title">Replace your clip?</string>
+    <string name="update_from_source_clip_body">This loads the page again and replaces the name, ingredients, steps and photo you clipped with the site\'s own recipe data. It stays in your lists and history.</string>
+    <string name="clipped_by_you">Clipped by you</string>
+    <string name="clipped_by_you_on">Clipped by you · %1$s</string>
+    <plurals name="clip_lines_selected">
+        <item quantity="one">%1$d line selected</item>
+        <item quantity="other">%1$d lines selected</item>
+    </plurals>
+    <plurals name="clip_summary_ingredients">
+        <item quantity="one">%1$d ingredient</item>
+        <item quantity="other">%1$d ingredients</item>
+    </plurals>
+    <plurals name="clip_summary_steps">
+        <item quantity="one">%1$d step</item>
+        <item quantity="other">%1$d steps</item>
+    </plurals>
+    <plurals name="clip_added_ingredients">
+        <item quantity="one">%1$d ingredient added</item>
+        <item quantity="other">%1$d ingredients added</item>
+    </plurals>
+    <plurals name="clip_added_steps">
+        <item quantity="one">%1$d step added</item>
+        <item quantity="other">%1$d steps added</item>
+    </plurals>
+    <string name="clip_tag_count" translatable="false">%1$s · %2$d</string>
+    <string name="clip_summary_separator" translatable="false">" · "</string>
+    <string name="clip_remove_line" translatable="false">✕</string>
+
     <!-- Errors -->
     <string name="error_no_recipe_found">Couldn\'t find recipe data on this page. Some sites don\'t tag their recipes in a way this app can read yet.</string>
     <string name="error_fetch_failed">Couldn\'t load that page (%1$s).</string>

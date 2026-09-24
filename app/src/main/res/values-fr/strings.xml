@@ -240,4 +240,70 @@
     <string name="action_move_up">Monter</string>
     <string name="action_move_down">Descendre</string>
     <string name="label_meal_type_name">Nom du type de repas</string>
+
+    <!-- Clip it yourself (#37) -->
+    <string name="clip_offer">Ouvrez la page, sélectionnez le nom, les ingrédients et les étapes, puis touchez l\'endroit où va chacun.</string>
+    <string name="action_clip_it_yourself">Découper à la main</string>
+    <string name="action_done">Terminé</string>
+    <string name="action_discard">Supprimer</string>
+    <string name="action_remove">Retirer</string>
+    <string name="clip_field_name">Nom</string>
+    <string name="clip_field_ingredients">Ingrédients</string>
+    <string name="clip_field_steps">Étapes</string>
+    <string name="clip_field_photo">Photo</string>
+    <string name="clip_hint">Sélectionnez du texte sur la page, puis touchez l\'endroit où il va. Pour la photo, touchez Photo, puis l\'image.</string>
+    <string name="clip_picking_photo">Touchez l\'image à utiliser comme photo.</string>
+    <string name="clip_lines_selected_hint">chaque ligne devient un élément</string>
+    <string name="clip_summary_name">Nom ✓</string>
+    <string name="clip_summary_no_name">Sans nom</string>
+    <string name="clip_summary_photo">photo</string>
+    <string name="clip_summary_no_photo">sans photo</string>
+    <string name="clip_review">Vérifier</string>
+    <string name="clip_added_name">Nom ajouté</string>
+    <string name="clip_added_photo">Photo ajoutée</string>
+    <string name="clip_cleared_name">Nom effacé</string>
+    <string name="clip_cleared_ingredients">Ingrédients effacés</string>
+    <string name="clip_cleared_steps">Étapes effacées</string>
+    <string name="clip_cleared_photo">Photo effacée</string>
+    <string name="clip_draft_restored">Brouillon restauré</string>
+    <string name="clip_save_failed">Impossible d\'enregistrer la découpe. Réessayez.</string>
+    <string name="clip_back_to_page">‹  Retour à la page</string>
+    <string name="clip_photo_from_page">Photo de la page</string>
+    <string name="clip_no_photo">Pas de photo. Touchez Photo sur la page, puis l\'image.</string>
+    <string name="clip_optional">facultatif</string>
+    <string name="clip_ingredients_heading">Ingrédients · %1$d</string>
+    <string name="clip_steps_heading">Étapes · %1$d</string>
+    <string name="clip_add_line">+ Ajouter une ligne</string>
+    <string name="clip_add_step">+ Ajouter une étape</string>
+    <string name="cd_clip_remove_line">Retirer la ligne %1$d</string>
+    <string name="clip_save">Enregistrer la recette</string>
+    <string name="update_from_source_clip_title">Remplacer votre découpe ?</string>
+    <string name="update_from_source_clip_body">La page est rechargée, et le nom, les ingrédients, les étapes et la photo que vous avez découpés sont remplacés par les données de recette du site. Elle reste dans vos listes et votre historique.</string>
+    <string name="clipped_by_you">Découpée par vous</string>
+    <string name="clipped_by_you_on">Découpée par vous · %1$s</string>
+    <plurals name="clip_lines_selected">
+        <item quantity="one">%1$d ligne sélectionnée</item>
+        <item quantity="many">%1$d de lignes sélectionnées</item>
+        <item quantity="other">%1$d lignes sélectionnées</item>
+    </plurals>
+    <plurals name="clip_summary_ingredients">
+        <item quantity="one">%1$d ingrédient</item>
+        <item quantity="many">%1$d d’ingrédients</item>
+        <item quantity="other">%1$d ingrédients</item>
+    </plurals>
+    <plurals name="clip_summary_steps">
+        <item quantity="one">%1$d étape</item>
+        <item quantity="many">%1$d d’étapes</item>
+        <item quantity="other">%1$d étapes</item>
+    </plurals>
+    <plurals name="clip_added_ingredients">
+        <item quantity="one">%1$d ingrédient ajouté</item>
+        <item quantity="many">%1$d d’ingrédients ajoutés</item>
+        <item quantity="other">%1$d ingrédients ajoutés</item>
+    </plurals>
+    <plurals name="clip_added_steps">
+        <item quantity="one">%1$d étape ajoutée</item>
+        <item quantity="many">%1$d d’étapes ajoutées</item>
+        <item quantity="other">%1$d étapes ajoutées</item>
+    </plurals>
 </resources>

@@ -10,6 +10,8 @@ struct RecipeScreen: View {
     /// Makes the "Add to plan" sheet's ViewModel (#49); nil hides the menu item, as while the
     /// tab flag is off. Made on first use and kept for the screen's life.
     var makePlanVM: (() -> AddToPlanViewModel)? = nil
+    /// Opens "Clip it yourself" on the shared link (#37).
+    var onClip: (String) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
@@ -23,6 +25,7 @@ struct RecipeScreen: View {
     var body: some View {
         let state = vm.uiState
         let content = state.content.success
+        let clipped = content?.recipe.origin == .clipped
         // The id isn't known until the parse finishes on the import route.
         let recipeId = content?.recipe.id
 
@@ -46,12 +49,8 @@ struct RecipeScreen: View {
                     // Every error offers "Try again", no-recipe included: a café or hotel captive
                     // portal serves its login page, which parses as a page with no recipe, and
                     // the same link works once you're through it.
-                    // Side by side; stacked when an accessibility text size won't fit them.
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) { errorActions(state) }
-                        VStack(alignment: .leading, spacing: 8) { errorActions(state) }
-                    }
-                    .padding(.top, 16)
+                    errorActions(state)
+                        .padding(.top, 16)
                 }
             }
         }
@@ -109,11 +108,12 @@ struct RecipeScreen: View {
         } message: {
             Text(Strings.deleteRecipeBody)
         }
-        .alert(Strings.updateFromSourceTitle, isPresented: $confirmingUpdate) {
+        // A clip (#37) says what it loses in its own words: the parts picked from the page.
+        .alert(clipped ? Strings.updateFromSourceClipTitle : Strings.updateFromSourceTitle, isPresented: $confirmingUpdate) {
             Button(Strings.update, role: .destructive, action: vm.onUpdateFromSource)
             Button(Strings.cancel, role: .cancel) {}
         } message: {
-            Text(Strings.updateFromSourceBody)
+            Text(clipped ? Strings.updateFromSourceClipBody : Strings.updateFromSourceBody)
         }
         // "Update from source" failed: the recipe on screen is unchanged; say why, once.
         .alert(
@@ -124,16 +124,31 @@ struct RecipeScreen: View {
         }
     }
 
-    /// "Try again", and beside it "Report this site" only for a page with no recipe (the
-    /// ViewModel decides): the one error that means "unsupported" rather than "try again".
-    /// Secondary, so it reads as a text action next to the filled button.
+    /// "Try again" on every error. For a page with no recipe data (the ViewModel decides) it is
+    /// outlined, and under a hairline "Clip it yourself" (#37) is the one filled button, with
+    /// "Report this site" (#30) as the quiet option below it.
     @ViewBuilder
     private func errorActions(_ state: RecipeUiState) -> some View {
-        Button(Strings.tryAgain, action: vm.onRetry)
-            .buttonStyle(PrimaryButtonStyle())
-        if let report = state.reportSiteUrl.flatMap(URL.init(string:)) {
-            Button(Strings.reportSite) { openURL(report) }
-                .buttonStyle(TextActionStyle(color: Palette.muted))
+        VStack(alignment: .leading, spacing: 0) {
+            if let clipUrl = state.clipUrl {
+                Button(Strings.tryAgain, action: vm.onRetry)
+                    .buttonStyle(OutlinedActionStyle())
+                Hairline().padding(.top, 20).padding(.bottom, 16)
+                Text(Strings.clipOffer)
+                    .textStyle(Typography.bodyMedium)
+                    .foregroundStyle(Palette.muted)
+                    .padding(.bottom, 12)
+                Button(Strings.clipItYourself) { onClip(clipUrl) }
+                    .buttonStyle(PrimaryButtonStyle())
+            } else {
+                Button(Strings.tryAgain, action: vm.onRetry)
+                    .buttonStyle(PrimaryButtonStyle())
+            }
+            if let report = state.reportSiteUrl.flatMap(URL.init(string:)) {
+                Button(Strings.reportSite) { openURL(report) }
+                    .buttonStyle(TextActionStyle(color: Palette.muted))
+                    .padding(.top, 8)
+            }
         }
     }
 

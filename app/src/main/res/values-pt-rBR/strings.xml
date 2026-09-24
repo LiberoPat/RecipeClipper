@@ -240,4 +240,70 @@
     <string name="action_move_up">Mover para cima</string>
     <string name="action_move_down">Mover para baixo</string>
     <string name="label_meal_type_name">Nome do tipo de refeição</string>
+
+    <!-- Clip it yourself (#37) -->
+    <string name="clip_offer">Abra a página, selecione o nome, os ingredientes e os passos e toque onde cada um vai.</string>
+    <string name="action_clip_it_yourself">Recortar à mão</string>
+    <string name="action_done">Concluído</string>
+    <string name="action_discard">Descartar</string>
+    <string name="action_remove">Remover</string>
+    <string name="clip_field_name">Nome</string>
+    <string name="clip_field_ingredients">Ingredientes</string>
+    <string name="clip_field_steps">Passos</string>
+    <string name="clip_field_photo">Foto</string>
+    <string name="clip_hint">Selecione o texto na página e toque onde ele vai. Para a foto, toque em Foto e depois na imagem.</string>
+    <string name="clip_picking_photo">Toque na imagem que vai ser a foto.</string>
+    <string name="clip_lines_selected_hint">cada linha vira um item</string>
+    <string name="clip_summary_name">Nome ✓</string>
+    <string name="clip_summary_no_name">Sem nome</string>
+    <string name="clip_summary_photo">foto</string>
+    <string name="clip_summary_no_photo">sem foto</string>
+    <string name="clip_review">Revisar</string>
+    <string name="clip_added_name">Nome adicionado</string>
+    <string name="clip_added_photo">Foto adicionada</string>
+    <string name="clip_cleared_name">Nome removido</string>
+    <string name="clip_cleared_ingredients">Ingredientes removidos</string>
+    <string name="clip_cleared_steps">Passos removidos</string>
+    <string name="clip_cleared_photo">Foto removida</string>
+    <string name="clip_draft_restored">Rascunho restaurado</string>
+    <string name="clip_save_failed">Não foi possível salvar o recorte. Tente de novo.</string>
+    <string name="clip_back_to_page">‹  Voltar à página</string>
+    <string name="clip_photo_from_page">Foto da página</string>
+    <string name="clip_no_photo">Sem foto. Toque em Foto na página e depois na imagem.</string>
+    <string name="clip_optional">opcional</string>
+    <string name="clip_ingredients_heading">Ingredientes · %1$d</string>
+    <string name="clip_steps_heading">Passos · %1$d</string>
+    <string name="clip_add_line">+ Adicionar uma linha</string>
+    <string name="clip_add_step">+ Adicionar um passo</string>
+    <string name="cd_clip_remove_line">Remover a linha %1$d</string>
+    <string name="clip_save">Salvar receita</string>
+    <string name="update_from_source_clip_title">Substituir seu recorte?</string>
+    <string name="update_from_source_clip_body">Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. Ela continua nas suas listas e no histórico.</string>
+    <string name="clipped_by_you">Recortada por você</string>
+    <string name="clipped_by_you_on">Recortada por você · %1$s</string>
+    <plurals name="clip_lines_selected">
+        <item quantity="one">%1$d linha selecionada</item>
+        <item quantity="many">%1$d de linhas selecionadas</item>
+        <item quantity="other">%1$d linhas selecionadas</item>
+    </plurals>
+    <plurals name="clip_summary_ingredients">
+        <item quantity="one">%1$d ingrediente</item>
+        <item quantity="many">%1$d de ingredientes</item>
+        <item quantity="other">%1$d ingredientes</item>
+    </plurals>
+    <plurals name="clip_summary_steps">
+        <item quantity="one">%1$d passo</item>
+        <item quantity="many">%1$d de passos</item>
+        <item quantity="other">%1$d passos</item>
+    </plurals>
+    <plurals name="clip_added_ingredients">
+        <item quantity="one">%1$d ingrediente adicionado</item>
+        <item quantity="many">%1$d de ingredientes adicionados</item>
+        <item quantity="other">%1$d ingredientes adicionados</item>
+    </plurals>
+    <plurals name="clip_added_steps">
+        <item quantity="one">%1$d passo adicionado</item>
+        <item quantity="many">%1$d de passos adicionados</item>
+        <item quantity="other">%1$d passos adicionados</item>
+    </plurals>
 </resources>

@@ -143,6 +143,12 @@ struct RootView: View {
             ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
                 ListDetailScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
             }
+        case .clip(let url):
+            ScreenHost({ container.makeClipViewModel(url: url) }) { vm in
+                ClipScreen(vm: vm, fixtureHTML: container.clipFixtureHTML, onSaved: router.openSavedClip)
+            }
+            // Full screen: the page needs the room, and a clip isn't a tab of its own.
+            .toolbar(.hidden, for: .tabBar)
         }
     }
 
@@ -151,7 +157,10 @@ struct RootView: View {
         let container = container
         let makePlanVM: (() -> AddToPlanViewModel)? = tabsEnabled ? { container.makeAddToPlanViewModel() } : nil
         return ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
-            RecipeScreen(vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) }, makePlanVM: makePlanVM)
+            RecipeScreen(
+                vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
+                makePlanVM: makePlanVM, onClip: { push(.clip($0)) }
+            )
         }
         // The reading view and cook mode are full screen, so a recipe still opens on the recipe.
         // A no-op while the tab bar is off.

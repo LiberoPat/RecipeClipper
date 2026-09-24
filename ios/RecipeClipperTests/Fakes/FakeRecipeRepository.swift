@@ -16,6 +16,9 @@ final class FakeRecipeRepository: RecipeRepository {
 
     var importResult: ParseResult = .error(.nothingToShow)
     var openResult: Recipe?
+    /// Staged answer for `saveClip`; nil answers success with the recipe given id 1.
+    var saveClipResult: ParseResult?
+    private(set) var saveClipCalls: [Recipe] = []
     /// Per-id answers for `delete`; missing ids answer nil, same as "already gone".
     var deleteResults: [Int64: DeletedRecipe] = [:]
 
@@ -26,7 +29,15 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var deleteCalls: [Int64] = []
     private(set) var restoreCalls: [DeletedRecipe] = []
 
-    @MainActor func importFromUrl(_ sharedUrl: String) async -> ParseResult { importResult }
+    @MainActor func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult { importResult }
+
+    @MainActor func saveClip(_ recipe: Recipe) async -> ParseResult {
+        saveClipCalls.append(recipe)
+        if let saveClipResult { return saveClipResult }
+        var saved = recipe
+        saved.id = 1
+        return .success(saved)
+    }
 
     @MainActor func open(id: Int64) async -> Recipe? { openResult }
 

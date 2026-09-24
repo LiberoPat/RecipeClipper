@@ -63,6 +63,29 @@ enum Strings {
     static var editErrorSaveFailed: String { String(localized: "edit_error_save_failed") }
     static func openOriginalHint(_ domain: String) -> String { String(localized: "cd_open_original \(domain)") }
 
+    // Clip it yourself (#37)
+    static var clipOffer: String { String(localized: "clip_offer") }
+    static var clipItYourself: String { String(localized: "action_clip_it_yourself") }
+    static var discard: String { String(localized: "action_discard") }
+    static var remove: String { String(localized: "action_remove") }
+    static var clipHint: String { String(localized: "clip_hint") }
+    static var clipPickingPhoto: String { String(localized: "clip_picking_photo") }
+    static var clipReview: String { String(localized: "clip_review") }
+    static var clipBackToPage: String { String(localized: "clip_back_to_page") }
+    static var clipPhotoFromPage: String { String(localized: "clip_photo_from_page") }
+    static var clipNoPhoto: String { String(localized: "clip_no_photo") }
+    static var clipOptional: String { String(localized: "clip_optional") }
+    static func clipIngredientsHeading(_ n: Int) -> String { String(localized: "clip_ingredients_heading \(n)") }
+    static func clipStepsHeading(_ n: Int) -> String { String(localized: "clip_steps_heading \(n)") }
+    static var clipAddLine: String { String(localized: "clip_add_line") }
+    static var clipAddStep: String { String(localized: "clip_add_step") }
+    static func clipRemoveLine(_ n: Int) -> String { String(localized: "cd_clip_remove_line \(n)") }
+    static var clipSave: String { String(localized: "clip_save") }
+    static var updateFromSourceClipTitle: String { String(localized: "update_from_source_clip_title") }
+    static var updateFromSourceClipBody: String { String(localized: "update_from_source_clip_body") }
+    static var clippedByYou: String { String(localized: "clipped_by_you") }
+    static func clippedByYou(on domain: String) -> String { String(localized: "clipped_by_you_on \(domain)") }
+
     // Errors
     static var errorNoRecipeFound: String { String(localized: "error_no_recipe_found") }
     static func errorFetchFailed(_ detail: String?) -> String {

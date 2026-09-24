@@ -187,6 +187,7 @@ struct RecipeSummaryRecord: Equatable {
     let totalTime: String?
     let lastViewedAt: Int64
     let isSaved: Bool
+    let isClipped: Bool
 
     init(row: SQLiteRow) {
         id = row.int64(0)
@@ -195,6 +196,7 @@ struct RecipeSummaryRecord: Equatable {
         totalTime = row.optionalString(3)
         lastViewedAt = row.int64(4)
         isSaved = row.bool(5)
+        isClipped = row.bool(6)
     }
 }
 
