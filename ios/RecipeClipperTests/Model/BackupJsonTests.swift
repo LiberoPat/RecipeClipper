@@ -91,6 +91,16 @@ final class BackupJsonTests: XCTestCase {
         XCTAssertEqual(try decodeOrFail(BackupJson.encode(backup)), backup)
     }
 
+    func testARecipesContentOriginRoundTripsAndAFileWithoutOneReadsAsParsed() throws {
+        var backup = try decodeOrFail(backupFixture("backup-v1"))
+        XCTAssertTrue(backup.recipes.allSatisfy { $0.contentOrigin == "PARSED" && $0.editedAt == nil })
+        for i in backup.recipes.indices {
+            backup.recipes[i].contentOrigin = "EDITED"
+            backup.recipes[i].editedAt = 42
+        }
+        XCTAssertEqual(try decodeOrFail(BackupJson.encode(backup)), backup)
+    }
+
     func testTheEncodedFileCarriesTheMarkerTheVersionAndExplicitNulls() throws {
         let text = BackupJson.encode(try decodeOrFail(backupFixture("backup-v1")))
         let root = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])

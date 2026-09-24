@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -55,6 +56,7 @@ fun HomeScreen(
     onOpenHistory: () -> Unit,
     onOpenLists: () -> Unit,
     onOpenSettings: () -> Unit,
+    onNewRecipe: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -121,6 +123,14 @@ fun HomeScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.padding(top = 6.dp)
                         ) { Text(stringResource(R.string.action_go)) }
+                    }
+                    // Typing a recipe in by hand (#29): a small way in, not a section.
+                    TextButton(onClick = onNewRecipe, modifier = Modifier.offset(x = (-12).dp)) {
+                        Text(
+                            stringResource(R.string.action_new_recipe),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
                     }
                 }
 

@@ -67,7 +67,9 @@ class DefaultBackupRepository @Inject constructor(
                     lastViewedAt = it.lastViewedAt,
                     checkedIngredients = it.checkedIngredients,
                     notes = it.notes,
-                    language = it.language
+                    language = it.language,
+                    contentOrigin = it.contentOrigin,
+                    editedAt = it.editedAt
                 )
             },
             lists = snapshot.lists.map {

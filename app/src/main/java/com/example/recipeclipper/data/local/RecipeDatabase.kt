@@ -15,7 +15,7 @@ import com.example.recipeclipper.data.local.entity.newUid
 
 @Database(
     entities = [RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -149,7 +149,19 @@ abstract class RecipeDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds whose words a recipe is (#29): `contentOrigin` (PARSED, EDITED, CLIPPED or
+         * MANUAL, by name) and `editedAt`. Every existing recipe was parsed from its link and
+         * never edited, so PARSED and null. The same SQL is iOS's `addContentOrigin`.
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recipes ADD COLUMN contentOrigin TEXT NOT NULL DEFAULT 'PARSED'")
+                db.execSQL("ALTER TABLE recipes ADD COLUMN editedAt INTEGER")
+            }
+        }
+
         /** Every migration, in order: what the app and the tests open the database with. */
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
     }
 }

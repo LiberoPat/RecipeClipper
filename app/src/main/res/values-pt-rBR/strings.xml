@@ -194,4 +194,25 @@
     <string name="timer_channel_name">Timers de cozinha</string>
     <string name="timer_channel_description">Quando o timer de um passo termina com o app fechado ou em segundo plano</string>
     <string name="timer_notification_title">O tempo acabou: passo %1$d</string>
+
+    <!-- Editing a recipe, or typing one in (#29) -->
+    <string name="action_edit">Editar</string>
+    <string name="action_update_from_source">Atualizar da fonte</string>
+    <string name="action_update">Atualizar</string>
+    <string name="action_new_recipe">+ Nova receita</string>
+    <string name="update_from_source_title">Substituir sua versão?</string>
+    <string name="update_from_source_body">A receita será buscada de novo no site e substituirá sua versão. Suas alterações serão perdidas; sua nota e suas listas continuam.</string>
+    <string name="update_from_source_failed">Não foi possível atualizar da fonte. %1$s</string>
+    <string name="edit_title_new">Nova receita</string>
+    <string name="edit_title_edit">Editar receita</string>
+    <string name="edit_label_name">Nome</string>
+    <string name="edit_label_yield">Porções ou rendimento</string>
+    <string name="edit_label_prep">Tempo de preparo</string>
+    <string name="edit_label_cook">Tempo de cozimento</string>
+    <string name="edit_label_total">Tempo total</string>
+    <string name="edit_label_ingredients">Ingredientes, um por linha</string>
+    <string name="edit_label_steps">Passos, um por linha</string>
+    <string name="edit_label_photo">Link da foto (opcional)</string>
+    <string name="edit_error_invalid">Uma receita precisa de um nome e de ingredientes ou passos.</string>
+    <string name="edit_error_save_failed">Não foi possível salvar a receita. Tente de novo.</string>
 </resources>

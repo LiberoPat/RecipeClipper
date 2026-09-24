@@ -41,7 +41,8 @@ Built on both platforms: share → parse → show; automatic history (capped at
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers, with cook progress and servings saved and background timer alerts;
 sharing a recipe out as text; failure handling and offline; the microdata
-fallback; a personal note per recipe; export and import of everything as one
+fallback; a personal note per recipe; editing a recipe and typing one in by
+hand, with "Update from source" (#29); export and import of everything as one
 JSON file (Settings); the UI in English, Spanish, French, German, Italian and
 Brazilian Portuguese (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -99,8 +100,10 @@ timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up"
 
 Routes: `home`, `history`, `settings`, `lists`, `lists/{listId}`,
 `recipe/{recipeId}?cook={cook}` (`cook=true` from a timer notification opens
-cook mode), and `recipe/import?url={url}` (the share target: parse, then
-upsert with no list membership). Behind `BuildConfig.MEAL_PLAN_TABS` /
+cook mode), `recipe/import?url={url}` (the share target: parse, then
+upsert with no list membership), and `edit?recipeId={recipeId}` (no id: a new
+recipe; saving replaces the edit screen, and the recipe screen under it, with
+`recipe/{id}`). Behind `BuildConfig.MEAL_PLAN_TABS` /
 `FeatureFlags.mealPlanTabs` (#47, default off, so the app is unchanged): a
 bottom tab bar nests this same graph under a Recipes tab alongside `week`,
 `groceries` and `pantry` placeholders (`AppShell`/iOS `RootView`'s `tabs`).
@@ -205,7 +208,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   adding an entry point is the owner's call.
 - **Home:** link field, "Continue cooking" (the most recent), "Recently
   viewed" (the five before it), History and Lists rows (always shown), the
-  Settings gear. Empty sections hide. **No "Saved" section**: it duplicated
+  Settings gear, and a small "+ New recipe" text action under the link field.
+  Empty sections hide. **No "Saved" section**: it duplicated
   Recently viewed. Search is on History only. Behind the tab-bar flag (#47)
   this is the Recipes tab, otherwise unchanged.
 - **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry, owner's order,
@@ -225,15 +229,20 @@ Settled; don't reintroduce what they removed. The history behind each is in
   snackbar (a burst of swipes shares one snackbar and one all-or-nothing
   undo), or the recipe screen's overflow menu with a confirmation dialog (no
   undo).
+- **Editing** (#29) is its own screen, from the recipe overflow menu (Edit,
+  then "Update from source" for an edited or clipped recipe with a link,
+  behind a warning, then Delete): name, yield, three times, ingredients and
+  steps one per line, a photo link. Saving needs a name plus ingredients or
+  steps (the parsers' rule); nothing typed is converted or guessed.
 - **Sharing a recipe out** sends plain text (no Markdown), as shown on
   screen, scaled and converted, without the source link. The share icon sits
   beside Back in the reading view, not in cook mode.
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 6** (iOS `user_version` 5):
-  `recipes` (with nullable `notes`, `language`, `cookState` and
-  `servingsTarget`), `lists` and `recipe_list_cross_ref` (cascading). Recipes
+- Room database `recipe_clipper.db`, **version 7** (iOS `user_version` 6):
+  `recipes` (with nullable `notes`, `language`, `cookState`,
+  `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading). Recipes
   and lists carry a unique, never-changing `uid`: what an export file calls
   them. The schema is exported to `app/schemas/`: commit it. **Never use
   destructive migration**, and give every migration a `MigrationTest`.
@@ -248,6 +257,17 @@ Settled; don't reintroduce what they removed. The history behind each is in
   the ingredient list is unchanged, cook progress only if the steps are. In
   the same transaction, recipes in no list beyond the 50 most recently viewed
   are deleted. Opening from history counts as a view.
+- **The user's version is never refreshed** (#29, #37).
+  `contentOrigin` (`PARSED` | `EDITED` | `CLIPPED` | `MANUAL`, by name; an
+  unknown name reads as `EDITED`) and `editedAt` (the last saved edit). Anything
+  but `PARSED` is the user's: a re-share opens it without fetching and only
+  counts as a view. "Update from source" is the one way back: it fetches,
+  replaces the content, keeps the id, note and lists, and sets `PARSED` and
+  no `editedAt`; a failure changes nothing. An edit makes `PARSED` into
+  `EDITED`; the other values stay. A typed-in recipe is `MANUAL` with a
+  synthetic `sourceUrl` of `manual:<uuid>`: never fetched or cleaned, and with
+  no host there is no source credit, Open original or Report. Both fields go
+  into the export file.
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
   needs a migration (as `MIGRATION_1_2` did).

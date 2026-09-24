@@ -83,6 +83,19 @@ protocol RecipeRepository: AnyObject {
     /// (and its lastViewedAt bumped), so anything opened once still opens offline.
     func importFromUrl(_ sharedUrl: String) async -> ParseResult
 
+    /// "Update from source" (#29): fetches the recipe's link again and replaces the user's
+    /// version with the site's, keeping the id, note and list membership, and making it PARSED.
+    /// On any failure nothing changes and the cause is returned.
+    func updateFromSource(id: Int64) async -> ParseResult
+
+    /// Saves the user's edit of recipe `id`: the content becomes `draft`'s, `editedAt` is now,
+    /// and a parsed recipe becomes EDITED. Nil if `draft` isn't a recipe (no name, or neither
+    /// ingredients nor steps), the recipe is gone, or the save failed.
+    func saveEdit(id: Int64, draft: RecipeDraft) async -> Recipe?
+
+    /// Saves a recipe typed in by hand (MANUAL, with a `manual:` link). Nil as for `saveEdit`.
+    func addManual(draft: RecipeDraft) async -> Recipe?
+
     /// Opens a recipe from history, a list or home. Counts as a view. Nil if it's gone.
     func open(id: Int64) async -> Recipe?
 

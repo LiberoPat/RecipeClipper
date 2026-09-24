@@ -38,6 +38,29 @@ enum Strings {
     static var headingNotes: String { String(localized: "heading_notes") }
     static var notesPlaceholder: String { String(localized: "notes_placeholder") }
     static var openOriginal: String { String(localized: "action_open_original") }
+
+    // Editing a recipe, or typing one in (#29)
+    static var edit: String { String(localized: "action_edit") }
+    static var updateFromSource: String { String(localized: "action_update_from_source") }
+    static var update: String { String(localized: "action_update") }
+    static var newRecipe: String { String(localized: "action_new_recipe") }
+    static var updateFromSourceTitle: String { String(localized: "update_from_source_title") }
+    static var updateFromSourceBody: String { String(localized: "update_from_source_body") }
+    static func updateFromSourceFailed(_ reason: String) -> String {
+        String(localized: "update_from_source_failed \(reason)")
+    }
+    static var editTitleNew: String { String(localized: "edit_title_new") }
+    static var editTitleEdit: String { String(localized: "edit_title_edit") }
+    static var editLabelName: String { String(localized: "edit_label_name") }
+    static var editLabelYield: String { String(localized: "edit_label_yield") }
+    static var editLabelPrep: String { String(localized: "edit_label_prep") }
+    static var editLabelCook: String { String(localized: "edit_label_cook") }
+    static var editLabelTotal: String { String(localized: "edit_label_total") }
+    static var editLabelIngredients: String { String(localized: "edit_label_ingredients") }
+    static var editLabelSteps: String { String(localized: "edit_label_steps") }
+    static var editLabelPhoto: String { String(localized: "edit_label_photo") }
+    static var editErrorInvalid: String { String(localized: "edit_error_invalid") }
+    static var editErrorSaveFailed: String { String(localized: "edit_error_save_failed") }
     static func openOriginalHint(_ domain: String) -> String { String(localized: "cd_open_original \(domain)") }
 
     // Errors
