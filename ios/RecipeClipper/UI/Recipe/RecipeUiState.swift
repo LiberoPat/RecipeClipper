@@ -26,7 +26,8 @@ struct CookState: Equatable {
 /// `servings` is nil when the yield has no usable number. `stepTimerSeconds` lines up with
 /// the steps: the duration each one states, or nil. `sourceDomain` is the site credited under
 /// the title ("smittenkitchen.com"), or nil when the source link has no recognisable host
-/// (then no credit is shown).
+/// (then no credit is shown). `words` are the recipe's language's (#14), which the view uses
+/// for the yield's kind and the timer labels; nil for a language the app has no words for.
 struct RecipeSuccess: Equatable {
     var recipe: Recipe
     var servings: ServingsScale?
@@ -34,6 +35,7 @@ struct RecipeSuccess: Equatable {
     var instructions: [String]
     var stepTimerSeconds: [Int?]
     var sourceDomain: String?
+    var words: LanguageWords?
 }
 
 enum RecipeContent: Equatable {

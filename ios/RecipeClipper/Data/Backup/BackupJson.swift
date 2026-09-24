@@ -6,7 +6,7 @@ import Foundation
 /// { "format": "recipe-clipper-backup", "formatVersion": 1, "exportedAt": <epoch ms>,
 ///   "recipes":     [{ "id", "sourceUrl", "sourceType", "title", "imageUrl", "ingredients",
 ///                     "instructions", "prepTime", "cookTime", "totalTime", "servings",
-///                     "lastViewedAt", "checkedIngredients", "notes" }],
+///                     "lastViewedAt", "checkedIngredients", "notes", "language" }],
 ///   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
 ///   "memberships": [{ "recipeId", "listId", "addedAt" }] }
 /// ```
@@ -80,7 +80,8 @@ enum BackupJson {
                 servings: try r.string(o, "servings"),
                 lastViewedAt: try r.int64(o, "lastViewedAt") ?? 0,
                 checkedIngredients: Set(try r.ints(o, "checkedIngredients")),
-                notes: try r.string(o, "notes")
+                notes: try r.string(o, "notes"),
+                language: try r.string(o, "language")
             )
         }
         try requireUniqueIds(recipes.map(\.id), "recipes")
@@ -233,6 +234,7 @@ enum BackupJson {
             "lastViewedAt": NSNumber(value: r.lastViewedAt),
             "checkedIngredients": r.checkedIngredients.sorted(),
             "notes": r.notes ?? NSNull(),
+            "language": r.language ?? NSNull(),
         ]
     }
 

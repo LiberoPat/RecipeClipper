@@ -52,6 +52,9 @@ class HomeScreenTest {
 
     private fun show(): Taps {
         val taps = Taps()
+        // Built outside setContent: a ViewModel constructed inside a composable would be
+        // rebuilt on every recomposition.
+        val viewModel = HomeViewModel(repository)
         compose.setContent {
             HomeScreen(
                 onOpenUrl = { taps.url = it },
@@ -59,7 +62,7 @@ class HomeScreenTest {
                 onOpenHistory = { taps.history++ },
                 onOpenLists = { taps.lists++ },
                 onOpenSettings = { taps.settings++ },
-                viewModel = HomeViewModel(repository)
+                viewModel = viewModel
             )
         }
         return taps

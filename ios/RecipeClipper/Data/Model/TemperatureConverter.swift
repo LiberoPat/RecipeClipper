@@ -23,25 +23,36 @@ enum TemperatureConverter {
     }
 
     // The scale, degree and range words are shared with Android:
-    // shared/tables/en/temperature.json and ranges.json.
-    private static let table = SharedTables.load("temperature")
-    private static let fahrenheitWords = SharedTables.strings(table, "fahrenheit")
-    private static let scaleWords = fahrenheitWords + SharedTables.strings(table, "celsius")
-    private static let fahrenheitWord = JRegex(SharedTables.alternation(fahrenheitWords), ignoreCase: true)
-    private static let degrees = SharedTables.alternation(SharedTables.strings(table, "degrees"))
+    // shared/tables/<language>/temperature.json and ranges.json.
+    private final class Patterns {
+        let fahrenheitWord: JRegex
+        let tempAnywhere: JRegex
+        let tempAtStart: JRegex
 
-    // groups: 1 low, 2 range separator, 3 high, 4 connector, 5 unit
-    private static let temp =
-        #"(\d{2,3})(?:(\s*(?:[-–—]|"# + SharedTables.rangeWords + #")\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+"# +
-        degrees + #"\s+|\s?)"# +
-        #"((?i:"# + scaleWords.joined(separator: "|") + #")|[FC])(?![A-Za-z])"#
+        init(_ words: LanguageWords) {
+            let fahrenheitWords = words.strings("temperature", "fahrenheit")
+            let scaleWords = fahrenheitWords + words.strings("temperature", "celsius")
+            fahrenheitWord = JRegex(SharedTables.alternation(fahrenheitWords), ignoreCase: true)
+            let degrees = SharedTables.alternation(words.strings("temperature", "degrees"))
 
-    private static let tempAnywhere = JRegex(#"(?<![\d.,/])"# + temp)
-    private static let tempAtStart = JRegex("^" + temp)
+            // groups: 1 low, 2 range separator, 3 high, 4 connector, 5 unit
+            let temp =
+                #"(\d{2,3})(?:(\s*(?:[-–—]|"# + words.rangeWords + #")\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+"# +
+                degrees + #"\s+|\s?)"# +
+                #"((?i:"# + (scaleWords.isEmpty ? ["(?!)"] : scaleWords).joined(separator: "|") + #")|[FC])(?![A-Za-z])"#
+
+            tempAnywhere = JRegex(#"(?<![\d.,/])"# + temp)
+            tempAtStart = JRegex("^" + temp)
+        }
+    }
+
     private static let pairJoiner = JRegex(#"^\s*([(/])\s*"#)
     private static let closingParen = JRegex(#"^\s*\)"#)
 
-    static func convert(_ text: String, unit: TemperatureUnit) -> String {
+    /// `words` nil: a language the app has no words for, so the text stays as written.
+    static func convert(_ text: String, unit: TemperatureUnit, words: LanguageWords? = .english) -> String {
+        guard let words else { return text }
+        let p = words.compiled(Patterns.self, Patterns.init)
         let target: Scale
         switch unit {
         case .asWritten: return text
@@ -51,16 +62,16 @@ enum TemperatureConverter {
 
         var out = ""
         var cursor = 0
-        while let match = tempAnywhere.find(text, from: cursor) {
+        while let match = p.tempAnywhere.find(text, from: cursor) {
             let end = match.end
-            guard let temp = parse(match) else {
+            guard let temp = parse(p, match) else {
                 out += text.u16Substring(cursor, end)
                 cursor = end
                 continue
             }
 
             // "350°F (180°C)" or "180°C/350°F": keep the half that already matches.
-            if let pair = findPair(text, firstEnd: end, first: temp) {
+            if let pair = findPair(p, text, firstEnd: end, first: temp) {
                 out += text.u16Substring(cursor, match.start)
                 out += temp.scale == target ? match.value : pair.value
                 cursor = pair.end
@@ -81,12 +92,12 @@ enum TemperatureConverter {
     }
 
     /// The other-scale temperature written straight after `first`, if there is one.
-    private static func findPair(_ text: String, firstEnd: Int, first: Temp) -> Pair? {
+    private static func findPair(_ p: Patterns, _ text: String, firstEnd: Int, first: Temp) -> Pair? {
         let rest = text.u16Substring(from: firstEnd)
         guard let joiner = pairJoiner.find(rest) else { return nil }
         let afterJoiner = rest.u16Substring(from: joiner.value.u16Count)
-        guard let match = tempAtStart.find(afterJoiner) else { return nil }
-        guard let second = parse(match) else { return nil }
+        guard let match = p.tempAtStart.find(afterJoiner) else { return nil }
+        guard let second = parse(p, match) else { return nil }
         if second.scale == first.scale { return nil }
 
         var end = firstEnd + joiner.value.u16Count + match.value.u16Count
@@ -97,11 +108,11 @@ enum TemperatureConverter {
         return Pair(value: match.value, end: end)
     }
 
-    private static func parse(_ match: JMatch) -> Temp? {
+    private static func parse(_ p: Patterns, _ match: JMatch) -> Temp? {
         guard let low = Int(match[1]) else { return nil }
         let high = match[3].isEmpty ? nil : Int(match[3])
         let unit = match[5]
-        let scale: Scale = unit == "F" || fahrenheitWord.matchEntire(unit) != nil ? .f : .c
+        let scale: Scale = unit == "F" || p.fahrenheitWord.matchEntire(unit) != nil ? .f : .c
 
         let connector = match[4]
         let explicit = unit.count > 1 || connector.contains { "°º˚".contains($0) } || !connector.kIsBlank

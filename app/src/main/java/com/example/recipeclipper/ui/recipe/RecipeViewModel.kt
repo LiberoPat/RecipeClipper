@@ -9,7 +9,8 @@ import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
-import com.example.recipeclipper.data.model.IngredientScaler
+import com.example.recipeclipper.data.model.IngredientRendering
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
@@ -21,7 +22,6 @@ import com.example.recipeclipper.data.model.SourceDomain
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
-import com.example.recipeclipper.data.model.UnitConverter
 import com.example.recipeclipper.data.model.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -184,15 +184,17 @@ class RecipeViewModel @Inject constructor(
     /**
      * The recipe as currently on screen — scaled servings, converted units — formatted for
      * sharing outside the app. Null when there's nothing loaded yet. Building and firing the
-     * share Intent is the screen's job: this only returns text.
+     * share Intent is the screen's job: this only returns text. The screen passes [labels]
+     * read from its resources, so the words around the recipe follow the phone's language.
      */
-    fun shareText(): String? {
+    fun shareText(labels: RecipeShareText.Labels = RecipeShareText.Labels.ENGLISH): String? {
         val content = _uiState.value.content as? RecipeContent.Success ?: return null
         return RecipeShareText.format(
             recipe = content.recipe,
             servings = content.servings,
             ingredients = content.ingredients,
-            instructions = content.instructions
+            instructions = content.instructions,
+            labels = labels
         )
     }
 
@@ -217,7 +219,7 @@ class RecipeViewModel @Inject constructor(
             state.copy(
                 content = content.copy(
                     servings = scale,
-                    ingredients = render(content.recipe, scale, state.unitSystem, state.convertLiquids)
+                    ingredients = render(content.recipe, content.words, scale, state.unitSystem, state.convertLiquids)
                 )
             )
         }
@@ -265,9 +267,9 @@ class RecipeViewModel @Inject constructor(
         return state.copy(
             content = content.copy(
                 ingredients = render(
-                    content.recipe, content.servings, state.unitSystem, state.convertLiquids
+                    content.recipe, content.words, content.servings, state.unitSystem, state.convertLiquids
                 ),
-                instructions = renderInstructions(content.recipe, state.temperatureUnit)
+                instructions = renderInstructions(content.recipe, content.words, state.temperatureUnit)
             )
         )
     }
@@ -397,35 +399,37 @@ class RecipeViewModel @Inject constructor(
         convertLiquids: Boolean,
         temperatureUnit: TemperatureUnit
     ): RecipeContent.Success {
-        val base = Servings.parse(recipe.yield)
+        // The recipe's language picks the words, never the phone's (#14).
+        val words = LanguageWords.forRecipe(recipe)
+        val base = Servings.parse(recipe.yield, words)
         val servings = base?.let { ServingsScale(base = it, target = it) }
         return RecipeContent.Success(
             recipe = recipe,
             servings = servings,
-            ingredients = render(recipe, servings, system, convertLiquids),
-            instructions = renderInstructions(recipe, temperatureUnit),
-            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it) },
-            sourceDomain = SourceDomain.of(recipe.sourceUrl)
+            ingredients = render(recipe, words, servings, system, convertLiquids),
+            instructions = renderInstructions(recipe, words, temperatureUnit),
+            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it, words) },
+            sourceDomain = SourceDomain.of(recipe.sourceUrl),
+            words = words
         )
     }
 
     // Scale first, then convert, so a converted amount always matches the chosen servings.
     private fun render(
         recipe: Recipe,
+        words: LanguageWords?,
         servings: ServingsScale?,
         system: UnitSystem,
         convertLiquids: Boolean
     ): List<String> {
         val factor = servings?.let { it.target.toDouble() / it.base } ?: 1.0
-        return recipe.ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale(it, factor), system, convertLiquids, separatorFrom = it)
-        }
+        return IngredientRendering.render(recipe.ingredients, factor, system, convertLiquids, words)
     }
 
     // Instructions aren't scaled (a step can mention any number), but oven temperatures
     // follow the chosen temperature unit — independent of the ingredient unit system.
-    private fun renderInstructions(recipe: Recipe, temperatureUnit: TemperatureUnit): List<String> =
-        recipe.instructions.map { TemperatureConverter.convert(it, temperatureUnit) }
+    private fun renderInstructions(recipe: Recipe, words: LanguageWords?, temperatureUnit: TemperatureUnit): List<String> =
+        recipe.instructions.map { TemperatureConverter.convert(it, temperatureUnit, words) }
 
     companion object {
         const val RECIPE_ID_ARG = "recipeId"

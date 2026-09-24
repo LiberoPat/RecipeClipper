@@ -182,14 +182,16 @@ final class RecipeViewModel {
     }
 
     /// The recipe as currently on screen — scaled servings, converted units — formatted for
-    /// sharing. Nil when nothing is loaded. Presenting the share sheet is the view's job.
-    func shareText() -> String? {
+    /// sharing. Nil when nothing is loaded. Presenting the share sheet is the view's job. The
+    /// view passes `labels` from the string catalog, so the words follow the phone's language.
+    func shareText(labels: RecipeShareText.Labels = .english) -> String? {
         guard let content = uiState.content.success else { return nil }
         return RecipeShareText.format(
             recipe: content.recipe,
             servings: content.servings,
             ingredients: content.ingredients,
-            instructions: content.instructions
+            instructions: content.instructions,
+            labels: labels
         )
     }
 
@@ -207,7 +209,7 @@ final class RecipeViewModel {
         guard var content = uiState.content.success, let servings = content.servings else { return }
         let scale = ServingsScale(base: servings.base, target: min(max(target, 1), Servings.max))
         content.servings = scale
-        content.ingredients = render(content.recipe, scale, uiState.unitSystem, uiState.convertLiquids)
+        content.ingredients = render(content.recipe, content.words, scale, uiState.unitSystem, uiState.convertLiquids)
         uiState.content = .success(content)
     }
 
@@ -242,8 +244,8 @@ final class RecipeViewModel {
 
     private func rerender() {
         guard var content = uiState.content.success else { return }
-        content.ingredients = render(content.recipe, content.servings, uiState.unitSystem, uiState.convertLiquids)
-        content.instructions = renderInstructions(content.recipe, uiState.temperatureUnit)
+        content.ingredients = render(content.recipe, content.words, content.servings, uiState.unitSystem, uiState.convertLiquids)
+        content.instructions = renderInstructions(content.recipe, content.words, uiState.temperatureUnit)
         uiState.content = .success(content)
     }
 
@@ -360,30 +362,31 @@ final class RecipeViewModel {
     // MARK: Turning a recipe into what the screen shows
 
     private func successContent(_ recipe: Recipe) -> RecipeSuccess {
-        let servings = Servings.parse(recipe.yield).map { ServingsScale(base: $0, target: $0) }
+        // The recipe's language picks the words, never the phone's (#14).
+        let words = LanguageWords.forRecipe(recipe)
+        let servings = Servings.parse(recipe.yield, words: words).map { ServingsScale(base: $0, target: $0) }
         return RecipeSuccess(
             recipe: recipe,
             servings: servings,
-            ingredients: render(recipe, servings, uiState.unitSystem, uiState.convertLiquids),
-            instructions: renderInstructions(recipe, uiState.temperatureUnit),
-            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0) },
-            sourceDomain: SourceDomain.of(recipe.sourceUrl)
+            ingredients: render(recipe, words, servings, uiState.unitSystem, uiState.convertLiquids),
+            instructions: renderInstructions(recipe, words, uiState.temperatureUnit),
+            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0, words: words) },
+            sourceDomain: SourceDomain.of(recipe.sourceUrl),
+            words: words
         )
     }
 
     // Scale first, then convert, so a converted amount always matches the chosen servings.
-    private func render(_ recipe: Recipe, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool) -> [String] {
+    private func render(
+        _ recipe: Recipe, _ words: LanguageWords?, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool
+    ) -> [String] {
         let factor = servings.map { Double($0.target) / Double($0.base) } ?? 1.0
-        return recipe.ingredients.map {
-            UnitConverter.convert(
-                IngredientScaler.scale($0, factor: factor), system: system, includeLiquids: convertLiquids, separatorFrom: $0
-            )
-        }
+        return IngredientRendering.render(recipe.ingredients, factor: factor, system: system, convertLiquids: convertLiquids, words: words)
     }
 
     // Instructions aren't scaled, but oven temperatures follow the chosen temperature unit —
     // independent of the ingredient unit system.
-    private func renderInstructions(_ recipe: Recipe, _ unit: TemperatureUnit) -> [String] {
-        recipe.instructions.map { TemperatureConverter.convert($0, unit: unit) }
+    private func renderInstructions(_ recipe: Recipe, _ words: LanguageWords?, _ unit: TemperatureUnit) -> [String] {
+        recipe.instructions.map { TemperatureConverter.convert($0, unit: unit, words: words) }
     }
 }

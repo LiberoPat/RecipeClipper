@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.recipe
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,7 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
 import androidx.core.net.toUri
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
@@ -99,6 +101,7 @@ fun RecipeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
     // Android's UriHandler fires ACTION_VIEW, so the browser opens the draft issue. A local,
     // not a direct Intent, so a UI test can supply its own and see the link without leaving.
     val uriHandler = LocalUriHandler.current
@@ -133,7 +136,7 @@ fun RecipeScreen(
             onTimerReset = viewModel::onTimerReset,
             onTimerAlerted = viewModel::onTimerAlerted,
             onShare = {
-                viewModel.shareText()?.let { text ->
+                viewModel.shareText(shareLabels(resources))?.let { text ->
                     val title = (viewModel.uiState.value.content as? RecipeContent.Success)
                         ?.recipe?.name.orEmpty()
                     ShareCompat.IntentBuilder(context)
@@ -184,37 +187,42 @@ fun RecipeScreen(
         ) {
             TimerAlerts(state.cook.timers, actions.onTimerAlerted)
 
-            when (content) {
-                is RecipeContent.Success ->
-                    if (cooking) CookView(content, state, actions)
-                    else ReadingView(content, state, actions, saveState.isSaved)
-                is RecipeContent.Loading -> StatusView(actions.onBack) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-                is RecipeContent.Error -> StatusView(actions.onBack) {
-                    Text(
-                        content.error.toMessage(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    // Every error offers "Try again", no-recipe included: a café or hotel
-                    // captive portal serves its login page, which parses as a page with no
-                    // recipe, and the same link works once you're through it.
-                    Spacer(Modifier.height(16.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
-                            Text(stringResource(R.string.action_try_again))
-                        }
-                        // Only for a page with no recipe (the ViewModel decides): the one error
-                        // that means "unsupported" rather than "try again". Secondary, beside it.
-                        if (state.reportSiteUrl != null) {
-                            Spacer(Modifier.width(8.dp))
-                            TextButton(onClick = actions.onReportSite) {
-                                Text(
-                                    stringResource(R.string.action_report_site),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+            // Edge-to-edge: the surface's colour fills behind the bars (so forced-dark cook
+            // mode is dark edge to edge); the content stays clear of them, the display
+            // cutout and the keyboard.
+            Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                when (content) {
+                    is RecipeContent.Success ->
+                        if (cooking) CookView(content, state, actions)
+                        else ReadingView(content, state, actions, saveState.isSaved)
+                    is RecipeContent.Loading -> StatusView(actions.onBack) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                    is RecipeContent.Error -> StatusView(actions.onBack) {
+                        Text(
+                            content.error.toMessage(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        // Every error offers "Try again", no-recipe included: a café or hotel
+                        // captive portal serves its login page, which parses as a page with no
+                        // recipe, and the same link works once you're through it.
+                        Spacer(Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                                Text(stringResource(R.string.action_try_again))
+                            }
+                            // Only for a page with no recipe (the ViewModel decides): the one error
+                            // that means "unsupported" rather than "try again". Secondary, beside it.
+                            if (state.reportSiteUrl != null) {
+                                Spacer(Modifier.width(8.dp))
+                                TextButton(onClick = actions.onReportSite) {
+                                    Text(
+                                        stringResource(R.string.action_report_site),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
@@ -344,6 +352,7 @@ private fun ReadingView(
                 ServesUnitsRow(
                     servings = content.servings,
                     yieldText = recipe.yield,
+                    words = content.words,
                     unitSystem = state.unitSystem,
                     onServingsChange = actions.onServingsChange,
                     onUnitSystemChange = actions.onUnitSystemChange

@@ -31,7 +31,7 @@ final class RecipeDaoTests: XCTestCase {
     func testSchemaVersionIsRecorded() async throws {
         let version = try await db.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
         XCTAssertEqual(version, AppDatabase.schemaVersion)
-        XCTAssertEqual(AppDatabase.schemaVersion, 3)
+        XCTAssertEqual(AppDatabase.schemaVersion, 4)
     }
 
     /// Version 2 adds the personal note (and version 3 the uids). A version-1 file, built by the real version-1
@@ -128,6 +128,47 @@ final class RecipeDaoTests: XCTestCase {
         try await migrated.write { _ = try ListDao(db: $0).create(name: "Mine", recipeId: ListDao.noRecipe, now: 0) }
         let lists = try await migrated.read { try BackupDao(db: $0).snapshot().lists }
         XCTAssertEqual(Set(lists.map(\.uid)).count, 7)
+    }
+
+    /// Version 4 adds the recipe's language (#14): a version-3 file keeps its data, note and
+    /// uid, with no language, and a re-share fills it in (Android's MigrationTest 4→5).
+    func testAVersion3DatabaseMigratesToVersion4WithNoLanguage() async throws {
+        let path = NSTemporaryDirectory() + "rc-\(UUID().uuidString).sqlite"
+        defer {
+            for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) }
+        }
+        do {
+            let old = try SQLiteConnection(path: path)
+            try old.execute("PRAGMA foreign_keys = ON")
+            try AppDatabase.migrate(old, upTo: 3)
+            try old.run(
+                """
+                INSERT INTO recipes (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                    cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid)
+                VALUES (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]', '["Simmer."]',
+                    NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt', 'uid-7')
+                """
+            )
+            XCTAssertEqual(try old.queryOne("PRAGMA user_version") { $0.int(0) }, 3)
+        }
+
+        let migrated = try AppDatabase(path: path)
+        let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
+        XCTAssertEqual(version, 4)
+        let row = try await migrated.get(7)
+        XCTAssertEqual(row?.title, "Adobo")
+        XCTAssertEqual(row?.checkedIngredients, [0])
+        XCTAssertEqual(row?.notes, "Less salt")
+        XCTAssertEqual(row?.uid, "uid-7")
+        XCTAssertNil(row?.language)
+
+        var reshared = dataRecipeRecord("https://example.com/a", viewedAt: 900)
+        reshared.language = "en-us"
+        try await migrated.upsert(reshared)
+        let after = try await migrated.get(7)
+        XCTAssertEqual(after?.language, "en-us")
+        XCTAssertEqual(after?.notes, "Less salt")
+        XCTAssertEqual(after?.uid, "uid-7")
     }
 
     func testAnUndoneDeleteKeepsItsUid() async throws {

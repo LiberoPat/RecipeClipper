@@ -43,6 +43,8 @@ struct BackupRecipe: Equatable {
     var lastViewedAt: Int64
     var checkedIngredients: Set<Int>
     var notes: String?
+    /// The recipe's language tag (#14), so an import reads it with the same words.
+    var language: String? = nil
 }
 
 struct BackupList: Equatable {

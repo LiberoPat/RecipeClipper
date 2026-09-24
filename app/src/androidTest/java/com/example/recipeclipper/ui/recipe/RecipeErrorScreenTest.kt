@@ -52,12 +52,13 @@ class RecipeErrorScreenTest {
             FakeConnectivity(),
             FakeAppInfo()
         )
+        val saveViewModel = SaveToListViewModel(FakeListRepository())
         compose.setContent {
             CompositionLocalProvider(LocalUriHandler provides handler) {
                 RecipeScreen(
                     onBack = {},
                     viewModel = viewModel,
-                    saveViewModel = SaveToListViewModel(FakeListRepository())
+                    saveViewModel = saveViewModel
                 )
             }
         }

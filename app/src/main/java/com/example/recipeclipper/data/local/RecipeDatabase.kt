@@ -15,7 +15,7 @@ import com.example.recipeclipper.data.local.entity.newUid
 
 @Database(
     entities = [RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -125,7 +125,19 @@ abstract class RecipeDatabase : RoomDatabase() {
                 "substr('89ab', 1 + (abs(random()) % 4), 1) || substr(lower(hex(randomblob(2))), 2) || '-' || " +
                 "lower(hex(randomblob(6)))"
 
+        /**
+         * Adds the recipe's language tag (issue #14), which picks the words its lines are read
+         * with. Nullable, no default: a recipe stored before has none and is detected from its
+         * own words when shown, since the page's declared language can't be rebuilt from what
+         * was stored. A re-share fills it in.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recipes ADD COLUMN language TEXT")
+            }
+        }
+
         /** Every migration, in order: what the app and the tests open the database with. */
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
     }
 }
