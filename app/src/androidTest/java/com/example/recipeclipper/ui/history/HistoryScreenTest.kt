@@ -68,8 +68,9 @@ class HistoryScreenTest {
     private fun show(vararg recipes: RecipeSummary) {
         repository.history.value = recipes.toList()
         recipes.forEach { repository.deleteResults[it.id] = captured(it) }
+        val viewModel = HistoryViewModel(repository)
         compose.setContent {
-            HistoryScreen(onBack = {}, onOpenRecipe = { opened = it }, viewModel = HistoryViewModel(repository))
+            HistoryScreen(onBack = {}, onOpenRecipe = { opened = it }, viewModel = viewModel)
         }
     }
 

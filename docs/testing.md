@@ -67,7 +67,14 @@ it alone reruns the tests). `SiteReportTest` covers the weekly site check's
 report and URL list offline (see CI below). `SiteReportLinkTest` pins the
 "Report this site" issue link byte for byte (percent-encoding, the cleaned
 link), and `RecipeViewModelTest` offers it only for `NoRecipeFound` on a
-shared link.
+shared link. The corpus's ingredient rows end with real lines (#33),
+taken from sites' JSON-LD `recipeIngredient` (US, UK, Australian, French,
+Italian, Spanish, Portuguese, Brazilian, Dutch, German, Austrian and Swiss
+sites; a comment names each site), so the scaler and converters are pinned on
+what recipes actually write, not only on hand-written lines. A real line that
+shows a wrong number isn't pinned: it's fixed, or left out with a `bug` issue.
+To add some, fetch the page, copy only the ingredient lines (the repo is
+public), and add them as input-only rows under their site's comment.
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -98,9 +105,11 @@ ingredients, `lastViewedAt` and list membership, and a user-created list keeps
 its place after the seeded block. `MIGRATION_2_3` (the `notes` column, #27)
 is run against a real version-2 database the same way: the recipe keeps its
 content, ticks and membership, has no note, and a note written afterwards
-survives a re-share; a version-1 file also goes to 3 in one open.
-`MIGRATION_3_4` (the `uid` columns, #26) backfills a distinct UUID on every
-recipe and list and keeps the rest of each row. This is
+survives a re-share. `MIGRATION_3_4` (the `uid` columns, #26) backfills a
+distinct UUID on every recipe and list and keeps the rest of each row.
+`MIGRATION_4_5` (the `language` column, #14) is run against a real version-4
+database: content, note and uid kept, no language, and a re-share fills it in;
+a version-1 file also goes to 5 in one open. This is
 what makes "never use destructive migration" checkable rather than an
 intention.
 
@@ -113,7 +122,7 @@ added after that run and has so far only been compiled.
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
 `MigrationTestHelper` reads the exported JSON from the test APK's **assets**,
 not from the project directory. That is what
-`sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")` in
+`sourceSets.getByName("androidTest").assets.directories += "$projectDir/schemas"` in
 `app/build.gradle.kts` is for. Without it every migration test fails with
 `FileNotFoundException: Cannot find the schema file in the assets folder`,
 which reads like a broken migration and is really a missing file — don't go
@@ -132,7 +141,7 @@ No Hilt in these. Every screen takes its ViewModel as a parameter defaulting
 to `hiltViewModel()`, so a test builds a real ViewModel over a fake repository
 and passes it in; what runs is the real repository-to-ViewModel-to-pixels
 wiring. The fakes are shared with the JVM tests through
-`sourceSets.getByName("androidTest").java.srcDir(".../test/java/.../fake")` —
+`sourceSets.getByName("androidTest").kotlin.directories += ".../test/java/.../fake"` —
 only `fake/`, since the helpers beside it need kotlinx-coroutines-test and
 have no business on a device.
 
@@ -183,10 +192,15 @@ text. Sharing into the app has one more iOS suite, `ShareExtensionUITests`,
 which runs only on request (see "iOS share extension: end to end and memory"
 below).
 
-Two dependency versions are pinned on purpose: `navigation-compose` 2.7.7 and
-`hilt-navigation-compose` 1.2.0. The newest releases need a newer Compose than
-the BOM in use and would pull in a mix of Compose versions. Bump them together
-with the BOM.
+`navigation-compose` has no BOM of its own and is built against a particular
+Compose: bump it with the Compose BOM, or the app pulls in a mix of Compose
+versions. `hiltViewModel()` comes from `hilt-lifecycle-viewmodel-compose`
+(the copy in `hilt-navigation-compose` is deprecated).
+
+The Compose UI tests still use the v1 `createComposeRule`, which Compose 1.12
+deprecates (the one compiler warning left). The v2 rule runs on a
+`StandardTestDispatcher` instead of an unconfined one, so moving to it can
+change timing; do it with a device run to check.
 
 `JsonLdRecipeParser` uses `org.json`, which is an Android framework class.
 Plain JUnit tests will need `testImplementation("org.json:json:<version>")`
@@ -276,13 +290,22 @@ When a new Xcode major comes out, GitHub ships it as a new image label
 
 ## Lint
 
-`./gradlew lintDebug` reports no errors and 16 warnings, all of them version advisories:
-`GradleDependency`, `NewerVersionAvailable`, `AndroidGradlePluginVersion` and
-`OldTargetApi`. They are left deliberately. `navigation-compose` 2.7.7 and
-`hilt-navigation-compose` 1.2.0 are pinned to the Compose BOM in use, bumping
-`targetSdk` past 34 is a behaviour change needing device testing, and the rest
-are a coupled toolchain that moves together or not at all. Do not silence them
-with a baseline: the day one of them matters, it should still be visible.
+`./gradlew lintDebug` reports no errors and two warnings, both version
+advisories left deliberately. `OldTargetApi`: targetSdk is 36, what Google Play
+requires, while API 37 exists; raising it is a behaviour change to read up on
+and test on a device. `NewerVersionAvailable` for jsoup: it is held at 1.17.2
+because newer releases need core library desugaring on Android, fetch through
+`java.net.http.HttpClient` on the JVM (so unit tests stop exercising the
+device's code path), and change `Element.text()`, which the iOS port mirrors.
+The toolchain upgrade of September 2026 (#23) cleared the other 14. Do not
+silence them with a baseline: the day one of them matters, it should still be
+visible. CI (`check_lint.py`) allows only the version-advisory ids.
+
+Compose 1.12's lint checks found three real issues in that upgrade, all fixed:
+the date format now reads `LocalLocale` (`NonObservableLocale`), cook mode's
+keep-screen-on uses `LocalActivity` (`ContextCastToActivity`), and
+`HomeScreenTest` builds its ViewModel outside `setContent`
+(`ViewModelConstructorInComposable`).
 
 Every code-level flag has been fixed, so a new one is a real finding rather than
 noise. Adding the launcher icon raised `MonochromeLauncherIcon` in turn, which is

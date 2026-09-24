@@ -84,6 +84,13 @@ final class BackupJsonTests: XCTestCase {
         XCTAssertEqual(try decodeOrFail(BackupJson.encode(original)), original)
     }
 
+    func testARecipesLanguageRoundTripsAndAFileWithoutOneReadsAsNone() throws {
+        var backup = try decodeOrFail(backupFixture("backup-v1"))
+        XCTAssertTrue(backup.recipes.allSatisfy { $0.language == nil })
+        for i in backup.recipes.indices { backup.recipes[i].language = "de-de" }
+        XCTAssertEqual(try decodeOrFail(BackupJson.encode(backup)), backup)
+    }
+
     func testTheEncodedFileCarriesTheMarkerTheVersionAndExplicitNulls() throws {
         let text = BackupJson.encode(try decodeOrFail(backupFixture("backup-v1")))
         let root = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])

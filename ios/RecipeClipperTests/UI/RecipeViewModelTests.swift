@@ -15,13 +15,14 @@ final class RecipeViewModelTests: XCTestCase {
             "Cool completely."
         ],
         checkedIngredients: Set<Int> = [],
-        notes: String? = nil
+        notes: String? = nil,
+        language: String? = nil
     ) -> Recipe {
         Recipe(
             name: "Test Recipe", image: nil, ingredients: ingredients, instructions: instructions,
             prepTime: "10m", cookTime: "20m", totalTime: "30m", yield: yield,
             sourceUrl: "https://example.com/recipe", id: id, checkedIngredients: checkedIngredients,
-            notes: notes
+            notes: notes, language: language
         )
     }
 
@@ -743,5 +744,29 @@ final class RecipeViewModelTests: XCTestCase {
 
         XCTAssertEqual(repository.deleteCalls, [9])
         XCTAssertTrue(vm.uiState.deleted)
+    }
+
+    // MARK: The recipe's language (#14)
+
+    func testARecipeInALanguageWithNoWordsIsShownAsWritten() async {
+        let preferences = FakeAppPreferences(unitSystem: .metric, convertLiquids: true, temperatureUnit: .celsius)
+        let (vm, _) = await loaded(testRecipe(language: "de-de"), preferences: preferences)
+        guard let content = success(vm) else { return }
+        XCTAssertNil(content.words)
+        XCTAssertNil(content.servings) // no stepper: its lines couldn't be scaled
+        XCTAssertEqual(content.ingredients, ["2 cups flour", "1 cup milk"])
+        XCTAssertEqual(content.instructions, testRecipe().instructions)
+        XCTAssertTrue(content.stepTimerSeconds.allSatisfy { $0 == nil })
+    }
+
+    func testAnEnglishRecipeDeclaredOrDetectedIsReadWithEnglishWords() async {
+        for language in ["en-gb", nil] {
+            let (vm, _) = await loaded(testRecipe(language: language), preferences: FakeAppPreferences(unitSystem: .metric))
+            guard let content = success(vm) else { return }
+            XCTAssertEqual(content.words, LanguageWords.english)
+            XCTAssertEqual(content.servings?.base, 4)
+            XCTAssertEqual(content.ingredients, ["240 g flour", "240 ml milk"])
+            XCTAssertEqual(content.stepTimerSeconds, [nil, 300, 600, nil])
+        }
     }
 }

@@ -122,7 +122,7 @@ final class BlogRecipeSource: RecipeSource {
     static func parse(html: String, url: String) -> ParseResult {
         let blocks = JsonLdRecipeParser.extractJsonLdBlocks(fromHtml: html)
         // Microdata only when there is no JSON-LD recipe, so no working site changes.
-        guard let recipe = JsonLdRecipeParser.parse(blocks, sourceUrl: url)
+        guard let recipe = JsonLdRecipeParser.parse(blocks, sourceUrl: url, pageLanguage: JsonLdRecipeParser.pageLanguage(html: html))
                 ?? MicrodataRecipeParser.parse(html: html, sourceUrl: url) else {
             return .error(.noRecipeFound)
         }

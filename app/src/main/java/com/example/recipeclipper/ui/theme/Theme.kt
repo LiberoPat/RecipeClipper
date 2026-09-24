@@ -9,7 +9,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
@@ -151,15 +150,15 @@ fun RecipeClipperTheme(forceDark: Boolean = false, content: @Composable () -> Un
     val systemDark = isSystemInDarkTheme()
     val dark = forceDark || systemDark
     val scheme = if (dark) DarkScheme else LightScheme
-    // Status/nav bar icons are light-appearance (dark icons) only on the light scheme.
+    // The bars are transparent (edge-to-edge), so each screen's background shows through;
+    // only the icon colour has to follow the scheme, which matters when "Dark while cooking"
+    // forces dark on a light system. Dark icons only on the light scheme.
     val isLightScheme = !dark
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
-            window.statusBarColor = scheme.background.toArgb()
-            window.navigationBarColor = scheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = isLightScheme
                 isAppearanceLightNavigationBars = isLightScheme

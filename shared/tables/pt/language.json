@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "language": "pt",
+  "about": "Detection only: this language has no parsing tables yet, so a recipe detected as Portuguese is shown as written. detect: case-insensitive regex fragments matched as whole words in the recipe's name and ingredient lines; the language with the most hits wins when it has at least 3 and more than twice the runner-up's, and then it also overrides a page that declares another language (owner's decision on #14). Only words distinctive against the other detected languages: no 'de', 'sal', 'picado', 'e'.",
+  "detect": [
+    "xícaras?",
+    "colher(?:es)?",
+    "açúcar",
+    "farinha",
+    "ovos?",
+    "manteiga",
+    "leite",
+    "a gosto",
+    "pitada",
+    "cebolas?",
+    "alho",
+    "azeite",
+    "chá"
+  ]
+}
