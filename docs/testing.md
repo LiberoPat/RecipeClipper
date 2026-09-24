@@ -10,7 +10,9 @@ the commands; iOS test commands and the simulator rules are in
 Tests: `app/src/test/` has the JVM ones (`IngredientScalerTest` scaling,
 servings and yield parsing; `UnitConverterTest`; `TemperatureConverterTest`;
 `StepTimersTest`; `ConvertersTest`; `TimeAgoAndUrlInputTest`; `UrlCleanerTest`,
-now also covering the http→https upgrade; `JsonLdRecipeParserTest`, covering
+now also covering the http→https upgrade; `SourceDomainTest`, the domain the
+reading view credits (one leading "www." dropped, other subdomains kept);
+`JsonLdRecipeParserTest`, covering
 entity/tag stripping, blank-after-strip lines being dropped, `<br>`-split
 steps staying separate, and the deep-JSON depth guard; `RecipeShareTextTest`,
 covering the labelled-vs-unlabelled serves line (built from a `ServingsScale?`),
@@ -22,6 +24,11 @@ writes through to a `FakeAppPreferences` and updates `SettingsUiState`, and
 state is seeded from preferences on construction; `SettingsUiState` is a
 plain `MutableStateFlow`, not `stateIn(WhileSubscribed(...))`, so unlike
 `HomeViewModelTest`/`HistoryViewModelTest` it needs no `collectEagerly`).
+`FakeAppPreferences` keeps its values in one `MutableStateFlow` (iOS: a
+`CurrentValueSubject`), so writing a value on the fake directly stands for
+Settings changing a default while another screen is open; the
+`RecipeViewModelTest` cases under "A settings change arriving while the
+recipe is open" use that (#24).
 and the three list suites — `SaveToListViewModelTest`, `ListsViewModelTest`
 and `ListDetailViewModelTest`. Those run against `FakeListRepository`, which
 deliberately models membership as real state rather than only recording calls:
@@ -31,7 +38,12 @@ call-recording fake would prove only half of it. `recipeCount` and
 `containsRecipe` are derived from that state exactly as the SQL derives them,
 so a `recipeCount` staged on a list literal is ignored — stage membership
 instead. The error handling has its own: `DefaultRecipeRepositoryRetryTest`
-(the retry rule, the saved-copy fallback, cancelling during the pause),
+(the retry rule, the saved-copy fallback, cancelling during the pause, and
+the rendered fallback after it over a `FakeRenderedPageSource`: rendered once
+and only after `Blocked` or `NoRecipeFound`, never for `Offline` or a
+timeout, the 20 s cap, a rendered page with no recipe keeping the cause, and
+cancelling mid-render writing nothing; iOS has the same cases in
+`DataRepositoryTests`),
 `BlogRecipeSourceStatusTest` (which statuses and exceptions become which
 cause, against a fake `Connectivity`), `DatabaseErrorTest` (every repository
 call degrades and logs instead of throwing, and cancellation is never
@@ -44,7 +56,7 @@ stale, and writes the regenerated file to
 `app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
 (`app/build.gradle.kts` declares the Swift file as a test input, so editing
 it alone reruns the tests). `SiteReportTest` covers the weekly site check's
-report and URL list offline (see CI below). **270 JVM tests pass.**
+report and URL list offline (see CI below).
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -61,6 +73,12 @@ and a recipe out of its last list staying in history. It also pins the rule
 that a seeded list which isn't Favorites *can* be deleted, so a guard that
 regressed to `isBuiltIn = 0` would fail rather than quietly return.
 
+`WebViewRenderedPageSourceTest` runs the rendered fallback's real `WebView`:
+a `data:` URL page (no network) whose script adds its recipe JSON-LD 300 ms
+after the load event must come back from `render` with that JSON-LD in the
+HTML, and parse through `BlogRecipeSource.parse`. It proves the settle wait
+and the `outerHTML` decoding; a JVM test can't host a WebView.
+
 `MigrationTest` uses Room's `MigrationTestHelper` (hence
 `androidTestImplementation("androidx.room:room-testing")`) to open a real
 version-1 database from the exported schema and run `MIGRATION_1_2` against
@@ -71,7 +89,8 @@ migration" checkable rather than an intention.
 
 **All 89 device tests have been run on an emulator and pass**: 26
 `RecipeDaoTest`, 22 `ListDaoTest`, 3 `MigrationTest`, and 38 Compose UI tests
-(see below).
+(see below). `RecipeSourceCreditTest` (the source credit under the recipe
+title) was added after that run and has so far only been compiled.
 
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
 `MigrationTestHelper` reads the exported JSON from the test APK's **assets**,
@@ -120,12 +139,13 @@ Three things that cost real time and will again:
   every `SemanticsProperties.Text` in the tree — before changing production
   code.
 
-Still without Android UI tests: the recipe screen itself (reading and cook
-views, the bookmark icon, share), History (search, swipe-to-dismiss, the undo
-snackbar), the Lists screen, and the Settings screen. The iOS UI tests
-(`ios/RecipeClipperUITests`, 61 tests) do cover Home, History (search,
-swipe-to-delete, the batched undo), Settings, list detail, the save-to-list
-sheet with the bookmark it fills, and the import error screens. Cook mode and
+Still without Android UI tests: most of the recipe screen (reading and cook
+views, the bookmark icon, share; only the source credit is covered), History
+(search, swipe-to-dismiss, the undo snackbar), the Lists screen, and the
+Settings screen. The iOS UI tests (`ios/RecipeClipperUITests`) do
+cover Home, History (search, swipe-to-delete, the batched undo), Settings, list
+detail, the save-to-list sheet with the bookmark it fills, the source credit,
+and the import error screens. Cook mode and
 sharing have no UI tests on either platform.
 
 Two dependency versions are pinned on purpose: `navigation-compose` 2.7.7 and

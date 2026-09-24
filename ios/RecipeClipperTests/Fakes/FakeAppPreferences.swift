@@ -1,12 +1,11 @@
+import Combine
 @testable import RecipeClipper
 
-/// Plain vars: enough to prove a ViewModel writes a choice through, which is what makes these
-/// global defaults rather than per-recipe state.
+/// Holds its values in one CurrentValueSubject, so a write through any var re-emits on
+/// `settings`, as the real UserDefaults notification does. A test that sets a value here
+/// directly is Settings changing a default while another screen is open.
 final class FakeAppPreferences: AppPreferences {
-    var unitSystem: UnitSystem
-    var convertLiquids: Bool
-    var temperatureUnit: TemperatureUnit
-    var darkWhileCooking: Bool
+    private let subject: CurrentValueSubject<AppSettings, Never>
 
     init(
         unitSystem: UnitSystem = .asWritten,
@@ -14,9 +13,35 @@ final class FakeAppPreferences: AppPreferences {
         temperatureUnit: TemperatureUnit = .asWritten,
         darkWhileCooking: Bool = false
     ) {
-        self.unitSystem = unitSystem
-        self.convertLiquids = convertLiquids
-        self.temperatureUnit = temperatureUnit
-        self.darkWhileCooking = darkWhileCooking
+        subject = CurrentValueSubject(AppSettings(
+            unitSystem: unitSystem,
+            convertLiquids: convertLiquids,
+            temperatureUnit: temperatureUnit,
+            darkWhileCooking: darkWhileCooking
+        ))
+    }
+
+    var settings: AnyPublisher<AppSettings, Never> {
+        subject.removeDuplicates().eraseToAnyPublisher()
+    }
+
+    var unitSystem: UnitSystem {
+        get { subject.value.unitSystem }
+        set { subject.value.unitSystem = newValue }
+    }
+
+    var convertLiquids: Bool {
+        get { subject.value.convertLiquids }
+        set { subject.value.convertLiquids = newValue }
+    }
+
+    var temperatureUnit: TemperatureUnit {
+        get { subject.value.temperatureUnit }
+        set { subject.value.temperatureUnit = newValue }
+    }
+
+    var darkWhileCooking: Bool {
+        get { subject.value.darkWhileCooking }
+        set { subject.value.darkWhileCooking = newValue }
     }
 }
