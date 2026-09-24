@@ -69,6 +69,11 @@ struct RecipeUiState: Equatable {
     /// `.noRecipeFound` is on screen: never for a block, offline or a failed fetch, which mean
     /// "try again", not "unsupported". The view opens it; nothing is sent.
     var reportSiteUrl: String?
+    /// "Update from source" (#29) is fetching; the recipe stays on screen meanwhile.
+    var updatingFromSource = false
+    /// Why the last "Update from source" failed, until the view has shown it. The recipe on
+    /// screen is unchanged.
+    var updateError: ParseError?
 
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }

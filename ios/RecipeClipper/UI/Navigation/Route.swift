@@ -12,6 +12,8 @@ enum Route: Hashable {
     case settings
     case lists
     case listDetail(id: Int64)
+    /// Edit a recipe (#29), or with no id type a new one in (Android's `edit?recipeId=`).
+    case editRecipe(id: Int64?)
 }
 
 /// The share extension opens the app with `recipeclipper://import?url=<percent-encoded>`.
