@@ -74,7 +74,7 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
-               SourceDomain
+               SiteReportLink, SourceDomain
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
@@ -96,8 +96,8 @@ then upsert with no list membership).
 - Parsers are pure: text in, data out, no network, no Android APIs.
 - **Causes, not copy.** Sources and repositories return a `ParseError`; the
   screen picks the words. Every UI string lives in `res/values/strings.xml`
-  (iOS: `Strings.swift`). The one exception is `RecipeShareText`, a message
-  body with English wording by design.
+  (iOS: `Strings.swift`). The exceptions are `RecipeShareText` and
+  `SiteReportLink`, message bodies with English wording by design.
 - Tests use hand-written fakes (`app/src/test/.../fake/`,
   `ios/RecipeClipperTests/Fakes`), never mocks. Screens take their ViewModel
   as a parameter defaulting to `hiltViewModel()`, so UI tests pass a real
@@ -247,6 +247,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
   captive portal's login page parses as a page with no recipe. While
   `Offline` or `FetchFailed` shows, the screen reloads once on a real
   offline→online transition.
+- **`NoRecipeFound` from a shared link also offers "Report this site"**
+  (never `Blocked`, `Offline` or `FetchFailed`): a prefilled GitHub issue
+  (`SiteReportLink`, label `site-report`) opened in the browser. Nothing is sent
+  unless the user submits it.
 - Database errors degrade instead of crashing. The Android repositories run
   every DAO call through `ErrorLog.guard`, which returns a safe fallback
   (`SaveFailed`, null, a no-op, or `CREATE_FAILED` = -1), and every Flow
