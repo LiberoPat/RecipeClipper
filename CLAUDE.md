@@ -43,7 +43,7 @@ timers, with cook progress and servings saved and background timer alerts;
 sharing a recipe out as text; failure handling and offline; the microdata
 fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
-JSON file (Settings); the UI in English, Spanish, French, German, Italian and
+JSON file (Settings); the week meal plan, behind the tab flag (#49); the UI in English, Spanish, French, German, Italian and
 Brazilian Portuguese (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
@@ -84,17 +84,18 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 ```
 MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
 di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule
-data/          RecipeRepository, ListRepository (interfaces; Default* are the Room-backed ones),
-               Connectivity, ErrorLog, Clock (seams for tests)
+data/          RecipeRepository, ListRepository, MealPlanRepository (interfaces; Default* are
+               the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
                LanguageWords (one language's tables, chosen per recipe)
-               IngredientName (a line's ingredient name), IngredientRendering (scale+convert)
+               IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
+               PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
-               theme, common
+               week, plan (Add to plan sheet), mealtypes, theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
 ```
 
@@ -105,8 +106,10 @@ upsert with no list membership), and `edit?recipeId={recipeId}` (no id: a new
 recipe; saving replaces the edit screen, and the recipe screen under it, with
 `recipe/{id}`). Behind `BuildConfig.MEAL_PLAN_TABS` /
 `FeatureFlags.mealPlanTabs` (#47, default off, so the app is unchanged): a
-bottom tab bar nests this same graph under a Recipes tab alongside `week`,
-`groceries` and `pantry` placeholders (`AppShell`/iOS `RootView`'s `tabs`).
+bottom tab bar nests this same graph under a Recipes tab alongside `week`
+(with its own `week/recipe/{recipeId}?servings={servings}` and
+`week/meal-types`), and `groceries` and `pantry` placeholders (`AppShell`/iOS
+`RootView`'s `tabs`).
 Hidden on the recipe reading view and in cook mode; any route from an
 intent (a shared link, a tapped timer notification) always lands in
 Recipes, whichever tab is open.
@@ -159,7 +162,9 @@ Decisions, not suggestions. Don't relitigate them in code.
   is `isFavorites`, in the SQL, and a device test fails if it regresses to
   `isBuiltIn`.
 - **"Saved" means "in at least one list."** It's derived from the cross-ref
-  table; there's no column. A recipe in any list is never culled.
+  table; there's no column. A recipe in any list is never culled, and
+  neither is one planned for today or later (#49); neither counts toward
+  the 50.
 - **Leaving a list is a demotion, not a deletion.** The recipe stays in
   history and becomes cullable. Deleting is a separate, explicit action with
   its own confirmation.
@@ -218,8 +223,17 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Home's stack unchanged. The bar hides on the recipe reading view and in
   cook mode, so a recipe still opens on the recipe; a shared link always
   lands in Recipes, whichever tab is open, on top of whatever it held.
-  Settings is not a tab. Week, Groceries and Pantry are "Coming soon"
-  placeholders until #49–#51 ship.
+  Settings is not a tab. Groceries and Pantry are "Coming soon"
+  placeholders until #50–#51 ship.
+- **Week** (#49, behind the flag): ‹ week › and "This week", seven day
+  sections from the locale's first day, meal rows (type, thumbnail, title,
+  servings, or a note), "+ Add" per day (a meal type, then a recipe from
+  history or the typed text as a note). Long-press: Move (the day strip and
+  meal types) or Remove (undo snackbar). A tapped recipe opens at its
+  planned servings, for that visit only. "Meal types" from the Week menu:
+  add, rename, reorder any, delete the user's own. "Add to plan" (recipe
+  menu, first item, flag on only): this week's and next week's days, a meal
+  type (Dinner first), servings (the yield first), one button.
 - **Save-to-list sheet** (Spotify's add-to-playlist): checkboxes, not radios;
   each tick writes immediately, with no Save/Cancel; "+ New list" expands
   inline (no dialog on a sheet) and ticks the current recipe into the new
@@ -241,11 +255,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 7** (iOS `user_version` 6):
+- Room database `recipe_clipper.db`, **version 8** (iOS `user_version` 7):
   `recipes` (with nullable `notes`, `language`, `cookState`,
-  `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading). Recipes
-  and lists carry a unique, never-changing `uid`: what an export file calls
-  them. The schema is exported to `app/schemas/`: commit it. **Never use
+  `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading),
+  `meal_types` and `meal_plan_entries` (#49). Recipes, lists and both plan
+  tables carry a unique, never-changing `uid`: what an export file calls
+  them. Plan rows also carry `updatedAt` (for #53). The schema is exported to `app/schemas/`: commit it. **Never use
   destructive migration**, and give every migration a `MigrationTest`.
   iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations, in
   the App Group container that the share extension writes to as well.
@@ -270,6 +285,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
   synthetic `sourceUrl` of `manual:<uuid>`: never fetched or cleaned, and with
   no host there is no source credit, Open original or Report. Both fields go
   into the export file.
+- **The plan** (#49): an entry's `day` is a local epoch day (`PlanDays`); it
+  holds a `recipeId` (cascading) with `servings`, or a `note`, and a
+  `mealTypeId`. Seeded meal types are identified by `builtInKey`, never by
+  name; the delete guard is `builtInKey IS NULL`, in the SQL, and deleting a
+  type moves its meals to Dinner in the same transaction. The cull's plan
+  subquery must filter NULL recipe ids (`NOT IN` a set with a NULL matches
+  nothing).
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
   needs a migration (as `MIGRATION_1_2` did).

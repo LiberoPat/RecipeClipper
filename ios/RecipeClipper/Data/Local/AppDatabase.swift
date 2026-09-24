@@ -141,6 +141,7 @@ final class AppDatabase: @unchecked Sendable {
         addLanguage,
         addCookState,
         addContentOrigin,
+        addMealPlan,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -259,6 +260,56 @@ final class AppDatabase: @unchecked Sendable {
         try db.execute("ALTER TABLE recipes ADD COLUMN contentOrigin TEXT NOT NULL DEFAULT 'PARSED'")
         try db.execute("ALTER TABLE recipes ADD COLUMN editedAt INTEGER")
     }
+
+    /// Version 7 (Android's Room version 8, `MIGRATION_7_8`): the week meal plan (#49).
+    /// `meal_types`, seeded with Breakfast, Lunch, Dinner and Snack (each with a `builtInKey`
+    /// that survives a rename), and `meal_plan_entries`. Both new, so nothing existing changes.
+    /// Every row has a stable `uid` and an `updatedAt`, for export and a later sync (#53). The
+    /// same tables as Android's.
+    private static func addMealPlan(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE meal_types (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                builtInKey TEXT,
+                sortOrder INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX index_meal_types_uid ON meal_types (uid);
+
+            CREATE TABLE meal_plan_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                day INTEGER NOT NULL,
+                mealTypeId INTEGER NOT NULL,
+                recipeId INTEGER,
+                servings INTEGER,
+                note TEXT,
+                sortOrder INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (mealTypeId) REFERENCES meal_types (id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX index_meal_plan_entries_uid ON meal_plan_entries (uid);
+            CREATE INDEX index_meal_plan_entries_day ON meal_plan_entries (day);
+            CREATE INDEX index_meal_plan_entries_mealTypeId ON meal_plan_entries (mealTypeId);
+            CREATE INDEX index_meal_plan_entries_recipeId ON meal_plan_entries (recipeId);
+            """)
+        let now = SystemClock().now()
+        for (index, (key, name)) in builtInMealTypes.enumerated() {
+            try db.run(
+                "INSERT INTO meal_types (name, builtInKey, sortOrder, updatedAt, uid) VALUES (?, ?, ?, ?, ?)",
+                name, key, index, now, newUid()
+            )
+        }
+    }
+
+    /// The seeded meal types (#49), in the Week's order. Dinner is where new meals default and
+    /// where a deleted type's meals go.
+    static let builtInMealTypes: [(String, String)] = [
+        ("breakfast", "Breakfast"), ("lunch", "Lunch"), (MealType.dinner, "Dinner"), ("snack", "Snack"),
+    ]
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its
     /// `isFavorites` column, never its name or position — all six can be renamed. The rest are

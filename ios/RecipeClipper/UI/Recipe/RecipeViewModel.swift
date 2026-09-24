@@ -25,6 +25,9 @@ final class RecipeViewModel {
     @ObservationIgnored private let alarms: TimerAlarmScheduler
     // Opened from a timer notification: start cook mode once the recipe has loaded.
     @ObservationIgnored private var openInCookMode: Bool
+    // Opened from the Week (#49): show the planned servings rather than the saved choice. For
+    // this visit only; it isn't saved unless the cook changes the servings here.
+    @ObservationIgnored private var plannedServings: Int?
     // The last queued cook-progress or servings write. Each waits for the one before, so two
     // quick taps can never land out of order. They hold the repository, not the ViewModel, so a
     // write queued just before the screen is popped still lands.
@@ -51,7 +54,8 @@ final class RecipeViewModel {
         connectivity: Connectivity = StaticConnectivity(),
         appInfo: AppInfo = StaticAppInfo(),
         alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler(),
-        openInCookMode: Bool = false
+        openInCookMode: Bool = false,
+        plannedServings: Int? = nil
     ) {
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
@@ -63,6 +67,7 @@ final class RecipeViewModel {
         self.appInfo = appInfo
         self.alarms = alarms
         self.openInCookMode = openInCookMode
+        self.plannedServings = plannedServings.flatMap { $0 > 0 ? $0 : nil }
         // Seeded synchronously so the first render already uses the user's units.
         let settings = preferences.current
         uiState = RecipeUiState(
@@ -119,7 +124,11 @@ final class RecipeViewModel {
             // A retry started meanwhile owns the screen now; this result is stale.
             guard !Task.isCancelled, let self else { return }
             switch result {
-            case .success(let recipe):
+            case .success(var recipe):
+                if let planned = plannedServings {
+                    plannedServings = nil
+                    recipe.servingsTarget = planned
+                }
                 uiState.content = .success(successContent(recipe))
                 uiState.checkedIngredients = recipe.checkedIngredients
                 uiState.notes = recipe.notes ?? ""

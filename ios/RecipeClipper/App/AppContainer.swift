@@ -6,6 +6,8 @@ import Foundation
 final class AppContainer {
     let recipeRepository: RecipeRepository
     let listRepository: ListRepository
+    let mealPlanRepository: MealPlanRepository
+    let planCalendar: PlanCalendar
     let preferences: AppPreferences
     let clock: Clock
     let connectivity: Connectivity
@@ -20,9 +22,11 @@ final class AppContainer {
     init(
         recipeRepository: RecipeRepository,
         listRepository: ListRepository,
+        mealPlanRepository: MealPlanRepository,
         backupRepository: BackupRepository,
         preferences: AppPreferences,
         clock: Clock,
+        planCalendar: PlanCalendar? = nil,
         connectivity: Connectivity = StaticConnectivity(),
         backupFiles: BackupFiles = FileBackupFiles(),
         appInfo: AppInfo = BundleAppInfo(),
@@ -31,6 +35,8 @@ final class AppContainer {
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
+        self.mealPlanRepository = mealPlanRepository
+        self.planCalendar = planCalendar ?? SystemPlanCalendar(clock: clock)
         self.backupRepository = backupRepository
         self.preferences = preferences
         self.clock = clock
@@ -71,6 +77,7 @@ final class AppContainer {
                 renderedPages: WebViewRenderedPageSource()
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
+            mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
@@ -90,12 +97,26 @@ final class AppContainer {
         HistoryViewModel(repository: recipeRepository)
     }
 
-    func makeRecipeViewModel(recipeId: Int64?, url: String?, openInCookMode: Bool = false) -> RecipeViewModel {
+    func makeRecipeViewModel(
+        recipeId: Int64?, url: String?, openInCookMode: Bool = false, plannedServings: Int? = nil
+    ) -> RecipeViewModel {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
-            openInCookMode: openInCookMode
+            openInCookMode: openInCookMode, plannedServings: plannedServings
         )
+    }
+
+    func makeWeekViewModel() -> WeekViewModel {
+        WeekViewModel(plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar)
+    }
+
+    func makeAddToPlanViewModel() -> AddToPlanViewModel {
+        AddToPlanViewModel(repository: mealPlanRepository, calendar: planCalendar)
+    }
+
+    func makeMealTypesViewModel() -> MealTypesViewModel {
+        MealTypesViewModel(repository: mealPlanRepository)
     }
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {

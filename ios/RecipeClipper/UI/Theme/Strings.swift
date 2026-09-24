@@ -321,7 +321,32 @@ enum Strings {
     static var tabGroceries: String { String(localized: "tab_groceries") }
     static var tabPantry: String { String(localized: "tab_pantry") }
     static var comingSoon: String { String(localized: "coming_soon") }
-    static var weekPlaceholder: String { String(localized: "week_placeholder") }
+
+    // Week meal plan (#49)
+    static var addToPlan: String { String(localized: "action_add_to_plan") }
+    static func addToDay(_ day: String) -> String { String(localized: "action_add_to_day \(day)") }
+    static var labelMeal: String { String(localized: "label_meal") }
+    static func removedFromPlan(_ label: String) -> String { String(localized: "snackbar_removed_from_plan \(label)") }
+    static var previousWeek: String { String(localized: "cd_previous_week") }
+    static var nextWeek: String { String(localized: "cd_next_week") }
+    static var thisWeek: String { String(localized: "action_this_week") }
+    static var mealTypesTitle: String { String(localized: "meal_types_title") }
+    static var today: String { String(localized: "label_today") }
+    static var addMeal: String { String(localized: "action_add_meal") }
+    static var move: String { String(localized: "action_move") }
+    static var removeFromPlan: String { String(localized: "action_remove_from_plan") }
+    static func addToDayTitle(_ day: String) -> String { String(localized: "add_to_day_title \(day)") }
+    static var searchOrNote: String { String(localized: "label_search_or_note") }
+    static func addAsNote(_ text: String) -> String { String(localized: "action_add_as_note \(text)") }
+    static func moveMealTitle(_ label: String) -> String { String(localized: "move_meal_title \(label)") }
+    static func moveToDay(_ day: String) -> String { String(localized: "action_move_to_day \(day)") }
+    static var newMealType: String { String(localized: "action_new_meal_type") }
+    static var renameMealTypeTitle: String { String(localized: "rename_meal_type_title") }
+    static func deleteMealTypeTitle(_ name: String) -> String { String(localized: "delete_meal_type_title \(name)") }
+    static var deleteMealTypeBody: String { String(localized: "delete_meal_type_body") }
+    static var moveUp: String { String(localized: "action_move_up") }
+    static var moveDown: String { String(localized: "action_move_down") }
+    static var mealTypeName: String { String(localized: "label_meal_type_name") }
     static var groceriesPlaceholder: String { String(localized: "groceries_placeholder") }
     static var pantryPlaceholder: String { String(localized: "pantry_placeholder") }
 }

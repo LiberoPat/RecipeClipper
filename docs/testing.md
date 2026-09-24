@@ -115,6 +115,16 @@ a version-1 file also goes to 5 in one open. This is
 what makes "never use destructive migration" checkable rather than an
 intention.
 
+The week meal plan (#49) adds `MIGRATION_7_8` (two new tables and the four
+seeded meal types, nothing existing changed) to `MigrationTest`, and
+`MealPlanDaoTest` for the rules that live in SQL: the cull keeps recipes planned
+for today or later (and a planned note doesn't stop it), a recipe's meals
+cascade and come back on undo, ordering, moving, and meal-type deletion (user
+types only, meals moved to Dinner). They, `WeekScreenTest`,
+`RecipeAddToPlanTest` and `AppShellTest` pass on the agents' emulator. iOS
+mirrors them in `MealPlanDaoTests` (with the user_version 6 → 7 step) and
+`WeekUITests`.
+
 **The device tests have been run on an emulator and pass**: `RecipeDaoTest`,
 `ListDaoTest`, `MigrationTest` and the Compose UI tests (see below), including
 those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).

@@ -62,5 +62,8 @@ internal class InMemoryRecipeDao : RecipeDao() {
     override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override suspend fun cullHistory(keep: Int, today: Long) {}
     override suspend fun planEntriesFor(recipeId: Long) = emptyList<MealPlanEntryEntity>()
-    override suspend fun insertPlanEntries(entries: List<MealPlanEntryEntity>) {}
+    override suspend fun restorePlanEntry(
+        id: Long, day: Long, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
+        sortOrder: Int, updatedAt: Long, uid: String
+    ) {}
 }

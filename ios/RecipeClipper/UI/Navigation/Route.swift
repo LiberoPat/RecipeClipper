@@ -14,6 +14,10 @@ enum Route: Hashable {
     case listDetail(id: Int64)
     /// Edit a recipe (#29), or with no id type a new one in (Android's `edit?recipeId=`).
     case editRecipe(id: Int64?)
+    /// The Week tab's stack (#49): a planned recipe at its planned servings (Android's
+    /// `week/recipe/{id}?servings=`), and the meal types screen (`week/meal-types`).
+    case weekRecipe(id: Int64, servings: Int?)
+    case mealTypes
 }
 
 /// `recipeclipper://import?url=<percent-encoded>` opens the import screen. The share extension

@@ -17,6 +17,8 @@ enum AppTab: String, CaseIterable, Hashable {
 final class Router {
     /// The Recipes stack. The placeholder tabs have no destinations yet, so no paths either.
     var path: [Route] = []
+    /// The Week tab's stack (#49).
+    var weekPath: [Route] = []
     var selectedTab: AppTab = .recipes
 
     func push(_ route: Route) {
@@ -27,6 +29,7 @@ final class Router {
     /// conventionally do (Android's `selectTab` does the same).
     func select(_ tab: AppTab) {
         if tab == selectedTab, tab == .recipes { path = [] }
+        if tab == selectedTab, tab == .week { weekPath = [] }
         selectedTab = tab
     }
 

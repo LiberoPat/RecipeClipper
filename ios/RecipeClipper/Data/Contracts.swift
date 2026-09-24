@@ -214,6 +214,64 @@ func backupFileName(exportedAt: Int64) -> String {
     return "recipe-clipper-" + formatter.string(from: date) + ".json"
 }
 
+/// The week meal plan (#49; Android's MealPlanRepository): what is planned on which day, and
+/// the meal types it is sorted by. Every write lands at once.
+protocol MealPlanRepository: AnyObject {
+    /// Every meal type, in the user's order. Re-emits on change.
+    func observeMealTypes() -> AnyPublisher<[MealType], Never>
+
+    /// The meals planned from day `start` to `end` inclusive (epoch days), in plan order.
+    func observeDays(start: Int64, end: Int64) -> AnyPublisher<[PlannedMeal], Never>
+
+    /// Plans `recipeId` on `day`; `servings` nil means the recipe's own yield.
+    func addRecipe(recipeId: Int64, day: Int64, mealTypeId: Int64, servings: Int?) async
+
+    /// Plans a free-text note on `day`. A blank note is ignored.
+    func addNote(_ note: String, day: Int64, mealTypeId: Int64) async
+
+    /// Moves a meal to another day or meal type, at the end of its new slot.
+    func move(entryId: Int64, day: Int64, mealTypeId: Int64) async
+
+    /// Removes a meal from the plan (never the recipe). Nil if it was already gone.
+    func delete(entryId: Int64) async -> DeletedMeal?
+
+    /// Undoes `delete`: the same meal, in the same place.
+    func restore(_ deleted: DeletedMeal) async
+
+    /// A user's own meal type, last in the order. A blank name is ignored.
+    func addMealType(name: String) async
+
+    func renameMealType(id: Int64, name: String) async
+
+    /// Saves the whole order at once, as the meal-types screen shows it.
+    func reorderMealTypes(_ orderedIds: [Int64]) async
+
+    /// Deletes a user's meal type; its meals move to Dinner. Seeded types are ignored.
+    func deleteMealType(id: Int64) async
+}
+
+/// What a meal-plan delete removed, for `restore`. Opaque to callers.
+struct DeletedMeal: Equatable {
+    let entry: MealPlanEntryRecord
+}
+
+/// Today and the first day of the week on the user's calendar (#49; Android's PlanCalendar).
+/// A seam so the Week and plan-sheet ViewModels never read the clock, zone or locale.
+protocol PlanCalendar {
+    /// Today, as an epoch day (see `PlanDays`).
+    func today() -> Int64
+
+    /// 1 = Sunday … 7 = Saturday: the locale's own, never a fixed Monday (owner's call).
+    func firstDayOfWeek() -> Int
+}
+
+struct SystemPlanCalendar: PlanCalendar {
+    let clock: Clock
+
+    func today() -> Int64 { PlanDays.today(millis: clock.now()) }
+    func firstDayOfWeek() -> Int { Calendar.current.firstWeekday }
+}
+
 /// The user's global defaults. Read and written through the vars; `settings` publishes them so
 /// a screen left open underneath Settings follows a change as it is made (#24), like
 /// Android's `AppPreferences.settings` Flow.

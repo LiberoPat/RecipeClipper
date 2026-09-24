@@ -45,7 +45,9 @@ struct RootView: View {
                     onNewRecipe: { router.push(.editRecipe(id: nil)) }
                 )
             }
-            .navigationDestination(for: Route.self, destination: destination)
+            .navigationDestination(for: Route.self) { route in
+                destination(route, push: router.push, replace: { router.replace(last: $0, with: $1) })
+            }
         }
         .tint(Palette.accentText)
     }
@@ -58,7 +60,7 @@ struct RootView: View {
             recipesStack
                 .tabItem { Label(Strings.tabRecipes, systemImage: "book.closed") }
                 .tag(AppTab.recipes)
-            placeholder(Strings.tabWeek, Strings.weekPlaceholder)
+            weekStack
                 .tabItem { Label(Strings.tabWeek, systemImage: "calendar") }
                 .tag(AppTab.week)
             placeholder(Strings.tabGroceries, Strings.groceriesPlaceholder)
@@ -71,6 +73,27 @@ struct RootView: View {
         .tint(Palette.accentText)
     }
 
+    /// The Week tab (#49), with its own stack: a planned recipe opens here, so Back returns to
+    /// the week.
+    private var weekStack: some View {
+        NavigationStack(path: $router.weekPath) {
+            ScreenHost(container.makeWeekViewModel) { vm in
+                WeekScreen(
+                    vm: vm,
+                    onOpenRecipe: { router.weekPath.append(.weekRecipe(id: $0, servings: $1)) },
+                    onOpenMealTypes: { router.weekPath.append(.mealTypes) }
+                )
+            }
+            .navigationDestination(for: Route.self) { route in
+                destination(route, push: { router.weekPath.append($0) }, replace: { count, route in
+                    router.weekPath.removeLast(min(count, router.weekPath.count))
+                    router.weekPath.append(route)
+                })
+            }
+        }
+        .tint(Palette.accentText)
+    }
+
     private func placeholder(_ title: String, _ description: String) -> some View {
         NavigationStack {
             ComingSoonScreen(title: title, description: description)
@@ -78,44 +101,57 @@ struct RootView: View {
         .tint(Palette.accentText)
     }
 
+    /// Every destination above a tab's first screen. `push` and `replace` act on the stack the
+    /// route was opened in (Recipes, or the Week's own, #49), so Back stays in that tab.
     @ViewBuilder
-    private func destination(_ route: Route) -> some View {
+    private func destination(
+        _ route: Route,
+        push: @escaping (Route) -> Void,
+        replace: @escaping (Int, Route) -> Void
+    ) -> some View {
         switch route {
         case .recipe(let id):
-            recipe { container.makeRecipeViewModel(recipeId: id, url: nil) }
+            recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil) }
         case .cookRecipe(let id):
-            recipe { container.makeRecipeViewModel(recipeId: id, url: nil, openInCookMode: true) }
+            recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil, openInCookMode: true) }
         case .importUrl(let url):
-            recipe { container.makeRecipeViewModel(recipeId: nil, url: url) }
+            recipe(push: push) { container.makeRecipeViewModel(recipeId: nil, url: url) }
+        case .weekRecipe(let id, let servings):
+            recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil, plannedServings: servings) }
+        case .mealTypes:
+            ScreenHost(container.makeMealTypesViewModel) { vm in MealTypesScreen(vm: vm) }
         case .history:
             ScreenHost(container.makeHistoryViewModel) { vm in
-                HistoryScreen(vm: vm, onOpenRecipe: { router.push(.recipe(id: $0)) })
+                HistoryScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
             }
         case .settings:
             ScreenHost(container.makeSettingsViewModel) { vm in SettingsScreen(vm: vm) }
         case .lists:
             ScreenHost(container.makeListsViewModel) { vm in
-                ListsScreen(vm: vm, onOpenList: { router.push(.listDetail(id: $0)) })
+                ListsScreen(vm: vm, onOpenList: { push(.listDetail(id: $0)) })
             }
         case .editRecipe(let id):
             // Saving replaces the edit screen and, when editing, the recipe screen under it.
             ScreenHost({ container.makeEditRecipeViewModel(recipeId: id) }) { vm in
                 EditRecipeScreen(vm: vm, onSaved: { saved in
-                    router.replace(last: id == nil ? 1 : 2, with: .recipe(id: saved))
+                    replace(id == nil ? 1 : 2, .recipe(id: saved))
                 })
             }
             // Full screen, like the recipe and cook mode, so editing isn't a tab of its own.
             .toolbar(.hidden, for: .tabBar)
         case .listDetail(let id):
             ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
-                ListDetailScreen(vm: vm, onOpenRecipe: { router.push(.recipe(id: $0)) })
+                ListDetailScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
             }
         }
     }
 
-    private func recipe(_ make: @escaping () -> RecipeViewModel) -> some View {
-        ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
-            RecipeScreen(vm: vm, saveVM: saveVM, onEdit: { router.push(.editRecipe(id: $0)) })
+    private func recipe(push: @escaping (Route) -> Void, _ make: @escaping () -> RecipeViewModel) -> some View {
+        // "Add to plan" (#49) only behind the tab flag, like the Week tab itself.
+        let container = container
+        let makePlanVM: (() -> AddToPlanViewModel)? = tabsEnabled ? { container.makeAddToPlanViewModel() } : nil
+        return ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
+            RecipeScreen(vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) }, makePlanVM: makePlanVM)
         }
         // The reading view and cook mode are full screen, so a recipe still opens on the recipe.
         // A no-op while the tab bar is off.

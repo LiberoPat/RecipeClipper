@@ -79,8 +79,21 @@ abstract class RecipeDao {
     @Query("SELECT * FROM meal_plan_entries WHERE recipeId = :recipeId")
     abstract suspend fun planEntriesFor(recipeId: Long): List<MealPlanEntryEntity>
 
-    @Insert
-    protected abstract suspend fun insertPlanEntries(entries: List<MealPlanEntryEntity>)
+    /**
+     * One planned meal back, unless its meal type was deleted meanwhile: that would fail the
+     * foreign key and roll back the whole restore, losing the recipe over a meal type.
+     */
+    @Query(
+        """
+        INSERT INTO meal_plan_entries (id, day, mealTypeId, recipeId, servings, note, sortOrder, updatedAt, uid)
+        SELECT :id, :day, :mealTypeId, :recipeId, :servings, :note, :sortOrder, :updatedAt, :uid
+        WHERE EXISTS (SELECT 1 FROM meal_types WHERE id = :mealTypeId)
+        """
+    )
+    protected abstract suspend fun restorePlanEntry(
+        id: Long, day: Long, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
+        sortOrder: Int, updatedAt: Long, uid: String
+    )
 
     /**
      * Undoes [delete]: re-inserts [recipe] with its original id — `@Insert` honours a
@@ -95,7 +108,9 @@ abstract class RecipeDao {
     ) {
         insert(recipe)
         if (crossRefs.isNotEmpty()) insertCrossRefs(crossRefs)
-        if (planEntries.isNotEmpty()) insertPlanEntries(planEntries)
+        planEntries.forEach {
+            restorePlanEntry(it.id, it.day, it.mealTypeId, it.recipeId, it.servings, it.note, it.sortOrder, it.updatedAt, it.uid)
+        }
     }
 
     // "Saved" is derived: a recipe is saved when at least one list contains it.

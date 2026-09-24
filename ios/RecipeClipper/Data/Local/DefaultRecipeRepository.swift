@@ -55,7 +55,7 @@ final class DefaultRecipeRepository: RecipeRepository {
                 guard var row = try dao.findByUrl(url), row.contentOrigin != RecipeDao.originParsed
                 else { return nil }
                 row.lastViewedAt = viewedAt
-                _ = try dao.upsert(row, historyLimit: historyLimit) // a view, and the cull
+                _ = try dao.upsert(row, historyLimit: historyLimit, today: PlanDays.today(millis: viewedAt)) // a view, and the cull
                 return row
             }
             if let usersVersion { return .success(usersVersion.toDomain()) }
@@ -79,7 +79,7 @@ final class DefaultRecipeRepository: RecipeRepository {
             do {
                 let saved = try await db.write { conn -> RecipeRecord? in
                     let dao = RecipeDao(db: conn)
-                    let id = try dao.upsert(recipe.toRecord(viewedAt: now), historyLimit: historyLimit)
+                    let id = try dao.upsert(recipe.toRecord(viewedAt: now), historyLimit: historyLimit, today: PlanDays.today(millis: now))
                     return try dao.get(id)
                 }
                 guard let saved else { return .error(.saveFailed) }
@@ -144,7 +144,10 @@ final class DefaultRecipeRepository: RecipeRepository {
         do {
             let saved = try await db.write { conn -> RecipeRecord? in
                 let dao = RecipeDao(db: conn)
-                _ = try dao.upsert(fresh, historyLimit: historyLimit, replaceUsersVersion: true)
+                _ = try dao.upsert(
+                    fresh, historyLimit: historyLimit, replaceUsersVersion: true,
+                    today: PlanDays.today(millis: fresh.lastViewedAt)
+                )
                 return try dao.get(id)
             }
             guard let saved else { return .error(.saveFailed) }
@@ -187,7 +190,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         do {
             return try await db.write { conn -> Recipe? in
                 let dao = RecipeDao(db: conn)
-                let id = try dao.upsert(record, historyLimit: historyLimit)
+                let id = try dao.upsert(record, historyLimit: historyLimit, today: PlanDays.today(millis: now))
                 return try dao.get(id)?.toDomain()
             }
         } catch {
@@ -270,8 +273,11 @@ final class DefaultRecipeRepository: RecipeRepository {
                 guard let row = try dao.get(id) else { return nil }
                 // Read before deleting: the cascade takes them with the row.
                 let memberships = try dao.crossRefsFor(id)
+                let planEntries = try dao.planEntriesFor(id)
                 try dao.delete(id)
-                return DeletedRecipe(recipe: row.toDomain(), memberships: memberships, uid: row.uid)
+                return DeletedRecipe(
+                    recipe: row.toDomain(), memberships: memberships, uid: row.uid, planEntries: planEntries
+                )
             }
         } catch {
             dataLog.error("delete failed: \(String(describing: error), privacy: .public)")
@@ -284,7 +290,7 @@ final class DefaultRecipeRepository: RecipeRepository {
             var record = deleted.recipe.toRecord(viewedAt: deleted.recipe.lastViewedAt)
             if let uid = deleted.uid { record.uid = uid }
             try await db.write { [record] conn in
-                try RecipeDao(db: conn).restore(record, crossRefs: deleted.memberships)
+                try RecipeDao(db: conn).restore(record, crossRefs: deleted.memberships, planEntries: deleted.planEntries)
             }
         } catch {
             dataLog.error("restore failed: \(String(describing: error), privacy: .public)")
