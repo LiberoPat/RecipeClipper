@@ -218,7 +218,11 @@ Exists today:
   Re-sharing a deleted link after the fact creates a new row with a new id;
   correct, since the old one was actually deleted.
 - Unit conversion (also not in the original build order): `UnitSystem` is
-  AS_WRITTEN (default), GRAMS, OUNCES or METRIC. `data/model/UnitConverter`
+  AS_WRITTEN (default), OUNCES or METRIC. It was four options until #17
+  dropped GRAMS, which differed from METRIC only in leaving liquids, spoons
+  and cups of liquids as written; a stored GRAMS reads as METRIC
+  (`UnitSystem.fromStoredName`, iOS `UnitSystem(storedName:)`), since its
+  users wanted weights. `data/model/UnitConverter`
   does the work, `IngredientDensities` holds the weights, and `Units.kt` holds
   the unit table and regex fragments. The ViewModel renders each ingredient as
   scale first, then convert, so amounts always match the chosen servings.
@@ -230,9 +234,8 @@ Exists today:
   `SettingsScreen` + `SettingsViewModel` (`@HiltViewModel`, injects
   `AppPreferences` directly rather than through the repository, since these
   are app-wide defaults, not any one recipe's). Three sections, each behind a
-  `SectionHeading`: Units (the four `UnitSystem` options as `RadioButton`
-  rows, then "Also convert liquids" as a `Switch`, shown only for Grams and
-  Ounces), Oven temperature (`TemperatureUnit`'s three options as
+  `SectionHeading`: Units (the three `UnitSystem` options as `RadioButton`
+  rows, then "Also convert liquids" as a `Switch`, shown only for Ounces), Oven temperature (`TemperatureUnit`'s three options as
   `RadioButton` rows), Appearance ("Dark while cooking" as a `Switch`).
   Exclusive choices are always `RadioButton`s and independent toggles are
   always `Switch`es — never a bare ✓ for either, which is the reason this
@@ -636,8 +639,7 @@ Unit conversion rules (each one exists to avoid showing a confident wrong number
   unit: the `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative, not just the last. Bon Appétit, Epicurious, Delish and Budget
   Bytes all write units this way.
-- GRAMS and OUNCES leave pourable liquids as written unless `convertLiquids` is
-  on. METRIC ignores that flag: liquids, spoons and cups become ml (a volume
+- OUNCES leaves pourable liquids as written unless `convertLiquids` is on. METRIC ignores that flag: liquids, spoons and cups become ml (a volume
   to volume conversion, exact and density-free), and known solids become g.
   METRIC treats 1 cup as 240 ml, 1 tbsp as 15 ml and 1 tsp as 5 ml.
   Exception: in METRIC a spooned or cupped amount of anything that is not a

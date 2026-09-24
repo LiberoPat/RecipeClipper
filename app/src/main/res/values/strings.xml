@@ -47,11 +47,9 @@
     <string name="cd_change_units">Change units</string>
     <string name="units_menu_header">Units  ·   every recipe</string>
     <string name="unit_as_written">As written</string>
-    <string name="unit_grams">Grams</string>
     <string name="unit_ounces">Ounces</string>
     <string name="unit_metric">Metric</string>
     <string name="unit_as_written_description">Exactly the units the recipe uses</string>
-    <string name="unit_grams_description">Cups and spoons in grams</string>
     <string name="unit_ounces_description">Cups and spoons in ounces and pounds</string>
     <string name="unit_metric_description">Grams and millilitres</string>
     <string name="convert_liquids_title">Also convert liquids</string>

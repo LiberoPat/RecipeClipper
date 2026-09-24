@@ -58,8 +58,8 @@ sealed class RecipeContent {
 /**
  * [unitSystem], [convertLiquids] and [temperatureUnit] are the user's global defaults: set
  * once (now from the Settings screen), applied to every recipe, and saved between sessions.
- * Servings, by contrast, belong to one recipe. [convertLiquids] only matters for GRAMS and
- * OUNCES. [temperatureUnit] is independent of [unitSystem] — see [TemperatureUnit]'s doc.
+ * Servings, by contrast, belong to one recipe. [convertLiquids] only matters for OUNCES.
+ * [temperatureUnit] is independent of [unitSystem] — see [TemperatureUnit]'s doc.
  * [darkWhileCooking] forces the ink scheme in cook mode even in light mode; off by default,
  * so cook mode follows the system theme like every other screen.
  */
