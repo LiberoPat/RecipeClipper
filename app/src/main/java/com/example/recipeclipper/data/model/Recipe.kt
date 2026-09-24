@@ -50,6 +50,14 @@ sealed class ParseError {
     object NoRecipeFound : ParseError()
 
     /**
+     * A Reddit post with no recipe as text: neither the post body nor any comment splits into
+     * ingredients and steps. A legitimate outcome (often a photo of a dish, or of a recipe
+     * card nobody has transcribed yet), not a failure. Carries the post's [title] and
+     * [imageUrl] so the screen can show the photo. Never retried automatically.
+     */
+    data class NoTranscription(val title: String, val imageUrl: String?) : ParseError()
+
+    /**
      * The site answered, but refused: 403, 404, 429 or any 5xx. Usually a bot block, and not
      * a stable one: the same site can refuse one minute and answer the next, and some sites
      * send 404 as a disguise for a block. So this reads as "try again", not "unsupported".

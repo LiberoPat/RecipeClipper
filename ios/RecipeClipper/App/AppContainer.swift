@@ -41,7 +41,12 @@ final class AppContainer {
         }
         let defaults = testing ? (UserDefaults(suiteName: "RecipeClipperTestHost") ?? .standard) : .standard
         return AppContainer(
-            recipeRepository: DefaultRecipeRepository(db: database, source: BlogRecipeSource(), clock: clock),
+            recipeRepository: DefaultRecipeRepository(
+                db: database,
+                // Routed by host: Reddit links to the Reddit source, everything else to the blog one.
+                source: RoutingRecipeSource(blog: BlogRecipeSource(), reddit: RedditRecipeSource()),
+                clock: clock
+            ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,

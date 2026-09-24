@@ -32,9 +32,13 @@ struct RecipeScreen: View {
                 }
             case .error(let error):
                 StatusView {
+                    if case .noTranscription(let title, let imageUrl) = error {
+                        PostPreview(title: title, imageUrl: imageUrl)
+                    }
                     Text(Strings.message(for: error))
                         .textStyle(Typography.bodyLarge)
-                        .foregroundStyle(Palette.error)
+                        // No transcription is an outcome, not a failure: muted, not red.
+                        .foregroundStyle(error.isNoTranscription ? Palette.muted : Palette.error)
                     // Every error offers "Try again", no-recipe included: a café or hotel captive
                     // portal serves its login page, which parses as a page with no recipe, and
                     // the same link works once you're through it.
@@ -113,6 +117,45 @@ struct RecipeScreen: View {
             Image(systemName: "ellipsis.circle")
         }
         .accessibilityLabel(Strings.moreOptions)
+    }
+}
+
+/// A Reddit post with no recipe as text: its title and photo above the note, so the user sees
+/// what they shared (the recipe may well be legible in the photo itself). Not the ReadingView:
+/// there is nothing to scale, tick or cook.
+private struct PostPreview: View {
+    let title: String
+    let imageUrl: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let imageUrl, let url = URL(string: imageUrl) {
+                Rectangle()
+                    .fill(Palette.hairline)
+                    .frame(height: 200)
+                    .overlay {
+                        CachedAsyncImage(url: url) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            Color.clear
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .accessibilityLabel(title)
+                    .padding(.bottom, 16)
+            }
+            Text(title)
+                .textStyle(Typography.headlineSmall)
+                .foregroundStyle(Palette.onBackground)
+                .padding(.bottom, 12)
+        }
+    }
+}
+
+private extension ParseError {
+    var isNoTranscription: Bool {
+        if case .noTranscription = self { return true }
+        return false
     }
 }
 

@@ -158,10 +158,16 @@ fun RecipeScreen(
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
                 is RecipeContent.Error -> StatusView(actions.onBack) {
+                    (content.error as? ParseError.NoTranscription)?.let { PostPreview(it) }
                     Text(
                         content.error.toMessage(),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error
+                        // No transcription is an outcome, not a failure: muted, not red.
+                        color = if (content.error is ParseError.NoTranscription) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        }
                     )
                     // Every error offers "Try again", no-recipe included: a café or hotel
                     // captive portal serves its login page, which parses as a page with no
@@ -187,6 +193,7 @@ fun RecipeScreen(
 @Composable
 private fun ParseError.toMessage(): String = when (this) {
     ParseError.NoRecipeFound -> stringResource(R.string.error_no_recipe_found)
+    is ParseError.NoTranscription -> stringResource(R.string.error_no_transcription)
     is ParseError.Blocked -> stringResource(R.string.error_blocked, httpStatus)
     ParseError.Offline -> stringResource(R.string.error_offline)
     is ParseError.FetchFailed -> stringResource(
@@ -196,6 +203,29 @@ private fun ParseError.toMessage(): String = when (this) {
     ParseError.SaveFailed -> stringResource(R.string.error_save_failed)
     ParseError.NotSaved -> stringResource(R.string.error_not_saved)
     ParseError.NothingToShow -> stringResource(R.string.error_nothing_to_show)
+}
+
+/**
+ * A Reddit post with no recipe as text: its title and photo above the note, so the user sees
+ * what they shared (the recipe may well be legible in the photo itself). Not the ReadingView:
+ * there is nothing to scale, tick or cook.
+ */
+@Composable
+private fun PostPreview(post: ParseError.NoTranscription) {
+    post.imageUrl?.let { image ->
+        AsyncImage(
+            model = image,
+            contentDescription = post.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(16.dp))
+        )
+        Spacer(Modifier.height(16.dp))
+    }
+    Text(post.title, style = MaterialTheme.typography.headlineSmall)
+    Spacer(Modifier.height(12.dp))
 }
 
 /** Loading and errors: a back button and one message, nothing to read yet. */

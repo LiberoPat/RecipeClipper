@@ -30,6 +30,7 @@ enum Strings {
 
     // Errors
     static let errorNoRecipeFound = "Couldn't find recipe data on this page. Some sites don't tag their recipes in a way this app can read yet."
+    static let errorNoTranscription = "No recipe text found for this post. Reddit recipes are often only in the photo, and nobody has written this one out in the comments yet."
     static func errorFetchFailed(_ detail: String?) -> String { "Couldn't load that page (\(detail ?? "unknown error"))." }
     static func errorBlocked(_ status: Int) -> String { "The site didn't let the app in (HTTP \(status)). Sites often do this for a moment — try again in a minute." }
     static let errorOffline = "You're offline. The recipe will load when you're back online."
@@ -41,6 +42,7 @@ enum Strings {
     static func message(for error: ParseError) -> String {
         switch error {
         case .noRecipeFound: return errorNoRecipeFound
+        case .noTranscription: return errorNoTranscription
         case .blocked(let status): return errorBlocked(status)
         case .offline: return errorOffline
         case .fetchFailed(let detail, _): return errorFetchFailed(detail)

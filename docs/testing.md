@@ -38,6 +38,13 @@ call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
+Reddit has five suites on each platform with the same cases:
+`RecipeTextSplitterTest`, `RedditCommentScorerTest`, `RedditUrlsTest`,
+`RedditRecipeParserTest` and `RedditRecipeSourceTest` (a local socket on
+Android, a URLProtocol stub on iOS; also the host routing). Their fixtures
+(`RedditFixtures`, identical text on both sides) are synthetic, in Reddit's
+real listing shape: reddit.com answered 403 when they were written, so no
+live response was captured.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to
