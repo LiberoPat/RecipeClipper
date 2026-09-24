@@ -3,7 +3,7 @@ import Foundation
 import os
 import SQLite3
 
-let dataLog = Logger(subsystem: "com.example.recipeclipper", category: "data")
+let dataLog = Logger(subsystem: "com.liberopat.recipeclipper", category: "data")
 
 /// The app's one SQLite database: schema, migrations, serialized access and change
 /// notification. The iOS counterpart of Android's `RecipeDatabase` (Room).
@@ -21,7 +21,7 @@ final class AppDatabase: @unchecked Sendable {
     let didChange = PassthroughSubject<Void, Never>()
 
     private let connection: SQLiteConnection
-    private let queue = DispatchQueue(label: "com.example.recipeclipper.AppDatabase")
+    private let queue = DispatchQueue(label: "com.liberopat.recipeclipper.AppDatabase")
 
     /// `path == nil` opens an in-memory database (tests). Seeds built-in lists on create.
     init(path: String?) throws {

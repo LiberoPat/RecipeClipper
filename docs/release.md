@@ -1,0 +1,83 @@
+# Release checklist
+
+The steps only the owner can do: accounts, keys and store listings. The code
+and config side is done: the IDs are `com.liberopat.recipeclipper` on both
+platforms (iOS extension `.share`, UI tests `.uitests`), release signing reads
+its keys from outside the repo, the iOS privacy manifest and export-compliance
+key are in place, and `docs/privacy-policy.md` is drafted. The rest of the
+plan is in issues #18 (iOS), #22 (Android), #19–#21 and #23.
+
+## iOS
+
+1. **Join the Apple Developer Program** ($99 a year) at
+   developer.apple.com/programs.
+2. **Set the Team ID.** It's the 10-character ID under Account → Membership
+   details. Put it in `ios/project.yml`, `settings: base: DEVELOPMENT_TEAM`
+   (the one place; every target inherits it), then `cd ios && xcodegen
+   generate`. Signing is Automatic, so Xcode registers the two bundle IDs
+   (`com.liberopat.recipeclipper` and `.share`) on first build to a device.
+3. **Reserve the name.** App Store Connect → Apps → + → New App, bundle ID
+   `com.liberopat.recipeclipper`. The name must be unique on the store (#21).
+4. **Privacy.** Enter the privacy policy URL (below). In App Privacy, answer
+   "Data Not Collected".
+5. **Build numbers.** Raise `CURRENT_PROJECT_VERSION` in `ios/project.yml`
+   before every upload, and `MARKETING_VERSION` for each release.
+6. **Before the App Store** (TestFlight internal testing is fine without):
+   replace the share extension's app-opening workaround (#19).
+
+## Android
+
+1. **Create the keystore, once.** Keep it outside the repo:
+
+   ```
+   export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+   mkdir -p ~/keys
+   keytool -genkeypair -v -keystore ~/keys/recipeclipper-release.jks \
+     -alias recipeclipper -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
+   It asks for a password and a name. The keystore is PKCS12, which uses one
+   password for the store and the key, so both properties below get the same
+   one.
+2. **Tell Gradle where it is.** Add to `~/.gradle/gradle.properties` (your
+   home directory's, never the project's, which is committed):
+
+   ```
+   recipeClipper.storeFile=/Users/<you>/keys/recipeclipper-release.jks
+   recipeClipper.storePassword=...
+   recipeClipper.keyAlias=recipeclipper
+   recipeClipper.keyPassword=...
+   ```
+
+   Or set `RECIPECLIPPER_STORE_FILE`, `RECIPECLIPPER_STORE_PASSWORD`,
+   `RECIPECLIPPER_KEY_ALIAS` and `RECIPECLIPPER_KEY_PASSWORD` (for CI). Use an
+   absolute path: `~` isn't expanded. Without all four, `assembleRelease`
+   still works and produces `app-release-unsigned.apk`; with them, it produces
+   a signed `app-release.apk`. Check it with
+   `apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk`.
+3. **Back up the keystore and both passwords,** somewhere off this Mac (a
+   password manager holds both). An update signed with any other key won't
+   install over an earlier one, so losing it strands every installed copy.
+4. **Reserve the app in Play Console** ($25 once) with application ID
+   `com.liberopat.recipeclipper`. Play App Signing is the default: Google
+   holds the key users' copies are signed with, and yours becomes the upload
+   key (lost upload keys can be reset through Play support). APKs signed with
+   your key and handed out directly (e.g. on GitHub Releases) then can't
+   update a copy installed from Play, and the reverse; pick one channel per
+   device.
+5. **Target SDK.** Since 31 August 2026 Play accepts new apps and updates
+   only if they target API 36 (Android 16) or higher; an extension to
+   1 November 2026 can be requested in Play Console. The app targets 34, so
+   raising it (with device testing) comes before the first upload (#23).
+   Current rule: developer.android.com/google/play/requirements/target-sdk.
+6. **Data safety form:** no data collected, no data shared. Add the privacy
+   policy URL.
+7. **Run the release build on a device** once before shipping (#22).
+
+## Privacy policy URL
+
+Both stores ask for one, even for an app that collects nothing. Publish
+`docs/privacy-policy.md` somewhere public and stable (GitHub Pages on this
+repo works), after filling in the date and a contact email, and put that URL
+in App Store Connect and Play Console. Update it if the app ever starts
+collecting or sending anything.
