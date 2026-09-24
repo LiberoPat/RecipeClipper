@@ -12,45 +12,76 @@ import Foundation
 /// The source link is deliberately left out: what's shared is the recipe as clipped, not a
 /// pointer back to the page — the story and ads this app exists to skip.
 ///
-/// Deliberately keeps its own English wording ("Serves 3 (originally 6)", "Prep 10m · Cook
-/// 30m") rather than reading it from the string catalog like the rest of the UI text: this
-/// isn't UI, it's the body of a message the user sends elsewhere, and it stays English-only
-/// by design, same as the whole app for now.
+/// The words around the recipe ("Serves", "INGREDIENTS", "Prep") come in as `Labels`, which
+/// the view reads from the string catalog (`Strings.shareTextLabels`), so a recipe shared
+/// from a German phone reads "Portionen: 4 … ZUTATEN". This stays pure; `Labels.english` is
+/// the default for tests. The recipe's own text is shared as written.
 enum RecipeShareText {
-    static func format(recipe: Recipe, servings: ServingsScale?, ingredients: [String], instructions: [String]) -> String {
+    /// The translated words the message body uses. `serves` and `makes` turn a count into a
+    /// line ("Serves 3"); `scaled` adds the original count to one ("Serves 3 (originally 6)").
+    struct Labels {
+        let serves: (Int) -> String
+        let makes: (Int) -> String
+        let scaled: (_ line: String, _ original: Int) -> String
+        let prep: String
+        let cook: String
+        let total: String
+        let ingredients: String
+        let instructions: String
+
+        static let english = Labels(
+            serves: { "Serves \($0)" },
+            makes: { "Makes \($0)" },
+            scaled: { line, original in "\(line) (originally \(original))" },
+            prep: "Prep",
+            cook: "Cook",
+            total: "Total",
+            ingredients: "INGREDIENTS",
+            instructions: "INSTRUCTIONS"
+        )
+    }
+
+    static func format(
+        recipe: Recipe,
+        servings: ServingsScale?,
+        ingredients: [String],
+        instructions: [String],
+        labels: Labels = .english
+    ) -> String {
         var lines: [String] = []
         lines.append(recipe.name)
         lines.append("")
 
-        let meta = [servesLine(servings, Servings.kind(recipe.yield)), timesLine(recipe)].compactMap { $0 }
+        let meta = [servesLine(servings, Servings.kind(recipe.yield), labels), timesLine(recipe, labels)]
+            .compactMap { $0 }
         if !meta.isEmpty {
             lines += meta
             lines.append("")
         }
 
-        lines.append("INGREDIENTS")
+        lines.append(labels.ingredients)
         lines += ingredients
         lines.append("")
 
-        lines.append("INSTRUCTIONS")
+        lines.append(labels.instructions)
         lines += instructions.enumerated().map { "\($0.offset + 1). \($0.element)" }
 
         return lines.joined(separator: "\n")
     }
 
-    private static func servesLine(_ servings: ServingsScale?, _ kind: YieldKind) -> String? {
+    private static func servesLine(_ servings: ServingsScale?, _ kind: YieldKind, _ labels: Labels) -> String? {
         guard let servings else { return nil }
-        let word = kind == .makes ? "Makes" : "Serves"
+        let word = kind == .makes ? labels.makes : labels.serves
         return servings.target != servings.base
-            ? "\(word) \(servings.target) (originally \(servings.base))"
-            : "\(word) \(servings.base)"
+            ? labels.scaled(word(servings.target), servings.base)
+            : word(servings.base)
     }
 
-    private static func timesLine(_ recipe: Recipe) -> String? {
+    private static func timesLine(_ recipe: Recipe, _ labels: Labels) -> String? {
         let entries = [
-            recipe.prepTime.map { "Prep \($0)" },
-            recipe.cookTime.map { "Cook \($0)" },
-            recipe.totalTime.map { "Total \($0)" },
+            recipe.prepTime.map { "\(labels.prep) \($0)" },
+            recipe.cookTime.map { "\(labels.cook) \($0)" },
+            recipe.totalTime.map { "\(labels.total) \($0)" },
         ].compactMap { $0 }
         return entries.isEmpty ? nil : entries.joined(separator: " · ")
     }

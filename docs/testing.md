@@ -351,6 +351,59 @@ the restore half with `P=com.liberopat.recipeclipper`. If the old install's
 database is an older version, Room migrates it on first open. Check the recipes are there, then
 `adb uninstall com.example.recipeclipper`.
 
+### Backup and restore to a new phone (#25)
+
+What goes is an include list: `app/src/main/res/xml/data_extraction_rules.xml`
+(API 31+, both `cloud-backup` and `device-transfer`) and `backup_rules.xml`
+(API 23–30, Auto Backup). Both name `recipe_clipper.db`, `-wal`, `-shm` and
+`unit_preferences.xml`, so recipes, lists, ticked ingredients and settings
+travel, and nothing else does. Coil's image cache is in `cacheDir`, which is
+never backed up; photos refill from the network.
+
+Proven on an API 37 emulator (September 2026) with the local transport. The
+app was seeded through its UI (a shared recipe, two ingredients ticked, the
+recipe in Favorites and Breakfast, Metric / Celsius / Dark while cooking), with
+canary files outside the include list, then backed up, uninstalled and
+reinstalled. The database, all in the `-wal` at the time (the `.db` was 4 KB),
+and the settings came back and showed in the app; the canaries didn't:
+
+```
+A="adb -s <serial>"; P=com.liberopat.recipeclipper
+# Canaries that must NOT survive:
+$A shell "run-as $P sh -c 'mkdir -p files cache && echo x > files/canary.txt && echo x > cache/canary && echo \"<map/>\" > shared_prefs/other_prefs.xml'"
+$A shell bmgr enable true
+$A shell bmgr transport com.android.localtransport/.LocalTransport
+# A force-stopped app is ineligible: backupnow then reports "Backup is not
+# allowed". Start it and leave it in the background (backupnow kills it).
+$A shell am start -W -n $P/com.example.recipeclipper.MainActivity
+$A shell input keyevent HOME
+$A shell bmgr backupnow $P            # "... with result: Success"
+$A uninstall $P
+$A install app/build/outputs/apk/debug/app-debug.apk   # restores on install
+$A shell run-as $P ls -lR databases shared_prefs files cache
+# (or, with the app installed: bmgr list sets; bmgr restore <token> $P)
+# Then pull the three database files and the prefs as in the round-trip above
+# and query: recipes.checkedIngredients, recipe_list_cross_ref, the prefs XML.
+# Put things back:
+$A shell bmgr wipe com.android.localtransport/.LocalTransport $P
+$A shell bmgr transport com.google.android.gms/.backup.BackupTransportService
+$A shell bmgr enable false
+```
+
+Not exercised on the emulator: Google's cloud transport (it needs a signed-in
+account and uploads on Google's schedule) and a real device-to-device transfer.
+Both read the same rules; the local transport runs the same file selection.
+Android 12+ reads `dataExtractionRules` because `targetSdk` is 31 or more;
+API 23–30 devices read `fullBackupContent`, which wasn't run here.
+
+iOS: the database is `Application Support/recipe_clipper.sqlite`
+(`AppDatabase.defaultPath()`), settings are in `UserDefaults.standard`, and
+both are in iCloud and Finder backups. `BackupLocationTests` pins the location
+and that neither the directory nor the database and its WAL are flagged
+`isExcludedFromBackup`. If the database moves to an App Group container (the
+share extension, #19), that is backed up too; move the test with it. Photos are
+in Caches (`ImageLoader`), which isn't backed up, as intended.
+
 A single test:
 `./gradlew testDebugUnitTest --tests "com.example.recipeclipper.data.model.IngredientScalerTest"`
 (append `.` and a backticked method name to run one case).

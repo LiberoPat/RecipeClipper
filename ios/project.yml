@@ -4,6 +4,8 @@ options:
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
+  # The UI's languages (#13) live in RecipeClipper/Resources/Localizable.xcstrings.
+  developmentLanguage: en
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -39,6 +41,9 @@ targets:
       path: RecipeClipper/Info.plist
       properties:
         CFBundleDisplayName: Recipe Clipper
+        CFBundleDevelopmentRegion: en
+        # The languages the String Catalog translates; keep in step with docs/translations.md.
+        CFBundleLocalizations: [en, es, fr, de, it, pt-BR]
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIAppFonts:
@@ -75,6 +80,10 @@ targets:
       - path: RecipeClipper/ShareImport
       - path: RecipeClipper/UI/Theme
       - path: RecipeClipper/UI/Common/Components.swift
+      # Strings.swift resolves String(localized:) against Bundle.main, which inside the
+      # extension is its own bundle, not the app's: the catalog must be compiled into both
+      # (#13, #19). Translate any new key in all of es, fr, de, it and pt-BR.
+      - path: RecipeClipper/Resources/Localizable.xcstrings
     entitlements:
       path: RecipeClipperShare/RecipeClipperShare.entitlements
       properties:

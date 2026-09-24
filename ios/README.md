@@ -23,9 +23,11 @@ Targets: `RecipeClipper` (app), `RecipeClipperShare` (share extension, embedded 
 `RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest). The extension
 compiles the app's `Data/`, `ShareImport/`, `UI/Theme/` and `UI/Common/Components.swift`
 itself (dual target membership in `project.yml`), so a file added there must build in an
-extension: no `UIApplication.shared`. `RecipeClipperTests` bundles `../shared/fixtures` (the
-export files the Android tests read too), found at `fixtures/backup/<name>.json` in the test
-bundle.
+extension: no `UIApplication.shared`. `Resources/Localizable.xcstrings` is in both targets'
+sources too: `Strings.swift`'s `String(localized:)` reads `Bundle.main`, which inside the
+extension is its own bundle, so the catalog has to be compiled into both, not just the app's.
+`RecipeClipperTests` bundles `../shared/fixtures` (the export files the Android tests read
+too), found at `fixtures/backup/<name>.json` in the test bundle.
 
 **Never run two test sessions on one simulator.** The unit tests are hosted in the app, and
 a run that finishes (or starts) closes that app on its simulator, killing whatever the other
@@ -66,7 +68,7 @@ in-memory database and a throwaway defaults suite, so tests never touch real dat
 | Jsoup fetch + `JsonLdRecipeParser` | `URLSession` (`BlogRecipeSource`) + the same parser, with a hand-written Jsoup-compatible `stripHtml` |
 | `ACTION_SEND` share target | `RecipeClipperShare` extension, which imports and saves itself (`ShareImport/`) |
 | Navigation Compose routes | `NavigationStack` + `Route` enum (`UI/Navigation`) |
-| `strings.xml` | `UI/Theme/Strings.swift` |
+| `strings.xml` + `values-xx/` | `Resources/Localizable.xcstrings` (keys are the Android names), read through `UI/Theme/Strings.swift` |
 | `Theme.kt` | `UI/Theme/Theme.swift` (same tokens; Fraunces/Karla bundled) |
 
 ViewModels import only Foundation, Combine and Observation — no SwiftUI, no UIKit — so they

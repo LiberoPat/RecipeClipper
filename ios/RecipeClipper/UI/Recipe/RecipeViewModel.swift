@@ -173,14 +173,16 @@ final class RecipeViewModel {
     }
 
     /// The recipe as currently on screen — scaled servings, converted units — formatted for
-    /// sharing. Nil when nothing is loaded. Presenting the share sheet is the view's job.
-    func shareText() -> String? {
+    /// sharing. Nil when nothing is loaded. Presenting the share sheet is the view's job. The
+    /// view passes `labels` from the string catalog, so the words follow the phone's language.
+    func shareText(labels: RecipeShareText.Labels = .english) -> String? {
         guard let content = uiState.content.success else { return nil }
         return RecipeShareText.format(
             recipe: content.recipe,
             servings: content.servings,
             ingredients: content.ingredients,
-            instructions: content.instructions
+            instructions: content.instructions,
+            labels: labels
         )
     }
 
