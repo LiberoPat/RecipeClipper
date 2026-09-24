@@ -1,5 +1,7 @@
 package com.example.recipeclipper.ui.history
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,12 +36,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -95,7 +98,10 @@ fun HistoryScreen(
                     Snackbar(snackbarData = data)
                 }
             },
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = MaterialTheme.colorScheme.background,
+            // Edge-to-edge: safeDrawing rather than the default system bars, so the
+            // results also clear the keyboard while searching.
+            contentWindowInsets = WindowInsets.safeDrawing
         ) { padding ->
             Surface(
                 Modifier.fillMaxSize().padding(padding),
@@ -175,20 +181,18 @@ private fun SwipeToDeleteRow(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value != SwipeToDismissBoxValue.Settled) {
-                onDelete()
-                true
-            } else {
-                false
-            }
-        }
-    )
+    val dismissState = rememberSwipeToDismissBoxState()
+    // SwipeToDismissBox calls onDismiss from an effect keyed on the lambda itself, so the
+    // lambda must stay the same instance across recompositions or a recomposition while the
+    // row is still settled off-screen would delete it a second time.
+    val currentOnDelete by rememberUpdatedState(onDelete)
+    val onDismiss = remember { { _: SwipeToDismissBoxValue -> currentOnDelete() } }
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = { DeleteBackground(dismissState) },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        // Called once the row has settled off-screen, in either direction.
+        onDismiss = onDismiss
     ) {
         Surface(color = MaterialTheme.colorScheme.background) {
             RecipeRow(recipe, now, onClick = onClick)

@@ -8,7 +8,8 @@ import Foundation
 /// - Volume to weight needs `IngredientDensities`; an ingredient not in the table is left
 ///   as written rather than guessed.
 /// - If the line already carries the target unit in parentheses or after a slash, as in
-///   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one.
+///   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one. So is a
+///   range after a slash ("250 - 300 g / 8 - 10 oz pasta" in ounces is "8 - 10 oz pasta").
 /// - Pourable liquids are left alone in ounces unless `includeLiquids` is set.
 ///   Metric turns them into ml, which is exact and needs no density, so it ignores the flag.
 /// - Metric otherwise gives spoons and cups as ml, except that a line carrying the site's own
@@ -36,18 +37,44 @@ enum UnitConverter {
         .l: 1000.0,
     ]
 
-    static let unitAtStart = JRegex(#"^\s*"# + UnitPatterns.captured, ignoreCase: true)
     private static let parenAtStart = JRegex(#"^\s*\(([^)]*)\)"#)
-    static let slashAtStart = JRegex(
-        #"^\s*/\s*("# + IngredientScaler.qty + #")(\s*)"# + UnitPatterns.captured,
-        ignoreCase: true
-    )
 
-    // "plus 1 Tbsp." straight after the first unit. groups: 1 quantity, 2 space, 3 unit
-    static let continuationAtStart = JRegex(
-        #"^\s*"# + IngredientScaler.continuation + "(" + IngredientScaler.qty + #")(\s*)"# + UnitPatterns.captured,
-        ignoreCase: true
-    )
+    /// The patterns that read one language's unit and amount words (IngredientName reads them too).
+    final class Patterns {
+        let words: LanguageWords
+        let scaler: IngredientScaler.Patterns
+        let unitAtStart: JRegex
+        let slashAtStart: JRegex
+
+        // "250 - 300 g / 8 - 10 oz pasta": a range written a second way.
+        // groups: 1 low, 2 range separator, 3 high, 4 space, 5 unit
+        let slashRangeAtStart: JRegex
+
+        // "plus 1 Tbsp." straight after the first unit. groups: 1 quantity, 2 space, 3 unit
+        let continuationAtStart: JRegex
+
+        init(_ words: LanguageWords) {
+            self.words = words
+            scaler = IngredientScaler.patterns(words)
+            let units = UnitPatterns.of(words)
+            unitAtStart = JRegex(#"^\s*"# + units.captured, ignoreCase: true)
+            slashAtStart = JRegex(
+                #"^\s*/\s*("# + scaler.qty + #")(\s*)"# + units.captured,
+                ignoreCase: true
+            )
+            slashRangeAtStart = JRegex(
+                #"^\s*/\s*("# + scaler.qty + #")(\s*[-–—]\s*|\s+"# + words.rangeWords + #"\s+)("# + scaler.qty + #")(\s*)"# +
+                    units.captured,
+                ignoreCase: true
+            )
+            continuationAtStart = JRegex(
+                #"^\s*"# + scaler.continuation + "(" + scaler.qty + #")(\s*)"# + units.captured,
+                ignoreCase: true
+            )
+        }
+    }
+
+    static func patterns(_ words: LanguageWords) -> Patterns { words.compiled(Patterns.self, Patterns.init) }
 
     /// The second half of a compound amount, "plus 2 tbsp".
     private struct Part {
@@ -77,16 +104,19 @@ enum UnitConverter {
 
     /// `separatorFrom` is the line whose decimal separator the result follows (default: `line`):
     /// the line as the recipe wrote it, when `line` is that line already scaled ("2,5 lb"
-    /// doubled is "5 lb", which no longer shows its comma).
+    /// doubled is "5 lb", which no longer shows its comma). `words` nil: a language the app has
+    /// no words for, so the line stays as written.
     static func convert(
-        _ line: String, system: UnitSystem, includeLiquids: Bool, separatorFrom: String? = nil
+        _ line: String, system: UnitSystem, includeLiquids: Bool, separatorFrom: String? = nil,
+        words: LanguageWords? = .english
     ) -> String {
-        if system == .asWritten { return line }
+        guard system != .asWritten, let words else { return line }
         if IngredientScaler.ambiguousComma.containsMatch(in: line) { return line }
+        let p = patterns(words)
 
-        guard let lead = IngredientScaler.leading.find(line) else { return line }
+        guard let lead = p.scaler.leading.find(line) else { return line }
         let afterQty = line.u16Substring(from: lead.end)
-        if IngredientScaler.notAnAmount.containsMatch(in: afterQty) { return line }
+        if p.scaler.notAnAmount.containsMatch(in: afterQty) { return line }
 
         guard let low = IngredientScaler.parse(lead[2]) else { return line }
         let upperText = lead[4]
@@ -97,26 +127,38 @@ enum UnitConverter {
         }
         let amount = Amount(low: low, high: high, separator: lead[3])
 
-        guard let unitMatch = unitAtStart.find(afterQty) else { return line }
-        guard let unit = MeasureUnit.fromText(unitMatch[1]) else { return line }
+        guard let unitMatch = p.unitAtStart.find(afterQty) else { return line }
+        guard let unit = MeasureUnit.fromText(unitMatch[1], words: words) else { return line }
         if ownUnits(system).contains(unit) { return line }
 
         var after = afterQty.u16Substring(from: unitMatch.end)
 
         // "1½ cups plus 1 Tbsp.": converting only the first part would be confidently wrong.
         var extra: Part? = nil
-        if let c = continuationAtStart.find(after) {
+        if let c = p.continuationAtStart.find(after) {
             if amount.high != nil { return line } // a range plus a part: leave it
-            guard let unit2 = MeasureUnit.fromText(c[3]) else { return line }
+            guard let unit2 = MeasureUnit.fromText(c[3], words: words) else { return line }
             guard let quantity2 = IngredientScaler.parse(c[1]) else { return line }
             extra = Part(quantity: quantity2, unit: unit2)
             after = after.u16Substring(from: c.end)
         }
 
-        let alternate = findAlternate(after)
+        // "/ 8 - 10 oz": the site's range in another unit. It is consumed like "/120 g", and
+        // shown instead of a calculated range when it is already in the target unit.
+        var siteRange: (unit: MeasureUnit, text: String)? = nil
+        if extra == nil, let r = p.slashRangeAtStart.find(after) {
+            guard let rangeUnit = MeasureUnit.fromText(r[5], words: words) else { return line }
+            if IngredientScaler.parse(r[1]) == nil || IngredientScaler.parse(r[3]) == nil { return line }
+            let value = r.value
+            let slash = value.firstIndex(of: "/")!
+            siteRange = (rangeUnit, String(value[value.index(after: slash)...]).kTrimmed)
+            after = after.u16Substring(from: r.end)
+        }
+
+        let alternate = siteRange == nil ? findAlternate(p, after) : nil
         if let alternate { after = after.u16Substring(from: alternate.length) }
 
-        let density = IngredientDensities.find(after)
+        let density = IngredientDensities.find(after, words: words)
         let isLiquid = density?.liquid == true
         let effective: MeasureUnit = (unit == .oz && isLiquid) ? .flOz : unit
         let extraPart = extra.map {
@@ -136,13 +178,21 @@ enum UnitConverter {
         let asWeight = system != .metric || !allVolume ||
             (!isLiquid && (density?.gramsPerCup != nil || siteWeight))
 
-        let converted: String?
-        if asWeight {
-            converted = weightAmount(amount, effective, extraPart, density, alternate?.weight, isLiquid, system)
-        } else {
-            converted = volumeAmount(amount, effective, extraPart, alternate?.volume)
+        var site: String? = nil
+        if let siteRange, ownUnits(system).contains(siteRange.unit) {
+            let fits = asWeight
+                ? siteRange.unit.kind == .weight && !(siteRange.unit == .oz && isLiquid)
+                : siteRange.unit == .ml || siteRange.unit == .l
+            if fits { site = siteRange.text }
         }
-        guard let converted else { return line }
+
+        let calculated: String?
+        if asWeight {
+            calculated = weightAmount(amount, effective, extraPart, density, alternate?.weight, isLiquid, system)
+        } else {
+            calculated = volumeAmount(amount, effective, extraPart, alternate?.volume)
+        }
+        guard let converted = site ?? calculated else { return line }
 
         let comma = IngredientScaler.decimalComma.containsMatch(in: separatorFrom ?? line)
         return lead[1] + IngredientScaler.withSeparator(converted, comma: comma) + after
@@ -216,17 +266,17 @@ enum UnitConverter {
 
     // MARK: - Alternate measures: "1 cup (120 g) flour", "1 cup/120 grams flour"
 
-    private static func findAlternate(_ after: String) -> Alternate? {
+    private static func findAlternate(_ p: Patterns, _ after: String) -> Alternate? {
         if let m = parenAtStart.find(after) {
-            let pairs = IngredientScaler.qtyUnit.findAll(m[1])
+            let pairs = p.scaler.qtyUnit.findAll(m[1])
             if pairs.isEmpty { return nil } // e.g. "(packed)": not a measure, leave it
             return Alternate(
-                weight: pairs.lazy.compactMap { measureOf($0, .weight) }.first,
-                volume: pairs.lazy.compactMap { measureOf($0, .volume) }.first,
+                weight: pairs.lazy.compactMap { measureOf(p, $0, .weight) }.first,
+                volume: pairs.lazy.compactMap { measureOf(p, $0, .volume) }.first,
                 length: m.value.u16Count
             )
         }
-        if let m = slashAtStart.find(after) {
+        if let m = p.slashAtStart.find(after) {
             let value = m.value
             let text: String
             if let slash = value.firstIndex(of: "/") {
@@ -234,10 +284,10 @@ enum UnitConverter {
             } else {
                 text = value.kTrimmed
             }
-            guard let pair = IngredientScaler.qtyUnit.matchEntire(text) else { return nil }
+            guard let pair = p.scaler.qtyUnit.matchEntire(text) else { return nil }
             return Alternate(
-                weight: measureOf(pair, .weight),
-                volume: measureOf(pair, .volume),
+                weight: measureOf(p, pair, .weight),
+                volume: measureOf(p, pair, .volume),
                 length: value.u16Count
             )
         }
@@ -245,8 +295,8 @@ enum UnitConverter {
     }
 
     /// A weight (g, kg, oz, lb) or a metric volume (ml, l) from a "quantity unit" match.
-    private static func measureOf(_ match: JMatch, _ kind: MeasureKind) -> Measure? {
-        guard let unit = MeasureUnit.fromText(match[3]) else { return nil }
+    private static func measureOf(_ p: Patterns, _ match: JMatch, _ kind: MeasureKind) -> Measure? {
+        guard let unit = MeasureUnit.fromText(match[3], words: p.words) else { return nil }
         let wanted: Bool
         switch kind {
         case .weight: wanted = unit.kind == .weight

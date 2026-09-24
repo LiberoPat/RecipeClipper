@@ -33,7 +33,7 @@ jobs:
       - name: Unit tests, lint, device-test compile
         run: ./gradlew testDebugUnitTest lintDebug compileDebugAndroidTestKotlin
 
-      # Lint reports 16 version advisories on purpose (CLAUDE.md, #23). Any
+      # Lint reports two version advisories on purpose (CLAUDE.md). Any
       # other finding, at any severity, is real and fails the job.
       - name: Check lint found only version advisories
         run: python3 .github/scripts/check_lint.py app/build/reports/lint-results-debug.xml

@@ -218,12 +218,50 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Version 5 adds the recipe's language (#14): a real version-4 row keeps its content, note
+     * and uid, has no language, and a re-share fills it in.
+     */
+    @Test
+    fun migration4To5AddsNoLanguageAndKeepsEverythingElse() {
+        helper.createDatabase(name, 4).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt', 'uid-7')
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 5, true, RecipeDatabase.MIGRATION_4_5)
+
+        val db = openMigrated()
+        runBlocking {
+            val recipe = db.recipeDao().get(7)
+            assertEquals("Adobo", recipe?.title)
+            assertEquals(setOf(0), recipe?.checkedIngredients)
+            assertEquals("Less salt", recipe?.notes)
+            assertEquals("uid-7", recipe?.uid)
+            assertNull(recipe?.language)
+
+            // A re-share fills the language in and keeps the note and uid.
+            db.recipeDao().upsert(recipe!!.copy(id = 0, language = "en-us"), 50)
+            assertEquals("en-us", db.recipeDao().get(7)?.language)
+            assertEquals("Less salt", db.recipeDao().get(7)?.notes)
+            assertEquals("uid-7", db.recipeDao().get(7)?.uid)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
-    fun migration1To4RunsEveryStep() {
+    fun migration1To5RunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 4, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 5, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val lists = runBlocking { openMigrated().listDao().observeLists(ListDao.NO_RECIPE).first() }
         assertEquals(listOf("Breakfast", "Snacks"), lists.map { it.name })

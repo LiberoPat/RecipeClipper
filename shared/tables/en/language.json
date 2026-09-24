@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "Picks this language for a recipe that declares none (no JSON-LD inLanguage, no <html lang>). detect: case-insensitive regex fragments matched as whole words in the recipe's name and ingredient lines; the language with the most hits wins when it has at least 3 and more than twice the runner-up's. Words common in recipes and rare in other languages' recipes; never units or symbols shared with other languages.",
+  "detect": ["the", "and", "of", "with", "or", "cups?", "tablespoons?", "teaspoons?", "chopped", "fresh", "large", "small", "sliced", "divided", "ground", "to taste"]
+}

@@ -5,7 +5,8 @@ Recipe Clipper: share a recipe link from any app and get just the recipe
 filler.
 
 - **Android** (`app/`): Kotlin, Jetpack Compose, single Activity. MVVM +
-  repository, Hilt, Room, Compose Navigation. minSdk 24, targetSdk 34.
+  repository, Hilt, Room, Compose Navigation. minSdk 24, targetSdk 36,
+  compileSdk 37.
 - **iOS** (`ios/`): SwiftUI, iOS 17+, no third-party dependencies, at parity
   with Android. iOS specifics (XcodeGen, the Android→iOS type map, the share
   extension, simulator rules, test commands) are in `ios/README.md`.
@@ -19,10 +20,13 @@ and writes the regenerated one to `app/build/differential-corpus/`; a new row
 needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
-unit, timer, temperature, yield and range words, condensed section names,
-ingredient-name words, tracking parameters), loaded by both apps (Android as Java resources through
-`SharedTables`, iOS as a bundled `tables/` folder). Edit a table there, never in
-code; the logic that reads it stays written twice.
+unit, timer, temperature, yield, range, amount, duration, detection and
+ingredient-name words, condensed section names; tracking parameters), loaded by both apps (Android as
+Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
+table there, never in code; the logic that reads it stays written twice. **Each
+language has its own folder** (`shared/tables/en/`), read through
+`LanguageWords`: the recipe's language picks it, never the phone's, and
+languages are never merged.
 
 **Keep this file short: it is loaded into every session.** Add only what an
 agent needs almost every time. Rationale and history go in
@@ -60,17 +64,19 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 - **Device tests uninstall the app and wipe its database and settings.** Back
   them up first and restore after. The procedure (copy the `-wal` too) is in
   `docs/testing.md`, with the adb recipes.
-- **Lint reports exactly 16 warnings, all version advisories**
-  (`GradleDependency`, `NewerVersionAvailable`, `AndroidGradlePluginVersion`,
-  `OldTargetApi`), left on purpose (#23). Don't baseline them; any other
-  finding is real.
+- **Lint reports two warnings, both deliberate version advisories:**
+  `OldTargetApi` (targetSdk 36 while 37 exists; raise it only after reading
+  its behaviour changes) and `NewerVersionAvailable` for jsoup (held at
+  1.17.2; the reason is beside it in `app/build.gradle.kts`). Don't baseline
+  them; any other finding is real.
 - **CI checks every PR** (`docs/testing.md`): merge only when green.
 - **An emulator or simulator may be in use by a person.** Check before
   scripted taps, force-stops or settings changes, and ask. **Never run two iOS
   test sessions on one simulator**: one kills the other's test host.
-- The Android toolchain versions are coupled; bump them together (#23).
-  `navigation-compose` 2.7.7 and `hilt-navigation-compose` 1.2.0 are pinned to
-  the Compose BOM.
+- The Android toolchain versions are coupled; bump them together: Gradle,
+  AGP, Kotlin (the Compose compiler plugin's version sets it), KSP, Hilt,
+  Room, and the Compose BOM with `navigation-compose`. AGP 9 compiles Kotlin
+  itself: there's no `kotlin-android` plugin and no legacy AGP flags.
 
 ## Where things are (Android)
 
@@ -84,6 +90,7 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
+               LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
@@ -104,6 +111,10 @@ lands in Recipes, whichever tab is open.
   one `private(set) var uiState`). Screens observe and forward events: no
   coroutines, repository calls or business logic in composables or views.
 - Never hold state in `remember` if it must survive rotation.
+- **Edge-to-edge** (targetSdk 36 enforces it): a screen's root surface fills
+  behind the system bars and pads its content with `safeDrawingPadding()`
+  (History: its Scaffold's `contentWindowInsets = WindowInsets.safeDrawing`).
+  Never set bar colours; the theme only flips the bar icons.
 - ViewModels and repositories never import Compose, SwiftUI or UIKit, and
   never touch `Context`. Platform effects (alarm sound, keep-screen-on, the
   share sheet, opening a URL) live in the view layer.
@@ -217,8 +228,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 4** (iOS `user_version` 3):
-  `recipes` (with a nullable `notes`), `lists` and `recipe_list_cross_ref`
+- Room database `recipe_clipper.db`, **version 5** (iOS `user_version` 4):
+  `recipes` (with nullable `notes` and `language`), `lists` and `recipe_list_cross_ref`
   (cascading). Recipes and lists carry a unique, never-changing `uid`: what
   an export file calls them. The schema is exported to `app/schemas/`: commit it. **Never
   use destructive migration**, and give every migration a `MigrationTest`.
@@ -329,10 +340,14 @@ Settled; don't reintroduce what they removed. The history behind each is in
   because deep nesting overflows the stack there. That's the only `Throwable`
   catch: `BlogRecipeSource.fetch` catches `Exception`, so cancellation
   propagates.
+- **The recipe's language** (`Recipe.language`, stored): JSON-LD `inLanguage`,
+  else `<html lang>`, else English; but words (name and ingredients) that
+  clearly say another language win, and fill in when nothing is declared. A language with no tables stays entirely as written: no scaling,
+  conversion, temperature rewrite, timer, stepper or phrase times.
 - **Times:**
   - An ISO duration totalling zero ("PT0S") is absent.
-  - A whole-string English phrase ("1 hour 30 minutes") renders like ISO
-    ("1h 30m").
+  - A whole-string phrase in the recipe's words ("1 hour 30 minutes") renders
+    like ISO ("1h 30m").
   - Anything else ("Overnight", "20 to 25 minutes") stays as written.
 - **Condensed duplicates are skipped:** a `HowToSection` named as a condensed
   copy of the recipe ("Abbreviated Recipe", "Summary", "TL;DR", …; an exact
@@ -364,7 +379,8 @@ Each one exists to avoid showing a confident wrong number.
   read through a summarising fetch, so spot-check values); liquids and fats
   use physical densities.
 - **A line that already carries the target unit uses the site's figure**
-  ("1 cup (120 g) flour", "1 cup/120 grams flour"), and `IngredientScaler`
+  ("1 cup (120 g) flour", "1 cup/120 grams flour", "250 - 300 g / 8 - 10 oz
+  pasta"), and `IngredientScaler`
   scales those figures too. Package sizes ("1 can (14 oz)") are never scaled.
 - **A compound amount converts as a whole or not at all**
   ("1½ cups plus 1 Tbsp. (200 g) flour"). A site figure after the second part
@@ -409,7 +425,7 @@ Each one exists to avoid showing a confident wrong number.
   as `+ New list`, so tests must match one space. When a Compose test can't
   find a node, dump the semantics tree before touching production code.
 - **`MigrationTest` reads the schemas from the test APK's assets**
-  (`androidTest` `assets.srcDir("$projectDir/schemas")`). A
+  (`androidTest` `assets.directories += "$projectDir/schemas"`). A
   `FileNotFoundException` there means a missing file, not a broken migration.
 - **`org.json` is an Android framework class,** so JVM tests need
   `org.json:json` as a test dependency.
