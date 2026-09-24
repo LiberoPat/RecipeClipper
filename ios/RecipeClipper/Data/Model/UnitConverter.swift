@@ -32,6 +32,8 @@ enum UnitConverter {
         .tsp: 5.0,
         .tbsp: 15.0,
         .cup: 240.0,
+        .cup200: 200.0,
+        .riceCup: 180.0,
         .flOz: 30.0,
         .ml: 1.0,
         .l: 1000.0,
@@ -114,6 +116,7 @@ enum UnitConverter {
     ) -> String {
         guard system != .asWritten, let words else { return line }
         let p = patterns(words)
+        if p.scaler.amountAfterName { return convertTrailing(line, system: system, includeLiquids: includeLiquids, words: words) }
         if p.scaler.unreadable(line) { return line }
 
         guard let lead = p.scaler.leading.find(line) else { return line }
@@ -199,6 +202,37 @@ enum UnitConverter {
 
         let comma = IngredientScaler.decimalComma.containsMatch(in: separatorFrom ?? line)
         return lead[1] + IngredientScaler.withSeparator(converted, comma: comma) + after
+    }
+
+    /// A "name amount" line ("砂糖 大さじ2", "水 2カップ", #16), by the same rules: a counter (個,
+    /// 本) has no unit and stays as written, a liquid follows `includeLiquids`, and a measure in
+    /// brackets straight after the unit ("1/2カップ（100ml）") is the site's own figure.
+    private static func convertTrailing(
+        _ line: String, system: UnitSystem, includeLiquids: Bool, words: LanguageWords
+    ) -> String {
+        guard let found = TrailingAmount.find(line, words: words), let unit = found.unit else { return line }
+        if unit == .varies || ownUnits(system).contains(unit) { return line }
+
+        let density = TrailingAmount.nameOf(found.name, words: words).flatMap { IngredientDensities.find($0, words: words) }
+        let isLiquid = density?.liquid == true
+        let isVolume = unit.kind == .volume
+        if system != .metric && isVolume && isLiquid && !includeLiquids { return line }
+
+        let amount = Amount(low: found.low.value, high: found.high?.value, separator: found.separator)
+        let alternate = found.measure.flatMap { $0.atStart ? $0 : nil }
+        func measure(_ kind: MeasureKind) -> Measure? {
+            guard let a = alternate, a.unit.kind == kind, kind == .weight || a.unit.metric else { return nil }
+            return Measure(base: a.number.value * a.unit.base, unit: a.unit, text: a.text)
+        }
+        let weight = measure(.weight)
+        let siteWeight = weight != nil && amount.high == nil
+        let asWeight = system != .metric || !isVolume || (!isLiquid && (density?.gramsPerCup != nil || siteWeight))
+        let converted = asWeight
+            ? weightAmount(amount, unit, nil, density, weight, isLiquid, system)
+            : volumeAmount(amount, unit, nil, measure(.volume))
+        guard let converted else { return line }
+        return line.u16Substring(0, found.start) + found.beforeWord + converted +
+            line.u16Substring(from: alternate?.end ?? found.restStart)
     }
 
     private static func ownUnits(_ system: UnitSystem) -> Set<MeasureUnit> {

@@ -37,6 +37,8 @@ object IngredientName {
      */
     fun of(line: String, words: LanguageWords? = LanguageWords.ENGLISH): String? {
         if (words == null || line.isBlank() || line.trim().endsWith(":")) return null
+        // "☆醤油 大さじ1": the name comes first (#16).
+        if (IngredientScaler.patterns(words).amountAfterName) return TrailingAmount.nameOfLine(line, words)
         val w = words(words)
         val scaler = IngredientScaler.patterns(words)
         val converter = UnitConverter.patterns(words)
@@ -76,7 +78,8 @@ object IngredientName {
         val x = IngredientDensities.headPhrase(a, words)
         val y = IngredientDensities.headPhrase(b, words)
         if (x.isEmpty() || y.isEmpty()) return false
-        return if (x.length >= y.length) IngredientDensities.endsWithName(x, y) else IngredientDensities.endsWithName(y, x)
+        return if (x.length >= y.length) IngredientDensities.endsWithName(x, y, words.spaced)
+        else IngredientDensities.endsWithName(y, x, words.spaced)
     }
 
     /** Drops "large", "cloves", "pinch of": sizes, containers and cuts before the name. */

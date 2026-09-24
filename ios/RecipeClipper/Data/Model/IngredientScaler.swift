@@ -57,6 +57,9 @@ enum IngredientScaler {
         /// "1.500 g" is 1500 g (amounts.json "thousandsDot").
         let thousandsDot: Bool
 
+        /// Lines are "name amount" ("醤油 大さじ1"), read by `TrailingAmount` (amounts.json "amountAfterName").
+        let amountAfterName: Bool
+
         /// A quantity, in this language's words ("2 and 1/2"). No capturing group.
         let qty: String
 
@@ -92,6 +95,7 @@ enum IngredientScaler {
             self.words = words
             let thousandsDot = words.table("amounts")["thousandsDot"] as? Bool ?? false
             self.thousandsDot = thousandsDot
+            amountAfterName = words.table("amounts")["amountAfterName"] as? Bool ?? false
             let qty = IngredientScaler.qtyPattern(
                 SharedTables.alternation(words.strings("amounts", "mixedJoiners")), thousandsDot: thousandsDot
             )
@@ -148,6 +152,7 @@ enum IngredientScaler {
     static func scale(_ line: String, factor: Double, words: LanguageWords? = .english) -> String {
         guard factor != 1.0, let words else { return line }
         let p = patterns(words)
+        if p.amountAfterName { return TrailingAmount.scale(line, factor: factor, words: words) }
         if p.unreadable(line) { return line }
         guard let match = p.leading.find(line) else { return line }
         let rest = line.u16Substring(from: match.end)
