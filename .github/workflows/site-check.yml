@@ -8,6 +8,13 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  # Also on a pull request that changes the check itself or its URL list, so
+  # an edited list is proven before it merges. Other PRs never hit the network.
+  pull_request:
+    paths:
+      - .github/workflows/site-check.yml
+      - app/src/test/resources/site-check-urls.txt
+      - app/src/test/java/com/example/recipeclipper/sitecheck/**
 
 concurrency:
   group: site-check

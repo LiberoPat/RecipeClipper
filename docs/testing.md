@@ -43,8 +43,8 @@ the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to
 `app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
 (`app/build.gradle.kts` declares the Swift file as a test input, so editing
-it alone reruns the tests). `SiteReportTest` covers the weekly site check's report and URL list offline
-(see CI below). **270 JVM tests pass.**
+it alone reruns the tests). `SiteReportTest` covers the weekly site check's
+report and URL list offline (see CI below). **270 JVM tests pass.**
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -158,7 +158,8 @@ GitHub Actions, in `.github/workflows/`:
 - **iOS UI tests** (`ios-ui-tests.yml`), about 18 minutes: nightly at 03:00
   UTC and on demand (Actions → iOS UI tests → Run workflow).
 - **Recipe site check** (`site-check.yml`, #32): Mondays at 06:00 UTC and on
-  demand. It runs the real `BlogRecipeSource` (JSON-LD, then microdata) over
+  demand, and on a pull request that changes the check or its URL list. It
+  runs the real `BlogRecipeSource` (JSON-LD, then microdata) over
   the ~20 pages in `app/src/test/resources/site-check-urls.txt`, applying the
   repository's one retry, and writes a table to the job summary: per site,
   parsed or the `ParseError` cause, and for a success the ingredient and step
