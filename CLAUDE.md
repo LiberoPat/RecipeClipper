@@ -38,11 +38,12 @@ Built on both platforms: share → parse → show; automatic history (capped at
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers (in memory); sharing a recipe out as text; failure handling and
 offline; the microdata fallback; a personal note per recipe; export and
-import of everything as one JSON file (Settings). iOS also honours Dynamic
-Type.
+import of everything as one JSON file (Settings); the UI in English,
+Spanish, French, German, Italian and Brazilian Portuguese (drafts awaiting a
+native speaker: `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
-background timer alerts (#10), Reddit (#11), other languages (#13–#16),
+background timer alerts (#10), Reddit (#11), reading recipes in other languages (#12, #14–#16),
 release setup (#18–#22).
 
 ## Commands
@@ -112,8 +113,10 @@ then upsert with no list membership).
 - Parsers are pure: text in, data out, no network, no Android APIs.
 - **Causes, not copy.** Sources and repositories return a `ParseError`; the
   screen picks the words. Every UI string lives in `res/values/strings.xml`
-  (iOS: `Strings.swift`). The exceptions are `RecipeShareText` and
-  `SiteReportLink`, message bodies with English wording by design.
+  plus `values-{es,fr,de,it,pt-rBR}` (iOS: `Localizable.xcstrings`, read
+  through `Strings.swift`); a new string needs all six languages on both
+  platforms. `RecipeShareText` takes its words as `Labels` from the screen;
+  `SiteReportLink` is a report body, English by design.
 - Tests use hand-written fakes (`app/src/test/.../fake/`,
   `ios/RecipeClipperTests/Fakes`), never mocks. Screens take their ViewModel
   as a parameter defaulting to `hiltViewModel()`, so UI tests pass a real
@@ -241,6 +244,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.
+- **Backup is an include list** (`res/xml/data_extraction_rules.xml` and
+  `backup_rules.xml`): the database with its `-wal`/`-shm`, and
+  `unit_preferences.xml`. Anything else, a new file or a renamed one, is not
+  backed up until it's added to both. That excludes the export/import temp
+  file below, which lives in `cacheDir`, never backed up anyway. iOS keeps the
+  database in Application Support, which backups include. Proof and the adb
+  recipe: `docs/testing.md`.
 - **Export/import** (#26) is one versioned JSON file
   (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored). Import
   merges, never replaces or deletes: recipes by cleaned `sourceUrl`,

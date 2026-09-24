@@ -134,7 +134,7 @@ fun RecipeScreen(
             onTimerReset = viewModel::onTimerReset,
             onTimerAlerted = viewModel::onTimerAlerted,
             onShare = {
-                viewModel.shareText()?.let { text ->
+                viewModel.shareText(shareLabels(context.resources))?.let { text ->
                     val title = (viewModel.uiState.value.content as? RecipeContent.Success)
                         ?.recipe?.name.orEmpty()
                     ShareCompat.IntentBuilder(context)
