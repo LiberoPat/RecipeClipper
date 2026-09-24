@@ -31,7 +31,7 @@ final class DefaultBackupRepository: BackupRepository {
                     imageUrl: r.imageUrl, ingredients: r.ingredients, instructions: r.instructions,
                     prepTime: r.prepTime, cookTime: r.cookTime, totalTime: r.totalTime,
                     servings: r.servings, lastViewedAt: r.lastViewedAt,
-                    checkedIngredients: r.checkedIngredients, notes: r.notes
+                    checkedIngredients: r.checkedIngredients, notes: r.notes, language: r.language
                 )
             },
             lists: snapshot.lists.map { l in
