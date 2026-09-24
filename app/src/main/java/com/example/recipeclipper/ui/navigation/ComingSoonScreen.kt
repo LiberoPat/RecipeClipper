@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,7 +26,13 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 fun ComingSoonScreen(@StringRes title: Int, @StringRes description: Int) {
     RecipeClipperTheme {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp)) {
+            // Edge-to-edge: the background fills behind the bars, the content stays clear of
+            // them (the bottom tab bar already consumes its own share of this, above).
+            Column(
+                Modifier
+                    .safeDrawingPadding()
+                    .padding(start = 20.dp, end = 20.dp, top = 24.dp)
+            ) {
                 Text(stringResource(title), style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(12.dp))
                 Hairline()
