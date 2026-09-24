@@ -14,8 +14,11 @@ import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
 import com.example.recipeclipper.fake.FakeListRepository
+import com.example.recipeclipper.fake.FakeMealPlanRepository
+import com.example.recipeclipper.fake.FakePlanCalendar
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
+import com.example.recipeclipper.ui.plan.AddToPlanViewModel
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
 import java.util.concurrent.atomic.AtomicLong
 
@@ -25,7 +28,11 @@ import java.util.concurrent.atomic.AtomicLong
  * hand. The ViewModel's timer ticks every 250 ms of real time but reads the time from [now],
  * so a 20-minute timer finishes as soon as a test moves [now] on, not 20 minutes later.
  */
-class RecipeScreenFixture(recipe: Recipe = testRecipe()) {
+class RecipeScreenFixture(
+    recipe: Recipe = testRecipe(),
+    /** Set to show "Add to plan" (#49), as behind the tab flag. */
+    val plan: FakeMealPlanRepository? = null
+) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
     val lists = FakeListRepository().apply {
@@ -57,7 +64,13 @@ class RecipeScreenFixture(recipe: Recipe = testRecipe()) {
         )
         val saveViewModel = SaveToListViewModel(lists)
         compose.setContent {
-            RecipeScreen(onBack = { backs++ }, viewModel = viewModel, saveViewModel = saveViewModel)
+            RecipeScreen(
+                onBack = { backs++ },
+                viewModel = viewModel,
+                saveViewModel = saveViewModel,
+                mealPlanEnabled = plan != null,
+                planViewModel = plan?.let { AddToPlanViewModel(it, FakePlanCalendar()) }
+            )
         }
         compose.waitForIdle()
     }

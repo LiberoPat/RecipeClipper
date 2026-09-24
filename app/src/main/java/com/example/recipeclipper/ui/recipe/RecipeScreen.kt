@@ -110,8 +110,9 @@ fun RecipeScreen(
     onEdit: (recipeId: Long) -> Unit = {},
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel(),
-    planViewModel: AddToPlanViewModel = hiltViewModel(),
-    mealPlanEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS
+    mealPlanEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS,
+    // Only resolved behind the tab flag (#49), so screen tests without Hilt need not pass one.
+    planViewModel: AddToPlanViewModel? = if (mealPlanEnabled) hiltViewModel() else null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
@@ -124,7 +125,7 @@ fun RecipeScreen(
     var planSheetOpen by rememberSaveable { mutableStateOf(false) }
     // The first timer started asks for permission to post its "time's up" notification.
     val askForNotifications = rememberNotificationPrompt()
-    val actions = remember(viewModel, onBack, onEdit, context, uriHandler, askForNotifications) {
+    val actions = remember(viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel) {
         RecipeActions(
             onBack = onBack,
             onRetry = viewModel::onRetry,
@@ -183,7 +184,7 @@ fun RecipeScreen(
                 (viewModel.uiState.value.content as? RecipeContent.Success)?.recipe?.id?.let(onEdit)
             },
             onUpdateFromSource = viewModel::onUpdateFromSource,
-            onAddToPlan = if (!mealPlanEnabled) null else {
+            onAddToPlan = if (planViewModel == null) null else {
                 {
                     (viewModel.uiState.value.content as? RecipeContent.Success)?.let { loaded ->
                         planViewModel.setRecipe(loaded.recipe.id, loaded.servings?.base)
@@ -284,7 +285,7 @@ fun RecipeScreen(
             if (sheetOpen && recipeId != null) {
                 SaveToListBottomSheet(saveViewModel, onDismiss = { sheetOpen = false })
             }
-            if (planSheetOpen && recipeId != null) {
+            if (planSheetOpen && recipeId != null && planViewModel != null) {
                 AddToPlanBottomSheet(planViewModel, onDismiss = { planSheetOpen = false })
             }
         }

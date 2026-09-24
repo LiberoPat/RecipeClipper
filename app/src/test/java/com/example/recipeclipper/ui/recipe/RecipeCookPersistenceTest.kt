@@ -59,11 +59,13 @@ class RecipeCookPersistenceTest {
     private fun TestScope.open(
         recipe: Recipe,
         repository: FakeRecipeRepository = FakeRecipeRepository(),
-        cookArg: Boolean = false
+        cookArg: Boolean = false,
+        plannedServings: Int? = null
     ): RecipeViewModel {
         repository.openResult = recipe
         val args = mutableMapOf<String, Any?>(RecipeViewModel.RECIPE_ID_ARG to ID)
         if (cookArg) args[RecipeViewModel.COOK_ARG] = true
+        if (plannedServings != null) args[RecipeViewModel.SERVINGS_ARG] = plannedServings
         return RecipeViewModel(
             SavedStateHandle(args), repository, FakeAppPreferences(), Clock { testScheduler.currentTime },
             FakeConnectivity(), FakeAppInfo(), alarms
@@ -82,6 +84,17 @@ class RecipeCookPersistenceTest {
             assertEquals(2, state.cook.currentStep)
             assertEquals(setOf(0, 1), state.cook.doneSteps)
             assertEquals(8, (state.content as RecipeContent.Success).servings?.target)
+        }
+
+    @Test fun `opened from the Week, the planned servings win over the saved ones, unsaved`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            val vm = open(recipe(servingsTarget = 8), repository, plannedServings = 2)
+            advanceUntilIdle()
+
+            assertEquals(2, (vm.uiState.value.content as RecipeContent.Success).servings?.target)
+            // Only a change made here is saved (#49): the plan's figure is for this visit.
+            assertTrue(repository.setServingsTargetCalls.isEmpty())
         }
 
     @Test fun `indexes past the last step are dropped`() = runTest(mainDispatcherRule.dispatcher) {
