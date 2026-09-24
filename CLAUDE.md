@@ -234,6 +234,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.
+- **Backup is an include list** (`res/xml/data_extraction_rules.xml` and
+  `backup_rules.xml`): the database with its `-wal`/`-shm`, and
+  `unit_preferences.xml`. Anything else, a new file or a renamed one, is not
+  backed up until it's added to both. That excludes the export/import temp
+  file below, which lives in `cacheDir`, never backed up anyway. iOS keeps the
+  database in Application Support, which backups include. Proof and the adb
+  recipe: `docs/testing.md`.
 - **Export/import** (#26) is one versioned JSON file
   (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored). Import
   merges, never replaces or deletes: recipes by cleaned `sourceUrl`,
