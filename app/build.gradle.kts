@@ -77,6 +77,13 @@ android {
         }
     }
 
+    // The word and density tables shared with iOS (#9) live in shared/tables/ at the repo
+    // root. As Java resources they land in the APK and on the JVM test classpath alike, so
+    // the pure model code reads them with getResourceAsStream and no Context.
+    sourceSets.getByName("main").resources.srcDir("$rootDir/shared")
+    // shared/fixtures/ is test data (below), not something to ship in the APK.
+    sourceSets.getByName("main").resources.exclude("fixtures/**")
+
     // MigrationTestHelper reads the exported schema JSON from the instrumentation APK's
     // assets, not from the project directory, so the schemas have to be packaged into the
     // androidTest APK. Without this every migration test fails with

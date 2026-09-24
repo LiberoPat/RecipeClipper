@@ -937,3 +937,28 @@ The owner's decision: import **merges, never replaces**, and deletes nothing.
 - **One transaction.** Any failure (a bad file, a database error) writes
   nothing, and the Settings screen shows the cause.
 
+## Shared tables, native logic (#9)
+
+Every feature was built twice and kept at parity by hand, and the language
+work (#12–#16) would have added a word table per language, written twice. The
+owner's decision on #9: stay native on both platforms (no Kotlin
+Multiplatform, which would cost iOS its no-dependency property and need
+multiplatform replacements for Jsoup and org.json), and move the data, not the
+code. The tables are JSON under `shared/tables/`: `url.json` (tracking
+parameters) and, per language, `en/densities.json`, `units.json`,
+`timers.json`, `temperature.json`, `yield.json`, `ranges.json` and
+`sections.json`. Each has a `schemaVersion` and an `about` saying how the code
+reads it.
+
+- Android adds `shared/` as a `main` Java resource directory, so the pure model
+  code reads the tables with `getResourceAsStream`: no `Context`, and the JVM
+  tests read exactly what the APK ships. iOS bundles the folder as a folder
+  reference (`project.yml`) and reads it from `Bundle.main`.
+- Word lists are regex fragments where the code builds a regex from them, so
+  the patterns come out character for character as before; symbols (dashes,
+  degree signs, the F and C letters) stay in the code, being no language's.
+- A missing or malformed table is a build mistake, so both loaders fail loudly.
+  `SharedTablesTest(s)` load every table and check each on-disk file is
+  covered; `DifferentialCorpusTest(s)` passed unchanged across the move.
+- Still in code, as English: `IngredientScaler`'s "plus"/"and" continuation,
+  and the words the app writes out (e.g. `StepTimers.label`'s "hr" and "min").

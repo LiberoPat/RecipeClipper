@@ -21,6 +21,10 @@ targets:
     platform: iOS
     sources:
       - path: RecipeClipper
+      # The word and density tables shared with Android (#9), bundled as a tables/ folder.
+      - path: ../shared/tables
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: RecipeClipperShare
         embed: true
