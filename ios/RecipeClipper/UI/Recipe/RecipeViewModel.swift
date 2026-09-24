@@ -250,6 +250,35 @@ final class RecipeViewModel {
         }
     }
 
+    /// "Update from source" (#29), confirmed in the view first: replaces the user's version with
+    /// the site's. The recipe stays on screen meanwhile; on success it is shown afresh, on
+    /// failure it is kept as it was and `updateError` says why.
+    func onUpdateFromSource() {
+        guard let recipe = uiState.content.success?.recipe, recipe.canUpdateFromSource,
+              !uiState.updatingFromSource else { return }
+        uiState.updatingFromSource = true
+        uiState.updateError = nil
+        Task { [weak self, repository] in
+            let result = await repository.updateFromSource(id: recipe.id)
+            guard let self else { return }
+            uiState.updatingFromSource = false
+            switch result {
+            case .success(let fresh):
+                // Steps may have changed: drop this screen's alarms; restoreCook reschedules
+                // whatever the saved progress still holds.
+                for step in deadlines.keys { alarms.cancel(recipeId: recipe.id, step: step) }
+                uiState.content = .success(successContent(fresh))
+                uiState.checkedIngredients = fresh.checkedIngredients
+                restoreCook(fresh)
+            case .error(let error):
+                uiState.updateError = error
+            }
+        }
+    }
+
+    /// The view has shown `updateError`.
+    func onUpdateErrorShown() { uiState.updateError = nil }
+
     func onServingsChange(_ target: Int) {
         guard var content = uiState.content.success, let servings = content.servings else { return }
         let scale = ServingsScale(base: servings.base, target: min(max(target, 1), Servings.max))

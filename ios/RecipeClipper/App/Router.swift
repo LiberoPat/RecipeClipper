@@ -14,6 +14,13 @@ final class Router {
         path.append(route)
     }
 
+    /// Drops the top `count` entries and pushes `route` in their place: how a saved edit
+    /// reopens the recipe afresh instead of returning to the copy loaded before it.
+    func replace(last count: Int, with route: Route) {
+        path.removeLast(min(count, path.count))
+        path.append(route)
+    }
+
     func handle(_ url: URL) {
         guard let shared = DeepLink.sharedUrl(from: url) else { return }
         push(.importUrl(shared))

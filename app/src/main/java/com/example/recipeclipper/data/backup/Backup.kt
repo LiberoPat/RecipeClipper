@@ -51,7 +51,12 @@ data class BackupRecipe(
     val checkedIngredients: Set<Int>,
     val notes: String?,
     /** The recipe's language tag (#14), so an import reads it with the same words. */
-    val language: String? = null
+    val language: String? = null,
+    /** Whose words the content is (#29): "PARSED" (absent in older files), "EDITED",
+     *  "CLIPPED" or "MANUAL". Kept so an imported edit is still never refreshed by a re-share. */
+    val contentOrigin: String = "PARSED",
+    /** When the user last saved an edit, or null. */
+    val editedAt: Long? = null
 )
 
 data class BackupList(

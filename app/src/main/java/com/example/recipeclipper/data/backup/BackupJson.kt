@@ -13,7 +13,8 @@ import org.json.JSONTokener
  * { "format": "recipe-clipper-backup", "formatVersion": 1, "exportedAt": <epoch ms>,
  *   "recipes":     [{ "id", "sourceUrl", "sourceType", "title", "imageUrl", "ingredients",
  *                     "instructions", "prepTime", "cookTime", "totalTime", "servings",
- *                     "lastViewedAt", "checkedIngredients", "notes", "language" }],
+ *                     "lastViewedAt", "checkedIngredients", "notes", "language",
+ *                     "contentOrigin", "editedAt" }],
  *   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
  *   "memberships": [{ "recipeId", "listId", "addedAt" }] }
  * ```
@@ -85,7 +86,9 @@ object BackupJson {
                 lastViewedAt = r.long(o, "lastViewedAt") ?: 0L,
                 checkedIngredients = r.ints(o, "checkedIngredients").toSet(),
                 notes = r.string(o, "notes"),
-                language = r.string(o, "language")
+                language = r.string(o, "language"),
+                contentOrigin = r.string(o, "contentOrigin")?.takeIf { it.isNotBlank() } ?: "PARSED",
+                editedAt = r.long(o, "editedAt")
             )
         }
         requireUniqueIds(recipes.map { it.id }, "recipes")
@@ -220,6 +223,8 @@ object BackupJson {
         put("checkedIngredients", JSONArray(checkedIngredients.sorted()))
         put("notes", notes.orNull())
         put("language", language.orNull())
+        put("contentOrigin", contentOrigin)
+        put("editedAt", editedAt ?: JSONObject.NULL)
     }
 
     private fun BackupList.toJson() = JSONObject().apply {

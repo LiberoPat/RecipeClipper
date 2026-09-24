@@ -4,6 +4,48 @@ package com.example.recipeclipper.data.model
 enum class SourceType { BLOG, REDDIT }
 
 /**
+ * Whose words a recipe's content is (#29, #37), stored by name in `contentOrigin`.
+ * Only [PARSED] is the source's: every other value is the user's version, which a re-share
+ * never refreshes. "Update from source" is the one way back to [PARSED].
+ */
+enum class ContentOrigin {
+    /** As parsed from its link. Refreshed on every re-share. */
+    PARSED,
+    /** Parsed, then changed by the user. */
+    EDITED,
+    /** Picked from the page by hand (#37). Stays CLIPPED when edited. */
+    CLIPPED,
+    /** Typed in by hand; its link is a synthetic [ManualRecipe] key, never fetched. */
+    MANUAL;
+
+    /** The user's version: a re-share opens it as it is, without fetching. */
+    val isUsersVersion: Boolean get() = this != PARSED
+
+    /** The origin after the user saves an edit: a parsed recipe becomes EDITED; the rest keep theirs. */
+    fun afterEdit(): ContentOrigin = if (this == PARSED) EDITED else this
+
+    companion object {
+        /** Stored by name; an unknown name (a newer app's) reads as the user's version, EDITED,
+         *  so it is never overwritten by a re-share. */
+        fun fromName(name: String?): ContentOrigin =
+            if (name == null) PARSED else entries.firstOrNull { it.name == name } ?: EDITED
+    }
+}
+
+/**
+ * A recipe typed in by hand has no link, but `sourceUrl` is the unique upsert key, so it gets
+ * a synthetic one: `manual:<uuid>`. It is never fetched or cleaned, and has no host, so no
+ * source credit, Open original or Report is shown for it.
+ */
+object ManualRecipe {
+    const val SCHEME = "manual:"
+
+    fun newSourceUrl(uuid: String): String = SCHEME + uuid
+
+    fun isManual(sourceUrl: String): Boolean = sourceUrl.startsWith(SCHEME)
+}
+
+/**
  * A recipe as the rest of the app sees it, distinct from the Room entity: the repository
  * maps between them. A freshly parsed recipe has no [id] yet (0); one that came out of the
  * database always does.
@@ -34,8 +76,16 @@ data class Recipe(
     /** Where the cook stands on this recipe: cook mode, steps done, step timers. */
     val cook: CookProgress = CookProgress(),
     /** The servings the user chose, or null for the recipe's own yield. */
-    val servingsTarget: Int? = null
-)
+    val servingsTarget: Int? = null,
+    /** Whose words the content is; see [ContentOrigin]. */
+    val origin: ContentOrigin = ContentOrigin.PARSED,
+    /** When the user last saved an edit, or null if never. */
+    val editedAt: Long? = null
+) {
+    /** "Update from source" applies: the user's version of a recipe that has a real link. */
+    val canUpdateFromSource: Boolean
+        get() = origin.isUsersVersion && origin != ContentOrigin.MANUAL && !ManualRecipe.isManual(sourceUrl)
+}
 
 /** What a list row (history, home) needs, without loading every ingredient and step. */
 data class RecipeSummary(

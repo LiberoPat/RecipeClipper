@@ -98,6 +98,10 @@ final class AppContainer {
         )
     }
 
+    func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {
+        EditRecipeViewModel(recipeId: recipeId, repository: recipeRepository)
+    }
+
     func makeSaveToListViewModel() -> SaveToListViewModel {
         SaveToListViewModel(repository: listRepository)
     }

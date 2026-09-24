@@ -184,4 +184,25 @@
     <string name="timer_channel_name">Minuteurs de cuisine</string>
     <string name="timer_channel_description">Quand le minuteur d\'une étape se termine alors que l\'appli est fermée ou en arrière-plan</string>
     <string name="timer_notification_title">Temps écoulé : étape %1$d</string>
+
+    <!-- Editing a recipe, or typing one in (#29) -->
+    <string name="action_edit">Modifier</string>
+    <string name="action_update_from_source">Mettre à jour depuis la source</string>
+    <string name="action_update">Mettre à jour</string>
+    <string name="action_new_recipe">+ Nouvelle recette</string>
+    <string name="update_from_source_title">Remplacer votre version ?</string>
+    <string name="update_from_source_body">La recette sera de nouveau récupérée sur son site et remplacera votre version. Vos modifications seront perdues ; votre note et vos listes sont conservées.</string>
+    <string name="update_from_source_failed">Impossible de mettre à jour depuis la source. %1$s</string>
+    <string name="edit_title_new">Nouvelle recette</string>
+    <string name="edit_title_edit">Modifier la recette</string>
+    <string name="edit_label_name">Nom</string>
+    <string name="edit_label_yield">Portions ou quantité</string>
+    <string name="edit_label_prep">Temps de préparation</string>
+    <string name="edit_label_cook">Temps de cuisson</string>
+    <string name="edit_label_total">Temps total</string>
+    <string name="edit_label_ingredients">Ingrédients, un par ligne</string>
+    <string name="edit_label_steps">Étapes, une par ligne</string>
+    <string name="edit_label_photo">Lien de la photo (facultatif)</string>
+    <string name="edit_error_invalid">Une recette a besoin d\'un nom, et d\'ingrédients ou d\'étapes.</string>
+    <string name="edit_error_save_failed">Impossible d\'enregistrer la recette. Réessayez.</string>
 </resources>

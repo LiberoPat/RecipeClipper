@@ -6,12 +6,14 @@ import SwiftUI
 struct RecipeScreen: View {
     let vm: RecipeViewModel
     let saveVM: SaveToListViewModel
+    var onEdit: (Int64) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
     @Environment(\.openURL) private var openURL
     @State private var sheetOpen = false
     @State private var confirmingDelete = false
+    @State private var confirmingUpdate = false
 
     var body: some View {
         let state = vm.uiState
@@ -95,6 +97,19 @@ struct RecipeScreen: View {
         } message: {
             Text(Strings.deleteRecipeBody)
         }
+        .alert(Strings.updateFromSourceTitle, isPresented: $confirmingUpdate) {
+            Button(Strings.update, role: .destructive, action: vm.onUpdateFromSource)
+            Button(Strings.cancel, role: .cancel) {}
+        } message: {
+            Text(Strings.updateFromSourceBody)
+        }
+        // "Update from source" failed: the recipe on screen is unchanged; say why, once.
+        .alert(
+            state.updateError.map { Strings.updateFromSourceFailed(Strings.message(for: $0)) } ?? "",
+            isPresented: Binding(get: { vm.uiState.updateError != nil }, set: { if !$0 { vm.onUpdateErrorShown() } })
+        ) {
+            // No actions: the system supplies its own, localized OK.
+        }
     }
 
     /// "Try again", and beside it "Report this site" only for a page with no recipe (the
@@ -128,7 +143,19 @@ struct RecipeScreen: View {
             .accessibilityLabel(Strings.shareRecipe)
         }
 
+        if vm.uiState.updatingFromSource {
+            ProgressView().tint(Palette.primary)
+        }
+
         Menu {
+            Button { onEdit(content.recipe.id) } label: {
+                Label(Strings.edit, systemImage: "pencil")
+            }
+            if content.recipe.canUpdateFromSource && !vm.uiState.updatingFromSource {
+                Button { confirmingUpdate = true } label: {
+                    Label(Strings.updateFromSource, systemImage: "arrow.clockwise")
+                }
+            }
             Button(role: .destructive) { confirmingDelete = true } label: {
                 Label(Strings.delete, systemImage: "trash")
             }

@@ -218,4 +218,25 @@
     <string name="timer_channel_name">Cook timers</string>
     <string name="timer_channel_description">When a step timer ends while the app is closed or in the background</string>
     <string name="timer_notification_title">Time\'s up: step %1$d</string>
+
+    <!-- Editing a recipe, or typing one in (#29) -->
+    <string name="action_edit">Edit</string>
+    <string name="action_update_from_source">Update from source</string>
+    <string name="action_update">Update</string>
+    <string name="action_new_recipe">+ New recipe</string>
+    <string name="update_from_source_title">Replace your version?</string>
+    <string name="update_from_source_body">This fetches the recipe from its site again and replaces your version. Your changes to it will be lost; your note and lists stay.</string>
+    <string name="update_from_source_failed">Couldn\'t update from source. %1$s</string>
+    <string name="edit_title_new">New recipe</string>
+    <string name="edit_title_edit">Edit recipe</string>
+    <string name="edit_label_name">Name</string>
+    <string name="edit_label_yield">Serves or makes</string>
+    <string name="edit_label_prep">Prep time</string>
+    <string name="edit_label_cook">Cook time</string>
+    <string name="edit_label_total">Total time</string>
+    <string name="edit_label_ingredients">Ingredients, one per line</string>
+    <string name="edit_label_steps">Steps, one per line</string>
+    <string name="edit_label_photo">Photo link (optional)</string>
+    <string name="edit_error_invalid">A recipe needs a name, and ingredients or steps.</string>
+    <string name="edit_error_save_failed">Couldn\'t save the recipe. Try again.</string>
 </resources>
