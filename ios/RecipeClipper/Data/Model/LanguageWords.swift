@@ -42,13 +42,20 @@ final class LanguageWords: Equatable, @unchecked Sendable {
     private var compiled: [ObjectIdentifier: Any] = [:]
 
     /// The patterns `owner` builds from these words, built once per language. Each parser keeps
-    /// its own, so its regexes stay beside its logic.
+    /// its own, so its regexes stay beside its logic. Built outside the lock, as Kotlin's
+    /// `getOrPut` does: one parser's patterns build another's (UnitConverter's use
+    /// IngredientScaler's), and a race only builds the same thing twice.
     func compiled<T>(_ owner: T.Type, _ build: (LanguageWords) -> T) -> T {
+        let key = ObjectIdentifier(owner)
+        lock.lock()
+        let existing = compiled[key] as? T
+        lock.unlock()
+        if let existing { return existing }
+        let built = build(self)
         lock.lock()
         defer { lock.unlock() }
-        if let existing = compiled[ObjectIdentifier(owner)] as? T { return existing }
-        let built = build(self)
-        compiled[ObjectIdentifier(owner)] = built
+        if let raced = compiled[key] as? T { return raced }
+        compiled[key] = built
         return built
     }
 
