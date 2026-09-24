@@ -63,13 +63,14 @@ class RecipeScreenFixture(
             FakeTimerAlarmScheduler()
         )
         val saveViewModel = SaveToListViewModel(lists)
+        val planViewModel = plan?.let { AddToPlanViewModel(it, FakePlanCalendar()) }
         compose.setContent {
             RecipeScreen(
                 onBack = { backs++ },
                 viewModel = viewModel,
                 saveViewModel = saveViewModel,
                 mealPlanEnabled = plan != null,
-                planViewModel = plan?.let { AddToPlanViewModel(it, FakePlanCalendar()) }
+                planViewModel = planViewModel
             )
         }
         compose.waitForIdle()
