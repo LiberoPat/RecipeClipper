@@ -111,11 +111,36 @@ protocol ListRepository: AnyObject {
     func deleteList(listId: Int64) async
 }
 
-/// The user's global defaults. Plain vars (not publishers) exactly like Android:
-/// RecipeViewModel reads them once at init, which is why Settings is reachable from Home only.
+/// The user's global defaults. Read and written through the vars; `settings` publishes them so
+/// a screen left open underneath Settings follows a change as it is made (#24), like
+/// Android's `AppPreferences.settings` Flow.
 protocol AppPreferences: AnyObject {
     var unitSystem: UnitSystem { get set }
     var convertLiquids: Bool { get set }
     var temperatureUnit: TemperatureUnit { get set }
     var darkWhileCooking: Bool { get set }
+
+    /// The current values first, then every change, never repeating a value. Delivery may be
+    /// asynchronous, so a subscriber receives on main.
+    var settings: AnyPublisher<AppSettings, Never> { get }
+}
+
+extension AppPreferences {
+    /// The four values as they are right now.
+    var current: AppSettings {
+        AppSettings(
+            unitSystem: unitSystem,
+            convertLiquids: convertLiquids,
+            temperatureUnit: temperatureUnit,
+            darkWhileCooking: darkWhileCooking
+        )
+    }
+}
+
+/// One snapshot of AppPreferences, as its `settings` publisher emits them.
+struct AppSettings: Equatable {
+    var unitSystem: UnitSystem = .asWritten
+    var convertLiquids = false
+    var temperatureUnit: TemperatureUnit = .asWritten
+    var darkWhileCooking = false
 }
