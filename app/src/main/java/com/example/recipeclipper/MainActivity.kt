@@ -3,6 +3,7 @@ package com.example.recipeclipper
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.rememberNavController
@@ -27,6 +28,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Edge-to-edge is enforced from targetSdk 35 and can't be opted out of from 36, so
+        // turn it on everywhere: transparent bars on every API level, and each screen pads
+        // its content with the safe-drawing insets. Icon contrast is set by the theme.
+        enableEdgeToEdge()
         shareHandled = savedInstanceState?.getBoolean(STATE_SHARE_HANDLED) ?: false
 
         setContent {

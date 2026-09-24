@@ -15,7 +15,7 @@ import com.example.recipeclipper.data.local.entity.newUid
 
 @Database(
     entities = [RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -126,11 +126,23 @@ abstract class RecipeDatabase : RoomDatabase() {
                 "lower(hex(randomblob(6)))"
 
         /**
+         * Adds the recipe's language tag (issue #14), which picks the words its lines are read
+         * with. Nullable, no default: a recipe stored before has none and is detected from its
+         * own words when shown, since the page's declared language can't be rebuilt from what
+         * was stored. A re-share fills it in.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recipes ADD COLUMN language TEXT")
+            }
+        }
+
+        /**
          * Adds saved cook progress and the chosen servings (issue #10). Both nullable with no
          * default, like [MIGRATION_2_3]: an existing recipe has no cook in progress and uses
          * its own yield.
          */
-        val MIGRATION_4_5 = object : Migration(4, 5) {
+        val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE recipes ADD COLUMN cookState TEXT")
                 db.execSQL("ALTER TABLE recipes ADD COLUMN servingsTarget INTEGER")
@@ -138,6 +150,6 @@ abstract class RecipeDatabase : RoomDatabase() {
         }
 
         /** Every migration, in order: what the app and the tests open the database with. */
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
     }
 }

@@ -18,12 +18,16 @@ enum IngredientScaler {
         "⅜": 3 / 8.0, "⅝": 5 / 8.0, "⅞": 7 / 8.0,
     ]
 
-    // "1 1/2", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that order. A comma followed by
-    // one or two digits is a decimal comma; one followed by three ("1,500") may be a thousands
-    // separator, so it is never read as part of a quantity, and `ambiguousComma` leaves the line.
-    static let qty =
-        #"(?:\d+\s+\d+/\d+|\d+\s*["# + unicodeFractions + #"]|\d+/\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# +
-        unicodeFractions + #"])"#
+    // "1 1/2", "2 and 1/2", "1 and ½", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that
+    // order. The "and" is the language's (amounts.json "mixedJoiners"). A fraction's slash may
+    // be the typographic U+2044 ("1⁄2", as BBC Good Food writes it), a symbol rather than a
+    // word, so it stays here. A comma followed by one or two digits is a decimal comma; one
+    // followed by three ("1,500") may be a thousands separator, so it is never read as part
+    // of a quantity, and `ambiguousComma` leaves the line.
+    private static func qtyPattern(_ joiner: String) -> String {
+        #"(?:\d+\s+(?:"# + joiner + #"\s+)?\d+[/⁄]\d+|\d+\s+"# + joiner + #"\s+["# + unicodeFractions + #"]|\d+\s*["# +
+            unicodeFractions + #"]|\d+[/⁄]\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# + unicodeFractions + #"])"#
+    }
 
     /// "1,5": the line writes decimals with a comma, so its output does too.
     static let decimalComma = JRegex(#"\d,\d{1,2}(?!\d)"#)
@@ -38,36 +42,64 @@ enum IngredientScaler {
         comma ? decimalPoint.replace(text, with: ",") : text
     }
 
-    // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
-    static let leading = JRegex(#"^(\s*)("# + qty + #")(?:(\s*[-–—]\s*|\s+to\s+)("# + qty + #"))?"#)
+    /// The patterns that read one language's words (shared/tables/<language>/amounts.json).
+    final class Patterns {
+        let words: LanguageWords
 
-    // What follows the number when it is a size or a percentage, not an amount.
-    static let notAnAmount = JRegex(#"^\s*-?\s*(?:%|inch(?:es)?\b|cm\b|mm\b)"#, ignoreCase: true)
+        /// A quantity, in this language's words ("2 and 1/2"). No capturing group.
+        let qty: String
 
-    // A quantity followed by a unit. groups: 1 quantity, 2 space, 3 unit
-    static let qtyUnit = JRegex("(" + qty + #")(\s*)"# + UnitPatterns.captured, ignoreCase: true)
+        // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
+        let leading: JRegex
 
-    // "1 cup (120 g) flour": a second measure of the same amount, right after a unit word.
-    // A parenthesis straight after the number ("1 (14 oz) can") or after a container word
-    // ("1 can (14 oz)") is a package size, not an alternate measure, and is never scaled.
-    private static let altParen =
-        JRegex(#"^(\s*"# + UnitPatterns.plain + #"\s*\()([^)]*)(\))"#, ignoreCase: true)
+        // What follows the number when it is a size or a percentage, not an amount.
+        let notAnAmount: JRegex
 
-    // "1 cup/120 grams flour". groups: 1 prefix, 2 quantity, 3 space, 4 unit
-    private static let altSlash = JRegex(
-        #"^(\s*"# + UnitPatterns.plain + #"\s*/\s*)("# + qty + #")(\s*)"# + UnitPatterns.captured,
-        ignoreCase: true
-    )
+        // A quantity followed by a unit. groups: 1 quantity, 2 space, 3 unit
+        let qtyUnit: JRegex
 
-    // The word joining the two parts of a compound amount: "1 cup plus 2 tbsp", "1 cup + 2 tbsp".
-    static let continuation = #"(?:plus\s+|and\s+|\+\s*)"#
+        // "1 cup (120 g) flour": a second measure of the same amount, right after a unit word.
+        // A parenthesis straight after the number ("1 (14 oz) can") or after a container word
+        // ("1 can (14 oz)") is a package size, not an alternate measure, and is never scaled.
+        let altParen: JRegex
 
-    // "1 cup plus 2 tbsp (140 g) flour": the second part of a compound amount, which scales
-    // with the first. groups: 1 prefix, 2 quantity, 3 space, 4 unit
-    private static let continued = JRegex(
-        #"^(\s*"# + UnitPatterns.plain + #"\s*"# + continuation + #")("# + qty + #")(\s*)"# + UnitPatterns.captured,
-        ignoreCase: true
-    )
+        // "1 cup/120 grams flour", or a range "250 - 300 g / 8 - 10 oz pasta".
+        // groups: 1 prefix, 2 quantity, 3 range separator, 4 range upper bound, 5 space, 6 unit
+        let altSlash: JRegex
+
+        // The word joining the two parts of a compound amount: "1 cup plus 2 tbsp", "1 cup + 2 tbsp".
+        let continuation: String
+
+        // "1 cup plus 2 tbsp (140 g) flour": the second part of a compound amount, which scales
+        // with the first. groups: 1 prefix, 2 quantity, 3 space, 4 unit
+        let continued: JRegex
+
+        init(_ words: LanguageWords) {
+            self.words = words
+            let qty = IngredientScaler.qtyPattern(SharedTables.alternation(words.strings("amounts", "mixedJoiners")))
+            self.qty = qty
+            let units = UnitPatterns.of(words)
+            leading = JRegex(#"^(\s*)("# + qty + #")(?:(\s*[-–—]\s*|\s+"# + words.rangeWords + #"\s+)("# + qty + #"))?"#)
+            notAnAmount = JRegex(
+                #"^\s*-?\s*(?:"# + (["%"] + words.strings("amounts", "sizes") + [#"cm\b"#, #"mm\b"#]).joined(separator: "|") + ")",
+                ignoreCase: true
+            )
+            qtyUnit = JRegex("(" + qty + #")(\s*)"# + units.captured, ignoreCase: true)
+            altParen = JRegex(#"^(\s*"# + units.plain + #"\s*\()([^)]*)(\))"#, ignoreCase: true)
+            altSlash = JRegex(
+                #"^(\s*"# + units.plain + #"\s*/\s*)("# + qty + #")(?:(\s*[-–—]\s*|\s+"# + words.rangeWords + #"\s+)("# +
+                    qty + #"))?(\s*)"# + units.captured,
+                ignoreCase: true
+            )
+            continuation = "(?:" + (words.strings("amounts", "continuation") + [#"\+\s*"#]).joined(separator: "|") + ")"
+            continued = JRegex(
+                #"^(\s*"# + units.plain + #"\s*"# + continuation + #")("# + qty + #")(\s*)"# + units.captured,
+                ignoreCase: true
+            )
+        }
+    }
+
+    static func patterns(_ words: LanguageWords) -> Patterns { words.compiled(Patterns.self, Patterns.init) }
 
     // Nearest-fraction table used when formatting; anything further than `tolerance`
     // from all of these falls back to a plain decimal.
@@ -80,12 +112,14 @@ enum IngredientScaler {
 
     private static let whitespace = JRegex(#"\s+"#)
 
-    static func scale(_ line: String, factor: Double) -> String {
-        if factor == 1.0 { return line }
+    /// `words` nil: a language the app has no words for, so the line stays as written.
+    static func scale(_ line: String, factor: Double, words: LanguageWords? = .english) -> String {
+        guard factor != 1.0, let words else { return line }
         if ambiguousComma.containsMatch(in: line) { return line }
-        guard let match = leading.find(line) else { return line }
+        let p = patterns(words)
+        guard let match = p.leading.find(line) else { return line }
         let rest = line.u16Substring(from: match.end)
-        if notAnAmount.containsMatch(in: rest) { return line }
+        if p.notAnAmount.containsMatch(in: rest) { return line }
 
         let comma = decimalComma.containsMatch(in: line)
         guard let low = parse(match[2]) else { return line }
@@ -97,7 +131,7 @@ enum IngredientScaler {
             guard let high = parse(upperRaw) else { return line }
             scaled = formatLeading(low * factor, comma: comma) + match[3] + formatLeading(high * factor, comma: comma)
         }
-        return match[1] + scaled + scaleContinuation(rest, factor: factor, comma: comma)
+        return match[1] + scaled + scaleContinuation(p, rest, factor: factor, comma: comma)
     }
 
     // A line that writes "1,5" reads decimals, not fractions: "1,5 kg" x 1.5 is "2,25 kg".
@@ -106,31 +140,37 @@ enum IngredientScaler {
     }
 
     /// Scales "plus 2 tbsp" and whatever alternate measure follows it, else just the alternate.
-    private static func scaleContinuation(_ rest: String, factor: Double, comma: Bool) -> String {
-        guard let m = continued.find(rest),
-              let unit = MeasureUnit.fromText(m[4]),
-              let value = parse(m[2]) else { return scaleAlternateMeasure(rest, factor: factor, comma: comma) }
+    private static func scaleContinuation(_ p: Patterns, _ rest: String, factor: Double, comma: Bool) -> String {
+        guard let m = p.continued.find(rest),
+              let unit = MeasureUnit.fromText(m[4], words: p.words),
+              let value = parse(m[2]) else { return scaleAlternateMeasure(p, rest, factor: factor, comma: comma) }
         let tail = m[3] + m[4] + rest.u16Substring(from: m.end)
         return m[1] + formatFor(unit, value * factor, comma: comma) +
-            scaleAlternateMeasure(tail, factor: factor, comma: comma)
+            scaleAlternateMeasure(p, tail, factor: factor, comma: comma)
     }
 
     /// Keeps "(120 g)" or "/120 grams" in step with the leading amount that was just scaled.
-    private static func scaleAlternateMeasure(_ rest: String, factor: Double, comma: Bool) -> String {
-        if let m = altParen.find(rest) {
-            let inner = qtyUnit.replace(m[2]) { scalePair($0, factor: factor, comma: comma) }
+    private static func scaleAlternateMeasure(_ p: Patterns, _ rest: String, factor: Double, comma: Bool) -> String {
+        if let m = p.altParen.find(rest) {
+            let inner = p.qtyUnit.replace(m[2]) { scalePair(p, $0, factor: factor, comma: comma) }
             return m[1] + inner + m[3] + rest.u16Substring(from: m.end)
         }
-        if let m = altSlash.find(rest),
-           let unit = MeasureUnit.fromText(m[4]),
+        if let m = p.altSlash.find(rest),
+           let unit = MeasureUnit.fromText(m[6], words: p.words),
            let value = parse(m[2]) {
-            return m[1] + formatFor(unit, value * factor, comma: comma) + m[3] + m[4] + rest.u16Substring(from: m.end)
+            let upper = m[4]
+            let high = upper.isEmpty ? nil : parse(upper)
+            if upper.isEmpty || high != nil {
+                let range = high.map { m[3] + formatFor(unit, $0 * factor, comma: comma) } ?? ""
+                return m[1] + formatFor(unit, value * factor, comma: comma) + range + m[5] + m[6] +
+                    rest.u16Substring(from: m.end)
+            }
         }
         return rest
     }
 
-    private static func scalePair(_ match: JMatch, factor: Double, comma: Bool) -> String {
-        guard let unit = MeasureUnit.fromText(match[3]) else { return match.value }
+    private static func scalePair(_ p: Patterns, _ match: JMatch, factor: Double, comma: Bool) -> String {
+        guard let unit = MeasureUnit.fromText(match[3], words: p.words) else { return match.value }
         guard let value = parse(match[1]) else { return match.value }
         return formatFor(unit, value * factor, comma: comma) + match[2] + match[3]
     }
@@ -146,9 +186,17 @@ enum IngredientScaler {
         plainDecimal(value, scale: value >= 10 ? 0 : 1)
     }
 
+    // The language's word between a whole number and its fraction, which the quantity pattern
+    // has already checked: "2 and 1/2" is "2 1/2" in any language.
+    private static let joiner = JRegex(#"\s+\p{L}[\p{L}\s]*?\s+(?=[\d"# + unicodeFractions + #"])"#)
+
     static func parse(_ quantity: String) -> Double? {
         // `qty` only lets a comma through as a decimal comma, never before three digits.
-        let q = quantity.kTrimmed.replacingOccurrences(of: ",", with: ".")
+        // "2 and 1/2" is "2 1/2", and "1⁄2" (U+2044) is "1/2".
+        let q = joiner.replace(
+            quantity.kTrimmed.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "⁄", with: "/"),
+            with: " "
+        )
         guard let last = q.last else { return nil }
         if let fraction = unicodeValues[last] {
             let whole = String(q.dropLast()).kTrimmed

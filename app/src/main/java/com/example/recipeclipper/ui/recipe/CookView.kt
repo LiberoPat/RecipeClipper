@@ -1,8 +1,8 @@
 package com.example.recipeclipper.ui.recipe
 
-import android.app.Activity
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,7 +34,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.StepTimers
 
 private enum class StepStatus { DONE, CURRENT, UPCOMING }
@@ -93,6 +93,8 @@ internal fun CookView(
                     text = text,
                     status = status,
                     timerSeconds = content.stepTimerSeconds.getOrNull(index),
+                    // A step has a timer only when the app has the recipe's words.
+                    timerWords = content.words ?: LanguageWords.ENGLISH,
                     timer = cook.timers[index],
                     isLast = index == steps.lastIndex,
                     actions = actions
@@ -192,6 +194,7 @@ private fun CookStep(
     text: String,
     status: StepStatus,
     timerSeconds: Int?,
+    timerWords: LanguageWords,
     timer: StepTimer?,
     isLast: Boolean,
     actions: RecipeActions
@@ -215,7 +218,7 @@ private fun CookStep(
             Text(text, style = body.copy(fontSize = 21.sp, lineHeight = 30.sp))
             if (timerSeconds != null || timer != null) {
                 Spacer(Modifier.height(16.dp))
-                CurrentTimer(index, timerSeconds, timer, actions)
+                CurrentTimer(index, timerSeconds, timerWords, timer, actions)
             }
             Spacer(Modifier.height(20.dp))
             Button(
@@ -275,6 +278,7 @@ private fun CookStep(
 private fun CurrentTimer(
     step: Int,
     timerSeconds: Int?,
+    timerWords: LanguageWords,
     timer: StepTimer?,
     actions: RecipeActions
 ) {
@@ -287,7 +291,7 @@ private fun CurrentTimer(
             border = BorderStroke(1.dp, colors.outline)
         ) {
             Text(
-                stringResource(R.string.timer_start, StepTimers.label(timerSeconds)),
+                stringResource(R.string.timer_start, StepTimers.label(timerSeconds, timerWords)),
                 style = MaterialTheme.typography.labelLarge
             )
         }
@@ -331,7 +335,7 @@ private fun CurrentTimer(
 /** Cook mode holds the screen awake: nobody wants it dimming with flour on their hands. */
 @Composable
 private fun KeepScreenOn() {
-    val window = (LocalContext.current as? Activity)?.window
+    val window = LocalActivity.current?.window
     DisposableEffect(window) {
         window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }

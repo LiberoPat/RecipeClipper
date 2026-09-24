@@ -15,13 +15,14 @@ final class RecipeViewModelTests: XCTestCase {
             "Cool completely."
         ],
         checkedIngredients: Set<Int> = [],
-        notes: String? = nil
+        notes: String? = nil,
+        language: String? = nil
     ) -> Recipe {
         Recipe(
             name: "Test Recipe", image: nil, ingredients: ingredients, instructions: instructions,
             prepTime: "10m", cookTime: "20m", totalTime: "30m", yield: yield,
             sourceUrl: "https://example.com/recipe", id: id, checkedIngredients: checkedIngredients,
-            notes: notes
+            notes: notes, language: language
         )
     }
 
@@ -703,6 +704,33 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.shareText(), expected)
     }
 
+    /// The exact text Share hands the share sheet, pinned rather than rebuilt from the state:
+    /// plain text, as shown on screen (scaled and converted), with no source link. Android's
+    /// RecipeScreenTest pins the same shape.
+    func testShareTextIsThePlainTextOfTheScaledConvertedRecipe() async {
+        let (vm, _) = await loaded()
+
+        vm.onServingsChange(8)
+        vm.onUnitSystemChange(.metric)
+
+        XCTAssertEqual(vm.shareText(), """
+            Test Recipe
+
+            Serves 8 (originally 4)
+            Prep 10m · Cook 20m · Total 30m
+
+            INGREDIENTS
+            480 g flour
+            480 ml milk
+
+            INSTRUCTIONS
+            1. Preheat the oven to 350°F.
+            2. Mix for 5 minutes.
+            3. Bake for 10 minutes.
+            4. Cool completely.
+            """)
+    }
+
     func testShareTextIsNilUntilARecipeIsLoaded() {
         let vm = makeViewModel(id: 1, repository: repository(testRecipe()))
         XCTAssertNil(vm.shareText())
@@ -716,5 +744,29 @@ final class RecipeViewModelTests: XCTestCase {
 
         XCTAssertEqual(repository.deleteCalls, [9])
         XCTAssertTrue(vm.uiState.deleted)
+    }
+
+    // MARK: The recipe's language (#14)
+
+    func testARecipeInALanguageWithNoWordsIsShownAsWritten() async {
+        let preferences = FakeAppPreferences(unitSystem: .metric, convertLiquids: true, temperatureUnit: .celsius)
+        let (vm, _) = await loaded(testRecipe(language: "de-de"), preferences: preferences)
+        guard let content = success(vm) else { return }
+        XCTAssertNil(content.words)
+        XCTAssertNil(content.servings) // no stepper: its lines couldn't be scaled
+        XCTAssertEqual(content.ingredients, ["2 cups flour", "1 cup milk"])
+        XCTAssertEqual(content.instructions, testRecipe().instructions)
+        XCTAssertTrue(content.stepTimerSeconds.allSatisfy { $0 == nil })
+    }
+
+    func testAnEnglishRecipeDeclaredOrDetectedIsReadWithEnglishWords() async {
+        for language in ["en-gb", nil] {
+            let (vm, _) = await loaded(testRecipe(language: language), preferences: FakeAppPreferences(unitSystem: .metric))
+            guard let content = success(vm) else { return }
+            XCTAssertEqual(content.words, LanguageWords.english)
+            XCTAssertEqual(content.servings?.base, 4)
+            XCTAssertEqual(content.ingredients, ["240 g flour", "240 ml milk"])
+            XCTAssertEqual(content.stepTimerSeconds, [nil, 300, 600, nil])
+        }
     }
 }

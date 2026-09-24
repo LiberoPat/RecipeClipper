@@ -30,6 +30,10 @@ struct Recipe: Equatable {
     var lastViewedAt: Int64 = 0
     /// The user's own free-text note, or nil. Never parsed, so re-sharing keeps it.
     var notes: String? = nil
+    /// The recipe's language tag as the parser chose it ("en", "de-de"; see `LanguageWords`),
+    /// which picks the words its lines are read with. Nil for a recipe stored before #14, which
+    /// is detected from its words when shown.
+    var language: String? = nil
     /// Where the cook stands on this recipe: cook mode, steps done, step timers.
     var cook = CookProgress()
     /// The servings the user chose, or nil for the recipe's own yield.

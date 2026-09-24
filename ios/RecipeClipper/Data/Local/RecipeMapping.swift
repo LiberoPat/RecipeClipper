@@ -20,6 +20,7 @@ extension Recipe {
             lastViewedAt: viewedAt,
             checkedIngredients: checkedIngredients,
             notes: notes,
+            language: language,
             cookState: CookStateJSON.encode(cook),
             servingsTarget: servingsTarget
         )
@@ -43,6 +44,7 @@ extension RecipeRecord {
             checkedIngredients: checkedIngredients,
             lastViewedAt: lastViewedAt,
             notes: notes,
+            language: language,
             cook: CookStateJSON.decode(cookState),
             servingsTarget: servingsTarget
         )

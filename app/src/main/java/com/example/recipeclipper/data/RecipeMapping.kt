@@ -27,6 +27,7 @@ internal fun Recipe.toEntity(viewedAt: Long) = RecipeEntity(
     lastViewedAt = viewedAt,
     checkedIngredients = checkedIngredients,
     notes = notes,
+    language = language,
     cookState = CookStateJson.encode(cook),
     servingsTarget = servingsTarget
 )
@@ -46,6 +47,7 @@ internal fun RecipeEntity.toDomain() = Recipe(
     checkedIngredients = checkedIngredients,
     lastViewedAt = lastViewedAt,
     notes = notes,
+    language = language,
     cook = CookStateJson.decode(cookState),
     servingsTarget = servingsTarget
 )

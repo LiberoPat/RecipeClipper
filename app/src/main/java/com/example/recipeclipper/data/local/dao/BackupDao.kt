@@ -101,7 +101,8 @@ abstract class BackupDao {
                     sourceType = r.sourceType,
                     lastViewedAt = r.lastViewedAt,
                     checkedIngredients = r.checkedIngredients,
-                    notes = r.notes
+                    notes = r.notes,
+                    language = r.language
                 )
             )
         }

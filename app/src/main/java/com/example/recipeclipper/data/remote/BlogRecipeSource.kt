@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
@@ -76,7 +77,7 @@ class BlogRecipeSource(
         private fun parse(doc: Document, url: String): ParseResult {
             val ldJsonScripts = doc.select("script[type=application/ld+json]").map { it.data() }
             // Microdata only when there is no JSON-LD recipe, so no working site changes.
-            val recipe = JsonLdRecipeParser.parse(ldJsonScripts, url)
+            val recipe = JsonLdRecipeParser.parse(ldJsonScripts, url, JsonLdRecipeParser.pageLanguage(doc))
                 ?: MicrodataRecipeParser.parse(doc, url)
             return if (recipe != null) ParseResult.Success(recipe) else ParseResult.Error(ParseError.NoRecipeFound)
         }
@@ -104,7 +105,11 @@ internal object JsonLdRecipeParser {
      *  string (not fetching a URL) does no network I/O, so this keeps the parser pure. */
     private fun stripHtml(raw: String): String = Jsoup.parse(raw).text()
 
-    fun parse(jsonLdBlocks: List<String>, sourceUrl: String): Recipe? {
+    /** The page's declared language, `<html lang>`, which a recipe without `inLanguage` takes. */
+    fun pageLanguage(doc: Document): String? = doc.selectFirst("html")?.attr("lang")?.ifBlank { null }
+
+    /** [pageLanguage] is the page's `<html lang>`, the fallback for a recipe without `inLanguage`. */
+    fun parse(jsonLdBlocks: List<String>, sourceUrl: String, pageLanguage: String? = null): Recipe? {
         for (block in jsonLdBlocks) {
             val recipeJson = try {
                 findRecipeNode(JSONTokener(block).nextValue())
@@ -120,7 +125,7 @@ internal object JsonLdRecipeParser {
                 null
             }
             if (recipeJson != null) {
-                parseRecipeJson(recipeJson, sourceUrl)?.let { return it }
+                parseRecipeJson(recipeJson, sourceUrl, pageLanguage)?.let { return it }
             }
         }
         return null
@@ -165,10 +170,16 @@ internal object JsonLdRecipeParser {
 
     // --- Turning the matched Recipe JSON object into our data class ---
 
-    private fun parseRecipeJson(json: JSONObject, sourceUrl: String): Recipe? {
+    private fun parseRecipeJson(json: JSONObject, sourceUrl: String, pageLanguage: String?): Recipe? {
         val name = stripHtml(json.optString("name")).ifBlank { return null }
         val ingredients = extractStringList(json.opt("recipeIngredient") ?: json.opt("ingredients"))
-        val instructions = extractInstructions(json.opt("recipeInstructions"))
+        // The ingredient lines are read the same in any language; the steps, times and yield
+        // need the language's words (condensed-section names, duration and range words).
+        val language = LanguageWords.resolve(declaredLanguage(json.opt("inLanguage")), pageLanguage) {
+            LanguageWords.detectionText(name, ingredients)
+        }
+        val words = LanguageWords.forTag(language)
+        val instructions = extractInstructions(json.opt("recipeInstructions"), words)
         if (ingredients.isEmpty() && instructions.isEmpty()) return null
 
         return Recipe(
@@ -176,12 +187,21 @@ internal object JsonLdRecipeParser {
             image = extractImage(json.opt("image")),
             ingredients = ingredients,
             instructions = instructions,
-            prepTime = formatDuration(json.optString("prepTime", "")),
-            cookTime = formatDuration(json.optString("cookTime", "")),
-            totalTime = formatDuration(json.optString("totalTime", "")),
-            yield = extractYield(json.opt("recipeYield")),
-            sourceUrl = sourceUrl
+            prepTime = formatDuration(json.optString("prepTime", ""), words),
+            cookTime = formatDuration(json.optString("cookTime", ""), words),
+            totalTime = formatDuration(json.optString("totalTime", ""), words),
+            yield = extractYield(json.opt("recipeYield"), words),
+            sourceUrl = sourceUrl,
+            language = language
         )
+    }
+
+    /** `inLanguage` as a tag ("en-US"), or a schema.org Language with one in `alternateName`. */
+    private fun declaredLanguage(node: Any?): String? = when (node) {
+        is String -> node
+        is JSONObject -> node.optString("alternateName").ifBlank { null }
+        is JSONArray -> if (node.length() > 0) declaredLanguage(node.opt(0)) else null
+        else -> null
     }
 
     private fun extractImage(node: Any?): String? = when (node) {
@@ -205,24 +225,30 @@ internal object JsonLdRecipeParser {
     }
 
     /**
-     * Names of a HowToSection that restates the whole recipe in condensed form ahead of the
-     * real steps. RecipeTin Eats (WP Recipe Maker) opens with an "Abbreviated Recipe" section
-     * holding a one-paragraph summary; kept, it became step 1 in cook mode (with a timer read
-     * out of the summary) followed by the same steps again in full. Compared after
-     * [stripHtml], trimmed and lowercased; exact matches only, never a substring, so a real
-     * section that merely mentions "summary" is untouched. Add a name only once a real site
-     * is seen publishing it.
+     * Whether [item] is a HowToSection that restates the whole recipe in condensed form ahead
+     * of the real steps. RecipeTin Eats (WP Recipe Maker) opens with an "Abbreviated Recipe"
+     * section holding a one-paragraph summary; kept, it became step 1 in cook mode (with a
+     * timer read out of the summary) followed by the same steps again in full. The names are
+     * the language's `sections.json`, compared after [stripHtml], trimmed and lowercased;
+     * exact matches only, never a substring, so a real section that merely mentions "summary"
+     * is untouched. Add a name only once a real site is seen publishing it.
      */
-    private val CONDENSED_SECTION_NAMES: Set<String> =
-        SharedTables.strings(SharedTables.load("sections").getJSONArray("condensed")).toSet()
-
-    private fun isCondensedSection(item: Any?): Boolean =
+    private fun isCondensedSection(item: Any?, names: Set<String>): Boolean =
         item is JSONObject &&
             item.optString("@type").equals("HowToSection", ignoreCase = true) &&
-            stripHtml(item.optString("name")).trim().lowercase() in CONDENSED_SECTION_NAMES
+            stripHtml(item.optString("name")).trim().lowercase() in names
 
-    private fun extractInstructions(node: Any?): List<String> {
+    private fun condensedSectionNames(words: LanguageWords?): Set<String> =
+        words?.compiled(CondensedSections::class) { w ->
+            CondensedSections(w.strings("sections", "condensed").toSet())
+        }?.names.orEmpty()
+
+    private class CondensedSections(val names: Set<String>)
+
+    private fun extractInstructions(node: Any?, words: LanguageWords?): List<String> {
         val steps = mutableListOf<String>()
+        val condensedNames = condensedSectionNames(words)
+        fun condensed(item: Any?) = isCondensedSection(item, condensedNames)
 
         // HowToSection names ("For the sauce") are not emitted: sections are flattened into
         // one list of steps, so cook mode's step numbering stays simple. Showing them as
@@ -251,10 +277,10 @@ internal object JsonLdRecipeParser {
                     it is JSONObject && it.optString("@type").equals("HowToSection", ignoreCase = true)
                 }
                 // With two or more sections, drop a condensed duplicate of the recipe (see
-                // CONDENSED_SECTION_NAMES) - but only when what's left still has steps, so a
+                // isCondensedSection) - but only when what's left still has steps, so a
                 // recipe is never emptied by this. A lone section is never skipped.
-                if (sectionCount >= 2 && items.any(::isCondensedSection)) {
-                    items.filterNot(::isCondensedSection).forEach(::addStep)
+                if (sectionCount >= 2 && items.any(::condensed)) {
+                    items.filterNot(::condensed).forEach(::addStep)
                     if (steps.isEmpty()) items.forEach(::addStep)
                 } else {
                     items.forEach(::addStep)
@@ -268,10 +294,11 @@ internal object JsonLdRecipeParser {
         return steps
     }
 
-    private fun extractYield(node: Any?): String? = when (node) {
+    private fun extractYield(node: Any?, words: LanguageWords?): String? = when (node) {
         is String -> stripHtml(node).ifBlank { null }
         is JSONArray -> Servings.pickYield(
-            (0 until node.length()).mapNotNull { extractYield(node.opt(it)) }
+            (0 until node.length()).mapNotNull { extractYield(node.opt(it), words) },
+            words
         )
         is JSONObject -> stripHtml(node.optString("value")).ifBlank { null }
         else -> node?.toString()
@@ -283,44 +310,58 @@ internal object JsonLdRecipeParser {
     )
 
     /**
-     * An English duration phrase, as Condé Nast sites (Bon Appétit, Epicurious) publish
+     * A duration phrase in the recipe's words, as Condé Nast sites (Bon Appétit, Epicurious) publish
      * instead of ISO: "20 minutes", "1 hour", "1 hour 30 minutes", "1 hr, 5 mins",
      * "1 hour and 30 minutes". Whole-string only (used with matchEntire): whole numbers, an
      * hours part and/or a minutes part, nothing else. A range ("1-2 hours", "20 to 25
      * minutes"), a fraction or a word ("Overnight") does not match and is shown as written.
      */
-    private val PHRASE_DURATION = Regex(
-        "\\s*(?:(\\d+)\\s*(?:hours|hour|hrs|hr|h)" +
-            "(?:\\s*,?\\s*(?:\\band\\s+)?(\\d+)\\s*(?:minutes|minute|mins|min|m))?" +
-            "|(\\d+)\\s*(?:minutes|minute|mins|min|m))\\s*",
-        RegexOption.IGNORE_CASE
-    )
+    private class Durations(words: LanguageWords) {
+        private val hours = SharedTables.alternation(words.strings("durations", "hours"))
+        private val minutes = SharedTables.alternation(words.strings("durations", "minutes"))
+        private val joiners = SharedTables.alternation(words.strings("durations", "joiners"))
+
+        val phrase = Regex(
+            "\\s*(?:(\\d+)\\s*$hours" +
+                "(?:\\s*,?\\s*(?:\\b$joiners\\s+)?(\\d+)\\s*$minutes)?" +
+                "|(\\d+)\\s*$minutes)\\s*",
+            RegexOption.IGNORE_CASE
+        )
+        val hourSymbol: String = words.table("durations").getString("hourSymbol")
+        val minuteSymbol: String = words.table("durations").getString("minuteSymbol")
+    }
+
+    private fun durations(words: LanguageWords): Durations = words.compiled(Durations::class) { Durations(it) }
 
     /**
-     * Turns an ISO-8601 duration like "PT1H30M", or a plain English phrase like
+     * Turns an ISO-8601 duration like "PT1H30M", or a plain phrase in the recipe's words like
      * "1 hour 30 minutes", into "1h 30m". Either one totalling zero ("PT0S", "P0D",
      * "0 minutes") is null, so the label is hidden rather than showing "PT0S". Anything else
      * is returned as written (trimmed): never guess at "Overnight" or "20 to 25 minutes".
+     * With [words] null (a language the app has no words for) only ISO is read, and written
+     * back with English's symbols.
      */
-    internal fun formatDuration(raw: String): String? {
+    internal fun formatDuration(raw: String, words: LanguageWords? = LanguageWords.ENGLISH): String? {
         val text = raw.trim()
         if (text.isBlank()) return null
+        val d = durations(words ?: LanguageWords.ENGLISH)
 
         ISO_DURATION.find(text)?.takeIf { m -> m.groupValues.drop(1).any { it.isNotBlank() } }?.let { match ->
             val days = match.groupValues[1].toIntOrNull() ?: 0
             val hours = match.groupValues[2].toIntOrNull() ?: 0
             val minutes = match.groupValues[3].toIntOrNull() ?: 0
             val seconds = match.groupValues[4].toDoubleOrNull() ?: 0.0
-            return renderMinutes(days * 24 * 60 + hours * 60 + minutes + (seconds / 60.0).roundToInt(), text)
+            return renderMinutes(days * 24 * 60 + hours * 60 + minutes + (seconds / 60.0).roundToInt(), text, d)
         }
 
-        PHRASE_DURATION.matchEntire(text)?.let { match ->
+        if (words == null) return text
+        d.phrase.matchEntire(text)?.let { match ->
             val g = match.groupValues
             // A figure too large for an Int is not a real time: show it as written.
             val hours = if (g[1].isEmpty()) 0 else g[1].toIntOrNull() ?: return text
             val minutesText = g[2].ifEmpty { g[3] }
             val minutes = if (minutesText.isEmpty()) 0 else minutesText.toIntOrNull() ?: return text
-            return renderMinutes(hours * 60 + minutes, text)
+            return renderMinutes(hours * 60 + minutes, text, d)
         }
 
         return text
@@ -328,14 +369,14 @@ internal object JsonLdRecipeParser {
 
     /** "1h 30m", "1h" or "20m"; null for a zero total; [asWritten] for a total that
      *  overflowed to a negative number. */
-    private fun renderMinutes(totalMinutes: Int, asWritten: String): String? {
+    private fun renderMinutes(totalMinutes: Int, asWritten: String, d: Durations): String? {
         if (totalMinutes == 0) return null
         val h = totalMinutes / 60
         val m = totalMinutes % 60
         return when {
-            h > 0 && m > 0 -> "${h}h ${m}m"
-            h > 0 -> "${h}h"
-            m > 0 -> "${m}m"
+            h > 0 && m > 0 -> "$h${d.hourSymbol} $m${d.minuteSymbol}"
+            h > 0 -> "$h${d.hourSymbol}"
+            m > 0 -> "$m${d.minuteSymbol}"
             else -> asWritten
         }
     }

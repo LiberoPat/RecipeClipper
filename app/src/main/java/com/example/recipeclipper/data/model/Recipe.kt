@@ -25,6 +25,12 @@ data class Recipe(
     val lastViewedAt: Long = 0,
     /** The user's own free-text note, or null. Never parsed, so re-sharing keeps it. */
     val notes: String? = null,
+    /**
+     * The recipe's language tag as the parser chose it ("en", "de-de"; see [LanguageWords]),
+     * which picks the words its lines are read with. Null for a recipe stored before #14,
+     * which is detected from its words when shown.
+     */
+    val language: String? = null,
     /** Where the cook stands on this recipe: cook mode, steps done, step timers. */
     val cook: CookProgress = CookProgress(),
     /** The servings the user chose, or null for the recipe's own yield. */

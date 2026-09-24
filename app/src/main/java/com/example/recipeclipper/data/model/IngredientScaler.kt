@@ -25,11 +25,15 @@ object IngredientScaler {
         '⅜' to 3 / 8.0, '⅝' to 5 / 8.0, '⅞' to 7 / 8.0
     )
 
-    // "1 1/2", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that order. A comma followed by
-    // one or two digits is a decimal comma; one followed by three ("1,500") may be a thousands
-    // separator, so it is never read as part of a quantity, and AMBIGUOUS_COMMA leaves the line.
-    internal const val QTY =
-        """(?:\d+\s+\d+/\d+|\d+\s*[$UNICODE_FRACTIONS]|\d+/\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|[$UNICODE_FRACTIONS])"""
+    // "1 1/2", "2 and 1/2", "1 and ½", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that
+    // order. The "and" is the language's (amounts.json "mixedJoiners"). A fraction's slash may
+    // be the typographic U+2044 ("1⁄2", as BBC Good Food writes it), a symbol rather than a
+    // word, so it stays here. A comma followed by one or two digits is a decimal comma; one
+    // followed by three ("1,500") may be a thousands separator, so it is never read as part
+    // of a quantity, and AMBIGUOUS_COMMA leaves the line.
+    private fun qtyPattern(joiner: String) =
+        """(?:\d+\s+(?:$joiner\s+)?\d+[/⁄]\d+|\d+\s+$joiner\s+[$UNICODE_FRACTIONS]|\d+\s*[$UNICODE_FRACTIONS]|""" +
+            """\d+[/⁄]\d+|\d+(?:\.\d+|,\d{1,2}(?!\d))?|[$UNICODE_FRACTIONS])"""
 
     /** "1,5": the line writes decimals with a comma, so its output does too. */
     internal val DECIMAL_COMMA = Regex("""\d,\d{1,2}(?!\d)""")
@@ -43,37 +47,50 @@ object IngredientScaler {
     internal fun withSeparator(text: String, comma: Boolean): String =
         if (comma) DECIMAL_POINT.replace(text, ",") else text
 
-    // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
-    internal val LEADING = Regex("""^(\s*)($QTY)(?:(\s*[-–—]\s*|\s+to\s+)($QTY))?""")
+    /** The patterns that read one language's words (shared/tables/<language>/amounts.json). */
+    internal class Patterns(val words: LanguageWords) {
+        private val units = UnitPatterns.of(words)
 
-    // What follows the number when it is a size or a percentage, not an amount.
-    internal val NOT_AN_AMOUNT =
-        Regex("""^\s*-?\s*(?:%|inch(?:es)?\b|cm\b|mm\b)""", RegexOption.IGNORE_CASE)
+        /** A quantity, in this language's words ("2 and 1/2"). No capturing group. */
+        val qty = qtyPattern(SharedTables.alternation(words.strings("amounts", "mixedJoiners")))
 
-    // A quantity followed by a unit. groups: 1 quantity, 2 space, 3 unit
-    internal val QTY_UNIT = Regex("""($QTY)(\s*)${UnitPatterns.CAPTURED}""", RegexOption.IGNORE_CASE)
+        // groups: 1 leading space, 2 quantity, 3 range separator, 4 range upper bound
+        val leading = Regex("""^(\s*)($qty)(?:(\s*[-–—]\s*|\s+${words.rangeWords}\s+)($qty))?""")
 
-    // "1 cup (120 g) flour": a second measure of the same amount, right after a unit word.
-    // A parenthesis straight after the number ("1 (14 oz) can") or after a container word
-    // ("1 can (14 oz)") is a package size, not an alternate measure, and is never scaled.
-    private val ALT_PAREN =
-        Regex("""^(\s*${UnitPatterns.PLAIN}\s*\()([^)]*)(\))""", RegexOption.IGNORE_CASE)
+        // What follows the number when it is a size or a percentage, not an amount.
+        val notAnAmount = Regex(
+            """^\s*-?\s*""" + (listOf("%") + words.strings("amounts", "sizes") + listOf("""cm\b""", """mm\b"""))
+                .joinToString("|", "(?:", ")"),
+            RegexOption.IGNORE_CASE
+        )
 
-    // "1 cup/120 grams flour". groups: 1 prefix, 2 quantity, 3 space, 4 unit
-    private val ALT_SLASH = Regex(
-        """^(\s*${UnitPatterns.PLAIN}\s*/\s*)($QTY)(\s*)${UnitPatterns.CAPTURED}""",
-        RegexOption.IGNORE_CASE
-    )
+        // A quantity followed by a unit. groups: 1 quantity, 2 space, 3 unit
+        val qtyUnit = Regex("""($qty)(\s*)${units.captured}""", RegexOption.IGNORE_CASE)
 
-    // The word joining the two parts of a compound amount: "1 cup plus 2 tbsp", "1 cup + 2 tbsp".
-    internal const val CONTINUATION = """(?:plus\s+|and\s+|\+\s*)"""
+        // "1 cup (120 g) flour": a second measure of the same amount, right after a unit word.
+        // A parenthesis straight after the number ("1 (14 oz) can") or after a container word
+        // ("1 can (14 oz)") is a package size, not an alternate measure, and is never scaled.
+        val altParen = Regex("""^(\s*${units.plain}\s*\()([^)]*)(\))""", RegexOption.IGNORE_CASE)
 
-    // "1 cup plus 2 tbsp (140 g) flour": the second part of a compound amount, which scales
-    // with the first. groups: 1 prefix, 2 quantity, 3 space, 4 unit
-    private val CONTINUED = Regex(
-        """^(\s*${UnitPatterns.PLAIN}\s*$CONTINUATION)($QTY)(\s*)${UnitPatterns.CAPTURED}""",
-        RegexOption.IGNORE_CASE
-    )
+        // "1 cup/120 grams flour", or a range "250 - 300 g / 8 - 10 oz pasta".
+        // groups: 1 prefix, 2 quantity, 3 range separator, 4 range upper bound, 5 space, 6 unit
+        val altSlash = Regex(
+            """^(\s*${units.plain}\s*/\s*)($qty)(?:(\s*[-–—]\s*|\s+${words.rangeWords}\s+)($qty))?(\s*)${units.captured}""",
+            RegexOption.IGNORE_CASE
+        )
+
+        // The word joining the two parts of a compound amount: "1 cup plus 2 tbsp", "1 cup + 2 tbsp".
+        val continuation = (words.strings("amounts", "continuation") + """\+\s*""").joinToString("|", "(?:", ")")
+
+        // "1 cup plus 2 tbsp (140 g) flour": the second part of a compound amount, which scales
+        // with the first. groups: 1 prefix, 2 quantity, 3 space, 4 unit
+        val continued = Regex(
+            """^(\s*${units.plain}\s*$continuation)($qty)(\s*)${units.captured}""",
+            RegexOption.IGNORE_CASE
+        )
+    }
+
+    internal fun patterns(words: LanguageWords): Patterns = words.compiled(Patterns::class) { Patterns(it) }
 
     // Nearest-fraction table used when formatting; anything further than TOLERANCE
     // from all of these falls back to a plain decimal.
@@ -84,12 +101,14 @@ object IngredientScaler {
     )
     private const val TOLERANCE = 0.02
 
-    fun scale(line: String, factor: Double): String {
-        if (factor == 1.0) return line
+    /** [words] null: a language the app has no words for, so the line stays as written. */
+    fun scale(line: String, factor: Double, words: LanguageWords? = LanguageWords.ENGLISH): String {
+        if (factor == 1.0 || words == null) return line
         if (AMBIGUOUS_COMMA.containsMatchIn(line)) return line
-        val match = LEADING.find(line) ?: return line
+        val p = patterns(words)
+        val match = p.leading.find(line) ?: return line
         val rest = line.substring(match.range.last + 1)
-        if (NOT_AN_AMOUNT.containsMatchIn(rest)) return line
+        if (p.notAnAmount.containsMatchIn(rest)) return line
 
         val comma = DECIMAL_COMMA.containsMatchIn(line)
         val low = parse(match.groupValues[2]) ?: return line
@@ -100,7 +119,7 @@ object IngredientScaler {
             val high = parse(upperRaw) ?: return line
             formatLeading(low * factor, comma) + match.groupValues[3] + formatLeading(high * factor, comma)
         }
-        return match.groupValues[1] + scaled + scaleContinuation(rest, factor, comma)
+        return match.groupValues[1] + scaled + scaleContinuation(p, rest, factor, comma)
     }
 
     // A line that writes "1,5" reads decimals, not fractions: "1,5 kg" x 1.5 is "2,25 kg".
@@ -111,34 +130,37 @@ object IngredientScaler {
         BigDecimal(value).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 
     /** Scales "plus 2 tbsp" and whatever alternate measure follows it, else just the alternate. */
-    private fun scaleContinuation(rest: String, factor: Double, comma: Boolean): String {
-        val m = CONTINUED.find(rest) ?: return scaleAlternateMeasure(rest, factor, comma)
-        val unit = MeasureUnit.fromText(m.groupValues[4]) ?: return scaleAlternateMeasure(rest, factor, comma)
-        val value = parse(m.groupValues[2]) ?: return scaleAlternateMeasure(rest, factor, comma)
+    private fun scaleContinuation(p: Patterns, rest: String, factor: Double, comma: Boolean): String {
+        val m = p.continued.find(rest) ?: return scaleAlternateMeasure(p, rest, factor, comma)
+        val unit = MeasureUnit.fromText(m.groupValues[4], p.words) ?: return scaleAlternateMeasure(p, rest, factor, comma)
+        val value = parse(m.groupValues[2]) ?: return scaleAlternateMeasure(p, rest, factor, comma)
         val tail = m.groupValues[3] + m.groupValues[4] + rest.substring(m.range.last + 1)
         return m.groupValues[1] + formatFor(unit, value * factor, comma) +
-                scaleAlternateMeasure(tail, factor, comma)
+                scaleAlternateMeasure(p, tail, factor, comma)
     }
 
     /** Keeps "(120 g)" or "/120 grams" in step with the leading amount that was just scaled. */
-    private fun scaleAlternateMeasure(rest: String, factor: Double, comma: Boolean): String {
-        ALT_PAREN.find(rest)?.let { m ->
-            val inner = QTY_UNIT.replace(m.groupValues[2]) { scalePair(it, factor, comma) }
+    private fun scaleAlternateMeasure(p: Patterns, rest: String, factor: Double, comma: Boolean): String {
+        p.altParen.find(rest)?.let { m ->
+            val inner = p.qtyUnit.replace(m.groupValues[2]) { scalePair(p, it, factor, comma) }
             return m.groupValues[1] + inner + m.groupValues[3] + rest.substring(m.range.last + 1)
         }
-        ALT_SLASH.find(rest)?.let { m ->
-            val unit = MeasureUnit.fromText(m.groupValues[4])
+        p.altSlash.find(rest)?.let { m ->
+            val unit = MeasureUnit.fromText(m.groupValues[6], p.words)
             val value = parse(m.groupValues[2])
-            if (unit != null && value != null) {
-                return m.groupValues[1] + formatFor(unit, value * factor, comma) + m.groupValues[3] +
-                        m.groupValues[4] + rest.substring(m.range.last + 1)
+            val upper = m.groupValues[4]
+            val high = if (upper.isEmpty()) null else parse(upper)
+            if (unit != null && value != null && (upper.isEmpty() || high != null)) {
+                val range = if (high == null) "" else m.groupValues[3] + formatFor(unit, high * factor, comma)
+                return m.groupValues[1] + formatFor(unit, value * factor, comma) + range + m.groupValues[5] +
+                        m.groupValues[6] + rest.substring(m.range.last + 1)
             }
         }
         return rest
     }
 
-    private fun scalePair(match: MatchResult, factor: Double, comma: Boolean): String {
-        val unit = MeasureUnit.fromText(match.groupValues[3]) ?: return match.value
+    private fun scalePair(p: Patterns, match: MatchResult, factor: Double, comma: Boolean): String {
+        val unit = MeasureUnit.fromText(match.groupValues[3], p.words) ?: return match.value
         val value = parse(match.groupValues[1]) ?: return match.value
         return formatFor(unit, value * factor, comma) + match.groupValues[2] + match.groupValues[3]
     }
@@ -155,9 +177,14 @@ object IngredientScaler {
         return BigDecimal(value).setScale(scale, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
     }
 
+    // The language's word between a whole number and its fraction, which the quantity pattern
+    // has already checked: "2 and 1/2" is "2 1/2" in any language.
+    private val JOINER = Regex("""\s+\p{L}[\p{L}\s]*?\s+(?=[\d$UNICODE_FRACTIONS])""")
+
     internal fun parse(quantity: String): Double? {
-        // QTY only lets a comma through as a decimal comma, never before three digits.
-        val q = quantity.trim().replace(',', '.')
+        // The quantity pattern only lets a comma through as a decimal comma, never before three digits.
+        // "2 and 1/2" is "2 1/2", and "1⁄2" (U+2044) is "1/2".
+        val q = quantity.trim().replace(',', '.').replace('⁄', '/').replace(JOINER, " ")
         val last = q.last()
         UNICODE_VALUES[last]?.let { fraction ->
             val whole = q.dropLast(1).trim()

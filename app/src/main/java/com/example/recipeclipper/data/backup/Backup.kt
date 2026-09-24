@@ -49,7 +49,9 @@ data class BackupRecipe(
     val servings: String?,
     val lastViewedAt: Long,
     val checkedIngredients: Set<Int>,
-    val notes: String?
+    val notes: String?,
+    /** The recipe's language tag (#14), so an import reads it with the same words. */
+    val language: String? = null
 )
 
 data class BackupList(

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from the translation table for issue #13; a native speaker should review.
+     See docs/translations.md. -->
+<resources>
+    <string name="action_back">‹  Voltar</string>
+    <string name="action_exit">✕  Sair</string>
+    <string name="action_try_again">Tentar novamente</string>
+    <string name="action_report_site">Reportar este site</string>
+    <string name="action_start_cooking">Começar a cozinhar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_delete">Excluir</string>
+    <string name="action_undo">Desfazer</string>
+    <string name="action_pause">Pausar</string>
+    <string name="action_resume">Retomar</string>
+    <string name="action_reset">Zerar</string>
+    <string name="action_go">Ir</string>
+    <string name="cd_share_recipe">Compartilhar receita</string>
+    <string name="cd_more_options">Mais opções</string>
+    <string name="delete_recipe_title">Excluir “%1$s”?</string>
+    <string name="delete_recipe_body">A receita será removida do histórico e de todas as listas em que estiver. Isso não pode ser desfeito.</string>
+    <string name="label_prep">Preparo</string>
+    <string name="label_cook">Cozimento</string>
+    <string name="label_total">Total</string>
+    <string name="heading_ingredients">Ingredientes</string>
+    <string name="heading_instructions">Modo de preparo</string>
+    <string name="heading_notes">Anotações</string>
+    <string name="notes_placeholder">Adicionar uma anotação</string>
+    <string name="action_open_original">Abrir original</string>
+    <string name="cd_open_original">Abrir a receita original em %1$s</string>
+    <string name="error_no_recipe_found">Não encontramos dados de receita nesta página. Alguns sites ainda não marcam as receitas de um jeito que este app consiga ler.</string>
+    <string name="error_fetch_failed">Não foi possível carregar a página (%1$s).</string>
+    <string name="error_blocked">O site bloqueou o app (HTTP %1$d). Isso costuma passar rápido: tente de novo em um minuto.</string>
+    <string name="error_offline">Você está offline. A receita será carregada quando você voltar a ficar online.</string>
+    <string name="error_fetch_failed_unknown_detail">erro desconhecido</string>
+    <string name="error_save_failed">Não foi possível salvar a receita.</string>
+    <string name="error_not_saved">Essa receita não está mais salva.</string>
+    <string name="error_nothing_to_show">Não há receita para mostrar.</string>
+    <string name="error_invalid_url">Isso não parece um link.</string>
+    <string name="label_serves">Porções</string>
+    <string name="label_makes">Rende</string>
+    <string name="cd_decrease_servings">Diminuir porções</string>
+    <string name="cd_increase_servings">Aumentar porções</string>
+    <string name="cd_decrease_amount">Diminuir quantidade</string>
+    <string name="cd_increase_amount">Aumentar quantidade</string>
+    <string name="original_servings">Original: %1$s</string>
+    <string name="cd_change_units">Alterar unidades</string>
+    <string name="units_menu_header">Unidades  ·   todas as receitas</string>
+    <string name="unit_as_written">Como na receita</string>
+    <string name="unit_ounces">Onças</string>
+    <string name="unit_metric">Métrico</string>
+    <string name="unit_as_written_description">Exatamente as unidades da receita</string>
+    <string name="unit_ounces_description">Xícaras e colheres em onças e libras</string>
+    <string name="unit_metric_description">Gramas e mililitros</string>
+    <string name="convert_liquids_title">Converter também os líquidos</string>
+    <string name="convert_liquids_description">Leite, água, óleo e outros líquidos</string>
+    <plurals name="servings">
+        <item quantity="one">%1$d porção</item>
+        <item quantity="many">%1$d de porções</item>
+        <item quantity="other">%1$d porções</item>
+    </plurals>
+    <string name="cook_step_label">PASSO %1$d</string>
+    <string name="cook_position">Passo %1$d de %2$d</string>
+    <string name="cook_done_next">Feito — próximo passo</string>
+    <string name="cook_done_finish">Feito — concluir</string>
+    <string name="cd_hide_ingredients">Ocultar ingredientes</string>
+    <string name="cd_show_ingredients">Mostrar ingredientes</string>
+    <string name="cd_go_to_step">Ir para o passo %1$d</string>
+    <string name="timer_start">⏱  Timer de %1$s</string>
+    <string name="timers_up">O tempo acabou</string>
+    <string name="home_subtitle">Compartilhe o link de uma receita com este app pelo navegador ou cole aqui.</string>
+    <string name="label_recipe_url">URL da receita</string>
+    <string name="section_continue_cooking">Continuar cozinhando</string>
+    <string name="section_recently_viewed">Vistas recentemente</string>
+    <string name="home_empty_hint">As receitas que você abrir vão aparecer aqui.</string>
+    <string name="nav_history">Histórico</string>
+    <string name="history_title">Histórico</string>
+    <string name="history_empty">Nada por aqui ainda. As receitas que você abrir ficam guardadas aqui automaticamente.</string>
+    <string name="history_no_results">Nenhuma receita corresponde a “%1$s”.</string>
+    <string name="label_search_history">Buscar títulos e ingredientes</string>
+    <string name="cd_clear_search">Limpar busca</string>
+    <string name="snackbar_deleted_one">“%1$s” excluída</string>
+    <plurals name="snackbar_deleted_many">
+        <item quantity="one">%1$d receita excluída</item>
+        <item quantity="many">%1$d de receitas excluídas</item>
+        <item quantity="other">%1$d receitas excluídas</item>
+    </plurals>
+    <string name="tag_saved">Salva</string>
+    <string name="time_just_now">Agora mesmo</string>
+    <string name="time_yesterday">Ontem</string>
+    <string name="time_date_format">d \'de\' MMM</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one">há %d min</item>
+        <item quantity="many">há %d min</item>
+        <item quantity="other">há %d min</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="one">há %d h</item>
+        <item quantity="many">há %d h</item>
+        <item quantity="other">há %d h</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one">há %d dia</item>
+        <item quantity="many">há %d de dias</item>
+        <item quantity="other">há %d dias</item>
+    </plurals>
+    <string name="dark_while_cooking_title">Escuro ao cozinhar</string>
+    <string name="dark_while_cooking_description">Modo cozinhar com fundo escuro mesmo no modo claro</string>
+    <string name="nav_settings">Configurações</string>
+    <string name="settings_title">Configurações</string>
+    <string name="settings_section_units">Unidades</string>
+    <string name="settings_section_oven_temperature">Temperatura do forno</string>
+    <string name="settings_section_appearance">Aparência</string>
+    <string name="settings_section_your_recipes">Suas receitas</string>
+
+    <string name="backup_export_title">Exportar receitas</string>
+    <string name="backup_export_description">Salvar todas as receitas e listas em um arquivo, para guardar ou levar para outro celular</string>
+    <string name="backup_import_title">Importar receitas</string>
+    <string name="backup_import_description">Adicionar as receitas e listas de um arquivo de exportação. Nada aqui é substituído ou excluído.</string>
+    <string name="backup_share_title">Exportar receitas</string>
+    <string name="backup_exporting">Preparando o arquivo…</string>
+    <string name="backup_importing">Importando…</string>
+    <plurals name="backup_recipes">
+        <item quantity="one">%d receita</item>
+        <item quantity="many">%d de receitas</item>
+        <item quantity="other">%d receitas</item>
+    </plurals>
+    <plurals name="backup_lists">
+        <item quantity="one">%d lista</item>
+        <item quantity="many">%d de listas</item>
+        <item quantity="other">%d listas</item>
+    </plurals>
+    <string name="backup_imported">Importação concluída: %1$s e %2$s.</string>
+    <string name="backup_imported_recipes">Importação concluída: %1$s.</string>
+    <string name="backup_imported_nothing">Nada de novo: tudo o que está nesse arquivo já está aqui.</string>
+    <plurals name="backup_already_here">
+        <item quantity="one">%d receita já estava aqui.</item>
+        <item quantity="many">%d de receitas já estavam aqui.</item>
+        <item quantity="other">%d receitas já estavam aqui.</item>
+    </plurals>
+    <plurals name="backup_skipped">
+        <item quantity="one">%1$d receita antiga sem lista não foi adicionada: o histórico mantém as %2$d mais recentes.</item>
+        <item quantity="many">%1$d de receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$d mais recentes.</item>
+        <item quantity="other">%1$d receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$d mais recentes.</item>
+    </plurals>
+    <string name="backup_error_not_a_backup">Esse arquivo não é uma exportação do Recipe Clipper.</string>
+    <string name="backup_error_newer_version">Esse arquivo foi criado com uma versão mais recente do Recipe Clipper (formato %1$d). Atualize o app para importá-lo.</string>
+    <string name="backup_error_malformed">Esse arquivo de exportação está corrompido (%1$s). Nada foi importado.</string>
+    <string name="backup_error_read_failed">Não foi possível abrir esse arquivo.</string>
+    <string name="backup_error_save_failed">Não foi possível salvar as receitas importadas. Nada foi alterado.</string>
+    <string name="backup_error_export_failed">Não foi possível criar o arquivo de exportação.</string>
+    <string name="temperature_as_written">Como na receita</string>
+    <string name="temperature_as_written_description">Exatamente a temperatura da receita</string>
+    <string name="temperature_celsius">Celsius (°C)</string>
+    <string name="temperature_celsius_description">Temperaturas do forno convertidas para °C</string>
+    <string name="temperature_fahrenheit">Fahrenheit (°F)</string>
+    <string name="temperature_fahrenheit_description">Temperaturas do forno convertidas para °F</string>
+    <string name="nav_lists">Listas</string>
+    <string name="lists_title">Listas</string>
+    <string name="action_new_list">+  Nova lista</string>
+    <string name="action_create">Criar</string>
+    <string name="action_rename">Renomear</string>
+    <string name="action_save">Salvar</string>
+    <string name="label_list_name">Nome da lista</string>
+    <string name="list_empty">Nada nesta lista ainda.</string>
+    <string name="list_count_empty">Vazia</string>
+    <plurals name="list_count">
+        <item quantity="one">%1$d receita</item>
+        <item quantity="many">%1$d de receitas</item>
+        <item quantity="other">%1$d receitas</item>
+    </plurals>
+    <string name="save_to_list_title">Salvar em</string>
+    <string name="cd_save_to_list">Salvar em uma lista</string>
+    <string name="cd_in_a_list">Salva em uma lista</string>
+    <string name="rename_list_title">Renomear lista</string>
+    <string name="delete_list_title">Excluir “%1$s”?</string>
+    <string name="delete_list_body">A lista será removida. As receitas dela continuam no seu histórico.</string>
+    <string name="action_delete_list">Excluir lista</string>
+    <string name="share_serves">Porções: %1$d</string>
+    <string name="share_makes">Rende %1$d</string>
+    <string name="share_scaled">%1$s (originalmente %2$d)</string>
+    <string name="share_heading_ingredients">INGREDIENTES</string>
+    <string name="share_heading_instructions">MODO DE PREPARO</string>
+    <!-- Step timer notifications (#10) -->
+    <string name="timer_channel_name">Timers de cozinha</string>
+    <string name="timer_channel_description">Quando o timer de um passo termina com o app fechado ou em segundo plano</string>
+    <string name="timer_notification_title">O tempo acabou: passo %1$d</string>
+</resources>

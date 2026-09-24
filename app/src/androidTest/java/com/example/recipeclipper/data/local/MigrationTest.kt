@@ -219,17 +219,12 @@ class MigrationTest {
     }
 
     /**
-     * Version 5 adds saved cook progress and the chosen servings (#10). A recipe from before
-     * has neither (it opens at step one, at its own yield), and nothing else about it changes:
-     * its uid, note, ticks and list membership come across as they were.
+     * Version 5 adds the recipe's language (#14): a real version-4 row keeps its content, note
+     * and uid, has no language, and a re-share fills it in.
      */
     @Test
-    fun migration4To5AddsNoCookStateAndKeepsEverythingElse() {
+    fun migration4To5AddsNoLanguageAndKeepsEverythingElse() {
         helper.createDatabase(name, 4).use { db ->
-            db.execSQL(
-                "INSERT INTO lists (id, name, isBuiltIn, isFavorites, sortOrder, createdAt, uid) " +
-                        "VALUES (1, 'Favorites', 1, 1, 0, 0, 'list-uid')"
-            )
             db.execSQL(
                 """
                 INSERT INTO recipes
@@ -237,11 +232,9 @@ class MigrationTest {
                    cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid)
                 VALUES
                   (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
-                   '["Simmer for 30 minutes."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt',
-                   'recipe-uid')
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt', 'uid-7')
                 """.trimIndent()
             )
-            db.execSQL("INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (7, 1, 5)")
         }
 
         helper.runMigrationsAndValidate(name, 5, true, RecipeDatabase.MIGRATION_4_5)
@@ -250,7 +243,53 @@ class MigrationTest {
         runBlocking {
             val recipe = db.recipeDao().get(7)
             assertEquals("Adobo", recipe?.title)
+            assertEquals(setOf(0), recipe?.checkedIngredients)
+            assertEquals("Less salt", recipe?.notes)
+            assertEquals("uid-7", recipe?.uid)
+            assertNull(recipe?.language)
+
+            // A re-share fills the language in and keeps the note and uid.
+            db.recipeDao().upsert(recipe!!.copy(id = 0, language = "en-us"), 50)
+            assertEquals("en-us", db.recipeDao().get(7)?.language)
+            assertEquals("Less salt", db.recipeDao().get(7)?.notes)
+            assertEquals("uid-7", db.recipeDao().get(7)?.uid)
+        }
+    }
+
+    /**
+     * Version 6 adds saved cook progress and the chosen servings (#10). A recipe from before
+     * has neither (it opens at step one, at its own yield), and nothing else about it changes:
+     * its uid, note, ticks and list membership come across as they were.
+     */
+    @Test
+    fun migration5To6AddsNoCookStateAndKeepsEverythingElse() {
+        helper.createDatabase(name, 5).use { db ->
+            db.execSQL(
+                "INSERT INTO lists (id, name, isBuiltIn, isFavorites, sortOrder, createdAt, uid) " +
+                        "VALUES (1, 'Favorites', 1, 1, 0, 0, 'list-uid')"
+            )
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer for 30 minutes."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt',
+                   'recipe-uid', 'en')
+                """.trimIndent()
+            )
+            db.execSQL("INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (7, 1, 5)")
+        }
+
+        helper.runMigrationsAndValidate(name, 6, true, RecipeDatabase.MIGRATION_5_6)
+
+        val db = openMigrated()
+        runBlocking {
+            val recipe = db.recipeDao().get(7)
+            assertEquals("Adobo", recipe?.title)
             assertEquals("recipe-uid", recipe?.uid)
+            assertEquals("en", recipe?.language)
             assertEquals(setOf(0), recipe?.checkedIngredients)
             assertEquals("Less salt", recipe?.notes)
             assertNull(recipe?.cookState)
@@ -270,7 +309,7 @@ class MigrationTest {
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 5, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 6, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val lists = runBlocking { openMigrated().listDao().observeLists(ListDao.NO_RECIPE).first() }
         assertEquals(listOf("Breakfast", "Snacks"), lists.map { it.name })

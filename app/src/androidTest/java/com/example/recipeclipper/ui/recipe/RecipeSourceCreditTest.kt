@@ -55,11 +55,12 @@ class RecipeSourceCreditTest {
             FakeAppInfo(),
             FakeTimerAlarmScheduler()
         )
+        val saveViewModel = SaveToListViewModel(FakeListRepository())
         compose.setContent {
             RecipeScreen(
                 onBack = {},
                 viewModel = viewModel,
-                saveViewModel = SaveToListViewModel(FakeListRepository())
+                saveViewModel = saveViewModel
             )
         }
         // The recipe loads in a coroutine; wait for the reading view rather than the spinner.

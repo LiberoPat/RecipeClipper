@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "9a4aaf51666d030a8e4e24d8682432f2",
+    "identityHash": "b6181eecb2377819a1448609cbb191db",
     "entities": [
       {
         "tableName": "recipes",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `imageUrl` TEXT, `ingredients` TEXT NOT NULL, `instructions` TEXT NOT NULL, `prepTime` TEXT, `cookTime` TEXT, `totalTime` TEXT, `servings` TEXT, `sourceType` TEXT NOT NULL, `lastViewedAt` INTEGER NOT NULL, `checkedIngredients` TEXT NOT NULL, `notes` TEXT, `uid` TEXT NOT NULL DEFAULT '', `cookState` TEXT, `servingsTarget` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `imageUrl` TEXT, `ingredients` TEXT NOT NULL, `instructions` TEXT NOT NULL, `prepTime` TEXT, `cookTime` TEXT, `totalTime` TEXT, `servings` TEXT, `sourceType` TEXT NOT NULL, `lastViewedAt` INTEGER NOT NULL, `checkedIngredients` TEXT NOT NULL, `notes` TEXT, `uid` TEXT NOT NULL DEFAULT '', `language` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -94,14 +94,9 @@
             "defaultValue": "''"
           },
           {
-            "fieldPath": "cookState",
-            "columnName": "cookState",
+            "fieldPath": "language",
+            "columnName": "language",
             "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "servingsTarget",
-            "columnName": "servingsTarget",
-            "affinity": "INTEGER"
           }
         ],
         "primaryKey": {
@@ -266,7 +261,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9a4aaf51666d030a8e4e24d8682432f2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b6181eecb2377819a1448609cbb191db')"
     ]
   }
 }

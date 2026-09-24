@@ -65,33 +65,48 @@ enum MeasureUnit: CaseIterable {
         "L": .l, "G": .g, "KG": .kg, "OZ": .oz, "LB": .lb,
     ]
 
-    // shared/tables/en/units.json "names": the first rule the text satisfies wins.
-    private static let names: [(unit: MeasureUnit, exact: [String], prefixes: [String])] =
-        SharedTables.objects(SharedTables.load("units"), "names").map {
-            (byTableName[$0["unit"] as? String ?? ""]!, SharedTables.strings($0, "exact"), SharedTables.strings($0, "prefixes"))
+    // shared/tables/<language>/units.json "names": the first rule the text satisfies wins.
+    private final class Names {
+        let names: [(unit: MeasureUnit, exact: [String], prefixes: [String])]
+        init(_ words: LanguageWords) {
+            names = SharedTables.objects(words.table("units"), "names").map {
+                (byTableName[$0["unit"] as? String ?? ""]!, SharedTables.strings($0, "exact"), SharedTables.strings($0, "prefixes"))
+            }
         }
+    }
 
-    static func fromText(_ text: String) -> MeasureUnit? {
+    static func fromText(_ text: String, words: LanguageWords = .english) -> MeasureUnit? {
         let s = whitespace.replace(text.lowercased().replacingOccurrences(of: ".", with: ""), with: " ")
-        return names.first { name in name.exact.contains(s) || name.prefixes.contains { s.hasPrefix($0) } }?.unit
+        return words.compiled(Names.self, Names.init).names.first { name in
+            name.exact.contains(s) || name.prefixes.contains { s.hasPrefix($0) }
+        }?.unit
     }
 }
 
 /// Regex fragments matching a unit word. The trailing lookahead makes them match whole
 /// words only, so "g" doesn't match the start of "garlic" or "l" the start of "large".
-enum UnitPatterns {
-    // The unit words are shared with Android: shared/tables/en/units.json "patterns", in order.
-    private static let alternatives =
-        SharedTables.strings(SharedTables.load("units"), "patterns").joined(separator: "|")
-
-    // The alternation is wrapped in its own group so the optional trailing period applies to
-    // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
-
+final class UnitPatterns {
     /// One capturing group holding the unit text.
-    static let captured = "((?:\(alternatives))\\.?)(?![A-Za-z])"
+    let captured: String
 
     /// Same match, no capturing group.
-    static let plain = "(?:(?:\(alternatives))\\.?)(?![A-Za-z])"
+    let plain: String
+
+    private init(_ words: LanguageWords) {
+        // The unit words are shared with Android: shared/tables/<language>/units.json "patterns",
+        // in order. (No units at all never matches, rather than matching an empty unit.)
+        let patterns = words.strings("units", "patterns")
+        let alternatives = (patterns.isEmpty ? ["(?!)"] : patterns).joined(separator: "|")
+
+        // The alternation is wrapped in its own group so the optional trailing period applies to
+        // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
+        captured = "((?:\(alternatives))\\.?)(?![A-Za-z])"
+        plain = "(?:(?:\(alternatives))\\.?)(?![A-Za-z])"
+    }
+
+    static func of(_ words: LanguageWords = .english) -> UnitPatterns {
+        words.compiled(UnitPatterns.self, UnitPatterns.init)
+    }
 }
 
 // MARK: - Java-compatible regex

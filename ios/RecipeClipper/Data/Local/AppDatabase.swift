@@ -107,6 +107,7 @@ final class AppDatabase: @unchecked Sendable {
         createVersion1,
         addNotes,
         addUids,
+        addLanguage,
         addCookState,
     ]
 
@@ -200,7 +201,14 @@ final class AppDatabase: @unchecked Sendable {
         lower(hex(randomblob(6)))
         """
 
-    /// Version 4 (Android's Room version 5, `MIGRATION_4_5`): saved cook progress and the chosen
+    /// Version 4 (Android's Room version 5, `MIGRATION_4_5`): the recipe's language tag (#14).
+    /// Nullable with no default: a recipe stored before has none and is detected from its own
+    /// words when shown. A re-share fills it in.
+    private static func addLanguage(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN language TEXT")
+    }
+
+    /// Version 5 (Android's Room version 6, `MIGRATION_5_6`): saved cook progress and the chosen
     /// servings (#10). Both nullable with no default: an existing recipe has no cook in
     /// progress and uses its own yield.
     private static func addCookState(_ db: SQLiteConnection) throws {
