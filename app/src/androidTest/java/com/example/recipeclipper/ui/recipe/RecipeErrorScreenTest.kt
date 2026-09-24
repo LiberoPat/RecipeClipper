@@ -24,8 +24,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The import error screen. "Report this site" sits beside "Try again" only for a page with no
- * recipe, and opens the prefilled issue link through the [UriHandler] (ACTION_VIEW on a
+ * The import error screen. "Clip it yourself" (#37) and "Report this site" sit under "Try again"
+ * only for a page with no recipe. Report opens the prefilled issue link through the [UriHandler] (ACTION_VIEW on a
  * device). A recording handler stands in here, so the test sees the link without a browser.
  */
 @RunWith(AndroidJUnit4::class)
@@ -35,6 +35,8 @@ class RecipeErrorScreenTest {
     val compose = createComposeRule()
 
     private val link = "https://example.com/no-recipe"
+
+    private val clipped = mutableListOf<String>()
 
     private fun show(error: ParseError): MutableList<String> {
         val opened = mutableListOf<String>()
@@ -56,6 +58,7 @@ class RecipeErrorScreenTest {
             CompositionLocalProvider(LocalUriHandler provides handler) {
                 RecipeScreen(
                     onBack = {},
+                    onClip = { clipped += it },
                     viewModel = viewModel,
                     saveViewModel = SaveToListViewModel(FakeListRepository())
                 )
@@ -65,11 +68,21 @@ class RecipeErrorScreenTest {
     }
 
     @Test
-    fun aPageWithNoRecipeOffersReportThisSiteBesideTryAgain() {
+    fun aPageWithNoRecipeOffersReportThisSiteUnderTryAgain() {
         show(ParseError.NoRecipeFound)
 
         compose.onNodeWithText("Try again").assertIsDisplayed()
         compose.onNodeWithText("Report this site").assertIsDisplayed()
+    }
+
+    @Test
+    fun aPageWithNoRecipeOffersToClipItByHand() {
+        show(ParseError.NoRecipeFound)
+
+        compose.onNodeWithText("Clip it yourself").performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf(link), clipped)
     }
 
     @Test
@@ -87,6 +100,7 @@ class RecipeErrorScreenTest {
         show(error)
         compose.onNodeWithText("Try again").assertIsDisplayed()
         compose.onNodeWithText("Report this site").assertDoesNotExist()
+        compose.onNodeWithText("Clip it yourself").assertDoesNotExist()
     }
 
     @Test

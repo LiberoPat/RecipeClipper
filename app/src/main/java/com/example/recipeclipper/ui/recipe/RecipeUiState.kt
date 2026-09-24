@@ -82,5 +82,10 @@ data class RecipeUiState(
      * [ParseError.NoRecipeFound] is on screen: never for a block, offline or a failed fetch,
      * which mean "try again", not "unsupported". The screen opens it; nothing is sent.
      */
-    val reportSiteUrl: String? = null
+    val reportSiteUrl: String? = null,
+    /**
+     * The shared link to clip by hand ("Clip it yourself", #37). Set exactly when
+     * [reportSiteUrl] is: only a page that loaded with no recipe data can be clipped.
+     */
+    val clipUrl: String? = null
 )

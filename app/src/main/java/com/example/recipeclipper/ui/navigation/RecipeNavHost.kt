@@ -7,6 +7,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.recipeclipper.ui.clip.ClipScreen
+import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.history.HistoryScreen
 import com.example.recipeclipper.ui.home.HomeScreen
 import com.example.recipeclipper.ui.listdetail.ListDetailScreen
@@ -27,7 +29,11 @@ object Routes {
     // The share-target entry: parse, then persist.
     const val IMPORT = "recipe/import?${RecipeViewModel.URL_ARG}={${RecipeViewModel.URL_ARG}}"
 
+    // "Clip it yourself" (#37), from a page with no recipe data.
+    const val CLIP = "clip?${ClipViewModel.URL_ARG}={${ClipViewModel.URL_ARG}}"
+
     fun recipe(id: Long) = "recipe/$id"
+    fun clip(url: String) = "clip?${ClipViewModel.URL_ARG}=${Uri.encode(url)}"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
 }
@@ -93,7 +99,26 @@ fun RecipeNavHost(navController: NavHostController) {
                 }
             )
         ) {
-            RecipeScreen(onBack = { navController.popBackStack() })
+            RecipeScreen(
+                onBack = { navController.popBackStack() },
+                onClip = { navController.navigate(Routes.clip(it)) }
+            )
+        }
+
+        composable(
+            route = Routes.CLIP,
+            arguments = listOf(navArgument(ClipViewModel.URL_ARG) { type = NavType.StringType })
+        ) {
+            ClipScreen(
+                onCancel = { navController.popBackStack() },
+                // The saved clip replaces both the error screen and the clip screen, so Back
+                // from the recipe goes where the share came from.
+                onSaved = { id ->
+                    navController.navigate(Routes.recipe(id)) {
+                        popUpTo(Routes.IMPORT) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }
