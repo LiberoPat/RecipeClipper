@@ -46,6 +46,8 @@ Almost every recipe site embeds a `schema.org/Recipe` JSON-LD block in the page.
 structured data Google uses for recipe cards in search results, and it already holds just
 the recipe. Recipe Clipper fetches the shared page and reads that block, rather than
 scraping the article and guessing what to filter out. If a page doesn't publish it, the app
+falls back to the same data written as microdata (attributes on the page's own markup,
+used by WordPress's Jetpack recipe block, among others). If a page has neither, the app
 says so instead of guessing at a recipe from prose.
 
 ## Repository layout
@@ -88,8 +90,9 @@ for tests and debug launch options.
 
 ## Known limitations
 
-- **Only JSON-LD recipes.** A site that publishes its recipe only as older microdata, or
-  not at all, shows "no recipe found". Smitten Kitchen is one such site.
+- **Only recipes a site publishes as structured data.** The app reads schema.org JSON-LD,
+  or the older microdata format as a fallback (which is how Smitten Kitchen works). A page
+  whose recipe is only in the article text shows "no recipe found", rather than a guess.
 - **Sites sometimes refuse the request.** Many recipe sites block automated requests on and
   off: the same site can refuse one minute and answer the next. Try again usually works.
   There is no user agent that always gets through.

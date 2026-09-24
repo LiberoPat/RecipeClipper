@@ -1,6 +1,7 @@
 import Foundation
 
-/// Fetches a blog / recipe-site page and hands its JSON-LD blocks to JsonLdRecipeParser.
+/// Fetches a blog / recipe-site page and hands its JSON-LD blocks to JsonLdRecipeParser, or,
+/// when they hold no recipe, the page to MicrodataRecipeParser.
 /// Pure network + parse; persists nothing (Android's BlogRecipeSource).
 final class BlogRecipeSource: RecipeSource {
     static let userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) RecipeClipper/1.0"
@@ -120,7 +121,9 @@ final class BlogRecipeSource: RecipeSource {
     /// The HTML-to-recipe step, separate from the network so it can be tested without one.
     static func parse(html: String, url: String) -> ParseResult {
         let blocks = JsonLdRecipeParser.extractJsonLdBlocks(fromHtml: html)
-        guard let recipe = JsonLdRecipeParser.parse(blocks, sourceUrl: url) else {
+        // Microdata only when there is no JSON-LD recipe, so no working site changes.
+        guard let recipe = JsonLdRecipeParser.parse(blocks, sourceUrl: url)
+                ?? MicrodataRecipeParser.parse(html: html, sourceUrl: url) else {
             return .error(.noRecipeFound)
         }
         return .success(recipe)

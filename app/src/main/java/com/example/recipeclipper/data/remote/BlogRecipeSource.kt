@@ -18,7 +18,8 @@ import java.net.SocketTimeoutException
 import kotlin.math.roundToInt
 
 /**
- * Fetches a blog/recipe-site page and hands its JSON-LD blocks to [JsonLdRecipeParser].
+ * Fetches a blog/recipe-site page and hands its JSON-LD blocks to [JsonLdRecipeParser], or,
+ * when they hold no recipe, the page to [MicrodataRecipeParser].
  *
  * Failures come back as causes (see [ParseError]): a non-2xx answer is [ParseError.Blocked] or
  * [ParseError.FetchFailed] by status; a network failure while [connectivity] reports no
@@ -42,7 +43,9 @@ class BlogRecipeSource(
                 .get()
 
             val ldJsonScripts = doc.select("script[type=application/ld+json]").map { it.data() }
+            // Microdata only when there is no JSON-LD recipe, so no working site changes.
             val recipe = JsonLdRecipeParser.parse(ldJsonScripts, url)
+                ?: MicrodataRecipeParser.parse(doc, url)
             if (recipe != null) {
                 ParseResult.Success(recipe)
             } else {
