@@ -1137,8 +1137,14 @@ approved as a mock-up (six frames); the owner's nine decisions are in the issue'
   again. Marks don't survive a page reload (rotation on Android, a restored draft); the draft does.
 - **Links to other pages are blocked** in the clip view (redirects and fragment jumps load), so
   a clip is always saved under the page it came from.
-- **Save** upserts on the cleaned URL like an import (same id, note and list membership), then
-  the recipe replaces both the clip and the error screen in the back stack.
+- **Save** upserts on the cleaned URL like an import (same id, note and list membership) with
+  `contentOrigin` CLIPPED (#29's column; no schema change), replacing whatever the row held,
+  then the recipe replaces both the clip and the error screen in the back stack.
+- **A clip is the user's version** (#29's rule): a re-share opens it without a fetch. "Clipped
+  by you · host" replaces the domain under the title (Open original stays), and History rows
+  say "Clipped by you" (a derived `isClipped` in the summary queries). Update from source is
+  always offered for a clip, warning "Replace your clip?"; on failure the clip is kept and the
+  snackbar says why. On success it becomes PARSED and the line goes.
 - **UI tests** use a fixed local page, never the network: Android's `ClipScreenTest` makes the
   selection by script in a real WebView; iOS's `ClipUITests` taps buttons on the fixture page
   (`UITestSeeding.clipFixtureHTML`) that select by script, since XCUITest can't drag a web

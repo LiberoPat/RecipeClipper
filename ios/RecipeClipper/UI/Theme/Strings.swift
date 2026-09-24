@@ -64,59 +64,63 @@ enum Strings {
     static func openOriginalHint(_ domain: String) -> String { String(localized: "cd_open_original \(domain)") }
 
     // Clip it yourself (#37)
-    static let clipOffer = "Open the page, select the name, ingredients and steps, and tap where each one goes."
-    static let clipItYourself = "Clip it yourself"
-    static let done = "Done"
-    static let discard = "Discard"
-    static let remove = "Remove"
+    static var clipOffer: String { String(localized: "clip_offer") }
+    static var clipItYourself: String { String(localized: "action_clip_it_yourself") }
+    static var done: String { String(localized: "action_done") }
+    static var discard: String { String(localized: "action_discard") }
+    static var remove: String { String(localized: "action_remove") }
     static func clipField(_ field: ClipField) -> String {
         switch field {
-        case .name: return "Name"
-        case .ingredients: return "Ingredients"
-        case .steps: return "Steps"
-        case .photo: return "Photo"
+        case .name: return String(localized: "clip_field_name")
+        case .ingredients: return String(localized: "clip_field_ingredients")
+        case .steps: return String(localized: "clip_field_steps")
+        case .photo: return String(localized: "clip_field_photo")
         }
     }
+    /// Not words (Android's translatable="false" `clip_tag_count`).
     static func clipTagCount(_ label: String, _ n: Int) -> String { "\(label) · \(n)" }
-    static let clipHint = "Select text on the page, then tap where it goes. For the photo, tap Photo, then the picture."
-    static let clipPickingPhoto = "Tap the picture to use as the photo."
+    static var clipHint: String { String(localized: "clip_hint") }
+    static var clipPickingPhoto: String { String(localized: "clip_picking_photo") }
     static func clipLinesSelected(_ n: Int) -> String {
-        (n == 1 ? "1 line selected" : "\(n) lines selected") + " · each line becomes one item"
+        String(localized: "clip_lines_selected \(n)") + " · " + String(localized: "clip_lines_selected_hint")
     }
     static func clipSummary(_ draft: ClipDraft) -> String {
-        let ingredients = draft.count(.ingredients)
-        let steps = draft.count(.steps)
-        return [
-            draft.count(.name) > 0 ? "Name ✓" : "No name",
-            ingredients == 1 ? "1 ingredient" : "\(ingredients) ingredients",
-            steps == 1 ? "1 step" : "\(steps) steps",
-            draft.photo != nil ? "photo" : "no photo",
+        [
+            draft.count(.name) > 0 ? String(localized: "clip_summary_name") : String(localized: "clip_summary_no_name"),
+            String(localized: "clip_summary_ingredients \(draft.count(.ingredients))"),
+            String(localized: "clip_summary_steps \(draft.count(.steps))"),
+            draft.photo != nil ? String(localized: "clip_summary_photo") : String(localized: "clip_summary_no_photo"),
         ].joined(separator: " · ")
     }
-    static let clipReview = "Review"
+    static var clipReview: String { String(localized: "clip_review") }
     static func clipMessage(_ message: ClipMessage) -> String {
         switch message {
-        case .assigned(.name, _): return "Name added"
-        case .assigned(.ingredients, let n): return n == 1 ? "1 ingredient added" : "\(n) ingredients added"
-        case .assigned(.steps, let n): return n == 1 ? "1 step added" : "\(n) steps added"
-        case .assigned(.photo, _): return "Photo added"
-        case .cleared(let field): return "\(clipField(field)) cleared"
-        case .draftRestored: return "Draft restored"
-        case .saveFailed: return "Couldn't save the clip. Try again."
+        case .assigned(.name, _): return String(localized: "clip_added_name")
+        case .assigned(.ingredients, let n): return String(localized: "clip_added_ingredients \(n)")
+        case .assigned(.steps, let n): return String(localized: "clip_added_steps \(n)")
+        case .assigned(.photo, _): return String(localized: "clip_added_photo")
+        case .cleared(.name): return String(localized: "clip_cleared_name")
+        case .cleared(.ingredients): return String(localized: "clip_cleared_ingredients")
+        case .cleared(.steps): return String(localized: "clip_cleared_steps")
+        case .cleared(.photo): return String(localized: "clip_cleared_photo")
+        case .draftRestored: return String(localized: "clip_draft_restored")
+        case .saveFailed: return String(localized: "clip_save_failed")
         }
     }
-    static let clipBackToPage = "‹ Back to page"
-    static let clipPhotoFromPage = "Photo from the page"
-    static let clipNoPhoto = "No photo. Tap Photo on the page, then the picture."
-    static let clipServes = "Serves"
-    static let clipTotalTime = "Total time"
-    static let clipOptional = "optional"
-    static func clipIngredientsHeading(_ n: Int) -> String { "Ingredients · \(n)" }
-    static func clipStepsHeading(_ n: Int) -> String { "Steps · \(n)" }
-    static let clipAddLine = "+ Add a line"
-    static let clipAddStep = "+ Add a step"
-    static func clipRemoveLine(_ n: Int) -> String { "Remove line \(n)" }
-    static let clipSave = "Save recipe"
+    static var clipBackToPage: String { String(localized: "clip_back_to_page") }
+    static var clipPhotoFromPage: String { String(localized: "clip_photo_from_page") }
+    static var clipNoPhoto: String { String(localized: "clip_no_photo") }
+    static var clipOptional: String { String(localized: "clip_optional") }
+    static func clipIngredientsHeading(_ n: Int) -> String { String(localized: "clip_ingredients_heading \(n)") }
+    static func clipStepsHeading(_ n: Int) -> String { String(localized: "clip_steps_heading \(n)") }
+    static var clipAddLine: String { String(localized: "clip_add_line") }
+    static var clipAddStep: String { String(localized: "clip_add_step") }
+    static func clipRemoveLine(_ n: Int) -> String { String(localized: "cd_clip_remove_line \(n)") }
+    static var clipSave: String { String(localized: "clip_save") }
+    static var updateFromSourceClipTitle: String { String(localized: "update_from_source_clip_title") }
+    static var updateFromSourceClipBody: String { String(localized: "update_from_source_clip_body") }
+    static var clippedByYou: String { String(localized: "clipped_by_you") }
+    static func clippedByYou(on domain: String) -> String { String(localized: "clipped_by_you_on \(domain)") }
 
     // Errors
     static var errorNoRecipeFound: String { String(localized: "error_no_recipe_found") }

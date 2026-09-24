@@ -213,13 +213,17 @@ final class DefaultRecipeRepository: RecipeRepository {
     }
 
     func saveClip(_ recipe: Recipe) async -> ParseResult {
+        // CLIPPED, so a re-share opens the clip rather than fetching the page again (#29's
+        // rule); a clip replaces whatever the row held, as "Update from source" does.
         var clip = recipe
         clip.sourceUrl = UrlCleaner.clean(recipe.sourceUrl)
+        clip.origin = .clipped
+        clip.editedAt = nil
         let now = clock.now()
         do {
             let saved = try await db.write { conn -> RecipeRecord? in
                 let dao = RecipeDao(db: conn)
-                let id = try dao.upsert(clip.toRecord(viewedAt: now), historyLimit: historyLimit)
+                let id = try dao.upsert(clip.toRecord(viewedAt: now), historyLimit: historyLimit, replaceUsersVersion: true)
                 return try dao.get(id)
             }
             guard let saved else { return .error(.saveFailed) }

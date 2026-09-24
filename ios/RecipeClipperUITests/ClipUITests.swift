@@ -71,9 +71,17 @@ final class ClipUITests: RecipeUITestCase {
         require(bookmark, "the saved recipe")
         require(text("Brown Butter Oat Cookies"), "its title")
         require(text("Bake at 350°F for 11 to 13 minutes."), "its one step")
+        require(textContaining("Clipped by you · example.com"), "the clip credit under the title")
 
         // Back goes where the share came from, not to the clip or the error.
         back()
         require(app.textFields["Recipe URL"], "Home")
+
+        openHistory()
+        require(
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@",
+                                             "Brown Butter Oat Cookies", "Clipped by you")).firstMatch,
+            "the History row saying it was clipped"
+        )
     }
 }

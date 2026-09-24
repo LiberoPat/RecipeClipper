@@ -247,13 +247,13 @@ private struct ClipReviewPane: View {
                 labelled(Strings.clipField(.name)) {
                     field(Strings.clipField(.name), text: draft.name, onChange: vm.onNameChange)
                 }
-                labelled(Strings.clipServes) {
+                labelled(Strings.serves) {
                     field(Strings.clipOptional, text: draft.serves, onChange: vm.onServesChange)
-                        .accessibilityLabel(Strings.clipServes)
+                        .accessibilityLabel(Strings.serves)
                 }
-                labelled(Strings.clipTotalTime) {
+                labelled(Strings.editLabelTotal) {
                     field(Strings.clipOptional, text: draft.totalTime, onChange: vm.onTotalTimeChange)
-                        .accessibilityLabel(Strings.clipTotalTime)
+                        .accessibilityLabel(Strings.editLabelTotal)
                 }
 
                 lines(.ingredients, heading: Strings.clipIngredientsHeading(draft.count(.ingredients)), add: Strings.clipAddLine)

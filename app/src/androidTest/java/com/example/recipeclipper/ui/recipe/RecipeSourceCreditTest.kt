@@ -4,11 +4,13 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
@@ -45,7 +47,7 @@ class RecipeSourceCreditTest {
         id = 1L
     )
 
-    private fun show() {
+    private fun show(recipe: Recipe = this.recipe) {
         val viewModel = RecipeViewModel(
             SavedStateHandle(mapOf(RecipeViewModel.RECIPE_ID_ARG to recipe.id)),
             FakeRecipeRepository().apply { openResult = recipe },
@@ -81,6 +83,23 @@ class RecipeSourceCreditTest {
         show()
 
         compose.onNodeWithText("Open original").assertIsDisplayed().assertHasClickAction()
+    }
+
+    @Test
+    fun aClipSaysItWasClippedByYou() {
+        show(recipe.copy(origin = ContentOrigin.CLIPPED))
+
+        compose.onNodeWithText("Clipped by you · smittenkitchen.com").assertIsDisplayed()
+        compose.onNodeWithText("Open original").assertIsDisplayed()
+    }
+
+    @Test
+    fun aClipWarnsInItsOwnWordsBeforeUpdatingFromSource() {
+        show(recipe.copy(origin = ContentOrigin.CLIPPED))
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Update from source").performClick()
+        compose.onNodeWithText("Replace your clip?").assertIsDisplayed()
     }
 
     @Test

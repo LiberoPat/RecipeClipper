@@ -20,6 +20,7 @@ struct RecipeScreen: View {
     var body: some View {
         let state = vm.uiState
         let content = state.content.success
+        let clipped = content?.recipe.origin == .clipped
         // The id isn't known until the parse finishes on the import route.
         let recipeId = content?.recipe.id
 
@@ -95,11 +96,12 @@ struct RecipeScreen: View {
         } message: {
             Text(Strings.deleteRecipeBody)
         }
-        .alert(Strings.updateFromSourceTitle, isPresented: $confirmingUpdate) {
+        // A clip (#37) says what it loses in its own words: the parts picked from the page.
+        .alert(clipped ? Strings.updateFromSourceClipTitle : Strings.updateFromSourceTitle, isPresented: $confirmingUpdate) {
             Button(Strings.update, role: .destructive, action: vm.onUpdateFromSource)
             Button(Strings.cancel, role: .cancel) {}
         } message: {
-            Text(Strings.updateFromSourceBody)
+            Text(clipped ? Strings.updateFromSourceClipBody : Strings.updateFromSourceBody)
         }
         // "Update from source" failed: the recipe on screen is unchanged; say why, once.
         .alert(

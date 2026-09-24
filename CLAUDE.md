@@ -327,7 +327,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   `docs/decisions.md`): the page live in a web view with `shared/web/clipper.js`
   (one copy, both apps). Assigning a selection replaces the field, one item per
   line, nothing guessed; Undo by snackbar or by tapping the field's tag; a
-  session draft per cleaned URL, in memory only.
+  session draft per cleaned URL, in memory only. Saved as CLIPPED: "Clipped by
+  you" under the title and in History rows.
 - Database errors degrade instead of crashing. The Android repositories run
   every DAO call through `ErrorLog.guard`, which returns a safe fallback
   (`SaveFailed`, null, a no-op, or `CREATE_FAILED` = -1), and every Flow
