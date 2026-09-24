@@ -1005,6 +1005,106 @@ Do 1 before 2. If the refactor and persistence land together and something
 breaks, you can't tell which half did it. Phase 1 has a hand-runnable test:
 share a link, rotate the phone.
 
+## Before distributing (to do)
+
+None of this blocks development. All of it blocks putting the apps in other
+people's hands. Nothing here has been started.
+
+### iOS: before TestFlight and the App Store
+
+iOS has no equivalent of a downloadable APK: an `.ipa` only installs if Apple
+has signed it for a developer account. The route is **TestFlight**. It needs
+the Apple Developer Program ($99/year) and takes up to 10,000 testers through
+a public link. Builds expire after 90 days. Internal testers (members of the
+team) need no review; external testers need Beta App Review. After that
+comes the App Store, with full App Review. Ad Hoc (100 registered devices)
+and a free Apple ID (your own devices only, 7-day expiry) are not ways to
+share it.
+
+1. **Bundle identifiers and team.** `ios/project.yml` uses placeholders:
+   `com.example.recipeclipper` (app), `.share` (extension) and `.uitests`,
+   with `DEVELOPMENT_TEAM` blank. Change `bundleIdPrefix` and each
+   `PRODUCT_BUNDLE_IDENTIFIER` to an ID the account owns (e.g.
+   `com.liberopat.recipeclipper`), keeping the extension's ID prefixed by the
+   app's, and set the team.
+2. **Privacy manifest.** There is no `PrivacyInfo.xcprivacy`. The app uses
+   `UserDefaults` for the unit settings, one of Apple's "required reason"
+   APIs, so App Store Connect flags an upload that doesn't declare why (reason
+   `CA92.1`: the app's own defaults). Add one to the app target, and to the
+   extension if it starts using such an API (item 3 would). Xcode's privacy
+   report (Organizer → an archive → Generate Privacy Report) lists what a
+   build uses.
+3. **The share extension opens the app through a workaround. This is an App
+   Review risk.** Apple doesn't let share extensions open their own app.
+   `UIApplication.shared` is unavailable in extensions, and
+   `extensionContext.open(_:)` works only for widgets. So
+   `ShareViewController.openContainingApp` walks the responder chain to the
+   `UIApplication` object and calls `open(_:options:)` on it (on iOS 17 it
+   calls `openURL:` via `perform`). Three problems:
+   - **Review.** Guideline 2.5.1 says public APIs must be used as intended,
+     and this deliberately gets around a restriction. Many apps ship it and
+     pass, but it depends on the reviewer: it can pass once and be rejected
+     on a later update.
+   - **Breakage.** It relies on undocumented behaviour and has already broken
+     once: iOS 18 made `openURL:` a silent no-op, hence the two code paths. If
+     Apple closes it, sharing to Recipe Clipper just dismisses the sheet with
+     no error.
+   - **It is the front door.** "Share a link, get the recipe" is the product.
+     Without it, the only way in is pasting a link on Home.
+
+   **The fix: do the import in the extension instead of opening the app.**
+   - Add an **App Group** to both targets. It needs the paid account, which
+     TestFlight needs anyway.
+   - Move the SQLite database, and the unit settings' defaults suite, into
+     the group container, so the extension writes what the app reads. Do it
+     before there are real users, and there is no data to migrate.
+   - The extension runs the same import (fetch, `JsonLdRecipeParser`, save),
+     with the error model's causes and Try again. Share the code through a
+     framework target or dual target membership in `project.yml`, not a
+     second copy. The extension already duplicates link extraction and
+     deep-link encoding.
+   - It then shows a small confirmation ("Saved 'Guacamole'. Open Recipe
+     Clipper to cook."), or the recipe itself. That's one tap more than
+     Android's share-then-recipe, which is the accepted cost.
+   - Extensions get far less memory than apps, so measure a large page on a
+     device.
+
+   **Timing:** the workaround is acceptable for internal TestFlight, which
+   has no review. Replace it before the App Store, or sooner if Beta App
+   Review objects.
+4. **Export compliance.** The app only uses HTTPS, which is exempt, so set
+   `ITSAppUsesNonExemptEncryption` to `NO` in both Info.plists. Otherwise
+   App Store Connect asks about encryption on every upload.
+5. **Build numbers.** `MARKETING_VERSION` is 1.0 and
+   `CURRENT_PROJECT_VERSION` is 1 (in `project.yml`). Every upload needs a
+   higher build number than the last.
+
+The app icon is already in place (`Assets.xcassets/AppIcon.appiconset`).
+
+### Android: before sharing an APK or the Play Store
+
+An APK can be shared directly: attach it to a GitHub Release, and people
+install it after allowing "install unknown apps".
+
+1. **Release signing.** There is no `signingConfig`, so release builds are
+   unsigned. Create a keystore once and keep it out of the repo: never
+   commit it or its passwords, and read them from `~/.gradle/gradle.properties`
+   or the environment. Back it up. An APK signed with a different key won't
+   install over an earlier one, so losing the key strands every installed
+   copy.
+2. **Application ID.** `applicationId = "com.example.recipeclipper"` must
+   change for the Play Store, which rejects `com.example` names. A new ID is a
+   different app to Android, and existing installs won't update to it, so
+   pick the final ID before anyone installs a release build.
+3. **Target SDK.** Play requires a recent `targetSdk` for new apps and
+   updates, and the bar rises every year. 34 is likely below it, so check
+   Play's current requirement. Raising it is the behaviour change the Lint
+   section warns needs device testing.
+4. **The release build has never been run.** `isMinifyEnabled = false`, so
+   it is the debug code without debugging, but do one full pass on a device
+   before shipping it. If minification is ever turned on, Hilt, Room, Jsoup
+   and `org.json` need keep rules checked.
+
 ## Deliberately deferred
 
 Don't add these without a reason to revisit:

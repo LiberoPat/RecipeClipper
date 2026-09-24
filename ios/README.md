@@ -75,7 +75,8 @@ tests (in-memory SQLite in the simulator), not device tests.
 - **Share extension → app.** iOS has no supported way for a share extension to open its
   host app; the extension walks the responder chain to `UIApplication.open` (iOS 18+) or
   `openURL:` (iOS 17). If Apple closes that path, the fallback is an App Group plus doing
-  the import inside the extension.
+  the import inside the extension. It is also an App Review risk. The plan to replace it
+  before the App Store is in CLAUDE.md, "Before distributing (to do)".
 - **Timer alarm** plays through the silent switch (`.playback` audio session, ducking other
   audio), matching Android's alarm stream and the Clock app. Background alerts are still
   the phase-3 item in CLAUDE.md; on iOS the natural fix is a local notification scheduled
