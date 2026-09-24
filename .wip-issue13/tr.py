@@ -46,6 +46,8 @@ Q = dict(
 S("action_back", "‹  Back", "‹  Atrás", "‹  Retour", "‹  Zurück", "‹  Indietro", "‹  Voltar", ios=None)
 S("action_exit", "✕  Exit", "✕  Salir", "✕  Quitter", "✕  Beenden", "✕  Esci", "✕  Sair")
 S("action_try_again", "Try again", "Reintentar", "Réessayer", "Erneut versuchen", "Riprova", "Tentar novamente")
+S("action_report_site", "Report this site", "Informar sobre este sitio", "Signaler ce site", "Diese Website melden",
+  "Segnala questo sito", "Reportar este site", ios="action_report_site")
 S("action_start_cooking", "Start cooking", "Empezar a cocinar", "Commencer à cuisiner", "Jetzt kochen", "Inizia a cucinare", "Começar a cozinhar")
 S("action_cancel", "Cancel", "Cancelar", "Annuler", "Abbrechen", "Annulla", "Cancelar")
 S("action_delete", "Delete", "Eliminar", "Supprimer", "Löschen", "Elimina", "Excluir")
@@ -71,6 +73,12 @@ S("label_cook", "Cook", "Cocción", "Cuisson", "Garzeit", "Cottura", "Cozimento"
 S("label_total", "Total", "Total", "Total", "Gesamt", "Totale", "Total")
 S("heading_ingredients", "Ingredients", "Ingredientes", "Ingrédients", "Zutaten", "Ingredienti", "Ingredientes")
 S("heading_instructions", "Instructions", "Elaboración", "Préparation", "Zubereitung", "Procedimento", "Modo de preparo")
+
+S("heading_notes", "Notes", "Notas", "Notes", "Notizen", "Note", "Anotações")
+S("notes_placeholder", "Add a note", "Añade una nota", "Ajouter une note", "Notiz hinzufügen", "Aggiungi una nota", "Adicionar uma anotação")
+S("action_open_original", "Open original", "Ver el original", "Voir l'original", "Original öffnen", "Apri l'originale", "Abrir original")
+S("cd_open_original", "Open the original recipe on %1$s", "Abrir la receta original en %1$s", "Ouvrir la recette originale sur %1$s",
+  "Originalrezept auf %1$s öffnen", "Apri la ricetta originale su %1$s", "Abrir a receita original em %1$s")
 
 # ---- Errors
 S("error_no_recipe_found",
@@ -118,14 +126,11 @@ S("cd_change_units", "Change units", "Cambiar unidades", "Changer d'unités", "E
 S("units_menu_header", "Units  ·   every recipe", "Unidades  ·   todas las recetas", "Unités  ·   toutes les recettes",
   "Einheiten  ·   alle Rezepte", "Unità  ·   tutte le ricette", "Unidades  ·   todas as receitas")
 S("unit_as_written", "As written", "Como en la receta", "Comme dans la recette", "Wie im Rezept", "Come nella ricetta", "Como na receita")
-S("unit_grams", "Grams", "Gramos", "Grammes", "Gramm", "Grammi", "Gramas")
 S("unit_ounces", "Ounces", "Onzas", "Onces", "Unzen", "Once", "Onças")
 S("unit_metric", "Metric", "Métrico", "Métrique", "Metrisch", "Metrico", "Métrico")
 S("unit_as_written_description", "Exactly the units the recipe uses", "Exactamente las unidades de la receta",
   "Exactement les unités de la recette", "Genau die Einheiten aus dem Rezept", "Esattamente le unità della ricetta",
   "Exatamente as unidades da receita")
-S("unit_grams_description", "Cups and spoons in grams", "Tazas y cucharadas en gramos", "Tasses et cuillères en grammes",
-  "Tassen und Löffel in Gramm", "Tazze e cucchiai in grammi", "Xícaras e colheres em gramas")
 S("unit_ounces_description", "Cups and spoons in ounces and pounds", "Tazas y cucharadas en onzas y libras",
   "Tasses et cuillères en onces et livres", "Tassen und Löffel in Unzen und Pfund", "Tazze e cucchiai in once e libbre",
   "Xícaras e colheres em onças e libras")

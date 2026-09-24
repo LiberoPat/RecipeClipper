@@ -184,15 +184,17 @@ class RecipeViewModel @Inject constructor(
     /**
      * The recipe as currently on screen — scaled servings, converted units — formatted for
      * sharing outside the app. Null when there's nothing loaded yet. Building and firing the
-     * share Intent is the screen's job: this only returns text.
+     * share Intent is the screen's job: this only returns text. The screen passes [labels]
+     * read from its resources, so the words around the recipe follow the phone's language.
      */
-    fun shareText(): String? {
+    fun shareText(labels: RecipeShareText.Labels = RecipeShareText.Labels.ENGLISH): String? {
         val content = _uiState.value.content as? RecipeContent.Success ?: return null
         return RecipeShareText.format(
             recipe = content.recipe,
             servings = content.servings,
             ingredients = content.ingredients,
-            instructions = content.instructions
+            instructions = content.instructions,
+            labels = labels
         )
     }
 

@@ -1,48 +1,57 @@
 import Foundation
 
 /// Every piece of UI copy, in one place, the way Android keeps it in res/values/strings.xml.
-/// English only. Android collapses runs of whitespace in unquoted resources, so the double
-/// spaces in strings like "‹  Back" never rendered there; they are single spaces here.
-/// `RecipeShareText` and `SiteReportLink` keep their own English wording by design (they build
-/// message bodies).
+/// The words live in the String Catalog (`Resources/Localizable.xcstrings`), in English,
+/// Spanish, French, German, Italian and Brazilian Portuguese; these are thin accessors so
+/// call sites read `Strings.tryAgain` whatever the language. Catalog keys are the Android
+/// resource names (plus the specifiers Swift interpolation adds, e.g. `servings %lld`), so a
+/// string can be found on both platforms by one name.
+///
+/// Android collapses runs of whitespace in unquoted resources, so the double spaces in
+/// strings like "‹  Back" never rendered there; they are single spaces in the catalog.
+/// `SiteReportLink` keeps its English wording by design: it builds a report the maintainer
+/// reads, not UI.
 enum Strings {
     // Common actions
-    static let exit = "✕ Exit"
-    static let tryAgain = "Try again"
-    static let reportSite = "Report this site"
-    static let startCooking = "Start cooking"
-    static let cancel = "Cancel"
-    static let delete = "Delete"
-    static let undo = "Undo"
-    static let pause = "Pause"
-    static let resume = "Resume"
-    static let reset = "Reset"
-    static let go = "Go"
+    static var exit: String { String(localized: "action_exit") }
+    static var tryAgain: String { String(localized: "action_try_again") }
+    static var reportSite: String { String(localized: "action_report_site") }
+    static var startCooking: String { String(localized: "action_start_cooking") }
+    static var cancel: String { String(localized: "action_cancel") }
+    static var delete: String { String(localized: "action_delete") }
+    static var undo: String { String(localized: "action_undo") }
+    static var pause: String { String(localized: "action_pause") }
+    static var resume: String { String(localized: "action_resume") }
+    static var reset: String { String(localized: "action_reset") }
+    static var go: String { String(localized: "action_go") }
 
     // Recipe screen
-    static let shareRecipe = "Share recipe"
-    static let moreOptions = "More options"
-    static func deleteRecipeTitle(_ name: String) -> String { "Delete \"\(name)\"?" }
-    static let deleteRecipeBody = "This removes it from history and any lists it's in. This can't be undone."
-    static let labelPrep = "Prep"
-    static let labelCook = "Cook"
-    static let labelTotal = "Total"
-    static let headingIngredients = "Ingredients"
-    static let headingInstructions = "Instructions"
-    static let headingNotes = "Notes"
-    static let notesPlaceholder = "Add a note"
-    static let openOriginal = "Open original"
-    static func openOriginalHint(_ domain: String) -> String { "Open the original recipe on \(domain)" }
+    static var shareRecipe: String { String(localized: "cd_share_recipe") }
+    static var moreOptions: String { String(localized: "cd_more_options") }
+    static func deleteRecipeTitle(_ name: String) -> String { String(localized: "delete_recipe_title \(name)") }
+    static var deleteRecipeBody: String { String(localized: "delete_recipe_body") }
+    static var labelPrep: String { String(localized: "label_prep") }
+    static var labelCook: String { String(localized: "label_cook") }
+    static var labelTotal: String { String(localized: "label_total") }
+    static var headingIngredients: String { String(localized: "heading_ingredients") }
+    static var headingInstructions: String { String(localized: "heading_instructions") }
+    static var headingNotes: String { String(localized: "heading_notes") }
+    static var notesPlaceholder: String { String(localized: "notes_placeholder") }
+    static var openOriginal: String { String(localized: "action_open_original") }
+    static func openOriginalHint(_ domain: String) -> String { String(localized: "cd_open_original \(domain)") }
 
     // Errors
-    static let errorNoRecipeFound = "Couldn't find recipe data on this page. Some sites don't tag their recipes in a way this app can read yet."
-    static func errorFetchFailed(_ detail: String?) -> String { "Couldn't load that page (\(detail ?? "unknown error"))." }
-    static func errorBlocked(_ status: Int) -> String { "The site didn't let the app in (HTTP \(status)). Sites often do this for a moment — try again in a minute." }
-    static let errorOffline = "You're offline. The recipe will load when you're back online."
-    static let errorSaveFailed = "Couldn't save that recipe."
-    static let errorNotSaved = "That recipe is no longer saved."
-    static let errorNothingToShow = "There's no recipe to show."
-    static let errorInvalidUrl = "That doesn't look like a link."
+    static var errorNoRecipeFound: String { String(localized: "error_no_recipe_found") }
+    static func errorFetchFailed(_ detail: String?) -> String {
+        let detail = detail ?? String(localized: "error_fetch_failed_unknown_detail")
+        return String(localized: "error_fetch_failed \(detail)")
+    }
+    static func errorBlocked(_ status: Int) -> String { String(localized: "error_blocked \(status)") }
+    static var errorOffline: String { String(localized: "error_offline") }
+    static var errorSaveFailed: String { String(localized: "error_save_failed") }
+    static var errorNotSaved: String { String(localized: "error_not_saved") }
+    static var errorNothingToShow: String { String(localized: "error_nothing_to_show") }
+    static var errorInvalidUrl: String { String(localized: "error_invalid_url") }
 
     static func message(for error: ParseError) -> String {
         switch error {
@@ -57,68 +66,71 @@ enum Strings {
     }
 
     // Serves / units row
-    static let serves = "Serves"
-    static let makes = "Makes"
-    static let decreaseServings = "Decrease servings"
-    static let increaseServings = "Increase servings"
-    static let decreaseAmount = "Decrease amount"
-    static let increaseAmount = "Increase amount"
-    static func originalServings(_ yield: String) -> String { "Original: \(yield)" }
-    static func servings(_ n: Int) -> String { n == 1 ? "\(n) serving" : "\(n) servings" }
-    static let changeUnits = "Change units"
-    static let unitsMenuHeader = "Units · every recipe"
+    static var serves: String { String(localized: "label_serves") }
+    static var makes: String { String(localized: "label_makes") }
+    static var decreaseServings: String { String(localized: "cd_decrease_servings") }
+    static var increaseServings: String { String(localized: "cd_increase_servings") }
+    static var decreaseAmount: String { String(localized: "cd_decrease_amount") }
+    static var increaseAmount: String { String(localized: "cd_increase_amount") }
+    static func originalServings(_ yield: String) -> String { String(localized: "original_servings \(yield)") }
+    static func servings(_ n: Int) -> String { String(localized: "servings \(n)") }
+    static var changeUnits: String { String(localized: "cd_change_units") }
+    static var unitsMenuHeader: String { String(localized: "units_menu_header") }
 
     static func unitLabel(_ system: UnitSystem) -> String {
         switch system {
-        case .asWritten: return "As written"
-        case .ounces: return "Ounces"
-        case .metric: return "Metric"
+        case .asWritten: return String(localized: "unit_as_written")
+        case .ounces: return String(localized: "unit_ounces")
+        case .metric: return String(localized: "unit_metric")
         }
     }
 
     static func unitDescription(_ system: UnitSystem) -> String {
         switch system {
-        case .asWritten: return "Exactly the units the recipe uses"
-        case .ounces: return "Cups and spoons in ounces and pounds"
-        case .metric: return "Grams and millilitres"
+        case .asWritten: return String(localized: "unit_as_written_description")
+        case .ounces: return String(localized: "unit_ounces_description")
+        case .metric: return String(localized: "unit_metric_description")
         }
     }
 
-    static let convertLiquidsTitle = "Also convert liquids"
-    static let convertLiquidsDescription = "Milk, water, oil and other pourables"
+    static var convertLiquidsTitle: String { String(localized: "convert_liquids_title") }
+    static var convertLiquidsDescription: String { String(localized: "convert_liquids_description") }
 
     // Cook view
-    static func cookStepLabel(_ n: Int) -> String { "STEP \(n)" }
-    static func cookPosition(_ n: Int, of total: Int) -> String { "Step \(n) of \(total)" }
-    static let cookDoneNext = "Done — next step"
-    static let cookDoneFinish = "Done — finish"
+    static func cookStepLabel(_ n: Int) -> String { String(localized: "cook_step_label \(n)") }
+    static func cookPosition(_ n: Int, of total: Int) -> String { String(localized: "cook_position \(n) \(total)") }
+    static var cookDoneNext: String { String(localized: "cook_done_next") }
+    static var cookDoneFinish: String { String(localized: "cook_done_finish") }
+    /// Not words, so not in the catalog.
     static func cookIngredientsCount(_ n: Int) -> String { " · \(n)" }
     /// The same count on its own line, where the " · " separator would dangle.
-    static func cookIngredientsCountOwnLine(_ n: Int) -> String { n == 1 ? "1 item" : "\(n) items" }
-    static let hideIngredients = "Hide ingredients"
-    static let showIngredients = "Show ingredients"
-    static func goToStep(_ n: Int) -> String { "Go to step \(n)" }
-    static func timerStart(_ label: String) -> String { "⏱ Start \(label) timer" }
+    static func cookIngredientsCountOwnLine(_ n: Int) -> String { String(localized: "cook_items \(n)") }
+    static var hideIngredients: String { String(localized: "cd_hide_ingredients") }
+    static var showIngredients: String { String(localized: "cd_show_ingredients") }
+    static func goToStep(_ n: Int) -> String { String(localized: "cd_go_to_step \(n)") }
+    static func timerStart(_ label: String) -> String { String(localized: "timer_start \(label)") }
+    /// Not words, so not in the catalog.
     static func timerRunning(_ clock: String) -> String { "⏱ \(clock)" }
-    static let timesUp = "Time's up"
+    static var timesUp: String { String(localized: "timers_up") }
 
     // Home
+    /// The app's name, not translated.
     static let homeTitle = "Recipe Clipper"
-    static let homeSubtitle = "Share a recipe link to this app from your browser, or paste one here."
-    static let labelRecipeUrl = "Recipe URL"
-    static let sectionContinueCooking = "Continue cooking"
-    static let sectionRecentlyViewed = "Recently viewed"
-    static let homeEmptyHint = "Recipes you open will show up here."
-    static let navHistory = "History"
+    static var homeSubtitle: String { String(localized: "home_subtitle") }
+    static var labelRecipeUrl: String { String(localized: "label_recipe_url") }
+    static var sectionContinueCooking: String { String(localized: "section_continue_cooking") }
+    static var sectionRecentlyViewed: String { String(localized: "section_recently_viewed") }
+    static var homeEmptyHint: String { String(localized: "home_empty_hint") }
+    static var navHistory: String { String(localized: "nav_history") }
 
     // History
-    static let historyTitle = "History"
-    static let historyEmpty = "Nothing yet. Recipes you open are kept here automatically."
-    static func historyNoResults(_ query: String) -> String { "No recipes match \"\(query)\"." }
-    static let searchHistory = "Search titles and ingredients"
-    static let clearSearch = "Clear search"
-    static func deletedOne(_ title: String) -> String { "Deleted \"\(title)\"" }
-    static func deletedMany(_ n: Int) -> String { n == 1 ? "\(n) recipe deleted" : "\(n) recipes deleted" }
+    static var historyTitle: String { String(localized: "history_title") }
+    static var historyEmpty: String { String(localized: "history_empty") }
+    static func historyNoResults(_ query: String) -> String { String(localized: "history_no_results \(query)") }
+    static var searchHistory: String { String(localized: "label_search_history") }
+    static var clearSearch: String { String(localized: "cd_clear_search") }
+    static func deletedOne(_ title: String) -> String { String(localized: "snackbar_deleted_one \(title)") }
+    static func deletedMany(_ n: Int) -> String { String(localized: "snackbar_deleted_many \(n)") }
 
     /// One snackbar message for the whole pending batch, or nil when nothing is pending.
     static func deletedMessage(_ pending: [String]) -> String? {
@@ -130,15 +142,17 @@ enum Strings {
     }
 
     // Shared
-    static let tagSaved = "Saved"
+    static var tagSaved: String { String(localized: "tag_saved") }
 
     // Relative times. TimeAgo decides which applies; the words live here.
-    static let timeJustNow = "Just now"
-    static let timeYesterday = "Yesterday"
+    static var timeJustNow: String { String(localized: "time_just_now") }
+    static var timeYesterday: String { String(localized: "time_yesterday") }
+    /// A template, not a pattern: `setLocalizedDateFormatFromTemplate` orders it per locale
+    /// ("Sep 3", "3 sept.", "3. Sept."), so it needs no translation.
     static let timeDateFormat = "MMM d"
-    static func timeMinutesAgo(_ n: Int) -> String { "\(n) min ago" }
-    static func timeHoursAgo(_ n: Int) -> String { "\(n) h ago" }
-    static func timeDaysAgo(_ n: Int) -> String { n == 1 ? "\(n) day ago" : "\(n) days ago" }
+    static func timeMinutesAgo(_ n: Int) -> String { String(localized: "time_minutes_ago \(n)") }
+    static func timeHoursAgo(_ n: Int) -> String { String(localized: "time_hours_ago \(n)") }
+    static func timeDaysAgo(_ n: Int) -> String { String(localized: "time_days_ago \(n)") }
 
     static func elapsed(_ elapsed: Elapsed) -> String {
         switch elapsed {
@@ -154,60 +168,70 @@ enum Strings {
         }
     }
 
-    static let darkWhileCookingTitle = "Dark while cooking"
-    static let darkWhileCookingDescription = "Keep cook mode on an ink screen in light mode"
+    static var darkWhileCookingTitle: String { String(localized: "dark_while_cooking_title") }
+    static var darkWhileCookingDescription: String { String(localized: "dark_while_cooking_description") }
 
     // Settings
-    static let navSettings = "Settings"
-    static let settingsTitle = "Settings"
-    static let settingsSectionUnits = "Units"
-    static let settingsSectionOvenTemperature = "Oven temperature"
-    static let settingsSectionAppearance = "Appearance"
+    static var navSettings: String { String(localized: "nav_settings") }
+    static var settingsTitle: String { String(localized: "settings_title") }
+    static var settingsSectionUnits: String { String(localized: "settings_section_units") }
+    static var settingsSectionOvenTemperature: String { String(localized: "settings_section_oven_temperature") }
+    static var settingsSectionAppearance: String { String(localized: "settings_section_appearance") }
 
     static func temperatureLabel(_ unit: TemperatureUnit) -> String {
         switch unit {
-        case .asWritten: return "As written"
-        case .celsius: return "Celsius (°C)"
-        case .fahrenheit: return "Fahrenheit (°F)"
+        case .asWritten: return String(localized: "temperature_as_written")
+        case .celsius: return String(localized: "temperature_celsius")
+        case .fahrenheit: return String(localized: "temperature_fahrenheit")
         }
     }
 
     static func temperatureDescription(_ unit: TemperatureUnit) -> String {
         switch unit {
-        case .asWritten: return "Exactly the temperature the recipe uses"
-        case .celsius: return "Oven temperatures converted to °C"
-        case .fahrenheit: return "Oven temperatures converted to °F"
+        case .asWritten: return String(localized: "temperature_as_written_description")
+        case .celsius: return String(localized: "temperature_celsius_description")
+        case .fahrenheit: return String(localized: "temperature_fahrenheit_description")
         }
     }
 
     // Lists
-    static let navLists = "Lists"
-    static let listsTitle = "Lists"
-    static let newList = "+ New list"
-    static let create = "Create"
-    static let rename = "Rename"
-    static let save = "Save"
-    static let listName = "List name"
-    static let listEmpty = "Nothing in this list yet."
+    static var navLists: String { String(localized: "nav_lists") }
+    static var listsTitle: String { String(localized: "lists_title") }
+    static var newList: String { String(localized: "action_new_list") }
+    static var create: String { String(localized: "action_create") }
+    static var rename: String { String(localized: "action_rename") }
+    static var save: String { String(localized: "action_save") }
+    static var listName: String { String(localized: "label_list_name") }
+    static var listEmpty: String { String(localized: "list_empty") }
 
     /// "Empty" rather than "0 recipes": a state, not a tally.
     static func listCount(_ n: Int) -> String {
-        switch n {
-        case 0: return "Empty"
-        case 1: return "1 recipe"
-        default: return "\(n) recipes"
-        }
+        n == 0 ? String(localized: "list_count_empty") : String(localized: "list_count \(n)")
     }
 
     // Save-to-list sheet
-    static let saveToListTitle = "Save to"
-    static let saveToList = "Save to a list"
-    static let inAList = "Saved to a list"
+    static var saveToListTitle: String { String(localized: "save_to_list_title") }
+    static var saveToList: String { String(localized: "cd_save_to_list") }
+    static var inAList: String { String(localized: "cd_in_a_list") }
 
     // List detail
-    static let renameListTitle = "Rename list"
-    static func deleteListTitle(_ name: String) -> String { "Delete \"\(name)\"?" }
+    static var renameListTitle: String { String(localized: "rename_list_title") }
+    static func deleteListTitle(_ name: String) -> String { String(localized: "delete_list_title \(name)") }
     /// Deliberately says what does NOT happen: the recipes are not deleted.
-    static let deleteListBody = "The list is removed. The recipes in it stay in your history."
-    static let deleteList = "Delete list"
+    static var deleteListBody: String { String(localized: "delete_list_body") }
+    static var deleteList: String { String(localized: "action_delete_list") }
+
+    // Sharing a recipe out: the labels RecipeShareText writes into the message body.
+    static var shareTextLabels: RecipeShareText.Labels {
+        RecipeShareText.Labels(
+            serves: { String(localized: "share_serves \($0)") },
+            makes: { String(localized: "share_makes \($0)") },
+            scaled: { line, original in String(localized: "share_scaled \(line) \(original)") },
+            prep: labelPrep,
+            cook: labelCook,
+            total: labelTotal,
+            ingredients: String(localized: "share_heading_ingredients"),
+            instructions: String(localized: "share_heading_instructions")
+        )
+    }
 }
