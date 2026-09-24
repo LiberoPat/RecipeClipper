@@ -21,19 +21,42 @@ final class LanguageWordsTests: XCTestCase {
         XCTAssertNil(LanguageWords.forTag(nil))
     }
 
+    private let english = "2 cups chopped fresh basil\n1 tablespoon olive oil\nsalt to taste"
+    private let german = "Rührkuchen\n500 g Mehl\n200 g Zucker\n3 Eier\n1 Prise Salz\n2 EL Öl"
+    private let ambiguous = "Kuchen\n200 g Mehl\n1 cup sugar"
+
     func testInLanguageWinsThenThePageThenTheWordsThenEnglish() {
-        let english = "2 cups chopped fresh basil\n1 tablespoon olive oil\nsalt to taste"
-        XCTAssertEqual(LanguageWords.resolve(declared: "de-DE", page: "en") { english }, "de-de")
-        XCTAssertEqual(LanguageWords.resolve(declared: nil, page: "fr") { english }, "fr")
-        XCTAssertEqual(LanguageWords.resolve(declared: "English", page: "fr") { english }, "fr")
-        XCTAssertEqual(LanguageWords.resolve(declared: nil, page: nil) { english }, "en")
+        XCTAssertEqual(LanguageWords.resolve(declared: "de-DE", page: "en") { self.ambiguous }, "de-de")
+        XCTAssertEqual(LanguageWords.resolve(declared: nil, page: "fr") { "Gâteau" }, "fr")
+        XCTAssertEqual(LanguageWords.resolve(declared: "English", page: "fr") { "Gâteau" }, "fr")
+        XCTAssertEqual(LanguageWords.resolve(declared: "en-GB", page: nil) { self.english }, "en-gb")
+        XCTAssertEqual(LanguageWords.resolve(declared: nil, page: nil) { self.english }, "en")
+        XCTAssertEqual(LanguageWords.resolve(declared: nil, page: nil) { self.german }, "de")
         XCTAssertEqual(LanguageWords.resolve(declared: nil, page: nil) { "Mehl\nZucker" }, "en")
+    }
+
+    func testWordsThatClearlySayAnotherLanguageBeatADeclaredOneAmbiguousWordsDont() {
+        XCTAssertEqual(LanguageWords.resolve(declared: nil, page: "en") { self.german }, "de")
+        XCTAssertEqual(LanguageWords.resolve(declared: "en-US", page: "en") { self.german }, "de")
+        XCTAssertEqual(LanguageWords.resolve(declared: "de", page: nil) { self.english }, "en")
+        XCTAssertEqual(LanguageWords.resolve(declared: nil, page: "en") { self.ambiguous }, "en")
+        XCTAssertEqual(LanguageWords.resolve(declared: "en-US", page: nil) { self.ambiguous }, "en-us")
     }
 
     func testDetectionNeedsAClearLead() {
         XCTAssertEqual(LanguageWords.detect("1 cup sugar\n2 cups flour\n1 large egg, divided"), "en")
+        XCTAssertEqual(LanguageWords.detect(german), "de")
+        XCTAssertEqual(LanguageWords.detect("2 tazas de harina\n1 cucharada de azúcar\n3 huevos\nsal al gusto"), "es")
+        XCTAssertEqual(LanguageWords.detect("250 g de farine\n2 cuillères à soupe de sucre\n3 œufs\nsel et poivre"), "fr")
+        XCTAssertEqual(LanguageWords.detect("300 g di farina\n2 cucchiai di zucchero\n3 uova\nsale q.b."), "it")
+        XCTAssertEqual(LanguageWords.detect("2 xícaras de farinha\n1 colher de açúcar\n3 ovos\nsal a gosto"), "pt")
         XCTAssertNil(LanguageWords.detect("500 g Mehl\n200 g Zucker"))
+        XCTAssertNil(LanguageWords.detect(ambiguous))
         XCTAssertNil(LanguageWords.detect("Pasta with pesto"))
+    }
+
+    func testALanguageDetectedButWithoutTablesIsShownAsWritten() {
+        XCTAssertNil(LanguageWords.forTag(LanguageWords.resolve(declared: nil, page: "en") { self.german }))
     }
 
     func testAStoredRecipeWithNoLanguageIsDetectedFromItsWords() {
@@ -108,6 +131,16 @@ final class LanguageWordsTests: XCTestCase {
         XCTAssertEqual(detected.language, "en")
         let fallback = try parse(page(nil, #"{"@type": "Recipe", "name": "Kuchen", "recipeIngredient": ["200 g Mehl"]}"#))
         XCTAssertEqual(fallback.language, "en")
+    }
+
+    func testAPageDeclaringEnglishWhoseIngredientsAreClearlyGermanIsGerman() throws {
+        let recipe = try parse(page("en", #"{"@type": "Recipe", "name": "Rührkuchen", "recipeIngredient": ["500 g Mehl", "200 g Zucker", "3 Eier", "1 Prise Salz", "2 EL Öl"]}"#))
+        XCTAssertEqual(recipe.language, "de")
+    }
+
+    func testAPageDeclaringEnglishWithAmbiguousIngredientsStaysEnglish() throws {
+        let recipe = try parse(page("en", #"{"@type": "Recipe", "name": "Kuchen", "recipeIngredient": ["200 g Mehl", "1 cup sugar"]}"#))
+        XCTAssertEqual(recipe.language, "en")
     }
 
     func testEnglishWordsReadAnEnglishRecipesTimesAndCondensedSections() throws {

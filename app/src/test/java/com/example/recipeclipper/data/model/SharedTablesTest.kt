@@ -15,12 +15,15 @@ class SharedTablesTest {
     )
 
     @Test
-    fun everyLanguageOnDiskIsShippedWithEveryTable() {
+    fun everyLanguageOnDiskIsDetectedAndEveryShippedOneHasEveryTable() {
         val languages = File("../shared/tables").listFiles()!!.filter { it.isDirectory }.map { it.name }
-        assertEquals(LanguageWords.SHIPPED.toSet(), languages.toSet())
+        assertEquals(LanguageWords.DETECTED.toSet(), languages.toSet())
+        assertTrue(LanguageWords.DETECTED.containsAll(LanguageWords.SHIPPED))
         for (language in languages) {
             val onDisk = File("../shared/tables/$language").list()!!.map { it.removeSuffix(".json") }.toSet()
-            assertEquals(language, languageTables.toSet(), onDisk)
+            val expected = if (language in LanguageWords.SHIPPED) languageTables.toSet() else setOf("language")
+            assertEquals(language, expected, onDisk)
+            assertEquals(language, language, SharedTables.load("language", language).getString("language"))
         }
     }
 

@@ -9,15 +9,18 @@ final class SharedTablesTests: XCTestCase {
         "amounts", "durations", "language",
     ]
 
-    func testEveryBundledLanguageIsShippedWithEveryTable() throws {
+    func testEveryBundledLanguageIsDetectedAndEveryShippedOneHasEveryTable() throws {
         let root = try XCTUnwrap(Bundle.main.url(forResource: "tables", withExtension: nil))
         let languages = try FileManager.default.contentsOfDirectory(atPath: root.path)
             .filter { !$0.hasSuffix(".json") }
-        XCTAssertEqual(Set(languages), Set(LanguageWords.shipped))
+        XCTAssertEqual(Set(languages), Set(LanguageWords.detected))
+        XCTAssertTrue(Set(LanguageWords.shipped).isSubset(of: Set(LanguageWords.detected)))
         for language in languages {
             let onDisk = try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent(language).path)
                 .map { ($0 as NSString).deletingPathExtension }
-            XCTAssertEqual(Set(onDisk), Set(languageTables), language)
+            let expected = LanguageWords.shipped.contains(language) ? Set(languageTables) : ["language"]
+            XCTAssertEqual(Set(onDisk), expected, language)
+            XCTAssertEqual(SharedTables.load("language", language)["language"] as? String, language)
         }
     }
 

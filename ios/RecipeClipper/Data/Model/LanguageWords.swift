@@ -10,7 +10,9 @@ import Foundation
 /// written, with no scaling, conversion, temperature rewrite, timer or servings stepper, since
 /// English rules would read "2 bis 3" as "4 bis 3".
 ///
-/// Adding a language is adding its folder of tables and its code to `shipped`.
+/// Adding a language is adding its folder of tables and its code to `shipped`. A language in
+/// `detected` only (a folder holding just `language.json`) can be recognised but not read, so
+/// its recipes stay as written.
 final class LanguageWords: Equatable, @unchecked Sendable {
 
     /// One instance per language, so identity is equality.
@@ -22,11 +24,6 @@ final class LanguageWords: Equatable, @unchecked Sendable {
     private init(_ language: String) {
         self.language = language
         rangeWords = SharedTables.alternation(SharedTables.strings(SharedTables.load("ranges", language), "words"))
-        detectWords = JRegex(
-            #"(?<!\p{L})"# + SharedTables.alternation(SharedTables.strings(SharedTables.load("language", language), "detect")) +
-                #"(?!\p{L})"#,
-            ignoreCase: true
-        )
     }
 
     func table(_ name: String) -> SharedTables.Table { SharedTables.load(name, language) }
@@ -35,8 +32,6 @@ final class LanguageWords: Equatable, @unchecked Sendable {
 
     /// Words that join the ends of a range ("4 to 6"), as one alternation.
     let rangeWords: String
-
-    private let detectWords: JRegex
 
     private let lock = NSLock()
     private var compiled: [ObjectIdentifier: Any] = [:]
@@ -59,8 +54,18 @@ final class LanguageWords: Equatable, @unchecked Sendable {
         return built
     }
 
-    /// Languages with tables, in the order detection breaks no ties (it needs a clear lead).
+    /// Languages with every table: their recipes are read with their own words.
     static let shipped = ["en"]
+
+    /// Languages detection can recognise: every shipped one, plus some with only
+    /// `language.json` so far, so a German page that declares `en` is recognised as German (and
+    /// shown as written) rather than read with English rules.
+    static let detected = ["en", "de", "es", "fr", "it", "pt"]
+
+    private static let detectors: [(language: String, words: JRegex)] = detected.map { language in
+        let words = SharedTables.strings(SharedTables.load("language", language), "detect")
+        return (language, JRegex(#"(?<!\p{L})"# + SharedTables.alternation(words) + #"(?!\p{L})"#, ignoreCase: true))
+    }
 
     private static let loaded: [String: LanguageWords] =
         Dictionary(uniqueKeysWithValues: shipped.map { ($0, LanguageWords($0)) })
@@ -84,21 +89,30 @@ final class LanguageWords: Equatable, @unchecked Sendable {
         return loaded[primary]
     }
 
-    /// The shipped language whose words the text uses most, when clearly ahead: at least 3 hits
+    /// The detected language whose words the text uses most, when clearly ahead: at least 3 hits
     /// and more than twice the runner-up's. Nil when nothing is clear.
     static func detect(_ text: String) -> String? {
-        let scores = shipped.map { ($0, loaded[$0]!.detectWords.findAll(text).count) }
-            .sorted { $0.1 > $1.1 } // stable in Swift 5: ties keep shipped order
+        // Ties can't win (the lead must be more than double), so the sort's order among equal
+        // scores never matters.
+        let scores = detectors.map { ($0.language, $0.words.findAll(text).count) }
+            .sorted { $0.1 > $1.1 }
         guard let (best, score) = scores.first else { return nil }
         let runnerUp = scores.count > 1 ? scores[1].1 : 0
         return score >= 3 && score > 2 * runnerUp ? best : nil
     }
 
     /// The recipe's language: the JSON-LD `inLanguage`, else the page's `<html lang>`, else
-    /// detection from the recipe's own words, else English. Never the phone's locale: a Spanish
-    /// speaker may share an English recipe.
+    /// English, unless the recipe's own words clearly say another language (`detect`), which then
+    /// wins (the owner's decision on #14: pages mislabel themselves, and mulherportuguesa.com
+    /// declares `en` on Portuguese recipes). Ambiguous words keep the declared language. Never
+    /// the phone's locale: a Spanish speaker may share an English recipe.
     static func resolve(declared: String?, page: String?, text: () -> String) -> String {
-        normalize(declared) ?? normalize(page) ?? detect(text()) ?? "en"
+        let stated = normalize(declared) ?? normalize(page)
+        let detected = detect(text())
+        guard let stated else { return detected ?? "en" }
+        let primary = stated.split(separator: "-", maxSplits: 1).first.map(String.init) ?? stated
+        if let detected, detected != primary { return detected }
+        return stated
     }
 
     /// The text detection reads: the name and the ingredient lines.

@@ -26,21 +26,46 @@ class LanguageWordsTest {
         assertNull(LanguageWords.forTag(null))
     }
 
+    private val english = "2 cups chopped fresh basil\n1 tablespoon olive oil\nsalt to taste"
+    private val german = "Rührkuchen\n500 g Mehl\n200 g Zucker\n3 Eier\n1 Prise Salz\n2 EL Öl"
+    private val ambiguous = "Kuchen\n200 g Mehl\n1 cup sugar"
+
     @Test
     fun `inLanguage wins, then the page's lang, then the recipe's words, then English`() {
-        val english = "2 cups chopped fresh basil\n1 tablespoon olive oil\nsalt to taste"
-        assertEquals("de-de", LanguageWords.resolve("de-DE", "en") { english })
-        assertEquals("fr", LanguageWords.resolve(null, "fr") { english })
-        assertEquals("fr", LanguageWords.resolve("English", "fr") { english })
+        assertEquals("de-de", LanguageWords.resolve("de-DE", "en") { ambiguous })
+        assertEquals("fr", LanguageWords.resolve(null, "fr") { "Gâteau" })
+        assertEquals("fr", LanguageWords.resolve("English", "fr") { "Gâteau" })
+        assertEquals("en-gb", LanguageWords.resolve("en-GB", null) { english })
         assertEquals("en", LanguageWords.resolve(null, null) { english })
+        assertEquals("de", LanguageWords.resolve(null, null) { german })
         assertEquals("en", LanguageWords.resolve(null, null) { "Mehl\nZucker" })
+    }
+
+    @Test
+    fun `words that clearly say another language beat a declared one, ambiguous words don't`() {
+        assertEquals("de", LanguageWords.resolve(null, "en") { german })
+        assertEquals("de", LanguageWords.resolve("en-US", "en") { german })
+        assertEquals("en", LanguageWords.resolve("de", null) { english })
+        assertEquals("en", LanguageWords.resolve(null, "en") { ambiguous })
+        assertEquals("en-us", LanguageWords.resolve("en-US", null) { ambiguous })
     }
 
     @Test
     fun `detection needs a clear lead`() {
         assertEquals("en", LanguageWords.detect("1 cup sugar\n2 cups flour\n1 large egg, divided"))
+        assertEquals("de", LanguageWords.detect(german))
+        assertEquals("es", LanguageWords.detect("2 tazas de harina\n1 cucharada de azúcar\n3 huevos\nsal al gusto"))
+        assertEquals("fr", LanguageWords.detect("250 g de farine\n2 cuillères à soupe de sucre\n3 œufs\nsel et poivre"))
+        assertEquals("it", LanguageWords.detect("300 g di farina\n2 cucchiai di zucchero\n3 uova\nsale q.b."))
+        assertEquals("pt", LanguageWords.detect("2 xícaras de farinha\n1 colher de açúcar\n3 ovos\nsal a gosto"))
         assertNull(LanguageWords.detect("500 g Mehl\n200 g Zucker"))
+        assertNull(LanguageWords.detect(ambiguous))
         assertNull(LanguageWords.detect("Pasta with pesto"))
+    }
+
+    @Test
+    fun `a language detected but without tables is shown as written`() {
+        assertNull(LanguageWords.forTag(LanguageWords.resolve(null, "en") { german }))
     }
 
     @Test

@@ -49,6 +49,19 @@ class RecipeLanguageTest {
     }
 
     @Test
+    fun `a page declaring English whose ingredients are clearly German is German`() {
+        val recipe = parse(page("en", """{"@type": "Recipe", "name": "Rührkuchen",
+            "recipeIngredient": ["500 g Mehl", "200 g Zucker", "3 Eier", "1 Prise Salz", "2 EL Öl"]}"""))
+        assertEquals("de", recipe.language)
+    }
+
+    @Test
+    fun `a page declaring English with ambiguous ingredients stays English`() {
+        val recipe = parse(page("en", """{"@type": "Recipe", "name": "Kuchen", "recipeIngredient": ["200 g Mehl", "1 cup sugar"]}"""))
+        assertEquals("en", recipe.language)
+    }
+
+    @Test
     fun `English words read an English recipe's times and condensed sections`() {
         val recipe = parse(page("en-US", """{"@type": "Recipe", "name": "Cake", "recipeIngredient": ["1 cup flour"],
             "prepTime": "1 hour 30 minutes", "cookTime": "PT20M", $sections}"""))
