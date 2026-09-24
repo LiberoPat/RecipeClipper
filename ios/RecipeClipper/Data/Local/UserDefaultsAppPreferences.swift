@@ -19,7 +19,8 @@ final class UserDefaultsAppPreferences: AppPreferences {
     }
 
     var unitSystem: UnitSystem {
-        get { defaults.string(forKey: Key.unitSystem).flatMap(UnitSystem.init(rawValue:)) ?? .asWritten }
+        // A stored GRAMS (the option #17 removed) reads as metric.
+        get { UnitSystem(storedName: defaults.string(forKey: Key.unitSystem)) }
         set { defaults.set(newValue.rawValue, forKey: Key.unitSystem) }
     }
 

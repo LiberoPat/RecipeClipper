@@ -75,6 +75,29 @@ final class DataRepositoryTests: XCTestCase {
         XCTAssertEqual(second.lastViewedAt, 9_000)
     }
 
+    func testReImportKeepsTheNote() async throws {
+        let first = await importSuccess("https://a.com/soup", at: 1_000)!
+        await recipes.setNotes(id: first.id, notes: "Used half the sugar")
+
+        let second = await importSuccess("https://a.com/soup", title: "Better Soup", at: 9_000)!
+
+        XCTAssertEqual(second.id, first.id)
+        XCTAssertEqual(second.name, "Better Soup")
+        XCTAssertEqual(second.notes, "Used half the sugar")
+    }
+
+    func testABlankNoteIsStoredAsNoNote() async throws {
+        let recipe = await importSuccess("https://a.com/soup", at: 1_000)!
+
+        await recipes.setNotes(id: recipe.id, notes: "Needs 10 more minutes")
+        let written = await recipes.open(id: recipe.id)?.notes
+        XCTAssertEqual(written, "Needs 10 more minutes")
+
+        await recipes.setNotes(id: recipe.id, notes: "  \n ")
+        let cleared = try await db.get(recipe.id)?.notes
+        XCTAssertNil(cleared)
+    }
+
     func testOfflineFallbackReturnsTheSavedCopyAndTouchesIt() async throws {
         let saved = await importSuccess("https://a.com/soup", at: 1_000)!
         source.results = [:] // the network is gone
@@ -239,6 +262,169 @@ final class DataRepositoryTests: XCTestCase {
         _ = await task.value
 
         XCTAssertEqual(scripted.fetches, 1)
+        let stored = try await db.get(saved.id)
+        XCTAssertEqual(stored?.title, "Soup")
+        XCTAssertEqual(stored?.lastViewedAt, 1_000, "not even a touch")
+        let count = try await db.recipeCount()
+        XCTAssertEqual(count, 1)
+    }
+
+    // MARK: - importFromUrl: the off-screen browser fallback, after the retry
+
+    /// A page as a browser would hand it back once its scripts have run.
+    private let renderedRecipePage = """
+        <html><head><script type="application/ld+json">
+        {"@type":"Recipe","name":"Rendered Soup","recipeIngredient":["1 leek"],"recipeInstructions":["Simmer."]}
+        </script></head><body></body></html>
+        """
+    private let renderedStoryPage = "<html><body><p>A long story, and no recipe.</p></body></html>"
+
+    private func rendering(
+        _ rendered: FakeRenderedPageSource,
+        _ results: ParseResult...,
+        renderTimeout: Duration = DefaultRecipeRepository.renderTimeout
+    ) -> (DefaultRecipeRepository, DataScriptedSource) {
+        let scripted = DataScriptedSource(results)
+        let repository = DefaultRecipeRepository(
+            db: db, source: scripted, clock: clock, sleep: pauses.sleep,
+            renderedPages: rendered, renderTimeout: renderTimeout
+        )
+        return (repository, scripted)
+    }
+
+    func testBlockedTwiceRendersOnceAfterTheRetryAndSavesWhatItFinds() async throws {
+        let url = "https://a.com/soup"
+        var fetchesBeforeRender = -1
+        var pausesBeforeRender = -1
+        var scriptedRef: DataScriptedSource?
+        let rendered = FakeRenderedPageSource { [unowned self] _ in
+            fetchesBeforeRender = scriptedRef?.fetches ?? -1
+            pausesBeforeRender = self.pauses.durations.count
+            return self.renderedRecipePage
+        }
+        let (repository, scripted) = rendering(rendered, .error(.blocked(httpStatus: 403)))
+        scriptedRef = scripted
+
+        let result = await repository.importFromUrl(url)
+
+        XCTAssertEqual(rendered.requests, [url])
+        XCTAssertEqual(fetchesBeforeRender, 2)
+        XCTAssertEqual(pausesBeforeRender, 1)
+        guard case .success(let recipe) = result else { return XCTFail("\(result)") }
+        XCTAssertEqual(recipe.name, "Rendered Soup")
+        XCTAssertEqual(recipe.sourceUrl, url)
+        let stored = try await db.get(recipe.id)
+        XCTAssertEqual(stored?.title, "Rendered Soup")
+    }
+
+    func testNoRecipeFoundRendersOnceWithNoRetryAndNoPause() async {
+        let rendered = FakeRenderedPageSource { [unowned self] _ in self.renderedRecipePage }
+        let (repository, scripted) = rendering(rendered, .error(.noRecipeFound))
+
+        let result = await repository.importFromUrl("https://a.com/soup")
+
+        XCTAssertEqual(scripted.fetches, 1)
+        XCTAssertEqual(pauses.durations, [])
+        XCTAssertEqual(rendered.requests.count, 1)
+        guard case .success = result else { return XCTFail("\(result)") }
+    }
+
+    func testTheTrackingFreeLinkIsWhatGetsRendered() async {
+        let rendered = FakeRenderedPageSource()
+        let (repository, _) = rendering(rendered, .error(.noRecipeFound))
+
+        _ = await repository.importFromUrl("https://a.com/soup?utm_source=share#jump")
+
+        XCTAssertEqual(rendered.requests, ["https://a.com/soup"])
+    }
+
+    func testNeverRenderedForOfflineATimeoutANetworkFailureOrASuccess() async {
+        let url = "https://a.com/soup"
+        let timeout = ParseError.fetchFailed("The request timed out.", timedOut: true)
+        let scripts: [[ParseResult]] = [
+            [.error(.offline)],
+            [.error(timeout)],
+            [.error(.fetchFailed("reset"))],
+            [.error(.blocked(httpStatus: 403)), .error(timeout)], // the retry itself timed out
+            [.success(dataRecipe(url))],
+        ]
+        for script in scripts {
+            let rendered = FakeRenderedPageSource { [unowned self] _ in self.renderedRecipePage }
+            let repository = DefaultRecipeRepository(
+                db: db, source: DataScriptedSource(script), clock: clock, sleep: pauses.sleep,
+                renderedPages: rendered
+            )
+            _ = await repository.importFromUrl(url)
+            XCTAssertEqual(rendered.requests, [], "\(script)")
+        }
+    }
+
+    func testARenderedPageWithNoRecipeKeepsTheDirectFetchsCause() async throws {
+        let rendered = FakeRenderedPageSource { [unowned self] _ in self.renderedStoryPage }
+        let (repository, _) = rendering(rendered, .error(.blocked(httpStatus: 403)), .error(.blocked(httpStatus: 429)))
+
+        let result = await repository.importFromUrl("https://a.com/soup")
+
+        XCTAssertEqual(rendered.requests.count, 1)
+        XCTAssertEqual(result, .error(.blocked(httpStatus: 429)))
+        let count = try await db.recipeCount()
+        XCTAssertEqual(count, 0)
+    }
+
+    func testAPageThatFailsToRenderKeepsNoRecipeFound() async {
+        let rendered = FakeRenderedPageSource()
+        let (repository, _) = rendering(rendered, .error(.noRecipeFound))
+
+        let result = await repository.importFromUrl("https://a.com/soup")
+
+        XCTAssertEqual(rendered.requests.count, 1)
+        XCTAssertEqual(result, .error(.noRecipeFound))
+    }
+
+    func testARenderThatNeverSettlesIsCutOffAtTheCapKeepingTheCause() async {
+        let rendered = FakeRenderedPageSource { _ in
+            try? await Task.sleep(for: .seconds(60)) // interrupted by the cap's cancellation
+            return Task.isCancelled ? nil : "<html></html>"
+        }
+        let (repository, _) = rendering(rendered, .error(.noRecipeFound), renderTimeout: .milliseconds(50))
+
+        let started = ContinuousClock.now
+        let result = await repository.importFromUrl("https://a.com/soup")
+
+        XCTAssertEqual(result, .error(.noRecipeFound))
+        XCTAssertLessThan(ContinuousClock.now - started, .seconds(10))
+    }
+
+    func testStillBlockedAfterRenderingASavedLinkOpensTheSavedCopy() async {
+        let saved = await importSuccess("https://a.com/soup", at: 1_000)!
+        let rendered = FakeRenderedPageSource { [unowned self] _ in self.renderedStoryPage }
+        let (repository, _) = rendering(rendered, .error(.blocked(httpStatus: 403)))
+
+        let result = await repository.importFromUrl("https://a.com/soup")
+
+        XCTAssertEqual(rendered.requests.count, 1)
+        guard case .success(let recipe) = result else { return XCTFail("\(result)") }
+        XCTAssertEqual(recipe.id, saved.id)
+        XCTAssertEqual(recipe.name, "Soup")
+    }
+
+    func testCancellingDuringTheRenderWritesNothing() async throws {
+        let url = "https://a.com/soup"
+        let saved = await importSuccess(url, at: 1_000)!
+        clock.time = 9_000
+        let renderStarted = expectation(description: "render started")
+        let rendered = FakeRenderedPageSource { [unowned self] _ in
+            renderStarted.fulfill()
+            try? await Task.sleep(for: .seconds(60)) // the real thing, so cancellation interrupts it
+            return self.renderedRecipePage // as if the page had finished anyway
+        }
+        let (repository, _) = rendering(rendered, .error(.noRecipeFound))
+
+        let task = Task { await repository.importFromUrl(url) }
+        await fulfillment(of: [renderStarted], timeout: 2)
+        task.cancel()
+        _ = await task.value
+
         let stored = try await db.get(saved.id)
         XCTAssertEqual(stored?.title, "Soup")
         XCTAssertEqual(stored?.lastViewedAt, 1_000, "not even a touch")

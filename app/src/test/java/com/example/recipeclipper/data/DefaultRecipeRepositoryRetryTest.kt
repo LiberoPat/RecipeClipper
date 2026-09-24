@@ -9,7 +9,9 @@ import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.remote.RecipeSource
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.example.recipeclipper.fake.FakeRenderedPageSource
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceTimeBy
@@ -22,8 +24,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The single automatic retry in [DefaultRecipeRepository.importFromUrl]. Runs on the JVM over
- * a scripted [RecipeSource] and an in-memory [RecipeDao]: what is under test is the retry and
+ * The single automatic retry in [DefaultRecipeRepository.importFromUrl], and the off-screen
+ * browser fallback after it. Runs on the JVM over a scripted [RecipeSource], a
+ * [FakeRenderedPageSource] and an in-memory [RecipeDao]: what is under test is the retry and
  * fallback decisions, not SQL (the DAO's own rules are covered on a device by RecipeDaoTest).
  * The pause is a coroutine `delay`, so `runTest`'s virtual time skips it.
  */
@@ -72,6 +75,10 @@ class DefaultRecipeRepositoryRetryTest {
         override suspend fun setChecked(id: Long, checked: Set<Int>) {
             writes++
             rows[id]?.let { rows[id] = it.copy(checkedIngredients = checked) }
+        }
+        override suspend fun setNotes(id: Long, notes: String?) {
+            writes++
+            rows[id]?.let { rows[id] = it.copy(notes = notes) }
         }
         override suspend fun delete(id: Long) {
             writes++
@@ -172,6 +179,34 @@ class DefaultRecipeRepositoryRetryTest {
         assertEquals(5_000L, dao.rows[savedId]?.lastViewedAt)
     }
 
+    // Not a retry rule, but this is the JVM suite that runs the real upsert: a re-share
+    // refreshes the content from the source and must leave the user's note alone.
+    @Test fun `re-sharing a link keeps its note and refreshes the content`() = runTest {
+        val dao = InMemoryRecipeDao()
+        val first = DefaultRecipeRepository(ScriptedSource(success), dao, Clock { 1_000L }, NoLog)
+        val id = (first.importFromUrl(url) as ParseResult.Success).recipe.id
+        first.setNotes(id, "Used half the sugar")
+
+        val refreshed = ParseResult.Success(recipe(title = "Better Soup"))
+        val result = DefaultRecipeRepository(ScriptedSource(refreshed), dao, Clock { 2_000L }, NoLog)
+            .importFromUrl(url) as ParseResult.Success
+
+        assertEquals(id, result.recipe.id)
+        assertEquals("Better Soup", result.recipe.name)
+        assertEquals("Used half the sugar", result.recipe.notes)
+    }
+
+    @Test fun `a blank note is stored as no note`() = runTest {
+        val dao = InMemoryRecipeDao()
+        val repository = DefaultRecipeRepository(ScriptedSource(success), dao, Clock { 1_000L }, NoLog)
+        val id = (repository.importFromUrl(url) as ParseResult.Success).recipe.id
+
+        repository.setNotes(id, "Needs 10 more minutes")
+        assertEquals("Needs 10 more minutes", dao.rows[id]?.notes)
+        repository.setNotes(id, "  \n ")
+        assertEquals(null, dao.rows[id]?.notes)
+    }
+
     @Test fun `NoRecipeFound is fetched once and never retried`() = runTest {
         val source = ScriptedSource(noRecipe, success)
         val dao = InMemoryRecipeDao()
@@ -230,6 +265,148 @@ class DefaultRecipeRepositoryRetryTest {
 
         assertTrue(import.isCancelled)
         assertEquals(1, source.fetches)
+        assertEquals(writesBefore, dao.writes)
+        assertEquals(1_000L, dao.rows.values.single().lastViewedAt)
+    }
+
+    // --- The off-screen browser fallback (RenderedPageSource), after the retry ---
+
+    /** A page as a browser would hand it back once its scripts have run. */
+    private val renderedRecipePage = """
+        <html><head><script type="application/ld+json">
+        {"@type":"Recipe","name":"Rendered Soup","recipeIngredient":["1 leek"],"recipeInstructions":["Simmer."]}
+        </script></head><body></body></html>
+    """.trimIndent()
+    private val renderedStoryPage = "<html><body><p>A long story, and no recipe.</p></body></html>"
+
+    private fun repository(source: RecipeSource, dao: RecipeDao, rendered: FakeRenderedPageSource, clock: Clock) =
+        DefaultRecipeRepository(source, dao, clock, NoLog, rendered)
+
+    @Test fun `blocked twice renders once, after the retry, and saves what it finds`() = runTest {
+        val source = ScriptedSource(blocked)
+        val dao = InMemoryRecipeDao()
+        var fetchesBeforeRender = -1
+        var timeOfRender = -1L
+        val rendered = FakeRenderedPageSource {
+            fetchesBeforeRender = source.fetches
+            timeOfRender = currentTime
+            renderedRecipePage
+        }
+
+        val result = repository(source, dao, rendered, Clock { currentTime }).importFromUrl(url)
+
+        assertEquals(listOf(url), rendered.requests)
+        assertEquals(2, fetchesBeforeRender)
+        assertEquals(DefaultRecipeRepository.RETRY_PAUSE_MS, timeOfRender)
+        assertEquals("Rendered Soup", (result as ParseResult.Success).recipe.name)
+        assertEquals(url, result.recipe.sourceUrl)
+        assertEquals(listOf("Rendered Soup"), dao.rows.values.map { it.title })
+    }
+
+    @Test fun `NoRecipeFound renders once, with no retry and no pause`() = runTest {
+        val source = ScriptedSource(noRecipe)
+        val rendered = FakeRenderedPageSource { renderedRecipePage }
+
+        val result = repository(source, InMemoryRecipeDao(), rendered, Clock { currentTime }).importFromUrl(url)
+
+        assertEquals(1, source.fetches)
+        assertEquals(0L, currentTime)
+        assertEquals(1, rendered.requests.size)
+        assertTrue(result is ParseResult.Success)
+    }
+
+    @Test fun `the tracking-free link is what gets rendered`() = runTest {
+        val rendered = FakeRenderedPageSource { null }
+
+        repository(ScriptedSource(noRecipe), InMemoryRecipeDao(), rendered, Clock { currentTime })
+            .importFromUrl("$url?utm_source=share#jump")
+
+        assertEquals(listOf(url), rendered.requests)
+    }
+
+    @Test fun `never rendered for Offline, a timeout, a network failure or a success`() = runTest {
+        val retryTimedOut = ScriptedSource(blocked, timedOut) // the retry itself timed out
+        for (source in listOf(
+            ScriptedSource(offline),
+            ScriptedSource(timedOut),
+            ScriptedSource(networkBlip),
+            retryTimedOut,
+            ScriptedSource(success)
+        )) {
+            val rendered = FakeRenderedPageSource { renderedRecipePage }
+            repository(source, InMemoryRecipeDao(), rendered, Clock { currentTime }).importFromUrl(url)
+            assertEquals(emptyList<String>(), rendered.requests)
+        }
+    }
+
+    @Test fun `a rendered page with no recipe keeps the direct fetch's cause`() = runTest {
+        val dao = InMemoryRecipeDao()
+        val rendered = FakeRenderedPageSource { renderedStoryPage }
+        val source = ScriptedSource(blocked, ParseResult.Error(ParseError.Blocked(429)))
+
+        val result = repository(source, dao, rendered, Clock { currentTime }).importFromUrl(url)
+
+        assertEquals(1, rendered.requests.size)
+        assertEquals(ParseResult.Error(ParseError.Blocked(429)), result)
+        assertEquals(0, dao.writes)
+    }
+
+    @Test fun `a page that fails to render keeps NoRecipeFound`() = runTest {
+        val rendered = FakeRenderedPageSource { null }
+
+        val result = repository(ScriptedSource(noRecipe), InMemoryRecipeDao(), rendered, Clock { currentTime })
+            .importFromUrl(url)
+
+        assertEquals(1, rendered.requests.size)
+        assertEquals(noRecipe, result)
+    }
+
+    @Test fun `a render that never settles is cut off at the cap, keeping the cause`() = runTest {
+        val rendered = FakeRenderedPageSource { awaitCancellation() }
+
+        val result = repository(ScriptedSource(noRecipe), InMemoryRecipeDao(), rendered, Clock { currentTime })
+            .importFromUrl(url)
+
+        assertEquals(noRecipe, result)
+        assertEquals(DefaultRecipeRepository.RENDER_TIMEOUT_MS, currentTime)
+    }
+
+    @Test fun `still blocked after rendering, a saved link opens the saved copy`() = runTest {
+        val dao = InMemoryRecipeDao()
+        val savedId = (DefaultRecipeRepository(ScriptedSource(success), dao, Clock { 1_000L }, NoLog)
+            .importFromUrl(url) as ParseResult.Success).recipe.id
+        val rendered = FakeRenderedPageSource { renderedStoryPage }
+
+        val result = repository(ScriptedSource(blocked), dao, rendered, Clock { 8_000L }).importFromUrl(url)
+
+        assertEquals(1, rendered.requests.size)
+        assertEquals(savedId, (result as ParseResult.Success).recipe.id)
+        assertEquals("Soup", result.recipe.name)
+    }
+
+    @Test fun `cancelling during the render writes nothing`() = runTest {
+        val dao = InMemoryRecipeDao()
+        // A saved copy exists, so a completed import would at least touch it.
+        DefaultRecipeRepository(ScriptedSource(success), dao, Clock { 1_000L }, NoLog).importFromUrl(url)
+        val writesBefore = dao.writes
+        var renderCancelled = false
+        val rendered = FakeRenderedPageSource {
+            try {
+                awaitCancellation()
+            } finally {
+                renderCancelled = true
+            }
+        }
+
+        val import = async { repository(ScriptedSource(noRecipe), dao, rendered, Clock { 9_000L }).importFromUrl(url) }
+        runCurrent()
+        assertEquals(1, rendered.requests.size)
+
+        import.cancel()
+        advanceUntilIdle()
+
+        assertTrue(import.isCancelled)
+        assertTrue(renderCancelled)
         assertEquals(writesBefore, dao.writes)
         assertEquals(1_000L, dao.rows.values.single().lastViewedAt)
     }

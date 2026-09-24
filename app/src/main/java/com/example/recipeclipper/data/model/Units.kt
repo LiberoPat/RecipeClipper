@@ -2,10 +2,22 @@ package com.example.recipeclipper.data.model
 
 /**
  * How ingredient amounts are shown. AS_WRITTEN leaves the recipe's own units untouched.
- * GRAMS and OUNCES express everything as weight. METRIC is EU-style: weights in g/kg,
- * volumes (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
+ * OUNCES expresses everything as weight. METRIC is EU-style: weights in g/kg, volumes
+ * (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
  */
-enum class UnitSystem { AS_WRITTEN, GRAMS, OUNCES, METRIC }
+enum class UnitSystem {
+    AS_WRITTEN, METRIC, OUNCES;
+
+    companion object {
+        /**
+         * The system a stored enum name stands for. GRAMS was a fourth option until #17; the
+         * people who chose it wanted weights, so it reads as METRIC rather than falling back
+         * to AS_WRITTEN. Anything unknown (or nothing stored) is AS_WRITTEN.
+         */
+        fun fromStoredName(name: String?): UnitSystem =
+            if (name == "GRAMS") METRIC else values().firstOrNull { it.name == name } ?: AS_WRITTEN
+    }
+}
 
 internal enum class MeasureKind { VOLUME, WEIGHT }
 
@@ -28,22 +40,26 @@ internal enum class MeasureUnit(
     LB(MeasureKind.WEIGHT, 453.592);
 
     companion object {
-        fun fromText(text: String): MeasureUnit? {
-            val s = text.lowercase().replace(".", "").replace(Regex("""\s+"""), " ")
-            return when {
-                s.startsWith("fl") -> FL_OZ
-                s.startsWith("tsp") || s.startsWith("teaspoon") -> TSP
-                s.startsWith("tbs") || s.startsWith("tablespoon") -> TBSP
-                s.startsWith("cup") -> CUP
-                s == "ml" || s.startsWith("millil") -> ML
-                s == "kg" || s.startsWith("kilo") -> KG
-                s == "g" || s.startsWith("gram") -> G
-                s == "l" || s.startsWith("lit") -> L
-                s.startsWith("stick") -> STICK
-                s == "oz" || s.startsWith("ounce") -> OZ
-                s == "lb" || s == "lbs" || s.startsWith("pound") -> LB
-                else -> null
+        private val WHITESPACE = Regex("""\s+""")
+
+        // shared/tables/en/units.json "names": the first rule the text satisfies wins.
+        private class Name(val unit: MeasureUnit, val exact: List<String>, val prefixes: List<String>)
+
+        private val NAMES: List<Name> by lazy {
+            SharedTables.objects(SharedTables.load("units").getJSONArray("names")).map {
+                Name(
+                    valueOf(it.getString("unit")),
+                    SharedTables.strings(it.optJSONArray("exact")),
+                    SharedTables.strings(it.optJSONArray("prefixes"))
+                )
             }
+        }
+
+        fun fromText(text: String): MeasureUnit? {
+            val s = text.lowercase().replace(".", "").replace(WHITESPACE, " ")
+            return NAMES.firstOrNull { name ->
+                s in name.exact || name.prefixes.any { s.startsWith(it) }
+            }?.unit
         }
     }
 }
@@ -53,17 +69,16 @@ internal enum class MeasureUnit(
  * words only, so "g" doesn't match the start of "garlic" or "l" the start of "large".
  */
 internal object UnitPatterns {
-    private const val ALTERNATIVES =
-        """fl\.?\s*oz|fluid\s+ounces?|tsps?|teaspoons?|tbsps?|tbs|tablespoons?|cups?|""" +
-                """millilit(?:er|re)s?|ml|kilograms?|kilos?|kg|grams?|g|lit(?:er|re)s?|l|""" +
-                """sticks?|ounces?|oz|lbs?|pounds?"""
+    // The unit words are shared with iOS: shared/tables/en/units.json "patterns", in order.
+    private val ALTERNATIVES =
+        SharedTables.strings(SharedTables.load("units").getJSONArray("patterns")).joinToString("|")
 
     // The alternation is wrapped in its own group so the optional trailing period applies to
     // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
 
     /** One capturing group holding the unit text. */
-    const val CAPTURED = """((?:$ALTERNATIVES)\.?)(?![A-Za-z])"""
+    val CAPTURED = """((?:$ALTERNATIVES)\.?)(?![A-Za-z])"""
 
     /** Same match, no capturing group. */
-    const val PLAIN = """(?:(?:$ALTERNATIVES)\.?)(?![A-Za-z])"""
+    val PLAIN = """(?:(?:$ALTERNATIVES)\.?)(?![A-Za-z])"""
 }
