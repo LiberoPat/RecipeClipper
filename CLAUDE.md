@@ -157,9 +157,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
   Grams and Ounces), Oven temperature (independent of units, default As
-  written), Appearance ("Dark while cooking"). Reached **only** from the gear
-  beside the Home title, because `RecipeViewModel` reads `AppPreferences` once
-  (#24).
+  written), Appearance ("Dark while cooking"). Reached from the gear beside
+  the Home title. It could now open from elsewhere too (the recipe screen
+  follows `AppPreferences.settings`), but adding an entry point is the
+  owner's call.
 - **Home:** link field, "Continue cooking" (the most recent), "Recently
   viewed" (the five before it), History and Lists rows (always shown), the
   Settings gear. Empty sections hide. **No "Saved" section**: it duplicated
@@ -207,8 +208,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   matches ingredients as stored, not as converted.
 - Settings live in the SharedPreferences file `unit_preferences` (never
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
-  under the same keys: `unitSystem`, `convertLiquids`, `temperatureUnit`,
-  `darkWhileCooking`, each enum stored by name.
+  under the same keys: `unit_system`, `convert_liquids`, `temperature_unit`,
+  `dark_while_cooking`, each enum stored by name. `AppPreferences.settings`
+  (a Flow over the change listener; iOS a publisher over
+  `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
+  preference collect it rather than reading once.
 - Ticked ingredients are written as they change. Cook progress, timers and
   the chosen servings are in memory only (#10).
 

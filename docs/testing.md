@@ -22,6 +22,11 @@ writes through to a `FakeAppPreferences` and updates `SettingsUiState`, and
 state is seeded from preferences on construction; `SettingsUiState` is a
 plain `MutableStateFlow`, not `stateIn(WhileSubscribed(...))`, so unlike
 `HomeViewModelTest`/`HistoryViewModelTest` it needs no `collectEagerly`).
+`FakeAppPreferences` keeps its values in one `MutableStateFlow` (iOS: a
+`CurrentValueSubject`), so writing a value on the fake directly stands for
+Settings changing a default while another screen is open; the
+`RecipeViewModelTest` cases under "A settings change arriving while the
+recipe is open" use that (#24).
 and the three list suites — `SaveToListViewModelTest`, `ListsViewModelTest`
 and `ListDetailViewModelTest`. Those run against `FakeListRepository`, which
 deliberately models membership as real state rather than only recording calls:
@@ -38,7 +43,7 @@ call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
-**257 JVM tests pass.**
+**265 JVM tests pass.**
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a

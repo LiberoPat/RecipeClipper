@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 @testable import RecipeClipper
 
@@ -53,6 +54,25 @@ final class UserDefaultsAppPreferencesTests: XCTestCase {
         let prefs = UserDefaultsAppPreferences(defaults: defaults)
         XCTAssertEqual(prefs.temperatureUnit, .asWritten)
         XCTAssertEqual(prefs.unitSystem, .asWritten)
+    }
+
+    func testSettingsPublishesTheCurrentValuesThenEachChangeWithoutRepeats() {
+        let prefs = UserDefaultsAppPreferences(defaults: defaults)
+        prefs.unitSystem = .grams
+        var received: [AppSettings] = []
+        let subscription = prefs.settings.sink { received.append($0) }
+        defer { subscription.cancel() }
+
+        prefs.darkWhileCooking = true
+        prefs.darkWhileCooking = true // unchanged: no emission
+        // Written through another instance on the same suite, as a second screen might.
+        UserDefaultsAppPreferences(defaults: defaults).temperatureUnit = .celsius
+
+        XCTAssertEqual(received, [
+            AppSettings(unitSystem: .grams),
+            AppSettings(unitSystem: .grams, darkWhileCooking: true),
+            AppSettings(unitSystem: .grams, temperatureUnit: .celsius, darkWhileCooking: true)
+        ])
     }
 }
 
