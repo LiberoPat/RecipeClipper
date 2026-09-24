@@ -170,12 +170,44 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migration3To4AddsNoLanguageAndKeepsEverythingElse() {
+        helper.createDatabase(name, 3).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt')
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 4, true, RecipeDatabase.MIGRATION_3_4)
+
+        val db = openMigrated()
+        runBlocking {
+            val recipe = db.recipeDao().get(7)
+            assertEquals("Adobo", recipe?.title)
+            assertEquals(setOf(0), recipe?.checkedIngredients)
+            assertEquals("Less salt", recipe?.notes)
+            assertNull(recipe?.language)
+
+            // A re-share fills the language in and keeps the note.
+            db.recipeDao().upsert(recipe!!.copy(id = 0, language = "en-us"), 50)
+            assertEquals("en-us", db.recipeDao().get(7)?.language)
+            assertEquals("Less salt", db.recipeDao().get(7)?.notes)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
-    fun migration1To3RunsBothSteps() {
+    fun migration1To4RunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 3, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 4, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val lists = runBlocking { openMigrated().listDao().observeLists(ListDao.NO_RECIPE).first() }
         assertEquals(listOf("Breakfast", "Snacks"), lists.map { it.name })

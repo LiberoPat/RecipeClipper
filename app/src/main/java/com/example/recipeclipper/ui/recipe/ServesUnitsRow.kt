@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.Servings
-import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ServingsScale
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.data.model.YieldKind
