@@ -32,7 +32,12 @@ data class RecipeEntity(
     val uid: String = newUid(),
     val language: String? = null,   // the recipe's language tag (#14); null before version 5
     val cookState: String? = null,  // CookProgress as JSON (CookStateJson); kept if steps unchanged
-    val servingsTarget: Int? = null // the chosen servings; null = the recipe's own yield
+    val servingsTarget: Int? = null, // the chosen servings; null = the recipe's own yield
+    /** [com.example.recipeclipper.data.model.ContentOrigin] by name (#29): PARSED is the
+     *  source's words, anything else the user's version, never refreshed by a re-share. */
+    @ColumnInfo(defaultValue = "PARSED")
+    val contentOrigin: String = "PARSED",
+    val editedAt: Long? = null      // when the user last saved an edit; null if never
 )
 
 @Entity(tableName = "lists", indices = [Index(value = ["uid"], unique = true)])

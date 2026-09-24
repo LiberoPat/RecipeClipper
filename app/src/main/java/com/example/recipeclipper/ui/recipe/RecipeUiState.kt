@@ -87,5 +87,10 @@ data class RecipeUiState(
      * [ParseError.NoRecipeFound] is on screen: never for a block, offline or a failed fetch,
      * which mean "try again", not "unsupported". The screen opens it; nothing is sent.
      */
-    val reportSiteUrl: String? = null
+    val reportSiteUrl: String? = null,
+    /** "Update from source" (#29) is fetching; the recipe stays on screen meanwhile. */
+    val updatingFromSource: Boolean = false,
+    /** Why the last "Update from source" failed, until the screen has shown it. The recipe
+     *  on screen is unchanged. */
+    val updateError: ParseError? = null
 )

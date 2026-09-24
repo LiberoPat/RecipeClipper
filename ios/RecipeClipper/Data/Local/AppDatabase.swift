@@ -109,6 +109,7 @@ final class AppDatabase: @unchecked Sendable {
         addUids,
         addLanguage,
         addCookState,
+        addContentOrigin,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -214,6 +215,14 @@ final class AppDatabase: @unchecked Sendable {
     private static func addCookState(_ db: SQLiteConnection) throws {
         try db.execute("ALTER TABLE recipes ADD COLUMN cookState TEXT")
         try db.execute("ALTER TABLE recipes ADD COLUMN servingsTarget INTEGER")
+    }
+
+    /// Version 6 (Android's Room version 7, `MIGRATION_6_7`): whose words a recipe is (#29),
+    /// `contentOrigin` (PARSED, EDITED, CLIPPED or MANUAL, by name) and `editedAt`. Everything
+    /// stored before was parsed from its link and never edited: PARSED and null.
+    private static func addContentOrigin(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN contentOrigin TEXT NOT NULL DEFAULT 'PARSED'")
+        try db.execute("ALTER TABLE recipes ADD COLUMN editedAt INTEGER")
     }
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its

@@ -22,7 +22,9 @@ extension Recipe {
             notes: notes,
             language: language,
             cookState: CookStateJSON.encode(cook),
-            servingsTarget: servingsTarget
+            servingsTarget: servingsTarget,
+            contentOrigin: origin.rawValue,
+            editedAt: editedAt
         )
     }
 }
@@ -46,7 +48,9 @@ extension RecipeRecord {
             notes: notes,
             language: language,
             cook: CookStateJSON.decode(cookState),
-            servingsTarget: servingsTarget
+            servingsTarget: servingsTarget,
+            origin: ContentOrigin.from(name: contentOrigin),
+            editedAt: editedAt
         )
     }
 }

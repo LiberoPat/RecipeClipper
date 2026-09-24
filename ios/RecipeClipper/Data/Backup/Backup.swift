@@ -45,6 +45,11 @@ struct BackupRecipe: Equatable {
     var notes: String?
     /// The recipe's language tag (#14), so an import reads it with the same words.
     var language: String? = nil
+    /// Whose words the content is (#29): "PARSED" (absent in older files), "EDITED", "CLIPPED"
+    /// or "MANUAL". Kept so an imported edit is still never refreshed by a re-share.
+    var contentOrigin: String = "PARSED"
+    /// When the user last saved an edit, or nil.
+    var editedAt: Int64? = nil
 }
 
 struct BackupList: Equatable {

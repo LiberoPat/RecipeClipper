@@ -174,4 +174,25 @@
     <string name="timer_channel_name">Koch-Timer</string>
     <string name="timer_channel_description">Wenn der Timer eines Schritts abläuft, während die App geschlossen ist oder im Hintergrund läuft</string>
     <string name="timer_notification_title">Zeit ist um: Schritt %1$d</string>
+
+    <!-- Editing a recipe, or typing one in (#29) -->
+    <string name="action_edit">Bearbeiten</string>
+    <string name="action_update_from_source">Von der Quelle aktualisieren</string>
+    <string name="action_update">Aktualisieren</string>
+    <string name="action_new_recipe">+ Neues Rezept</string>
+    <string name="update_from_source_title">Deine Version ersetzen?</string>
+    <string name="update_from_source_body">Das Rezept wird erneut von der Website geladen und ersetzt deine Version. Deine Änderungen gehen verloren; deine Notiz und Listen bleiben.</string>
+    <string name="update_from_source_failed">Aktualisieren von der Quelle fehlgeschlagen. %1$s</string>
+    <string name="edit_title_new">Neues Rezept</string>
+    <string name="edit_title_edit">Rezept bearbeiten</string>
+    <string name="edit_label_name">Name</string>
+    <string name="edit_label_yield">Portionen oder Menge</string>
+    <string name="edit_label_prep">Vorbereitungszeit</string>
+    <string name="edit_label_cook">Kochzeit</string>
+    <string name="edit_label_total">Gesamtzeit</string>
+    <string name="edit_label_ingredients">Zutaten, eine pro Zeile</string>
+    <string name="edit_label_steps">Schritte, einer pro Zeile</string>
+    <string name="edit_label_photo">Link zum Foto (optional)</string>
+    <string name="edit_error_invalid">Ein Rezept braucht einen Namen und Zutaten oder Schritte.</string>
+    <string name="edit_error_save_failed">Das Rezept konnte nicht gespeichert werden. Versuch es noch einmal.</string>
 </resources>

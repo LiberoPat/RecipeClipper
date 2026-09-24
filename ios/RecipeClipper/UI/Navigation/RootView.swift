@@ -15,7 +15,8 @@ struct RootView: View {
                     onOpenRecipe: { router.push(.recipe(id: $0)) },
                     onOpenHistory: { router.push(.history) },
                     onOpenLists: { router.push(.lists) },
-                    onOpenSettings: { router.push(.settings) }
+                    onOpenSettings: { router.push(.settings) },
+                    onNewRecipe: { router.push(.editRecipe(id: nil)) }
                 )
             }
             .navigationDestination(for: Route.self, destination: destination)
@@ -46,6 +47,13 @@ struct RootView: View {
             ScreenHost(container.makeListsViewModel) { vm in
                 ListsScreen(vm: vm, onOpenList: { router.push(.listDetail(id: $0)) })
             }
+        case .editRecipe(let id):
+            // Saving replaces the edit screen and, when editing, the recipe screen under it.
+            ScreenHost({ container.makeEditRecipeViewModel(recipeId: id) }) { vm in
+                EditRecipeScreen(vm: vm, onSaved: { saved in
+                    router.replace(last: id == nil ? 1 : 2, with: .recipe(id: saved))
+                })
+            }
         case .listDetail(let id):
             ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
                 ListDetailScreen(vm: vm, onOpenRecipe: { router.push(.recipe(id: $0)) })
@@ -55,7 +63,7 @@ struct RootView: View {
 
     private func recipe(_ make: @escaping () -> RecipeViewModel) -> some View {
         ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
-            RecipeScreen(vm: vm, saveVM: saveVM)
+            RecipeScreen(vm: vm, saveVM: saveVM, onEdit: { router.push(.editRecipe(id: $0)) })
         }
     }
 }

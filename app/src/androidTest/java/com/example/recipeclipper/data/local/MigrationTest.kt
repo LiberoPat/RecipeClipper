@@ -304,12 +304,47 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Version 7 adds whose words a recipe is (#29). Everything stored before was parsed from
+     * its link and never edited: PARSED, no editedAt, and nothing else changes.
+     */
+    @Test
+    fun migration6To7MakesEveryRecipeParsedAndUneditedAndKeepsEverythingElse() {
+        helper.createDatabase(name, 6).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer for 30 minutes."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt',
+                   'recipe-uid', 'en', NULL, 6)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 7, true, RecipeDatabase.MIGRATION_6_7)
+
+        val db = openMigrated()
+        runBlocking {
+            val recipe = db.recipeDao().get(7)
+            assertEquals("Adobo", recipe?.title)
+            assertEquals("recipe-uid", recipe?.uid)
+            assertEquals("Less salt", recipe?.notes)
+            assertEquals(6, recipe?.servingsTarget)
+            assertEquals("PARSED", recipe?.contentOrigin)
+            assertNull(recipe?.editedAt)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 6, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 7, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val lists = runBlocking { openMigrated().listDao().observeLists(ListDao.NO_RECIPE).first() }
         assertEquals(listOf("Breakfast", "Snacks"), lists.map { it.name })

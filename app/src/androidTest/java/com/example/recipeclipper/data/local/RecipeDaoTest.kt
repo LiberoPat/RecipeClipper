@@ -443,4 +443,58 @@ class RecipeDaoTest {
         assertNotNull(recipes.get(id))
         assertTrue(recipes.crossRefsFor(id).isEmpty())
     }
+
+    // --- The user's version (#29) ---
+
+    @Test
+    fun reShareOfAnEditedRecipeKeepsItsContentAndOnlyCountsAsAView() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 1), HISTORY_LIMIT)
+        recipes.saveEdit(id, recipe("https://a.com/1", viewedAt = 1, title = "Mine"), "EDITED", editedAt = 2)
+
+        recipes.upsert(recipe("https://a.com/1", viewedAt = 3, title = "Site's"), HISTORY_LIMIT)
+
+        val row = recipes.get(id)!!
+        assertEquals("Mine", row.title)
+        assertEquals("EDITED", row.contentOrigin)
+        assertEquals(2L, row.editedAt)
+        assertEquals(3L, row.lastViewedAt)
+    }
+
+    @Test
+    fun updateFromSourceReplacesTheUsersVersionAndMakesItParsedAgain() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 1), HISTORY_LIMIT)
+        recipes.setNotes(id, "Less salt")
+        putInList(id, listId = 1)
+        recipes.saveEdit(id, recipe("https://a.com/1", viewedAt = 1, title = "Mine"), "EDITED", editedAt = 2)
+
+        recipes.upsert(recipe("https://a.com/1", viewedAt = 3, title = "Site's"), HISTORY_LIMIT, replaceUsersVersion = true)
+
+        val row = recipes.get(id)!!
+        assertEquals("Site's", row.title)
+        assertEquals("PARSED", row.contentOrigin)
+        assertEquals(null, row.editedAt)
+        assertEquals("Less salt", row.notes)
+        assertEquals(listOf(1L), recipes.crossRefsFor(id).map { it.listId })
+    }
+
+    @Test
+    fun saveEditKeepsTheLinkUidNoteAndTicksWhenIngredientsAreUnchanged() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 1, checked = setOf(1)), HISTORY_LIMIT)
+        recipes.setNotes(id, "Less salt")
+        val before = recipes.get(id)!!
+
+        val saved = recipes.saveEdit(
+            id, recipe("manual:ignored", viewedAt = 99, title = "Mine"), "EDITED", editedAt = 5
+        )
+
+        val row = recipes.get(id)!!
+        assertEquals(true, saved)
+        assertEquals("Mine", row.title)
+        assertEquals("https://a.com/1", row.sourceUrl)
+        assertEquals(before.uid, row.uid)
+        assertEquals(1L, row.lastViewedAt)
+        assertEquals("Less salt", row.notes)
+        assertEquals(setOf(1), row.checkedIngredients)
+        assertEquals(false, recipes.saveEdit(12345, row, "EDITED", 6))
+    }
 }

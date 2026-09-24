@@ -30,6 +30,29 @@ final class FakeRecipeRepository: RecipeRepository {
 
     @MainActor func open(id: Int64) async -> Recipe? { openResult }
 
+    /// Staged answers for "Update from source", edits and new recipes, and every call made.
+    var updateFromSourceResult: ParseResult = .error(.nothingToShow)
+    private(set) var updateFromSourceCalls: [Int64] = []
+    var saveEditResult: Recipe?
+    private(set) var saveEditCalls: [(id: Int64, draft: RecipeDraft)] = []
+    var addManualResult: Recipe?
+    private(set) var addManualCalls: [RecipeDraft] = []
+
+    @MainActor func updateFromSource(id: Int64) async -> ParseResult {
+        updateFromSourceCalls.append(id)
+        return updateFromSourceResult
+    }
+
+    @MainActor func saveEdit(id: Int64, draft: RecipeDraft) async -> Recipe? {
+        saveEditCalls.append((id, draft))
+        return saveEditResult
+    }
+
+    @MainActor func addManual(draft: RecipeDraft) async -> Recipe? {
+        addManualCalls.append(draft)
+        return addManualResult
+    }
+
     @MainActor func setChecked(id: Int64, checked: Set<Int>) async {
         setCheckedCalls.append((id, checked))
     }

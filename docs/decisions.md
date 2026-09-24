@@ -1127,3 +1127,29 @@ lines in the differential corpus, with a `lang:` argument.
   French space thousands ("1 500 g", not seen on a site yet, would scale as
   "1").
 
+
+## Editing a recipe, and typing one in (#29)
+
+- **Owner's decision:** an edited recipe is never auto-refreshed. Re-sharing
+  its link opens the user's version; an explicit "Update from source" in the
+  overflow menu fetches the site's, after a warning that the edits will be
+  lost. The same rule covers #37's hand-clipped recipes.
+- **One schema step shared with #37** (Room 6 → 7, iOS `user_version` 5 → 6):
+  `contentOrigin` (`PARSED` | `EDITED` | `CLIPPED` | `MANUAL`, stored by name,
+  default `PARSED`) plus a nullable `editedAt`. `EDITED` is its own value, as
+  the owner chose on #37, so "is this the user's version" is one column
+  (`contentOrigin != PARSED`); `editedAt` records when, and an edited clip
+  stays `CLIPPED`. An unknown name, from a newer app, reads as `EDITED` so it
+  is never overwritten.
+- **The re-share check comes before the fetch,** not only in the upsert: the
+  user's version is opened with no network at all, so it opens offline and
+  never costs a timeout. The DAO's upsert also refuses to overwrite it unless
+  told to (`replaceUsersVersion`), so a race can't lose an edit.
+- **Manual recipes keep `sourceUrl` as the key** with a synthetic
+  `manual:<uuid>`, rather than a nullable column and a second unique index.
+  `UrlCleaner` leaves anything without `://` alone, `SourceDomain` finds no
+  host, so the credit, Open original and Report hide themselves, and the
+  export and import merge them by that key like any other recipe.
+- **Saving an edit reopens the recipe** (the edit screen and the recipe screen
+  under it are replaced by `recipe/{id}`), rather than the recipe screen
+  reloading itself, so it can't show the copy it loaded before.
