@@ -1,0 +1,51 @@
+name: iOS UI tests
+
+# About 18 minutes, so not on every pull request: nightly, and on demand from
+# the Actions tab (Run workflow).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+concurrency:
+  group: ios-ui-tests
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
+
+jobs:
+  ios-ui:
+    name: iOS UI tests
+    runs-on: xcode-27
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen generate
+
+      - name: UI tests
+        working-directory: ios
+        run: |
+          xcodebuild test \
+            -project RecipeClipper.xcodeproj -scheme RecipeClipper \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' \
+            -only-testing:RecipeClipperUITests \
+            -resultBundlePath build/RecipeClipperUITests.xcresult
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-ui-test-results
+          path: ios/build/RecipeClipperUITests.xcresult
+          if-no-files-found: ignore

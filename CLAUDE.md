@@ -14,7 +14,9 @@ filler.
 changes on the other. The pure logic (`data/model`, iOS `Data/Model`, and the parsers) is pinned to
 the Kotlin by `ios/RecipeClipperTests/Model/DifferentialCorpusTests.swift`,
 whose expectations come from running the Kotlin: regenerate them, never
-hand-edit them.
+hand-edit them. The JVM `DifferentialCorpusTest` fails while that file is stale
+and writes the regenerated one to `app/build/differential-corpus/`; a new row
+needs only its input (`Ing("1,5 kg flour"),`).
 
 **Keep this file short: it is loaded into every session.** Add only what an
 agent needs almost every time. Rationale and history go in
@@ -31,7 +33,7 @@ timers (in memory); sharing a recipe out as text; failure handling and
 offline; the microdata fallback. iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
-background timer alerts (#10), Reddit (#11), other languages (#12–#16), the
+background timer alerts (#10), Reddit (#11), other languages (#13–#16), the
 three-option unit menu (#17), release setup (#18–#22).
 
 ## Commands
@@ -53,6 +55,7 @@ cd ios && xcodegen generate           # after adding or removing iOS files
   (`GradleDependency`, `NewerVersionAvailable`, `AndroidGradlePluginVersion`,
   `OldTargetApi`), left on purpose (#23). Don't baseline them; any other
   finding is real.
+- **CI checks every PR** (`docs/testing.md`): merge only when green.
 - **An emulator or simulator may be in use by a person.** Check before
   scripted taps, force-stops or settings changes, and ask. **Never run two iOS
   test sessions on one simulator**: one kills the other's test host.
@@ -322,6 +325,11 @@ Each one exists to avoid showing a confident wrong number.
   - Known liquids stay in ml, even beside a gram figure.
 - **A bare "oz" is a weight,** unless the ingredient is a known liquid (then
   it's fl oz).
+- **Decimal commas** (in scaling, conversion and step timers): a comma
+  between digits followed by 1–2 digits is a decimal ("1,5 kg"), and the
+  line's output keeps the comma, as decimals rather than fractions
+  ("1,5 kg" ×1.5 is "2,25 kg"). Followed by 3 digits ("1,500 g") it may be a
+  thousands separator, so the whole line stays as written.
 - **Temperatures:**
   - They need 2–3 digits, then F or C.
   - Without a degree sign, "degrees" or a full word, the number must also be
