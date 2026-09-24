@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 /// The real, UserDefaults-backed AppPreferences (Android's SharedPrefsAppPreferences).
@@ -35,5 +36,19 @@ final class UserDefaultsAppPreferences: AppPreferences {
     var darkWhileCooking: Bool {
         get { defaults.bool(forKey: Key.darkWhileCooking) }
         set { defaults.set(newValue, forKey: Key.darkWhileCooking) }
+    }
+
+    /// Over `UserDefaults.didChangeNotification` (Android: the SharedPreferences change
+    /// listener). The notification says only that something changed, and is also posted for
+    /// other suites, so each one re-reads all four values and repeats are dropped: the
+    /// publisher always carries a whole, consistent snapshot. Not filtered by `object`, so a
+    /// write through another UserDefaults instance on the same suite is seen too.
+    var settings: AnyPublisher<AppSettings, Never> {
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .map { [weak self] _ in self?.current }
+            .compactMap { $0 }
+            .prepend(current)
+            .removeDuplicates()
+            .eraseToAnyPublisher()
     }
 }

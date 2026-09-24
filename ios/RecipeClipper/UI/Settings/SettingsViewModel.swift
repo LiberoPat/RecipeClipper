@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Observation
 
@@ -10,21 +11,30 @@ struct SettingsUiState: Equatable {
 }
 
 /// Injects AppPreferences directly rather than going through a repository: these are
-/// app-wide defaults. Preferences are plain vars, so state is seeded once here and updated
-/// alongside each write.
+/// app-wide defaults. State is seeded synchronously so the first frame is right, then kept in
+/// step with `preferences.settings`; each setter also updates it at once, alongside the
+/// write, rather than waiting for the publisher to echo it back.
 @MainActor
 @Observable
 final class SettingsViewModel {
     private(set) var uiState: SettingsUiState
     @ObservationIgnored private let preferences: AppPreferences
+    @ObservationIgnored private var settingsSubscription: AnyCancellable?
 
     init(preferences: AppPreferences) {
         self.preferences = preferences
-        uiState = SettingsUiState(
-            unitSystem: preferences.unitSystem,
-            convertLiquids: preferences.convertLiquids,
-            temperatureUnit: preferences.temperatureUnit,
-            darkWhileCooking: preferences.darkWhileCooking
+        uiState = Self.uiState(preferences.current)
+        settingsSubscription = preferences.settings
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] settings in self?.uiState = Self.uiState(settings) }
+    }
+
+    private static func uiState(_ settings: AppSettings) -> SettingsUiState {
+        SettingsUiState(
+            unitSystem: settings.unitSystem,
+            convertLiquids: settings.convertLiquids,
+            temperatureUnit: settings.temperatureUnit,
+            darkWhileCooking: settings.darkWhileCooking
         )
     }
 

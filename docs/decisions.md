@@ -242,10 +242,9 @@ Exists today:
   (`ui/recipe/ServesUnitsRow.kt`'s `UnitsMenu`) is exclusive-choice only now
   — just the four `UnitSystem` rows; "Also convert liquids" and "Dark while
   cooking" moved out to Settings. `RecipeViewModel.onConvertLiquidsChange` and
-  `onDarkWhileCookingChange` stay on `RecipeViewModel` (existing tests cover
-  them directly) but nothing in the recipe screen calls them anymore — a
-  fresh `RecipeViewModel` picks up whatever Settings last wrote the next time
-  a recipe is opened.
+  `onDarkWhileCookingChange` stayed on `RecipeViewModel` for a while with no
+  callers; #24 removed them on both platforms, since the recipe screen now
+  picks up those values from `AppPreferences.settings`.
   **Oven temperature is now independent of the ingredient unit system**,
   defaulting to AS_WRITTEN: choosing Metric no longer converts a recipe's
   350°F to 180°C unless Oven temperature is separately set to Celsius. This
@@ -264,6 +263,11 @@ Exists today:
   would leave that screen's `RecipeViewModel` alive underneath and showing
   stale settings on return — fixing that would need `AppPreferences` to
   expose Flows instead of plain `var`s, which it deliberately doesn't yet.
+  **Superseded by #24:** `AppPreferences.settings` is now a Flow (iOS: a
+  Combine publisher) that `RecipeViewModel` and `SettingsViewModel` collect,
+  so a recipe left underneath Settings follows a change as it is made. The
+  Home gear is still the only entry point; whether the recipe screen gets one
+  is a product decision, no longer a technical constraint.
 
 ## Layering cleanup and the first ViewModel tests
 
@@ -576,7 +580,7 @@ home
 recipe/{recipeId}            from history, lists, or home
 recipe/import?url={url}      share-target entry: parse, then persist
 history
-settings                     Home only — see "Settings screen" above for why
+settings                     from Home's gear — see "Settings screen" above
 lists
 lists/{listId}
 ```

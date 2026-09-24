@@ -7,6 +7,7 @@ import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.IngredientScaler
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
@@ -49,14 +50,18 @@ class RecipeViewModel @Inject constructor(
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
     private val shareUrl: String? = savedStateHandle.get<String>(URL_ARG)?.takeIf { it.isNotBlank() }
 
-    private val _uiState = MutableStateFlow(
-        RecipeUiState(
-            unitSystem = unitPreferences.unitSystem,
-            convertLiquids = unitPreferences.convertLiquids,
-            temperatureUnit = unitPreferences.temperatureUnit,
-            darkWhileCooking = unitPreferences.darkWhileCooking
+    // Seeded synchronously so the first render already uses the user's units; kept current
+    // afterwards by collecting [AppPreferences.settings] in [init].
+    private val _uiState = unitPreferences.current.let {
+        MutableStateFlow(
+            RecipeUiState(
+                unitSystem = it.unitSystem,
+                convertLiquids = it.convertLiquids,
+                temperatureUnit = it.temperatureUnit,
+                darkWhileCooking = it.darkWhileCooking
+            )
         )
-    )
+    }
     val uiState: StateFlow<RecipeUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
@@ -67,6 +72,9 @@ class RecipeViewModel @Inject constructor(
     private var tickJob: Job? = null
 
     init {
+        // Settings can change a default while this screen is alive underneath it; this keeps
+        // the open recipe in step instead of showing the units it was opened with (#24).
+        viewModelScope.launch { unitPreferences.settings.collect(::applySettings) }
         load()
     }
 
@@ -166,39 +174,53 @@ class RecipeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * The units dropdown on this screen. It is a global default, so it writes through; the
+     * state updates at once too, rather than waiting for [AppPreferences.settings] to echo it.
+     * The other preferences are set only in Settings and reach this screen through
+     * [applySettings].
+     */
     fun onUnitSystemChange(system: UnitSystem) {
         unitPreferences.unitSystem = system
         updateUnits { it.copy(unitSystem = system) }
     }
 
-    fun onConvertLiquidsChange(enabled: Boolean) {
-        unitPreferences.convertLiquids = enabled
-        updateUnits { it.copy(convertLiquids = enabled) }
-    }
-
     /**
-     * A display choice, not a unit one, so it changes nothing about the rendered text and
-     * does not go through [updateUnits]. It rides in the units menu only because that is
-     * the app's one settings surface today.
+     * A change to the global defaults, from Settings or from this screen's own dropdown,
+     * arriving while the recipe is open. Only a change that affects the text re-renders it:
+     * [RecipeUiState.darkWhileCooking] is a display choice and leaves the recipe alone, and
+     * scaled servings, ticks and cook progress are kept either way.
      */
-    fun onDarkWhileCookingChange(enabled: Boolean) {
-        unitPreferences.darkWhileCooking = enabled
-        _uiState.update { it.copy(darkWhileCooking = enabled) }
+    private fun applySettings(settings: AppSettings) {
+        _uiState.update { state ->
+            val next = state.copy(
+                unitSystem = settings.unitSystem,
+                convertLiquids = settings.convertLiquids,
+                temperatureUnit = settings.temperatureUnit,
+                darkWhileCooking = settings.darkWhileCooking
+            )
+            val rendersDifferently = next.unitSystem != state.unitSystem ||
+                next.convertLiquids != state.convertLiquids ||
+                next.temperatureUnit != state.temperatureUnit
+            if (rendersDifferently) rerender(next) else next
+        }
     }
 
     private fun updateUnits(change: (RecipeUiState) -> RecipeUiState) {
-        _uiState.update { old ->
-            val state = change(old)
-            val content = state.content as? RecipeContent.Success ?: return@update state
-            state.copy(
-                content = content.copy(
-                    ingredients = render(
-                        content.recipe, content.servings, state.unitSystem, state.convertLiquids
-                    ),
-                    instructions = renderInstructions(content.recipe, state.temperatureUnit)
-                )
+        _uiState.update { rerender(change(it)) }
+    }
+
+    // Re-renders the loaded recipe under [state]'s units, keeping its chosen servings.
+    private fun rerender(state: RecipeUiState): RecipeUiState {
+        val content = state.content as? RecipeContent.Success ?: return state
+        return state.copy(
+            content = content.copy(
+                ingredients = render(
+                    content.recipe, content.servings, state.unitSystem, state.convertLiquids
+                ),
+                instructions = renderInstructions(content.recipe, state.temperatureUnit)
             )
-        }
+        )
     }
 
     // --- Cook mode ---
