@@ -100,6 +100,18 @@ those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).
 `RecipeSourceCreditTest` (the source credit under the recipe title) was
 added after that run and has so far only been compiled.
 
+The cook-persistence device tests (#10: `MigrationTest` 3→4 and 1→4, and the
+cook-state cases in `RecipeDaoTest`) have been run on the agents' emulator
+(Android 17) and pass. A timer alarm was also checked end to end there: a
+recipe seeded with a running timer, opened through the notification's
+`OPEN_COOK` intent, came back in cook mode on the saved step with the timer
+recomputed from its deadline. `AlarmManager` held the alarm at that deadline,
+and with the app in the background the "Time's up" notification posted. It
+came 44 s late, which is the expected inexact alarm on Android 14+ without
+"Alarms & reminders", under battery saver. Still to check on a device: a
+process kill mid-timer, a reboot, Doze, denying the notification permission,
+and the iOS notification (background, lock screen, tap).
+
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
 `MigrationTestHelper` reads the exported JSON from the test APK's **assets**,
 not from the project directory. That is what
