@@ -902,6 +902,41 @@ The fix is issue #10.
   a permanent notification plus a `FOREGROUND_SERVICE_*` type declaration
   that Play reviews.
 
+## Export and import (#26)
+
+The owner's decision: import **merges, never replaces**, and deletes nothing.
+
+- **One file, versioned.** `format: "recipe-clipper-backup"`, `formatVersion: 1`,
+  then `recipes`, `lists` and `memberships`. The canonical example is
+  `shared/fixtures/backup/backup-v1.json`; both platforms' tests decode it and
+  plan the same merge from it. Readers ignore keys they don't know, so a later
+  feature (the meal plan, #46; sync, #53) adds a section or a field without a
+  version bump. Bump only when an older app would *misread* a newer file; an
+  older app refuses a newer version (`NewerVersion`) rather than half-import it.
+- **Stable ids.** Recipes and lists got a `uid` column (Room 4 / iOS
+  `user_version` 3, backfilled with random UUIDs), and the file names records by
+  it; memberships refer to uids, never row ids. A re-share keeps a recipe's uid
+  and a rename keeps a list's, so a list renamed on one phone still finds itself
+  on the other, and sync can build on the same identity.
+- **What's left out:** cached photos (only `imageUrl`), and cook progress
+  (current step, timers, chosen servings), which is a moment in one kitchen
+  rather than part of the recipe, even once #10 persists it.
+- **Merge rules** (`BackupMerger`, pure, the same on both platforms):
+  recipes match by the cleaned `sourceUrl`; a recipe already here keeps its
+  content, ticks and last view, gains the imported memberships, and gains the
+  imported note only if it has none. Favorites maps to Favorites by
+  `isFavorites`, never by name, and a user list called "Favorites" stays a user
+  list. Other lists join the same uid, else the same trimmed, case-insensitive
+  name, else they're created after the existing lists. Memberships are
+  insert-or-ignore, so an existing `addedAt` stands.
+- **History cap: free slots, not a cull.** The issue suggested running the
+  normal cull after import, but that could delete the user's own older history,
+  which "never delete" forbids. So listed recipes always come in, and unlisted
+  ones fill only the places free under 50 (most recently viewed first); the rest
+  are skipped and counted in the summary.
+- **One transaction.** Any failure (a bad file, a database error) writes
+  nothing, and the Settings screen shows the cause.
+
 ## Shared tables, native logic (#9)
 
 Every feature was built twice and kept at parity by hand, and the language
@@ -911,8 +946,8 @@ Multiplatform, which would cost iOS its no-dependency property and need
 multiplatform replacements for Jsoup and org.json), and move the data, not the
 code. The tables are JSON under `shared/tables/`: `url.json` (tracking
 parameters) and, per language, `en/densities.json`, `units.json`,
-`timers.json`, `temperature.json`, `yield.json`, `ranges.json` and
-`sections.json`. Each has a `schemaVersion` and an `about` saying how the code
+`timers.json`, `temperature.json`, `yield.json`, `ranges.json`,
+`sections.json` and (since #48) `names.json`. Each has a `schemaVersion` and an `about` saying how the code
 reads it.
 
 - Android adds `shared/` as a `main` Java resource directory, so the pure model
@@ -927,3 +962,34 @@ reads it.
   covered; `DifferentialCorpusTest(s)` passed unchanged across the move.
 - Still in code, as English: `IngredientScaler`'s "plus"/"and" continuation,
   and the words the app writes out (e.g. `StepTimers.label`'s "hr" and "min").
+
+## Ingredient names and shared rendering (#48)
+
+The first building blocks of the meal plan, pantry and groceries (#46), pure
+and on both platforms.
+
+- `IngredientName.of(line)` gives the ingredient's name in a line
+  ("2 large eggs, beaten" is "eggs"), or null when it can't tell. It reuses
+  the parsing that already reads amounts: `IngredientScaler.LEADING` and
+  `NOT_AN_AMOUNT`, the converter's unit, continuation ("plus 2 tbsp") and
+  slash-measure regexes, and the density table's `stripParentheses` and
+  `headPhrase`, made `internal` with no change in behaviour. Its own English
+  words (sizes and containers dropped from the front, preparation words from
+  the end, the phrases a name ends before, and the conjunctions) are in
+  `shared/tables/en/names.json`.
+- It answers "which ingredient", never "how much", and prefers no name to a
+  wrong one: a heading, a leftover digit ("juice of 1 lemon") or two
+  ingredients ("salt and pepper", "butter or margarine") give null, unless the
+  conjunction is inside a density-table alias ("half and half"). There's no
+  singulariser: "eggs" and "egg" are different names.
+- `IngredientName.matches(a, b)` is the density table's end-of-name rule
+  (`IngredientDensities.endsWithName`, now shared with `find`): "unsalted
+  butter" matches "butter", "butter beans" doesn't. Both sides go through
+  `headPhrase`, so a typed "Butter" works.
+- `IngredientRendering.render(lines, factor, system, convertLiquids)` is
+  `RecipeViewModel`'s old private `render`, moved unchanged (scale, then
+  convert with the original line's decimal separator), so the week's
+  shopping view (#46) shows lines exactly as the reading view does.
+- The differential corpus pins both: every `Ing` row now ends with the
+  Kotlin's `IngredientName.of`, and its rendered columns are computed through
+  `IngredientRendering`.

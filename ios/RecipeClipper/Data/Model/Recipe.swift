@@ -141,4 +141,6 @@ struct ListMembership: Equatable {
 struct DeletedRecipe: Equatable {
     let recipe: Recipe
     let memberships: [ListMembership]
+    /// The row's stable uid (#26), so an undone delete is the same recipe to an export.
+    var uid: String? = nil
 }
