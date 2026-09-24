@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.SharedTables
 import com.example.recipeclipper.data.Connectivity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,7 @@ import org.json.JSONObject
 import org.json.JSONTokener
 import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import java.io.IOException
 import java.net.SocketTimeoutException
 import kotlin.math.roundToInt
@@ -42,15 +44,7 @@ class BlogRecipeSource(
                 .timeout(timeoutMs)
                 .get()
 
-            val ldJsonScripts = doc.select("script[type=application/ld+json]").map { it.data() }
-            // Microdata only when there is no JSON-LD recipe, so no working site changes.
-            val recipe = JsonLdRecipeParser.parse(ldJsonScripts, url)
-                ?: MicrodataRecipeParser.parse(doc, url)
-            if (recipe != null) {
-                ParseResult.Success(recipe)
-            } else {
-                ParseResult.Error(ParseError.NoRecipeFound)
-            }
+            parse(doc, url)
         } catch (e: HttpStatusException) {
             // Jsoup throws this for any non-2xx answer. 403/404/429/5xx are usually a bot
             // block that lifts on its own (see ParseError.Blocked); anything else stays a
@@ -68,6 +62,23 @@ class BlogRecipeSource(
             )
         } catch (e: Exception) {
             ParseResult.Error(ParseError.FetchFailed(e.message))
+        }
+    }
+
+    companion object {
+        /**
+         * The HTML-to-recipe step on its own, for a page that didn't come through [fetch]: the
+         * HTML a [RenderedPageSource] returns. Pure and CPU-bound, so callers run it off the
+         * main thread. iOS has the same `BlogRecipeSource.parse(html:url:)`.
+         */
+        fun parse(html: String, url: String): ParseResult = parse(Jsoup.parse(html, url), url)
+
+        private fun parse(doc: Document, url: String): ParseResult {
+            val ldJsonScripts = doc.select("script[type=application/ld+json]").map { it.data() }
+            // Microdata only when there is no JSON-LD recipe, so no working site changes.
+            val recipe = JsonLdRecipeParser.parse(ldJsonScripts, url)
+                ?: MicrodataRecipeParser.parse(doc, url)
+            return if (recipe != null) ParseResult.Success(recipe) else ParseResult.Error(ParseError.NoRecipeFound)
         }
     }
 }
@@ -202,15 +213,8 @@ internal object JsonLdRecipeParser {
      * section that merely mentions "summary" is untouched. Add a name only once a real site
      * is seen publishing it.
      */
-    private val CONDENSED_SECTION_NAMES = setOf(
-        "abbreviated recipe",
-        "quick version",
-        "short version",
-        "summary",
-        "recipe summary",
-        "tl;dr",
-        "at a glance",
-    )
+    private val CONDENSED_SECTION_NAMES: Set<String> =
+        SharedTables.strings(SharedTables.load("sections").getJSONArray("condensed")).toSet()
 
     private fun isCondensedSection(item: Any?): Boolean =
         item is JSONObject &&

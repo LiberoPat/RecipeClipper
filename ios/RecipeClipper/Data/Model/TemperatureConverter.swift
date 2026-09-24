@@ -22,10 +22,19 @@ enum TemperatureConverter {
         let scale: Scale
     }
 
+    // The scale, degree and range words are shared with Android:
+    // shared/tables/en/temperature.json and ranges.json.
+    private static let table = SharedTables.load("temperature")
+    private static let fahrenheitWords = SharedTables.strings(table, "fahrenheit")
+    private static let scaleWords = fahrenheitWords + SharedTables.strings(table, "celsius")
+    private static let fahrenheitWord = JRegex(SharedTables.alternation(fahrenheitWords), ignoreCase: true)
+    private static let degrees = SharedTables.alternation(SharedTables.strings(table, "degrees"))
+
     // groups: 1 low, 2 range separator, 3 high, 4 connector, 5 unit
     private static let temp =
-        #"(\d{2,3})(?:(\s*(?:[-–—]|to)\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+degrees?\s+|\s?)"# +
-        #"((?i:fahrenheit|celsius|centigrade)|[FC])(?![A-Za-z])"#
+        #"(\d{2,3})(?:(\s*(?:[-–—]|"# + SharedTables.rangeWords + #")\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+"# +
+        degrees + #"\s+|\s?)"# +
+        #"((?i:"# + scaleWords.joined(separator: "|") + #")|[FC])(?![A-Za-z])"#
 
     private static let tempAnywhere = JRegex(#"(?<![\d.,/])"# + temp)
     private static let tempAtStart = JRegex("^" + temp)
@@ -92,7 +101,7 @@ enum TemperatureConverter {
         guard let low = Int(match[1]) else { return nil }
         let high = match[3].isEmpty ? nil : Int(match[3])
         let unit = match[5]
-        let scale: Scale = unit.first.map { $0 == "F" || $0 == "f" } == true ? .f : .c
+        let scale: Scale = unit == "F" || fahrenheitWord.matchEntire(unit) != nil ? .f : .c
 
         let connector = match[4]
         let explicit = unit.count > 1 || connector.contains { "°º˚".contains($0) } || !connector.kIsBlank

@@ -11,18 +11,32 @@ import java.util.Locale
  */
 object StepTimers {
 
-    private const val UNIT = """(hours?|hrs?|minutes?|mins?|seconds?|secs?)"""
     private const val QTY = IngredientScaler.QTY
+
+    // The duration words are shared with iOS: shared/tables/en/timers.json.
+    private val TABLE = SharedTables.load("timers")
+
+    /** Each unit's words as one case-insensitive whole-string regex, with its length in seconds. */
+    private val UNITS: List<Pair<Regex, Int>> = SharedTables.objects(TABLE.getJSONArray("units")).map {
+        Regex(SharedTables.alternation(SharedTables.strings(it.getJSONArray("patterns"))), RegexOption.IGNORE_CASE) to
+            it.getInt("seconds")
+    }
+
+    private val UNIT = SharedTables.objects(TABLE.getJSONArray("units"))
+        .flatMap { SharedTables.strings(it.getJSONArray("patterns")) }
+        .joinToString("|", "(", ")")
+    private val FOLLOW_ON_WORDS = SharedTables.alternation(SharedTables.strings(TABLE.getJSONArray("followOn")))
+    private val RANGE = SharedTables.RANGE_WORDS
 
     // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer".
     private val DURATION = Regex(
-        """(?<![\d.,/])($QTY)(?:\s*(?:[-–—]|to)\s*(?:$QTY))?\s*-?\s*$UNIT\b""",
+        """(?<![\d.,/])($QTY)(?:\s*(?:[-–—]|$RANGE)\s*(?:$QTY))?\s*-?\s*$UNIT\b""",
         RegexOption.IGNORE_CASE
     )
 
     // "1 hour 30 minutes", "2 minutes and 30 seconds". groups: 1 quantity, 2 unit
     private val FOLLOW_ON = Regex(
-        """^\s*(?:and\s+)?($QTY)\s*-?\s*$UNIT\b""",
+        """^\s*(?:$FOLLOW_ON_WORDS\s+)?($QTY)\s*-?\s*$UNIT\b""",
         RegexOption.IGNORE_CASE
     )
 
@@ -43,11 +57,7 @@ object StepTimers {
         return total.takeIf { it in 1..MAX_SECONDS }
     }
 
-    private fun unitSeconds(unit: String): Int = when (unit.lowercase().first()) {
-        'h' -> 3600
-        'm' -> 60
-        else -> 1
-    }
+    private fun unitSeconds(unit: String): Int = UNITS.first { (words, _) -> words.matches(unit) }.second
 
     private fun toSeconds(quantity: String, unit: String): Int? {
         val amount = IngredientScaler.parse(quantity) ?: return null
