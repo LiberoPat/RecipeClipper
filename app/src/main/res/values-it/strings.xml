@@ -110,6 +110,44 @@
     <string name="settings_section_units">Unità</string>
     <string name="settings_section_oven_temperature">Temperatura del forno</string>
     <string name="settings_section_appearance">Aspetto</string>
+    <string name="settings_section_your_recipes">Le tue ricette</string>
+
+    <string name="backup_export_title">Esporta ricette</string>
+    <string name="backup_export_description">Salvare tutte le ricette e le liste in un file, da conservare o trasferire su un altro telefono</string>
+    <string name="backup_import_title">Importa ricette</string>
+    <string name="backup_import_description">Aggiungere le ricette e le liste da un file di esportazione. Qui non viene sostituito né eliminato nulla.</string>
+    <string name="backup_share_title">Esporta ricette</string>
+    <string name="backup_exporting">Preparazione del file…</string>
+    <string name="backup_importing">Importazione…</string>
+    <plurals name="backup_recipes">
+        <item quantity="one">%d ricetta</item>
+        <item quantity="many">%d di ricette</item>
+        <item quantity="other">%d ricette</item>
+    </plurals>
+    <plurals name="backup_lists">
+        <item quantity="one">%d lista</item>
+        <item quantity="many">%d di liste</item>
+        <item quantity="other">%d liste</item>
+    </plurals>
+    <string name="backup_imported">Importazione completata: %1$s e %2$s.</string>
+    <string name="backup_imported_recipes">Importazione completata: %1$s.</string>
+    <string name="backup_imported_nothing">Niente di nuovo: tutto il contenuto di quel file è già qui.</string>
+    <plurals name="backup_already_here">
+        <item quantity="one">%d ricetta era già qui.</item>
+        <item quantity="many">%d di ricette erano già qui.</item>
+        <item quantity="other">%d ricette erano già qui.</item>
+    </plurals>
+    <plurals name="backup_skipped">
+        <item quantity="one">%1$d vecchia ricetta senza lista non è stata aggiunta: la cronologia conserva le %2$d più recenti.</item>
+        <item quantity="many">%1$d di vecchie ricette senza lista non sono state aggiunte: la cronologia conserva le %2$d più recenti.</item>
+        <item quantity="other">%1$d vecchie ricette senza lista non sono state aggiunte: la cronologia conserva le %2$d più recenti.</item>
+    </plurals>
+    <string name="backup_error_not_a_backup">Quel file non è un\'esportazione di Recipe Clipper.</string>
+    <string name="backup_error_newer_version">Quel file è stato creato con una versione più recente di Recipe Clipper (formato %1$d). Aggiorna l\'app per importarlo.</string>
+    <string name="backup_error_malformed">Quel file di esportazione è danneggiato (%1$s). Non è stato importato nulla.</string>
+    <string name="backup_error_read_failed">Impossibile aprire quel file.</string>
+    <string name="backup_error_save_failed">Impossibile salvare le ricette importate. Non è stato modificato nulla.</string>
+    <string name="backup_error_export_failed">Impossibile creare il file di esportazione.</string>
     <string name="temperature_as_written">Come nella ricetta</string>
     <string name="temperature_as_written_description">Esattamente la temperatura della ricetta</string>
     <string name="temperature_celsius">Celsius (°C)</string>

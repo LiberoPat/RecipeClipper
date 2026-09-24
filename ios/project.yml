@@ -84,6 +84,11 @@ targets:
     platform: iOS
     sources:
       - path: RecipeClipperTests
+      # The fixtures the Android tests read too (shared/fixtures): copied in as a folder, so
+      # tests find them at fixtures/backup/<name>.json in the test bundle.
+      - path: ../shared/fixtures
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: RecipeClipper
     settings:

@@ -21,6 +21,8 @@ xcodebuild ... test -only-testing:RecipeClipperUITests    # end-to-end, offline,
 
 Targets: `RecipeClipper` (app), `RecipeClipperShare` (share extension, embedded in the app),
 `RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest).
+`RecipeClipperTests` bundles `../shared/fixtures` (the export files the Android tests read
+too), found at `fixtures/backup/<name>.json` in the test bundle.
 
 **Never run two test sessions on one simulator.** The unit tests are hosted in the app, and
 a run that finishes (or starts) closes that app on its simulator, killing whatever the other

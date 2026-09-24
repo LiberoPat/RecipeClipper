@@ -105,6 +105,40 @@
     <string name="settings_section_units">Einheiten</string>
     <string name="settings_section_oven_temperature">Ofentemperatur</string>
     <string name="settings_section_appearance">Darstellung</string>
+    <string name="settings_section_your_recipes">Deine Rezepte</string>
+
+    <string name="backup_export_title">Rezepte exportieren</string>
+    <string name="backup_export_description">Alle Rezepte und Listen in einer Datei speichern – zum Aufbewahren oder für den Umzug auf ein anderes Telefon</string>
+    <string name="backup_import_title">Rezepte importieren</string>
+    <string name="backup_import_description">Rezepte und Listen aus einer Exportdatei hinzufügen. Dabei wird nichts ersetzt oder gelöscht.</string>
+    <string name="backup_share_title">Rezepte exportieren</string>
+    <string name="backup_exporting">Datei wird vorbereitet…</string>
+    <string name="backup_importing">Wird importiert…</string>
+    <plurals name="backup_recipes">
+        <item quantity="one">%d Rezept</item>
+        <item quantity="other">%d Rezepte</item>
+    </plurals>
+    <plurals name="backup_lists">
+        <item quantity="one">%d Liste</item>
+        <item quantity="other">%d Listen</item>
+    </plurals>
+    <string name="backup_imported">%1$s und %2$s importiert.</string>
+    <string name="backup_imported_recipes">%1$s importiert.</string>
+    <string name="backup_imported_nothing">Nichts Neues: Alles aus dieser Datei ist schon vorhanden.</string>
+    <plurals name="backup_already_here">
+        <item quantity="one">%d Rezept war schon vorhanden.</item>
+        <item quantity="other">%d Rezepte waren schon vorhanden.</item>
+    </plurals>
+    <plurals name="backup_skipped">
+        <item quantity="one">%1$d älteres Rezept ohne Liste wurde nicht hinzugefügt: Der Verlauf behält die %2$d zuletzt angesehenen.</item>
+        <item quantity="other">%1$d ältere Rezepte ohne Liste wurden nicht hinzugefügt: Der Verlauf behält die %2$d zuletzt angesehenen.</item>
+    </plurals>
+    <string name="backup_error_not_a_backup">Diese Datei ist kein Recipe-Clipper-Export.</string>
+    <string name="backup_error_newer_version">Diese Datei wurde mit einer neueren Version von Recipe Clipper erstellt (Format %1$d). Aktualisiere die App, um sie zu importieren.</string>
+    <string name="backup_error_malformed">Diese Exportdatei ist beschädigt (%1$s). Es wurde nichts importiert.</string>
+    <string name="backup_error_read_failed">Diese Datei konnte nicht geöffnet werden.</string>
+    <string name="backup_error_save_failed">Die importierten Rezepte konnten nicht gespeichert werden. Es wurde nichts geändert.</string>
+    <string name="backup_error_export_failed">Die Exportdatei konnte nicht erstellt werden.</string>
     <string name="temperature_as_written">Wie im Rezept</string>
     <string name="temperature_as_written_description">Genau die Temperatur aus dem Rezept</string>
     <string name="temperature_celsius">Celsius (°C)</string>

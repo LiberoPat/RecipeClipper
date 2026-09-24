@@ -53,6 +53,52 @@ enum Strings {
     static var errorNothingToShow: String { String(localized: "error_nothing_to_show") }
     static var errorInvalidUrl: String { String(localized: "error_invalid_url") }
 
+    // Settings → Your recipes: export and import (#26)
+    static var settingsSectionYourRecipes: String { String(localized: "settings_section_your_recipes") }
+    static var backupExportTitle: String { String(localized: "backup_export_title") }
+    static var backupExportDescription: String { String(localized: "backup_export_description") }
+    static var backupImportTitle: String { String(localized: "backup_import_title") }
+    static var backupImportDescription: String { String(localized: "backup_import_description") }
+    static var backupExporting: String { String(localized: "backup_exporting") }
+    static var backupImporting: String { String(localized: "backup_importing") }
+
+    static func backupRecipes(_ n: Int) -> String { String(localized: "backup_recipes \(n)") }
+    static func backupLists(_ n: Int) -> String { String(localized: "backup_lists \(n)") }
+
+    /// "Imported 12 recipes and 3 lists." plus what was already here and what didn't fit.
+    static func importSummary(_ s: ImportSummary) -> String {
+        var parts: [String] = []
+        if s.recipesAdded == 0 && s.listsAdded == 0 {
+            parts.append(String(localized: "backup_imported_nothing"))
+        } else if s.listsAdded == 0 {
+            parts.append(String(localized: "backup_imported_recipes \(backupRecipes(s.recipesAdded))"))
+        } else {
+            parts.append(String(
+                localized: "backup_imported \(backupRecipes(s.recipesAdded)) \(backupLists(s.listsAdded))"))
+        }
+        if s.recipesAlreadyHere > 0 && (s.recipesAdded > 0 || s.listsAdded > 0) {
+            parts.append(String(localized: "backup_already_here \(s.recipesAlreadyHere)"))
+        }
+        if s.recipesSkipped > 0 {
+            parts.append(s.recipesSkipped == 1
+                ? String(localized: "backup_skipped_one \(historyLimit)")
+                : String(localized: "backup_skipped_other \(s.recipesSkipped) \(historyLimit)"))
+        }
+        return parts.joined(separator: " ")
+    }
+
+    static func message(for error: BackupError) -> String {
+        switch error {
+        case .notABackup: return String(localized: "backup_error_not_a_backup")
+        case .newerVersion(let found):
+            return String(localized: "backup_error_newer_version \(found)")
+        case .malformed(let detail): return String(localized: "backup_error_malformed \(detail)")
+        case .readFailed: return String(localized: "backup_error_read_failed")
+        case .saveFailed: return String(localized: "backup_error_save_failed")
+        case .exportFailed: return String(localized: "backup_error_export_failed")
+        }
+    }
+
     static func message(for error: ParseError) -> String {
         switch error {
         case .noRecipeFound: return errorNoRecipeFound
