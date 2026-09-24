@@ -35,9 +35,14 @@ Debug builds accept launch arguments for driving the app without touch (see
 `App/DebugLaunch.swift`), since `simctl openurl` stops at a system prompt:
 
 ```
-xcrun simctl launch booted com.example.recipeclipper -debugOpen "<recipe url>" [-debugCook]
-xcrun simctl launch booted com.example.recipeclipper -debugRoute history|lists|settings|list:<id>
+xcrun simctl launch booted com.liberopat.recipeclipper -debugOpen "<recipe url>" [-debugCook]
+xcrun simctl launch booted com.liberopat.recipeclipper -debugRoute history|lists|settings|list:<id>
 ```
+
+The bundle ID was `com.example.recipeclipper` until September 2026. A simulator that had
+that build keeps it, with its data, as a separate app beside the new one; delete it with
+`xcrun simctl uninstall <device> com.example.recipeclipper` once it's no longer wanted.
+The Team ID and the other release steps are in `../docs/release.md`.
 
 `-uiTestSeed` (`App/UITestSeeding.swift`) swaps in an in-memory database with seeded recipes
 and an offline recipe source; the UI tests use it. Under XCTest the app always uses an
