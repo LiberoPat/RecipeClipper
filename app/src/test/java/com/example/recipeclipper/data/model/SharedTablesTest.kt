@@ -43,8 +43,11 @@ class SharedTablesTest {
             val names = SharedTables.objects(SharedTables.load("units", language).getJSONArray("names"))
             for (name in names) MeasureUnit.valueOf(name.getString("unit"))
         }
-        val english = SharedTables.objects(SharedTables.load("units", "en").getJSONArray("names"))
-        assertEquals(MeasureUnit.values().toSet(), english.map { MeasureUnit.valueOf(it.getString("unit")) }.toSet())
+        // Every unit is named by some language (cl, dl and VARIES only by non-English ones).
+        val named = LanguageWords.SHIPPED.flatMap { language ->
+            SharedTables.objects(SharedTables.load("units", language).getJSONArray("names")).map { MeasureUnit.valueOf(it.getString("unit")) }
+        }
+        assertEquals(MeasureUnit.values().toSet(), named.toSet())
     }
 
     @Test

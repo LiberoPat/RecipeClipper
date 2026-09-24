@@ -8,10 +8,12 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.rememberNavController
 import com.example.recipeclipper.timers.TimerNotifications
-import com.example.recipeclipper.ui.navigation.RecipeNavHost
+import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
+import com.example.recipeclipper.ui.navigation.openRoute
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -37,12 +39,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
             LaunchedEffect(navController) {
+                // The first back-stack entry exists once the NavHost has set its graph. With the
+                // tab bar on, the NavHost sits inside a Scaffold, which composes it later than
+                // this effect may start.
+                navController.currentBackStackEntryFlow.first()
                 for (route in intentRoutes) {
-                    navController.navigate(route)
+                    // Always into the Recipes tab, whichever tab is open.
+                    navController.openRoute(route)
                     shareHandled = true
                 }
             }
-            RecipeNavHost(navController)
+            AppShell(navController)
         }
 
         if (!shareHandled) routeFor(intent)?.let { intentRoutes.trySend(it) }

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "language": "es",
+  "about": "IngredientName: the ingredient's name in a line, for matching against the pantry (#46). After the amount and unit are dropped, leadingWords (sizes, containers, cuts and unit words the converter doesn't read) and a following 'of' are dropped from the start, before and after the unit; the name is cut before the first cutPhrase ('flour for dusting'); then the density table's head phrase is taken and trailingWords (preparation) are dropped from its end. A name holding a conjunction ('salt and pepper') is two ingredients, so it has no name, unless the conjunction is inside a density-table alias ('half and half'). leadingWords, trailingWords and cutPhrases are lowercase letters and spaces only.",
+  "leadingWords": ["un", "una", "unos", "unas", "de", "del", "pizca", "pizcas", "diente", "dientes", "lata", "latas", "vaso", "vasos", "ramita", "ramitas", "manojo", "hoja", "hojas", "rebanada", "rebanadas", "trozo", "trozos", "grande", "grandes", "mediano", "mediana", "medianos", "medianas", "pequeño", "pequeña", "pequeños", "pequeñas", "sobre", "sobres", "chorrito", "chorro", "puñado"],
+  "trailingWords": ["picado", "picada", "picados", "picadas", "rallado", "rallada", "pelado", "pelada", "troceado", "fresco", "fresca", "finamente"],
+  "cutPhrases": ["al gusto", "a gusto", "para", "opcional"],
+  "conjunctions": ["y", "o", "u", "&", "+"]
+}

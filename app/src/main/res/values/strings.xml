@@ -206,6 +206,16 @@
     <string name="delete_list_body">The list is removed. The recipes in it stay in your history.</string>
     <string name="action_delete_list">Delete list</string>
 
+    <!-- Bottom tabs (#47), behind BuildConfig.MEAL_PLAN_TABS, off until #49 -->
+    <string name="tab_recipes">Recipes</string>
+    <string name="tab_week">Week</string>
+    <string name="tab_groceries">Groceries</string>
+    <string name="tab_pantry">Pantry</string>
+    <string name="coming_soon">Coming soon</string>
+    <string name="week_placeholder">Plan what you\'re cooking on each day of the week.</string>
+    <string name="groceries_placeholder">A shopping list built from the recipes in your week.</string>
+    <string name="pantry_placeholder">What you already have, so you only buy what you need.</string>
+
     <!-- The shared message body (RecipeShareText): the words around the recipe, in the phone's
          language. "Prep", "Cook" and "Total" reuse the label_* strings above. -->
     <string name="share_serves">Serves %1$d</string>

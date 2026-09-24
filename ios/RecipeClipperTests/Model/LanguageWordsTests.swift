@@ -17,7 +17,8 @@ final class LanguageWordsTests: XCTestCase {
     func testWordsAreFoundByThePrimarySubtagAndOnlyForAShippedLanguage() {
         XCTAssertTrue(LanguageWords.forTag("en") === LanguageWords.english)
         XCTAssertTrue(LanguageWords.forTag("en-GB") === LanguageWords.english)
-        XCTAssertNil(LanguageWords.forTag("de-de"))
+        XCTAssertEqual(LanguageWords.forTag("de-DE")?.language, "de")
+        XCTAssertNil(LanguageWords.forTag("nl-nl"))
         XCTAssertNil(LanguageWords.forTag(nil))
     }
 
@@ -55,8 +56,8 @@ final class LanguageWordsTests: XCTestCase {
         XCTAssertNil(LanguageWords.detect("Pasta with pesto"))
     }
 
-    func testALanguageDetectedButWithoutTablesIsShownAsWritten() {
-        XCTAssertNil(LanguageWords.forTag(LanguageWords.resolve(declared: nil, page: "en") { self.german }))
+    func testAGermanPageThatDeclaresEnglishIsReadWithGermanWords() {
+        XCTAssertEqual(LanguageWords.forTag(LanguageWords.resolve(declared: nil, page: "en") { self.german })?.language, "de")
     }
 
     func testAStoredRecipeWithNoLanguageIsDetectedFromItsWords() {
@@ -66,6 +67,8 @@ final class LanguageWordsTests: XCTestCase {
         )
         XCTAssertTrue(LanguageWords.forRecipe(recipe) === LanguageWords.english)
         recipe.language = "it-it"
+        XCTAssertEqual(LanguageWords.forRecipe(recipe)?.language, "it")
+        recipe.language = "nl-nl"
         XCTAssertNil(LanguageWords.forRecipe(recipe))
     }
 
@@ -153,10 +156,17 @@ final class LanguageWordsTests: XCTestCase {
     }
 
     func testALanguageWithNoWordsReadsIsoTimesOnlyAndSkipsNoSection() throws {
-        let recipe = try parse(page("de", #"{"@type": "Recipe", "name": "Kuchen", "recipeIngredient": ["200 g Mehl"], "prepTime": "1 hour 30 minutes", "cookTime": "PT20M", "# + sections + "}"))
+        let recipe = try parse(page("nl", #"{"@type": "Recipe", "name": "Taart", "recipeIngredient": ["200 g bloem"], "prepTime": "1 hour 30 minutes", "cookTime": "PT20M", "# + sections + "}"))
         XCTAssertEqual(recipe.prepTime, "1 hour 30 minutes")
         XCTAssertEqual(recipe.cookTime, "20m")
         XCTAssertEqual(recipe.instructions, ["Short version.", "Mix."])
+    }
+
+    func testAGermanRecipeReadsItsTimesWithGermanWords() throws {
+        let recipe = try parse(page("de", #"{"@type": "Recipe", "name": "Kuchen", "recipeIngredient": ["200 g Mehl"], "prepTime": "1 Stunde 30 Minuten", "cookTime": "PT20M", "totalTime": "1 hour"}"#))
+        XCTAssertEqual(recipe.prepTime, "1h 30min")
+        XCTAssertEqual(recipe.cookTime, "20min")
+        XCTAssertEqual(recipe.totalTime, "1 hour")
     }
 
     func testMicrodataRecordsInLanguageToo() throws {

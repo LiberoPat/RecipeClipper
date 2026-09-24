@@ -165,6 +165,16 @@
     <string name="delete_list_title">„%1$s“ löschen?</string>
     <string name="delete_list_body">Die Liste wird entfernt. Die Rezepte darin bleiben in deinem Verlauf.</string>
     <string name="action_delete_list">Liste löschen</string>
+
+    <!-- Bottom tabs (#47), behind BuildConfig.MEAL_PLAN_TABS, off until #49 -->
+    <string name="tab_recipes">Rezepte</string>
+    <string name="tab_week">Woche</string>
+    <string name="tab_groceries">Einkauf</string>
+    <string name="tab_pantry">Vorrat</string>
+    <string name="coming_soon">Demnächst</string>
+    <string name="week_placeholder">Plane, was du an jedem Tag der Woche kochst.</string>
+    <string name="groceries_placeholder">Eine Einkaufsliste aus den Rezepten deiner Woche.</string>
+    <string name="pantry_placeholder">Was du schon hast, damit du nur kaufst, was du brauchst.</string>
     <string name="share_serves">Portionen: %1$d</string>
     <string name="share_makes">Ergibt %1$d</string>
     <string name="share_scaled">%1$s (ursprünglich %2$d)</string>

@@ -1153,6 +1153,50 @@ and on both platforms.
   Kotlin's `IngredientName.of`, and its rendered columns are computed through
   `IngredientRendering`.
 
+## Reading recipes in de, es, fr, it and pt (#15)
+
+The five languages #14 could only detect now ship every table, filled from
+real lines on 25 sites (September 2026). Each rule below is pinned by real
+lines in the differential corpus, with a `lang:` argument.
+
+- **Dot thousands** (#76) are an `amounts.json` flag, on for de, es, it and
+  pt and off for fr (which writes a space) and en. Only a dot before exactly
+  three digits is a separator, so generator output like "0.5 TL" stays a
+  decimal; a number that fits neither ("1.500,5") leaves the line alone.
+- **Mixed numbers** (#75): each language's "and" is in `mixedJoiners`
+  ("2 e 1/2 xícaras"). A half in words ("1 taza y media", "2 e meia") can't
+  be read by the pattern, so `spelledHalves` keeps those lines as written.
+- **Units without one size** are `MeasureUnit.VARIES`: French "tasse" (a
+  Québec cup, a vague French one), German "Tasse", Italian "tazza",
+  Portuguese "colher (café)" and bare "colheres". They scale, so Ricardo's
+  "250 ml (1 tasse)" doubles as a whole, but never convert. Spanish "taza"
+  and Brazilian "xícara (chá)" are the 240 ml cup their sites mean. `cl` and
+  `dl` are metric units (French and Italian write them constantly); Metric
+  leaves them as written.
+- **Compounds and head-first names.** The density table still matches whole
+  trailing words. German compounds are listed whole where safe
+  ("weizenmehl", "puderzucker"); anything else ("Mandelmehl") stays as
+  written rather than matching "mehl". In the Romance languages the head
+  noun comes first, so "farine de riz" ends in "riz" and matches nothing,
+  which is the safe side. Elided articles ("d'huile d'olive") aren't
+  undone, so those lines keep their units in Ounces.
+- **Spanish "o"** is a range word: "1 o 2 minutos" and "160 o 165 °C" are
+  alternatives read like a range (both ends scale and convert), which
+  fixed "160 o 325°F".
+- **Whole words by letters**, not `\b`: unit words end with `(?!\p{L})` and
+  yield words use letter lookarounds, because the JDK, Android's ICU and
+  NSRegularExpression disagree on `\b` beside accented letters.
+- **Timers.** A number after a colon is a clock time ("1:30 Stunden" gave
+  a 30-hour timer), so it gets none. Bare degrees ("180 Grad", "165°") stay
+  as written: German turns trays "um 180 Grad", French writes alcohol
+  strength in degrees.
+- **Left as written, on purpose:** GialloZafferano's trailing amounts
+  ("Burro 100 g"), which can't be read without a guess.
+- **Not handled yet:** totals in parentheses after the name ("¾ de taza de
+  queso crema (180 g.)" scales the cups but not the grams, as in English) and
+  French space thousands ("1 500 g", not seen on a site yet, would scale as
+  "1").
+
 ## Editing a recipe, and typing one in (#29)
 
 - **Owner's decision:** an edited recipe is never auto-refreshed. Re-sharing
@@ -1178,3 +1222,37 @@ and on both platforms.
 - **Saving an edit reopens the recipe** (the edit screen and the recipe screen
   under it are replaced by `recipe/{id}`), rather than the recipe screen
   reloading itself, so it can't show the copy it loaded before.
+
+## Bottom tab shell (#47)
+
+The navigation shell for #46 (weekly meal plan, groceries, pantry), landing
+dark behind a flag so the shipped app is unchanged until the Week tab (#49)
+has something in it.
+
+- **One flag, one spelling per platform.** `BuildConfig.MEAL_PLAN_TABS` /
+  `FeatureFlags.mealPlanTabs`, both default off. iOS also honours a
+  debug-only launch argument (`-mealPlanTabs`) so `TabShellUITests` can
+  exercise the flag-on state without a release toggle; Android's
+  `AppShellTest` instead calls `AppShell` directly with `tabsEnabled = true`,
+  since Compose tests don't need a process relaunch to flip it.
+- **Where the bar shows is an allow-list, not a deny-list**
+  (`tabBarRoutes` on Android; `.toolbar(.hidden, for: .tabBar)` set only on
+  the recipe destination on iOS). A new screen is bar-less by default, so
+  forgetting to update the list fails safe (no bar) rather than leaking the
+  bar onto the recipe reading view or cook mode.
+- **Each tab is its own nested graph** (Android: `navigation(route =
+  tab.route, ...)` under one `NavHost`, with `popUpTo`/`saveState`/
+  `restoreState` on tab switch; iOS: one `NavigationStack` per `TabView`
+  case). Recipes' graph is shared, byte-for-byte, between the flag-off
+  `RecipeNavHost` and the flag-on shell's Recipes tab, so there are not two
+  copies of the Home stack to keep in sync.
+- **A share always lands in Recipes,** even mid-import from another tab:
+  the router/nav controller switches tabs first, then pushes the import
+  route on top of whatever the Recipes stack already held — so a share
+  during, say, browsing Pantry doesn't lose the user's place there.
+- **Choosing the open Recipes tab again goes back to Home**, matching both
+  platforms' tab-bar convention, rather than a no-op.
+- **Week/Groceries/Pantry are `ComingSoonScreen` placeholders**, not simply
+  absent tabs: they show the tab's name and one line on what it will hold,
+  so the shape of the eventual app is visible to whoever flips the flag on,
+  without implying anything is broken.

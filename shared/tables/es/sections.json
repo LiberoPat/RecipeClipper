@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "language": "es",
+  "about": "Names of a HowToSection that restates the whole recipe in condensed form ahead of the real steps (RecipeTin Eats' 'Abbreviated Recipe'). Compared exactly, after stripping HTML, trimming and lowercasing: never a substring. Skipped only when there are two or more sections and another still has steps. Add a name only once a real site is seen publishing it.",
+  "condensed": []
+}
