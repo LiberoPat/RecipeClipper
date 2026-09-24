@@ -23,7 +23,7 @@ class BlogRecipeSourceStatusTest {
 
     private lateinit var server: ServerSocket
     @Volatile private var status = 200
-    private val body = "<html><body>Just a story.</body></html>"
+    @Volatile private var body = "<html><body>Just a story.</body></html>"
 
     @Before fun start() {
         server = ServerSocket(0, 50, InetAddress.getLoopbackAddress())
@@ -72,6 +72,21 @@ class BlogRecipeSourceStatusTest {
 
     @Test fun `a page with no recipe is NoRecipeFound`() =
         assertEquals(ParseResult.Error(ParseError.NoRecipeFound), fetchWithStatus(200))
+
+    @Test fun `a page with only microdata is read through the fallback`() {
+        body = MicrodataFixtures.JETPACK
+        val result = fetchWithStatus(200)
+        assertEquals("Tomato Soup with Crispy Onions", (result as ParseResult.Success).recipe.name)
+    }
+
+    @Test fun `JSON-LD wins over microdata on a page with both`() {
+        body = MicrodataFixtures.JETPACK.replace(
+            "</head>",
+            """<script type="application/ld+json">{"@type":"Recipe","name":"From JSON-LD","recipeIngredient":["1 egg"]}</script></head>"""
+        )
+        val result = fetchWithStatus(200)
+        assertEquals("From JSON-LD", (result as ParseResult.Success).recipe.name)
+    }
 
     @Test fun `a refused connection is a fetch failure, not Blocked`() {
         val closedPort = ServerSocket(0).use { it.localPort }

@@ -151,7 +151,9 @@ Exists today:
   deadlines, several at once, and `TimerAlerts` plays three beeps on the alarm
   stream when one ends.
 - `data/remote/BlogRecipeSource` — Jsoup fetch, plus `JsonLdRecipeParser`
-  (pure: takes the JSON-LD script text, no network). Every extracted string
+  (pure: takes the JSON-LD script text, no network), and
+  `MicrodataRecipeParser` as the fallback for a page with no JSON-LD recipe
+  (see "Microdata fallback" under Parsing). Every extracted string
   (name, ingredients, instruction steps, yield — not `sourceUrl`) is run
   through a shared `stripHtml` helper (`Jsoup.parse(raw).text()`) so HTML
   tags and entities embedded in JSON-LD (`<p>`, `&amp;`, `&#39;`, ...) never
@@ -502,7 +504,9 @@ instead. The error handling has its own: `DefaultRecipeRepositoryRetryTest`
 cause, against a fake `Connectivity`), `DatabaseErrorTest` (every repository
 call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
-**248 JVM tests pass.**
+`MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
+shaped like Smitten Kitchen's (the iOS suite uses the same pages).
+**257 JVM tests pass.**
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -948,6 +952,39 @@ Repository routes by URL host.
 is the data sites publish for Google's rich snippets, so it's structured by
 construction. Working today.
 
+**Microdata fallback** (`MicrodataRecipeParser`, both platforms). It is tried
+only when JSON-LD finds no recipe, so no site that works changes. It reads
+the `itemscope`/`itemprop` attributes on the page's markup, and it was built
+for Smitten Kitchen. That site is WordPress with Jetpack's recipe block:
+name, ingredients, yield and total time as microdata, no JSON-LD at all. Its
+steps have no `recipeInstructions` itemprop; they sit in
+`<div class="jetpack-recipe-directions">`, which is read when the microdata
+has no steps. Rules, pinned by tests on the same pages on both platforms:
+
+- **Properties belong to their nearest item.** An author's Person `name`
+  inside the Recipe is not the recipe's name.
+- **Value per the microdata spec:** a `content` attribute when there is one,
+  otherwise `href`/`src` made absolute, `<time datetime>`, or the text.
+- **Steps split at block boundaries, not one per `<p>`.** Jetpack's first
+  step is bare text before any `<p>`, followed by a stray `</p>`, and a
+  per-`<p>` reading silently drops it. The notes block is not read.
+- **The photo is `og:image`** when there's no `image` itemprop (Jetpack has
+  none).
+
+iOS has no HTML parser, so its twin brings a small, forgiving element tree
+(`HtmlTree`: void and raw-text elements, comments, and implied `</p>` and
+`</li>`), with elements in a flat array so a pathologically deep page can't
+overflow the stack. Text still goes through the Jsoup-compatible
+`stripHtml`. On the real Smitten Kitchen page (September 2026) both
+platforms produce identical output: 12 ingredients, 6 steps, the yield, 50
+minutes and the photo. The iOS parse took 48 ms.
+
+Background: a probe of 15 mainstream recipe sites once found **zero**
+carrying schema.org microdata, so this was deferred. A later 16-site pass
+found Smitten Kitchen, which failed with "no recipe found" on both
+platforms. Its steps turned out to be recoverable through the Jetpack
+markup, which an earlier note here had missed.
+
 Field rules that real sites forced (same on both platforms, pinned by tests):
 
 - Times: an ISO duration totalling zero ("PT0S", Delish) is absent, not
@@ -1113,33 +1150,13 @@ Don't add these without a reason to revisit:
   image decoding, and OCR is weakest on handwriting — exactly the
   grandma's-recipe-card case motivating it. Revisit after phase 4 shows how
   often the comment fallback actually hits.
-- **A microdata fallback parser.** Measured, not assumed: a probe of 15
-  mainstream recipe sites (the throwaway script and its results are gone
-  with the job that made them; the numbers are here instead) found
-  **zero** pages carrying schema.org Recipe microdata — not one, with or
-  without JSON-LD beside it. Verified two ways: a Jsoup
-  `[itemscope][itemtype~=schema\.org/Recipe]` selector, and a plain grep of
-  the raw HTML for any `itemtype=` attribute at all, which also found none.
-  Every page that fetched successfully carried JSON-LD. Microdata is the
-  pre-2015 format and the recipe-plugin ecosystem has fully moved on, so a
-  microdata parser would have won zero recipes in this sample. Revisit only
-  if a real site someone uses is found to fail *because* of this, which the
-  parse error would have to show — and note the error today does not
-  distinguish "no structured data" from "blocked", which is worth fixing
-  first.
-  **Update:** a later 16-site pass (run through the iOS port) found one such
-  site: Smitten Kitchen carries schema.org Recipe *microdata only* — no
-  JSON-LD — and fails with "no recipe found" on both platforms. Its microdata
-  has `recipeIngredient` itemprops but no instructions itemprop, so even a
-  microdata parser would only recover the ingredients there. The "zero
-  microdata pages" figure above is no longer true; whether one site justifies
-  the parser is still an open call.
 
 ## Known constraints
 
-- Blog parsing reads JSON-LD only. Sites on older microdata won't parse —
-  but this was measured and is not worth fixing; see "Microdata fallback"
-  under Deliberately deferred.
+- Blog parsing reads JSON-LD, then schema.org microdata as a fallback (see
+  "Microdata fallback" under Parsing). A page with neither, whose recipe
+  exists only as visible text, shows "no recipe found". That is deliberate:
+  never guess a recipe from prose.
 - **Fetches are blocked intermittently, and that is the real coverage gap.**
   A probe of 15 mainstream recipe sites using the app's exact `Jsoup.connect`
   call and user-agent got 7 clean fetches and 8 failures (403s and 404s).
