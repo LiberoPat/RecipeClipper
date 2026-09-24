@@ -4,6 +4,8 @@ import com.example.recipeclipper.data.AndroidConnectivity
 import com.example.recipeclipper.data.AndroidErrorLog
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.ErrorLog
+import com.example.recipeclipper.data.WebViewRenderedPageSource
+import com.example.recipeclipper.data.remote.RenderedPageSource
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -19,6 +21,10 @@ abstract class PlatformModule {
     @Binds
     @Singleton
     abstract fun connectivity(impl: AndroidConnectivity): Connectivity
+
+    @Binds
+    @Singleton
+    abstract fun renderedPageSource(impl: WebViewRenderedPageSource): RenderedPageSource
 
     companion object {
         @Provides

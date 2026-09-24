@@ -36,7 +36,12 @@ call-recording fake would prove only half of it. `recipeCount` and
 `containsRecipe` are derived from that state exactly as the SQL derives them,
 so a `recipeCount` staged on a list literal is ignored — stage membership
 instead. The error handling has its own: `DefaultRecipeRepositoryRetryTest`
-(the retry rule, the saved-copy fallback, cancelling during the pause),
+(the retry rule, the saved-copy fallback, cancelling during the pause, and
+the rendered fallback after it over a `FakeRenderedPageSource`: rendered once
+and only after `Blocked` or `NoRecipeFound`, never for `Offline` or a
+timeout, the 20 s cap, a rendered page with no recipe keeping the cause, and
+cancelling mid-render writing nothing; iOS has the same cases in
+`DataRepositoryTests`),
 `BlogRecipeSourceStatusTest` (which statuses and exceptions become which
 cause, against a fake `Connectivity`), `DatabaseErrorTest` (every repository
 call degrades and logs instead of throwing, and cancellation is never
@@ -65,6 +70,12 @@ deleting a built-in being refused, renaming a built-in keeping `isFavorites`,
 and a recipe out of its last list staying in history. It also pins the rule
 that a seeded list which isn't Favorites *can* be deleted, so a guard that
 regressed to `isBuiltIn = 0` would fail rather than quietly return.
+
+`WebViewRenderedPageSourceTest` runs the rendered fallback's real `WebView`:
+a `data:` URL page (no network) whose script adds its recipe JSON-LD 300 ms
+after the load event must come back from `render` with that JSON-LD in the
+HTML, and parse through `BlogRecipeSource.parse`. It proves the settle wait
+and the `outerHTML` decoding; a JVM test can't host a WebView.
 
 `MigrationTest` uses Room's `MigrationTestHelper` (hence
 `androidTestImplementation("androidx.room:room-testing")`) to open a real
