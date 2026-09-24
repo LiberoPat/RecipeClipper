@@ -98,6 +98,23 @@ android {
     sourceSets.getByName("androidTest").kotlin.directories += "src/test/java/com/example/recipeclipper/fake"
 }
 
+// The weekly site check (#32, .github/workflows/site-check.yml) fetches real recipe pages, so
+// it is excluded from every normal unit-test run and runs only when asked for:
+// `./gradlew testDebugUnitTest -PsiteCheck`, which then runs nothing else. Results land in
+// app/build/site-check/.
+val siteCheck = providers.gradleProperty("siteCheck").isPresent
+val siteCheckOut = layout.buildDirectory.dir("site-check")
+tasks.withType<Test>().configureEach {
+    if (siteCheck) {
+        filter.includeTestsMatching("com.example.recipeclipper.sitecheck.LiveSiteCheck")
+        systemProperty("siteCheck.out", siteCheckOut.get().asFile.absolutePath)
+        outputs.upToDateWhen { false } // the sites change, the inputs don't
+        testLogging.showStandardStreams = true
+    } else {
+        exclude("com/example/recipeclipper/sitecheck/LiveSiteCheck*")
+    }
+}
+
 // Room writes its schema here on every build; commit the files, they are what future
 // migrations are written and tested against.
 ksp {

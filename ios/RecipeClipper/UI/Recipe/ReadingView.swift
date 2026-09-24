@@ -12,6 +12,8 @@ struct ReadingView: View {
 
     var body: some View {
         let recipe = content.recipe
+        // Credited only when there is both a domain to name and a link to open.
+        let sourceUrl = content.sourceDomain == nil ? nil : URL(string: recipe.sourceUrl)
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let image = recipe.image, let url = URL(string: image) {
@@ -21,7 +23,11 @@ struct ReadingView: View {
                 Text(recipe.name)
                     .textStyle(Typography.headlineSmall)
                     .foregroundStyle(Palette.onBackground)
-                    .padding(.bottom, 14)
+                    .padding(.bottom, sourceUrl == nil ? 14 : 0)
+                if let domain = content.sourceDomain, let sourceUrl {
+                    SourceCredit(domain: domain, url: sourceUrl)
+                        .padding(.bottom, 4)
+                }
                 Times(prep: recipe.prepTime, cook: recipe.cookTime, total: recipe.totalTime)
                     .padding(.bottom, 16)
                 ServesUnitsRow(
@@ -102,6 +108,53 @@ private struct RecipePhoto: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .accessibilityLabel(name)
+    }
+}
+
+/// Credits the site under the title: its domain in muted text, then "Open original" as a quiet
+/// paprika link to the page in the browser. Reading view only; cook mode has no room for it.
+/// Opening the page is a platform effect, so it happens here through `openURL`, not in the
+/// ViewModel.
+private struct SourceCredit: View {
+    let domain: String
+    let url: URL
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        // Side by side while both fit; stacked at the accessibility sizes, rather than
+        // truncating the domain to a few letters.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 14) {
+                domainText
+                openButton
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                domainText
+                openButton
+            }
+        }
+    }
+
+    private var domainText: some View {
+        Text(domain)
+            .textStyle(Typography.bodyMedium)
+            .foregroundStyle(Palette.muted)
+            .accessibilityIdentifier("recipe.sourceDomain")
+    }
+
+    private var openButton: some View {
+        Button {
+            openURL(url)
+        } label: {
+            Text(Strings.openOriginal)
+                .textStyle(Typography.labelLarge)
+                .foregroundStyle(Palette.accentText)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Strings.openOriginalHint(domain))
+        .accessibilityIdentifier("recipe.openOriginal")
     }
 }
 
