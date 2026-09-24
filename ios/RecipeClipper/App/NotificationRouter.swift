@@ -21,7 +21,7 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
     ) {
         let id = Self.recipeId(response.notification)
         Task { @MainActor in
-            if let id { self.router?.push(.cookRecipe(id: id)) }
+            if let id { self.router?.openInRecipes(.cookRecipe(id: id)) }
             completionHandler()
         }
     }

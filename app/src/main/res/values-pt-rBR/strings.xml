@@ -175,6 +175,16 @@
     <string name="delete_list_title">Excluir “%1$s”?</string>
     <string name="delete_list_body">A lista será removida. As receitas dela continuam no seu histórico.</string>
     <string name="action_delete_list">Excluir lista</string>
+
+    <!-- Bottom tabs (#47), behind BuildConfig.MEAL_PLAN_TABS, off until #49 -->
+    <string name="tab_recipes">Receitas</string>
+    <string name="tab_week">Semana</string>
+    <string name="tab_groceries">Compras</string>
+    <string name="tab_pantry">Despensa</string>
+    <string name="coming_soon">Em breve</string>
+    <string name="week_placeholder">Planeje o que você vai cozinhar em cada dia da semana.</string>
+    <string name="groceries_placeholder">Uma lista de compras criada a partir das receitas da sua semana.</string>
+    <string name="pantry_placeholder">O que você já tem, para comprar só o que precisa.</string>
     <string name="share_serves">Porções: %1$d</string>
     <string name="share_makes">Rende %1$d</string>
     <string name="share_scaled">%1$s (originalmente %2$d)</string>

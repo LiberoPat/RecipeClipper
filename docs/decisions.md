@@ -1186,6 +1186,40 @@ lines in the differential corpus, with a `lang:` argument.
   under it are replaced by `recipe/{id}`), rather than the recipe screen
   reloading itself, so it can't show the copy it loaded before.
 
+## Bottom tab shell (#47)
+
+The navigation shell for #46 (weekly meal plan, groceries, pantry), landing
+dark behind a flag so the shipped app is unchanged until the Week tab (#49)
+has something in it.
+
+- **One flag, one spelling per platform.** `BuildConfig.MEAL_PLAN_TABS` /
+  `FeatureFlags.mealPlanTabs`, both default off. iOS also honours a
+  debug-only launch argument (`-mealPlanTabs`) so `TabShellUITests` can
+  exercise the flag-on state without a release toggle; Android's
+  `AppShellTest` instead calls `AppShell` directly with `tabsEnabled = true`,
+  since Compose tests don't need a process relaunch to flip it.
+- **Where the bar shows is an allow-list, not a deny-list**
+  (`tabBarRoutes` on Android; `.toolbar(.hidden, for: .tabBar)` set only on
+  the recipe destination on iOS). A new screen is bar-less by default, so
+  forgetting to update the list fails safe (no bar) rather than leaking the
+  bar onto the recipe reading view or cook mode.
+- **Each tab is its own nested graph** (Android: `navigation(route =
+  tab.route, ...)` under one `NavHost`, with `popUpTo`/`saveState`/
+  `restoreState` on tab switch; iOS: one `NavigationStack` per `TabView`
+  case). Recipes' graph is shared, byte-for-byte, between the flag-off
+  `RecipeNavHost` and the flag-on shell's Recipes tab, so there are not two
+  copies of the Home stack to keep in sync.
+- **A share always lands in Recipes,** even mid-import from another tab:
+  the router/nav controller switches tabs first, then pushes the import
+  route on top of whatever the Recipes stack already held — so a share
+  during, say, browsing Pantry doesn't lose the user's place there.
+- **Choosing the open Recipes tab again goes back to Home**, matching both
+  platforms' tab-bar convention, rather than a no-op.
+- **Week/Groceries/Pantry are `ComingSoonScreen` placeholders**, not simply
+  absent tabs: they show the tab's name and one line on what it will hold,
+  so the shape of the eventual app is visible to whoever flips the flag on,
+  without implying anything is broken.
+
 ## Clip it yourself (#37)
 
 A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or
