@@ -10,7 +10,9 @@ import java.io.File
  *
  * Every `Ing(...)` and `Ins(...)` row in the Swift file is recomputed here from its input
  * string alone, and the whole file is rewritten with the results to
- * `app/build/differential-corpus/DifferentialCorpusTests.swift`. The test fails when that
+ * `app/build/differential-corpus/DifferentialCorpusTests.swift`. A row read with another
+ * language's words (#15) names it after the input, `Ing("2 EL Zucker", lang: "de"),`; a row
+ * without one is English. The test fails when that
  * differs from the committed file: a change to the scaler, converters or timers that forgot
  * to regenerate. To regenerate, or to add a row, write just the input (`Ing("1,5 kg flour"),`
  * or `Ins("Bake 1,5 hours."),`) in the Swift file, run this test, and copy the generated file
@@ -32,7 +34,7 @@ class DifferentialCorpusTest {
         UnitSystem.METRIC to false, UnitSystem.METRIC to true
     )
 
-    private val row = Regex("""^(\s*)(Ing|Ins)\("((?:[^"\\]|\\.)*)"""")
+    private val row = Regex("""^(\s*)(Ing|Ins)\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
     private val systemsComment = Regex("""^// \[[a-z+, ]*], then$""")
@@ -67,27 +69,30 @@ class DifferentialCorpusTest {
         val m = row.find(line) ?: return line
         val indent = m.groupValues[1]
         val input = unescape(m.groupValues[3])
+        val language = m.groupValues[4].ifEmpty { null }
+        val words = if (language == null) LanguageWords.ENGLISH else LanguageWords.forTag(language)!!
+        val lang = if (language == null) "" else ", lang: ${q(language)}"
         return indent + when (m.groupValues[2]) {
-            "Ing" -> ingredientRow(input)
-            else -> instructionRow(input)
+            "Ing" -> ingredientRow(input, words, lang)
+            else -> instructionRow(input, words, lang)
         } + ","
     }
 
-    private fun ingredientRow(line: String): String {
-        val scaled = factors.map { IngredientScaler.scale(line, it) }
-        val converted = systems.map { (system, liquids) -> UnitConverter.convert(line, system, liquids) }
+    private fun ingredientRow(line: String, words: LanguageWords, lang: String): String {
+        val scaled = factors.map { IngredientScaler.scale(line, it, words) }
+        val converted = systems.map { (system, liquids) -> UnitConverter.convert(line, system, liquids, words = words) }
         // As the reading view renders: scale, then convert with the original line's separator.
-        val scaledMetric = IngredientRendering.render(listOf(line), 2.0, UnitSystem.METRIC, false).single()
-        val halfOunces = IngredientRendering.render(listOf(line), 0.5, UnitSystem.OUNCES, true).single()
-        val name = IngredientName.of(line)?.let { q(it) } ?: "nil"
-        return "Ing(${q(line)}, ${list(scaled)}, ${list(converted)}, ${q(scaledMetric)}, ${q(halfOunces)}, $name)"
+        val scaledMetric = IngredientRendering.render(listOf(line), 2.0, UnitSystem.METRIC, false, words).single()
+        val halfOunces = IngredientRendering.render(listOf(line), 0.5, UnitSystem.OUNCES, true, words).single()
+        val name = IngredientName.of(line, words)?.let { q(it) } ?: "nil"
+        return "Ing(${q(line)}$lang, ${list(scaled)}, ${list(converted)}, ${q(scaledMetric)}, ${q(halfOunces)}, $name)"
     }
 
-    private fun instructionRow(line: String): String {
-        val celsius = TemperatureConverter.convert(line, TemperatureUnit.CELSIUS)
-        val fahrenheit = TemperatureConverter.convert(line, TemperatureUnit.FAHRENHEIT)
-        val timer = StepTimers.parse(line)?.toString() ?: "nil"
-        return "Ins(${q(line)}, ${q(celsius)}, ${q(fahrenheit)}, $timer)"
+    private fun instructionRow(line: String, words: LanguageWords, lang: String): String {
+        val celsius = TemperatureConverter.convert(line, TemperatureUnit.CELSIUS, words)
+        val fahrenheit = TemperatureConverter.convert(line, TemperatureUnit.FAHRENHEIT, words)
+        val timer = StepTimers.parse(line, words)?.toString() ?: "nil"
+        return "Ins(${q(line)}$lang, ${q(celsius)}, ${q(fahrenheit)}, $timer)"
     }
 
     /** AS_WRITTEN is `.asWritten` in Swift. */

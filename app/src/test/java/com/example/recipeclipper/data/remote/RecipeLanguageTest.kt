@@ -72,11 +72,20 @@ class RecipeLanguageTest {
 
     @Test
     fun `a language with no words reads ISO times only and skips no section`() {
-        val recipe = parse(page("de", """{"@type": "Recipe", "name": "Kuchen", "recipeIngredient": ["200 g Mehl"],
+        val recipe = parse(page("nl", """{"@type": "Recipe", "name": "Taart", "recipeIngredient": ["200 g bloem"],
             "prepTime": "1 hour 30 minutes", "cookTime": "PT20M", $sections}"""))
         assertEquals("1 hour 30 minutes", recipe.prepTime)
         assertEquals("20m", recipe.cookTime)
         assertEquals(listOf("Short version.", "Mix."), recipe.instructions)
+    }
+
+    @Test
+    fun `a German recipe reads its times with German words (#15)`() {
+        val recipe = parse(page("de", """{"@type": "Recipe", "name": "Kuchen", "recipeIngredient": ["200 g Mehl"],
+            "prepTime": "1 Stunde 30 Minuten", "cookTime": "PT20M", "totalTime": "1 hour"}"""))
+        assertEquals("1h 30min", recipe.prepTime)
+        assertEquals("20min", recipe.cookTime)
+        assertEquals("1 hour", recipe.totalTime)
     }
 
     @Test

@@ -41,7 +41,9 @@ object UnitConverter {
         MeasureUnit.CUP to 240.0,
         MeasureUnit.FL_OZ to 30.0,
         MeasureUnit.ML to 1.0,
-        MeasureUnit.L to 1000.0
+        MeasureUnit.L to 1000.0,
+        MeasureUnit.CL to 10.0,
+        MeasureUnit.DL to 100.0
     )
 
     private val PAREN_AT_START = Regex("""^\s*\(([^)]*)\)""")
@@ -98,21 +100,22 @@ object UnitConverter {
         words: LanguageWords? = LanguageWords.ENGLISH
     ): String {
         if (system == UnitSystem.AS_WRITTEN || words == null) return line
-        if (IngredientScaler.AMBIGUOUS_COMMA.containsMatchIn(line)) return line
         val p = patterns(words)
+        if (p.scaler.unreadable(line)) return line
 
         val lead = p.scaler.leading.find(line) ?: return line
         val afterQty = line.substring(lead.range.last + 1)
         if (p.scaler.notAnAmount.containsMatchIn(afterQty)) return line
 
-        val low = IngredientScaler.parse(lead.groupValues[2]) ?: return line
+        val low = p.scaler.parse(lead.groupValues[2]) ?: return line
         val upperText = lead.groupValues[4]
-        val high = if (upperText.isEmpty()) null else IngredientScaler.parse(upperText) ?: return line
+        val high = if (upperText.isEmpty()) null else p.scaler.parse(upperText) ?: return line
         val amount = Amount(low, high, lead.groupValues[3])
 
         val unitMatch = p.unitAtStart.find(afterQty) ?: return line
         val unit = MeasureUnit.fromText(unitMatch.groupValues[1], words) ?: return line
-        if (unit in ownUnits(system)) return line
+        // A "tasse" or "Tasse" has no one size: it scales, but never converts.
+        if (unit == MeasureUnit.VARIES || unit in ownUnits(system)) return line
 
         var after = afterQty.substring(unitMatch.range.last + 1)
 
@@ -120,8 +123,8 @@ object UnitConverter {
         var extra: Part? = null
         p.continuationAtStart.find(after)?.let { c ->
             if (amount.high != null) return line // a range plus a part: leave it
-            val unit2 = MeasureUnit.fromText(c.groupValues[3], words) ?: return line
-            val quantity2 = IngredientScaler.parse(c.groupValues[1]) ?: return line
+            val unit2 = MeasureUnit.fromText(c.groupValues[3], words)?.takeIf { it != MeasureUnit.VARIES } ?: return line
+            val quantity2 = p.scaler.parse(c.groupValues[1]) ?: return line
             extra = Part(quantity2, unit2)
             after = after.substring(c.range.last + 1)
         }
@@ -132,8 +135,8 @@ object UnitConverter {
         if (extra == null) {
             p.slashRangeAtStart.find(after)?.let { r ->
                 val rangeUnit = MeasureUnit.fromText(r.groupValues[5], words) ?: return line
-                if (IngredientScaler.parse(r.groupValues[1]) == null ||
-                    IngredientScaler.parse(r.groupValues[3]) == null
+                if (p.scaler.parse(r.groupValues[1]) == null ||
+                    p.scaler.parse(r.groupValues[3]) == null
                 ) return line
                 siteRange = rangeUnit to r.value.substringAfter('/').trim()
                 after = after.substring(r.range.last + 1)
@@ -168,7 +171,7 @@ object UnitConverter {
             rangeUnit in ownUnits(system) && if (asWeight) {
                 rangeUnit.kind == MeasureKind.WEIGHT && !(rangeUnit == MeasureUnit.OZ && isLiquid)
             } else {
-                rangeUnit == MeasureUnit.ML || rangeUnit == MeasureUnit.L
+                rangeUnit.kind == MeasureKind.VOLUME && rangeUnit.metric
             }
         }?.second
 
@@ -185,7 +188,7 @@ object UnitConverter {
 
     private fun ownUnits(system: UnitSystem): Set<MeasureUnit> = when (system) {
         UnitSystem.OUNCES -> setOf(MeasureUnit.OZ, MeasureUnit.LB)
-        UnitSystem.METRIC -> setOf(MeasureUnit.G, MeasureUnit.KG, MeasureUnit.ML, MeasureUnit.L)
+        UnitSystem.METRIC -> setOf(MeasureUnit.G, MeasureUnit.KG, MeasureUnit.ML, MeasureUnit.L, MeasureUnit.CL, MeasureUnit.DL)
         UnitSystem.AS_WRITTEN -> emptySet()
     }
 
@@ -256,15 +259,16 @@ object UnitConverter {
         return null
     }
 
-    /** A weight (g, kg, oz, lb) or a metric volume (ml, l) from a "quantity unit" match. */
+    /** A weight (g, kg, oz, lb) or a metric volume (ml, cl, dl, l) from a "quantity unit" match. */
     private fun measureOf(p: Patterns, match: MatchResult, kind: MeasureKind): Measure? {
         val unit = MeasureUnit.fromText(match.groupValues[3], p.words) ?: return null
         val wanted = when (kind) {
             MeasureKind.WEIGHT -> unit.kind == MeasureKind.WEIGHT
-            MeasureKind.VOLUME -> unit == MeasureUnit.ML || unit == MeasureUnit.L
+            MeasureKind.VOLUME -> unit.kind == MeasureKind.VOLUME && unit.metric
+            MeasureKind.NONE -> false
         }
         if (!wanted) return null
-        val quantity = IngredientScaler.parse(match.groupValues[1]) ?: return null
+        val quantity = p.scaler.parse(match.groupValues[1]) ?: return null
         return Measure(quantity * unit.base, unit, match.value)
     }
 

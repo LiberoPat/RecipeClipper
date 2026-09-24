@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "language": "fr",
+  "about": "Unit words (UnitPatterns and MeasureUnit.fromText). patterns: regex fragments, tried in this order as one alternation; each must stay a whole word (the code adds an optional trailing period and a no-letter lookahead). names: how matched text maps to a unit, first rule wins; the text is lowercased, its periods removed and its whitespace collapsed, then it names the unit when it equals one of exact or starts with one of prefixes. unit is the code's MeasureUnit name.",
+  "patterns": ["cuill(?:è|e)res?\\s+à\\s+soupe", "cuill(?:è|e)res?\\s+à\\s+caf(?:é|e)", "cuill(?:è|e)res?\\s+à\\s+th(?:é|e)", "c\\.?\\s*à\\s*s(?:oupe)?", "c\\.?\\s*à\\s*c(?:af(?:é|e))?", "c\\.?\\s*à\\s*th(?:é|e)", "càs", "càc", "cas", "cac", "tasses?", "millilitres?", "ml", "cl", "dl", "kilogrammes?", "kilos?", "kg", "grammes?", "gr", "g", "litres?", "l"],
+  "names": [
+    {"unit": "TBSP", "exact": ["cas"], "prefixes": ["cuillère à s", "cuillères à s", "cuillere à s", "cuilleres à s", "c à s", "càs"]},
+    {"unit": "TSP", "exact": ["cac"], "prefixes": ["cuillère à c", "cuillères à c", "cuillere à c", "cuilleres à c", "cuillère à t", "cuillères à t", "cuillere à t", "cuilleres à t", "c à c", "c à t", "càc"]},
+    {"unit": "VARIES", "prefixes": ["tasse"]},
+    {"unit": "ML", "exact": ["ml"], "prefixes": ["millil"]},
+    {"unit": "CL", "exact": ["cl"]},
+    {"unit": "DL", "exact": ["dl"]},
+    {"unit": "KG", "exact": ["kg"], "prefixes": ["kilo"]},
+    {"unit": "G", "exact": ["g", "gr"], "prefixes": ["gramme"]},
+    {"unit": "L", "exact": ["l"], "prefixes": ["litre"]}
+  ]
+}

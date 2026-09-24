@@ -40,8 +40,11 @@ final class SharedTablesTests: XCTestCase {
             let names = SharedTables.objects(SharedTables.load("units", language), "names").compactMap { $0["unit"] as? String }
             XCTAssertTrue(Set(names).isSubset(of: Set(MeasureUnit.byTableName.keys)), language)
         }
-        let english = SharedTables.objects(SharedTables.load("units", "en"), "names").compactMap { $0["unit"] as? String }
-        XCTAssertEqual(Set(english), Set(MeasureUnit.byTableName.keys))
+        // Every unit is named by some language (cl, dl and VARIES only by non-English ones).
+        let named = LanguageWords.shipped.flatMap { language in
+            SharedTables.objects(SharedTables.load("units", language), "names").compactMap { $0["unit"] as? String }
+        }
+        XCTAssertEqual(Set(named), Set(MeasureUnit.byTableName.keys))
         XCTAssertEqual(Set(MeasureUnit.byTableName.values), Set(MeasureUnit.allCases))
     }
 

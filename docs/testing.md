@@ -63,7 +63,9 @@ the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to
 `app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
 (`app/build.gradle.kts` declares the Swift file as a test input, so editing
-it alone reruns the tests). `SiteReportTest` covers the weekly site check's
+it alone reruns the tests). A row read with another language's words names it
+after the input (`Ing("2 EL Zucker", lang: "de"),`); a row without one is
+English. `SiteReportTest` covers the weekly site check's
 report and URL list offline (see CI below). `SiteReportLinkTest` pins the
 "Report this site" issue link byte for byte (percent-encoding, the cleaned
 link), and `RecipeViewModelTest` offers it only for `NoRecipeFound` on a

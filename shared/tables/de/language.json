@@ -1,26 +1,6 @@
 {
   "schemaVersion": 1,
   "language": "de",
-  "about": "Detection only: this language has no parsing tables yet, so a recipe detected as German is shown as written. detect: case-insensitive regex fragments matched as whole words in the recipe's name and ingredient lines; the language with the most hits wins when it has at least 3 and more than twice the runner-up's, and then it also overrides a page that declares another language (owner's decision on #14). Only words distinctive against the other detected languages: no 'de', 'sal', 'picado', 'e'.",
-  "detect": [
-    "und",
-    "oder",
-    "mit",
-    "Mehl",
-    "Zucker",
-    "Eier?",
-    "Salz",
-    "Pfeffer",
-    "Prise",
-    "(?-i:EL)",
-    "(?-i:TL)",
-    "etwas",
-    "Wasser",
-    "gehackt",
-    "Zwiebeln?",
-    "Knoblauchzehen?",
-    "Sahne",
-    "Milch",
-    "Öl"
-  ]
+  "about": "Picks this language for a recipe that declares none (no JSON-LD inLanguage, no <html lang>). detect: case-insensitive regex fragments matched as whole words in the recipe's name and ingredient lines; the language with the most hits wins when it has at least 3 and more than twice the runner-up's. Words common in recipes and rare in other languages' recipes; never units or symbols shared with other languages.",
+  "detect": ["und", "oder", "mit", "Mehl", "Zucker", "Eier?", "Salz", "Pfeffer", "Prise", "(?-i:EL)", "(?-i:TL)", "etwas", "Wasser", "gehackt", "Zwiebeln?", "Knoblauchzehen?", "Sahne", "Milch", "Öl"]
 }

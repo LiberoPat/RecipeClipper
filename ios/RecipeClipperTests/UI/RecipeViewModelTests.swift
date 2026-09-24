@@ -750,7 +750,7 @@ final class RecipeViewModelTests: XCTestCase {
 
     func testARecipeInALanguageWithNoWordsIsShownAsWritten() async {
         let preferences = FakeAppPreferences(unitSystem: .metric, convertLiquids: true, temperatureUnit: .celsius)
-        let (vm, _) = await loaded(testRecipe(language: "de-de"), preferences: preferences)
+        let (vm, _) = await loaded(testRecipe(language: "nl-nl"), preferences: preferences)
         guard let content = success(vm) else { return }
         XCTAssertNil(content.words)
         XCTAssertNil(content.servings) // no stepper: its lines couldn't be scaled

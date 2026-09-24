@@ -19,9 +19,15 @@ enum class UnitSystem {
     }
 }
 
-internal enum class MeasureKind { VOLUME, WEIGHT }
+/** NONE: a unit whose size varies from cook to cook ([MeasureUnit.VARIES]). */
+internal enum class MeasureKind { VOLUME, WEIGHT, NONE }
 
-/** [base] is millilitres for volume units and grams for weight units. */
+/**
+ * [base] is millilitres for volume units and grams for weight units. [VARIES] is a unit word
+ * whose size differs between cooks and countries (a French "tasse", a German "Tasse", an Italian
+ * "tazza", a Portuguese "colher (café)"): its amount scales, so "250 ml (1 tasse)" doubles as a
+ * whole, but it is never converted.
+ */
 internal enum class MeasureUnit(
     val kind: MeasureKind,
     val base: Double,
@@ -34,10 +40,13 @@ internal enum class MeasureUnit(
     STICK(MeasureKind.VOLUME, 118.294), // US butter stick = 8 tbsp
     ML(MeasureKind.VOLUME, 1.0, metric = true),
     L(MeasureKind.VOLUME, 1000.0, metric = true),
+    CL(MeasureKind.VOLUME, 10.0, metric = true),
+    DL(MeasureKind.VOLUME, 100.0, metric = true),
     G(MeasureKind.WEIGHT, 1.0, metric = true),
     KG(MeasureKind.WEIGHT, 1000.0, metric = true),
     OZ(MeasureKind.WEIGHT, 28.3495),
-    LB(MeasureKind.WEIGHT, 453.592);
+    LB(MeasureKind.WEIGHT, 453.592),
+    VARIES(MeasureKind.NONE, 0.0);
 
     companion object {
         private val WHITESPACE = Regex("""\s+""")
@@ -66,7 +75,8 @@ internal enum class MeasureUnit(
 
 /**
  * Regex fragments matching a unit word. The trailing lookahead makes them match whole
- * words only, so "g" doesn't match the start of "garlic" or "l" the start of "large".
+ * words only, so "g" doesn't match the start of "garlic" or "l" the start of "large". It
+ * looks for any letter, not just A-Z, so "g" isn't read in "gélatine" either (#15).
  */
 internal class UnitPatterns private constructor(words: LanguageWords) {
     // The unit words are shared with iOS: shared/tables/<language>/units.json "patterns", in order.
@@ -77,10 +87,10 @@ internal class UnitPatterns private constructor(words: LanguageWords) {
     // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
 
     /** One capturing group holding the unit text. */
-    val captured = """((?:$alternatives)\.?)(?![A-Za-z])"""
+    val captured = """((?:$alternatives)\.?)(?!\p{L})"""
 
     /** Same match, no capturing group. */
-    val plain = """(?:(?:$alternatives)\.?)(?![A-Za-z])"""
+    val plain = """(?:(?:$alternatives)\.?)(?!\p{L})"""
 
     companion object {
         fun of(words: LanguageWords = LanguageWords.ENGLISH): UnitPatterns =
