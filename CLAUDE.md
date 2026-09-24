@@ -30,10 +30,11 @@ Built on both platforms: share → parse → show; automatic history (capped at
 50, searchable, delete with undo); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers (in memory); sharing a recipe out as text; failure handling and
-offline; the microdata fallback. iOS also honours Dynamic Type.
+offline; the microdata fallback; Reddit posts (#11). iOS also honours
+Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
-background timer alerts (#10), Reddit (#11), other languages (#13–#16), the
+background timer alerts (#10), other languages (#13–#16), the
 three-option unit menu (#17), release setup (#18–#22).
 
 ## Commands
@@ -71,7 +72,9 @@ di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, Plat
 data/          RecipeRepository, ListRepository (interfaces; Default* are the Room-backed ones),
                Connectivity, ErrorLog, Clock (seams for tests)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser,
+               RedditRecipeSource (+ RoutingRecipeSource), RedditRecipeParser,
+               RedditCommentScorer, RecipeTextSplitter, RedditUrls
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
@@ -228,6 +231,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
     is false; on iOS, the no-connection `URLError` codes.
   - `FetchFailed(detail, timedOut)` for anything else.
   - `NoRecipeFound`.
+  - `NoTranscription(title, imageUrl)`: a Reddit post with no recipe as
+    text. An outcome, not a failure: the screen shows the post's photo and
+    a muted note. Never retried, never reloaded on reconnect.
 - The repository retries **once**, after an injectable 2 s pause, and only
   for `Blocked` or a `FetchFailed` that wasn't a timeout. Never for `Offline`
   (it fails at once), a timeout (a dead Wi-Fi costs one 15 s timeout, not
@@ -270,8 +276,17 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Depth guards.** `findRecipeNode` stops past 50 levels. The
   `JSONTokener(...).nextValue()` parse is wrapped in `catch (e: Throwable)`,
   because deep nesting overflows the stack there. That's the only `Throwable`
-  catch: `BlogRecipeSource.fetch` catches `Exception`, so cancellation
-  propagates.
+  catch (the Reddit parser catches only `JSONException` and
+  `StackOverflowError`): the sources' `fetch` catch `Exception`, so
+  cancellation propagates.
+- **Reddit** (routed by host: reddit.com, its subdomains, redd.it): one
+  `.json` fetch (a `/s/` share link is followed to the post first). The post
+  body if it splits, else the best comment that splits
+  (`RedditCommentScorer`, pure), else `NoTranscription`.
+  `RecipeTextSplitter` splits only text with a whole-line ingredients header
+  and a whole-line instructions header, each with lines under it: never
+  prose. The story before the first header is dropped, apart from a
+  labelled yield or time. `sourceType` is `REDDIT`.
 - **Times:**
   - An ISO duration totalling zero ("PT0S") is absent.
   - A whole-string English phrase ("1 hour 30 minutes") renders like ISO

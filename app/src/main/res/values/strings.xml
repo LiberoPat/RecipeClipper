@@ -27,6 +27,7 @@
 
     <!-- Errors -->
     <string name="error_no_recipe_found">Couldn\'t find recipe data on this page. Some sites don\'t tag their recipes in a way this app can read yet.</string>
+    <string name="error_no_transcription">No recipe text found for this post. Reddit recipes are often only in the photo, and nobody has written this one out in the comments yet.</string>
     <string name="error_fetch_failed">Couldn\'t load that page (%1$s).</string>
     <string name="error_blocked">The site didn\'t let the app in (HTTP %1$d). Sites often do this for a moment — try again in a minute.</string>
     <string name="error_offline">You\'re offline. The recipe will load when you\'re back online.</string>

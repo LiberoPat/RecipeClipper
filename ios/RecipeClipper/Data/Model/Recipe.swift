@@ -65,6 +65,11 @@ enum ParseError: Equatable, Error {
     /// The page loaded but carried no recipe data. Never retried automatically; "Try again" is
     /// still offered, because a captive portal's login page lands here too.
     case noRecipeFound
+    /// A Reddit post with no recipe as text: neither the body nor any comment splits into
+    /// ingredients and steps. A legitimate outcome (often a photo of a dish, or of a recipe card
+    /// nobody has transcribed yet), not a failure. Carries the post's title and photo so the
+    /// screen can show them. Never retried automatically.
+    case noTranscription(title: String, imageUrl: String?)
     /// The site answered, but refused: 403, 404, 429 or any 5xx. Usually a bot block, and not a
     /// stable one (the same site can refuse one minute and answer the next, and some send 404
     /// as a disguise for a block), so this reads as "try again", not "unsupported".
