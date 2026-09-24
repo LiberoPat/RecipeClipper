@@ -10,6 +10,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeList
+import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
 import com.example.recipeclipper.fake.FakeListRepository
@@ -49,7 +50,8 @@ class RecipeScreenFixture(recipe: Recipe = testRecipe()) {
             recipes,
             preferences,
             Clock { now.get() },
-            FakeConnectivity()
+            FakeConnectivity(),
+            FakeAppInfo()
         )
         val saveViewModel = SaveToListViewModel(lists)
         compose.setContent {
