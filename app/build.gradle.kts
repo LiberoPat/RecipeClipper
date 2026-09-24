@@ -82,6 +82,9 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // shared/ is a main resource dir for its tables (#9); its fixtures/ are test data
+            // (see the test source set below), not something to ship.
+            excludes += "/fixtures/**"
         }
     }
 
@@ -104,6 +107,10 @@ android {
     // shared — the JVM-only helpers next to it (MainDispatcherRule, collectEagerly) depend on
     // kotlinx-coroutines-test and have no business on a device.
     sourceSets.getByName("androidTest").java.srcDir("src/test/java/com/example/recipeclipper/fake")
+
+    // Fixtures both platforms test against (the iOS tests copy the same folder into their
+    // bundle): the export file format is proven interchangeable by reading the same files.
+    sourceSets.getByName("test").resources.srcDir("$rootDir/shared/fixtures")
 }
 
 // The weekly site check (#32, .github/workflows/site-check.yml) fetches real recipe pages, so

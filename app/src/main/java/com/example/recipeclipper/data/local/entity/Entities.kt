@@ -1,13 +1,15 @@
 package com.example.recipeclipper.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 @Entity(
     tableName = "recipes",
-    indices = [Index(value = ["sourceUrl"], unique = true)]
+    indices = [Index(value = ["sourceUrl"], unique = true), Index(value = ["uid"], unique = true)]
 )
 data class RecipeEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -23,10 +25,14 @@ data class RecipeEntity(
     val sourceType: String,         // BLOG | REDDIT, for re-fetch
     val lastViewedAt: Long,
     val checkedIngredients: Set<Int> = emptySet(),
-    val notes: String? = null       // the user's own note; kept across re-shares
+    val notes: String? = null,      // the user's own note; kept across re-shares
+    /** Stable across devices and exports (#26): what an export file calls this recipe. Never
+     *  changes once written — re-sharing keeps it, and an import keeps the file's. */
+    @ColumnInfo(defaultValue = "")
+    val uid: String = newUid()
 )
 
-@Entity(tableName = "lists")
+@Entity(tableName = "lists", indices = [Index(value = ["uid"], unique = true)])
 data class ListEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
@@ -35,8 +41,14 @@ data class ListEntity(
     val isBuiltIn: Boolean,
     val isFavorites: Boolean,       // exactly one row; a column, never a name match
     val sortOrder: Int,
-    val createdAt: Long
+    val createdAt: Long,
+    /** Stable across devices and exports (#26); survives a rename, unlike [name]. */
+    @ColumnInfo(defaultValue = "")
+    val uid: String = newUid()
 )
+
+/** A fresh stable id for a new row. The same form the migrations backfill with. */
+fun newUid(): String = UUID.randomUUID().toString()
 
 /** "Saved" means "has at least one of these". There is deliberately no isSaved column. */
 @Entity(

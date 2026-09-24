@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Recipe Clipper</string>
+    <string name="app_name" translatable="false">Recipe Clipper</string>
 
     <!-- Common actions -->
     <string name="action_back">‹  Back</string>
@@ -70,16 +70,16 @@
     <string name="cook_position">Step %1$d of %2$d</string>
     <string name="cook_done_next">Done — next step</string>
     <string name="cook_done_finish">Done — finish</string>
-    <string name="cook_ingredients_count">  ·  %1$d</string>
+    <string name="cook_ingredients_count" translatable="false">  ·  %1$d</string>
     <string name="cd_hide_ingredients">Hide ingredients</string>
     <string name="cd_show_ingredients">Show ingredients</string>
     <string name="cd_go_to_step">Go to step %1$d</string>
     <string name="timer_start">⏱  Start %1$s timer</string>
-    <string name="timer_running">⏱  %1$s</string>
+    <string name="timer_running" translatable="false">⏱  %1$s</string>
     <string name="timers_up">Time\'s up</string>
 
     <!-- Home screen -->
-    <string name="home_title">Recipe Clipper</string>
+    <string name="home_title" translatable="false">Recipe Clipper</string>
     <string name="home_subtitle">Share a recipe link to this app from your browser, or paste one here.</string>
     <string name="label_recipe_url">Recipe URL</string>
     <string name="section_continue_cooking">Continue cooking</string>
@@ -132,6 +132,43 @@
     <string name="settings_section_units">Units</string>
     <string name="settings_section_oven_temperature">Oven temperature</string>
     <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_your_recipes">Your recipes</string>
+
+    <!-- Settings → Your recipes: export and import (#26) -->
+    <string name="backup_export_title">Export recipes</string>
+    <string name="backup_export_description">Save every recipe and list to one file, to keep or to move to another phone</string>
+    <string name="backup_import_title">Import recipes</string>
+    <string name="backup_import_description">Add the recipes and lists from an export file. Nothing here is replaced or deleted.</string>
+    <string name="backup_share_title">Export recipes</string>
+    <string name="backup_exporting">Preparing the file…</string>
+    <string name="backup_importing">Importing…</string>
+    <plurals name="backup_recipes">
+        <item quantity="one">%d recipe</item>
+        <item quantity="other">%d recipes</item>
+    </plurals>
+    <plurals name="backup_lists">
+        <item quantity="one">%d list</item>
+        <item quantity="other">%d lists</item>
+    </plurals>
+    <!-- %1$s and %2$s are backup_recipes and backup_lists. -->
+    <string name="backup_imported">Imported %1$s and %2$s.</string>
+    <string name="backup_imported_recipes">Imported %1$s.</string>
+    <string name="backup_imported_nothing">Nothing new: everything in that file is already here.</string>
+    <plurals name="backup_already_here">
+        <item quantity="one">%d recipe was already here.</item>
+        <item quantity="other">%d recipes were already here.</item>
+    </plurals>
+    <!-- %2$d is the history limit (50). -->
+    <plurals name="backup_skipped">
+        <item quantity="one">%1$d older recipe in no list wasn\'t added: history keeps the %2$d most recent.</item>
+        <item quantity="other">%1$d older recipes in no list weren\'t added: history keeps the %2$d most recent.</item>
+    </plurals>
+    <string name="backup_error_not_a_backup">That file isn\'t a Recipe Clipper export.</string>
+    <string name="backup_error_newer_version">That file was made by a newer version of Recipe Clipper (format %1$d). Update the app to import it.</string>
+    <string name="backup_error_malformed">That export file is damaged (%1$s). Nothing was imported.</string>
+    <string name="backup_error_read_failed">Couldn\'t open that file.</string>
+    <string name="backup_error_save_failed">Couldn\'t save the imported recipes. Nothing was changed.</string>
+    <string name="backup_error_export_failed">Couldn\'t create the export file.</string>
     <string name="temperature_as_written">As written</string>
     <string name="temperature_as_written_description">Exactly the temperature the recipe uses</string>
     <string name="temperature_celsius">Celsius (°C)</string>
@@ -178,4 +215,12 @@
     <string name="week_placeholder">Plan what you\'re cooking on each day of the week.</string>
     <string name="groceries_placeholder">A shopping list built from the recipes in your week.</string>
     <string name="pantry_placeholder">What you already have, so you only buy what you need.</string>
+
+    <!-- The shared message body (RecipeShareText): the words around the recipe, in the phone's
+         language. "Prep", "Cook" and "Total" reuse the label_* strings above. -->
+    <string name="share_serves">Serves %1$d</string>
+    <string name="share_makes">Makes %1$d</string>
+    <string name="share_scaled">%1$s (originally %2$d)</string>
+    <string name="share_heading_ingredients">INGREDIENTS</string>
+    <string name="share_heading_instructions">INSTRUCTIONS</string>
 </resources>

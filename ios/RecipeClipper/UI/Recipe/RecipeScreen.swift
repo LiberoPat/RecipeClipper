@@ -115,7 +115,7 @@ struct RecipeScreen: View {
         .accessibilityLabel(saved ? Strings.inAList : Strings.saveToList)
         .accessibilityIdentifier("recipe.bookmark")
 
-        if let text = vm.shareText() {
+        if let text = vm.shareText(labels: Strings.shareTextLabels) {
             ShareLink(item: text, subject: Text(content.recipe.name), preview: SharePreview(content.recipe.name)) {
                 Image(systemName: "square.and.arrow.up")
             }
@@ -145,6 +145,7 @@ private struct StatusView<Body: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
+        .readableColumn()
         .padding(.top, 24)
     }
 }

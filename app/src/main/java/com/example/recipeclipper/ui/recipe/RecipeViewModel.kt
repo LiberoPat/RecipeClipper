@@ -9,7 +9,7 @@ import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
-import com.example.recipeclipper.data.model.IngredientScaler
+import com.example.recipeclipper.data.model.IngredientRendering
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
@@ -21,7 +21,6 @@ import com.example.recipeclipper.data.model.SourceDomain
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
-import com.example.recipeclipper.data.model.UnitConverter
 import com.example.recipeclipper.data.model.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -184,15 +183,17 @@ class RecipeViewModel @Inject constructor(
     /**
      * The recipe as currently on screen — scaled servings, converted units — formatted for
      * sharing outside the app. Null when there's nothing loaded yet. Building and firing the
-     * share Intent is the screen's job: this only returns text.
+     * share Intent is the screen's job: this only returns text. The screen passes [labels]
+     * read from its resources, so the words around the recipe follow the phone's language.
      */
-    fun shareText(): String? {
+    fun shareText(labels: RecipeShareText.Labels = RecipeShareText.Labels.ENGLISH): String? {
         val content = _uiState.value.content as? RecipeContent.Success ?: return null
         return RecipeShareText.format(
             recipe = content.recipe,
             servings = content.servings,
             ingredients = content.ingredients,
-            instructions = content.instructions
+            instructions = content.instructions,
+            labels = labels
         )
     }
 
@@ -417,9 +418,7 @@ class RecipeViewModel @Inject constructor(
         convertLiquids: Boolean
     ): List<String> {
         val factor = servings?.let { it.target.toDouble() / it.base } ?: 1.0
-        return recipe.ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale(it, factor), system, convertLiquids, separatorFrom = it)
-        }
+        return IngredientRendering.render(recipe.ingredients, factor, system, convertLiquids)
     }
 
     // Instructions aren't scaled (a step can mention any number), but oven temperatures

@@ -182,14 +182,16 @@ final class RecipeViewModel {
     }
 
     /// The recipe as currently on screen — scaled servings, converted units — formatted for
-    /// sharing. Nil when nothing is loaded. Presenting the share sheet is the view's job.
-    func shareText() -> String? {
+    /// sharing. Nil when nothing is loaded. Presenting the share sheet is the view's job. The
+    /// view passes `labels` from the string catalog, so the words follow the phone's language.
+    func shareText(labels: RecipeShareText.Labels = .english) -> String? {
         guard let content = uiState.content.success else { return nil }
         return RecipeShareText.format(
             recipe: content.recipe,
             servings: content.servings,
             ingredients: content.ingredients,
-            instructions: content.instructions
+            instructions: content.instructions,
+            labels: labels
         )
     }
 
@@ -374,11 +376,7 @@ final class RecipeViewModel {
     // Scale first, then convert, so a converted amount always matches the chosen servings.
     private func render(_ recipe: Recipe, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool) -> [String] {
         let factor = servings.map { Double($0.target) / Double($0.base) } ?? 1.0
-        return recipe.ingredients.map {
-            UnitConverter.convert(
-                IngredientScaler.scale($0, factor: factor), system: system, includeLiquids: convertLiquids, separatorFrom: $0
-            )
-        }
+        return IngredientRendering.render(recipe.ingredients, factor: factor, system: system, convertLiquids: convertLiquids)
     }
 
     // Instructions aren't scaled, but oven temperatures follow the chosen temperature unit —

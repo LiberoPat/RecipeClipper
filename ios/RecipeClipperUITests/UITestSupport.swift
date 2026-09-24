@@ -20,6 +20,9 @@ class RecipeUITestCase: XCTestCase {
         /// Chicken Adobo (Favorites, Dinner, Weeknights), Spaghetti Carbonara (Weeknights,
         /// added after Adobo), Banana Bread, Miso Soup — viewed in that order, newest first.
         case standard
+        /// "Weeknight Chili" alone: steps "Brown the beef in a large pot.", "Simmer for 20
+        /// minutes.", "Rest off the heat for 3 seconds.", "Serve with rice."
+        case cook
     }
 
     override func setUp() {

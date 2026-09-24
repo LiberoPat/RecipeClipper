@@ -20,7 +20,7 @@ needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
 unit, timer, temperature, yield and range words, condensed section names,
-tracking parameters), loaded by both apps (Android as Java resources through
+ingredient-name words, tracking parameters), loaded by both apps (Android as Java resources through
 `SharedTables`, iOS as a bundled `tables/` folder). Edit a table there, never in
 code; the logic that reads it stays written twice.
 
@@ -36,11 +36,13 @@ Built on both platforms: share → parse → show; automatic history (capped at
 50, searchable, delete with undo); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers (in memory); sharing a recipe out as text; failure handling and
-offline; the microdata fallback; a personal note per recipe. iOS also
-honours Dynamic Type.
+offline; the microdata fallback; a personal note per recipe; export and
+import of everything as one JSON file (Settings); the UI in English,
+Spanish, French, German, Italian and Brazilian Portuguese (drafts awaiting a
+native speaker: `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
-background timer alerts (#10), Reddit (#11), other languages (#13–#16),
+background timer alerts (#10), Reddit (#11), reading recipes in other languages (#12, #14–#16),
 release setup (#18–#22).
 
 ## Commands
@@ -81,7 +83,8 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
-               SiteReportLink, SourceDomain, SharedTables (loads shared/tables)
+               SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
+               IngredientName (a line's ingredient name), IngredientRendering (scale+convert)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
@@ -108,8 +111,10 @@ lands in Recipes, whichever tab is open.
 - Parsers are pure: text in, data out, no network, no Android APIs.
 - **Causes, not copy.** Sources and repositories return a `ParseError`; the
   screen picks the words. Every UI string lives in `res/values/strings.xml`
-  (iOS: `Strings.swift`). The exceptions are `RecipeShareText` and
-  `SiteReportLink`, message bodies with English wording by design.
+  plus `values-{es,fr,de,it,pt-rBR}` (iOS: `Localizable.xcstrings`, read
+  through `Strings.swift`); a new string needs all six languages on both
+  platforms. `RecipeShareText` takes its words as `Labels` from the screen;
+  `SiteReportLink` is a report body, English by design.
 - Tests use hand-written fakes (`app/src/test/.../fake/`,
   `ios/RecipeClipperTests/Fakes`), never mocks. Screens take their ViewModel
   as a parameter defaulting to `hiltViewModel()`, so UI tests pass a real
@@ -172,6 +177,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (`MutedOnInk`, `HairlineOnInk`, `PaprikaTextOnInk`). No Material purple.
   Cook mode follows the system theme; "Dark while cooking" (off by default)
   opts into dark. Don't restore an always-dark cook mode without asking.
+- **iPad (iOS only, #20):** every screen's content sits in a centred ~680pt
+  column (`readableColumn()`, `UI/Common/Components.swift`) so text never
+  runs edge to edge on a wide screen; History, a `List`, sets the same width
+  through row insets instead, since a `List` can't take a frame. iPhone
+  portrait is unchanged.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
   Ounces only), Oven temperature (independent of units, default As
@@ -207,9 +217,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 3** (iOS `user_version` 2):
+- Room database `recipe_clipper.db`, **version 4** (iOS `user_version` 3):
   `recipes` (with a nullable `notes`), `lists` and `recipe_list_cross_ref`
-  (cascading). The schema is exported to `app/schemas/`: commit it. **Never
+  (cascading). Recipes and lists carry a unique, never-changing `uid`: what
+  an export file calls them. The schema is exported to `app/schemas/`: commit it. **Never
   use destructive migration**, and give every migration a `MigrationTest`.
   iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
@@ -239,6 +250,19 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.
+- **Backup is an include list** (`res/xml/data_extraction_rules.xml` and
+  `backup_rules.xml`): the database with its `-wal`/`-shm`, and
+  `unit_preferences.xml`. Anything else, a new file or a renamed one, is not
+  backed up until it's added to both. That excludes the export/import temp
+  file below, which lives in `cacheDir`, never backed up anyway. iOS keeps the
+  database in Application Support, which backups include. Proof and the adb
+  recipe: `docs/testing.md`.
+- **Export/import** (#26) is one versioned JSON file
+  (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored). Import
+  merges, never replaces or deletes: recipes by cleaned `sourceUrl`,
+  Favorites by `isFavorites`, other lists by uid then trimmed
+  case-insensitive name; unlisted recipes only fill free history slots.
+  Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. History search ignores notes. Cook
   progress, timers and the chosen servings are in memory only (#10).

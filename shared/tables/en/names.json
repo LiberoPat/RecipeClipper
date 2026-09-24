@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "IngredientName: the ingredient's name in a line, for matching against the pantry (#46). After the amount and unit are dropped, leadingWords (sizes, containers, cuts and unit words the converter doesn't read) and a following 'of' are dropped from the start, before and after the unit; the name is cut before the first cutPhrase ('flour for dusting'); then the density table's head phrase is taken and trailingWords (preparation) are dropped from its end. A name holding a conjunction ('salt and pepper') is two ingredients, so it has no name, unless the conjunction is inside a density-table alias ('half and half'). leadingWords, trailingWords and cutPhrases are lowercase letters and spaces only.",
+  "leadingWords": [
+    "a", "an", "boneless", "skinless",
+    "c", "qt", "quart", "quarts", "pt", "pint", "pints", "gal", "gallon", "gallons", "dl", "cl",
+    "large", "medium", "small", "extra", "jumbo", "heaping", "heaped", "level", "scant", "generous",
+    "packed", "firmly", "lightly",
+    "can", "cans", "tin", "tins", "jar", "jars", "bottle", "bottles", "package", "packages",
+    "packet", "packets", "pkg", "bag", "bags", "box", "boxes", "container", "containers",
+    "envelope", "envelopes", "carton", "cartons",
+    "clove", "cloves", "pinch", "pinches", "dash", "dashes", "handful", "handfuls",
+    "bunch", "bunches", "sprig", "sprigs", "stalk", "stalks", "head", "heads",
+    "slice", "slices", "piece", "pieces", "knob", "sheet", "sheets", "drop", "drops"
+  ],
+  "trailingWords": [
+    "chopped", "diced", "minced", "sliced", "grated", "shredded", "crushed", "peeled",
+    "beaten", "cubed", "halved", "quartered", "drained", "rinsed", "trimmed", "julienned",
+    "finely", "roughly", "coarsely", "thinly", "freshly", "lightly"
+  ],
+  "cutPhrases": [
+    "plus", "for", "to taste", "as needed", "if needed", "or more", "or less", "or to taste"
+  ],
+  "conjunctions": ["and", "or", "&", "and/or", "+"]
+}

@@ -1,0 +1,191 @@
+package com.example.recipeclipper.data
+
+import com.example.recipeclipper.data.backup.BackupError
+import com.example.recipeclipper.data.backup.BackupJson
+import com.example.recipeclipper.data.backup.BackupResult
+import com.example.recipeclipper.data.backup.ExistingList
+import com.example.recipeclipper.data.backup.ExistingRecipe
+import com.example.recipeclipper.data.backup.ExportedBackup
+import com.example.recipeclipper.data.backup.ImportSummary
+import com.example.recipeclipper.data.backup.fixture
+import com.example.recipeclipper.data.local.dao.BackupDao
+import com.example.recipeclipper.data.local.entity.ListEntity
+import com.example.recipeclipper.data.local.entity.RecipeEntity
+import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
+import org.junit.Test
+
+/**
+ * The repository and [BackupDao.import]'s write-out of a plan, over an in-memory DAO. The SQL
+ * itself (insert-or-ignore keeping `addedAt`, the rollback of a failed import) is covered on a
+ * device by `BackupDaoTest`, and on iOS by `BackupDaoTests` against real SQLite.
+ */
+class DefaultBackupRepositoryTest {
+
+    /** Rows in memory, with the same derived columns and IGNORE rule the SQL has. */
+    private open class InMemoryBackupDao : BackupDao() {
+        val recipes = mutableListOf<RecipeEntity>()
+        val lists = mutableListOf<ListEntity>()
+        val refs = mutableListOf<RecipeListCrossRef>()
+        var writes = 0
+        private var nextId = 1000L
+
+        override suspend fun allRecipes() = recipes.sortedWith(compareByDescending<RecipeEntity> { it.lastViewedAt }.thenByDescending { it.id })
+        override suspend fun allLists() = lists.sortedWith(compareByDescending<ListEntity> { it.isBuiltIn }.thenBy { it.sortOrder }.thenBy { it.id })
+        override suspend fun allCrossRefs() = refs.toList()
+        override suspend fun existingRecipes() = recipes.map { r ->
+            ExistingRecipe(r.id, r.uid, r.sourceUrl, !r.notes.isNullOrBlank(), refs.any { it.recipeId == r.id })
+        }
+        override suspend fun existingLists() = allLists().map { ExistingList(it.id, it.uid, it.name, it.isFavorites) }
+        override suspend fun maxSortOrder() = lists.maxOfOrNull { it.sortOrder } ?: -1
+        override suspend fun insertRecipe(recipe: RecipeEntity): Long {
+            writes++
+            val id = nextId++
+            recipes += recipe.copy(id = id)
+            return id
+        }
+        override suspend fun insertList(list: ListEntity): Long {
+            writes++
+            val id = nextId++
+            lists += list.copy(id = id)
+            return id
+        }
+        override suspend fun addToList(crossRef: RecipeListCrossRef) {
+            writes++
+            if (refs.none { it.recipeId == crossRef.recipeId && it.listId == crossRef.listId }) refs += crossRef
+        }
+        override suspend fun fillNote(id: Long, notes: String) {
+            writes++
+            val i = recipes.indexOfFirst { it.id == id }
+            if (i >= 0 && recipes[i].notes.isNullOrBlank()) recipes[i] = recipes[i].copy(notes = notes)
+        }
+    }
+
+    private class RecordingLog : ErrorLog {
+        val messages = mutableListOf<String>()
+        override fun error(message: String, cause: Throwable) {
+            messages += message
+        }
+    }
+
+    private fun recipe(id: Long, uid: String, url: String, notes: String? = null, viewed: Long = 0) = RecipeEntity(
+        id = id, uid = uid, sourceUrl = url, title = "R$id", imageUrl = null, ingredients = listOf("1 egg"),
+        instructions = listOf("Cook."), prepTime = null, cookTime = null, totalTime = null, servings = null,
+        sourceType = "BLOG", lastViewedAt = viewed, notes = notes
+    )
+
+    private fun list(id: Long, uid: String, name: String, favorites: Boolean = false, order: Int = 0) =
+        ListEntity(id = id, uid = uid, name = name, isBuiltIn = true, isFavorites = favorites, sortOrder = order, createdAt = 0)
+
+    /** The phone the shared fixture is imported into, as in BackupMergerTest. */
+    private fun fixturePhone() = InMemoryBackupDao().apply {
+        recipes += recipe(1, "e-soup", "https://example.com/soup")
+        recipes += recipe(2, "e-bread", "https://example.com/bread", notes = "mine")
+        recipes += recipe(3, "e-older", "https://example.com/older")
+        lists += list(1, "l-fav", "Favorites", favorites = true, order = 0)
+        lists += list(2, "l-lunch", "Lunch", order = 1)
+        lists += list(10, "l-week", "Weeknight", order = 6).copy(isBuiltIn = false)
+        refs += RecipeListCrossRef(2, 1, addedAt = 1)
+    }
+
+    private val clock = Clock { 1_790_000_000_000L }
+
+    @Test fun `importing the shared fixture writes the plan onto the right rows`() = runTest {
+        val dao = fixturePhone()
+        val result = DefaultBackupRepository(dao, clock, RecordingLog()).import(fixture("backup-v1.json"))
+
+        // The real history limit (50): both unlisted new recipes fit.
+        assertEquals(
+            BackupResult.Success(ImportSummary(recipesAdded = 3, listsAdded = 2, recipesAlreadyHere = 2, recipesSkipped = 0)),
+            result
+        )
+        val pie = dao.recipes.single { it.sourceUrl == "https://example.com/pie" }
+        assertEquals("r-pie", pie.uid)
+        assertEquals("Use cold butter.", pie.notes)
+        val salad = dao.recipes.single { it.sourceUrl == "https://example.com/salad" }
+        assertTrue("a colliding uid is replaced", salad.uid != "e-bread")
+        assertEquals("Less salt.\nDouble the onion.", dao.recipes.single { it.id == 1L }.notes)
+        assertEquals("mine", dao.recipes.single { it.id == 2L }.notes)
+
+        val party = dao.lists.single { it.uid == "f-party" }
+        assertEquals("Party food", party.name)
+        assertEquals(8, party.sortOrder)
+        assertTrue(dao.lists.none { it.isFavorites && it.id != 1L })
+
+        fun has(recipeId: Long, listId: Long) = dao.refs.any { it.recipeId == recipeId && it.listId == listId }
+        assertTrue(has(1, 1))
+        assertTrue(has(pie.id, party.id))
+        assertTrue(has(pie.id, 1))
+        assertTrue(has(2, 2))
+        assertTrue(has(2, 10))
+        assertTrue(has(pie.id, dao.lists.single { it.uid == "f-fakefav" }.id))
+        // bread was already in Favorites at addedAt 1; nothing rewrote it
+        assertEquals(1L, dao.refs.single { it.recipeId == 2L && it.listId == 1L }.addedAt)
+        assertEquals(3 + 3, dao.recipes.size)
+    }
+
+    @Test fun `a file that can't be read touches nothing`() = runTest {
+        val dao = fixturePhone()
+        val repo = DefaultBackupRepository(dao, clock, RecordingLog())
+        assertEquals(BackupResult.Failure(BackupError.NotABackup), repo.import("{}"))
+        assertEquals(BackupResult.Failure(BackupError.NewerVersion(2)), repo.import(fixture("backup-v2-newer.json")))
+        assertEquals(0, dao.writes)
+    }
+
+    @Test fun `a database failure is SaveFailed, logged`() = runTest {
+        val log = RecordingLog()
+        val dao = object : InMemoryBackupDao() {
+            override suspend fun insertList(list: ListEntity): Long = throw IllegalStateException("disk full")
+        }
+        val result = DefaultBackupRepository(dao, clock, log).import(fixture("backup-v1.json"))
+        assertEquals(BackupResult.Failure(BackupError.SaveFailed), result)
+        assertEquals(listOf("import failed"), log.messages)
+    }
+
+    @Test fun `cancellation is never swallowed`() = runTest {
+        val dao = object : InMemoryBackupDao() {
+            override suspend fun existingRecipes(): List<ExistingRecipe> = throw CancellationException("gone")
+        }
+        try {
+            DefaultBackupRepository(dao, clock, RecordingLog()).import(fixture("backup-v1.json"))
+            fail("expected cancellation")
+        } catch (e: CancellationException) {
+            // expected
+        }
+    }
+
+    @Test fun `export carries uids, content and memberships, and imports back unchanged`() = runTest {
+        val dao = fixturePhone()
+        dao.recipes[0] = dao.recipes[0].copy(checkedIngredients = setOf(0), notes = "salt", imageUrl = "https://example.com/i.jpg")
+        val exported = (DefaultBackupRepository(dao, clock, RecordingLog()).export() as BackupResult.Success<ExportedBackup>).value
+
+        assertEquals(1_790_000_000_000L, exported.exportedAt)
+        assertEquals(3, exported.recipeCount)
+        val backup = (BackupJson.decode(exported.json) as BackupResult.Success).value
+        assertEquals(listOf("e-soup", "e-bread", "e-older").sorted(), backup.recipes.map { it.id }.sorted())
+        val soup = backup.recipes.single { it.id == "e-soup" }
+        assertEquals(setOf(0), soup.checkedIngredients)
+        assertEquals("salt", soup.notes)
+        assertEquals("https://example.com/i.jpg", soup.imageUrl)
+        assertEquals(listOf("l-fav", "l-lunch", "l-week"), backup.lists.map { it.id })
+        assertTrue(backup.lists.single { it.id == "l-fav" }.isFavorites)
+        assertEquals(1, backup.memberships.size)
+        assertEquals("e-bread", backup.memberships[0].recipeId)
+        assertEquals("l-fav", backup.memberships[0].listId)
+
+        // Into the same phone: everything is already here.
+        val again = DefaultBackupRepository(dao, clock, RecordingLog()).import(exported.json)
+        assertEquals(BackupResult.Success(ImportSummary(0, 0, 3, 0)), again)
+    }
+
+    @Test fun `an export that can't be read out is ExportFailed`() = runTest {
+        val dao = object : InMemoryBackupDao() {
+            override suspend fun allRecipes(): List<RecipeEntity> = throw IllegalStateException("locked")
+        }
+        assertEquals(BackupResult.Failure(BackupError.ExportFailed), DefaultBackupRepository(dao, clock, RecordingLog()).export())
+    }
+}
