@@ -8,6 +8,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.recipeclipper.ui.clip.ClipScreen
+import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.edit.EditRecipeScreen
 import com.example.recipeclipper.ui.edit.EditRecipeViewModel
 import com.example.recipeclipper.ui.history.HistoryScreen
@@ -45,6 +47,11 @@ object Routes {
 
     // From a timer notification: the recipe, opened in cook mode.
     fun cookRecipe(id: Long) = "recipe/$id?${RecipeViewModel.COOK_ARG}=true"
+
+    // "Clip it yourself" (#37), from a page with no recipe data.
+    const val CLIP = "clip?${ClipViewModel.URL_ARG}={${ClipViewModel.URL_ARG}}"
+
+    fun clip(url: String) = "clip?${ClipViewModel.URL_ARG}=${Uri.encode(url)}"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
 }
@@ -160,7 +167,24 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     ) {
         RecipeScreen(
             onBack = { navController.popBackStack() },
-            onEdit = { navController.navigate(Routes.edit(it)) }
+            onEdit = { navController.navigate(Routes.edit(it)) },
+            onClip = { navController.navigate(Routes.clip(it)) }
+        )
+    }
+
+    composable(
+        route = Routes.CLIP,
+        arguments = listOf(navArgument(ClipViewModel.URL_ARG) { type = NavType.StringType })
+    ) {
+        ClipScreen(
+            onCancel = { navController.popBackStack() },
+            // The saved clip replaces both the error screen and the clip screen, so Back
+            // from the recipe goes where the share came from.
+            onSaved = { id ->
+                navController.navigate(Routes.recipe(id)) {
+                    popUpTo(Routes.IMPORT) { inclusive = true }
+                }
+            }
         )
     }
 }

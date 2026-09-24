@@ -973,6 +973,43 @@ had already broken it once. Now the extension does the import itself.
   transactions, so this shouldn't bite, but it has to be watched for on a
   device.
 
+## iOS: reading the shared page from Safari instead of fetching it (#35)
+
+Needed #19 (the extension importing itself) first: a rendered page (about
+250 KB for a Smitten Kitchen recipe) is too big for the
+`recipeclipper://import?url=…` deep link, so parsing it has to happen where
+it's saved.
+
+- **Safari's JavaScript preprocessing file**, not a second fetch. `Preprocessing.js`
+  defines `ExtensionPreprocessingJS.run`, which hands `completionFunction`
+  `{url: document.URL, html: document.documentElement.outerHTML}`; Safari runs
+  it against the page it's sharing, before the extension launches. Info.plist
+  (via `project.yml`) names it (`NSExtensionJavaScriptPreprocessingFile`) and
+  adds `NSExtensionActivationSupportsWebPageWithMaxCount` to the activation
+  rule alongside the existing URL and text rules; only Safari acts on it, so
+  Chrome and other apps keep sharing just the URL.
+- **The page never leaves the device.** It's parsed in the extension's own
+  process with the same pure parsers the fetch uses
+  (`BlogRecipeSource.parse(html:url:)`); nothing is sent anywhere for this.
+- **Bypasses the fetch, not just the block-and-retry.** `SharedItems` prefers
+  the preprocessing result (it carries both the rendered HTML and the URL
+  JavaScript actually resolved) over the plain URL/text attachments every
+  other app sends. `RecipeRepository.importFromUrl` grew a `renderedPage`
+  parameter: given one, it parses it directly and skips the fetch, its retry
+  and the off-screen-browser fallback (#36) entirely; only when that page
+  holds no recipe does the ordinary fetch run, exactly as if nothing had been
+  given. A default-argument extension method keeps every other caller
+  (`RecipeViewModel`, the tests) at the one-argument call they already had.
+- **Android has no equivalent.** Chrome's share sheet gives apps only the
+  URL, never the rendered page; the off-screen-browser fallback (#36) is
+  Android's route to a page that needs JavaScript to reveal its recipe data.
+- **Checked so far:** the plumbing (SharedItems reading a real property-list
+  item provider shaped exactly as Apple delivers preprocessing results; the
+  repository using the page's HTML and cleaned URL without fetching; a page
+  with no recipe falling back to fetch; the view model passing the page
+  through). Safari end to end on a device, against a site that blocks the
+  plain fetch, is still owed.
+
 ## Export and import (#26)
 
 The owner's decision: import **merges, never replaces**, and deletes nothing.
@@ -1272,3 +1309,44 @@ has something in it.
   absent tabs: they show the tab's name and one line on what it will hold,
   so the shape of the eventual app is visible to whoever flips the flag on,
   without implying anything is broken.
+
+## Clip it yourself (#37)
+
+A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or
+FetchFailed) offers **Clip it yourself**: the page opens live in a web view, the user selects
+the name, ingredients and steps and taps where each goes, then reviews and saves. The design was
+approved as a mock-up (six frames); the owner's nine decisions are in the issue's comments.
+
+- **Error screen:** Try again stays first, outlined; under a hairline, one line of explanation,
+  then Clip it yourself (the one filled button), then Report this site (#30) as a text button.
+- **Assigning replaces** what a field held, for every field. The toolbar count shows the
+  replacement ("Ingredients 4", never "8 + 4").
+- **Undo, both ways:** a snackbar Undo after each assignment or clear, and tapping a field's tag
+  on the page clears that field (with Undo).
+- **Nothing is guessed.** No field is suggested for a selection. A selection splits one item per
+  line (`getSelection().toString()` breaks between blocks); a name joins its lines. Serves and
+  Total time are typed in Review, optional, never read from the page.
+- **Photo:** a Photo button, then the next tapped image. No long-press. Lazy-loading
+  placeholders (`data:` URIs) are skipped for the image's real `http(s)` address.
+- **Session draft per URL:** Cancel keeps the draft in memory (`ClipDraftStore`, keyed by the
+  cleaned URL; Android also mirrors it into `SavedStateHandle`); reopening restores it with a
+  "Draft restored" snackbar offering Discard. Save or Discard drops it. Never on disk.
+- **One script, `shared/web/clipper.js`,** injected by both apps (Android as a Java resource, iOS
+  from the bundled `web/` folder). The page only reports (selection, tag tapped, image tapped);
+  native code pushes the draft's marks back with one declarative `RC.sync(...)`, so replace,
+  undo and clear all redraw from state. Mark ids come from the draft, so an undo can show a mark
+  again. Marks don't survive a page reload (rotation on Android, a restored draft); the draft does.
+- **Links to other pages are blocked** in the clip view (redirects and fragment jumps load), so
+  a clip is always saved under the page it came from.
+- **Save** upserts on the cleaned URL like an import (same id, note and list membership) with
+  `contentOrigin` CLIPPED (#29's column; no schema change), replacing whatever the row held,
+  then the recipe replaces both the clip and the error screen in the back stack.
+- **A clip is the user's version** (#29's rule): a re-share opens it without a fetch. "Clipped
+  by you · host" replaces the domain under the title (Open original stays), and History rows
+  say "Clipped by you" (a derived `isClipped` in the summary queries). Update from source is
+  always offered for a clip, warning "Replace your clip?"; on failure the clip is kept and the
+  snackbar says why. On success it becomes PARSED and the line goes.
+- **UI tests** use a fixed local page, never the network: Android's `ClipScreenTest` makes the
+  selection by script in a real WebView; iOS's `ClipUITests` taps buttons on the fixture page
+  (`UITestSeeding.clipFixtureHTML`) that select by script, since XCUITest can't drag a web
+  selection reliably. Either way the app hears it through the page's `selectionchange`.

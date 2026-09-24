@@ -13,6 +13,10 @@ final class AppContainer {
     let backupFiles: BackupFiles
     let appInfo: AppInfo
     let alarms: TimerAlarmScheduler
+    /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
+    let clipDrafts = ClipDraftStore()
+    /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
+    let clipFixtureHTML: String?
     /// The live database, when there is one on disk that another process (the share
     /// extension) can also write to.
     private let sharedDatabase: AppDatabase?
@@ -27,6 +31,7 @@ final class AppContainer {
         backupFiles: BackupFiles = FileBackupFiles(),
         appInfo: AppInfo = BundleAppInfo(),
         alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler(),
+        clipFixtureHTML: String? = nil,
         sharedDatabase: AppDatabase? = nil
     ) {
         self.recipeRepository = recipeRepository
@@ -38,6 +43,7 @@ final class AppContainer {
         self.backupFiles = backupFiles
         self.appInfo = appInfo
         self.alarms = alarms
+        self.clipFixtureHTML = clipFixtureHTML
         self.sharedDatabase = sharedDatabase
     }
 
@@ -96,6 +102,10 @@ final class AppContainer {
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
             openInCookMode: openInCookMode
         )
+    }
+
+    func makeClipViewModel(url: String) -> ClipViewModel {
+        ClipViewModel(url: url, repository: recipeRepository, drafts: clipDrafts)
     }
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {

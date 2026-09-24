@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -67,6 +69,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
@@ -102,6 +105,7 @@ internal class RecipeActions(
 @Composable
 fun RecipeScreen(
     onBack: () -> Unit,
+    onClip: (url: String) -> Unit = {},
     onEdit: (recipeId: Long) -> Unit = {},
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel()
@@ -238,14 +242,35 @@ fun RecipeScreen(
                         // captive portal serves its login page, which parses as a page with no
                         // recipe, and the same link works once you're through it.
                         Spacer(Modifier.height(16.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
-                                Text(stringResource(R.string.action_try_again))
+                        Column {
+                            val clipUrl = state.clipUrl
+                            if (clipUrl == null) {
+                                Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                                    Text(stringResource(R.string.action_try_again))
+                                }
+                            } else {
+                                // A page with no recipe data (#37): Try again stays first,
+                                // outlined; clipping it by hand is the one filled button, and
+                                // reporting the site (#30) is the quiet option under it.
+                                OutlinedButton(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                                    Text(stringResource(R.string.action_try_again))
+                                }
+                                Spacer(Modifier.height(20.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    stringResource(R.string.clip_offer),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                Button(onClick = { onClip(clipUrl) }, shape = RoundedCornerShape(12.dp)) {
+                                    Text(stringResource(R.string.action_clip_it_yourself))
+                                }
                             }
-                            // Only for a page with no recipe (the ViewModel decides): the one error
-                            // that means "unsupported" rather than "try again". Secondary, beside it.
+                            // Only for a page with no recipe (the ViewModel decides): the one
+                            // error that means "unsupported" rather than "try again".
                             if (state.reportSiteUrl != null) {
-                                Spacer(Modifier.width(8.dp))
                                 TextButton(onClick = actions.onReportSite) {
                                     Text(
                                         stringResource(R.string.action_report_site),
@@ -363,6 +388,7 @@ private fun ReadingView(
                     RecipeOverflowMenu(
                         recipeName = recipe.name,
                         canUpdateFromSource = recipe.canUpdateFromSource && !state.updatingFromSource,
+                        clipped = recipe.origin == ContentOrigin.CLIPPED,
                         onEdit = actions.onEdit,
                         onUpdateFromSource = actions.onUpdateFromSource,
                         onDelete = actions.onDelete
@@ -389,7 +415,11 @@ private fun ReadingView(
                 Text(recipe.name, style = MaterialTheme.typography.headlineSmall)
                 val domain = content.sourceDomain
                 if (domain != null) {
-                    SourceCredit(domain, onOpen = { actions.onOpenOriginal(recipe.sourceUrl) })
+                    SourceCredit(
+                        domain,
+                        clipped = recipe.origin == ContentOrigin.CLIPPED,
+                        onOpen = { actions.onOpenOriginal(recipe.sourceUrl) }
+                    )
                     Spacer(Modifier.height(4.dp))
                 } else {
                     Spacer(Modifier.height(14.dp))
@@ -478,6 +508,7 @@ private fun ReadingView(
 private fun RecipeOverflowMenu(
     recipeName: String,
     canUpdateFromSource: Boolean,
+    clipped: Boolean,
     onEdit: () -> Unit,
     onUpdateFromSource: () -> Unit,
     onDelete: () -> Unit
@@ -520,8 +551,13 @@ private fun RecipeOverflowMenu(
     if (confirmingUpdate) {
         AlertDialog(
             onDismissRequest = { confirmingUpdate = false },
-            title = { Text(stringResource(R.string.update_from_source_title)) },
-            text = { Text(stringResource(R.string.update_from_source_body)) },
+            // A clip (#37) says what it loses in its own words: the parts picked from the page.
+            title = {
+                Text(stringResource(if (clipped) R.string.update_from_source_clip_title else R.string.update_from_source_title))
+            },
+            text = {
+                Text(stringResource(if (clipped) R.string.update_from_source_clip_body else R.string.update_from_source_body))
+            },
             confirmButton = {
                 TextButton(onClick = { confirmingUpdate = false; onUpdateFromSource() }) {
                     Text(stringResource(R.string.action_update))
@@ -554,10 +590,12 @@ private fun RecipeOverflowMenu(
  * paprika link to the page in the browser. Reading view only; cook mode has no room for it.
  */
 @Composable
-private fun SourceCredit(domain: String, onOpen: () -> Unit) {
+private fun SourceCredit(domain: String, clipped: Boolean, onOpen: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        // A clip (#37) says whose selection it is, so a difference from the page, and a
+        // re-share that doesn't refresh it, both make sense.
         Text(
-            domain,
+            if (clipped) stringResource(R.string.clipped_by_you_on, domain) else domain,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,

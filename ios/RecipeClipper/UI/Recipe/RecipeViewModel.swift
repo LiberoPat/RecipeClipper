@@ -102,6 +102,7 @@ final class RecipeViewModel {
         reconnectTask = nil
         uiState.content = .loading
         uiState.reportSiteUrl = nil
+        uiState.clipUrl = nil
         // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
         loadTask = Task { [weak self, recipeId, shareUrl, repository] in
             let result: ParseResult
@@ -131,6 +132,7 @@ final class RecipeViewModel {
             case .error(let error):
                 uiState.content = .error(error)
                 uiState.reportSiteUrl = reportSiteUrl(for: error)
+                uiState.clipUrl = error == .noRecipeFound ? shareUrl : nil
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
         }

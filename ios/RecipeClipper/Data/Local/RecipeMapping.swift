@@ -76,7 +76,8 @@ extension RecipeSummaryRecord {
             imageUrl: imageUrl,
             totalTime: totalTime,
             lastViewedAt: lastViewedAt,
-            isSaved: isSaved
+            isSaved: isSaved,
+            isClipped: isClipped
         )
     }
 }

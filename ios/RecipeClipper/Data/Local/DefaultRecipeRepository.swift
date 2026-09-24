@@ -43,7 +43,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         self.renderTimeout = renderTimeout
     }
 
-    func importFromUrl(_ sharedUrl: String) async -> ParseResult {
+    func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult {
         // Saved under the cleaned link, so tracking tags can't make one recipe into two.
         let url = UrlCleaner.clean(sharedUrl)
 
@@ -63,7 +63,7 @@ final class DefaultRecipeRepository: RecipeRepository {
             dataLog.error("find user's version failed: \(String(describing: error), privacy: .public)")
         }
 
-        let parsed = await fetchWithFallbacks(url)
+        let parsed = await fetchWithFallbacks(url, renderedPage: renderedPage)
 
         // RecipeSource.fetch can't throw, so cancellation can't propagate as it does on
         // Android. Match Android's outcome instead: a cancelled import writes nothing (not
@@ -103,9 +103,20 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
-    /// Fetches, retries once after a pause if that often clears on its own, then loads the page
-    /// once in an off-screen browser if it is still blocked or has no recipe data.
-    private func fetchWithFallbacks(_ url: String) async -> ParseResult {
+    /// With a rendered page already in hand (Safari's share extension preprocessing, #35),
+    /// parses it directly and skips the fetch entirely. Only when that page holds no recipe
+    /// does the ordinary fetch — with its retry and rendered-browser fallback — run, exactly as
+    /// if `renderedPage` had been nil.
+    ///
+    /// Otherwise: fetches, retries once after a pause if that often clears on its own, then
+    /// loads the page once in an off-screen browser if it is still blocked or has no recipe
+    /// data.
+    private func fetchWithFallbacks(_ url: String, renderedPage: String?) async -> ParseResult {
+        if let renderedPage {
+            let fromPage = BlogRecipeSource.parse(html: renderedPage, url: url)
+            if case .success = fromPage { return fromPage }
+        }
+
         var parsed = await source.fetch(url: url)
 
         // A block or a network blip often clears on its own: wait, then fetch once more. Offline
@@ -135,7 +146,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         guard let existing = (try? await db.read { conn in try RecipeDao(db: conn).get(id) }) ?? nil
         else { return .error(.notSaved) }
         guard existing.toDomain().canUpdateFromSource else { return .error(.nothingToShow) }
-        let parsed = await fetchWithFallbacks(existing.sourceUrl)
+        let parsed = await fetchWithFallbacks(existing.sourceUrl, renderedPage: nil)
         if Task.isCancelled { return parsed }
         guard case .success(var recipe) = parsed else { return parsed }
         // Filed under the saved link, whatever the parse reports, so it lands on this row.
@@ -209,6 +220,28 @@ final class DefaultRecipeRepository: RecipeRepository {
             let first = await group.next() ?? nil
             group.cancelAll()
             return first
+        }
+    }
+
+    func saveClip(_ recipe: Recipe) async -> ParseResult {
+        // CLIPPED, so a re-share opens the clip rather than fetching the page again (#29's
+        // rule); a clip replaces whatever the row held, as "Update from source" does.
+        var clip = recipe
+        clip.sourceUrl = UrlCleaner.clean(recipe.sourceUrl)
+        clip.origin = .clipped
+        clip.editedAt = nil
+        let now = clock.now()
+        do {
+            let saved = try await db.write { conn -> RecipeRecord? in
+                let dao = RecipeDao(db: conn)
+                let id = try dao.upsert(clip.toRecord(viewedAt: now), historyLimit: historyLimit, replaceUsersVersion: true)
+                return try dao.get(id)
+            }
+            guard let saved else { return .error(.saveFailed) }
+            return .success(saved.toDomain())
+        } catch {
+            dataLog.error("clip save failed: \(String(describing: error), privacy: .public)")
+            return .error(.saveFailed)
         }
     }
 

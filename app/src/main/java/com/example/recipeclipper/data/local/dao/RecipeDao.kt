@@ -16,7 +16,9 @@ data class RecipeSummaryRow(
     val imageUrl: String?,
     val totalTime: String?,
     val lastViewedAt: Long,
-    val isSaved: Boolean
+    val isSaved: Boolean,
+    /** Picked from the page by hand (#37): History says so. */
+    val isClipped: Boolean = false
 )
 
 /** A recipe's saved cook progress, with what a timer alert needs to name it. */
@@ -89,7 +91,8 @@ abstract class RecipeDao {
     @Query(
         """
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
-               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved
+               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
+               contentOrigin = 'CLIPPED' AS isClipped
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         """
@@ -108,7 +111,8 @@ abstract class RecipeDao {
     @Query(
         """
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
-               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved
+               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
+               contentOrigin = 'CLIPPED' AS isClipped
         FROM recipes
         WHERE :query = ''
            OR instr(lower(title), lower(:query)) > 0
@@ -121,7 +125,8 @@ abstract class RecipeDao {
     @Query(
         """
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
-               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved
+               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
+               contentOrigin = 'CLIPPED' AS isClipped
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         LIMIT :limit

@@ -31,6 +31,14 @@ interface RecipeRepository {
     suspend fun importFromUrl(sharedUrl: String): ParseResult
 
     /**
+     * Saves a recipe the user clipped by hand from a page with no recipe data (#37), keyed on
+     * the cleaned [Recipe.sourceUrl] like an import: a link seen before keeps its id, note and
+     * list membership, and its content is replaced by the clip. Counts as a view. Returns the
+     * saved recipe, or `Error(SaveFailed)`.
+     */
+    suspend fun saveClip(recipe: Recipe): ParseResult
+
+    /**
      * "Update from source" (#29): fetches the recipe's link again and replaces the user's
      * version with the site's, keeping the id, note and list membership, and making it PARSED.
      * On any failure nothing changes and the cause is returned.
