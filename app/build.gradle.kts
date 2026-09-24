@@ -46,6 +46,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -67,8 +68,15 @@ android {
         }
     }
 
+    // The bottom tab bar (Recipes · Week · Groceries · Pantry, #47) ships dark: off in both
+    // build types until the Week tab (#49) has something in it. Flip both to true together.
+    // Off, the app is exactly the single-stack app it was before the shell existed.
     buildTypes {
+        debug {
+            buildConfigField("boolean", "MEAL_PLAN_TABS", "false")
+        }
         release {
+            buildConfigField("boolean", "MEAL_PLAN_TABS", "false")
             isMinifyEnabled = false
             // Null, so unsigned, when the keystore properties are absent.
             signingConfig = signingConfigs.findByName("release")
