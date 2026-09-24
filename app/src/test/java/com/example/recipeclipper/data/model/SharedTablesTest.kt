@@ -9,7 +9,7 @@ import java.io.File
 /** Every shared table (#9) loads from the classpath, as the app loads it, and is well formed. */
 class SharedTablesTest {
 
-    private val languageTables = listOf("densities", "units", "timers", "temperature", "yield", "ranges", "sections")
+    private val languageTables = listOf("densities", "units", "timers", "temperature", "yield", "ranges", "sections", "names")
 
     @Test
     fun everyTableOnDiskIsCoveredHere() {
