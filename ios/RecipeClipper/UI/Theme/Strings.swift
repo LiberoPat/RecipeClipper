@@ -3,11 +3,13 @@ import Foundation
 /// Every piece of UI copy, in one place, the way Android keeps it in res/values/strings.xml.
 /// English only. Android collapses runs of whitespace in unquoted resources, so the double
 /// spaces in strings like "‹  Back" never rendered there; they are single spaces here.
-/// `RecipeShareText` keeps its own English wording by design (it builds a message body).
+/// `RecipeShareText` and `SiteReportLink` keep their own English wording by design (they build
+/// message bodies).
 enum Strings {
     // Common actions
     static let exit = "✕ Exit"
     static let tryAgain = "Try again"
+    static let reportSite = "Report this site"
     static let startCooking = "Start cooking"
     static let cancel = "Cancel"
     static let delete = "Delete"

@@ -72,5 +72,11 @@ data class RecipeUiState(
     val darkWhileCooking: Boolean = false,
     val cook: CookState = CookState(),
     /** Set once the recipe has been deleted, so the screen can navigate back. */
-    val deleted: Boolean = false
+    val deleted: Boolean = false,
+    /**
+     * The prefilled "Report this site" issue link. Non-null only while a shared link's
+     * [ParseError.NoRecipeFound] is on screen: never for a block, offline or a failed fetch,
+     * which mean "try again", not "unsupported". The screen opens it; nothing is sent.
+     */
+    val reportSiteUrl: String? = null
 )
