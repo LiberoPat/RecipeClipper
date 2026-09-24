@@ -18,7 +18,9 @@ struct RecipeScreen: View {
     @Environment(\.openURL) private var openURL
     @State private var sheetOpen = false
     @State private var planVM: AddToPlanViewModel?
-    @State private var planSheetOpen = false
+    /// The plan sheet's ViewModel while the sheet is up (`sheet(item:)`, so the sheet is
+    /// never built without it).
+    @State private var planSheet: AddToPlanViewModel?
     @State private var confirmingDelete = false
     @State private var confirmingUpdate = false
 
@@ -92,12 +94,10 @@ struct RecipeScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $planSheetOpen) {
-            if let planVM {
-                AddToPlanSheet(vm: planVM)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
+        .sheet(item: $planSheet) { plan in
+            AddToPlanSheet(vm: plan)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .alert(
             Strings.deleteRecipeTitle(content?.recipe.name ?? ""),
@@ -180,7 +180,7 @@ struct RecipeScreen: View {
                     let plan = planVM ?? makePlanVM()
                     planVM = plan
                     plan.setRecipe(content.recipe.id, yieldServings: content.servings?.base)
-                    planSheetOpen = true
+                    planSheet = plan
                 } label: {
                     Label(Strings.addToPlan, systemImage: "calendar.badge.plus")
                 }

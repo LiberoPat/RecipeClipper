@@ -77,3 +77,6 @@ final class AddToPlanViewModel {
         (types.first { $0.builtInKey == MealType.dinner } ?? types.first)?.id
     }
 }
+
+/// Identified by instance, so the recipe screen can present its sheet with `sheet(item:)`.
+extension AddToPlanViewModel: Identifiable {}
