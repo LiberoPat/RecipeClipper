@@ -5,7 +5,7 @@ import XCTest
 /// stub source so imports never touch the network, and a wiped preferences suite.
 ///
 /// When a query can't find something, print `app.debugDescription` and look at what IS there
-/// before changing production code (CLAUDE.md, "Compose UI tests"). `require` does that for you.
+/// before changing production code (docs/testing.md, "Compose UI tests"). `require` does that for you.
 class RecipeUITestCase: XCTestCase {
     var app: XCUIApplication!
 

@@ -69,7 +69,7 @@ protocol RecipeRepository: AnyObject {
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never>
 }
 
-/// List membership. Separate from RecipeRepository on purpose (see CLAUDE.md, Lists).
+/// List membership. Separate from RecipeRepository on purpose (see docs/decisions.md, Lists).
 protocol ListRepository: AnyObject {
     /// Every list with its recipe count, built-ins first then sortOrder then id.
     func observeLists() -> AnyPublisher<[RecipeList], Never>

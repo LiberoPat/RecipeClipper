@@ -1,6 +1,6 @@
 import XCTest
 
-/// History end to end — untested on any surface on Android (CLAUDE.md). Search goes through
+/// History end to end — untested on Android (docs/testing.md). Search goes through
 /// the real SQL (instr, never LIKE); delete is a hard delete with an undo snackbar that
 /// restores the row with its list membership.
 final class HistoryUITests: RecipeUITestCase {

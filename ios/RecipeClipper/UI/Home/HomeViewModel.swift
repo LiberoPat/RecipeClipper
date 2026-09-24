@@ -21,7 +21,7 @@ final class HomeViewModel {
     @ObservationIgnored private var cancellables = Set<AnyCancellable>()
 
     /// The most recent recipe is the "continue cooking" card; the five before it are "recent".
-    /// There is deliberately no "Saved" section (see CLAUDE.md, Lists).
+    /// There is deliberately no "Saved" section (see CLAUDE.md, UI decisions).
     init(repository: RecipeRepository) {
         repository.observeRecent(limit: Self.recentCount + 1)
             .receive(on: DispatchQueue.main)
