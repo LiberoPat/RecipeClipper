@@ -19,6 +19,7 @@ import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
+import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -76,10 +77,11 @@ class RecipeViewModelTest {
         repository: FakeRecipeRepository,
         unitPreferences: FakeAppPreferences = FakeAppPreferences(),
         connectivity: FakeConnectivity = FakeConnectivity(),
-        appInfo: FakeAppInfo = FakeAppInfo()
+        appInfo: FakeAppInfo = FakeAppInfo(),
+        alarms: FakeTimerAlarmScheduler = FakeTimerAlarmScheduler()
     ): RecipeViewModel = RecipeViewModel(
         savedStateHandle, repository, unitPreferences, Clock { testScheduler.currentTime }, connectivity,
-        appInfo
+        appInfo, alarms
     )
 
     // --- Loading ---

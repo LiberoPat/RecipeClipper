@@ -4,6 +4,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Connectivity: telling "offline" from other failures, and reloading on reconnect. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Step timers (#10): the "time's up" notification, an exact alarm for it where the user
+         allows exact alarms (else an inexact one), and rescheduling after a reboot. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".RecipeApp"
@@ -34,5 +39,18 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".timers.TimerAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".timers.TimerBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

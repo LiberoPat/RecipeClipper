@@ -7,8 +7,10 @@ import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.TimerAlarmScheduler
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.IngredientScaler
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
@@ -16,8 +18,10 @@ import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.Servings
 import com.example.recipeclipper.data.model.SiteReportLink
+import com.example.recipeclipper.data.model.SavedTimer
 import com.example.recipeclipper.data.model.ServingsScale
 import com.example.recipeclipper.data.model.SourceDomain
+import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
@@ -51,11 +55,15 @@ class RecipeViewModel @Inject constructor(
     private val unitPreferences: AppPreferences,
     private val clock: Clock,
     private val connectivity: Connectivity,
-    private val appInfo: AppInfo
+    private val appInfo: AppInfo,
+    private val alarms: TimerAlarmScheduler
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
     private val shareUrl: String? = savedStateHandle.get<String>(URL_ARG)?.takeIf { it.isNotBlank() }
+
+    // Opened from a timer notification: start cook mode once the recipe has loaded.
+    private var openInCookMode: Boolean = savedStateHandle.get<Boolean>(COOK_ARG) == true
 
     // Seeded synchronously so the first render already uses the user's units; kept current
     // afterwards by collecting [AppPreferences.settings] in [init].
@@ -81,6 +89,13 @@ class RecipeViewModel @Inject constructor(
     // Step index -> wall-clock time its timer ends. Only running timers are in here.
     private val deadlines = mutableMapOf<Int, Long>()
     private var tickJob: Job? = null
+
+    // Cook progress and servings writes, run one at a time in the order they were made, so two
+    // quick taps can never land out of order and leave the older state saved. A plain queue
+    // rather than a Channel: a Channel drops an element handed to a receiver that is cancelled
+    // before it runs, which is exactly the tap made just before leaving the screen.
+    private val pendingWrites = ArrayDeque<suspend () -> Unit>()
+    private var writer: Job? = null
 
     init {
         // Settings can change a default while this screen is alive underneath it; this keeps
@@ -120,8 +135,52 @@ class RecipeViewModel @Inject constructor(
                     )
                 }
             }
+            if (result is ParseResult.Success) {
+                restoreCook(result.recipe)
+                if (openInCookMode) {
+                    openInCookMode = false
+                    onCookStart()
+                }
+            }
             if (result is ParseResult.Error && result.error.reloadsOnReconnect) reloadOnReconnect()
         }
+    }
+
+    /**
+     * Picks up where the cook left off, even if the app was closed or killed meanwhile. A timer
+     * that was running resumes from its saved deadline, so it kept counting while closed; one
+     * whose deadline passed shows as finished and already alerted (the background alert has
+     * announced it, so no stale beep on reopening). Its alarm is rescheduled too, which is
+     * idempotent and recovers one lost to a force-stop. Indexes past the last step are dropped.
+     */
+    private fun restoreCook(recipe: Recipe) {
+        deadlines.clear()
+        val saved = recipe.cook
+        val count = recipe.instructions.size
+        val now = clock.now()
+        val timers = mutableMapOf<Int, StepTimer>()
+        for ((step, timer) in saved.timers) {
+            if (step !in 0 until count) continue
+            val endsAt = timer.endsAt
+            timers[step] = when {
+                endsAt != null && endsAt > now -> {
+                    deadlines[step] = endsAt
+                    alarms.schedule(StepAlarm(recipe.id, recipe.name, step, endsAt))
+                    StepTimer(timer.totalSeconds, secondsUntil(endsAt, now), running = true)
+                }
+                endsAt != null || timer.remainingSeconds == 0 ->
+                    StepTimer(timer.totalSeconds, 0, running = false, alerted = true)
+                else -> StepTimer(timer.totalSeconds, timer.remainingSeconds, running = false)
+            }
+        }
+        val cook = CookState(
+            active = saved.active && count > 0,
+            currentStep = if (count > 0) saved.currentStep.coerceIn(0, count - 1) else 0,
+            doneSteps = saved.doneSteps.filterTo(mutableSetOf()) { it in 0 until count },
+            timers = timers
+        )
+        _uiState.update { it.copy(cook = cook) }
+        if (deadlines.isNotEmpty()) ensureTicking()
     }
 
     /**
@@ -203,6 +262,9 @@ class RecipeViewModel @Inject constructor(
      */
     fun onDelete() {
         val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id ?: return
+        // A deleted recipe's running timers must not ring later.
+        deadlines.keys.forEach { alarms.cancel(id, it) }
+        deadlines.clear()
         viewModelScope.launch {
             repository.delete(id)
             _uiState.update { it.copy(deleted = true) }
@@ -221,6 +283,11 @@ class RecipeViewModel @Inject constructor(
                 )
             )
         }
+        val content = _uiState.value.content as? RecipeContent.Success ?: return
+        val scale = content.servings ?: return
+        // The recipe's own yield is saved as no choice at all.
+        val saved = scale.target.takeIf { it != scale.base }
+        save { repository.setServingsTarget(content.recipe.id, saved) }
     }
 
     /**
@@ -275,6 +342,13 @@ class RecipeViewModel @Inject constructor(
     // --- Cook mode ---
 
     fun onCookStart() {
+        val current = _uiState.value
+        val loaded = current.content as? RecipeContent.Success ?: return
+        if (current.cook.doneSteps.size >= loaded.instructions.size) {
+            // A finished run starts fresh below, and its timers go with it, so their alarms must too.
+            deadlines.keys.forEach { alarms.cancel(loaded.recipe.id, it) }
+            deadlines.clear()
+        }
         _uiState.update { state ->
             val content = state.content as? RecipeContent.Success ?: return@update state
             val count = content.instructions.size
@@ -283,14 +357,21 @@ class RecipeViewModel @Inject constructor(
             val cook = if (state.cook.doneSteps.size >= count) CookState() else state.cook
             state.copy(cook = cook.copy(active = true, currentStep = cook.currentStep.coerceIn(0, count - 1)))
         }
+        saveCook()
     }
 
-    fun onCookExit() = updateCook { it.copy(active = false) }
+    fun onCookExit() {
+        updateCook { it.copy(active = false) }
+        saveCook()
+    }
 
     fun onIngredientsToggle() = updateCook { it.copy(ingredientsExpanded = !it.ingredientsExpanded) }
 
     /** Tapping a step makes it current. Only [onStepDone] ever advances or marks progress. */
-    fun onStepSelected(index: Int) = updateCook { it.copy(currentStep = index) }
+    fun onStepSelected(index: Int) {
+        updateCook { it.copy(currentStep = index) }
+        saveCook()
+    }
 
     fun onStepDone() {
         _uiState.update { state ->
@@ -309,10 +390,44 @@ class RecipeViewModel @Inject constructor(
                 }
             )
         }
+        saveCook()
     }
 
     private fun updateCook(change: (CookState) -> CookState) {
         _uiState.update { it.copy(cook = change(it.cook)) }
+    }
+
+    /**
+     * Saves the cook's place as it now stands. A running timer is saved by its deadline, not
+     * its remaining seconds, so the tick loop never needs to write and a closed app's timer
+     * keeps counting. `ingredientsExpanded` and `alerted` are screen state and aren't saved.
+     */
+    private fun saveCook() {
+        val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id ?: return
+        val cook = _uiState.value.cook
+        val progress = CookProgress(
+            active = cook.active,
+            currentStep = cook.currentStep,
+            doneSteps = cook.doneSteps,
+            timers = cook.timers.mapValues { (step, timer) ->
+                SavedTimer(timer.totalSeconds, timer.remainingSeconds, deadlines[step])
+            }
+        )
+        save { repository.setCookProgress(id, progress) }
+    }
+
+    private fun save(write: suspend () -> Unit) {
+        pendingWrites.addLast(write)
+        if (writer?.isActive != true) writer = viewModelScope.launch { drainWrites() }
+    }
+
+    // Main thread only. Each write runs NonCancellable, and nothing between them suspends
+    // cancellably, so once started this empties the queue even if the screen is left.
+    private suspend fun drainWrites() {
+        while (pendingWrites.isNotEmpty()) {
+            val write = pendingWrites.removeFirst()
+            withContext(NonCancellable) { write() }
+        }
     }
 
     // --- Step timers. Several can run at once, since steps overlap. ---
@@ -320,27 +435,39 @@ class RecipeViewModel @Inject constructor(
     fun onTimerStart(step: Int) {
         val content = _uiState.value.content as? RecipeContent.Success ?: return
         val total = content.stepTimerSeconds.getOrNull(step) ?: return
-        deadlines[step] = clock.now() + total * 1000L
+        val endsAt = clock.now() + total * 1000L
+        deadlines[step] = endsAt
         setTimer(step, StepTimer(total, total, running = true))
+        alarms.schedule(StepAlarm(content.recipe.id, content.recipe.name, step, endsAt))
         ensureTicking()
+        saveCook()
     }
 
     fun onTimerToggle(step: Int) {
         val timer = _uiState.value.cook.timers[step] ?: return
+        val recipe = (_uiState.value.content as? RecipeContent.Success)?.recipe ?: return
         if (timer.running) {
             deadlines.remove(step)
             setTimer(step, timer.copy(running = false))
+            alarms.cancel(recipe.id, step)
         } else if (timer.remainingSeconds > 0) {
-            deadlines[step] = clock.now() + timer.remainingSeconds * 1000L
+            val endsAt = clock.now() + timer.remainingSeconds * 1000L
+            deadlines[step] = endsAt
             setTimer(step, timer.copy(running = true))
+            alarms.schedule(StepAlarm(recipe.id, recipe.name, step, endsAt))
             ensureTicking()
+        } else {
+            return
         }
+        saveCook()
     }
 
     fun onTimerReset(step: Int) {
         val timer = _uiState.value.cook.timers[step] ?: return
         deadlines.remove(step)
         setTimer(step, StepTimer(timer.totalSeconds, timer.totalSeconds, running = false))
+        (_uiState.value.content as? RecipeContent.Success)?.recipe?.id?.let { alarms.cancel(it, step) }
+        saveCook()
     }
 
     fun onTimerAlerted(step: Int) {
@@ -358,9 +485,7 @@ class RecipeViewModel @Inject constructor(
             while (deadlines.isNotEmpty()) {
                 delay(250)
                 val now = clock.now()
-                val remaining = deadlines.mapValues { (_, end) ->
-                    ceil((end - now) / 1000.0).toInt().coerceAtLeast(0)
-                }
+                val remaining = deadlines.mapValues { (_, end) -> secondsUntil(end, now) }
                 remaining.filterValues { it == 0 }.keys.forEach { deadlines.remove(it) }
                 _uiState.update { state ->
                     val timers = state.cook.timers.toMutableMap()
@@ -378,9 +503,25 @@ class RecipeViewModel @Inject constructor(
         }
     }
 
+    // A timer that reaches zero here keeps its alarm: the deadline has passed, so the alarm has
+    // fired or is firing, and cancelling it would only race it. The alarm stays quiet on its own
+    // while this recipe is on screen, where the in-app beep sounds instead.
+
+    private fun secondsUntil(endsAt: Long, now: Long): Int =
+        ceil((endsAt - now) / 1000.0).toInt().coerceAtLeast(0)
+
     override fun onCleared() {
         deadlines.clear()
         tickJob?.cancel()
+        // viewModelScope is cancelled by now. A writer that had started finishes the queue
+        // itself; one that never got to run is replaced here, after it, so order is kept.
+        if (pendingWrites.isNotEmpty()) {
+            val previous = writer
+            CoroutineScope(Dispatchers.Unconfined).launch {
+                previous?.join()
+                drainWrites()
+            }
+        }
         // viewModelScope is already cancelled here, so a note typed just before leaving is
         // written on a scope of its own. One short write that nothing needs to wait for.
         val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id
@@ -398,7 +539,9 @@ class RecipeViewModel @Inject constructor(
         temperatureUnit: TemperatureUnit
     ): RecipeContent.Success {
         val base = Servings.parse(recipe.yield)
-        val servings = base?.let { ServingsScale(base = it, target = it) }
+        val servings = base?.let {
+            ServingsScale(base = it, target = recipe.servingsTarget?.coerceIn(1, Servings.MAX) ?: it)
+        }
         return RecipeContent.Success(
             recipe = recipe,
             servings = servings,
@@ -430,6 +573,9 @@ class RecipeViewModel @Inject constructor(
     companion object {
         const val RECIPE_ID_ARG = "recipeId"
         const val URL_ARG = "url"
+
+        /** True when opened from a timer notification: the recipe opens in cook mode. */
+        const val COOK_ARG = "cook"
 
         /** How long typing must pause before the note is written. */
         const val NOTES_SAVE_DELAY_MS = 500L

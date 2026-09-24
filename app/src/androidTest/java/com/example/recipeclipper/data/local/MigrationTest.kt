@@ -170,12 +170,57 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Version 4 adds saved cook progress and the chosen servings. A recipe from before has
+     * neither (it opens at step one, at its own yield), and nothing else about it changes: its
+     * note, ticks and list membership come across as they were.
+     */
+    @Test
+    fun migration3To4AddsNoCookStateAndKeepsEverythingElse() {
+        helper.createDatabase(name, 3).use { db ->
+            db.execSQL(
+                "INSERT INTO lists (id, name, isBuiltIn, isFavorites, sortOrder, createdAt) " +
+                        "VALUES (1, 'Favorites', 1, 1, 0, 0)"
+            )
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer for 30 minutes."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt')
+                """.trimIndent()
+            )
+            db.execSQL("INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (7, 1, 5)")
+        }
+
+        helper.runMigrationsAndValidate(name, 4, true, RecipeDatabase.MIGRATION_3_4)
+
+        val db = openMigrated()
+        runBlocking {
+            val recipe = db.recipeDao().get(7)
+            assertEquals("Adobo", recipe?.title)
+            assertEquals(setOf(0), recipe?.checkedIngredients)
+            assertEquals("Less salt", recipe?.notes)
+            assertNull(recipe?.cookState)
+            assertNull(recipe?.servingsTarget)
+            assertEquals(listOf(1L), db.recipeDao().crossRefsFor(7).map { it.listId })
+
+            // And the new columns are writable.
+            db.recipeDao().setCookState(7, """{"active":true,"currentStep":0,"doneSteps":[],"timers":[]}""")
+            db.recipeDao().setServingsTarget(7, 6)
+            assertEquals(6, db.recipeDao().get(7)?.servingsTarget)
+            assertEquals(1, db.recipeDao().cookStates().size)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
-    fun migration1To3RunsBothSteps() {
+    fun migration1To4RunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 3, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 4, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val lists = runBlocking { openMigrated().listDao().observeLists(ListDao.NO_RECIPE).first() }
         assertEquals(listOf("Breakfast", "Snacks"), lists.map { it.name })

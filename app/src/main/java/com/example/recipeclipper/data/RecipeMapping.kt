@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.local.CookStateJson
 import com.example.recipeclipper.data.local.dao.ListRow
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
 import com.example.recipeclipper.data.local.entity.RecipeEntity
@@ -25,7 +26,9 @@ internal fun Recipe.toEntity(viewedAt: Long) = RecipeEntity(
     sourceType = sourceType.name,
     lastViewedAt = viewedAt,
     checkedIngredients = checkedIngredients,
-    notes = notes
+    notes = notes,
+    cookState = CookStateJson.encode(cook),
+    servingsTarget = servingsTarget
 )
 
 internal fun RecipeEntity.toDomain() = Recipe(
@@ -42,7 +45,9 @@ internal fun RecipeEntity.toDomain() = Recipe(
     id = id,
     checkedIngredients = checkedIngredients,
     lastViewedAt = lastViewedAt,
-    notes = notes
+    notes = notes,
+    cook = CookStateJson.decode(cookState),
+    servingsTarget = servingsTarget
 )
 
 internal fun ListRow.toDomain() = RecipeList(

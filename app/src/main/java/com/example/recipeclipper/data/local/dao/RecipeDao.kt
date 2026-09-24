@@ -19,6 +19,13 @@ data class RecipeSummaryRow(
     val isSaved: Boolean
 )
 
+/** A recipe's saved cook progress, with what a timer alert needs to name it. */
+data class CookStateRow(
+    val id: Long,
+    val title: String,
+    val cookState: String
+)
+
 @Dao
 abstract class RecipeDao {
 
@@ -43,6 +50,19 @@ abstract class RecipeDao {
     /** The user's note; null clears it. */
     @Query("UPDATE recipes SET notes = :notes WHERE id = :id")
     abstract suspend fun setNotes(id: Long, notes: String?)
+
+    /** Cook progress as [com.example.recipeclipper.data.local.CookStateJson]; null clears it. */
+    @Query("UPDATE recipes SET cookState = :cookState WHERE id = :id")
+    abstract suspend fun setCookState(id: Long, cookState: String?)
+
+    /** The chosen servings; null means the recipe's own yield. */
+    @Query("UPDATE recipes SET servingsTarget = :target WHERE id = :id")
+    abstract suspend fun setServingsTarget(id: Long, target: Int?)
+
+    /** Every recipe with saved cook progress, for finding its running timers. Small: a
+     *  handful of rows at most, since a cook rarely has more than one recipe on the go. */
+    @Query("SELECT id, title, cookState FROM recipes WHERE cookState IS NOT NULL")
+    abstract suspend fun cookStates(): List<CookStateRow>
 
     @Query("DELETE FROM recipes WHERE id = :id")
     abstract suspend fun delete(id: Long)
@@ -127,8 +147,9 @@ abstract class RecipeDao {
 
     /**
      * Saves a freshly parsed recipe and returns its id. A link that has been seen before is
-     * updated in place, so it keeps its id, its list membership, its note and, if the
-     * ingredients didn't change, its ticked ingredients. The history cap is enforced in the same
+     * updated in place, so it keeps its id, its list membership, its note, its chosen servings,
+     * its ticked ingredients if the ingredients didn't change, and its cook progress if the
+     * steps didn't change (both hold indexes). The history cap is enforced in the same
      * transaction, so the table is never left over the limit.
      */
     @Transaction
@@ -142,8 +163,19 @@ abstract class RecipeDao {
             } else {
                 emptySet() // the indexes no longer mean the same ingredients
             }
-            // The note is the user's, not the source's: a fresh parse never carries one.
-            update(fresh.copy(id = existing.id, checkedIngredients = ticked, notes = existing.notes))
+            // Step indexes, like ticks, only mean the same steps if the steps are unchanged.
+            val cook = if (existing.instructions == fresh.instructions) existing.cookState else null
+            // The note and the servings are the user's, not the source's: a fresh parse never
+            // carries them, and neither depends on the exact wording of the steps.
+            update(
+                fresh.copy(
+                    id = existing.id,
+                    checkedIngredients = ticked,
+                    notes = existing.notes,
+                    cookState = cook,
+                    servingsTarget = existing.servingsTarget
+                )
+            )
             existing.id
         }
         cullHistory(historyLimit)

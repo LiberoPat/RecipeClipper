@@ -21,7 +21,8 @@ data class StepTimer(
  * kept when the user leaves and returns, so it is never lost by a stray tap on Exit.
  * [currentStep] is what is being cooked now; [doneSteps] are struck off. Tapping any step
  * moves [currentStep] without touching [doneSteps], so jumping back loses nothing.
- * (Not persisted yet: a closed app forgets its place, though ticked ingredients survive.)
+ * Saved as it changes ([com.example.recipeclipper.data.model.CookProgress]), so a closed or
+ * killed app picks up at the same step, with its timers still counting.
  *
  * Screen state, not domain: unlike [ServingsScale] this stays in `ui/`, since `active`,
  * `ingredientsExpanded` and `alerted` describe what the screen is doing, not the recipe.
