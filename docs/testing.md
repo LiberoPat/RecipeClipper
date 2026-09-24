@@ -90,7 +90,9 @@ ingredients, `lastViewedAt` and list membership, and a user-created list keeps
 its place after the seeded block. `MIGRATION_2_3` (the `notes` column, #27)
 is run against a real version-2 database the same way: the recipe keeps its
 content, ticks and membership, has no note, and a note written afterwards
-survives a re-share; a version-1 file also goes to 3 in one open. This is
+survives a re-share. `MIGRATION_3_4` (the `language` column, #14) is run
+against a real version-3 database: content and note kept, no language, and a
+re-share fills it in; a version-1 file also goes to 4 in one open. This is
 what makes "never use destructive migration" checkable rather than an
 intention.
 

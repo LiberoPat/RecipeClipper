@@ -21,11 +21,12 @@ struct RecipeRecord: Equatable {
     var lastViewedAt: Int64
     var checkedIngredients: Set<Int> = []   // JSON text, sorted
     var notes: String? = nil                // the user's own note; kept across re-shares
+    var language: String? = nil             // the recipe's language tag (#14); nil before user_version 3
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
-        totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes
+        totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, language
         """
 
     init(
@@ -33,7 +34,7 @@ struct RecipeRecord: Equatable {
         ingredients: [String], instructions: [String],
         prepTime: String?, cookTime: String?, totalTime: String?, servings: String?,
         sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = [],
-        notes: String? = nil
+        notes: String? = nil, language: String? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -49,6 +50,7 @@ struct RecipeRecord: Equatable {
         self.lastViewedAt = lastViewedAt
         self.checkedIngredients = checkedIngredients
         self.notes = notes
+        self.language = language
     }
 
     init(row: SQLiteRow) {
@@ -66,6 +68,7 @@ struct RecipeRecord: Equatable {
         lastViewedAt = row.int64(11)
         checkedIngredients = JSONColumns.decodeInts(row.string(12))
         notes = row.optionalString(13)
+        language = row.optionalString(14)
     }
 }
 

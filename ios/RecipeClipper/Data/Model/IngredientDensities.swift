@@ -24,44 +24,52 @@ enum IngredientDensities {
         let density: Density
     }
 
-    // The table is shared with Android: shared/tables/en/densities.json. A null gramsPerCup is
-    // a skip entry, which matches by name but converts nothing, beating a shorter alias like
-    // plain "flour".
-    private static let table = SharedTables.load("densities")
+    // The table is shared with Android: shared/tables/<language>/densities.json. A null
+    // gramsPerCup is a skip entry, which matches by name but converts nothing, beating a shorter
+    // alias like plain "flour".
+    private final class Table {
+        let aliases: [(alias: String, density: Density)]
+        let trailingModifiers: Set<String>
 
-    private static let entries: [Entry] = SharedTables.objects(table, "entries").map { e in
-        Entry(
-            aliases: SharedTables.strings(e, "aliases"),
-            density: Density(
-                gramsPerCup: (e["gramsPerCup"] as? NSNumber)?.doubleValue,
-                liquid: e["liquid"] as? Bool ?? false,
-                stickable: e["stickable"] as? Bool ?? false
-            )
-        )
-    }
+        init(_ words: LanguageWords) {
+            let table = words.table("densities")
+            let entries: [Entry] = SharedTables.objects(table, "entries").map { e in
+                Entry(
+                    aliases: SharedTables.strings(e, "aliases"),
+                    density: Density(
+                        gramsPerCup: (e["gramsPerCup"] as? NSNumber)?.doubleValue,
+                        liquid: e["liquid"] as? Bool ?? false,
+                        stickable: e["stickable"] as? Bool ?? false
+                    )
+                )
+            }
 
-    // Longest alias first, so "brown sugar" wins over "sugar" and "peanut butter" over "butter".
-    // Ties keep table order (Kotlin's sortedByDescending is stable; the index makes it so here).
-    private static let aliases: [(alias: String, density: Density)] = entries
-        .flatMap { entry in entry.aliases.map { (alias: $0, density: entry.density) } }
-        .enumerated()
-        .sorted { a, b in
-            a.element.alias.count != b.element.alias.count
-                ? a.element.alias.count > b.element.alias.count
-                : a.offset < b.offset
+            // Longest alias first, so "brown sugar" wins over "sugar" and "peanut butter" over
+            // "butter". Ties keep table order (Kotlin's sortedByDescending is stable; the index
+            // makes it so here).
+            aliases = entries
+                .flatMap { entry in entry.aliases.map { (alias: $0, density: entry.density) } }
+                .enumerated()
+                .sorted { a, b in
+                    a.element.alias.count != b.element.alias.count
+                        ? a.element.alias.count > b.element.alias.count
+                        : a.offset < b.offset
+                }
+                .map { $0.element }
+
+            trailingModifiers = Set(SharedTables.strings(table, "trailingModifiers"))
         }
-        .map { $0.element }
-
-    private static let trailingModifiers = Set(SharedTables.strings(table, "trailingModifiers"))
+    }
 
     private static let innermostParens = JRegex(#"\([^()]*\)"#)
     private static let whitespace = JRegex(#"\s+"#)
 
     /// Looks the ingredient up by the *end* of its name, so "unsalted butter" and "light
     /// brown sugar" match while "butter beans" and "flour tortillas" don't.
-    static func find(_ ingredientText: String) -> Density? {
-        let phrase = headPhrase(ingredientText)
-        return aliases.first { phrase == $0.alias || phrase.hasSuffix(" " + $0.alias) }?.density
+    static func find(_ ingredientText: String, words: LanguageWords = .english) -> Density? {
+        let table = words.compiled(Table.self, Table.init)
+        let phrase = headPhrase(ingredientText, table.trailingModifiers)
+        return table.aliases.first { phrase == $0.alias || phrase.hasSuffix(" " + $0.alias) }?.density
     }
 
     /// Removes parenthesised text, including nested or doubled parentheses ("((all-purpose
@@ -77,7 +85,7 @@ enum IngredientDensities {
     }
 
     /// The ingredient name: text before the first comma, without parentheses or modifiers.
-    private static func headPhrase(_ text: String) -> String {
+    private static func headPhrase(_ text: String, _ trailingModifiers: Set<String>) -> String {
         var s = stripParentheses(text)
         if let comma = s.firstIndex(of: ",") { s = String(s[..<comma]) }
         s = s.lowercased()

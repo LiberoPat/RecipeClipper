@@ -106,6 +106,7 @@ final class AppDatabase: @unchecked Sendable {
     private static let migrations: [(SQLiteConnection) throws -> Void] = [
         createVersion1,
         addNotes,
+        addLanguage,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -175,6 +176,13 @@ final class AppDatabase: @unchecked Sendable {
     /// recipe. Nullable with no default, so every existing recipe simply has no note yet.
     private static func addNotes(_ db: SQLiteConnection) throws {
         try db.execute("ALTER TABLE recipes ADD COLUMN notes TEXT")
+    }
+
+    /// Version 3 (Android's Room version 4, `MIGRATION_3_4`): the recipe's language tag (#14).
+    /// Nullable with no default: a recipe stored before has none and is detected from its own
+    /// words when shown. A re-share fills it in.
+    private static func addLanguage(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN language TEXT")
     }
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its

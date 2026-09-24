@@ -19,7 +19,8 @@ extension Recipe {
             sourceType: sourceType.rawValue,
             lastViewedAt: viewedAt,
             checkedIngredients: checkedIngredients,
-            notes: notes
+            notes: notes,
+            language: language
         )
     }
 }
@@ -40,7 +41,8 @@ extension RecipeRecord {
             id: id,
             checkedIngredients: checkedIngredients,
             lastViewedAt: lastViewedAt,
-            notes: notes
+            notes: notes,
+            language: language
         )
     }
 }

@@ -35,6 +35,7 @@ struct ReadingView: View {
                 ServesUnitsRow(
                     servings: content.servings,
                     yieldText: recipe.yield,
+                    words: content.words,
                     unitSystem: state.unitSystem,
                     onServingsChange: vm.onServingsChange,
                     onUnitSystemChange: vm.onUnitSystemChange

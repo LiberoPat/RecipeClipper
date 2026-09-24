@@ -28,12 +28,12 @@ struct RecipeDao {
         try db.run(
             """
             INSERT INTO recipes (\(RecipeRecord.columns))
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             r.id == 0 ? nil : r.id, r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
-            JSONColumns.encode(r.checkedIngredients), r.notes
+            JSONColumns.encode(r.checkedIngredients), r.notes, r.language
         )
         return db.lastInsertRowId
     }
@@ -43,13 +43,13 @@ struct RecipeDao {
             """
             UPDATE recipes SET sourceUrl = ?, title = ?, imageUrl = ?, ingredients = ?,
                 instructions = ?, prepTime = ?, cookTime = ?, totalTime = ?, servings = ?,
-                sourceType = ?, lastViewedAt = ?, checkedIngredients = ?, notes = ?
+                sourceType = ?, lastViewedAt = ?, checkedIngredients = ?, notes = ?, language = ?
             WHERE id = ?
             """,
             r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
-            JSONColumns.encode(r.checkedIngredients), r.notes, r.id
+            JSONColumns.encode(r.checkedIngredients), r.notes, r.language, r.id
         )
     }
 

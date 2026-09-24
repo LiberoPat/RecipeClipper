@@ -7,12 +7,10 @@ import Foundation
 /// A missing or malformed table is a build mistake, not a runtime condition, so it traps.
 enum SharedTables {
 
-    static let language = "en"
-
     typealias Table = [String: Any]
 
-    /// A table for the app's language, e.g. `"units"` for `tables/en/units.json`.
-    static func load(_ name: String) -> Table { read("\(language)/\(name)") }
+    /// A language's table, e.g. `"units"` for `tables/en/units.json`. See `LanguageWords`.
+    static func load(_ name: String, _ language: String) -> Table { read("\(language)/\(name)") }
 
     /// A table that no language changes, e.g. `"url"` for `tables/url.json`.
     static func read(_ path: String) -> Table {
@@ -27,9 +25,9 @@ enum SharedTables {
 
     static func objects(_ table: Table, _ key: String) -> [Table] { table[key] as? [Table] ?? [] }
 
-    /// Regex fragments joined as one non-capturing alternation.
-    static func alternation(_ fragments: [String]) -> String { "(?:" + fragments.joined(separator: "|") + ")" }
-
-    /// Words that join the ends of a range, as one alternation.
-    static let rangeWords = alternation(strings(load("ranges"), "words"))
+    /// Regex fragments joined as one non-capturing alternation. No fragments never matches: an
+    /// empty alternation would match everywhere.
+    static func alternation(_ fragments: [String]) -> String {
+        fragments.isEmpty ? "(?!)" : "(?:" + fragments.joined(separator: "|") + ")"
+    }
 }
