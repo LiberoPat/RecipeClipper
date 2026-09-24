@@ -36,8 +36,9 @@ Built on both platforms: share → parse → show; automatic history (capped at
 50, searchable, delete with undo); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers (in memory); sharing a recipe out as text; failure handling and
-offline; the microdata fallback; a personal note per recipe. iOS also
-honours Dynamic Type.
+offline; the microdata fallback; a personal note per recipe; export and
+import of everything as one JSON file (Settings). iOS also honours Dynamic
+Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
 background timer alerts (#10), Reddit (#11), other languages (#13–#16),
@@ -199,9 +200,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 3** (iOS `user_version` 2):
+- Room database `recipe_clipper.db`, **version 4** (iOS `user_version` 3):
   `recipes` (with a nullable `notes`), `lists` and `recipe_list_cross_ref`
-  (cascading). The schema is exported to `app/schemas/`: commit it. **Never
+  (cascading). Recipes and lists carry a unique, never-changing `uid`: what
+  an export file calls them. The schema is exported to `app/schemas/`: commit it. **Never
   use destructive migration**, and give every migration a `MigrationTest`.
   iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
@@ -231,6 +233,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.
+- **Export/import** (#26) is one versioned JSON file
+  (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored). Import
+  merges, never replaces or deletes: recipes by cleaned `sourceUrl`,
+  Favorites by `isFavorites`, other lists by uid then trimmed
+  case-insensitive name; unlisted recipes only fill free history slots.
+  Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. History search ignores notes. Cook
   progress, timers and the chosen servings are in memory only (#10).

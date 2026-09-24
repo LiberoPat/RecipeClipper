@@ -2,6 +2,11 @@ package com.example.recipeclipper.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.BackupFiles
+import com.example.recipeclipper.data.BackupRepository
+import com.example.recipeclipper.data.backup.BackupError
+import com.example.recipeclipper.data.backup.BackupResult
+import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.TemperatureUnit
@@ -24,8 +29,27 @@ data class SettingsUiState(
     val unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
-    val darkWhileCooking: Boolean = false
+    val darkWhileCooking: Boolean = false,
+    val backup: BackupStatus = BackupStatus.Idle
 )
+
+/**
+ * The "Your recipes" section: export and import (#26). One at a time; the screen shows the
+ * last outcome under the two rows until the next action.
+ */
+sealed class BackupStatus {
+    object Idle : BackupStatus()
+    object Exporting : BackupStatus()
+    object Importing : BackupStatus()
+
+    /** The file is written: the screen opens the share sheet on [uri], then calls
+     *  [SettingsViewModel.onExportShared]. */
+    data class ReadyToShare(val uri: String) : BackupStatus()
+    data class Imported(val summary: ImportSummary) : BackupStatus()
+    data class Failed(val error: BackupError) : BackupStatus()
+
+    val isBusy: Boolean get() = this == Exporting || this == Importing || this is ReadyToShare
+}
 
 /**
  * The Settings screen's ViewModel. It injects [AppPreferences] directly rather than going
@@ -38,7 +62,9 @@ data class SettingsUiState(
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val preferences: AppPreferences
+    private val preferences: AppPreferences,
+    private val backups: BackupRepository,
+    private val files: BackupFiles
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
@@ -46,12 +72,15 @@ class SettingsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            preferences.settings.collect { settings -> _uiState.value = settings.toUiState() }
+            preferences.settings.collect { settings ->
+                _uiState.update { settings.toUiState(backup = it.backup) }
+            }
         }
     }
 
-    private fun AppSettings.toUiState() =
-        SettingsUiState(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking)
+    /** The preferences' part of the state; [backup] is this screen's own and carries over. */
+    private fun AppSettings.toUiState(backup: BackupStatus = BackupStatus.Idle) =
+        SettingsUiState(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, backup)
 
     fun onUnitSystemChange(system: UnitSystem) {
         preferences.unitSystem = system
@@ -71,5 +100,44 @@ class SettingsViewModel @Inject constructor(
     fun onDarkWhileCookingChange(enabled: Boolean) {
         preferences.darkWhileCooking = enabled
         _uiState.update { it.copy(darkWhileCooking = enabled) }
+    }
+
+    /** Export: read everything out, write the file, then hand it to the screen to share. */
+    fun onExport() {
+        if (_uiState.value.backup.isBusy) return
+        _uiState.update { it.copy(backup = BackupStatus.Exporting) }
+        viewModelScope.launch {
+            val status = when (val exported = backups.export()) {
+                is BackupResult.Failure -> BackupStatus.Failed(exported.error)
+                is BackupResult.Success ->
+                    files.writeExport(exported.value.json, exported.value.exportedAt)
+                        ?.let { BackupStatus.ReadyToShare(it) }
+                        ?: BackupStatus.Failed(BackupError.ExportFailed)
+            }
+            _uiState.update { it.copy(backup = status) }
+        }
+    }
+
+    /** The share sheet has been opened (or couldn't be): the export is done. */
+    fun onExportShared() {
+        if (_uiState.value.backup is BackupStatus.ReadyToShare) {
+            _uiState.update { it.copy(backup = BackupStatus.Idle) }
+        }
+    }
+
+    /** Import from the file the user picked in the system file picker. */
+    fun onImportPicked(uri: String) {
+        if (_uiState.value.backup.isBusy) return
+        _uiState.update { it.copy(backup = BackupStatus.Importing) }
+        viewModelScope.launch {
+            val status = when (val text = files.readText(uri)) {
+                is BackupResult.Failure -> BackupStatus.Failed(text.error)
+                is BackupResult.Success -> when (val imported = backups.import(text.value)) {
+                    is BackupResult.Success -> BackupStatus.Imported(imported.value)
+                    is BackupResult.Failure -> BackupStatus.Failed(imported.error)
+                }
+            }
+            _uiState.update { it.copy(backup = status) }
+        }
     }
 }
