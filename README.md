@@ -56,8 +56,9 @@ says so instead of guessing at a recipe from prose.
 RecipeClipper/
 ├── app/          Android app: MVVM, Hilt, Room, Compose Navigation
 ├── ios/          iOS app: SwiftUI, iOS 17+, no third-party dependencies
-├── CLAUDE.md     the spec for both platforms: product rules, UI decisions,
-│                 unit-conversion rules, schema, architecture and testing notes
+├── CLAUDE.md     the rules for both platforms: product rules, UI decisions,
+│                 data, parsing and unit-conversion rules, commands
+├── docs/         decisions.md (why things are as they are), testing.md
 └── ios/README.md what is specific to iOS
 ```
 

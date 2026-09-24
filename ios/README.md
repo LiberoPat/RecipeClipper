@@ -64,7 +64,7 @@ are unit-tested against the hand-written fakes in `RecipeClipperTests/Fakes`, as
 Views render `uiState` and forward events; side effects that need the platform (alarm
 sound, keeping the screen on, the share sheet) live in the view layer.
 
-The SQL is the Room SQL, ported nearly verbatim, and every rule in CLAUDE.md's schema notes
+The SQL is the Room SQL, ported nearly verbatim, and every rule in CLAUDE.md's data rules
 holds here: the upsert dedupe, the 50-recipe cull that never touches a listed recipe,
 `instr()` search (never `LIKE`), the `isFavorites = 0` delete guard in SQL, insert-or-ignore
 membership, delete/restore with the original id. Unlike Android, these run as ordinary unit
@@ -76,10 +76,10 @@ tests (in-memory SQLite in the simulator), not device tests.
   host app; the extension walks the responder chain to `UIApplication.open` (iOS 18+) or
   `openURL:` (iOS 17). If Apple closes that path, the fallback is an App Group plus doing
   the import inside the extension. It is also an App Review risk. The plan to replace it
-  before the App Store is in CLAUDE.md, "Before distributing (to do)".
+  before the App Store is issue #19.
 - **Timer alarm** plays through the silent switch (`.playback` audio session, ducking other
   audio), matching Android's alarm stream and the Clock app. Background alerts are still
-  the phase-3 item in CLAUDE.md; on iOS the natural fix is a local notification scheduled
+  to do (issue #10); on iOS the natural fix is a local notification scheduled
   at the deadline.
 - **History delete** uses the native row swipe action rather than Android's swipe-away row;
   undo is the same batched, all-or-nothing snackbar.
@@ -98,6 +98,6 @@ tests (in-memory SQLite in the simulator), not device tests.
 - **Photos offline.** `AsyncImage` keeps photos only in a small cache that follows each
   server's headers, so photos went missing offline. `CachedAsyncImage` loads through
   `ImageLoader`, which uses a disk cache of its own and keeps anything fetched once (see
-  CLAUDE.md, "Failed imports, offline, and database errors").
+  CLAUDE.md, "Failure handling").
 - `JsonLdRecipeParser` treats JSON `null` as absent (Android's org.json yields the text
   "null"), and walks object keys sorted rather than in document order.

@@ -1,6 +1,6 @@
 import XCTest
 
-/// Settings end to end — untested on any surface on Android (CLAUDE.md). Exclusive choices
+/// Settings end to end — untested on Android (docs/testing.md). Exclusive choices
 /// are radio rows (one selected at a time), independent toggles are switches, and "Also
 /// convert liquids" only exists for Grams and Ounces.
 final class SettingsUITests: RecipeUITestCase {
