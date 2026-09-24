@@ -24,13 +24,16 @@ struct CookState: Equatable {
 
 /// `ingredients` and `instructions` are what the screen shows: scaled and converted.
 /// `servings` is nil when the yield has no usable number. `stepTimerSeconds` lines up with
-/// the steps: the duration each one states, or nil.
+/// the steps: the duration each one states, or nil. `sourceDomain` is the site credited under
+/// the title ("smittenkitchen.com"), or nil when the source link has no recognisable host
+/// (then no credit is shown).
 struct RecipeSuccess: Equatable {
     var recipe: Recipe
     var servings: ServingsScale?
     var ingredients: [String]
     var instructions: [String]
     var stepTimerSeconds: [Int?]
+    var sourceDomain: String?
 }
 
 enum RecipeContent: Equatable {
@@ -50,6 +53,8 @@ enum RecipeContent: Equatable {
 struct RecipeUiState: Equatable {
     var content: RecipeContent = .loading
     var checkedIngredients: Set<Int> = []
+    /// The user's note as typed; empty when there is none. Saved by the ViewModel.
+    var notes = ""
     var unitSystem: UnitSystem = .asWritten
     var convertLiquids = false
     var temperatureUnit: TemperatureUnit = .asWritten
@@ -57,6 +62,10 @@ struct RecipeUiState: Equatable {
     var cook = CookState()
     /// Set once the recipe has been deleted, so the screen can navigate back.
     var deleted = false
+    /// The prefilled "Report this site" issue link. Non-nil only while a shared link's
+    /// `.noRecipeFound` is on screen: never for a block, offline or a failed fetch, which mean
+    /// "try again", not "unsupported". The view opens it; nothing is sent.
+    var reportSiteUrl: String?
 
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }

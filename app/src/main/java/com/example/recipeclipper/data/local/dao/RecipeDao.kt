@@ -40,6 +40,10 @@ abstract class RecipeDao {
     @Query("UPDATE recipes SET checkedIngredients = :checked WHERE id = :id")
     abstract suspend fun setChecked(id: Long, checked: Set<Int>)
 
+    /** The user's note; null clears it. */
+    @Query("UPDATE recipes SET notes = :notes WHERE id = :id")
+    abstract suspend fun setNotes(id: Long, notes: String?)
+
     @Query("DELETE FROM recipes WHERE id = :id")
     abstract suspend fun delete(id: Long)
 
@@ -123,8 +127,8 @@ abstract class RecipeDao {
 
     /**
      * Saves a freshly parsed recipe and returns its id. A link that has been seen before is
-     * updated in place, so it keeps its id, its list membership and, if the ingredients
-     * didn't change, its ticked ingredients. The history cap is enforced in the same
+     * updated in place, so it keeps its id, its list membership, its note and, if the
+     * ingredients didn't change, its ticked ingredients. The history cap is enforced in the same
      * transaction, so the table is never left over the limit.
      */
     @Transaction
@@ -138,7 +142,8 @@ abstract class RecipeDao {
             } else {
                 emptySet() // the indexes no longer mean the same ingredients
             }
-            update(fresh.copy(id = existing.id, checkedIngredients = ticked))
+            // The note is the user's, not the source's: a fresh parse never carries one.
+            update(fresh.copy(id = existing.id, checkedIngredients = ticked, notes = existing.notes))
             existing.id
         }
         cullHistory(historyLimit)
