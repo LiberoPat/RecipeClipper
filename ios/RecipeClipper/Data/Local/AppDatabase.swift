@@ -107,6 +107,7 @@ final class AppDatabase: @unchecked Sendable {
         createVersion1,
         addNotes,
         addUids,
+        addLanguage,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -198,6 +199,13 @@ final class AppDatabase: @unchecked Sendable {
         substr('89ab', 1 + (abs(random()) % 4), 1) || substr(lower(hex(randomblob(2))), 2) || '-' || \
         lower(hex(randomblob(6)))
         """
+
+    /// Version 4 (Android's Room version 5, `MIGRATION_4_5`): the recipe's language tag (#14).
+    /// Nullable with no default: a recipe stored before has none and is detected from its own
+    /// words when shown. A re-share fills it in.
+    private static func addLanguage(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN language TEXT")
+    }
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its
     /// `isFavorites` column, never its name or position — all six can be renamed. The rest are

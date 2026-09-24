@@ -29,7 +29,8 @@ data class RecipeEntity(
     /** Stable across devices and exports (#26): what an export file calls this recipe. Never
      *  changes once written — re-sharing keeps it, and an import keeps the file's. */
     @ColumnInfo(defaultValue = "")
-    val uid: String = newUid()
+    val uid: String = newUid(),
+    val language: String? = null    // the recipe's language tag (#14); null before version 5
 )
 
 @Entity(tableName = "lists", indices = [Index(value = ["uid"], unique = true)])

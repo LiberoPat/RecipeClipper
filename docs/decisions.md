@@ -960,8 +960,59 @@ reads it.
 - A missing or malformed table is a build mistake, so both loaders fail loudly.
   `SharedTablesTest(s)` load every table and check each on-disk file is
   covered; `DifferentialCorpusTest(s)` passed unchanged across the move.
-- Still in code, as English: `IngredientScaler`'s "plus"/"and" continuation,
-  and the words the app writes out (e.g. `StepTimers.label`'s "hr" and "min").
+- Left in code as English by #9, then moved to the tables by #14:
+  `IngredientScaler`'s "plus"/"and" continuation and the words the app writes
+  out (`StepTimers.label`'s "hr" and "min", the "h"/"m" of times).
+
+## The recipe's language picks the words (#14)
+
+Every piece of text understanding was English, and merging languages into one
+set of words would collide ("C" is a cup in English and Celsius elsewhere). So
+each language has its own folder, `shared/tables/<language>/`, and a recipe is
+read with its own language's tables only.
+
+- **The language is the recipe's, never the phone's:** JSON-LD `inLanguage`
+  (a tag, or a schema.org Language's `alternateName`), else the page's
+  `<html lang>`, else English. Detection from the recipe's name and ingredient
+  lines (`language.json`'s `detect` words: a language needs at least 3 hits and
+  more than twice the runner-up's) fills in when nothing is declared, and **the
+  owner's decision on #14: when the words clearly say another language, they
+  beat the declared one; ambiguous words keep it.** #15's survey found
+  `inLanguage` on 1 site in 25 and `<html lang>` on nearly all, but wrong on
+  one (mulherportuguesa.com says `en` on Portuguese pages).
+- **Detection knows more languages than the app reads.** de, es, fr, it and pt
+  have a `language.json` only (`LanguageWords.DETECTED` vs `SHIPPED`), so a
+  German page labelled `en` is recognised as German and shown as written,
+  rather than read with English rules. The words avoid ones the languages
+  share ("de", "sal", "sopa"), and German's `EL`/`TL` are case-sensitive
+  (Spanish "el").
+- **A language with no tables leaves everything as written:** no scaling,
+  conversion, temperature rewrite, timer or servings stepper, no phrase times
+  (ISO times still read), no condensed-section skipping. English rules on a
+  German line would scale "2 bis 3 Eier" to "4 bis 3 Eier".
+- **Stored:** `recipes.language`, the normalised tag ("en-us"), because the
+  declared language can't be rebuilt from what was stored (Room version 5, iOS
+  `user_version` 4, after #26's uids took 4 / 3). Recipes stored before are NULL and are detected from their
+  words when shown; a re-share fills it in. Lookup is by primary subtag, so a
+  regional table (fr-CA's 250 ml `tasse`) can come later without a migration.
+- **API:** `LanguageWords` (both platforms) loads a language's tables and
+  caches each parser's compiled patterns per language. Every parser takes a
+  `words` argument defaulting to English, so the differential corpus and every
+  English caller are byte-for-byte unchanged; nil means "no words".
+  `IngredientName` and `IngredientRendering` (#48) take the recipe's words too,
+  and `names.json` is a per-language table; no words means no name, so a line
+  is never matched to the pantry by another language's rules.
+- New tables: `amounts.json` (mixed-number joiners, "2 and 1/2", which make
+  the quantity pattern itself per language; compound joiners; size words),
+  `durations.json`
+  (phrase times and the "h"/"m" written back), `language.json` (detection
+  words); `timers.json` gained each unit's button label. Symbols (dashes,
+  degree signs, `%`, `cm`/`mm`, `+`, the fraction slash `⁄`) stay in the code.
+  `IngredientScaler.parse` holds no words: it drops whatever word the language's
+  quantity pattern already allowed between the whole number and the fraction.
+- An empty word list never matches (`SharedTables.alternation` gives `(?!)`),
+  so a language that lacks, say, range words can't turn an empty alternative
+  into a match everywhere.
 
 ## Ingredient names and shared rendering (#48)
 

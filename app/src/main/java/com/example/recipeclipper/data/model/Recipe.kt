@@ -24,7 +24,13 @@ data class Recipe(
     val checkedIngredients: Set<Int> = emptySet(),
     val lastViewedAt: Long = 0,
     /** The user's own free-text note, or null. Never parsed, so re-sharing keeps it. */
-    val notes: String? = null
+    val notes: String? = null,
+    /**
+     * The recipe's language tag as the parser chose it ("en", "de-de"; see [LanguageWords]),
+     * which picks the words its lines are read with. Null for a recipe stored before #14,
+     * which is detected from its words when shown.
+     */
+    val language: String? = null
 )
 
 /** What a list row (history, home) needs, without loading every ingredient and step. */

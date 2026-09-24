@@ -36,6 +36,8 @@ struct CookView: View {
                                 status: index == cook.currentStep ? .current
                                     : cook.doneSteps.contains(index) ? .done : .upcoming,
                                 timerSeconds: index < content.stepTimerSeconds.count ? content.stepTimerSeconds[index] : nil,
+                                // A step has a timer only when the app has the recipe's words.
+                                timerWords: content.words ?? .english,
                                 timer: cook.timers[index],
                                 isLast: index == steps.count - 1,
                                 vm: vm
@@ -215,6 +217,7 @@ private struct CookStep: View {
     let text: String
     let status: StepStatus
     let timerSeconds: Int?
+    let timerWords: LanguageWords
     let timer: StepTimer?
     let isLast: Bool
     let vm: RecipeViewModel
@@ -233,7 +236,7 @@ private struct CookStep: View {
                     .foregroundStyle(Palette.onBackground)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if timerSeconds != nil || timer != nil {
-                    CurrentTimer(step: index, timerSeconds: timerSeconds, timer: timer, vm: vm)
+                    CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
                         .padding(.top, 16)
                 }
                 Button(isLast ? Strings.cookDoneFinish : Strings.cookDoneNext, action: vm.onStepDone)
@@ -288,6 +291,7 @@ private struct CookStep: View {
 private struct CurrentTimer: View {
     let step: Int
     let timerSeconds: Int?
+    let timerWords: LanguageWords
     let timer: StepTimer?
     let vm: RecipeViewModel
 
@@ -311,7 +315,7 @@ private struct CurrentTimer: View {
                 }
             }
         } else if let timerSeconds {
-            Button(Strings.timerStart(StepTimers.label(timerSeconds))) { vm.onTimerStart(step) }
+            Button(Strings.timerStart(StepTimers.label(timerSeconds, words: timerWords))) { vm.onTimerStart(step) }
                 .buttonStyle(OutlinedActionStyle())
         }
     }

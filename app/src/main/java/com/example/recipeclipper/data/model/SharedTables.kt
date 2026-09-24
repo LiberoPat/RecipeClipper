@@ -12,10 +12,8 @@ import org.json.JSONObject
  */
 internal object SharedTables {
 
-    const val LANGUAGE = "en"
-
-    /** A table for the app's language, e.g. `"units"` for `tables/en/units.json`. */
-    fun load(name: String): JSONObject = read("$LANGUAGE/$name")
+    /** A language's table, e.g. `"units"` for `tables/en/units.json`. See [LanguageWords]. */
+    fun load(name: String, language: String): JSONObject = read("$language/$name")
 
     /** A table that no language changes, e.g. `"url"` for `tables/url.json`. */
     fun read(path: String): JSONObject {
@@ -30,9 +28,10 @@ internal object SharedTables {
 
     fun objects(array: JSONArray): List<JSONObject> = List(array.length()) { array.getJSONObject(it) }
 
-    /** Regex fragments joined as one non-capturing alternation. */
-    fun alternation(fragments: List<String>): String = fragments.joinToString("|", "(?:", ")")
-
-    /** Words that join the ends of a range, as one alternation. */
-    val RANGE_WORDS: String by lazy { alternation(strings(load("ranges").getJSONArray("words"))) }
+    /**
+     * Regex fragments joined as one non-capturing alternation. No fragments never matches:
+     * an empty alternation would match everywhere.
+     */
+    fun alternation(fragments: List<String>): String =
+        if (fragments.isEmpty()) "(?!)" else fragments.joinToString("|", "(?:", ")")
 }

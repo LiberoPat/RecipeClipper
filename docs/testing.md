@@ -67,7 +67,14 @@ it alone reruns the tests). `SiteReportTest` covers the weekly site check's
 report and URL list offline (see CI below). `SiteReportLinkTest` pins the
 "Report this site" issue link byte for byte (percent-encoding, the cleaned
 link), and `RecipeViewModelTest` offers it only for `NoRecipeFound` on a
-shared link.
+shared link. The corpus's ingredient rows end with real lines (#33),
+taken from sites' JSON-LD `recipeIngredient` (US, UK, Australian, French,
+Italian, Spanish, Portuguese, Brazilian, Dutch, German, Austrian and Swiss
+sites; a comment names each site), so the scaler and converters are pinned on
+what recipes actually write, not only on hand-written lines. A real line that
+shows a wrong number isn't pinned: it's fixed, or left out with a `bug` issue.
+To add some, fetch the page, copy only the ingredient lines (the repo is
+public), and add them as input-only rows under their site's comment.
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -98,9 +105,11 @@ ingredients, `lastViewedAt` and list membership, and a user-created list keeps
 its place after the seeded block. `MIGRATION_2_3` (the `notes` column, #27)
 is run against a real version-2 database the same way: the recipe keeps its
 content, ticks and membership, has no note, and a note written afterwards
-survives a re-share; a version-1 file also goes to 3 in one open.
-`MIGRATION_3_4` (the `uid` columns, #26) backfills a distinct UUID on every
-recipe and list and keeps the rest of each row. This is
+survives a re-share. `MIGRATION_3_4` (the `uid` columns, #26) backfills a
+distinct UUID on every recipe and list and keeps the rest of each row.
+`MIGRATION_4_5` (the `language` column, #14) is run against a real version-4
+database: content, note and uid kept, no language, and a re-share fills it in;
+a version-1 file also goes to 5 in one open. This is
 what makes "never use destructive migration" checkable rather than an
 intention.
 

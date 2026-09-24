@@ -292,4 +292,21 @@ class UnitConverterTest {
         assertEquals("1,500 lb beef", metric("1,500 lb beef"))
         assertEquals("2 cups (1,250 g) flour", ounces("2 cups (1,250 g) flour"))
     }
+
+    // --- Shapes found in real ingredient lines (#33) ---
+
+    @Test fun `a fraction slash and a mixed number with and convert`() {
+        assertEquals("2.5 ml olive oil", metric("1⁄2 tsp olive oil"))
+        assertEquals("180 g flour", metric("1 1⁄2 cups flour"))
+        assertEquals("300 g flour", metric("2 and 1/2 cups flour"))
+        assertEquals("360 ml milk", metric("1 and ½ cups milk"))
+    }
+
+    @Test fun `a range after a slash uses the site's range in the target unit`() {
+        assertEquals("8 - 10 oz pasta", ounces("250 - 300 g / 8 - 10 oz pasta"))
+        // In metric the leading range is already the target unit.
+        assertEquals("250 - 300 g / 8 - 10 oz pasta", metric("250 - 300 g / 8 - 10 oz pasta"))
+        // Neither half in the target unit: the calculated range replaces both.
+        assertEquals("225 - 285 g spaghetti", metric("8 - 10 oz / 1/2 - 5/8 lb spaghetti"))
+    }
 }

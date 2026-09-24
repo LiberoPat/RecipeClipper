@@ -20,10 +20,13 @@ and writes the regenerated one to `app/build/differential-corpus/`; a new row
 needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
-unit, timer, temperature, yield and range words, condensed section names,
-ingredient-name words, tracking parameters), loaded by both apps (Android as Java resources through
-`SharedTables`, iOS as a bundled `tables/` folder). Edit a table there, never in
-code; the logic that reads it stays written twice.
+unit, timer, temperature, yield, range, amount, duration, detection and
+ingredient-name words, condensed section names; tracking parameters), loaded by both apps (Android as
+Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
+table there, never in code; the logic that reads it stays written twice. **Each
+language has its own folder** (`shared/tables/en/`), read through
+`LanguageWords`: the recipe's language picks it, never the phone's, and
+languages are never merged.
 
 **Keep this file short: it is loaded into every session.** Add only what an
 agent needs almost every time. Rationale and history go in
@@ -87,6 +90,7 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
+               LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
@@ -211,8 +215,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 4** (iOS `user_version` 3):
-  `recipes` (with a nullable `notes`), `lists` and `recipe_list_cross_ref`
+- Room database `recipe_clipper.db`, **version 5** (iOS `user_version` 4):
+  `recipes` (with nullable `notes` and `language`), `lists` and `recipe_list_cross_ref`
   (cascading). Recipes and lists carry a unique, never-changing `uid`: what
   an export file calls them. The schema is exported to `app/schemas/`: commit it. **Never
   use destructive migration**, and give every migration a `MigrationTest`.
@@ -323,10 +327,14 @@ Settled; don't reintroduce what they removed. The history behind each is in
   because deep nesting overflows the stack there. That's the only `Throwable`
   catch: `BlogRecipeSource.fetch` catches `Exception`, so cancellation
   propagates.
+- **The recipe's language** (`Recipe.language`, stored): JSON-LD `inLanguage`,
+  else `<html lang>`, else English; but words (name and ingredients) that
+  clearly say another language win, and fill in when nothing is declared. A language with no tables stays entirely as written: no scaling,
+  conversion, temperature rewrite, timer, stepper or phrase times.
 - **Times:**
   - An ISO duration totalling zero ("PT0S") is absent.
-  - A whole-string English phrase ("1 hour 30 minutes") renders like ISO
-    ("1h 30m").
+  - A whole-string phrase in the recipe's words ("1 hour 30 minutes") renders
+    like ISO ("1h 30m").
   - Anything else ("Overnight", "20 to 25 minutes") stays as written.
 - **Condensed duplicates are skipped:** a `HowToSection` named as a condensed
   copy of the recipe ("Abbreviated Recipe", "Summary", "TL;DR", …; an exact
@@ -358,7 +366,8 @@ Each one exists to avoid showing a confident wrong number.
   read through a summarising fetch, so spot-check values); liquids and fats
   use physical densities.
 - **A line that already carries the target unit uses the site's figure**
-  ("1 cup (120 g) flour", "1 cup/120 grams flour"), and `IngredientScaler`
+  ("1 cup (120 g) flour", "1 cup/120 grams flour", "250 - 300 g / 8 - 10 oz
+  pasta"), and `IngredientScaler`
   scales those figures too. Package sizes ("1 can (14 oz)") are never scaled.
 - **A compound amount converts as a whole or not at all**
   ("1½ cups plus 1 Tbsp. (200 g) flour"). A site figure after the second part
