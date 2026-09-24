@@ -14,7 +14,7 @@ object Servings {
      * "4 servings", "Serves 4-6" or "Makes 24 cookies". Takes the first number.
      * Returns null when there is no usable number, which hides the scaling control.
      */
-    private val RANGE = Regex("""\d+\s*(?:[-–—]|to)\s*\d+""", RegexOption.IGNORE_CASE)
+    private val RANGE = Regex("""\d+\s*(?:[-–—]|${SharedTables.RANGE_WORDS})\s*\d+""", RegexOption.IGNORE_CASE)
 
     /**
      * Sites often list several forms of the same yield, e.g. `["4", "4 to 6 servings"]`.
@@ -41,15 +41,22 @@ object Servings {
         return first?.takeIf { it in 1..MAX }
     }
 
-    private val SERVING_WORD =
-        Regex("""\b(?:serves?|servings?|people|persons?|portions?|feeds?)\b""", RegexOption.IGNORE_CASE)
-    private val MAKES_WORD = Regex("""\b(?:makes?|yields?)\b""", RegexOption.IGNORE_CASE)
+    // The yield words are shared with iOS: shared/tables/en/yield.json.
+    private val TABLE = SharedTables.load("yield")
+    private val SERVING_WORD = Regex(
+        """\b${SharedTables.alternation(SharedTables.strings(TABLE.getJSONArray("serving")))}\b""",
+        RegexOption.IGNORE_CASE
+    )
+    private val MAKES_WORD = Regex(
+        """\b${SharedTables.alternation(SharedTables.strings(TABLE.getJSONArray("makes")))}\b""",
+        RegexOption.IGNORE_CASE
+    )
 
     /**
      * A number followed by some other word: "24 cookies", "1 (9-inch) pie", "2 dozen".
      * The lookahead skips the "to" of a range, so a bare "4 to 6" isn't read as a noun.
      */
-    private val COUNTED_NOUN = Regex("""\d[^\p{L}]*(?!to\b)\p{L}""", RegexOption.IGNORE_CASE)
+    private val COUNTED_NOUN = Regex("""\d[^\p{L}]*(?!${SharedTables.RANGE_WORDS}\b)\p{L}""", RegexOption.IGNORE_CASE)
 
     /**
      * Whether the yield counts servings or things made, which picks "Serves" or "Makes" as
