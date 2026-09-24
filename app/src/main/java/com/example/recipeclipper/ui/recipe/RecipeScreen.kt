@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -100,6 +101,7 @@ fun RecipeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
     // Android's UriHandler fires ACTION_VIEW, so the browser opens the draft issue. A local,
     // not a direct Intent, so a UI test can supply its own and see the link without leaving.
     val uriHandler = LocalUriHandler.current
@@ -134,7 +136,7 @@ fun RecipeScreen(
             onTimerReset = viewModel::onTimerReset,
             onTimerAlerted = viewModel::onTimerAlerted,
             onShare = {
-                viewModel.shareText(shareLabels(context.resources))?.let { text ->
+                viewModel.shareText(shareLabels(resources))?.let { text ->
                     val title = (viewModel.uiState.value.content as? RecipeContent.Success)
                         ?.recipe?.name.orEmpty()
                     ShareCompat.IntentBuilder(context)
