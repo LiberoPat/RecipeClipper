@@ -147,8 +147,6 @@ struct RootView: View {
             ScreenHost({ container.makeClipViewModel(url: url) }) { vm in
                 ClipScreen(vm: vm, fixtureHTML: container.clipFixtureHTML, onSaved: router.openSavedClip)
             }
-            // Full screen: the page needs the room, and a clip isn't a tab of its own.
-            .toolbar(.hidden, for: .tabBar)
         }
     }
 

@@ -114,4 +114,21 @@ final class TabShellUITests: RecipeUITestCase {
         require(app.textFields["Recipe URL"], "Home, under the import")
         XCTAssertTrue(tab("Recipes").isSelected)
     }
+
+    /// Clip it yourself (#37) is full screen too, and its page still reaches the app: hiding the
+    /// bar once broke the page's events (the modifier sat outside the screen's ScreenHost).
+    func testClippingIsFullScreenAndThePageStillAnswers() {
+        launchWithTabs(.empty)
+        share("https://example.com/no-recipe")
+        require(app.buttons["Clip it yourself"], "Clip it yourself").tap()
+
+        requireGone(tabBar, "the tab bar on the clip page")
+        require(app.webViews.firstMatch.buttons["Select title"], "the page").tap()
+        require(text("1 line selected · each line becomes one item"), "the selection, heard by the app")
+        app.buttons["clip.field.NAME"].tap()
+        require(text("Name added"), "the Name snackbar")
+        app.buttons["clip.field.PHOTO"].tap()
+        require(app.webViews.firstMatch.images["Cookies photo"], "the photo").tap()
+        require(text("Photo added"), "the image tap, heard by the app")
+    }
 }

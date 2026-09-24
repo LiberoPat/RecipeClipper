@@ -38,6 +38,10 @@ struct ClipScreen: View {
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        // Full screen under the tab shell (#47): the page needs the room, and a clip isn't a
+        // tab of its own. Set here rather than on the route in RootView: wrapping the
+        // ScreenHost with it there stopped the page's taps from reaching the ViewModel.
+        .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 if state.reviewing {
