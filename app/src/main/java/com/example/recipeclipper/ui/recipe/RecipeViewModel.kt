@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.recipe
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
@@ -14,6 +15,7 @@ import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.SiteReportLink
 import com.example.recipeclipper.data.model.ServingsScale
 import com.example.recipeclipper.data.model.SourceDomain
 import com.example.recipeclipper.data.model.StepTimers
@@ -44,7 +46,8 @@ class RecipeViewModel @Inject constructor(
     private val repository: RecipeRepository,
     private val unitPreferences: AppPreferences,
     private val clock: Clock,
-    private val connectivity: Connectivity
+    private val connectivity: Connectivity,
+    private val appInfo: AppInfo
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -85,7 +88,7 @@ class RecipeViewModel @Inject constructor(
     private fun load() {
         loadJob?.cancel()
         reconnectJob?.cancel()
-        _uiState.update { it.copy(content = RecipeContent.Loading) }
+        _uiState.update { it.copy(content = RecipeContent.Loading, reportSiteUrl = null) }
         loadJob = viewModelScope.launch {
             val result = when {
                 recipeId != null -> repository.open(recipeId)
@@ -102,11 +105,25 @@ class RecipeViewModel @Inject constructor(
                         ),
                         checkedIngredients = result.recipe.checkedIngredients
                     )
-                    is ParseResult.Error -> state.copy(content = RecipeContent.Error(result.error))
+                    is ParseResult.Error -> state.copy(
+                        content = RecipeContent.Error(result.error),
+                        reportSiteUrl = reportSiteUrl(result.error)
+                    )
                 }
             }
             if (result is ParseResult.Error && result.error.reloadsOnReconnect) reloadOnReconnect()
         }
+    }
+
+    /**
+     * Only a shared link that loaded but held no recipe is worth reporting: a block, being
+     * offline or a failed fetch usually lifts on its own, and a saved recipe has no page to
+     * report.
+     */
+    private fun reportSiteUrl(error: ParseError): String? {
+        if (error != ParseError.NoRecipeFound) return null
+        val link = shareUrl ?: return null
+        return SiteReportLink.issueUrl(link, appInfo.platform, appInfo.appVersion)
     }
 
     /**

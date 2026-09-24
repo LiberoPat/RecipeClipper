@@ -33,8 +33,8 @@ timers (in memory); sharing a recipe out as text; failure handling and
 offline; the microdata fallback. iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: saved cook progress and servings with
-background timer alerts (#10), Reddit (#11), other languages (#13–#16), the
-three-option unit menu (#17), release setup (#18–#22).
+background timer alerts (#10), Reddit (#11), other languages (#13–#16),
+release setup (#18–#22).
 
 ## Commands
 
@@ -74,7 +74,7 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
-               SourceDomain
+               SiteReportLink, SourceDomain
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
@@ -96,8 +96,8 @@ then upsert with no list membership).
 - Parsers are pure: text in, data out, no network, no Android APIs.
 - **Causes, not copy.** Sources and repositories return a `ParseError`; the
   screen picks the words. Every UI string lives in `res/values/strings.xml`
-  (iOS: `Strings.swift`). The one exception is `RecipeShareText`, a message
-  body with English wording by design.
+  (iOS: `Strings.swift`). The exceptions are `RecipeShareText` and
+  `SiteReportLink`, message bodies with English wording by design.
 - Tests use hand-written fakes (`app/src/test/.../fake/`,
   `ios/RecipeClipperTests/Fakes`), never mocks. Screens take their ViewModel
   as a parameter defaulting to `hiltViewModel()`, so UI tests pass a real
@@ -142,8 +142,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   pickers, filled chips or radio lists above the ingredients. Times are plain
   labelled numbers, not chips.
 - **Servings and units: one always-visible row, adjusted in place.**
-  `Serves − 6 +` (per recipe) on the left, the unit dropdown (a global
-  default for "every recipe", exclusive choices only) on the right. Don't
+  `Serves − 6 +` (per recipe) on the left, the unit dropdown (As written,
+  Metric, Ounces: a global default for "every recipe", exclusive choices
+  only) on the right. Don't
   bring back the old "Adjust" bottom sheet without asking.
 - **Cook mode is a highlighted scroll, not a pager,** because steps overlap,
   cooks scroll back to re-check amounts, and source steps range from 12 clean
@@ -161,7 +162,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   opts into dark. Don't restore an always-dark cook mode without asking.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
-  Grams and Ounces), Oven temperature (independent of units, default As
+  Ounces only), Oven temperature (independent of units, default As
   written), Appearance ("Dark while cooking"). Reached from the gear beside
   the Home title. It could now open from elsewhere too (the recipe screen
   follows `AppPreferences.settings`), but adding an entry point is the
@@ -246,6 +247,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
   captive portal's login page parses as a page with no recipe. While
   `Offline` or `FetchFailed` shows, the screen reloads once on a real
   offline→online transition.
+- **`NoRecipeFound` from a shared link also offers "Report this site"**
+  (never `Blocked`, `Offline` or `FetchFailed`): a prefilled GitHub issue
+  (`SiteReportLink`, label `site-report`) opened in the browser. Nothing is sent
+  unless the user submits it.
 - Database errors degrade instead of crashing. The Android repositories run
   every DAO call through `ErrorLog.guard`, which returns a safe fallback
   (`SaveFailed`, null, a no-op, or `CREATE_FAILED` = -1), and every Flow
@@ -296,8 +301,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 Each one exists to avoid showing a confident wrong number.
 
-- `UnitSystem` is As written (the default), Grams, Ounces or Metric; #17
-  drops Grams. Oven temperatures follow the separate `TemperatureUnit` (As
+- `UnitSystem` is As written (the default), Metric or Ounces. Grams was
+  dropped (#17): a stored `GRAMS` reads as Metric on both platforms, never As
+  written. Oven temperatures follow the separate `TemperatureUnit` (As
   written, Celsius, Fahrenheit). Each ingredient is scaled first, then
   converted.
 - Weight to weight (oz, lb, g, kg) is exact. Volume to weight needs a density
@@ -323,8 +329,8 @@ Each one exists to avoid showing a confident wrong number.
 - **A unit's trailing period ("tsp.", "oz.") belongs to the unit.** The
   `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative.
-- **Liquids.** Grams and Ounces leave pourable liquids as written unless
-  "Also convert liquids" is on. Metric ignores that flag: liquids, spoons and
+- **Liquids.** Ounces leaves pourable liquids as written unless "Also
+  convert liquids" is on. Metric ignores that flag: liquids, spoons and
   cups become ml (a cup is 240 ml, a tbsp 15 ml, a tsp 5 ml), and known
   solids become g.
   - In Metric, a spooned or cupped non-liquid with a site weight keeps that

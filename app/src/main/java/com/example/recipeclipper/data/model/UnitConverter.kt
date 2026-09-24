@@ -16,7 +16,7 @@ import kotlin.math.round
  * - If the line already carries the target unit in parentheses or after a slash, as in
  *   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one. So is a
  *   range after a slash ("250 - 300 g / 8 - 10 oz pasta" in ounces is "8 - 10 oz pasta").
- * - Pourable liquids are left alone in GRAMS/OUNCES unless [includeLiquids] is set.
+ * - Pourable liquids are left alone in OUNCES unless [includeLiquids] is set.
  *   METRIC turns them into ml, which is exact and needs no density, so it ignores the flag.
  * - METRIC otherwise gives spoons and cups as ml, except that a line carrying the site's own
  *   weight ("1 tsp (4 g) salt", "1 cup/4 oz walnuts") shows that weight in g/kg, even for an
@@ -168,7 +168,6 @@ object UnitConverter {
     }
 
     private fun ownUnits(system: UnitSystem): Set<MeasureUnit> = when (system) {
-        UnitSystem.GRAMS -> setOf(MeasureUnit.G, MeasureUnit.KG)
         UnitSystem.OUNCES -> setOf(MeasureUnit.OZ, MeasureUnit.LB)
         UnitSystem.METRIC -> setOf(MeasureUnit.G, MeasureUnit.KG, MeasureUnit.ML, MeasureUnit.L)
         UnitSystem.AS_WRITTEN -> emptySet()

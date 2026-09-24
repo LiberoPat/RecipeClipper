@@ -3,11 +3,13 @@ import Foundation
 /// Every piece of UI copy, in one place, the way Android keeps it in res/values/strings.xml.
 /// English only. Android collapses runs of whitespace in unquoted resources, so the double
 /// spaces in strings like "‹  Back" never rendered there; they are single spaces here.
-/// `RecipeShareText` keeps its own English wording by design (it builds a message body).
+/// `RecipeShareText` and `SiteReportLink` keep their own English wording by design (they build
+/// message bodies).
 enum Strings {
     // Common actions
     static let exit = "✕ Exit"
     static let tryAgain = "Try again"
+    static let reportSite = "Report this site"
     static let startCooking = "Start cooking"
     static let cancel = "Cancel"
     static let delete = "Delete"
@@ -67,7 +69,6 @@ enum Strings {
     static func unitLabel(_ system: UnitSystem) -> String {
         switch system {
         case .asWritten: return "As written"
-        case .grams: return "Grams"
         case .ounces: return "Ounces"
         case .metric: return "Metric"
         }
@@ -76,7 +77,6 @@ enum Strings {
     static func unitDescription(_ system: UnitSystem) -> String {
         switch system {
         case .asWritten: return "Exactly the units the recipe uses"
-        case .grams: return "Cups and spoons in grams"
         case .ounces: return "Cups and spoons in ounces and pounds"
         case .metric: return "Grams and millilitres"
         }

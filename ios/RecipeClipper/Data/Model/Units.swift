@@ -1,12 +1,22 @@
 import Foundation
 
 /// How ingredient amounts are shown. `asWritten` leaves the recipe's own units untouched.
-/// `grams` and `ounces` express everything as weight. `metric` is EU-style: weights in g/kg,
-/// volumes (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
-enum UnitSystem: String, CaseIterable, Equatable { case asWritten = "AS_WRITTEN", grams = "GRAMS", ounces = "OUNCES", metric = "METRIC" }
+/// `ounces` expresses everything as weight. `metric` is EU-style: weights in g/kg, volumes
+/// (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
+enum UnitSystem: String, CaseIterable, Equatable {
+    case asWritten = "AS_WRITTEN", metric = "METRIC", ounces = "OUNCES"
+
+    /// The system a stored enum name stands for. GRAMS was a fourth option until #17; the
+    /// people who chose it wanted weights, so it reads as `metric` rather than falling back
+    /// to `asWritten`. Anything unknown (or nothing stored) is `asWritten`.
+    init(storedName: String?) {
+        if storedName == "GRAMS" { self = .metric; return }
+        self = storedName.flatMap(UnitSystem.init(rawValue:)) ?? .asWritten
+    }
+}
 
 /// How oven temperatures in instruction text are shown. Independent of `UnitSystem`: a user
-/// can be a Grams person and still want an oven temperature left exactly as the recipe wrote
+/// can be a Metric person and still want an oven temperature left exactly as the recipe wrote
 /// it (or vice versa), so this is its own setting rather than implied by the unit choice.
 /// `asWritten` (the default) leaves the text alone.
 enum TemperatureUnit: String, CaseIterable, Equatable { case asWritten = "AS_WRITTEN", celsius = "CELSIUS", fahrenheit = "FAHRENHEIT" }
