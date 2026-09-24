@@ -124,8 +124,10 @@ views, the bookmark icon, share), History (search, swipe-to-dismiss, the undo
 snackbar), the Lists screen, and the Settings screen. The iOS UI tests
 (`ios/RecipeClipperUITests`, 61 tests) do cover Home, History (search,
 swipe-to-delete, the batched undo), Settings, list detail, the save-to-list
-sheet with the bookmark it fills, and the import error screens. Cook mode and
-sharing have no UI tests on either platform.
+sheet with the bookmark it fills, and the import error screens. Cook mode has
+no UI tests on either platform. Sharing into the app has one iOS suite,
+`ShareExtensionUITests`, which runs only on request (see "iOS share extension:
+end to end and memory" below).
 
 Two dependency versions are pinned on purpose: `navigation-compose` 2.7.7 and
 `hilt-navigation-compose` 1.2.0. The newest releases need a newer Compose than
@@ -135,6 +137,42 @@ with the BOM.
 `JsonLdRecipeParser` uses `org.json`, which is an Android framework class.
 Plain JUnit tests will need `testImplementation("org.json:json:<version>")`
 or the calls will fail as "not mocked".
+
+## iOS share extension: end to end and memory
+
+The extension's logic is unit-tested (`RecipeClipperTests/Share`). What
+needs the real share sheet is `ShareExtensionUITests`. It drives Safari to a
+page, shares it to Recipe Clipper, checks the card, then checks that the app
+shows the recipe. It is skipped unless `RC_SHARE_E2E_BASE` is set, so CI
+never runs it. It writes to the app's real App Group database, so use a
+simulator of your own:
+
+```
+# A certificate for localhost, trusted by the simulator
+openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 30 \
+  -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
+  -addext "basicConstraints=critical,CA:TRUE" -addext "extendedKeyUsage=serverAuth"
+xcrun simctl keychain <device> add-root-cert cert.pem
+# Serve small.html (a JSON-LD recipe titled "E2E Guacamole Small") over HTTPS
+# on localhost:8443, answering 403 at /blocked (Python's http.server wrapped
+# in an ssl context will do), then:
+TEST_RUNNER_RC_SHARE_E2E_BASE=https://localhost:8443 xcodebuild ... test \
+  -only-testing:RecipeClipperUITests/ShareExtensionUITests
+```
+
+Plain `http://` pages won't do: `UrlCleaner` upgrades them to `https`, and
+real sites block the Mac's fetches often enough to make them useless as
+fixtures.
+
+**Memory.** Apple doesn't document a share extension's limit; it's commonly
+about 120 MB on a device, and the simulator enforces none. Debug builds log
+the extension's footprint and its peak at launch, after reading the shared
+items, and after the import. On a device, open Console.app, pick the phone,
+and filter on subsystem `com.liberopat.recipeclipper`, category `share`. On
+a simulator: `xcrun simctl spawn <device> log show --last 10m --predicate
+'subsystem == "com.liberopat.recipeclipper" AND category == "share"'`.
+
+MEMORY_RESULTS
 
 ## CI
 
