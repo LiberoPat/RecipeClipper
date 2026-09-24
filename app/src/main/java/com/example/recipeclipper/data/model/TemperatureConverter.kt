@@ -27,17 +27,30 @@ object TemperatureConverter {
         val scale: Scale
     )
 
-    // groups: 1 low, 2 range separator, 3 high, 4 connector, 5 unit
-    private const val TEMP =
-        """(\d{2,3})(?:(\s*(?:[-–—]|to)\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+degrees?\s+|\s?)""" +
-                """((?i:fahrenheit|celsius|centigrade)|[FC])(?![A-Za-z])"""
+    // The scale, degree and range words are shared with iOS:
+    // shared/tables/<language>/temperature.json and ranges.json.
+    private class Patterns(words: LanguageWords) {
+        private val fahrenheitWords = words.strings("temperature", "fahrenheit")
+        private val scaleWords = (fahrenheitWords + words.strings("temperature", "celsius")).ifEmpty { listOf("(?!)") }
+        val fahrenheitWord = Regex(SharedTables.alternation(fahrenheitWords), RegexOption.IGNORE_CASE)
+        private val degrees = SharedTables.alternation(words.strings("temperature", "degrees"))
 
-    private val TEMP_ANYWHERE = Regex("""(?<![\d.,/])$TEMP""")
-    private val TEMP_AT_START = Regex("""^$TEMP""")
+        // groups: 1 low, 2 range separator, 3 high, 4 connector, 5 unit
+        private val temp =
+            """(\d{2,3})(?:(\s*(?:[-–—]|${words.rangeWords})\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+$degrees\s+|\s?)""" +
+                    """((?i:${scaleWords.joinToString("|")})|[FC])(?![A-Za-z])"""
+
+        val tempAnywhere = Regex("""(?<![\d.,/])$temp""")
+        val tempAtStart = Regex("""^$temp""")
+    }
+
     private val PAIR_JOINER = Regex("""^\s*([(/])\s*""")
     private val CLOSING_PAREN = Regex("""^\s*\)""")
 
-    fun convert(text: String, unit: TemperatureUnit): String {
+    /** [words] null: a language the app has no words for, so the text stays as written. */
+    fun convert(text: String, unit: TemperatureUnit, words: LanguageWords? = LanguageWords.ENGLISH): String {
+        if (words == null) return text
+        val p = words.compiled(Patterns::class) { Patterns(it) }
         val target = when (unit) {
             TemperatureUnit.AS_WRITTEN -> return text
             TemperatureUnit.CELSIUS -> Scale.C
@@ -47,8 +60,8 @@ object TemperatureConverter {
         val out = StringBuilder()
         var cursor = 0
         while (true) {
-            val match = TEMP_ANYWHERE.find(text, cursor) ?: break
-            val temp = parse(match)
+            val match = p.tempAnywhere.find(text, cursor) ?: break
+            val temp = parse(p, match)
             val end = match.range.last + 1
             if (temp == null) {
                 out.append(text, cursor, end)
@@ -57,7 +70,7 @@ object TemperatureConverter {
             }
 
             // "350°F (180°C)" or "180°C/350°F": keep the half that already matches.
-            val pair = findPair(text, end, temp)
+            val pair = findPair(p, text, end, temp)
             if (pair != null) {
                 out.append(text, cursor, match.range.first)
                 out.append(if (temp.scale == target) match.value else pair.value)
@@ -76,12 +89,12 @@ object TemperatureConverter {
     private class Pair(val value: String, val end: Int)
 
     /** The other-scale temperature written straight after [first], if there is one. */
-    private fun findPair(text: String, firstEnd: Int, first: Temp): Pair? {
+    private fun findPair(p: Patterns, text: String, firstEnd: Int, first: Temp): Pair? {
         val rest = text.substring(firstEnd)
         val joiner = PAIR_JOINER.find(rest) ?: return null
         val afterJoiner = rest.substring(joiner.value.length)
-        val match = TEMP_AT_START.find(afterJoiner) ?: return null
-        val second = parse(match) ?: return null
+        val match = p.tempAtStart.find(afterJoiner) ?: return null
+        val second = parse(p, match) ?: return null
         if (second.scale == first.scale) return null
 
         var end = firstEnd + joiner.value.length + match.value.length
@@ -92,11 +105,11 @@ object TemperatureConverter {
         return Pair(match.value, end)
     }
 
-    private fun parse(match: MatchResult): Temp? {
+    private fun parse(p: Patterns, match: MatchResult): Temp? {
         val low = match.groupValues[1].toInt()
         val high = match.groupValues[3].takeIf { it.isNotEmpty() }?.toInt()
         val unit = match.groupValues[5]
-        val scale = if (unit.first().equals('F', ignoreCase = true)) Scale.F else Scale.C
+        val scale = if (unit == "F" || p.fahrenheitWord.matches(unit)) Scale.F else Scale.C
 
         val connector = match.groupValues[4]
         val explicit = unit.length > 1 || connector.any { it in "°º˚" } || connector.isNotBlank()

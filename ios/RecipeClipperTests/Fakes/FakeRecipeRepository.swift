@@ -3,8 +3,8 @@ import Foundation
 @testable import RecipeClipper
 
 /// A hand-written fake, not a mock. History and recent are in-memory subjects a test can push
-/// onto; `importFromUrl` and `open` return whatever the test stages; `setChecked`, `delete` and
-/// `restore` record every call.
+/// onto; `importFromUrl` and `open` return whatever the test stages; `setChecked`, `setNotes`,
+/// `setCookProgress`, `setServingsTarget`, `delete` and `restore` record every call.
 final class FakeRecipeRepository: RecipeRepository {
     /// What `observeHistory` emits, regardless of the query passed.
     let history = CurrentValueSubject<[RecipeSummary], Never>([])
@@ -20,6 +20,9 @@ final class FakeRecipeRepository: RecipeRepository {
     var deleteResults: [Int64: DeletedRecipe] = [:]
 
     private(set) var setCheckedCalls: [(id: Int64, checked: Set<Int>)] = []
+    private(set) var setNotesCalls: [(id: Int64, notes: String)] = []
+    private(set) var setCookProgressCalls: [(id: Int64, progress: CookProgress)] = []
+    private(set) var setServingsTargetCalls: [(id: Int64, target: Int?)] = []
     private(set) var deleteCalls: [Int64] = []
     private(set) var restoreCalls: [DeletedRecipe] = []
 
@@ -29,6 +32,18 @@ final class FakeRecipeRepository: RecipeRepository {
 
     @MainActor func setChecked(id: Int64, checked: Set<Int>) async {
         setCheckedCalls.append((id, checked))
+    }
+
+    @MainActor func setNotes(id: Int64, notes: String) async {
+        setNotesCalls.append((id, notes))
+    }
+
+    @MainActor func setCookProgress(id: Int64, progress: CookProgress) async {
+        setCookProgressCalls.append((id, progress))
+    }
+
+    @MainActor func setServingsTarget(id: Int64, target: Int?) async {
+        setServingsTargetCalls.append((id, target))
     }
 
     @MainActor func delete(id: Int64) async -> DeletedRecipe? {

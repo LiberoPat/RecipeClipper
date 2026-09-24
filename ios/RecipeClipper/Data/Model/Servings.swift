@@ -7,21 +7,36 @@ enum YieldKind { case serves, makes }
 enum Servings {
     static let max = 99
 
-    /// Matches a stated range ("4-6", "4 to 6"), which `pickYield` prefers.
-    private static let range = JRegex(#"\d+\s*(?:[-–—]|to)\s*\d+"#, ignoreCase: true)
+    /// One language's yield words: shared/tables/<language>/yield.json and ranges.json.
+    private final class Patterns {
+        /// Matches a stated range ("4-6", "4 to 6"), which `pickYield` prefers.
+        let range: JRegex
+        let servingWord: JRegex
+        let makesWord: JRegex
+        /// A number followed by some other word: "24 cookies", "1 (9-inch) pie", "2 dozen".
+        /// The lookahead skips the "to" of a range, so a bare "4 to 6" isn't read as a noun.
+        let countedNoun: JRegex
+
+        init(_ words: LanguageWords) {
+            range = JRegex(#"\d+\s*(?:[-–—]|"# + words.rangeWords + #")\s*\d+"#, ignoreCase: true)
+            servingWord = JRegex(#"\b"# + SharedTables.alternation(words.strings("yield", "serving")) + #"\b"#, ignoreCase: true)
+            makesWord = JRegex(#"\b"# + SharedTables.alternation(words.strings("yield", "makes")) + #"\b"#, ignoreCase: true)
+            countedNoun = JRegex(#"\d[^\p{L}]*(?!"# + words.rangeWords + #"\b)\p{L}"#, ignoreCase: true)
+        }
+    }
+
+    private static func patterns(_ words: LanguageWords) -> Patterns { words.compiled(Patterns.self, Patterns.init) }
+
+    /// A range in a language the app has no words for: the dashes are anyone's.
+    private static let dashRange = JRegex(#"\d+\s*[-–—]\s*\d+"#)
     private static let firstNumber = JRegex(#"\d+"#)
-    private static let servingWord =
-        JRegex(#"\b(?:serves?|servings?|people|persons?|portions?|feeds?)\b"#, ignoreCase: true)
-    private static let makesWord = JRegex(#"\b(?:makes?|yields?)\b"#, ignoreCase: true)
-    /// A number followed by some other word: "24 cookies", "1 (9-inch) pie", "2 dozen".
-    /// The lookahead skips the "to" of a range, so a bare "4 to 6" isn't read as a noun.
-    private static let countedNoun = JRegex(#"\d[^\p{L}]*(?!to\b)\p{L}"#, ignoreCase: true)
 
     /// Sites often list several forms of the same yield, e.g. `["4", "4 to 6 servings"]`.
     /// Prefers the entry that states a range so "Original: 4-6 servings" isn't cut down
     /// to "4"; otherwise keeps the first entry.
-    static func pickYield(_ candidates: [String]) -> String? {
-        candidates.first { range.containsMatch(in: $0) } ?? candidates.first
+    static func pickYield(_ candidates: [String], words: LanguageWords? = .english) -> String? {
+        let range = words.map { patterns($0).range } ?? dashRange
+        return candidates.first { range.containsMatch(in: $0) } ?? candidates.first
     }
 
     /// Sites often publish just a number (`recipeYield: 6`). This only decides *whether* the
@@ -49,9 +64,10 @@ enum Servings {
 
     /// Pulls the serving count out of a schema.org `recipeYield` string such as
     /// "4 servings", "Serves 4-6" or "Makes 24 cookies". Takes the first number.
-    /// Returns nil when there is no usable number, which hides the scaling control.
-    static func parse(_ recipeYield: String?) -> Int? {
-        guard let recipeYield, let m = firstNumber.find(recipeYield) else { return nil }
+    /// Returns nil when there is no usable number, which hides the scaling control, and for a
+    /// language the app has no words for (`words` nil), whose lines couldn't be scaled.
+    static func parse(_ recipeYield: String?, words: LanguageWords? = .english) -> Int? {
+        guard words != nil, let recipeYield, let m = firstNumber.find(recipeYield) else { return nil }
         guard let first = Int32(m.value).map(Int.init) else { return nil }
         return (1...max).contains(first) ? first : nil
     }
@@ -60,11 +76,12 @@ enum Servings {
     /// the label. A serving word anywhere wins ("4 to 6 servings", "Makes 4 servings"); then
     /// "makes"/"yields", or a number followed by any other noun, means `.makes`. Anything else,
     /// including a bare number, stays `.serves` — the label the app always showed.
-    static func kind(_ recipeYield: String?) -> YieldKind {
+    static func kind(_ recipeYield: String?, words: LanguageWords? = .english) -> YieldKind {
         let text = recipeYield?.kTrimmed ?? ""
-        if text.isEmpty || bareCount(text) != nil { return .serves }
-        if servingWord.containsMatch(in: text) { return .serves }
-        if makesWord.containsMatch(in: text) || countedNoun.containsMatch(in: text) { return .makes }
+        guard !text.isEmpty, bareCount(text) == nil, let words else { return .serves }
+        let p = patterns(words)
+        if p.servingWord.containsMatch(in: text) { return .serves }
+        if p.makesWord.containsMatch(in: text) || p.countedNoun.containsMatch(in: text) { return .makes }
         return .serves
     }
 }

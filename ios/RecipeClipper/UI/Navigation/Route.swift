@@ -5,6 +5,8 @@ import Foundation
 /// `lists/{listId}`.
 enum Route: Hashable {
     case recipe(id: Int64)
+    /// From a timer notification: the recipe, opened in cook mode (Android's `recipe/{id}?cook=true`).
+    case cookRecipe(id: Int64)
     case importUrl(String)
     case history
     case settings

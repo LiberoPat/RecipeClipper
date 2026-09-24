@@ -11,11 +11,10 @@ package com.example.recipeclipper.data.model
  */
 object UrlCleaner {
 
-    private val TRACKING_PARAMETERS = setOf(
-        "fbclid", "gclid", "gclsrc", "dclid", "msclkid", "yclid", "twclid", "ttclid",
-        "igshid", "mc_cid", "mc_eid", "mkt_tok", "li_fat_id", "vero_id", "_ga", "_gl",
-        "oly_enc_id", "oly_anon_id", "wickedid"
-    )
+    // Shared with iOS: shared/tables/url.json.
+    private val TABLE = SharedTables.read("url")
+    private val TRACKING_PREFIXES = SharedTables.strings(TABLE.getJSONArray("trackingPrefixes"))
+    private val TRACKING_PARAMETERS = SharedTables.strings(TABLE.getJSONArray("trackingParameters")).toSet()
 
     fun clean(url: String): String {
         val withoutFragment = url.trim().substringBefore('#')
@@ -43,6 +42,6 @@ object UrlCleaner {
 
     private fun isTracking(name: String): Boolean {
         val lower = name.lowercase()
-        return lower.startsWith("utm_") || lower in TRACKING_PARAMETERS
+        return TRACKING_PREFIXES.any { lower.startsWith(it) } || lower in TRACKING_PARAMETERS
     }
 }

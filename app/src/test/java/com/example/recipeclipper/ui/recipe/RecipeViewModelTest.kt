@@ -1,21 +1,26 @@
 package com.example.recipeclipper.ui.recipe
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModelStore
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.IngredientScaler
 import com.example.recipeclipper.data.model.ParseError
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.SiteReportLink
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitConverter
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
+import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -49,7 +54,9 @@ class RecipeViewModelTest {
             "Bake for 10 minutes.",
             "Cool completely."
         ),
-        checkedIngredients: Set<Int> = emptySet()
+        checkedIngredients: Set<Int> = emptySet(),
+        notes: String? = null,
+        language: String? = null
     ) = Recipe(
         name = "Test Recipe",
         image = null,
@@ -61,7 +68,9 @@ class RecipeViewModelTest {
         yield = yield,
         sourceUrl = "https://example.com/recipe",
         id = id,
-        checkedIngredients = checkedIngredients
+        checkedIngredients = checkedIngredients,
+        notes = notes,
+        language = language
     )
 
     // The [Clock] reads the same virtual clock the test's own `advanceTimeBy`/`advanceUntilIdle`
@@ -70,9 +79,12 @@ class RecipeViewModelTest {
         savedStateHandle: SavedStateHandle,
         repository: FakeRecipeRepository,
         unitPreferences: FakeAppPreferences = FakeAppPreferences(),
-        connectivity: FakeConnectivity = FakeConnectivity()
+        connectivity: FakeConnectivity = FakeConnectivity(),
+        appInfo: FakeAppInfo = FakeAppInfo(),
+        alarms: FakeTimerAlarmScheduler = FakeTimerAlarmScheduler()
     ): RecipeViewModel = RecipeViewModel(
-        savedStateHandle, repository, unitPreferences, Clock { testScheduler.currentTime }, connectivity
+        savedStateHandle, repository, unitPreferences, Clock { testScheduler.currentTime }, connectivity,
+        appInfo, alarms
     )
 
     // --- Loading ---
@@ -95,6 +107,25 @@ class RecipeViewModelTest {
         advanceUntilIdle()
 
         assertTrue(vm.uiState.value.content is RecipeContent.Success)
+    }
+
+    @Test fun `the source domain is credited from the source link`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply {
+            openResult = testRecipe().copy(sourceUrl = "https://www.smittenkitchen.com/2024/01/soup/")
+        }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        val content = vm.uiState.value.content as RecipeContent.Success
+        assertEquals("smittenkitchen.com", content.sourceDomain)
+    }
+
+    @Test fun `a source link with no host credits no domain`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe().copy(sourceUrl = "not a link") }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        assertNull((vm.uiState.value.content as RecipeContent.Success).sourceDomain)
     }
 
     @Test fun `errors when neither id nor url is present`() = runTest(mainDispatcherRule.dispatcher) {
@@ -130,6 +161,63 @@ class RecipeViewModelTest {
                 advanceUntilIdle()
                 assertEquals(kind, (vm.uiState.value.content as RecipeContent.Error).error)
             }
+        }
+
+    // --- Report this site ---
+
+    @Test fun `a shared link with no recipe offers a report link built from the link and app info`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply {
+                importResult = ParseResult.Error(ParseError.NoRecipeFound)
+            }
+            val appInfo = FakeAppInfo(platform = "Android 15 (API 35)", appVersion = "2.1 (7)")
+            val vm = buildViewModel(byUrl("https://example.com/recipe"), repository, appInfo = appInfo)
+            advanceUntilIdle()
+
+            assertEquals(
+                SiteReportLink.issueUrl("https://example.com/recipe", "Android 15 (API 35)", "2.1 (7)"),
+                vm.uiState.value.reportSiteUrl
+            )
+        }
+
+    @Test fun `errors that mean try again never offer a report`() = runTest(mainDispatcherRule.dispatcher) {
+        val kinds = listOf(
+            ParseError.Blocked(403),
+            ParseError.Offline,
+            ParseError.FetchFailed("HTTP 400"),
+            ParseError.FetchFailed("timeout", timedOut = true),
+            ParseError.SaveFailed
+        )
+        for (kind in kinds) {
+            val repository = FakeRecipeRepository().apply { importResult = ParseResult.Error(kind) }
+            val vm = buildViewModel(byUrl("https://example.com/recipe"), repository)
+            advanceUntilIdle()
+            assertNull("$kind", vm.uiState.value.reportSiteUrl)
+        }
+    }
+
+    @Test fun `a saved recipe that can't be opened has no page to report`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val vm = buildViewModel(byId(1L), FakeRecipeRepository().apply { openResult = null })
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.reportSiteUrl)
+        }
+
+    @Test fun `trying again clears the report link, and a recipe that then loads has none`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply {
+                importResult = ParseResult.Error(ParseError.NoRecipeFound)
+            }
+            val vm = buildViewModel(byUrl("https://example.com/recipe"), repository)
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.reportSiteUrl != null)
+
+            repository.importResult = ParseResult.Success(testRecipe())
+            vm.onRetry()
+            assertNull(vm.uiState.value.reportSiteUrl) // gone while loading, too
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.content is RecipeContent.Success)
+            assertNull(vm.uiState.value.reportSiteUrl)
         }
 
     @Test fun `offline then back online reloads exactly once`() = runTest(mainDispatcherRule.dispatcher) {
@@ -223,6 +311,94 @@ class RecipeViewModelTest {
             assertEquals(listOf(5L to setOf(0)), repository.setCheckedCalls)
         }
 
+    // --- Notes ---
+
+    @Test fun `the note is seeded from the loaded recipe`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(notes = "Half the sugar") }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        assertEquals("Half the sugar", vm.uiState.value.notes)
+    }
+
+    @Test fun `a recipe without a note shows an empty one`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(notes = null) }
+        val vm = buildViewModel(byId(1L), repository)
+        advanceUntilIdle()
+
+        assertEquals("", vm.uiState.value.notes)
+    }
+
+    @Test fun `typing shows at once and saves once, after the pause`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L) }
+            val vm = buildViewModel(byId(5L), repository)
+            advanceUntilIdle()
+
+            vm.onNotesChange("N")
+            vm.onNotesChange("Ne")
+            advanceTimeBy(RecipeViewModel.NOTES_SAVE_DELAY_MS - 1)
+            vm.onNotesChange("Needs 10 more minutes")
+
+            assertEquals("Needs 10 more minutes", vm.uiState.value.notes)
+            assertEquals(emptyList<Pair<Long, String>>(), repository.setNotesCalls)
+
+            advanceTimeBy(RecipeViewModel.NOTES_SAVE_DELAY_MS + 1)
+            assertEquals(listOf(5L to "Needs 10 more minutes"), repository.setNotesCalls)
+        }
+
+    @Test fun `clearing the note saves the empty text`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L, notes = "Old") }
+        val vm = buildViewModel(byId(5L), repository)
+        advanceUntilIdle()
+
+        vm.onNotesChange("")
+        advanceUntilIdle()
+
+        assertEquals("", vm.uiState.value.notes)
+        assertEquals(listOf(5L to ""), repository.setNotesCalls)
+    }
+
+    @Test fun `leaving the screen mid-pause still saves the note`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L) }
+        val store = ViewModelStore()
+        val vm = buildViewModel(byId(5L), repository)
+        store.put("recipe", vm)
+        advanceUntilIdle()
+
+        vm.onNotesChange("Less salt")
+        store.clear() // what leaving the screen does; viewModelScope is cancelled first
+        advanceUntilIdle()
+
+        assertEquals(listOf(5L to "Less salt"), repository.setNotesCalls)
+    }
+
+    @Test fun `a note saved by the pause is not written again on leaving`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L) }
+            val store = ViewModelStore()
+            val vm = buildViewModel(byId(5L), repository)
+            store.put("recipe", vm)
+            advanceUntilIdle()
+
+            vm.onNotesChange("Less salt")
+            advanceUntilIdle()
+            store.clear()
+            advanceUntilIdle()
+
+            assertEquals(listOf(5L to "Less salt"), repository.setNotesCalls)
+        }
+
+    @Test fun `no note is written before the recipe has loaded`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(id = 5L) }
+        val vm = buildViewModel(byId(5L), repository)
+
+        vm.onNotesChange("Too early")
+        advanceUntilIdle()
+
+        assertEquals(emptyList<Pair<Long, String>>(), repository.setNotesCalls)
+    }
+
     // --- Servings ---
 
     @Test fun `changing servings rescales the ingredient list`() = runTest(mainDispatcherRule.dispatcher) {
@@ -278,12 +454,12 @@ class RecipeViewModelTest {
             val vm = buildViewModel(byId(1L), repository, unitPreferences)
             advanceUntilIdle()
 
-            vm.onUnitSystemChange(UnitSystem.GRAMS)
+            vm.onUnitSystemChange(UnitSystem.METRIC)
             advanceUntilIdle()
 
             val content = vm.uiState.value.content as RecipeContent.Success
             val expectedIngredients = testRecipe().ingredients.map {
-                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.GRAMS, false)
+                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.METRIC, false)
             }
             // Oven temperature is decoupled from the unit system (defaults AS_WRITTEN), so
             // changing UnitSystem alone must leave instructions untouched.
@@ -292,7 +468,7 @@ class RecipeViewModelTest {
             }
             assertEquals(expectedIngredients, content.ingredients)
             assertEquals(expectedInstructions, content.instructions)
-            assertEquals(UnitSystem.GRAMS, unitPreferences.unitSystem)
+            assertEquals(UnitSystem.METRIC, unitPreferences.unitSystem)
         }
 
     @Test fun `dark while cooking is off by default`() = runTest(mainDispatcherRule.dispatcher) {
@@ -336,7 +512,7 @@ class RecipeViewModelTest {
 
     @Test fun `turning on convert liquids in Settings re-renders the open recipe`() =
         runTest(mainDispatcherRule.dispatcher) {
-            val preferences = FakeAppPreferences(unitSystem = UnitSystem.GRAMS)
+            val preferences = FakeAppPreferences(unitSystem = UnitSystem.OUNCES)
             val repository = FakeRecipeRepository().apply { openResult = testRecipe() }
             val vm = buildViewModel(byId(1L), repository, preferences)
             advanceUntilIdle()
@@ -346,7 +522,7 @@ class RecipeViewModelTest {
 
             assertTrue(vm.uiState.value.convertLiquids)
             val expected = testRecipe().ingredients.map {
-                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.GRAMS, true)
+                UnitConverter.convert(IngredientScaler.scale(it, 1.0), UnitSystem.OUNCES, true)
             }
             assertEquals(expected, (vm.uiState.value.content as RecipeContent.Success).ingredients)
         }
@@ -455,11 +631,11 @@ class RecipeViewModelTest {
             val vm = buildViewModel(byId(1L), repository, preferences)
             advanceUntilIdle()
 
-            vm.onUnitSystemChange(UnitSystem.GRAMS)
+            vm.onUnitSystemChange(UnitSystem.OUNCES)
             val immediately = vm.uiState.value // before the echo is delivered
             advanceUntilIdle()
 
-            assertEquals(UnitSystem.GRAMS, immediately.unitSystem)
+            assertEquals(UnitSystem.OUNCES, immediately.unitSystem)
             assertEquals(immediately, vm.uiState.value)
         }
 
@@ -762,5 +938,35 @@ class RecipeViewModelTest {
             instructions = content.instructions
         )
         assertEquals(expected, vm.shareText())
+    }
+
+    // --- The recipe's language (#14) ---
+
+    @Test fun `a recipe in a language with no words is shown as written`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { openResult = testRecipe(language = "de-de") }
+        val preferences = FakeAppPreferences(UnitSystem.METRIC, true, TemperatureUnit.CELSIUS)
+        val vm = buildViewModel(byId(1L), repository, preferences)
+        advanceUntilIdle()
+
+        val content = vm.uiState.value.content as RecipeContent.Success
+        assertEquals(null, content.words)
+        assertEquals(null, content.servings) // no stepper: its lines couldn't be scaled
+        assertEquals(listOf("2 cups flour", "1 cup milk"), content.ingredients)
+        assertEquals(testRecipe().instructions, content.instructions)
+        assertTrue(content.stepTimerSeconds.all { it == null })
+    }
+
+    @Test fun `an English recipe, declared or detected, is read with English words`() = runTest(mainDispatcherRule.dispatcher) {
+        for (language in listOf("en-gb", null)) {
+            val repository = FakeRecipeRepository().apply { openResult = testRecipe(language = language) }
+            val vm = buildViewModel(byId(1L), repository, FakeAppPreferences(UnitSystem.METRIC))
+            advanceUntilIdle()
+
+            val content = vm.uiState.value.content as RecipeContent.Success
+            assertEquals(LanguageWords.ENGLISH, content.words)
+            assertEquals(4, content.servings?.base)
+            assertEquals(listOf("240 g flour", "240 ml milk"), content.ingredients)
+            assertEquals(listOf(null, 300, 600, null), content.stepTimerSeconds)
+        }
     }
 }

@@ -28,6 +28,16 @@ struct Recipe: Equatable {
     /// Indexes into `ingredients` the user has ticked off. Persisted so cooking can resume.
     var checkedIngredients: Set<Int> = []
     var lastViewedAt: Int64 = 0
+    /// The user's own free-text note, or nil. Never parsed, so re-sharing keeps it.
+    var notes: String? = nil
+    /// The recipe's language tag as the parser chose it ("en", "de-de"; see `LanguageWords`),
+    /// which picks the words its lines are read with. Nil for a recipe stored before #14, which
+    /// is detected from its words when shown.
+    var language: String? = nil
+    /// Where the cook stands on this recipe: cook mode, steps done, step timers.
+    var cook = CookProgress()
+    /// The servings the user chose, or nil for the recipe's own yield.
+    var servingsTarget: Int? = nil
 }
 
 /// What a list row (history, home) needs, without loading every ingredient and step.
@@ -102,6 +112,16 @@ enum ParseError: Equatable, Error {
         }
     }
 
+    /// Worth one load in an off-screen browser once the direct fetch (and its retry) has ended
+    /// here: a block, which a real browser engine often gets past, or a page with no recipe
+    /// data, which may be built by JavaScript. Never `.offline` or a `.fetchFailed`.
+    var triesRenderedPage: Bool {
+        switch self {
+        case .blocked, .noRecipeFound: return true
+        default: return false
+        }
+    }
+
     /// The recipe screen reloads once when the connection comes back while showing these.
     var reloadsOnReconnect: Bool {
         switch self {
@@ -129,4 +149,6 @@ struct ListMembership: Equatable {
 struct DeletedRecipe: Equatable {
     let recipe: Recipe
     let memberships: [ListMembership]
+    /// The row's stable uid (#26), so an undone delete is the same recipe to an export.
+    var uid: String? = nil
 }

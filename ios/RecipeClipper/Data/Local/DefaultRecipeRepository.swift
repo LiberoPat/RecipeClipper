@@ -5,12 +5,14 @@ import Foundation
 ///
 /// The contract's methods don't throw, so a database failure is logged and surfaced the way
 /// the contract allows: `.error(.saveFailed)` from an import, nil from `open` / `delete`, and
-/// nothing from `setChecked` / `restore`.
+/// nothing from `setChecked` / `setNotes` / `setCookProgress` / `setServingsTarget` / `restore`.
 final class DefaultRecipeRepository: RecipeRepository {
     private let db: AppDatabase
     private let source: RecipeSource
     private let clock: Clock
     private let sleep: RetrySleep
+    private let renderedPages: RenderedPageSource
+    private let renderTimeout: Duration
 
     /// How a failed fetch waits before its single retry. Injected so a test doesn't really wait;
     /// throws on cancellation, as `Task.sleep` does.
@@ -20,16 +22,25 @@ final class DefaultRecipeRepository: RecipeRepository {
     /// lift, short enough that the spinner doesn't feel stuck. Android's RETRY_PAUSE_MS.
     static let retryPause: Duration = .seconds(2)
 
+    /// The cap on the off-screen browser fallback, load and settle together. It comes on top of
+    /// the direct fetch and its retry, so a page that never settles can't hold the spinner much
+    /// longer than they did. Android's RENDER_TIMEOUT_MS.
+    static let renderTimeout: Duration = .seconds(20)
+
     init(
         db: AppDatabase,
         source: RecipeSource,
         clock: Clock,
-        sleep: @escaping RetrySleep = { try await Task.sleep(for: $0) }
+        sleep: @escaping RetrySleep = { try await Task.sleep(for: $0) },
+        renderedPages: RenderedPageSource = NoRenderedPageSource(),
+        renderTimeout: Duration = DefaultRecipeRepository.renderTimeout
     ) {
         self.db = db
         self.source = source
         self.clock = clock
         self.sleep = sleep
+        self.renderedPages = renderedPages
+        self.renderTimeout = renderTimeout
     }
 
     func importFromUrl(_ sharedUrl: String) async -> ParseResult {
@@ -47,6 +58,15 @@ final class DefaultRecipeRepository: RecipeRepository {
                 return parsed // cancelled during the pause: write nothing
             }
             if !Task.isCancelled { parsed = await source.fetch(url: url) }
+        }
+
+        // Still blocked, or a page with no recipe data: load it once in an off-screen browser
+        // and run what it renders through the same parsers. Never after offline or a timeout.
+        // A rendered page with no recipe, or one that doesn't load, leaves the cause standing.
+        if case .error(let error) = parsed, error.triesRenderedPage, !Task.isCancelled,
+           let html = await renderCapped(url), !Task.isCancelled,
+           case .success(let recipe) = BlogRecipeSource.parse(html: html, url: url) {
+            parsed = .success(recipe)
         }
 
         // RecipeSource.fetch can't throw, so cancellation can't propagate as it does on
@@ -87,6 +107,22 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
+    /// The rendered page, or nil once `renderTimeout` runs out (which cancels the render).
+    private func renderCapped(_ url: String) async -> String? {
+        let renderedPages = renderedPages
+        let renderTimeout = renderTimeout
+        return await withTaskGroup(of: String?.self) { group in
+            group.addTask { await renderedPages.render(url: url) }
+            group.addTask {
+                try? await Task.sleep(for: renderTimeout)
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
+        }
+    }
+
     func open(id: Int64) async -> Recipe? {
         let now = clock.now()
         do {
@@ -112,6 +148,32 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
+    func setNotes(id: Int64, notes: String) async {
+        let stored: String? = notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
+        do {
+            try await db.write { conn in try RecipeDao(db: conn).setNotes(id, notes: stored) }
+        } catch {
+            dataLog.error("setNotes failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    func setCookProgress(id: Int64, progress: CookProgress) async {
+        let json = CookStateJSON.encode(progress)
+        do {
+            try await db.write { conn in try RecipeDao(db: conn).setCookState(id, cookState: json) }
+        } catch {
+            dataLog.error("setCookProgress failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    func setServingsTarget(id: Int64, target: Int?) async {
+        do {
+            try await db.write { conn in try RecipeDao(db: conn).setServingsTarget(id, target: target) }
+        } catch {
+            dataLog.error("setServingsTarget failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
     func delete(id: Int64) async -> DeletedRecipe? {
         do {
             return try await db.write { conn -> DeletedRecipe? in
@@ -120,7 +182,7 @@ final class DefaultRecipeRepository: RecipeRepository {
                 // Read before deleting: the cascade takes them with the row.
                 let memberships = try dao.crossRefsFor(id)
                 try dao.delete(id)
-                return DeletedRecipe(recipe: row.toDomain(), memberships: memberships)
+                return DeletedRecipe(recipe: row.toDomain(), memberships: memberships, uid: row.uid)
             }
         } catch {
             dataLog.error("delete failed: \(String(describing: error), privacy: .public)")
@@ -130,11 +192,10 @@ final class DefaultRecipeRepository: RecipeRepository {
 
     func restore(_ deleted: DeletedRecipe) async {
         do {
-            try await db.write { conn in
-                try RecipeDao(db: conn).restore(
-                    deleted.recipe.toRecord(viewedAt: deleted.recipe.lastViewedAt),
-                    crossRefs: deleted.memberships
-                )
+            var record = deleted.recipe.toRecord(viewedAt: deleted.recipe.lastViewedAt)
+            if let uid = deleted.uid { record.uid = uid }
+            try await db.write { [record] conn in
+                try RecipeDao(db: conn).restore(record, crossRefs: deleted.memberships)
             }
         } catch {
             dataLog.error("restore failed: \(String(describing: error), privacy: .public)")

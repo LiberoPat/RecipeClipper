@@ -13,52 +13,83 @@ package com.example.recipeclipper.data.model
  * The source link is deliberately left out: what's shared is the recipe as clipped, not a
  * pointer back to the page — the story and ads this app exists to skip.
  *
- * Deliberately keeps its own English wording ("Serves 3 (originally 6)", "Prep 10m · Cook
- * 30m") rather than reading it from `strings.xml` like the rest of the app's UI text: this
- * isn't UI, it's the body of a message the user sends elsewhere (SMS, WhatsApp, Mail), so it
- * has no `Context`/`stringResource` to read from and stays English-only by design, same as
- * this whole app for now.
+ * The words around the recipe ("Serves", "INGREDIENTS", "Prep") come in as [Labels], which
+ * the screen reads from `strings.xml`, so a recipe shared from a German phone reads
+ * "Portionen: 4 … ZUTATEN". This stays pure (no `Context`); [Labels.ENGLISH] is the default
+ * for tests. The recipe's own text is shared as written.
  */
 object RecipeShareText {
+
+    /**
+     * The translated words the message body uses. [serves] and [makes] turn a count into a
+     * line ("Serves 3"); [scaled] adds the original count to one ("Serves 3 (originally 6)").
+     */
+    data class Labels(
+        val serves: (Int) -> String,
+        val makes: (Int) -> String,
+        val scaled: (line: String, original: Int) -> String,
+        val prep: String,
+        val cook: String,
+        val total: String,
+        val ingredients: String,
+        val instructions: String
+    ) {
+        companion object {
+            val ENGLISH = Labels(
+                serves = { "Serves $it" },
+                makes = { "Makes $it" },
+                scaled = { line, original -> "$line (originally $original)" },
+                prep = "Prep",
+                cook = "Cook",
+                total = "Total",
+                ingredients = "INGREDIENTS",
+                instructions = "INSTRUCTIONS"
+            )
+        }
+    }
 
     fun format(
         recipe: Recipe,
         servings: ServingsScale?,
         ingredients: List<String>,
-        instructions: List<String>
+        instructions: List<String>,
+        labels: Labels = Labels.ENGLISH
     ): String {
         val lines = mutableListOf<String>()
         lines += recipe.name
         lines += ""
 
-        val meta = listOfNotNull(servesLine(servings, Servings.kind(recipe.yield)), timesLine(recipe))
+        val meta = listOfNotNull(
+            servesLine(servings, Servings.kind(recipe.yield), labels),
+            timesLine(recipe, labels)
+        )
         if (meta.isNotEmpty()) {
             lines += meta
             lines += ""
         }
 
-        lines += "INGREDIENTS"
+        lines += labels.ingredients
         lines += ingredients
         lines += ""
 
-        lines += "INSTRUCTIONS"
+        lines += labels.instructions
         lines += instructions.mapIndexed { index, step -> "${index + 1}. $step" }
 
         return lines.joinToString("\n")
     }
 
-    private fun servesLine(servings: ServingsScale?, kind: YieldKind): String? {
+    private fun servesLine(servings: ServingsScale?, kind: YieldKind, labels: Labels): String? {
         if (servings == null) return null
         val (base, target) = servings
-        val word = if (kind == YieldKind.MAKES) "Makes" else "Serves"
-        return if (target != base) "$word $target (originally $base)" else "$word $base"
+        val word = if (kind == YieldKind.MAKES) labels.makes else labels.serves
+        return if (target != base) labels.scaled(word(target), base) else word(base)
     }
 
-    private fun timesLine(recipe: Recipe): String? {
+    private fun timesLine(recipe: Recipe, labels: Labels): String? {
         val entries = listOfNotNull(
-            recipe.prepTime?.let { "Prep $it" },
-            recipe.cookTime?.let { "Cook $it" },
-            recipe.totalTime?.let { "Total $it" }
+            recipe.prepTime?.let { "${labels.prep} $it" },
+            recipe.cookTime?.let { "${labels.cook} $it" },
+            recipe.totalTime?.let { "${labels.total} $it" }
         )
         return entries.takeIf { it.isNotEmpty() }?.joinToString(" · ")
     }

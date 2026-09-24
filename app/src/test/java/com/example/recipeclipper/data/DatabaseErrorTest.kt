@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.ListRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
@@ -7,6 +8,7 @@ import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
 import com.example.recipeclipper.data.local.entity.ListEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
@@ -46,6 +48,10 @@ class DatabaseErrorTest {
         override suspend fun update(recipe: RecipeEntity) = throw throwable()
         override suspend fun touch(id: Long, now: Long) = throw throwable()
         override suspend fun setChecked(id: Long, checked: Set<Int>) = throw throwable()
+        override suspend fun setNotes(id: Long, notes: String?) = throw throwable()
+        override suspend fun setCookState(id: Long, cookState: String?) = throw throwable()
+        override suspend fun setServingsTarget(id: Long, target: Int?) = throw throwable()
+        override suspend fun cookStates(): List<CookStateRow> = throw throwable()
         override suspend fun delete(id: Long) = throw throwable()
         override suspend fun crossRefsFor(recipeId: Long): List<RecipeListCrossRef> = throw throwable()
         override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) = throw throwable()
@@ -99,7 +105,7 @@ class DatabaseErrorTest {
         assertEquals(1, log.messages.size)
     }
 
-    @Test fun `open, delete, restore and setChecked degrade instead of throwing`() = runTest {
+    @Test fun `open, delete, restore and the per-recipe writes degrade instead of throwing`() = runTest {
         val log = RecordingLog()
         val repository = recipes(ParseResult.Error(ParseError.NoRecipeFound), log)
 
@@ -107,9 +113,16 @@ class DatabaseErrorTest {
         assertNull(repository.delete(1))
         repository.restore(RecipeRepository.DeletedRecipe(entity, emptyList()))
         repository.setChecked(1, setOf(0))
+        repository.setNotes(1, "Half the sugar")
+        repository.setCookProgress(1, CookProgress(active = true))
+        repository.setServingsTarget(1, 4)
+        assertEquals(emptyList<Any>(), repository.runningTimers())
 
         assertEquals(
-            listOf("open failed", "delete failed", "restore failed", "setChecked failed"),
+            listOf(
+                "open failed", "delete failed", "restore failed", "setChecked failed", "setNotes failed",
+                "setCookProgress failed", "setServingsTarget failed", "runningTimers failed"
+            ),
             log.messages
         )
     }

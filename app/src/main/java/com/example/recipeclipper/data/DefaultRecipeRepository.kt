@@ -1,15 +1,23 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.local.CookStateJson
 import com.example.recipeclipper.data.local.dao.RecipeDao
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.UrlCleaner
+import com.example.recipeclipper.data.remote.BlogRecipeSource
 import com.example.recipeclipper.data.remote.RecipeSource
+import com.example.recipeclipper.data.remote.RenderedPageSource
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,7 +26,8 @@ import javax.inject.Singleton
  *
  * Database failures never escape: each call runs through [ErrorLog.guard], is logged, and
  * degrades to what the contract already allows — `Error(SaveFailed)` from an import, null from
- * [open] and [delete], nothing from [setChecked] and [restore], an empty list from a Flow —
+ * [open] and [delete], nothing from [setChecked], [setNotes], [setCookProgress],
+ * [setServingsTarget] and [restore], none from [runningTimers], an empty list from a Flow —
  * rather than crashing `viewModelScope`. The iOS repository does the same.
  */
 @Singleton
@@ -26,13 +35,14 @@ class DefaultRecipeRepository @Inject constructor(
     private val source: RecipeSource,
     private val recipeDao: RecipeDao,
     private val clock: Clock,
-    private val log: ErrorLog
+    private val log: ErrorLog,
+    private val renderedPages: RenderedPageSource = RenderedPageSource.None
 ) : RecipeRepository {
 
     override suspend fun importFromUrl(sharedUrl: String): ParseResult {
         // Saved under the cleaned link, so tracking tags can't make one recipe into two.
         val url = UrlCleaner.clean(sharedUrl)
-        val parsed = fetchWithOneRetry(url)
+        val parsed = fetchWithFallbacks(url)
         val now = clock.now()
         return when (parsed) {
             is ParseResult.Success -> log.guard("import save", ParseResult.Error(ParseError.SaveFailed)) {
@@ -48,6 +58,23 @@ class DefaultRecipeRepository @Inject constructor(
                 ParseResult.Success(cached.copy(lastViewedAt = now).toDomain())
             }
         }
+    }
+
+    /**
+     * [fetchWithOneRetry], then, only if that still ends [ParseError.Blocked] or
+     * [ParseError.NoRecipeFound] (see [ParseError.triesRenderedPage]), one load of the page in an
+     * off-screen browser, capped at [RENDER_TIMEOUT_MS], its HTML run through the same parsers.
+     * Never after Offline or a timeout. A rendered page that still has no recipe, or that
+     * doesn't load, leaves the direct fetch's cause standing: a block stays a block. Nothing
+     * is shown for it; the import is just slower. Cancelling during it throws out of here
+     * before anything is written.
+     */
+    private suspend fun fetchWithFallbacks(url: String): ParseResult {
+        val fetched = fetchWithOneRetry(url)
+        if (fetched !is ParseResult.Error || !fetched.error.triesRenderedPage) return fetched
+        val html = withTimeoutOrNull(RENDER_TIMEOUT_MS) { renderedPages.render(url) } ?: return fetched
+        val rendered = withContext(Dispatchers.Default) { BlogRecipeSource.parse(html, url) }
+        return if (rendered is ParseResult.Success) rendered else fetched
     }
 
     /**
@@ -75,6 +102,23 @@ class DefaultRecipeRepository @Inject constructor(
     override suspend fun setChecked(id: Long, checked: Set<Int>) =
         log.guard("setChecked", Unit) { recipeDao.setChecked(id, checked) }
 
+    override suspend fun setNotes(id: Long, notes: String) =
+        log.guard("setNotes", Unit) { recipeDao.setNotes(id, notes.takeIf { it.isNotBlank() }) }
+
+    override suspend fun setCookProgress(id: Long, progress: CookProgress) =
+        log.guard("setCookProgress", Unit) { recipeDao.setCookState(id, CookStateJson.encode(progress)) }
+
+    override suspend fun setServingsTarget(id: Long, target: Int?) =
+        log.guard("setServingsTarget", Unit) { recipeDao.setServingsTarget(id, target) }
+
+    override suspend fun runningTimers(): List<StepAlarm> = log.guard("runningTimers", emptyList()) {
+        recipeDao.cookStates().flatMap { row ->
+            CookStateJson.decode(row.cookState).timers.mapNotNull { (step, timer) ->
+                timer.endsAt?.let { StepAlarm(row.id, row.title, step, it) }
+            }
+        }
+    }
+
     override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? = log.guard("delete", null) {
         val entity = recipeDao.get(id) ?: return@guard null
         val crossRefs = recipeDao.crossRefsFor(id)
@@ -95,5 +139,10 @@ class DefaultRecipeRepository @Inject constructor(
         /** How long to wait before the single automatic retry. Long enough for a momentary
          *  block to lift, short enough that the spinner doesn't feel stuck. */
         const val RETRY_PAUSE_MS = 2_000L
+
+        /** The cap on the off-screen browser fallback, load and settle together. It comes on
+         *  top of the direct fetch and its retry, so a page that never settles can't hold the
+         *  spinner much longer than they did. */
+        const val RENDER_TIMEOUT_MS = 20_000L
     }
 }

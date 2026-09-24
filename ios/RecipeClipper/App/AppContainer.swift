@@ -9,19 +9,31 @@ final class AppContainer {
     let preferences: AppPreferences
     let clock: Clock
     let connectivity: Connectivity
+    let backupRepository: BackupRepository
+    let backupFiles: BackupFiles
+    let appInfo: AppInfo
+    let alarms: TimerAlarmScheduler
 
     init(
         recipeRepository: RecipeRepository,
         listRepository: ListRepository,
+        backupRepository: BackupRepository,
         preferences: AppPreferences,
         clock: Clock,
-        connectivity: Connectivity = StaticConnectivity()
+        connectivity: Connectivity = StaticConnectivity(),
+        backupFiles: BackupFiles = FileBackupFiles(),
+        appInfo: AppInfo = BundleAppInfo(),
+        alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler()
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
+        self.backupRepository = backupRepository
         self.preferences = preferences
         self.clock = clock
         self.connectivity = connectivity
+        self.backupFiles = backupFiles
+        self.appInfo = appInfo
+        self.alarms = alarms
     }
 
     /// The real graph: SQLite on disk, the blog source, UserDefaults. Under XCTest (the unit
@@ -41,11 +53,18 @@ final class AppContainer {
         }
         let defaults = testing ? (UserDefaults(suiteName: "RecipeClipperTestHost") ?? .standard) : .standard
         return AppContainer(
-            recipeRepository: DefaultRecipeRepository(db: database, source: BlogRecipeSource(), clock: clock),
+            recipeRepository: DefaultRecipeRepository(
+                db: database, source: BlogRecipeSource(), clock: clock,
+                renderedPages: WebViewRenderedPageSource()
+            ),
             listRepository: DefaultListRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
-            connectivity: PathConnectivity()
+            connectivity: PathConnectivity(),
+            // Under XCTest nothing is scheduled, so a test run never raises the notification
+            // prompt (UI-test seeding above takes the default, which is the same no-op).
+            alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock)
         )
     }
 
@@ -57,10 +76,11 @@ final class AppContainer {
         HistoryViewModel(repository: recipeRepository)
     }
 
-    func makeRecipeViewModel(recipeId: Int64?, url: String?) -> RecipeViewModel {
+    func makeRecipeViewModel(recipeId: Int64?, url: String?, openInCookMode: Bool = false) -> RecipeViewModel {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
-            clock: clock, connectivity: connectivity
+            clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
+            openInCookMode: openInCookMode
         )
     }
 
@@ -69,7 +89,7 @@ final class AppContainer {
     }
 
     func makeSettingsViewModel() -> SettingsViewModel {
-        SettingsViewModel(preferences: preferences)
+        SettingsViewModel(preferences: preferences, backups: backupRepository, files: backupFiles)
     }
 
     func makeListsViewModel() -> ListsViewModel {

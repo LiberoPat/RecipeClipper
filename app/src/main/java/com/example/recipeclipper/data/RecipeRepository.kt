@@ -2,9 +2,11 @@ package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
 
 /** Everything shared lands in history, capped at this many unsaved recipes. */
@@ -28,6 +30,21 @@ interface RecipeRepository {
     suspend fun open(id: Long): Recipe?
 
     suspend fun setChecked(id: Long, checked: Set<Int>)
+
+    /** Saves the user's note on a recipe. A blank note is stored as no note. */
+    suspend fun setNotes(id: Long, notes: String)
+
+    /** Saves where the cook stands. An empty [CookProgress] is stored as none. */
+    suspend fun setCookProgress(id: Long, progress: CookProgress)
+
+    /** Saves the chosen servings; null goes back to the recipe's own yield. */
+    suspend fun setServingsTarget(id: Long, target: Int?)
+
+    /**
+     * Every step timer still running in the database, whatever its deadline: what the timer
+     * alarm checks before announcing one, and what is rescheduled after a reboot.
+     */
+    suspend fun runningTimers(): List<StepAlarm>
 
     /**
      * What a delete removed: enough for [restore] to undo it, list membership included.

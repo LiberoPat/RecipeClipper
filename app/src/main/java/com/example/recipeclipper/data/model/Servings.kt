@@ -9,20 +9,39 @@ enum class YieldKind { SERVES, MAKES }
 object Servings {
     const val MAX = 99
 
-    /**
-     * Pulls the serving count out of a schema.org `recipeYield` string such as
-     * "4 servings", "Serves 4-6" or "Makes 24 cookies". Takes the first number.
-     * Returns null when there is no usable number, which hides the scaling control.
-     */
-    private val RANGE = Regex("""\d+\s*(?:[-–—]|to)\s*\d+""", RegexOption.IGNORE_CASE)
+    /** One language's yield words: shared/tables/<language>/yield.json and ranges.json. */
+    private class Patterns(words: LanguageWords) {
+        val range = Regex("""\d+\s*(?:[-–—]|${words.rangeWords})\s*\d+""", RegexOption.IGNORE_CASE)
+        val servingWord = Regex(
+            """\b${SharedTables.alternation(words.strings("yield", "serving"))}\b""",
+            RegexOption.IGNORE_CASE
+        )
+        val makesWord = Regex(
+            """\b${SharedTables.alternation(words.strings("yield", "makes"))}\b""",
+            RegexOption.IGNORE_CASE
+        )
+
+        /**
+         * A number followed by some other word: "24 cookies", "1 (9-inch) pie", "2 dozen".
+         * The lookahead skips the "to" of a range, so a bare "4 to 6" isn't read as a noun.
+         */
+        val countedNoun = Regex("""\d[^\p{L}]*(?!${words.rangeWords}\b)\p{L}""", RegexOption.IGNORE_CASE)
+    }
+
+    private fun patterns(words: LanguageWords): Patterns = words.compiled(Patterns::class) { Patterns(it) }
+
+    /** A range in a language the app has no words for: the dashes are anyone's. */
+    private val DASH_RANGE = Regex("""\d+\s*[-–—]\s*\d+""")
 
     /**
      * Sites often list several forms of the same yield, e.g. `["4", "4 to 6 servings"]`.
      * Prefers the entry that states a range so "Original: 4-6 servings" isn't cut down
      * to "4"; otherwise keeps the first entry.
      */
-    fun pickYield(candidates: List<String>): String? =
-        candidates.firstOrNull { RANGE.containsMatchIn(it) } ?: candidates.firstOrNull()
+    fun pickYield(candidates: List<String>, words: LanguageWords? = LanguageWords.ENGLISH): String? {
+        val range = if (words == null) DASH_RANGE else patterns(words).range
+        return candidates.firstOrNull { range.containsMatchIn(it) } ?: candidates.firstOrNull()
+    }
 
     /**
      * Sites often publish just a number (`recipeYield: 6`). This only decides *whether* the
@@ -36,20 +55,17 @@ object Servings {
         return text.toIntOrNull()
     }
 
-    fun parse(recipeYield: String?): Int? {
+    /**
+     * Pulls the serving count out of a schema.org `recipeYield` string such as
+     * "4 servings", "Serves 4-6" or "Makes 24 cookies". Takes the first number.
+     * Returns null when there is no usable number, which hides the scaling control, and for
+     * a language the app has no words for ([words] null), whose lines couldn't be scaled.
+     */
+    fun parse(recipeYield: String?, words: LanguageWords? = LanguageWords.ENGLISH): Int? {
+        if (words == null) return null
         val first = Regex("""\d+""").find(recipeYield ?: return null)?.value?.toIntOrNull()
         return first?.takeIf { it in 1..MAX }
     }
-
-    private val SERVING_WORD =
-        Regex("""\b(?:serves?|servings?|people|persons?|portions?|feeds?)\b""", RegexOption.IGNORE_CASE)
-    private val MAKES_WORD = Regex("""\b(?:makes?|yields?)\b""", RegexOption.IGNORE_CASE)
-
-    /**
-     * A number followed by some other word: "24 cookies", "1 (9-inch) pie", "2 dozen".
-     * The lookahead skips the "to" of a range, so a bare "4 to 6" isn't read as a noun.
-     */
-    private val COUNTED_NOUN = Regex("""\d[^\p{L}]*(?!to\b)\p{L}""", RegexOption.IGNORE_CASE)
 
     /**
      * Whether the yield counts servings or things made, which picks "Serves" or "Makes" as
@@ -57,11 +73,12 @@ object Servings {
      * "makes"/"yields", or a number followed by any other noun, means MAKES. Anything else,
      * including a bare number, stays SERVES — the label the app always showed.
      */
-    fun kind(recipeYield: String?): YieldKind {
+    fun kind(recipeYield: String?, words: LanguageWords? = LanguageWords.ENGLISH): YieldKind {
         val text = recipeYield?.trim().orEmpty()
-        if (text.isEmpty() || bareCount(text) != null) return YieldKind.SERVES
-        if (SERVING_WORD.containsMatchIn(text)) return YieldKind.SERVES
-        if (MAKES_WORD.containsMatchIn(text) || COUNTED_NOUN.containsMatchIn(text)) return YieldKind.MAKES
+        if (text.isEmpty() || bareCount(text) != null || words == null) return YieldKind.SERVES
+        val p = patterns(words)
+        if (p.servingWord.containsMatchIn(text)) return YieldKind.SERVES
+        if (p.makesWord.containsMatchIn(text) || p.countedNoun.containsMatchIn(text)) return YieldKind.MAKES
         return YieldKind.SERVES
     }
 }

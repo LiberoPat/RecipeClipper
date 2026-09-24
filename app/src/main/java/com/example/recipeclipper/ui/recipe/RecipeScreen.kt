@@ -1,5 +1,8 @@
 package com.example.recipeclipper.ui.recipe
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,13 +48,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.net.toUri
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
@@ -64,7 +72,9 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 internal class RecipeActions(
     val onBack: () -> Unit,
     val onRetry: () -> Unit,
+    val onReportSite: () -> Unit,
     val onIngredientChecked: (Int, Boolean) -> Unit,
+    val onNotesChange: (String) -> Unit,
     val onServingsChange: (Int) -> Unit,
     val onUnitSystemChange: (UnitSystem) -> Unit,
     val onCookStart: () -> Unit,
@@ -77,6 +87,7 @@ internal class RecipeActions(
     val onTimerReset: (Int) -> Unit,
     val onTimerAlerted: (Int) -> Unit,
     val onShare: () -> Unit,
+    val onOpenOriginal: (url: String) -> Unit,
     val onSaveToList: () -> Unit,
     val onDelete: () -> Unit
 )
@@ -90,12 +101,31 @@ fun RecipeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
+    // Android's UriHandler fires ACTION_VIEW, so the browser opens the draft issue. A local,
+    // not a direct Intent, so a UI test can supply its own and see the link without leaving.
+    val uriHandler = LocalUriHandler.current
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
-    val actions = remember(viewModel, onBack, context) {
+    // The first timer started asks for permission to post its "time's up" notification.
+    val askForNotifications = rememberNotificationPrompt()
+    val actions = remember(viewModel, onBack, context, uriHandler, askForNotifications) {
         RecipeActions(
             onBack = onBack,
             onRetry = viewModel::onRetry,
+            onReportSite = {
+                viewModel.uiState.value.reportSiteUrl?.let { url ->
+                    // No browser at all: nothing to open, and nothing lost by staying put.
+                    try {
+                        uriHandler.openUri(url)
+                    } catch (e: ActivityNotFoundException) {
+                        // Nothing to do.
+                    } catch (e: IllegalArgumentException) {
+                        // Newer Compose wraps ActivityNotFoundException in this.
+                    }
+                }
+            },
             onIngredientChecked = viewModel::onIngredientChecked,
+            onNotesChange = viewModel::onNotesChange,
             onServingsChange = viewModel::onServingsChange,
             onUnitSystemChange = viewModel::onUnitSystemChange,
             onCookStart = viewModel::onCookStart,
@@ -103,12 +133,15 @@ fun RecipeScreen(
             onStepSelected = viewModel::onStepSelected,
             onStepDone = viewModel::onStepDone,
             onIngredientsToggle = viewModel::onIngredientsToggle,
-            onTimerStart = viewModel::onTimerStart,
+            onTimerStart = { step ->
+                askForNotifications()
+                viewModel.onTimerStart(step)
+            },
             onTimerToggle = viewModel::onTimerToggle,
             onTimerReset = viewModel::onTimerReset,
             onTimerAlerted = viewModel::onTimerAlerted,
             onShare = {
-                viewModel.shareText()?.let { text ->
+                viewModel.shareText(shareLabels(resources))?.let { text ->
                     val title = (viewModel.uiState.value.content as? RecipeContent.Success)
                         ?.recipe?.name.orEmpty()
                     ShareCompat.IntentBuilder(context)
@@ -117,6 +150,15 @@ fun RecipeScreen(
                         .setText(text)
                         .setChooserTitle(title)
                         .startChooser()
+                }
+            },
+            // A platform effect, so it lives here rather than in the ViewModel. With no app
+            // to open a web link (rare, but possible on a locked-down device) the tap does
+            // nothing rather than crash.
+            onOpenOriginal = { url ->
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                } catch (_: ActivityNotFoundException) {
                 }
             },
             onSaveToList = { sheetOpen = true },
@@ -138,6 +180,8 @@ fun RecipeScreen(
     LaunchedEffect(recipeId) {
         if (recipeId != null) saveViewModel.setRecipe(recipeId)
     }
+    // While this recipe is on screen its timers beep here instead of posting a notification.
+    MarkRecipeVisible(recipeId)
 
     val cooking = content is RecipeContent.Success && state.cook.active
 
@@ -150,25 +194,44 @@ fun RecipeScreen(
         ) {
             TimerAlerts(state.cook.timers, actions.onTimerAlerted)
 
-            when (content) {
-                is RecipeContent.Success ->
-                    if (cooking) CookView(content, state, actions)
-                    else ReadingView(content, state, actions, saveState.isSaved)
-                is RecipeContent.Loading -> StatusView(actions.onBack) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-                is RecipeContent.Error -> StatusView(actions.onBack) {
-                    Text(
-                        content.error.toMessage(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    // Every error offers "Try again", no-recipe included: a café or hotel
-                    // captive portal serves its login page, which parses as a page with no
-                    // recipe, and the same link works once you're through it.
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
-                        Text(stringResource(R.string.action_try_again))
+            // Edge-to-edge: the surface's colour fills behind the bars (so forced-dark cook
+            // mode is dark edge to edge); the content stays clear of them, the display
+            // cutout and the keyboard.
+            Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                when (content) {
+                    is RecipeContent.Success ->
+                        if (cooking) CookView(content, state, actions)
+                        else ReadingView(content, state, actions, saveState.isSaved)
+                    is RecipeContent.Loading -> StatusView(actions.onBack) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                    is RecipeContent.Error -> StatusView(actions.onBack) {
+                        Text(
+                            content.error.toMessage(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        // Every error offers "Try again", no-recipe included: a café or hotel
+                        // captive portal serves its login page, which parses as a page with no
+                        // recipe, and the same link works once you're through it.
+                        Spacer(Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                                Text(stringResource(R.string.action_try_again))
+                            }
+                            // Only for a page with no recipe (the ViewModel decides): the one error
+                            // that means "unsupported" rather than "try again". Secondary, beside it.
+                            if (state.reportSiteUrl != null) {
+                                Spacer(Modifier.width(8.dp))
+                                TextButton(onClick = actions.onReportSite) {
+                                    Text(
+                                        stringResource(R.string.action_report_site),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -231,6 +294,9 @@ private fun ReadingView(
     isSaved: Boolean
 ) {
     val recipe = content.recipe
+    // Only whether the keyboard is up for the note, so the cooking bar steps aside for it.
+    // Focus doesn't survive rotation anyway, so plain remember is right here.
+    var editingNotes by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 112.dp),
@@ -281,12 +347,19 @@ private fun ReadingView(
 
             item {
                 Text(recipe.name, style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.height(14.dp))
+                val domain = content.sourceDomain
+                if (domain != null) {
+                    SourceCredit(domain, onOpen = { actions.onOpenOriginal(recipe.sourceUrl) })
+                    Spacer(Modifier.height(4.dp))
+                } else {
+                    Spacer(Modifier.height(14.dp))
+                }
                 Times(recipe.prepTime, recipe.cookTime, recipe.totalTime)
                 Spacer(Modifier.height(16.dp))
                 ServesUnitsRow(
                     servings = content.servings,
                     yieldText = recipe.yield,
+                    words = content.words,
                     unitSystem = state.unitSystem,
                     onServingsChange = actions.onServingsChange,
                     onUnitSystemChange = actions.onUnitSystemChange
@@ -321,9 +394,20 @@ private fun ReadingView(
                     Text(step, style = MaterialTheme.typography.bodyLarge)
                 }
             }
+
+            // After the steps: the reading view still opens on the recipe, and a note like
+            // "needs 10 more minutes" is read once the method is.
+            item {
+                Spacer(Modifier.height(24.dp))
+                NotesSection(
+                    notes = state.notes,
+                    onNotesChange = actions.onNotesChange,
+                    onFocusChange = { editingNotes = it }
+                )
+            }
         }
 
-        if (content.instructions.isNotEmpty()) {
+        if (content.instructions.isNotEmpty() && !editingNotes) {
             Column(
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -377,6 +461,38 @@ private fun RecipeOverflowMenu(recipeName: String, onDelete: () -> Unit) {
             dismissButton = {
                 TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.action_cancel)) }
             }
+        )
+    }
+}
+
+/**
+ * Credits the site under the title: its domain in muted text, then "Open original" as a quiet
+ * paprika link to the page in the browser. Reading view only; cook mode has no room for it.
+ */
+@Composable
+private fun SourceCredit(domain: String, onOpen: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            domain,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
+        )
+        Spacer(Modifier.width(14.dp))
+        Text(
+            stringResource(R.string.action_open_original),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.tertiary,
+            maxLines = 1,
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .clickable(
+                    onClickLabel = stringResource(R.string.cd_open_original, domain),
+                    role = Role.Button,
+                    onClick = onOpen
+                )
         )
     }
 }

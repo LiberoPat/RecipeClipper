@@ -1,10 +1,12 @@
 package com.example.recipeclipper.fake
 
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -13,7 +15,8 @@ import kotlinx.coroutines.flow.map
  * A hand-written fake, not a mock: a recording fake reads better in a failure message than a
  * verification DSL. Backs history and recent with in-memory `MutableStateFlow`s so
  * a test can push a list and watch a ViewModel react; [importFromUrl] and [open] return
- * whatever the test stages; [setChecked], [delete] and [restore] record every call so tests
+ * whatever the test stages; [setChecked], [setNotes], [setCookProgress], [setServingsTarget], [delete] and [restore]
+ * record every call so tests
  * can assert on them.
  */
 class FakeRecipeRepository : RecipeRepository {
@@ -39,6 +42,18 @@ class FakeRecipeRepository : RecipeRepository {
     /** [id] to [checked] for every [setChecked] call, in order. */
     val setCheckedCalls = mutableListOf<Pair<Long, Set<Int>>>()
 
+    /** [id] to [notes] for every [setNotes] call, in order. */
+    val setNotesCalls = mutableListOf<Pair<Long, String>>()
+
+    /** [id] to progress for every [setCookProgress] call, in order. */
+    val setCookProgressCalls = mutableListOf<Pair<Long, CookProgress>>()
+
+    /** [id] to target for every [setServingsTarget] call, in order. */
+    val setServingsTargetCalls = mutableListOf<Pair<Long, Int?>>()
+
+    /** Staged answer for [runningTimers]. */
+    var runningTimersResult: List<StepAlarm> = emptyList()
+
     /** Every id [delete] was called with, in order. */
     val deleteCalls = mutableListOf<Long>()
 
@@ -59,6 +74,20 @@ class FakeRecipeRepository : RecipeRepository {
     override suspend fun setChecked(id: Long, checked: Set<Int>) {
         setCheckedCalls += id to checked
     }
+
+    override suspend fun setNotes(id: Long, notes: String) {
+        setNotesCalls += id to notes
+    }
+
+    override suspend fun setCookProgress(id: Long, progress: CookProgress) {
+        setCookProgressCalls += id to progress
+    }
+
+    override suspend fun setServingsTarget(id: Long, target: Int?) {
+        setServingsTargetCalls += id to target
+    }
+
+    override suspend fun runningTimers(): List<StepAlarm> = runningTimersResult
 
     override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? {
         deleteCalls += id

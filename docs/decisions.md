@@ -59,7 +59,7 @@ Exists today:
   `temperatureUnit` and `darkWhileCooking`; `SharedPrefsAppPreferences` stores
   each enum by name under its own key (`temperature_unit` for the newest one),
   same pattern as `unitSystem`.
-- Room (`data/local/`): database `recipe_clipper.db`, **version 2**, with the
+- Room (`data/local/`): database `recipe_clipper.db`, **version 6**, with the
   three tables from the schema section (named `recipes`, `lists`,
   `recipe_list_cross_ref`). The schema is exported to `app/schemas/`; commit
   it, it is what future migrations are written against, and never use
@@ -126,8 +126,9 @@ Exists today:
   seen once shows offline, as Coil's do on Android.
 - `di/` — `DatabaseModule` (Room and the DAOs) and `SourceModule` (remote
   sources; the Reddit one joins in phase 4).
-- Cook mode is in memory only: progress and timers survive rotation and leaving
-  cook mode but not the app being closed. Ticked ingredients do persist.
+- Cook progress, timers and the chosen servings are saved as they change and
+  survive the app being closed or killed (#10; see "Background timers and
+  saved cook progress").
   `data/model/StepTimers` finds the duration a step states (lower bound of a
   range, null if none); the ViewModel runs the countdowns against wall-clock
   deadlines, several at once, and `TimerAlerts` plays three beeps on the alarm
@@ -218,7 +219,11 @@ Exists today:
   Re-sharing a deleted link after the fact creates a new row with a new id;
   correct, since the old one was actually deleted.
 - Unit conversion (also not in the original build order): `UnitSystem` is
-  AS_WRITTEN (default), GRAMS, OUNCES or METRIC. `data/model/UnitConverter`
+  AS_WRITTEN (default), OUNCES or METRIC. It was four options until #17
+  dropped GRAMS, which differed from METRIC only in leaving liquids, spoons
+  and cups of liquids as written; a stored GRAMS reads as METRIC
+  (`UnitSystem.fromStoredName`, iOS `UnitSystem(storedName:)`), since its
+  users wanted weights. `data/model/UnitConverter`
   does the work, `IngredientDensities` holds the weights, and `Units.kt` holds
   the unit table and regex fragments. The ViewModel renders each ingredient as
   scale first, then convert, so amounts always match the chosen servings.
@@ -230,9 +235,8 @@ Exists today:
   `SettingsScreen` + `SettingsViewModel` (`@HiltViewModel`, injects
   `AppPreferences` directly rather than through the repository, since these
   are app-wide defaults, not any one recipe's). Three sections, each behind a
-  `SectionHeading`: Units (the four `UnitSystem` options as `RadioButton`
-  rows, then "Also convert liquids" as a `Switch`, shown only for Grams and
-  Ounces), Oven temperature (`TemperatureUnit`'s three options as
+  `SectionHeading`: Units (the three `UnitSystem` options as `RadioButton`
+  rows, then "Also convert liquids" as a `Switch`, shown only for Ounces), Oven temperature (`TemperatureUnit`'s three options as
   `RadioButton` rows), Appearance ("Dark while cooking" as a `Switch`).
   Exclusive choices are always `RadioButton`s and independent toggles are
   always `Switch`es — never a bare ✓ for either, which is the reason this
@@ -636,8 +640,7 @@ Unit conversion rules (each one exists to avoid showing a confident wrong number
   unit: the `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative, not just the last. Bon Appétit, Epicurious, Delish and Budget
   Bytes all write units this way.
-- GRAMS and OUNCES leave pourable liquids as written unless `convertLiquids` is
-  on. METRIC ignores that flag: liquids, spoons and cups become ml (a volume
+- OUNCES leaves pourable liquids as written unless `convertLiquids` is on. METRIC ignores that flag: liquids, spoons and cups become ml (a volume
   to volume conversion, exact and density-free), and known solids become g.
   METRIC treats 1 cup as 240 ml, 1 tbsp as 15 ml and 1 tsp as 5 ml.
   Exception: in METRIC a spooned or cupped amount of anything that is not a
@@ -694,7 +697,7 @@ com.example.recipeclipper/
 │   ├── RepositoryModule.kt         @Binds the repositories and AppPreferences
 │   ├── SourceModule.kt             remote sources
 │   ├── ClockModule.kt              the real Clock
-│   └── PlatformModule.kt           Connectivity and ErrorLog
+│   └── PlatformModule.kt           Connectivity, ErrorLog, TimerAlarmScheduler
 ├── data/
 │   ├── Connectivity.kt             online state; AndroidConnectivity is the real one
 │   ├── ErrorLog.kt                 where swallowed database errors are logged
@@ -775,7 +778,7 @@ markup, which an earlier note here had missed.
 
 ## Build order (history)
 
-The remaining work in phases 3 and 4 is tracked as issues #10 and #11.
+The remaining work in phase 4 is tracked as issue #11.
 
 1. **MVVM refactor, no new features.** Move current logic into ViewModel +
    repository. Done when: share flow behaves identically AND rotating
@@ -787,8 +790,8 @@ The remaining work in phases 3 and 4 is tracked as issues #10 and #11.
    mode lands here too — it's a state on the recipe screen, and both it and
    list membership depend on the same persisted recipe. (An in-memory version
    already exists; see Current state. What phase 3 adds is persisting it.)
-   **Still to do in this phase:** persisted cook-mode progress, persisted
-   servings, and background timers.
+   Persisted cook-mode progress, persisted servings and background timers
+   are done too (#10).
    **Background timers land here too, deliberately**, not before. An alarm
    that fires after the process has been killed would otherwise notify about
    a timer the app has no record of, so a background alert needs running
@@ -821,30 +824,261 @@ has been run on an emulator and passes.
   offline, and database errors" in Current state). Don't chase a
   user-agent that "works" — there isn't one.
 
-## Background timers: what works and what doesn't
+## Rendered fallback: an off-screen browser after the retry (#36)
 
-The fix is issue #10.
+When the direct fetch and its one retry still end `Blocked`, or the page
+loaded with `NoRecipeFound`, the repository loads the page once in an
+off-screen browser (Android `WebView`, iOS `WKWebView`), takes
+`document.documentElement.outerHTML`, and runs it through the same pure
+parsers (JSON-LD, then microdata).
 
-- **Cook-mode timers in the background.** Less is broken here than it looks,
-  so be precise before "fixing" it. Deadlines are wall-clock
-  (`clock.now() + ms`) and the tick loop recomputes remaining time from
-  `clock.now()` rather than decrementing, so elapsed time is already correct
-  across a pause — freeze the app for three minutes and it shows the right
-  number on return. Cook mode also holds `FLAG_KEEP_SCREEN_ON`, so the case
-  this app is built around (phone propped on the counter, app in front)
-  works today. What is unreliable is the *alert*: the tick job runs in
-  `viewModelScope`, so while the app is merely stopped the process often
-  survives and the beep fires, but under Doze or a low-memory kill it
-  doesn't — unreliable rather than cleanly broken, which is worse, because
-  you can't learn whether to trust it. And when it does fire there is no
-  notification, so it's three beeps from nowhere with nothing to tap.
-  The intended fix (phase 3) is `AlarmManager.setAlarmClock()` plus a
-  notification, **not** `setExactAndAllowWhileIdle`: `setAlarmClock` is
-  Doze-exempt and needs no special permission, which sidesteps the
-  `SCHEDULE_EXACT_ALARM` / Play-policy question entirely, at the cost of an
-  alarm icon in the status bar — honest, since there really is a pending
-  alarm. It still needs `POST_NOTIFICATIONS` on API 33+, which would be the
-  app's first runtime permission prompt. A foreground service with a live
-  countdown notification was the considered alternative; rejected for now as
-  a permanent notification plus a `FOREGROUND_SERVICE_*` type declaration
-  that Play reviews.
+- **Why.** Bot protection targets plain HTTP clients, and a real browser
+  engine running the site's JavaScript passes many of its checks. Pages that
+  build their recipe data in JavaScript have none in the fetched HTML. This
+  is not the user-agent chase warned against above: the web view keeps its
+  engine's own user agent. Paprika extracts from pages loaded in its own
+  browser the same way.
+- **Why after the retry, and only for those two causes.** The direct fetch
+  is cheap and usually works; the web view costs seconds and memory. `Offline`
+  would fail the same way, a timeout means the network is dead (the rule that
+  a dead Wi-Fi costs one timeout still holds), and other `FetchFailed` causes
+  (DNS, TLS) aren't what a browser fixes.
+- **Why a rendered page with no recipe keeps the original cause.** A block
+  that the browser also can't pass is still a block, and its copy ("try
+  again in a minute") is the right advice. Showing `NoRecipeFound` instead
+  would hide it.
+- **Shape.** `RenderedPageSource` returns HTML, nothing more, so the
+  repository stays `Context`-free and testable with a fake, and parsing stays
+  pure. The implementations need the main thread (and on Android a
+  `Context`), so they sit beside `AndroidConnectivity` / `PathConnectivity`,
+  bound in Hilt and `AppContainer`. The repository caps the whole render at
+  20 s (`RENDER_TIMEOUT_MS` / `renderTimeout`); the implementation waits a
+  1.5 s settle after the last page load (a navigation restarts it) before
+  reading the HTML, runs JavaScript with DOM storage, skips images, and
+  destroys the web view on every way out, cancellation included. Nothing is
+  shown to the user: capture stays frictionless, just slower.
+- **On Android, load errors aren't handled early:** a failed page still ends
+  in `onPageFinished` on the WebView's error page, which parses as no recipe,
+  and finishing on `onReceivedError` would also end a load whose first
+  navigation a script redirect aborted. iOS has no such page, so
+  `didFail`/`didFailProvisionalNavigation` finish at once, except for the
+  cancelled navigation a redirect causes. A crashed renderer
+  (`onRenderProcessGone`, `webViewWebContentProcessDidTerminate`) ends the
+  render without taking the app down.
+- **Limits.** Not a guarantee: some checks detect web views or need a click
+  (a CAPTCHA), and still end `Blocked`; a later step could show the page to
+  the user. The web view has the app's cookies, not the user's browser
+  logins, so paywalls still fail. Not inside the iOS share extension, for
+  memory (#19); Safari shares could use Safari's own page instead (#35).
+- **Checked only by tests so far.** The repository rules are pinned by fakes
+  on both platforms; the web views themselves need a device check on a page
+  whose recipe data appears only after JavaScript runs, and on one that
+  blocks the plain fetch.
+
+## Background timers and saved cook progress (#10)
+
+Built on both platforms. Before this, cook progress, timers and the chosen
+servings were in memory only, and a timer's alert depended on the process
+surviving: under Doze or a low-memory kill the beep never came, and when it
+did there was nothing to tap.
+
+- **What is saved.** Two nullable columns on `recipes` (Room version 6, iOS
+  `user_version` 5): `cookState`, a JSON `CookProgress` (cook mode on, current
+  step, done steps, and each timer's total, remaining seconds and, while it
+  runs, its wall-clock deadline `endsAt`), and `servingsTarget` (null = the
+  recipe's own yield). One column rather than a timers table, so undo-delete
+  and the re-share upsert carry it with the row. `ingredientsExpanded` and
+  `alerted` are screen state and aren't saved.
+- **Every cook action writes, in order.** Start, exit, select, done, and
+  timer start, pause, resume and reset each save the whole `CookProgress`
+  through one queue (Android: a queue drained by one job, each write
+  `NonCancellable`, drained again in `onCleared`; iOS: a chain of tasks that
+  hold the repository, not the ViewModel), so rapid taps can't land out of
+  order and a tap just before leaving still lands. A running timer is saved
+  by its deadline, so ticks never write. A `Channel` was tried first: it
+  drops an element handed to a receiver that is cancelled before running,
+  which is exactly the last tap before leaving.
+- **Re-share.** Cook progress is kept only if the steps are unchanged (its
+  indexes point into them, like ticked ingredients); the chosen servings are
+  always kept.
+- **Restoring.** On opening, a timer whose deadline is still ahead resumes
+  from it (it kept counting while closed) and its alarm is rescheduled,
+  which also recovers one lost to a force-stop. One whose deadline passed
+  shows finished and already alerted: the background alert announced it, so
+  no stale beep on reopening. Indexes past the last step are dropped.
+- **Android alert.** One `AlarmManager` alarm per running timer
+  (`timers/AndroidTimerAlarmScheduler`), to `TimerAlarmReceiver`, which posts
+  a notification (channel "Cook timers", category alarm; a tap opens the
+  recipe in cook mode through `recipe/{id}?cook=true`) only if the database
+  still has that timer running with that deadline, so a reset timer, a
+  deleted recipe or a re-share that changed the steps never rings, and only
+  if that recipe isn't on screen, where the in-app beep sounds instead. A
+  timer that reaches zero in the app keeps its alarm, since cancelling would
+  only race it. `TimerBootReceiver` reschedules after a reboot or an app
+  update.
+- **Exact alarms: `setAlarmClock()` when allowed, else
+  `setAndAllowWhileIdle()`. No Settings prompt (owner's decision).** Issue #10
+  assumed `setAlarmClock()` needs no permission. It does: apps targeting API
+  31+ need `SCHEDULE_EXACT_ALARM`, and for apps targeting 33+ Android 14
+  denies it by default until the user allows "Alarms & reminders". So the
+  alert is exact on Android 7–13, and on 14+ only if the user has allowed it
+  (also the status-bar alarm icon then). Otherwise it is inexact, still fires
+  in Doze, and can be minutes late. `USE_EXACT_ALARM` is Play-restricted to
+  alarm and calendar apps and isn't used. A foreground service with a live
+  countdown was the alternative; rejected as a permanent notification plus a
+  `FOREGROUND_SERVICE_*` type that Play reviews.
+- **Notification permission.** `POST_NOTIFICATIONS` (API 33+) is asked the
+  first time a timer starts, once (remembered in its own preferences file,
+  `permission_prompts`). Refused, the timer still runs and the in-app beep
+  still sounds while the recipe is open. On iOS, notification authorisation
+  is asked on the first timer start in the same way.
+- **iOS alert.** A local notification per running timer at its deadline
+  (`NotificationTimerScheduler`). With no receiver to re-check the database,
+  opening a recipe replaces all its pending alerts with its running timers',
+  and pause, reset and delete remove them. `NotificationRouter` opens cook
+  mode on a tap and suppresses the banner while that recipe is on screen.
+  Known gap: deleting a recipe from History with a timer running leaves its
+  pending notification.
+
+## Export and import (#26)
+
+The owner's decision: import **merges, never replaces**, and deletes nothing.
+
+- **One file, versioned.** `format: "recipe-clipper-backup"`, `formatVersion: 1`,
+  then `recipes`, `lists` and `memberships`. The canonical example is
+  `shared/fixtures/backup/backup-v1.json`; both platforms' tests decode it and
+  plan the same merge from it. Readers ignore keys they don't know, so a later
+  feature (the meal plan, #46; sync, #53) adds a section or a field without a
+  version bump. Bump only when an older app would *misread* a newer file; an
+  older app refuses a newer version (`NewerVersion`) rather than half-import it.
+- **Stable ids.** Recipes and lists got a `uid` column (Room 4 / iOS
+  `user_version` 3, backfilled with random UUIDs), and the file names records by
+  it; memberships refer to uids, never row ids. A re-share keeps a recipe's uid
+  and a rename keeps a list's, so a list renamed on one phone still finds itself
+  on the other, and sync can build on the same identity.
+- **What's left out:** cached photos (only `imageUrl`), and cook progress
+  (current step, timers, chosen servings), which is a moment in one kitchen
+  rather than part of the recipe, even once #10 persists it.
+- **Merge rules** (`BackupMerger`, pure, the same on both platforms):
+  recipes match by the cleaned `sourceUrl`; a recipe already here keeps its
+  content, ticks and last view, gains the imported memberships, and gains the
+  imported note only if it has none. Favorites maps to Favorites by
+  `isFavorites`, never by name, and a user list called "Favorites" stays a user
+  list. Other lists join the same uid, else the same trimmed, case-insensitive
+  name, else they're created after the existing lists. Memberships are
+  insert-or-ignore, so an existing `addedAt` stands.
+- **History cap: free slots, not a cull.** The issue suggested running the
+  normal cull after import, but that could delete the user's own older history,
+  which "never delete" forbids. So listed recipes always come in, and unlisted
+  ones fill only the places free under 50 (most recently viewed first); the rest
+  are skipped and counted in the summary.
+- **One transaction.** Any failure (a bad file, a database error) writes
+  nothing, and the Settings screen shows the cause.
+
+## Shared tables, native logic (#9)
+
+Every feature was built twice and kept at parity by hand, and the language
+work (#12–#16) would have added a word table per language, written twice. The
+owner's decision on #9: stay native on both platforms (no Kotlin
+Multiplatform, which would cost iOS its no-dependency property and need
+multiplatform replacements for Jsoup and org.json), and move the data, not the
+code. The tables are JSON under `shared/tables/`: `url.json` (tracking
+parameters) and, per language, `en/densities.json`, `units.json`,
+`timers.json`, `temperature.json`, `yield.json`, `ranges.json`,
+`sections.json` and (since #48) `names.json`. Each has a `schemaVersion` and an `about` saying how the code
+reads it.
+
+- Android adds `shared/` as a `main` Java resource directory, so the pure model
+  code reads the tables with `getResourceAsStream`: no `Context`, and the JVM
+  tests read exactly what the APK ships. iOS bundles the folder as a folder
+  reference (`project.yml`) and reads it from `Bundle.main`.
+- Word lists are regex fragments where the code builds a regex from them, so
+  the patterns come out character for character as before; symbols (dashes,
+  degree signs, the F and C letters) stay in the code, being no language's.
+- A missing or malformed table is a build mistake, so both loaders fail loudly.
+  `SharedTablesTest(s)` load every table and check each on-disk file is
+  covered; `DifferentialCorpusTest(s)` passed unchanged across the move.
+- Left in code as English by #9, then moved to the tables by #14:
+  `IngredientScaler`'s "plus"/"and" continuation and the words the app writes
+  out (`StepTimers.label`'s "hr" and "min", the "h"/"m" of times).
+
+## The recipe's language picks the words (#14)
+
+Every piece of text understanding was English, and merging languages into one
+set of words would collide ("C" is a cup in English and Celsius elsewhere). So
+each language has its own folder, `shared/tables/<language>/`, and a recipe is
+read with its own language's tables only.
+
+- **The language is the recipe's, never the phone's:** JSON-LD `inLanguage`
+  (a tag, or a schema.org Language's `alternateName`), else the page's
+  `<html lang>`, else English. Detection from the recipe's name and ingredient
+  lines (`language.json`'s `detect` words: a language needs at least 3 hits and
+  more than twice the runner-up's) fills in when nothing is declared, and **the
+  owner's decision on #14: when the words clearly say another language, they
+  beat the declared one; ambiguous words keep it.** #15's survey found
+  `inLanguage` on 1 site in 25 and `<html lang>` on nearly all, but wrong on
+  one (mulherportuguesa.com says `en` on Portuguese pages).
+- **Detection knows more languages than the app reads.** de, es, fr, it and pt
+  have a `language.json` only (`LanguageWords.DETECTED` vs `SHIPPED`), so a
+  German page labelled `en` is recognised as German and shown as written,
+  rather than read with English rules. The words avoid ones the languages
+  share ("de", "sal", "sopa"), and German's `EL`/`TL` are case-sensitive
+  (Spanish "el").
+- **A language with no tables leaves everything as written:** no scaling,
+  conversion, temperature rewrite, timer or servings stepper, no phrase times
+  (ISO times still read), no condensed-section skipping. English rules on a
+  German line would scale "2 bis 3 Eier" to "4 bis 3 Eier".
+- **Stored:** `recipes.language`, the normalised tag ("en-us"), because the
+  declared language can't be rebuilt from what was stored (Room version 5, iOS
+  `user_version` 4, after #26's uids took 4 / 3). Recipes stored before are NULL and are detected from their
+  words when shown; a re-share fills it in. Lookup is by primary subtag, so a
+  regional table (fr-CA's 250 ml `tasse`) can come later without a migration.
+- **API:** `LanguageWords` (both platforms) loads a language's tables and
+  caches each parser's compiled patterns per language. Every parser takes a
+  `words` argument defaulting to English, so the differential corpus and every
+  English caller are byte-for-byte unchanged; nil means "no words".
+  `IngredientName` and `IngredientRendering` (#48) take the recipe's words too,
+  and `names.json` is a per-language table; no words means no name, so a line
+  is never matched to the pantry by another language's rules.
+- New tables: `amounts.json` (mixed-number joiners, "2 and 1/2", which make
+  the quantity pattern itself per language; compound joiners; size words),
+  `durations.json`
+  (phrase times and the "h"/"m" written back), `language.json` (detection
+  words); `timers.json` gained each unit's button label. Symbols (dashes,
+  degree signs, `%`, `cm`/`mm`, `+`, the fraction slash `⁄`) stay in the code.
+  `IngredientScaler.parse` holds no words: it drops whatever word the language's
+  quantity pattern already allowed between the whole number and the fraction.
+- An empty word list never matches (`SharedTables.alternation` gives `(?!)`),
+  so a language that lacks, say, range words can't turn an empty alternative
+  into a match everywhere.
+
+## Ingredient names and shared rendering (#48)
+
+The first building blocks of the meal plan, pantry and groceries (#46), pure
+and on both platforms.
+
+- `IngredientName.of(line)` gives the ingredient's name in a line
+  ("2 large eggs, beaten" is "eggs"), or null when it can't tell. It reuses
+  the parsing that already reads amounts: `IngredientScaler.LEADING` and
+  `NOT_AN_AMOUNT`, the converter's unit, continuation ("plus 2 tbsp") and
+  slash-measure regexes, and the density table's `stripParentheses` and
+  `headPhrase`, made `internal` with no change in behaviour. Its own English
+  words (sizes and containers dropped from the front, preparation words from
+  the end, the phrases a name ends before, and the conjunctions) are in
+  `shared/tables/en/names.json`.
+- It answers "which ingredient", never "how much", and prefers no name to a
+  wrong one: a heading, a leftover digit ("juice of 1 lemon") or two
+  ingredients ("salt and pepper", "butter or margarine") give null, unless the
+  conjunction is inside a density-table alias ("half and half"). There's no
+  singulariser: "eggs" and "egg" are different names.
+- `IngredientName.matches(a, b)` is the density table's end-of-name rule
+  (`IngredientDensities.endsWithName`, now shared with `find`): "unsalted
+  butter" matches "butter", "butter beans" doesn't. Both sides go through
+  `headPhrase`, so a typed "Butter" works.
+- `IngredientRendering.render(lines, factor, system, convertLiquids)` is
+  `RecipeViewModel`'s old private `render`, moved unchanged (scale, then
+  convert with the original line's decimal separator), so the week's
+  shopping view (#46) shows lines exactly as the reading view does.
+- The differential corpus pins both: every `Ing` row now ends with the
+  Kotlin's `IngredientName.of`, and its rendered columns are computed through
+  `IngredientRendering`.

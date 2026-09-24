@@ -3,6 +3,7 @@ package com.example.recipeclipper.di
 import android.content.Context
 import androidx.room.Room
 import com.example.recipeclipper.data.local.RecipeDatabase
+import com.example.recipeclipper.data.local.dao.BackupDao
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import dagger.Module
@@ -22,7 +23,7 @@ object DatabaseModule {
         Room.databaseBuilder(context, RecipeDatabase::class.java, RecipeDatabase.NAME)
             .addCallback(RecipeDatabase.SeedBuiltInLists)
             // Never fallbackToDestructiveMigration: every version bump gets a real migration.
-            .addMigrations(RecipeDatabase.MIGRATION_1_2)
+            .addMigrations(*RecipeDatabase.ALL_MIGRATIONS)
             .build()
 
     @Provides
@@ -30,4 +31,7 @@ object DatabaseModule {
 
     @Provides
     fun listDao(db: RecipeDatabase): ListDao = db.listDao()
+
+    @Provides
+    fun backupDao(db: RecipeDatabase): BackupDao = db.backupDao()
 }

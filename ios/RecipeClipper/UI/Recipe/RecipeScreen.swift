@@ -9,6 +9,7 @@ struct RecipeScreen: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
+    @Environment(\.openURL) private var openURL
     @State private var sheetOpen = false
     @State private var confirmingDelete = false
 
@@ -38,9 +39,12 @@ struct RecipeScreen: View {
                     // Every error offers "Try again", no-recipe included: a café or hotel captive
                     // portal serves its login page, which parses as a page with no recipe, and
                     // the same link works once you're through it.
-                    Button(Strings.tryAgain, action: vm.onRetry)
-                        .buttonStyle(PrimaryButtonStyle())
-                        .padding(.top, 16)
+                    // Side by side; stacked when an accessibility text size won't fit them.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) { errorActions(state) }
+                        VStack(alignment: .leading, spacing: 8) { errorActions(state) }
+                    }
+                    .padding(.top, 16)
                 }
             }
         }
@@ -62,11 +66,17 @@ struct RecipeScreen: View {
         }
         .timerAlerts(state.cook.timers, onAlerted: vm.onTimerAlerted)
         .task(id: recipeId) {
-            if let recipeId { saveVM.setRecipe(recipeId) }
+            if let recipeId {
+                saveVM.setRecipe(recipeId)
+                VisibleRecipe.id = recipeId
+            }
             #if DEBUG
             if recipeId != nil, DebugLaunch.autoCook { vm.onCookStart() }
             #endif
         }
+        // While this recipe is on screen its timers beep here instead of showing a banner.
+        .onAppear { if let recipeId { VisibleRecipe.id = recipeId } }
+        .onDisappear { if let recipeId { VisibleRecipe.clear(recipeId) } }
         // The recipe is gone the moment the delete lands; leave the screen.
         .onChange(of: state.deleted) { _, deleted in
             if deleted { dismiss() }
@@ -87,6 +97,19 @@ struct RecipeScreen: View {
         }
     }
 
+    /// "Try again", and beside it "Report this site" only for a page with no recipe (the
+    /// ViewModel decides): the one error that means "unsupported" rather than "try again".
+    /// Secondary, so it reads as a text action next to the filled button.
+    @ViewBuilder
+    private func errorActions(_ state: RecipeUiState) -> some View {
+        Button(Strings.tryAgain, action: vm.onRetry)
+            .buttonStyle(PrimaryButtonStyle())
+        if let report = state.reportSiteUrl.flatMap(URL.init(string:)) {
+            Button(Strings.reportSite) { openURL(report) }
+                .buttonStyle(TextActionStyle(color: Palette.muted))
+        }
+    }
+
     /// Bookmark (filled once in any list), share, and an overflow holding Delete. Reading view
     /// only: in cook mode the top bar is Exit + the step counter.
     @ViewBuilder
@@ -98,7 +121,7 @@ struct RecipeScreen: View {
         .accessibilityLabel(saved ? Strings.inAList : Strings.saveToList)
         .accessibilityIdentifier("recipe.bookmark")
 
-        if let text = vm.shareText() {
+        if let text = vm.shareText(labels: Strings.shareTextLabels) {
             ShareLink(item: text, subject: Text(content.recipe.name), preview: SharePreview(content.recipe.name)) {
                 Image(systemName: "square.and.arrow.up")
             }
@@ -128,6 +151,7 @@ private struct StatusView<Body: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
+        .readableColumn()
         .padding(.top, 24)
     }
 }

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "IngredientScaler's and UnitConverter's amount words. mixedJoiners: regex fragments for the word between a whole number and its fraction ('2 and 1/2', '1 and ½'). continuation: regex fragments, each ending in its own whitespace, that join the two parts of a compound amount ('1 cup plus 2 tbsp'); the '+' is in the code. sizes: regex fragments, each ending in its own boundary, for what makes a leading number a size rather than an amount ('1-inch piece'); '%', 'cm' and 'mm' are in the code. Symbols such as the fraction slash '⁄' (U+2044) are in the code too.",
+  "mixedJoiners": ["and"],
+  "continuation": ["plus\\s+", "and\\s+"],
+  "sizes": ["inch(?:es)?\\b"]
+}

@@ -10,7 +10,9 @@ the commands; iOS test commands and the simulator rules are in
 Tests: `app/src/test/` has the JVM ones (`IngredientScalerTest` scaling,
 servings and yield parsing; `UnitConverterTest`; `TemperatureConverterTest`;
 `StepTimersTest`; `ConvertersTest`; `TimeAgoAndUrlInputTest`; `UrlCleanerTest`,
-now also covering the http→https upgrade; `JsonLdRecipeParserTest`, covering
+now also covering the http→https upgrade; `SourceDomainTest`, the domain the
+reading view credits (one leading "www." dropped, other subdomains kept);
+`JsonLdRecipeParserTest`, covering
 entity/tag stripping, blank-after-strip lines being dropped, `<br>`-split
 steps staying separate, and the deep-JSON depth guard; `RecipeShareTextTest`,
 covering the labelled-vs-unlabelled serves line (built from a `ServingsScale?`),
@@ -36,20 +38,43 @@ call-recording fake would prove only half of it. `recipeCount` and
 `containsRecipe` are derived from that state exactly as the SQL derives them,
 so a `recipeCount` staged on a list literal is ignored — stage membership
 instead. The error handling has its own: `DefaultRecipeRepositoryRetryTest`
-(the retry rule, the saved-copy fallback, cancelling during the pause),
+(the retry rule, the saved-copy fallback, cancelling during the pause, and
+the rendered fallback after it over a `FakeRenderedPageSource`: rendered once
+and only after `Blocked` or `NoRecipeFound`, never for `Offline` or a
+timeout, the 20 s cap, a rendered page with no recipe keeping the cause, and
+cancelling mid-render writing nothing; iOS has the same cases in
+`DataRepositoryTests`),
 `BlogRecipeSourceStatusTest` (which statuses and exceptions become which
 cause, against a fake `Connectivity`), `DatabaseErrorTest` (every repository
 call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
+Export and import (#26): `BackupJsonTest` and `BackupMergerTest` read the
+shared fixtures in `shared/fixtures/backup/` (a test resource dir on Android,
+bundled resources on iOS), so both platforms decode the same file and plan the
+same merge; `DefaultBackupRepositoryTest` covers the causes and that a failed
+import writes nothing; `SettingsViewModelTest` covers the Your recipes rows.
+The device test `BackupDaoTest` runs the import transaction against real SQL
+(IGNORE keeps `addedAt`, rollback on a bad file); iOS's `BackupDaoTests` do the
+same on in-memory SQLite.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to
 `app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
 (`app/build.gradle.kts` declares the Swift file as a test input, so editing
 it alone reruns the tests). `SiteReportTest` covers the weekly site check's
-report and URL list offline (see CI below).
+report and URL list offline (see CI below). `SiteReportLinkTest` pins the
+"Report this site" issue link byte for byte (percent-encoding, the cleaned
+link), and `RecipeViewModelTest` offers it only for `NoRecipeFound` on a
+shared link. The corpus's ingredient rows end with real lines (#33),
+taken from sites' JSON-LD `recipeIngredient` (US, UK, Australian, French,
+Italian, Spanish, Portuguese, Brazilian, Dutch, German, Austrian and Swiss
+sites; a comment names each site), so the scaler and converters are pinned on
+what recipes actually write, not only on hand-written lines. A real line that
+shows a wrong number isn't pinned: it's fixed, or left out with a `bug` issue.
+To add some, fetch the page, copy only the ingredient lines (the repo is
+public), and add them as input-only rows under their site's comment.
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -66,22 +91,50 @@ and a recipe out of its last list staying in history. It also pins the rule
 that a seeded list which isn't Favorites *can* be deleted, so a guard that
 regressed to `isBuiltIn = 0` would fail rather than quietly return.
 
+`WebViewRenderedPageSourceTest` runs the rendered fallback's real `WebView`:
+a `data:` URL page (no network) whose script adds its recipe JSON-LD 300 ms
+after the load event must come back from `render` with that JSON-LD in the
+HTML, and parse through `BlogRecipeSource.parse`. It proves the settle wait
+and the `outerHTML` decoding; a JVM test can't host a WebView.
+
 `MigrationTest` uses Room's `MigrationTestHelper` (hence
 `androidTestImplementation("androidx.room:room-testing")`) to open a real
 version-1 database from the exported schema and run `MIGRATION_1_2` against
 it: Breakfast and Snacks arrive, an existing recipe keeps its title,
 ingredients, `lastViewedAt` and list membership, and a user-created list keeps
-its place after the seeded block. This is what makes "never use destructive
-migration" checkable rather than an intention.
+its place after the seeded block. `MIGRATION_2_3` (the `notes` column, #27)
+is run against a real version-2 database the same way: the recipe keeps its
+content, ticks and membership, has no note, and a note written afterwards
+survives a re-share. `MIGRATION_3_4` (the `uid` columns, #26) backfills a
+distinct UUID on every recipe and list and keeps the rest of each row.
+`MIGRATION_4_5` (the `language` column, #14) is run against a real version-4
+database: content, note and uid kept, no language, and a re-share fills it in;
+a version-1 file also goes to 5 in one open. This is
+what makes "never use destructive migration" checkable rather than an
+intention.
 
-**All 89 device tests have been run on an emulator and pass**: 26
-`RecipeDaoTest`, 22 `ListDaoTest`, 3 `MigrationTest`, and 38 Compose UI tests
-(see below).
+**The device tests have been run on an emulator and pass**: `RecipeDaoTest`,
+`ListDaoTest`, `MigrationTest` and the Compose UI tests (see below), including
+those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).
+`RecipeSourceCreditTest` (the source credit under the recipe title) was
+added after that run and has so far only been compiled.
+
+The cook-persistence device tests (#10: the cook-state migration in
+`MigrationTest`, and the cook-state cases in `RecipeDaoTest`) have been run on
+the agents' emulator (Android 17) and pass. A timer alarm was also checked end to end there: a
+recipe seeded with a running timer, opened through the notification's
+`OPEN_COOK` intent, came back in cook mode on the saved step with the timer
+recomputed from its deadline. `AlarmManager` held the alarm at that deadline,
+and with the app in the background the "Time's up" notification posted. It
+came 44 s late, which is the expected inexact alarm on Android 14+ without
+"Alarms & reminders", under battery saver. Still to check on a device: a
+process kill mid-timer, a reboot, Doze, denying the notification permission,
+and the iOS notification (background, lock screen, tap).
 
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
 `MigrationTestHelper` reads the exported JSON from the test APK's **assets**,
 not from the project directory. That is what
-`sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")` in
+`sourceSets.getByName("androidTest").assets.directories += "$projectDir/schemas"` in
 `app/build.gradle.kts` is for. Without it every migration test fails with
 `FileNotFoundException: Cannot find the schema file in the assets folder`,
 which reads like a broken migration and is really a missing file — don't go
@@ -90,7 +143,8 @@ hunting in the migration when that appears.
 **Compose UI tests** (`androidx.compose.ui:ui-test-junit4`, plus
 `debugImplementation("androidx.compose.ui:ui-test-manifest")` for the empty
 Activity `createComposeRule` launches): `HomeScreenTest` (12),
-`SaveToListBottomSheetTest` (12) and `ListDetailScreenTest` (14). They exist
+`SaveToListBottomSheetTest` (12), `ListDetailScreenTest` (14) and
+`RecipeErrorScreenTest` ("Report this site" on the no-recipe error only). They exist
 because every ViewModel behind Home was already covered and the whole suite
 stayed green through a duplicate-key crash that made the app unusable — that
 bug lived entirely in the view.
@@ -99,7 +153,7 @@ No Hilt in these. Every screen takes its ViewModel as a parameter defaulting
 to `hiltViewModel()`, so a test builds a real ViewModel over a fake repository
 and passes it in; what runs is the real repository-to-ViewModel-to-pixels
 wiring. The fakes are shared with the JVM tests through
-`sourceSets.getByName("androidTest").java.srcDir(".../test/java/.../fake")` —
+`sourceSets.getByName("androidTest").kotlin.directories += ".../test/java/.../fake"` —
 only `fake/`, since the helpers beside it need kotlinx-coroutines-test and
 have no business on a device.
 
@@ -125,18 +179,38 @@ Three things that cost real time and will again:
   every `SemanticsProperties.Text` in the tree — before changing production
   code.
 
-Still without Android UI tests: the recipe screen itself (reading and cook
-views, the bookmark icon, share), History (search, swipe-to-dismiss, the undo
-snackbar), the Lists screen, and the Settings screen. The iOS UI tests
-(`ios/RecipeClipperUITests`, 61 tests) do cover Home, History (search,
-swipe-to-delete, the batched undo), Settings, list detail, the save-to-list
-sheet with the bookmark it fills, and the import error screens. Cook mode and
-sharing have no UI tests on either platform.
+Also `RecipeScreenTest` (reading view, servings and units, bookmark, delete,
+and the share text after scaling and converting through the UI; the source
+credit has its own `RecipeSourceCreditTest`, and the import error screen,
+including "Report this site", has `RecipeErrorScreenTest`), `CookModeTest`
+(step states, tap to jump, "Done — next step", timers), `HistoryScreenTest`
+(search, swipe-to-dismiss, the batched undo snackbar) and `ListsScreenTest`.
+`RecipeScreenFixture` gives the recipe tests a `Clock` the test moves
+forward, so a 20-minute timer finishes as soon as the test says so; the
+ViewModel's 250 ms tick is real time, so wait with `compose.waitUntil`, not a
+bare assert. Done steps are only drawn struck through, not exposed to
+semantics, so `isStruckThrough()` reads the text's layout style. Share itself
+opens the system chooser, so the tests stop at `RecipeViewModel.shareText()`.
 
-Two dependency versions are pinned on purpose: `navigation-compose` 2.7.7 and
-`hilt-navigation-compose` 1.2.0. The newest releases need a newer Compose than
-the BOM in use and would pull in a mix of Compose versions. Bump them together
-with the BOM.
+Still without Android UI tests: the Settings screen. The iOS UI tests
+(`ios/RecipeClipperUITests`) cover Home, History (search, swipe-to-delete, the
+batched undo), Settings, list detail, the save-to-list sheet with the bookmark
+it fills, the source credit, the import error screens (including "Report this
+site" opening Safari) and cook mode (`CookModeUITests`, on the `cook` seed
+scenario). XCUITest drives the app from outside and can't move its clock, so
+the one timer that has to finish there is a real 3-second step. The share
+sheet is left to the hosted `RecipeViewModelTests`, which pin the exact share
+text.
+
+`navigation-compose` has no BOM of its own and is built against a particular
+Compose: bump it with the Compose BOM, or the app pulls in a mix of Compose
+versions. `hiltViewModel()` comes from `hilt-lifecycle-viewmodel-compose`
+(the copy in `hilt-navigation-compose` is deprecated).
+
+The Compose UI tests still use the v1 `createComposeRule`, which Compose 1.12
+deprecates (the one compiler warning left). The v2 rule runs on a
+`StandardTestDispatcher` instead of an unconfined one, so moving to it can
+change timing; do it with a device run to check.
 
 `JsonLdRecipeParser` uses `org.json`, which is an Android framework class.
 Plain JUnit tests will need `testImplementation("org.json:json:<version>")`
@@ -185,13 +259,22 @@ When a new Xcode major comes out, GitHub ships it as a new image label
 
 ## Lint
 
-`./gradlew lintDebug` reports no errors and 16 warnings, all of them version advisories:
-`GradleDependency`, `NewerVersionAvailable`, `AndroidGradlePluginVersion` and
-`OldTargetApi`. They are left deliberately. `navigation-compose` 2.7.7 and
-`hilt-navigation-compose` 1.2.0 are pinned to the Compose BOM in use, bumping
-`targetSdk` past 34 is a behaviour change needing device testing, and the rest
-are a coupled toolchain that moves together or not at all. Do not silence them
-with a baseline: the day one of them matters, it should still be visible.
+`./gradlew lintDebug` reports no errors and two warnings, both version
+advisories left deliberately. `OldTargetApi`: targetSdk is 36, what Google Play
+requires, while API 37 exists; raising it is a behaviour change to read up on
+and test on a device. `NewerVersionAvailable` for jsoup: it is held at 1.17.2
+because newer releases need core library desugaring on Android, fetch through
+`java.net.http.HttpClient` on the JVM (so unit tests stop exercising the
+device's code path), and change `Element.text()`, which the iOS port mirrors.
+The toolchain upgrade of September 2026 (#23) cleared the other 14. Do not
+silence them with a baseline: the day one of them matters, it should still be
+visible. CI (`check_lint.py`) allows only the version-advisory ids.
+
+Compose 1.12's lint checks found three real issues in that upgrade, all fixed:
+the date format now reads `LocalLocale` (`NonObservableLocale`), cook mode's
+keep-screen-on uses `LocalActivity` (`ContextCastToActivity`), and
+`HomeScreenTest` builds its ViewModel outside `setContent`
+(`ViewModelConstructorInComposable`).
 
 Every code-level flag has been fixed, so a new one is a real finding rather than
 noise. Adding the launcher icon raised `MonochromeLauncherIcon` in turn, which is
@@ -256,9 +339,62 @@ empty, and the old one keeps its recipes, lists and settings.
 To carry them across, run the backup half of the round-trip above with
 `P=com.example.recipeclipper` (all three database files, then the merge), then
 `installDebug` the new build without opening it (or force-stop it), and run
-the restore half with `P=com.liberopat.recipeclipper`. The database is the same
-version, so nothing migrates. Check the recipes are there, then
+the restore half with `P=com.liberopat.recipeclipper`. If the old install's
+database is an older version, Room migrates it on first open. Check the recipes are there, then
 `adb uninstall com.example.recipeclipper`.
+
+### Backup and restore to a new phone (#25)
+
+What goes is an include list: `app/src/main/res/xml/data_extraction_rules.xml`
+(API 31+, both `cloud-backup` and `device-transfer`) and `backup_rules.xml`
+(API 23–30, Auto Backup). Both name `recipe_clipper.db`, `-wal`, `-shm` and
+`unit_preferences.xml`, so recipes, lists, ticked ingredients and settings
+travel, and nothing else does. Coil's image cache is in `cacheDir`, which is
+never backed up; photos refill from the network.
+
+Proven on an API 37 emulator (September 2026) with the local transport. The
+app was seeded through its UI (a shared recipe, two ingredients ticked, the
+recipe in Favorites and Breakfast, Metric / Celsius / Dark while cooking), with
+canary files outside the include list, then backed up, uninstalled and
+reinstalled. The database, all in the `-wal` at the time (the `.db` was 4 KB),
+and the settings came back and showed in the app; the canaries didn't:
+
+```
+A="adb -s <serial>"; P=com.liberopat.recipeclipper
+# Canaries that must NOT survive:
+$A shell "run-as $P sh -c 'mkdir -p files cache && echo x > files/canary.txt && echo x > cache/canary && echo \"<map/>\" > shared_prefs/other_prefs.xml'"
+$A shell bmgr enable true
+$A shell bmgr transport com.android.localtransport/.LocalTransport
+# A force-stopped app is ineligible: backupnow then reports "Backup is not
+# allowed". Start it and leave it in the background (backupnow kills it).
+$A shell am start -W -n $P/com.example.recipeclipper.MainActivity
+$A shell input keyevent HOME
+$A shell bmgr backupnow $P            # "... with result: Success"
+$A uninstall $P
+$A install app/build/outputs/apk/debug/app-debug.apk   # restores on install
+$A shell run-as $P ls -lR databases shared_prefs files cache
+# (or, with the app installed: bmgr list sets; bmgr restore <token> $P)
+# Then pull the three database files and the prefs as in the round-trip above
+# and query: recipes.checkedIngredients, recipe_list_cross_ref, the prefs XML.
+# Put things back:
+$A shell bmgr wipe com.android.localtransport/.LocalTransport $P
+$A shell bmgr transport com.google.android.gms/.backup.BackupTransportService
+$A shell bmgr enable false
+```
+
+Not exercised on the emulator: Google's cloud transport (it needs a signed-in
+account and uploads on Google's schedule) and a real device-to-device transfer.
+Both read the same rules; the local transport runs the same file selection.
+Android 12+ reads `dataExtractionRules` because `targetSdk` is 31 or more;
+API 23–30 devices read `fullBackupContent`, which wasn't run here.
+
+iOS: the database is `Application Support/recipe_clipper.sqlite`
+(`AppDatabase.defaultPath()`), settings are in `UserDefaults.standard`, and
+both are in iCloud and Finder backups. `BackupLocationTests` pins the location
+and that neither the directory nor the database and its WAL are flagged
+`isExcludedFromBackup`. If the database moves to an App Group container (the
+share extension, #19), that is backed up too; move the test with it. Photos are
+in Caches (`ImageLoader`), which isn't backed up, as intended.
 
 A single test:
 `./gradlew testDebugUnitTest --tests "com.example.recipeclipper.data.model.IngredientScalerTest"`

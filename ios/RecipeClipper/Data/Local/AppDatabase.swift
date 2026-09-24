@@ -105,9 +105,15 @@ final class AppDatabase: @unchecked Sendable {
     // with the version bump, so a crash mid-migration leaves the previous version intact.
     private static let migrations: [(SQLiteConnection) throws -> Void] = [
         createVersion1,
+        addNotes,
+        addUids,
+        addLanguage,
+        addCookState,
     ]
 
-    private static func migrate(_ db: SQLiteConnection) throws {
+    /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
+    /// build an old database the way an old build would have and then migrate it for real).
+    static func migrate(_ db: SQLiteConnection, upTo target: Int = migrations.count) throws {
         let current = try db.queryOne("PRAGMA user_version") { $0.int(0) } ?? 0
         guard current <= migrations.count else {
             // A newer build wrote this file. Refuse rather than guess (and never wipe it).
@@ -116,7 +122,7 @@ final class AppDatabase: @unchecked Sendable {
                 message: "database is at schema version \(current); this build knows \(migrations.count)"
             )
         }
-        for version in current..<migrations.count {
+        for version in current..<max(current, target) {
             try db.transaction {
                 try migrations[version](db)
                 try db.execute("PRAGMA user_version = \(version + 1)")
@@ -166,6 +172,48 @@ final class AppDatabase: @unchecked Sendable {
             CREATE INDEX index_recipe_list_cross_ref_listId ON recipe_list_cross_ref (listId);
             """)
         try seedBuiltInLists(db)
+    }
+
+    /// Version 2 (Android's Room version 3, `MIGRATION_2_3`): the user's personal note on a
+    /// recipe. Nullable with no default, so every existing recipe simply has no note yet.
+    private static func addNotes(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN notes TEXT")
+    }
+
+    /// Version 3 (Android's Room version 4, `MIGRATION_3_4`): a stable `uid` on every recipe and
+    /// list (#26), what an export file calls them, so a list keeps its identity through a rename
+    /// and a later import or sync (#53) can recognise it. Existing rows (the lists seeded by
+    /// version 1 included) are backfilled with random version-4 UUIDs; the `''` default exists
+    /// only so the column can be added NOT NULL. The same SQL as Android.
+    private static func addUids(_ db: SQLiteConnection) throws {
+        for table in ["recipes", "lists"] {
+            try db.execute("ALTER TABLE \(table) ADD COLUMN uid TEXT NOT NULL DEFAULT ''")
+            try db.execute("UPDATE \(table) SET uid = \(randomUuidSql)")
+            try db.execute("CREATE UNIQUE INDEX IF NOT EXISTS index_\(table)_uid ON \(table) (uid)")
+        }
+    }
+
+    /// A random version-4 UUID, lowercase, evaluated afresh for every row.
+    private static let randomUuidSql = """
+        lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || \
+        substr(lower(hex(randomblob(2))), 2) || '-' || \
+        substr('89ab', 1 + (abs(random()) % 4), 1) || substr(lower(hex(randomblob(2))), 2) || '-' || \
+        lower(hex(randomblob(6)))
+        """
+
+    /// Version 4 (Android's Room version 5, `MIGRATION_4_5`): the recipe's language tag (#14).
+    /// Nullable with no default: a recipe stored before has none and is detected from its own
+    /// words when shown. A re-share fills it in.
+    private static func addLanguage(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN language TEXT")
+    }
+
+    /// Version 5 (Android's Room version 6, `MIGRATION_5_6`): saved cook progress and the chosen
+    /// servings (#10). Both nullable with no default: an existing recipe has no cook in
+    /// progress and uses its own yield.
+    private static func addCookState(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN cookState TEXT")
+        try db.execute("ALTER TABLE recipes ADD COLUMN servingsTarget INTEGER")
     }
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its

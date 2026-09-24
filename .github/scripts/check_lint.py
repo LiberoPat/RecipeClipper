@@ -1,6 +1,6 @@
 """Fail if Android lint found anything besides the known version advisories.
 
-Lint reports 16 warnings on purpose, all version advisories (CLAUDE.md, #23).
+Lint reports two warnings on purpose, both version advisories (CLAUDE.md).
 Their number can drift as new library versions come out, so this checks the
 issue ids, not the count. Any other finding, at any severity, is real.
 """
