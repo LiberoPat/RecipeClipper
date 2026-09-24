@@ -10,7 +10,8 @@ struct RecipeDao {
     /// list contains it. There is deliberately no isSaved column.
     private static let summaryColumns = """
         id, title, imageUrl, totalTime, lastViewedAt,
-        EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved
+        EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
+        contentOrigin = 'CLIPPED' AS isClipped
         """
 
     func get(_ id: Int64) throws -> RecipeRecord? {

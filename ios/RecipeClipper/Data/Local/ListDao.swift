@@ -31,7 +31,8 @@ struct ListDao {
     func recipesIn(listId: Int64) throws -> [RecipeSummaryRecord] {
         try db.query(
             """
-            SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved
+            SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
+                   r.contentOrigin = 'CLIPPED' AS isClipped
             FROM recipes r
             JOIN recipe_list_cross_ref c ON c.recipeId = r.id
             WHERE c.listId = ?

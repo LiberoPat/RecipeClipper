@@ -39,6 +39,16 @@ final class RecipeReportSiteTests: XCTestCase {
         )
     }
 
+    func testASharedLinkWithNoRecipeOffersToClipIt() async {
+        let vm = viewModel(url: link, repository: repository(.error(.noRecipeFound)))
+        await settleMain()
+        XCTAssertEqual(vm.uiState.clipUrl, link)
+
+        let blocked = viewModel(url: link, repository: repository(.error(.blocked(httpStatus: 403))))
+        await settleMain()
+        XCTAssertNil(blocked.uiState.clipUrl)
+    }
+
     func testErrorsThatMeanTryAgainNeverOfferAReport() async {
         let kinds: [ParseError] = [
             .blocked(httpStatus: 403), .offline, .fetchFailed("HTTP 400"),

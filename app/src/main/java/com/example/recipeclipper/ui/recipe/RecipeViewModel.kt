@@ -111,7 +111,7 @@ class RecipeViewModel @Inject constructor(
     private fun load() {
         loadJob?.cancel()
         reconnectJob?.cancel()
-        _uiState.update { it.copy(content = RecipeContent.Loading, reportSiteUrl = null) }
+        _uiState.update { it.copy(content = RecipeContent.Loading, reportSiteUrl = null, clipUrl = null) }
         loadJob = viewModelScope.launch {
             val result = when {
                 recipeId != null -> repository.open(recipeId)
@@ -131,7 +131,8 @@ class RecipeViewModel @Inject constructor(
                     )
                     is ParseResult.Error -> state.copy(
                         content = RecipeContent.Error(result.error),
-                        reportSiteUrl = reportSiteUrl(result.error)
+                        reportSiteUrl = reportSiteUrl(result.error),
+                        clipUrl = shareUrl.takeIf { result.error == ParseError.NoRecipeFound }
                     )
                 }
             }

@@ -27,6 +27,18 @@ final class ShareImportViewModelTests: XCTestCase {
         XCTAssertEqual(repository.importCalls, 1)
     }
 
+    /// Safari's rendered page (#35) rides along with the URL, straight to the repository.
+    func testARenderedPageIsPassedThrough() async {
+        let repository = ReconnectCountingRepository(.success(recipe()))
+        let vm = ShareImportViewModel(repository: repository)
+
+        vm.start(with: SharedInput(url: "https://example.com/guacamole", page: "<html>rendered</html>"))
+        await vm.currentLoad?.value
+
+        XCTAssertEqual(vm.uiState, .saved(title: "Guacamole"))
+        XCTAssertEqual(repository.importedRenderedPages, ["<html>rendered</html>"])
+    }
+
     func testNothingSharedWithALinkSaysSoWithoutImporting() async {
         let repository = ReconnectCountingRepository(.success(recipe()))
         let vm = ShareImportViewModel(repository: repository)

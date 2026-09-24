@@ -45,6 +45,14 @@ final class Router {
         path.append(route)
     }
 
+    /// A saved clip replaces both the clip screen and the error screen under it, so Back from
+    /// the recipe goes where the share came from.
+    func openSavedClip(_ id: Int64) {
+        if case .clip = path.last { path.removeLast() }
+        if case .importUrl = path.last { path.removeLast() }
+        path.append(.recipe(id: id))
+    }
+
     func handle(_ url: URL) {
         guard let shared = DeepLink.sharedUrl(from: url) else { return }
         openInRecipes(.importUrl(shared))

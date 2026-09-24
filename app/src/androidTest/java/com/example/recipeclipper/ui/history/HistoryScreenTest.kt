@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.history
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -107,6 +108,16 @@ class HistoryScreenTest {
         compose.onNodeWithText("Chicken Adobo").performClick()
 
         assertEquals(1L, opened)
+    }
+
+    @Test
+    fun aClippedRecipeSaysSoAndOthersDoNot() {
+        show(adobo.copy(isClipped = true), carbonara)
+
+        waitFor("Chicken Adobo")
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasText("Clipped by you", substring = true)).fetchSemanticsNodes().size == 1
+        }
     }
 
     @Test

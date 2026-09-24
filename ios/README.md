@@ -110,6 +110,14 @@ tests (in-memory SQLite in the simulator), not device tests.
     `com.liberopat.recipeclipper`, category `share`). Measurements are in docs/testing.md.
   - The `recipeclipper://import?url=…` scheme and `.onOpenURL` stay, as an entry point for
     Shortcuts and links.
+  - **Safari shares its own copy of the page (#35),** past whatever blocked a plain fetch and
+    with the site's JavaScript already run. `Preprocessing.js`
+    (`NSExtensionJavaScriptPreprocessingFile`) runs in Safari against the shared page and hands
+    back `{url, html}`; `SharedItems` prefers that over the plain URL/text every other app
+    sends. `RecipeRepository.importFromUrl(_:renderedPage:)` parses it directly with the same
+    pure parsers and skips the fetch; only a rendered page with no recipe falls back to
+    fetching, same as if nothing had been given. The page never leaves the device. Chrome and
+    other apps still share just the URL, so this only ever fires from Safari.
 - **Timer alarm** plays through the silent switch (`.playback` audio session, ducking other
   audio), matching Android's alarm stream and the Clock app. The background alert is a local
   notification at each running timer's deadline (`NotificationTimerScheduler`; issue #10):
