@@ -5,6 +5,10 @@ import com.example.recipeclipper.data.DefaultBackupRepository
 import com.example.recipeclipper.data.DefaultListRepository
 import com.example.recipeclipper.data.DefaultRecipeRepository
 import com.example.recipeclipper.data.ListRepository
+import com.example.recipeclipper.data.DefaultMealPlanRepository
+import com.example.recipeclipper.data.MealPlanRepository
+import com.example.recipeclipper.data.PlanCalendar
+import com.example.recipeclipper.data.SystemPlanCalendar
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.SharedPrefsAppPreferences
 import com.example.recipeclipper.data.local.AppPreferences
@@ -25,6 +29,13 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun listRepository(impl: DefaultListRepository): ListRepository
+
+    @Binds
+    @Singleton
+    abstract fun mealPlanRepository(impl: DefaultMealPlanRepository): MealPlanRepository
+
+    @Binds
+    abstract fun planCalendar(impl: SystemPlanCalendar): PlanCalendar
 
     @Binds
     @Singleton

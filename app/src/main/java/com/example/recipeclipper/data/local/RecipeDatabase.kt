@@ -7,15 +7,22 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.recipeclipper.data.local.dao.BackupDao
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.local.dao.MealPlanDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.ListEntity
+import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
+import com.example.recipeclipper.data.local.entity.MealTypeEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.local.entity.newUid
+import com.example.recipeclipper.data.model.MealType
 
 @Database(
-    entities = [RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class],
-    version = 7,
+    entities = [
+        RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class,
+        MealTypeEntity::class, MealPlanEntryEntity::class
+    ],
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -24,6 +31,7 @@ abstract class RecipeDatabase : RoomDatabase() {
     abstract fun recipeDao(): RecipeDao
     abstract fun listDao(): ListDao
     abstract fun backupDao(): BackupDao
+    abstract fun mealPlanDao(): MealPlanDao
 
     companion object {
         const val NAME = "recipe_clipper.db"
@@ -58,6 +66,29 @@ abstract class RecipeDatabase : RoomDatabase() {
                         arrayOf<Any>(name, if (index == 0) 1 else 0, index, now, newUid())
                     )
                 }
+                // Created at the latest version, so MIGRATION_7_8's seeding never runs here.
+                seedMealTypes(db, now)
+            }
+        }
+
+        /**
+         * The seeded meal types (#49), in the order the Week shows them: each key names one
+         * whatever it is renamed to. Dinner is where new meals default and where a deleted
+         * type's meals go.
+         */
+        private val BUILT_IN_MEAL_TYPES = listOf(
+            "breakfast" to "Breakfast",
+            "lunch" to "Lunch",
+            MealType.DINNER to "Dinner",
+            "snack" to "Snack"
+        )
+
+        private fun seedMealTypes(db: SupportSQLiteDatabase, now: Long) {
+            BUILT_IN_MEAL_TYPES.forEachIndexed { index, (key, name) ->
+                db.execSQL(
+                    "INSERT INTO meal_types (name, builtInKey, sortOrder, updatedAt, uid) VALUES (?, ?, ?, ?, ?)",
+                    arrayOf<Any>(name, key, index, now, newUid())
+                )
             }
         }
 
@@ -161,7 +192,40 @@ abstract class RecipeDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * The week meal plan (#49): `meal_types`, seeded with Breakfast, Lunch, Dinner and
+         * Snack, and `meal_plan_entries`. Both new, so nothing existing changes. Each row has
+         * a stable `uid` and an `updatedAt`, for export and a later sync (#53). The same SQL
+         * is iOS's `addMealPlan`.
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MEAL_PLAN_SQL.forEach(db::execSQL)
+                seedMealTypes(db, System.currentTimeMillis())
+            }
+        }
+
+        private val MEAL_PLAN_SQL = listOf(
+            "CREATE TABLE IF NOT EXISTS `meal_types` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`name` TEXT NOT NULL, `builtInKey` TEXT, `sortOrder` INTEGER NOT NULL, " +
+                "`updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_meal_types_uid` ON `meal_types` (`uid`)",
+            "CREATE TABLE IF NOT EXISTS `meal_plan_entries` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`day` INTEGER NOT NULL, `mealTypeId` INTEGER NOT NULL, `recipeId` INTEGER, " +
+                "`servings` INTEGER, `note` TEXT, `sortOrder` INTEGER NOT NULL, " +
+                "`updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL, " +
+                "FOREIGN KEY(`mealTypeId`) REFERENCES `meal_types`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+                "FOREIGN KEY(`recipeId`) REFERENCES `recipes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_meal_plan_entries_uid` ON `meal_plan_entries` (`uid`)",
+            "CREATE INDEX IF NOT EXISTS `index_meal_plan_entries_day` ON `meal_plan_entries` (`day`)",
+            "CREATE INDEX IF NOT EXISTS `index_meal_plan_entries_mealTypeId` ON `meal_plan_entries` (`mealTypeId`)",
+            "CREATE INDEX IF NOT EXISTS `index_meal_plan_entries_recipeId` ON `meal_plan_entries` (`recipeId`)"
+        )
+
         /** Every migration, in order: what the app and the tests open the database with. */
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+            MIGRATION_7_8
+        )
     }
 }

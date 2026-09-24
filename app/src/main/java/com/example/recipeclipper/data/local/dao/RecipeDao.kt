@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import kotlinx.coroutines.flow.Flow
@@ -74,15 +75,27 @@ abstract class RecipeDao {
     @Insert
     protected abstract suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>)
 
+    /** Read before [delete], like [crossRefsFor]: the recipe's planned meals cascade with it. */
+    @Query("SELECT * FROM meal_plan_entries WHERE recipeId = :recipeId")
+    abstract suspend fun planEntriesFor(recipeId: Long): List<MealPlanEntryEntity>
+
+    @Insert
+    protected abstract suspend fun insertPlanEntries(entries: List<MealPlanEntryEntity>)
+
     /**
      * Undoes [delete]: re-inserts [recipe] with its original id — `@Insert` honours a
-     * non-zero primary key — then its [crossRefs], so restored list membership still points
-     * at the right row.
+     * non-zero primary key — then its [crossRefs] and [planEntries], so restored list
+     * membership and planned meals still point at the right row.
      */
     @Transaction
-    open suspend fun restore(recipe: RecipeEntity, crossRefs: List<RecipeListCrossRef>) {
+    open suspend fun restore(
+        recipe: RecipeEntity,
+        crossRefs: List<RecipeListCrossRef>,
+        planEntries: List<MealPlanEntryEntity> = emptyList()
+    ) {
         insert(recipe)
         if (crossRefs.isNotEmpty()) insertCrossRefs(crossRefs)
+        if (planEntries.isNotEmpty()) insertPlanEntries(planEntries)
     }
 
     // "Saved" is derived: a recipe is saved when at least one list contains it.
@@ -131,19 +144,26 @@ abstract class RecipeDao {
 
     /**
      * Deletes recipes that are in no list, oldest view first, keeping the [keep] most
-     * recently viewed of them. A recipe in any list is never touched.
+     * recently viewed of them. A recipe in any list is never touched, and neither is one
+     * planned for [today] or later (#49; an epoch day, see `PlanDays`): both are outside the
+     * cap. A recipe planned only for past days is ordinary history again.
+     *
+     * The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL
+     * is never true, which would silently stop the cull altogether.
      */
     @Query(
         """
         DELETE FROM recipes WHERE id IN (
             SELECT id FROM recipes
             WHERE id NOT IN (SELECT recipeId FROM recipe_list_cross_ref)
+              AND id NOT IN (SELECT recipeId FROM meal_plan_entries
+                             WHERE recipeId IS NOT NULL AND day >= :today)
             ORDER BY lastViewedAt DESC, id DESC
             LIMIT -1 OFFSET :keep
         )
         """
     )
-    abstract suspend fun cullHistory(keep: Int)
+    abstract suspend fun cullHistory(keep: Int, today: Long = NO_PLAN_PROTECTION)
 
     /**
      * Saves a freshly parsed recipe and returns its id. A link that has been seen before is
@@ -157,7 +177,12 @@ abstract class RecipeDao {
      * "Update from source", which does replace it, and makes it PARSED again ([fresh] is).
      */
     @Transaction
-    open suspend fun upsert(fresh: RecipeEntity, historyLimit: Int, replaceUsersVersion: Boolean = false): Long {
+    open suspend fun upsert(
+        fresh: RecipeEntity,
+        historyLimit: Int,
+        replaceUsersVersion: Boolean = false,
+        today: Long = NO_PLAN_PROTECTION
+    ): Long {
         val existing = findByUrl(fresh.sourceUrl)
         val id = if (existing == null) {
             insert(fresh)
@@ -168,7 +193,7 @@ abstract class RecipeDao {
             update(keepingUserState(existing, fresh))
             existing.id
         }
-        cullHistory(historyLimit)
+        cullHistory(historyLimit, today)
         return id
     }
 
@@ -219,5 +244,9 @@ abstract class RecipeDao {
     companion object {
         /** [com.example.recipeclipper.data.model.ContentOrigin.PARSED], as stored. */
         const val ORIGIN_PARSED = "PARSED"
+
+        /** The `today` that protects no planned recipe from the cull: no day is on or after
+         *  it. The default for callers with no plan in mind; the repository passes today. */
+        const val NO_PLAN_PROTECTION = Long.MAX_VALUE
     }
 }

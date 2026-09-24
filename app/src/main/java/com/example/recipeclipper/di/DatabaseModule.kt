@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.recipeclipper.data.local.RecipeDatabase
 import com.example.recipeclipper.data.local.dao.BackupDao
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.local.dao.MealPlanDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import dagger.Module
 import dagger.Provides
@@ -31,6 +32,9 @@ object DatabaseModule {
 
     @Provides
     fun listDao(db: RecipeDatabase): ListDao = db.listDao()
+
+    @Provides
+    fun mealPlanDao(db: RecipeDatabase): MealPlanDao = db.mealPlanDao()
 
     @Provides
     fun backupDao(db: RecipeDatabase): BackupDao = db.backupDao()
