@@ -206,4 +206,14 @@ enum Strings {
     /// Deliberately says what does NOT happen: the recipes are not deleted.
     static let deleteListBody = "The list is removed. The recipes in it stay in your history."
     static let deleteList = "Delete list"
+
+    // Bottom tabs (#47), behind FeatureFlags.mealPlanTabs, off until #49
+    static let tabRecipes = "Recipes"
+    static let tabWeek = "Week"
+    static let tabGroceries = "Groceries"
+    static let tabPantry = "Pantry"
+    static let comingSoon = "Coming soon"
+    static let weekPlaceholder = "Plan what you're cooking on each day of the week."
+    static let groceriesPlaceholder = "A shopping list built from the recipes in your week."
+    static let pantryPlaceholder = "What you already have, so you only buy what you need."
 }
