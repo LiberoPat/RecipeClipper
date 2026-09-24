@@ -57,20 +57,22 @@ internal object IngredientDensities {
     fun find(ingredientText: String, words: LanguageWords = LanguageWords.ENGLISH): Density? {
         val table = table(words)
         val phrase = headPhrase(ingredientText, table.trailingModifiers)
-        return table.aliases.firstOrNull { (alias, _) -> endsWithName(phrase, alias) }?.second
+        return table.aliases.firstOrNull { (alias, _) -> endsWithName(phrase, alias, words.spaced) }?.second
     }
 
     /** The longest alias [phrase] (a head phrase) ends in, as [find] matches it; null if none. */
     fun aliasAtEnd(phrase: String, words: LanguageWords = LanguageWords.ENGLISH): String? =
-        table(words).aliases.firstOrNull { (alias, _) -> endsWithName(phrase, alias) }?.first
+        table(words).aliases.firstOrNull { (alias, _) -> endsWithName(phrase, alias, words.spaced) }?.first
 
     /** The words dropped from the end of a name before matching ("packed", "melted"). */
     fun trailingModifiers(words: LanguageWords = LanguageWords.ENGLISH): Set<String> = table(words).trailingModifiers
 
     private fun table(words: LanguageWords): Table = words.compiled(Table::class) { Table(it) }
 
-    /** True when [phrase] is [name] or ends with it at a word boundary: the table's matching rule. */
-    fun endsWithName(phrase: String, name: String): Boolean = phrase == name || phrase.endsWith(" $name")
+    /** True when [phrase] is [name] or ends with it at a word boundary: the table's matching rule. Where
+     *  the language isn't [spaced] (Japanese, #16) any character is a boundary: "有塩バター" is "バター". */
+    fun endsWithName(phrase: String, name: String, spaced: Boolean = true): Boolean =
+        phrase == name || phrase.endsWith(if (spaced) " $name" else name)
 
     private val INNERMOST_PARENS = Regex("""\([^()]*\)""")
 

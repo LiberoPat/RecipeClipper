@@ -29,11 +29,11 @@ enum MeasureKind { case volume, weight, none }
 /// "tazza", a Portuguese "colher (café)"): its amount scales, so "250 ml (1 tasse)" doubles as a
 /// whole, but it is never converted.
 enum MeasureUnit: CaseIterable {
-    case tsp, tbsp, cup, flOz, stick, ml, l, cl, dl, g, kg, oz, lb, varies
+    case tsp, tbsp, cup, cup200, riceCup, flOz, stick, ml, l, cl, dl, g, kg, oz, lb, varies
 
     var kind: MeasureKind {
         switch self {
-        case .tsp, .tbsp, .cup, .flOz, .stick, .ml, .l, .cl, .dl: return .volume
+        case .tsp, .tbsp, .cup, .cup200, .riceCup, .flOz, .stick, .ml, .l, .cl, .dl: return .volume
         case .g, .kg, .oz, .lb: return .weight
         case .varies: return .none
         }
@@ -44,6 +44,8 @@ enum MeasureUnit: CaseIterable {
         case .tsp: return 4.92892
         case .tbsp: return 14.7868
         case .cup: return 236.588
+        case .cup200: return 200.0 // a Japanese cup, カップ (#16)
+        case .riceCup: return 180.0 // a Japanese rice cup, 合
         case .flOz: return 29.5735
         case .stick: return 118.294 // US butter stick = 8 tbsp
         case .ml: return 1.0
@@ -69,7 +71,7 @@ enum MeasureUnit: CaseIterable {
 
     /// The name Kotlin gives the unit, which the shared tables use.
     static let byTableName: [String: MeasureUnit] = [
-        "TSP": .tsp, "TBSP": .tbsp, "CUP": .cup, "FL_OZ": .flOz, "STICK": .stick, "ML": .ml,
+        "TSP": .tsp, "TBSP": .tbsp, "CUP": .cup, "CUP_200": .cup200, "RICE_CUP": .riceCup, "FL_OZ": .flOz, "STICK": .stick, "ML": .ml,
         "L": .l, "CL": .cl, "DL": .dl, "G": .g, "KG": .kg, "OZ": .oz, "LB": .lb, "VARIES": .varies,
     ]
 

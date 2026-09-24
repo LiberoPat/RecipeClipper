@@ -35,14 +35,16 @@ enum StepTimers {
             let followOnWords = SharedTables.alternation(words.strings("timers", "followOn"))
             scaler = IngredientScaler.patterns(words)
             let qty = scaler.qty
+            // A spaced language's unit is a whole word; Japanese writes "5分煮る" (#16).
+            let boundary = words.spaced ? #"\b"# : ""
             // A number after a colon is the minutes of a clock time ("1:30 Stunden"), never hours
             // on its own (#15).
             duration = JRegex(
-                #"(?<![\d.,/⁄:])("# + qty + #")(?:\s*(?:[-–—]|"# + words.rangeWords + #")\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
+                #"(?<![\d.,/⁄:])("# + qty + #")(?:\s*(?:[-–—]|"# + words.rangeWords + #")\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + boundary,
                 ignoreCase: true
             )
             followOn = JRegex(
-                #"^\s*(?:"# + followOnWords + #"\s+)?("# + qty + #")\s*-?\s*"# + unit + #"\b"#,
+                #"^\s*(?:"# + followOnWords + #"\s+)?("# + qty + #")\s*-?\s*"# + unit + boundary,
                 ignoreCase: true
             )
         }
@@ -60,10 +62,11 @@ enum StepTimers {
     static func parse(_ step: String, words: LanguageWords? = .english) -> Int? {
         guard let words else { return nil }
         let p = patterns(words)
-        guard let first = p.duration.find(step) else { return nil }
+        let text = words.readable(step)
+        guard let first = p.duration.find(text) else { return nil }
         guard var total = toSeconds(p, first[1], first[2]) else { return nil }
 
-        let rest = step.u16Substring(from: first.end)
+        let rest = text.u16Substring(from: first.end)
         if let follow = p.followOn.find(rest) {
             let extra = toSeconds(p, follow[1], follow[2])
             // Only a smaller unit continues the duration ("1 hour" then "30 minutes").

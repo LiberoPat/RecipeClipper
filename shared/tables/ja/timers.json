@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "StepTimers' duration words. patterns: case-insensitive regex fragments, matched after a number (whole words in a spaced language; Japanese needs no boundary, so '5分煮る' reads). seconds is how long one of that unit lasts. A smaller unit straight after a larger one continues the duration ('1時間30分'). followOn: regex fragments that may join the two parts. label: how a timer button writes the unit. '2分の1' is a half, '8分目' a level, '5分割' a division, and '1時間半' or '1分半' has a half the pattern can't add, so none of them is a time.",
+  "units": [
+    {"seconds": 3600, "label": "時間", "patterns": ["時間(?!半)"]},
+    {"seconds": 60, "label": "分", "patterns": ["分間", "分(?![の半目割])"]},
+    {"seconds": 1, "label": "秒", "patterns": ["秒間", "秒"]}
+  ],
+  "followOn": []
+}
