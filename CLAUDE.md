@@ -18,6 +18,12 @@ hand-edit them. The JVM `DifferentialCorpusTest` fails while that file is stale
 and writes the regenerated one to `app/build/differential-corpus/`; a new row
 needs only its input (`Ing("1,5 kg flour"),`).
 
+**The word and density tables live once, in `shared/tables/`** (JSON: densities,
+unit, timer, temperature, yield and range words, condensed section names,
+tracking parameters), loaded by both apps (Android as Java resources through
+`SharedTables`, iOS as a bundled `tables/` folder). Edit a table there, never in
+code; the logic that reads it stays written twice.
+
 **Keep this file short: it is loaded into every session.** Add only what an
 agent needs almost every time. Rationale and history go in
 `docs/decisions.md`, test and device detail in `docs/testing.md`, plans and
@@ -75,7 +81,7 @@ data/          RecipeRepository, ListRepository (interfaces; Default* are the Ro
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
-               SiteReportLink, SourceDomain
+               SiteReportLink, SourceDomain, SharedTables (loads shared/tables)
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
                theme, common
 ```
@@ -162,6 +168,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (`MutedOnInk`, `HairlineOnInk`, `PaprikaTextOnInk`). No Material purple.
   Cook mode follows the system theme; "Dark while cooking" (off by default)
   opts into dark. Don't restore an always-dark cook mode without asking.
+- **iPad (iOS only, #20):** every screen's content sits in a centred ~680pt
+  column (`readableColumn()`, `UI/Common/Components.swift`) so text never
+  runs edge to edge on a wide screen; History, a `List`, sets the same width
+  through row insets instead, since a `List` can't take a frame. iPhone
+  portrait is unchanged.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
   Ounces only), Oven temperature (independent of units, default As

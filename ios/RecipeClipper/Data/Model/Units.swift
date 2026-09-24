@@ -59,30 +59,30 @@ enum MeasureUnit: CaseIterable {
 
     private static let whitespace = JRegex(#"\s+"#)
 
+    /// The name Kotlin gives the unit, which the shared tables use.
+    static let byTableName: [String: MeasureUnit] = [
+        "TSP": .tsp, "TBSP": .tbsp, "CUP": .cup, "FL_OZ": .flOz, "STICK": .stick, "ML": .ml,
+        "L": .l, "G": .g, "KG": .kg, "OZ": .oz, "LB": .lb,
+    ]
+
+    // shared/tables/en/units.json "names": the first rule the text satisfies wins.
+    private static let names: [(unit: MeasureUnit, exact: [String], prefixes: [String])] =
+        SharedTables.objects(SharedTables.load("units"), "names").map {
+            (byTableName[$0["unit"] as? String ?? ""]!, SharedTables.strings($0, "exact"), SharedTables.strings($0, "prefixes"))
+        }
+
     static func fromText(_ text: String) -> MeasureUnit? {
         let s = whitespace.replace(text.lowercased().replacingOccurrences(of: ".", with: ""), with: " ")
-        if s.hasPrefix("fl") { return .flOz }
-        if s.hasPrefix("tsp") || s.hasPrefix("teaspoon") { return .tsp }
-        if s.hasPrefix("tbs") || s.hasPrefix("tablespoon") { return .tbsp }
-        if s.hasPrefix("cup") { return .cup }
-        if s == "ml" || s.hasPrefix("millil") { return .ml }
-        if s == "kg" || s.hasPrefix("kilo") { return .kg }
-        if s == "g" || s.hasPrefix("gram") { return .g }
-        if s == "l" || s.hasPrefix("lit") { return .l }
-        if s.hasPrefix("stick") { return .stick }
-        if s == "oz" || s.hasPrefix("ounce") { return .oz }
-        if s == "lb" || s == "lbs" || s.hasPrefix("pound") { return .lb }
-        return nil
+        return names.first { name in name.exact.contains(s) || name.prefixes.contains { s.hasPrefix($0) } }?.unit
     }
 }
 
 /// Regex fragments matching a unit word. The trailing lookahead makes them match whole
 /// words only, so "g" doesn't match the start of "garlic" or "l" the start of "large".
 enum UnitPatterns {
+    // The unit words are shared with Android: shared/tables/en/units.json "patterns", in order.
     private static let alternatives =
-        #"fl\.?\s*oz|fluid\s+ounces?|tsps?|teaspoons?|tbsps?|tbs|tablespoons?|cups?|"# +
-        #"millilit(?:er|re)s?|ml|kilograms?|kilos?|kg|grams?|g|lit(?:er|re)s?|l|"# +
-        #"sticks?|ounces?|oz|lbs?|pounds?"#
+        SharedTables.strings(SharedTables.load("units"), "patterns").joined(separator: "|")
 
     // The alternation is wrapped in its own group so the optional trailing period applies to
     // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
