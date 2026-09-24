@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Observation
 
@@ -30,8 +31,9 @@ enum BackupStatus: Equatable {
 }
 
 /// Injects AppPreferences directly rather than going through a repository: these are
-/// app-wide defaults. Preferences are plain vars, so state is seeded once here and updated
-/// alongside each write.
+/// app-wide defaults. State is seeded synchronously so the first frame is right, then kept in
+/// step with `preferences.settings`; each setter also updates it at once, alongside the
+/// write, rather than waiting for the publisher to echo it back.
 @MainActor
 @Observable
 final class SettingsViewModel {
@@ -39,16 +41,30 @@ final class SettingsViewModel {
     @ObservationIgnored private let preferences: AppPreferences
     @ObservationIgnored private let backups: BackupRepository
     @ObservationIgnored private let files: BackupFiles
+    @ObservationIgnored private var settingsSubscription: AnyCancellable?
 
     init(preferences: AppPreferences, backups: BackupRepository, files: BackupFiles) {
         self.preferences = preferences
         self.backups = backups
         self.files = files
-        uiState = SettingsUiState(
-            unitSystem: preferences.unitSystem,
-            convertLiquids: preferences.convertLiquids,
-            temperatureUnit: preferences.temperatureUnit,
-            darkWhileCooking: preferences.darkWhileCooking
+        uiState = Self.uiState(preferences.current)
+        settingsSubscription = preferences.settings
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] settings in
+                guard let self else { return }
+                // The backup status is this screen's own: a preference change keeps it.
+                var next = Self.uiState(settings)
+                next.backup = self.uiState.backup
+                self.uiState = next
+            }
+    }
+
+    private static func uiState(_ settings: AppSettings) -> SettingsUiState {
+        SettingsUiState(
+            unitSystem: settings.unitSystem,
+            convertLiquids: settings.convertLiquids,
+            temperatureUnit: settings.temperatureUnit,
+            darkWhileCooking: settings.darkWhileCooking
         )
     }
 
@@ -121,8 +137,8 @@ final class SettingsViewModel {
         uiState.backup = .failed(.readFailed)
     }
 
-    /// "Also convert liquids" only means something for Grams and Ounces.
+    /// "Also convert liquids" only means something for Ounces: Metric always gives liquids in ml.
     var showsConvertLiquids: Bool {
-        uiState.unitSystem == .grams || uiState.unitSystem == .ounces
+        uiState.unitSystem == .ounces
     }
 }

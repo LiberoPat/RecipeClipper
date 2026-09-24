@@ -83,6 +83,14 @@ sealed class ParseError {
     val shouldAutoRetry: Boolean
         get() = this is Blocked || (this is FetchFailed && !timedOut)
 
+    /**
+     * Worth one load in an off-screen browser once the direct fetch (and its retry) has ended
+     * here: a block, which a real browser engine often gets past, or a page with no recipe
+     * data, which may be built by JavaScript. Never [Offline] or a [FetchFailed].
+     */
+    val triesRenderedPage: Boolean
+        get() = this is Blocked || this == NoRecipeFound
+
     /** The recipe screen reloads once when the connection comes back while showing these. */
     val reloadsOnReconnect: Boolean
         get() = this == Offline || this is FetchFailed

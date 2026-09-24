@@ -70,7 +70,8 @@ fun RecipeNavHost(navController: NavHostController) {
             )
         }
 
-        // Settings is reachable from Home only — see the comment on the row in HomeScreen for why.
+        // Opened from the gear beside the Home title. Any screen could navigate here: open
+        // ViewModels collect AppPreferences.settings, so none is left showing stale units.
         composable(Routes.SETTINGS) {
             SettingsScreen(onBack = { navController.popBackStack() })
         }

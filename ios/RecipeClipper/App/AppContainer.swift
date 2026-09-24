@@ -11,6 +11,7 @@ final class AppContainer {
     let connectivity: Connectivity
     let backupRepository: BackupRepository
     let backupFiles: BackupFiles
+    let appInfo: AppInfo
 
     init(
         recipeRepository: RecipeRepository,
@@ -19,7 +20,8 @@ final class AppContainer {
         preferences: AppPreferences,
         clock: Clock,
         connectivity: Connectivity = StaticConnectivity(),
-        backupFiles: BackupFiles = FileBackupFiles()
+        backupFiles: BackupFiles = FileBackupFiles(),
+        appInfo: AppInfo = BundleAppInfo()
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -28,6 +30,7 @@ final class AppContainer {
         self.clock = clock
         self.connectivity = connectivity
         self.backupFiles = backupFiles
+        self.appInfo = appInfo
     }
 
     /// The real graph: SQLite on disk, the blog source, UserDefaults. Under XCTest (the unit
@@ -47,7 +50,10 @@ final class AppContainer {
         }
         let defaults = testing ? (UserDefaults(suiteName: "RecipeClipperTestHost") ?? .standard) : .standard
         return AppContainer(
-            recipeRepository: DefaultRecipeRepository(db: database, source: BlogRecipeSource(), clock: clock),
+            recipeRepository: DefaultRecipeRepository(
+                db: database, source: BlogRecipeSource(), clock: clock,
+                renderedPages: WebViewRenderedPageSource()
+            ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
@@ -67,7 +73,7 @@ final class AppContainer {
     func makeRecipeViewModel(recipeId: Int64?, url: String?) -> RecipeViewModel {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
-            clock: clock, connectivity: connectivity
+            clock: clock, connectivity: connectivity, appInfo: appInfo
         )
     }
 

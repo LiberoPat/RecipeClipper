@@ -15,7 +15,7 @@ import kotlin.math.round
  *   as written rather than guessed.
  * - If the line already carries the target unit in parentheses or after a slash, as in
  *   "1 cup (120 g) flour", the site's own figure is used instead of a calculated one.
- * - Pourable liquids are left alone in GRAMS/OUNCES unless [includeLiquids] is set.
+ * - Pourable liquids are left alone in OUNCES unless [includeLiquids] is set.
  *   METRIC turns them into ml, which is exact and needs no density, so it ignores the flag.
  * - METRIC otherwise gives spoons and cups as ml, except that a line carrying the site's own
  *   weight ("1 tsp (4 g) salt", "1 cup/4 oz walnuts") shows that weight in g/kg, even for an
@@ -25,6 +25,8 @@ import kotlin.math.round
  * - A compound amount ("1 cup plus 2 tbsp flour") is converted as a whole or not at all:
  *   an alternate measure after the second part is used for the total, otherwise both parts
  *   are converted and summed, and if either can't be the line is left as written.
+ * - "1,5 kg" is 1.5 kg and converts with a comma ("1,13 kg"); "1,500 g" could be 1.5 g or
+ *   1500 g, so a line holding a comma before three digits is left as written.
  */
 object UnitConverter {
 
@@ -65,8 +67,14 @@ object UnitConverter {
 
     private class Amount(val low: Double, val high: Double?, val separator: String)
 
-    fun convert(line: String, system: UnitSystem, includeLiquids: Boolean): String {
+    /**
+     * [separatorFrom] is the line whose decimal separator the result follows: the line as the
+     * recipe wrote it, when [line] is that line already scaled ("2,5 lb" doubled is "5 lb",
+     * which no longer shows its comma).
+     */
+    fun convert(line: String, system: UnitSystem, includeLiquids: Boolean, separatorFrom: String = line): String {
         if (system == UnitSystem.AS_WRITTEN) return line
+        if (IngredientScaler.AMBIGUOUS_COMMA.containsMatchIn(line)) return line
 
         val lead = IngredientScaler.LEADING.find(line) ?: return line
         val afterQty = line.substring(lead.range.last + 1)
@@ -123,11 +131,11 @@ object UnitConverter {
             volumeAmount(amount, effective, extraPart, alternate?.volume)
         } ?: return line
 
-        return lead.groupValues[1] + converted + after
+        val comma = IngredientScaler.DECIMAL_COMMA.containsMatchIn(separatorFrom)
+        return lead.groupValues[1] + IngredientScaler.withSeparator(converted, comma) + after
     }
 
     private fun ownUnits(system: UnitSystem): Set<MeasureUnit> = when (system) {
-        UnitSystem.GRAMS -> setOf(MeasureUnit.G, MeasureUnit.KG)
         UnitSystem.OUNCES -> setOf(MeasureUnit.OZ, MeasureUnit.LB)
         UnitSystem.METRIC -> setOf(MeasureUnit.G, MeasureUnit.KG, MeasureUnit.ML, MeasureUnit.L)
         UnitSystem.AS_WRITTEN -> emptySet()

@@ -10,7 +10,9 @@ the commands; iOS test commands and the simulator rules are in
 Tests: `app/src/test/` has the JVM ones (`IngredientScalerTest` scaling,
 servings and yield parsing; `UnitConverterTest`; `TemperatureConverterTest`;
 `StepTimersTest`; `ConvertersTest`; `TimeAgoAndUrlInputTest`; `UrlCleanerTest`,
-now also covering the http→https upgrade; `JsonLdRecipeParserTest`, covering
+now also covering the http→https upgrade; `SourceDomainTest`, the domain the
+reading view credits (one leading "www." dropped, other subdomains kept);
+`JsonLdRecipeParserTest`, covering
 entity/tag stripping, blank-after-strip lines being dropped, `<br>`-split
 steps staying separate, and the deep-JSON depth guard; `RecipeShareTextTest`,
 covering the labelled-vs-unlabelled serves line (built from a `ServingsScale?`),
@@ -22,6 +24,11 @@ writes through to a `FakeAppPreferences` and updates `SettingsUiState`, and
 state is seeded from preferences on construction; `SettingsUiState` is a
 plain `MutableStateFlow`, not `stateIn(WhileSubscribed(...))`, so unlike
 `HomeViewModelTest`/`HistoryViewModelTest` it needs no `collectEagerly`).
+`FakeAppPreferences` keeps its values in one `MutableStateFlow` (iOS: a
+`CurrentValueSubject`), so writing a value on the fake directly stands for
+Settings changing a default while another screen is open; the
+`RecipeViewModelTest` cases under "A settings change arriving while the
+recipe is open" use that (#24).
 and the three list suites — `SaveToListViewModelTest`, `ListsViewModelTest`
 and `ListDetailViewModelTest`. Those run against `FakeListRepository`, which
 deliberately models membership as real state rather than only recording calls:
@@ -31,14 +38,28 @@ call-recording fake would prove only half of it. `recipeCount` and
 `containsRecipe` are derived from that state exactly as the SQL derives them,
 so a `recipeCount` staged on a list literal is ignored — stage membership
 instead. The error handling has its own: `DefaultRecipeRepositoryRetryTest`
-(the retry rule, the saved-copy fallback, cancelling during the pause),
+(the retry rule, the saved-copy fallback, cancelling during the pause, and
+the rendered fallback after it over a `FakeRenderedPageSource`: rendered once
+and only after `Blocked` or `NoRecipeFound`, never for `Offline` or a
+timeout, the 20 s cap, a rendered page with no recipe keeping the cause, and
+cancelling mid-render writing nothing; iOS has the same cases in
+`DataRepositoryTests`),
 `BlogRecipeSourceStatusTest` (which statuses and exceptions become which
 cause, against a fake `Connectivity`), `DatabaseErrorTest` (every repository
 call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
-**266 JVM tests pass.**
+`DifferentialCorpusTest` recomputes every ingredient and instruction row of
+the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
+stale, and writes the regenerated file to
+`app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
+(`app/build.gradle.kts` declares the Swift file as a test input, so editing
+it alone reruns the tests). `SiteReportTest` covers the weekly site check's
+report and URL list offline (see CI below). `SiteReportLinkTest` pins the
+"Report this site" issue link byte for byte (percent-encoding, the cleaned
+link), and `RecipeViewModelTest` offers it only for `NoRecipeFound` on a
+shared link.
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a
@@ -55,6 +76,12 @@ and a recipe out of its last list staying in history. It also pins the rule
 that a seeded list which isn't Favorites *can* be deleted, so a guard that
 regressed to `isBuiltIn = 0` would fail rather than quietly return.
 
+`WebViewRenderedPageSourceTest` runs the rendered fallback's real `WebView`:
+a `data:` URL page (no network) whose script adds its recipe JSON-LD 300 ms
+after the load event must come back from `render` with that JSON-LD in the
+HTML, and parse through `BlogRecipeSource.parse`. It proves the settle wait
+and the `outerHTML` decoding; a JVM test can't host a WebView.
+
 `MigrationTest` uses Room's `MigrationTestHelper` (hence
 `androidTestImplementation("androidx.room:room-testing")`) to open a real
 version-1 database from the exported schema and run `MIGRATION_1_2` against
@@ -67,11 +94,11 @@ survives a re-share; a version-1 file also goes to 3 in one open. This is
 what makes "never use destructive migration" checkable rather than an
 intention.
 
-**All 89 device tests have been run on an emulator and pass**: 26
-`RecipeDaoTest`, 22 `ListDaoTest`, 3 `MigrationTest`, and 38 Compose UI tests
-(see below).
-The four added with notes (#27: two in `RecipeDaoTest`, two in
-`MigrationTest`) compile but have not yet been run on a device.
+**The device tests have been run on an emulator and pass**: `RecipeDaoTest`,
+`ListDaoTest`, `MigrationTest` and the Compose UI tests (see below), including
+those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).
+`RecipeSourceCreditTest` (the source credit under the recipe title) was
+added after that run and has so far only been compiled.
 
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
 `MigrationTestHelper` reads the exported JSON from the test APK's **assets**,
@@ -85,7 +112,8 @@ hunting in the migration when that appears.
 **Compose UI tests** (`androidx.compose.ui:ui-test-junit4`, plus
 `debugImplementation("androidx.compose.ui:ui-test-manifest")` for the empty
 Activity `createComposeRule` launches): `HomeScreenTest` (12),
-`SaveToListBottomSheetTest` (12) and `ListDetailScreenTest` (14). They exist
+`SaveToListBottomSheetTest` (12), `ListDetailScreenTest` (14) and
+`RecipeErrorScreenTest` ("Report this site" on the no-recipe error only). They exist
 because every ViewModel behind Home was already covered and the whole suite
 stayed green through a duplicate-key crash that made the app unusable — that
 bug lived entirely in the view.
@@ -120,13 +148,15 @@ Three things that cost real time and will again:
   every `SemanticsProperties.Text` in the tree — before changing production
   code.
 
-Still without Android UI tests: the recipe screen itself (reading and cook
-views, the bookmark icon, share), History (search, swipe-to-dismiss, the undo
-snackbar), the Lists screen, and the Settings screen. The iOS UI tests
-(`ios/RecipeClipperUITests`, 61 tests) do cover Home, History (search,
-swipe-to-delete, the batched undo), Settings, list detail, the save-to-list
-sheet with the bookmark it fills, and the import error screens. Cook mode and
-sharing have no UI tests on either platform.
+Still without Android UI tests: most of the recipe screen (reading and cook
+views, the bookmark icon, share; only the source credit and the import error
+screen, including "Report this site", are covered), History (search,
+swipe-to-dismiss, the undo snackbar), the Lists screen, and the Settings
+screen. The iOS UI tests (`ios/RecipeClipperUITests`) do cover Home, History
+(search, swipe-to-delete, the batched undo), Settings, list detail, the
+save-to-list sheet with the bookmark it fills, the source credit, and the
+import error screens (including "Report this site" opening Safari). Cook mode
+and sharing have no UI tests on either platform.
 
 Two dependency versions are pinned on purpose: `navigation-compose` 2.7.7 and
 `hilt-navigation-compose` 1.2.0. The newest releases need a newer Compose than
@@ -157,6 +187,21 @@ GitHub Actions, in `.github/workflows/`:
   uploads the `.xcresult` on failure.
 - **iOS UI tests** (`ios-ui-tests.yml`), about 18 minutes: nightly at 03:00
   UTC and on demand (Actions → iOS UI tests → Run workflow).
+- **Recipe site check** (`site-check.yml`, #32): Mondays at 06:00 UTC and on
+  demand, and on a pull request that changes the check or its URL list. It
+  runs the real `BlogRecipeSource` (JSON-LD, then microdata) over
+  the ~20 pages in `app/src/test/resources/site-check-urls.txt`, applying the
+  repository's one retry, and writes a table to the job summary: per site,
+  parsed or the `ParseError` cause, and for a success the ingredient and step
+  counts and whether yield, total time and photo came through. Each run
+  uploads `results.md` and `results.json` as the `site-check-<run>` artifact
+  (kept 90 days): compare runs, since blocking flips run to run. A blocked
+  site never fails the job; a broken harness does, and "no site parsed" raises
+  a warning. Only outcomes are recorded, never the pages or recipe text.
+  Locally: `./gradlew testDebugUnitTest -PsiteCheck` (results in
+  `app/build/site-check/`). Without `-PsiteCheck`, `LiveSiteCheck` is excluded
+  in `app/build.gradle.kts`, so the normal runs never touch the network.
+  Replace a URL only when its page is gone in a browser too.
 
 When a new Xcode major comes out, GitHub ships it as a new image label
 (`xcode-28`), so the label, `DEVELOPER_DIR`, the simulator `OS=` and
@@ -200,7 +245,7 @@ The uninstall takes the unit settings (`shared_prefs`) with it too. Back both
 up first and put them back after (this round-trip has been used and works):
 
 ```
-B=/tmp/recipe-backup && mkdir -p $B && P=com.example.recipeclipper
+B=/tmp/recipe-backup && mkdir -p $B && P=com.liberopat.recipeclipper
 for f in recipe_clipper.db recipe_clipper.db-wal recipe_clipper.db-shm; do
   adb exec-out run-as $P cat databases/$f > $B/$f
 done
@@ -224,6 +269,22 @@ straight after an emulator restores from a snapshot, `run-as` can fail with
 `couldn't stat /data/user/0/...`, and the "backup" is then that error text
 (88 bytes). A retry a few seconds later works.
 
+### The application ID changed
+
+The installed ID is `com.liberopat.recipeclipper` (`applicationId`); the
+Kotlin package and `namespace` are still `com.example.recipeclipper`, which is
+why test class names and `am start` use the old spelling. Until September 2026
+the app installed as `com.example.recipeclipper`. To Android that is a
+different app: `installDebug` now puts a second copy beside it, starting
+empty, and the old one keeps its recipes, lists and settings.
+
+To carry them across, run the backup half of the round-trip above with
+`P=com.example.recipeclipper` (all three database files, then the merge), then
+`installDebug` the new build without opening it (or force-stop it), and run
+the restore half with `P=com.liberopat.recipeclipper`. If the old install's
+database is an older version, Room migrates it on first open. Check the recipes are there, then
+`adb uninstall com.example.recipeclipper`.
+
 A single test:
 `./gradlew testDebugUnitTest --tests "com.example.recipeclipper.data.model.IngredientScalerTest"`
 (append `.` and a backticked method name to run one case).
@@ -231,7 +292,7 @@ A single test:
 The emulator may be in use by a person while you work. Scripted taps, force-stops
 and settings changes land in their session, so check for activity first (a
 device clock that jumps, or state you didn't set) and ask before automating.
-Reading the database is gentler: `adb exec-out run-as com.example.recipeclipper
+Reading the database is gentler: `adb exec-out run-as com.liberopat.recipeclipper
 cat databases/recipe_clipper.db` (plus the `-wal` and `-shm` files) gives a copy
 to open read-only with sqlite3.
 
@@ -239,14 +300,17 @@ To try a recipe on a running emulator without the share sheet (adb lives in
 `~/Library/Android/sdk/platform-tools/`):
 
 ```
-adb shell am start -n com.example.recipeclipper/.MainActivity \
+adb shell am start -n com.liberopat.recipeclipper/com.example.recipeclipper.MainActivity \
   -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "<recipe url>"
 adb exec-out screencap -p > shot.png
 ```
 
+The activity needs its full class name: the `.MainActivity` shorthand expands
+against the application ID, which no longer matches the package.
+
 The unit default persists in the app's SharedPreferences and recipes persist in
 the database, so a test run leaves both behind (`adb shell pm clear
-com.example.recipeclipper` resets them). To test rotation from the shell:
+com.liberopat.recipeclipper` resets them). To test rotation from the shell:
 `adb shell settings put system accelerometer_rotation 0` then
 `settings put system user_rotation 1` (0 is portrait); put
 `accelerometer_rotation` back to 1 afterwards.

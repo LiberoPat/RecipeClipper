@@ -54,4 +54,10 @@ class StepTimersTest {
         assertEquals("45 sec", StepTimers.label(45))
         assertEquals("2 min 30 sec", StepTimers.label(150))
     }
+
+    @Test fun `a decimal comma duration is read as a decimal`() {
+        assertEquals(5400, StepTimers.parse("Bake for 1,5 hours."))
+        assertEquals(150, StepTimers.parse("Simmer 2,5 minutes"))
+        assertNull(StepTimers.parse("Rest for 1,500 seconds"))
+    }
 }

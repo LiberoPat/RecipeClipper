@@ -11,6 +11,11 @@ local.properties
 /app/build
 /.kotlin
 
+# Signing keys and their passwords never go in the repo (see docs/release.md)
+*.jks
+*.keystore
+keystore.properties
+
 # iOS — the Xcode project is generated from ios/project.yml by XcodeGen
 /ios/RecipeClipper.xcodeproj
 xcuserdata/

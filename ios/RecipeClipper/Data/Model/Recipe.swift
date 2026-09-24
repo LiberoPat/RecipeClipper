@@ -104,6 +104,16 @@ enum ParseError: Equatable, Error {
         }
     }
 
+    /// Worth one load in an off-screen browser once the direct fetch (and its retry) has ended
+    /// here: a block, which a real browser engine often gets past, or a page with no recipe
+    /// data, which may be built by JavaScript. Never `.offline` or a `.fetchFailed`.
+    var triesRenderedPage: Bool {
+        switch self {
+        case .blocked, .noRecipeFound: return true
+        default: return false
+        }
+    }
+
     /// The recipe screen reloads once when the connection comes back while showing these.
     var reloadsOnReconnect: Bool {
         switch self {
