@@ -42,14 +42,16 @@ sealed class RecipeContent {
      * with servings scaling and unit/temperature conversion applied. [servings] is null
      * when the recipe's yield has no usable number, in which case there is nothing to
      * scale from. [stepTimerSeconds] lines up with the steps: the duration each one states,
-     * or null.
+     * or null. [sourceDomain] is the site credited under the title ("smittenkitchen.com"),
+     * or null when the source link has no recognisable host (then no credit is shown).
      */
     data class Success(
         val recipe: Recipe,
         val servings: ServingsScale?,
         val ingredients: List<String>,
         val instructions: List<String>,
-        val stepTimerSeconds: List<Int?>
+        val stepTimerSeconds: List<Int?>,
+        val sourceDomain: String?
     ) : RecipeContent()
 
     data class Error(val error: ParseError) : RecipeContent()
