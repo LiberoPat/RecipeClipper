@@ -1,0 +1,5 @@
+# GitHub-hosted labels newer than actionlint's built-in list (actionlint
+# 1.7.12 predates the Xcode-named macOS images). Drop once it knows them.
+self-hosted-runner:
+  labels:
+    - xcode-27

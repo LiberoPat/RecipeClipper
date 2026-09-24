@@ -54,6 +54,7 @@ cd ios && xcodegen generate           # after adding or removing iOS files
   (`GradleDependency`, `NewerVersionAvailable`, `AndroidGradlePluginVersion`,
   `OldTargetApi`), left on purpose (#23). Don't baseline them; any other
   finding is real.
+- **CI checks every PR** (`docs/testing.md`): merge only when green.
 - **An emulator or simulator may be in use by a person.** Check before
   scripted taps, force-stops or settings changes, and ask. **Never run two iOS
   test sessions on one simulator**: one kills the other's test host.

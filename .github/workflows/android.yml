@@ -1,0 +1,49 @@
+name: Android
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android unit tests and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      # The same JDK as Android Studio's bundled JBR: JetBrains Runtime 25.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: jetbrains
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Lint fails the build on any error (AGP's default abortOnError).
+      # Warnings are checked in the next step.
+      - name: Unit tests, lint, device-test compile
+        run: ./gradlew testDebugUnitTest lintDebug compileDebugAndroidTestKotlin
+
+      # Lint reports 16 version advisories on purpose (CLAUDE.md, #23). Any
+      # other finding, at any severity, is real and fails the job.
+      - name: Check lint found only version advisories
+        run: python3 .github/scripts/check_lint.py app/build/reports/lint-results-debug.xml
+
+      - name: Upload lint and test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          if-no-files-found: ignore
