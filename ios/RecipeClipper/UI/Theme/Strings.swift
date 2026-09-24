@@ -66,47 +66,11 @@ enum Strings {
     // Clip it yourself (#37)
     static var clipOffer: String { String(localized: "clip_offer") }
     static var clipItYourself: String { String(localized: "action_clip_it_yourself") }
-    static var done: String { String(localized: "action_done") }
     static var discard: String { String(localized: "action_discard") }
     static var remove: String { String(localized: "action_remove") }
-    static func clipField(_ field: ClipField) -> String {
-        switch field {
-        case .name: return String(localized: "clip_field_name")
-        case .ingredients: return String(localized: "clip_field_ingredients")
-        case .steps: return String(localized: "clip_field_steps")
-        case .photo: return String(localized: "clip_field_photo")
-        }
-    }
-    /// Not words (Android's translatable="false" `clip_tag_count`).
-    static func clipTagCount(_ label: String, _ n: Int) -> String { "\(label) · \(n)" }
     static var clipHint: String { String(localized: "clip_hint") }
     static var clipPickingPhoto: String { String(localized: "clip_picking_photo") }
-    static func clipLinesSelected(_ n: Int) -> String {
-        String(localized: "clip_lines_selected \(n)") + " · " + String(localized: "clip_lines_selected_hint")
-    }
-    static func clipSummary(_ draft: ClipDraft) -> String {
-        [
-            draft.count(.name) > 0 ? String(localized: "clip_summary_name") : String(localized: "clip_summary_no_name"),
-            String(localized: "clip_summary_ingredients \(draft.count(.ingredients))"),
-            String(localized: "clip_summary_steps \(draft.count(.steps))"),
-            draft.photo != nil ? String(localized: "clip_summary_photo") : String(localized: "clip_summary_no_photo"),
-        ].joined(separator: " · ")
-    }
     static var clipReview: String { String(localized: "clip_review") }
-    static func clipMessage(_ message: ClipMessage) -> String {
-        switch message {
-        case .assigned(.name, _): return String(localized: "clip_added_name")
-        case .assigned(.ingredients, let n): return String(localized: "clip_added_ingredients \(n)")
-        case .assigned(.steps, let n): return String(localized: "clip_added_steps \(n)")
-        case .assigned(.photo, _): return String(localized: "clip_added_photo")
-        case .cleared(.name): return String(localized: "clip_cleared_name")
-        case .cleared(.ingredients): return String(localized: "clip_cleared_ingredients")
-        case .cleared(.steps): return String(localized: "clip_cleared_steps")
-        case .cleared(.photo): return String(localized: "clip_cleared_photo")
-        case .draftRestored: return String(localized: "clip_draft_restored")
-        case .saveFailed: return String(localized: "clip_save_failed")
-        }
-    }
     static var clipBackToPage: String { String(localized: "clip_back_to_page") }
     static var clipPhotoFromPage: String { String(localized: "clip_photo_from_page") }
     static var clipNoPhoto: String { String(localized: "clip_no_photo") }
