@@ -19,6 +19,7 @@ final class RecipeViewModel {
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private let sleep: Sleep
     @ObservationIgnored private let connectivity: Connectivity
+    @ObservationIgnored private let appInfo: AppInfo
 
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     // Waits for offline -> online while an offline / fetch-failed error is showing.
@@ -35,7 +36,8 @@ final class RecipeViewModel {
         preferences: AppPreferences,
         clock: Clock,
         sleep: @escaping Sleep = Sleeps.real,
-        connectivity: Connectivity = StaticConnectivity()
+        connectivity: Connectivity = StaticConnectivity(),
+        appInfo: AppInfo = StaticAppInfo()
     ) {
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
@@ -44,6 +46,7 @@ final class RecipeViewModel {
         self.clock = clock
         self.sleep = sleep
         self.connectivity = connectivity
+        self.appInfo = appInfo
         // Seeded synchronously so the first render already uses the user's units.
         let settings = preferences.current
         uiState = RecipeUiState(
@@ -77,6 +80,7 @@ final class RecipeViewModel {
         reconnectTask?.cancel()
         reconnectTask = nil
         uiState.content = .loading
+        uiState.reportSiteUrl = nil
         // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
         loadTask = Task { [weak self, recipeId, shareUrl, repository] in
             let result: ParseResult
@@ -99,9 +103,18 @@ final class RecipeViewModel {
                 uiState.checkedIngredients = recipe.checkedIngredients
             case .error(let error):
                 uiState.content = .error(error)
+                uiState.reportSiteUrl = reportSiteUrl(for: error)
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
         }
+    }
+
+    /// Only a shared link that loaded but held no recipe is worth reporting: a block, being
+    /// offline or a failed fetch usually lifts on its own, and a saved recipe has no page to
+    /// report.
+    private func reportSiteUrl(for error: ParseError) -> String? {
+        guard error == .noRecipeFound, let shareUrl else { return nil }
+        return SiteReportLink.issueUrl(link: shareUrl, platform: appInfo.platform, appVersion: appInfo.appVersion)
     }
 
     /// While an offline or fetch-failed error is on screen, waits for the connection to go from
@@ -321,7 +334,8 @@ final class RecipeViewModel {
             servings: servings,
             ingredients: render(recipe, servings, uiState.unitSystem, uiState.convertLiquids),
             instructions: renderInstructions(recipe, uiState.temperatureUnit),
-            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0) }
+            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0) },
+            sourceDomain: SourceDomain.of(recipe.sourceUrl)
         )
     }
 

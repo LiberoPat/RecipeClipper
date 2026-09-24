@@ -81,6 +81,21 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertNotNil(vm.uiState.content.success)
     }
 
+    func testTheSourceDomainIsCreditedFromTheSourceLink() async {
+        var recipe = testRecipe()
+        recipe.sourceUrl = "https://www.smittenkitchen.com/2024/01/soup/"
+        let (vm, _) = await loaded(recipe)
+        XCTAssertEqual(success(vm)?.sourceDomain, "smittenkitchen.com")
+    }
+
+    func testASourceLinkWithNoHostCreditsNoDomain() async {
+        var recipe = testRecipe()
+        recipe.sourceUrl = "not a link"
+        let (vm, _) = await loaded(recipe)
+        XCTAssertNotNil(success(vm))
+        XCTAssertNil(success(vm)?.sourceDomain)
+    }
+
     func testAnImportFailureShowsItsCause() async {
         let repository = FakeRecipeRepository()
         repository.importResult = .error(.fetchFailed("HTTP 403"))
@@ -178,10 +193,10 @@ final class RecipeViewModelTests: XCTestCase {
         let preferences = FakeAppPreferences()
         let (vm, _) = await loaded(preferences: preferences)
 
-        vm.onUnitSystemChange(.grams)
+        vm.onUnitSystemChange(.metric)
 
         let expectedIngredients = testRecipe().ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .grams, includeLiquids: false)
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .metric, includeLiquids: false)
         }
         // Oven temperature is decoupled from the unit system (defaults to as written), so
         // changing UnitSystem alone must leave instructions untouched.
@@ -190,8 +205,8 @@ final class RecipeViewModelTests: XCTestCase {
         }
         XCTAssertEqual(success(vm)?.ingredients, expectedIngredients)
         XCTAssertEqual(success(vm)?.instructions, expectedInstructions)
-        XCTAssertEqual(preferences.unitSystem, .grams)
-        XCTAssertEqual(vm.uiState.unitSystem, .grams)
+        XCTAssertEqual(preferences.unitSystem, .metric)
+        XCTAssertEqual(vm.uiState.unitSystem, .metric)
     }
 
     func testUnitPreferencesAreSeededAtInit() async {
@@ -252,7 +267,7 @@ final class RecipeViewModelTests: XCTestCase {
     }
 
     func testTurningOnConvertLiquidsInSettingsReRendersTheOpenRecipe() async {
-        let preferences = FakeAppPreferences(unitSystem: .grams)
+        let preferences = FakeAppPreferences(unitSystem: .ounces)
         let (vm, _) = await loaded(preferences: preferences)
 
         preferences.convertLiquids = true
@@ -260,7 +275,7 @@ final class RecipeViewModelTests: XCTestCase {
 
         XCTAssertTrue(vm.uiState.convertLiquids)
         let expected = testRecipe().ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .grams, includeLiquids: true)
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .ounces, includeLiquids: true)
         }
         XCTAssertEqual(success(vm)?.ingredients, expected)
     }
@@ -340,11 +355,11 @@ final class RecipeViewModelTests: XCTestCase {
         let preferences = FakeAppPreferences()
         let (vm, _) = await loaded(preferences: preferences)
 
-        vm.onUnitSystemChange(.grams)
+        vm.onUnitSystemChange(.ounces)
         let immediately = vm.uiState // before the echo is delivered
         await settleMain()
 
-        XCTAssertEqual(immediately.unitSystem, .grams)
+        XCTAssertEqual(immediately.unitSystem, .ounces)
         XCTAssertEqual(vm.uiState, immediately)
     }
 

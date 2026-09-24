@@ -30,10 +30,10 @@ final class SettingsViewModelTests: XCTestCase {
         let preferences = FakeAppPreferences()
         let vm = SettingsViewModel(preferences: preferences)
 
-        vm.onUnitSystemChange(.grams)
+        vm.onUnitSystemChange(.metric)
 
-        XCTAssertEqual(vm.uiState.unitSystem, .grams)
-        XCTAssertEqual(preferences.unitSystem, .grams)
+        XCTAssertEqual(vm.uiState.unitSystem, .metric)
+        XCTAssertEqual(preferences.unitSystem, .metric)
     }
 
     func testOnConvertLiquidsChangeWritesThroughAndUpdatesState() {
@@ -92,12 +92,12 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState, SettingsUiState(unitSystem: .metric, convertLiquids: true))
     }
 
-    func testConvertLiquidsIsOfferedOnlyForGramsAndOunces() {
+    func testConvertLiquidsIsOfferedOnlyForOunces() {
         let vm = SettingsViewModel(preferences: FakeAppPreferences())
         let offered = UnitSystem.allCases.filter { system in
             vm.onUnitSystemChange(system)
             return vm.showsConvertLiquids
         }
-        XCTAssertEqual(offered, [.grams, .ounces])
+        XCTAssertEqual(offered, [.ounces])
     }
 }
