@@ -167,6 +167,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (`MutedOnInk`, `HairlineOnInk`, `PaprikaTextOnInk`). No Material purple.
   Cook mode follows the system theme; "Dark while cooking" (off by default)
   opts into dark. Don't restore an always-dark cook mode without asking.
+- **iPad (iOS only, #20):** every screen's content sits in a centred ~680pt
+  column (`readableColumn()`, `UI/Common/Components.swift`) so text never
+  runs edge to edge on a wide screen; History, a `List`, sets the same width
+  through row insets instead, since a `List` can't take a frame. iPhone
+  portrait is unchanged.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
   Ounces only), Oven temperature (independent of units, default As
