@@ -327,6 +327,31 @@ extension View {
     func screenBackground() -> some View {
         background(Palette.background.ignoresSafeArea())
     }
+
+    /// Caps content that already carries its side gutters at the readable column and centres
+    /// it, so text never runs edge to edge on an iPad (or an iPhone in landscape). Narrower
+    /// than the cap, as every iPhone is in portrait, both frames resolve to the proposed
+    /// width and nothing moves. Put it on the content, not on the scroll view, so the margins
+    /// still scroll.
+    func readableColumn() -> some View {
+        frame(maxWidth: ReadableWidth.cappedFrame).frame(maxWidth: .infinity)
+    }
+}
+
+/// The reading-width cap for wide screens (issue #20).
+enum ReadableWidth {
+    /// The widest a line of text gets, in points.
+    static let column: CGFloat = 680
+    /// The side gutter every screen already pads its content with.
+    static let gutter: CGFloat = 20
+    /// The column plus both gutters: the frame `readableColumn()` caps padded content at.
+    static let cappedFrame = column + 2 * gutter
+
+    /// The side inset that centres the column in `width`, never less than the gutter. For a
+    /// `List`, whose rows take insets rather than a frame.
+    static func inset(in width: CGFloat) -> CGFloat {
+        max(gutter, (width - column) / 2)
+    }
 }
 
 /// An outlined button (Material's OutlinedButton): the cook view's "Start timer".
