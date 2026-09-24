@@ -44,6 +44,7 @@ final class ReconnectCountingRepository: RecipeRepository {
     }
     func open(id: Int64) async -> Recipe? { nil }
     func setChecked(id: Int64, checked: Set<Int>) async {}
+    func setNotes(id: Int64, notes: String) async {}
     func delete(id: Int64) async -> DeletedRecipe? { nil }
     func restore(_ deleted: DeletedRecipe) async {}
     nonisolated func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> {

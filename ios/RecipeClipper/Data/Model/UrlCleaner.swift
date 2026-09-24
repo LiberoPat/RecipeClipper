@@ -9,11 +9,10 @@ import Foundation
 /// order and spelling, because some sites use them to say which recipe you mean.
 enum UrlCleaner {
 
-    private static let trackingParameters: Set<String> = [
-        "fbclid", "gclid", "gclsrc", "dclid", "msclkid", "yclid", "twclid", "ttclid",
-        "igshid", "mc_cid", "mc_eid", "mkt_tok", "li_fat_id", "vero_id", "_ga", "_gl",
-        "oly_enc_id", "oly_anon_id", "wickedid",
-    ]
+    // Shared with Android: shared/tables/url.json.
+    private static let table = SharedTables.read("url")
+    private static let trackingPrefixes = SharedTables.strings(table, "trackingPrefixes")
+    private static let trackingParameters = Set(SharedTables.strings(table, "trackingParameters"))
 
     static func clean(_ url: String) -> String {
         let trimmed = url.kTrimmed
@@ -54,6 +53,6 @@ enum UrlCleaner {
 
     private static func isTracking(_ name: String) -> Bool {
         let lower = name.lowercased()
-        return lower.hasPrefix("utm_") || trackingParameters.contains(lower)
+        return trackingPrefixes.contains { lower.hasPrefix($0) } || trackingParameters.contains(lower)
     }
 }

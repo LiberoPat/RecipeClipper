@@ -7,18 +7,31 @@ import Foundation
 /// stated duration ("whisk until smooth") returns nil and gets no timer: never guess one.
 enum StepTimers {
 
-    private static let unit = #"(hours?|hrs?|minutes?|mins?|seconds?|secs?)"#
     private static let qty = IngredientScaler.qty
+
+    // The duration words are shared with Android: shared/tables/en/timers.json.
+    private static let table = SharedTables.load("timers")
+
+    /// Each unit's words as one case-insensitive whole-string regex, with its length in seconds.
+    private static let units: [(words: JRegex, seconds: Int32)] = SharedTables.objects(table, "units").map {
+        (JRegex(SharedTables.alternation(SharedTables.strings($0, "patterns")), ignoreCase: true),
+         Int32(($0["seconds"] as? Int) ?? 0))
+    }
+
+    private static let unit = "(" + SharedTables.objects(table, "units")
+        .flatMap { SharedTables.strings($0, "patterns") }
+        .joined(separator: "|") + ")"
+    private static let followOnWords = SharedTables.alternation(SharedTables.strings(table, "followOn"))
 
     // groups: 1 quantity, 2 unit. An optional "-" allows "a 20-minute simmer".
     private static let duration = JRegex(
-        #"(?<![\d.,/⁄])("# + qty + #")(?:\s*(?:[-–—]|to)\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
+        #"(?<![\d.,/⁄])("# + qty + #")(?:\s*(?:[-–—]|"# + SharedTables.rangeWords + #")\s*(?:"# + qty + #"))?\s*-?\s*"# + unit + #"\b"#,
         ignoreCase: true
     )
 
     // "1 hour 30 minutes", "2 minutes and 30 seconds". groups: 1 quantity, 2 unit
     private static let followOn = JRegex(
-        #"^\s*(?:and\s+)?("# + qty + #")\s*-?\s*"# + unit + #"\b"#,
+        #"^\s*(?:"# + followOnWords + #"\s+)?("# + qty + #")\s*-?\s*"# + unit + #"\b"#,
         ignoreCase: true
     )
 
@@ -40,11 +53,7 @@ enum StepTimers {
     }
 
     private static func unitSeconds(_ unit: String) -> Int32 {
-        switch unit.lowercased().first {
-        case "h": return 3600
-        case "m": return 60
-        default: return 1
-        }
+        units.first { $0.words.matchEntire(unit) != nil }!.seconds
     }
 
     /// Int32 with Kotlin's saturating `Double.toInt()`, so an absurd number can't trap.

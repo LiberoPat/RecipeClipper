@@ -29,6 +29,8 @@ enum Strings {
     static let labelTotal = "Total"
     static let headingIngredients = "Ingredients"
     static let headingInstructions = "Instructions"
+    static let headingNotes = "Notes"
+    static let notesPlaceholder = "Add a note"
     static let openOriginal = "Open original"
     static func openOriginalHint(_ domain: String) -> String { "Open the original recipe on \(domain)" }
 

@@ -94,13 +94,18 @@ and the `outerHTML` decoding; a JVM test can't host a WebView.
 version-1 database from the exported schema and run `MIGRATION_1_2` against
 it: Breakfast and Snacks arrive, an existing recipe keeps its title,
 ingredients, `lastViewedAt` and list membership, and a user-created list keeps
-its place after the seeded block. This is what makes "never use destructive
-migration" checkable rather than an intention.
+its place after the seeded block. `MIGRATION_2_3` (the `notes` column, #27)
+is run against a real version-2 database the same way: the recipe keeps its
+content, ticks and membership, has no note, and a note written afterwards
+survives a re-share; a version-1 file also goes to 3 in one open. This is
+what makes "never use destructive migration" checkable rather than an
+intention.
 
-**All 89 device tests have been run on an emulator and pass**: 26
-`RecipeDaoTest`, 22 `ListDaoTest`, 3 `MigrationTest`, and 38 Compose UI tests
-(see below). `RecipeSourceCreditTest` (the source credit under the recipe
-title) was added after that run and has so far only been compiled.
+**The device tests have been run on an emulator and pass**: `RecipeDaoTest`,
+`ListDaoTest`, `MigrationTest` and the Compose UI tests (see below), including
+those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).
+`RecipeSourceCreditTest` (the source credit under the recipe title) was
+added after that run and has so far only been compiled.
 
 `MigrationTest` needs `app/schemas` packaged into the instrumentation APK:
 `MigrationTestHelper` reads the exported JSON from the test APK's **assets**,
@@ -283,8 +288,8 @@ empty, and the old one keeps its recipes, lists and settings.
 To carry them across, run the backup half of the round-trip above with
 `P=com.example.recipeclipper` (all three database files, then the merge), then
 `installDebug` the new build without opening it (or force-stop it), and run
-the restore half with `P=com.liberopat.recipeclipper`. The database is the same
-version, so nothing migrates. Check the recipes are there, then
+the restore half with `P=com.liberopat.recipeclipper`. If the old install's
+database is an older version, Room migrates it on first open. Check the recipes are there, then
 `adb uninstall com.example.recipeclipper`.
 
 A single test:

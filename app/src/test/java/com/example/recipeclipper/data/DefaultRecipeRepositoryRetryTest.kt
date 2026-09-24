@@ -76,6 +76,10 @@ class DefaultRecipeRepositoryRetryTest {
             writes++
             rows[id]?.let { rows[id] = it.copy(checkedIngredients = checked) }
         }
+        override suspend fun setNotes(id: Long, notes: String?) {
+            writes++
+            rows[id]?.let { rows[id] = it.copy(notes = notes) }
+        }
         override suspend fun delete(id: Long) {
             writes++
             rows.remove(id)
@@ -173,6 +177,34 @@ class DefaultRecipeRepositoryRetryTest {
         assertEquals(1, source.fetches)
         assertEquals(savedId, (result as ParseResult.Success).recipe.id)
         assertEquals(5_000L, dao.rows[savedId]?.lastViewedAt)
+    }
+
+    // Not a retry rule, but this is the JVM suite that runs the real upsert: a re-share
+    // refreshes the content from the source and must leave the user's note alone.
+    @Test fun `re-sharing a link keeps its note and refreshes the content`() = runTest {
+        val dao = InMemoryRecipeDao()
+        val first = DefaultRecipeRepository(ScriptedSource(success), dao, Clock { 1_000L }, NoLog)
+        val id = (first.importFromUrl(url) as ParseResult.Success).recipe.id
+        first.setNotes(id, "Used half the sugar")
+
+        val refreshed = ParseResult.Success(recipe(title = "Better Soup"))
+        val result = DefaultRecipeRepository(ScriptedSource(refreshed), dao, Clock { 2_000L }, NoLog)
+            .importFromUrl(url) as ParseResult.Success
+
+        assertEquals(id, result.recipe.id)
+        assertEquals("Better Soup", result.recipe.name)
+        assertEquals("Used half the sugar", result.recipe.notes)
+    }
+
+    @Test fun `a blank note is stored as no note`() = runTest {
+        val dao = InMemoryRecipeDao()
+        val repository = DefaultRecipeRepository(ScriptedSource(success), dao, Clock { 1_000L }, NoLog)
+        val id = (repository.importFromUrl(url) as ParseResult.Success).recipe.id
+
+        repository.setNotes(id, "Needs 10 more minutes")
+        assertEquals("Needs 10 more minutes", dao.rows[id]?.notes)
+        repository.setNotes(id, "  \n ")
+        assertEquals(null, dao.rows[id]?.notes)
     }
 
     @Test fun `NoRecipeFound is fetched once and never retried`() = runTest {
