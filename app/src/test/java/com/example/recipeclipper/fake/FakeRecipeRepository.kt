@@ -30,6 +30,12 @@ class FakeRecipeRepository : RecipeRepository {
     /** Staged answer for [importFromUrl]. */
     var importResult: ParseResult = ParseResult.Error(ParseError.NothingToShow)
 
+    /** Staged answer for [saveClip]; null answers Success with the recipe given id 1. */
+    var saveClipResult: ParseResult? = null
+
+    /** Every recipe [saveClip] was called with, in order. */
+    val saveClipCalls = mutableListOf<Recipe>()
+
     /** Staged answer for [open]. */
     var openResult: Recipe? = null
 
@@ -55,6 +61,11 @@ class FakeRecipeRepository : RecipeRepository {
     override suspend fun importFromUrl(sharedUrl: String): ParseResult {
         importCalls++
         return importResult
+    }
+
+    override suspend fun saveClip(recipe: Recipe): ParseResult {
+        saveClipCalls += recipe
+        return saveClipResult ?: ParseResult.Success(recipe.copy(id = 1))
     }
 
     override suspend fun open(id: Long): Recipe? = openResult
