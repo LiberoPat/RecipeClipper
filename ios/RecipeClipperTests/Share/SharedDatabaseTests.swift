@@ -39,6 +39,43 @@ final class SharedDatabaseTests: XCTestCase {
         XCTAssertEqual(listsB, AppDatabase.builtInLists.count)
     }
 
+    /// A device already has a version-1 file (from before the extension shipped, or before
+    /// notes) and now the app and the extension both update at once: whichever opens first
+    /// must migrate it to the current version, and the second must see that version rather
+    /// than re-running the migration or failing on it.
+    func testTwoOpensOfAnExistingOlderFileAtOnceBothMigrateOnce() async throws {
+        let path = directory.appendingPathComponent("recipe_clipper.sqlite").path
+        do {
+            let old = try SQLiteConnection(path: path)
+            try old.execute("PRAGMA foreign_keys = ON")
+            try AppDatabase.migrate(old, upTo: 1)
+            try old.run(
+                """
+                INSERT INTO recipes (id, sourceUrl, title, imageUrl, ingredients, instructions,
+                    prepTime, cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients)
+                VALUES (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]', '["Simmer."]',
+                    NULL, NULL, NULL, '4', 'BLOG', 123, '[0]')
+                """
+            )
+            XCTAssertEqual(try old.queryOne("PRAGMA user_version") { $0.int(0) }, 1)
+        } // closed here, as an old build would have left it
+
+        async let first = Task.detached { try AppDatabase(path: path) }.value
+        async let second = Task.detached { try AppDatabase(path: path) }.value
+        let (app, ext) = try await (first, second)
+
+        let versionFromApp = try await app.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
+        let versionFromExtension = try await ext.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
+        XCTAssertEqual(versionFromApp, AppDatabase.schemaVersion)
+        XCTAssertEqual(versionFromExtension, AppDatabase.schemaVersion)
+
+        let row = try await ext.get(7)
+        XCTAssertEqual(row?.title, "Adobo")
+        XCTAssertNil(row?.notes, "migrating must not invent a value for the new column")
+        let lists = try await app.allLists()
+        XCTAssertEqual(lists.count, AppDatabase.builtInLists.count, "migrating must not reseed the built-ins")
+    }
+
     /// What one connection (the extension) commits, another already open (the app) reads, and
     /// `refreshObservers` makes the app's open lists re-query to show it.
     func testAWriteFromAnotherConnectionReachesObserversOnRefresh() async throws {
