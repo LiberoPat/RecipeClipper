@@ -182,7 +182,6 @@
     <string name="tab_groceries">Courses</string>
     <string name="tab_pantry">Garde-manger</string>
     <string name="coming_soon">Bientôt disponible</string>
-    <string name="week_placeholder">Planifiez ce que vous cuisinez chaque jour de la semaine.</string>
     <string name="groceries_placeholder">Une liste de courses créée à partir des recettes de votre semaine.</string>
     <string name="pantry_placeholder">Ce que vous avez déjà, pour n’acheter que ce dont vous avez besoin.</string>
     <string name="share_serves">Portions : %1$d</string>
@@ -215,4 +214,30 @@
     <string name="edit_label_photo">Lien de la photo (facultatif)</string>
     <string name="edit_error_invalid">Une recette a besoin d\'un nom, et d\'ingrédients ou d\'étapes.</string>
     <string name="edit_error_save_failed">Impossible d\'enregistrer la recette. Réessayez.</string>
+
+    <!-- Week meal plan (#49) -->
+    <string name="action_add_to_plan">Ajouter au planning</string>
+    <string name="action_add_to_day">Ajouter à %1$s</string>
+    <string name="label_meal">Repas</string>
+    <string name="snackbar_removed_from_plan">%1$s retiré du planning</string>
+    <string name="cd_previous_week">Semaine précédente</string>
+    <string name="cd_next_week">Semaine suivante</string>
+    <string name="action_this_week">Cette semaine</string>
+    <string name="meal_types_title">Types de repas</string>
+    <string name="label_today">Aujourd\'hui</string>
+    <string name="action_add_meal">+ Ajouter</string>
+    <string name="action_move">Déplacer…</string>
+    <string name="action_remove_from_plan">Retirer du planning</string>
+    <string name="add_to_day_title">Ajouter à %1$s</string>
+    <string name="label_search_or_note">Cherchez vos recettes ou écrivez une note</string>
+    <string name="action_add_as_note">Ajouter « %1$s » comme note</string>
+    <string name="move_meal_title">Déplacer %1$s</string>
+    <string name="action_move_to_day">Déplacer à %1$s</string>
+    <string name="action_new_meal_type">+ Nouveau type de repas</string>
+    <string name="rename_meal_type_title">Renommer le type de repas</string>
+    <string name="delete_meal_type_title">Supprimer « %1$s » ?</string>
+    <string name="delete_meal_type_body">Les repas prévus avec ce type passent en Dîner. Ils ne sont pas supprimés.</string>
+    <string name="action_move_up">Monter</string>
+    <string name="action_move_down">Descendre</string>
+    <string name="label_meal_type_name">Nom du type de repas</string>
 </resources>

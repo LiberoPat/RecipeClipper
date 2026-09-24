@@ -60,7 +60,7 @@ enum class Tab(
  */
 private val tabBarRoutes = setOf(
     Routes.HOME, Routes.HISTORY, Routes.SETTINGS, Routes.LISTS, Routes.LIST_DETAIL,
-    Routes.WEEK, Routes.GROCERIES, Routes.PANTRY
+    Routes.WEEK, Routes.MEAL_TYPES, Routes.GROCERIES, Routes.PANTRY
 )
 
 internal fun NavDestination?.showsTabBar(): Boolean = this?.route in tabBarRoutes
@@ -99,13 +99,15 @@ fun NavHostController.openRoute(route: String, tabsEnabled: Boolean = BuildConfi
  * `BuildConfig.MEAL_PLAN_TABS`) it is [RecipeNavHost] alone, exactly the app as it was before
  * the shell. On, the same Recipes graph sits under the first tab of a bottom bar.
  *
- * [recipes] is the Recipes graph; tests pass stand-ins, since the real screens need Hilt.
+ * [recipes] is the Recipes graph and [week] the Week tab's (#49); tests pass stand-ins, since
+ * the real screens need Hilt.
  */
 @Composable
 fun AppShell(
     navController: NavHostController,
     tabsEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS,
-    recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) }
+    recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) },
+    week: NavGraphBuilder.(NavHostController) -> Unit = { weekDestinations(it) }
 ) {
     if (!tabsEnabled) {
         RecipeNavHost(navController, recipes)
@@ -132,9 +134,7 @@ fun AppShell(
                     recipes(navController)
                 }
                 navigation(route = Tab.WEEK.route, startDestination = Routes.WEEK) {
-                    composable(Routes.WEEK) {
-                        ComingSoonScreen(R.string.tab_week, R.string.week_placeholder)
-                    }
+                    week(navController)
                 }
                 navigation(route = Tab.GROCERIES.route, startDestination = Routes.GROCERIES) {
                     composable(Routes.GROCERIES) {

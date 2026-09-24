@@ -3,6 +3,7 @@ package com.example.recipeclipper.data
 import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
+import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import kotlinx.coroutines.flow.Flow
@@ -59,5 +60,7 @@ internal class InMemoryRecipeDao : RecipeDao() {
     override fun observeHistory(): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override fun observeHistory(query: String): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
-    override suspend fun cullHistory(keep: Int) {}
+    override suspend fun cullHistory(keep: Int, today: Long) {}
+    override suspend fun planEntriesFor(recipeId: Long) = emptyList<MealPlanEntryEntity>()
+    override suspend fun insertPlanEntries(entries: List<MealPlanEntryEntity>) {}
 }

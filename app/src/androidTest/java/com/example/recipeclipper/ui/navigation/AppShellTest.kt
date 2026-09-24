@@ -62,10 +62,15 @@ class AppShellTest {
         ) { Text("stub:import ${it.arguments?.getString(RecipeViewModel.URL_ARG)}") }
     }
 
+    /** The Week tab's real screens need Hilt too (#49). */
+    private fun NavGraphBuilder.stubWeek() {
+        composable(Routes.WEEK) { Text("stub:week") }
+    }
+
     private fun show(tabsEnabled: Boolean) {
         compose.setContent {
             nav = rememberNavController()
-            AppShell(nav, tabsEnabled = tabsEnabled, recipes = { stubRecipes() })
+            AppShell(nav, tabsEnabled = tabsEnabled, recipes = { stubRecipes() }, week = { stubWeek() })
         }
         compose.onNodeWithText("stub:home").assertIsDisplayed()
     }
@@ -140,12 +145,11 @@ class AppShellTest {
     }
 
     @Test
-    fun theOtherTabsShowTheirPlaceholders() {
+    fun theOtherTabsShowTheirScreens() {
         show(tabsEnabled = true)
 
         tab("Week").performClick()
-        compose.onNodeWithText("Plan what you're cooking on each day of the week.").assertIsDisplayed()
-        compose.onNodeWithText("Coming soon").assertIsDisplayed()
+        compose.onNodeWithText("stub:week").assertIsDisplayed()
         tab("Week").assertIsSelected()
 
         tab("Groceries").performClick()
@@ -164,7 +168,7 @@ class AppShellTest {
         onNav { navigate(Routes.list(4)) }
 
         tab("Week").performClick()
-        compose.onNodeWithText("Coming soon").assertIsDisplayed()
+        compose.onNodeWithText("stub:week").assertIsDisplayed()
 
         tab("Recipes").performClick()
         compose.onNodeWithText("stub:list 4").assertIsDisplayed()

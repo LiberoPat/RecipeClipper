@@ -182,7 +182,6 @@
     <string name="tab_groceries">Spesa</string>
     <string name="tab_pantry">Dispensa</string>
     <string name="coming_soon">Prossimamente</string>
-    <string name="week_placeholder">Pianifica cosa cucinare ogni giorno della settimana.</string>
     <string name="groceries_placeholder">Una lista della spesa creata dalle ricette della tua settimana.</string>
     <string name="pantry_placeholder">Quello che hai già, così compri solo quello che ti serve.</string>
     <string name="share_serves">Porzioni: %1$d</string>
@@ -215,4 +214,30 @@
     <string name="edit_label_photo">Link della foto (facoltativo)</string>
     <string name="edit_error_invalid">Una ricetta ha bisogno di un nome e di ingredienti o passaggi.</string>
     <string name="edit_error_save_failed">Impossibile salvare la ricetta. Riprova.</string>
+
+    <!-- Week meal plan (#49) -->
+    <string name="action_add_to_plan">Aggiungi al piano</string>
+    <string name="action_add_to_day">Aggiungi a %1$s</string>
+    <string name="label_meal">Pasto</string>
+    <string name="snackbar_removed_from_plan">%1$s rimosso dal piano</string>
+    <string name="cd_previous_week">Settimana precedente</string>
+    <string name="cd_next_week">Settimana successiva</string>
+    <string name="action_this_week">Questa settimana</string>
+    <string name="meal_types_title">Tipi di pasto</string>
+    <string name="label_today">Oggi</string>
+    <string name="action_add_meal">+ Aggiungi</string>
+    <string name="action_move">Sposta…</string>
+    <string name="action_remove_from_plan">Rimuovi dal piano</string>
+    <string name="add_to_day_title">Aggiungi a %1$s</string>
+    <string name="label_search_or_note">Cerca le tue ricette o scrivi una nota</string>
+    <string name="action_add_as_note">Aggiungi «%1$s» come nota</string>
+    <string name="move_meal_title">Sposta %1$s</string>
+    <string name="action_move_to_day">Sposta a %1$s</string>
+    <string name="action_new_meal_type">+ Nuovo tipo di pasto</string>
+    <string name="rename_meal_type_title">Rinomina il tipo di pasto</string>
+    <string name="delete_meal_type_title">Eliminare «%1$s»?</string>
+    <string name="delete_meal_type_body">I pasti pianificati con questo tipo passano a Cena. Non vengono eliminati.</string>
+    <string name="action_move_up">Sposta su</string>
+    <string name="action_move_down">Sposta giù</string>
+    <string name="label_meal_type_name">Nome del tipo di pasto</string>
 </resources>

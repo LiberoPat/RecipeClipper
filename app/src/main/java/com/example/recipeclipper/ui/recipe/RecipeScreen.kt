@@ -69,6 +69,9 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.UnitSystem
+import com.example.recipeclipper.BuildConfig
+import com.example.recipeclipper.ui.plan.AddToPlanBottomSheet
+import com.example.recipeclipper.ui.plan.AddToPlanViewModel
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
@@ -96,7 +99,9 @@ internal class RecipeActions(
     val onSaveToList: () -> Unit,
     val onDelete: () -> Unit,
     val onEdit: () -> Unit = {},
-    val onUpdateFromSource: () -> Unit = {}
+    val onUpdateFromSource: () -> Unit = {},
+    /** "Add to plan" (#49); null hides it, as while the tab flag is off. */
+    val onAddToPlan: (() -> Unit)? = null
 )
 
 @Composable
@@ -104,7 +109,9 @@ fun RecipeScreen(
     onBack: () -> Unit,
     onEdit: (recipeId: Long) -> Unit = {},
     viewModel: RecipeViewModel = hiltViewModel(),
-    saveViewModel: SaveToListViewModel = hiltViewModel()
+    saveViewModel: SaveToListViewModel = hiltViewModel(),
+    planViewModel: AddToPlanViewModel = hiltViewModel(),
+    mealPlanEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
@@ -114,6 +121,7 @@ fun RecipeScreen(
     // not a direct Intent, so a UI test can supply its own and see the link without leaving.
     val uriHandler = LocalUriHandler.current
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
+    var planSheetOpen by rememberSaveable { mutableStateOf(false) }
     // The first timer started asks for permission to post its "time's up" notification.
     val askForNotifications = rememberNotificationPrompt()
     val actions = remember(viewModel, onBack, onEdit, context, uriHandler, askForNotifications) {
@@ -174,7 +182,15 @@ fun RecipeScreen(
             onEdit = {
                 (viewModel.uiState.value.content as? RecipeContent.Success)?.recipe?.id?.let(onEdit)
             },
-            onUpdateFromSource = viewModel::onUpdateFromSource
+            onUpdateFromSource = viewModel::onUpdateFromSource,
+            onAddToPlan = if (!mealPlanEnabled) null else {
+                {
+                    (viewModel.uiState.value.content as? RecipeContent.Success)?.let { loaded ->
+                        planViewModel.setRecipe(loaded.recipe.id, loaded.servings?.base)
+                        planSheetOpen = true
+                    }
+                }
+            }
         )
     }
 
@@ -267,6 +283,9 @@ fun RecipeScreen(
             // while it is still loading or has failed.
             if (sheetOpen && recipeId != null) {
                 SaveToListBottomSheet(saveViewModel, onDismiss = { sheetOpen = false })
+            }
+            if (planSheetOpen && recipeId != null) {
+                AddToPlanBottomSheet(planViewModel, onDismiss = { planSheetOpen = false })
             }
         }
     }
@@ -365,7 +384,8 @@ private fun ReadingView(
                         canUpdateFromSource = recipe.canUpdateFromSource && !state.updatingFromSource,
                         onEdit = actions.onEdit,
                         onUpdateFromSource = actions.onUpdateFromSource,
-                        onDelete = actions.onDelete
+                        onDelete = actions.onDelete,
+                        onAddToPlan = actions.onAddToPlan
                     )
                 }
             }
@@ -470,7 +490,7 @@ private fun ReadingView(
 }
 
 /**
- * Overflow menu: Edit, "Update from source" for the user's version of a linked recipe (#29),
+ * Overflow menu: "Add to plan" (#49, while the tab flag is on), Edit, "Update from source" for the user's version of a linked recipe (#29),
  * behind a warning that the edits will be lost, and Delete, behind a confirm dialog naming
  * the recipe.
  */
@@ -480,7 +500,8 @@ private fun RecipeOverflowMenu(
     canUpdateFromSource: Boolean,
     onEdit: () -> Unit,
     onUpdateFromSource: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onAddToPlan: (() -> Unit)? = null
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var confirming by rememberSaveable { mutableStateOf(false) }
@@ -490,6 +511,16 @@ private fun RecipeOverflowMenu(
         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        if (onAddToPlan != null) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_add_to_plan)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_tab_week), contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    onAddToPlan()
+                }
+            )
+        }
         DropdownMenuItem(
             text = { Text(stringResource(R.string.action_edit)) },
             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },

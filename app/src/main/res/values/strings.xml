@@ -212,7 +212,6 @@
     <string name="tab_groceries">Groceries</string>
     <string name="tab_pantry">Pantry</string>
     <string name="coming_soon">Coming soon</string>
-    <string name="week_placeholder">Plan what you\'re cooking on each day of the week.</string>
     <string name="groceries_placeholder">A shopping list built from the recipes in your week.</string>
     <string name="pantry_placeholder">What you already have, so you only buy what you need.</string>
 
@@ -249,4 +248,30 @@
     <string name="edit_label_photo">Photo link (optional)</string>
     <string name="edit_error_invalid">A recipe needs a name, and ingredients or steps.</string>
     <string name="edit_error_save_failed">Couldn\'t save the recipe. Try again.</string>
+
+    <!-- Week meal plan (#49) -->
+    <string name="action_add_to_plan">Add to plan</string>
+    <string name="action_add_to_day">Add to %1$s</string>
+    <string name="label_meal">Meal</string>
+    <string name="snackbar_removed_from_plan">Removed %1$s from the plan</string>
+    <string name="cd_previous_week">Previous week</string>
+    <string name="cd_next_week">Next week</string>
+    <string name="action_this_week">This week</string>
+    <string name="meal_types_title">Meal types</string>
+    <string name="label_today">Today</string>
+    <string name="action_add_meal">+ Add</string>
+    <string name="action_move">Move…</string>
+    <string name="action_remove_from_plan">Remove from plan</string>
+    <string name="add_to_day_title">Add to %1$s</string>
+    <string name="label_search_or_note">Search your recipes, or type a note</string>
+    <string name="action_add_as_note">Add “%1$s” as a note</string>
+    <string name="move_meal_title">Move %1$s</string>
+    <string name="action_move_to_day">Move to %1$s</string>
+    <string name="action_new_meal_type">+ New meal type</string>
+    <string name="rename_meal_type_title">Rename meal type</string>
+    <string name="delete_meal_type_title">Delete “%1$s”?</string>
+    <string name="delete_meal_type_body">Meals planned as this move to Dinner. They are not deleted.</string>
+    <string name="action_move_up">Move up</string>
+    <string name="action_move_down">Move down</string>
+    <string name="label_meal_type_name">Meal type name</string>
 </resources>

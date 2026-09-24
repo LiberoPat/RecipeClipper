@@ -65,6 +65,10 @@ class RecipeViewModel @Inject constructor(
     // Opened from a timer notification: start cook mode once the recipe has loaded.
     private var openInCookMode: Boolean = savedStateHandle.get<Boolean>(COOK_ARG) == true
 
+    // Opened from the Week (#49): show the planned servings rather than the saved choice. For
+    // this visit only; it isn't saved unless the cook changes the servings here.
+    private var plannedServings: Int? = savedStateHandle.get<Int>(SERVINGS_ARG)?.takeIf { it > 0 }
+
     // Seeded synchronously so the first render already uses the user's units; kept current
     // afterwards by collecting [AppPreferences.settings] in [init].
     private val _uiState = unitPreferences.current.let {
@@ -124,7 +128,8 @@ class RecipeViewModel @Inject constructor(
                 when (result) {
                     is ParseResult.Success -> state.copy(
                         content = successContent(
-                            result.recipe, state.unitSystem, state.convertLiquids, state.temperatureUnit
+                            result.recipe.withPlannedServings(), state.unitSystem, state.convertLiquids,
+                            state.temperatureUnit
                         ),
                         checkedIngredients = result.recipe.checkedIngredients,
                         notes = result.recipe.notes.orEmpty()
@@ -569,6 +574,13 @@ class RecipeViewModel @Inject constructor(
 
     // --- Turning a recipe into what the screen shows ---
 
+    /** The planned servings in place of the saved ones, the first time the recipe loads. */
+    private fun Recipe.withPlannedServings(): Recipe {
+        val planned = plannedServings ?: return this
+        plannedServings = null
+        return copy(servingsTarget = planned)
+    }
+
     private fun successContent(
         recipe: Recipe,
         system: UnitSystem,
@@ -615,6 +627,9 @@ class RecipeViewModel @Inject constructor(
 
         /** True when opened from a timer notification: the recipe opens in cook mode. */
         const val COOK_ARG = "cook"
+
+        /** Opened from the Week (#49): the planned servings, 0 for none. */
+        const val SERVINGS_ARG = "servings"
 
         /** How long typing must pause before the note is written. */
         const val NOTES_SAVE_DELAY_MS = 500L
