@@ -31,14 +31,19 @@ call-recording fake would prove only half of it. `recipeCount` and
 `containsRecipe` are derived from that state exactly as the SQL derives them,
 so a `recipeCount` staged on a list literal is ignored — stage membership
 instead. The error handling has its own: `DefaultRecipeRepositoryRetryTest`
-(the retry rule, the saved-copy fallback, cancelling during the pause),
+(the retry rule, the saved-copy fallback, cancelling during the pause, and
+the rendered fallback after it over a `FakeRenderedPageSource`: rendered once
+and only after `Blocked` or `NoRecipeFound`, never for `Offline` or a
+timeout, the 20 s cap, a rendered page with no recipe keeping the cause, and
+cancelling mid-render writing nothing; iOS has the same cases in
+`DataRepositoryTests`),
 `BlogRecipeSourceStatusTest` (which statuses and exceptions become which
 cause, against a fake `Connectivity`), `DatabaseErrorTest` (every repository
 call degrades and logs instead of throwing, and cancellation is never
 swallowed), and the reconnect cases in `RecipeViewModelTest`.
 `MicrodataRecipeParserTest` covers the microdata fallback on hand-written pages
 shaped like Smitten Kitchen's (the iOS suite uses the same pages).
-**257 JVM tests pass.**
+**268 JVM tests pass.**
 
 `app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
 database rules against real SQLite on a device, because they live in SQL and a

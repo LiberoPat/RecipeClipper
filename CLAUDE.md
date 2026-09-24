@@ -68,7 +68,7 @@ di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, Plat
 data/          RecipeRepository, ListRepository (interfaces; Default* are the Room-backed ones),
                Connectivity, ErrorLog, Clock (seams for tests)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText
 ui/            navigation, home, history, recipe, savetolist, lists, listdetail, settings,
@@ -226,6 +226,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (it fails at once), a timeout (a dead Wi-Fi costs one 15 s timeout, not
   two) or `NoRecipeFound`. A cancelled import writes nothing, even during the
   pause.
+- **Then, only if still `Blocked` or `NoRecipeFound`, one rendered fetch:**
+  the page loaded off screen (`RenderedPageSource`: Android `WebView`, iOS
+  `WKWebView`, JavaScript on, a short settle, capped at 20 s, cancelled with
+  the import), its HTML through the same parsers. Never after `Offline` or a
+  timeout; nothing is shown. No recipe there keeps the original cause.
 - After any failure, a link saved before opens from the saved copy. Photos
   are cached (Coil; iOS `ImageLoader`), so they show offline too.
 - **Every error screen offers Try again, `NoRecipeFound` included**: a
@@ -255,7 +260,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   - The photo falls back to `og:image`.
 - **A recipe needs a name, plus ingredients or steps.**
 - **Pages behind a login, or rendered by JavaScript,** expose no recipe data
-  to the fetch.
+  to the direct fetch. Only the rendered fetch can see the latter.
 - Every extracted string except `sourceUrl` goes through `stripHtml` (Jsoup's
   `text()`; iOS has a Jsoup-compatible port). A plain-string instructions
   block is split on `\n` **before** stripping, so `<br>`-separated steps stay
