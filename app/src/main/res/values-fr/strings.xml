@@ -190,4 +190,8 @@
     <string name="share_scaled">%1$s (à l\'origine %2$d)</string>
     <string name="share_heading_ingredients">INGRÉDIENTS</string>
     <string name="share_heading_instructions">PRÉPARATION</string>
+    <!-- Step timer notifications (#10) -->
+    <string name="timer_channel_name">Minuteurs de cuisine</string>
+    <string name="timer_channel_description">Quand le minuteur d\'une étape se termine alors que l\'appli est fermée ou en arrière-plan</string>
+    <string name="timer_notification_title">Temps écoulé : étape %1$d</string>
 </resources>

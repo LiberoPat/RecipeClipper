@@ -97,7 +97,7 @@ class AppShellTest {
         show(tabsEnabled = false)
         onNav { navigate(Routes.HISTORY) }
 
-        onNav { openSharedUrl("https://example.com/soup", tabsEnabled = false) }
+        onNav { openRoute(Routes.import("https://example.com/soup"), tabsEnabled = false) }
         compose.onNodeWithText("stub:import https://example.com/soup").assertIsDisplayed()
 
         onNav { popBackStack() }
@@ -190,7 +190,7 @@ class AppShellTest {
         tab("Pantry").performClick()
         compose.onNodeWithText("Coming soon").assertIsDisplayed()
 
-        onNav { openSharedUrl("https://example.com/soup", tabsEnabled = true) }
+        onNav { openRoute(Routes.import("https://example.com/soup"), tabsEnabled = true) }
 
         compose.onNodeWithText("stub:import https://example.com/soup").assertIsDisplayed()
         bar().assertDoesNotExist()
@@ -211,8 +211,8 @@ class AppShellTest {
         show(tabsEnabled = true)
         onNav { navigate(Routes.LISTS) }
 
-        onNav { openSharedUrl("https://example.com/a", tabsEnabled = true) }
-        onNav { openSharedUrl("https://example.com/b", tabsEnabled = true) }
+        onNav { openRoute(Routes.import("https://example.com/a"), tabsEnabled = true) }
+        onNav { openRoute(Routes.import("https://example.com/b"), tabsEnabled = true) }
 
         compose.onNodeWithText("stub:import https://example.com/b").assertIsDisplayed()
         onNav { popBackStack() }

@@ -77,6 +77,8 @@ struct RootView: View {
         switch route {
         case .recipe(let id):
             recipe { container.makeRecipeViewModel(recipeId: id, url: nil) }
+        case .cookRecipe(let id):
+            recipe { container.makeRecipeViewModel(recipeId: id, url: nil, openInCookMode: true) }
         case .importUrl(let url):
             recipe { container.makeRecipeViewModel(recipeId: nil, url: url) }
         case .history:

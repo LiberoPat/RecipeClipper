@@ -12,6 +12,7 @@ final class AppContainer {
     let backupRepository: BackupRepository
     let backupFiles: BackupFiles
     let appInfo: AppInfo
+    let alarms: TimerAlarmScheduler
 
     init(
         recipeRepository: RecipeRepository,
@@ -21,7 +22,8 @@ final class AppContainer {
         clock: Clock,
         connectivity: Connectivity = StaticConnectivity(),
         backupFiles: BackupFiles = FileBackupFiles(),
-        appInfo: AppInfo = BundleAppInfo()
+        appInfo: AppInfo = BundleAppInfo(),
+        alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler()
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -31,6 +33,7 @@ final class AppContainer {
         self.connectivity = connectivity
         self.backupFiles = backupFiles
         self.appInfo = appInfo
+        self.alarms = alarms
     }
 
     /// The real graph: SQLite on disk, the blog source, UserDefaults. Under XCTest (the unit
@@ -58,7 +61,10 @@ final class AppContainer {
             backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
-            connectivity: PathConnectivity()
+            connectivity: PathConnectivity(),
+            // Under XCTest nothing is scheduled, so a test run never raises the notification
+            // prompt (UI-test seeding above takes the default, which is the same no-op).
+            alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock)
         )
     }
 
@@ -70,10 +76,11 @@ final class AppContainer {
         HistoryViewModel(repository: recipeRepository)
     }
 
-    func makeRecipeViewModel(recipeId: Int64?, url: String?) -> RecipeViewModel {
+    func makeRecipeViewModel(recipeId: Int64?, url: String?, openInCookMode: Bool = false) -> RecipeViewModel {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
-            clock: clock, connectivity: connectivity, appInfo: appInfo
+            clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
+            openInCookMode: openInCookMode
         )
     }
 

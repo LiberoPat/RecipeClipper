@@ -15,7 +15,7 @@ import com.example.recipeclipper.data.local.entity.newUid
 
 @Database(
     entities = [RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -137,7 +137,19 @@ abstract class RecipeDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds saved cook progress and the chosen servings (issue #10). Both nullable with no
+         * default, like [MIGRATION_2_3]: an existing recipe has no cook in progress and uses
+         * its own yield.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recipes ADD COLUMN cookState TEXT")
+                db.execSQL("ALTER TABLE recipes ADD COLUMN servingsTarget INTEGER")
+            }
+        }
+
         /** Every migration, in order: what the app and the tests open the database with. */
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
     }
 }

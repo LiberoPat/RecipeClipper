@@ -30,7 +30,9 @@ data class RecipeEntity(
      *  changes once written — re-sharing keeps it, and an import keeps the file's. */
     @ColumnInfo(defaultValue = "")
     val uid: String = newUid(),
-    val language: String? = null    // the recipe's language tag (#14); null before version 5
+    val language: String? = null,   // the recipe's language tag (#14); null before version 5
+    val cookState: String? = null,  // CookProgress as JSON (CookStateJson); kept if steps unchanged
+    val servingsTarget: Int? = null // the chosen servings; null = the recipe's own yield
 )
 
 @Entity(tableName = "lists", indices = [Index(value = ["uid"], unique = true)])

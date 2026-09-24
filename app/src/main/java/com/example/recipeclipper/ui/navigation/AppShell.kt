@@ -85,12 +85,13 @@ fun NavHostController.selectTab(tab: Tab) {
 }
 
 /**
- * A shared link (Android's share sheet, MainActivity's queue) always lands in Recipes: switch to
- * that tab if another is open, then import on top of whatever the Recipes stack held.
+ * A route from an intent (a shared link's import, or a timer notification's cook-mode open,
+ * MainActivity's queue) always lands in Recipes: switch to that tab if another is open, then
+ * navigate on top of whatever the Recipes stack held.
  */
-fun NavHostController.openSharedUrl(url: String, tabsEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS) {
+fun NavHostController.openRoute(route: String, tabsEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS) {
     if (tabsEnabled && currentDestination.tab() != Tab.RECIPES) selectTab(Tab.RECIPES)
-    navigate(Routes.import(url))
+    navigate(route)
 }
 
 /**

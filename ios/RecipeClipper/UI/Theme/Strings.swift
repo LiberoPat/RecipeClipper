@@ -281,6 +281,9 @@ enum Strings {
         )
     }
 
+    // Step timer notifications (#10)
+    static func timerNotificationTitle(step: Int) -> String { String(localized: "timer_notification_title \(step)") }
+
     // Bottom tabs (#47), behind FeatureFlags.mealPlanTabs, off until #49
     static var tabRecipes: String { String(localized: "tab_recipes") }
     static var tabWeek: String { String(localized: "tab_week") }

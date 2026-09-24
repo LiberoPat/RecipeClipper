@@ -23,7 +23,8 @@ object Routes {
     const val SETTINGS = "settings"
     const val LISTS = "lists"
     const val LIST_DETAIL = "lists/{${ListDetailViewModel.LIST_ID_ARG}}"
-    const val RECIPE = "recipe/{${RecipeViewModel.RECIPE_ID_ARG}}"
+    const val RECIPE =
+        "recipe/{${RecipeViewModel.RECIPE_ID_ARG}}?${RecipeViewModel.COOK_ARG}={${RecipeViewModel.COOK_ARG}}"
 
     // The share-target entry: parse, then persist.
     const val IMPORT = "recipe/import?${RecipeViewModel.URL_ARG}={${RecipeViewModel.URL_ARG}}"
@@ -34,6 +35,9 @@ object Routes {
     const val PANTRY = "pantry"
 
     fun recipe(id: Long) = "recipe/$id"
+
+    // From a timer notification: the recipe, opened in cook mode.
+    fun cookRecipe(id: Long) = "recipe/$id?${RecipeViewModel.COOK_ARG}=true"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
 }
@@ -100,7 +104,13 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
 
     composable(
         route = Routes.RECIPE,
-        arguments = listOf(navArgument(RecipeViewModel.RECIPE_ID_ARG) { type = NavType.LongType })
+        arguments = listOf(
+            navArgument(RecipeViewModel.RECIPE_ID_ARG) { type = NavType.LongType },
+            navArgument(RecipeViewModel.COOK_ARG) {
+                type = NavType.BoolType
+                defaultValue = false
+            }
+        )
     ) {
         RecipeScreen(onBack = { navController.popBackStack() })
     }

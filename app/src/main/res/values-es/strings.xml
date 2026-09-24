@@ -190,4 +190,8 @@
     <string name="share_scaled">%1$s (originalmente %2$d)</string>
     <string name="share_heading_ingredients">INGREDIENTES</string>
     <string name="share_heading_instructions">ELABORACIÓN</string>
+    <!-- Step timer notifications (#10) -->
+    <string name="timer_channel_name">Temporizadores de cocina</string>
+    <string name="timer_channel_description">Cuando termina el temporizador de un paso con la app cerrada o en segundo plano</string>
+    <string name="timer_notification_title">Se acabó el tiempo: paso %1$d</string>
 </resources>

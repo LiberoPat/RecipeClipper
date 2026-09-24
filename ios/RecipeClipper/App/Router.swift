@@ -28,9 +28,16 @@ final class Router {
         selectedTab = tab
     }
 
+    /// A route that must land in Recipes regardless of which tab is open (a share, a tapped
+    /// timer notification): switch tab first, then push on top of whatever the Recipes stack
+    /// already held (Android's `openRoute`).
+    func openInRecipes(_ route: Route) {
+        selectedTab = .recipes
+        push(route)
+    }
+
     func handle(_ url: URL) {
         guard let shared = DeepLink.sharedUrl(from: url) else { return }
-        selectedTab = .recipes
-        push(.importUrl(shared))
+        openInRecipes(.importUrl(shared))
     }
 }
