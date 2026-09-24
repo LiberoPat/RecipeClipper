@@ -1,0 +1,53 @@
+name: iOS
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # The project needs Xcode 27 and the iOS 27 SDK. Select it explicitly so an
+  # image update can't quietly switch Xcode under us.
+  DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
+
+jobs:
+  ios:
+    name: iOS unit tests
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show Xcode and simulator runtimes
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen generate
+
+      - name: Unit tests
+        working-directory: ios
+        run: |
+          xcodebuild test \
+            -project RecipeClipper.xcodeproj -scheme RecipeClipper \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' \
+            -only-testing:RecipeClipperTests \
+            -resultBundlePath build/RecipeClipperTests.xcresult
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-unit-test-results
+          path: ios/build/RecipeClipperTests.xcresult
+          if-no-files-found: ignore
