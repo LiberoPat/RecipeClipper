@@ -115,12 +115,61 @@ object IngredientScaler {
         // The word joining the two parts of a compound amount: "1 cup plus 2 tbsp", "1 cup + 2 tbsp".
         val continuation = (words.strings("amounts", "continuation") + """\+\s*""").joinToString("|", "(?:", ")")
 
+        /** A second part taken away rather than added: "2 cups minus 2 tbsp" (#62). */
+        val subtraction = SharedTables.alternation(words.strings("amounts", "subtractions"))
+
         // "1 cup plus 2 tbsp (140 g) flour": the second part of a compound amount, which scales
         // with the first. groups: 1 prefix, 2 quantity, 3 space, 4 unit
         val continued = Regex(
-            """^(\s*${units.plain}\s*$continuation)($qty)(\s*)${units.captured}""",
+            """^(\s*${units.plain}\s*(?:$continuation|$subtraction))($qty)(\s*)${units.captured}""",
             RegexOption.IGNORE_CASE
         )
+
+        /** The amount is a measure (it has a unit), not a count: "2 cups", "¾ de taza". */
+        val unitAtStart = Regex(
+            """^\s*${SharedTables.alternation(words.strings("amounts", "unitPrefixes"))}?${units.plain}""",
+            RegexOption.IGNORE_CASE
+        )
+
+        // A second amount later in the line (#61, #62). Group 1 holds an alternative's word
+        // ("or 1/2 cup oil"), an amount standing for the whole; otherwise the amount is a part
+        // added or taken away ("plus 3 egg yolks", "+ 1 egg yolk", "minus 2 tbsp").
+        val joined = Regex(
+            """(?:(?<!\p{L})(${SharedTables.alternation(words.strings("amounts", "alternatives"))})|""" +
+                """(?<!\p{L})${SharedTables.alternation(words.strings("amounts", "additions"))}|""" +
+                """(?<!\p{L})$subtraction|\+\s*)(?=$qty)""",
+            RegexOption.IGNORE_CASE
+        )
+
+        private val rangeSeparator = """\s*[-–—]\s*|\s+${words.rangeWords}\s+"""
+
+        // An amount in a bracket: a quantity or range and its unit.
+        // groups: 1 quantity, 2 range separator, 3 upper bound, 4 space, 5 unit
+        val measure = Regex("""($qty)(?:($rangeSeparator)($qty))?(\s*)${units.captured}""", RegexOption.IGNORE_CASE)
+
+        private val plainMeasure = """(?:$qty)(?:(?:$rangeSeparator)(?:$qty))?\s*${units.plain}"""
+
+        // "(about 1/4 cup)", "(200ml/7fl oz)", "(ca. 800g)", "(180 g.)": a bracket holding nothing
+        // but an amount, perhaps written two ways, perhaps "about" it (#63).
+        val total = Regex(
+            """^\s*(?:${SharedTables.alternation(words.strings("amounts", "approximately"))}\s*)?(?:[~≈]\s*)?""" +
+                """$plainMeasure(?:\s*/\s*$plainMeasure)?\s*\.?\s*$""",
+            RegexOption.IGNORE_CASE
+        )
+
+        /** "(8 oz each)": a per-item size. */
+        val perItem = Regex(
+            """(?<!\p{L})${SharedTables.alternation(words.strings("amounts", "perItem"))}(?!\p{L})""",
+            RegexOption.IGNORE_CASE
+        )
+
+        private val containers = SharedTables.alternation(words.strings("amounts", "containers"))
+
+        /** "1 can (14 oz)": a bracket straight after a container word is the container's size. */
+        val afterContainer = Regex("""(?<!\p{L})$containers\s*$""", RegexOption.IGNORE_CASE)
+
+        /** "1 lata leite condensado (397 g)": one container, so its bracket is the container's size. */
+        val containerFirst = Regex("""^\s*$containers(?!\p{L})""", RegexOption.IGNORE_CASE)
     }
 
     internal fun patterns(words: LanguageWords): Patterns = words.compiled(Patterns::class) { Patterns(it) }
@@ -140,20 +189,79 @@ object IngredientScaler {
         val p = patterns(words)
         if (p.amountAfterName) return TrailingAmount.scale(line, factor, words)
         if (p.unreadable(line)) return line
-        val match = p.leading.find(line) ?: return line
-        val rest = line.substring(match.range.last + 1)
-        if (p.notAnAmount.containsMatchIn(rest)) return line
-
         val comma = DECIMAL_COMMA.containsMatchIn(line)
-        val low = p.parse(match.groupValues[2]) ?: return line
-        val upperRaw = match.groupValues[4]
-        val scaled = if (upperRaw.isEmpty()) {
-            formatLeading(low * factor, comma)
-        } else {
-            val high = p.parse(upperRaw) ?: return line
-            formatLeading(low * factor, comma) + match.groupValues[3] + formatLeading(high * factor, comma)
+        return walk(p, line, factor, comma)?.joinToString("") { it.text } ?: line
+    }
+
+    /**
+     * One amount of a line and the text it governs, up to the next amount's joining word:
+     * "1 cup butter " and "1/2 cup oil" in "1 cup butter or 1/2 cup oil". [text] is the side
+     * scaled, followed by the joining word as written ([end] is where that word starts).
+     */
+    private class Side(val start: Int, val end: Int, val text: String)
+
+    /**
+     * Where each amount of [line] starts and ends: the first, then any after an alternative's
+     * or a second part's word ("or 1/2 cup oil", "plus 3 egg yolks"). Null when the line can't be
+     * scaled whole, so the converter reads it as one amount, as before #61.
+     */
+    internal fun sides(p: Patterns, line: String): List<IntRange>? =
+        walk(p, line, 1.0, false)?.map { it.start until it.end }
+
+    // Scales every amount of the line, or none: null leaves the whole line as written.
+    private fun walk(p: Patterns, line: String, factor: Double, comma: Boolean): List<Side>? {
+        val sides = mutableListOf<Side>()
+        var start = 0
+        var alternative = false
+        while (true) {
+            val text = line.substring(start)
+            val match = p.leading.find(text) ?: return null
+            val rest = text.substring(match.range.last + 1)
+            if (p.notAnAmount.containsMatchIn(rest)) return null
+            val measure = p.unitAtStart.containsMatchIn(rest)
+            // "or 2 small onions": an alternative needs a unit to be read as one (#61).
+            if (alternative && !measure) return null
+
+            val low = p.parse(match.groupValues[2]) ?: return null
+            val upperRaw = match.groupValues[4]
+            val scaled = if (upperRaw.isEmpty()) {
+                formatLeading(low * factor, comma)
+            } else {
+                val high = p.parse(upperRaw) ?: return null
+                formatLeading(low * factor, comma) + match.groupValues[3] + formatLeading(high * factor, comma)
+            }
+            val (region, regionLength) = scaleRegion(p, rest, factor, comma)
+            val tailStart = start + match.range.last + 1 + regionLength
+            val next = nextAmount(p, line, tailStart)
+            val end = next?.range?.first ?: line.length
+            val one = upperRaw.isEmpty() && low == 1.0
+            val tail = scaleBrackets(p, line.substring(tailStart, end), factor, comma, measure, one) ?: return null
+            val joiner = if (next == null) "" else next.value
+            sides += Side(start, end, match.groupValues[1] + scaled + region + tail + joiner)
+            if (next == null) return sides
+            start = next.range.last + 1
+            alternative = next.groupValues[1].isNotEmpty()
         }
-        return match.groupValues[1] + scaled + scaleContinuation(p, rest, factor, comma)
+    }
+
+    // The next joining word followed by an amount, outside brackets or opening one:
+    // "or 2 cups" and "(or 1/2 cup oil)" count, the "or" in "(14 oz or 400 g)" doesn't.
+    private fun nextAmount(p: Patterns, line: String, from: Int): MatchResult? {
+        var match = p.joined.find(line, from)
+        while (match != null) {
+            val before = line.substring(from, match.range.first)
+            if (depth(before) == 0 || before.trimEnd().endsWith('(')) return match
+            match = match.next()
+        }
+        return null
+    }
+
+    private fun depth(text: String): Int {
+        var depth = 0
+        for (c in text) {
+            if (c == '(') depth++ else if (c == ')' && depth > 0) depth--
+        }
+        return depth
     }
 
     // A line that writes "1,5" reads decimals, not fractions: "1,5 kg" x 1.5 is "2,25 kg".
@@ -163,21 +271,28 @@ object IngredientScaler {
     private fun formatDecimal(value: Double): String =
         BigDecimal(value).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 
-    /** Scales "plus 2 tbsp" and whatever alternate measure follows it, else just the alternate. */
-    private fun scaleContinuation(p: Patterns, rest: String, factor: Double, comma: Boolean): String {
+    /**
+     * Scales "plus 2 tbsp" and whatever alternate measure follows it, else just the alternate.
+     * Returns the scaled text and how much of [rest] it stands for.
+     */
+    private fun scaleRegion(p: Patterns, rest: String, factor: Double, comma: Boolean): Pair<String, Int> {
         val m = p.continued.find(rest) ?: return scaleAlternateMeasure(p, rest, factor, comma)
         val unit = MeasureUnit.fromText(m.groupValues[4], p.words) ?: return scaleAlternateMeasure(p, rest, factor, comma)
         val value = p.parse(m.groupValues[2]) ?: return scaleAlternateMeasure(p, rest, factor, comma)
-        val tail = m.groupValues[3] + m.groupValues[4] + rest.substring(m.range.last + 1)
-        return m.groupValues[1] + formatFor(unit, value * factor, comma) +
-                scaleAlternateMeasure(p, tail, factor, comma)
+        // The alternate measure is read from the second part's unit on.
+        val unitText = m.groupValues[3] + m.groupValues[4]
+        val (alternate, length) = scaleAlternateMeasure(p, unitText + rest.substring(m.range.last + 1), factor, comma)
+        return Pair(m.groupValues[1] + formatFor(unit, value * factor, comma) + alternate, m.range.last + 1 - unitText.length + length)
     }
 
-    /** Keeps "(120 g)" or "/120 grams" in step with the leading amount that was just scaled. */
-    private fun scaleAlternateMeasure(p: Patterns, rest: String, factor: Double, comma: Boolean): String {
+    /**
+     * Keeps "(120 g)" or "/120 grams" in step with the leading amount that was just scaled.
+     * Returns the scaled text and how much of [rest] it stands for (none when there is none).
+     */
+    private fun scaleAlternateMeasure(p: Patterns, rest: String, factor: Double, comma: Boolean): Pair<String, Int> {
         p.altParen.find(rest)?.let { m ->
             val inner = p.qtyUnit.replace(m.groupValues[2]) { scalePair(p, it, factor, comma) }
-            return m.groupValues[1] + inner + m.groupValues[3] + rest.substring(m.range.last + 1)
+            return Pair(m.groupValues[1] + inner + m.groupValues[3], m.range.last + 1)
         }
         p.altSlash.find(rest)?.let { m ->
             val unit = MeasureUnit.fromText(m.groupValues[6], p.words)
@@ -186,11 +301,124 @@ object IngredientScaler {
             val high = if (upper.isEmpty()) null else p.parse(upper)
             if (unit != null && value != null && (upper.isEmpty() || high != null)) {
                 val range = if (high == null) "" else m.groupValues[3] + formatFor(unit, high * factor, comma)
-                return m.groupValues[1] + formatFor(unit, value * factor, comma) + range + m.groupValues[5] +
-                        m.groupValues[6] + rest.substring(m.range.last + 1)
+                return Pair(
+                    m.groupValues[1] + formatFor(unit, value * factor, comma) + range + m.groupValues[5] + m.groupValues[6],
+                    m.range.last + 1
+                )
             }
         }
-        return rest
+        return Pair("", 0)
+    }
+
+    /** A bracket in a side's text: [start] and [end] include the brackets, the content is between. */
+    internal class Bracket(val start: Int, val end: Int, val contentStart: Int, val contentEnd: Int)
+
+    /** Brackets at the outer level, nested ones inside them; an unclosed one runs to the end. */
+    internal fun brackets(text: String): List<Bracket> {
+        val found = mutableListOf<Bracket>()
+        var depth = 0
+        var open = -1
+        for (i in text.indices) {
+            when (text[i]) {
+                '(' -> { if (depth == 0) open = i; depth++ }
+                ')' -> if (depth > 0) {
+                    depth--
+                    if (depth == 0) found += Bracket(open, i + 1, open + 1, i)
+                }
+            }
+        }
+        if (depth > 0) found += Bracket(open, text.length, open + 1, text.length)
+        return found
+    }
+
+    /** What a bracket after the name holds (#63). */
+    internal enum class BracketKind {
+        /** No amount with a unit: "(packed)", "(Note 2)", "(2-inch pieces)". Left alone. */
+        OTHER,
+
+        /** A package or per-item size: "1 can (14 oz)", "2 (400 g) tins", "(8 oz each)". Never scaled. */
+        PACKAGE,
+
+        /** The line's own amount written another way: "(8 ½ ounces)", "(about 1/4 cup)". Scales with it. */
+        TOTAL,
+
+        /** Anything else holding an amount: scaling beside it could contradict it. */
+        UNSURE
+    }
+
+    /**
+     * [before] is the side's text before the bracket, [measure] whether the side's amount has a
+     * unit, and [one] whether it is the count 1. Only a measure's bracket can't be a per-item
+     * size: "4 Apfel (ca. 800g)" and "1 patate douce (300-400 g)" may give each one's weight, so
+     * a count's bracket is a package size or unsure, never a total.
+     */
+    internal fun kind(p: Patterns, before: String, content: String, measure: Boolean, one: Boolean): BracketKind = when {
+        !p.qtyUnit.containsMatchIn(content) -> BracketKind.OTHER
+        (!measure && before.isBlank()) || p.afterContainer.containsMatchIn(before) ||
+            (!measure && one && p.containerFirst.containsMatchIn(before)) ||
+            p.perItem.containsMatchIn(content) -> BracketKind.PACKAGE
+        measure && p.total.matches(unwrapped(content)) -> BracketKind.TOTAL
+        else -> BracketKind.UNSURE
+    }
+
+    // "((~250g/8oz))": recipetineats.com doubles every bracket.
+    private fun unwrapped(content: String): String {
+        var text = content.trim()
+        while (text.length >= 2 && text.first() == '(' && text.last() == ')') {
+            val inner = text.substring(1, text.length - 1)
+            if (!balanced(inner)) break
+            text = inner.trim()
+        }
+        return text
+    }
+
+    private fun balanced(text: String): Boolean {
+        var depth = 0
+        for (c in text) {
+            if (c == '(') depth++ else if (c == ')' && --depth < 0) return false
+        }
+        return depth == 0
+    }
+
+    /**
+     * Scales the totals in brackets after the name, leaving package sizes and other brackets as
+     * written. Null when a bracket is [BracketKind.UNSURE]: the line stays as written.
+     */
+    private fun scaleBrackets(
+        p: Patterns, tail: String, factor: Double, comma: Boolean, measure: Boolean, one: Boolean
+    ): String? {
+        val out = StringBuilder()
+        var cursor = 0
+        for (b in brackets(tail)) {
+            val content = tail.substring(b.contentStart, b.contentEnd)
+            when (kind(p, tail.substring(0, b.start), content, measure, one)) {
+                BracketKind.OTHER, BracketKind.PACKAGE -> continue
+                BracketKind.UNSURE -> return null
+                BracketKind.TOTAL -> {
+                    out.append(tail, cursor, b.contentStart).append(scaleTotal(p, content, factor, comma) ?: return null)
+                    cursor = b.contentEnd
+                }
+            }
+        }
+        return out.append(tail.substring(cursor)).toString()
+    }
+
+    private fun scaleTotal(p: Patterns, content: String, factor: Double, comma: Boolean): String? {
+        var failed = false
+        val scaled = p.measure.replace(content) { m ->
+            val unit = MeasureUnit.fromText(m.groupValues[5], p.words)
+            val low = p.parse(m.groupValues[1])
+            val high = m.groupValues[3].takeIf { it.isNotEmpty() }?.let { p.parse(it) }
+            if (unit == null || low == null || (m.groupValues[3].isNotEmpty() && high == null)) {
+                failed = true
+                m.value
+            } else {
+                formatFor(unit, low * factor, comma) +
+                    (if (high == null) "" else m.groupValues[2] + formatFor(unit, high * factor, comma)) +
+                    m.groupValues[4] + m.groupValues[5]
+            }
+        }
+        return if (failed) null else scaled
     }
 
     private fun scalePair(p: Patterns, match: MatchResult, factor: Double, comma: Boolean): String {

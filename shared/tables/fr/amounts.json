@@ -1,10 +1,17 @@
 {
   "schemaVersion": 1,
   "language": "fr",
-  "about": "IngredientScaler's and UnitConverter's amount words. mixedJoiners: regex fragments for the word between a whole number and its fraction ('2 and 1/2', '1 and ½'). continuation: regex fragments, each ending in its own whitespace, that join the two parts of a compound amount ('1 cup plus 2 tbsp'); the '+' is in the code. sizes: regex fragments, each ending in its own boundary, for what makes a leading number a size rather than an amount ('1-inch piece'); '%', 'cm' and 'mm' are in the code. Symbols such as the fraction slash '⁄' (U+2044) are in the code too. thousandsDot: true where the language writes thousands with a dot ('1.500 g' is 1500 g); only a dot followed by exactly three digits is read that way, never '1.5'. spelledHalves: regex fragments for a half written as words after the number ('1 taza y media', '2 e meia'), which the amount pattern can't read: a line holding one stays as written.",
+  "about": "IngredientScaler's and UnitConverter's amount words. mixedJoiners: regex fragments for the word between a whole number and its fraction ('2 and 1/2', '1 and ½'). continuation: regex fragments, each ending in its own whitespace, that join the two parts of a compound amount ('1 cup plus 2 tbsp'); the '+' is in the code. sizes: regex fragments, each ending in its own boundary, for what makes a leading number a size rather than an amount ('1-inch piece'); '%', 'cm' and 'mm' are in the code. Symbols such as the fraction slash '⁄' (U+2044) are in the code too. thousandsDot: true where the language writes thousands with a dot ('1.500 g' is 1500 g); only a dot followed by exactly three digits is read that way, never '1.5'. spelledHalves: regex fragments for a half written as words after the number ('1 taza y media', '2 e meia'), which the amount pattern can't read: a line holding one stays as written. alternatives: regex fragments, each ending in its own whitespace, for a word before a second amount that stands for the whole ('1 cup butter or 1/2 cup oil'); that amount needs a unit, or the line stays as written when scaled (#61). additions and subtractions: the same for a second part added or taken away later in the line ('2 eggs plus 3 yolks', '2 cups minus 2 tbsp'), where a count scales too; the '+' is in the code (#62). subtractions straight after the unit also make the converter subtract. unitPrefixes: regex fragments, each ending in its own whitespace, for a word allowed between the number and its unit when deciding whether the amount is a measure ('¾ de taza'). approximately, perItem and containers read a total in brackets after the name (#63): '(about 1/4 cup)' is a total, '(8 oz each)' and a bracket straight after a container word ('1 can (14 oz)') are package sizes that never scale; '~' and '≈' are in the code. A word missing here only costs scaling: a bracket it would have explained leaves the line as written.",
   "mixedJoiners": ["et"],
   "continuation": [],
   "sizes": [],
   "thousandsDot": false,
-  "spelledHalves": ["et\\s+demie?"]
+  "spelledHalves": ["et\\s+demie?"],
+  "alternatives": ["ou\\s+"],
+  "additions": [],
+  "subtractions": [],
+  "unitPrefixes": [],
+  "approximately": ["environ", "env\\."],
+  "perItem": ["chacune?", "pi(?:è|e)ce"],
+  "containers": ["bo(?:î|i)tes?", "sachets?", "pots?", "paquets?", "briques?", "bocal", "bocaux"]
 }
