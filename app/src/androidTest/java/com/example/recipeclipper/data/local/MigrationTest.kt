@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.local.entity.ShortStepEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -528,12 +529,47 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Chef mode's short steps (#100): one new table, so nothing existing changes. A version-11
+     * recipe keeps its steps, gets a short step saved, and takes it with it when deleted.
+     */
+    @Test
+    fun migration11To12AddsShortStepsAndKeepsEverythingElse() {
+        helper.createDatabase(name, 11).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[]', NULL,
+                   'recipe-uid', 'en', NULL, NULL, 'PARSED', NULL)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 12, true, RecipeDatabase.MIGRATION_11_12)
+
+        val db = openMigrated()
+        runBlocking {
+            assertEquals(listOf("Simmer."), db.recipeDao().get(7)?.instructions)
+            db.shortStepDao().insert(
+                ShortStepEntity(recipeId = 7, stepHash = "h", language = "en", shortText = "Simmer.", updatedAt = 1)
+            )
+            assertEquals(1, db.shortStepDao().observe(7, "en").first().size)
+            db.recipeDao().delete(7)
+            assertTrue(db.shortStepDao().observe(7, "en").first().isEmpty())
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 11, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 12, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }
