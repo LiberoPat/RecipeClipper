@@ -359,4 +359,10 @@
     <string name="developer_flag_issue">Issue #%1$d</string>
     <string name="developer_flag_changed">Vom Standard abweichend</string>
     <string name="developer_reset">Auf Standard zurücksetzen</string>
+    <string name="action_month_view">Monat</string>
+    <string name="action_week_view">Woche</string>
+    <string name="action_this_month">Dieser Monat</string>
+    <string name="cd_previous_month">Vorheriger Monat</string>
+    <string name="cd_next_month">Nächster Monat</string>
+    <string name="cd_month_day_planned">%1$s, Mahlzeiten geplant</string>
 </resources>

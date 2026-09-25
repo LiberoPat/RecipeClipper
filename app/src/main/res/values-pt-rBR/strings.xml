@@ -374,4 +374,10 @@
     <string name="developer_flag_issue">Issue #%1$d</string>
     <string name="developer_flag_changed">Diferente do padrão</string>
     <string name="developer_reset">Restaurar os padrões</string>
+    <string name="action_month_view">Mês</string>
+    <string name="action_week_view">Semana</string>
+    <string name="action_this_month">Este mês</string>
+    <string name="cd_previous_month">Mês anterior</string>
+    <string name="cd_next_month">Próximo mês</string>
+    <string name="cd_month_day_planned">%1$s, refeições planejadas</string>
 </resources>
