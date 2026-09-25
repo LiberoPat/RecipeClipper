@@ -385,12 +385,62 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Version 9 adds the grocery list (#50): one new table, and nothing existing changes. A real
+     * version-8 database with a recipe and a planned meal keeps both, and the recipe's lines can
+     * go on the list at once; deleting the recipe keeps its items, without their source.
+     */
+    @Test
+    fun migration8To9AddsTheGroceryListAndKeepsEverythingElse() {
+        helper.createDatabase(name, 8).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer for 30 minutes."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt',
+                   'recipe-uid', 'en', NULL, 6, 'EDITED', 99)
+                """.trimIndent()
+            )
+            db.execSQL(
+                "INSERT INTO meal_plan_entries (day, mealTypeId, recipeId, servings, note, sortOrder, updatedAt, uid) " +
+                    "VALUES (20000, (SELECT id FROM meal_types WHERE builtInKey = 'dinner'), 7, 8, NULL, 0, 1, 'entry-uid')"
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 9, true, RecipeDatabase.MIGRATION_8_9)
+
+        val db = openMigrated()
+        runBlocking {
+            assertEquals("Adobo", db.recipeDao().get(7)?.title)
+            assertEquals(listOf(8), db.mealPlanDao().observeDays(20_000, 20_006).first().map { it.servings })
+
+            val planned = db.groceryDao().plannedIngredients(20_000, 20_006).single()
+            assertEquals(listOf("1 cup soy sauce"), planned.ingredients)
+            db.groceryDao().add(
+                listOf(
+                    com.example.recipeclipper.data.local.entity.GroceryItemEntity(
+                        text = "1 cup soy sauce", language = "en", aisle = "condiments", sortOrder = 0,
+                        recipeId = 7, plannedDay = 20_000, updatedAt = 1
+                    )
+                )
+            )
+            db.recipeDao().delete(7)
+            val item = db.groceryDao().observeItems().first().single()
+            assertEquals("1 cup soy sauce", item.text)
+            assertEquals(null, item.recipeId)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 8, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 9, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

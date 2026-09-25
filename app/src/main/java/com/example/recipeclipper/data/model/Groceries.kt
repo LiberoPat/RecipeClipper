@@ -220,11 +220,14 @@ object GroceryCombiner {
 
     /**
      * The lines added up as one line ("300 g flour"), or null when they can't be added up
-     * exactly. [lines] all name the same ingredient in [words]' language.
+     * exactly, or don't all name the same ingredient in [words]' language. The words after the
+     * total are the shortest any line wrote after its unit, as written ("200 g butter, softened"
+     * and "100 g butter" are "300 g butter").
      */
     fun combine(lines: List<String>, words: LanguageWords): String? {
         if (lines.size < 2) return null
         val name = IngredientName.of(lines.first(), words) ?: return null
+        if (lines.any { IngredientName.of(it, words) != name }) return null
         val amounts = lines.map { amount(it, words) ?: return null }
         val family = amounts.first().family
         if (amounts.any { it.family != family }) return null
@@ -240,10 +243,11 @@ object GroceryCombiner {
 
         // The largest unit the lines used that shows the total exactly.
         val units = amounts.mapNotNull { it.unit }.distinct().sortedByDescending { sizeOf(it)!!.second }
+        val rest = amounts.minBy { it.rest.length }.rest
         for (unit in units) {
             val value = total / sizeOf(unit)!!.second
             val text = exactly(value, unit.metric, comma) ?: continue
-            return "$text ${unitText(amounts, unit, value)} $name"
+            return "$text ${unitText(amounts, unit, value)} $rest"
         }
         return null
     }

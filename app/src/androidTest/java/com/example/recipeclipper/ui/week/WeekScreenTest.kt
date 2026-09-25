@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -13,7 +14,11 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.PlannedIngredients
+import com.example.recipeclipper.fake.FakeAppPreferences
+import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
+import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.DINNER
 import com.example.recipeclipper.fake.FakePlanCalendar
 import com.example.recipeclipper.fake.FakeRecipeRepository
@@ -37,13 +42,17 @@ class WeekScreenTest {
 
     private var opened: Pair<Long, Int?>? = null
 
+    private val groceries = FakeGroceryRepository()
+
     private fun show() {
         val viewModel = WeekViewModel(plan, recipes, FakePlanCalendar())
+        val groceriesViewModel = AddToGroceriesViewModel(groceries, FakeAppPreferences())
         compose.setContent {
             WeekScreen(
                 onOpenRecipe = { id, servings -> opened = id to servings },
                 onOpenMealTypes = {},
-                viewModel = viewModel
+                viewModel = viewModel,
+                groceriesViewModel = groceriesViewModel
             )
         }
     }
@@ -124,5 +133,27 @@ class WeekScreenTest {
         compose.onNode(hasText("Move to", substring = true)).performClick()
 
         compose.runOnIdle { assertEquals(today + 2, plan.meals.value.single().day) }
+    }
+
+    @Test
+    fun theWeeksIngredientsGoOnTheGroceryListAtThePlannedServings() {
+        groceries.planned = listOf(
+            PlannedIngredients(
+                entryId = 1, day = today, servings = 8, recipeId = 7, title = "Pancakes",
+                ingredients = listOf("2 cups flour", "1 cup milk"), yield = "Serves 4", language = "en"
+            )
+        )
+        show()
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Add this week's ingredients").performClick()
+        compose.onNodeWithText("Pancakes").assertIsDisplayed()
+        compose.onNodeWithText("4 cups flour").assertIsDisplayed()
+        compose.onNodeWithTag("addToGroceriesButton").performClick()
+
+        compose.runOnIdle {
+            assertEquals(listOf("4 cups flour", "2 cup milk"), groceries.items.value.map { it.text })
+            assertTrue(groceries.items.value.all { it.plannedDay == today })
+        }
     }
 }

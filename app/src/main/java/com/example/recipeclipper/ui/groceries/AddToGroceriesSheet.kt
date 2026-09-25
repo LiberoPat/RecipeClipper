@@ -100,6 +100,7 @@ fun AddToGroceriesSheet(viewModel: AddToGroceriesViewModel, onDismiss: () -> Uni
                                     .fillMaxWidth()
                                     .toggleable(value = ticked, role = Role.Checkbox, onValueChange = { viewModel.onToggle(id) })
                                     .padding(vertical = 4.dp)
+                                    .testTag("sheetLine-${source.key}-$index")
                             ) {
                                 Checkbox(checked = ticked, onCheckedChange = null)
                                 Spacer(Modifier.width(12.dp))
