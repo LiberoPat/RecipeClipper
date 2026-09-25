@@ -73,6 +73,8 @@ import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.BuildConfig
+import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
+import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.AddToPlanBottomSheet
 import com.example.recipeclipper.ui.plan.AddToPlanViewModel
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
@@ -104,7 +106,9 @@ internal class RecipeActions(
     val onEdit: () -> Unit = {},
     val onUpdateFromSource: () -> Unit = {},
     /** "Add to plan" (#49); null hides it, as while the tab flag is off. */
-    val onAddToPlan: (() -> Unit)? = null
+    val onAddToPlan: (() -> Unit)? = null,
+    /** "Add to groceries" (#50); null hides it, as while the tab flag is off. */
+    val onAddToGroceries: (() -> Unit)? = null
 )
 
 @Composable
@@ -116,7 +120,8 @@ fun RecipeScreen(
     saveViewModel: SaveToListViewModel = hiltViewModel(),
     mealPlanEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS,
     // Only resolved behind the tab flag (#49), so screen tests without Hilt need not pass one.
-    planViewModel: AddToPlanViewModel? = if (mealPlanEnabled) hiltViewModel() else null
+    planViewModel: AddToPlanViewModel? = if (mealPlanEnabled) hiltViewModel() else null,
+    groceriesViewModel: AddToGroceriesViewModel? = if (mealPlanEnabled) hiltViewModel() else null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
@@ -127,9 +132,10 @@ fun RecipeScreen(
     val uriHandler = LocalUriHandler.current
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
     var planSheetOpen by rememberSaveable { mutableStateOf(false) }
+    var groceriesSheetOpen by rememberSaveable { mutableStateOf(false) }
     // The first timer started asks for permission to post its "time's up" notification.
     val askForNotifications = rememberNotificationPrompt()
-    val actions = remember(viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel) {
+    val actions = remember(viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel, groceriesViewModel) {
         RecipeActions(
             onBack = onBack,
             onRetry = viewModel::onRetry,
@@ -193,6 +199,17 @@ fun RecipeScreen(
                     (viewModel.uiState.value.content as? RecipeContent.Success)?.let { loaded ->
                         planViewModel.setRecipe(loaded.recipe.id, loaded.servings?.base)
                         planSheetOpen = true
+                    }
+                }
+            },
+            // The lines exactly as the reading view shows them: scaled and converted.
+            onAddToGroceries = if (groceriesViewModel == null) null else {
+                {
+                    (viewModel.uiState.value.content as? RecipeContent.Success)?.let { loaded ->
+                        groceriesViewModel.setRecipe(
+                            loaded.recipe.id, loaded.recipe.name, loaded.words?.language, loaded.ingredients
+                        )
+                        groceriesSheetOpen = true
                     }
                 }
             }
@@ -313,6 +330,9 @@ fun RecipeScreen(
             if (planSheetOpen && recipeId != null && planViewModel != null) {
                 AddToPlanBottomSheet(planViewModel, onDismiss = { planSheetOpen = false })
             }
+            if (groceriesSheetOpen && recipeId != null && groceriesViewModel != null) {
+                AddToGroceriesSheet(groceriesViewModel, onDismiss = { groceriesSheetOpen = false })
+            }
         }
     }
 }
@@ -412,7 +432,8 @@ private fun ReadingView(
                         onEdit = actions.onEdit,
                         onUpdateFromSource = actions.onUpdateFromSource,
                         onDelete = actions.onDelete,
-                        onAddToPlan = actions.onAddToPlan
+                        onAddToPlan = actions.onAddToPlan,
+                        onAddToGroceries = actions.onAddToGroceries
                     )
                 }
             }
@@ -521,7 +542,7 @@ private fun ReadingView(
 }
 
 /**
- * Overflow menu: "Add to plan" (#49, while the tab flag is on), Edit, "Update from source" for the user's version of a linked recipe (#29),
+ * Overflow menu: "Add to plan" (#49) and "Add to groceries" (#50), while the tab flag is on, Edit, "Update from source" for the user's version of a linked recipe (#29),
  * behind a warning that the edits will be lost, and Delete, behind a confirm dialog naming
  * the recipe.
  */
@@ -533,7 +554,8 @@ private fun RecipeOverflowMenu(
     onEdit: () -> Unit,
     onUpdateFromSource: () -> Unit,
     onDelete: () -> Unit,
-    onAddToPlan: (() -> Unit)? = null
+    onAddToPlan: (() -> Unit)? = null,
+    onAddToGroceries: (() -> Unit)? = null
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var confirming by rememberSaveable { mutableStateOf(false) }
@@ -550,6 +572,16 @@ private fun RecipeOverflowMenu(
                 onClick = {
                     expanded = false
                     onAddToPlan()
+                }
+            )
+        }
+        if (onAddToGroceries != null) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_add_to_groceries)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_tab_groceries), contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    onAddToGroceries()
                 }
             )
         }

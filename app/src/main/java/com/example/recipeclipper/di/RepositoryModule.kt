@@ -2,7 +2,9 @@ package com.example.recipeclipper.di
 
 import com.example.recipeclipper.data.BackupRepository
 import com.example.recipeclipper.data.DefaultBackupRepository
+import com.example.recipeclipper.data.DefaultGroceryRepository
 import com.example.recipeclipper.data.DefaultListRepository
+import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.DefaultRecipeRepository
 import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.DefaultMealPlanRepository
@@ -33,6 +35,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun mealPlanRepository(impl: DefaultMealPlanRepository): MealPlanRepository
+
+    @Binds
+    @Singleton
+    abstract fun groceryRepository(impl: DefaultGroceryRepository): GroceryRepository
 
     @Binds
     abstract fun planCalendar(impl: SystemPlanCalendar): PlanCalendar

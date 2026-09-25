@@ -182,7 +182,6 @@
     <string name="tab_groceries">Spesa</string>
     <string name="tab_pantry">Dispensa</string>
     <string name="coming_soon">Prossimamente</string>
-    <string name="groceries_placeholder">Una lista della spesa creata dalle ricette della tua settimana.</string>
     <string name="pantry_placeholder">Quello che hai già, così compri solo quello che ti serve.</string>
     <string name="share_serves">Porzioni: %1$d</string>
     <string name="share_makes">Resa: %1$d</string>
@@ -306,4 +305,33 @@
         <item quantity="many">%1$d di passaggi aggiunti</item>
         <item quantity="other">%1$d passaggi aggiunti</item>
     </plurals>
+
+    <!-- Groceries (#50) -->
+    <string name="action_add">Aggiungi</string>
+    <string name="groceries_add_hint">Aggiungi un articolo</string>
+    <string name="groceries_empty">La tua lista è vuota. Scrivi un articolo qui sopra, o aggiungi ingredienti dal menu di una ricetta o dalla Settimana.</string>
+    <string name="action_add_to_groceries">Aggiungi alla spesa</string>
+    <string name="add_to_groceries_title">Aggiungi alla spesa</string>
+    <string name="action_add_week_to_groceries">Aggiungi gli ingredienti della settimana</string>
+    <string name="groceries_week_empty">Nessuna ricetta in programma questa settimana.</string>
+    <string name="action_clear_checked">Rimuovi le spunte</string>
+    <string name="action_share_groceries">Condividi la lista</string>
+    <string name="action_move_to_aisle">Sposta in un altro reparto…</string>
+    <string name="move_to_aisle_title">Reparto</string>
+    <string name="snackbar_grocery_deleted">Eliminato: %1$s</string>
+    <string name="snackbar_checked_cleared">Articoli spuntati rimossi</string>
+    <string name="aisle_produce">Frutta e verdura</string>
+    <string name="aisle_meat">Carne</string>
+    <string name="aisle_seafood">Pesce</string>
+    <string name="aisle_dairy">Latticini e uova</string>
+    <string name="aisle_bakery">Panetteria</string>
+    <string name="aisle_baking">Ingredienti per dolci</string>
+    <string name="aisle_grains">Pasta, riso e cereali</string>
+    <string name="aisle_canned">Scatolame</string>
+    <string name="aisle_condiments">Oli, salse e condimenti</string>
+    <string name="aisle_spices">Spezie</string>
+    <string name="aisle_frozen">Surgelati</string>
+    <string name="aisle_snacks">Frutta secca</string>
+    <string name="aisle_drinks">Bevande</string>
+    <string name="aisle_other">Altro</string>
 </resources>
