@@ -8,6 +8,8 @@ import Observation
 enum Flag: String, CaseIterable {
     /// The meal plan (#47, #49–#51): the bottom tabs and the recipe screen's plan actions.
     case mealPlan
+    /// Ingredient amounts inside steps (#101): the Settings switch and what it shows.
+    case amountsInSteps
 }
 
 /// One flag as `shared/flags.json` declares it.

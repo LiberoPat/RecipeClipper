@@ -29,6 +29,8 @@ struct CookState: Equatable {
 /// the title ("smittenkitchen.com"), or nil when the source link has no recognisable host
 /// (then no credit is shown). `words` are the recipe's language's (#14), which the view uses
 /// for the yield's kind and the timer labels; nil for a language the app has no words for.
+/// `stepAmounts` lines up with `instructions`: each step with the ingredient amounts inside it
+/// (#101), or nil when "Amounts in steps" is off.
 struct RecipeSuccess: Equatable {
     var recipe: Recipe
     var servings: ServingsScale?
@@ -37,6 +39,20 @@ struct RecipeSuccess: Equatable {
     var stepTimerSeconds: [Int?]
     var sourceDomain: String?
     var words: LanguageWords?
+    var stepAmounts: [[StepAmounts.Part]]? = nil
+
+    /// Step `index` with its amounts, or nil to show it as written.
+    func stepParts(_ index: Int) -> [StepAmounts.Part]? {
+        guard let stepAmounts, index < stepAmounts.count else { return nil }
+        return stepAmounts[index]
+    }
+
+    /// The same, with every step as written: how the view shows it while the flag is off.
+    var withoutStepAmounts: RecipeSuccess {
+        var copy = self
+        copy.stepAmounts = nil
+        return copy
+    }
 }
 
 enum RecipeContent: Equatable {
@@ -62,6 +78,8 @@ struct RecipeUiState: Equatable {
     var convertLiquids = false
     var temperatureUnit: TemperatureUnit = .asWritten
     var darkWhileCooking = false
+    /// The Settings switch (#101), behind the `amountsInSteps` flag, which the view checks.
+    var amountsInSteps = false
     var cook = CookState()
     /// Set once the recipe has been deleted, so the screen can navigate back.
     var deleted = false

@@ -1788,3 +1788,53 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
   unless its uid is already here (then it's left as it is, never merged or renamed); its meals
   follow the plan's rules (a recipe meal needs its recipe, a note always comes in, no meal type
   means Dinner), its recipes come in like listed ones, and a menu left with no meals is dropped.
+
+## Ingredient amounts inside steps (#101)
+
+Part of #99. "Add the carrots" reads "Add **2** carrots": a Settings switch, "Amounts in steps"
+(Settings → Steps, off by default, key `amounts_in_steps`), behind the `amountsInSteps` flag.
+Deterministic, no AI: `StepAmounts.annotate(steps, lines, words)`, pure, both platforms, pinned
+by the differential corpus's `Step` rows. The lines are the ingredient lines **as the reading
+view renders them** (scaled, then converted), so the amount follows the servings stepper and the
+unit menu. It applies to the reading view and cook mode; sharing out keeps steps as written.
+
+A mention gets an amount only when every rule holds; otherwise it stays exactly as written:
+
+- **One line, strictly.** A run of words ending in a line name's last word (singular or plural,
+  per `steps.json` `plurals`) names that line when `IngredientName.matches` says so: the
+  pantry's strict rule (#51), so "rice flour" never takes "flour"'s amount and "the onion" never
+  takes "1 red onion"'s. The longest run wins ("brown sugar" is the brown sugar line, not
+  "sugar"). Two lines matching the mention ("unsalted butter" and "butter, for greasing"; sugar
+  for the cake and for the frosting), or a line with no name that uses the word ("salt and
+  pepper", "juice of 1 lemon"), make it ambiguous. Jev may later resolve those (#99).
+- **First mention only**, once per line per step; later mentions stay as written, whatever
+  became of the first. Each step is read on its own.
+- **The line lends its amount only if the scaler reads it** (scaling it changes it), so a line
+  that stays as written when scaled ("2 onions (about 300 g)") never lends a number. The amount
+  is the rendered line's text before the name ("250 g", "2 large", "3 cloves", "200 g de",
+  "1 cup (120 g)"), never with a comma in it. A line used in parts ("2 cups flour, divided",
+  "1 tsp salt, plus more to taste": `splitWords` after the name) lends nothing.
+- **The step doesn't already say how much.** A number, or a `partWords` word ("half", "the
+  remaining", "rest", "of", "a", "some", "du"), right before the mention or before its article
+  keeps it: "half the butter", "1 cup of the flour", "2 tablespoons butter", "a carrot".
+- **The mention is the whole name.** After it: the step's end, punctuation, or a word in
+  `after` ("and", "into", "until"…); anything else ("the flour mixture", "the lemon juice",
+  "le beurre fondu") may be a longer name, so it stays. German writes compounds as one word,
+  so any word may follow (`anyWordAfter`). Before it: its article (which the amount replaces),
+  a list comma, a word in `before` (a preposition, a conjunction, a common verb: "Stir in flour",
+  "Whisk flour"), or a sentence's first word (the imperative verb). Anything else ("Dust with
+  rice flour" when only flour is listed) stays. Describing words between the article and the
+  name stay after the amount: "the melted butter" → "115 g melted butter".
+- **Japanese is a no-op** (no spaces, so no word boundaries), and so is a language without words.
+
+Where it shows: the inserted amount is a separate run of the text, in the paprika text accent
+and a heavier weight (Android SemiBold, iOS strongly emphasised); in a done cook-mode step it
+keeps only the weight, so the dimmed row stays dim. The screen checks the flag; the ViewModel
+computes the parts only while the switch is on, and again on every servings or units change.
+
+Known limits, left as written on purpose: head-noun mentions of compound lines ("the milk" for
+"whole milk", "the chocolate chips" for "semisweet chocolate chips", "the vanilla" for "vanilla
+extract"); French names with an elided "d'" ("l'huile d'olive" against "3 c. à s. d'huile
+d'olive"), because `IngredientName` keeps the elision in the name; and an ingredient also used
+for greasing or dusting when the list has only one line for it ("grease the pan with butter"
+then gets the batter's butter, since the step's words can't tell the two uses apart).

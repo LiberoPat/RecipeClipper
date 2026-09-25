@@ -9,7 +9,7 @@
     {
       "key": "amountsInSteps",
       "description": "Ingredient amounts inside steps: Settings' Steps section and its 'Amounts in steps' switch (off by default), which puts each line's amount, as scaled and converted, where a step names the ingredient.",
-      "defaults": { "debug": true, "release": false },
+      "defaults": { "debug": false, "release": false },
       "issue": 101
     }
   ]

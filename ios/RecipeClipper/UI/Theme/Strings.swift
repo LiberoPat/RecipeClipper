@@ -270,6 +270,9 @@ enum Strings {
 
     static var darkWhileCookingTitle: String { String(localized: "dark_while_cooking_title") }
     static var darkWhileCookingDescription: String { String(localized: "dark_while_cooking_description") }
+    static var settingsSectionSteps: String { String(localized: "settings_section_steps") }
+    static var amountsInStepsTitle: String { String(localized: "amounts_in_steps_title") }
+    static var amountsInStepsDescription: String { String(localized: "amounts_in_steps_description") }
 
     // Settings
     static var navSettings: String { String(localized: "nav_settings") }
