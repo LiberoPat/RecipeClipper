@@ -7,6 +7,8 @@ struct BackupSnapshot {
     var memberships: [ListMembership]
     var pantry: [PantryItemRecord] = []
     var groceries: [GroceryItemRecord] = []
+    var mealTypes: [MealTypeRecord] = []
+    var mealPlan: [MealPlanEntryRecord] = []
 
     /// One row of `lists`, every column (ListRecord is the screen's shape, with counts).
     struct ListRow: Equatable {
@@ -23,7 +25,8 @@ struct BackupSnapshot {
 /// Export and import (#26), Android's BackupDao. Synchronous: run `snapshot` inside
 /// `AppDatabase.read` and `importBackup` inside `AppDatabase.write`, which makes the import one
 /// transaction: if any write fails, nothing was imported. Import only ever inserts (recipes,
-/// lists, memberships, pantry and grocery items) and fills empty notes; it never deletes and runs no history cull (see
+/// lists, memberships, pantry and grocery items, meal types and planned meals) and fills empty
+/// notes; it never deletes and runs no history cull (see
 /// BackupMerger for how the cap is respected).
 struct BackupDao {
     let db: SQLiteConnection
@@ -53,7 +56,29 @@ struct BackupDao {
             "SELECT \(GroceryItemRecord.columns) FROM grocery_items ORDER BY listId ASC, sortOrder ASC, id ASC",
             map: GroceryItemRecord.init(row:)
         )
-        return BackupSnapshot(recipes: recipes, lists: lists, memberships: memberships, pantry: pantry, groceries: groceries)
+        let mealTypes = try MealPlanDao(db: db).mealTypes()
+        let mealPlan = try db.query(
+            "SELECT \(MealPlanEntryRecord.columns) FROM meal_plan_entries ORDER BY day ASC, mealTypeId ASC, sortOrder ASC, id ASC",
+            map: MealPlanEntryRecord.init(row:)
+        )
+        return BackupSnapshot(
+            recipes: recipes, lists: lists, memberships: memberships, pantry: pantry, groceries: groceries,
+            mealTypes: mealTypes, mealPlan: mealPlan
+        )
+    }
+
+    func existingMealTypes() throws -> [ExistingMealType] {
+        try db.query("SELECT id, uid, name, builtInKey FROM meal_types ORDER BY sortOrder ASC, id ASC") { row in
+            ExistingMealType(id: row.int64(0), uid: row.string(1), name: row.string(2), builtInKey: row.optionalString(3))
+        }
+    }
+
+    func maxMealTypeOrder() throws -> Int {
+        try db.queryOne("SELECT COALESCE(MAX(sortOrder), -1) FROM meal_types") { $0.int(0) } ?? -1
+    }
+
+    func existingPlanUids() throws -> Set<String> {
+        Set(try db.query("SELECT uid FROM meal_plan_entries") { $0.string(0) })
     }
 
     func existingPantry() throws -> [ExistingPantryItem] {
@@ -92,7 +117,7 @@ struct BackupDao {
         try db.queryOne("SELECT COALESCE(MAX(sortOrder), -1) FROM lists") { $0.int(0) } ?? -1
     }
 
-    func importBackup(_ backup: Backup, historyLimit: Int, newUid: () -> String) throws -> ImportSummary {
+    func importBackup(_ backup: Backup, historyLimit: Int, today: Int64?, newUid: () -> String) throws -> ImportSummary {
         let plan = BackupMerger.plan(
             backup,
             existingRecipes: try existingRecipes(),
@@ -101,7 +126,11 @@ struct BackupDao {
             historyLimit: historyLimit,
             newUid: newUid,
             existingPantry: try existingPantry(),
-            existingGroceryUids: try existingGroceryUids()
+            existingGroceryUids: try existingGroceryUids(),
+            existingMealTypes: try existingMealTypes(),
+            maxMealTypeSortOrder: try maxMealTypeOrder(),
+            existingPlanUids: try existingPlanUids(),
+            today: today
         )
 
         let recipes = RecipeDao(db: db)
@@ -170,6 +199,24 @@ struct BackupDao {
                 updatedAt: g.item.updatedAt, uid: g.item.id
             ))
             order += 1
+        }
+
+        var newTypeIds: [String: Int64] = [:]
+        for t in plan.newMealTypes {
+            try db.run(
+                "INSERT INTO meal_types (name, builtInKey, sortOrder, updatedAt, uid) VALUES (?, NULL, ?, ?, ?)",
+                t.name, t.sortOrder, t.updatedAt, t.uid
+            )
+            newTypeIds[t.uid] = db.lastInsertRowId
+        }
+        let mealPlan = MealPlanDao(db: db)
+        for p in plan.newPlanEntries {
+            // `add` puts it at the end of its day and meal type.
+            try mealPlan.add(MealPlanEntryRecord(
+                day: p.entry.day, mealTypeId: rowId(p.mealType, newTypeIds),
+                recipeId: p.recipe.map { rowId($0, newRecipeIds) }, servings: p.entry.servings, note: p.entry.note,
+                sortOrder: 0, updatedAt: p.entry.updatedAt, uid: p.entry.id
+            ))
         }
         return plan.summary
     }

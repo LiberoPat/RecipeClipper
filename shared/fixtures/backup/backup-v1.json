@@ -2,7 +2,7 @@
   "format": "recipe-clipper-backup",
   "formatVersion": 1,
   "exportedAt": 1790000000000,
-  "mealPlan": [{"note": "an unknown section a later version might add: ignored"}],
+  "shoppingTrips": [{"note": "an unknown section a later version might add: ignored"}],
   "recipes": [
     {
       "id": "r-soup",
@@ -112,5 +112,19 @@
     {"id": "g-beef", "text": "1 kg beef", "language": "en", "aisle": "meat", "recipeId": "r-old"},
     {"id": "g-milk", "text": "milk", "language": "en", "aisle": "dairy", "recipeId": "r-missing"},
     {"id": "g-here", "text": "eggs", "language": "en", "aisle": "dairy"}
+  ],
+  "mealTypes": [
+    {"id": "t-dinner", "name": "Dinner", "builtInKey": "dinner", "sortOrder": 2, "updatedAt": 1},
+    {"id": "t-brunch", "name": " brunch ", "builtInKey": null, "sortOrder": 4, "updatedAt": 2},
+    {"id": "t-fakedinner", "name": "Dinner", "sortOrder": 5},
+    {"id": "t-tea", "name": "Tea ", "builtInKey": null, "sortOrder": 6, "updatedAt": 1789000000000, "futureField": "ignored"}
+  ],
+  "mealPlan": [
+    {"id": "m-soup", "day": 20720, "mealTypeId": "t-dinner", "recipeId": "r-soup", "servings": 6, "note": null, "sortOrder": 0, "updatedAt": 1789000000000},
+    {"id": "m-old", "day": 20000, "mealTypeId": "t-tea", "recipeId": "r-old", "sortOrder": 0},
+    {"id": "m-note", "day": 20721, "mealTypeId": "t-unknown", "recipeId": null, "note": "Leftovers", "sortOrder": 1, "updatedAt": 3},
+    {"id": "m-pie", "day": 20722, "mealTypeId": "t-fakedinner", "recipeId": "r-pie-dup", "servings": 4, "sortOrder": 0, "updatedAt": 4},
+    {"id": "m-missing", "day": 20723, "mealTypeId": "t-brunch", "recipeId": "r-missing", "sortOrder": 0},
+    {"id": "m-here", "day": 20724, "mealTypeId": "t-brunch", "note": "Already here", "sortOrder": 0}
   ]
 }

@@ -22,6 +22,7 @@ final class DefaultBackupRepository: BackupRepository {
         }
         let recipeUids = Dictionary(uniqueKeysWithValues: snapshot.recipes.map { ($0.id, $0.uid) })
         let listUids = Dictionary(uniqueKeysWithValues: snapshot.lists.map { ($0.id, $0.uid) })
+        let mealTypeUids = Dictionary(uniqueKeysWithValues: snapshot.mealTypes.map { ($0.id, $0.uid) })
         let now = clock.now()
         let backup = Backup(
             exportedAt: now,
@@ -57,6 +58,15 @@ final class DefaultBackupRepository: BackupRepository {
                     id: g.uid, text: g.text, language: g.language, aisle: g.aisle, checked: g.checked,
                     recipeId: g.recipeId.flatMap { recipeUids[$0] }, plannedDay: g.plannedDay, updatedAt: g.updatedAt
                 )
+            },
+            mealTypes: snapshot.mealTypes.map { t in
+                BackupMealType(id: t.uid, name: t.name, builtInKey: t.builtInKey, sortOrder: t.sortOrder, updatedAt: t.updatedAt)
+            },
+            mealPlan: snapshot.mealPlan.map { e in
+                BackupPlanEntry(
+                    id: e.uid, day: e.day, mealTypeId: mealTypeUids[e.mealTypeId], recipeId: e.recipeId.flatMap { recipeUids[$0] },
+                    servings: e.servings, note: e.note, sortOrder: e.sortOrder, updatedAt: e.updatedAt
+                )
             }
         )
         return .success(ExportedBackup(json: BackupJson.encode(backup), exportedAt: now, recipeCount: backup.recipes.count))
@@ -68,9 +78,10 @@ final class DefaultBackupRepository: BackupRepository {
         case .success(let decoded): backup = decoded
         case .failure(let error): return .failure(error)
         }
+        let today = PlanDays.today(millis: clock.now())
         do {
             let summary = try await db.write { conn in
-                try BackupDao(db: conn).importBackup(backup, historyLimit: historyLimit) {
+                try BackupDao(db: conn).importBackup(backup, historyLimit: historyLimit, today: today) {
                     UUID().uuidString.lowercased()
                 }
             }

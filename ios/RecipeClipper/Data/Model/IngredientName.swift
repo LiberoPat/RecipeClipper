@@ -16,6 +16,9 @@ enum IngredientName {
         let leadingWords: Set<String>
         let trailingWords: Set<String>
         let conjunctions: Set<String>
+        // The words that may come before a shorter name and still mean it ("unsalted" butter),
+        // longest first, so "extra virgin" is tried before "extra".
+        let matchModifiers: [String]
         // " for dusting", " to taste": the name ends before the first one.
         let cut: JRegex
 
@@ -23,6 +26,14 @@ enum IngredientName {
             leadingWords = Set(words.strings("names", "leadingWords"))
             trailingWords = Set(words.strings("names", "trailingWords"))
             conjunctions = Set(words.strings("names", "conjunctions"))
+            var modifiers: [String] = []
+            for m in words.strings("names", "matchModifiers") + words.strings("names", "leadingWords") where !modifiers.contains(m) {
+                modifiers.append(m)
+            }
+            // Stable, like Kotlin's sortedByDescending, and by UTF-16 length like Kotlin's String.length.
+            matchModifiers = modifiers.enumerated()
+                .sorted { $0.element.u16Count != $1.element.u16Count ? $0.element.u16Count > $1.element.u16Count : $0.offset < $1.offset }
+                .map(\.element)
             cut = JRegex(
                 #"\s+"# + SharedTables.alternation(
                     words.strings("names", "cutPhrases").map { $0.replacingOccurrences(of: " ", with: #"\s+"#) }
@@ -73,15 +84,32 @@ enum IngredientName {
         return understood(name, language, w) ? name : nil
     }
 
-    /// True when `a` and `b` name the same ingredient by the density table's rule: the longer
-    /// ends with the shorter at a word boundary, so "unsalted butter" matches "butter" and
-    /// "butter beans" doesn't. Either may be a name from `of` or one a person typed.
+    /// True when `a` and `b` name the same ingredient (#51): they're equal, or the longer ends
+    /// with the shorter at a word boundary and every word before it is a plain modifier (the
+    /// names table's `matchModifiers` or `leadingWords`). So "unsalted butter" matches "butter",
+    /// while "rice flour", "butter beans" and "peanut butter" don't match "flour" or "butter", in
+    /// either direction: a word the table doesn't know makes a different ingredient, and the
+    /// line is Buy. Either may be a name from `of` or one a person typed.
     static func matches(_ a: String, _ b: String, words: LanguageWords = .english) -> Bool {
         let x = IngredientDensities.headPhrase(a, words: words)
         let y = IngredientDensities.headPhrase(b, words: words)
         if x.isEmpty || y.isEmpty { return false }
-        return x.u16Count >= y.u16Count ? IngredientDensities.endsWithName(x, y, spaced: words.spaced)
-            : IngredientDensities.endsWithName(y, x, spaced: words.spaced)
+        let (longer, shorter) = x.u16Count >= y.u16Count ? (x, y) : (y, x)
+        if !IngredientDensities.endsWithName(longer, shorter, spaced: words.spaced) { return false }
+        return onlyModifiers(longer.u16Substring(0, longer.u16Count - shorter.u16Count).kTrimmed, words)
+    }
+
+    /// True when `text` is nothing but match modifiers, one after another.
+    private static func onlyModifiers(_ text: String, _ language: LanguageWords) -> Bool {
+        let modifiers = language.compiled(Words.self, Words.init).matchModifiers
+        var rest = text
+        while !rest.isEmpty {
+            guard let modifier = modifiers.first(where: {
+                rest == $0 || rest.hasPrefix(language.spaced ? $0 + " " : $0)
+            }) else { return false }
+            rest = rest.u16Substring(from: modifier.u16Count).kTrimmed
+        }
+        return true
     }
 
     /// Drops "large", "cloves", "pinch of": sizes, containers and cuts before the name.

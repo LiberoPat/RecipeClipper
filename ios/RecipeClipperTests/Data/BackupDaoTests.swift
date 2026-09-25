@@ -45,9 +45,23 @@ final class BackupDaoTests: XCTestCase {
         let result = try summary(await repo.importBackup(try backupFixture("backup-v1")))
 
         // No "Weeknight" here, so the file's "Midweek" is new too (on Android's test phone it joins one by uid).
+        // No "Brunch" or "m-here" here either: three user meal types are created, and every
+        // meal but r-missing's (never in the file) comes in.
         XCTAssertEqual(result, ImportSummary(
-            recipesAdded: 3, listsAdded: 3, recipesAlreadyHere: 2, recipesSkipped: 0, pantryAdded: 3, groceriesAdded: 5
+            recipesAdded: 3, listsAdded: 3, recipesAlreadyHere: 2, recipesSkipped: 0, pantryAdded: 3, groceriesAdded: 5,
+            mealsAdded: 5, mealTypesAdded: 3
         ))
+        let types = try await db.read { try MealPlanDao(db: $0).mealTypes() }
+        let dinner = try XCTUnwrap(types.first { $0.builtInKey == "dinner" })
+        XCTAssertEqual(types.filter { $0.name == "Dinner" }.count, 2, "the file's user \"Dinner\" is its own type")
+        let meals = try await db.read { try MealPlanDao(db: $0).days(start: 19_000, end: 21_000) }
+        let soupMeal = try XCTUnwrap(meals.first { $0.day == 20720 })
+        XCTAssertEqual(soupMeal.mealTypeId, dinner.id)
+        XCTAssertEqual(soupMeal.recipeId, soupId)
+        XCTAssertEqual(soupMeal.servings, 6)
+        XCTAssertEqual(meals.first { $0.day == 20721 }?.note, "Leftovers")
+        XCTAssertEqual(meals.first { $0.day == 20721 }?.mealTypeId, dinner.id)
+        XCTAssertNil(meals.first { $0.day == 20723 }, "a meal whose recipe isn't here is dropped")
         let pie = try await db.read { try RecipeDao(db: $0).findByUrl("https://example.com/pie") }
         XCTAssertEqual(pie?.uid, "r-pie")
         XCTAssertEqual(pie?.notes, "Use cold butter.")
@@ -107,6 +121,40 @@ final class BackupDaoTests: XCTestCase {
         let again = try summary(await otherRepo.importBackup(exported.json))
         XCTAssertEqual(again.pantryAdded, 0)
         XCTAssertEqual(again.groceriesAdded, 0)
+    }
+
+    /// The meal plan (#49) goes into the file and comes back: a recipe's meal keeps its recipe,
+    /// a user's meal type is created once.
+    func testMealPlanRoundTrip() async throws {
+        let id = try await insert(dataRecipeRecord("https://example.com/a", viewedAt: 1))
+        try await db.write { conn in
+            let plan = MealPlanDao(db: conn)
+            let brunch = try plan.addType(name: "Brunch", now: 1)
+            let dinner = try XCTUnwrap(try plan.mealTypes().first { $0.builtInKey == "dinner" }).id
+            try plan.add(MealPlanEntryRecord(day: 20_001, mealTypeId: dinner, recipeId: id, servings: 3, note: nil, sortOrder: 0, updatedAt: 5))
+            try plan.add(MealPlanEntryRecord(day: 20_002, mealTypeId: brunch, recipeId: nil, servings: nil, note: "Pancakes", sortOrder: 0, updatedAt: 6))
+        }
+        guard case .success(let exported) = await repo.export() else { return XCTFail("export failed") }
+
+        let other = try AppDatabase(path: nil)
+        let otherRepo = DefaultBackupRepository(db: other, clock: clock)
+        let result = try summary(await otherRepo.importBackup(exported.json))
+        XCTAssertEqual(result.mealsAdded, 2)
+        XCTAssertEqual(result.mealTypesAdded, 1)
+
+        let types = try await other.read { try MealPlanDao(db: $0).mealTypes() }
+        let meals = try await other.read { try MealPlanDao(db: $0).days(start: 20_000, end: 20_010) }
+        let copyRecipe = try await other.read { try RecipeDao(db: $0).findByUrl("https://example.com/a") }
+        XCTAssertEqual(meals.map(\.day), [20_001, 20_002])
+        XCTAssertEqual(meals[0].mealTypeId, types.first { $0.builtInKey == "dinner" }?.id)
+        XCTAssertEqual(meals[0].recipeId, copyRecipe?.id)
+        XCTAssertEqual(meals[0].servings, 3)
+        XCTAssertEqual(meals[1].mealTypeId, types.first { $0.name == "Brunch" }?.id)
+        XCTAssertEqual(meals[1].note, "Pancakes")
+
+        let again = try summary(await otherRepo.importBackup(exported.json))
+        XCTAssertEqual(again.mealsAdded, 0)
+        XCTAssertEqual(again.mealTypesAdded, 0)
     }
 
     func testImportingTwiceAddsNothingTheSecondTime() async throws {

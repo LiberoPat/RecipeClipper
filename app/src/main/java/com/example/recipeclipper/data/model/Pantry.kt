@@ -127,9 +127,9 @@ data class WeekNeeds(val buy: List<NeedRow>, val have: List<NeedRow>) {
 
 /**
  * The pantry against a recipe's lines (#51). A line's name ([IngredientName.of]) matches a
- * pantry item's by [IngredientName.matches], the density table's end-of-name rule ("unsalted
- * butter" and "butter" match, "butter beans" and "butter" don't), and only in the same
- * language. It answers "is it there", never "is there enough".
+ * pantry item's by [IngredientName.matches] ("unsalted butter" is "butter"; "rice flour" is
+ * never "flour", either way), and only in the same language. It answers "is it there", never
+ * "is there enough".
  */
 object PantryMatch {
 

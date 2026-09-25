@@ -21,6 +21,13 @@ final class BackupMergerTests: XCTestCase {
         ExistingPantryItem(uid: "x-salt", name: "Salt", language: "en"),
     ]
     private let hereGroceries: Set<String> = ["g-here"]
+    private let hereMealTypes = [
+        ExistingMealType(id: 1, uid: "mt-breakfast", name: "Breakfast", builtInKey: "breakfast"),
+        ExistingMealType(id: 4, uid: "mt-dinner", name: "Supper", builtInKey: "dinner"),
+        ExistingMealType(id: 7, uid: "mt-brunch", name: "Brunch", builtInKey: nil),
+    ]
+    private let herePlan: Set<String> = ["m-here"]
+    private let today: Int64 = 20720
 
     private func plan(
         _ backup: Backup,
@@ -29,7 +36,10 @@ final class BackupMergerTests: XCTestCase {
         maxSortOrder: Int = 6,
         historyLimit: Int = 2,
         pantry: [ExistingPantryItem]? = nil,
-        groceries: Set<String>? = nil
+        groceries: Set<String>? = nil,
+        mealTypes: [ExistingMealType]? = nil,
+        maxMealTypeSortOrder: Int = 4,
+        planUids: Set<String>? = nil
     ) -> ImportPlan {
         var n = 0
         return BackupMerger.plan(
@@ -40,7 +50,11 @@ final class BackupMergerTests: XCTestCase {
             historyLimit: historyLimit,
             newUid: { n += 1; return "gen-\(n)" },
             existingPantry: pantry ?? herePantry,
-            existingGroceryUids: groceries ?? hereGroceries
+            existingGroceryUids: groceries ?? hereGroceries,
+            existingMealTypes: mealTypes ?? hereMealTypes,
+            maxMealTypeSortOrder: maxMealTypeSortOrder,
+            existingPlanUids: planUids ?? herePlan,
+            today: today
         )
     }
 
@@ -96,8 +110,25 @@ final class BackupMergerTests: XCTestCase {
         XCTAssertEqual(plan.newGroceries.map(\.item.id), ["g-tomatoes", "g-apples", "g-beef", "g-milk"])
         XCTAssertEqual(plan.newGroceries.map(\.recipe), [.existing(1), .new("r-pie"), nil, nil])
 
+        // Meal types: the seeded Dinner by key (renamed "Supper" here), " brunch " by name; a
+        // user type called "Dinner" never joins the seeded one, so it and "Tea" are created.
+        XCTAssertEqual(plan.newMealTypes, [
+            NewMealType(uid: "t-fakedinner", name: "Dinner", sortOrder: 5, updatedAt: 0),
+            NewMealType(uid: "t-tea", name: "Tea", sortOrder: 6, updatedAt: 1789000000000),
+        ])
+
+        // The plan: the soup keeps the soup here, the note goes to Dinner, the pie keeps the pie
+        // being written. The stew was skipped for history and r-missing was never in the file:
+        // both dropped. m-here is here already.
+        XCTAssertEqual(plan.newPlanEntries.map(\.entry.id), ["m-soup", "m-note", "m-pie"])
+        XCTAssertEqual(plan.newPlanEntries.map(\.mealType), [.existing(4), .existing(4), .new("t-fakedinner")])
+        XCTAssertEqual(plan.newPlanEntries.map(\.recipe), [.existing(1), nil, .new("r-pie")])
+        XCTAssertEqual(plan.newPlanEntries.first?.entry.servings, 6)
+        XCTAssertEqual(plan.newPlanEntries[1].entry.note, "Leftovers")
+
         XCTAssertEqual(plan.summary, ImportSummary(
-            recipesAdded: 2, listsAdded: 2, recipesAlreadyHere: 2, recipesSkipped: 1, pantryAdded: 1, groceriesAdded: 4
+            recipesAdded: 2, listsAdded: 2, recipesAlreadyHere: 2, recipesSkipped: 1, pantryAdded: 1, groceriesAdded: 4,
+            mealsAdded: 3, mealTypesAdded: 2
         ))
     }
 
@@ -132,15 +163,46 @@ final class BackupMergerTests: XCTestCase {
         let pantry = herePantry + first.newPantry.map { ExistingPantryItem(uid: $0.id, name: $0.name, language: $0.language) }
         let groceries = hereGroceries.union(first.newGroceries.map(\.item.id))
 
-        let second = plan(backup, recipes: recipes, lists: lists, maxSortOrder: 8, historyLimit: 50, pantry: pantry, groceries: groceries)
+        var mealTypes = hereMealTypes
+        for t in first.newMealTypes {
+            mealTypes.append(ExistingMealType(id: nextId, uid: t.uid, name: t.name, builtInKey: nil))
+            nextId += 1
+        }
+        let planUids = herePlan.union(first.newPlanEntries.map(\.entry.id))
+
+        let second = plan(
+            backup, recipes: recipes, lists: lists, maxSortOrder: 8, historyLimit: 50, pantry: pantry, groceries: groceries,
+            mealTypes: mealTypes, maxMealTypeSortOrder: 6, planUids: planUids
+        )
         XCTAssertTrue(second.newPantry.isEmpty)
         XCTAssertTrue(second.newGroceries.isEmpty)
+        XCTAssertTrue(second.newMealTypes.isEmpty)
+        XCTAssertTrue(second.newPlanEntries.isEmpty)
 
         XCTAssertTrue(second.newRecipes.isEmpty)
         XCTAssertTrue(second.newLists.isEmpty)
         XCTAssertTrue(second.noteUpdates.isEmpty)
         XCTAssertEqual(second.summary.recipesAdded, 0)
         XCTAssertEqual(second.summary.listsAdded, 0)
+    }
+
+    func testARecipePlannedForTodayOrLaterComesInLikeAListedOne() {
+        func entry(_ id: String, _ day: Int64, _ recipeId: String) -> BackupPlanEntry {
+            BackupPlanEntry(id: id, day: day, mealTypeId: nil, recipeId: recipeId, servings: nil, note: nil, sortOrder: 0, updatedAt: 0)
+        }
+        let backup = Backup(
+            exportedAt: 0,
+            recipes: [recipe("r-today", "https://example.com/r-today", viewed: 5), recipe("r-past", "https://example.com/r-past", viewed: 5)],
+            lists: [], memberships: [],
+            mealPlan: [entry("m-today", today, "r-today"), entry("m-past", today - 1, "r-past")]
+        )
+        // No free place in history: the recipe planned for today still comes in; the past one doesn't.
+        let plan = plan(backup, recipes: [], historyLimit: 0)
+        XCTAssertEqual(plan.newRecipes.map(\.id), ["r-today"])
+        XCTAssertEqual(plan.summary.recipesSkipped, 1)
+        XCTAssertEqual(plan.newPlanEntries.map(\.entry.id), ["m-today"])
+        XCTAssertEqual(plan.newPlanEntries.map(\.mealType), [.existing(4)])
+        XCTAssertEqual(plan.newPlanEntries.map(\.recipe), [.new("r-today")])
     }
 
     func testFavoritesMapsByTheFlagWhateverEitherListIsCalled() {
