@@ -57,4 +57,34 @@ final class ShortStepRepositoryTests: XCTestCase {
         let other = await shown(repository, cake([whisk], language: "de"))
         XCTAssertEqual(other, [nil])
     }
+
+    /// A user_version 10 file, built by the real migrations, gains `short_steps` and keeps its
+    /// recipe; a short step saved there goes with its recipe.
+    func testAVersion10DatabaseMigratesToVersion11() async throws {
+        let path = NSTemporaryDirectory() + "rc-\(UUID().uuidString).sqlite"
+        defer {
+            for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) }
+        }
+        do {
+            let old = try SQLiteConnection(path: path)
+            try old.execute("PRAGMA foreign_keys = ON")
+            try AppDatabase.migrate(old, upTo: 10)
+            try RecipeDao(db: old).insert(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
+            XCTAssertEqual(try old.queryOne("PRAGMA user_version") { $0.int(0) }, 10)
+        }
+
+        let db = try AppDatabase(path: path)
+        let version = try await db.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
+        XCTAssertEqual(version, AppDatabase.schemaVersion)
+        let id = try await db.write { conn -> Int64 in
+            let id = try RecipeDao(db: conn).findByUrl("https://example.com/cake")!.id
+            try ShortStepDao(db: conn).insert(recipeId: id, stepHash: "h", language: "en", shortText: "Mix.", now: 1)
+            return id
+        }
+        let saved = try await db.read { try ShortStepDao(db: $0).rows(recipeId: id, language: "en") }
+        XCTAssertEqual(saved, ["h": "Mix."])
+        try await db.write { try RecipeDao(db: $0).delete(id) }
+        let gone = try await db.read { try ShortStepDao(db: $0).rows(recipeId: id, language: "en") }
+        XCTAssertTrue(gone.isEmpty)
+    }
 }

@@ -1823,3 +1823,44 @@ Part of #99: the model writes words, code owns every number.
   (`PER_APP_BATTERY_USE_QUOTA_EXCEEDED`). Supported phones: Pixel 9 and later, Galaxy
   S25/S26, OnePlus 13–15 and others on Google's list.
   **Chosen: Rewriting with `SHORTEN`**, the API built for exactly this, on the most phones.
+- **iOS: Foundation Models, `LanguageModelSession(instructions:)`**, a fresh session per step
+  and `GenerationOptions(temperature: 0)`. The instructions ask for the step shortened in its own
+  language with every number, time, temperature and unit kept as written. The languages offered
+  are `supportedLanguages` that the app also reads recipes in.
+
+**Design.**
+
+- **The seam:** `StepShortener` (`support()`, `shorten(step, language)`), implemented once per
+  platform (`MlKitStepShortener`, `FoundationModelsStepShortener`) and faked in tests; nothing
+  else imports ML Kit or FoundationModels. `ShortStepRepository` sits on top: it caches, checks
+  and prunes, and is what the ViewModels see.
+- **The gate, `ShortStepCheck`** (pure, both platforms, pinned by the corpus's `Short` rows): a
+  short version shows only if it is shorter than the step, every number in it appears in the
+  step as written ("1,5", "1 1/2", "½", each end of a range; "1.5" for "1,5" fails), and it
+  states exactly the step's durations (amount and unit length, via `StepTimers.durations`) and
+  temperatures (value and scale, via `TemperatureConverter.temperatures`): none changed, added or
+  dropped. Dropping a time or an oven temperature fails too, beyond the issue's wording, since
+  "Bake until golden" loses what the cook needs; the other half of "350°F (180°C)" may go.
+  A step under 40 characters is never sent. Anything else shows as written.
+- **Code still owns the numbers:** step timers come from the step as written, and a short step
+  is rendered like the step (temperatures in the chosen unit), so the model never writes a
+  number the cook sees that the step didn't state. Sharing a recipe sends the steps as written.
+- **Cache:** `short_steps` (Room 12, iOS `user_version` 11), one row per recipe, step text
+  (SHA-256 of it as stored) and language, with `uid` and `updatedAt` like the other tables. A
+  changed step has no row and is written again; rows for steps the recipe no longer has, or in
+  another language, are pruned when it opens. A version that failed the check is saved as
+  failed (null) so it isn't asked for again; a model that couldn't answer ("not now": busy, in
+  the background, downloading) saves nothing and is asked next time. Derived data: not in the
+  export file, and it cascades with its recipe.
+- **Settings → Steps → "Chef mode"** (a switch; the section only with the `chefMode` flag, off in
+  both builds). Where the phone can't, the switch is disabled with one line saying why (can't,
+  Apple Intelligence off, model not ready); where it can, a line names the recipe languages it
+  writes. A recipe in another language keeps its steps as written, silently. Android offers
+  Chef mode while the model is still downloadable: the first recipe starts the download and
+  shows its steps as written meanwhile.
+- **On screen:** while short steps are written, the steps show as written (no spinner). In the
+  reading view a tap on a step with a short version shows it as written, and again short. In
+  cook mode a tap already makes a step current, so the current step's card has a small
+  "As written" / "Short version" button beside "STEP n" instead.
+- **Needs a real phone to judge:** the model's output quality, how often the gate rejects it,
+  speed per step, and battery. CI and the tests run the fake model only.
