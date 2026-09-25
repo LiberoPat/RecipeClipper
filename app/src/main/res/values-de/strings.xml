@@ -380,4 +380,23 @@
     <string name="cd_next_month">Nächster Monat</string>
     <string name="cd_month_day_planned">%1$s, Mahlzeiten geplant</string>
     <string name="action_share_calendar">Als Kalenderdatei teilen</string>
+    <string name="action_save_week_as_menu">Woche als Menü speichern…</string>
+    <string name="action_apply_menu">Menü übernehmen…</string>
+    <string name="save_menu_title">Woche als Menü speichern</string>
+    <string name="rename_menu_title">Menü umbenennen</string>
+    <string name="menu_name_hint">Name des Menüs</string>
+    <string name="apply_menu_title">Menü zu dieser Woche hinzufügen</string>
+    <string name="menus_empty">Noch keine Menüs. Plane eine Woche und wähle dann „Woche als Menü speichern…“.</string>
+    <string name="delete_menu_title">„%1$s“ löschen?</string>
+    <string name="delete_menu_body">Nur das Menü wird gelöscht. Dein Essensplan und deine Rezepte bleiben, wie sie sind.</string>
+    <string name="menu_saved">„%1$s“ gespeichert</string>
+    <string name="menu_save_failed">Das Menü konnte nicht gespeichert werden</string>
+    <plurals name="menu_meal_count">
+        <item quantity="one">%1$d Mahlzeit</item>
+        <item quantity="other">%1$d Mahlzeiten</item>
+    </plurals>
+    <plurals name="menu_applied">
+        <item quantity="one">%1$d Mahlzeit aus „%2$s“ hinzugefügt</item>
+        <item quantity="other">%1$d Mahlzeiten aus „%2$s“ hinzugefügt</item>
+    </plurals>
 </resources>

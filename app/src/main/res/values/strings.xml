@@ -428,4 +428,23 @@
     <string name="cd_next_month">Next month</string>
     <string name="cd_month_day_planned">%1$s, meals planned</string>
     <string name="action_share_calendar">Share as calendar file</string>
+    <string name="action_save_week_as_menu">Save week as menu…</string>
+    <string name="action_apply_menu">Apply a menu…</string>
+    <string name="save_menu_title">Save week as menu</string>
+    <string name="rename_menu_title">Rename menu</string>
+    <string name="menu_name_hint">Menu name</string>
+    <string name="apply_menu_title">Add a menu to this week</string>
+    <string name="menus_empty">No menus yet. Plan a week, then choose “Save week as menu…”.</string>
+    <string name="delete_menu_title">Delete “%1$s”?</string>
+    <string name="delete_menu_body">The menu goes. Your meal plan and recipes stay as they are.</string>
+    <string name="menu_saved">Saved “%1$s”</string>
+    <string name="menu_save_failed">Couldn’t save the menu</string>
+    <plurals name="menu_meal_count">
+        <item quantity="one">%1$d meal</item>
+        <item quantity="other">%1$d meals</item>
+    </plurals>
+    <plurals name="menu_applied">
+        <item quantity="one">Added %1$d meal from “%2$s”</item>
+        <item quantity="other">Added %1$d meals from “%2$s”</item>
+    </plurals>
 </resources>

@@ -395,4 +395,25 @@
     <string name="cd_next_month">Mes siguiente</string>
     <string name="cd_month_day_planned">%1$s, comidas planificadas</string>
     <string name="action_share_calendar">Compartir como archivo de calendario</string>
+    <string name="action_save_week_as_menu">Guardar semana como menú…</string>
+    <string name="action_apply_menu">Aplicar un menú…</string>
+    <string name="save_menu_title">Guardar semana como menú</string>
+    <string name="rename_menu_title">Cambiar nombre del menú</string>
+    <string name="menu_name_hint">Nombre del menú</string>
+    <string name="apply_menu_title">Añadir un menú a esta semana</string>
+    <string name="menus_empty">Aún no hay menús. Planifica una semana y elige «Guardar semana como menú…».</string>
+    <string name="delete_menu_title">¿Eliminar «%1$s»?</string>
+    <string name="delete_menu_body">Se elimina el menú. Tu plan de comidas y tus recetas no cambian.</string>
+    <string name="menu_saved">«%1$s» guardado</string>
+    <string name="menu_save_failed">No se pudo guardar el menú</string>
+    <plurals name="menu_meal_count">
+        <item quantity="one">%1$d comida</item>
+        <item quantity="many">%1$d de comidas</item>
+        <item quantity="other">%1$d comidas</item>
+    </plurals>
+    <plurals name="menu_applied">
+        <item quantity="one">Se añadió %1$d comida de «%2$s»</item>
+        <item quantity="many">Se añadieron %1$d de comidas de «%2$s»</item>
+        <item quantity="other">Se añadieron %1$d comidas de «%2$s»</item>
+    </plurals>
 </resources>

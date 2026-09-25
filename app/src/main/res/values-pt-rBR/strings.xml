@@ -395,4 +395,25 @@
     <string name="cd_next_month">Próximo mês</string>
     <string name="cd_month_day_planned">%1$s, refeições planejadas</string>
     <string name="action_share_calendar">Compartilhar como arquivo de calendário</string>
+    <string name="action_save_week_as_menu">Salvar semana como cardápio…</string>
+    <string name="action_apply_menu">Aplicar um cardápio…</string>
+    <string name="save_menu_title">Salvar semana como cardápio</string>
+    <string name="rename_menu_title">Renomear cardápio</string>
+    <string name="menu_name_hint">Nome do cardápio</string>
+    <string name="apply_menu_title">Adicionar um cardápio a esta semana</string>
+    <string name="menus_empty">Nenhum cardápio ainda. Planeje uma semana e escolha “Salvar semana como cardápio…”.</string>
+    <string name="delete_menu_title">Excluir “%1$s”?</string>
+    <string name="delete_menu_body">Só o cardápio é excluído. Seu plano de refeições e suas receitas continuam como estão.</string>
+    <string name="menu_saved">“%1$s” salvo</string>
+    <string name="menu_save_failed">Não foi possível salvar o cardápio</string>
+    <plurals name="menu_meal_count">
+        <item quantity="one">%1$d refeição</item>
+        <item quantity="many">%1$d de refeições</item>
+        <item quantity="other">%1$d refeições</item>
+    </plurals>
+    <plurals name="menu_applied">
+        <item quantity="one">%1$d refeição adicionada de “%2$s”</item>
+        <item quantity="many">%1$d de refeições adicionadas de “%2$s”</item>
+        <item quantity="other">%1$d refeições adicionadas de “%2$s”</item>
+    </plurals>
 </resources>
