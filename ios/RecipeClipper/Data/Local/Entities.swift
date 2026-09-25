@@ -171,6 +171,60 @@ struct MealPlanEntryRecord: Equatable {
     }
 }
 
+/// One line on the grocery list (#50; Android's `GroceryItemEntity`). `text` is the line as
+/// written; `language` the tag whose words read it; `aisle` an `Aisle` key, chosen from the
+/// aisle table when added and changed only by the user. `listId` is `defaultList` until there
+/// are several lists. A recipe's items outlive it (SET NULL).
+struct GroceryItemRecord: Equatable {
+    var id: Int64 = 0
+    var listId: Int64 = GroceryItemRecord.defaultList
+    var text: String
+    var language: String?
+    var aisle: String
+    var checked = false
+    var sortOrder: Int
+    var recipeId: Int64?
+    var plannedDay: Int64?
+    var updatedAt: Int64
+    var uid: String = newUid()
+
+    static let defaultList: Int64 = 1
+
+    static let columns = "id, listId, text, language, aisle, checked, sortOrder, recipeId, plannedDay, updatedAt, uid"
+
+    init(
+        id: Int64 = 0, listId: Int64 = GroceryItemRecord.defaultList, text: String, language: String?, aisle: String,
+        checked: Bool = false, sortOrder: Int, recipeId: Int64?, plannedDay: Int64?, updatedAt: Int64,
+        uid: String = newUid()
+    ) {
+        self.id = id
+        self.listId = listId
+        self.text = text
+        self.language = language
+        self.aisle = aisle
+        self.checked = checked
+        self.sortOrder = sortOrder
+        self.recipeId = recipeId
+        self.plannedDay = plannedDay
+        self.updatedAt = updatedAt
+        self.uid = uid
+    }
+
+    init(row: SQLiteRow) {
+        id = row.int64(0)
+        listId = row.int64(1)
+        text = row.string(2)
+        language = row.optionalString(3)
+        aisle = row.string(4)
+        checked = row.bool(5)
+        sortOrder = row.int(6)
+        recipeId = row.isNull(7) ? nil : row.int64(7)
+        plannedDay = row.isNull(8) ? nil : row.int64(8)
+        updatedAt = row.int64(9)
+        uid = row.string(10)
+    }
+}
+
 /// A recipe's saved cook progress, with what a timer alert needs to name it (Android's
 /// `CookStateRow`).
 struct CookStateRecord: Equatable {

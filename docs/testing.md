@@ -125,6 +125,17 @@ types only, meals moved to Dinner). They, `WeekScreenTest`,
 mirrors them in `MealPlanDaoTests` (with the user_version 6 → 7 step) and
 `WeekUITests`.
 
+The grocery list (#50) adds `MIGRATION_8_9` (one new table) to `MigrationTest`,
+from a real version-8 file holding a recipe and a planned meal, and
+`GroceryDaoTest`: order added, delete and undo restoring whole, a recipe's items
+outliving it (SET NULL, also across an undo), and the week's planned recipes in
+plan order without notes. `GroceriesScreenTest`, `RecipeAddToGroceriesTest`
+and a `WeekScreenTest` case cover the screens; the whole device suite passes on
+the agents' emulator. The combining rule is JVM-tested (`GroceryCombinerTest`,
+`AislesTest`) and pinned for iOS by the corpus's `Groc` rows. iOS mirrors the
+rest in `GroceryDaoTests` (with the user_version 7 → 8 step),
+`GroceriesViewModelTests` and `GroceriesUITests`.
+
 **The device tests have been run on an emulator and pass**: `RecipeDaoTest`,
 `ListDaoTest`, `MigrationTest` and the Compose UI tests (see below), including
 those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).

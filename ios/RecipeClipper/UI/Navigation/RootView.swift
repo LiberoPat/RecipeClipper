@@ -63,7 +63,7 @@ struct RootView: View {
             weekStack
                 .tabItem { Label(Strings.tabWeek, systemImage: "calendar") }
                 .tag(AppTab.week)
-            placeholder(Strings.tabGroceries, Strings.groceriesPlaceholder)
+            groceriesStack
                 .tabItem { Label(Strings.tabGroceries, systemImage: "basket") }
                 .tag(AppTab.groceries)
             placeholder(Strings.tabPantry, Strings.pantryPlaceholder)
@@ -81,7 +81,8 @@ struct RootView: View {
                 WeekScreen(
                     vm: vm,
                     onOpenRecipe: { router.weekPath.append(.weekRecipe(id: $0, servings: $1)) },
-                    onOpenMealTypes: { router.weekPath.append(.mealTypes) }
+                    onOpenMealTypes: { router.weekPath.append(.mealTypes) },
+                    makeGroceriesVM: container.makeAddToGroceriesViewModel
                 )
             }
             .navigationDestination(for: Route.self) { route in
@@ -90,6 +91,14 @@ struct RootView: View {
                     router.weekPath.append(route)
                 })
             }
+        }
+        .tint(Palette.accentText)
+    }
+
+    /// The Groceries tab (#50): the list alone, for now.
+    private var groceriesStack: some View {
+        NavigationStack {
+            ScreenHost(container.makeGroceriesViewModel) { vm in GroceriesScreen(vm: vm) }
         }
         .tint(Palette.accentText)
     }
@@ -154,10 +163,12 @@ struct RootView: View {
         // "Add to plan" (#49) only behind the tab flag, like the Week tab itself.
         let container = container
         let makePlanVM: (() -> AddToPlanViewModel)? = tabsEnabled ? { container.makeAddToPlanViewModel() } : nil
+        let makeGroceriesVM: (() -> AddToGroceriesViewModel)? =
+            tabsEnabled ? { container.makeAddToGroceriesViewModel() } : nil
         return ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
             RecipeScreen(
                 vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
-                makePlanVM: makePlanVM, onClip: { push(.clip($0)) }
+                makePlanVM: makePlanVM, makeGroceriesVM: makeGroceriesVM, onClip: { push(.clip($0)) }
             )
         }
         // The reading view and cook mode are full screen, so a recipe still opens on the recipe.

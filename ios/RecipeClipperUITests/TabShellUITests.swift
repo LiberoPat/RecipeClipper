@@ -56,7 +56,7 @@ final class TabShellUITests: RecipeUITestCase {
         tab("Week").tap()
         require(app.staticTexts["weekRange"], "the Week (#49)")
         tab("Groceries").tap()
-        require(text("A shopping list built from the recipes in your week."))
+        require(textContaining("Your list is empty"), "the empty Groceries list (#50)")
         tab("Pantry").tap()
         require(text("What you already have, so you only buy what you need."))
         XCTAssertTrue(tab("Pantry").isSelected)

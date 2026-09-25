@@ -7,6 +7,7 @@ final class AppContainer {
     let recipeRepository: RecipeRepository
     let listRepository: ListRepository
     let mealPlanRepository: MealPlanRepository
+    let groceryRepository: GroceryRepository
     let planCalendar: PlanCalendar
     let preferences: AppPreferences
     let clock: Clock
@@ -27,6 +28,7 @@ final class AppContainer {
         recipeRepository: RecipeRepository,
         listRepository: ListRepository,
         mealPlanRepository: MealPlanRepository,
+        groceryRepository: GroceryRepository,
         backupRepository: BackupRepository,
         preferences: AppPreferences,
         clock: Clock,
@@ -41,6 +43,7 @@ final class AppContainer {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
         self.mealPlanRepository = mealPlanRepository
+        self.groceryRepository = groceryRepository
         self.planCalendar = planCalendar ?? SystemPlanCalendar(clock: clock)
         self.backupRepository = backupRepository
         self.preferences = preferences
@@ -84,6 +87,7 @@ final class AppContainer {
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
+            groceryRepository: DefaultGroceryRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
@@ -119,6 +123,14 @@ final class AppContainer {
 
     func makeAddToPlanViewModel() -> AddToPlanViewModel {
         AddToPlanViewModel(repository: mealPlanRepository, calendar: planCalendar)
+    }
+
+    func makeGroceriesViewModel() -> GroceriesViewModel {
+        GroceriesViewModel(repository: groceryRepository)
+    }
+
+    func makeAddToGroceriesViewModel() -> AddToGroceriesViewModel {
+        AddToGroceriesViewModel(repository: groceryRepository, preferences: preferences)
     }
 
     func makeMealTypesViewModel() -> MealTypesViewModel {

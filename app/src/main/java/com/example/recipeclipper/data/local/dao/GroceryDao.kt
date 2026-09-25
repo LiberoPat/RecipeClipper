@@ -49,9 +49,21 @@ abstract class GroceryDao {
         insert(items.mapIndexed { index, item -> item.copy(id = 0, sortOrder = start + index) })
     }
 
-    /** Undoes a delete: the same rows back, ids, uids and places included. */
     @Insert
-    abstract suspend fun restore(items: List<GroceryItemEntity>)
+    protected abstract suspend fun insertWhole(items: List<GroceryItemEntity>)
+
+    @Query("SELECT id FROM recipes WHERE id IN (:ids)")
+    protected abstract suspend fun existingRecipes(ids: List<Long>): List<Long>
+
+    /**
+     * Undoes a delete: the same rows back, ids, uids and places included. A recipe deleted
+     * meanwhile leaves its items without a source, rather than failing on the foreign key.
+     */
+    @Transaction
+    open suspend fun restore(items: List<GroceryItemEntity>) {
+        val recipes = existingRecipes(items.mapNotNull { it.recipeId }).toSet()
+        insertWhole(items.map { if (it.recipeId != null && it.recipeId !in recipes) it.copy(recipeId = null) else it })
+    }
 
     @Query("UPDATE grocery_items SET checked = :checked, updatedAt = :now WHERE id IN (:ids)")
     abstract suspend fun setChecked(ids: List<Long>, checked: Boolean, now: Long)
