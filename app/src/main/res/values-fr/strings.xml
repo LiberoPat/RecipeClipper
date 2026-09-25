@@ -105,6 +105,9 @@
     </plurals>
     <string name="dark_while_cooking_title">Sombre en cuisine</string>
     <string name="dark_while_cooking_description">Mode cuisine sur fond sombre, même en mode clair</string>
+    <string name="settings_section_steps">Étapes</string>
+    <string name="amounts_in_steps_title">Quantités dans les étapes</string>
+    <string name="amounts_in_steps_description">Affiche la quantité de chaque ingrédient là où une étape le nomme</string>
     <string name="nav_settings">Paramètres</string>
     <string name="settings_title">Paramètres</string>
     <string name="settings_section_units">Unités</string>

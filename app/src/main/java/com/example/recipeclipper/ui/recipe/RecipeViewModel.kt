@@ -12,6 +12,7 @@ import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.IngredientRendering
+import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
@@ -77,7 +78,8 @@ class RecipeViewModel @Inject constructor(
                 unitSystem = it.unitSystem,
                 convertLiquids = it.convertLiquids,
                 temperatureUnit = it.temperatureUnit,
-                darkWhileCooking = it.darkWhileCooking
+                darkWhileCooking = it.darkWhileCooking,
+                amountsInSteps = it.amountsInSteps
             )
         )
     }
@@ -129,7 +131,7 @@ class RecipeViewModel @Inject constructor(
                     is ParseResult.Success -> state.copy(
                         content = successContent(
                             result.recipe.withPlannedServings(), state.unitSystem, state.convertLiquids,
-                            state.temperatureUnit
+                            state.temperatureUnit, state.amountsInSteps
                         ),
                         checkedIngredients = result.recipe.checkedIngredients,
                         notes = result.recipe.notes.orEmpty()
@@ -297,7 +299,8 @@ class RecipeViewModel @Inject constructor(
                 _uiState.update { state ->
                     state.copy(
                         content = successContent(
-                            result.recipe, state.unitSystem, state.convertLiquids, state.temperatureUnit
+                            result.recipe, state.unitSystem, state.convertLiquids, state.temperatureUnit,
+                            state.amountsInSteps
                         ),
                         checkedIngredients = result.recipe.checkedIngredients,
                         updatingFromSource = false
@@ -323,7 +326,7 @@ class RecipeViewModel @Inject constructor(
                 content = content.copy(
                     servings = scale,
                     ingredients = render(content.recipe, content.words, scale, state.unitSystem, state.convertLiquids)
-                )
+                ).withStepAmounts(state.amountsInSteps)
             )
         }
         val content = _uiState.value.content as? RecipeContent.Success ?: return
@@ -356,11 +359,13 @@ class RecipeViewModel @Inject constructor(
                 unitSystem = settings.unitSystem,
                 convertLiquids = settings.convertLiquids,
                 temperatureUnit = settings.temperatureUnit,
-                darkWhileCooking = settings.darkWhileCooking
+                darkWhileCooking = settings.darkWhileCooking,
+                amountsInSteps = settings.amountsInSteps
             )
             val rendersDifferently = next.unitSystem != state.unitSystem ||
                 next.convertLiquids != state.convertLiquids ||
-                next.temperatureUnit != state.temperatureUnit
+                next.temperatureUnit != state.temperatureUnit ||
+                next.amountsInSteps != state.amountsInSteps
             if (rendersDifferently) rerender(next) else next
         }
     }
@@ -378,7 +383,7 @@ class RecipeViewModel @Inject constructor(
                     content.recipe, content.words, content.servings, state.unitSystem, state.convertLiquids
                 ),
                 instructions = renderInstructions(content.recipe, content.words, state.temperatureUnit)
-            )
+            ).withStepAmounts(state.amountsInSteps)
         )
     }
 
@@ -586,7 +591,8 @@ class RecipeViewModel @Inject constructor(
         recipe: Recipe,
         system: UnitSystem,
         convertLiquids: Boolean,
-        temperatureUnit: TemperatureUnit
+        temperatureUnit: TemperatureUnit,
+        amountsInSteps: Boolean
     ): RecipeContent.Success {
         // The recipe's language picks the words, never the phone's (#14).
         val words = LanguageWords.forRecipe(recipe)
@@ -602,8 +608,12 @@ class RecipeViewModel @Inject constructor(
             stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it, words) },
             sourceDomain = SourceDomain.of(recipe.sourceUrl),
             words = words
-        )
+        ).withStepAmounts(amountsInSteps)
     }
+
+    // Amounts inside steps (#101), from the lines as rendered, so they follow servings and units.
+    private fun RecipeContent.Success.withStepAmounts(on: Boolean): RecipeContent.Success =
+        copy(stepAmounts = if (on) StepAmounts.annotate(instructions, ingredients, words) else null)
 
     // Scale first, then convert, so a converted amount always matches the chosen servings.
     private fun render(

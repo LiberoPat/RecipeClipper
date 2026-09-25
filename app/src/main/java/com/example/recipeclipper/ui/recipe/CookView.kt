@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.LanguageWords
+import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.StepTimers
 
 private enum class StepStatus { DONE, CURRENT, UPCOMING }
@@ -91,6 +92,7 @@ internal fun CookView(
                 CookStep(
                     index = index,
                     text = text,
+                    amounts = content.stepAmounts?.getOrNull(index),
                     status = status,
                     timerSeconds = content.stepTimerSeconds.getOrNull(index),
                     // A step has a timer only when the app has the recipe's words.
@@ -192,6 +194,7 @@ private fun IngredientsBar(
 private fun CookStep(
     index: Int,
     text: String,
+    amounts: List<StepAmounts.Part>?,
     status: StepStatus,
     timerSeconds: Int?,
     timerWords: LanguageWords,
@@ -215,7 +218,7 @@ private fun CookStep(
                 color = colors.tertiary
             )
             Spacer(Modifier.height(8.dp))
-            Text(text, style = body.copy(fontSize = 21.sp, lineHeight = 30.sp))
+            Text(stepText(text, amounts, colors.tertiary), style = body.copy(fontSize = 21.sp, lineHeight = 30.sp))
             if (timerSeconds != null || timer != null) {
                 Spacer(Modifier.height(16.dp))
                 CurrentTimer(index, timerSeconds, timerWords, timer, actions)
@@ -253,7 +256,8 @@ private fun CookStep(
                 modifier = Modifier.width(32.dp)
             )
             Text(
-                text,
+                // A done step is dimmed as a whole; its amounts keep only their weight.
+                stepText(text, amounts, if (done) null else colors.tertiary),
                 style = body.copy(
                     textDecoration = if (done) TextDecoration.LineThrough else TextDecoration.None
                 ),
