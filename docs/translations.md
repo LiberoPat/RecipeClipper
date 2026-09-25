@@ -74,6 +74,11 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Aisle (#50) | Pasillo | Rayon | Gang | Reparto | Corredor |
 | Fruit & vegetables (aisle) | Frutas y verduras | Fruits et légumes | Obst & Gemüse | Frutta e verdura | Hortifrúti |
 | Cans & jars (aisle) | Conservas | Conserves | Konserven | Scatolame | Enlatados |
+| Pantry (#51) | Despensa | Garde-manger | Vorrat | Dispensa | Despensa |
+| Always have (a staple, #51) | Siempre en casa | Toujours en réserve | Immer im Haus | Sempre in casa | Sempre tenho |
+| Use by (#51) | Consumir antes del | À consommer avant le | Verbrauchen bis | Da consumare entro il | Consumir até |
+| What I need (#51) | Lo que necesito | Ce qu'il me faut | Was ich brauche | Cosa mi serve | O que preciso |
+| “In your pantry” means you have some, not enough (#51) | «En tu despensa» significa que tienes algo… | « Dans votre garde-manger » signifie que vous en avez… | „In deinem Vorrat“ heißt, dass du etwas davon hast… | «Nella tua dispensa» vuol dire che ne hai… | “Na sua despensa” quer dizer que você tem um pouco… |
 
 Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and Italian
 (Annulla), as the platforms themselves have it; "Delete" is *Excluir* in Portuguese
