@@ -11,7 +11,7 @@ class SharedTablesTest {
 
     private val languageTables = listOf(
         "densities", "units", "timers", "temperature", "yield", "ranges", "sections",
-        "amounts", "durations", "language", "names"
+        "amounts", "durations", "language", "names", "aisles"
     )
 
     @Test
@@ -48,6 +48,14 @@ class SharedTablesTest {
             SharedTables.objects(SharedTables.load("units", language).getJSONArray("names")).map { MeasureUnit.valueOf(it.getString("unit")) }
         }
         assertEquals(MeasureUnit.values().toSet(), named.toSet())
+    }
+
+    @Test
+    fun everyAisleTableNamesEveryAisleAndNoOther() {
+        for (language in LanguageWords.SHIPPED) {
+            val aisles = SharedTables.load("aisles", language).getJSONObject("aisles")
+            assertEquals(language, Aisle.entries.map { it.key }.toSet(), aisles.keys().asSequence().toSet())
+        }
     }
 
     @Test

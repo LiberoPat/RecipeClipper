@@ -275,6 +275,38 @@ struct DeletedMeal: Equatable {
     let entry: MealPlanEntryRecord
 }
 
+/// The grocery list (#50; Android's GroceryRepository). Every write lands at once.
+protocol GroceryRepository: AnyObject {
+    /// Every item on the list, in the order added. Re-emits on change.
+    func observeItems() -> AnyPublisher<[GroceryItem], Never>
+
+    /// Adds `lines` at the end of the list, each in the aisle its name belongs to. Blank lines
+    /// are skipped.
+    func add(_ lines: [NewGroceryLine]) async
+
+    func setChecked(_ ids: [Int64], checked: Bool) async
+
+    /// Moves items to another aisle: the user's choice, kept from then on.
+    func setAisle(_ ids: [Int64], aisle: Aisle) async
+
+    /// Deletes items; nil when none were there.
+    func delete(_ ids: [Int64]) async -> DeletedGroceries?
+
+    /// Deletes every checked item; nil when none was checked.
+    func clearChecked() async -> DeletedGroceries?
+
+    /// Undoes `delete` or `clearChecked`: the same items, in the same places.
+    func restore(_ deleted: DeletedGroceries) async
+
+    /// The recipes planned from day `start` to `end` inclusive, with their ingredients.
+    func plannedIngredients(start: Int64, end: Int64) async -> [PlannedIngredients]
+}
+
+/// What a grocery delete removed, for `restore`. Opaque to callers.
+struct DeletedGroceries: Equatable {
+    let items: [GroceryItemRecord]
+}
+
 /// Today and the first day of the week on the user's calendar (#49; Android's PlanCalendar).
 /// A seam so the Week and plan-sheet ViewModels never read the clock, zone or locale.
 protocol PlanCalendar {

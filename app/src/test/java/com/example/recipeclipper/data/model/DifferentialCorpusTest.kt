@@ -18,7 +18,10 @@ import java.io.File
  * or `Ins("Bake 1,5 hours."),`) in the Swift file, run this test, and copy the generated file
  * over the Swift one. Never type an expected value by hand.
  *
- * Only these two sections are generated here, plus the Swift test's `systems` list and the
+ * `Groc([...])` rows (#50) work the same way: write only the lines (`Groc(["2 eggs", "3 eggs"]),`,
+ * optionally `, lang: "de"`), and the combined line and each line's aisle are filled in.
+ *
+ * Only these three sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
  */
@@ -35,6 +38,10 @@ class DifferentialCorpusTest {
     )
 
     private val row = Regex("""^(\s*)(Ing|Ins)\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+
+    // A grocery row (#50): the lines to add up, then optionally their language.
+    private val groceryRow = Regex("""^(\s*)Groc\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
+    private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
     private val systemsComment = Regex("""^// \[[a-z+, ]*], then$""")
@@ -66,6 +73,7 @@ class DifferentialCorpusTest {
                 "(.${swiftCase(system)}, $liquids),"
             }
         }
+        groceryRow.find(line)?.let { g -> return groceryRow(g) }
         val m = row.find(line) ?: return line
         val indent = m.groupValues[1]
         val input = unescape(m.groupValues[3])
@@ -86,6 +94,17 @@ class DifferentialCorpusTest {
         val halfOunces = IngredientRendering.render(listOf(line), 0.5, UnitSystem.OUNCES, true, words).single()
         val name = IngredientName.of(line, words)?.let { q(it) } ?: "nil"
         return "Ing(${q(line)}$lang, ${list(scaled)}, ${list(converted)}, ${q(scaledMetric)}, ${q(halfOunces)}, $name)"
+    }
+
+    /** `Groc([lines], lang:, combined or nil, [each line's aisle])`: GroceryCombiner.combine and Aisles.of. */
+    private fun groceryRow(m: MatchResult): String {
+        val lines = literal.findAll(m.groupValues[2]).map { unescape(it.groupValues[1]) }.toList()
+        val language = m.groupValues[3].ifEmpty { null }
+        val words = if (language == null) LanguageWords.ENGLISH else LanguageWords.forTag(language)!!
+        val lang = if (language == null) "" else ", lang: ${q(language)}"
+        val combined = GroceryCombiner.combine(lines, words)?.let { q(it) } ?: "nil"
+        val aisles = list(lines.map { Aisles.of(it, words).key })
+        return m.groupValues[1] + "Groc(${list(lines)}$lang, $combined, $aisles),"
     }
 
     private fun instructionRow(line: String, words: LanguageWords, lang: String): String {

@@ -6,9 +6,11 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.recipeclipper.data.local.dao.BackupDao
+import com.example.recipeclipper.data.local.dao.GroceryDao
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.MealPlanDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
+import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MealTypeEntity
@@ -20,9 +22,9 @@ import com.example.recipeclipper.data.model.MealType
 @Database(
     entities = [
         RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class,
-        MealTypeEntity::class, MealPlanEntryEntity::class
+        MealTypeEntity::class, MealPlanEntryEntity::class, GroceryItemEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -32,6 +34,7 @@ abstract class RecipeDatabase : RoomDatabase() {
     abstract fun listDao(): ListDao
     abstract fun backupDao(): BackupDao
     abstract fun mealPlanDao(): MealPlanDao
+    abstract fun groceryDao(): GroceryDao
 
     companion object {
         const val NAME = "recipe_clipper.db"
@@ -222,10 +225,33 @@ abstract class RecipeDatabase : RoomDatabase() {
             "CREATE INDEX IF NOT EXISTS `index_meal_plan_entries_recipeId` ON `meal_plan_entries` (`recipeId`)"
         )
 
+        /**
+         * The grocery list (#50): `grocery_items`, new, so nothing existing changes. One list
+         * for now (`listId` 1); a recipe's items outlive it (SET NULL). Each row has a stable
+         * `uid` and an `updatedAt`, for export and a later sync (#53). The same SQL is iOS's
+         * `addGroceries`.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                GROCERY_SQL.forEach(db::execSQL)
+            }
+        }
+
+        private val GROCERY_SQL = listOf(
+            "CREATE TABLE IF NOT EXISTS `grocery_items` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`listId` INTEGER NOT NULL, `text` TEXT NOT NULL, `language` TEXT, `aisle` TEXT NOT NULL, " +
+                "`checked` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `recipeId` INTEGER, " +
+                "`plannedDay` INTEGER, `updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL, " +
+                "FOREIGN KEY(`recipeId`) REFERENCES `recipes`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_grocery_items_uid` ON `grocery_items` (`uid`)",
+            "CREATE INDEX IF NOT EXISTS `index_grocery_items_listId` ON `grocery_items` (`listId`)",
+            "CREATE INDEX IF NOT EXISTS `index_grocery_items_recipeId` ON `grocery_items` (`recipeId`)"
+        )
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-            MIGRATION_7_8
+            MIGRATION_7_8, MIGRATION_8_9
         )
     }
 }

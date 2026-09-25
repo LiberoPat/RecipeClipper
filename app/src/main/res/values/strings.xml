@@ -276,7 +276,6 @@
     <string name="tab_groceries">Groceries</string>
     <string name="tab_pantry">Pantry</string>
     <string name="coming_soon">Coming soon</string>
-    <string name="groceries_placeholder">A shopping list built from the recipes in your week.</string>
     <string name="pantry_placeholder">What you already have, so you only buy what you need.</string>
 
     <!-- The shared message body (RecipeShareText): the words around the recipe, in the phone's
@@ -338,4 +337,33 @@
     <string name="action_move_up">Move up</string>
     <string name="action_move_down">Move down</string>
     <string name="label_meal_type_name">Meal type name</string>
+
+    <!-- Groceries (#50) -->
+    <string name="action_add">Add</string>
+    <string name="groceries_add_hint">Add an item</string>
+    <string name="groceries_empty">Your list is empty. Type an item above, or add ingredients from a recipe\'s menu or from the Week.</string>
+    <string name="action_add_to_groceries">Add to groceries</string>
+    <string name="add_to_groceries_title">Add to groceries</string>
+    <string name="action_add_week_to_groceries">Add this week\'s ingredients</string>
+    <string name="groceries_week_empty">No recipes are planned this week.</string>
+    <string name="action_clear_checked">Clear checked</string>
+    <string name="action_share_groceries">Share list</string>
+    <string name="action_move_to_aisle">Move to aisle…</string>
+    <string name="move_to_aisle_title">Aisle</string>
+    <string name="snackbar_grocery_deleted">Deleted %1$s</string>
+    <string name="snackbar_checked_cleared">Checked items removed</string>
+    <string name="aisle_produce">Fruit &amp; vegetables</string>
+    <string name="aisle_meat">Meat</string>
+    <string name="aisle_seafood">Fish &amp; seafood</string>
+    <string name="aisle_dairy">Dairy &amp; eggs</string>
+    <string name="aisle_bakery">Bakery</string>
+    <string name="aisle_baking">Baking</string>
+    <string name="aisle_grains">Pasta, rice &amp; grains</string>
+    <string name="aisle_canned">Cans &amp; jars</string>
+    <string name="aisle_condiments">Oils, sauces &amp; condiments</string>
+    <string name="aisle_spices">Herbs &amp; spices</string>
+    <string name="aisle_frozen">Frozen</string>
+    <string name="aisle_snacks">Nuts &amp; dried fruit</string>
+    <string name="aisle_drinks">Drinks</string>
+    <string name="aisle_other">Other</string>
 </resources>

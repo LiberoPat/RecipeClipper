@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "Groceries (#50): the aisle a grocery item is listed under. The item's ingredient name (IngredientName.of) is matched on its END, like the density table: the longest alias the name ends with at a word boundary wins, so 'peanut butter' (condiments) beats 'butter' (dairy), and 'butter beans' (canned) is not butter. There's no singulariser, so plurals are listed too. A name nothing matches, or a line with no name, is 'other'. The keys are fixed, and the app names and orders them: produce, meat, seafood, dairy, bakery, baking, grains, canned, condiments, spices, frozen, snacks, drinks, other. Aliases are lowercase, with hyphens as spaces and no apostrophes, as a name is read.",
+  "aisles": {
+    "produce": [
+      "onion", "onions", "shallot", "shallots", "scallion", "scallions", "green onion", "green onions",
+      "spring onion", "spring onions", "leek", "leeks", "garlic", "ginger", "potato", "potatoes",
+      "sweet potato", "sweet potatoes", "carrot", "carrots", "celery", "tomato", "tomatoes",
+      "cucumber", "cucumbers", "zucchini", "courgette", "courgettes", "eggplant", "aubergine",
+      "bell pepper", "bell peppers", "jalapeno", "jalapenos", "lettuce", "spinach", "kale", "arugula",
+      "rocket", "cabbage", "broccoli", "cauliflower", "brussels sprouts", "asparagus", "green beans",
+      "mushroom", "mushrooms", "avocado", "avocados", "lemon", "lemons", "lime", "limes", "orange",
+      "oranges", "apple", "apples", "pear", "pears", "banana", "bananas", "strawberries",
+      "blueberries", "raspberries", "grapes", "mango", "pineapple", "peach", "peaches", "parsley",
+      "cilantro", "fresh basil", "basil leaves", "mint", "mint leaves", "dill", "chives",
+      "fresh thyme", "fresh rosemary", "beet", "beets", "beetroot", "radish", "radishes",
+      "butternut squash", "pumpkin", "fennel", "parsnip", "parsnips", "bok choy", "lemongrass",
+      "lemon zest", "lime zest", "lemon juice", "lime juice"
+    ],
+    "meat": [
+      "chicken", "chicken breast", "chicken breasts", "chicken thigh", "chicken thighs",
+      "chicken wings", "beef", "ground beef", "minced beef", "beef mince", "steak", "steaks", "pork",
+      "pork shoulder", "pork chops", "pork loin", "ground pork", "bacon", "ham", "sausage",
+      "sausages", "chorizo", "lamb", "ground lamb", "turkey", "ground turkey", "veal",
+      "prosciutto", "pancetta", "salami", "duck"
+    ],
+    "seafood": [
+      "fish", "salmon", "salmon fillets", "cod", "shrimp", "prawns", "scallops", "mussels", "clams",
+      "crab", "lobster", "tilapia", "halibut", "trout", "sea bass", "squid", "white fish"
+    ],
+    "dairy": [
+      "milk", "whole milk", "skim milk", "buttermilk", "butter", "margarine", "cream", "heavy cream",
+      "whipping cream", "double cream", "single cream", "light cream", "half and half",
+      "sour cream", "creme fraiche", "yogurt", "yoghurt", "cheese", "cheddar", "mozzarella",
+      "parmesan", "parmigiano reggiano", "pecorino", "feta", "ricotta", "cream cheese",
+      "goat cheese", "gruyere", "mascarpone", "cottage cheese", "egg", "eggs", "egg yolk",
+      "egg yolks", "egg white", "egg whites"
+    ],
+    "bakery": [
+      "bread", "loaf", "baguette", "buns", "rolls", "tortillas", "pita", "pitas", "naan",
+      "brioche", "croissants", "breadcrumbs", "bread crumbs", "panko"
+    ],
+    "baking": [
+      "flour", "sugar", "brown sugar", "powdered sugar", "icing sugar", "confectioners sugar",
+      "baking powder", "baking soda", "bicarbonate of soda", "yeast", "cocoa", "cocoa powder",
+      "chocolate", "chocolate chips", "chocolate chunks", "vanilla", "vanilla extract",
+      "almond extract", "cornstarch", "corn starch", "cornflour", "cornmeal", "gelatin",
+      "sprinkles", "molasses", "almond flour", "ground almonds"
+    ],
+    "grains": [
+      "rice", "basmati rice", "jasmine rice", "brown rice", "arborio rice", "pasta", "spaghetti",
+      "penne", "macaroni", "fusilli", "linguine", "fettuccine", "lasagna noodles", "noodles",
+      "egg noodles", "rice noodles", "couscous", "quinoa", "oats", "rolled oats", "bulgur",
+      "barley", "lentils", "polenta"
+    ],
+    "canned": [
+      "chickpeas", "black beans", "kidney beans", "cannellini beans", "white beans", "pinto beans",
+      "butter beans", "beans", "tomato paste", "tomato puree", "crushed tomatoes", "diced tomatoes",
+      "canned tomatoes", "chopped tomatoes", "tomato sauce", "passata", "coconut milk",
+      "coconut cream", "broth", "stock", "chicken broth", "chicken stock", "beef broth",
+      "beef stock", "vegetable broth", "vegetable stock", "tuna"
+    ],
+    "condiments": [
+      "oil", "olive oil", "vegetable oil", "canola oil", "sunflower oil", "sesame oil",
+      "coconut oil", "avocado oil", "vinegar", "soy sauce", "tamari", "fish sauce",
+      "worcestershire sauce", "hot sauce", "sriracha", "ketchup", "mustard", "dijon mustard",
+      "mayonnaise", "mayo", "honey", "maple syrup", "peanut butter", "almond butter", "jam",
+      "tahini", "miso", "pesto", "salsa", "capers", "olives", "apple butter"
+    ],
+    "spices": [
+      "salt", "kosher salt", "sea salt", "black pepper", "pepper", "white pepper", "cinnamon",
+      "nutmeg", "cumin", "paprika", "smoked paprika", "chili powder", "chilli powder", "cayenne",
+      "cayenne pepper", "turmeric", "curry powder", "garam masala", "oregano", "dried oregano",
+      "dried thyme", "dried basil", "bay leaves", "bay leaf", "ground cloves", "allspice",
+      "cardamom", "ground coriander", "coriander seeds", "red pepper flakes", "chili flakes",
+      "garlic powder", "onion powder", "italian seasoning"
+    ],
+    "frozen": [
+      "frozen peas", "frozen corn", "frozen spinach", "frozen berries", "ice cream", "puff pastry"
+    ],
+    "snacks": [
+      "almonds", "walnuts", "pecans", "cashews", "peanuts", "pistachios", "pine nuts", "hazelnuts",
+      "raisins", "dried cranberries", "dates", "crackers"
+    ],
+    "drinks": [
+      "water", "sparkling water", "wine", "white wine", "red wine", "beer", "coffee", "tea",
+      "orange juice", "apple juice"
+    ],
+    "other": []
+  }
+}

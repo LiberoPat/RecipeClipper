@@ -182,7 +182,6 @@
     <string name="tab_groceries">Courses</string>
     <string name="tab_pantry">Garde-manger</string>
     <string name="coming_soon">Bientôt disponible</string>
-    <string name="groceries_placeholder">Une liste de courses créée à partir des recettes de votre semaine.</string>
     <string name="pantry_placeholder">Ce que vous avez déjà, pour n’acheter que ce dont vous avez besoin.</string>
     <string name="share_serves">Portions : %1$d</string>
     <string name="share_makes">Quantité : %1$d</string>
@@ -306,4 +305,33 @@
         <item quantity="many">%1$d d’étapes ajoutées</item>
         <item quantity="other">%1$d étapes ajoutées</item>
     </plurals>
+
+    <!-- Groceries (#50) -->
+    <string name="action_add">Ajouter</string>
+    <string name="groceries_add_hint">Ajouter un article</string>
+    <string name="groceries_empty">Votre liste est vide. Saisissez un article ci-dessus, ou ajoutez des ingrédients depuis le menu d\'une recette ou depuis la Semaine.</string>
+    <string name="action_add_to_groceries">Ajouter aux courses</string>
+    <string name="add_to_groceries_title">Ajouter aux courses</string>
+    <string name="action_add_week_to_groceries">Ajouter les ingrédients de la semaine</string>
+    <string name="groceries_week_empty">Aucune recette n\'est prévue cette semaine.</string>
+    <string name="action_clear_checked">Retirer les articles cochés</string>
+    <string name="action_share_groceries">Partager la liste</string>
+    <string name="action_move_to_aisle">Changer de rayon…</string>
+    <string name="move_to_aisle_title">Rayon</string>
+    <string name="snackbar_grocery_deleted">Supprimé : %1$s</string>
+    <string name="snackbar_checked_cleared">Articles cochés retirés</string>
+    <string name="aisle_produce">Fruits et légumes</string>
+    <string name="aisle_meat">Viande</string>
+    <string name="aisle_seafood">Poisson et fruits de mer</string>
+    <string name="aisle_dairy">Crèmerie et œufs</string>
+    <string name="aisle_bakery">Boulangerie</string>
+    <string name="aisle_baking">Pâtisserie</string>
+    <string name="aisle_grains">Pâtes, riz et céréales</string>
+    <string name="aisle_canned">Conserves</string>
+    <string name="aisle_condiments">Huiles, sauces et condiments</string>
+    <string name="aisle_spices">Épices</string>
+    <string name="aisle_frozen">Surgelés</string>
+    <string name="aisle_snacks">Fruits secs</string>
+    <string name="aisle_drinks">Boissons</string>
+    <string name="aisle_other">Autres</string>
 </resources>

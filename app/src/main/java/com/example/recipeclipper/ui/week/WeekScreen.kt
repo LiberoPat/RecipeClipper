@@ -67,6 +67,8 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlannedMeal
+import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
+import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.MealTypeChoices
 import com.example.recipeclipper.ui.plan.PlanSheetContent
 import com.example.recipeclipper.ui.plan.dayTitle
@@ -79,15 +81,19 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 /**
  * The Week tab (#49): ‹ week › with "This week", then the seven days from the locale's first
  * day of the week, each with its meals and a "+ Add". Tapping a recipe opens it at the planned
- * servings; long-pressing a meal offers Move and Remove (Remove can be undone).
+ * servings; long-pressing a meal offers Move and Remove (Remove can be undone). The menu's "Add
+ * this week's ingredients" (#50) opens the grocery sheet over every recipe planned in the week
+ * shown; [groceriesViewModel] null leaves it out.
  */
 @Composable
 fun WeekScreen(
     onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit,
     onOpenMealTypes: () -> Unit,
-    viewModel: WeekViewModel = hiltViewModel()
+    viewModel: WeekViewModel = hiltViewModel(),
+    groceriesViewModel: AddToGroceriesViewModel? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var groceriesSheetOpen by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val removed = state.removed
@@ -117,7 +123,13 @@ fun WeekScreen(
                         onPrevious = viewModel::onPreviousWeek,
                         onNext = viewModel::onNextWeek,
                         onThisWeek = viewModel::onThisWeek,
-                        onOpenMealTypes = onOpenMealTypes
+                        onOpenMealTypes = onOpenMealTypes,
+                        onAddToGroceries = groceriesViewModel?.let { sheet ->
+                            {
+                                sheet.loadWeek(state.weekStart)
+                                groceriesSheetOpen = true
+                            }
+                        }
                     )
                 }
                 state.days.forEach { weekDay ->
@@ -157,6 +169,9 @@ fun WeekScreen(
                 onDismiss = viewModel::onAddDismissed
             )
         }
+        if (groceriesSheetOpen && groceriesViewModel != null) {
+            AddToGroceriesSheet(groceriesViewModel, onDismiss = { groceriesSheetOpen = false })
+        }
         state.moving?.let { moving ->
             MoveSheet(
                 moving = moving,
@@ -178,7 +193,8 @@ private fun WeekHeader(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onThisWeek: () -> Unit,
-    onOpenMealTypes: () -> Unit
+    onOpenMealTypes: () -> Unit,
+    onAddToGroceries: (() -> Unit)?
 ) {
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
@@ -187,7 +203,7 @@ private fun WeekHeader(
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.weight(1f)
             )
-            WeekMenu(onOpenMealTypes)
+            WeekMenu(onOpenMealTypes, onAddToGroceries)
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -214,13 +230,22 @@ private fun WeekHeader(
 }
 
 @Composable
-private fun WeekMenu(onOpenMealTypes: () -> Unit) {
+private fun WeekMenu(onOpenMealTypes: () -> Unit, onAddToGroceries: (() -> Unit)?) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (onAddToGroceries != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_add_week_to_groceries)) },
+                    onClick = {
+                        expanded = false
+                        onAddToGroceries()
+                    }
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.meal_types_title)) },
                 onClick = {

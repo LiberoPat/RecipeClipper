@@ -1305,7 +1305,7 @@ has something in it.
 - **Choosing the open Recipes tab again goes back to Home**, matching both
   platforms' tab-bar convention, rather than a no-op.
 - **Groceries/Pantry are `ComingSoonScreen` placeholders** (Week was one
-  until #49), not simply absent tabs: they show the tab's name and one line on what it will hold,
+  until #49, Groceries until #50), not simply absent tabs: they show the tab's name and one line on what it will hold,
   so the shape of the eventual app is visible to whoever flips the flag on,
   without implying anything is broken.
 
@@ -1361,6 +1361,71 @@ The first real tab of #46, still behind the #47 flag.
   text as a note. Planned servings start as the recipe's own yield.
 - **Not yet in the export file** (#26): the plan joins it with the
   `formatVersion` bump that #46 plans for groceries and pantry.
+
+## Groceries (#50)
+
+The third tab of #46, still behind the #47 flag.
+
+- **One table, room for more lists.** `grocery_items` (Room 9, iOS
+  `user_version` 8, a new table so nothing existing changes) holds the text as
+  written, a `language` tag, an `aisle` key, `checked`, `sortOrder`, and an
+  optional `recipeId` and `plannedDay`, plus #26's `uid` and #53's
+  `updatedAt`. `listId` is 1 for now: several lists would add a
+  `grocery_lists` table keyed by it, without touching the items. A recipe's
+  items outlive it (`ON DELETE SET NULL`): what's on the list is what to buy,
+  whatever happened to the recipe. Undo after the recipe went restores the
+  items without a source rather than failing on the foreign key.
+- **The text is stored as shown, not re-rendered.** A line goes on the list as
+  the reading view showed it (scaled, converted), and the week's at each
+  meal's planned servings, through `IngredientRendering`. Changing units later
+  doesn't rewrite a shopping list someone is already holding.
+- **Aisles are a per-language table** (`shared/tables/<lang>/aisles.json`,
+  every shipped language, the Japanese one smaller), matched on the end of
+  `IngredientName.of`, longest alias first, exactly like the density table:
+  "peanut butter" beats "butter", "butter beans" isn't butter. There's no
+  singulariser, so plurals are listed. The aisle is chosen once when the item
+  is added and stored; "Move to aisle…" overwrites it, and nothing reassigns it
+  after that. A line with no name (a heading, "salt and pepper") or no words is
+  Other. The aisle keys and their order are fixed in code (`Aisle`), since
+  their names are UI strings.
+- **The item's language.** A recipe's line keeps the recipe's language (#14's
+  words read it). A typed item has no recipe, so it takes the phone's language
+  when the app ships words for it, else English: the one place the phone's
+  language picks the words, because the person typing is the only source.
+- **Combining is the "never a confident wrong number" rule** (`GroceryCombiner`,
+  pure, both platforms, pinned by the differential corpus's `Groc` rows). Lines
+  group by exact `IngredientName` and language (and checked state, so a ticked
+  line never hides in an unticked total). A group adds up into one row only if
+  every line is one exact amount (no range, no "plus", no second measure in
+  brackets or after a slash, no package size) and all are in one family whose
+  units convert by exact ratios: g/kg, oz/lb, ml/cl/dl/l (with the 200 ml and
+  180 ml Japanese cups), tsp/tbsp/fl oz/cup (3, 6 and 48 teaspoons), sticks,
+  or counts whose words after the number are identical ("2 eggs" + "3 eggs",
+  not "2 large eggs" + "3 eggs"). Grams never meet ounces, cups never meet
+  grams, and a bare "oz" is a weight even for milk. The total is written in a
+  unit the lines already used, the largest that shows it exactly under the
+  scaler's own formatting ("1 cup" + "2 tbsp" is "1 1/8 cup"; 1.25 kg shows as
+  "1250 g" because "1.3 kg" would round), followed by the shortest wording any
+  line used ("300 g butter" from "200 g butter, softened" and "100 g
+  butter"). If no unit shows it exactly, nothing is combined. Otherwise the
+  lines sit together under the name, each as written. Japanese lines (amount
+  after the name) are never combined. The combined row shows its lines under
+  it, so the sum can always be checked.
+- **Checked and shared.** Ticking a combined row ticks all its lines; checked
+  rows sort after unchecked ones in each aisle and are struck through. Share
+  sends the unchecked rows as plain text by aisle. Delete and "Clear checked"
+  are undoable from one snackbar (one undo at a time, as on the Week).
+- **Adding.** "Add to groceries" in the recipe menu and "Add this week's
+  ingredients" in the Week menu open the same sheet (Paprika's basket): every
+  line ticked, headings (a line ending in ":") and blanks left out, one
+  button. It's a deliberate act, like "Add to plan", since the point is to
+  untick what's in the cupboard first. "Checking off offers Add to pantry"
+  waits for the pantry (#51).
+- **Not in the export file yet** (#26). The plan (#49) isn't either, and
+  grocery items point at recipes and planned days, so the plan, groceries and
+  pantry join the file together with #51, under one set of merge rules
+  (formatVersion 1 readers will ignore the new sections, as designed), rather
+  than three partial passes.
 
 ## Clip it yourself (#37)
 

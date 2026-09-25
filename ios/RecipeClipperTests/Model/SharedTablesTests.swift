@@ -6,7 +6,7 @@ final class SharedTablesTests: XCTestCase {
 
     private let languageTables = [
         "densities", "units", "timers", "temperature", "yield", "ranges", "sections",
-        "amounts", "durations", "language", "names",
+        "amounts", "durations", "language", "names", "aisles",
     ]
 
     func testEveryBundledLanguageIsDetectedAndEveryShippedOneHasEveryTable() throws {
@@ -21,6 +21,13 @@ final class SharedTablesTests: XCTestCase {
             let expected = LanguageWords.shipped.contains(language) ? Set(languageTables) : ["language"]
             XCTAssertEqual(Set(onDisk), expected, language)
             XCTAssertEqual(SharedTables.load("language", language)["language"] as? String, language)
+        }
+    }
+
+    func testEveryAisleTableNamesEveryAisleAndNoOther() {
+        for language in LanguageWords.shipped {
+            let aisles = SharedTables.load("aisles", language)["aisles"] as? [String: [String]] ?? [:]
+            XCTAssertEqual(Set(aisles.keys), Set(Aisle.allCases.map(\.key)), language)
         }
     }
 
