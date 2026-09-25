@@ -45,4 +45,44 @@ class PlanDaysTest {
     fun `a moment before 1970 floors to the day before`() {
         assertEquals(-1L, PlanDays.epochDay(-1, 0))
     }
+
+    // --- Months (#52)
+
+    @Test
+    fun `civil dates round-trip, leap days and before 1970 included`() {
+        assertEquals(0L, PlanDays.epochDay(1970, 1, 1))
+        assertEquals(wednesday, PlanDays.epochDay(2026, 9, 23))
+        assertEquals(Triple(2026, 9, 23), PlanDays.civil(wednesday))
+        assertEquals(Triple(1969, 12, 31), PlanDays.civil(-1))
+        assertEquals(Triple(2024, 2, 29), PlanDays.civil(PlanDays.epochDay(2024, 2, 29)))
+        assertEquals(PlanDays.epochDay(2024, 3, 1), PlanDays.epochDay(2024, 2, 29) + 1)
+        assertEquals(PlanDays.epochDay(1900, 3, 1), PlanDays.epochDay(1900, 2, 28) + 1) // not a leap year
+        assertEquals(PlanDays.epochDay(2000, 3, 1), PlanDays.epochDay(2000, 2, 28) + 2) // a leap year
+        for (day in -800L..800L step 7) assertEquals(day, PlanDays.civil(day).let { (y, m, d) -> PlanDays.epochDay(y, m, d) })
+    }
+
+    @Test
+    fun `months start on the 1st and step across years`() {
+        assertEquals(PlanDays.epochDay(2026, 9, 1), PlanDays.monthStart(wednesday))
+        assertEquals(PlanDays.epochDay(2026, 10, 1), PlanDays.addMonths(wednesday, 1))
+        assertEquals(PlanDays.epochDay(2027, 1, 1), PlanDays.addMonths(wednesday, 4))
+        assertEquals(PlanDays.epochDay(2025, 12, 1), PlanDays.addMonths(wednesday, -9))
+        assertEquals(PlanDays.epochDay(2026, 2, 1), PlanDays.addMonths(PlanDays.epochDay(2026, 1, 31), 1))
+    }
+
+    @Test
+    fun `the month grid is whole weeks from the locale's first day`() {
+        // September 2026: the 1st is a Tuesday, the 30th a Wednesday.
+        val monday = PlanDays.monthGrid(wednesday, firstDayOfWeek = 2)
+        assertEquals(PlanDays.epochDay(2026, 8, 31), monday.first())
+        assertEquals(PlanDays.epochDay(2026, 10, 4), monday.last())
+        assertEquals(35, monday.size)
+        val sunday = PlanDays.monthGrid(wednesday, firstDayOfWeek = 1)
+        assertEquals(PlanDays.epochDay(2026, 8, 30), sunday.first())
+        assertEquals(PlanDays.epochDay(2026, 10, 3), sunday.last())
+        // February 2026 starts on a Sunday and has 28 days: exactly four Sunday-first rows.
+        assertEquals(28, PlanDays.monthGrid(PlanDays.epochDay(2026, 2, 10), firstDayOfWeek = 1).size)
+        // August 2026 starts on a Saturday: six Monday-first rows.
+        assertEquals(42, PlanDays.monthGrid(PlanDays.epochDay(2026, 8, 10), firstDayOfWeek = 2).size)
+    }
 }

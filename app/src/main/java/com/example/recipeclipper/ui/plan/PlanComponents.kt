@@ -1,5 +1,7 @@
 package com.example.recipeclipper.ui.plan
 
+import android.icu.text.SimpleDateFormat
+import android.icu.util.TimeZone
 import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -34,18 +36,19 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.Servings
-import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
 
 // Day labels. A day is an epoch day, so it is formatted at midnight UTC with a UTC calendar:
-// the local zone could put that instant on the day before.
+// the local zone could put that instant on the day before. ICU's SimpleDateFormat, the pair of
+// the ICU skeleton pattern: it may hold ICU-only letters ("ccc" for a standalone weekday), which
+// Android's java.text copy also takes but the JVM's (so Robolectric's, #91) doesn't.
 
 private fun format(day: Long, skeleton: String): String {
     val locale = Locale.getDefault()
     val formatter = SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
     formatter.timeZone = TimeZone.getTimeZone("UTC")
-    return formatter.format(PlanDays.utcMillis(day))
+    return formatter.format(Date(PlanDays.utcMillis(day)))
 }
 
 /** "Monday 23", in the locale's order. */
@@ -59,6 +62,9 @@ internal fun shortDate(day: Long): String = format(day, "MMMd")
 
 /** "23" */
 internal fun dayOfMonth(day: Long): String = format(day, "d")
+
+/** "September 2026", in the locale's order. */
+internal fun monthTitle(day: Long): String = format(day, "yMMMM")
 
 /** "Sep 21 – 27", or across months "Sep 28 – Oct 4". */
 internal fun weekRange(start: Long): String {

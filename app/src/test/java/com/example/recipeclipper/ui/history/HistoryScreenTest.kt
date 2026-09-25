@@ -17,6 +17,7 @@ import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.passTheSearchDebounce
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -136,7 +137,7 @@ class HistoryScreenTest {
 
         compose.onNode(hasSetTextAction()).performTextInput("soy")
 
-        // Debounced by 250 ms of real time, so wait rather than assert straight away.
+        passTheSearchDebounce()
         compose.waitUntil(timeoutMillis = 5_000) { repository.historyQueries.lastOrNull() == "soy" }
     }
 
@@ -156,9 +157,11 @@ class HistoryScreenTest {
         show(adobo)
         waitFor("Chicken Adobo")
         compose.onNode(hasSetTextAction()).performTextInput("soy")
+        passTheSearchDebounce()
         compose.waitUntil(timeoutMillis = 5_000) { repository.historyQueries.lastOrNull() == "soy" }
 
         compose.onNodeWithContentDescription("Clear search").performClick()
+        passTheSearchDebounce()
 
         compose.waitUntil(timeoutMillis = 5_000) { repository.historyQueries.lastOrNull() == "" }
         compose.onNodeWithContentDescription("Clear search").assertDoesNotExist()

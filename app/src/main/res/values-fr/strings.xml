@@ -388,4 +388,10 @@
     <string name="expiry_one_tomorrow">%1$s périme demain.</string>
     <string name="expiry_many_tomorrow">%1$s périment demain.</string>
     <string name="expiry_names_and">%1$s et %2$s</string>
+    <string name="action_month_view">Mois</string>
+    <string name="action_week_view">Semaine</string>
+    <string name="action_this_month">Ce mois-ci</string>
+    <string name="cd_previous_month">Mois précédent</string>
+    <string name="cd_next_month">Mois suivant</string>
+    <string name="cd_month_day_planned">%1$s, repas prévus</string>
 </resources>

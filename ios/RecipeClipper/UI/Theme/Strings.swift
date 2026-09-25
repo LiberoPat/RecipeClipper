@@ -389,6 +389,13 @@ enum Strings {
     static var previousWeek: String { String(localized: "cd_previous_week") }
     static var nextWeek: String { String(localized: "cd_next_week") }
     static var thisWeek: String { String(localized: "action_this_week") }
+    // Month view (#52)
+    static var monthView: String { String(localized: "action_month_view") }
+    static var weekView: String { String(localized: "action_week_view") }
+    static var thisMonth: String { String(localized: "action_this_month") }
+    static var previousMonth: String { String(localized: "cd_previous_month") }
+    static var nextMonth: String { String(localized: "cd_next_month") }
+    static func monthDayPlanned(_ day: String) -> String { String(localized: "cd_month_day_planned \(day)") }
     static var mealTypesTitle: String { String(localized: "meal_types_title") }
     static var today: String { String(localized: "label_today") }
     static var addMeal: String { String(localized: "action_add_meal") }

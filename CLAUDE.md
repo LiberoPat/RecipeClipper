@@ -61,7 +61,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ./gradlew installDebug
 ./gradlew testDebugUnitTest           # one class: --tests "com.example.recipeclipper.data.model.IngredientScalerTest"
 ./gradlew lintDebug
-./gradlew connectedDebugAndroidTest   # device tests: wipes the app's data, see below
+./gradlew connectedDebugAndroidTest   # the few device-only tests (docs/testing.md): wipes the app's data
 cd ios && xcodegen generate           # after adding or removing iOS files
 ```
 
@@ -174,7 +174,7 @@ Decisions, not suggestions. Don't relitigate them in code.
   a separate tier.
 - **Only Favorites is permanent.** The other five seeded lists delete like a
   user's own. `isBuiltIn` means only "seeded, sorts first"; the delete guard
-  is `isFavorites`, in the SQL, and a device test fails if it regresses to
+  is `isFavorites`, in the SQL, and `ListDaoTest` fails if it regresses to
   `isBuiltIn`.
 - **"Saved" means "in at least one list."** It's derived from the cross-ref
   table; there's no column. A recipe in any list is never culled, and
@@ -246,7 +246,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   servings, or a note), "+ Add" per day (a meal type, then a recipe from
   history or the typed text as a note). Long-press: Move (the day strip and
   meal types) or Remove (undo snackbar). A tapped recipe opens at its
-  planned servings, for that visit only. "Meal types" from the Week menu:
+  planned servings, for that visit only. "Month" beside the title swaps in
+  a month grid (locale weeks, a dot on planned days; a tapped day opens its
+  week) (#52). "Meal types" from the Week menu:
   add, rename, reorder any, delete the user's own. "Add to plan" (recipe
   menu, first item, flag on only): this week's and next week's days, a meal
   type (Dinner first), servings (the yield first), one button.

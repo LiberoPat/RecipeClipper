@@ -1,6 +1,8 @@
 package com.example.recipeclipper.ui.week
 
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -9,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
@@ -20,9 +23,13 @@ import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
+import com.example.recipeclipper.ui.plan.dayTitle
+import com.example.recipeclipper.ui.plan.monthTitle
+import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.DINNER
 import com.example.recipeclipper.fake.FakePlanCalendar
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.passTheSearchDebounce
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -99,6 +106,7 @@ class WeekScreenTest {
 
         scrollTo("addToDay-${today + 1}")
         compose.onNodeWithTag("addToDay-${today + 1}").performClick()
+        passTheSearchDebounce() // the sheet lists history through the search
         compose.onNodeWithText("Miso Soup").performClick()
 
         compose.runOnIdle {
@@ -156,5 +164,27 @@ class WeekScreenTest {
             assertEquals(listOf("4 cups flour", "2 cup milk"), groceries.items.value.map { it.text })
             assertTrue(groceries.items.value.all { it.plannedDay == today })
         }
+    }
+
+    @Test
+    fun theMonthViewMarksPlannedDaysAndATapOpensThatWeek() {
+        plan.titles[7] = "Chicken Adobo"
+        val nextTuesday = today + 6
+        runBlocking { plan.addRecipe(7, nextTuesday, DINNER, servings = null) }
+        show()
+
+        compose.onNodeWithTag("toggleMonth").performClick()
+        // The labels follow the device's locale, so they are built the way the screen builds them.
+        compose.onNodeWithTag("monthTitle").assertTextEquals(monthTitle(today))
+        compose.onNodeWithTag("monthDay-$nextTuesday")
+            .assertContentDescriptionEquals("${dayTitle(nextTuesday)}, meals planned")
+        compose.onNodeWithTag("monthDay-$today").assertContentDescriptionEquals(dayTitle(today))
+
+        compose.onNodeWithTag("monthDay-$nextTuesday").performClick()
+        // Scrolled to the day tapped, on that day's week.
+        compose.onNodeWithText("Chicken Adobo").assertIsDisplayed()
+        compose.onNodeWithTag("weekList").performScrollToIndex(0)
+        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today + 5))
+        compose.onNodeWithTag("toggleMonth").assertTextEquals("Month")
     }
 }

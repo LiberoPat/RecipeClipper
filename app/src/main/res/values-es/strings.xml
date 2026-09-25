@@ -388,4 +388,10 @@
     <string name="expiry_one_tomorrow">%1$s caduca mañana.</string>
     <string name="expiry_many_tomorrow">%1$s caducan mañana.</string>
     <string name="expiry_names_and">%1$s y %2$s</string>
+    <string name="action_month_view">Mes</string>
+    <string name="action_week_view">Semana</string>
+    <string name="action_this_month">Este mes</string>
+    <string name="cd_previous_month">Mes anterior</string>
+    <string name="cd_next_month">Mes siguiente</string>
+    <string name="cd_month_day_planned">%1$s, comidas planificadas</string>
 </resources>

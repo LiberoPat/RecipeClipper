@@ -388,4 +388,10 @@
     <string name="expiry_one_tomorrow">%1$s scade domani.</string>
     <string name="expiry_many_tomorrow">%1$s scadono domani.</string>
     <string name="expiry_names_and">%1$s e %2$s</string>
+    <string name="action_month_view">Mese</string>
+    <string name="action_week_view">Settimana</string>
+    <string name="action_this_month">Questo mese</string>
+    <string name="cd_previous_month">Mese precedente</string>
+    <string name="cd_next_month">Mese successivo</string>
+    <string name="cd_month_day_planned">%1$s, pasti pianificati</string>
 </resources>

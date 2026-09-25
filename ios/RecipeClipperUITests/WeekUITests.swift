@@ -30,11 +30,16 @@ final class WeekUITests: RecipeUITestCase {
         let meal = require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch, "the planned meal")
         XCTAssertTrue(meal.label.contains("Miso Soup"))
 
+        // Undo is tapped as soon as the four-second snackbar shows (see GroceriesUITests).
         meal.press(forDuration: 1.0)
         require(app.buttons["Remove from plan"], "the long-press menu").tap()
-        requireGone(meal, "the removed meal")
         require(app.buttons["Undo"], "the snackbar").tap()
-        require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch, "the meal, back")
+        let back = require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch, "the meal, back")
+
+        // Without Undo, the removal stands.
+        back.press(forDuration: 1.0)
+        require(app.buttons["Remove from plan"], "the long-press menu").tap()
+        requireGone(back, "the removed meal")
     }
 
     func testAddToPlanFromTheRecipeMenu() {
@@ -49,5 +54,16 @@ final class WeekUITests: RecipeUITestCase {
         require(tabBar.buttons["Week"], "the Week tab").tap()
         let meal = require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch, "the planned meal")
         XCTAssertTrue(meal.label.contains("Chicken Adobo"))
+    }
+
+    /// The month view (#52): Week ↔ Month, and a tapped day opens its week.
+    func testTheMonthViewOpensTheWeekOfATappedDay() {
+        openWeek()
+
+        require(app.buttons["toggleMonth"], "the Month switch").tap()
+        require(app.staticTexts["monthTitle"], "the month")
+        require(app.buttons["monthDay-\(today)"], "today in the grid").tap()
+        require(app.staticTexts["weekRange"], "the week again")
+        XCTAssertEqual(app.buttons["toggleMonth"].label, "Month")
     }
 }

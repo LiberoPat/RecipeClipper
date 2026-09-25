@@ -33,13 +33,23 @@ final class GroceriesUITests: RecipeUITestCase {
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()
         field.typeText("milk\n")
-        let milk = require(line("milk"), "the typed item")
+        require(line("milk"), "the typed item")
         require(text("Dairy & eggs"), "the dairy aisle")
 
-        milk.press(forDuration: 1.0)
-        require(app.buttons["Delete"], "the long-press menu").tap()
-        requireGone(milk, "the deleted item")
+        // The snackbar lasts four seconds of real time (SnackbarTimeout), so Undo is tapped as
+        // soon as it shows. Waiting for the row to go first could outlast it when the machine
+        // is busy (several UI test classes in one run), and then Undo was gone: the flake in #91.
+        deleteMilk()
         require(app.buttons["Undo"], "the snackbar").tap()
         require(line("milk"), "the item, back")
+
+        // Without Undo, the delete stands.
+        deleteMilk()
+        requireGone(line("milk"), "the deleted item")
+    }
+
+    private func deleteMilk() {
+        require(line("milk"), "the item").press(forDuration: 1.0)
+        require(app.buttons["Delete"], "the long-press menu").tap()
     }
 }

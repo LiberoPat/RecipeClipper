@@ -7,6 +7,60 @@ the commands; iOS test commands and the simulator rules are in
 
 ## Test suites
 
+### Which tests run where (#91)
+
+- **JVM, `./gradlew testDebugUnitTest`** (and CI): the pure logic and
+  ViewModel tests, and, under Robolectric, the Compose screen tests
+  (`*ScreenTest`, `CookModeTest`, `AppShellTest`, `SaveToListBottomSheetTest`,
+  the `Recipe*Test`s) and the Room DAO tests (`*DaoTest`, on an in-memory
+  database, real SQLite through Robolectric's native build of it). No
+  emulator. A screen test is `@RunWith(AndroidJUnit4::class)` with
+  `createComposeRule()`, as on a device.
+- **Device, `./gradlew connectedDebugAndroidTest`** (not in CI): only what
+  needs a real device. `MigrationTest` (its schemas are read from the test
+  APK's assets), `WebViewRenderedPageSourceTest` and `ClipScreenTest` (a real
+  `WebView` running JavaScript; Robolectric's is a stub), and
+  `MainActivitySmokeTest`, the end-to-end smoke set: the real app with its
+  real Hilt graph, database and network stack, launched from the launcher and
+  by a shared link (an `ACTION_SEND` intent to a `.invalid` host, which must
+  reach the import screen and its Try again).
+
+Two waits that flaked under load (#91), and what not to undo:
+
+- `ClipScreenTest` asks the page things (`evaluateJavascript`) inside a
+  `waitUntil`. Each call gives up after 2 s and is asked again within one
+  15 s wait; a call once allowed as long as the whole wait, so one slow answer
+  from a busy renderer failed the test.
+- iOS UI tests that delete and then tap Undo tap it as soon as the snackbar
+  shows, and check the row went afterwards: the snackbar lasts four seconds of
+  real time, and waiting for the row first could outlast it.
+
+Robolectric's setup, all in `app/build.gradle.kts` and
+`app/src/test/resources/robolectric.properties`:
+
+- `sdk=36`, whatever `targetSdk` says: one Robolectric supports. The screen is
+  `w320dp-h891dp`: Robolectric's default height leaves rows the tests assert
+  on below the fold, and at 360dp wide or more a Material3 `AlertDialog`
+  (List detail's Rename) never lets Compose go idle, so the test hangs.
+- `application=android.app.Application`, so no test builds the Hilt graph.
+  Screens take their ViewModel as a parameter, as on a device.
+- `isIncludeAndroidResources`, for the strings and `ui-test-manifest`'s
+  empty Activity; and two `--add-exports`/`--add-opens` JVM flags, without
+  which JDK 25 stops every Robolectric test before it starts.
+- **Robolectric's main looper has its own clock, which moves only when a test
+  moves it.** A `delay` or `debounce` in `viewModelScope` (History's and the
+  Week sheet's 250 ms search debounce) never fires by itself: call
+  `passTheSearchDebounce()` / `advanceMainLooperBy(ms)` (`MainLooper.kt`).
+  Compose's own clock (animations, `LaunchedEffect` delays) moves by itself.
+  `RecipeScreenFixture`'s timers run on the injected `Clock`, so
+  `compose.waitUntil` still works for them.
+- The JVM's `java.text.SimpleDateFormat` rejects ICU-only pattern letters
+  (`ccc`) that Android's accepts; the plan's day labels use ICU's
+  `android.icu.text.SimpleDateFormat`, which both take.
+- A runtime permission is granted with
+  `shadowOf(application).grantPermissions(...)` (`CookModeTest`), not
+  `uiAutomation`.
+
 Tests: `app/src/test/` has the JVM ones (`IngredientScalerTest` scaling,
 servings and yield parsing; `UnitConverterTest`; `TemperatureConverterTest`;
 `StepTimersTest`; `ConvertersTest`; `TimeAgoAndUrlInputTest`; `UrlCleanerTest`,
@@ -55,7 +109,7 @@ shared fixtures in `shared/fixtures/backup/` (a test resource dir on Android,
 bundled resources on iOS), so both platforms decode the same file and plan the
 same merge; `DefaultBackupRepositoryTest` covers the causes and that a failed
 import writes nothing; `SettingsViewModelTest` covers the Your recipes rows.
-The device test `BackupDaoTest` runs the import transaction against real SQL
+`BackupDaoTest` (Robolectric) runs the import transaction against real SQL
 (IGNORE keeps `addedAt`, rollback on a bad file); iOS's `BackupDaoTests` do the
 same on in-memory SQLite.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
@@ -78,9 +132,9 @@ shows a wrong number isn't pinned: it's fixed, or left out with a `bug` issue.
 To add some, fetch the page, copy only the ingredient lines (the repo is
 public), and add them as input-only rows under their site's comment.
 
-`app/src/androidTest/` has `RecipeDaoTest` and `ListDaoTest`, which run the
-database rules against real SQLite on a device, because they live in SQL and a
-fake would prove nothing. `RecipeDaoTest` covers search (title match,
+`RecipeDaoTest` and `ListDaoTest` run the database rules against real SQLite
+(in-memory, under Robolectric), because they live in SQL and a fake would
+prove nothing. `RecipeDaoTest` covers search (title match,
 ingredient match, empty query returns everything, case-insensitivity, and a
 literal `%` in the query, which is what catches a regression to `LIKE`) and
 delete/restore (row and cross-refs gone; restore brings back the row and its
@@ -120,8 +174,8 @@ seeded meal types, nothing existing changed) to `MigrationTest`, and
 `MealPlanDaoTest` for the rules that live in SQL: the cull keeps recipes planned
 for today or later (and a planned note doesn't stop it), a recipe's meals
 cascade and come back on undo, ordering, moving, and meal-type deletion (user
-types only, meals moved to Dinner). They, `WeekScreenTest`,
-`RecipeAddToPlanTest` and `AppShellTest` pass on the agents' emulator. iOS
+types only, meals moved to Dinner). `WeekScreenTest`, `RecipeAddToPlanTest`
+and `AppShellTest` cover the screens. iOS
 mirrors them in `MealPlanDaoTests` (with the user_version 6 → 7 step) and
 `WeekUITests`.
 
@@ -130,8 +184,7 @@ from a real version-8 file holding a recipe and a planned meal, and
 `GroceryDaoTest`: order added, delete and undo restoring whole, a recipe's items
 outliving it (SET NULL, also across an undo), and the week's planned recipes in
 plan order without notes. `GroceriesScreenTest`, `RecipeAddToGroceriesTest`
-and a `WeekScreenTest` case cover the screens; the whole device suite passes on
-the agents' emulator. The combining rule is JVM-tested (`GroceryCombinerTest`,
+and a `WeekScreenTest` case cover the screens. The combining rule is JVM-tested (`GroceryCombinerTest`,
 `AislesTest`) and pinned for iOS by the corpus's `Groc` rows. iOS mirrors the
 rest in `GroceryDaoTests` (with the user_version 7 → 8 step),
 `GroceriesViewModelTests` and `GroceriesUITests`.
@@ -141,9 +194,7 @@ real version-9 file holding a recipe and a grocery item, and `PantryDaoTest`:
 restock and running out, edits, a delete restored whole, unique uids.
 `BackupDaoTest` round-trips the pantry, the grocery list and the meal plan (with a user's meal type) through an export; iOS's `BackupDaoTests` do the same.
 `PantryScreenTest`, `WhatINeedScreenTest` and the updated `AppShellTest` cover
-the screens; the whole device suite passes on the agents' emulator
-(`ClipScreenTest.clipAPageFromSelectionToSave` failed once in a full run and
-passed alone). Have/Buy is JVM-tested (`PantryTest`, the ViewModel tests) and
+the screens. Have/Buy is JVM-tested (`PantryTest`, the ViewModel tests) and
 pinned for iOS by the corpus's `Pant` rows. iOS mirrors the rest in
 `PantryDaoTests` (with the user_version 8 → 9 step), `PantryTests`,
 `PantryViewModelTests` and `PantryUITests`.
@@ -152,22 +203,15 @@ Pantry expiry reminders (#52): when they fall and what they list is JVM-tested
 (`ExpiryRemindersTest`, `ExpiryReminderCoordinatorTest`,
 `SettingsExpiryRemindersTest`) and mirrored on iOS (`ExpiryRemindersTests`,
 `ExpiryReminderCoordinatorTests`, `SettingsExpiryRemindersTests`,
-`ExpiryRemindersUITests`). On the agents' emulator, `ExpiryRemindersSettingsTest`
-(the switch, with the permission granted up front) and
+`ExpiryRemindersUITests`). `ExpiryRemindersSettingsTest` (the switch, with the
+permission granted up front) runs on the JVM; on the agents' emulator
 `ExpiryReminderAlarmsTest` (the alarm is pending, then cancelled; 9:00 local;
 the posted notification's text and channel) pass. Still to check on a device:
 the alarm firing at 9:00 through Doze and after a reboot, the system permission
 dialog and a refusal, a tap opening the Pantry tab, and the iOS notification.
 
-**The device tests have been run on an emulator and pass**: `RecipeDaoTest`,
-`ListDaoTest`, `MigrationTest` and the Compose UI tests (see below), including
-those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).
-`RecipeSourceCreditTest` (the source credit under the recipe title) was
-added after that run and has so far only been compiled.
-
-The cook-persistence device tests (#10: the cook-state migration in
-`MigrationTest`, and the cook-state cases in `RecipeDaoTest`) have been run on
-the agents' emulator (Android 17) and pass. A timer alarm was also checked end to end there: a
+The cook-persistence tests (#10) are the cook-state migration in
+`MigrationTest` (device) and the cook-state cases in `RecipeDaoTest` (JVM). A timer alarm was also checked end to end there: a
 recipe seeded with a running timer, opened through the notification's
 `OPEN_COOK` intent, came back in cook mode on the saved step with the timer
 recomputed from its deadline. `AlarmManager` held the alarm at that deadline,
@@ -186,10 +230,10 @@ not from the project directory. That is what
 which reads like a broken migration and is really a missing file — don't go
 hunting in the migration when that appears.
 
-**Compose UI tests** (`androidx.compose.ui:ui-test-junit4`, plus
+**Compose UI tests**, on the JVM under Robolectric since #91 (`androidx.compose.ui:ui-test-junit4`, plus
 `debugImplementation("androidx.compose.ui:ui-test-manifest")` for the empty
-Activity `createComposeRule` launches): `HomeScreenTest` (12),
-`SaveToListBottomSheetTest` (12), `ListDetailScreenTest` (14) and
+Activity `createComposeRule` launches): `HomeScreenTest`,
+`SaveToListBottomSheetTest`, `ListDetailScreenTest`, `SettingsScreenTest` and
 `RecipeErrorScreenTest` ("Report this site" on the no-recipe error only). They exist
 because every ViewModel behind Home was already covered and the whole suite
 stayed green through a duplicate-key crash that made the app unusable — that
@@ -198,10 +242,11 @@ bug lived entirely in the view.
 No Hilt in these. Every screen takes its ViewModel as a parameter defaulting
 to `hiltViewModel()`, so a test builds a real ViewModel over a fake repository
 and passes it in; what runs is the real repository-to-ViewModel-to-pixels
-wiring. The fakes are shared with the JVM tests through
+wiring. The fakes live in `app/src/test/.../fake/`; the device tests that
+remain (`ClipScreenTest`) reach them through
 `sourceSets.getByName("androidTest").kotlin.directories += ".../test/java/.../fake"` —
 only `fake/`, since the helpers beside it need kotlinx-coroutines-test and
-have no business on a device.
+Robolectric.
 
 Three things that cost real time and will again:
 
@@ -209,8 +254,8 @@ Three things that cost real time and will again:
   `android.hardware.input.InputManager#getInstance`, which no longer exists,
   so every Compose test dies in `Espresso.onIdle()` with
   `NoSuchMethodException` before any assertion runs. `espresso-core` is pinned
-  to 3.7.0 in `androidTestImplementation` ahead of what compose-ui-test pulls
-  in. The emulator in use is API 37.
+  to 3.7.0 in `androidTestImplementation` and `testImplementation` ahead of
+  what compose-ui-test pulls in. The emulator in use is API 37.
 - **Android collapses runs of whitespace in unquoted string resources.**
   `action_new_list` is written `+  New list` with two spaces and renders as
   `+ New list` with one. A test matching the XML spelling finds nothing, and
@@ -320,8 +365,9 @@ both.
   `.github/scripts/check_lint.py` then fails on any finding, at any severity,
   that isn't one of the four version-advisory ids. It checks ids, not the
   count, because `NewerVersionAvailable` drifts as libraries release. Reports
-  are uploaded as the `android-reports` artifact on failure. Device tests
-  don't run in CI yet.
+  are uploaded as the `android-reports` artifact on failure. The screen and
+  DAO tests run here, under Robolectric; the few device tests (see "Which
+  tests run where") don't run in CI yet.
 - **iOS** (`ios.yml`, check `iOS unit tests`), same triggers, on the
   `xcode-27` runner image (arm64, macOS 27, Xcode 27 only; in public preview
   as of September 2026). `DEVELOPER_DIR` selects Xcode 27 explicitly. It runs
@@ -383,8 +429,8 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 
 ./gradlew assembleDebug        # build; APK lands in app/build/outputs/apk/debug/
 ./gradlew installDebug         # install on a connected device or emulator
-./gradlew testDebugUnitTest    # JVM unit tests
-./gradlew connectedDebugAndroidTest  # database tests; needs a running emulator
+./gradlew testDebugUnitTest    # JVM tests, screen and DAO tests included (Robolectric)
+./gradlew connectedDebugAndroidTest  # migrations, WebView, smoke; needs a running emulator
 ./gradlew lintDebug            # report at app/build/reports/lint-results-debug.html
 ```
 

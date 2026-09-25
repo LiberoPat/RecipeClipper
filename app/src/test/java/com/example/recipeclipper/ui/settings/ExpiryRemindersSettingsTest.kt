@@ -1,6 +1,7 @@
 package com.example.recipeclipper.ui.settings
 
 import android.Manifest
+import android.app.Application
 import android.os.Build
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
@@ -13,7 +14,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.isToggleable
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.core.app.ApplicationProvider
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.flags.FlagRegistry
@@ -28,8 +29,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 
-/** The Pantry section's "Expiry reminders" switch (#52), over a real ViewModel and fakes. */
+/** The Pantry section's "Expiry reminders" switch (#52), over a real ViewModel and fakes (Robolectric). */
 @RunWith(AndroidJUnit4::class)
 class ExpiryRemindersSettingsTest {
 
@@ -44,10 +46,8 @@ class ExpiryRemindersSettingsTest {
     fun allowNotifications() {
         // Granted up front, so turning the switch on needs no system dialog.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val instrumentation = InstrumentationRegistry.getInstrumentation()
-            instrumentation.uiAutomation.grantRuntimePermission(
-                instrumentation.targetContext.packageName, Manifest.permission.POST_NOTIFICATIONS
-            )
+            shadowOf(ApplicationProvider.getApplicationContext<Application>())
+                .grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 

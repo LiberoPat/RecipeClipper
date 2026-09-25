@@ -60,7 +60,7 @@ class ClipScreenTest {
                 }
             )
         }
-        compose.waitUntil(10_000) { js("typeof window.RC") == "\"object\"" }
+        compose.waitUntil(PAGE_WAIT_MS) { js("typeof window.RC") == "\"object\"" }
     }
 
     /** Runs [script] in the page and returns its result as JSON. */
@@ -71,7 +71,7 @@ class ClipScreenTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             view.evaluateJavascript(script) { result = it; latch.countDown() }
         }
-        latch.await(5, TimeUnit.SECONDS)
+        latch.await(2, TimeUnit.SECONDS) // a slow answer is "not yet": the caller asks again
         return result
     }
 
@@ -83,11 +83,11 @@ class ClipScreenTest {
     }
 
     private fun waitForText(text: String) {
-        compose.waitUntil(5_000) { compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(PAGE_WAIT_MS) { compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty() }
     }
 
     private fun waitForPage(script: String, expected: String) {
-        compose.waitUntil(5_000) { js(script) == expected }
+        compose.waitUntil(PAGE_WAIT_MS) { js(script) == expected }
     }
 
     @Test
@@ -142,7 +142,7 @@ class ClipScreenTest {
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Save recipe"))
         compose.onNodeWithText("Save recipe").performClick()
 
-        compose.waitUntil(5_000) { saved.isNotEmpty() }
+        compose.waitUntil(PAGE_WAIT_MS) { saved.isNotEmpty() }
         val recipe = repository.saveClipCalls.single()
         assertEquals("Brown Butter Oat Cookies", recipe.name)
         assertEquals(listOf("1 cup (226 g) unsalted butter", "1 cup packed brown sugar", "3 cups rolled oats"), recipe.ingredients)
@@ -163,6 +163,15 @@ class ClipScreenTest {
     }
 
     private companion object {
+        /**
+         * Every wait here crosses the WebView's renderer (a script's answer, the page's
+         * 120 ms-debounced selection coming back over the bridge), and a busy emulator in a full
+         * run can stall that for seconds. The old 5 s waits, with each script call allowed 5 s
+         * of its own, could be used up by one slow answer: the flake in #91. One generous
+         * budget per wait, and short calls inside it that are simply asked again.
+         */
+        const val PAGE_WAIT_MS = 15_000L
+
         const val PAGE = """<!doctype html><html><head><meta name="viewport" content="width=device-width">
 <style>body{font:16px sans-serif;margin:16px}</style></head><body>
 <h1 id="title">Brown Butter Oat Cookies</h1>
