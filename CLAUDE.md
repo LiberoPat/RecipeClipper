@@ -243,7 +243,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   servings, or a note), "+ Add" per day (a meal type, then a recipe from
   history or the typed text as a note). Long-press: Move (the day strip and
   meal types) or Remove (undo snackbar). A tapped recipe opens at its
-  planned servings, for that visit only. "Meal types" from the Week menu:
+  planned servings, for that visit only. "Month" beside the title swaps in
+  a month grid (locale weeks, a dot on planned days; a tapped day opens its
+  week) (#52). "Meal types" from the Week menu:
   add, rename, reorder any, delete the user's own. "Add to plan" (recipe
   menu, first item, flag on only): this week's and next week's days, a meal
   type (Dinner first), servings (the yield first), one button.

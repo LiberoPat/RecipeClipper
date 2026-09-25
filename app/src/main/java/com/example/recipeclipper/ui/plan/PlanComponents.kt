@@ -60,6 +60,9 @@ internal fun shortDate(day: Long): String = format(day, "MMMd")
 /** "23" */
 internal fun dayOfMonth(day: Long): String = format(day, "d")
 
+/** "September 2026", in the locale's order. */
+internal fun monthTitle(day: Long): String = format(day, "yMMMM")
+
 /** "Sep 21 – 27", or across months "Sep 28 – Oct 4". */
 internal fun weekRange(start: Long): String {
     val end = start + 6

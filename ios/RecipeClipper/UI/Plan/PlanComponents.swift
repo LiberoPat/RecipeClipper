@@ -20,6 +20,9 @@ enum PlanDayFormat {
     /// "23"
     static func dayOfMonth(_ day: Int64) -> String { format(day, "d") }
 
+    /// "September 2026", in the locale's order.
+    static func monthTitle(_ day: Int64) -> String { format(day, "yMMMM") }
+
     /// "Sep 21 – 27", or across months "Sep 28 – Oct 4".
     static func weekRange(_ start: Int64) -> String {
         let end = start + 6

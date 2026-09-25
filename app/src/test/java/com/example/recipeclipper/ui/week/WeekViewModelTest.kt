@@ -1,6 +1,7 @@
 package com.example.recipeclipper.ui.week
 
 import com.example.recipeclipper.MainDispatcherRule
+import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.BREAKFAST
@@ -188,5 +189,96 @@ class WeekViewModelTest {
         vm.onUndoRemove()
         advanceUntilIdle()
         assertTrue(plan.meals.value.isEmpty())
+    }
+
+    // --- Month view (#52)
+
+    @Test
+    fun `the month view marks the days with meals, in whole locale weeks`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        plan.addNote("Leftovers", today, LUNCH)
+        plan.addNote("Out", PlanDays.epochDay(2026, 10, 2), DINNER) // in the grid's last row
+        plan.addNote("Far", PlanDays.epochDay(2026, 11, 20), DINNER) // outside the grid
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onShowMonth()
+        advanceUntilIdle()
+        val month = vm.uiState.value.month!!
+        assertEquals(PlanDays.epochDay(2026, 9, 1), month.monthStart)
+        assertTrue(month.isThisMonth)
+        assertEquals(PlanDays.epochDay(2026, 8, 31), month.days.first().day) // a Monday
+        assertEquals(35, month.days.size)
+        assertEquals(2, month.days.single { it.day == today }.mealCount)
+        val october2 = month.days.single { it.day == PlanDays.epochDay(2026, 10, 2) }
+        assertFalse(october2.inMonth)
+        assertEquals(1, october2.mealCount)
+        assertEquals(3, month.days.sumOf { it.mealCount })
+    }
+
+    @Test
+    fun `months step across the year and This month comes back`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onShowMonth()
+        repeat(4) { vm.onNextMonth() }
+        advanceUntilIdle()
+        assertEquals(PlanDays.epochDay(2027, 1, 1), vm.uiState.value.month!!.monthStart)
+        assertFalse(vm.uiState.value.month!!.isThisMonth)
+        assertEquals(PlanDays.epochDay(2026, 12, 28), vm.uiState.value.month!!.days.first().day)
+
+        vm.onThisMonth()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.month!!.isThisMonth)
+    }
+
+    @Test
+    fun `the month shown is the one holding most of the week`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onNextWeek() // Sep 28 – Oct 4: mostly October
+        vm.onShowMonth()
+        advanceUntilIdle()
+        assertEquals(PlanDays.epochDay(2026, 10, 1), vm.uiState.value.month!!.monthStart)
+    }
+
+    @Test
+    fun `tapping a day opens its week, focused on it`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onShowMonth()
+        vm.onNextMonth()
+        advanceUntilIdle()
+
+        val day = PlanDays.epochDay(2026, 10, 15) // a Thursday
+        vm.onMonthDaySelected(day)
+        advanceUntilIdle()
+        val state = vm.uiState.value
+        assertNull(state.month)
+        assertEquals(day - 3, state.weekStart)
+        assertEquals(day, state.focusDay)
+        assertEquals(7, state.days.size)
+
+        vm.onFocusHandled()
+        assertNull(vm.uiState.value.focusDay)
+    }
+
+    @Test
+    fun `tapping a day of the week already shown keeps its meals`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onShowMonth()
+        advanceUntilIdle()
+        vm.onMonthDaySelected(today)
+        advanceUntilIdle()
+        assertEquals(monday, vm.uiState.value.weekStart)
+        assertEquals(1, vm.uiState.value.days.sumOf { it.meals.size })
+
+        vm.onShowMonth()
+        vm.onShowWeek()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.month)
+        assertEquals(monday, vm.uiState.value.weekStart)
     }
 }

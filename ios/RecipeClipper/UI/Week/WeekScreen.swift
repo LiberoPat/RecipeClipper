@@ -18,11 +18,16 @@ struct WeekScreen: View {
     var body: some View {
         let state = vm.uiState
         let typeNames = Dictionary(uniqueKeysWithValues: state.mealTypes.map { ($0.id, $0.name) })
+        ScrollViewReader { proxy in
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 header(state)
-                ForEach(state.days) { weekDay in
+                if let month = state.month {
+                    MonthGrid(month: month, today: state.today, onSelect: vm.onMonthDaySelected)
+                }
+                ForEach(state.month == nil ? state.days : []) { weekDay in
                     dayHeader(weekDay.day, isToday: weekDay.day == state.today)
+                        .id("day-\(weekDay.day)")
                     ForEach(weekDay.meals) { meal in
                         MealRow(meal: meal, mealTypeName: typeNames[meal.mealTypeId] ?? "") {
                             if let recipeId = meal.recipeId { onOpenRecipe(recipeId, meal.servings) }
@@ -45,15 +50,24 @@ struct WeekScreen: View {
             .padding(.bottom, 32)
             .readableColumn()
         }
+        // After a tap in the month view: scroll to that day once its week has loaded.
+        .onChange(of: FocusKey(day: state.focusDay, loaded: state.days.map(\.day)), initial: true) { _, key in
+            guard let day = key.day, key.loaded.contains(day) else { return }
+            proxy.scrollTo("day-\(day)", anchor: .top)
+            vm.onFocusHandled()
+        }
+        }
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    if let onOpenWhatINeed {
+                    // The week's own actions act on the week shown, so the month view leaves
+                    // them out.
+                    if let onOpenWhatINeed, state.month == nil {
                         Button(Strings.whatINeedTitle) { onOpenWhatINeed(vm.uiState.weekStart) }
                     }
-                    if let makeGroceriesVM {
+                    if let makeGroceriesVM, state.month == nil {
                         Button(Strings.addWeekToGroceries) {
                             let groceries = groceriesVM ?? makeGroceriesVM()
                             groceriesVM = groceries
@@ -116,30 +130,68 @@ struct WeekScreen: View {
 
     private func header(_ state: WeekUiState) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            ScreenTitle(Strings.tabWeek)
-            HStack(spacing: 4) {
-                Button { vm.onPreviousWeek() } label: {
-                    Text("‹").textStyle(Typography.headlineSmall).frame(minWidth: 40, minHeight: 40)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Strings.previousWeek)
-                Text(PlanDayFormat.weekRange(state.weekStart))
-                    .textStyle(Typography.titleMedium)
-                    .accessibilityIdentifier("weekRange")
-                Button { vm.onNextWeek() } label: {
-                    Text("›").textStyle(Typography.headlineSmall).frame(minWidth: 40, minHeight: 40)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Strings.nextWeek)
+            HStack(alignment: .firstTextBaseline) {
+                ScreenTitle(Strings.tabWeek)
                 Spacer()
-                if !state.isThisWeek {
-                    Button(Strings.thisWeek, action: vm.onThisWeek).buttonStyle(TextActionStyle())
+                Button(state.month == nil ? Strings.monthView : Strings.weekView) {
+                    if state.month == nil { vm.onShowMonth() } else { vm.onShowWeek() }
                 }
+                .buttonStyle(TextActionStyle())
+                .accessibilityIdentifier("toggleMonth")
             }
-            .foregroundStyle(Palette.onBackground)
+            if let month = state.month {
+                periodNavigation(
+                    label: PlanDayFormat.monthTitle(month.monthStart),
+                    labelIdentifier: "monthTitle",
+                    previous: Strings.previousMonth,
+                    next: Strings.nextMonth,
+                    back: month.isThisMonth ? nil : Strings.thisMonth,
+                    onPrevious: vm.onPreviousMonth,
+                    onNext: vm.onNextMonth,
+                    onBack: vm.onThisMonth
+                )
+            } else {
+                periodNavigation(
+                    label: PlanDayFormat.weekRange(state.weekStart),
+                    labelIdentifier: "weekRange",
+                    previous: Strings.previousWeek,
+                    next: Strings.nextWeek,
+                    back: state.isThisWeek ? nil : Strings.thisWeek,
+                    onPrevious: vm.onPreviousWeek,
+                    onNext: vm.onNextWeek,
+                    onBack: vm.onThisWeek
+                )
+            }
             Hairline()
         }
         .padding(.top, 4)
+    }
+
+    /// ‹ label › and, away from the current week or month, a way back to it.
+    private func periodNavigation(
+        label: String, labelIdentifier: String, previous: String, next: String, back: String?,
+        onPrevious: @escaping () -> Void, onNext: @escaping () -> Void, onBack: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 4) {
+            Button(action: onPrevious) {
+                Text("‹").textStyle(Typography.headlineSmall).frame(minWidth: 40, minHeight: 40)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(previous)
+            Text(label)
+                .textStyle(Typography.titleMedium)
+                .accessibilityIdentifier(labelIdentifier)
+            Button(action: onNext) {
+                Text("›").textStyle(Typography.headlineSmall).frame(minWidth: 40, minHeight: 40)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(next)
+            Spacer()
+            if let back {
+                Button(back, action: onBack).buttonStyle(TextActionStyle())
+            }
+        }
+        .foregroundStyle(Palette.onBackground)
     }
 
     private func dayHeader(_ day: Int64, isToday: Bool) -> some View {
@@ -152,6 +204,61 @@ struct WeekScreen: View {
         .padding(.top, 18)
         .padding(.bottom, 4)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// What the week view waits for before scrolling to a day tapped in the month view.
+private struct FocusKey: Equatable {
+    let day: Int64?
+    let loaded: [Int64]
+}
+
+/// The month view (#52): the locale's weekdays over whole weeks. A day with meals has a paprika
+/// dot; today's date is paprika text; the days before and after the month are muted. Tapping any
+/// day opens its week.
+private struct MonthGrid: View {
+    let month: MonthUiState
+    let today: Int64
+    let onSelect: (Int64) -> Void
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
+
+    var body: some View {
+        if !month.days.isEmpty {
+            LazyVGrid(columns: columns, spacing: 0) {
+                ForEach(month.days.prefix(7).map { $0.day }, id: \.self) { day in
+                    Text(PlanDayFormat.shortWeekday(day))
+                        .textStyle(Typography.labelMedium)
+                        .foregroundStyle(Palette.muted)
+                        .padding(.bottom, 4)
+                        .accessibilityHidden(true)
+                }
+                ForEach(month.days) { cell in
+                    Button { onSelect(cell.day) } label: {
+                        VStack(spacing: 4) {
+                            Text(PlanDayFormat.dayOfMonth(cell.day))
+                                .textStyle(Typography.titleMedium)
+                                .foregroundStyle(
+                                    cell.day == today ? Palette.accentText
+                                        : cell.inMonth ? Palette.onBackground : Palette.muted.opacity(0.6)
+                                )
+                            Circle()
+                                .fill(cell.mealCount > 0 ? Palette.primary : Color.clear)
+                                .frame(width: 6, height: 6)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        cell.mealCount > 0 ? Strings.monthDayPlanned(PlanDayFormat.title(cell.day)) : PlanDayFormat.title(cell.day)
+                    )
+                    .accessibilityIdentifier("monthDay-\(cell.day)")
+                }
+            }
+            .padding(.top, 12)
+        }
     }
 }
 
