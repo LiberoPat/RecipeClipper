@@ -86,7 +86,31 @@ object TemperatureConverter {
         return out.toString()
     }
 
-    private class Pair(val value: String, val end: Int)
+    /**
+     * Every temperature [text] states, each as its keys ("350F", "180-200C"); "350°F (180°C)"
+     * is one temperature with two keys. What [ShortStepCheck] compares, so a short step can't
+     * change a scale or drop an oven setting. Empty for [words] null.
+     */
+    fun temperatures(text: String, words: LanguageWords?): List<List<String>> {
+        if (words == null) return emptyList()
+        val p = words.compiled(Patterns::class) { Patterns(it) }
+        val found = mutableListOf<List<String>>()
+        var cursor = 0
+        while (true) {
+            val match = p.tempAnywhere.find(text, cursor) ?: break
+            val temp = parse(p, match)
+            cursor = match.range.last + 1
+            if (temp == null) continue
+            val pair = findPair(p, text, cursor, temp)
+            found += listOfNotNull(key(temp), pair?.let { key(it.temp) })
+            if (pair != null) cursor = pair.end
+        }
+        return found
+    }
+
+    private fun key(t: Temp) = "${t.low}${t.high?.let { "-$it" } ?: ""}${t.scale.letter}"
+
+    private class Pair(val value: String, val end: Int, val temp: Temp)
 
     /** The other-scale temperature written straight after [first], if there is one. */
     private fun findPair(p: Patterns, text: String, firstEnd: Int, first: Temp): Pair? {
@@ -102,7 +126,7 @@ object TemperatureConverter {
             val close = CLOSING_PAREN.find(text.substring(end)) ?: return null
             end += close.value.length
         }
-        return Pair(match.value, end)
+        return Pair(match.value, end, second)
     }
 
     private fun parse(p: Patterns, match: MatchResult): Temp? {
