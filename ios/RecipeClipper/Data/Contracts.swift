@@ -285,6 +285,25 @@ protocol MealPlanRepository: AnyObject {
 
     /// Deletes a user's meal type; its meals move to Dinner. Seeded types are ignored.
     func deleteMealType(id: Int64) async
+
+    // MARK: Reusable weekly menus (#52)
+
+    /// Every saved menu, by name.
+    func observeMenus() -> AnyPublisher<[WeekMenu], Never>
+
+    /// Saves the seven days from `weekStart` as a new menu called `name`. A blank name or an
+    /// empty week saves nothing; returns whether a menu was saved.
+    func saveWeekAsMenu(name: String, weekStart: Int64) async -> Bool
+
+    /// Adds a menu's meals to the week from `weekStart`, after what is planned there. Never
+    /// changes or removes a meal already planned. Returns how many meals it added.
+    func applyMenu(id: Int64, weekStart: Int64) async -> Int
+
+    /// A blank name is ignored.
+    func renameMenu(id: Int64, name: String) async
+
+    /// Deletes a menu; the plan and the recipes are untouched.
+    func deleteMenu(id: Int64) async
 }
 
 /// What a meal-plan delete removed, for `restore`. Opaque to callers.
