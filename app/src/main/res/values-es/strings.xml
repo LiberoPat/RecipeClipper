@@ -176,7 +176,7 @@
     <string name="delete_list_body">Se eliminará la lista. Sus recetas seguirán en tu historial.</string>
     <string name="action_delete_list">Eliminar lista</string>
 
-    <!-- Bottom tabs (#47), behind BuildConfig.MEAL_PLAN_TABS, off until #49 -->
+    <!-- Bottom tabs (#47), behind the mealPlan flag (#87) -->
     <string name="tab_recipes">Recetas</string>
     <string name="tab_week">Semana</string>
     <string name="tab_groceries">Compras</string>
@@ -367,4 +367,11 @@
     <string name="action_add_to_pantry">Añadir a la despensa</string>
     <string name="snackbar_offer_pantry">Ya tienes %1$s. ¿Añadirlo a la despensa?</string>
     <string name="snackbar_pantry_restocked">%1$s vuelve a estar en la despensa</string>
+    <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
+    <string name="settings_version">Versión %1$s</string>
+    <string name="developer_settings_title">Ajustes de desarrollador</string>
+    <string name="developer_settings_intro">Funciones aún en desarrollo. Los cambios se aplican al instante; si uno cambia la navegación de la app, vuelves al inicio.</string>
+    <string name="developer_flag_issue">Incidencia #%1$d</string>
+    <string name="developer_flag_changed">Cambiado respecto al valor predeterminado</string>
+    <string name="developer_reset">Restablecer valores predeterminados</string>
 </resources>

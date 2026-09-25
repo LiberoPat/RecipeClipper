@@ -72,7 +72,8 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.UnitSystem
-import com.example.recipeclipper.BuildConfig
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.AddToPlanBottomSheet
@@ -118,7 +119,7 @@ fun RecipeScreen(
     onEdit: (recipeId: Long) -> Unit = {},
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel(),
-    mealPlanEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS,
+    mealPlanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.MEAL_PLAN),
     // Only resolved behind the tab flag (#49), so screen tests without Hilt need not pass one.
     planViewModel: AddToPlanViewModel? = if (mealPlanEnabled) hiltViewModel() else null,
     groceriesViewModel: AddToGroceriesViewModel? = if (mealPlanEnabled) hiltViewModel() else null

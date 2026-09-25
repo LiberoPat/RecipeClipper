@@ -66,7 +66,11 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  * and Import, #26: actions, so plain rows).
  */
 @Composable
-fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onOpenDeveloperSettings: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -174,6 +178,20 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                         onClick = { importPicker.launch(IMPORT_MIME_TYPES) }
                     )
                     BackupStatusText(backup)
+                }
+
+                item {
+                    // The version, quietly at the foot. Seven taps open Developer settings (#87);
+                    // the count is the ViewModel's, so it survives a rotation.
+                    Text(
+                        stringResource(R.string.settings_version, state.appVersion),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(top = 24.dp)
+                            .clickable { if (viewModel.onVersionTapped()) onOpenDeveloperSettings() }
+                            .padding(vertical = 8.dp)
+                    )
                 }
             }
         }
@@ -295,7 +313,7 @@ private val IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "appli
 /** An independent toggle: a title, a one-line description, and a [Switch] — never a
  *  checkmark, which would read as an exclusive choice among its siblings. */
 @Composable
-private fun SwitchRow(
+internal fun SwitchRow(
     title: String,
     description: String,
     checked: Boolean,

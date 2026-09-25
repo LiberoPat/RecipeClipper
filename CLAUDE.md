@@ -106,14 +106,14 @@ ui/            navigation, home, history, recipe, clip, edit, savetolist, lists,
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
 ```
 
-Routes: `home`, `history`, `settings`, `lists`, `lists/{listId}`,
+Routes: `home`, `history`, `settings` (and the hidden `settings/developer`), `lists`, `lists/{listId}`,
 `recipe/{recipeId}?cook={cook}` (`cook=true` from a timer notification opens
 cook mode), `recipe/import?url={url}` (the share target: parse, then
 upsert with no list membership), and `edit?recipeId={recipeId}` (no id: a new
 recipe; saving replaces the edit screen, and the recipe screen under it, with
 `recipe/{id}`), and `clip?url={url}` (Clip it yourself; saving replaces it and
-the error screen under it with `recipe/{id}`). Behind `BuildConfig.MEAL_PLAN_TABS` /
-`FeatureFlags.mealPlanTabs` (#47, default off, so the app is unchanged): a
+the error screen under it with `recipe/{id}`). Behind the `mealPlan` feature
+flag (#47, default off, so the app is unchanged): a
 bottom tab bar nests this same graph under a Recipes tab alongside `week`
 (with its own `week/recipe/{recipeId}?servings={servings}` and
 `week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry`
@@ -143,6 +143,12 @@ Recipes, whichever tab is open.
   through `Strings.swift`); a new string needs all six languages on both
   platforms. `RecipeShareText` takes its words as `Labels` from the screen;
   `SiteReportLink` is a report body, English by design.
+- **Features that ship dark are feature flags** (#87): one entry in
+  `shared/flags.json` (key, description, default per build type, issue) plus
+  the `Flag` enum on each platform; read `FeatureFlags.isOn(...)`, never a
+  build constant. Overrides: hidden Developer settings (7 taps on the version
+  in Settings, release too), stored in `feature_flags` / its own suite. A
+  test fails on a flag missing from either side or referenced nowhere.
 - Tests use hand-written fakes (`app/src/test/.../fake/`,
   `ios/RecipeClipperTests/Fakes`), never mocks. Screens take their ViewModel
   as a parameter defaulting to `hiltViewModel()`, so UI tests pass a real

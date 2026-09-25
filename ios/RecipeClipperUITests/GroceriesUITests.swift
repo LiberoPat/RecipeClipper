@@ -12,7 +12,7 @@ final class GroceriesUITests: RecipeUITestCase {
     }
 
     func testARecipesLinesGoOnTheListByAisle() {
-        launch(.standard, extraArguments: ["-mealPlanTabs"])
+        launch(.standard, flags: ["mealPlan"])
         require(app.staticTexts["Chicken Adobo"], "Continue cooking").tap()
         require(app.buttons["More options"], "the recipe menu").tap()
         require(app.buttons["Add to groceries"], "Add to groceries").tap()
@@ -28,7 +28,7 @@ final class GroceriesUITests: RecipeUITestCase {
     }
 
     func testATypedItemCanBeDeletedAndBroughtBack() {
-        launch(.standard, extraArguments: ["-mealPlanTabs"])
+        launch(.standard, flags: ["mealPlan"])
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()

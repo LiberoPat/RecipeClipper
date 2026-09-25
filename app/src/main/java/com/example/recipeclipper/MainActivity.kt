@@ -5,18 +5,29 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.timers.TimerNotifications
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
 import com.example.recipeclipper.ui.navigation.openRoute
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var featureFlags: FeatureFlags
 
     // Routes from intents (a shared link, a tapped timer notification) wait here until the
     // NavHost is composed and can navigate to them.
@@ -37,7 +48,12 @@ class MainActivity : ComponentActivity() {
         shareHandled = savedInstanceState?.getBoolean(STATE_SHARE_HANDLED) ?: false
 
         setContent {
-            val navController = rememberNavController()
+            // The flags (#87) as they change in Developer settings. Turning the tab shell on or
+            // off swaps the whole navigation graph, so it gets a fresh NavController (and opens
+            // on Home) rather than restoring a back stack from the other graph.
+            val flags by featureFlags.values.collectAsStateWithLifecycle(featureFlags.current)
+            val tabsEnabled = flags.isOn(Flag.MEAL_PLAN)
+            val navController = key(tabsEnabled) { rememberNavController() }
             LaunchedEffect(navController) {
                 // The first back-stack entry exists once the NavHost has set its graph. With the
                 // tab bar on, the NavHost sits inside a Scaffold, which composes it later than
@@ -45,11 +61,13 @@ class MainActivity : ComponentActivity() {
                 navController.currentBackStackEntryFlow.first()
                 for (route in intentRoutes) {
                     // Always into the Recipes tab, whichever tab is open.
-                    navController.openRoute(route)
+                    navController.openRoute(route, tabsEnabled)
                     shareHandled = true
                 }
             }
-            AppShell(navController)
+            CompositionLocalProvider(LocalFlagValues provides flags) {
+                AppShell(navController, tabsEnabled)
+            }
         }
 
         if (!shareHandled) routeFor(intent)?.let { intentRoutes.trySend(it) }

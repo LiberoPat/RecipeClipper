@@ -31,10 +31,15 @@ class RecipeUITestCase: XCTestCase {
     }
 
     @discardableResult
-    func launch(_ scenario: Scenario = .standard, keepPrefs: Bool = false, extraArguments: [String] = []) -> XCUIApplication {
+    /// [flags] are feature-flag keys from shared/flags.json (#87) to turn on, through the app's
+    /// flag store (UITestSeeding), as Developer settings would.
+    func launch(
+        _ scenario: Scenario = .standard, keepPrefs: Bool = false, flags: [String] = [], extraArguments: [String] = []
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestSeed", scenario.rawValue]
         if keepPrefs { app.launchArguments.append("-uiTestKeepPrefs") }
+        if !flags.isEmpty { app.launchArguments += ["-uiTestFlags", flags.joined(separator: ",")] }
         app.launchArguments += extraArguments
         app.launch()
         self.app = app

@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// The tabs behind `FeatureFlags.mealPlanTabs` (#47), in the owner's order.
+/// The tabs behind the `mealPlan` flag (#47, #87), in the owner's order.
 enum AppTab: String, CaseIterable, Hashable {
     case recipes, week, groceries, pantry
 }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The app's root. With `FeatureFlags.mealPlanTabs` off (until #49 ships) it is the single
+/// The app's root. With the `mealPlan` flag off (#87, until the meal plan ships) it is the single
 /// Recipes NavigationStack, exactly as before the tab shell. On, that same stack is the first of
 /// four tabs, each with its own NavigationStack, so each keeps its own place.
 /// Every destination gets its ViewModel from the container, once per stack entry (ScreenHost),
@@ -8,7 +8,9 @@ import SwiftUI
 struct RootView: View {
     let container: AppContainer
     @Bindable var router: Router
-    var tabsEnabled: Bool = FeatureFlags.mealPlanTabs
+    /// The `mealPlan` flag, read through the container's observable flags, so turning it on or
+    /// off in Developer settings swaps the root at once.
+    private var tabsEnabled: Bool { container.featureFlags.isOn(.mealPlan) }
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -138,7 +140,11 @@ struct RootView: View {
                 HistoryScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
             }
         case .settings:
-            ScreenHost(container.makeSettingsViewModel) { vm in SettingsScreen(vm: vm) }
+            ScreenHost(container.makeSettingsViewModel) { vm in
+                SettingsScreen(vm: vm, onOpenDeveloperSettings: { push(.developerSettings) })
+            }
+        case .developerSettings:
+            ScreenHost(container.makeDeveloperSettingsViewModel) { vm in DeveloperSettingsScreen(vm: vm) }
         case .lists:
             ScreenHost(container.makeListsViewModel) { vm in
                 ListsScreen(vm: vm, onOpenList: { push(.listDetail(id: $0)) })
