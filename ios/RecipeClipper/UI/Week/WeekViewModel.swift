@@ -56,6 +56,25 @@ struct MonthUiState: Equatable {
     var isThisMonth: Bool { monthStart == thisMonthStart }
 }
 
+/// What the snackbar says after a menu action (#52).
+enum MenuMessage: Equatable {
+    case saved(name: String)
+    case saveFailed
+    case applied(name: String, count: Int)
+}
+
+/// Reusable weekly menus on the Week tab (#52). `menus` is every saved menu; `saving` opens the
+/// name prompt for the week shown; `picking` opens the menus sheet (apply, rename, delete);
+/// `renaming` and `deleting` are the menu being renamed or confirmed for deletion.
+struct MenusUiState: Equatable {
+    var menus: [WeekMenu] = []
+    var saving = false
+    var picking = false
+    var renaming: WeekMenu?
+    var deleting: WeekMenu?
+    var message: MenuMessage?
+}
+
 /// `days` is empty until the plan has loaded. `removed` names the meal just removed, for the
 /// undo snackbar.
 struct WeekUiState: Equatable {
@@ -73,6 +92,8 @@ struct WeekUiState: Equatable {
     var focusDay: Int64?
     /// The shown week as a calendar file, waiting for the screen to share it (#52).
     var calendarFile: CalendarFile?
+    /// Saved weekly menus and their prompts (#52).
+    var menus = MenusUiState()
 
     var isThisWeek: Bool { weekStart == thisWeekStart }
 
@@ -97,6 +118,7 @@ final class WeekViewModel {
     @ObservationIgnored private var daysSubscription: AnyCancellable?
     @ObservationIgnored private var monthSubscription: AnyCancellable?
     @ObservationIgnored private var typesSubscription: AnyCancellable?
+    @ObservationIgnored private var menusSubscription: AnyCancellable?
     @ObservationIgnored private var searchSubscription: AnyCancellable?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
     @ObservationIgnored private var removedMeal: DeletedMeal?
@@ -112,6 +134,9 @@ final class WeekViewModel {
         typesSubscription = plan.observeMealTypes()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] types in self?.uiState.mealTypes = types }
+        menusSubscription = plan.observeMenus()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] menus in self?.uiState.menus.menus = menus }
         showWeek(start)
     }
 
@@ -317,4 +342,55 @@ final class WeekViewModel {
     private func defaultType(_ types: [MealType]) -> Int64? {
         (types.first { $0.builtInKey == MealType.dinner } ?? types.first)?.id
     }
+}
+
+// MARK: - Menus (#52)
+
+extension WeekViewModel {
+    func onSaveMenuStart() { uiState.menus.saving = true }
+
+    func onSaveMenuDismissed() { uiState.menus.saving = false }
+
+    /// Saves the week shown as `name`. A blank name does nothing.
+    func onSaveMenu(_ name: String) async {
+        let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        uiState.menus.saving = false
+        let saved = await plan.saveWeekAsMenu(name: text, weekStart: uiState.weekStart)
+        uiState.menus.message = saved ? .saved(name: text) : .saveFailed
+    }
+
+    func onPickMenuStart() { uiState.menus.picking = true }
+
+    func onPickMenuDismissed() { uiState.menus.picking = false }
+
+    /// Adds `menu`'s meals to the week shown, after what is planned there.
+    func onApplyMenu(_ menu: WeekMenu) async {
+        uiState.menus.picking = false
+        let added = await plan.applyMenu(id: menu.id, weekStart: uiState.weekStart)
+        uiState.menus.message = .applied(name: menu.name, count: added)
+    }
+
+    func onRenameMenuStart(_ menu: WeekMenu) { uiState.menus.renaming = menu }
+
+    func onRenameMenuDismissed() { uiState.menus.renaming = nil }
+
+    func onRenameMenu(_ name: String) async {
+        guard let menu = uiState.menus.renaming,
+              !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        uiState.menus.renaming = nil
+        await plan.renameMenu(id: menu.id, name: name)
+    }
+
+    func onDeleteMenuStart(_ menu: WeekMenu) { uiState.menus.deleting = menu }
+
+    func onDeleteMenuDismissed() { uiState.menus.deleting = nil }
+
+    func onDeleteMenuConfirm() async {
+        guard let menu = uiState.menus.deleting else { return }
+        uiState.menus.deleting = nil
+        await plan.deleteMenu(id: menu.id)
+    }
+
+    func onMenuMessageShown() { uiState.menus.message = nil }
 }
