@@ -5,11 +5,12 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
@@ -59,6 +60,10 @@ class SettingsScreenTest {
         }
         return taps
     }
+
+    /** The list is lazy: a row below the fold isn't composed until the list scrolls to it. */
+    private fun scrollTo(text: String) =
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(text))
 
     private fun asWrittenUnitRow() =
         compose.onNode(hasText("As written") and hasText("Exactly the units the recipe uses"))
@@ -182,7 +187,9 @@ class SettingsScreenTest {
     fun yourRecipesSectionShowsExportAndImportRows() {
         show()
 
+        scrollTo("Export recipes")
         compose.onNodeWithText("Export recipes").assertIsDisplayed()
+        scrollTo("Import recipes")
         compose.onNodeWithText("Import recipes").assertIsDisplayed()
     }
 
@@ -192,7 +199,8 @@ class SettingsScreenTest {
     fun theVersionShowsAndItsSeventhTapOpensDeveloperSettingsThenCountsAgain() {
         val taps = show(appInfo = FakeAppInfo(appVersion = "2.3 (7)"))
         // At the foot of the list; scroll to it before the first assertion or interaction.
-        val version = compose.onNodeWithText("Version 2.3 (7)").performScrollTo()
+        scrollTo("Version 2.3 (7)")
+        val version = compose.onNodeWithText("Version 2.3 (7)")
         version.assertIsDisplayed()
 
         repeat(SettingsViewModel.DEVELOPER_TAPS - 1) { version.performClick() }

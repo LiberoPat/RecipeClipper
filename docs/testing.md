@@ -25,6 +25,16 @@ the commands; iOS test commands and the simulator rules are in
   by a shared link (an `ACTION_SEND` intent to a `.invalid` host, which must
   reach the import screen and its Try again).
 
+Two waits that flaked under load (#91), and what not to undo:
+
+- `ClipScreenTest` asks the page things (`evaluateJavascript`) inside a
+  `waitUntil`. Each call gives up after 2 s and is asked again within one
+  15 s wait; a call once allowed as long as the whole wait, so one slow answer
+  from a busy renderer failed the test.
+- iOS UI tests that delete and then tap Undo tap it as soon as the snackbar
+  shows, and check the row went afterwards: the snackbar lasts four seconds of
+  real time, and waiting for the row first could outlast it.
+
 Robolectric's setup, all in `app/build.gradle.kts` and
 `app/src/test/resources/robolectric.properties`:
 
@@ -164,8 +174,8 @@ seeded meal types, nothing existing changed) to `MigrationTest`, and
 `MealPlanDaoTest` for the rules that live in SQL: the cull keeps recipes planned
 for today or later (and a planned note doesn't stop it), a recipe's meals
 cascade and come back on undo, ordering, moving, and meal-type deletion (user
-types only, meals moved to Dinner). They, `WeekScreenTest`,
-`RecipeAddToPlanTest` and `AppShellTest` pass on the agents' emulator. iOS
+types only, meals moved to Dinner). `WeekScreenTest`, `RecipeAddToPlanTest`
+and `AppShellTest` cover the screens. iOS
 mirrors them in `MealPlanDaoTests` (with the user_version 6 → 7 step) and
 `WeekUITests`.
 
@@ -174,8 +184,7 @@ from a real version-8 file holding a recipe and a planned meal, and
 `GroceryDaoTest`: order added, delete and undo restoring whole, a recipe's items
 outliving it (SET NULL, also across an undo), and the week's planned recipes in
 plan order without notes. `GroceriesScreenTest`, `RecipeAddToGroceriesTest`
-and a `WeekScreenTest` case cover the screens; the whole device suite passes on
-the agents' emulator. The combining rule is JVM-tested (`GroceryCombinerTest`,
+and a `WeekScreenTest` case cover the screens. The combining rule is JVM-tested (`GroceryCombinerTest`,
 `AislesTest`) and pinned for iOS by the corpus's `Groc` rows. iOS mirrors the
 rest in `GroceryDaoTests` (with the user_version 7 → 8 step),
 `GroceriesViewModelTests` and `GroceriesUITests`.
@@ -185,16 +194,13 @@ real version-9 file holding a recipe and a grocery item, and `PantryDaoTest`:
 restock and running out, edits, a delete restored whole, unique uids.
 `BackupDaoTest` round-trips the pantry, the grocery list and the meal plan (with a user's meal type) through an export; iOS's `BackupDaoTests` do the same.
 `PantryScreenTest`, `WhatINeedScreenTest` and the updated `AppShellTest` cover
-the screens; the whole device suite passes on the agents' emulator
-(`ClipScreenTest.clipAPageFromSelectionToSave` failed once in a full run and
-passed alone). Have/Buy is JVM-tested (`PantryTest`, the ViewModel tests) and
+the screens. Have/Buy is JVM-tested (`PantryTest`, the ViewModel tests) and
 pinned for iOS by the corpus's `Pant` rows. iOS mirrors the rest in
 `PantryDaoTests` (with the user_version 8 → 9 step), `PantryTests`,
 `PantryViewModelTests` and `PantryUITests`.
 
-The cook-persistence device tests (#10: the cook-state migration in
-`MigrationTest`, and the cook-state cases in `RecipeDaoTest`) have been run on
-the agents' emulator (Android 17) and pass. A timer alarm was also checked end to end there: a
+The cook-persistence tests (#10) are the cook-state migration in
+`MigrationTest` (device) and the cook-state cases in `RecipeDaoTest` (JVM). A timer alarm was also checked end to end there: a
 recipe seeded with a running timer, opened through the notification's
 `OPEN_COOK` intent, came back in cook mode on the saved step with the timer
 recomputed from its deadline. `AlarmManager` held the alarm at that deadline,
@@ -215,8 +221,8 @@ hunting in the migration when that appears.
 
 **Compose UI tests**, on the JVM under Robolectric since #91 (`androidx.compose.ui:ui-test-junit4`, plus
 `debugImplementation("androidx.compose.ui:ui-test-manifest")` for the empty
-Activity `createComposeRule` launches): `HomeScreenTest` (12),
-`SaveToListBottomSheetTest` (12), `ListDetailScreenTest` (14) and
+Activity `createComposeRule` launches): `HomeScreenTest`,
+`SaveToListBottomSheetTest`, `ListDetailScreenTest`, `SettingsScreenTest` and
 `RecipeErrorScreenTest` ("Report this site" on the no-recipe error only). They exist
 because every ViewModel behind Home was already covered and the whole suite
 stayed green through a duplicate-key crash that made the app unusable — that
