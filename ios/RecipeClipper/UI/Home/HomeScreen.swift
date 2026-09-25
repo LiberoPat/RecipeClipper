@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Home: the link field (kept so the app can be tried without the share sheet), then whatever
-/// there is to pick up again. Sections with nothing in them don't appear, but the History /
+/// there is to pick up again. Sections with nothing in them don't appear, but the Recipes /
 /// Lists block always does. Settings is the gear beside the title.
 struct HomeScreen: View {
     let vm: HomeViewModel

@@ -47,7 +47,7 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 /**
  * Home: the link field (kept so the app can be tried without the share sheet), then
  * whatever there is to pick up again. Sections with nothing in them don't appear, but the
- * History / Lists block at the bottom always does. Settings is the gear beside the title.
+ * Recipes / Lists block at the bottom always does. Settings is the gear beside the title.
  */
 @Composable
 fun HomeScreen(
@@ -84,7 +84,7 @@ fun HomeScreen(
                         )
                         // Settings' only entry point today (see the note by the nav block
                         // below). The gear sits up here because it is a destination you visit
-                        // rarely and on purpose, unlike History and Lists, which are part of
+                        // rarely and on purpose, unlike Recipes and Lists, which are part of
                         // the daily path and stay as named rows.
                         IconButton(
                             onClick = onOpenSettings,
@@ -155,7 +155,7 @@ fun HomeScreen(
                     }
                 }
 
-                // Both entries are unconditional. History used to appear only once there was a
+                // Both entries are unconditional. The first (then History) used to appear only once there was a
                 // "continue cooking" recipe, so the block changed shape depending on what was
                 // in the database; a fixed block is easier to aim at than one that moves.
                 //
