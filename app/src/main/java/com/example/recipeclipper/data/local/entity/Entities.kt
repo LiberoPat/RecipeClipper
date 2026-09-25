@@ -98,6 +98,27 @@ data class GroceryItemEntity(
     }
 }
 
+/**
+ * One pantry item (#51). [name] as typed, read with [language]'s words; [quantity] free text
+ * as written; [aisle] an `Aisle` key, chosen when added. [purchasedDay] and [expiresDay] are
+ * epoch days. [alwaysHave] marks a staple. No foreign keys: an item belongs to no recipe.
+ * [uid] and [updatedAt] are for export and a later sync (#53).
+ */
+@Entity(tableName = "pantry_items", indices = [Index(value = ["uid"], unique = true)])
+data class PantryItemEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val quantity: String?,
+    val language: String?,
+    val aisle: String,
+    val inStock: Boolean,
+    val alwaysHave: Boolean,
+    val purchasedDay: Long?,
+    val expiresDay: Long?,
+    val updatedAt: Long,
+    val uid: String = newUid()
+)
+
 /** A fresh stable id for a new row. The same form the migrations backfill with. */
 fun newUid(): String = UUID.randomUUID().toString()
 

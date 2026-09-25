@@ -275,8 +275,6 @@
     <string name="tab_week">Week</string>
     <string name="tab_groceries">Groceries</string>
     <string name="tab_pantry">Pantry</string>
-    <string name="coming_soon">Coming soon</string>
-    <string name="pantry_placeholder">What you already have, so you only buy what you need.</string>
 
     <!-- The shared message body (RecipeShareText): the words around the recipe, in the phone's
          language. "Prep", "Cook" and "Total" reuse the label_* strings above. -->
@@ -366,4 +364,46 @@
     <string name="aisle_snacks">Nuts &amp; dried fruit</string>
     <string name="aisle_drinks">Drinks</string>
     <string name="aisle_other">Other</string>
+
+    <!-- Pantry (#51) -->
+    <string name="pantry_add_hint">Add to the pantry</string>
+    <string name="pantry_search_hint">Search the pantry</string>
+    <string name="pantry_empty">Nothing in the pantry yet. Type what\'s in your cupboards above, or add things as you tick them off the grocery list.</string>
+    <string name="pantry_no_results">Nothing matches “%1$s”.</string>
+    <string name="pantry_sort_aisle">Sort by aisle</string>
+    <string name="pantry_sort_expiry">Sort by expiry</string>
+    <string name="pantry_in_stock">In stock</string>
+    <string name="pantry_out">Out</string>
+    <string name="pantry_always_have">Always have</string>
+    <string name="pantry_always_have_detail">Staples are never on the Buy list.</string>
+    <string name="pantry_expired">Expired</string>
+    <string name="pantry_use_by">Use by %1$s</string>
+    <string name="pantry_bought">Bought %1$s</string>
+    <string name="pantry_edit_title">Edit item</string>
+    <string name="pantry_label_name">Name</string>
+    <string name="pantry_label_quantity">Quantity (optional)</string>
+    <string name="pantry_label_expiry">Use-by date</string>
+    <string name="pantry_no_date">No date</string>
+    <string name="action_set_date">Set date</string>
+    <string name="action_clear_date">Clear date</string>
+    <string name="snackbar_pantry_out">%1$s is out</string>
+    <string name="snackbar_added_to_groceries">Added %1$s to groceries</string>
+    <string name="snackbar_pantry_deleted">Deleted %1$s</string>
+
+    <!-- What I need: the week against the pantry (#51) -->
+    <string name="action_what_i_need">What I need</string>
+    <string name="what_i_need_title">What I need</string>
+    <string name="what_i_need_buy">To buy</string>
+    <string name="what_i_need_have">In your pantry</string>
+    <string name="what_i_need_note">“In your pantry” means you have some, not that there\'s enough.</string>
+    <string name="what_i_need_nothing_to_buy">Nothing to buy: every ingredient is in your pantry.</string>
+    <string name="what_i_need_you_have">You have %1$s</string>
+    <string name="action_add_buy_to_groceries">Add to groceries</string>
+    <string name="what_i_need_added">Added to groceries</string>
+    <string name="what_i_need_line_source">%1$s · %2$s</string>
+
+    <!-- Ticking groceries off into the pantry (#51) -->
+    <string name="action_add_to_pantry">Add to pantry</string>
+    <string name="snackbar_offer_pantry">Got %1$s. Add it to the pantry?</string>
+    <string name="snackbar_pantry_restocked">%1$s is back in stock in the pantry</string>
 </resources>

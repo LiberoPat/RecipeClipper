@@ -7,6 +7,7 @@ import com.example.recipeclipper.data.local.dao.BackupDao
 import com.example.recipeclipper.data.local.dao.GroceryDao
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.MealPlanDao
+import com.example.recipeclipper.data.local.dao.PantryDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import dagger.Module
 import dagger.Provides
@@ -39,6 +40,9 @@ object DatabaseModule {
 
     @Provides
     fun groceryDao(db: RecipeDatabase): GroceryDao = db.groceryDao()
+
+    @Provides
+    fun pantryDao(db: RecipeDatabase): PantryDao = db.pantryDao()
 
     @Provides
     fun backupDao(db: RecipeDatabase): BackupDao = db.backupDao()

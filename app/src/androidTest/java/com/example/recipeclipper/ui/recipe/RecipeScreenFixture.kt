@@ -16,6 +16,7 @@ import com.example.recipeclipper.fake.FakeConnectivity
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakeListRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
+import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
@@ -71,7 +72,7 @@ class RecipeScreenFixture(
         val flagOn = plan != null || groceries != null
         val planViewModel = if (flagOn) AddToPlanViewModel(plan ?: FakeMealPlanRepository(), FakePlanCalendar()) else null
         val groceriesViewModel =
-            if (flagOn) AddToGroceriesViewModel(groceries ?: FakeGroceryRepository(), preferences) else null
+            if (flagOn) AddToGroceriesViewModel(groceries ?: FakeGroceryRepository(), preferences, FakePantryRepository()) else null
         compose.setContent {
             RecipeScreen(
                 onBack = { backs++ },

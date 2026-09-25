@@ -10,6 +10,8 @@ import com.example.recipeclipper.ui.mealtypes.MealTypesScreen
 import com.example.recipeclipper.ui.recipe.RecipeScreen
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.week.WeekScreen
+import com.example.recipeclipper.ui.week.WhatINeedScreen
+import com.example.recipeclipper.ui.week.WhatINeedViewModel
 
 /**
  * The Week tab's stack (#49), starting at [Routes.WEEK]. A planned recipe opens here, on the
@@ -20,8 +22,16 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
         WeekScreen(
             onOpenRecipe = { id, servings -> navController.navigate(Routes.weekRecipe(id, servings)) },
             onOpenMealTypes = { navController.navigate(Routes.MEAL_TYPES) },
+            onOpenWhatINeed = { navController.navigate(Routes.whatINeed(it)) },
             groceriesViewModel = hiltViewModel()
         )
+    }
+
+    composable(
+        route = Routes.WHAT_I_NEED,
+        arguments = listOf(navArgument(WhatINeedViewModel.WEEK_START_ARG) { type = NavType.LongType })
+    ) {
+        WhatINeedScreen(onBack = { navController.popBackStack() })
     }
 
     composable(Routes.MEAL_TYPES) {

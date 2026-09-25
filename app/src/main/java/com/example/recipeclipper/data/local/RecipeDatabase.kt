@@ -9,11 +9,13 @@ import com.example.recipeclipper.data.local.dao.BackupDao
 import com.example.recipeclipper.data.local.dao.GroceryDao
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.MealPlanDao
+import com.example.recipeclipper.data.local.dao.PantryDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MealTypeEntity
+import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.local.entity.newUid
@@ -22,9 +24,10 @@ import com.example.recipeclipper.data.model.MealType
 @Database(
     entities = [
         RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class,
-        MealTypeEntity::class, MealPlanEntryEntity::class, GroceryItemEntity::class
+        MealTypeEntity::class, MealPlanEntryEntity::class, GroceryItemEntity::class,
+        PantryItemEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -35,6 +38,7 @@ abstract class RecipeDatabase : RoomDatabase() {
     abstract fun backupDao(): BackupDao
     abstract fun mealPlanDao(): MealPlanDao
     abstract fun groceryDao(): GroceryDao
+    abstract fun pantryDao(): PantryDao
 
     companion object {
         const val NAME = "recipe_clipper.db"
@@ -248,10 +252,29 @@ abstract class RecipeDatabase : RoomDatabase() {
             "CREATE INDEX IF NOT EXISTS `index_grocery_items_recipeId` ON `grocery_items` (`recipeId`)"
         )
 
+        /**
+         * The pantry (#51): `pantry_items`, a new table, so nothing existing changes. Each row
+         * has a stable `uid` and an `updatedAt`, for export and a later sync (#53). The same SQL
+         * is iOS's `addPantry`.
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                PANTRY_SQL.forEach(db::execSQL)
+            }
+        }
+
+        private val PANTRY_SQL = listOf(
+            "CREATE TABLE IF NOT EXISTS `pantry_items` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`name` TEXT NOT NULL, `quantity` TEXT, `language` TEXT, `aisle` TEXT NOT NULL, " +
+                "`inStock` INTEGER NOT NULL, `alwaysHave` INTEGER NOT NULL, `purchasedDay` INTEGER, " +
+                "`expiresDay` INTEGER, `updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_pantry_items_uid` ON `pantry_items` (`uid`)"
+        )
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-            MIGRATION_7_8, MIGRATION_8_9
+            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10
         )
     }
 }

@@ -18,6 +18,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.fake.FakeGroceryRepository
+import com.example.recipeclipper.fake.FakePantryRepository
+import com.example.recipeclipper.fake.FakePlanCalendar
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -36,7 +38,7 @@ class GroceriesScreenTest {
 
     private fun show(vararg lines: String) {
         runBlocking { repository.add(lines.map { NewGroceryLine(it, "en") }) }
-        val viewModel = GroceriesViewModel(repository)
+        val viewModel = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
         compose.setContent { GroceriesScreen(viewModel = viewModel) }
     }
 

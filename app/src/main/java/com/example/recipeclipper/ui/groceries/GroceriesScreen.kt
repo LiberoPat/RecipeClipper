@@ -99,6 +99,23 @@ fun GroceriesScreen(viewModel: GroceriesViewModel = hiltViewModel()) {
         if (result == SnackbarResult.ActionPerformed) viewModel.onUndoRemove() else viewModel.onSnackbarDismissed()
     }
 
+    val offer = state.pantryOffer
+    val offerMessage = when (offer) {
+        is PantryOffer.Restocked -> stringResource(R.string.snackbar_pantry_restocked, offer.name)
+        is PantryOffer.Offer -> stringResource(R.string.snackbar_offer_pantry, offer.name)
+        null -> null
+    }
+    val offerAction = stringResource(if (offer is PantryOffer.Offer) R.string.action_add_to_pantry else R.string.action_undo)
+    LaunchedEffect(offer) {
+        val message = offerMessage ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(message, actionLabel = offerAction, withDismissAction = false)
+        when {
+            result != SnackbarResult.ActionPerformed -> viewModel.onPantryOfferDismissed()
+            offer is PantryOffer.Offer -> viewModel.onAddToPantry()
+            else -> viewModel.onUndoRestock()
+        }
+    }
+
     RecipeClipperTheme {
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },

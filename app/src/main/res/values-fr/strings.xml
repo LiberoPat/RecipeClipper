@@ -181,8 +181,6 @@
     <string name="tab_week">Semaine</string>
     <string name="tab_groceries">Courses</string>
     <string name="tab_pantry">Garde-manger</string>
-    <string name="coming_soon">Bientôt disponible</string>
-    <string name="pantry_placeholder">Ce que vous avez déjà, pour n’acheter que ce dont vous avez besoin.</string>
     <string name="share_serves">Portions : %1$d</string>
     <string name="share_makes">Quantité : %1$d</string>
     <string name="share_scaled">%1$s (à l\'origine %2$d)</string>

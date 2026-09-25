@@ -8,6 +8,8 @@ import com.example.recipeclipper.data.model.PlannedIngredients
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeGroceryRepository
+import com.example.recipeclipper.fake.FakePantryRepository
+import com.example.recipeclipper.fake.FakePlanCalendar
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -35,7 +37,7 @@ class GroceriesViewModelTest {
     @Test
     fun `the list is grouped by aisle and the same ingredient is added up`() = runTest(mainDispatcherRule.dispatcher) {
         add("200 g flour", "2 onions", "100 g flour")
-        val vm = GroceriesViewModel(repository)
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
         advanceUntilIdle()
 
         val sections = vm.uiState.value.sections!!
@@ -48,7 +50,7 @@ class GroceriesViewModelTest {
         val default = Locale.getDefault()
         Locale.setDefault(Locale.ENGLISH)
         try {
-            val vm = GroceriesViewModel(repository)
+            val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
             vm.onDraftChange("  milk ")
             vm.onAddTyped()
             advanceUntilIdle()
@@ -69,7 +71,7 @@ class GroceriesViewModelTest {
             val default = Locale.getDefault()
             Locale.setDefault(Locale.GERMAN)
             try {
-                val vm = GroceriesViewModel(repository)
+                val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
                 vm.onDraftChange("Milch")
                 vm.onAddTyped()
                 advanceUntilIdle()
@@ -82,7 +84,7 @@ class GroceriesViewModelTest {
     @Test
     fun `ticking a combined row ticks every line in it`() = runTest(mainDispatcherRule.dispatcher) {
         add("200 g flour", "100 g flour")
-        val vm = GroceriesViewModel(repository)
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
         advanceUntilIdle()
 
         vm.onToggle(vm.rows().single())
@@ -98,7 +100,7 @@ class GroceriesViewModelTest {
     @Test
     fun `moving a row to another aisle keeps it there`() = runTest(mainDispatcherRule.dispatcher) {
         add("1 jar pickles")
-        val vm = GroceriesViewModel(repository)
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
         advanceUntilIdle()
         assertEquals(Aisle.OTHER, vm.uiState.value.sections!!.single().aisle)
 
@@ -113,7 +115,7 @@ class GroceriesViewModelTest {
     @Test
     fun `a delete can be undone`() = runTest(mainDispatcherRule.dispatcher) {
         add("2 onions", "1 cup milk")
-        val vm = GroceriesViewModel(repository)
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
         advanceUntilIdle()
 
         val onions = vm.rows().first()
@@ -131,7 +133,7 @@ class GroceriesViewModelTest {
     @Test
     fun `clear checked removes only the ticked items, and can be undone`() = runTest(mainDispatcherRule.dispatcher) {
         add("2 onions", "1 cup milk")
-        val vm = GroceriesViewModel(repository)
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
         advanceUntilIdle()
         repository.setChecked(listOf(repository.items.value.first().id), true)
         advanceUntilIdle()
@@ -149,7 +151,7 @@ class GroceriesViewModelTest {
     @Test
     fun `a dismissed snackbar keeps the delete`() = runTest(mainDispatcherRule.dispatcher) {
         add("2 onions")
-        val vm = GroceriesViewModel(repository)
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
         advanceUntilIdle()
         vm.onDelete(vm.rows().single(), "2 onions")
         advanceUntilIdle()
@@ -162,7 +164,7 @@ class GroceriesViewModelTest {
 
     @Test
     fun `the shared text is what is left to buy`() = runTest(mainDispatcherRule.dispatcher) {
-        val vm = GroceriesViewModel(repository)
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
         advanceUntilIdle()
         assertNull(vm.shareText("Groceries") { it.key })
 
@@ -183,7 +185,7 @@ class AddToGroceriesViewModelTest {
 
     @Test
     fun `a recipe's lines are all ticked, and headings and blanks are left out`() = runTest(mainDispatcherRule.dispatcher) {
-        val vm = AddToGroceriesViewModel(repository, FakeAppPreferences())
+        val vm = AddToGroceriesViewModel(repository, FakeAppPreferences(), FakePantryRepository())
         vm.setRecipe(7, "Pancakes", "en", listOf("For the batter:", "2 cups flour", "", "2 eggs"))
 
         val source = vm.uiState.value.sources!!.single()
@@ -193,7 +195,7 @@ class AddToGroceriesViewModelTest {
 
     @Test
     fun `only the ticked lines are added, with their recipe`() = runTest(mainDispatcherRule.dispatcher) {
-        val vm = AddToGroceriesViewModel(repository, FakeAppPreferences())
+        val vm = AddToGroceriesViewModel(repository, FakeAppPreferences(), FakePantryRepository())
         vm.setRecipe(7, "Pancakes", "en", listOf("2 cups flour", "2 eggs", "1 cup milk"))
         vm.onToggle(SourceLine("recipe-7", 1))
         vm.onAdd()
@@ -206,7 +208,7 @@ class AddToGroceriesViewModelTest {
 
     @Test
     fun `nothing ticked adds nothing`() = runTest(mainDispatcherRule.dispatcher) {
-        val vm = AddToGroceriesViewModel(repository, FakeAppPreferences())
+        val vm = AddToGroceriesViewModel(repository, FakeAppPreferences(), FakePantryRepository())
         vm.setRecipe(7, "Toast", "en", listOf("1 slice bread"))
         vm.onToggle(SourceLine("recipe-7", 0))
         vm.onAdd()
@@ -226,7 +228,7 @@ class AddToGroceriesViewModelTest {
                 PlannedIngredients(3, day = 110, servings = null, recipeId = 5, title = "Next week",
                     ingredients = listOf("1 onion"), yield = null, language = "en")
             )
-            val vm = AddToGroceriesViewModel(repository, FakeAppPreferences(unitSystem = UnitSystem.METRIC))
+            val vm = AddToGroceriesViewModel(repository, FakeAppPreferences(unitSystem = UnitSystem.METRIC), FakePantryRepository())
             vm.loadWeek(100)
             assertNull(vm.uiState.value.sources)
             advanceUntilIdle()

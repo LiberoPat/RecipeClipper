@@ -18,6 +18,7 @@ import com.example.recipeclipper.data.model.PlannedIngredients
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
+import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.DINNER
 import com.example.recipeclipper.fake.FakePlanCalendar
@@ -46,7 +47,7 @@ class WeekScreenTest {
 
     private fun show() {
         val viewModel = WeekViewModel(plan, recipes, FakePlanCalendar())
-        val groceriesViewModel = AddToGroceriesViewModel(groceries, FakeAppPreferences())
+        val groceriesViewModel = AddToGroceriesViewModel(groceries, FakeAppPreferences(), FakePantryRepository())
         compose.setContent {
             WeekScreen(
                 onOpenRecipe = { id, servings -> opened = id to servings },
