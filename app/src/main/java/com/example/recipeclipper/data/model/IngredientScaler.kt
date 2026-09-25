@@ -130,7 +130,8 @@ object IngredientScaler {
 
         /** The amount is a measure (it has a unit), not a count: "2 cups", "¾ de taza". */
         val unitAtStart = Regex(
-            """^\s*${SharedTables.alternation(words.strings("amounts", "unitPrefixes"))}?${units.plain}""",
+            // Wrapped, since iOS's ICU rejects a quantifier straight after "(?!)" (no prefixes).
+            """^\s*(?:${SharedTables.alternation(words.strings("amounts", "unitPrefixes"))})?${units.plain}""",
             RegexOption.IGNORE_CASE
         )
 

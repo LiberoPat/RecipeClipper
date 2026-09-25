@@ -157,7 +157,8 @@ enum IngredientScaler {
                 ignoreCase: true
             )
             unitAtStart = JRegex(
-                #"^\s*"# + SharedTables.alternation(words.strings("amounts", "unitPrefixes")) + "?" + units.plain,
+                // Wrapped, since ICU rejects a quantifier straight after "(?!)" (no prefixes).
+                #"^\s*(?:"# + SharedTables.alternation(words.strings("amounts", "unitPrefixes")) + ")?" + units.plain,
                 ignoreCase: true
             )
             joined = JRegex(
