@@ -108,10 +108,10 @@ class RecipeUITestCase: XCTestCase {
         return element
     }
 
-    /// Waits for `element` to go away.
+    /// Waits for `element` to go away. `waitForNonExistence` rather than an NSPredicate
+    /// expectation, which only re-checks about once a second.
     func requireGone(_ element: XCUIElement, _ what: String = "", file: StaticString = #filePath, line: UInt = #line) {
-        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
-        if XCTWaiter.wait(for: [gone], timeout: timeout) != .completed {
+        if !element.waitForNonExistence(timeout: timeout) {
             print(app.debugDescription)
             XCTFail("Still present: \(what.isEmpty ? element.description : what)", file: file, line: line)
         }

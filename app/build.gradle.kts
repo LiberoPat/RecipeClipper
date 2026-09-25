@@ -99,14 +99,26 @@ android {
     // migration and is really a missing file.
     sourceSets.getByName("androidTest").assets.directories += "$projectDir/schemas"
 
-    // The hand-written fakes live in the JVM test source set, and the Compose UI tests want
-    // the same ones: a screen test drives a real ViewModel over a fake repository, so the
-    // behaviour under test is the actual wiring rather than a stub of it. Sharing the one
-    // directory beats keeping two copies of FakeRecipeRepository in step. Only `fake/` is
-    // shared — the JVM-only helpers next to it (MainDispatcherRule, collectEagerly) depend on
+    // The hand-written fakes live in the JVM test source set, and the device tests that remain
+    // (ClipScreenTest's real WebView) want the same ones. Sharing the one directory beats
+    // keeping two copies of FakeRecipeRepository in step. Only `fake/` is shared — the
+    // JVM-only helpers next to it (MainDispatcherRule, collectEagerly) depend on
     // kotlinx-coroutines-test and have no business on a device.
     // (`kotlin`, not `java`: built-in Kotlin compiles only the kotlin source directories.)
     sourceSets.getByName("androidTest").kotlin.directories += "src/test/java/com/example/recipeclipper/fake"
+
+    // The Compose screen tests and the Room DAO tests run on the JVM under Robolectric (#91):
+    // they need the merged manifest (ui-test-manifest's empty Activity) and the app's
+    // resources. The SDK Robolectric emulates is pinned in src/test/resources/robolectric.properties.
+    testOptions.unitTests.isIncludeAndroidResources = true
+    // JDK 25 (Android Studio's JBR, and CI's) closes the internals Robolectric reaches into for
+    // file descriptors; without these every Robolectric test dies before it starts.
+    testOptions.unitTests.all {
+        it.jvmArgs(
+            "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+            "--add-opens=java.base/java.io=ALL-UNNAMED"
+        )
+    }
 
     // Fixtures both platforms test against (the iOS tests copy the same folder into their
     // bundle): the export file format is proven interchangeable by reading the same files.
@@ -160,6 +172,15 @@ dependencies {
     // viewModelScope posts to Dispatchers.Main, which doesn't exist on the JVM; this lets a
     // test install a StandardTestDispatcher/UnconfinedTestDispatcher in its place.
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+
+    // Robolectric (#91): the Compose screen tests and the Room DAO tests run in
+    // testDebugUnitTest, on the JVM, with the same AndroidX test APIs as on a device.
+    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("androidx.test.ext:junit:1.3.0")
+    testImplementation("androidx.test:core-ktx:1.7.0")
+    testImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
 
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")

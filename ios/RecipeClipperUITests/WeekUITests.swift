@@ -30,11 +30,16 @@ final class WeekUITests: RecipeUITestCase {
         let meal = require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch, "the planned meal")
         XCTAssertTrue(meal.label.contains("Miso Soup"))
 
+        // Undo is tapped as soon as the four-second snackbar shows (see GroceriesUITests).
         meal.press(forDuration: 1.0)
         require(app.buttons["Remove from plan"], "the long-press menu").tap()
-        requireGone(meal, "the removed meal")
         require(app.buttons["Undo"], "the snackbar").tap()
-        require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch, "the meal, back")
+        let back = require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch, "the meal, back")
+
+        // Without Undo, the removal stands.
+        back.press(forDuration: 1.0)
+        require(app.buttons["Remove from plan"], "the long-press menu").tap()
+        requireGone(back, "the removed meal")
     }
 
     func testAddToPlanFromTheRecipeMenu() {

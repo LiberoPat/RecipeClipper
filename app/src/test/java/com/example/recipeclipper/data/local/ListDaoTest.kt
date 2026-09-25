@@ -20,7 +20,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * List membership against real SQLite, for the same reason [RecipeDaoTest] runs on a device:
+ * List membership against real SQLite, for the same reason as [RecipeDaoTest]:
  * these rules are SQL — the built-in ordering, the derived counts, the cascade, and the
  * `isBuiltIn = 0` guard on delete — and a fake would only re-test the fake.
  */
