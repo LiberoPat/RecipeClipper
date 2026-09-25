@@ -57,6 +57,9 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
@@ -284,6 +287,8 @@ private fun CheckLine(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(role = Role.Checkbox, onClick = onToggle, onLongClick = { menuOpen = true })
+                // A long-press as well as a tap, so not `toggleable`; the state is still announced.
+                .semantics { toggleableState = ToggleableState(checked) }
                 .padding(vertical = 6.dp)
                 .testTag(tag)
         ) {
