@@ -482,12 +482,53 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Reusable weekly menus (#52): two new tables, so nothing existing changes. A version-10
+     * database with a recipe planned for a day keeps both, and a week saved as a menu can be
+     * applied to the next week, which adds the meal there.
+     */
+    @Test
+    fun migration10To11AddsMenusAndKeepsEverythingElse() {
+        helper.createDatabase(name, 10).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[]', NULL,
+                   'recipe-uid', 'en', NULL, NULL, 'PARSED', NULL)
+                """.trimIndent()
+            )
+            db.execSQL(
+                "INSERT INTO meal_plan_entries (day, mealTypeId, recipeId, servings, note, sortOrder, updatedAt, uid) " +
+                    "SELECT 20000, id, 7, 2, NULL, 0, 1, 'plan-uid' FROM meal_types WHERE builtInKey = 'dinner'"
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 11, true, RecipeDatabase.MIGRATION_10_11)
+
+        val db = openMigrated()
+        runBlocking {
+            assertEquals("Adobo", db.recipeDao().get(7)?.title)
+            assertEquals(listOf(7L), db.mealPlanDao().observeDays(20_000, 20_006).first().map { it.recipeId })
+            assertTrue(db.menuDao().observeMenus().first().isEmpty())
+            db.menuDao().saveWeek("Usual", weekStart = 20_000, now = 2)
+            val menu = db.menuDao().observeMenus().first().single()
+            assertEquals(1, menu.mealCount)
+            assertEquals(1, db.menuDao().apply(menu.id, weekStart = 20_007, now = 3))
+            assertEquals(listOf(2), db.mealPlanDao().observeDays(20_007, 20_013).first().map { it.servings })
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 10, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 11, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
+import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import kotlinx.coroutines.flow.Flow
@@ -64,6 +65,11 @@ internal class InMemoryRecipeDao : RecipeDao() {
     override suspend fun planEntriesFor(recipeId: Long) = emptyList<MealPlanEntryEntity>()
     override suspend fun restorePlanEntry(
         id: Long, day: Long, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
+        sortOrder: Int, updatedAt: Long, uid: String
+    ) {}
+    override suspend fun menuEntriesFor(recipeId: Long) = emptyList<MenuEntryEntity>()
+    override suspend fun restoreMenuEntry(
+        id: Long, menuId: Long, dayOffset: Int, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
         sortOrder: Int, updatedAt: Long, uid: String
     ) {}
 }

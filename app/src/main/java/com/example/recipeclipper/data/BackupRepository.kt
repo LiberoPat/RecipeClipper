@@ -6,6 +6,8 @@ import com.example.recipeclipper.data.backup.BackupGroceryItem
 import com.example.recipeclipper.data.backup.BackupJson
 import com.example.recipeclipper.data.backup.BackupList
 import com.example.recipeclipper.data.backup.BackupMealType
+import com.example.recipeclipper.data.backup.BackupMenu
+import com.example.recipeclipper.data.backup.BackupMenuEntry
 import com.example.recipeclipper.data.backup.BackupMembership
 import com.example.recipeclipper.data.backup.BackupPantryItem
 import com.example.recipeclipper.data.backup.BackupPlanEntry
@@ -54,6 +56,7 @@ class DefaultBackupRepository @Inject constructor(
         val recipeUids = snapshot.recipes.associate { it.id to it.uid }
         val listUids = snapshot.lists.associate { it.id to it.uid }
         val mealTypeUids = snapshot.mealTypes.associate { it.id to it.uid }
+        val menuUids = snapshot.menus.associate { it.id to it.uid }
         val now = clock.now()
         val backup = Backup(
             exportedAt = now,
@@ -103,6 +106,13 @@ class DefaultBackupRepository @Inject constructor(
                 BackupPlanEntry(
                     it.uid, it.day, mealTypeUids[it.mealTypeId], it.recipeId?.let(recipeUids::get),
                     it.servings, it.note, it.sortOrder, it.updatedAt
+                )
+            },
+            menus = snapshot.menus.map { BackupMenu(it.uid, it.name, it.updatedAt) },
+            menuEntries = snapshot.menuEntries.mapNotNull {
+                BackupMenuEntry(
+                    it.uid, menuUids[it.menuId] ?: return@mapNotNull null, it.dayOffset, mealTypeUids[it.mealTypeId],
+                    it.recipeId?.let(recipeUids::get), it.servings, it.note, it.sortOrder, it.updatedAt
                 )
             }
         )

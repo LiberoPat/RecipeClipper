@@ -6,6 +6,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
+import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import kotlinx.coroutines.flow.Flow
@@ -97,21 +98,46 @@ abstract class RecipeDao {
         sortOrder: Int, updatedAt: Long, uid: String
     )
 
+    /** Read before [delete], like [planEntriesFor]: the recipe's meals in saved menus (#52). */
+    @Query("SELECT * FROM menu_entries WHERE recipeId = :recipeId")
+    abstract suspend fun menuEntriesFor(recipeId: Long): List<MenuEntryEntity>
+
+    /** One menu meal back, unless its menu or meal type was deleted meanwhile (see [restorePlanEntry]). */
+    @Query(
+        """
+        INSERT INTO menu_entries (id, menuId, dayOffset, mealTypeId, recipeId, servings, note, sortOrder, updatedAt, uid)
+        SELECT :id, :menuId, :dayOffset, :mealTypeId, :recipeId, :servings, :note, :sortOrder, :updatedAt, :uid
+        WHERE EXISTS (SELECT 1 FROM meal_types WHERE id = :mealTypeId)
+          AND EXISTS (SELECT 1 FROM menus WHERE id = :menuId)
+        """
+    )
+    protected abstract suspend fun restoreMenuEntry(
+        id: Long, menuId: Long, dayOffset: Int, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
+        sortOrder: Int, updatedAt: Long, uid: String
+    )
+
     /**
      * Undoes [delete]: re-inserts [recipe] with its original id — `@Insert` honours a
-     * non-zero primary key — then its [crossRefs] and [planEntries], so restored list
-     * membership and planned meals still point at the right row.
+     * non-zero primary key — then its [crossRefs], [planEntries] and [menuEntries], so restored
+     * list membership, planned meals and menu meals still point at the right row.
      */
     @Transaction
     open suspend fun restore(
         recipe: RecipeEntity,
         crossRefs: List<RecipeListCrossRef>,
-        planEntries: List<MealPlanEntryEntity> = emptyList()
+        planEntries: List<MealPlanEntryEntity> = emptyList(),
+        menuEntries: List<MenuEntryEntity> = emptyList()
     ) {
         insert(recipe)
         if (crossRefs.isNotEmpty()) insertCrossRefs(crossRefs)
         planEntries.forEach {
             restorePlanEntry(it.id, it.day, it.mealTypeId, it.recipeId, it.servings, it.note, it.sortOrder, it.updatedAt, it.uid)
+        }
+        menuEntries.forEach {
+            restoreMenuEntry(
+                it.id, it.menuId, it.dayOffset, it.mealTypeId, it.recipeId, it.servings, it.note, it.sortOrder,
+                it.updatedAt, it.uid
+            )
         }
     }
 
@@ -166,7 +192,8 @@ abstract class RecipeDao {
      * Deletes recipes that are in no list, oldest view first, keeping the [keep] most
      * recently viewed of them. A recipe in any list is never touched, and neither is one
      * planned for [today] or later (#49; an epoch day, see `PlanDays`): both are outside the
-     * cap. A recipe planned only for past days is ordinary history again.
+     * cap. A recipe planned only for past days is ordinary history again. Nor is one in a saved
+     * menu (#52): the menu would lose it.
      *
      * The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL
      * is never true, which would silently stop the cull altogether.
@@ -178,6 +205,7 @@ abstract class RecipeDao {
             WHERE id NOT IN (SELECT recipeId FROM recipe_list_cross_ref)
               AND id NOT IN (SELECT recipeId FROM meal_plan_entries
                              WHERE recipeId IS NOT NULL AND day >= :today)
+              AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
             ORDER BY lastViewedAt DESC, id DESC
             LIMIT -1 OFFSET :keep
         )

@@ -36,3 +36,9 @@ data class PlannedMeal(
     /** The entry's stable uid (#26): what a calendar export (#52) names the event by. */
     val uid: String = ""
 )
+
+/**
+ * A reusable weekly menu (#52): a named copy of a week's meals. [mealCount] is how many meals
+ * applying it adds.
+ */
+data class Menu(val id: Long, val name: String, val mealCount: Int)

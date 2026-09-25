@@ -17,6 +17,8 @@ import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MealTypeEntity
+import com.example.recipeclipper.data.local.entity.MenuEntity
+import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
@@ -29,14 +31,16 @@ data class BackupSnapshot(
     val pantry: List<PantryItemEntity>,
     val groceries: List<GroceryItemEntity>,
     val mealTypes: List<MealTypeEntity>,
-    val mealPlan: List<MealPlanEntryEntity>
+    val mealPlan: List<MealPlanEntryEntity>,
+    val menus: List<MenuEntity> = emptyList(),
+    val menuEntries: List<MenuEntryEntity> = emptyList()
 )
 
 /**
  * Export and import (#26). Import works out a plan with the pure [BackupMerger] from what is
  * here, then writes it, all in one transaction: if any write fails, nothing was imported.
  * Import only ever inserts (recipes, lists, memberships, pantry and grocery items, meal types and
- * planned meals) and fills empty notes; it never
+ * planned meals, menus) and fills empty notes; it never
  * deletes, and it runs no history cull (see [BackupMerger] for how the cap is respected).
  */
 @Dao
@@ -63,11 +67,30 @@ abstract class BackupDao {
     @Query("SELECT * FROM meal_plan_entries ORDER BY day ASC, mealTypeId ASC, sortOrder ASC, id ASC")
     abstract suspend fun allPlanEntries(): List<MealPlanEntryEntity>
 
+    @Query("SELECT * FROM menus ORDER BY id ASC")
+    abstract suspend fun allMenus(): List<MenuEntity>
+
+    @Query("SELECT * FROM menu_entries ORDER BY menuId ASC, dayOffset ASC, mealTypeId ASC, sortOrder ASC, id ASC")
+    abstract suspend fun allMenuEntries(): List<MenuEntryEntity>
+
     @Transaction
     open suspend fun snapshot(): BackupSnapshot =
         BackupSnapshot(
-            allRecipes(), allLists(), allCrossRefs(), allPantry(), allGroceries(), allMealTypes(), allPlanEntries()
+            allRecipes(), allLists(), allCrossRefs(), allPantry(), allGroceries(), allMealTypes(), allPlanEntries(),
+            allMenus(), allMenuEntries()
         )
+
+    @Query("SELECT uid FROM menus")
+    abstract suspend fun existingMenuUids(): List<String>
+
+    @Query("SELECT uid FROM menu_entries")
+    abstract suspend fun existingMenuEntryUids(): List<String>
+
+    @Insert
+    abstract suspend fun insertMenu(menu: MenuEntity): Long
+
+    @Insert
+    abstract suspend fun insertMenuEntry(entry: MenuEntryEntity): Long
 
     @Query("SELECT id, uid, name, builtInKey FROM meal_types ORDER BY sortOrder ASC, id ASC")
     abstract suspend fun existingMealTypes(): List<ExistingMealType>
@@ -146,7 +169,9 @@ abstract class BackupDao {
             existingMealTypes = existingMealTypes(),
             maxMealTypeSortOrder = maxMealTypeOrder(),
             existingPlanUids = existingPlanUids().toSet(),
-            today = today
+            today = today,
+            existingMenuUids = existingMenuUids().toSet(),
+            existingMenuEntryUids = existingMenuEntryUids().toSet()
         )
 
         val newRecipeIds = HashMap<String, Long>()
@@ -251,6 +276,24 @@ abstract class BackupDao {
                     updatedAt = p.entry.updatedAt
                 )
             )
+        }
+        for (m in plan.newMenus) {
+            val menuId = insertMenu(MenuEntity(uid = m.menu.id, name = m.menu.name, updatedAt = m.menu.updatedAt))
+            for (e in m.entries) {
+                insertMenuEntry(
+                    MenuEntryEntity(
+                        uid = e.entry.id,
+                        menuId = menuId,
+                        dayOffset = e.entry.dayOffset,
+                        mealTypeId = e.mealType.rowId(newTypeIds),
+                        recipeId = e.recipe?.rowId(newRecipeIds),
+                        servings = e.entry.servings,
+                        note = e.entry.note,
+                        sortOrder = e.entry.sortOrder,
+                        updatedAt = e.entry.updatedAt
+                    )
+                )
+            }
         }
         return plan.summary
     }

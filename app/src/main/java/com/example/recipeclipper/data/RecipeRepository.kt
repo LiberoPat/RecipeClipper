@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
+import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.CookProgress
@@ -77,13 +78,14 @@ interface RecipeRepository {
     suspend fun runningTimers(): List<StepAlarm>
 
     /**
-     * What a delete removed: enough for [restore] to undo it, list membership and planned
-     * meals included. Opaque to callers — they hold it and hand it back, nothing more.
+     * What a delete removed: enough for [restore] to undo it, list membership, planned
+     * meals and menu meals included. Opaque to callers — they hold it and hand it back, nothing more.
      */
     data class DeletedRecipe(
         val entity: RecipeEntity,
         val crossRefs: List<RecipeListCrossRef>,
-        val planEntries: List<MealPlanEntryEntity> = emptyList()
+        val planEntries: List<MealPlanEntryEntity> = emptyList(),
+        val menuEntries: List<MenuEntryEntity> = emptyList()
     )
 
     /**

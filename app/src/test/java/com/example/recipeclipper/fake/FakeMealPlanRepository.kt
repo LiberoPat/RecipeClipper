@@ -3,6 +3,7 @@ package com.example.recipeclipper.fake
 import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.Menu
 import com.example.recipeclipper.data.model.PlannedMeal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -94,6 +95,39 @@ class FakeMealPlanRepository : MealPlanRepository {
         val dinner = types.value.first { it.builtInKey == MealType.DINNER }.id
         meals.value = meals.value.map { if (it.mealTypeId == id) it.copy(mealTypeId = dinner) else it }
         types.value = types.value.filterNot { it.id == id }
+    }
+
+    /** A saved menu's meals, as offsets into the week. */
+    data class MenuMeal(val dayOffset: Int, val meal: PlannedMeal)
+
+    val menus = MutableStateFlow<List<Menu>>(emptyList())
+    val menuMeals = mutableMapOf<Long, List<MenuMeal>>()
+
+    override fun observeMenus(): Flow<List<Menu>> = menus
+
+    override suspend fun saveWeekAsMenu(name: String, weekStart: Long): Boolean {
+        val week = meals.value.filter { it.day in weekStart..weekStart + 6 }
+        if (name.isBlank() || week.isEmpty()) return false
+        val id = nextId++
+        menuMeals[id] = week.map { MenuMeal((it.day - weekStart).toInt(), it) }
+        menus.value = (menus.value + Menu(id, name.trim(), week.size)).sortedBy { it.name.lowercase() }
+        return true
+    }
+
+    override suspend fun applyMenu(menuId: Long, weekStart: Long): Int {
+        val added = menuMeals[menuId].orEmpty().map { it.meal.copy(id = nextId++, day = weekStart + it.dayOffset) }
+        meals.value = meals.value + added
+        return added.size
+    }
+
+    override suspend fun renameMenu(id: Long, name: String) {
+        if (name.isBlank()) return
+        menus.value = menus.value.map { if (it.id == id) it.copy(name = name.trim()) else it }
+    }
+
+    override suspend fun deleteMenu(id: Long) {
+        menuMeals.remove(id)
+        menus.value = menus.value.filterNot { it.id == id }
     }
 
     companion object {
