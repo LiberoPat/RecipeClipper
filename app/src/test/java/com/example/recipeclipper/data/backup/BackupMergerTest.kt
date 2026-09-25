@@ -26,6 +26,13 @@ class BackupMergerTest {
         ExistingPantryItem(uid = "x-salt", name = "Salt", language = "en")
     )
     private val hereGroceries = setOf("g-here")
+    private val hereMealTypes = listOf(
+        ExistingMealType(id = 1, uid = "mt-breakfast", name = "Breakfast", builtInKey = "breakfast"),
+        ExistingMealType(id = 4, uid = "mt-dinner", name = "Supper", builtInKey = "dinner"),
+        ExistingMealType(id = 7, uid = "mt-brunch", name = "Brunch", builtInKey = null)
+    )
+    private val herePlan = setOf("m-here")
+    private val today = 20720L
 
     private fun uids(): () -> String {
         var n = 0
@@ -39,8 +46,14 @@ class BackupMergerTest {
         maxSortOrder: Int = 6,
         historyLimit: Int = 2,
         pantry: List<ExistingPantryItem> = herePantry,
-        groceries: Set<String> = hereGroceries
-    ) = BackupMerger.plan(backup, recipes, lists, maxSortOrder, historyLimit, uids(), pantry, groceries)
+        groceries: Set<String> = hereGroceries,
+        mealTypes: List<ExistingMealType> = hereMealTypes,
+        maxMealTypeSortOrder: Int = 4,
+        planUids: Set<String> = herePlan
+    ) = BackupMerger.plan(
+        backup, recipes, lists, maxSortOrder, historyLimit, uids(), pantry, groceries,
+        mealTypes, maxMealTypeSortOrder, planUids, today
+    )
 
     @Test fun `the shared fixture merges into the expected plan`() {
         val plan = plan(decodeOrFail(fixture("backup-v1.json")))
@@ -98,10 +111,32 @@ class BackupMergerTest {
             plan.newGroceries.map { it.item.id to it.recipe }
         )
 
+        // Meal types: the seeded Dinner by key (renamed "Supper" here), " brunch " by name; a
+        // user type called "Dinner" never joins the seeded one, so it and "Tea" are created.
+        assertEquals(
+            listOf(NewMealType("t-fakedinner", "Dinner", 5, 0), NewMealType("t-tea", "Tea", 6, 1789000000000L)),
+            plan.newMealTypes
+        )
+
+        // The plan: the soup's dinner keeps the soup here; the note has no meal type in the file,
+        // so it's Dinner; the pie's (planned through its duplicate) keeps the pie being written.
+        // The stew was skipped for history and r-missing was never in the file: both dropped.
+        // m-here is here already.
+        assertEquals(
+            listOf(
+                Triple("m-soup", e(4), e(1)),
+                Triple("m-note", e(4), null),
+                Triple("m-pie", n("t-fakedinner"), n("r-pie"))
+            ),
+            plan.newPlanEntries.map { Triple(it.entry.id, it.mealType, it.recipe) }
+        )
+        assertEquals(6, plan.newPlanEntries[0].entry.servings)
+        assertEquals("Leftovers", plan.newPlanEntries[1].entry.note)
+
         assertEquals(
             ImportSummary(
                 recipesAdded = 2, listsAdded = 2, recipesAlreadyHere = 2, recipesSkipped = 1,
-                pantryAdded = 1, groceriesAdded = 4
+                pantryAdded = 1, groceriesAdded = 4, mealsAdded = 3, mealTypesAdded = 2
             ),
             plan.summary
         )
@@ -119,7 +154,14 @@ class BackupMergerTest {
         val pantry = herePantry + first.newPantry.map { ExistingPantryItem(it.id, it.name, it.language) }
         val groceries = hereGroceries + first.newGroceries.map { it.item.id }
 
-        val second = plan(backup, recipes = recipes, lists = lists, maxSortOrder = 8, historyLimit = 50, pantry = pantry, groceries = groceries)
+        var typeId = 200L
+        val mealTypes = hereMealTypes + first.newMealTypes.map { ExistingMealType(typeId++, it.uid, it.name, null) }
+        val planUids = herePlan + first.newPlanEntries.map { it.entry.id }
+
+        val second = plan(
+            backup, recipes = recipes, lists = lists, maxSortOrder = 8, historyLimit = 50, pantry = pantry,
+            groceries = groceries, mealTypes = mealTypes, maxMealTypeSortOrder = 6, planUids = planUids
+        )
 
         assertTrue(second.newRecipes.isEmpty())
         assertTrue(second.newLists.isEmpty())
@@ -128,6 +170,28 @@ class BackupMergerTest {
         assertEquals(0, second.summary.listsAdded)
         assertTrue(second.newPantry.isEmpty())
         assertTrue(second.newGroceries.isEmpty())
+        assertTrue(second.newMealTypes.isEmpty())
+        assertTrue(second.newPlanEntries.isEmpty())
+    }
+
+    @Test fun `a recipe planned for today or later comes in like a listed one`() {
+        fun recipe(id: String) = BackupRecipe(
+            id, "https://example.com/$id", "BLOG", id, null, listOf("1 egg"), listOf("Cook."),
+            null, null, null, null, lastViewedAt = 5, checkedIngredients = emptySet(), notes = null
+        )
+        fun entry(id: String, day: Long, recipeId: String) = BackupPlanEntry(id, day, null, recipeId, null, null, 0, 0)
+        val backup = Backup(
+            0, listOf(recipe("r-today"), recipe("r-past")), emptyList(), emptyList(),
+            mealPlan = listOf(entry("m-today", today, "r-today"), entry("m-past", today - 1, "r-past"))
+        )
+        // No free place in history: the recipe planned for today still comes in; the past one doesn't.
+        val plan = plan(backup, recipes = emptyList(), historyLimit = 0)
+        assertEquals(listOf("r-today"), plan.newRecipes.map { it.id })
+        assertEquals(1, plan.summary.recipesSkipped)
+        assertEquals(
+            listOf(Triple("m-today", Target.Existing(4) as Target, Target.New("r-today") as Target?)),
+            plan.newPlanEntries.map { Triple(it.entry.id, it.mealType, it.recipe) }
+        )
     }
 
     @Test fun `a pantry name here in another language is a different item`() {

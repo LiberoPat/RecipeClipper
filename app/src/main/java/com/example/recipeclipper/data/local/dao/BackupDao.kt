@@ -8,12 +8,15 @@ import androidx.room.Transaction
 import com.example.recipeclipper.data.backup.Backup
 import com.example.recipeclipper.data.backup.BackupMerger
 import com.example.recipeclipper.data.backup.ExistingList
+import com.example.recipeclipper.data.backup.ExistingMealType
 import com.example.recipeclipper.data.backup.ExistingPantryItem
 import com.example.recipeclipper.data.backup.ExistingRecipe
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.backup.Target
 import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
+import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
+import com.example.recipeclipper.data.local.entity.MealTypeEntity
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
@@ -24,13 +27,16 @@ data class BackupSnapshot(
     val lists: List<ListEntity>,
     val crossRefs: List<RecipeListCrossRef>,
     val pantry: List<PantryItemEntity>,
-    val groceries: List<GroceryItemEntity>
+    val groceries: List<GroceryItemEntity>,
+    val mealTypes: List<MealTypeEntity>,
+    val mealPlan: List<MealPlanEntryEntity>
 )
 
 /**
  * Export and import (#26). Import works out a plan with the pure [BackupMerger] from what is
  * here, then writes it, all in one transaction: if any write fails, nothing was imported.
- * Import only ever inserts (recipes, lists, memberships, pantry and grocery items) and fills empty notes; it never
+ * Import only ever inserts (recipes, lists, memberships, pantry and grocery items, meal types and
+ * planned meals) and fills empty notes; it never
  * deletes, and it runs no history cull (see [BackupMerger] for how the cap is respected).
  */
 @Dao
@@ -51,9 +57,35 @@ abstract class BackupDao {
     @Query("SELECT * FROM grocery_items ORDER BY listId ASC, sortOrder ASC, id ASC")
     abstract suspend fun allGroceries(): List<GroceryItemEntity>
 
+    @Query("SELECT * FROM meal_types ORDER BY sortOrder ASC, id ASC")
+    abstract suspend fun allMealTypes(): List<MealTypeEntity>
+
+    @Query("SELECT * FROM meal_plan_entries ORDER BY day ASC, mealTypeId ASC, sortOrder ASC, id ASC")
+    abstract suspend fun allPlanEntries(): List<MealPlanEntryEntity>
+
     @Transaction
     open suspend fun snapshot(): BackupSnapshot =
-        BackupSnapshot(allRecipes(), allLists(), allCrossRefs(), allPantry(), allGroceries())
+        BackupSnapshot(
+            allRecipes(), allLists(), allCrossRefs(), allPantry(), allGroceries(), allMealTypes(), allPlanEntries()
+        )
+
+    @Query("SELECT id, uid, name, builtInKey FROM meal_types ORDER BY sortOrder ASC, id ASC")
+    abstract suspend fun existingMealTypes(): List<ExistingMealType>
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM meal_types")
+    abstract suspend fun maxMealTypeOrder(): Int
+
+    @Query("SELECT uid FROM meal_plan_entries")
+    abstract suspend fun existingPlanUids(): List<String>
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM meal_plan_entries WHERE day = :day AND mealTypeId = :mealTypeId")
+    abstract suspend fun nextPlanOrder(day: Long, mealTypeId: Long): Int
+
+    @Insert
+    abstract suspend fun insertMealType(type: MealTypeEntity): Long
+
+    @Insert
+    abstract suspend fun insertPlanEntry(entry: MealPlanEntryEntity): Long
 
     @Query("SELECT uid, name, language FROM pantry_items")
     abstract suspend fun existingPantry(): List<ExistingPantryItem>
@@ -101,7 +133,7 @@ abstract class BackupDao {
     abstract suspend fun fillNote(id: Long, notes: String)
 
     @Transaction
-    open suspend fun importBackup(backup: Backup, historyLimit: Int, newUid: () -> String): ImportSummary {
+    open suspend fun importBackup(backup: Backup, historyLimit: Int, today: Long?, newUid: () -> String): ImportSummary {
         val plan = BackupMerger.plan(
             backup = backup,
             existingRecipes = existingRecipes(),
@@ -110,7 +142,11 @@ abstract class BackupDao {
             historyLimit = historyLimit,
             newUid = newUid,
             existingPantry = existingPantry(),
-            existingGroceryUids = existingGroceryUids().toSet()
+            existingGroceryUids = existingGroceryUids().toSet(),
+            existingMealTypes = existingMealTypes(),
+            maxMealTypeSortOrder = maxMealTypeOrder(),
+            existingPlanUids = existingPlanUids().toSet(),
+            today = today
         )
 
         val newRecipeIds = HashMap<String, Long>()
@@ -191,6 +227,28 @@ abstract class BackupDao {
                     recipeId = g.recipe?.rowId(newRecipeIds),
                     plannedDay = g.item.plannedDay,
                     updatedAt = g.item.updatedAt
+                )
+            )
+        }
+
+        val newTypeIds = HashMap<String, Long>()
+        for (t in plan.newMealTypes) {
+            newTypeIds[t.uid] = insertMealType(
+                MealTypeEntity(uid = t.uid, name = t.name, builtInKey = null, sortOrder = t.sortOrder, updatedAt = t.updatedAt)
+            )
+        }
+        for (p in plan.newPlanEntries) {
+            val mealTypeId = p.mealType.rowId(newTypeIds)
+            insertPlanEntry(
+                MealPlanEntryEntity(
+                    uid = p.entry.id,
+                    day = p.entry.day,
+                    mealTypeId = mealTypeId,
+                    recipeId = p.recipe?.rowId(newRecipeIds),
+                    servings = p.entry.servings,
+                    note = p.entry.note,
+                    sortOrder = nextPlanOrder(p.entry.day, mealTypeId),
+                    updatedAt = p.entry.updatedAt
                 )
             )
         }

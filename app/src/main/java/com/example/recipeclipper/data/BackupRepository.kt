@@ -5,13 +5,16 @@ import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupGroceryItem
 import com.example.recipeclipper.data.backup.BackupJson
 import com.example.recipeclipper.data.backup.BackupList
+import com.example.recipeclipper.data.backup.BackupMealType
 import com.example.recipeclipper.data.backup.BackupMembership
 import com.example.recipeclipper.data.backup.BackupPantryItem
+import com.example.recipeclipper.data.backup.BackupPlanEntry
 import com.example.recipeclipper.data.backup.BackupRecipe
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ExportedBackup
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.local.dao.BackupDao
+import com.example.recipeclipper.data.model.PlanDays
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -50,6 +53,7 @@ class DefaultBackupRepository @Inject constructor(
             ?: return BackupResult.Failure(BackupError.ExportFailed)
         val recipeUids = snapshot.recipes.associate { it.id to it.uid }
         val listUids = snapshot.lists.associate { it.id to it.uid }
+        val mealTypeUids = snapshot.mealTypes.associate { it.id to it.uid }
         val now = clock.now()
         val backup = Backup(
             exportedAt = now,
@@ -93,6 +97,13 @@ class DefaultBackupRepository @Inject constructor(
                     it.uid, it.text, it.language, it.aisle, it.checked, it.recipeId?.let(recipeUids::get),
                     it.plannedDay, it.updatedAt
                 )
+            },
+            mealTypes = snapshot.mealTypes.map { BackupMealType(it.uid, it.name, it.builtInKey, it.sortOrder, it.updatedAt) },
+            mealPlan = snapshot.mealPlan.map {
+                BackupPlanEntry(
+                    it.uid, it.day, mealTypeUids[it.mealTypeId], it.recipeId?.let(recipeUids::get),
+                    it.servings, it.note, it.sortOrder, it.updatedAt
+                )
             }
         )
         return BackupResult.Success(ExportedBackup(BackupJson.encode(backup), now, backup.recipes.size))
@@ -104,7 +115,7 @@ class DefaultBackupRepository @Inject constructor(
             is BackupResult.Failure -> return decoded
         }
         val summary = log.guard("import", null) {
-            backupDao.importBackup(backup, HISTORY_LIMIT) { UUID.randomUUID().toString() }
+            backupDao.importBackup(backup, HISTORY_LIMIT, PlanDays.today(clock.now())) { UUID.randomUUID().toString() }
         } ?: return BackupResult.Failure(BackupError.SaveFailed)
         return BackupResult.Success(summary)
     }

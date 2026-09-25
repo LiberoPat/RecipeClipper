@@ -92,12 +92,38 @@ class BackupJsonTest {
         )
         assertEquals(true, backup.groceries[1].checked)
         assertNull(backup.groceries[3].recipeId) // names no recipe in the file: none
+
+        // The meal plan (#49): meal types and entries, later sections too.
+        assertEquals(listOf("t-dinner", "t-brunch", "t-fakedinner", "t-tea"), backup.mealTypes.map { it.id })
+        assertEquals(BackupMealType("t-dinner", "Dinner", "dinner", 2, 1), backup.mealTypes[0])
+        assertEquals(BackupMealType("t-fakedinner", "Dinner", null, 5, 0), backup.mealTypes[2])
+        assertEquals(listOf("m-soup", "m-old", "m-note", "m-pie", "m-missing", "m-here"), backup.mealPlan.map { it.id })
+        assertEquals(BackupPlanEntry("m-soup", 20720, "t-dinner", "r-soup", 6, null, 0, 1789000000000L), backup.mealPlan[0])
+        assertEquals(BackupPlanEntry("m-note", 20721, null, null, null, "Leftovers", 1, 3), backup.mealPlan[2])
+        assertNull(backup.mealPlan[4].recipeId) // names no recipe in the file: none
     }
 
     @Test fun `a file without pantry or groceries reads them as empty`() {
         val backup = decodeOrFail("""{"format": "recipe-clipper-backup", "formatVersion": 1}""")
         assertTrue(backup.pantry.isEmpty())
         assertTrue(backup.groceries.isEmpty())
+        assertTrue(backup.mealTypes.isEmpty())
+        assertTrue(backup.mealPlan.isEmpty())
+    }
+
+    @Test fun `a planned meal needs a day, a meal type a name, and ids are unique`() {
+        assertEquals(
+            BackupError.Malformed("mealPlan[0].day"),
+            error("""{"format": "recipe-clipper-backup", "formatVersion": 1, "mealPlan": [{"id": "m", "note": "x"}]}""")
+        )
+        assertEquals(
+            BackupError.Malformed("mealTypes[0].name"),
+            error("""{"format": "recipe-clipper-backup", "formatVersion": 1, "mealTypes": [{"id": "t", "name": ""}]}""")
+        )
+        assertEquals(
+            BackupError.Malformed("mealPlan[1].id"),
+            error("""{"format": "recipe-clipper-backup", "formatVersion": 1, "mealPlan": [{"id": "m", "day": 1}, {"id": "m", "day": 2}]}""")
+        )
     }
 
     @Test fun `a pantry item needs a name, and ids are unique`() {
