@@ -17,6 +17,10 @@ object IngredientName {
         val leadingWords = words.strings("names", "leadingWords").toSet()
         val trailingWords = words.strings("names", "trailingWords").toSet()
         val conjunctions = words.strings("names", "conjunctions").toSet()
+        // The words that may come before a shorter name and still mean it ("unsalted" butter),
+        // longest first, so "extra virgin" is tried before "extra".
+        val matchModifiers = (words.strings("names", "matchModifiers") + words.strings("names", "leadingWords"))
+            .distinct().sortedByDescending { it.length }
 
         // " for dusting", " to taste": the name ends before the first one.
         val cut = Regex(
@@ -70,16 +74,33 @@ object IngredientName {
     }
 
     /**
-     * True when [a] and [b] name the same ingredient by the density table's rule: the longer
-     * ends with the shorter at a word boundary, so "unsalted butter" matches "butter" and
-     * "butter beans" doesn't. Either may be a name from [of] or one a person typed.
+     * True when [a] and [b] name the same ingredient (#51): they're equal, or the longer ends
+     * with the shorter at a word boundary and every word before it is a plain modifier (the
+     * names table's `matchModifiers` or `leadingWords`). So "unsalted butter" matches "butter",
+     * while "rice flour", "butter beans" and "peanut butter" don't match "flour" or "butter", in
+     * either direction: a word the table doesn't know makes a different ingredient, and the
+     * line is Buy. Either may be a name from [of] or one a person typed.
      */
     fun matches(a: String, b: String, words: LanguageWords = LanguageWords.ENGLISH): Boolean {
         val x = IngredientDensities.headPhrase(a, words)
         val y = IngredientDensities.headPhrase(b, words)
         if (x.isEmpty() || y.isEmpty()) return false
-        return if (x.length >= y.length) IngredientDensities.endsWithName(x, y, words.spaced)
-        else IngredientDensities.endsWithName(y, x, words.spaced)
+        val (longer, shorter) = if (x.length >= y.length) x to y else y to x
+        if (!IngredientDensities.endsWithName(longer, shorter, words.spaced)) return false
+        return onlyModifiers(longer.substring(0, longer.length - shorter.length).trim(), words)
+    }
+
+    /** True when [text] is nothing but match modifiers, one after another. */
+    private fun onlyModifiers(text: String, words: LanguageWords): Boolean {
+        val modifiers = words(words).matchModifiers
+        var rest = text
+        while (rest.isNotEmpty()) {
+            val modifier = modifiers.firstOrNull {
+                rest == it || rest.startsWith(if (words.spaced) "$it " else it)
+            } ?: return false
+            rest = rest.substring(modifier.length).trim()
+        }
+        return true
     }
 
     /** Drops "large", "cloves", "pinch of": sizes, containers and cuts before the name. */

@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupJson
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ExistingList
+import com.example.recipeclipper.data.backup.ExistingMealType
 import com.example.recipeclipper.data.backup.ExistingPantryItem
 import com.example.recipeclipper.data.backup.ExistingRecipe
 import com.example.recipeclipper.data.backup.ExportedBackup
@@ -12,6 +13,8 @@ import com.example.recipeclipper.data.backup.fixture
 import com.example.recipeclipper.data.local.dao.BackupDao
 import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
+import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
+import com.example.recipeclipper.data.local.entity.MealTypeEntity
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
@@ -86,6 +89,28 @@ class DefaultBackupRepositoryTest {
             groceries += item.copy(id = id)
             return id
         }
+
+        val mealTypes = mutableListOf<MealTypeEntity>()
+        val plan = mutableListOf<MealPlanEntryEntity>()
+        override suspend fun allMealTypes() = mealTypes.sortedWith(compareBy<MealTypeEntity> { it.sortOrder }.thenBy { it.id })
+        override suspend fun allPlanEntries() = plan.toList()
+        override suspend fun existingMealTypes() = allMealTypes().map { ExistingMealType(it.id, it.uid, it.name, it.builtInKey) }
+        override suspend fun maxMealTypeOrder() = mealTypes.maxOfOrNull { it.sortOrder } ?: -1
+        override suspend fun existingPlanUids() = plan.map { it.uid }
+        override suspend fun nextPlanOrder(day: Long, mealTypeId: Long) =
+            (plan.filter { it.day == day && it.mealTypeId == mealTypeId }.maxOfOrNull { it.sortOrder } ?: -1) + 1
+        override suspend fun insertMealType(type: MealTypeEntity): Long {
+            writes++
+            val id = nextId++
+            mealTypes += type.copy(id = id)
+            return id
+        }
+        override suspend fun insertPlanEntry(entry: MealPlanEntryEntity): Long {
+            writes++
+            val id = nextId++
+            plan += entry.copy(id = id)
+            return id
+        }
     }
 
     private class RecordingLog : ErrorLog {
@@ -115,6 +140,11 @@ class DefaultBackupRepositoryTest {
         refs += RecipeListCrossRef(2, 1, addedAt = 1)
         groceries += GroceryItemEntity(id = 7, text = "bread", language = "en", aisle = "bakery", sortOrder = 4,
             recipeId = null, plannedDay = null, updatedAt = 0, uid = "g-here")
+        mealTypes += MealTypeEntity(id = 1, name = "Breakfast", builtInKey = "breakfast", sortOrder = 0, updatedAt = 0, uid = "mt-breakfast")
+        mealTypes += MealTypeEntity(id = 3, name = "Supper", builtInKey = "dinner", sortOrder = 2, updatedAt = 0, uid = "mt-dinner")
+        mealTypes += MealTypeEntity(id = 7, name = "Brunch", builtInKey = null, sortOrder = 4, updatedAt = 0, uid = "mt-brunch")
+        plan += MealPlanEntryEntity(id = 9, day = 20720, mealTypeId = 3, recipeId = 1, servings = null, note = null,
+            sortOrder = 0, updatedAt = 0, uid = "m-here")
     }
 
     private val clock = Clock { 1_790_000_000_000L }
@@ -128,10 +158,30 @@ class DefaultBackupRepositoryTest {
             BackupResult.Success(
                 ImportSummary(
                     recipesAdded = 3, listsAdded = 2, recipesAlreadyHere = 2, recipesSkipped = 0,
-                    pantryAdded = 3, groceriesAdded = 4
+                    pantryAdded = 3, groceriesAdded = 4, mealsAdded = 4, mealTypesAdded = 2
                 )
             ),
             result
+        )
+        // The plan (#49): at the end of each day and meal type, on the right rows. With room in
+        // history the stew comes in, so its meal does too; r-missing's is dropped, m-here is here.
+        val tea = dao.mealTypes.single { it.uid == "t-tea" }
+        val fakeDinner = dao.mealTypes.single { it.uid == "t-fakedinner" }
+        assertEquals(listOf("Tea", "Dinner"), listOf(tea.name, fakeDinner.name))
+        assertEquals(listOf(6, 5), listOf(tea.sortOrder, fakeDinner.sortOrder))
+        assertTrue(dao.mealTypes.none { it.builtInKey == null && it.uid == "t-dinner" })
+        val meals = dao.plan.filter { it.uid != "m-here" }
+        assertEquals(listOf("m-soup", "m-old", "m-note", "m-pie"), meals.map { it.uid })
+        assertEquals(
+            MealPlanEntryEntity(id = meals[0].id, day = 20720, mealTypeId = 3, recipeId = 1, servings = 6, note = null,
+                sortOrder = 1, updatedAt = 1789000000000, uid = "m-soup"),
+            meals[0]
+        )
+        assertEquals(listOf(tea.id, dao.recipes.single { it.uid == "r-old" }.id), listOf(meals[1].mealTypeId, meals[1].recipeId))
+        assertEquals(listOf(3L, null, "Leftovers"), listOf(meals[2].mealTypeId, meals[2].recipeId, meals[2].note))
+        assertEquals(
+            listOf<Any?>(fakeDinner.id, dao.recipes.single { it.uid == "r-pie" }.id, 4),
+            listOf<Any?>(meals[3].mealTypeId, meals[3].recipeId, meals[3].servings)
         )
         // Pantry and groceries (#51): the rows as the file had them, groceries after the list's
         // own and pointing at the right recipe rows.
@@ -217,6 +267,11 @@ class DefaultBackupRepositoryTest {
         assertEquals(1, backup.memberships.size)
         assertEquals("e-bread", backup.memberships[0].recipeId)
         assertEquals("l-fav", backup.memberships[0].listId)
+        assertEquals(listOf("mt-breakfast", "mt-dinner", "mt-brunch"), backup.mealTypes.map { it.id })
+        assertEquals("dinner", backup.mealTypes[1].builtInKey)
+        assertEquals(listOf("m-here"), backup.mealPlan.map { it.id })
+        assertEquals("mt-dinner", backup.mealPlan[0].mealTypeId)
+        assertEquals("e-soup", backup.mealPlan[0].recipeId)
 
         // Into the same phone: everything is already here.
         val again = DefaultBackupRepository(dao, clock, RecordingLog()).import(exported.json)

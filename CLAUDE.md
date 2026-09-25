@@ -243,7 +243,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   servings, or a note), "+ Add" per day (a meal type, then a recipe from
   history or the typed text as a note). Long-press: Move (the day strip and
   meal types) or Remove (undo snackbar). A tapped recipe opens at its
-  planned servings, for that visit only. "Meal types" from the Week menu:
+  planned servings, for that visit only. "Month" beside the title swaps in
+  a month grid (locale weeks, a dot on planned days; a tapped day opens its
+  week) (#52). "Meal types" from the Week menu:
   add, rename, reorder any, delete the user's own. "Add to plan" (recipe
   menu, first item, flag on only): this week's and next week's days, a meal
   type (Dinner first), servings (the yield first), one button.
@@ -342,7 +344,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   and `expiresDay` (epoch days). **Have/Buy is presence only**
   (`PantryMatch`): a line is Have when `IngredientName.of(line)` matches an
   in-stock item by `IngredientName.matches`, in the same language; staples
-  are never Buy; a line with no name is always Buy. Never "enough".
+  are never Buy; a line with no name is always Buy. Never "enough". Names
+  match only if equal or differing by plain modifiers (`names.json`
+  `matchModifiers`/`leadingWords`): "rice flour" is never "flour", either way.
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
   needs a migration (as `MIGRATION_1_2` did).
@@ -374,7 +378,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Favorites by `isFavorites`, other lists by uid then trimmed
   case-insensitive name; unlisted recipes only fill free history slots;
   pantry items by uid then name and language (what's here stands); grocery
-  items by uid. The plan (#49) isn't in the file yet.
+  items by uid; meal types by `builtInKey`, else uid, else user-type name;
+  planned meals by uid, a recipe's only if its recipe is here after the import.
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. History search ignores notes. Cook

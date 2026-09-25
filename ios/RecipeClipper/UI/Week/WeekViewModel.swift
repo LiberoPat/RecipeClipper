@@ -32,6 +32,24 @@ struct RemovedMeal: Equatable {
     let label: String
 }
 
+/// One cell of the month grid: `inMonth` is false for the days that fill the first and last rows.
+struct MonthDay: Equatable, Identifiable {
+    let day: Int64
+    let inMonth: Bool
+    let mealCount: Int
+    var id: Int64 { day }
+}
+
+/// The month view (#52): `days` is whole weeks from the locale's first day (see
+/// `PlanDays.monthGrid`), empty until the plan has loaded.
+struct MonthUiState: Equatable {
+    var monthStart: Int64
+    var thisMonthStart: Int64
+    var days: [MonthDay] = []
+
+    var isThisMonth: Bool { monthStart == thisMonthStart }
+}
+
 /// `days` is empty until the plan has loaded. `removed` names the meal just removed, for the
 /// undo snackbar.
 struct WeekUiState: Equatable {
@@ -43,6 +61,10 @@ struct WeekUiState: Equatable {
     var adding: AddToDayState?
     var moving: MoveState?
     var removed: RemovedMeal?
+    /// The month view, or nil while the week is shown.
+    var month: MonthUiState?
+    /// A day the week view scrolls to once, after a tap in the month view.
+    var focusDay: Int64?
 
     var isThisWeek: Bool { weekStart == thisWeekStart }
 }
@@ -62,6 +84,7 @@ final class WeekViewModel {
     @ObservationIgnored private let calendar: PlanCalendar
     @ObservationIgnored private let sleep: Sleep
     @ObservationIgnored private var daysSubscription: AnyCancellable?
+    @ObservationIgnored private var monthSubscription: AnyCancellable?
     @ObservationIgnored private var typesSubscription: AnyCancellable?
     @ObservationIgnored private var searchSubscription: AnyCancellable?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
@@ -95,6 +118,68 @@ final class WeekViewModel {
         uiState.thisWeekStart = start
         showWeek(start)
     }
+
+    // MARK: Month view (#52)
+
+    /// Shows the month of the week shown: today's month for this week, else the month holding
+    /// most of the week (its fourth day).
+    func onShowMonth() {
+        let today = calendar.today()
+        let first = PlanDays.monthStart(uiState.isThisWeek ? today : uiState.weekStart + 3)
+        uiState.today = today
+        uiState.month = MonthUiState(monthStart: first, thisMonthStart: PlanDays.monthStart(today))
+        showMonth(first)
+    }
+
+    /// Back to the week view, on the week that was shown.
+    func onShowWeek() {
+        monthSubscription = nil
+        uiState.month = nil
+    }
+
+    func onPreviousMonth() {
+        if let month = uiState.month { showMonth(PlanDays.addMonths(month.monthStart, -1)) }
+    }
+
+    func onNextMonth() {
+        if let month = uiState.month { showMonth(PlanDays.addMonths(month.monthStart, 1)) }
+    }
+
+    /// Back to the month holding today, which may have changed since the view opened.
+    func onThisMonth() {
+        let today = calendar.today()
+        uiState.today = today
+        uiState.month?.thisMonthStart = PlanDays.monthStart(today)
+        showMonth(PlanDays.monthStart(today))
+    }
+
+    private func showMonth(_ first: Int64) {
+        guard uiState.month != nil else { return }
+        uiState.month?.monthStart = first
+        uiState.month?.days = []
+        let grid = PlanDays.monthGrid(first, firstDayOfWeek: calendar.firstDayOfWeek())
+        let next = PlanDays.addMonths(first, 1)
+        monthSubscription = plan.observeDays(start: grid[0], end: grid[grid.count - 1])
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] meals in
+                guard let self, self.uiState.month?.monthStart == first else { return }
+                let counts = Dictionary(grouping: meals, by: \.day).mapValues(\.count)
+                self.uiState.month?.days = grid.map {
+                    MonthDay(day: $0, inMonth: $0 >= first && $0 < next, mealCount: counts[$0] ?? 0)
+                }
+            }
+    }
+
+    /// A day in the month grid: back to the week view, on that day's week, scrolled to it.
+    func onMonthDaySelected(_ day: Int64) {
+        onShowWeek()
+        uiState.focusDay = day
+        let start = PlanDays.weekStart(day, firstDayOfWeek: calendar.firstDayOfWeek())
+        if start != uiState.weekStart { showWeek(start) }
+    }
+
+    /// The week view has scrolled to `focusDay`.
+    func onFocusHandled() { uiState.focusDay = nil }
 
     private func showWeek(_ start: Int64) {
         uiState.weekStart = start

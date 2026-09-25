@@ -183,7 +183,7 @@ rest in `GroceryDaoTests` (with the user_version 7 → 8 step),
 The pantry (#51) adds `MIGRATION_9_10` (one new table) to `MigrationTest`, from a
 real version-9 file holding a recipe and a grocery item, and `PantryDaoTest`:
 restock and running out, edits, a delete restored whole, unique uids.
-`BackupDaoTest` round-trips the pantry and the grocery list through an export.
+`BackupDaoTest` round-trips the pantry, the grocery list and the meal plan (with a user's meal type) through an export; iOS's `BackupDaoTests` do the same.
 `PantryScreenTest`, `WhatINeedScreenTest` and the updated `AppShellTest` cover
 the screens; the whole device suite passes on the agents' emulator
 (`ClipScreenTest.clipAPageFromSelectionToSave` failed once in a full run and

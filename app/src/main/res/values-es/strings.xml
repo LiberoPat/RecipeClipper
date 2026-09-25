@@ -374,4 +374,10 @@
     <string name="developer_flag_issue">Incidencia #%1$d</string>
     <string name="developer_flag_changed">Cambiado respecto al valor predeterminado</string>
     <string name="developer_reset">Restablecer valores predeterminados</string>
+    <string name="action_month_view">Mes</string>
+    <string name="action_week_view">Semana</string>
+    <string name="action_this_month">Este mes</string>
+    <string name="cd_previous_month">Mes anterior</string>
+    <string name="cd_next_month">Mes siguiente</string>
+    <string name="cd_month_day_planned">%1$s, comidas planificadas</string>
 </resources>

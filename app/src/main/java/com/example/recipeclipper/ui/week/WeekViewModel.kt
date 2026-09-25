@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -49,6 +50,21 @@ data class MoveState(
 /** A meal just removed: its id keeps two removals of the same title apart. */
 data class RemovedMeal(val id: Long, val label: String)
 
+/** One cell of the month grid: [inMonth] is false for the days that fill the first and last rows. */
+data class MonthDay(val day: Long, val inMonth: Boolean, val mealCount: Int)
+
+/**
+ * The month view (#52): [days] is whole weeks from the locale's first day (see
+ * [PlanDays.monthGrid]), empty until the plan has loaded.
+ */
+data class MonthUiState(
+    val monthStart: Long,
+    val thisMonthStart: Long,
+    val days: List<MonthDay> = emptyList()
+) {
+    val isThisMonth: Boolean get() = monthStart == thisMonthStart
+}
+
 /**
  * [days] is empty until the plan has loaded. [removed] names the meal just removed, for the
  * undo snackbar (the recipe title, or the note).
@@ -61,7 +77,11 @@ data class WeekUiState(
     val mealTypes: List<MealType> = emptyList(),
     val adding: AddToDayState? = null,
     val moving: MoveState? = null,
-    val removed: RemovedMeal? = null
+    val removed: RemovedMeal? = null,
+    /** The month view, or null while the week is shown. */
+    val month: MonthUiState? = null,
+    /** A day the week view scrolls to once, after a tap in the month view. */
+    val focusDay: Long? = null
 ) {
     val isThisWeek: Boolean get() = weekStart == thisWeekStart
 }
@@ -83,6 +103,7 @@ class WeekViewModel @Inject constructor(
     val uiState: StateFlow<WeekUiState>
 
     private val weekStart: MutableStateFlow<Long>
+    private val monthStart = MutableStateFlow<Long?>(null)
     private var removedMeal: MealPlanRepository.DeletedMeal? = null
 
     init {
@@ -99,6 +120,27 @@ class WeekViewModel @Inject constructor(
                 val byDay = meals.groupBy { it.day }
                 _uiState.update { state ->
                     state.copy(days = PlanDays.weekDays(first).map { WeekDay(it, byDay[it].orEmpty()) })
+                }
+            }
+        }
+        viewModelScope.launch {
+            monthStart.flatMapLatest { first ->
+                if (first == null) {
+                    flowOf(null)
+                } else {
+                    val grid = PlanDays.monthGrid(first, calendar.firstDayOfWeek())
+                    plan.observeDays(grid.first(), grid.last()).map { meals -> Triple(first, grid, meals) }
+                }
+            }.collect { loaded ->
+                val (first, grid, meals) = loaded ?: return@collect
+                val counts = meals.groupingBy { it.day }.eachCount()
+                val next = PlanDays.addMonths(first, 1)
+                _uiState.update { state ->
+                    state.copy(
+                        month = state.month?.takeIf { it.monthStart == first }?.copy(
+                            days = grid.map { MonthDay(it, inMonth = it in first until next, mealCount = counts[it] ?: 0) }
+                        ) ?: state.month
+                    )
                 }
             }
         }
@@ -131,9 +173,61 @@ class WeekViewModel @Inject constructor(
         showWeek(start)
     }
 
+    // --- Month view (#52)
+
+    /** Shows the month of the week shown: today's month for this week, else the month holding
+     *  most of the week (its fourth day). */
+    fun onShowMonth() {
+        val state = _uiState.value
+        val today = calendar.today()
+        val first = PlanDays.monthStart(if (state.isThisWeek) today else state.weekStart + 3)
+        _uiState.update { it.copy(today = today, month = MonthUiState(first, PlanDays.monthStart(today))) }
+        monthStart.value = first
+    }
+
+    /** Back to the week view, on the week that was shown. */
+    fun onShowWeek() {
+        monthStart.value = null
+        _uiState.update { it.copy(month = null) }
+    }
+
+    fun onPreviousMonth() {
+        _uiState.value.month?.let { showMonth(PlanDays.addMonths(it.monthStart, -1)) }
+    }
+
+    fun onNextMonth() {
+        _uiState.value.month?.let { showMonth(PlanDays.addMonths(it.monthStart, 1)) }
+    }
+
+    /** Back to the month holding today, which may have changed since the view opened. */
+    fun onThisMonth() {
+        val today = calendar.today()
+        _uiState.update { it.copy(today = today, month = it.month?.copy(thisMonthStart = PlanDays.monthStart(today))) }
+        showMonth(PlanDays.monthStart(today))
+    }
+
+    private fun showMonth(first: Long) {
+        _uiState.update { it.copy(month = it.month?.copy(monthStart = first, days = emptyList())) }
+        monthStart.value = first
+    }
+
+    /** A day in the month grid: back to the week view, on that day's week, scrolled to it. */
+    fun onMonthDaySelected(day: Long) {
+        monthStart.value = null
+        _uiState.update { it.copy(month = null, focusDay = day) }
+        showWeek(PlanDays.weekStart(day, calendar.firstDayOfWeek()))
+    }
+
+    /** The week view has scrolled to [WeekUiState.focusDay]. */
+    fun onFocusHandled() = _uiState.update { it.copy(focusDay = null) }
+
     private fun showWeek(start: Long) {
-        weekStart.value = start
+        // The same week again (a day of it tapped in the month view) keeps its loaded days: the
+        // StateFlow wouldn't emit again to refill them.
+        if (start == weekStart.value) return
+        // Clear first: on Main.immediate the new week's days can arrive before this returns.
         _uiState.update { it.copy(weekStart = start, days = emptyList()) }
+        weekStart.value = start
     }
 
     // --- Adding to a day
