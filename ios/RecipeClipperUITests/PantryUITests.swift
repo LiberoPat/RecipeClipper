@@ -11,7 +11,7 @@ final class PantryUITests: RecipeUITestCase {
     }
 
     func testRunningOutSendsAnItemToGroceries() {
-        launch(.empty, extraArguments: ["-mealPlanTabs"])
+        launch(.empty, flags: ["mealPlan"])
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         let field = require(app.textFields["Add to the pantry"], "Add to the pantry")
         field.tap()
@@ -27,7 +27,7 @@ final class PantryUITests: RecipeUITestCase {
     }
 
     func testTickingAGroceryOffOffersThePantry() {
-        launch(.empty, extraArguments: ["-mealPlanTabs"])
+        launch(.empty, flags: ["mealPlan"])
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()

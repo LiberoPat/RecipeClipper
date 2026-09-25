@@ -14,7 +14,7 @@ final class WeekUITests: RecipeUITestCase {
     }
 
     private func openWeek() {
-        launch(.standard, extraArguments: ["-mealPlanTabs"])
+        launch(.standard, flags: ["mealPlan"])
         require(tabBar.buttons["Week"], "the Week tab").tap()
         require(app.staticTexts["weekRange"], "the Week")
     }
@@ -38,7 +38,7 @@ final class WeekUITests: RecipeUITestCase {
     }
 
     func testAddToPlanFromTheRecipeMenu() {
-        launch(.standard, extraArguments: ["-mealPlanTabs"])
+        launch(.standard, flags: ["mealPlan"])
         require(app.staticTexts["Chicken Adobo"], "Continue cooking").tap()
         require(app.buttons["More options"], "the recipe menu").tap()
         require(app.buttons["Add to plan"], "Add to plan").tap()

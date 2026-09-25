@@ -7,6 +7,7 @@ import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ExportedBackup
 import com.example.recipeclipper.data.backup.ImportSummary
+import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeBackupFiles
 import com.example.recipeclipper.fake.FakeBackupRepository
@@ -40,7 +41,7 @@ class SettingsViewModelTest {
             temperatureUnit = TemperatureUnit.CELSIUS,
             darkWhileCooking = true
         )
-        val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles())
+        val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
 
         assertEquals(UnitSystem.METRIC, vm.uiState.value.unitSystem)
         assertTrue(vm.uiState.value.convertLiquids)
@@ -48,8 +49,19 @@ class SettingsViewModelTest {
         assertTrue(vm.uiState.value.darkWhileCooking)
     }
 
-    @Test fun `defaults match AppPreferences defaults`() = runTest(mainDispatcherRule.dispatcher) {
-        val vm = SettingsViewModel(FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles())
+    @Test fun `the version shows and its seventh tap opens Developer settings, then counts again`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val vm = SettingsViewModel(FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo(appVersion = "2.3 (7)"))
+
+            assertEquals("2.3 (7)", vm.uiState.value.appVersion)
+            repeat(SettingsViewModel.DEVELOPER_TAPS - 1) { assertFalse(vm.onVersionTapped()) }
+            assertTrue(vm.onVersionTapped())
+            repeat(SettingsViewModel.DEVELOPER_TAPS - 1) { assertFalse(vm.onVersionTapped()) }
+            assertTrue(vm.onVersionTapped())
+        }
+
+    @Test fun `defaults match AppPreferences defaults`()= runTest(mainDispatcherRule.dispatcher) {
+        val vm = SettingsViewModel(FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
 
         assertEquals(UnitSystem.AS_WRITTEN, vm.uiState.value.unitSystem)
         assertFalse(vm.uiState.value.convertLiquids)
@@ -59,7 +71,7 @@ class SettingsViewModelTest {
 
     @Test fun `onUnitSystemChange writes through and updates state`() = runTest(mainDispatcherRule.dispatcher) {
         val preferences = FakeAppPreferences()
-        val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles())
+        val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
 
         vm.onUnitSystemChange(UnitSystem.METRIC)
 
@@ -69,7 +81,7 @@ class SettingsViewModelTest {
 
     @Test fun `onConvertLiquidsChange writes through and updates state`() = runTest(mainDispatcherRule.dispatcher) {
         val preferences = FakeAppPreferences()
-        val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles())
+        val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
 
         vm.onConvertLiquidsChange(true)
 
@@ -80,7 +92,7 @@ class SettingsViewModelTest {
     @Test fun `onTemperatureUnitChange writes through and updates state independently of unit system`() =
         runTest(mainDispatcherRule.dispatcher) {
             val preferences = FakeAppPreferences()
-            val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles())
+            val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
 
             vm.onTemperatureUnitChange(TemperatureUnit.FAHRENHEIT)
 
@@ -92,7 +104,7 @@ class SettingsViewModelTest {
 
     @Test fun `onDarkWhileCookingChange writes through and updates state`() = runTest(mainDispatcherRule.dispatcher) {
         val preferences = FakeAppPreferences()
-        val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles())
+        val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
 
         vm.onDarkWhileCookingChange(true)
 
@@ -103,7 +115,7 @@ class SettingsViewModelTest {
     @Test fun `a change written elsewhere while Settings is open reaches its state`() =
         runTest(mainDispatcherRule.dispatcher) {
             val preferences = FakeAppPreferences()
-            val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles())
+            val vm = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
             advanceUntilIdle()
 
             // e.g. the recipe screen's units dropdown, with Settings on the back stack
@@ -117,21 +129,21 @@ class SettingsViewModelTest {
 
     @Test fun `a setter's write echoing back through settings leaves the state as set`() =
         runTest(mainDispatcherRule.dispatcher) {
-            val vm = SettingsViewModel(FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles())
+            val vm = SettingsViewModel(FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
             advanceUntilIdle()
 
             vm.onUnitSystemChange(UnitSystem.METRIC)
             vm.onConvertLiquidsChange(true)
             advanceUntilIdle()
 
-            assertEquals(SettingsUiState(unitSystem = UnitSystem.METRIC, convertLiquids = true), vm.uiState.value)
+            assertEquals(SettingsUiState(unitSystem = UnitSystem.METRIC, convertLiquids = true, appVersion = "1.0 (1)"), vm.uiState.value)
         }
 
     // --- Your recipes: export and import (#26)
 
     private val backups = FakeBackupRepository()
     private val files = FakeBackupFiles()
-    private fun backupVm() = SettingsViewModel(FakeAppPreferences(), backups, files)
+    private fun backupVm() = SettingsViewModel(FakeAppPreferences(), backups, files, FakeAppInfo())
 
     @Test fun `export writes the file and hands its uri to the screen to share`() = runTest(mainDispatcherRule.dispatcher) {
         backups.exportResult = BackupResult.Success(ExportedBackup("{\"x\":1}", exportedAt = 42L, recipeCount = 3))
@@ -219,7 +231,7 @@ class SettingsViewModelTest {
         val gate = CompletableDeferred<Unit>()
         backups.importGate = gate
         val preferences = FakeAppPreferences()
-        val vm = SettingsViewModel(preferences, backups, files)
+        val vm = SettingsViewModel(preferences, backups, files, FakeAppInfo())
 
         vm.onImportPicked("content://picked")
         advanceUntilIdle()

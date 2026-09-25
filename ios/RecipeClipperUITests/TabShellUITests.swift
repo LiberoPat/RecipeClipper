@@ -1,14 +1,14 @@
 import XCTest
 
-/// The tab shell (#47) in both states of `FeatureFlags.mealPlanTabs`. Off is the shipped state:
-/// no tab bar, the single stack. On is forced with the debug-only `-mealPlanTabs` argument.
+/// The tab shell (#47) in both states of the `mealPlan` flag. Off is the shipped state:
+/// no tab bar, the single stack. On is set through the flag store (`launch(flags:)`, #87).
 final class TabShellUITests: RecipeUITestCase {
 
     private var tabBar: XCUIElement { app.tabBars.firstMatch }
     private func tab(_ label: String) -> XCUIElement { tabBar.buttons[label] }
 
     private func launchWithTabs(_ scenario: Scenario = .standard) {
-        launch(scenario, extraArguments: ["-mealPlanTabs"])
+        launch(scenario, flags: ["mealPlan"])
         require(tabBar, "the tab bar")
     }
 
@@ -36,6 +36,22 @@ final class TabShellUITests: RecipeUITestCase {
         share("https://example.com/no-recipe")
 
         require(textContaining("Couldn't find recipe data"), "the import")
+    }
+
+    /// Developer settings (#87): seven taps on the version open it, and turning the flag on
+    /// brings the tab bar at once, with no relaunch.
+    func testDeveloperSettingsTurnsTheTabsOnWithoutARestart() {
+        launch(.standard)
+        openSettings()
+        let version = app.descendants(matching: .any)["settings.version"]
+        for _ in 0..<7 { require(version, "the version").tap() }
+        require(text("Developer settings"), "Developer settings")
+
+        require(app.switches.firstMatch, "the mealPlan switch").tap()
+
+        require(tabBar, "the tab bar, once the flag is on")
+        require(app.buttons["developer.reset"], "Reset").tap()
+        requireGone(tabBar, "the tab bar, once reset")
     }
 
     // MARK: - Flag on

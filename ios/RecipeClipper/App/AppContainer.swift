@@ -17,6 +17,8 @@ final class AppContainer {
     let backupFiles: BackupFiles
     let appInfo: AppInfo
     let alarms: TimerAlarmScheduler
+    /// The feature flags (#87), read by the root view and Developer settings.
+    let featureFlags: FeatureFlags
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -40,7 +42,8 @@ final class AppContainer {
         appInfo: AppInfo = BundleAppInfo(),
         alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler(),
         clipFixtureHTML: String? = nil,
-        sharedDatabase: AppDatabase? = nil
+        sharedDatabase: AppDatabase? = nil,
+        featureFlags: FeatureFlags? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -57,6 +60,8 @@ final class AppContainer {
         self.alarms = alarms
         self.clipFixtureHTML = clipFixtureHTML
         self.sharedDatabase = sharedDatabase
+        // Unless given a store, overrides last only for this run (unit tests).
+        self.featureFlags = featureFlags ?? FeatureFlags(store: MemoryFeatureFlagStore())
     }
 
     /// Called when the app comes to the foreground. The share extension saves recipes into the
@@ -99,7 +104,8 @@ final class AppContainer {
             // Under XCTest nothing is scheduled, so a test run never raises the notification
             // prompt (UI-test seeding above takes the default, which is the same no-op).
             alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock),
-            sharedDatabase: testing ? nil : database
+            sharedDatabase: testing ? nil : database,
+            featureFlags: testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore())
         )
     }
 
@@ -164,7 +170,13 @@ final class AppContainer {
     }
 
     func makeSettingsViewModel() -> SettingsViewModel {
-        SettingsViewModel(preferences: preferences, backups: backupRepository, files: backupFiles)
+        SettingsViewModel(
+            preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion
+        )
+    }
+
+    func makeDeveloperSettingsViewModel() -> DeveloperSettingsViewModel {
+        DeveloperSettingsViewModel(flags: featureFlags)
     }
 
     func makeListsViewModel() -> ListsViewModel {

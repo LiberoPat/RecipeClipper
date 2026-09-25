@@ -9,6 +9,9 @@ struct SettingsUiState: Equatable {
     var temperatureUnit: TemperatureUnit = .asWritten
     var darkWhileCooking = false
     var backup: BackupStatus = .idle
+    /// e.g. "1.0 (1)", shown at the foot; tapping it `SettingsViewModel.developerTaps` times opens
+    /// Developer settings (#87).
+    var appVersion = ""
 }
 
 /// The "Your recipes" section: export and import (#26). One at a time; the screen shows the
@@ -42,12 +45,18 @@ final class SettingsViewModel {
     @ObservationIgnored private let backups: BackupRepository
     @ObservationIgnored private let files: BackupFiles
     @ObservationIgnored private var settingsSubscription: AnyCancellable?
+    @ObservationIgnored private let appVersion: String
+    @ObservationIgnored private var versionTaps = 0
 
-    init(preferences: AppPreferences, backups: BackupRepository, files: BackupFiles) {
+    static let developerTaps = 7
+
+    init(preferences: AppPreferences, backups: BackupRepository, files: BackupFiles, appVersion: String = "") {
         self.preferences = preferences
         self.backups = backups
         self.files = files
+        self.appVersion = appVersion
         uiState = Self.uiState(preferences.current)
+        uiState.appVersion = appVersion
         settingsSubscription = preferences.settings
             .receive(on: DispatchQueue.main)
             .sink { [weak self] settings in
@@ -55,6 +64,7 @@ final class SettingsViewModel {
                 // The backup status is this screen's own: a preference change keeps it.
                 var next = Self.uiState(settings)
                 next.backup = self.uiState.backup
+                next.appVersion = self.appVersion
                 self.uiState = next
             }
     }
@@ -66,6 +76,15 @@ final class SettingsViewModel {
             temperatureUnit: settings.temperatureUnit,
             darkWhileCooking: settings.darkWhileCooking
         )
+    }
+
+    /// The hidden way into Developer settings (#87), in release builds too (the owner's call):
+    /// true on the `developerTaps`th tap, when the screen opens it, and the count starts over.
+    func onVersionTapped() -> Bool {
+        versionTaps += 1
+        guard versionTaps >= Self.developerTaps else { return false }
+        versionTaps = 0
+        return true
     }
 
     func onUnitSystemChange(_ system: UnitSystem) {

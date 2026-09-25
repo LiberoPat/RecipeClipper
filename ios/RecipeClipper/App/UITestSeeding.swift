@@ -7,7 +7,9 @@ import Foundation
 ///   - an in-memory database, seeded per scenario before the first screen draws;
 ///   - a stub RecipeSource, so any import resolves offline to one canned recipe;
 ///   - a throwaway UserDefaults suite, wiped at launch unless `-uiTestKeepPrefs` is also passed
-///     (which is how a test proves a setting survives a relaunch).
+///     (which is how a test proves a setting survives a relaunch);
+///   - feature flags (#87) in their own throwaway suite, wiped likewise, then overridden on
+///     through the store for each key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`).
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -18,6 +20,8 @@ enum UITestSeeding {
     static let flag = "-uiTestSeed"
     static let keepPrefsFlag = "-uiTestKeepPrefs"
     static let defaultsSuite = "RecipeClipperUITests"
+    static let flagsFlag = "-uiTestFlags"
+    static let flagsSuite = "RecipeClipperUITestsFlags"
 
     /// The title every import resolves to under test.
     static let stubRecipeTitle = "Stub Chicken Soup"
@@ -46,6 +50,14 @@ enum UITestSeeding {
         if !arguments.contains(keepPrefsFlag) {
             defaults.removePersistentDomain(forName: defaultsSuite)
         }
+        let flagStore = UserDefaultsFeatureFlagStore(suiteName: flagsSuite)
+        if !arguments.contains(keepPrefsFlag) { flagStore.clear() }
+        let flags = FeatureFlags(store: flagStore)
+        if let index = arguments.firstIndex(of: flagsFlag), index + 1 < arguments.count {
+            for key in arguments[index + 1].split(separator: ",") {
+                if let flag = Flag(rawValue: String(key)) { flags.set(flag, true) }
+            }
+        }
         return AppContainer(
             recipeRepository: DefaultRecipeRepository(db: database, source: StubRecipeSource(), clock: clock),
             listRepository: DefaultListRepository(db: database, clock: clock),
@@ -55,7 +67,8 @@ enum UITestSeeding {
             backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
-            clipFixtureHTML: clipFixtureHTML
+            clipFixtureHTML: clipFixtureHTML,
+            featureFlags: flags
         )
     }
 

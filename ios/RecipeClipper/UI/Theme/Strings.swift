@@ -277,6 +277,14 @@ enum Strings {
     static var settingsSectionUnits: String { String(localized: "settings_section_units") }
     static var settingsSectionOvenTemperature: String { String(localized: "settings_section_oven_temperature") }
     static var settingsSectionAppearance: String { String(localized: "settings_section_appearance") }
+    static func settingsVersion(_ version: String) -> String { String(localized: "settings_version \(version)") }
+
+    // Developer settings (#87): hidden, 7 taps on the version in Settings
+    static var developerSettingsTitle: String { String(localized: "developer_settings_title") }
+    static var developerSettingsIntro: String { String(localized: "developer_settings_intro") }
+    static func developerFlagIssue(_ n: Int) -> String { String(localized: "developer_flag_issue \(n)") }
+    static var developerFlagChanged: String { String(localized: "developer_flag_changed") }
+    static var developerReset: String { String(localized: "developer_reset") }
 
     static func temperatureLabel(_ unit: TemperatureUnit) -> String {
         switch unit {
@@ -338,7 +346,7 @@ enum Strings {
     // Step timer notifications (#10)
     static func timerNotificationTitle(step: Int) -> String { String(localized: "timer_notification_title \(step)") }
 
-    // Bottom tabs (#47), behind FeatureFlags.mealPlanTabs, off until #49
+    // Bottom tabs (#47), behind the mealPlan flag (#87)
     static var tabRecipes: String { String(localized: "tab_recipes") }
     static var tabWeek: String { String(localized: "tab_week") }
     static var tabGroceries: String { String(localized: "tab_groceries") }

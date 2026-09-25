@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.BackupFiles
 import com.example.recipeclipper.data.BackupRepository
 import com.example.recipeclipper.data.backup.BackupError
@@ -30,7 +31,10 @@ data class SettingsUiState(
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
-    val backup: BackupStatus = BackupStatus.Idle
+    val backup: BackupStatus = BackupStatus.Idle,
+    /** e.g. "1.0 (1)", shown at the foot; tapping it [SettingsViewModel.DEVELOPER_TAPS] times
+     *  opens Developer settings (#87). */
+    val appVersion: String = ""
 )
 
 /**
@@ -64,7 +68,8 @@ sealed class BackupStatus {
 class SettingsViewModel @Inject constructor(
     private val preferences: AppPreferences,
     private val backups: BackupRepository,
-    private val files: BackupFiles
+    private val files: BackupFiles,
+    private val appInfo: AppInfo
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
@@ -80,7 +85,21 @@ class SettingsViewModel @Inject constructor(
 
     /** The preferences' part of the state; [backup] is this screen's own and carries over. */
     private fun AppSettings.toUiState(backup: BackupStatus = BackupStatus.Idle) =
-        SettingsUiState(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, backup)
+        SettingsUiState(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, backup, appInfo.appVersion)
+
+    // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.
+    private var versionTaps = 0
+
+    /**
+     * The hidden way into Developer settings (#87), in release builds too (the owner's call):
+     * true on the [DEVELOPER_TAPS]th tap, when the screen opens it, and the count starts over.
+     */
+    fun onVersionTapped(): Boolean {
+        versionTaps++
+        if (versionTaps < DEVELOPER_TAPS) return false
+        versionTaps = 0
+        return true
+    }
 
     fun onUnitSystemChange(system: UnitSystem) {
         preferences.unitSystem = system
@@ -139,5 +158,9 @@ class SettingsViewModel @Inject constructor(
             }
             _uiState.update { it.copy(backup = status) }
         }
+    }
+
+    companion object {
+        const val DEVELOPER_TAPS = 7
     }
 }

@@ -10,6 +10,8 @@ enum Route: Hashable {
     case importUrl(String)
     case history
     case settings
+    /// Hidden: seven taps on the version in Settings (#87; Android's `settings/developer`).
+    case developerSettings
     case lists
     case listDetail(id: Int64)
     /// Edit a recipe (#29), or with no id type a new one in (Android's `edit?recipeId=`).

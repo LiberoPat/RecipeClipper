@@ -31,7 +31,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navigation
-import com.example.recipeclipper.BuildConfig
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
@@ -59,7 +58,7 @@ enum class Tab(
  * full screen, so a recipe still opens on the recipe.
  */
 private val tabBarRoutes = setOf(
-    Routes.HOME, Routes.HISTORY, Routes.SETTINGS, Routes.LISTS, Routes.LIST_DETAIL,
+    Routes.HOME, Routes.HISTORY, Routes.SETTINGS, Routes.DEVELOPER_SETTINGS, Routes.LISTS, Routes.LIST_DETAIL,
     Routes.WEEK, Routes.MEAL_TYPES, Routes.WHAT_I_NEED, Routes.GROCERIES, Routes.PANTRY
 )
 
@@ -89,14 +88,14 @@ fun NavHostController.selectTab(tab: Tab) {
  * MainActivity's queue) always lands in Recipes: switch to that tab if another is open, then
  * navigate on top of whatever the Recipes stack held.
  */
-fun NavHostController.openRoute(route: String, tabsEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS) {
+fun NavHostController.openRoute(route: String, tabsEnabled: Boolean) {
     if (tabsEnabled && currentDestination.tab() != Tab.RECIPES) selectTab(Tab.RECIPES)
     navigate(route)
 }
 
 /**
- * The app's root. With [tabsEnabled] off (the default until #49 ships, from
- * `BuildConfig.MEAL_PLAN_TABS`) it is [RecipeNavHost] alone, exactly the app as it was before
+ * The app's root. With [tabsEnabled] off (the `mealPlan` flag, #87, off by default until the
+ * meal plan ships) it is [RecipeNavHost] alone, exactly the app as it was before
  * the shell. On, the same Recipes graph sits under the first tab of a bottom bar.
  *
  * [recipes] is the Recipes graph, [week] the Week tab's (#49), [groceries] the Groceries
@@ -105,7 +104,7 @@ fun NavHostController.openRoute(route: String, tabsEnabled: Boolean = BuildConfi
 @Composable
 fun AppShell(
     navController: NavHostController,
-    tabsEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS,
+    tabsEnabled: Boolean,
     recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) },
     week: NavGraphBuilder.(NavHostController) -> Unit = { weekDestinations(it) },
     groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations() },

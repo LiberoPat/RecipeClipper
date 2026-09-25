@@ -270,7 +270,7 @@
     <string name="delete_list_body">The list is removed. The recipes in it stay in your history.</string>
     <string name="action_delete_list">Delete list</string>
 
-    <!-- Bottom tabs (#47), behind BuildConfig.MEAL_PLAN_TABS, off until #49 -->
+    <!-- Bottom tabs (#47), behind the mealPlan flag (#87) -->
     <string name="tab_recipes">Recipes</string>
     <string name="tab_week">Week</string>
     <string name="tab_groceries">Groceries</string>
@@ -400,4 +400,11 @@
     <string name="snackbar_offer_pantry">Got %1$s. Add it to the pantry?</string>
     <string name="snackbar_pantry_restocked">%1$s is back in stock in the pantry</string>
     <string name="what_i_need_line_source" translatable="false">%1$s · %2$s</string>
+    <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
+    <string name="settings_version">Version %1$s</string>
+    <string name="developer_settings_title">Developer settings</string>
+    <string name="developer_settings_intro">Features still being built. Changes apply at once; one that changes the app\'s navigation takes you back to Home.</string>
+    <string name="developer_flag_issue">Issue #%1$d</string>
+    <string name="developer_flag_changed">Changed from the default</string>
+    <string name="developer_reset">Reset to defaults</string>
 </resources>

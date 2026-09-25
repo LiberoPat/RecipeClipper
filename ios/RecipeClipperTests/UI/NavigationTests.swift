@@ -77,7 +77,7 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(router.path, [.recipe(id: 3), .importUrl("https://example.com/soup")])
     }
 
-    // MARK: - Tabs (#47, behind FeatureFlags.mealPlanTabs)
+    // MARK: - Tabs (#47, behind the mealPlan flag)
 
     /// A share lands in Recipes whichever tab is open, on top of the Recipes stack as it was.
     func testAShareFromAnotherTabSwitchesToRecipes() throws {
@@ -123,6 +123,7 @@ final class NavigationTests: XCTestCase {
 
     func testTheTabsAreInTheOwnersOrderAndTheBarShipsOff() {
         XCTAssertEqual(AppTab.allCases, [.recipes, .week, .groceries, .pantry])
-        XCTAssertFalse(FeatureFlags.mealPlanTabsDefault)
+        XCTAssertEqual(FlagRegistry.definitions.first { $0.key == Flag.mealPlan.rawValue }?.defaults,
+                       FlagDefinition.Defaults(debug: false, release: false))
     }
 }
