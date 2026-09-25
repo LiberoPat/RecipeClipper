@@ -33,8 +33,13 @@ object Routes {
     // The share-target entry: parse, then persist.
     const val IMPORT = "recipe/import?${RecipeViewModel.URL_ARG}={${RecipeViewModel.URL_ARG}}"
 
-    // The placeholder tabs (#47). Only reachable while BuildConfig.MEAL_PLAN_TABS is on.
+    // The tabs (#47). Only reachable while BuildConfig.MEAL_PLAN_TABS is on.
     const val WEEK = "week"
+
+    // The Week tab's own stack (#49): a planned recipe opens at its planned servings.
+    const val WEEK_RECIPE =
+        "week/recipe/{${RecipeViewModel.RECIPE_ID_ARG}}?${RecipeViewModel.SERVINGS_ARG}={${RecipeViewModel.SERVINGS_ARG}}"
+    const val MEAL_TYPES = "week/meal-types"
     const val GROCERIES = "groceries"
     const val PANTRY = "pantry"
 
@@ -42,6 +47,8 @@ object Routes {
     const val EDIT = "edit?${EditRecipeViewModel.RECIPE_ID_ARG}={${EditRecipeViewModel.RECIPE_ID_ARG}}"
 
     fun recipe(id: Long) = "recipe/$id"
+    fun weekRecipe(id: Long, servings: Int?) =
+        "week/recipe/$id" + (servings?.let { "?${RecipeViewModel.SERVINGS_ARG}=$it" } ?: "")
     fun edit(id: Long) = "edit?${EditRecipeViewModel.RECIPE_ID_ARG}=$id"
     const val NEW_RECIPE = "edit"
 

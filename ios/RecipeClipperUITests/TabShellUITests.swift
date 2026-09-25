@@ -50,12 +50,11 @@ final class TabShellUITests: RecipeUITestCase {
         require(app.textFields["Recipe URL"], "Home under Recipes")
     }
 
-    func testTheOtherTabsShowTheirPlaceholders() {
+    func testTheOtherTabsShowTheirScreens() {
         launchWithTabs()
 
         tab("Week").tap()
-        require(text("Plan what you're cooking on each day of the week."))
-        require(text("Coming soon"))
+        require(app.staticTexts["weekRange"], "the Week (#49)")
         tab("Groceries").tap()
         require(text("A shopping list built from the recipes in your week."))
         tab("Pantry").tap()
@@ -87,7 +86,7 @@ final class TabShellUITests: RecipeUITestCase {
         openLists()
 
         tab("Week").tap()
-        require(text("Coming soon"))
+        require(app.staticTexts["weekRange"], "the Week")
         tab("Recipes").tap()
 
         require(app.buttons["+ New list"], "Lists, still open under Recipes")

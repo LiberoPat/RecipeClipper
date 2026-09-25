@@ -92,6 +92,14 @@ struct RecipeDao {
         try db.run("DELETE FROM recipes WHERE id = ?", id)
     }
 
+    /// Read before `delete`, like `crossRefsFor`: the recipe's planned meals cascade with it.
+    func planEntriesFor(_ recipeId: Int64) throws -> [MealPlanEntryRecord] {
+        try db.query(
+            "SELECT \(MealPlanEntryRecord.columns) FROM meal_plan_entries WHERE recipeId = ?",
+            recipeId, map: MealPlanEntryRecord.init(row:)
+        )
+    }
+
     /// Read before `delete` so undo has something to restore.
     func crossRefsFor(_ recipeId: Int64) throws -> [ListMembership] {
         try db.query(
@@ -107,8 +115,11 @@ struct RecipeDao {
     /// iPad) is skipped rather than inserted: its foreign key would fail and roll back the
     /// whole restore, so pressing Undo would lose the recipe for good over a list that no
     /// longer exists.
-    func restore(_ recipe: RecipeRecord, crossRefs: [ListMembership]) throws {
+    func restore(_ recipe: RecipeRecord, crossRefs: [ListMembership], planEntries: [MealPlanEntryRecord] = []) throws {
         try insert(recipe)
+        // Its planned meals too (#49), each skipped if its meal type went meanwhile.
+        let plan = MealPlanDao(db: db)
+        for entry in planEntries { try plan.restore(entry) }
         for ref in crossRefs {
             try db.run(
                 """
@@ -151,19 +162,30 @@ struct RecipeDao {
         )
     }
 
+    /// The `today` that protects no planned recipe from the cull: no day is on or after it.
+    /// The default for callers with no plan in mind; the repository passes today.
+    static let noPlanProtection = Int64.max
+
     /// Deletes recipes that are in no list, oldest view first, keeping the `keep` most recently
-    /// viewed of them. A recipe in any list is never touched.
-    func cullHistory(keep: Int) throws {
+    /// viewed of them. A recipe in any list is never touched, and neither is one planned for
+    /// `today` or later (#49; an epoch day, see `PlanDays`): both are outside the cap. A recipe
+    /// planned only for past days is ordinary history again.
+    ///
+    /// The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL is
+    /// never true, which would silently stop the cull altogether.
+    func cullHistory(keep: Int, today: Int64 = noPlanProtection) throws {
         try db.run(
             """
             DELETE FROM recipes WHERE id IN (
                 SELECT id FROM recipes
                 WHERE id NOT IN (SELECT recipeId FROM recipe_list_cross_ref)
+                  AND id NOT IN (SELECT recipeId FROM meal_plan_entries
+                                 WHERE recipeId IS NOT NULL AND day >= ?2)
                 ORDER BY lastViewedAt DESC, id DESC
-                LIMIT -1 OFFSET ?
+                LIMIT -1 OFFSET ?1
             )
             """,
-            keep
+            keep, today
         )
     }
 
@@ -176,7 +198,10 @@ struct RecipeDao {
     /// A row that is the user's version (#29: `contentOrigin` not PARSED) keeps its content:
     /// the re-share only counts as a view. `replaceUsersVersion` is "Update from source", which
     /// does replace it, and makes it PARSED again (`fresh` is).
-    func upsert(_ fresh: RecipeRecord, historyLimit: Int, replaceUsersVersion: Bool = false) throws -> Int64 {
+    func upsert(
+        _ fresh: RecipeRecord, historyLimit: Int, replaceUsersVersion: Bool = false,
+        today: Int64 = noPlanProtection
+    ) throws -> Int64 {
         let id: Int64
         if let existing = try findByUrl(fresh.sourceUrl) {
             if existing.contentOrigin != Self.originParsed && !replaceUsersVersion {
@@ -190,7 +215,7 @@ struct RecipeDao {
             inserted.id = 0
             id = try insert(inserted)
         }
-        try cullHistory(keep: historyLimit)
+        try cullHistory(keep: historyLimit, today: today)
         return id
     }
 

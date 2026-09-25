@@ -339,15 +339,64 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Version 8 adds the week meal plan (#49): two new tables, the four seeded meal types with
+     * their keys, and nothing existing changes. A recipe from before can be planned at once.
+     */
+    @Test
+    fun migration7To8AddsTheMealPlanAndKeepsEverythingElse() {
+        helper.createDatabase(name, 7).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer for 30 minutes."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[0]', 'Less salt',
+                   'recipe-uid', 'en', NULL, 6, 'EDITED', 99)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 8, true, RecipeDatabase.MIGRATION_7_8)
+
+        val db = openMigrated()
+        runBlocking {
+            val recipe = db.recipeDao().get(7)
+            assertEquals("Adobo", recipe?.title)
+            assertEquals("EDITED", recipe?.contentOrigin)
+            assertEquals(6, recipe?.servingsTarget)
+
+            val types = db.mealPlanDao().observeMealTypes().first()
+            assertEquals(listOf("Breakfast", "Lunch", "Dinner", "Snack"), types.map { it.name })
+            assertEquals(listOf("breakfast", "lunch", "dinner", "snack"), types.map { it.builtInKey })
+            assertEquals(4, types.map { it.uid }.toSet().size)
+
+            val dinner = types.single { it.builtInKey == "dinner" }.id
+            db.mealPlanDao().add(
+                com.example.recipeclipper.data.local.entity.MealPlanEntryEntity(
+                    day = 20_000, mealTypeId = dinner, recipeId = 7, servings = 4, note = null,
+                    sortOrder = 0, updatedAt = 1
+                )
+            )
+            assertEquals(listOf("Adobo"), db.mealPlanDao().observeDays(20_000, 20_006).first().map { it.title })
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 7, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 8, true, *RecipeDatabase.ALL_MIGRATIONS)
 
-        val lists = runBlocking { openMigrated().listDao().observeLists(ListDao.NO_RECIPE).first() }
+        val db = openMigrated()
+        val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }
         assertEquals(listOf("Breakfast", "Snacks"), lists.map { it.name })
+        val types = runBlocking { db.mealPlanDao().observeMealTypes().first() }
+        assertEquals(4, types.size)
     }
 
     /** Opens the migrated file through Room so the DAOs can read it. */

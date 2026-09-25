@@ -98,6 +98,79 @@ struct RecipeRecord: Equatable {
 /// migration's backfill use.
 func newUid() -> String { UUID().uuidString.lowercased() }
 
+/// One row of `meal_types` (#49; Android's `MealTypeEntity`).
+struct MealTypeRecord: Equatable {
+    var id: Int64 = 0
+    var name: String
+    var builtInKey: String?
+    var sortOrder: Int
+    var updatedAt: Int64
+    var uid: String = newUid()
+
+    static let columns = "id, name, builtInKey, sortOrder, updatedAt, uid"
+
+    init(id: Int64 = 0, name: String, builtInKey: String?, sortOrder: Int, updatedAt: Int64, uid: String = newUid()) {
+        self.id = id
+        self.name = name
+        self.builtInKey = builtInKey
+        self.sortOrder = sortOrder
+        self.updatedAt = updatedAt
+        self.uid = uid
+    }
+
+    init(row: SQLiteRow) {
+        id = row.int64(0)
+        name = row.string(1)
+        builtInKey = row.optionalString(2)
+        sortOrder = row.int(3)
+        updatedAt = row.int64(4)
+        uid = row.string(5)
+    }
+}
+
+/// One row of `meal_plan_entries` (#49; Android's `MealPlanEntryEntity`): a recipe with its
+/// servings, or a note, on a local epoch `day`.
+struct MealPlanEntryRecord: Equatable {
+    var id: Int64 = 0
+    var day: Int64
+    var mealTypeId: Int64
+    var recipeId: Int64?
+    var servings: Int?              // planned servings; nil = the recipe's own yield
+    var note: String?               // a note instead of a recipe
+    var sortOrder: Int              // within its day and meal type
+    var updatedAt: Int64
+    var uid: String = newUid()
+
+    static let columns = "id, day, mealTypeId, recipeId, servings, note, sortOrder, updatedAt, uid"
+
+    init(
+        id: Int64 = 0, day: Int64, mealTypeId: Int64, recipeId: Int64?, servings: Int?, note: String?,
+        sortOrder: Int, updatedAt: Int64, uid: String = newUid()
+    ) {
+        self.id = id
+        self.day = day
+        self.mealTypeId = mealTypeId
+        self.recipeId = recipeId
+        self.servings = servings
+        self.note = note
+        self.sortOrder = sortOrder
+        self.updatedAt = updatedAt
+        self.uid = uid
+    }
+
+    init(row: SQLiteRow) {
+        id = row.int64(0)
+        day = row.int64(1)
+        mealTypeId = row.int64(2)
+        recipeId = row.isNull(3) ? nil : row.int64(3)
+        servings = row.isNull(4) ? nil : row.int(4)
+        note = row.optionalString(5)
+        sortOrder = row.int(6)
+        updatedAt = row.int64(7)
+        uid = row.string(8)
+    }
+}
+
 /// A recipe's saved cook progress, with what a timer alert needs to name it (Android's
 /// `CookStateRow`).
 struct CookStateRecord: Equatable {

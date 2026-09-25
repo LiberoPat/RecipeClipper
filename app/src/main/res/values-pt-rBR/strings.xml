@@ -182,7 +182,6 @@
     <string name="tab_groceries">Compras</string>
     <string name="tab_pantry">Despensa</string>
     <string name="coming_soon">Em breve</string>
-    <string name="week_placeholder">Planeje o que você vai cozinhar em cada dia da semana.</string>
     <string name="groceries_placeholder">Uma lista de compras criada a partir das receitas da sua semana.</string>
     <string name="pantry_placeholder">O que você já tem, para comprar só o que precisa.</string>
     <string name="share_serves">Porções: %1$d</string>
@@ -215,6 +214,32 @@
     <string name="edit_label_photo">Link da foto (opcional)</string>
     <string name="edit_error_invalid">Uma receita precisa de um nome e de ingredientes ou passos.</string>
     <string name="edit_error_save_failed">Não foi possível salvar a receita. Tente de novo.</string>
+
+    <!-- Week meal plan (#49) -->
+    <string name="action_add_to_plan">Adicionar ao plano</string>
+    <string name="action_add_to_day">Adicionar em %1$s</string>
+    <string name="label_meal">Refeição</string>
+    <string name="snackbar_removed_from_plan">%1$s removido do plano</string>
+    <string name="cd_previous_week">Semana anterior</string>
+    <string name="cd_next_week">Próxima semana</string>
+    <string name="action_this_week">Esta semana</string>
+    <string name="meal_types_title">Tipos de refeição</string>
+    <string name="label_today">Hoje</string>
+    <string name="action_add_meal">+ Adicionar</string>
+    <string name="action_move">Mover…</string>
+    <string name="action_remove_from_plan">Remover do plano</string>
+    <string name="add_to_day_title">Adicionar em %1$s</string>
+    <string name="label_search_or_note">Busque suas receitas ou escreva uma nota</string>
+    <string name="action_add_as_note">Adicionar “%1$s” como nota</string>
+    <string name="move_meal_title">Mover %1$s</string>
+    <string name="action_move_to_day">Mover para %1$s</string>
+    <string name="action_new_meal_type">+ Novo tipo de refeição</string>
+    <string name="rename_meal_type_title">Renomear tipo de refeição</string>
+    <string name="delete_meal_type_title">Excluir “%1$s”?</string>
+    <string name="delete_meal_type_body">As refeições planejadas com este tipo passam para Jantar. Elas não são excluídas.</string>
+    <string name="action_move_up">Mover para cima</string>
+    <string name="action_move_down">Mover para baixo</string>
+    <string name="label_meal_type_name">Nome do tipo de refeição</string>
 
     <!-- Clip it yourself (#37) -->
     <string name="clip_offer">Abra a página, selecione o nome, os ingredientes e os passos e toque onde cada um vai.</string>

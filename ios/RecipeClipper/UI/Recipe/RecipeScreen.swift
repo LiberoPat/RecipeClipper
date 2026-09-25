@@ -7,6 +7,9 @@ struct RecipeScreen: View {
     let vm: RecipeViewModel
     let saveVM: SaveToListViewModel
     var onEdit: (Int64) -> Void = { _ in }
+    /// Makes the "Add to plan" sheet's ViewModel (#49); nil hides the menu item, as while the
+    /// tab flag is off. Made on first use and kept for the screen's life.
+    var makePlanVM: (() -> AddToPlanViewModel)? = nil
     /// Opens "Clip it yourself" on the shared link (#37).
     var onClip: (String) -> Void = { _ in }
 
@@ -14,6 +17,10 @@ struct RecipeScreen: View {
     @Environment(\.colorScheme) private var systemScheme
     @Environment(\.openURL) private var openURL
     @State private var sheetOpen = false
+    @State private var planVM: AddToPlanViewModel?
+    /// The plan sheet's ViewModel while the sheet is up (`sheet(item:)`, so the sheet is
+    /// never built without it).
+    @State private var planSheet: AddToPlanViewModel?
     @State private var confirmingDelete = false
     @State private var confirmingUpdate = false
 
@@ -84,6 +91,11 @@ struct RecipeScreen: View {
         }
         .sheet(isPresented: $sheetOpen) {
             SaveToListSheet(vm: saveVM)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $planSheet) { plan in
+            AddToPlanSheet(vm: plan)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -163,6 +175,16 @@ struct RecipeScreen: View {
         }
 
         Menu {
+            if let makePlanVM {
+                Button {
+                    let plan = planVM ?? makePlanVM()
+                    planVM = plan
+                    plan.setRecipe(content.recipe.id, yieldServings: content.servings?.base)
+                    planSheet = plan
+                } label: {
+                    Label(Strings.addToPlan, systemImage: "calendar.badge.plus")
+                }
+            }
             Button { onEdit(content.recipe.id) } label: {
                 Label(Strings.edit, systemImage: "pencil")
             }

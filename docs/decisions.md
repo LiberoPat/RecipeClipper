@@ -1305,10 +1305,63 @@ has something in it.
   during, say, browsing Pantry doesn't lose the user's place there.
 - **Choosing the open Recipes tab again goes back to Home**, matching both
   platforms' tab-bar convention, rather than a no-op.
-- **Week/Groceries/Pantry are `ComingSoonScreen` placeholders**, not simply
-  absent tabs: they show the tab's name and one line on what it will hold,
+- **Groceries/Pantry are `ComingSoonScreen` placeholders** (Week was one
+  until #49), not simply absent tabs: they show the tab's name and one line on what it will hold,
   so the shape of the eventual app is visible to whoever flips the flag on,
   without implying anything is broken.
+
+## Week meal plan (#49)
+
+The first real tab of #46, still behind the #47 flag.
+
+- **A day is a local epoch day** (`PlanDays`, both platforms, the same
+  arithmetic): whole days since 1970-01-01 on the phone's calendar, stored in
+  `meal_plan_entries.day`. A week is seven consecutive integers, "today or
+  later" is one comparison in SQL, and a plan doesn't drift when the clock or
+  zone moves. No `java.time` (API 26+; minSdk is 24): the arithmetic is plain
+  integers, and labels are formatted at midnight UTC with a UTC formatter so
+  the local zone can't show the day before.
+- **The week starts on the locale's first day** (owner's call):
+  `Calendar.getInstance().firstDayOfWeek` (the same answer as
+  `WeekFields.of(Locale)` without java.time) and iOS
+  `Calendar.current.firstWeekday`. Both number Sunday as 1. Both sit behind a
+  `PlanCalendar` seam, so ViewModel tests pin today and the first day.
+- **Meal types are a table** (`meal_types`, owner's call): Breakfast, Lunch,
+  Dinner and Snack are seeded with a `builtInKey` that survives a rename, as
+  `isFavorites` does for lists. Any type can be renamed and reordered; only
+  the user's own (`builtInKey IS NULL`, a guard in the SQL) can be deleted.
+  Deleting one moves its meals to Dinner in the same transaction, never
+  deleting them. Entries reference a type by id. Dinner is the default for a
+  new meal.
+- **Stable ids for #53:** both new tables carry a unique `uid` (#26's
+  convention) and an `updatedAt`, set on every write. The integer `id` stays
+  the key that the foreign keys use.
+- **A recipe's meals cascade with it.** Deleting a recipe removes its planned
+  meals, and undo restores them (with its lists). A planned meal whose meal
+  type went meanwhile is skipped rather than failing the whole restore.
+- **The cull rule** (product rule change): a recipe planned for today or
+  later is never culled and doesn't count toward the 50, like a recipe in a
+  list. One planned only for past days is ordinary history again. "Saved"
+  still means "in a list". In the SQL the plan subquery filters out NULL
+  recipe ids (notes), because `NOT IN` a set holding a NULL is never true and
+  would silently stop the cull. `today` is passed in by the repository; other
+  callers default to protecting nothing.
+- **Moving is long-press → Move** on both platforms: the same day strip (the
+  shown week and the next) and meal types as "Add to plan". Drag and drop
+  across day sections was left out, because it needs experimental Compose
+  APIs and gives no parity with iOS for the same result.
+- **Opening a planned recipe uses the planned servings for that visit only.**
+  It isn't saved as the recipe's chosen servings unless the cook changes
+  them there. A planned recipe opens on the Week's own stack
+  (`week/recipe/{id}?servings=`), so Back returns to the week.
+- **"Add to plan"** is in the recipe menu (first, above Edit) only while the
+  flag is on. It's a deliberate act with a button, unlike save-to-list's
+  instant ticks: a day and a meal type have to be chosen first.
+- **"+ Add" on a day** is one sheet: a meal type, then a recipe from history
+  (searchable, the same query as History) or, once something is typed, that
+  text as a note. Planned servings start as the recipe's own yield.
+- **Not yet in the export file** (#26): the plan joins it with the
+  `formatVersion` bump that #46 plans for groceries and pantry.
 
 ## Clip it yourself (#37)
 

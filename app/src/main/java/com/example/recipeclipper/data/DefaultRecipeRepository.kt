@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ManualRecipe
 import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.model.ParseError
+import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -53,7 +54,7 @@ class DefaultRecipeRepository @Inject constructor(
         if (usersVersion != null) {
             val viewedAt = clock.now()
             return log.guard("open user's version", ParseResult.Error(ParseError.SaveFailed)) {
-                recipeDao.upsert(usersVersion.copy(lastViewedAt = viewedAt), HISTORY_LIMIT)
+                recipeDao.upsert(usersVersion.copy(lastViewedAt = viewedAt), HISTORY_LIMIT, today = today(viewedAt))
                 ParseResult.Success(usersVersion.copy(lastViewedAt = viewedAt).toDomain())
             }
         }
@@ -61,7 +62,7 @@ class DefaultRecipeRepository @Inject constructor(
         val now = clock.now()
         return when (parsed) {
             is ParseResult.Success -> log.guard("import save", ParseResult.Error(ParseError.SaveFailed)) {
-                val id = recipeDao.upsert(parsed.recipe.toEntity(now), HISTORY_LIMIT)
+                val id = recipeDao.upsert(parsed.recipe.toEntity(now), HISTORY_LIMIT, today = today(now))
                 recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
                     ?: ParseResult.Error(ParseError.SaveFailed)
             }
@@ -85,7 +86,7 @@ class DefaultRecipeRepository @Inject constructor(
         // Filed under the saved link, whatever the parse reports, so it lands on this row.
         val fresh = parsed.recipe.copy(sourceUrl = existing.sourceUrl).toEntity(now)
         return log.guard("updateFromSource save", ParseResult.Error(ParseError.SaveFailed)) {
-            recipeDao.upsert(fresh, HISTORY_LIMIT, replaceUsersVersion = true)
+            recipeDao.upsert(fresh, HISTORY_LIMIT, replaceUsersVersion = true, today = today(now))
             recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
                 ?: ParseResult.Error(ParseError.SaveFailed)
         }
@@ -114,7 +115,7 @@ class DefaultRecipeRepository @Inject constructor(
             )
         )
         return log.guard("addManual", null) {
-            val id = recipeDao.upsert(recipe.toEntity(now), HISTORY_LIMIT)
+            val id = recipeDao.upsert(recipe.toEntity(now), HISTORY_LIMIT, today = today(now))
             recipeDao.get(id)?.toDomain()
         }
     }
@@ -195,18 +196,22 @@ class DefaultRecipeRepository @Inject constructor(
     override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? = log.guard("delete", null) {
         val entity = recipeDao.get(id) ?: return@guard null
         val crossRefs = recipeDao.crossRefsFor(id)
+        val planEntries = recipeDao.planEntriesFor(id)
         recipeDao.delete(id)
-        RecipeRepository.DeletedRecipe(entity, crossRefs)
+        RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries)
     }
 
     override suspend fun restore(deleted: RecipeRepository.DeletedRecipe) =
-        log.guard("restore", Unit) { recipeDao.restore(deleted.entity, deleted.crossRefs) }
+        log.guard("restore", Unit) { recipeDao.restore(deleted.entity, deleted.crossRefs, deleted.planEntries) }
 
     override fun observeHistory(query: String): Flow<List<RecipeSummary>> =
         recipeDao.observeHistory(query).map { rows -> rows.map { it.toDomain() } }.orEmptyOnError(log, "observeHistory")
 
     override fun observeRecent(limit: Int): Flow<List<RecipeSummary>> =
         recipeDao.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }.orEmptyOnError(log, "observeRecent")
+
+    /** Today on the user's calendar: a recipe planned for it or later is never culled (#49). */
+    private fun today(now: Long): Long = PlanDays.today(now)
 
     companion object {
         /** How long to wait before the single automatic retry. Long enough for a momentary

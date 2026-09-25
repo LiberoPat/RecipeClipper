@@ -83,3 +83,58 @@ data class RecipeListCrossRef(
     val listId: Long,
     val addedAt: Long
 )
+
+/**
+ * A meal type (#49). Seeded rows carry a [builtInKey] ("breakfast", "lunch", "dinner",
+ * "snack") that survives a rename; only rows without one can be deleted, a guard kept in the
+ * SQL. [uid] and [updatedAt] are for export and a later sync (#53).
+ */
+@Entity(tableName = "meal_types", indices = [Index(value = ["uid"], unique = true)])
+data class MealTypeEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val builtInKey: String?,
+    val sortOrder: Int,
+    val updatedAt: Long,
+    val uid: String = newUid()
+)
+
+/**
+ * One meal on the plan (#49): a recipe with its planned servings, or a note, on a local
+ * calendar [day] (an epoch day, see `PlanDays`). A recipe's entries go with it when it is
+ * deleted (cascade). A meal type can't be deleted from under its entries (no cascade):
+ * deleting one first moves them to Dinner, in the same transaction.
+ */
+@Entity(
+    tableName = "meal_plan_entries",
+    foreignKeys = [
+        ForeignKey(
+            entity = MealTypeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["mealTypeId"]
+        ),
+        ForeignKey(
+            entity = RecipeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["recipeId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["uid"], unique = true),
+        Index("day"),
+        Index("mealTypeId"),
+        Index("recipeId")
+    ]
+)
+data class MealPlanEntryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val day: Long,
+    val mealTypeId: Long,
+    val recipeId: Long?,
+    val servings: Int?,             // planned servings; null = the recipe's own yield
+    val note: String?,              // a note instead of a recipe
+    val sortOrder: Int,             // within its day and meal type
+    val updatedAt: Long,
+    val uid: String = newUid()
+)

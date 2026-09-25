@@ -172,7 +172,6 @@
     <string name="tab_groceries">Einkauf</string>
     <string name="tab_pantry">Vorrat</string>
     <string name="coming_soon">Demnächst</string>
-    <string name="week_placeholder">Plane, was du an jedem Tag der Woche kochst.</string>
     <string name="groceries_placeholder">Eine Einkaufsliste aus den Rezepten deiner Woche.</string>
     <string name="pantry_placeholder">Was du schon hast, damit du nur kaufst, was du brauchst.</string>
     <string name="share_serves">Portionen: %1$d</string>
@@ -205,6 +204,32 @@
     <string name="edit_label_photo">Link zum Foto (optional)</string>
     <string name="edit_error_invalid">Ein Rezept braucht einen Namen und Zutaten oder Schritte.</string>
     <string name="edit_error_save_failed">Das Rezept konnte nicht gespeichert werden. Versuch es noch einmal.</string>
+
+    <!-- Week meal plan (#49) -->
+    <string name="action_add_to_plan">Zum Plan hinzufügen</string>
+    <string name="action_add_to_day">Hinzufügen: %1$s</string>
+    <string name="label_meal">Mahlzeit</string>
+    <string name="snackbar_removed_from_plan">%1$s aus dem Plan entfernt</string>
+    <string name="cd_previous_week">Vorherige Woche</string>
+    <string name="cd_next_week">Nächste Woche</string>
+    <string name="action_this_week">Diese Woche</string>
+    <string name="meal_types_title">Mahlzeiten</string>
+    <string name="label_today">Heute</string>
+    <string name="action_add_meal">+ Hinzufügen</string>
+    <string name="action_move">Verschieben…</string>
+    <string name="action_remove_from_plan">Aus dem Plan entfernen</string>
+    <string name="add_to_day_title">Hinzufügen: %1$s</string>
+    <string name="label_search_or_note">Rezepte suchen oder eine Notiz schreiben</string>
+    <string name="action_add_as_note">„%1$s“ als Notiz hinzufügen</string>
+    <string name="move_meal_title">%1$s verschieben</string>
+    <string name="action_move_to_day">Verschieben: %1$s</string>
+    <string name="action_new_meal_type">+ Neue Mahlzeit</string>
+    <string name="rename_meal_type_title">Mahlzeit umbenennen</string>
+    <string name="delete_meal_type_title">„%1$s“ löschen?</string>
+    <string name="delete_meal_type_body">Damit geplante Mahlzeiten werden zu Abendessen verschoben, nicht gelöscht.</string>
+    <string name="action_move_up">Nach oben</string>
+    <string name="action_move_down">Nach unten</string>
+    <string name="label_meal_type_name">Name der Mahlzeit</string>
 
     <!-- Clip it yourself (#37) -->
     <string name="clip_offer">Öffne die Seite, markiere Namen, Zutaten und Schritte und tippe an, wohin jedes gehört.</string>

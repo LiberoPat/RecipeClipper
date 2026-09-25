@@ -200,4 +200,6 @@ struct DeletedRecipe: Equatable {
     let memberships: [ListMembership]
     /// The row's stable uid (#26), so an undone delete is the same recipe to an export.
     var uid: String? = nil
+    /// Its planned meals (#49), which the delete cascades, so undo brings them back too.
+    var planEntries: [MealPlanEntryRecord] = []
 }
