@@ -55,14 +55,36 @@ class IngredientNameTest {
         assertNull(name("Juice of 1 lemon"))
     }
 
-    @Test fun `matches by the end of the name, as the density table does`() {
+    @Test fun `matches only the same ingredient, with plain modifiers`() {
         assertTrue(IngredientName.matches("unsalted butter", "butter"))
         assertTrue(IngredientName.matches("Butter", "unsalted butter"))
         assertTrue(IngredientName.matches("flour", "flour"))
+        assertTrue(IngredientName.matches("all-purpose flour", "flour"))
+        assertTrue(IngredientName.matches("extra virgin olive oil", "olive oil"))
+        assertTrue(IngredientName.matches("large eggs", "eggs"))
         assertFalse(IngredientName.matches("butter beans", "butter"))
         assertFalse(IngredientName.matches("flour tortillas", "flour"))
         assertFalse(IngredientName.matches("", "butter"))
         assertFalse(IngredientName.matches("buttermilk", "milk"))
+    }
+
+    @Test fun `a compound name never matches its shorter head noun, either way`() {
+        for ((compound, head) in listOf(
+            "rice flour" to "flour", "almond flour" to "flour", "peanut butter" to "butter",
+            "apple butter" to "butter", "condensed milk" to "milk", "coconut milk" to "milk",
+            "brown sugar" to "sugar", "whole milk" to "milk", "salted butter" to "unsalted butter"
+        )) {
+            assertFalse("$compound / $head", IngredientName.matches(compound, head))
+            assertFalse("$head / $compound", IngredientName.matches(head, compound))
+        }
+        val de = LanguageWords.forTag("de")!!
+        assertTrue(IngredientName.matches("ungesalzene Butter", "Butter", de))
+        assertFalse(IngredientName.matches("Erdnuss Butter", "Butter", de))
+        val fr = LanguageWords.forTag("fr")!!
+        assertFalse(IngredientName.matches("farine de riz", "riz", fr))
+        val ja = LanguageWords.forTag("ja")!!
+        assertTrue(IngredientName.matches("無塩バター", "バター", ja))
+        assertFalse(IngredientName.matches("ピーナッツバター", "バター", ja))
     }
 
     @Test fun `render scales, then converts with the line's own separator`() {

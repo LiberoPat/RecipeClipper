@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.backup
 
+import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.UrlCleaner
 import java.util.Locale
 
@@ -44,6 +45,18 @@ data class ExistingPantryItem(val uid: String, val name: String, val language: S
 /** A grocery item to write, with the recipe it came from, if that recipe is here after the import. */
 data class NewGrocery(val item: BackupGroceryItem, val recipe: Target?)
 
+/** A meal type already on this phone (#49). [builtInKey] names a seeded one. */
+data class ExistingMealType(val id: Long, val uid: String, val name: String, val builtInKey: String?)
+
+/** A user meal type to create, after the ones already here. */
+data class NewMealType(val uid: String, val name: String, val sortOrder: Int, val updatedAt: Long)
+
+/**
+ * A planned meal to write: its meal type, and its recipe (null for a note). The DAO puts it at the
+ * end of its day and meal type, after what's already planned there.
+ */
+data class NewPlanEntry(val entry: BackupPlanEntry, val mealType: Target, val recipe: Target?)
+
 data class PlannedMembership(val recipe: Target, val list: Target, val addedAt: Long)
 
 /**
@@ -58,7 +71,9 @@ data class ImportPlan(
     val memberships: List<PlannedMembership>,
     val summary: ImportSummary,
     val newPantry: List<BackupPantryItem> = emptyList(),
-    val newGroceries: List<NewGrocery> = emptyList()
+    val newGroceries: List<NewGrocery> = emptyList(),
+    val newMealTypes: List<NewMealType> = emptyList(),
+    val newPlanEntries: List<NewPlanEntry> = emptyList()
 )
 
 /**
@@ -91,6 +106,16 @@ data class ImportPlan(
  *   already on the list, in file order. Nothing is combined or deduplicated by text (two "2
  *   eggs" can be two recipes' eggs). It keeps its recipe only if that recipe is here after the
  *   import (matched, or written); a recipe skipped for history leaves it without one.
+ * - **Meal types** (#49): a seeded one maps to the one here with the same `builtInKey`, never by
+ *   name (like Favorites). A user's own joins one here with its uid, else a user type here with
+ *   its name (trimmed, case-insensitive), else one earlier in the file with that name, else it
+ *   is created after the types here. A user type called "Dinner" never joins the seeded Dinner.
+ * - **The plan** (#49): an entry comes in unless its uid is already here, at the end of its day
+ *   and meal type. A note always comes in. A recipe entry comes in only if its recipe is here
+ *   after the import; otherwise it is dropped (a meal with no recipe and no note would be an
+ *   empty row, and deleting a recipe removes its meals too). So that a planned recipe isn't
+ *   skipped for history, a recipe the file plans for [today] or later comes in like a listed one,
+ *   the cull's own rule. An entry whose meal type the file doesn't name goes to Dinner.
  */
 object BackupMerger {
 
@@ -102,7 +127,11 @@ object BackupMerger {
         historyLimit: Int,
         newUid: () -> String,
         existingPantry: List<ExistingPantryItem> = emptyList(),
-        existingGroceryUids: Set<String> = emptySet()
+        existingGroceryUids: Set<String> = emptySet(),
+        existingMealTypes: List<ExistingMealType> = emptyList(),
+        maxMealTypeSortOrder: Int = -1,
+        existingPlanUids: Set<String> = emptySet(),
+        today: Long? = null
     ): ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         val existingByUrl = HashMap<String, ExistingRecipe>()
@@ -180,7 +209,12 @@ object BackupMerger {
         }
 
         // --- History: new recipes in no list only take free places; nothing here is pushed out.
+        // A recipe the file plans for today or later is kept from the cull, so it counts as listed.
+        val incomingPlan = backup.mealPlan.filter { it.id !in existingPlanUids }
         val listedTargets = memberships.mapTo(HashSet()) { it.recipe }
+        if (today != null) {
+            incomingPlan.filter { it.day >= today }.mapNotNullTo(listedTargets) { it.recipeId?.let(recipeTargets::get) }
+        }
         val unlistedHere = existingRecipes.count { !it.isListed && Target.Existing(it.id) !in listedTargets }
         val freePlaces = (historyLimit - unlistedHere).coerceAtLeast(0)
         val unlistedNew = newByUrl.values.filter { Target.New(it.id) !in listedTargets }
@@ -213,6 +247,38 @@ object BackupMerger {
             NewGrocery(item, recipe)
         }
 
+        // --- Meal types: seeded by key, the user's own by uid, then name; the rest are created.
+        val hereTypesByKey = existingMealTypes.filter { it.builtInKey != null }.associateBy { it.builtInKey }
+        val hereUserTypes = existingMealTypes.filter { it.builtInKey == null }
+        val takenTypeUids = existingMealTypes.mapTo(HashSet()) { it.uid }
+        val typeTargets = HashMap<String, Target>()      // file meal type id -> target
+        val newTypesByName = LinkedHashMap<String, NewMealType>()
+        var nextTypeOrder = maxMealTypeSortOrder + 1
+        for (type in backup.mealTypes) {
+            val key = nameKey(type.name)
+            typeTargets[type.id] = type.builtInKey?.let { hereTypesByKey[it] }?.let { Target.Existing(it.id) }
+                ?: hereUserTypes.firstOrNull { it.uid == type.id }?.let { Target.Existing(it.id) }
+                ?: hereUserTypes.firstOrNull { nameKey(it.name) == key }?.let { Target.Existing(it.id) }
+                ?: newTypesByName[key]?.let { Target.New(it.uid) }
+                ?: run {
+                    val uid = if (takenTypeUids.add(type.id)) type.id else freshUid(takenTypeUids, newUid)
+                    newTypesByName[key] = NewMealType(uid, type.name.trim(), nextTypeOrder++, type.updatedAt)
+                    Target.New(uid)
+                }
+        }
+        val dinner = hereTypesByKey[MealType.DINNER]?.let { Target.Existing(it.id) }
+
+        // --- The plan: by uid; a recipe entry needs its recipe here, a note always comes in.
+        val newPlanEntries = incomingPlan.mapNotNull { entry ->
+            val mealType = entry.mealTypeId?.let(typeTargets::get) ?: dinner ?: return@mapNotNull null
+            val recipe = entry.recipeId?.let(recipeTargets::get)?.takeIf { it is Target.Existing || it in written }
+            when {
+                recipe != null -> NewPlanEntry(entry.copy(note = null), mealType, recipe)
+                entry.recipeId == null && entry.note != null -> NewPlanEntry(entry.copy(servings = null), mealType, null)
+                else -> null
+            }
+        }
+
         return ImportPlan(
             newRecipes = newRecipes,
             noteUpdates = noteUpdates,
@@ -224,10 +290,14 @@ object BackupMerger {
                 recipesAlreadyHere = matched.size,
                 recipesSkipped = skipped,
                 pantryAdded = newPantry.size,
-                groceriesAdded = newGroceries.size
+                groceriesAdded = newGroceries.size,
+                mealsAdded = newPlanEntries.size,
+                mealTypesAdded = newTypesByName.size
             ),
             newPantry = newPantry,
-            newGroceries = newGroceries
+            newGroceries = newGroceries,
+            newMealTypes = newTypesByName.values.toList(),
+            newPlanEntries = newPlanEntries
         )
     }
 

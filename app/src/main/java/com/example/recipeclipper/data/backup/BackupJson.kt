@@ -20,12 +20,16 @@ import org.json.JSONTokener
  *   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
  *                     "purchasedDay", "expiresDay", "updatedAt" }],
  *   "groceries":   [{ "id", "text", "language", "aisle", "checked", "recipeId", "plannedDay",
+ *                     "updatedAt" }],
+ *   "mealTypes":   [{ "id", "name", "builtInKey", "sortOrder", "updatedAt" }],
+ *   "mealPlan":    [{ "id", "day", "mealTypeId", "recipeId", "servings", "note", "sortOrder",
  *                     "updatedAt" }] }
  * ```
  *
- * `pantry` (#51) and `groceries` (#50) came later without a version bump: an older reader
- * ignores them. A grocery's `recipeId` naming no recipe in the file reads as none (the recipe
- * is where it came from, not what it is).
+ * `pantry` (#51), `groceries` (#50), `mealTypes` and `mealPlan` (#49) came later without a
+ * version bump: an older reader ignores them. A grocery's `recipeId` naming no recipe in the
+ * file reads as none (the recipe is where it came from, not what it is); so does a planned
+ * meal's, and its `mealTypeId` naming no meal type in the file reads as none (Dinner).
  *
  * Reading is strict about what it needs and lenient about the rest, so the format can grow:
  * unknown keys and sections are ignored, a missing section is empty, and a missing optional
@@ -44,6 +48,8 @@ object BackupJson {
         root.put("memberships", JSONArray().apply { backup.memberships.forEach { put(it.toJson()) } })
         root.put("pantry", JSONArray().apply { backup.pantry.forEach { put(it.toJson()) } })
         root.put("groceries", JSONArray().apply { backup.groceries.forEach { put(it.toJson()) } })
+        root.put("mealTypes", JSONArray().apply { backup.mealTypes.forEach { put(it.toJson()) } })
+        root.put("mealPlan", JSONArray().apply { backup.mealPlan.forEach { put(it.toJson()) } })
         return root.toString(2)
     }
 
@@ -163,7 +169,35 @@ object BackupJson {
         }
         requireUniqueIds(groceries.map { it.id }, "groceries")
 
-        return Backup(exportedAt, recipes, lists, memberships, pantry, groceries)
+        val mealTypes = top.objects(root, "mealTypes").map { (path, o) ->
+            val r = Reader(path)
+            BackupMealType(
+                id = r.requiredId(o, "id"),
+                name = r.string(o, "name")?.takeIf { it.isNotBlank() } ?: throw MalformedException("$path.name"),
+                builtInKey = r.string(o, "builtInKey")?.takeIf { it.isNotBlank() },
+                sortOrder = r.int(o, "sortOrder") ?: 0,
+                updatedAt = r.long(o, "updatedAt") ?: 0L
+            )
+        }
+        requireUniqueIds(mealTypes.map { it.id }, "mealTypes")
+
+        val mealTypeIds = mealTypes.mapTo(HashSet()) { it.id }
+        val mealPlan = top.objects(root, "mealPlan").map { (path, o) ->
+            val r = Reader(path)
+            BackupPlanEntry(
+                id = r.requiredId(o, "id"),
+                day = r.long(o, "day") ?: throw MalformedException("$path.day"),
+                mealTypeId = r.string(o, "mealTypeId")?.takeIf { it in mealTypeIds },
+                recipeId = r.string(o, "recipeId")?.takeIf { it in recipeIds },
+                servings = r.int(o, "servings"),
+                note = r.string(o, "note")?.takeIf { it.isNotBlank() },
+                sortOrder = r.int(o, "sortOrder") ?: 0,
+                updatedAt = r.long(o, "updatedAt") ?: 0L
+            )
+        }
+        requireUniqueIds(mealPlan.map { it.id }, "mealPlan")
+
+        return Backup(exportedAt, recipes, lists, memberships, pantry, groceries, mealTypes, mealPlan)
     }
 
     private fun requireUniqueIds(ids: List<String>, section: String) {
@@ -305,6 +339,25 @@ object BackupJson {
         put("checked", checked)
         put("recipeId", recipeId.orNull())
         put("plannedDay", plannedDay ?: JSONObject.NULL)
+        put("updatedAt", updatedAt)
+    }
+
+    private fun BackupMealType.toJson() = JSONObject().apply {
+        put("id", id)
+        put("name", name)
+        put("builtInKey", builtInKey.orNull())
+        put("sortOrder", sortOrder)
+        put("updatedAt", updatedAt)
+    }
+
+    private fun BackupPlanEntry.toJson() = JSONObject().apply {
+        put("id", id)
+        put("day", day)
+        put("mealTypeId", mealTypeId.orNull())
+        put("recipeId", recipeId.orNull())
+        put("servings", servings ?: JSONObject.NULL)
+        put("note", note.orNull())
+        put("sortOrder", sortOrder)
         put("updatedAt", updatedAt)
     }
 

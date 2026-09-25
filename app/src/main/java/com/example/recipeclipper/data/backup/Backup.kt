@@ -8,7 +8,7 @@ package com.example.recipeclipper.data.backup
  * `shared/fixtures/backup/`.
  *
  * Every record carries a stable id ([BackupRecipe.id], [BackupList.id], [BackupPantryItem.id],
- * [BackupGroceryItem.id]): the row's `uid`, which
+ * [BackupGroceryItem.id], [BackupMealType.id], [BackupPlanEntry.id]): the row's `uid`, which
  * never changes on the phone that made it (a rename or a re-share keeps it). Memberships refer
  * to those ids, never to database row ids.
  *
@@ -24,7 +24,11 @@ data class Backup(
     /** The pantry (#51). Absent in older files, which read as empty. */
     val pantry: List<BackupPantryItem> = emptyList(),
     /** The grocery list (#50), in list order. Absent in older files, which read as empty. */
-    val groceries: List<BackupGroceryItem> = emptyList()
+    val groceries: List<BackupGroceryItem> = emptyList(),
+    /** The meal types (#49), in their order. Absent in older files, which read as empty. */
+    val mealTypes: List<BackupMealType> = emptyList(),
+    /** The meal plan (#49). Absent in older files, which read as empty. */
+    val mealPlan: List<BackupPlanEntry> = emptyList()
 ) {
     companion object {
         /** The `format` marker: tells an export apart from any other JSON file. */
@@ -108,6 +112,31 @@ data class BackupGroceryItem(
     val updatedAt: Long
 )
 
+/** A meal type (#49). [builtInKey] names a seeded one ("dinner") whatever it is called; null for the user's own. */
+data class BackupMealType(
+    val id: String,
+    val name: String,
+    val builtInKey: String?,
+    val sortOrder: Int,
+    val updatedAt: Long
+)
+
+/**
+ * A planned meal (#49) on [day] (an epoch day): a recipe (its file id) at [servings] (null: the
+ * recipe's own yield), or a [note]. [mealTypeId] is a file meal type id, or null when the file
+ * names none, which imports as Dinner. A [recipeId] naming no recipe in the file reads as null.
+ */
+data class BackupPlanEntry(
+    val id: String,
+    val day: Long,
+    val mealTypeId: String?,
+    val recipeId: String?,
+    val servings: Int?,
+    val note: String?,
+    val sortOrder: Int,
+    val updatedAt: Long
+)
+
 /**
  * Why an export or an import failed, as a cause: the Settings screen picks the words. An
  * import that fails for any of these has written nothing.
@@ -150,7 +179,11 @@ data class ImportSummary(
     /** New pantry items written (#51). */
     val pantryAdded: Int = 0,
     /** New grocery items written (#50). */
-    val groceriesAdded: Int = 0
+    val groceriesAdded: Int = 0,
+    /** New planned meals written (#49). */
+    val mealsAdded: Int = 0,
+    /** New meal types created (types that joined one already here don't count). */
+    val mealTypesAdded: Int = 0
 )
 
 /** An export ready to hand to the share sheet. */

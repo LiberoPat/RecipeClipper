@@ -38,6 +38,30 @@ struct NewGrocery: Equatable {
     var recipe: MergeTarget?
 }
 
+/// A meal type already on this phone (#49). `builtInKey` names a seeded one.
+struct ExistingMealType: Equatable {
+    var id: Int64
+    var uid: String
+    var name: String
+    var builtInKey: String?
+}
+
+/// A user meal type to create, after the ones already here.
+struct NewMealType: Equatable {
+    var uid: String
+    var name: String
+    var sortOrder: Int
+    var updatedAt: Int64
+}
+
+/// A planned meal to write: its meal type, and its recipe (nil for a note). The DAO puts it at
+/// the end of its day and meal type, after what's already planned there.
+struct NewPlanEntry: Equatable {
+    var entry: BackupPlanEntry
+    var mealType: MergeTarget
+    var recipe: MergeTarget?
+}
+
 struct NewList: Equatable {
     var uid: String
     var name: String
@@ -68,6 +92,8 @@ struct ImportPlan: Equatable {
     var summary: ImportSummary
     var newPantry: [BackupPantryItem] = []
     var newGroceries: [NewGrocery] = []
+    var newMealTypes: [NewMealType] = []
+    var newPlanEntries: [NewPlanEntry] = []
 }
 
 /// How an export file merges into a phone that already has recipes (issue #26; the owner's
@@ -81,7 +107,12 @@ struct ImportPlan: Equatable {
 /// or culls, and new recipes in no list only fill free places under `historyLimit`. Pantry
 /// items (#51) come in unless their uid, or their name in the same language, is here or earlier
 /// in the file (what's here stands); grocery items (#50) unless their uid is here, after the
-/// list's own, keeping a recipe only if it is here after the import.
+/// list's own, keeping a recipe only if it is here after the import. Meal types (#49): a seeded
+/// one by `builtInKey`, never by name; a user's own by uid, then by name among the user types
+/// here, then earlier in the file, else created after the types here. Planned meals come in
+/// unless their uid is here, at the end of their day and meal type (Dinner if the file names
+/// none): a note always, a recipe's only if the recipe is here after the import (else the meal
+/// is dropped). A recipe the file plans for `today` or later comes in like a listed one.
 enum BackupMerger {
 
     static func plan(
@@ -92,7 +123,11 @@ enum BackupMerger {
         historyLimit: Int,
         newUid: () -> String,
         existingPantry: [ExistingPantryItem] = [],
-        existingGroceryUids: Set<String> = []
+        existingGroceryUids: Set<String> = [],
+        existingMealTypes: [ExistingMealType] = [],
+        maxMealTypeSortOrder: Int = -1,
+        existingPlanUids: Set<String> = [],
+        today: Int64? = nil
     ) -> ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         var existingByUrl: [String: ExistingRecipe] = [:]
@@ -186,7 +221,14 @@ enum BackupMerger {
         }
 
         // --- History: new recipes in no list only take free places; nothing here is pushed out.
-        let listedTargets = Set(memberships.map(\.recipe))
+        // A recipe the file plans for today or later is kept from the cull, so it counts as listed.
+        let incomingPlan = backup.mealPlan.filter { !existingPlanUids.contains($0.id) }
+        var listedTargets = Set(memberships.map(\.recipe))
+        if let today {
+            for entry in incomingPlan where entry.day >= today {
+                if let target = entry.recipeId.flatMap({ recipeTargets[$0] }) { listedTargets.insert(target) }
+            }
+        }
         let unlistedHere = existingRecipes.filter { !$0.isListed && !listedTargets.contains(.existing($0.id)) }.count
         let freePlaces = max(0, historyLimit - unlistedHere)
         let newRecipesInOrder = newOrder.compactMap { newByUrl[$0] }
@@ -232,6 +274,58 @@ enum BackupMerger {
             return NewGrocery(item: item, recipe: recipe)
         }
 
+        // --- Meal types: seeded by key, the user's own by uid, then name; the rest are created.
+        var hereTypesByKey: [String: ExistingMealType] = [:]
+        for type in existingMealTypes {
+            if let key = type.builtInKey, hereTypesByKey[key] == nil { hereTypesByKey[key] = type }
+        }
+        let hereUserTypes = existingMealTypes.filter { $0.builtInKey == nil }
+        var takenTypeUids = Set(existingMealTypes.map(\.uid))
+        var typeTargets: [String: MergeTarget] = [:]          // file meal type id -> target
+        var newTypeOrder: [String] = []                       // name keys, in creation order
+        var newTypesByName: [String: NewMealType] = [:]
+        var nextTypeOrder = maxMealTypeSortOrder + 1
+        for type in backup.mealTypes {
+            let key = nameKey(type.name)
+            if let builtIn = type.builtInKey.flatMap({ hereTypesByKey[$0] }) {
+                typeTargets[type.id] = .existing(builtIn.id)
+            } else if let byUid = hereUserTypes.first(where: { $0.uid == type.id }) {
+                typeTargets[type.id] = .existing(byUid.id)
+            } else if let byName = hereUserTypes.first(where: { nameKey($0.name) == key }) {
+                typeTargets[type.id] = .existing(byName.id)
+            } else if let planned = newTypesByName[key] {
+                typeTargets[type.id] = .new(planned.uid)
+            } else {
+                let uid = takenTypeUids.insert(type.id).inserted ? type.id : freshUid(&takenTypeUids, newUid)
+                newTypesByName[key] = NewMealType(
+                    uid: uid,
+                    name: type.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                    sortOrder: nextTypeOrder,
+                    updatedAt: type.updatedAt
+                )
+                nextTypeOrder += 1
+                newTypeOrder.append(key)
+                typeTargets[type.id] = .new(uid)
+            }
+        }
+        let dinner = hereTypesByKey[MealType.dinner].map { MergeTarget.existing($0.id) }
+
+        // --- The plan: by uid; a recipe entry needs its recipe here, a note always comes in.
+        let newPlanEntries = incomingPlan.compactMap { entry -> NewPlanEntry? in
+            guard let mealType = entry.mealTypeId.flatMap({ typeTargets[$0] }) ?? dinner else { return nil }
+            var recipe = entry.recipeId.flatMap { recipeTargets[$0] }
+            if case .new = recipe, !written.contains(recipe!) { recipe = nil }
+            if let recipe {
+                var withRecipe = entry
+                withRecipe.note = nil
+                return NewPlanEntry(entry: withRecipe, mealType: mealType, recipe: recipe)
+            }
+            guard entry.recipeId == nil, entry.note != nil else { return nil }
+            var note = entry
+            note.servings = nil
+            return NewPlanEntry(entry: note, mealType: mealType, recipe: nil)
+        }
+
         return ImportPlan(
             newRecipes: newRecipes,
             noteUpdates: noteUpdates,
@@ -243,10 +337,14 @@ enum BackupMerger {
                 recipesAlreadyHere: matchedOrder.count,
                 recipesSkipped: skipped,
                 pantryAdded: newPantry.count,
-                groceriesAdded: newGroceries.count
+                groceriesAdded: newGroceries.count,
+                mealsAdded: newPlanEntries.count,
+                mealTypesAdded: newTypeOrder.count
             ),
             newPantry: newPantry,
-            newGroceries: newGroceries
+            newGroceries: newGroceries,
+            newMealTypes: newTypeOrder.compactMap { newTypesByName[$0] },
+            newPlanEntries: newPlanEntries
         )
     }
 
