@@ -9,10 +9,13 @@ import kotlin.math.floor
  * Scales the leading quantity of an ingredient line ("1 1/2 cups flour",
  * "½ tsp salt", "1-2 tbsp oil"). Pure: string in, string out.
  *
- * Only the leading quantity is touched. A line that doesn't start with a number
- * ("salt to taste"), or whose number is a measurement rather than an amount
- * ("1-inch piece ginger", "2% milk"), is returned unchanged. Wrong scaling is worse
- * than no scaling, so anything ambiguous is left alone.
+ * The leading quantity is scaled, with the measures that restate it: "(120 g)" after the unit,
+ * a second part ("plus 2 tbsp", "minus 2 tbsp"), an alternative ("or 1/2 cup oil", #61), a part
+ * added later ("plus 3 egg yolks", #62) and a total in brackets after the name ("(8 ½ ounces)",
+ * #63). A line that doesn't start with a number ("salt to taste"), or whose number is a
+ * measurement rather than an amount ("1-inch piece ginger", "2% milk"), is returned unchanged,
+ * and so is one where any of those can't be scaled with the rest. Wrong scaling is worse than
+ * no scaling, so anything ambiguous is left alone.
  */
 object IngredientScaler {
 

@@ -25,7 +25,13 @@ import kotlin.math.round
  * - Bare "oz" is a weight, unless the ingredient is a known liquid, where it means fl oz.
  * - A compound amount ("1 cup plus 2 tbsp flour") is converted as a whole or not at all:
  *   an alternate measure after the second part is used for the total, otherwise both parts
- *   are converted and summed, and if either can't be the line is left as written.
+ *   are converted and summed ("minus 2 tbsp" is subtracted, #62), and if either can't be the
+ *   line is left as written.
+ * - A total in brackets after the name ("1 ⅔ cups bread flour (8 ½ ounces)", #63) is the site's
+ *   figure too, and is dropped once it is the line's amount. A package size never is.
+ * - Alternatives ("8 oz butter or 1 cup oil", #61) and later parts ("plus 2 tbsp") each convert,
+ *   or the line is left as written; an amount with no unit, or already in the system's units,
+ *   is fine as it is.
  * - "1,5 kg" is 1.5 kg and converts with a comma ("1,13 kg"); "1,500 g" could be 1.5 g or
  *   1500 g, so a line holding a comma before three digits is left as written.
  */

@@ -3,10 +3,13 @@ import Foundation
 /// Scales the leading quantity of an ingredient line ("1 1/2 cups flour",
 /// "½ tsp salt", "1-2 tbsp oil"). Pure: string in, string out.
 ///
-/// Only the leading quantity is touched. A line that doesn't start with a number
-/// ("salt to taste"), or whose number is a measurement rather than an amount
-/// ("1-inch piece ginger", "2% milk"), is returned unchanged. Wrong scaling is worse
-/// than no scaling, so anything ambiguous is left alone.
+/// The leading quantity is scaled, with the measures that restate it: "(120 g)" after the unit,
+/// a second part ("plus 2 tbsp", "minus 2 tbsp"), an alternative ("or 1/2 cup oil", #61), a part
+/// added later ("plus 3 egg yolks", #62) and a total in brackets after the name ("(8 ½ ounces)",
+/// #63). A line that doesn't start with a number ("salt to taste"), or whose number is a
+/// measurement rather than an amount ("1-inch piece ginger", "2% milk"), is returned unchanged,
+/// and so is one where any of those can't be scaled with the rest. Wrong scaling is worse than
+/// no scaling, so anything ambiguous is left alone.
 enum IngredientScaler {
 
     private static let unicodeFractions = "¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞"
@@ -87,9 +90,37 @@ enum IngredientScaler {
         // The word joining the two parts of a compound amount: "1 cup plus 2 tbsp", "1 cup + 2 tbsp".
         let continuation: String
 
+        /// A second part taken away rather than added: "2 cups minus 2 tbsp" (#62).
+        let subtraction: String
+
         // "1 cup plus 2 tbsp (140 g) flour": the second part of a compound amount, which scales
         // with the first. groups: 1 prefix, 2 quantity, 3 space, 4 unit
         let continued: JRegex
+
+        /// The amount is a measure (it has a unit), not a count: "2 cups", "¾ de taza".
+        let unitAtStart: JRegex
+
+        // A second amount later in the line (#61, #62). Group 1 holds an alternative's word
+        // ("or 1/2 cup oil"), an amount standing for the whole; otherwise the amount is a part
+        // added or taken away ("plus 3 egg yolks", "+ 1 egg yolk", "minus 2 tbsp").
+        let joined: JRegex
+
+        // An amount in a bracket: a quantity or range and its unit.
+        // groups: 1 quantity, 2 range separator, 3 upper bound, 4 space, 5 unit
+        let measure: JRegex
+
+        // "(about 1/4 cup)", "(200ml/7fl oz)", "(ca. 800g)", "(180 g.)": a bracket holding nothing
+        // but an amount, perhaps written two ways, perhaps "about" it (#63).
+        let total: JRegex
+
+        /// "(8 oz each)": a per-item size.
+        let perItem: JRegex
+
+        /// "1 can (14 oz)": a bracket straight after a container word is the container's size.
+        let afterContainer: JRegex
+
+        /// "1 lata leite condensado (397 g)": one container, so its bracket is the container's size.
+        let containerFirst: JRegex
 
         init(_ words: LanguageWords) {
             self.words = words
@@ -118,10 +149,40 @@ enum IngredientScaler {
                 ignoreCase: true
             )
             continuation = "(?:" + (words.strings("amounts", "continuation") + [#"\+\s*"#]).joined(separator: "|") + ")"
+            let subtraction = SharedTables.alternation(words.strings("amounts", "subtractions"))
+            self.subtraction = subtraction
             continued = JRegex(
-                #"^(\s*"# + units.plain + #"\s*"# + continuation + #")("# + qty + #")(\s*)"# + units.captured,
+                #"^(\s*"# + units.plain + #"\s*(?:"# + continuation + "|" + subtraction + #"))("# + qty + #")(\s*)"# +
+                    units.captured,
                 ignoreCase: true
             )
+            unitAtStart = JRegex(
+                #"^\s*"# + SharedTables.alternation(words.strings("amounts", "unitPrefixes")) + "?" + units.plain,
+                ignoreCase: true
+            )
+            joined = JRegex(
+                #"(?:(?<!\p{L})("# + SharedTables.alternation(words.strings("amounts", "alternatives")) + ")|" +
+                    #"(?<!\p{L})"# + SharedTables.alternation(words.strings("amounts", "additions")) + "|" +
+                    #"(?<!\p{L})"# + subtraction + #"|\+\s*)(?="# + qty + ")",
+                ignoreCase: true
+            )
+            let rangeSeparator = #"\s*[-–—]\s*|\s+"# + words.rangeWords + #"\s+"#
+            measure = JRegex(
+                "(" + qty + ")(?:(" + rangeSeparator + ")(" + qty + #"))?(\s*)"# + units.captured, ignoreCase: true
+            )
+            let plainMeasure = "(?:" + qty + ")(?:(?:" + rangeSeparator + ")(?:" + qty + #"))?\s*"# + units.plain
+            total = JRegex(
+                #"^\s*(?:"# + SharedTables.alternation(words.strings("amounts", "approximately")) + #"\s*)?(?:[~≈]\s*)?"# +
+                    plainMeasure + #"(?:\s*/\s*"# + plainMeasure + #")?\s*\.?\s*$"#,
+                ignoreCase: true
+            )
+            perItem = JRegex(
+                #"(?<!\p{L})"# + SharedTables.alternation(words.strings("amounts", "perItem")) + #"(?!\p{L})"#,
+                ignoreCase: true
+            )
+            let containers = SharedTables.alternation(words.strings("amounts", "containers"))
+            afterContainer = JRegex(#"(?<!\p{L})"# + containers + #"\s*$"#, ignoreCase: true)
+            containerFirst = JRegex(#"^\s*"# + containers + #"(?!\p{L})"#, ignoreCase: true)
         }
 
         /// A line whose amount can't be read without guessing: "1,500" (1.5 or 1500?), a half in
@@ -154,21 +215,90 @@ enum IngredientScaler {
         let p = patterns(words)
         if p.amountAfterName { return TrailingAmount.scale(line, factor: factor, words: words) }
         if p.unreadable(line) { return line }
-        guard let match = p.leading.find(line) else { return line }
-        let rest = line.u16Substring(from: match.end)
-        if p.notAnAmount.containsMatch(in: rest) { return line }
-
         let comma = decimalComma.containsMatch(in: line)
-        guard let low = p.parse(match[2]) else { return line }
-        let upperRaw = match[4]
-        let scaled: String
-        if upperRaw.isEmpty {
-            scaled = formatLeading(low * factor, comma: comma)
-        } else {
-            guard let high = p.parse(upperRaw) else { return line }
-            scaled = formatLeading(low * factor, comma: comma) + match[3] + formatLeading(high * factor, comma: comma)
+        guard let sides = walk(p, line, factor: factor, comma: comma) else { return line }
+        return sides.map(\.text).joined()
+    }
+
+    /// One amount of a line and the text it governs, up to the next amount's joining word:
+    /// "1 cup butter " and "1/2 cup oil" in "1 cup butter or 1/2 cup oil". `text` is the side
+    /// scaled, followed by the joining word as written (`end` is where that word starts).
+    private struct Side {
+        let start: Int
+        let end: Int
+        let text: String
+    }
+
+    /// Where each amount of `line` starts and ends (UTF-16 offsets): the first, then any after an
+    /// alternative's or a second part's word ("or 1/2 cup oil", "plus 3 egg yolks"). Nil when the
+    /// line can't be scaled whole, so the converter reads it as one amount, as before #61.
+    static func sides(_ p: Patterns, _ line: String) -> [Range<Int>]? {
+        walk(p, line, factor: 1.0, comma: false)?.map { $0.start..<$0.end }
+    }
+
+    // Scales every amount of the line, or none: nil leaves the whole line as written.
+    private static func walk(_ p: Patterns, _ line: String, factor: Double, comma: Bool) -> [Side]? {
+        var sides: [Side] = []
+        var start = 0
+        var alternative = false
+        while true {
+            let text = line.u16Substring(from: start)
+            guard let match = p.leading.find(text) else { return nil }
+            let rest = text.u16Substring(from: match.end)
+            if p.notAnAmount.containsMatch(in: rest) { return nil }
+            let measure = p.unitAtStart.containsMatch(in: rest)
+            // "or 2 small onions": an alternative needs a unit to be read as one (#61).
+            if alternative && !measure { return nil }
+
+            guard let low = p.parse(match[2]) else { return nil }
+            let upperRaw = match[4]
+            let scaled: String
+            if upperRaw.isEmpty {
+                scaled = formatLeading(low * factor, comma: comma)
+            } else {
+                guard let high = p.parse(upperRaw) else { return nil }
+                scaled = formatLeading(low * factor, comma: comma) + match[3] + formatLeading(high * factor, comma: comma)
+            }
+            let (region, regionLength) = scaleRegion(p, rest, factor: factor, comma: comma)
+            let tailStart = start + match.end + regionLength
+            let next = nextAmount(p, line, from: tailStart)
+            let end = next?.start ?? line.u16Count
+            let one = upperRaw.isEmpty && low == 1.0
+            guard let tail = scaleBrackets(
+                p, line.u16Substring(tailStart, end), factor: factor, comma: comma, measure: measure, one: one
+            ) else { return nil }
+            sides.append(Side(start: start, end: end, text: match[1] + scaled + region + tail + (next?.value ?? "")))
+            guard let next else { return sides }
+            start = next.end
+            alternative = !next[1].isEmpty
         }
-        return match[1] + scaled + scaleContinuation(p, rest, factor: factor, comma: comma)
+    }
+
+    // The next joining word followed by an amount, outside brackets or opening one:
+    // "or 2 cups" and "(or 1/2 cup oil)" count, the "or" in "(14 oz or 400 g)" doesn't.
+    private static func nextAmount(_ p: Patterns, _ line: String, from: Int) -> JMatch? {
+        var match = p.joined.find(line, from: from)
+        while let m = match {
+            let before = line.u16Substring(from, m.start)
+            if depth(before) == 0 || trimEnd(before).hasSuffix("(") { return m }
+            match = p.joined.find(line, from: m.end)
+        }
+        return nil
+    }
+
+    private static func depth(_ text: String) -> Int {
+        var depth = 0
+        for c in text.utf16 {
+            if c == 0x28 { depth += 1 } else if c == 0x29 && depth > 0 { depth -= 1 }
+        }
+        return depth
+    }
+
+    /// Kotlin's `trimEnd()`.
+    private static func trimEnd(_ text: String) -> String {
+        var s = Substring(text)
+        while let last = s.last, last.isWhitespace { s = s.dropLast() }
+        return String(s)
     }
 
     // A line that writes "1,5" reads decimals, not fractions: "1,5 kg" x 1.5 is "2,25 kg".
@@ -177,20 +307,25 @@ enum IngredientScaler {
     }
 
     /// Scales "plus 2 tbsp" and whatever alternate measure follows it, else just the alternate.
-    private static func scaleContinuation(_ p: Patterns, _ rest: String, factor: Double, comma: Bool) -> String {
+    /// Returns the scaled text and how much of `rest` (UTF-16 units) it stands for.
+    private static func scaleRegion(_ p: Patterns, _ rest: String, factor: Double, comma: Bool) -> (String, Int) {
         guard let m = p.continued.find(rest),
               let unit = MeasureUnit.fromText(m[4], words: p.words),
               let value = p.parse(m[2]) else { return scaleAlternateMeasure(p, rest, factor: factor, comma: comma) }
-        let tail = m[3] + m[4] + rest.u16Substring(from: m.end)
-        return m[1] + formatFor(unit, value * factor, comma: comma) +
-            scaleAlternateMeasure(p, tail, factor: factor, comma: comma)
+        // The alternate measure is read from the second part's unit on.
+        let unitText = m[3] + m[4]
+        let (alternate, length) = scaleAlternateMeasure(
+            p, unitText + rest.u16Substring(from: m.end), factor: factor, comma: comma
+        )
+        return (m[1] + formatFor(unit, value * factor, comma: comma) + alternate, m.end - unitText.u16Count + length)
     }
 
     /// Keeps "(120 g)" or "/120 grams" in step with the leading amount that was just scaled.
-    private static func scaleAlternateMeasure(_ p: Patterns, _ rest: String, factor: Double, comma: Bool) -> String {
+    /// Returns the scaled text and how much of `rest` it stands for (none when there is none).
+    private static func scaleAlternateMeasure(_ p: Patterns, _ rest: String, factor: Double, comma: Bool) -> (String, Int) {
         if let m = p.altParen.find(rest) {
             let inner = p.qtyUnit.replace(m[2]) { scalePair(p, $0, factor: factor, comma: comma) }
-            return m[1] + inner + m[3] + rest.u16Substring(from: m.end)
+            return (m[1] + inner + m[3], m.end)
         }
         if let m = p.altSlash.find(rest),
            let unit = MeasureUnit.fromText(m[6], words: p.words),
@@ -199,11 +334,127 @@ enum IngredientScaler {
             let high = upper.isEmpty ? nil : p.parse(upper)
             if upper.isEmpty || high != nil {
                 let range = high.map { m[3] + formatFor(unit, $0 * factor, comma: comma) } ?? ""
-                return m[1] + formatFor(unit, value * factor, comma: comma) + range + m[5] + m[6] +
-                    rest.u16Substring(from: m.end)
+                return (m[1] + formatFor(unit, value * factor, comma: comma) + range + m[5] + m[6], m.end)
             }
         }
-        return rest
+        return ("", 0)
+    }
+
+    /// A bracket in a side's text (UTF-16 offsets): `start` and `end` include the brackets, the
+    /// content is between.
+    struct Bracket {
+        let start: Int
+        let end: Int
+        let contentStart: Int
+        let contentEnd: Int
+    }
+
+    /// Brackets at the outer level, nested ones inside them; an unclosed one runs to the end.
+    static func brackets(_ text: String) -> [Bracket] {
+        var found: [Bracket] = []
+        var depth = 0
+        var open = -1
+        for (i, c) in text.utf16.enumerated() {
+            if c == 0x28 {
+                if depth == 0 { open = i }
+                depth += 1
+            } else if c == 0x29 && depth > 0 {
+                depth -= 1
+                if depth == 0 { found.append(Bracket(start: open, end: i + 1, contentStart: open + 1, contentEnd: i)) }
+            }
+        }
+        let length = text.u16Count
+        if depth > 0 { found.append(Bracket(start: open, end: length, contentStart: open + 1, contentEnd: length)) }
+        return found
+    }
+
+    /// What a bracket after the name holds (#63).
+    enum BracketKind {
+        /// No amount with a unit: "(packed)", "(Note 2)", "(2-inch pieces)". Left alone.
+        case other
+        /// A package or per-item size: "1 can (14 oz)", "2 (400 g) tins", "(8 oz each)". Never scaled.
+        case package
+        /// The line's own amount written another way: "(8 ½ ounces)", "(about 1/4 cup)". Scales with it.
+        case total
+        /// Anything else holding an amount: scaling beside it could contradict it.
+        case unsure
+    }
+
+    /// `before` is the side's text before the bracket, `measure` whether the side's amount has a
+    /// unit, and `one` whether it is the count 1. Only a measure's bracket can't be a per-item
+    /// size: "4 Apfel (ca. 800g)" and "1 patate douce (300-400 g)" may give each one's weight, so
+    /// a count's bracket is a package size or unsure, never a total.
+    static func kind(_ p: Patterns, before: String, content: String, measure: Bool, one: Bool) -> BracketKind {
+        if !p.qtyUnit.containsMatch(in: content) { return .other }
+        if (!measure && before.kIsBlank) || p.afterContainer.containsMatch(in: before) ||
+            (!measure && one && p.containerFirst.containsMatch(in: before)) ||
+            p.perItem.containsMatch(in: content) { return .package }
+        if measure && p.total.matchEntire(unwrapped(content)) != nil { return .total }
+        return .unsure
+    }
+
+    // "((~250g/8oz))": recipetineats.com doubles every bracket.
+    private static func unwrapped(_ content: String) -> String {
+        var text = content.kTrimmed
+        while text.u16Count >= 2 && text.hasPrefix("(") && text.hasSuffix(")") {
+            let inner = text.u16Substring(1, text.u16Count - 1)
+            if !balanced(inner) { break }
+            text = inner.kTrimmed
+        }
+        return text
+    }
+
+    private static func balanced(_ text: String) -> Bool {
+        var depth = 0
+        for c in text.utf16 {
+            if c == 0x28 { depth += 1 } else if c == 0x29 {
+                depth -= 1
+                if depth < 0 { return false }
+            }
+        }
+        return depth == 0
+    }
+
+    /// Scales the totals in brackets after the name, leaving package sizes and other brackets as
+    /// written. Nil when a bracket is `.unsure`: the line stays as written.
+    private static func scaleBrackets(
+        _ p: Patterns, _ tail: String, factor: Double, comma: Bool, measure: Bool, one: Bool
+    ) -> String? {
+        var out = ""
+        var cursor = 0
+        for b in brackets(tail) {
+            let content = tail.u16Substring(b.contentStart, b.contentEnd)
+            switch kind(p, before: tail.u16Substring(0, b.start), content: content, measure: measure, one: one) {
+            case .other, .package: continue
+            case .unsure: return nil
+            case .total:
+                guard let scaled = scaleTotal(p, content, factor: factor, comma: comma) else { return nil }
+                out += tail.u16Substring(cursor, b.contentStart) + scaled
+                cursor = b.contentEnd
+            }
+        }
+        return out + tail.u16Substring(from: cursor)
+    }
+
+    private static func scaleTotal(_ p: Patterns, _ content: String, factor: Double, comma: Bool) -> String? {
+        var failed = false
+        let scaled = p.measure.replace(content) { m in
+            let upper = m[3]
+            guard let unit = MeasureUnit.fromText(m[5], words: p.words), let low = p.parse(m[1]) else {
+                failed = true
+                return m.value
+            }
+            var range = ""
+            if !upper.isEmpty {
+                guard let high = p.parse(upper) else {
+                    failed = true
+                    return m.value
+                }
+                range = m[2] + formatFor(unit, high * factor, comma: comma)
+            }
+            return formatFor(unit, low * factor, comma: comma) + range + m[4] + m[5]
+        }
+        return failed ? nil : scaled
     }
 
     private static func scalePair(_ p: Patterns, _ match: JMatch, factor: Double, comma: Bool) -> String {
