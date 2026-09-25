@@ -108,6 +108,21 @@ class GroceryDaoTest {
     }
 
     @Test
+    fun undoAfterTheRecipeWentDropsOnlyTheSource() = runBlocking {
+        val id = recipe("https://example.com/a")
+        groceries.add(listOf(item("1 cup flour", recipeId = id)))
+        val saved = groceries.observeItems().first()
+
+        groceries.delete(saved.map { it.id })
+        db.recipeDao().delete(id)
+        groceries.restore(saved)
+
+        val left = groceries.observeItems().first().single()
+        assertEquals("1 cup flour", left.text)
+        assertNull(left.recipeId)
+    }
+
+    @Test
     fun theWeeksPlannedRecipesComeInPlanOrderWithoutNotes() = runBlocking {
         val soup = recipe("https://example.com/soup", listOf("1 onion"))
         val bread = recipe("https://example.com/bread", listOf("500 g flour"))
