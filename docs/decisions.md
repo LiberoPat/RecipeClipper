@@ -1788,3 +1788,38 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
   unless its uid is already here (then it's left as it is, never merged or renamed); its meals
   follow the plan's rules (a recipe meal needs its recipe, a note always comes in, no meal type
   means Dinner), its recipes come in like listed ones, and a menu left with no meals is dropped.
+
+## Chef mode: short steps written on the device (#100)
+
+Part of #99: the model writes words, code owns every number.
+
+**The on-device APIs, as checked on 2026-09-25** (official docs, and the iOS 27 SDK's
+`FoundationModels.swiftinterface`):
+
+- **iOS: Apple's Foundation Models framework** (`import FoundationModels`, iOS 26+, Apple
+  Intelligence devices). `SystemLanguageModel.default.availability` is `.available` or
+  `.unavailable(reason)`, the reason one of `.deviceNotEligible`, `.appleIntelligenceNotEnabled`
+  and `.modelNotReady` (still downloading). `supportedLanguages` (a `Set<Locale.Language>`) and
+  `supportsLocale(_:)` say which languages it writes. `contextSize` is 4,096 tokens on 26.0 and
+  8,192 on 27.0 (newer devices). A `LanguageModelSession(instructions:)` is stateful, so each
+  step gets a fresh one; `respond(to:options:)` returns `Response<String>.content`;
+  `GenerationOptions(temperature:)`. It throws on guardrail violations and unsupported
+  languages. The app targets iOS 17, so everything sits behind `#available(iOS 26, *)` and
+  `#if canImport(FoundationModels)`; on an older phone Chef mode is unsupported.
+- **Android: ML Kit GenAI on Gemini Nano, through AICore.** Three candidates:
+  - *Rewriting* (`com.google.mlkit:genai-rewriting:1.0.0-beta1`): `Rewriting.getClient(
+    RewriterOptions.builder(context).setOutputType(SHORTEN).setLanguage(…))`. Input under
+    256 tokens (a step is well under). Languages: English, Japanese, French, German, Italian,
+    Spanish, Korean; **no Portuguese**. Returns suggestions sorted by confidence.
+  - *Summarization* (`genai-summarization:1.0.0-beta1`): bulleted summaries of articles and
+    chats; the wrong shape for one step.
+  - *Prompt API* (`genai-prompt:1.0.0-beta4`): free prompts to Gemini Nano, under 4,000 tokens,
+    on fewer phones (nano-v2 to v4 lists).
+  All three: `checkFeatureStatus()` (Prompt: `checkStatus()`) returns `UNAVAILABLE`,
+  `DOWNLOADABLE`, `DOWNLOADING` or `AVAILABLE`; `downloadFeature(callback)` fetches the model;
+  minSdk 26 (the app's is 24, so the manifest overrides the library's and code checks the
+  API level); not on unlocked bootloaders; inference only while the app is the top foreground
+  app (`BACKGROUND_USE_BLOCKED`), with short-term (`BUSY`) and daily battery quotas
+  (`PER_APP_BATTERY_USE_QUOTA_EXCEEDED`). Supported phones: Pixel 9 and later, Galaxy
+  S25/S26, OnePlus 13–15 and others on Google's list.
+  **Chosen: Rewriting with `SHORTEN`**, the API built for exactly this, on the most phones.
