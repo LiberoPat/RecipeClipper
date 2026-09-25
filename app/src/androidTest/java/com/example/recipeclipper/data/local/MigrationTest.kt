@@ -502,9 +502,14 @@ class MigrationTest {
                    'recipe-uid', 'en', NULL, NULL, 'PARSED', NULL)
                 """.trimIndent()
             )
+            // The helper creates the tables without the seeding callback, so the type goes in by hand.
+            db.execSQL(
+                "INSERT INTO meal_types (id, name, builtInKey, sortOrder, updatedAt, uid) " +
+                    "VALUES (3, 'Dinner', 'dinner', 2, 1, 'dinner-uid')"
+            )
             db.execSQL(
                 "INSERT INTO meal_plan_entries (day, mealTypeId, recipeId, servings, note, sortOrder, updatedAt, uid) " +
-                    "SELECT 20000, id, 7, 2, NULL, 0, 1, 'plan-uid' FROM meal_types WHERE builtInKey = 'dinner'"
+                    "VALUES (20000, 3, 7, 2, NULL, 0, 1, 'plan-uid')"
             )
         }
 
