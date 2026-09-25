@@ -314,4 +314,32 @@ final class UnitConverterTests: XCTestCase {
         // Neither half in the target unit: the calculated range replaces both.
         XCTAssertEqual("225 - 285 g spaghetti", metric("8 - 10 oz / 1/2 - 5/8 lb spaghetti"))
     }
+
+    // MARK: - Alternatives, compound parts and totals after the name (#61, #62, #63)
+
+    func testEachAlternativeConvertsOrTheLineStaysAsWritten() {
+        XCTAssertEqual("225 g butter or 240 ml vegetable oil", metric("8 oz butter or 1 cup vegetable oil"))
+        // The oil is a liquid Ounces leaves alone, so the butter can't convert alone either.
+        XCTAssertEqual("8 oz butter or 1 cup vegetable oil", ounces("8 oz butter or 1 cup vegetable oil"))
+        XCTAssertEqual("8 oz butter or 7 3/4 oz vegetable oil", ounces("8 oz butter or 1 cup vegetable oil", liquids: true))
+        // A count is fine as it is.
+        XCTAssertEqual("2 vanilla pods or 5 ml vanilla extract", metric("2 vanilla pods or 1 tsp vanilla extract"))
+    }
+
+    func testAPartTakenAwayIsSubtracted() {
+        XCTAssertEqual("450 ml milk", metric("2 cups minus 2 tbsp milk"))
+        XCTAssertEqual("395 g butter", metric("1 lb minus 2 oz butter"))
+        // A part that can't convert keeps the whole line.
+        XCTAssertEqual("2 cups minus 2 tbsp mystery", ounces("2 cups minus 2 tbsp mystery"))
+    }
+
+    func testATotalAfterTheNameIsTheSitesFigure() {
+        XCTAssertEqual("250 g flour", metric("2 cups flour (250 g)"))
+        XCTAssertEqual("8 3/4 oz flour, sifted", ounces("2 cups flour (250 g), sifted"))
+        XCTAssertEqual("240 ml milk", metric("1 cup milk (about 240 ml)"))
+        // Not the target's kind of measure: it stays beside the converted amount.
+        XCTAssertEqual("285 g unsalted butter (2 1/2 sticks)", metric("1 1/4 cups unsalted butter (2 1/2 sticks)"))
+        // A package size is never the line's amount.
+        XCTAssertEqual("2 cans (15 oz) beans", metric("2 cans (15 oz) beans"))
+    }
 }

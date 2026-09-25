@@ -488,8 +488,22 @@ Each one exists to avoid showing a confident wrong number.
   scales those figures too. Package sizes ("1 can (14 oz)") are never scaled.
 - **A compound amount converts as a whole or not at all**
   ("1½ cups plus 1 Tbsp. (200 g) flour"). A site figure after the second part
-  stands for the whole; otherwise both parts are converted and summed;
-  otherwise the line stays as written.
+  stands for the whole; otherwise both parts are converted and summed ("minus"
+  subtracts); otherwise the line stays as written. A second part later in the
+  line ("2 eggs plus 3 yolks", "+ 1 egg yolk") scales too, counts included.
+- **Alternatives ("A or B") scale and convert each side or none** (#61). The
+  amount after "or" needs a unit ("or 2 small onions" keeps the line as
+  written); a side with no unit, or already in the target units, is fine as it
+  is.
+- **A bracket after the name** (#63): only a measure's bracket holding nothing
+  but an amount ("(8 ½ ounces)", "(about 1/4 cup)", "(180 g.)") is a total:
+  it scales, and is the site's figure when converting. Package and per-item
+  sizes never scale: a bracket straight after the count or a container word,
+  "1 lata … (397 g)", "each"/"per". Any other bracket holding an amount (a
+  count's "4 Apfel (ca. 800g)", prose with numbers) keeps the whole line as
+  written when scaled.
+- **Joining, "about", per-item and container words are per language** in
+  `amounts.json`; a language without them keeps the older, safer behaviour.
 - **A unit's trailing period ("tsp.", "oz.") belongs to the unit.** The
   `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative.

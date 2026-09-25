@@ -41,7 +41,8 @@ final class IngredientScalerTests: XCTestCase {
 
     func testOnlyTheLeadingQuantityIsScaled() {
         XCTAssertEqual("2 (14 oz) can tomatoes", scale("1 (14 oz) can tomatoes", 2.0))
-        XCTAssertEqual("6 cloves garlic, minced (about 1 tbsp)", scale("3 cloves garlic, minced (about 1 tbsp)", 2.0))
+        // A count's bracket may be each clove's size, and a total beside it would contradict it (#63).
+        XCTAssertEqual("3 cloves garlic, minced (about 1 tbsp)", scale("3 cloves garlic, minced (about 1 tbsp)", 2.0))
     }
 
     func testAlternateMeasuresAreScaledWithTheLeadingAmount() {
@@ -63,7 +64,7 @@ final class IngredientScalerTests: XCTestCase {
             scale("1½ cups plus 1 Tbsp. (200 g) all-purpose flour", 0.5)
         )
         XCTAssertEqual("3 cup + 6 tbsp sugar", scale("1 cup + 2 tbsp sugar", 3.0))
-        XCTAssertEqual("2 cup plus 1 egg", scale("1 cup plus 1 egg", 2.0))
+        XCTAssertEqual("2 cup plus 2 egg", scale("1 cup plus 1 egg", 2.0)) // a count scales too (#62)
     }
 
     func testPackageSizesAndNonMeasuresInParenthesesAreNotScaled() {
@@ -219,5 +220,58 @@ final class IngredientScalerTests: XCTestCase {
             IngredientScaler.scale("250 - 300 g / 8 - 10 oz pasta", factor: 2.0)
         )
         XCTAssertEqual("1 cup / 240 to 250 g flour", IngredientScaler.scale("2 cup / 480 to 500 g flour", factor: 0.5))
+    }
+
+    // MARK: - Alternatives, compound parts and totals after the name (#61, #62, #63)
+
+    func testAnAlternativeAmountWithAUnitScalesWithTheFirst() {
+        XCTAssertEqual("2 cup butter or 1 cup oil", scale("1 cup butter or 1/2 cup oil", 2.0))
+        XCTAssertEqual("2 cup butter (or 1 cup oil)", scale("1 cup butter (or 1/2 cup oil)", 2.0))
+        XCTAssertEqual("2 cup (240 g) sugar or 1 cup (200 g) honey", scale("1 cup (120 g) sugar or 1/2 cup (100 g) honey", 2.0))
+        // "or" with no amount after it is part of the name.
+        XCTAssertEqual("2 cup butter or margarine", scale("1 cup butter or margarine", 2.0))
+    }
+
+    func testAnAlternativeWithoutAUnitLeavesTheWholeLineAsWritten() {
+        XCTAssertEqual("1 cup butter or 2 eggs", scale("1 cup butter or 2 eggs", 2.0))
+        XCTAssertEqual("1 cup butter or 2-inch piece", scale("1 cup butter or 2-inch piece", 2.0))
+    }
+
+    func testAnOrInsideAPackageSizeIsNotAnAlternative() {
+        XCTAssertEqual("2 can (14 oz or 400 g) tomatoes", scale("1 can (14 oz or 400 g) tomatoes", 2.0))
+    }
+
+    func testASecondPartAddedLaterInTheLineScalesCountedOrMeasured() {
+        XCTAssertEqual("2 cup flour, plus 4 tbsp for dusting", scale("1 cup flour, plus 2 tbsp for dusting", 2.0))
+        XCTAssertEqual("6 eggs + 3 yolk", scale("2 eggs + 1 yolk", 3.0))
+        XCTAssertEqual("4 eggs plus 2 yolks", scale("2 eggs plus 1 yolks", 2.0))
+    }
+
+    func testAPartTakenAwayScalesToo() {
+        XCTAssertEqual("1 cups minus 1 tbsp flour", scale("2 cups minus 2 tbsp flour", 0.5))
+        XCTAssertEqual("4 eggs minus 2 whites", scale("2 eggs minus 1 whites", 2.0))
+    }
+
+    func testAMeasuresTotalAfterTheNameScalesWithIt() {
+        XCTAssertEqual("4 cups flour (500 g)", scale("2 cups flour (250 g)", 2.0))
+        XCTAssertEqual("2 lb potatoes, peeled (about 900-1000 g)", scale("1 lb potatoes, peeled (about 450-500 g)", 2.0))
+        XCTAssertEqual("1 cup oats (~45 g/1 1/2 oz)", scale("2 cup oats (~90 g/3 oz)", 0.5))
+    }
+
+    func testPackageAndPerItemSizesNeverScale() {
+        XCTAssertEqual("4 cans (15 oz) beans", scale("2 cans (15 oz) beans", 2.0))
+        XCTAssertEqual("4 (15 oz) cans beans", scale("2 (15 oz) cans beans", 2.0))
+        XCTAssertEqual("8 steaks (8 oz each)", scale("4 steaks (8 oz each)", 2.0))
+        XCTAssertEqual("2 can tomatoes (400 g)", scale("1 can tomatoes (400 g)", 2.0))
+    }
+
+    func testABracketThatMayContradictTheScaledAmountLeavesTheLineAsWritten() {
+        // A count's bracket may be each one's weight or the total.
+        XCTAssertEqual("4 steaks (about 2 lb)", scale("4 steaks (about 2 lb)", 2.0))
+        XCTAssertEqual("1 onion (150 g)", scale("1 onion (150 g)", 2.0))
+        // Not only an amount: it can't be scaled whole.
+        XCTAssertEqual("1 cup rice (cooked in 2 cups water)", scale("1 cup rice (cooked in 2 cups water)", 2.0))
+        // No unit in the bracket: nothing to contradict.
+        XCTAssertEqual("4 cups chopped onion (2 medium)", scale("2 cups chopped onion (2 medium)", 2.0))
     }
 }
