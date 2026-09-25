@@ -8,6 +8,8 @@ import com.example.recipeclipper.data.BackupRepository
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ImportSummary
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.TemperatureUnit
@@ -32,6 +34,13 @@ data class SettingsUiState(
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
     val backup: BackupStatus = BackupStatus.Idle,
+    /** The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind it. */
+    val showsPantry: Boolean = false,
+    /** A morning notification when pantry items are about to expire. */
+    val expiryReminders: Boolean = false,
+    /** Turning reminders on was refused (notifications not allowed): the switch stays off and
+     *  says why, until it is turned on successfully. */
+    val expiryRemindersDenied: Boolean = false,
     /** e.g. "1.0 (1)", shown at the foot; tapping it [SettingsViewModel.DEVELOPER_TAPS] times
      *  opens Developer settings (#87). */
     val appVersion: String = ""
@@ -69,7 +78,9 @@ class SettingsViewModel @Inject constructor(
     private val preferences: AppPreferences,
     private val backups: BackupRepository,
     private val files: BackupFiles,
-    private val appInfo: AppInfo
+    private val appInfo: AppInfo,
+    // Last and optional, so a test that doesn't care builds the screen without it (no Pantry section).
+    private val featureFlags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
@@ -78,14 +89,25 @@ class SettingsViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             preferences.settings.collect { settings ->
-                _uiState.update { settings.toUiState(backup = it.backup) }
+                _uiState.update { settings.toUiState(it) }
+            }
+        }
+        featureFlags?.let { flags ->
+            viewModelScope.launch {
+                flags.values.collect { values -> _uiState.update { it.copy(showsPantry = values.isOn(Flag.MEAL_PLAN)) } }
             }
         }
     }
 
-    /** The preferences' part of the state; [backup] is this screen's own and carries over. */
-    private fun AppSettings.toUiState(backup: BackupStatus = BackupStatus.Idle) =
-        SettingsUiState(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, backup, appInfo.appVersion)
+    /** The preferences' part of the state; the rest is this screen's own and carries over. */
+    private fun AppSettings.toUiState(previous: SettingsUiState? = null) = SettingsUiState(
+        unitSystem, convertLiquids, temperatureUnit, darkWhileCooking,
+        backup = previous?.backup ?: BackupStatus.Idle,
+        showsPantry = previous?.showsPantry ?: (featureFlags?.isOn(Flag.MEAL_PLAN) ?: false),
+        expiryReminders = expiryReminders,
+        expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,
+        appVersion = appInfo.appVersion
+    )
 
     // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.
     private var versionTaps = 0
@@ -119,6 +141,22 @@ class SettingsViewModel @Inject constructor(
     fun onDarkWhileCookingChange(enabled: Boolean) {
         preferences.darkWhileCooking = enabled
         _uiState.update { it.copy(darkWhileCooking = enabled) }
+    }
+
+    /**
+     * The expiry reminders switch (#52). Turning it on is the screen's job first: it asks for
+     * notification permission (never on launch) and calls [onExpiryRemindersPermission] with the
+     * answer. Off needs no asking.
+     */
+    fun onExpiryRemindersOff() {
+        preferences.expiryReminders = false
+        _uiState.update { it.copy(expiryReminders = false) }
+    }
+
+    /** Notifications are allowed (reminders go on) or refused (they stay off, and the row says why). */
+    fun onExpiryRemindersPermission(granted: Boolean) {
+        preferences.expiryReminders = granted
+        _uiState.update { it.copy(expiryReminders = granted, expiryRemindersDenied = !granted) }
     }
 
     /** Export: read everything out, write the file, then hand it to the screen to share. */

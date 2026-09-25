@@ -30,14 +30,20 @@ interface AppPreferences {
     var darkWhileCooking: Boolean
 
     /**
+     * A morning notification when something in the pantry is about to expire (#52). Off by
+     * default; Settings turns it on only once notifications are allowed.
+     */
+    var expiryReminders: Boolean
+
+    /**
      * The current values first, then every change, never repeating a value. A screen that
      * collects this stays current when Settings changes a default while it is open (#24).
      */
     val settings: Flow<AppSettings>
 
-    /** The four values as they are right now. */
+    /** The values as they are right now. */
     val current: AppSettings
-        get() = AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking)
+        get() = AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders)
 }
 
 /** One snapshot of [AppPreferences], as its [AppPreferences.settings] flow emits them. */
@@ -45,5 +51,6 @@ data class AppSettings(
     val unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
-    val darkWhileCooking: Boolean = false
+    val darkWhileCooking: Boolean = false,
+    val expiryReminders: Boolean = false
 )

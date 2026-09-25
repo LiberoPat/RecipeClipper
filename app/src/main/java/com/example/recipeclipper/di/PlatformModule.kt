@@ -14,6 +14,8 @@ import com.example.recipeclipper.data.AndroidErrorLog
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.ErrorLog
 import com.example.recipeclipper.data.TimerAlarmScheduler
+import com.example.recipeclipper.data.ExpiryReminderScheduler
+import com.example.recipeclipper.reminders.AndroidExpiryReminderScheduler
 import com.example.recipeclipper.timers.AndroidTimerAlarmScheduler
 import com.example.recipeclipper.data.WebViewRenderedPageSource
 import com.example.recipeclipper.data.remote.RenderedPageSource
@@ -39,6 +41,10 @@ abstract class PlatformModule {
     @Binds
     @Singleton
     abstract fun timerAlarmScheduler(impl: AndroidTimerAlarmScheduler): TimerAlarmScheduler
+
+    @Binds
+    @Singleton
+    abstract fun expiryReminderScheduler(impl: AndroidExpiryReminderScheduler): ExpiryReminderScheduler
 
     @Binds
     @Singleton

@@ -11,13 +11,15 @@ final class FakeAppPreferences: AppPreferences {
         unitSystem: UnitSystem = .asWritten,
         convertLiquids: Bool = false,
         temperatureUnit: TemperatureUnit = .asWritten,
-        darkWhileCooking: Bool = false
+        darkWhileCooking: Bool = false,
+        expiryReminders: Bool = false
     ) {
         subject = CurrentValueSubject(AppSettings(
             unitSystem: unitSystem,
             convertLiquids: convertLiquids,
             temperatureUnit: temperatureUnit,
-            darkWhileCooking: darkWhileCooking
+            darkWhileCooking: darkWhileCooking,
+            expiryReminders: expiryReminders
         ))
     }
 
@@ -43,5 +45,10 @@ final class FakeAppPreferences: AppPreferences {
     var darkWhileCooking: Bool {
         get { subject.value.darkWhileCooking }
         set { subject.value.darkWhileCooking = newValue }
+    }
+
+    var expiryReminders: Bool {
+        get { subject.value.expiryReminders }
+        set { subject.value.expiryReminders = newValue }
     }
 }

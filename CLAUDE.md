@@ -104,6 +104,7 @@ ui/            navigation, home, history, recipe, clip, edit, savetolist, lists,
                settings, week (with What I need), plan (Add to plan sheet), mealtypes,
                groceries (the tab and the Add to groceries sheet), pantry, theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
+reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receiver, the notification (#52)
 ```
 
 Routes: `home`, `history`, `settings` (and the hidden `settings/developer`), `lists`, `lists/{listId}`,
@@ -222,7 +223,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
   Ounces only), Oven temperature (independent of units, default As
-  written), Appearance ("Dark while cooking"). Reached from the gear beside
+  written), Appearance ("Dark while cooking"), Pantry ("Expiry reminders",
+  only with the `mealPlan` flag; asks for notifications when turned on,
+  never at launch). Reached from the gear beside
   the Home title, on every tab of the shell below. It could now open from
   elsewhere too (the recipe screen follows `AppPreferences.settings`), but
   adding an entry point is the owner's call.
@@ -262,8 +265,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Pantry** (#51, behind the flag): "Add to the pantry", search, then items
   by aisle (menu: by expiry, radio glyphs); a switch per row for in stock;
   tap for the edit sheet (quantity as written, "Always have", a use-by date,
-  Delete with undo). Expired or within 3 days shows a paprika badge; no
-  notifications. Switching an item out offers "Add to groceries".
+  Delete with undo). Expired or within 3 days shows a paprika badge; an
+  opt-in 9:00 notification lists what expires today or tomorrow (#52,
+  Settings → Pantry). Switching an item out offers "Add to groceries".
   "What I need" (Week menu): the shown week's lines at planned servings,
   grouped by ingredient, "To buy" then "In your pantry", with a note that
   having some isn't having enough; "Add to groceries" adds the To buy lines.
@@ -361,7 +365,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - Settings live in the SharedPreferences file `unit_preferences` (never
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
   under the same keys: `unit_system`, `convert_liquids`, `temperature_unit`,
-  `dark_while_cooking`, each enum stored by name. `AppPreferences.settings`
+  `dark_while_cooking`, `expiry_reminders`, each enum stored by name. `AppPreferences.settings`
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.

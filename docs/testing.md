@@ -199,6 +199,17 @@ pinned for iOS by the corpus's `Pant` rows. iOS mirrors the rest in
 `PantryDaoTests` (with the user_version 8 → 9 step), `PantryTests`,
 `PantryViewModelTests` and `PantryUITests`.
 
+Pantry expiry reminders (#52): when they fall and what they list is JVM-tested
+(`ExpiryRemindersTest`, `ExpiryReminderCoordinatorTest`,
+`SettingsExpiryRemindersTest`) and mirrored on iOS (`ExpiryRemindersTests`,
+`ExpiryReminderCoordinatorTests`, `SettingsExpiryRemindersTests`,
+`ExpiryRemindersUITests`). `ExpiryRemindersSettingsTest` (the switch, with the
+permission granted up front) runs on the JVM; on the agents' emulator
+`ExpiryReminderAlarmsTest` (the alarm is pending, then cancelled; 9:00 local;
+the posted notification's text and channel) pass. Still to check on a device:
+the alarm firing at 9:00 through Doze and after a reboot, the system permission
+dialog and a refusal, a tap opening the Pantry tab, and the iOS notification.
+
 The cook-persistence tests (#10) are the cook-state migration in
 `MigrationTest` (device) and the cook-state cases in `RecipeDaoTest` (JVM). A timer alarm was also checked end to end there: a
 recipe seeded with a running timer, opened through the notification's

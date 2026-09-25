@@ -51,10 +51,16 @@ class SharedPrefsAppPreferences @Inject constructor(@ApplicationContext context:
             prefs.edit { putBoolean(KEY_DARK_COOKING, value) }
         }
 
+    override var expiryReminders: Boolean
+        get() = prefs.getBoolean(KEY_EXPIRY_REMINDERS, false)
+        set(value) {
+            prefs.edit { putBoolean(KEY_EXPIRY_REMINDERS, value) }
+        }
+
     /**
      * Over SharedPreferences' change listener. SharedPreferences holds its listeners weakly, so
      * the listener is a local that `awaitClose` keeps alive for as long as someone collects;
-     * collection ending unregisters it. Every change re-reads all four values, so the flow
+     * collection ending unregisters it. Every change re-reads every value, so the flow
      * always carries a whole, consistent snapshot, and repeats are dropped.
      */
     override val settings: Flow<AppSettings> = callbackFlow {
@@ -69,5 +75,6 @@ class SharedPrefsAppPreferences @Inject constructor(@ApplicationContext context:
         const val KEY_LIQUIDS = "convert_liquids"
         const val KEY_DARK_COOKING = "dark_while_cooking"
         const val KEY_TEMPERATURE_UNIT = "temperature_unit"
+        const val KEY_EXPIRY_REMINDERS = "expiry_reminders"
     }
 }

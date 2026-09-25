@@ -53,6 +53,25 @@ struct SettingsScreen: View {
                     )
                 }
 
+                if vm.showsPantry {
+                    Divided {
+                        SectionHeading(Strings.settingsSectionPantry).padding(.bottom, 4)
+                        SwitchRow(
+                            title: Strings.expiryRemindersTitle,
+                            description: Strings.expiryRemindersDescription,
+                            isOn: Binding(get: { vm.uiState.expiryReminders }, set: { vm.onExpiryRemindersChange($0) })
+                        )
+                        .accessibilityIdentifier("settings.expiryReminders")
+                        if state.expiryRemindersDenied && !state.expiryReminders {
+                            Text(Strings.expiryRemindersDenied)
+                                .textStyle(Typography.bodySmall)
+                                .foregroundStyle(Palette.error)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityIdentifier("settings.expiryRemindersDenied")
+                        }
+                    }
+                }
+
                 Divided {
                     SectionHeading(Strings.settingsSectionYourRecipes).padding(.bottom, 4)
                     // Actions, not choices: plain rows, no radio or switch.

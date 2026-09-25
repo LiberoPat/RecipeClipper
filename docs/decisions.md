@@ -1500,7 +1500,7 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
 - **Running out offers groceries**: switching an item out shows "… is out" with
   "Add to groceries" (the name as a typed item). Typing a name already in the
   pantry puts it back in stock rather than adding a twin.
-- **Expiry**: a badge only (Expired before today; the date in paprika from today
+- **Expiry**: a badge only (#52 later added an opt-in morning reminder) (Expired before today; the date in paprika from today
   to 3 days ahead), no notifications, as the epic says. Sort by aisle (the
   default) or by expiry (soonest first, undated last), from the menu as radio
   choices.
@@ -1664,6 +1664,55 @@ brings one).
 - **Retiring a flag:** when a feature ships for good, delete it from
   flags.json and the enums, with its branches, in one PR. flags.json keeps no
   history. `mealPlan` retires when the meal plan ships.
+
+## Pantry expiry reminders (#52)
+
+Owner-approved extra of #52: a morning notification when something in the
+pantry is about to be used up by its date. #51's badge stays; this adds the
+nudge for a cook who isn't looking at the pantry.
+
+- **Opt-in, in Settings.** A Pantry section with one switch, "Expiry
+  reminders", off by default, shown only while the `mealPlan` flag is on (the
+  pantry is behind it). With the flag off nothing is scheduled even if the
+  setting is on. Stored as `expiry_reminders` in `unit_preferences` /
+  UserDefaults, like the other settings.
+- **The permission is asked when the switch goes on, never at launch.**
+  Android: `POST_NOTIFICATIONS` from the Settings screen (it holds the
+  Activity), no prompt below API 33; a refusal, or notifications switched off
+  for the app, leaves the switch off with a line saying to allow them in the
+  system settings. iOS: `requestAuthorization` through a `NotificationPermission`
+  seam on the ViewModel (the system asks once; afterwards it answers at once).
+  This doesn't touch #10's "asked once" flag for timers: turning the switch on
+  is an explicit request, so it always asks.
+- **One notification per morning, 9:00 local, never one per item.** It lists
+  what expires that day and the next ("Milk and yogurt expire tomorrow.",
+  both sentences when both apply), A–Z, each name as typed. So an item is
+  mentioned twice: the morning before and the morning of. Only items in
+  stock, not "Always have", and with a date count; an item already past its
+  date gets nothing (the badge says Expired). Turned on after 9:00, today's is
+  skipped. Sentences come from one/many strings rather than plurals (the six
+  languages only need the two), names joined with commas and a translated
+  "and".
+- **Pure planning** (`ExpiryReminders`, both platforms): items + today +
+  minute of day → the reminders to come, each (day, today's names, tomorrow's
+  names), capped at 30 (iOS keeps 64 pending notifications, which timers
+  share). The coordinator (`ExpiryReminderCoordinator`) replans on every
+  change to the pantry, the setting or the flag, and on app start.
+- **Android: one inexact `AlarmManager` alarm** (`setAndAllowWhileIdle`, #10's
+  plumbing, no exact-alarm permission: a morning note may come a few minutes
+  late) for the first planned morning. The receiver re-reads the pantry, posts
+  that morning's reminder as it is now (nothing if it was all used up, the
+  setting went off, or the alarm is a day late), then arms the next morning.
+  `TimerBootReceiver` re-arms it after a reboot or update; the app process
+  starting replans too. Channel "Pantry reminders" (default importance); a tap
+  opens the Pantry tab through MainActivity's route queue.
+- **iOS: pending `UNCalendarNotificationTrigger` requests, replaced
+  wholesale** (`expiry.<day>`), each carrying its text as planned, since
+  nothing runs when it fires. Any pantry change replans, and so does coming
+  back to the foreground, so the list starts from today. It never asks for
+  permission itself. A tap selects the Pantry tab (`NotificationRouter`).
+  Known gap: an item changed from another device (#53) or by the share
+  extension is only seen at the next foreground.
 
 ## Meal plan extras (#52)
 

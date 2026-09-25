@@ -407,6 +407,20 @@
     <string name="developer_flag_issue">Issue #%1$d</string>
     <string name="developer_flag_changed">Changed from the default</string>
     <string name="developer_reset">Reset to defaults</string>
+
+    <!-- Pantry expiry reminders (#52) -->
+    <string name="settings_section_pantry">Pantry</string>
+    <string name="expiry_reminders_title">Expiry reminders</string>
+    <string name="expiry_reminders_description">A notification at 9 in the morning when something in stock expires today or tomorrow</string>
+    <string name="expiry_reminders_denied">Notifications are off for Recipe Clipper. Allow them in the system settings to get reminders.</string>
+    <string name="expiry_channel_name">Pantry reminders</string>
+    <string name="expiry_channel_description">A morning note when something in the pantry is about to expire</string>
+    <string name="expiry_notification_title">Use it soon</string>
+    <string name="expiry_one_today">%1$s expires today.</string>
+    <string name="expiry_many_today">%1$s expire today.</string>
+    <string name="expiry_one_tomorrow">%1$s expires tomorrow.</string>
+    <string name="expiry_many_tomorrow">%1$s expire tomorrow.</string>
+    <string name="expiry_names_and">%1$s and %2$s</string>
     <string name="action_month_view">Month</string>
     <string name="action_week_view">Week</string>
     <string name="action_this_month">This month</string>

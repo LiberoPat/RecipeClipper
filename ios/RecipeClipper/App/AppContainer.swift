@@ -17,6 +17,10 @@ final class AppContainer {
     let backupFiles: BackupFiles
     let appInfo: AppInfo
     let alarms: TimerAlarmScheduler
+    /// Asks to post notifications when expiry reminders are turned on (#52).
+    let notificationPermission: NotificationPermission
+    /// Keeps the pantry's expiry reminders scheduled (#52); the live app only.
+    private(set) var expiryReminders: ExpiryReminderCoordinator?
     /// The feature flags (#87), read by the root view and Developer settings.
     let featureFlags: FeatureFlags
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
@@ -43,7 +47,8 @@ final class AppContainer {
         alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler(),
         clipFixtureHTML: String? = nil,
         sharedDatabase: AppDatabase? = nil,
-        featureFlags: FeatureFlags? = nil
+        featureFlags: FeatureFlags? = nil,
+        notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true)
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -58,6 +63,7 @@ final class AppContainer {
         self.backupFiles = backupFiles
         self.appInfo = appInfo
         self.alarms = alarms
+        self.notificationPermission = notificationPermission
         self.clipFixtureHTML = clipFixtureHTML
         self.sharedDatabase = sharedDatabase
         // Unless given a store, overrides last only for this run (unit tests).
@@ -69,6 +75,19 @@ final class AppContainer {
     /// every open list re-queries (Home's "Continue cooking" then shows what was just shared).
     func refreshAfterExternalChanges() {
         sharedDatabase?.refreshObservers()
+        // A day may have passed: plan the expiry reminders from today again.
+        expiryReminders?.reschedule()
+    }
+
+    /// Starts the expiry reminders (#52) over `scheduler`. The live app only: a test run never
+    /// schedules a notification.
+    func startExpiryReminders(_ scheduler: ExpiryReminderScheduler) {
+        let coordinator = ExpiryReminderCoordinator(
+            pantry: pantryRepository, preferences: preferences, flags: featureFlags,
+            scheduler: scheduler, clock: clock
+        )
+        coordinator.start()
+        expiryReminders = coordinator
     }
 
     /// The real graph: SQLite on disk, the blog source, UserDefaults. The database and the
@@ -88,7 +107,7 @@ final class AppContainer {
             fatalError("Couldn't open the recipe database: \(error)")
         }
         let defaults = UserDefaults(suiteName: testing ? "RecipeClipperTestHost" : AppGroup.identifier) ?? .standard
-        return AppContainer(
+        let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
                 db: database, source: BlogRecipeSource(), clock: clock,
                 renderedPages: WebViewRenderedPageSource()
@@ -105,8 +124,11 @@ final class AppContainer {
             // prompt (UI-test seeding above takes the default, which is the same no-op).
             alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock),
             sharedDatabase: testing ? nil : database,
-            featureFlags: testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore())
+            featureFlags: testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore()),
+            notificationPermission: testing ? FixedNotificationPermission(granted: true) : SystemNotificationPermission()
         )
+        if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
+        return container
     }
 
     func makeHomeViewModel() -> HomeViewModel {
@@ -171,7 +193,8 @@ final class AppContainer {
 
     func makeSettingsViewModel() -> SettingsViewModel {
         SettingsViewModel(
-            preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion
+            preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
+            flags: featureFlags, notificationPermission: notificationPermission
         )
     }
 
