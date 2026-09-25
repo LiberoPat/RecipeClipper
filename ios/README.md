@@ -44,7 +44,7 @@ Debug builds accept launch arguments for driving the app without touch (see
 
 ```
 xcrun simctl launch booted com.liberopat.recipeclipper -debugOpen "<recipe url>" [-debugCook]
-xcrun simctl launch booted com.liberopat.recipeclipper -debugRoute history|lists|settings|list:<id>
+xcrun simctl launch booted com.liberopat.recipeclipper -debugRoute recipes|lists|settings|list:<id>
 ```
 
 The bundle ID was `com.example.recipeclipper` until September 2026. A simulator that had
@@ -124,7 +124,7 @@ tests (in-memory SQLite in the simulator), not device tests.
   authorisation is asked on the first timer start, and `NotificationRouter` (the center's
   delegate, set in `RecipeClipperApp.init`) opens cook mode on a tap. Under XCTest and
   UI-test seeding the container uses `NoOpTimerAlarmScheduler`, so tests never prompt.
-- **History delete** uses the native row swipe action rather than Android's swipe-away row;
+- **Recipes delete** (was History) uses the native row swipe action rather than Android's swipe-away row;
   undo is the same batched, all-or-nothing snackbar.
 - **Forced-dark cook mode** also sets `preferredColorScheme(.dark)` so the status bar stays
   legible; it reverts when cook mode ends.
@@ -136,7 +136,7 @@ tests (in-memory SQLite in the simulator), not device tests.
   earlier ones pixel for pixel. Layouts that can't fit at the
   accessibility sizes stack instead, using `ViewThatFits` or `isAccessibilitySize`. Examples:
   the times row, the Home link field, and the cook-mode top bar and timer controls. The one
-  cap is the History search field's magnifier and clear icons (`...xxxLarge`); reading
+  cap is the Recipes search field's magnifier and clear icons (`...xxxLarge`); reading
   content is never capped.
 - **Photos offline.** `AsyncImage` keeps photos only in a small cache that follows each
   server's headers, so photos went missing offline. `CachedAsyncImage` loads through
@@ -147,7 +147,7 @@ tests (in-memory SQLite in the simulator), not device tests.
 - **iPad (issue #20).** `TARGETED_DEVICE_FAMILY` stays `"1,2"`; every screen calls
   `readableColumn()` (`UI/Common/Components.swift`) to cap its content at a centred ~680pt
   column on wide screens, so text never runs edge to edge on an iPad or an iPhone in
-  landscape. `History`, a `List`, can't take a frame, so it measures its own width and sets
+  landscape. `Recipes`, a `List`, can't take a frame, so it measures its own width and sets
   row insets instead. iPhone portrait is unchanged: every cap is wider than an iPhone in
   portrait, so both frames resolve to the same width there. `ShareLink`'s popover anchors
   correctly on iPad (confirmed on a simulator; `ShareUITests` asserts it), and the save-to-list

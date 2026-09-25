@@ -10,7 +10,7 @@ data class ExistingRecipe(
     val uid: String,
     val sourceUrl: String,
     val hasNotes: Boolean,
-    /** In at least one list. */
+    /** In at least one list, or typed in by hand (#102): outside the history cap either way. */
     val isListed: Boolean
 )
 
@@ -127,6 +127,8 @@ data class ImportPlan(
  *   left as it is, never merged or renamed. Its meals follow the plan's rules (a recipe meal
  *   needs its recipe here, a note always comes in, no meal type means Dinner). A menu's recipes
  *   come in like listed ones, since the cull keeps them too. A menu left with no meals is dropped.
+ * - **Typed-in recipes** (#102, origin MANUAL) come in like listed ones, and one here counts as
+ *   listed: the cull never removes them.
  */
 object BackupMerger {
 
@@ -233,6 +235,8 @@ object BackupMerger {
         val incomingMenuIds = incomingMenus.mapTo(HashSet()) { it.id }
         val incomingMenuEntries = backup.menuEntries.filter { it.menuId in incomingMenuIds }
         incomingMenuEntries.mapNotNullTo(listedTargets) { it.recipeId?.let(recipeTargets::get) }
+        // So is a recipe typed in by hand (#102): it has no link to bring it back.
+        newByUrl.values.filter { it.contentOrigin == "MANUAL" }.mapTo(listedTargets) { Target.New(it.id) }
         val unlistedHere = existingRecipes.count { !it.isListed && Target.Existing(it.id) !in listedTargets }
         val freePlaces = (historyLimit - unlistedHere).coerceAtLeast(0)
         val unlistedNew = newByUrl.values.filter { Target.New(it.id) !in listedTargets }

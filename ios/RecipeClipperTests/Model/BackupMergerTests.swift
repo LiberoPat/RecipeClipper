@@ -247,6 +247,15 @@ final class BackupMergerTests: XCTestCase {
         XCTAssertEqual(plan.summary.recipesSkipped, 0)
     }
 
+    func testTypedInRecipesAlwaysComeInEvenWhenHistoryIsFull() {
+        let here = (1...50).map { ExistingRecipe(id: Int64($0), uid: "u\($0)", sourceUrl: "https://h.example/\($0)", hasNotes: false, isListed: false) }
+        var typed = recipe("f1", "manual:abc")
+        typed.contentOrigin = "MANUAL"
+        let plan = plan(Backup(exportedAt: 0, recipes: [typed], lists: [], memberships: []), recipes: here, lists: [], historyLimit: 50)
+        XCTAssertEqual(plan.newRecipes.map(\.id), ["f1"])
+        XCTAssertEqual(plan.summary.recipesSkipped, 0)
+    }
+
     func testARecipeHereThatTheFilePutsInAListFreesItsPlaceInHistory() {
         let here = (1...50).map { ExistingRecipe(id: Int64($0), uid: "u\($0)", sourceUrl: "https://h.example/\($0)", hasNotes: false, isListed: false) }
         let backup = Backup(

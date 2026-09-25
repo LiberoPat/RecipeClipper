@@ -1,10 +1,11 @@
-package com.example.recipeclipper.ui.history
+package com.example.recipeclipper.ui.recipes
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,14 +52,29 @@ import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
-/** Everything you've opened, newest first. Automatic: nothing here was saved on purpose. */
+/**
+ * Every recipe on the phone (#102, the library that replaced History): newest viewed first by
+ * default, searchable, sortable, swipe to delete. The + adds one: typed in (the editor), or
+ * from a pasted link (the import flow Home's link field uses).
+ */
 @Composable
-fun HistoryScreen(
+fun RecipesScreen(
     onBack: () -> Unit,
     onOpenRecipe: (Long) -> Unit,
-    viewModel: HistoryViewModel = hiltViewModel()
+    onNewRecipe: () -> Unit = {},
+    onOpenUrl: (String) -> Unit = {},
+    viewModel: RecipesViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    state.linkInput?.let { link ->
+        PasteLinkDialog(
+            value = link,
+            canOpen = state.canOpenLink,
+            onValueChange = viewModel::onLinkChange,
+            onOpen = { viewModel.onOpenLink()?.let(onOpenUrl) },
+            onDismiss = viewModel::onLinkDismiss
+        )
+    }
     val now = remember { System.currentTimeMillis() }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -113,11 +129,15 @@ fun HistoryScreen(
                 ) {
                     item {
                         BackButton(onBack)
-                        Text(
-                            stringResource(R.string.history_title),
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                            Text(
+                                stringResource(R.string.recipes_title),
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.weight(1f)
+                            )
+                            AddMenu(onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink)
+                            SortMenu(state.sort, viewModel::onSortChange)
+                        }
                         Spacer(Modifier.height(12.dp))
                         SearchField(query = state.query, onQueryChange = viewModel::onQueryChange)
                         Spacer(Modifier.height(12.dp))
@@ -128,9 +148,9 @@ fun HistoryScreen(
                         item {
                             Text(
                                 if (state.query.isBlank()) {
-                                    stringResource(R.string.history_empty)
+                                    stringResource(R.string.recipes_empty)
                                 } else {
-                                    stringResource(R.string.history_no_results, state.query)
+                                    stringResource(R.string.recipes_no_results, state.query)
                                 },
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -158,7 +178,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        label = { Text(stringResource(R.string.label_search_history)) },
+        label = { Text(stringResource(R.string.label_search_recipes)) },
         singleLine = true,
         shape = RoundedCornerShape(12.dp),
         trailingIcon = if (query.isNotEmpty()) {

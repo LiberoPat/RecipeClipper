@@ -1,4 +1,4 @@
-package com.example.recipeclipper.ui.history
+package com.example.recipeclipper.ui.recipes
 
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.collectEagerly
@@ -16,7 +16,7 @@ import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class HistoryViewModelTest {
+class RecipesViewModelTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
@@ -42,7 +42,7 @@ class HistoryViewModelTest {
     @Test fun `rapid query changes are debounced into one repository query`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = FakeRecipeRepository()
-            val vm = HistoryViewModel(repository)
+            val vm = RecipesViewModel(repository)
             collectEagerly(vm.uiState)
 
             vm.onQueryChange("a")
@@ -56,7 +56,7 @@ class HistoryViewModelTest {
     @Test fun `recipes stays null until the repository answers`() = runTest(mainDispatcherRule.dispatcher) {
         val repository = FakeRecipeRepository()
         repository.history.value = listOf(summary(1))
-        val vm = HistoryViewModel(repository)
+        val vm = RecipesViewModel(repository)
 
         // Nothing has run on the Main dispatcher yet: still "loading", not "nothing matched".
         assertNull(vm.uiState.value.recipes)
@@ -71,7 +71,7 @@ class HistoryViewModelTest {
         val repository = FakeRecipeRepository()
         val deleted = RecipeRepository.DeletedRecipe(entity(1, "Chicken Adobo"), emptyList())
         repository.deleteResults[1L] = deleted
-        val vm = HistoryViewModel(repository)
+        val vm = RecipesViewModel(repository)
         collectEagerly(vm.uiState)
         advanceUntilIdle()
 
@@ -87,7 +87,7 @@ class HistoryViewModelTest {
             val repository = FakeRecipeRepository()
             val deleted = RecipeRepository.DeletedRecipe(entity(1, "Chicken Adobo"), emptyList())
             repository.deleteResults[1L] = deleted
-            val vm = HistoryViewModel(repository)
+            val vm = RecipesViewModel(repository)
             collectEagerly(vm.uiState)
             advanceUntilIdle()
             vm.onDelete(summary(1, "Chicken Adobo"))
@@ -105,7 +105,7 @@ class HistoryViewModelTest {
             val repository = FakeRecipeRepository()
             val deleted = RecipeRepository.DeletedRecipe(entity(1, "Chicken Adobo"), emptyList())
             repository.deleteResults[1L] = deleted
-            val vm = HistoryViewModel(repository)
+            val vm = RecipesViewModel(repository)
             collectEagerly(vm.uiState)
             advanceUntilIdle()
             vm.onDelete(summary(1, "Chicken Adobo"))
@@ -125,7 +125,7 @@ class HistoryViewModelTest {
             val deletedB = RecipeRepository.DeletedRecipe(entity(2, "B"), emptyList())
             repository.deleteResults[1L] = deletedA
             repository.deleteResults[2L] = deletedB
-            val vm = HistoryViewModel(repository)
+            val vm = RecipesViewModel(repository)
             collectEagerly(vm.uiState)
             advanceUntilIdle()
 
@@ -143,4 +143,66 @@ class HistoryViewModelTest {
             assertEquals(emptyList<String>(), vm.uiState.value.pendingDeletes)
             assertEquals(setOf(deletedA, deletedB), repository.restoreCalls.toSet())
         }
+
+    @Test fun `recently viewed is the default order, as the repository gives it`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            repository.history.value = listOf(summary(2, "Bread"), summary(3, "apple pie"), summary(1, "Cake"))
+            val vm = RecipesViewModel(repository)
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+
+            assertEquals(RecipeSort.RECENTLY_VIEWED, vm.uiState.value.sort)
+            assertEquals(listOf(2L, 3L, 1L), vm.uiState.value.recipes?.map { it.id })
+        }
+
+    @Test fun `name sorts by title ignoring case, and date added is newest id first`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            repository.history.value = listOf(summary(2, "Bread"), summary(3, "apple pie"), summary(1, "Cake"))
+            val vm = RecipesViewModel(repository)
+            collectEagerly(vm.uiState)
+
+            vm.onSortChange(RecipeSort.NAME)
+            advanceUntilIdle()
+            assertEquals(listOf("apple pie", "Bread", "Cake"), vm.uiState.value.recipes?.map { it.title })
+
+            vm.onSortChange(RecipeSort.DATE_ADDED)
+            advanceUntilIdle()
+            assertEquals(listOf(3L, 2L, 1L), vm.uiState.value.recipes?.map { it.id })
+        }
+
+    @Test fun `paste a link opens only a real link, and closes the dialog`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val vm = RecipesViewModel(FakeRecipeRepository())
+            collectEagerly(vm.uiState)
+
+            vm.onPasteLink()
+            advanceUntilIdle()
+            assertEquals("", vm.uiState.value.linkInput)
+
+            vm.onLinkChange("not a link")
+            advanceUntilIdle()
+            assertEquals(false, vm.uiState.value.canOpenLink)
+            assertNull(vm.onOpenLink())
+            assertEquals("not a link", vm.uiState.value.linkInput) // stays open
+
+            vm.onLinkChange("  seriouseats.com/bread ")
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.canOpenLink)
+            assertEquals("https://seriouseats.com/bread", vm.onOpenLink())
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.linkInput)
+        }
+
+    @Test fun `dismissing the link dialog closes it`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = RecipesViewModel(FakeRecipeRepository())
+        collectEagerly(vm.uiState)
+
+        vm.onPasteLink()
+        vm.onLinkDismiss()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.linkInput)
+    }
 }
