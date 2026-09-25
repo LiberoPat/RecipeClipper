@@ -73,6 +73,44 @@ final class BackupJsonTests: XCTestCase {
         XCTAssertEqual(backup.lists[4].name, " Party food ")
         XCTAssertEqual(backup.memberships.count, 7)
         XCTAssertEqual(backup.memberships[0], BackupMembership(recipeId: "r-soup", listId: "f-fav", addedAt: 10))
+
+        // The pantry (#51) and groceries (#50): later sections, no version bump.
+        XCTAssertEqual(backup.pantry.map(\.id), ["p-flour", "p-salt", "p-here", "p-flour2"])
+        XCTAssertEqual(backup.pantry[0], BackupPantryItem(
+            id: "p-flour", name: " Flour ", quantity: "half a bag", language: "en", aisle: "baking", inStock: true,
+            alwaysHave: false, purchasedDay: 20700, expiresDay: 20900, updatedAt: 1789000000000
+        ))
+        let defaults = backup.pantry[3]
+        XCTAssertFalse(defaults.inStock)
+        XCTAssertFalse(defaults.alwaysHave)
+        XCTAssertNil(defaults.quantity)
+        XCTAssertNil(defaults.expiresDay)
+        XCTAssertEqual(defaults.updatedAt, 0)
+
+        XCTAssertEqual(backup.groceries.map(\.id), ["g-tomatoes", "g-apples", "g-beef", "g-milk", "g-here"])
+        XCTAssertEqual(backup.groceries[0], BackupGroceryItem(
+            id: "g-tomatoes", text: "2 lb tomatoes", language: "en", aisle: "produce", checked: false, recipeId: "r-soup",
+            plannedDay: 20720, updatedAt: 1789000000000
+        ))
+        XCTAssertTrue(backup.groceries[1].checked)
+        XCTAssertNil(backup.groceries[3].recipeId)
+    }
+
+    func testAFileWithoutPantryOrGroceriesReadsThemAsEmpty() throws {
+        let backup = try decodeOrFail(#"{"format": "recipe-clipper-backup", "formatVersion": 1}"#)
+        XCTAssertTrue(backup.pantry.isEmpty)
+        XCTAssertTrue(backup.groceries.isEmpty)
+    }
+
+    func testAPantryItemNeedsANameAndIdsAreUnique() {
+        XCTAssertEqual(
+            error(#"{"format": "recipe-clipper-backup", "formatVersion": 1, "pantry": [{"id": "p", "name": " "}]}"#),
+            .malformed("pantry[0].name")
+        )
+        XCTAssertEqual(
+            error(#"{"format": "recipe-clipper-backup", "formatVersion": 1, "groceries": [{"id": "g", "text": "a"}, {"id": "g", "text": "b"}]}"#),
+            .malformed("groceries[1].id")
+        )
     }
 
     func testANewerFormatVersionIsRefusedBeforeAnythingElseIsRead() throws {

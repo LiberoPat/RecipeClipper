@@ -8,10 +8,13 @@ import androidx.room.Transaction
 import com.example.recipeclipper.data.backup.Backup
 import com.example.recipeclipper.data.backup.BackupMerger
 import com.example.recipeclipper.data.backup.ExistingList
+import com.example.recipeclipper.data.backup.ExistingPantryItem
 import com.example.recipeclipper.data.backup.ExistingRecipe
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.backup.Target
+import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
+import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 
@@ -19,13 +22,15 @@ import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 data class BackupSnapshot(
     val recipes: List<RecipeEntity>,
     val lists: List<ListEntity>,
-    val crossRefs: List<RecipeListCrossRef>
+    val crossRefs: List<RecipeListCrossRef>,
+    val pantry: List<PantryItemEntity>,
+    val groceries: List<GroceryItemEntity>
 )
 
 /**
  * Export and import (#26). Import works out a plan with the pure [BackupMerger] from what is
  * here, then writes it, all in one transaction: if any write fails, nothing was imported.
- * Import only ever inserts (recipes, lists, memberships) and fills empty notes; it never
+ * Import only ever inserts (recipes, lists, memberships, pantry and grocery items) and fills empty notes; it never
  * deletes, and it runs no history cull (see [BackupMerger] for how the cap is respected).
  */
 @Dao
@@ -40,8 +45,30 @@ abstract class BackupDao {
     @Query("SELECT * FROM recipe_list_cross_ref ORDER BY listId ASC, addedAt ASC, recipeId ASC")
     abstract suspend fun allCrossRefs(): List<RecipeListCrossRef>
 
+    @Query("SELECT * FROM pantry_items ORDER BY id ASC")
+    abstract suspend fun allPantry(): List<PantryItemEntity>
+
+    @Query("SELECT * FROM grocery_items ORDER BY listId ASC, sortOrder ASC, id ASC")
+    abstract suspend fun allGroceries(): List<GroceryItemEntity>
+
     @Transaction
-    open suspend fun snapshot(): BackupSnapshot = BackupSnapshot(allRecipes(), allLists(), allCrossRefs())
+    open suspend fun snapshot(): BackupSnapshot =
+        BackupSnapshot(allRecipes(), allLists(), allCrossRefs(), allPantry(), allGroceries())
+
+    @Query("SELECT uid, name, language FROM pantry_items")
+    abstract suspend fun existingPantry(): List<ExistingPantryItem>
+
+    @Query("SELECT uid FROM grocery_items")
+    abstract suspend fun existingGroceryUids(): List<String>
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM grocery_items WHERE listId = :listId")
+    abstract suspend fun maxGroceryOrder(listId: Long = GroceryItemEntity.DEFAULT_LIST): Int
+
+    @Insert
+    abstract suspend fun insertPantryItem(item: PantryItemEntity): Long
+
+    @Insert
+    abstract suspend fun insertGroceryItem(item: GroceryItemEntity): Long
 
     @Query(
         """
@@ -81,7 +108,9 @@ abstract class BackupDao {
             existingLists = existingLists(),
             maxSortOrder = maxSortOrder(),
             historyLimit = historyLimit,
-            newUid = newUid
+            newUid = newUid,
+            existingPantry = existingPantry(),
+            existingGroceryUids = existingGroceryUids().toSet()
         )
 
         val newRecipeIds = HashMap<String, Long>()
@@ -130,6 +159,40 @@ abstract class BackupDao {
         }
         for (m in plan.memberships) {
             addToList(RecipeListCrossRef(m.recipe.rowId(newRecipeIds), m.list.rowId(newListIds), m.addedAt))
+        }
+
+        for (p in plan.newPantry) {
+            insertPantryItem(
+                PantryItemEntity(
+                    uid = p.id,
+                    name = p.name,
+                    quantity = p.quantity,
+                    language = p.language,
+                    aisle = p.aisle,
+                    inStock = p.inStock,
+                    alwaysHave = p.alwaysHave,
+                    purchasedDay = p.purchasedDay,
+                    expiresDay = p.expiresDay,
+                    updatedAt = p.updatedAt
+                )
+            )
+        }
+
+        var order = maxGroceryOrder() + 1
+        for (g in plan.newGroceries) {
+            insertGroceryItem(
+                GroceryItemEntity(
+                    uid = g.item.id,
+                    text = g.item.text,
+                    language = g.item.language,
+                    aisle = g.item.aisle,
+                    checked = g.item.checked,
+                    sortOrder = order++,
+                    recipeId = g.recipe?.rowId(newRecipeIds),
+                    plannedDay = g.item.plannedDay,
+                    updatedAt = g.item.updatedAt
+                )
+            )
         }
         return plan.summary
     }

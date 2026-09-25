@@ -60,7 +60,7 @@ enum class Tab(
  */
 private val tabBarRoutes = setOf(
     Routes.HOME, Routes.HISTORY, Routes.SETTINGS, Routes.LISTS, Routes.LIST_DETAIL,
-    Routes.WEEK, Routes.MEAL_TYPES, Routes.GROCERIES, Routes.PANTRY
+    Routes.WEEK, Routes.MEAL_TYPES, Routes.WHAT_I_NEED, Routes.GROCERIES, Routes.PANTRY
 )
 
 internal fun NavDestination?.showsTabBar(): Boolean = this?.route in tabBarRoutes
@@ -99,8 +99,8 @@ fun NavHostController.openRoute(route: String, tabsEnabled: Boolean = BuildConfi
  * `BuildConfig.MEAL_PLAN_TABS`) it is [RecipeNavHost] alone, exactly the app as it was before
  * the shell. On, the same Recipes graph sits under the first tab of a bottom bar.
  *
- * [recipes] is the Recipes graph, [week] the Week tab's (#49) and [groceries] the Groceries
- * tab's (#50); tests pass stand-ins, since the real screens need Hilt.
+ * [recipes] is the Recipes graph, [week] the Week tab's (#49), [groceries] the Groceries
+ * tab's (#50) and [pantry] the Pantry tab's (#51); tests pass stand-ins, since the real screens need Hilt.
  */
 @Composable
 fun AppShell(
@@ -108,7 +108,8 @@ fun AppShell(
     tabsEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS,
     recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) },
     week: NavGraphBuilder.(NavHostController) -> Unit = { weekDestinations(it) },
-    groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations() }
+    groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations() },
+    pantry: NavGraphBuilder.(NavHostController) -> Unit = { pantryDestinations() }
 ) {
     if (!tabsEnabled) {
         RecipeNavHost(navController, recipes)
@@ -141,9 +142,7 @@ fun AppShell(
                     groceries(navController)
                 }
                 navigation(route = Tab.PANTRY.route, startDestination = Routes.PANTRY) {
-                    composable(Routes.PANTRY) {
-                        ComingSoonScreen(R.string.tab_pantry, R.string.pantry_placeholder)
-                    }
+                    pantry(navController)
                 }
             }
         }

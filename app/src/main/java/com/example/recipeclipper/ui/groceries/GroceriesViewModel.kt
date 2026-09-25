@@ -3,11 +3,18 @@ package com.example.recipeclipper.ui.groceries
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.GroceryRepository
+import com.example.recipeclipper.data.PantryRepository
+import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryCombiner
+import com.example.recipeclipper.data.model.GroceryItem
 import com.example.recipeclipper.data.model.GroceryShareText
+import com.example.recipeclipper.data.model.IngredientName
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.NewGroceryLine
+import com.example.recipeclipper.data.model.NewPantryItem
+import com.example.recipeclipper.data.model.PantryItem
+import com.example.recipeclipper.data.model.PantryMatch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +28,20 @@ import javax.inject.Inject
 data class RemovedGroceries(val id: Long, val label: String?)
 
 /**
+ * What ticking a line off did to the pantry (#51), for the snackbar. [id] tells two apart.
+ */
+sealed class PantryOffer {
+    abstract val id: Long
+    abstract val name: String
+
+    /** A tracked item was out and is back in stock: on by default, with Undo. */
+    data class Restocked(override val id: Long, override val name: String) : PantryOffer()
+
+    /** Not in the pantry yet: "Add to pantry" is offered, not done. */
+    data class Offer(override val id: Long, override val name: String, val item: NewPantryItem) : PantryOffer()
+}
+
+/**
  * [sections] is null until the list has loaded. [draft] is the "Add an item" field. [moving]
  * is the row whose aisle is being chosen.
  */
@@ -28,7 +49,8 @@ data class GroceriesUiState(
     val sections: List<GroceryCombiner.Section>? = null,
     val draft: String = "",
     val moving: GroceryCombiner.Row? = null,
-    val removed: RemovedGroceries? = null
+    val removed: RemovedGroceries? = null,
+    val pantryOffer: PantryOffer? = null
 ) {
     val hasChecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { it.checked } } }
     val isEmpty: Boolean get() = sections?.isEmpty() == true
@@ -45,7 +67,9 @@ data class GroceriesUiState(
  */
 @HiltViewModel
 class GroceriesViewModel @Inject constructor(
-    private val repository: GroceryRepository
+    private val repository: GroceryRepository,
+    private val pantry: PantryRepository,
+    private val calendar: PlanCalendar
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GroceriesUiState())
@@ -53,8 +77,14 @@ class GroceriesViewModel @Inject constructor(
 
     private var removedItems: GroceryRepository.DeletedItems? = null
     private var removals = 0L
+    private var pantryItems: List<PantryItem> = emptyList()
+    private var restocked: PantryRepository.Snapshot? = null
+    private var offers = 0L
 
     init {
+        viewModelScope.launch {
+            pantry.observeItems().collect { pantryItems = it }
+        }
         viewModelScope.launch {
             repository.observeItems().collect { items ->
                 val sections = GroceryCombiner.sections(items)
@@ -76,10 +106,55 @@ class GroceriesViewModel @Inject constructor(
         viewModelScope.launch { repository.add(listOf(NewGroceryLine(text, typedLanguage()))) }
     }
 
-    /** Ticks or unticks every line in [row]: a combined row is one thing to pick up. */
+    /**
+     * Ticks or unticks every line in [row]: a combined row is one thing to pick up. Ticking one
+     * off feeds the pantry (#51): an item the pantry tracks that was out is back in stock at once
+     * (undoable); one it doesn't track is offered, never added unasked. A line the app can't
+     * name is left alone.
+     */
     fun onToggle(row: GroceryCombiner.Row) {
         val checked = !row.items.all { it.checked }
-        viewModelScope.launch { repository.setChecked(row.items.map { it.id }, checked) }
+        viewModelScope.launch {
+            repository.setChecked(row.items.map { it.id }, checked)
+            if (checked) toPantry(row.items.first())
+        }
+    }
+
+    private suspend fun toPantry(item: GroceryItem) {
+        val words = LanguageWords.forTag(item.language) ?: return
+        val name = IngredientName.of(item.text, words) ?: return
+        val tracked = PantryMatch.find(name, words.language, pantryItems)
+        val offer = when {
+            tracked == null -> PantryOffer.Offer(
+                ++offers, name, NewPantryItem(name, words.language, item.aisle, purchasedDay = calendar.today())
+            )
+            tracked.inStock || tracked.alwaysHave -> return
+            else -> {
+                restocked = pantry.snapshot(listOf(tracked.id))
+                pantry.restock(listOf(tracked.id), calendar.today())
+                PantryOffer.Restocked(++offers, tracked.name)
+            }
+        }
+        _uiState.update { it.copy(pantryOffer = offer) }
+    }
+
+    fun onAddToPantry() {
+        val offer = _uiState.value.pantryOffer as? PantryOffer.Offer ?: return
+        _uiState.update { it.copy(pantryOffer = null) }
+        viewModelScope.launch { pantry.add(offer.item) }
+    }
+
+    fun onUndoRestock() {
+        val snapshot = restocked ?: return
+        restocked = null
+        _uiState.update { it.copy(pantryOffer = null) }
+        viewModelScope.launch { pantry.restore(snapshot) }
+    }
+
+    /** The pantry snackbar timed out or was dismissed: what was done stands, what was offered isn't. */
+    fun onPantryOfferDismissed() {
+        restocked = null
+        _uiState.update { it.copy(pantryOffer = null) }
     }
 
     fun onMoveStart(row: GroceryCombiner.Row) = _uiState.update { it.copy(moving = row) }
@@ -132,7 +207,12 @@ class GroceriesViewModel @Inject constructor(
         if (sections.none { s -> s.rows.any { r -> r.items.none { it.checked } } }) return null
         return GroceryShareText.format(sections, title, aisleName)
     }
-
-    private fun typedLanguage(): String =
-        LanguageWords.forTag(Locale.getDefault().language)?.language ?: LanguageWords.ENGLISH.language
 }
+
+/**
+ * The language a typed item (groceries, pantry) is read with: the phone's when the app has words
+ * for it, else English. The one place the phone's language picks the words, since the person
+ * typing is the only source.
+ */
+internal fun typedLanguage(): String =
+    LanguageWords.forTag(Locale.getDefault().language)?.language ?: LanguageWords.ENGLISH.language

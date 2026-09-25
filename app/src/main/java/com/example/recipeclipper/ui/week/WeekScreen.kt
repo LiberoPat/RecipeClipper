@@ -83,12 +83,14 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  * day of the week, each with its meals and a "+ Add". Tapping a recipe opens it at the planned
  * servings; long-pressing a meal offers Move and Remove (Remove can be undone). The menu's "Add
  * this week's ingredients" (#50) opens the grocery sheet over every recipe planned in the week
- * shown; [groceriesViewModel] null leaves it out.
+ * shown; [groceriesViewModel] null leaves it out. "What I need" (#51) opens the week against the
+ * pantry; [onOpenWhatINeed] null leaves it out.
  */
 @Composable
 fun WeekScreen(
     onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit,
     onOpenMealTypes: () -> Unit,
+    onOpenWhatINeed: ((weekStart: Long) -> Unit)? = null,
     viewModel: WeekViewModel = hiltViewModel(),
     groceriesViewModel: AddToGroceriesViewModel? = null
 ) {
@@ -124,6 +126,7 @@ fun WeekScreen(
                         onNext = viewModel::onNextWeek,
                         onThisWeek = viewModel::onThisWeek,
                         onOpenMealTypes = onOpenMealTypes,
+                        onOpenWhatINeed = onOpenWhatINeed?.let { open -> { open(state.weekStart) } },
                         onAddToGroceries = groceriesViewModel?.let { sheet ->
                             {
                                 sheet.loadWeek(state.weekStart)
@@ -194,6 +197,7 @@ private fun WeekHeader(
     onNext: () -> Unit,
     onThisWeek: () -> Unit,
     onOpenMealTypes: () -> Unit,
+    onOpenWhatINeed: (() -> Unit)?,
     onAddToGroceries: (() -> Unit)?
 ) {
     Column(Modifier.fillMaxWidth()) {
@@ -203,7 +207,7 @@ private fun WeekHeader(
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.weight(1f)
             )
-            WeekMenu(onOpenMealTypes, onAddToGroceries)
+            WeekMenu(onOpenMealTypes, onOpenWhatINeed, onAddToGroceries)
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -230,13 +234,22 @@ private fun WeekHeader(
 }
 
 @Composable
-private fun WeekMenu(onOpenMealTypes: () -> Unit, onAddToGroceries: (() -> Unit)?) {
+private fun WeekMenu(onOpenMealTypes: () -> Unit, onOpenWhatINeed: (() -> Unit)?, onAddToGroceries: (() -> Unit)?) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (onOpenWhatINeed != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.what_i_need_title)) },
+                    onClick = {
+                        expanded = false
+                        onOpenWhatINeed()
+                    }
+                )
+            }
             if (onAddToGroceries != null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_add_week_to_groceries)) },

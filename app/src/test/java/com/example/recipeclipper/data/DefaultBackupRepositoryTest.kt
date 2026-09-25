@@ -4,12 +4,15 @@ import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupJson
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ExistingList
+import com.example.recipeclipper.data.backup.ExistingPantryItem
 import com.example.recipeclipper.data.backup.ExistingRecipe
 import com.example.recipeclipper.data.backup.ExportedBackup
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.backup.fixture
 import com.example.recipeclipper.data.local.dao.BackupDao
+import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
+import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import kotlinx.coroutines.CancellationException
@@ -63,6 +66,26 @@ class DefaultBackupRepositoryTest {
             val i = recipes.indexOfFirst { it.id == id }
             if (i >= 0 && recipes[i].notes.isNullOrBlank()) recipes[i] = recipes[i].copy(notes = notes)
         }
+
+        val pantry = mutableListOf<PantryItemEntity>()
+        val groceries = mutableListOf<GroceryItemEntity>()
+        override suspend fun allPantry() = pantry.toList()
+        override suspend fun allGroceries() = groceries.sortedBy { it.sortOrder }
+        override suspend fun existingPantry() = pantry.map { ExistingPantryItem(it.uid, it.name, it.language) }
+        override suspend fun existingGroceryUids() = groceries.map { it.uid }
+        override suspend fun maxGroceryOrder(listId: Long) = groceries.maxOfOrNull { it.sortOrder } ?: -1
+        override suspend fun insertPantryItem(item: PantryItemEntity): Long {
+            writes++
+            val id = nextId++
+            pantry += item.copy(id = id)
+            return id
+        }
+        override suspend fun insertGroceryItem(item: GroceryItemEntity): Long {
+            writes++
+            val id = nextId++
+            groceries += item.copy(id = id)
+            return id
+        }
     }
 
     private class RecordingLog : ErrorLog {
@@ -90,6 +113,8 @@ class DefaultBackupRepositoryTest {
         lists += list(2, "l-lunch", "Lunch", order = 1)
         lists += list(10, "l-week", "Weeknight", order = 6).copy(isBuiltIn = false)
         refs += RecipeListCrossRef(2, 1, addedAt = 1)
+        groceries += GroceryItemEntity(id = 7, text = "bread", language = "en", aisle = "bakery", sortOrder = 4,
+            recipeId = null, plannedDay = null, updatedAt = 0, uid = "g-here")
     }
 
     private val clock = Clock { 1_790_000_000_000L }
@@ -100,9 +125,25 @@ class DefaultBackupRepositoryTest {
 
         // The real history limit (50): both unlisted new recipes fit.
         assertEquals(
-            BackupResult.Success(ImportSummary(recipesAdded = 3, listsAdded = 2, recipesAlreadyHere = 2, recipesSkipped = 0)),
+            BackupResult.Success(
+                ImportSummary(
+                    recipesAdded = 3, listsAdded = 2, recipesAlreadyHere = 2, recipesSkipped = 0,
+                    pantryAdded = 3, groceriesAdded = 4
+                )
+            ),
             result
         )
+        // Pantry and groceries (#51): the rows as the file had them, groceries after the list's
+        // own and pointing at the right recipe rows.
+        assertEquals(listOf("p-flour", "p-salt", "p-here"), dao.pantry.map { it.uid })
+        assertEquals(PantryItemEntity(id = dao.pantry[0].id, name = "Flour", quantity = "half a bag", language = "en",
+            aisle = "baking", inStock = true, alwaysHave = false, purchasedDay = 20700, expiresDay = 20900,
+            updatedAt = 1789000000000, uid = "p-flour"), dao.pantry[0])
+        val added = dao.groceries.filter { it.uid != "g-here" }
+        assertEquals(listOf("g-tomatoes", "g-apples", "g-beef", "g-milk"), added.map { it.uid })
+        assertEquals(listOf(5, 6, 7, 8), added.map { it.sortOrder })
+        assertEquals(listOf(1L, dao.recipes.single { it.uid == "r-pie" }.id, dao.recipes.single { it.uid == "r-old" }.id, null), added.map { it.recipeId })
+        assertEquals(20720L, added[0].plannedDay)
         val pie = dao.recipes.single { it.sourceUrl == "https://example.com/pie" }
         assertEquals("r-pie", pie.uid)
         assertEquals("Use cold butter.", pie.notes)

@@ -136,6 +136,18 @@ the agents' emulator. The combining rule is JVM-tested (`GroceryCombinerTest`,
 rest in `GroceryDaoTests` (with the user_version 7 → 8 step),
 `GroceriesViewModelTests` and `GroceriesUITests`.
 
+The pantry (#51) adds `MIGRATION_9_10` (one new table) to `MigrationTest`, from a
+real version-9 file holding a recipe and a grocery item, and `PantryDaoTest`:
+restock and running out, edits, a delete restored whole, unique uids.
+`BackupDaoTest` round-trips the pantry and the grocery list through an export.
+`PantryScreenTest`, `WhatINeedScreenTest` and the updated `AppShellTest` cover
+the screens; the whole device suite passes on the agents' emulator
+(`ClipScreenTest.clipAPageFromSelectionToSave` failed once in a full run and
+passed alone). Have/Buy is JVM-tested (`PantryTest`, the ViewModel tests) and
+pinned for iOS by the corpus's `Pant` rows. iOS mirrors the rest in
+`PantryDaoTests` (with the user_version 8 → 9 step), `PantryTests`,
+`PantryViewModelTests` and `PantryUITests`.
+
 **The device tests have been run on an emulator and pass**: `RecipeDaoTest`,
 `ListDaoTest`, `MigrationTest` and the Compose UI tests (see below), including
 those added with notes (#27, in `RecipeDaoTest` and `MigrationTest`).

@@ -7,7 +7,8 @@ package com.example.recipeclipper.data.backup
  * (`Data/Backup/Backup.swift`) and both platforms test against the same fixture files in
  * `shared/fixtures/backup/`.
  *
- * Every record carries a stable [BackupRecipe.id] / [BackupList.id]: the row's `uid`, which
+ * Every record carries a stable id ([BackupRecipe.id], [BackupList.id], [BackupPantryItem.id],
+ * [BackupGroceryItem.id]): the row's `uid`, which
  * never changes on the phone that made it (a rename or a re-share keeps it). Memberships refer
  * to those ids, never to database row ids.
  *
@@ -19,7 +20,11 @@ data class Backup(
     val exportedAt: Long,
     val recipes: List<BackupRecipe>,
     val lists: List<BackupList>,
-    val memberships: List<BackupMembership>
+    val memberships: List<BackupMembership>,
+    /** The pantry (#51). Absent in older files, which read as empty. */
+    val pantry: List<BackupPantryItem> = emptyList(),
+    /** The grocery list (#50), in list order. Absent in older files, which read as empty. */
+    val groceries: List<BackupGroceryItem> = emptyList()
 ) {
     companion object {
         /** The `format` marker: tells an export apart from any other JSON file. */
@@ -74,6 +79,35 @@ data class BackupMembership(
     val addedAt: Long
 )
 
+/** A pantry item (#51). [purchasedDay] and [expiresDay] are epoch days; [aisle] an `Aisle` key. */
+data class BackupPantryItem(
+    val id: String,
+    val name: String,
+    val quantity: String?,
+    val language: String?,
+    val aisle: String,
+    val inStock: Boolean,
+    val alwaysHave: Boolean,
+    val purchasedDay: Long?,
+    val expiresDay: Long?,
+    val updatedAt: Long
+)
+
+/**
+ * A grocery item (#50). [recipeId] is the file id of the recipe it came from, or null (typed,
+ * or its recipe is gone); [plannedDay] the planned day (an epoch day) it came from, if any.
+ */
+data class BackupGroceryItem(
+    val id: String,
+    val text: String,
+    val language: String?,
+    val aisle: String,
+    val checked: Boolean,
+    val recipeId: String?,
+    val plannedDay: Long?,
+    val updatedAt: Long
+)
+
 /**
  * Why an export or an import failed, as a cause: the Settings screen picks the words. An
  * import that fails for any of these has written nothing.
@@ -112,7 +146,11 @@ data class ImportSummary(
     /** Recipes in the file that were already on this phone (same cleaned link). */
     val recipesAlreadyHere: Int,
     /** Recipes in no list left out because history was full (see [BackupMerger]). */
-    val recipesSkipped: Int
+    val recipesSkipped: Int,
+    /** New pantry items written (#51). */
+    val pantryAdded: Int = 0,
+    /** New grocery items written (#50). */
+    val groceriesAdded: Int = 0
 )
 
 /** An export ready to hand to the share sheet. */

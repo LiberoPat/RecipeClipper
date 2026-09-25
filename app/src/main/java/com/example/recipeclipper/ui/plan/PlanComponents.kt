@@ -54,6 +54,9 @@ internal fun dayTitle(day: Long): String = format(day, "EEEEd")
 /** "Mon" */
 internal fun shortWeekday(day: Long): String = format(day, "EEE")
 
+/** "Sep 23", in the locale's order. */
+internal fun shortDate(day: Long): String = format(day, "MMMd")
+
 /** "23" */
 internal fun dayOfMonth(day: Long): String = format(day, "d")
 

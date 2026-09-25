@@ -44,8 +44,8 @@ sharing a recipe out as text; failure handling and offline; the microdata
 fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
 JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
-with no recipe data, #37); the week meal plan and the grocery list, behind the
-tab flag (#49, #50); the
+with no recipe data, #37); the week meal plan, the grocery list and the
+pantry with the week's Have/Buy, behind the tab flag (#49–#51); the
 UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -87,7 +87,7 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 ```
 MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
 di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule
-data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository
+data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository, PantryRepository
                (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
@@ -98,10 +98,11 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
                TrailingAmount (name-first lines: Japanese), ClipSelection, ClipDraft,
                PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal),
-               Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources)
+               Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
+               Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy)
 ui/            navigation, home, history, recipe, clip, edit, savetolist, lists, listdetail,
-               settings, week, plan (Add to plan sheet), mealtypes, groceries (the tab and
-               the Add to groceries sheet), theme, common
+               settings, week (with What I need), plan (Add to plan sheet), mealtypes,
+               groceries (the tab and the Add to groceries sheet), pantry, theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
 ```
 
@@ -115,8 +116,8 @@ the error screen under it with `recipe/{id}`). Behind `BuildConfig.MEAL_PLAN_TAB
 `FeatureFlags.mealPlanTabs` (#47, default off, so the app is unchanged): a
 bottom tab bar nests this same graph under a Recipes tab alongside `week`
 (with its own `week/recipe/{recipeId}?servings={servings}` and
-`week/meal-types`), `groceries` (#50) and a `pantry` placeholder (`AppShell`/iOS
-`RootView`'s `tabs`).
+`week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry`
+(#51) (`AppShell`/iOS `RootView`'s `tabs`).
 Hidden on the recipe reading view and in cook mode; any route from an
 intent (a shared link, a tapped timer notification) always lands in
 Recipes, whichever tab is open.
@@ -230,7 +231,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Home's stack unchanged. The bar hides on the recipe reading view and in
   cook mode, so a recipe still opens on the recipe; a shared link always
   lands in Recipes, whichever tab is open, on top of whatever it held.
-  Settings is not a tab. Pantry is a "Coming soon" placeholder until #51.
+  Settings is not a tab.
 - **Week** (#49, behind the flag): ‹ week › and "This week", seven day
   sections from the locale's first day, meal rows (type, thumbnail, title,
   servings, or a note), "+ Add" per day (a meal type, then a recipe from
@@ -246,7 +247,18 @@ Settled; don't reintroduce what they removed. The history behind each is in
   and clears checked (undo). "Add to groceries" (recipe menu, after Add to
   plan) and "Add this week's ingredients" (Week menu) open one sheet: the
   lines as the reading view renders them (the week's at each meal's planned
-  servings), headings left out, all ticked, one button.
+  servings), headings left out, all ticked except what the pantry has
+  (#51), one button. Ticking an item off feeds the pantry: an item it tracks
+  that was out is back in stock at once (Undo in the snackbar); one it
+  doesn't track is only offered ("Add to pantry").
+- **Pantry** (#51, behind the flag): "Add to the pantry", search, then items
+  by aisle (menu: by expiry, radio glyphs); a switch per row for in stock;
+  tap for the edit sheet (quantity as written, "Always have", a use-by date,
+  Delete with undo). Expired or within 3 days shows a paprika badge; no
+  notifications. Switching an item out offers "Add to groceries".
+  "What I need" (Week menu): the shown week's lines at planned servings,
+  grouped by ingredient, "To buy" then "In your pantry", with a note that
+  having some isn't having enough; "Add to groceries" adds the To buy lines.
 - **Save-to-list sheet** (Spotify's add-to-playlist): checkboxes, not radios;
   each tick writes immediately, with no Save/Cancel; "+ New list" expands
   inline (no dialog on a sheet) and ticks the current recipe into the new
@@ -268,12 +280,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 9** (iOS `user_version` 8):
+- Room database `recipe_clipper.db`, **version 10** (iOS `user_version` 9):
   `recipes` (with nullable `notes`, `language`, `cookState`,
   `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading),
-  `meal_types` and `meal_plan_entries` (#49), `grocery_items` (#50). Recipes,
-  lists, the plan and grocery tables carry a unique, never-changing `uid`:
-  what an export file calls them. Plan and grocery rows also carry
+  `meal_types` and `meal_plan_entries` (#49), `grocery_items` (#50),
+  `pantry_items` (#51). Recipes, lists, the plan, grocery and pantry tables
+  carry a unique, never-changing `uid`: what an export file calls them. Plan,
+  grocery and pantry rows also carry
   `updatedAt` (for #53). The schema is exported to `app/schemas/`: commit it. **Never use
   destructive migration**, and give every migration a `MigrationTest`.
   iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations, in
@@ -317,7 +330,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
   convertible family (g/kg, oz/lb, metric ml family, US tsp/tbsp/fl oz/cup,
   sticks, or counts with identical words), total shown exactly in a unit the
   lines used; otherwise they sit together under the name, each as written.
-  Not in the export file yet: it joins with the plan and pantry (#51).
+- **Pantry** (#51): an item is a `name` as typed, a `language` (as a typed
+  grocery's), an optional `quantity` as written (never read as a number), an
+  `aisle`, `inStock`, `alwaysHave` (a staple), and optional `purchasedDay`
+  and `expiresDay` (epoch days). **Have/Buy is presence only**
+  (`PantryMatch`): a line is Have when `IngredientName.of(line)` matches an
+  in-stock item by `IngredientName.matches`, in the same language; staples
+  are never Buy; a line with no name is always Buy. Never "enough".
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
   needs a migration (as `MIGRATION_1_2` did).
@@ -347,7 +366,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored). Import
   merges, never replaces or deletes: recipes by cleaned `sourceUrl`,
   Favorites by `isFavorites`, other lists by uid then trimmed
-  case-insensitive name; unlisted recipes only fill free history slots.
+  case-insensitive name; unlisted recipes only fill free history slots;
+  pantry items by uid then name and language (what's here stands); grocery
+  items by uid. The plan (#49) isn't in the file yet.
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. History search ignores notes. Cook

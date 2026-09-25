@@ -5,6 +5,8 @@ struct BackupSnapshot {
     var recipes: [RecipeRecord]
     var lists: [ListRow]
     var memberships: [ListMembership]
+    var pantry: [PantryItemRecord] = []
+    var groceries: [GroceryItemRecord] = []
 
     /// One row of `lists`, every column (ListRecord is the screen's shape, with counts).
     struct ListRow: Equatable {
@@ -21,7 +23,7 @@ struct BackupSnapshot {
 /// Export and import (#26), Android's BackupDao. Synchronous: run `snapshot` inside
 /// `AppDatabase.read` and `importBackup` inside `AppDatabase.write`, which makes the import one
 /// transaction: if any write fails, nothing was imported. Import only ever inserts (recipes,
-/// lists, memberships) and fills empty notes; it never deletes and runs no history cull (see
+/// lists, memberships, pantry and grocery items) and fills empty notes; it never deletes and runs no history cull (see
 /// BackupMerger for how the cap is respected).
 struct BackupDao {
     let db: SQLiteConnection
@@ -46,7 +48,22 @@ struct BackupDao {
             "SELECT recipeId, listId, addedAt FROM recipe_list_cross_ref ORDER BY listId ASC, addedAt ASC, recipeId ASC",
             map: ListMembership.init(row:)
         )
-        return BackupSnapshot(recipes: recipes, lists: lists, memberships: memberships)
+        let pantry = try PantryDao(db: db).items()
+        let groceries = try db.query(
+            "SELECT \(GroceryItemRecord.columns) FROM grocery_items ORDER BY listId ASC, sortOrder ASC, id ASC",
+            map: GroceryItemRecord.init(row:)
+        )
+        return BackupSnapshot(recipes: recipes, lists: lists, memberships: memberships, pantry: pantry, groceries: groceries)
+    }
+
+    func existingPantry() throws -> [ExistingPantryItem] {
+        try db.query("SELECT uid, name, language FROM pantry_items") { row in
+            ExistingPantryItem(uid: row.string(0), name: row.string(1), language: row.optionalString(2))
+        }
+    }
+
+    func existingGroceryUids() throws -> Set<String> {
+        Set(try db.query("SELECT uid FROM grocery_items") { $0.string(0) })
     }
 
     func existingRecipes() throws -> [ExistingRecipe] {
@@ -82,7 +99,9 @@ struct BackupDao {
             existingLists: try existingLists(),
             maxSortOrder: try maxSortOrder(),
             historyLimit: historyLimit,
-            newUid: newUid
+            newUid: newUid,
+            existingPantry: try existingPantry(),
+            existingGroceryUids: try existingGroceryUids()
         )
 
         let recipes = RecipeDao(db: db)
@@ -129,6 +148,28 @@ struct BackupDao {
             try lists.addToList(ListMembership(
                 recipeId: rowId(m.recipe, newRecipeIds), listId: rowId(m.list, newListIds), addedAt: m.addedAt
             ))
+        }
+
+        let pantry = PantryDao(db: db)
+        for p in plan.newPantry {
+            try pantry.insert(PantryItemRecord(
+                name: p.name, quantity: p.quantity, language: p.language, aisle: p.aisle, inStock: p.inStock,
+                alwaysHave: p.alwaysHave, purchasedDay: p.purchasedDay, expiresDay: p.expiresDay,
+                updatedAt: p.updatedAt, uid: p.id
+            ))
+        }
+
+        let groceries = GroceryDao(db: db)
+        var order = try db.queryOne(
+            "SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM grocery_items WHERE listId = ?", GroceryItemRecord.defaultList
+        ) { $0.int(0) } ?? 0
+        for g in plan.newGroceries {
+            try groceries.insert(GroceryItemRecord(
+                text: g.item.text, language: g.item.language, aisle: g.item.aisle, checked: g.item.checked,
+                sortOrder: order, recipeId: g.recipe.map { rowId($0, newRecipeIds) }, plannedDay: g.item.plannedDay,
+                updatedAt: g.item.updatedAt, uid: g.item.id
+            ))
+            order += 1
         }
         return plan.summary
     }

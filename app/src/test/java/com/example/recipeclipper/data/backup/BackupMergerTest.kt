@@ -21,6 +21,11 @@ class BackupMergerTest {
         ExistingList(id = 2, uid = "l-lunch", name = "Lunch", isFavorites = false),
         ExistingList(id = 10, uid = "l-week", name = "Weeknight", isFavorites = false)
     )
+    private val herePantry = listOf(
+        ExistingPantryItem(uid = "p-here", name = "Butter", language = "en"),
+        ExistingPantryItem(uid = "x-salt", name = "Salt", language = "en")
+    )
+    private val hereGroceries = setOf("g-here")
 
     private fun uids(): () -> String {
         var n = 0
@@ -32,8 +37,10 @@ class BackupMergerTest {
         recipes: List<ExistingRecipe> = hereRecipes,
         lists: List<ExistingList> = hereLists,
         maxSortOrder: Int = 6,
-        historyLimit: Int = 2
-    ) = BackupMerger.plan(backup, recipes, lists, maxSortOrder, historyLimit, uids())
+        historyLimit: Int = 2,
+        pantry: List<ExistingPantryItem> = herePantry,
+        groceries: Set<String> = hereGroceries
+    ) = BackupMerger.plan(backup, recipes, lists, maxSortOrder, historyLimit, uids(), pantry, groceries)
 
     @Test fun `the shared fixture merges into the expected plan`() {
         val plan = plan(decodeOrFail(fixture("backup-v1.json")))
@@ -79,8 +86,23 @@ class BackupMergerTest {
             plan.memberships
         )
 
+        // Pantry: p-here's uid and "salt" are here, " FLOUR " repeats "Flour": only flour comes in, trimmed.
+        assertEquals(listOf("p-flour"), plan.newPantry.map { it.id })
+        assertEquals("Flour", plan.newPantry[0].name)
+        assertEquals("half a bag", plan.newPantry[0].quantity)
+
+        // Groceries: by uid only. The tomatoes keep the soup here, the apples the pie being
+        // written; the beef's recipe was skipped for history and the milk's was never in the file.
         assertEquals(
-            ImportSummary(recipesAdded = 2, listsAdded = 2, recipesAlreadyHere = 2, recipesSkipped = 1),
+            listOf("g-tomatoes" to e(1), "g-apples" to n("r-pie"), "g-beef" to null, "g-milk" to null),
+            plan.newGroceries.map { it.item.id to it.recipe }
+        )
+
+        assertEquals(
+            ImportSummary(
+                recipesAdded = 2, listsAdded = 2, recipesAlreadyHere = 2, recipesSkipped = 1,
+                pantryAdded = 1, groceriesAdded = 4
+            ),
             plan.summary
         )
     }
@@ -94,13 +116,26 @@ class BackupMergerTest {
             first.newRecipes.map { ExistingRecipe(nextId++, it.id, it.sourceUrl, it.notes != null, isListed = true) }
         val lists = hereLists + first.newLists.map { ExistingList(nextId++, it.uid, it.name, false) }
 
-        val second = plan(backup, recipes = recipes, lists = lists, maxSortOrder = 8, historyLimit = 50)
+        val pantry = herePantry + first.newPantry.map { ExistingPantryItem(it.id, it.name, it.language) }
+        val groceries = hereGroceries + first.newGroceries.map { it.item.id }
+
+        val second = plan(backup, recipes = recipes, lists = lists, maxSortOrder = 8, historyLimit = 50, pantry = pantry, groceries = groceries)
 
         assertTrue(second.newRecipes.isEmpty())
         assertTrue(second.newLists.isEmpty())
         assertTrue(second.noteUpdates.isEmpty())
         assertEquals(0, second.summary.recipesAdded)
         assertEquals(0, second.summary.listsAdded)
+        assertTrue(second.newPantry.isEmpty())
+        assertTrue(second.newGroceries.isEmpty())
+    }
+
+    @Test fun `a pantry name here in another language is a different item`() {
+        val backup = Backup(
+            0, emptyList(), emptyList(), emptyList(),
+            pantry = listOf(BackupPantryItem("p", "Butter", null, "de", "dairy", true, false, null, null, 0))
+        )
+        assertEquals(listOf("p"), plan(backup, recipes = emptyList()).newPantry.map { it.id })
     }
 
     @Test fun `favorites maps by the flag whatever either list is called`() {

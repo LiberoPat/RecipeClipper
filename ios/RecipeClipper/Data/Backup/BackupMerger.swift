@@ -25,6 +25,19 @@ enum MergeTarget: Hashable {
     case new(String)
 }
 
+/// A pantry item already on this phone (#51).
+struct ExistingPantryItem: Equatable {
+    var uid: String
+    var name: String
+    var language: String?
+}
+
+/// A grocery item to write, with the recipe it came from, if that recipe is here after the import.
+struct NewGrocery: Equatable {
+    var item: BackupGroceryItem
+    var recipe: MergeTarget?
+}
+
 struct NewList: Equatable {
     var uid: String
     var name: String
@@ -53,6 +66,8 @@ struct ImportPlan: Equatable {
     var newLists: [NewList]
     var memberships: [PlannedMembership]
     var summary: ImportSummary
+    var newPantry: [BackupPantryItem] = []
+    var newGroceries: [NewGrocery] = []
 }
 
 /// How an export file merges into a phone that already has recipes (issue #26; the owner's
@@ -63,7 +78,10 @@ struct ImportPlan: Equatable {
 /// `isFavorites`, never by name; other lists join by uid, then by trimmed case-insensitive name
 /// (never Favorites), then another list in the file, else are created after the lists here;
 /// memberships are planned once per pair and written insert-or-ignore; importing never deletes
-/// or culls, and new recipes in no list only fill free places under `historyLimit`.
+/// or culls, and new recipes in no list only fill free places under `historyLimit`. Pantry
+/// items (#51) come in unless their uid, or their name in the same language, is here or earlier
+/// in the file (what's here stands); grocery items (#50) unless their uid is here, after the
+/// list's own, keeping a recipe only if it is here after the import.
 enum BackupMerger {
 
     static func plan(
@@ -72,7 +90,9 @@ enum BackupMerger {
         existingLists: [ExistingList],
         maxSortOrder: Int,
         historyLimit: Int,
-        newUid: () -> String
+        newUid: () -> String,
+        existingPantry: [ExistingPantryItem] = [],
+        existingGroceryUids: Set<String> = []
     ) -> ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         var existingByUrl: [String: ExistingRecipe] = [:]
@@ -189,6 +209,29 @@ enum BackupMerger {
             return NoteUpdate(recipeId: id, notes: note)
         }
 
+        // --- Pantry: by uid, then by name in the same language; what's here stands.
+        struct PantryKey: Hashable { let name: String; let language: String? }
+        var takenPantryUids = Set(existingPantry.map(\.uid))
+        var pantryNames = Set(existingPantry.map { PantryKey(name: nameKey($0.name), language: $0.language) })
+        var newPantry: [BackupPantryItem] = []
+        for item in backup.pantry {
+            guard !takenPantryUids.contains(item.id),
+                  pantryNames.insert(PantryKey(name: nameKey(item.name), language: item.language)).inserted
+            else { continue }
+            takenPantryUids.insert(item.id)
+            var trimmed = item
+            trimmed.name = item.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            newPantry.append(trimmed)
+        }
+
+        // --- Groceries: by uid only, after what's on the list, keeping a recipe that's here.
+        let written = Set(newRecipes.map { MergeTarget.new($0.id) })
+        let newGroceries = backup.groceries.filter { !existingGroceryUids.contains($0.id) }.map { item -> NewGrocery in
+            var recipe = item.recipeId.flatMap { recipeTargets[$0] }
+            if case .new = recipe, !written.contains(recipe!) { recipe = nil }
+            return NewGrocery(item: item, recipe: recipe)
+        }
+
         return ImportPlan(
             newRecipes: newRecipes,
             noteUpdates: noteUpdates,
@@ -198,8 +241,12 @@ enum BackupMerger {
                 recipesAdded: newRecipes.count,
                 listsAdded: newListOrder.count,
                 recipesAlreadyHere: matchedOrder.count,
-                recipesSkipped: skipped
-            )
+                recipesSkipped: skipped,
+                pantryAdded: newPantry.count,
+                groceriesAdded: newGroceries.count
+            ),
+            newPantry: newPantry,
+            newGroceries: newGroceries
         )
     }
 

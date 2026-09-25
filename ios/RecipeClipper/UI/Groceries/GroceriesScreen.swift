@@ -75,12 +75,23 @@ struct GroceriesScreen: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let offer = state.pantryOffer {
+                pantrySnackbar(offer)
+                    .frame(maxWidth: ReadableWidth.column)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.easeOut(duration: 0.2), value: state.removed == nil)
+        .animation(.easeOut(duration: 0.2), value: state.pantryOffer == nil)
         .task(id: state.removed) {
             guard let removed = state.removed else { return }
             await SnackbarTimeout.run(pending: ["\(removed.id)"], onTimeout: vm.onSnackbarDismissed)
+        }
+        .task(id: state.pantryOffer) {
+            guard state.pantryOffer != nil else { return }
+            await SnackbarTimeout.run(pending: ["pantry"], onTimeout: vm.onPantryOfferDismissed)
         }
         .sheet(isPresented: Binding(get: { state.moving != nil }, set: { if !$0 { vm.onMoveDismissed() } })) {
             if let moving = vm.uiState.moving {
@@ -88,6 +99,19 @@ struct GroceriesScreen: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
+        }
+    }
+}
+
+extension GroceriesScreen {
+    /// Ticking off fed the pantry (#51): a restock with Undo, or an offer to add.
+    @ViewBuilder
+    fileprivate func pantrySnackbar(_ offer: PantryOffer) -> some View {
+        switch offer {
+        case .restocked(_, let name):
+            Snackbar(message: Strings.pantryRestocked(name), actionLabel: Strings.undo, action: vm.onUndoRestock)
+        case .offer(_, let name, _):
+            Snackbar(message: Strings.offerPantry(name), actionLabel: Strings.addToPantry, action: vm.onAddToPantry)
         }
     }
 }

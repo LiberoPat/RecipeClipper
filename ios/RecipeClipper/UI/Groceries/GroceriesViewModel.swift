@@ -8,6 +8,14 @@ struct RemovedGroceries: Equatable {
     let label: String?
 }
 
+/// What ticking a line off did to the pantry (#51), for the snackbar. `id` tells two apart.
+enum PantryOffer: Equatable {
+    /// A tracked item was out and is back in stock: on by default, with Undo.
+    case restocked(id: Int, name: String)
+    /// Not in the pantry yet: "Add to pantry" is offered, not done.
+    case offer(id: Int, name: String, item: NewPantryItem)
+}
+
 /// `sections` is nil until the list has loaded. `draft` is the "Add an item" field. `moving`
 /// is the row whose aisle is being chosen.
 struct GroceriesUiState: Equatable {
@@ -15,6 +23,7 @@ struct GroceriesUiState: Equatable {
     var draft = ""
     var moving: GroceryCombiner.Row?
     var removed: RemovedGroceries?
+    var pantryOffer: PantryOffer?
 
     var hasChecked: Bool { (sections ?? []).contains { $0.rows.contains { $0.items.contains(where: \.checked) } } }
     var isEmpty: Bool { sections?.isEmpty == true }
@@ -32,14 +41,28 @@ final class GroceriesViewModel {
     private(set) var uiState = GroceriesUiState()
 
     @ObservationIgnored private let repository: GroceryRepository
+    @ObservationIgnored private let pantry: PantryRepository
+    @ObservationIgnored private let calendar: PlanCalendar
     @ObservationIgnored private let phoneLanguage: () -> String?
     @ObservationIgnored private var subscription: AnyCancellable?
+    @ObservationIgnored private var pantrySubscription: AnyCancellable?
+    @ObservationIgnored private var pantryItems: [PantryItem] = []
+    @ObservationIgnored private var restocked: PantrySnapshot?
     @ObservationIgnored private var removedItems: DeletedGroceries?
     @ObservationIgnored private var removals = 0
+    @ObservationIgnored private var offers = 0
 
-    init(repository: GroceryRepository, phoneLanguage: @escaping () -> String? = { Locale.current.language.languageCode?.identifier }) {
+    init(
+        repository: GroceryRepository, pantry: PantryRepository, calendar: PlanCalendar,
+        phoneLanguage: @escaping () -> String? = { Locale.current.language.languageCode?.identifier }
+    ) {
         self.repository = repository
+        self.pantry = pantry
+        self.calendar = calendar
         self.phoneLanguage = phoneLanguage
+        pantrySubscription = pantry.observeItems()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.pantryItems = $0 }
         subscription = repository.observeItems()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] items in
@@ -63,10 +86,55 @@ final class GroceriesViewModel {
         Task { await repository.add([NewGroceryLine(text: text, language: language)]) }
     }
 
-    /// Ticks or unticks every line in `row`: a combined row is one thing to pick up.
+    /// Ticks or unticks every line in `row`: a combined row is one thing to pick up. Ticking
+    /// one off feeds the pantry (#51): an item the pantry tracks that was out is back in stock at
+    /// once (undoable); one it doesn't track is offered, never added unasked. A line the app
+    /// can't name is left alone.
     func onToggle(_ row: GroceryCombiner.Row) {
         let checked = !row.items.allSatisfy(\.checked)
-        Task { await repository.setChecked(row.items.map(\.id), checked: checked) }
+        let first = row.items[0]
+        Task {
+            await repository.setChecked(row.items.map(\.id), checked: checked)
+            if checked { await toPantry(first) }
+        }
+    }
+
+    private func toPantry(_ item: GroceryItem) async {
+        guard let words = LanguageWords.forTag(item.language), let name = IngredientName.of(item.text, words: words) else { return }
+        let offer: PantryOffer
+        if let tracked = PantryMatch.find(name, language: words.language, pantry: pantryItems) {
+            if tracked.inStock || tracked.alwaysHave { return }
+            restocked = await pantry.snapshot([tracked.id])
+            await pantry.restock([tracked.id], day: calendar.today())
+            offers += 1
+            offer = .restocked(id: offers, name: tracked.name)
+        } else {
+            offers += 1
+            offer = .offer(
+                id: offers, name: name,
+                item: NewPantryItem(name: name, language: words.language, aisle: item.aisle, purchasedDay: calendar.today())
+            )
+        }
+        uiState.pantryOffer = offer
+    }
+
+    func onAddToPantry() {
+        guard case .offer(_, _, let item) = uiState.pantryOffer else { return }
+        uiState.pantryOffer = nil
+        Task { await pantry.add(item) }
+    }
+
+    func onUndoRestock() {
+        guard let snapshot = restocked else { return }
+        restocked = nil
+        uiState.pantryOffer = nil
+        Task { await pantry.restore(snapshot) }
+    }
+
+    /// The pantry snackbar timed out: what was done stands, what was offered isn't.
+    func onPantryOfferDismissed() {
+        restocked = nil
+        uiState.pantryOffer = nil
     }
 
     func onMoveStart(_ row: GroceryCombiner.Row) { uiState.moving = row }
@@ -129,7 +197,7 @@ struct SourceLine: Hashable {
 }
 
 /// The "Add to groceries" sheet (#50): one recipe's lines or every planned recipe's, each
-/// ticked to start. `sources` is nil while the week's are loading. `added` is set once the
+/// ticked to start unless the pantry has it (#51). `sources` is nil while the week's are loading. `added` is set once the
 /// ticked lines are written; the sheet closes on it.
 struct AddToGroceriesUiState: Equatable {
     var sources: [GrocerySource]?
@@ -152,22 +220,38 @@ final class AddToGroceriesViewModel {
 
     @ObservationIgnored private let repository: GroceryRepository
     @ObservationIgnored private let preferences: AppPreferences
+    @ObservationIgnored private let pantry: PantryRepository
 
-    init(repository: GroceryRepository, preferences: AppPreferences) {
+    init(repository: GroceryRepository, preferences: AppPreferences, pantry: PantryRepository) {
         self.repository = repository
         self.preferences = preferences
+        self.pantry = pantry
     }
 
     /// One recipe, its `rendered` lines exactly as the reading view shows them.
     func setRecipe(_ recipeId: Int64, title: String, language: String?, rendered: [String]) {
-        uiState = AddToGroceriesUiState(
-            sources: [GrocerySources.fromRecipe(recipeId: recipeId, title: title, language: language, rendered: rendered)]
-        )
+        let sources = [GrocerySources.fromRecipe(recipeId: recipeId, title: title, language: language, rendered: rendered)]
+        uiState = AddToGroceriesUiState(sources: sources)
+        loading?.cancel()
+        loading = Task { await untickCovered(sources) }
+    }
+
+    /// Lines whose ingredient the pantry has (in stock, or a staple) start unticked (#51), so
+    /// the cook only reviews them. Matching is by name, never amount; a tick already changed stays.
+    private func untickCovered(_ sources: [GrocerySource]) async {
+        let items = await pantry.items()
+        guard !Task.isCancelled, !items.isEmpty, uiState.sources == sources else { return }
+        for source in sources {
+            for (index, line) in source.lines.enumerated() where PantryMatch.covered(line, language: source.language, pantry: items) {
+                uiState.unticked.insert(SourceLine(source: source.key, index: index))
+            }
+        }
     }
 
     /// Every recipe planned from `start` for seven days, at its planned servings, in the
     /// user's units.
-    /// Starts empty at once (the sheet shows a spinner), then fills in; `loading` is that fetch.
+    /// Starts empty at once (the sheet shows a spinner), then fills in; `loading` is that fetch
+    /// (and, for one recipe too, the pantry read that unticks what's there).
     func loadWeek(_ start: Int64) {
         uiState = AddToGroceriesUiState()
         loading?.cancel()
@@ -175,7 +259,9 @@ final class AddToGroceriesViewModel {
             let planned = await repository.plannedIngredients(start: start, end: start + 6)
             guard !Task.isCancelled else { return }
             let settings = preferences.current
-            uiState.sources = GrocerySources.fromPlan(planned, system: settings.unitSystem, convertLiquids: settings.convertLiquids)
+            let sources = GrocerySources.fromPlan(planned, system: settings.unitSystem, convertLiquids: settings.convertLiquids)
+            uiState.sources = sources
+            await untickCovered(sources)
         }
     }
 

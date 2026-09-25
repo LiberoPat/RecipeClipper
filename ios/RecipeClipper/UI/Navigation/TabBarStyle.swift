@@ -1,36 +1,6 @@
 import SwiftUI
 import UIKit
 
-/// The Week, Groceries and Pantry tabs until their features land (#49–#51): the tab's name, one
-/// line on what it will hold, and "Coming soon". Deliberately quiet, with nothing to tap.
-struct ComingSoonScreen: View {
-    let title: String
-    let description: String
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                ScreenTitle(title).padding(.bottom, 12)
-                Hairline()
-                Text(description)
-                    .textStyle(Typography.bodyLarge)
-                    .foregroundStyle(Palette.muted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 24)
-                Text(Strings.comingSoon)
-                    .textStyle(Typography.labelMedium)
-                    .foregroundStyle(Palette.accentText)
-                    .padding(.top, 8)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 4)
-            .padding(.bottom, 32)
-        }
-        .screenBackground()
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
 /// The tab bar in the app's tokens: ground with a hairline above it, paprika for the open tab,
 /// muted for the rest, Karla labels. UIKit draws the bar, so this goes through its appearance
 /// proxy, once, before the first bar is made.

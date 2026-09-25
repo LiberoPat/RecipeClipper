@@ -171,8 +171,6 @@
     <string name="tab_week">Woche</string>
     <string name="tab_groceries">Einkauf</string>
     <string name="tab_pantry">Vorrat</string>
-    <string name="coming_soon">Demnächst</string>
-    <string name="pantry_placeholder">Was du schon hast, damit du nur kaufst, was du brauchst.</string>
     <string name="share_serves">Portionen: %1$d</string>
     <string name="share_makes">Ergibt %1$d</string>
     <string name="share_scaled">%1$s (ursprünglich %2$d)</string>
@@ -319,4 +317,39 @@
     <string name="aisle_snacks">Nüsse &amp; Trockenobst</string>
     <string name="aisle_drinks">Getränke</string>
     <string name="aisle_other">Sonstiges</string>
+
+    <!-- Pantry, What I need and grocery check-off (#51) -->
+    <string name="pantry_add_hint">Zum Vorrat hinzufügen</string>
+    <string name="pantry_search_hint">Vorrat durchsuchen</string>
+    <string name="pantry_empty">Noch nichts im Vorrat. Tippe oben ein, was in deinen Schränken ist, oder füge Dinge hinzu, wenn du sie auf der Einkaufsliste abhakst.</string>
+    <string name="pantry_no_results">Nichts passt zu „%1$s“.</string>
+    <string name="pantry_sort_aisle">Nach Gang sortieren</string>
+    <string name="pantry_sort_expiry">Nach Ablaufdatum sortieren</string>
+    <string name="pantry_in_stock">Vorrätig</string>
+    <string name="pantry_out">Nicht vorrätig</string>
+    <string name="pantry_always_have">Immer im Haus</string>
+    <string name="pantry_always_have_detail">Grundvorräte stehen nie unter „Zu kaufen“.</string>
+    <string name="pantry_expired">Abgelaufen</string>
+    <string name="pantry_use_by">Verbrauchen bis %1$s</string>
+    <string name="pantry_bought">Gekauft am %1$s</string>
+    <string name="pantry_edit_title">Artikel bearbeiten</string>
+    <string name="pantry_label_name">Name</string>
+    <string name="pantry_label_quantity">Menge (optional)</string>
+    <string name="pantry_label_expiry">Verbrauchsdatum</string>
+    <string name="pantry_no_date">Kein Datum</string>
+    <string name="action_set_date">Datum wählen</string>
+    <string name="action_clear_date">Datum entfernen</string>
+    <string name="snackbar_pantry_out">%1$s ist aus</string>
+    <string name="snackbar_added_to_groceries">%1$s zum Einkauf hinzugefügt</string>
+    <string name="snackbar_pantry_deleted">Gelöscht: %1$s</string>
+    <string name="what_i_need_title">Was ich brauche</string>
+    <string name="what_i_need_buy">Zu kaufen</string>
+    <string name="what_i_need_have">In deinem Vorrat</string>
+    <string name="what_i_need_note">„In deinem Vorrat“ heißt, dass du etwas davon hast, nicht dass es reicht.</string>
+    <string name="what_i_need_nothing_to_buy">Nichts zu kaufen: Jede Zutat ist in deinem Vorrat.</string>
+    <string name="what_i_need_you_have">Du hast %1$s</string>
+    <string name="what_i_need_added">Zum Einkauf hinzugefügt</string>
+    <string name="action_add_to_pantry">Zum Vorrat hinzufügen</string>
+    <string name="snackbar_offer_pantry">%1$s besorgt. Zum Vorrat hinzufügen?</string>
+    <string name="snackbar_pantry_restocked">%1$s ist wieder im Vorrat</string>
 </resources>

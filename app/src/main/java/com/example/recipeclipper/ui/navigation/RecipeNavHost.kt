@@ -19,6 +19,7 @@ import com.example.recipeclipper.ui.listdetail.ListDetailViewModel
 import com.example.recipeclipper.ui.lists.ListsScreen
 import com.example.recipeclipper.ui.recipe.RecipeScreen
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
+import com.example.recipeclipper.ui.week.WhatINeedViewModel
 import com.example.recipeclipper.ui.settings.SettingsScreen
 
 object Routes {
@@ -40,6 +41,7 @@ object Routes {
     const val WEEK_RECIPE =
         "week/recipe/{${RecipeViewModel.RECIPE_ID_ARG}}?${RecipeViewModel.SERVINGS_ARG}={${RecipeViewModel.SERVINGS_ARG}}"
     const val MEAL_TYPES = "week/meal-types"
+    const val WHAT_I_NEED = "week/need/{${WhatINeedViewModel.WEEK_START_ARG}}"
     const val GROCERIES = "groceries"
     const val PANTRY = "pantry"
 
@@ -49,7 +51,8 @@ object Routes {
     fun recipe(id: Long) = "recipe/$id"
     fun weekRecipe(id: Long, servings: Int?) =
         "week/recipe/$id" + (servings?.let { "?${RecipeViewModel.SERVINGS_ARG}=$it" } ?: "")
-    fun edit(id: Long) = "edit?${EditRecipeViewModel.RECIPE_ID_ARG}=$id"
+    fun whatINeed(weekStart: Long) = "week/need/$weekStart"
+    fun edit(id: Long) ="edit?${EditRecipeViewModel.RECIPE_ID_ARG}=$id"
     const val NEW_RECIPE = "edit"
 
     // From a timer notification: the recipe, opened in cook mode.

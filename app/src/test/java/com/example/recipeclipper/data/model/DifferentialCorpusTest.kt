@@ -21,7 +21,10 @@ import java.io.File
  * `Groc([...])` rows (#50) work the same way: write only the lines (`Groc(["2 eggs", "3 eggs"]),`,
  * optionally `, lang: "de"`), and the combined line and each line's aisle are filled in.
  *
- * Only these three sections are generated here, plus the Swift test's `systems` list and the
+ * `Pant("line", "pantry name")` rows (#51) pin [PantryMatch.covered]: the line against one in-stock
+ * pantry item of that name, in the same language; write only those two strings.
+ *
+ * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
  */
@@ -41,6 +44,8 @@ class DifferentialCorpusTest {
 
     // A grocery row (#50): the lines to add up, then optionally their language.
     private val groceryRow = Regex("""^(\s*)Groc\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
+    // A pantry row (#51): a recipe line, a pantry item's name, optionally their language.
+    private val pantryRow = Regex("""^(\s*)Pant\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
@@ -74,6 +79,7 @@ class DifferentialCorpusTest {
             }
         }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
+        pantryRow.find(line)?.let { p -> return pantryRow(p) }
         val m = row.find(line) ?: return line
         val indent = m.groupValues[1]
         val input = unescape(m.groupValues[3])
@@ -105,6 +111,17 @@ class DifferentialCorpusTest {
         val combined = GroceryCombiner.combine(lines, words)?.let { q(it) } ?: "nil"
         val aisles = list(lines.map { Aisles.of(it, words).key })
         return m.groupValues[1] + "Groc(${list(lines)}$lang, $combined, $aisles),"
+    }
+
+    /** `Pant(line, name, lang:, covered)`: [PantryMatch.covered] against one in-stock item called [name]. */
+    private fun pantryRow(m: MatchResult): String {
+        val line = unescape(m.groupValues[2])
+        val name = unescape(m.groupValues[3])
+        val language = m.groupValues[4].ifEmpty { "en" }
+        val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
+        val item = PantryItem(1, name, null, language, Aisle.OTHER, inStock = true, alwaysHave = false, purchasedDay = null, expiresDay = null)
+        val covered = PantryMatch.covered(line, language, listOf(item))
+        return m.groupValues[1] + "Pant(${q(line)}, ${q(name)}$lang, $covered),"
     }
 
     private fun instructionRow(line: String, words: LanguageWords, lang: String): String {

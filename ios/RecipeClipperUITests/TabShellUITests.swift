@@ -58,7 +58,7 @@ final class TabShellUITests: RecipeUITestCase {
         tab("Groceries").tap()
         require(textContaining("Your list is empty"), "the empty Groceries list (#50)")
         tab("Pantry").tap()
-        require(text("What you already have, so you only buy what you need."))
+        require(app.textFields["Add to the pantry"], "the Pantry tab")
         XCTAssertTrue(tab("Pantry").isSelected)
     }
 
@@ -104,7 +104,7 @@ final class TabShellUITests: RecipeUITestCase {
     func testAShareFromAnotherTabLandsInRecipes() {
         launchWithTabs(.empty)
         tab("Pantry").tap()
-        require(text("Coming soon"))
+        require(app.textFields["Add to the pantry"], "the Pantry tab")
 
         share("https://example.com/no-recipe")
 

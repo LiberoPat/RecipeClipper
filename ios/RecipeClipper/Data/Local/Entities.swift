@@ -225,6 +225,61 @@ struct GroceryItemRecord: Equatable {
     }
 }
 
+/// One pantry item (#51; Android's `PantryItemEntity`).
+struct PantryItemRecord: Equatable {
+    var id: Int64 = 0
+    var name: String
+    var quantity: String?
+    var language: String?
+    var aisle: String
+    var inStock: Bool
+    var alwaysHave: Bool
+    var purchasedDay: Int64?
+    var expiresDay: Int64?
+    var updatedAt: Int64
+    var uid: String = newUid()
+
+    static let columns = "id, name, quantity, language, aisle, inStock, alwaysHave, purchasedDay, expiresDay, updatedAt, uid"
+
+    init(
+        id: Int64 = 0, name: String, quantity: String?, language: String?, aisle: String, inStock: Bool,
+        alwaysHave: Bool, purchasedDay: Int64?, expiresDay: Int64?, updatedAt: Int64, uid: String = newUid()
+    ) {
+        self.id = id
+        self.name = name
+        self.quantity = quantity
+        self.language = language
+        self.aisle = aisle
+        self.inStock = inStock
+        self.alwaysHave = alwaysHave
+        self.purchasedDay = purchasedDay
+        self.expiresDay = expiresDay
+        self.updatedAt = updatedAt
+        self.uid = uid
+    }
+
+    init(row: SQLiteRow) {
+        id = row.int64(0)
+        name = row.string(1)
+        quantity = row.optionalString(2)
+        language = row.optionalString(3)
+        aisle = row.string(4)
+        inStock = row.bool(5)
+        alwaysHave = row.bool(6)
+        purchasedDay = row.isNull(7) ? nil : row.int64(7)
+        expiresDay = row.isNull(8) ? nil : row.int64(8)
+        updatedAt = row.int64(9)
+        uid = row.string(10)
+    }
+
+    var domain: PantryItem {
+        PantryItem(
+            id: id, name: name, quantity: quantity, language: language, aisle: Aisle.fromKey(aisle),
+            inStock: inStock, alwaysHave: alwaysHave, purchasedDay: purchasedDay, expiresDay: expiresDay
+        )
+    }
+}
+
 /// A recipe's saved cook progress, with what a timer alert needs to name it (Android's
 /// `CookStateRow`).
 struct CookStateRecord: Equatable {

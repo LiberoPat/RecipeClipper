@@ -181,8 +181,6 @@
     <string name="tab_week">Settimana</string>
     <string name="tab_groceries">Spesa</string>
     <string name="tab_pantry">Dispensa</string>
-    <string name="coming_soon">Prossimamente</string>
-    <string name="pantry_placeholder">Quello che hai già, così compri solo quello che ti serve.</string>
     <string name="share_serves">Porzioni: %1$d</string>
     <string name="share_makes">Resa: %1$d</string>
     <string name="share_scaled">%1$s (in origine %2$d)</string>
@@ -334,4 +332,39 @@
     <string name="aisle_snacks">Frutta secca</string>
     <string name="aisle_drinks">Bevande</string>
     <string name="aisle_other">Altro</string>
+
+    <!-- Pantry, What I need and grocery check-off (#51) -->
+    <string name="pantry_add_hint">Aggiungi alla dispensa</string>
+    <string name="pantry_search_hint">Cerca nella dispensa</string>
+    <string name="pantry_empty">La dispensa è ancora vuota. Scrivi qui sopra cosa c\'è nei tuoi armadietti, o aggiungi le cose mentre le spunti dalla lista della spesa.</string>
+    <string name="pantry_no_results">Nessun risultato per «%1$s».</string>
+    <string name="pantry_sort_aisle">Ordina per reparto</string>
+    <string name="pantry_sort_expiry">Ordina per scadenza</string>
+    <string name="pantry_in_stock">Disponibile</string>
+    <string name="pantry_out">Finito</string>
+    <string name="pantry_always_have">Sempre in casa</string>
+    <string name="pantry_always_have_detail">Gli essenziali non sono mai in «Da comprare».</string>
+    <string name="pantry_expired">Scaduto</string>
+    <string name="pantry_use_by">Da consumare entro il %1$s</string>
+    <string name="pantry_bought">Comprato il %1$s</string>
+    <string name="pantry_edit_title">Modifica articolo</string>
+    <string name="pantry_label_name">Nome</string>
+    <string name="pantry_label_quantity">Quantità (facoltativa)</string>
+    <string name="pantry_label_expiry">Data di scadenza</string>
+    <string name="pantry_no_date">Nessuna data</string>
+    <string name="action_set_date">Scegli data</string>
+    <string name="action_clear_date">Rimuovi data</string>
+    <string name="snackbar_pantry_out">%1$s è finito</string>
+    <string name="snackbar_added_to_groceries">Aggiunto alla spesa: %1$s</string>
+    <string name="snackbar_pantry_deleted">Eliminato: %1$s</string>
+    <string name="what_i_need_title">Cosa mi serve</string>
+    <string name="what_i_need_buy">Da comprare</string>
+    <string name="what_i_need_have">Nella tua dispensa</string>
+    <string name="what_i_need_note">«Nella tua dispensa» vuol dire che ne hai, non che ne hai abbastanza.</string>
+    <string name="what_i_need_nothing_to_buy">Niente da comprare: ogni ingrediente è nella tua dispensa.</string>
+    <string name="what_i_need_you_have">Hai %1$s</string>
+    <string name="what_i_need_added">Aggiunto alla spesa</string>
+    <string name="action_add_to_pantry">Aggiungi alla dispensa</string>
+    <string name="snackbar_offer_pantry">Preso: %1$s. Aggiungerlo alla dispensa?</string>
+    <string name="snackbar_pantry_restocked">%1$s è di nuovo in dispensa</string>
 </resources>

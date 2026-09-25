@@ -181,8 +181,6 @@
     <string name="tab_week">Semaine</string>
     <string name="tab_groceries">Courses</string>
     <string name="tab_pantry">Garde-manger</string>
-    <string name="coming_soon">Bientôt disponible</string>
-    <string name="pantry_placeholder">Ce que vous avez déjà, pour n’acheter que ce dont vous avez besoin.</string>
     <string name="share_serves">Portions : %1$d</string>
     <string name="share_makes">Quantité : %1$d</string>
     <string name="share_scaled">%1$s (à l\'origine %2$d)</string>
@@ -334,4 +332,39 @@
     <string name="aisle_snacks">Fruits secs</string>
     <string name="aisle_drinks">Boissons</string>
     <string name="aisle_other">Autres</string>
+
+    <!-- Pantry, What I need and grocery check-off (#51) -->
+    <string name="pantry_add_hint">Ajouter au garde-manger</string>
+    <string name="pantry_search_hint">Rechercher dans le garde-manger</string>
+    <string name="pantry_empty">Rien dans le garde-manger pour l\'instant. Saisissez ci-dessus ce qu\'il y a dans vos placards, ou ajoutez des articles en les cochant sur la liste de courses.</string>
+    <string name="pantry_no_results">Aucun résultat pour « %1$s ».</string>
+    <string name="pantry_sort_aisle">Trier par rayon</string>
+    <string name="pantry_sort_expiry">Trier par date limite</string>
+    <string name="pantry_in_stock">En stock</string>
+    <string name="pantry_out">Épuisé</string>
+    <string name="pantry_always_have">Toujours en réserve</string>
+    <string name="pantry_always_have_detail">Les produits de base ne figurent jamais dans « À acheter ».</string>
+    <string name="pantry_expired">Périmé</string>
+    <string name="pantry_use_by">À consommer avant le %1$s</string>
+    <string name="pantry_bought">Acheté le %1$s</string>
+    <string name="pantry_edit_title">Modifier l\'article</string>
+    <string name="pantry_label_name">Nom</string>
+    <string name="pantry_label_quantity">Quantité (facultatif)</string>
+    <string name="pantry_label_expiry">Date limite</string>
+    <string name="pantry_no_date">Aucune date</string>
+    <string name="action_set_date">Choisir une date</string>
+    <string name="action_clear_date">Effacer la date</string>
+    <string name="snackbar_pantry_out">%1$s épuisé</string>
+    <string name="snackbar_added_to_groceries">Ajouté aux courses : %1$s</string>
+    <string name="snackbar_pantry_deleted">Supprimé : %1$s</string>
+    <string name="what_i_need_title">Ce qu\'il me faut</string>
+    <string name="what_i_need_buy">À acheter</string>
+    <string name="what_i_need_have">Dans votre garde-manger</string>
+    <string name="what_i_need_note">« Dans votre garde-manger » signifie que vous en avez, pas que vous en avez assez.</string>
+    <string name="what_i_need_nothing_to_buy">Rien à acheter : chaque ingrédient est dans votre garde-manger.</string>
+    <string name="what_i_need_you_have">Vous avez : %1$s</string>
+    <string name="what_i_need_added">Ajouté aux courses</string>
+    <string name="action_add_to_pantry">Ajouter au garde-manger</string>
+    <string name="snackbar_offer_pantry">%1$s acheté. L\'ajouter au garde-manger ?</string>
+    <string name="snackbar_pantry_restocked">%1$s est de nouveau en stock</string>
 </resources>

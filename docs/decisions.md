@@ -1427,6 +1427,62 @@ The third tab of #46, still behind the #47 flag.
   (formatVersion 1 readers will ignore the new sections, as designed), rather
   than three partial passes.
 
+## Pantry (#51)
+
+The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
+
+- **One table** (`pantry_items`, Room 10, iOS `user_version` 9, new, so nothing
+  existing changes): `name` as typed, `language`, optional `quantity` as written,
+  an `aisle` key (from the aisle table when added, like a grocery's), `inStock`,
+  `alwaysHave`, and optional `purchasedDay` and `expiresDay`, plus #26's `uid` and
+  #53's `updatedAt`. The dates are **epoch days** (named `…Day`, like
+  `plannedDay`), not the `…At` millis the brief suggested: a use-by date is a
+  calendar day, and the plan already counts days that way.
+- **The quantity is never read.** It's a note for the cook ("half a bag"). Matching
+  is by name only, so Have means "you have flour", never "you have enough flour":
+  the screen says so under "In your pantry". This keeps the pantry inside "never a
+  confident wrong number".
+- **Have/Buy** (`PantryMatch`, pure, both platforms, pinned by the corpus's `Pant`
+  rows): a line's `IngredientName.of` against the item's name by
+  `IngredientName.matches`, and only in the same language. `matches` is the
+  density table's end-of-name rule in both directions, so "unsalted butter" and
+  "butter" meet and "butter beans" and "butter" don't. It also means a pantry's
+  "rice flour" says you have "flour": "What I need" shows which pantry item it
+  matched ("You have rice flour") so the cook can see it. A staple (`alwaysHave`)
+  is never on Buy, in stock or not. A line the app can't name ("salt and pepper",
+  a heading) stands alone and is always Buy: nothing is guessed. Lines group by
+  exact name and language, each shown as written with its recipe and day; nothing
+  is added up here (the grocery list does that, when it's exact).
+- **"What I need"** is its own screen on the Week's stack (`week/need/{weekStart}`),
+  from the Week menu, for the week shown. Its lines come from the same
+  `GrocerySources.fromPlan` as "Add this week's ingredients", so both show the
+  same text at the same servings. It follows the pantry live. "Add to groceries"
+  puts every Buy line on the list through #50's add path, once.
+- **The grocery sheet starts with what the pantry covers unticked** (in stock or a
+  staple), so "untick what's in the cupboard" is done for the cook, who still
+  sees and can re-tick every line.
+- **Ticking a grocery off feeds the pantry**, the issue's "on by default for
+  tracked items": if the pantry tracks that ingredient and it was out, it's back
+  in stock at once, bought today, with Undo in the snackbar; if the pantry doesn't
+  track it, the snackbar only offers "Add to pantry" (the ingredient's name, the
+  grocery's aisle). An item already in stock, a staple, an untick, or a line with
+  no name does nothing. The offer is never automatic for untracked items: the
+  pantry holds what the cook chose to track.
+- **Running out offers groceries**: switching an item out shows "… is out" with
+  "Add to groceries" (the name as a typed item). Typing a name already in the
+  pantry puts it back in stock rather than adding a twin.
+- **Expiry**: a badge only (Expired before today; the date in paprika from today
+  to 3 days ahead), no notifications, as the epic says. Sort by aisle (the
+  default) or by expiry (soonest first, undated last), from the menu as radio
+  choices.
+- **Export (#26)**: `pantry` and `groceries` are new top-level sections, with no
+  `formatVersion` bump: older readers ignore them. Pantry items merge by uid, then
+  by trimmed case-insensitive name in the same language; what's already here
+  keeps its stock, dates and quantity. Grocery items merge by uid only (two "2
+  eggs" can be two recipes' eggs), after the list's own items, and keep their
+  recipe only if it is on the phone after the import. The plan (#49) still isn't
+  in the file: it needs meal types merged too, and was left for its own change.
+
 ## Clip it yourself (#37)
 
 A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or

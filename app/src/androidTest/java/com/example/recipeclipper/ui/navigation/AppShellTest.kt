@@ -72,12 +72,17 @@ class AppShellTest {
         composable(Routes.GROCERIES) { Text("stub:groceries") }
     }
 
+    /** And the Pantry tab's (#51). */
+    private fun NavGraphBuilder.stubPantry() {
+        composable(Routes.PANTRY) { Text("stub:pantry") }
+    }
+
     private fun show(tabsEnabled: Boolean) {
         compose.setContent {
             nav = rememberNavController()
             AppShell(
                 nav, tabsEnabled = tabsEnabled, recipes = { stubRecipes() }, week = { stubWeek() },
-                groceries = { stubGroceries() }
+                groceries = { stubGroceries() }, pantry = { stubPantry() }
             )
         }
         compose.onNodeWithText("stub:home").assertIsDisplayed()
@@ -164,7 +169,7 @@ class AppShellTest {
         compose.onNodeWithText("stub:groceries").assertIsDisplayed()
 
         tab("Pantry").performClick()
-        compose.onNodeWithText("What you already have, so you only buy what you need.").assertIsDisplayed()
+        compose.onNodeWithText("stub:pantry").assertIsDisplayed()
         tab("Pantry").assertIsSelected()
         tab("Recipes").assertIsNotSelected()
     }
@@ -200,7 +205,7 @@ class AppShellTest {
         show(tabsEnabled = true)
         onNav { navigate(Routes.HISTORY) }
         tab("Pantry").performClick()
-        compose.onNodeWithText("Coming soon").assertIsDisplayed()
+        compose.onNodeWithText("stub:pantry").assertIsDisplayed()
 
         onNav { openRoute(Routes.import("https://example.com/soup"), tabsEnabled = true) }
 
@@ -215,7 +220,7 @@ class AppShellTest {
 
         // Pantry kept its own place.
         tab("Pantry").performClick()
-        compose.onNodeWithText("Coming soon").assertIsDisplayed()
+        compose.onNodeWithText("stub:pantry").assertIsDisplayed()
     }
 
     @Test

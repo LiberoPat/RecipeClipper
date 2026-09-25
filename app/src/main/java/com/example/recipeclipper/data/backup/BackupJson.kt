@@ -16,8 +16,16 @@ import org.json.JSONTokener
  *                     "lastViewedAt", "checkedIngredients", "notes", "language",
  *                     "contentOrigin", "editedAt" }],
  *   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
- *   "memberships": [{ "recipeId", "listId", "addedAt" }] }
+ *   "memberships": [{ "recipeId", "listId", "addedAt" }],
+ *   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
+ *                     "purchasedDay", "expiresDay", "updatedAt" }],
+ *   "groceries":   [{ "id", "text", "language", "aisle", "checked", "recipeId", "plannedDay",
+ *                     "updatedAt" }] }
  * ```
+ *
+ * `pantry` (#51) and `groceries` (#50) came later without a version bump: an older reader
+ * ignores them. A grocery's `recipeId` naming no recipe in the file reads as none (the recipe
+ * is where it came from, not what it is).
  *
  * Reading is strict about what it needs and lenient about the rest, so the format can grow:
  * unknown keys and sections are ignored, a missing section is empty, and a missing optional
@@ -34,6 +42,8 @@ object BackupJson {
         root.put("recipes", JSONArray().apply { backup.recipes.forEach { put(it.toJson()) } })
         root.put("lists", JSONArray().apply { backup.lists.forEach { put(it.toJson()) } })
         root.put("memberships", JSONArray().apply { backup.memberships.forEach { put(it.toJson()) } })
+        root.put("pantry", JSONArray().apply { backup.pantry.forEach { put(it.toJson()) } })
+        root.put("groceries", JSONArray().apply { backup.groceries.forEach { put(it.toJson()) } })
         return root.toString(2)
     }
 
@@ -121,7 +131,39 @@ object BackupJson {
             membership
         }
 
-        return Backup(exportedAt, recipes, lists, memberships)
+        val pantry = top.objects(root, "pantry").map { (path, o) ->
+            val r = Reader(path)
+            BackupPantryItem(
+                id = r.requiredId(o, "id"),
+                name = r.string(o, "name")?.takeIf { it.isNotBlank() } ?: throw MalformedException("$path.name"),
+                quantity = r.string(o, "quantity"),
+                language = r.string(o, "language"),
+                aisle = r.string(o, "aisle") ?: "other",
+                inStock = r.bool(o, "inStock") ?: true,
+                alwaysHave = r.bool(o, "alwaysHave") ?: false,
+                purchasedDay = r.long(o, "purchasedDay"),
+                expiresDay = r.long(o, "expiresDay"),
+                updatedAt = r.long(o, "updatedAt") ?: 0L
+            )
+        }
+        requireUniqueIds(pantry.map { it.id }, "pantry")
+
+        val groceries = top.objects(root, "groceries").map { (path, o) ->
+            val r = Reader(path)
+            BackupGroceryItem(
+                id = r.requiredId(o, "id"),
+                text = r.string(o, "text")?.takeIf { it.isNotBlank() } ?: throw MalformedException("$path.text"),
+                language = r.string(o, "language"),
+                aisle = r.string(o, "aisle") ?: "other",
+                checked = r.bool(o, "checked") ?: false,
+                recipeId = r.string(o, "recipeId")?.takeIf { it in recipeIds },
+                plannedDay = r.long(o, "plannedDay"),
+                updatedAt = r.long(o, "updatedAt") ?: 0L
+            )
+        }
+        requireUniqueIds(groceries.map { it.id }, "groceries")
+
+        return Backup(exportedAt, recipes, lists, memberships, pantry, groceries)
     }
 
     private fun requireUniqueIds(ids: List<String>, section: String) {
@@ -240,6 +282,30 @@ object BackupJson {
         put("recipeId", recipeId)
         put("listId", listId)
         put("addedAt", addedAt)
+    }
+
+    private fun BackupPantryItem.toJson() = JSONObject().apply {
+        put("id", id)
+        put("name", name)
+        put("quantity", quantity.orNull())
+        put("language", language.orNull())
+        put("aisle", aisle)
+        put("inStock", inStock)
+        put("alwaysHave", alwaysHave)
+        put("purchasedDay", purchasedDay ?: JSONObject.NULL)
+        put("expiresDay", expiresDay ?: JSONObject.NULL)
+        put("updatedAt", updatedAt)
+    }
+
+    private fun BackupGroceryItem.toJson() = JSONObject().apply {
+        put("id", id)
+        put("text", text)
+        put("language", language.orNull())
+        put("aisle", aisle)
+        put("checked", checked)
+        put("recipeId", recipeId.orNull())
+        put("plannedDay", plannedDay ?: JSONObject.NULL)
+        put("updatedAt", updatedAt)
     }
 
     /** `put(key, null)` removes the key in org.json; an explicit JSON null keeps the shape. */
