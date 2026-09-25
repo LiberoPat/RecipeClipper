@@ -10,6 +10,8 @@ struct RecipeScreen: View {
     /// Makes the "Add to plan" sheet's ViewModel (#49); nil hides the menu item, as while the
     /// tab flag is off. Made on first use and kept for the screen's life.
     var makePlanVM: (() -> AddToPlanViewModel)? = nil
+    /// Makes the "Add to groceries" sheet's ViewModel (#50); nil hides the menu item.
+    var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
     /// Opens "Clip it yourself" on the shared link (#37).
     var onClip: (String) -> Void = { _ in }
 
@@ -21,6 +23,8 @@ struct RecipeScreen: View {
     /// The plan sheet's ViewModel while the sheet is up (`sheet(item:)`, so the sheet is
     /// never built without it).
     @State private var planSheet: AddToPlanViewModel?
+    @State private var groceriesVM: AddToGroceriesViewModel?
+    @State private var groceriesSheet: AddToGroceriesViewModel?
     @State private var confirmingDelete = false
     @State private var confirmingUpdate = false
 
@@ -96,6 +100,11 @@ struct RecipeScreen: View {
         }
         .sheet(item: $planSheet) { plan in
             AddToPlanSheet(vm: plan)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $groceriesSheet) { groceries in
+            AddToGroceriesSheet(vm: groceries)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -183,6 +192,20 @@ struct RecipeScreen: View {
                     planSheet = plan
                 } label: {
                     Label(Strings.addToPlan, systemImage: "calendar.badge.plus")
+                }
+            }
+            if let makeGroceriesVM {
+                Button {
+                    // The lines exactly as the reading view shows them: scaled and converted.
+                    let groceries = groceriesVM ?? makeGroceriesVM()
+                    groceriesVM = groceries
+                    groceries.setRecipe(
+                        content.recipe.id, title: content.recipe.name, language: content.words?.language,
+                        rendered: content.ingredients
+                    )
+                    groceriesSheet = groceries
+                } label: {
+                    Label(Strings.addToGroceries, systemImage: "basket")
                 }
             }
             Button { onEdit(content.recipe.id) } label: {

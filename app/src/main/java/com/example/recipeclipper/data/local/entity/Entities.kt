@@ -55,6 +55,49 @@ data class ListEntity(
     val uid: String = newUid()
 )
 
+/**
+ * One line on the grocery list (#50). [text] is the line as written: a recipe's line as the
+ * reading view showed it (scaled and converted), or what was typed. [language] is the tag
+ * whose words read it (null: none, so it is never named or combined). [aisle] is an `Aisle`
+ * key, chosen from the aisle table when added and changed only by the user. [listId] is
+ * [DEFAULT_LIST] until there are several lists: a `grocery_lists` table can come later with
+ * this as its key. A recipe's items stay when it is deleted; they just lose their source
+ * (SET NULL). [uid] and [updatedAt] are for export and a later sync (#53).
+ */
+@Entity(
+    tableName = "grocery_items",
+    foreignKeys = [
+        ForeignKey(
+            entity = RecipeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["recipeId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [
+        Index(value = ["uid"], unique = true),
+        Index("listId"),
+        Index("recipeId")
+    ]
+)
+data class GroceryItemEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val listId: Long = DEFAULT_LIST,
+    val text: String,
+    val language: String?,
+    val aisle: String,
+    val checked: Boolean = false,
+    val sortOrder: Int,             // the order added, within the list
+    val recipeId: Long?,            // the recipe it came from, if any
+    val plannedDay: Long?,          // the planned day it came from (an epoch day), if any
+    val updatedAt: Long,
+    val uid: String = newUid()
+) {
+    companion object {
+        const val DEFAULT_LIST = 1L
+    }
+}
+
 /** A fresh stable id for a new row. The same form the migrations backfill with. */
 fun newUid(): String = UUID.randomUUID().toString()
 

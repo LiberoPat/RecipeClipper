@@ -142,6 +142,7 @@ final class AppDatabase: @unchecked Sendable {
         addCookState,
         addContentOrigin,
         addMealPlan,
+        addGroceries,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -303,6 +304,32 @@ final class AppDatabase: @unchecked Sendable {
                 name, key, index, now, newUid()
             )
         }
+    }
+
+    /// Version 8 (Android's Room version 9, `MIGRATION_8_9`): the grocery list (#50).
+    /// `grocery_items`, new, so nothing existing changes. One list for now (`listId` 1); a
+    /// recipe's items outlive it (SET NULL). Every row has a stable `uid` and an `updatedAt`,
+    /// for export and a later sync (#53). The same table as Android's.
+    private static func addGroceries(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE grocery_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                listId INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                language TEXT,
+                aisle TEXT NOT NULL,
+                checked INTEGER NOT NULL,
+                sortOrder INTEGER NOT NULL,
+                recipeId INTEGER,
+                plannedDay INTEGER,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE SET NULL
+            );
+            CREATE UNIQUE INDEX index_grocery_items_uid ON grocery_items (uid);
+            CREATE INDEX index_grocery_items_listId ON grocery_items (listId);
+            CREATE INDEX index_grocery_items_recipeId ON grocery_items (recipeId);
+            """)
     }
 
     /// The seeded meal types (#49), in the Week's order. Dinner is where new meals default and

@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.navigation
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -18,7 +19,8 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
     composable(Routes.WEEK) {
         WeekScreen(
             onOpenRecipe = { id, servings -> navController.navigate(Routes.weekRecipe(id, servings)) },
-            onOpenMealTypes = { navController.navigate(Routes.MEAL_TYPES) }
+            onOpenMealTypes = { navController.navigate(Routes.MEAL_TYPES) },
+            groceriesViewModel = hiltViewModel()
         )
     }
 

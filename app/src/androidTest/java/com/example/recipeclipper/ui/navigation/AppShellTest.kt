@@ -67,10 +67,18 @@ class AppShellTest {
         composable(Routes.WEEK) { Text("stub:week") }
     }
 
+    /** And the Groceries tab's (#50). */
+    private fun NavGraphBuilder.stubGroceries() {
+        composable(Routes.GROCERIES) { Text("stub:groceries") }
+    }
+
     private fun show(tabsEnabled: Boolean) {
         compose.setContent {
             nav = rememberNavController()
-            AppShell(nav, tabsEnabled = tabsEnabled, recipes = { stubRecipes() }, week = { stubWeek() })
+            AppShell(
+                nav, tabsEnabled = tabsEnabled, recipes = { stubRecipes() }, week = { stubWeek() },
+                groceries = { stubGroceries() }
+            )
         }
         compose.onNodeWithText("stub:home").assertIsDisplayed()
     }
@@ -153,7 +161,7 @@ class AppShellTest {
         tab("Week").assertIsSelected()
 
         tab("Groceries").performClick()
-        compose.onNodeWithText("A shopping list built from the recipes in your week.").assertIsDisplayed()
+        compose.onNodeWithText("stub:groceries").assertIsDisplayed()
 
         tab("Pantry").performClick()
         compose.onNodeWithText("What you already have, so you only buy what you need.").assertIsDisplayed()

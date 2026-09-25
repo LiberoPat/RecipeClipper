@@ -21,6 +21,8 @@ import XCTest
 // run that test and copy the generated file over this one. A row read with another language's
 // words (#15) names it after the input (`Ing("2 EL Zucker", lang: "de"),`); others are English.
 // Instruction rows: input, to Celsius, to Fahrenheit, StepTimers.parse.
+// Grocery rows (#50): the lines, GroceryCombiner.combine of them (nil: they stay as written),
+// then Aisles.of each line. Regenerated the same way: write only `Groc(["2 eggs", "3 eggs"]),`.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -42,6 +44,14 @@ final class DifferentialCorpusTests: XCTestCase {
         init(_ line: String, lang: String = "en", _ celsius: String, _ fahrenheit: String, _ timer: Int?) {
             self.line = line; self.words = LanguageWords.forTag(lang)!
             self.celsius = celsius; self.fahrenheit = fahrenheit; self.timer = timer
+        }
+    }
+
+    private struct Groc {
+        let lines: [String]; let words: LanguageWords; let combined: String?; let aisles: [String]
+        init(_ lines: [String], lang: String = "en", _ combined: String?, _ aisles: [String]) {
+            self.lines = lines; self.words = LanguageWords.forTag(lang)!
+            self.combined = combined; self.aisles = aisles
         }
     }
 
@@ -1050,6 +1060,51 @@ final class DifferentialCorpusTests: XCTestCase {
     ]
 
     /// JSON-LD blocks and the Recipe the Kotlin parser made of them (nil: no recipe).
+    private static let groceries: [Groc] = [
+        Groc(["200 g flour", "100 g flour"], "300 g flour", ["baking", "baking"]),
+        Groc(["200 g flour", "1 kg flour"], "1.2 kg flour", ["baking", "baking"]),
+        Groc(["250 g flour", "1 kg flour"], "1250 g flour", ["baking", "baking"]),
+        Groc(["2 cups flour", "1 cup flour"], "3 cups flour", ["baking", "baking"]),
+        Groc(["1 cup milk", "2 tbsp milk"], "1 1/8 cup milk", ["dairy", "dairy"]),
+        Groc(["2 tsp sugar", "1 tsp sugar"], "3 tsp sugar", ["baking", "baking"]),
+        Groc(["1/3 cup sugar", "1/3 cup sugar"], "2/3 cup sugar", ["baking", "baking"]),
+        Groc(["1 lb ground beef", "8 oz ground beef"], "1 1/2 lb ground beef", ["meat", "meat"]),
+        Groc(["500 ml milk", "250 ml milk"], "750 ml milk", ["dairy", "dairy"]),
+        Groc(["1 l water", "500 ml water"], "1.5 l water", ["drinks", "drinks"]),
+        Groc(["2 eggs", "3 eggs"], "5 eggs", ["dairy", "dairy"]),
+        Groc(["2 large eggs", "3 Large  eggs"], "5 large eggs", ["dairy", "dairy"]),
+        Groc(["2 large eggs", "3 eggs"], nil, ["dairy", "dairy"]),
+        Groc(["200 g butter, softened", "100 g unsalted butter"], nil, ["dairy", "dairy"]),
+        Groc(["200 g butter, softened", "100 g butter"], "300 g butter", ["dairy", "dairy"]),
+        Groc(["1,5 kg flour", "1 kg flour"], "2,5 kg flour", ["baking", "baking"]),
+        Groc(["1,5 kg flour", "250 g flour"], "1750 g flour", ["baking", "baking"]),
+        Groc(["200 g flour", "8 oz flour"], nil, ["baking", "baking"]),
+        Groc(["1 cup flour", "100 g flour"], nil, ["baking", "baking"]),
+        Groc(["8 oz milk", "1 cup milk"], nil, ["dairy", "dairy"]),
+        Groc(["250 ml milk", "1 cup milk"], nil, ["dairy", "dairy"]),
+        Groc(["2-3 cups flour", "1 cup flour"], nil, ["baking", "baking"]),
+        Groc(["1 cup plus 2 tbsp flour", "1 cup flour"], nil, ["baking", "baking"]),
+        Groc(["1 cup (120 g) flour", "1 cup flour"], nil, ["baking", "baking"]),
+        Groc(["1 cup/120 g flour", "1 cup flour"], nil, ["baking", "baking"]),
+        Groc(["1 (14 oz) can tomatoes", "1 (14 oz) can tomatoes"], nil, ["produce", "produce"]),
+        Groc(["salt to taste", "1 tsp salt"], nil, ["spices", "spices"]),
+        Groc(["0.3 cup sugar", "1/3 cup sugar"], nil, ["baking", "baking"]),
+        Groc(["1 stick butter", "1 stick butter"], "2 stick butter", ["dairy", "dairy"]),
+        Groc(["½ cup brown sugar, packed", "¼ cup brown sugar"], "3/4 cup brown sugar", ["baking", "baking"]),
+        Groc(["2 large onions, chopped", "1 red bell pepper", "2 tbsp peanut butter", "1 can butter beans, drained"], nil, ["produce", "produce", "condiments", "canned"]),
+        Groc(["1 pint ice cream", "1 cup heavy cream", "1 can coconut milk", "paper towels", "salt and pepper"], nil, ["frozen", "dairy", "canned", "other", "other"]),
+        Groc(["For the sauce:", "1 tsp ground black pepper", "2 cups all-purpose flour"], nil, ["other", "spices", "baking"]),
+        Groc(["200 g Mehl", "100 g Mehl"], lang: "de", "300 g Mehl", ["baking", "baking"]),
+        Groc(["1,5 kg Kartoffeln", "500 g Kartoffeln"], lang: "de", "2 kg Kartoffeln", ["produce", "produce"]),
+        Groc(["2 EL Olivenöl", "1 EL Olivenöl"], lang: "de", "3 EL Olivenöl", ["condiments", "condiments"]),
+        Groc(["2 cebollas", "1 cebolla"], lang: "es", nil, ["produce", "produce"]),
+        Groc(["200 g de harina", "100 g de harina"], lang: "es", "300 g de harina", ["baking", "baking"]),
+        Groc(["200 g de beurre", "1 tasse de farine", "1 tasse de farine"], lang: "fr", nil, ["dairy", "baking", "baking"]),
+        Groc(["2 uova", "3 uova"], lang: "it", "5 uova", ["dairy", "dairy"]),
+        Groc(["1 xícara de arroz", "2 xícaras de arroz"], lang: "pt", "3 xícaras de arroz", ["grains", "grains"]),
+        Groc(["醤油 大さじ1", "醤油 大さじ2", "玉ねぎ 1個"], lang: "ja", nil, ["condiments", "condiments", "produce"]),
+    ]
+
     private static let jsonLd: [(String, [String], Recipe?)] = [
         ("wprm_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Article\",\"@id\":\"https://x.com/#article\",\"headline\":\"Best Brownies\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"}},{\"@type\":\"WebPage\",\"@id\":\"https://x.com/\"},{\"@type\":\"Recipe\",\"name\":\"Fudgy Brownies &amp; Ice Cream\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"},\"image\":[\"https://x.com/a-1x1.jpg\",\"https://x.com/a-4x3.jpg\"],\"recipeYield\":[\"16\",\"16 brownies\"],\"prepTime\":\"PT15M\",\"cookTime\":\"PT25M\",\"totalTime\":\"PT40M\",\"recipeIngredient\":[\"1 cup (226g) butter\",\"2 cups (400g) sugar\",\"&frac12; cup cocoa\",\"<strong>3</strong> eggs\",\"\"],\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Batter\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Preheat oven to 350&deg;F.\",\"name\":\"Preheat oven to 350&deg;F.\",\"url\":\"https://x.com/#s1\"},{\"@type\":\"HowToStep\",\"text\":\"Melt butter &amp; sugar.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Bake\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"<p>Bake 25 minutes.</p>\"}]}]}]}"], Recipe(name: "Fudgy Brownies & Ice Cream", image: "https://x.com/a-1x1.jpg", ingredients: ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], instructions: ["Preheat oven to 350°F.", "Melt butter & sugar.", "Bake 25 minutes."], prepTime: "15m", cookTime: "25m", totalTime: "40m", yield: "16", sourceUrl: "https://src/wprm_graph")),
         ("yoast_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":[\"WebPage\",\"ItemPage\"],\"@id\":\"https://y.com/p/\"},{\"@type\":[\"Recipe\"],\"name\":\"Chicken Tikka Masala\",\"image\":[{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img1.jpg\",\"width\":1200},{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img2.jpg\"}],\"recipeYield\":\"4\",\"prepTime\":\"PT1H\",\"cookTime\":\"PT1H30M\",\"totalTime\":\"PT2H30M\",\"recipeIngredient\":[\"1 lb chicken\",\"1 cup yogurt\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Marinate.\",\"name\":\"Marinate\"},{\"@type\":\"HowToStep\",\"name\":\"Grill it\"},{\"@type\":\"HowToStep\",\"text\":\"   \"}]}]}"], Recipe(name: "Chicken Tikka Masala", image: "https://y.com/img1.jpg", ingredients: ["1 lb chicken", "1 cup yogurt"], instructions: ["Marinate.", "Grill it"], prepTime: "1h", cookTime: "1h 30m", totalTime: "2h 30m", yield: "4", sourceUrl: "https://src/yoast_graph")),
@@ -1108,6 +1163,13 @@ final class DifferentialCorpusTests: XCTestCase {
     func testIngredientNamesMatchKotlin() {
         for row in Self.ingredients {
             XCTAssertEqual(IngredientName.of(row.line, words: row.words), row.name, "name: \(row.line)")
+        }
+    }
+
+    func testGroceriesMatchKotlin() {
+        for row in Self.groceries {
+            XCTAssertEqual(GroceryCombiner.combine(row.lines, words: row.words), row.combined, "combine: \(row.lines)")
+            XCTAssertEqual(row.lines.map { Aisles.of($0, words: row.words).key }, row.aisles, "aisles: \(row.lines)")
         }
     }
 

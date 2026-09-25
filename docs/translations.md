@@ -70,6 +70,10 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Dark while cooking | Oscuro al cocinar | Sombre en cuisine | Dunkel beim Kochen | Scuro in cucina | Escuro ao cozinhar |
 | Ounces (unit option) | Onzas | Onces | Unzen | Once | Onças (rare in Brazil) |
 | Also convert liquids / pourables | Convertir también los líquidos | Convertir aussi les liquides | Auch Flüssigkeiten umrechnen | Converti anche i liquidi | Converter também os líquidos |
+| Add to groceries (#50) | Añadir a la compra | Ajouter aux courses | Zum Einkauf hinzufügen | Aggiungi alla spesa | Adicionar às compras |
+| Aisle (#50) | Pasillo | Rayon | Gang | Reparto | Corredor |
+| Fruit & vegetables (aisle) | Frutas y verduras | Fruits et légumes | Obst & Gemüse | Frutta e verdura | Hortifrúti |
+| Cans & jars (aisle) | Conservas | Conserves | Konserven | Scatolame | Enlatados |
 
 Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and Italian
 (Annulla), as the platforms themselves have it; "Delete" is *Excluir* in Portuguese

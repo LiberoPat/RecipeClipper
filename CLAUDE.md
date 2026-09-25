@@ -20,8 +20,8 @@ and writes the regenerated one to `app/build/differential-corpus/`; a new row
 needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
-unit, timer, temperature, yield, range, amount, duration, detection and
-ingredient-name words, condensed section names; tracking parameters), loaded by both apps (Android as
+unit, timer, temperature, yield, range, amount, duration, detection,
+ingredient-name and aisle words, condensed section names; tracking parameters), loaded by both apps (Android as
 Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
 table there, never in code; the logic that reads it stays written twice. **Each
 language has its own folder** (`shared/tables/<code>/`: en, de, es, fr, it,
@@ -44,7 +44,8 @@ sharing a recipe out as text; failure handling and offline; the microdata
 fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
 JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
-with no recipe data, #37); the week meal plan, behind the tab flag (#49); the
+with no recipe data, #37); the week meal plan and the grocery list, behind the
+tab flag (#49, #50); the
 UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -86,8 +87,8 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 ```
 MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
 di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule
-data/          RecipeRepository, ListRepository, MealPlanRepository (interfaces; Default* are
-               the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests)
+data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository
+               (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
@@ -96,9 +97,11 @@ data/          RecipeRepository, ListRepository, MealPlanRepository (interfaces;
                LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
                TrailingAmount (name-first lines: Japanese), ClipSelection, ClipDraft,
-               PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal)
+               PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal),
+               Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources)
 ui/            navigation, home, history, recipe, clip, edit, savetolist, lists, listdetail,
-               settings, week, plan (Add to plan sheet), mealtypes, theme, common
+               settings, week, plan (Add to plan sheet), mealtypes, groceries (the tab and
+               the Add to groceries sheet), theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
 ```
 
@@ -112,7 +115,7 @@ the error screen under it with `recipe/{id}`). Behind `BuildConfig.MEAL_PLAN_TAB
 `FeatureFlags.mealPlanTabs` (#47, default off, so the app is unchanged): a
 bottom tab bar nests this same graph under a Recipes tab alongside `week`
 (with its own `week/recipe/{recipeId}?servings={servings}` and
-`week/meal-types`), and `groceries` and `pantry` placeholders (`AppShell`/iOS
+`week/meal-types`), `groceries` (#50) and a `pantry` placeholder (`AppShell`/iOS
 `RootView`'s `tabs`).
 Hidden on the recipe reading view and in cook mode; any route from an
 intent (a shared link, a tapped timer notification) always lands in
@@ -227,8 +230,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Home's stack unchanged. The bar hides on the recipe reading view and in
   cook mode, so a recipe still opens on the recipe; a shared link always
   lands in Recipes, whichever tab is open, on top of whatever it held.
-  Settings is not a tab. Groceries and Pantry are "Coming soon"
-  placeholders until #50–#51 ship.
+  Settings is not a tab. Pantry is a "Coming soon" placeholder until #51.
 - **Week** (#49, behind the flag): ‹ week › and "This week", seven day
   sections from the locale's first day, meal rows (type, thumbnail, title,
   servings, or a note), "+ Add" per day (a meal type, then a recipe from
@@ -238,6 +240,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
   add, rename, reorder any, delete the user's own. "Add to plan" (recipe
   menu, first item, flag on only): this week's and next week's days, a meal
   type (Dinner first), servings (the yield first), one button.
+- **Groceries** (#50, behind the flag): "Add an item", then the list by
+  aisle (unchecked first); tap ticks, long-press offers "Move to aisle…" and
+  Delete (undo snackbar); the menu shares it as plain text (unchecked only)
+  and clears checked (undo). "Add to groceries" (recipe menu, after Add to
+  plan) and "Add this week's ingredients" (Week menu) open one sheet: the
+  lines as the reading view renders them (the week's at each meal's planned
+  servings), headings left out, all ticked, one button.
 - **Save-to-list sheet** (Spotify's add-to-playlist): checkboxes, not radios;
   each tick writes immediately, with no Save/Cancel; "+ New list" expands
   inline (no dialog on a sheet) and ticks the current recipe into the new
@@ -259,12 +268,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 8** (iOS `user_version` 7):
+- Room database `recipe_clipper.db`, **version 9** (iOS `user_version` 8):
   `recipes` (with nullable `notes`, `language`, `cookState`,
   `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading),
-  `meal_types` and `meal_plan_entries` (#49). Recipes, lists and both plan
-  tables carry a unique, never-changing `uid`: what an export file calls
-  them. Plan rows also carry `updatedAt` (for #53). The schema is exported to `app/schemas/`: commit it. **Never use
+  `meal_types` and `meal_plan_entries` (#49), `grocery_items` (#50). Recipes,
+  lists, the plan and grocery tables carry a unique, never-changing `uid`:
+  what an export file calls them. Plan and grocery rows also carry
+  `updatedAt` (for #53). The schema is exported to `app/schemas/`: commit it. **Never use
   destructive migration**, and give every migration a `MigrationTest`.
   iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations, in
   the App Group container that the share extension writes to as well.
@@ -296,6 +306,18 @@ Settled; don't reintroduce what they removed. The history behind each is in
   type moves its meals to Dinner in the same transaction. The cull's plan
   subquery must filter NULL recipe ids (`NOT IN` a set with a NULL matches
   nothing).
+- **Groceries** (#50): an item is its text as written, a `language` tag
+  (the recipe's; a typed item's is the phone's if shipped, else English), an
+  `aisle` key (from `aisles.json` by the end of `IngredientName.of`, like the
+  density table; reassigning stores it; unknown is `other`), `checked`,
+  `sortOrder`, and an optional `recipeId` (SET NULL) and `plannedDay`.
+  `listId` is 1 until there are several lists. **Lines combine only when
+  exact** (`GroceryCombiner`): same name and language, each a single amount
+  (no range, "plus", second measure or package size), all in one exactly
+  convertible family (g/kg, oz/lb, metric ml family, US tsp/tbsp/fl oz/cup,
+  sticks, or counts with identical words), total shown exactly in a unit the
+  lines used; otherwise they sit together under the name, each as written.
+  Not in the export file yet: it joins with the plan and pantry (#51).
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
   needs a migration (as `MIGRATION_1_2` did).

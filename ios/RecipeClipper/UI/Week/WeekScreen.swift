@@ -8,6 +8,10 @@ struct WeekScreen: View {
     let vm: WeekViewModel
     let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
     let onOpenMealTypes: () -> Void
+    /// Makes the "Add this week's ingredients" sheet's ViewModel (#50); nil hides the item.
+    var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
+    @State private var groceriesVM: AddToGroceriesViewModel?
+    @State private var groceriesSheet: AddToGroceriesViewModel?
 
     var body: some View {
         let state = vm.uiState
@@ -44,6 +48,15 @@ struct WeekScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    if let makeGroceriesVM {
+                        Button(Strings.addWeekToGroceries) {
+                            let groceries = groceriesVM ?? makeGroceriesVM()
+                            groceriesVM = groceries
+                            groceriesSheet = groceries
+                            let start = vm.uiState.weekStart
+                            groceries.loadWeek(start)
+                        }
+                    }
                     Button(Strings.mealTypesTitle, action: onOpenMealTypes)
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -64,6 +77,11 @@ struct WeekScreen: View {
         .task(id: state.removed) {
             guard let removed = state.removed else { return }
             await SnackbarTimeout.run(pending: [removed.label], onTimeout: vm.onSnackbarDismissed)
+        }
+        .sheet(item: $groceriesSheet) { groceries in
+            AddToGroceriesSheet(vm: groceries)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: Binding(get: { state.adding != nil }, set: { if !$0 { vm.onAddDismissed() } })) {
             AddToDaySheet(vm: vm)

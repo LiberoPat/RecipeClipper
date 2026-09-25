@@ -370,6 +370,38 @@ enum Strings {
     static var moveUp: String { String(localized: "action_move_up") }
     static var moveDown: String { String(localized: "action_move_down") }
     static var mealTypeName: String { String(localized: "label_meal_type_name") }
-    static var groceriesPlaceholder: String { String(localized: "groceries_placeholder") }
+    // Groceries (#50)
+    static var add: String { String(localized: "action_add") }
+    static var groceriesAddHint: String { String(localized: "groceries_add_hint") }
+    static var groceriesEmpty: String { String(localized: "groceries_empty") }
+    static var addToGroceries: String { String(localized: "action_add_to_groceries") }
+    static var addToGroceriesTitle: String { String(localized: "add_to_groceries_title") }
+    static var addWeekToGroceries: String { String(localized: "action_add_week_to_groceries") }
+    static var groceriesWeekEmpty: String { String(localized: "groceries_week_empty") }
+    static var clearChecked: String { String(localized: "action_clear_checked") }
+    static var shareGroceries: String { String(localized: "action_share_groceries") }
+    static var moveToAisle: String { String(localized: "action_move_to_aisle") }
+    static var moveToAisleTitle: String { String(localized: "move_to_aisle_title") }
+    static func groceryDeleted(_ label: String) -> String { String(localized: "snackbar_grocery_deleted \(label)") }
+    static var checkedCleared: String { String(localized: "snackbar_checked_cleared") }
+
+    static func aisle(_ aisle: Aisle) -> String {
+        switch aisle {
+        case .produce: return String(localized: "aisle_produce")
+        case .meat: return String(localized: "aisle_meat")
+        case .seafood: return String(localized: "aisle_seafood")
+        case .dairy: return String(localized: "aisle_dairy")
+        case .bakery: return String(localized: "aisle_bakery")
+        case .baking: return String(localized: "aisle_baking")
+        case .grains: return String(localized: "aisle_grains")
+        case .canned: return String(localized: "aisle_canned")
+        case .condiments: return String(localized: "aisle_condiments")
+        case .spices: return String(localized: "aisle_spices")
+        case .frozen: return String(localized: "aisle_frozen")
+        case .snacks: return String(localized: "aisle_snacks")
+        case .drinks: return String(localized: "aisle_drinks")
+        case .other: return String(localized: "aisle_other")
+        }
+    }
     static var pantryPlaceholder: String { String(localized: "pantry_placeholder") }
 }

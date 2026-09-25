@@ -99,15 +99,16 @@ fun NavHostController.openRoute(route: String, tabsEnabled: Boolean = BuildConfi
  * `BuildConfig.MEAL_PLAN_TABS`) it is [RecipeNavHost] alone, exactly the app as it was before
  * the shell. On, the same Recipes graph sits under the first tab of a bottom bar.
  *
- * [recipes] is the Recipes graph and [week] the Week tab's (#49); tests pass stand-ins, since
- * the real screens need Hilt.
+ * [recipes] is the Recipes graph, [week] the Week tab's (#49) and [groceries] the Groceries
+ * tab's (#50); tests pass stand-ins, since the real screens need Hilt.
  */
 @Composable
 fun AppShell(
     navController: NavHostController,
     tabsEnabled: Boolean = BuildConfig.MEAL_PLAN_TABS,
     recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) },
-    week: NavGraphBuilder.(NavHostController) -> Unit = { weekDestinations(it) }
+    week: NavGraphBuilder.(NavHostController) -> Unit = { weekDestinations(it) },
+    groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations() }
 ) {
     if (!tabsEnabled) {
         RecipeNavHost(navController, recipes)
@@ -137,9 +138,7 @@ fun AppShell(
                     week(navController)
                 }
                 navigation(route = Tab.GROCERIES.route, startDestination = Routes.GROCERIES) {
-                    composable(Routes.GROCERIES) {
-                        ComingSoonScreen(R.string.tab_groceries, R.string.groceries_placeholder)
-                    }
+                    groceries(navController)
                 }
                 navigation(route = Tab.PANTRY.route, startDestination = Routes.PANTRY) {
                     composable(Routes.PANTRY) {

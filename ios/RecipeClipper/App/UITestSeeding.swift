@@ -50,6 +50,7 @@ enum UITestSeeding {
             recipeRepository: DefaultRecipeRepository(db: database, source: StubRecipeSource(), clock: clock),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
+            groceryRepository: DefaultGroceryRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,

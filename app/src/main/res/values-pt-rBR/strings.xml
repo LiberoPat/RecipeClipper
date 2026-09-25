@@ -182,7 +182,6 @@
     <string name="tab_groceries">Compras</string>
     <string name="tab_pantry">Despensa</string>
     <string name="coming_soon">Em breve</string>
-    <string name="groceries_placeholder">Uma lista de compras criada a partir das receitas da sua semana.</string>
     <string name="pantry_placeholder">O que você já tem, para comprar só o que precisa.</string>
     <string name="share_serves">Porções: %1$d</string>
     <string name="share_makes">Rende %1$d</string>
@@ -306,4 +305,33 @@
         <item quantity="many">%1$d de passos adicionados</item>
         <item quantity="other">%1$d passos adicionados</item>
     </plurals>
+
+    <!-- Groceries (#50) -->
+    <string name="action_add">Adicionar</string>
+    <string name="groceries_add_hint">Adicione um item</string>
+    <string name="groceries_empty">Sua lista está vazia. Digite um item acima, ou adicione ingredientes pelo menu de uma receita ou pela Semana.</string>
+    <string name="action_add_to_groceries">Adicionar às compras</string>
+    <string name="add_to_groceries_title">Adicionar às compras</string>
+    <string name="action_add_week_to_groceries">Adicionar os ingredientes desta semana</string>
+    <string name="groceries_week_empty">Nenhuma receita planejada para esta semana.</string>
+    <string name="action_clear_checked">Remover os marcados</string>
+    <string name="action_share_groceries">Compartilhar lista</string>
+    <string name="action_move_to_aisle">Mover para outro corredor…</string>
+    <string name="move_to_aisle_title">Corredor</string>
+    <string name="snackbar_grocery_deleted">Excluído: %1$s</string>
+    <string name="snackbar_checked_cleared">Itens marcados removidos</string>
+    <string name="aisle_produce">Hortifrúti</string>
+    <string name="aisle_meat">Carnes</string>
+    <string name="aisle_seafood">Peixes e frutos do mar</string>
+    <string name="aisle_dairy">Laticínios e ovos</string>
+    <string name="aisle_bakery">Padaria</string>
+    <string name="aisle_baking">Confeitaria</string>
+    <string name="aisle_grains">Massas, arroz e grãos</string>
+    <string name="aisle_canned">Enlatados</string>
+    <string name="aisle_condiments">Óleos, molhos e condimentos</string>
+    <string name="aisle_spices">Temperos</string>
+    <string name="aisle_frozen">Congelados</string>
+    <string name="aisle_snacks">Castanhas e frutas secas</string>
+    <string name="aisle_drinks">Bebidas</string>
+    <string name="aisle_other">Outros</string>
 </resources>

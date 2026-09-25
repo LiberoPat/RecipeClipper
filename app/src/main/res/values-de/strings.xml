@@ -172,7 +172,6 @@
     <string name="tab_groceries">Einkauf</string>
     <string name="tab_pantry">Vorrat</string>
     <string name="coming_soon">Demnächst</string>
-    <string name="groceries_placeholder">Eine Einkaufsliste aus den Rezepten deiner Woche.</string>
     <string name="pantry_placeholder">Was du schon hast, damit du nur kaufst, was du brauchst.</string>
     <string name="share_serves">Portionen: %1$d</string>
     <string name="share_makes">Ergibt %1$d</string>
@@ -291,4 +290,33 @@
         <item quantity="one">%1$d Schritt hinzugefügt</item>
         <item quantity="other">%1$d Schritte hinzugefügt</item>
     </plurals>
+
+    <!-- Groceries (#50) -->
+    <string name="action_add">Hinzufügen</string>
+    <string name="groceries_add_hint">Artikel hinzufügen</string>
+    <string name="groceries_empty">Deine Liste ist leer. Gib oben einen Artikel ein oder füge Zutaten über das Menü eines Rezepts oder aus der Woche hinzu.</string>
+    <string name="action_add_to_groceries">Zum Einkauf hinzufügen</string>
+    <string name="add_to_groceries_title">Zum Einkauf hinzufügen</string>
+    <string name="action_add_week_to_groceries">Zutaten dieser Woche hinzufügen</string>
+    <string name="groceries_week_empty">Für diese Woche sind keine Rezepte geplant.</string>
+    <string name="action_clear_checked">Abgehakte entfernen</string>
+    <string name="action_share_groceries">Liste teilen</string>
+    <string name="action_move_to_aisle">In anderen Gang verschieben…</string>
+    <string name="move_to_aisle_title">Gang</string>
+    <string name="snackbar_grocery_deleted">Gelöscht: %1$s</string>
+    <string name="snackbar_checked_cleared">Abgehakte Artikel entfernt</string>
+    <string name="aisle_produce">Obst &amp; Gemüse</string>
+    <string name="aisle_meat">Fleisch</string>
+    <string name="aisle_seafood">Fisch &amp; Meeresfrüchte</string>
+    <string name="aisle_dairy">Milchprodukte &amp; Eier</string>
+    <string name="aisle_bakery">Backwaren</string>
+    <string name="aisle_baking">Backzutaten</string>
+    <string name="aisle_grains">Nudeln, Reis &amp; Getreide</string>
+    <string name="aisle_canned">Konserven</string>
+    <string name="aisle_condiments">Öle, Saucen &amp; Würzmittel</string>
+    <string name="aisle_spices">Gewürze</string>
+    <string name="aisle_frozen">Tiefkühl</string>
+    <string name="aisle_snacks">Nüsse &amp; Trockenobst</string>
+    <string name="aisle_drinks">Getränke</string>
+    <string name="aisle_other">Sonstiges</string>
 </resources>
