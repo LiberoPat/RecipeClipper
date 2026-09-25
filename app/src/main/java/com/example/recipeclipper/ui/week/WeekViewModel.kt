@@ -361,6 +361,64 @@ class WeekViewModel @Inject constructor(
         _uiState.update { it.copy(removed = null) }
     }
 
+    // --- Menus (#52)
+
+    private fun updateMenus(change: (MenusUiState) -> MenusUiState) =
+        _uiState.update { it.copy(menus = change(it.menus)) }
+
+    fun onSaveMenuStart() = updateMenus { it.copy(saving = true) }
+
+    fun onSaveMenuDismissed() = updateMenus { it.copy(saving = false) }
+
+    /** Saves the week shown as [name]. A blank name does nothing. */
+    fun onSaveMenu(name: String) {
+        val text = name.trim()
+        if (text.isEmpty()) return
+        val start = weekStart.value
+        updateMenus { it.copy(saving = false) }
+        viewModelScope.launch {
+            val saved = plan.saveWeekAsMenu(text, start)
+            updateMenus { it.copy(message = if (saved) MenuMessage.Saved(text) else MenuMessage.SaveFailed) }
+        }
+    }
+
+    fun onPickMenuStart() = updateMenus { it.copy(picking = true) }
+
+    fun onPickMenuDismissed() = updateMenus { it.copy(picking = false) }
+
+    /** Adds [menu]'s meals to the week shown, after what is planned there. */
+    fun onApplyMenu(menu: Menu) {
+        val start = weekStart.value
+        updateMenus { it.copy(picking = false) }
+        viewModelScope.launch {
+            val added = plan.applyMenu(menu.id, start)
+            updateMenus { it.copy(message = MenuMessage.Applied(menu.name, added)) }
+        }
+    }
+
+    fun onRenameMenuStart(menu: Menu) = updateMenus { it.copy(renaming = menu) }
+
+    fun onRenameMenuDismissed() = updateMenus { it.copy(renaming = null) }
+
+    fun onRenameMenu(name: String) {
+        val menu = _uiState.value.menus.renaming ?: return
+        if (name.isBlank()) return
+        updateMenus { it.copy(renaming = null) }
+        viewModelScope.launch { plan.renameMenu(menu.id, name) }
+    }
+
+    fun onDeleteMenuStart(menu: Menu) = updateMenus { it.copy(deleting = menu) }
+
+    fun onDeleteMenuDismissed() = updateMenus { it.copy(deleting = null) }
+
+    fun onDeleteMenuConfirm() {
+        val menu = _uiState.value.menus.deleting ?: return
+        updateMenus { it.copy(deleting = null) }
+        viewModelScope.launch { plan.deleteMenu(menu.id) }
+    }
+
+    fun onMenuMessageShown() = updateMenus { it.copy(message = null) }
+
     private fun defaultType(types: List<MealType>): Long? =
         (types.firstOrNull { it.builtInKey == MealType.DINNER } ?: types.firstOrNull())?.id
 }

@@ -59,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.core.content.FileProvider
 import androidx.compose.ui.res.pluralStringResource
@@ -124,6 +125,15 @@ fun WeekScreen(
         if (result == SnackbarResult.ActionPerformed) viewModel.onUndoRemove() else viewModel.onSnackbarDismissed()
     }
 
+    // What a menu action did (#52), once.
+    val resources = LocalResources.current
+    val menuMessage = state.menus.message
+    LaunchedEffect(menuMessage) {
+        if (menuMessage == null) return@LaunchedEffect
+        snackbarHostState.showSnackbar(menuMessageText(resources, menuMessage))
+        viewModel.onMenuMessageShown()
+    }
+
     // The week as an .ics file (#52): written to the cache and handed to the share sheet here,
     // in the view layer; the ViewModel only makes the text.
     val context = LocalContext.current
@@ -174,7 +184,9 @@ fun WeekScreen(
                                 }
                             },
                             onShareCalendar = viewModel::onShareCalendar.takeIf { month == null },
-                            canShareCalendar = state.hasMeals
+                            canShareCalendar = state.hasMeals,
+                            onSaveMenu = viewModel::onSaveMenuStart.takeIf { month == null },
+                            onApplyMenu = viewModel::onPickMenuStart.takeIf { month == null }
                         )
                         Spacer(Modifier.height(8.dp))
                         if (month == null) {
@@ -246,6 +258,7 @@ fun WeekScreen(
         if (groceriesSheetOpen && groceriesViewModel != null) {
             AddToGroceriesSheet(groceriesViewModel, onDismiss = { groceriesSheetOpen = false })
         }
+        WeekMenus(state.menus, viewModel)
         state.moving?.let { moving ->
             MoveSheet(
                 moving = moving,
@@ -269,7 +282,9 @@ private fun TitleRow(
     onOpenWhatINeed: (() -> Unit)?,
     onAddToGroceries: (() -> Unit)?,
     onShareCalendar: (() -> Unit)?,
-    canShareCalendar: Boolean
+    canShareCalendar: Boolean,
+    onSaveMenu: (() -> Unit)? = null,
+    onApplyMenu: (() -> Unit)? = null
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
         Text(
@@ -280,7 +295,7 @@ private fun TitleRow(
         TextButton(onClick = onToggleMonth, modifier = Modifier.testTag("toggleMonth")) {
             Text(stringResource(if (showingMonth) R.string.action_week_view else R.string.action_month_view))
         }
-        WeekMenu(onOpenMealTypes, onOpenWhatINeed, onAddToGroceries, onShareCalendar, canShareCalendar)
+        WeekMenu(onOpenMealTypes, onOpenWhatINeed, onAddToGroceries, onShareCalendar, canShareCalendar, onSaveMenu, onApplyMenu)
     }
 }
 
@@ -376,7 +391,9 @@ private fun WeekMenu(
     onOpenWhatINeed: (() -> Unit)?,
     onAddToGroceries: (() -> Unit)?,
     onShareCalendar: (() -> Unit)?,
-    canShareCalendar: Boolean
+    canShareCalendar: Boolean,
+    onSaveMenu: (() -> Unit)?,
+    onApplyMenu: (() -> Unit)?
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -409,6 +426,27 @@ private fun WeekMenu(
                     onClick = {
                         expanded = false
                         onShareCalendar()
+                    }
+                )
+            }
+            if (onSaveMenu != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_save_week_as_menu)) },
+                    enabled = canShareCalendar,
+                    modifier = Modifier.testTag("saveWeekAsMenu"),
+                    onClick = {
+                        expanded = false
+                        onSaveMenu()
+                    }
+                )
+            }
+            if (onApplyMenu != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_apply_menu)) },
+                    modifier = Modifier.testTag("applyMenu"),
+                    onClick = {
+                        expanded = false
+                        onApplyMenu()
                     }
                 )
             }
