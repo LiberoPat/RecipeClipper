@@ -73,7 +73,7 @@ class AndroidExpiryReminderScheduler @Inject constructor(
         const val EXTRA_DAY = "day"
         private const val ACTION_ALARM = "com.example.recipeclipper.action.EXPIRY_REMINDER"
 
-        private fun alarmIntent(context: Context) =
+        internal fun alarmIntent(context: Context) =
             Intent(context, ExpiryReminderReceiver::class.java).setAction(ACTION_ALARM)
 
         /** [ExpiryReminders.HOUR] o'clock local time on [day] (an epoch day). */
@@ -97,7 +97,7 @@ object ExpiryNotifications {
     /** MainActivity opens the Pantry tab for an intent with this action. */
     const val ACTION_OPEN_PANTRY = "com.example.recipeclipper.action.OPEN_PANTRY"
 
-    private const val NOTIFICATION_TAG = "pantry:expiry"
+    internal const val NOTIFICATION_TAG = "pantry:expiry"
 
     fun post(context: Context, reminder: ExpiryReminder) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

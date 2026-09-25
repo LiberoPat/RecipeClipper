@@ -10,6 +10,7 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let convertLiquids = "convert_liquids"
         static let temperatureUnit = "temperature_unit"
         static let darkWhileCooking = "dark_while_cooking"
+        static let expiryReminders = "expiry_reminders"
     }
 
     private let defaults: UserDefaults
@@ -39,9 +40,14 @@ final class UserDefaultsAppPreferences: AppPreferences {
         set { defaults.set(newValue, forKey: Key.darkWhileCooking) }
     }
 
+    var expiryReminders: Bool {
+        get { defaults.bool(forKey: Key.expiryReminders) }
+        set { defaults.set(newValue, forKey: Key.expiryReminders) }
+    }
+
     /// Over `UserDefaults.didChangeNotification` (Android: the SharedPreferences change
     /// listener). The notification says only that something changed, and is also posted for
-    /// other suites, so each one re-reads all four values and repeats are dropped: the
+    /// other suites, so each one re-reads every value and repeats are dropped: the
     /// publisher always carries a whole, consistent snapshot. Not filtered by `object`, so a
     /// write through another UserDefaults instance on the same suite is seen too.
     var settings: AnyPublisher<AppSettings, Never> {

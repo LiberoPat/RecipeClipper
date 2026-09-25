@@ -9,6 +9,11 @@ struct SettingsUiState: Equatable {
     var temperatureUnit: TemperatureUnit = .asWritten
     var darkWhileCooking = false
     var backup: BackupStatus = .idle
+    /// A morning notification when pantry items are about to expire (#52).
+    var expiryReminders = false
+    /// Turning reminders on was refused (notifications not allowed): the switch stays off and
+    /// says why, until it is turned on successfully.
+    var expiryRemindersDenied = false
     /// e.g. "1.0 (1)", shown at the foot; tapping it `SettingsViewModel.developerTaps` times opens
     /// Developer settings (#87).
     var appVersion = ""
@@ -47,10 +52,18 @@ final class SettingsViewModel {
     @ObservationIgnored private var settingsSubscription: AnyCancellable?
     @ObservationIgnored private let appVersion: String
     @ObservationIgnored private var versionTaps = 0
+    @ObservationIgnored private let flags: FeatureFlags?
+    @ObservationIgnored private let notificationPermission: NotificationPermission
 
     static let developerTaps = 7
 
-    init(preferences: AppPreferences, backups: BackupRepository, files: BackupFiles, appVersion: String = "") {
+    init(
+        preferences: AppPreferences, backups: BackupRepository, files: BackupFiles, appVersion: String = "",
+        flags: FeatureFlags? = nil,
+        notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true)
+    ) {
+        self.flags = flags
+        self.notificationPermission = notificationPermission
         self.preferences = preferences
         self.backups = backups
         self.files = files
@@ -64,6 +77,7 @@ final class SettingsViewModel {
                 // The backup status is this screen's own: a preference change keeps it.
                 var next = Self.uiState(settings)
                 next.backup = self.uiState.backup
+                next.expiryRemindersDenied = self.uiState.expiryRemindersDenied
                 next.appVersion = self.appVersion
                 self.uiState = next
             }
@@ -74,8 +88,31 @@ final class SettingsViewModel {
             unitSystem: settings.unitSystem,
             convertLiquids: settings.convertLiquids,
             temperatureUnit: settings.temperatureUnit,
-            darkWhileCooking: settings.darkWhileCooking
+            darkWhileCooking: settings.darkWhileCooking,
+            expiryReminders: settings.expiryReminders
         )
+    }
+
+    /// The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind
+    /// it. Read through the observable flags, so it follows Developer settings.
+    var showsPantry: Bool { flags?.isOn(.mealPlan) ?? false }
+
+    /// The expiry reminders switch (#52). On asks for notification permission first (only here,
+    /// never on launch); refused, the switch stays off and the row says why. Returns the work so
+    /// a test can await it.
+    @discardableResult
+    func onExpiryRemindersChange(_ on: Bool) -> Task<Void, Never>? {
+        guard on else {
+            preferences.expiryReminders = false
+            uiState.expiryReminders = false
+            return nil
+        }
+        return Task {
+            let granted = await notificationPermission.request()
+            preferences.expiryReminders = granted
+            uiState.expiryReminders = granted
+            uiState.expiryRemindersDenied = !granted
+        }
     }
 
     /// The hidden way into Developer settings (#87), in release builds too (the owner's call):

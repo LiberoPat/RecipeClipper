@@ -167,6 +167,23 @@ protocol TimerAlarmScheduler: AnyObject {
     func replaceAll(recipeId: Int64, with alarms: [StepAlarm])
 }
 
+/// Schedules the pantry's expiry reminders (#52; Android's `ExpiryReminderScheduler`). The real
+/// one is `NotificationExpiryReminderScheduler`; tests pass a fake.
+@MainActor
+protocol ExpiryReminderScheduler: AnyObject {
+    /// Replaces whatever was scheduled with `reminders` (soonest first); empty cancels all.
+    func replaceAll(_ reminders: [ExpiryReminder])
+}
+
+/// Asks to post notifications (Android asks in the Settings screen, which holds the Activity).
+/// A seam so the Settings ViewModel can be tested, and UI tests never meet the system prompt.
+@MainActor
+protocol NotificationPermission: AnyObject {
+    /// True when notifications are allowed, asking first if the user hasn't answered yet. The
+    /// system asks once; after a refusal this answers false at once.
+    func request() async -> Bool
+}
+
 extension RecipeRepository {
     /// The ordinary case: nothing rendered already, so the repository fetches. Every caller but
     /// the Safari share extension (#35) uses this.
@@ -367,6 +384,9 @@ protocol AppPreferences: AnyObject {
     var convertLiquids: Bool { get set }
     var temperatureUnit: TemperatureUnit { get set }
     var darkWhileCooking: Bool { get set }
+    /// A morning notification when something in the pantry is about to expire (#52). Off by
+    /// default; Settings turns it on only once notifications are allowed.
+    var expiryReminders: Bool { get set }
 
     /// The current values first, then every change, never repeating a value. Delivery may be
     /// asynchronous, so a subscriber receives on main.
@@ -374,13 +394,14 @@ protocol AppPreferences: AnyObject {
 }
 
 extension AppPreferences {
-    /// The four values as they are right now.
+    /// The values as they are right now.
     var current: AppSettings {
         AppSettings(
             unitSystem: unitSystem,
             convertLiquids: convertLiquids,
             temperatureUnit: temperatureUnit,
-            darkWhileCooking: darkWhileCooking
+            darkWhileCooking: darkWhileCooking,
+            expiryReminders: expiryReminders
         )
     }
 }
@@ -391,4 +412,5 @@ struct AppSettings: Equatable {
     var convertLiquids = false
     var temperatureUnit: TemperatureUnit = .asWritten
     var darkWhileCooking = false
+    var expiryReminders = false
 }
