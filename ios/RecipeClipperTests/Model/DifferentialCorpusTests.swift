@@ -27,6 +27,8 @@ import XCTest
 // in the same language). Write only `Pant("2 cups flour", "flour"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
+// Chef mode rows (#100): a step, a short version of it, then ShortStepCheck.accept (nil: the
+// step shows as written). Write only `Short("Bake for 20 minutes.", "Bake 20 min."),`.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -69,6 +71,14 @@ final class DifferentialCorpusTests: XCTestCase {
     private struct Ics {
         let text: String; let line: String
         init(_ text: String, _ line: String) { self.text = text; self.line = line }
+    }
+
+    private struct Short {
+        let original: String; let short: String; let words: LanguageWords; let accepted: String?
+        init(_ original: String, _ short: String, lang: String = "en", _ accepted: String?) {
+            self.original = original; self.short = short; self.words = LanguageWords.forTag(lang)!
+            self.accepted = accepted
+        }
     }
 
     private static let factors: [Double] = [0.5, 1.5, 2.0, 1.0 / 3.0]
@@ -1214,6 +1224,23 @@ final class DifferentialCorpusTests: XCTestCase {
         Ics("  ", "SUMMARY:  "),
     ]
 
+    private static let shortSteps: [Short] = [
+        Short("Preheat the oven to 350°F (180°C) and grease a 9x13-inch baking pan.", "Oven to 350°F (180°C); grease a 9x13-inch pan.", "Oven to 350°F (180°C); grease a 9x13-inch pan."),
+        Short("Bake for 25 to 30 minutes, until the top is golden.", "Bake 25–30 min until golden.", "Bake 25–30 min until golden."),
+        Short("Bake for 20 minutes, until the top is golden.", "Bake 25 min.", nil),
+        Short("Add 1 1/2 cups of the flour and mix gently until combined.", "Add 1/2 cup flour; mix.", nil),
+        Short("Microwave for 30 seconds, then stir well.", "Microwave 30 min, stir.", nil),
+        Short("Roast at 200°C for 1 hour, turning halfway through.", "Roast at 200°F, 1 hr.", nil),
+        Short("Preheat the oven to 350°F (180°C) with a rack in the middle.", "Oven to 350°F, rack in middle.", "Oven to 350°F, rack in middle."),
+        Short("Stir in ½ teaspoon of salt until it dissolves.", "- \"Stir in ½ tsp salt.\"", "Stir in ½ tsp salt."),
+        Short("Simmer for 1 hour 30 minutes, stirring now and then.", "Simmer 1 hr 30 min, stirring.", "Simmer 1 hr 30 min, stirring."),
+        Short("Cut into 4 to 6 wedges and serve warm with the sauce.", "Cut into 4–6 wedges; serve with sauce.", "Cut into 4–6 wedges; serve with sauce."),
+        Short("Nach und nach 1,5 l Brühe zugießen und dabei ständig rühren.", "1,5 l Brühe nach und nach zugießen.", lang: "de", "1,5 l Brühe nach und nach zugießen."),
+        Short("Nach und nach 1,5 l Brühe zugießen und dabei ständig rühren.", "1.5 l Brühe zugießen.", lang: "de", nil),
+        Short("Enfourner 25 à 30 minutes à 180 °C, jusqu'à ce que le dessus soit doré.", "Cuire 25–30 min à 180 °C.", lang: "fr", "Cuire 25–30 min à 180 °C."),
+        Short("鍋に入れて、中火で５分煮る。ときどき混ぜる。", "中火で5分煮る。", lang: "ja", "中火で5分煮る。"),
+    ]
+
     private static let jsonLd: [(String, [String], Recipe?)] = [
         ("wprm_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Article\",\"@id\":\"https://x.com/#article\",\"headline\":\"Best Brownies\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"}},{\"@type\":\"WebPage\",\"@id\":\"https://x.com/\"},{\"@type\":\"Recipe\",\"name\":\"Fudgy Brownies &amp; Ice Cream\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"},\"image\":[\"https://x.com/a-1x1.jpg\",\"https://x.com/a-4x3.jpg\"],\"recipeYield\":[\"16\",\"16 brownies\"],\"prepTime\":\"PT15M\",\"cookTime\":\"PT25M\",\"totalTime\":\"PT40M\",\"recipeIngredient\":[\"1 cup (226g) butter\",\"2 cups (400g) sugar\",\"&frac12; cup cocoa\",\"<strong>3</strong> eggs\",\"\"],\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Batter\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Preheat oven to 350&deg;F.\",\"name\":\"Preheat oven to 350&deg;F.\",\"url\":\"https://x.com/#s1\"},{\"@type\":\"HowToStep\",\"text\":\"Melt butter &amp; sugar.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Bake\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"<p>Bake 25 minutes.</p>\"}]}]}]}"], Recipe(name: "Fudgy Brownies & Ice Cream", image: "https://x.com/a-1x1.jpg", ingredients: ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], instructions: ["Preheat oven to 350°F.", "Melt butter & sugar.", "Bake 25 minutes."], prepTime: "15m", cookTime: "25m", totalTime: "40m", yield: "16", sourceUrl: "https://src/wprm_graph")),
         ("yoast_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":[\"WebPage\",\"ItemPage\"],\"@id\":\"https://y.com/p/\"},{\"@type\":[\"Recipe\"],\"name\":\"Chicken Tikka Masala\",\"image\":[{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img1.jpg\",\"width\":1200},{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img2.jpg\"}],\"recipeYield\":\"4\",\"prepTime\":\"PT1H\",\"cookTime\":\"PT1H30M\",\"totalTime\":\"PT2H30M\",\"recipeIngredient\":[\"1 lb chicken\",\"1 cup yogurt\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Marinate.\",\"name\":\"Marinate\"},{\"@type\":\"HowToStep\",\"name\":\"Grill it\"},{\"@type\":\"HowToStep\",\"text\":\"   \"}]}]}"], Recipe(name: "Chicken Tikka Masala", image: "https://y.com/img1.jpg", ingredients: ["1 lb chicken", "1 cup yogurt"], instructions: ["Marinate.", "Grill it"], prepTime: "1h", cookTime: "1h 30m", totalTime: "2h 30m", yield: "4", sourceUrl: "https://src/yoast_graph")),
@@ -1279,6 +1306,12 @@ final class DifferentialCorpusTests: XCTestCase {
         for row in Self.groceries {
             XCTAssertEqual(GroceryCombiner.combine(row.lines, words: row.words), row.combined, "combine: \(row.lines)")
             XCTAssertEqual(row.lines.map { Aisles.of($0, words: row.words).key }, row.aisles, "aisles: \(row.lines)")
+        }
+    }
+
+    func testShortStepCheckMatchesKotlin() {
+        for row in Self.shortSteps {
+            XCTAssertEqual(ShortStepCheck.accept(row.original, row.short, words: row.words), row.accepted, row.short)
         }
     }
 

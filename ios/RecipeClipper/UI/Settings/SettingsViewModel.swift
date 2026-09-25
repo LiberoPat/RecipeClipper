@@ -17,6 +17,10 @@ struct SettingsUiState: Equatable {
     /// e.g. "1.0 (1)", shown at the foot; tapping it `SettingsViewModel.developerTaps` times opens
     /// Developer settings (#87).
     var appVersion = ""
+    /// Chef mode as saved: short steps written on the device (#100).
+    var chefMode = false
+    /// What this phone can do, once asked; nil until then. The switch works only when available.
+    var chefSupport: ChefSupport?
 }
 
 /// The "Your recipes" section: export and import (#26). One at a time; the screen shows the
@@ -54,15 +58,19 @@ final class SettingsViewModel {
     @ObservationIgnored private var versionTaps = 0
     @ObservationIgnored private let flags: FeatureFlags?
     @ObservationIgnored private let notificationPermission: NotificationPermission
+    @ObservationIgnored private let shortSteps: ShortStepRepository?
+    @ObservationIgnored private var askedChefSupport = false
 
     static let developerTaps = 7
 
     init(
         preferences: AppPreferences, backups: BackupRepository, files: BackupFiles, appVersion: String = "",
         flags: FeatureFlags? = nil,
-        notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true)
+        notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true),
+        shortSteps: ShortStepRepository? = nil
     ) {
         self.flags = flags
+        self.shortSteps = shortSteps
         self.notificationPermission = notificationPermission
         self.preferences = preferences
         self.backups = backups
@@ -79,6 +87,7 @@ final class SettingsViewModel {
                 next.backup = self.uiState.backup
                 next.expiryRemindersDenied = self.uiState.expiryRemindersDenied
                 next.appVersion = self.appVersion
+                next.chefSupport = self.uiState.chefSupport
                 self.uiState = next
             }
     }
@@ -89,8 +98,31 @@ final class SettingsViewModel {
             convertLiquids: settings.convertLiquids,
             temperatureUnit: settings.temperatureUnit,
             darkWhileCooking: settings.darkWhileCooking,
-            expiryReminders: settings.expiryReminders
+            expiryReminders: settings.expiryReminders,
+            chefMode: settings.chefMode
         )
+    }
+
+    /// The Steps section (#100): only with the `chefMode` flag on.
+    var showsSteps: Bool { flags?.isOn(.chefMode) ?? false }
+
+    /// Asks the phone what Chef mode can do, once, when the Steps section first shows, so the
+    /// model is never woken otherwise. Returns the work so a test can await it.
+    @discardableResult
+    func onStepsShown() -> Task<Void, Never>? {
+        guard uiState.chefSupport == nil, !askedChefSupport else { return nil }
+        askedChefSupport = true
+        return Task { [weak self, shortSteps] in
+            let support = await shortSteps?.support() ?? .unsupported
+            self?.uiState.chefSupport = support
+        }
+    }
+
+    /// The Chef mode switch: only turns on where the phone can write short steps.
+    func onChefModeChange(_ enabled: Bool) {
+        if enabled && !(uiState.chefSupport?.isAvailable ?? false) { return }
+        preferences.chefMode = enabled
+        uiState.chefMode = enabled
     }
 
     /// The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind

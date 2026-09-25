@@ -16,6 +16,7 @@ import Foundation
 ///   many      "Recipe 1" (newest) … "Recipe 10" (oldest), in no list
 ///   standard  four recipes, some in lists — see `seedStandard`
 ///   cook      one recipe with timed steps, for cook mode — see `seedCook`
+///   chef      one recipe with a long step, for Chef mode (#100); every launch gets a stub model
 enum UITestSeeding {
     static let flag = "-uiTestSeed"
     static let keepPrefsFlag = "-uiTestKeepPrefs"
@@ -68,7 +69,8 @@ enum UITestSeeding {
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             clipFixtureHTML: clipFixtureHTML,
-            featureFlags: flags
+            featureFlags: flags,
+            shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock)
         )
     }
 
@@ -102,6 +104,7 @@ enum UITestSeeding {
                     case "empty": break
                     case "many": try seedMany(conn, now: now)
                     case "cook": try seedCook(conn, now: now)
+                    case "chef": try seedChef(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
                 }
@@ -146,6 +149,20 @@ enum UITestSeeding {
                 "Serve with rice."
             ],
             prepTime: "10m", cookTime: "20m", totalTime: "30m", servings: "4 servings",
+            sourceType: SourceType.blog.rawValue, lastViewedAt: now - minute
+        ))
+    }
+
+    /// The step `UITestStepShortener` writes a short version of (#100).
+    static let chefStep = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
+    static let chefShortStep = "Oven to 350°F; butter a 9-inch tin."
+
+    private static func seedChef(_ conn: SQLiteConnection, now: Int64) throws {
+        try RecipeDao(db: conn).insert(RecipeRecord(
+            sourceUrl: "https://example.com/sponge", title: "Sponge Cake", imageUrl: nil,
+            ingredients: ["4 eggs", "1 cup sugar"],
+            instructions: [chefStep, "Serve."],
+            prepTime: nil, cookTime: nil, totalTime: nil, servings: "8",
             sourceType: SourceType.blog.rawValue, lastViewedAt: now - minute
         ))
     }
@@ -196,6 +213,16 @@ private struct StubRecipeSource: RecipeSource {
             yield: "4",
             sourceUrl: url
         ))
+    }
+}
+
+/// Chef mode's model under UI test (#100): English only, one canned short step, so the tests
+/// never depend on Apple Intelligence being on the simulator.
+private final class UITestStepShortener: StepShortener {
+    func support() async -> ChefSupport { .available(["en"]) }
+
+    func shorten(_ step: String, language: String) async -> String? {
+        step == UITestSeeding.chefStep ? UITestSeeding.chefShortStep : nil
     }
 }
 #endif

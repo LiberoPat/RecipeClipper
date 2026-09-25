@@ -51,6 +51,8 @@ class DifferentialCorpusTest {
     private val pantryRow = Regex("""^(\s*)Pant\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A calendar-file row (#52): one summary's text.
     private val icsRow = Regex("""^(\s*)Ics\("((?:[^"\\]|\\.)*)"""")
+    // A Chef mode row (#100): a step, a short version of it, optionally their language.
+    private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
@@ -85,6 +87,14 @@ class DifferentialCorpusTest {
         }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
+        shortRow.find(line)?.let { s ->
+            val (step, short) = unescape(s.groupValues[2]) to unescape(s.groupValues[3])
+            val language = s.groupValues[4].ifEmpty { null }
+            val words = if (language == null) LanguageWords.ENGLISH else LanguageWords.forTag(language)!!
+            val lang = if (language == null) "" else ", lang: ${q(language)}"
+            val accepted = ShortStepCheck.accept(step, short, words)?.let { q(it) } ?: "nil"
+            return s.groupValues[1] + "Short(${q(step)}, ${q(short)}$lang, $accepted),"
+        }
         icsRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
             return m.groupValues[1] + "Ics(${q(text)}, ${q(MealPlanIcs.contentLine("SUMMARY", text))}),"

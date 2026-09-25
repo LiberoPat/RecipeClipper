@@ -37,6 +37,19 @@ struct RecipeSuccess: Equatable {
     var stepTimerSeconds: [Int?]
     var sourceDomain: String?
     var words: LanguageWords?
+    /// Chef mode (#100): each step's short version, rendered like `instructions`, lined up with
+    /// them; nil (or a short array) where a step has none yet, or none passed the check.
+    var shortInstructions: [String?] = []
+
+    /// Step `index`'s short version, unless the cook asked to see it as written.
+    func shownStep(_ index: Int, asWritten: Set<Int>) -> String {
+        if index < shortInstructions.count, !asWritten.contains(index), let short = shortInstructions[index] {
+            return short
+        }
+        return instructions[index]
+    }
+
+    func hasShortStep(_ index: Int) -> Bool { index < shortInstructions.count && shortInstructions[index] != nil }
 }
 
 enum RecipeContent: Equatable {
@@ -78,6 +91,9 @@ struct RecipeUiState: Equatable {
     /// The shared link to clip by hand ("Clip it yourself", #37). Set exactly when
     /// `reportSiteUrl` is: only a page that loaded with no recipe data can be clipped.
     var clipUrl: String?
+
+    /// Chef mode (#100): the steps the cook tapped to see as written, not short.
+    var asWrittenSteps: Set<Int> = []
 
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }

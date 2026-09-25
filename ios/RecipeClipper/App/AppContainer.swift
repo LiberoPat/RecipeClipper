@@ -23,6 +23,8 @@ final class AppContainer {
     private(set) var expiryReminders: ExpiryReminderCoordinator?
     /// The feature flags (#87), read by the root view and Developer settings.
     let featureFlags: FeatureFlags
+    /// Chef mode's short steps (#100); nil (tests) leaves Chef mode unsupported.
+    let shortStepRepository: ShortStepRepository?
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -48,7 +50,8 @@ final class AppContainer {
         clipFixtureHTML: String? = nil,
         sharedDatabase: AppDatabase? = nil,
         featureFlags: FeatureFlags? = nil,
-        notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true)
+        notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true),
+        shortStepRepository: ShortStepRepository? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -68,6 +71,7 @@ final class AppContainer {
         self.sharedDatabase = sharedDatabase
         // Unless given a store, overrides last only for this run (unit tests).
         self.featureFlags = featureFlags ?? FeatureFlags(store: MemoryFeatureFlagStore())
+        self.shortStepRepository = shortStepRepository
     }
 
     /// Called when the app comes to the foreground. The share extension saves recipes into the
@@ -125,7 +129,10 @@ final class AppContainer {
             alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock),
             sharedDatabase: testing ? nil : database,
             featureFlags: testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore()),
-            notificationPermission: testing ? FixedNotificationPermission(granted: true) : SystemNotificationPermission()
+            notificationPermission: testing ? FixedNotificationPermission(granted: true) : SystemNotificationPermission(),
+            shortStepRepository: DefaultShortStepRepository(
+                db: database, shortener: FoundationModelsStepShortener(), clock: clock
+            )
         )
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
         return container
@@ -145,7 +152,8 @@ final class AppContainer {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
-            openInCookMode: openInCookMode, plannedServings: plannedServings
+            openInCookMode: openInCookMode, plannedServings: plannedServings,
+            shortSteps: shortStepRepository, flags: featureFlags
         )
     }
 
@@ -194,7 +202,8 @@ final class AppContainer {
     func makeSettingsViewModel() -> SettingsViewModel {
         SettingsViewModel(
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
-            flags: featureFlags, notificationPermission: notificationPermission
+            flags: featureFlags, notificationPermission: notificationPermission,
+            shortSteps: shortStepRepository
         )
     }
 

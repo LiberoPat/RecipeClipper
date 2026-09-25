@@ -23,6 +23,8 @@ class RecipeUITestCase: XCTestCase {
         /// "Weeknight Chili" alone: steps "Brown the beef in a large pot.", "Simmer for 20
         /// minutes.", "Rest off the heat for 3 seconds.", "Serve with rice."
         case cook
+        /// "Sponge Cake" alone: a long step the stub model shortens (Chef mode, #100), then "Serve."
+        case chef
     }
 
     override func setUp() {

@@ -122,6 +122,13 @@ final class SQLiteConnection {
         }
     }
 
+    /// `run` with its arguments as an array, for a statement with a variable number of `?`.
+    func run(_ sql: String, arguments: [SQLiteBindable?]) throws {
+        try withStatement(sql, arguments) { statement in
+            while try step(statement) {}
+        }
+    }
+
     func query<T>(_ sql: String, _ args: SQLiteBindable?..., map: (SQLiteRow) throws -> T) throws -> [T] {
         try withStatement(sql, args) { statement in
             var result: [T] = []
