@@ -142,8 +142,8 @@ final class AppContainer {
         HomeViewModel(repository: recipeRepository)
     }
 
-    func makeHistoryViewModel() -> HistoryViewModel {
-        HistoryViewModel(repository: recipeRepository)
+    func makeRecipesViewModel() -> RecipesViewModel {
+        RecipesViewModel(repository: recipeRepository)
     }
 
     func makeRecipeViewModel(

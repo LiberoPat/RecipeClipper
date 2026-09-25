@@ -77,7 +77,7 @@ final class ClipUITests: RecipeUITestCase {
         back()
         require(app.textFields["Recipe URL"], "Home")
 
-        openHistory()
+        openRecipes()
         require(
             app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@",
                                              "Brown Butter Oat Cookies", "Clipped by you")).firstMatch,

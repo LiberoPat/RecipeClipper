@@ -58,7 +58,7 @@ enum class Tab(
  * full screen, so a recipe still opens on the recipe.
  */
 private val tabBarRoutes = setOf(
-    Routes.HOME, Routes.HISTORY, Routes.SETTINGS, Routes.DEVELOPER_SETTINGS, Routes.LISTS, Routes.LIST_DETAIL,
+    Routes.HOME, Routes.RECIPES, Routes.SETTINGS, Routes.DEVELOPER_SETTINGS, Routes.LISTS, Routes.LIST_DETAIL,
     Routes.WEEK, Routes.MEAL_TYPES, Routes.WHAT_I_NEED, Routes.GROCERIES, Routes.PANTRY
 )
 

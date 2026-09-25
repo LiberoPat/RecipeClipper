@@ -32,11 +32,11 @@ final class NavigationTests: XCTestCase {
 
     func testAnUnrelatedUrlLeavesTheStackAlone() throws {
         let router = Router()
-        router.push(.history)
+        router.push(.recipes)
 
         router.handle(try XCTUnwrap(URL(string: "recipeclipper://settings")))
 
-        XCTAssertEqual(router.path, [.history])
+        XCTAssertEqual(router.path, [.recipes])
     }
 
     /// Any app or page can open `recipeclipper://`, so only a web link is accepted, as Android
@@ -82,13 +82,13 @@ final class NavigationTests: XCTestCase {
     /// A share lands in Recipes whichever tab is open, on top of the Recipes stack as it was.
     func testAShareFromAnotherTabSwitchesToRecipes() throws {
         let router = Router()
-        router.push(.history)
+        router.push(.recipes)
         router.select(.pantry)
 
         router.handle(try XCTUnwrap(DeepLink.importUrl(for: "https://example.com/soup")))
 
         XCTAssertEqual(router.selectedTab, .recipes)
-        XCTAssertEqual(router.path, [.history, .importUrl("https://example.com/soup")])
+        XCTAssertEqual(router.path, [.recipes, .importUrl("https://example.com/soup")])
     }
 
     func testAnUnrelatedUrlLeavesTheTabAlone() throws {
@@ -114,7 +114,7 @@ final class NavigationTests: XCTestCase {
     /// Choosing Recipes while it is open goes back to Home.
     func testChoosingTheOpenRecipesTabAgainGoesHome() {
         let router = Router()
-        router.push(.history)
+        router.push(.recipes)
 
         router.select(.recipes)
 

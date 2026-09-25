@@ -362,7 +362,7 @@ private struct AddToDaySheet: View {
                             .padding(.leading, -12)
                     }
                     if let results = adding.results, results.isEmpty, typed.isEmpty {
-                        Text(Strings.historyEmpty)
+                        Text(Strings.homeEmptyHint)
                             .textStyle(Typography.bodyMedium)
                             .foregroundStyle(Palette.muted)
                             .padding(.top, 8)

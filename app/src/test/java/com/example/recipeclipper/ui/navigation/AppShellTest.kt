@@ -41,7 +41,7 @@ class AppShellTest {
 
     private fun NavGraphBuilder.stubRecipes() {
         composable(Routes.HOME) { Text("stub:home") }
-        composable(Routes.HISTORY) { Text("stub:history") }
+        composable(Routes.RECIPES) { Text("stub:recipes") }
         composable(Routes.SETTINGS) { Text("stub:settings") }
         composable(Routes.LISTS) { Text("stub:lists") }
         composable(
@@ -105,21 +105,21 @@ class AppShellTest {
 
         bar().assertDoesNotExist()
         tab("Week").assertDoesNotExist()
-        onNav { navigate(Routes.HISTORY) }
-        compose.onNodeWithText("stub:history").assertIsDisplayed()
+        onNav { navigate(Routes.RECIPES) }
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
         bar().assertDoesNotExist()
     }
 
     @Test
     fun withTheFlagOffAShareImportsOnTopOfTheSingleStack() {
         show(tabsEnabled = false)
-        onNav { navigate(Routes.HISTORY) }
+        onNav { navigate(Routes.RECIPES) }
 
         onNav { openRoute(Routes.import("https://example.com/soup"), tabsEnabled = false) }
         compose.onNodeWithText("stub:import https://example.com/soup").assertIsDisplayed()
 
         onNav { popBackStack() }
-        compose.onNodeWithText("stub:history").assertIsDisplayed()
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
     }
 
     // Flag on.
@@ -141,7 +141,7 @@ class AppShellTest {
     fun theBarShowsOnTheRecipesListScreensAndHidesOnARecipe() {
         show(tabsEnabled = true)
 
-        for (route in listOf(Routes.HISTORY, Routes.LISTS, Routes.list(4), Routes.SETTINGS)) {
+        for (route in listOf(Routes.RECIPES, Routes.LISTS, Routes.list(4), Routes.SETTINGS)) {
             onNav { navigate(route) }
             bar().assertIsDisplayed()
         }
@@ -192,7 +192,7 @@ class AppShellTest {
     @Test
     fun choosingTheOpenTabAgainGoesBackToItsFirstScreen() {
         show(tabsEnabled = true)
-        onNav { navigate(Routes.HISTORY) }
+        onNav { navigate(Routes.RECIPES) }
 
         tab("Recipes").performClick()
 
@@ -203,7 +203,7 @@ class AppShellTest {
     @Test
     fun aShareFromAnotherTabLandsInRecipesOnTopOfItsStack() {
         show(tabsEnabled = true)
-        onNav { navigate(Routes.HISTORY) }
+        onNav { navigate(Routes.RECIPES) }
         tab("Pantry").performClick()
         compose.onNodeWithText("stub:pantry").assertIsDisplayed()
 
@@ -215,7 +215,7 @@ class AppShellTest {
 
         // Back leaves the import for the Recipes stack it was pushed onto, not for Pantry.
         onNav { popBackStack() }
-        compose.onNodeWithText("stub:history").assertIsDisplayed()
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
         tab("Recipes").assertIsSelected()
 
         // Pantry kept its own place.
