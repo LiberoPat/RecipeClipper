@@ -178,8 +178,8 @@ Decisions, not suggestions. Don't relitigate them in code.
   `isBuiltIn`.
 - **"Saved" means "in at least one list."** It's derived from the cross-ref
   table; there's no column. A recipe in any list is never culled, and
-  neither is one planned for today or later (#49); neither counts toward
-  the 50.
+  neither is one planned for today or later (#49) or in a saved menu
+  (#52); none of these counts toward the 50.
 - **Leaving a list is a demotion, not a deletion.** The recipe stays in
   history and becomes cullable. Deleting is a separate, explicit action with
   its own confirmation.
@@ -248,7 +248,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
   meal types) or Remove (undo snackbar). A tapped recipe opens at its
   planned servings, for that visit only. "Month" beside the title swaps in
   a month grid (locale weeks, a dot on planned days; a tapped day opens its
-  week) (#52). "Share as calendar file" (Week menu): the shown week as an
+  week) (#52). "Save week as menu…" / "Apply a menu…" (Week menu, #52): a
+  named copy of the week; applying adds its meals on the same weekdays,
+  never replacing what's planned; rename and delete in the menus sheet.
+  "Share as calendar file" (Week menu): the shown week as an
   .ics of all-day events, never invented times. "Meal types" from the Week menu:
   add, rename, reorder any, delete the user's own. "Add to plan" (recipe
   menu, first item, flag on only): this week's and next week's days, a meal
@@ -293,13 +296,14 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 10** (iOS `user_version` 9):
+- Room database `recipe_clipper.db`, **version 11** (iOS `user_version` 10):
   `recipes` (with nullable `notes`, `language`, `cookState`,
   `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading),
   `meal_types` and `meal_plan_entries` (#49), `grocery_items` (#50),
-  `pantry_items` (#51). Recipes, lists, the plan, grocery and pantry tables
+  `pantry_items` (#51), `menus` and `menu_entries` (#52). Recipes, lists, the
+  plan, grocery, pantry and menu tables
   carry a unique, never-changing `uid`: what an export file calls them. Plan,
-  grocery and pantry rows also carry
+  grocery, pantry and menu rows also carry
   `updatedAt` (for #53). The schema is exported to `app/schemas/`: commit it. **Never use
   destructive migration**, and give every migration a `MigrationTest`.
   iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations, in
@@ -384,7 +388,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   case-insensitive name; unlisted recipes only fill free history slots;
   pantry items by uid then name and language (what's here stands); grocery
   items by uid; meal types by `builtInKey`, else uid, else user-type name;
-  planned meals by uid, a recipe's only if its recipe is here after the import.
+  planned meals by uid, a recipe's only if its recipe is here after the import;
+  menus by uid, whole, their meals by the plan's rules.
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. History search ignores notes. Cook

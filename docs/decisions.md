@@ -1769,12 +1769,12 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
   to a menu afterwards, so editing the plan never changes a menu, and vice versa.
 - **Applying only adds.** "Apply a menu…" opens the menus sheet (name, meal count); tapping one
   copies its meals into the week shown on the same weekdays, each at the end of its day and
-  meal type. What is planned stays, so applying twice doubles up, visibly and undoably by
-  hand, rather than silently replacing a week the user built. The snackbar says how many
+  meal type. What is planned stays, so applying twice doubles up (visibly, and each meal
+  can be removed) rather than silently replacing a week the user built. The snackbar says how many
   meals came in. A week starting on another weekday (a locale change) keeps offsets from the
   week's first day, not weekday names.
-- **Names are free text,** trimmed; blank does nothing. Duplicates are allowed, like lists'
-  plain names would confuse only their owner; the sheet sorts by name, case-insensitively.
+- **Names are free text,** trimmed; blank does nothing. Duplicate names are allowed; the sheet sorts
+  by name, case-insensitively.
   Rename and Delete sit on each row's menu in the sheet (iOS: their alerts show over the
   sheet). Deleting a menu removes it and its meals only, never the plan or a recipe.
 - **Schema:** `menus` (name, `uid`, `updatedAt`) and `menu_entries` (shaped like
