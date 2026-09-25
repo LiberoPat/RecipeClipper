@@ -33,6 +33,10 @@ struct Backup: Equatable {
     var mealTypes: [BackupMealType] = []
     /// The meal plan (#49). Absent in older files, which read as empty.
     var mealPlan: [BackupPlanEntry] = []
+    /// Saved weekly menus (#52). Absent in older files, which read as empty.
+    var menus: [BackupMenu] = []
+    /// The meals of `menus` (#52). Absent in older files, which read as empty.
+    var menuEntries: [BackupMenuEntry] = []
 }
 
 struct BackupRecipe: Equatable {
@@ -125,6 +129,28 @@ struct BackupPlanEntry: Equatable {
     var updatedAt: Int64
 }
 
+/// A saved weekly menu (#52). Its meals are the `BackupMenuEntry`s naming it.
+struct BackupMenu: Equatable {
+    var id: String
+    var name: String
+    var updatedAt: Int64
+}
+
+/// One meal of a menu (#52), `dayOffset` days (0 to 6) after the week's first day, shaped like
+/// `BackupPlanEntry`: `menuId` is a file menu id; `mealTypeId` nil imports as Dinner; a
+/// `recipeId` naming no recipe in the file reads as nil.
+struct BackupMenuEntry: Equatable {
+    var id: String
+    var menuId: String
+    var dayOffset: Int
+    var mealTypeId: String?
+    var recipeId: String?
+    var servings: Int?
+    var note: String?
+    var sortOrder: Int
+    var updatedAt: Int64
+}
+
 /// Why an export or an import failed, as a cause: the Settings screen picks the words. An import
 /// that fails for any of these has written nothing.
 enum BackupError: Error, Equatable {
@@ -160,6 +186,8 @@ struct ImportSummary: Equatable {
     var mealsAdded = 0
     /// New meal types created (types that joined one already here don't count).
     var mealTypesAdded = 0
+    /// New menus written (#52).
+    var menusAdded = 0
 }
 
 /// An export ready to hand to the share sheet.

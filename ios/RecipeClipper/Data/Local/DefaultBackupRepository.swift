@@ -23,6 +23,7 @@ final class DefaultBackupRepository: BackupRepository {
         let recipeUids = Dictionary(uniqueKeysWithValues: snapshot.recipes.map { ($0.id, $0.uid) })
         let listUids = Dictionary(uniqueKeysWithValues: snapshot.lists.map { ($0.id, $0.uid) })
         let mealTypeUids = Dictionary(uniqueKeysWithValues: snapshot.mealTypes.map { ($0.id, $0.uid) })
+        let menuUids = Dictionary(uniqueKeysWithValues: snapshot.menus.map { ($0.id, $0.uid) })
         let now = clock.now()
         let backup = Backup(
             exportedAt: now,
@@ -66,6 +67,15 @@ final class DefaultBackupRepository: BackupRepository {
                 BackupPlanEntry(
                     id: e.uid, day: e.day, mealTypeId: mealTypeUids[e.mealTypeId], recipeId: e.recipeId.flatMap { recipeUids[$0] },
                     servings: e.servings, note: e.note, sortOrder: e.sortOrder, updatedAt: e.updatedAt
+                )
+            },
+            menus: snapshot.menus.map { BackupMenu(id: $0.uid, name: $0.name, updatedAt: $0.updatedAt) },
+            menuEntries: snapshot.menuEntries.compactMap { e in
+                guard let menuUid = menuUids[e.menuId] else { return nil }
+                return BackupMenuEntry(
+                    id: e.uid, menuId: menuUid, dayOffset: e.dayOffset, mealTypeId: mealTypeUids[e.mealTypeId],
+                    recipeId: e.recipeId.flatMap { recipeUids[$0] }, servings: e.servings, note: e.note,
+                    sortOrder: e.sortOrder, updatedAt: e.updatedAt
                 )
             }
         )
