@@ -12,7 +12,7 @@ final class GroceriesViewModelTests: XCTestCase {
     }
 
     private func viewModel(language: String? = "en") async -> GroceriesViewModel {
-        let vm = GroceriesViewModel(repository: repository, phoneLanguage: { language })
+        let vm = GroceriesViewModel(repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), phoneLanguage: { language })
         await settleMain()
         return vm
     }
@@ -124,14 +124,14 @@ final class GroceriesViewModelTests: XCTestCase {
     // MARK: - The add sheet
 
     func testARecipesLinesAreAllTickedAndHeadingsAndBlanksAreLeftOut() {
-        let vm = AddToGroceriesViewModel(repository: repository, preferences: FakeAppPreferences())
+        let vm = AddToGroceriesViewModel(repository: repository, preferences: FakeAppPreferences(), pantry: FakePantryRepository())
         vm.setRecipe(7, title: "Pancakes", language: "en", rendered: ["For the batter:", "2 cups flour", "", "2 eggs"])
         XCTAssertEqual(vm.uiState.sources?.first?.lines, ["2 cups flour", "2 eggs"])
         XCTAssertEqual(vm.uiState.tickedCount, 2)
     }
 
     func testOnlyTheTickedLinesAreAddedWithTheirRecipe() async {
-        let vm = AddToGroceriesViewModel(repository: repository, preferences: FakeAppPreferences())
+        let vm = AddToGroceriesViewModel(repository: repository, preferences: FakeAppPreferences(), pantry: FakePantryRepository())
         vm.setRecipe(7, title: "Pancakes", language: "en", rendered: ["2 cups flour", "2 eggs", "1 cup milk"])
         vm.onToggle(SourceLine(source: "recipe-7", index: 1))
         vm.onAdd()
@@ -151,7 +151,7 @@ final class GroceriesViewModelTests: XCTestCase {
             PlannedIngredients(entryId: 3, day: 110, servings: nil, recipeId: 5, title: "Next week",
                                ingredients: ["1 onion"], yield: nil, language: "en"),
         ]
-        let vm = AddToGroceriesViewModel(repository: repository, preferences: FakeAppPreferences(unitSystem: .metric))
+        let vm = AddToGroceriesViewModel(repository: repository, preferences: FakeAppPreferences(unitSystem: .metric), pantry: FakePantryRepository())
         vm.loadWeek(100)
         XCTAssertNil(vm.uiState.sources)
         await vm.loading?.value

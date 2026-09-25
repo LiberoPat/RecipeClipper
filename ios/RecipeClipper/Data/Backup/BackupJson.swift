@@ -9,8 +9,15 @@ import Foundation
 ///                     "lastViewedAt", "checkedIngredients", "notes", "language",
 ///                     "contentOrigin", "editedAt" }],
 ///   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
-///   "memberships": [{ "recipeId", "listId", "addedAt" }] }
+///   "memberships": [{ "recipeId", "listId", "addedAt" }],
+///   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
+///                     "purchasedDay", "expiresDay", "updatedAt" }],
+///   "groceries":   [{ "id", "text", "language", "aisle", "checked", "recipeId", "plannedDay",
+///                     "updatedAt" }] }
 /// ```
+///
+/// `pantry` (#51) and `groceries` (#50) came later without a version bump: an older reader
+/// ignores them. A grocery's `recipeId` naming no recipe in the file reads as none.
 ///
 /// Reading is strict about what it needs and lenient about the rest, so the format can grow:
 /// unknown keys and sections are ignored, a missing section is empty, and a missing optional
@@ -30,6 +37,8 @@ enum BackupJson {
             "recipes": backup.recipes.map(json),
             "lists": backup.lists.map(json),
             "memberships": backup.memberships.map(json),
+            "pantry": backup.pantry.map(json),
+            "groceries": backup.groceries.map(json),
         ]
         guard let data = try? JSONSerialization.data(
             withJSONObject: root, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
@@ -118,7 +127,46 @@ enum BackupJson {
             return membership
         }
 
-        return Backup(exportedAt: exportedAt, recipes: recipes, lists: lists, memberships: memberships)
+        let pantry = try top.objects(root, "pantry").map { path, o -> BackupPantryItem in
+            let r = Reader(path: path)
+            let id = try r.requiredId(o, "id")
+            guard let name = try r.string(o, "name"), !name.isBlank else { throw Malformed(path: "\(path).name") }
+            return BackupPantryItem(
+                id: id,
+                name: name,
+                quantity: try r.string(o, "quantity"),
+                language: try r.string(o, "language"),
+                aisle: try r.string(o, "aisle") ?? "other",
+                inStock: try r.bool(o, "inStock") ?? true,
+                alwaysHave: try r.bool(o, "alwaysHave") ?? false,
+                purchasedDay: try r.int64(o, "purchasedDay"),
+                expiresDay: try r.int64(o, "expiresDay"),
+                updatedAt: try r.int64(o, "updatedAt") ?? 0
+            )
+        }
+        try requireUniqueIds(pantry.map(\.id), "pantry")
+
+        let groceries = try top.objects(root, "groceries").map { path, o -> BackupGroceryItem in
+            let r = Reader(path: path)
+            let id = try r.requiredId(o, "id")
+            guard let text = try r.string(o, "text"), !text.isBlank else { throw Malformed(path: "\(path).text") }
+            return BackupGroceryItem(
+                id: id,
+                text: text,
+                language: try r.string(o, "language"),
+                aisle: try r.string(o, "aisle") ?? "other",
+                checked: try r.bool(o, "checked") ?? false,
+                recipeId: try r.string(o, "recipeId").flatMap { recipeIds.contains($0) ? $0 : nil },
+                plannedDay: try r.int64(o, "plannedDay"),
+                updatedAt: try r.int64(o, "updatedAt") ?? 0
+            )
+        }
+        try requireUniqueIds(groceries.map(\.id), "groceries")
+
+        return Backup(
+            exportedAt: exportedAt, recipes: recipes, lists: lists, memberships: memberships,
+            pantry: pantry, groceries: groceries
+        )
     }
 
     private static func requireUniqueIds(_ ids: [String], _ section: String) throws {
@@ -240,6 +288,34 @@ enum BackupJson {
             "language": r.language ?? NSNull(),
             "contentOrigin": r.contentOrigin,
             "editedAt": r.editedAt.map { NSNumber(value: $0) } ?? NSNull(),
+        ]
+    }
+
+    private static func json(_ p: BackupPantryItem) -> [String: Any] {
+        [
+            "id": p.id,
+            "name": p.name,
+            "quantity": p.quantity ?? NSNull(),
+            "language": p.language ?? NSNull(),
+            "aisle": p.aisle,
+            "inStock": p.inStock,
+            "alwaysHave": p.alwaysHave,
+            "purchasedDay": p.purchasedDay.map { NSNumber(value: $0) } ?? NSNull(),
+            "expiresDay": p.expiresDay.map { NSNumber(value: $0) } ?? NSNull(),
+            "updatedAt": NSNumber(value: p.updatedAt),
+        ]
+    }
+
+    private static func json(_ g: BackupGroceryItem) -> [String: Any] {
+        [
+            "id": g.id,
+            "text": g.text,
+            "language": g.language ?? NSNull(),
+            "aisle": g.aisle,
+            "checked": g.checked,
+            "recipeId": g.recipeId ?? NSNull(),
+            "plannedDay": g.plannedDay.map { NSNumber(value: $0) } ?? NSNull(),
+            "updatedAt": NSNumber(value: g.updatedAt),
         ]
     }
 

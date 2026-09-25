@@ -140,7 +140,7 @@ final class GroceryDaoTests: XCTestCase {
 
         let migrated = try AppDatabase(path: path)
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
-        XCTAssertEqual(version, 8)
+        XCTAssertEqual(version, AppDatabase.schemaVersion)
         let recipe = try await migrated.get(7)
         XCTAssertEqual(recipe?.title, "Adobo")
         let planned = try await migrated.read { try GroceryDao(db: $0).plannedIngredients(start: 20_000, end: 20_006) }

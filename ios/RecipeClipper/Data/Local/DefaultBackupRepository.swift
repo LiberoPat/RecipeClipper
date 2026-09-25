@@ -44,6 +44,19 @@ final class DefaultBackupRepository: BackupRepository {
             memberships: snapshot.memberships.compactMap { m in
                 guard let recipe = recipeUids[m.recipeId], let list = listUids[m.listId] else { return nil }
                 return BackupMembership(recipeId: recipe, listId: list, addedAt: m.addedAt)
+            },
+            pantry: snapshot.pantry.map { p in
+                BackupPantryItem(
+                    id: p.uid, name: p.name, quantity: p.quantity, language: p.language, aisle: p.aisle,
+                    inStock: p.inStock, alwaysHave: p.alwaysHave, purchasedDay: p.purchasedDay,
+                    expiresDay: p.expiresDay, updatedAt: p.updatedAt
+                )
+            },
+            groceries: snapshot.groceries.map { g in
+                BackupGroceryItem(
+                    id: g.uid, text: g.text, language: g.language, aisle: g.aisle, checked: g.checked,
+                    recipeId: g.recipeId.flatMap { recipeUids[$0] }, plannedDay: g.plannedDay, updatedAt: g.updatedAt
+                )
             }
         )
         return .success(ExportedBackup(json: BackupJson.encode(backup), exportedAt: now, recipeCount: backup.recipes.count))

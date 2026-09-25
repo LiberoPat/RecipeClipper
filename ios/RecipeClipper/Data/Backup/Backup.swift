@@ -25,6 +25,10 @@ struct Backup: Equatable {
     var recipes: [BackupRecipe]
     var lists: [BackupList]
     var memberships: [BackupMembership]
+    /// The pantry (#51). Absent in older files, which read as empty.
+    var pantry: [BackupPantryItem] = []
+    /// The grocery list (#50), in list order. Absent in older files, which read as empty.
+    var groceries: [BackupGroceryItem] = []
 }
 
 struct BackupRecipe: Equatable {
@@ -67,6 +71,33 @@ struct BackupMembership: Equatable {
     var addedAt: Int64
 }
 
+/// A pantry item (#51). The days are epoch days; `aisle` an `Aisle` key.
+struct BackupPantryItem: Equatable {
+    var id: String
+    var name: String
+    var quantity: String?
+    var language: String?
+    var aisle: String
+    var inStock: Bool
+    var alwaysHave: Bool
+    var purchasedDay: Int64?
+    var expiresDay: Int64?
+    var updatedAt: Int64
+}
+
+/// A grocery item (#50). `recipeId` is the file id of the recipe it came from, or nil (typed,
+/// or its recipe is gone); `plannedDay` the planned day it came from, if any.
+struct BackupGroceryItem: Equatable {
+    var id: String
+    var text: String
+    var language: String?
+    var aisle: String
+    var checked: Bool
+    var recipeId: String?
+    var plannedDay: Int64?
+    var updatedAt: Int64
+}
+
 /// Why an export or an import failed, as a cause: the Settings screen picks the words. An import
 /// that fails for any of these has written nothing.
 enum BackupError: Error, Equatable {
@@ -94,6 +125,10 @@ struct ImportSummary: Equatable {
     var recipesAlreadyHere: Int
     /// Recipes in no list left out because history was full (see BackupMerger).
     var recipesSkipped: Int
+    /// New pantry items written (#51).
+    var pantryAdded = 0
+    /// New grocery items written (#50).
+    var groceriesAdded = 0
 }
 
 /// An export ready to hand to the share sheet.

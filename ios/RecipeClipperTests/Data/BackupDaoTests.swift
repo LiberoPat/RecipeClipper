@@ -45,7 +45,9 @@ final class BackupDaoTests: XCTestCase {
         let result = try summary(await repo.importBackup(try backupFixture("backup-v1")))
 
         // No "Weeknight" here, so the file's "Midweek" is new too (on Android's test phone it joins one by uid).
-        XCTAssertEqual(result, ImportSummary(recipesAdded: 3, listsAdded: 3, recipesAlreadyHere: 2, recipesSkipped: 0))
+        XCTAssertEqual(result, ImportSummary(
+            recipesAdded: 3, listsAdded: 3, recipesAlreadyHere: 2, recipesSkipped: 0, pantryAdded: 3, groceriesAdded: 5
+        ))
         let pie = try await db.read { try RecipeDao(db: $0).findByUrl("https://example.com/pie") }
         XCTAssertEqual(pie?.uid, "r-pie")
         XCTAssertEqual(pie?.notes, "Use cold butter.")
@@ -68,6 +70,43 @@ final class BackupDaoTests: XCTestCase {
         let breadRefs = try await db.crossRefs(breadId)
         XCTAssertEqual(breadRefs.first { $0.listId == favorites }?.addedAt, 1, "IGNORE, never REPLACE")
         XCTAssertTrue(breadRefs.contains { $0.listId == lunch && $0.addedAt == 14 })
+    }
+
+    /// The pantry (#51) and the grocery list (#50) go into the file and come back whole, a
+    /// grocery keeping its recipe.
+    func testPantryAndGroceriesRoundTrip() async throws {
+        let id = try await insert(dataRecipeRecord("https://example.com/a", viewedAt: 1))
+        try await db.write {
+            try PantryDao(db: $0).insert(PantryItemRecord(
+                name: "flour", quantity: "half a bag", language: "en", aisle: "baking", inStock: false,
+                alwaysHave: true, purchasedDay: 20_000, expiresDay: 20_100, updatedAt: 3
+            ))
+            try GroceryDao(db: $0).add([GroceryItemRecord(
+                text: "2 eggs", language: "en", aisle: "dairy", sortOrder: 0, recipeId: id, plannedDay: 20_001, updatedAt: 4
+            )])
+        }
+        guard case .success(let exported) = await repo.export() else { return XCTFail("export failed") }
+
+        let other = try AppDatabase(path: nil)
+        let otherRepo = DefaultBackupRepository(db: other, clock: clock)
+        let result = try summary(await otherRepo.importBackup(exported.json))
+        XCTAssertEqual(result.pantryAdded, 1)
+        XCTAssertEqual(result.groceriesAdded, 1)
+
+        let original = try await db.read { try PantryDao(db: $0).items() }
+        let copy = try await other.read { try PantryDao(db: $0).items() }
+        var expected = original[0]
+        expected.id = copy[0].id
+        XCTAssertEqual(copy, [expected])
+        let grocery = try await other.read { try GroceryDao(db: $0).items() }.first
+        let copyRecipe = try await other.read { try RecipeDao(db: $0).findByUrl("https://example.com/a") }
+        XCTAssertEqual(grocery?.text, "2 eggs")
+        XCTAssertEqual(grocery?.recipeId, copyRecipe?.id)
+        XCTAssertEqual(grocery?.plannedDay, 20_001)
+
+        let again = try summary(await otherRepo.importBackup(exported.json))
+        XCTAssertEqual(again.pantryAdded, 0)
+        XCTAssertEqual(again.groceriesAdded, 0)
     }
 
     func testImportingTwiceAddsNothingTheSecondTime() async throws {

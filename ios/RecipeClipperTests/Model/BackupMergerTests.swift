@@ -16,13 +16,20 @@ final class BackupMergerTests: XCTestCase {
         ExistingList(id: 2, uid: "l-lunch", name: "Lunch", isFavorites: false),
         ExistingList(id: 10, uid: "l-week", name: "Weeknight", isFavorites: false),
     ]
+    private let herePantry = [
+        ExistingPantryItem(uid: "p-here", name: "Butter", language: "en"),
+        ExistingPantryItem(uid: "x-salt", name: "Salt", language: "en"),
+    ]
+    private let hereGroceries: Set<String> = ["g-here"]
 
     private func plan(
         _ backup: Backup,
         recipes: [ExistingRecipe]? = nil,
         lists: [ExistingList]? = nil,
         maxSortOrder: Int = 6,
-        historyLimit: Int = 2
+        historyLimit: Int = 2,
+        pantry: [ExistingPantryItem]? = nil,
+        groceries: Set<String>? = nil
     ) -> ImportPlan {
         var n = 0
         return BackupMerger.plan(
@@ -31,7 +38,9 @@ final class BackupMergerTests: XCTestCase {
             existingLists: lists ?? hereLists,
             maxSortOrder: maxSortOrder,
             historyLimit: historyLimit,
-            newUid: { n += 1; return "gen-\(n)" }
+            newUid: { n += 1; return "gen-\(n)" },
+            existingPantry: pantry ?? herePantry,
+            existingGroceryUids: groceries ?? hereGroceries
         )
     }
 
@@ -78,7 +87,27 @@ final class BackupMergerTests: XCTestCase {
             PlannedMembership(recipe: .new("r-pie"), list: .new("f-fakefav"), addedAt: 16),
         ])
 
-        XCTAssertEqual(plan.summary, ImportSummary(recipesAdded: 2, listsAdded: 2, recipesAlreadyHere: 2, recipesSkipped: 1))
+        // Pantry: p-here's uid and "salt" are here, "FLOUR" repeats "Flour": only flour comes in, trimmed.
+        XCTAssertEqual(plan.newPantry.map(\.id), ["p-flour"])
+        XCTAssertEqual(plan.newPantry.first?.name, "Flour")
+        XCTAssertEqual(plan.newPantry.first?.quantity, "half a bag")
+
+        // Groceries: by uid only; each keeps a recipe that is here after the import.
+        XCTAssertEqual(plan.newGroceries.map(\.item.id), ["g-tomatoes", "g-apples", "g-beef", "g-milk"])
+        XCTAssertEqual(plan.newGroceries.map(\.recipe), [.existing(1), .new("r-pie"), nil, nil])
+
+        XCTAssertEqual(plan.summary, ImportSummary(
+            recipesAdded: 2, listsAdded: 2, recipesAlreadyHere: 2, recipesSkipped: 1, pantryAdded: 1, groceriesAdded: 4
+        ))
+    }
+
+    func testAPantryNameInAnotherLanguageIsADifferentItem() {
+        let backup = Backup(
+            exportedAt: 0, recipes: [], lists: [], memberships: [],
+            pantry: [BackupPantryItem(id: "p", name: "Butter", quantity: nil, language: "de", aisle: "dairy", inStock: true,
+                                      alwaysHave: false, purchasedDay: nil, expiresDay: nil, updatedAt: 0)]
+        )
+        XCTAssertEqual(plan(backup, recipes: []).newPantry.map(\.id), ["p"])
     }
 
     func testImportingTheSameFileTwiceAddsNothingTheSecondTime() throws {
@@ -100,7 +129,12 @@ final class BackupMergerTests: XCTestCase {
             nextId += 1
         }
 
-        let second = plan(backup, recipes: recipes, lists: lists, maxSortOrder: 8, historyLimit: 50)
+        let pantry = herePantry + first.newPantry.map { ExistingPantryItem(uid: $0.id, name: $0.name, language: $0.language) }
+        let groceries = hereGroceries.union(first.newGroceries.map(\.item.id))
+
+        let second = plan(backup, recipes: recipes, lists: lists, maxSortOrder: 8, historyLimit: 50, pantry: pantry, groceries: groceries)
+        XCTAssertTrue(second.newPantry.isEmpty)
+        XCTAssertTrue(second.newGroceries.isEmpty)
 
         XCTAssertTrue(second.newRecipes.isEmpty)
         XCTAssertTrue(second.newLists.isEmpty)

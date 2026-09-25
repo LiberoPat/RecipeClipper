@@ -31,7 +31,7 @@ final class RecipeDaoTests: XCTestCase {
     func testSchemaVersionIsRecorded() async throws {
         let version = try await db.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
         XCTAssertEqual(version, AppDatabase.schemaVersion)
-        XCTAssertEqual(AppDatabase.schemaVersion, 8)
+        XCTAssertEqual(AppDatabase.schemaVersion, 9)
     }
 
     /// Version 2 adds the personal note (and version 3 the uids). A version-1 file, built by the real version-1
