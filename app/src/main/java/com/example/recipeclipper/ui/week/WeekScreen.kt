@@ -243,7 +243,7 @@ private fun WeekMenu(onOpenMealTypes: () -> Unit, onOpenWhatINeed: (() -> Unit)?
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             if (onOpenWhatINeed != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_what_i_need)) },
+                    text = { Text(stringResource(R.string.what_i_need_title)) },
                     onClick = {
                         expanded = false
                         onOpenWhatINeed()

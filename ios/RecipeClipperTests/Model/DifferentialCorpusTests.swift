@@ -23,6 +23,8 @@ import XCTest
 // Instruction rows: input, to Celsius, to Fahrenheit, StepTimers.parse.
 // Grocery rows (#50): the lines, GroceryCombiner.combine of them (nil: they stay as written),
 // then Aisles.of each line. Regenerated the same way: write only `Groc(["2 eggs", "3 eggs"]),`.
+// Pantry rows (#51): a line, a pantry item's name, then PantryMatch.covered (the item in stock,
+// in the same language). Write only `Pant("2 cups flour", "flour"),`.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -52,6 +54,13 @@ final class DifferentialCorpusTests: XCTestCase {
         init(_ lines: [String], lang: String = "en", _ combined: String?, _ aisles: [String]) {
             self.lines = lines; self.words = LanguageWords.forTag(lang)!
             self.combined = combined; self.aisles = aisles
+        }
+    }
+
+    private struct Pant {
+        let line: String; let name: String; let language: String; let covered: Bool
+        init(_ line: String, _ name: String, lang: String = "en", _ covered: Bool) {
+            self.line = line; self.name = name; self.language = lang; self.covered = covered
         }
     }
 
@@ -1105,6 +1114,19 @@ final class DifferentialCorpusTests: XCTestCase {
         Groc(["醤油 大さじ1", "醤油 大さじ2", "玉ねぎ 1個"], lang: "ja", nil, ["condiments", "condiments", "produce"]),
     ]
 
+    private static let pantry: [Pant] = [
+        Pant("2 tbsp unsalted butter, softened", "butter", true),
+        Pant("1 can butter beans", "butter", false),
+        Pant("2 cups all-purpose flour", "Flour", true),
+        Pant("1 cup whole milk", "milk", true),
+        Pant("salt and pepper", "salt", false),
+        Pant("juice of 1 lemon", "lemon", false),
+        Pant("2 large eggs, beaten", "egg", false),
+        Pant("2 large eggs, beaten", "Eggs", true),
+        Pant("200 g Butter", "Butter", lang: "de", true),
+        Pant("醤油 大さじ1", "醤油", lang: "ja", true),
+    ]
+
     private static let jsonLd: [(String, [String], Recipe?)] = [
         ("wprm_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Article\",\"@id\":\"https://x.com/#article\",\"headline\":\"Best Brownies\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"}},{\"@type\":\"WebPage\",\"@id\":\"https://x.com/\"},{\"@type\":\"Recipe\",\"name\":\"Fudgy Brownies &amp; Ice Cream\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"},\"image\":[\"https://x.com/a-1x1.jpg\",\"https://x.com/a-4x3.jpg\"],\"recipeYield\":[\"16\",\"16 brownies\"],\"prepTime\":\"PT15M\",\"cookTime\":\"PT25M\",\"totalTime\":\"PT40M\",\"recipeIngredient\":[\"1 cup (226g) butter\",\"2 cups (400g) sugar\",\"&frac12; cup cocoa\",\"<strong>3</strong> eggs\",\"\"],\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Batter\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Preheat oven to 350&deg;F.\",\"name\":\"Preheat oven to 350&deg;F.\",\"url\":\"https://x.com/#s1\"},{\"@type\":\"HowToStep\",\"text\":\"Melt butter &amp; sugar.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Bake\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"<p>Bake 25 minutes.</p>\"}]}]}]}"], Recipe(name: "Fudgy Brownies & Ice Cream", image: "https://x.com/a-1x1.jpg", ingredients: ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], instructions: ["Preheat oven to 350°F.", "Melt butter & sugar.", "Bake 25 minutes."], prepTime: "15m", cookTime: "25m", totalTime: "40m", yield: "16", sourceUrl: "https://src/wprm_graph")),
         ("yoast_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":[\"WebPage\",\"ItemPage\"],\"@id\":\"https://y.com/p/\"},{\"@type\":[\"Recipe\"],\"name\":\"Chicken Tikka Masala\",\"image\":[{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img1.jpg\",\"width\":1200},{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img2.jpg\"}],\"recipeYield\":\"4\",\"prepTime\":\"PT1H\",\"cookTime\":\"PT1H30M\",\"totalTime\":\"PT2H30M\",\"recipeIngredient\":[\"1 lb chicken\",\"1 cup yogurt\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Marinate.\",\"name\":\"Marinate\"},{\"@type\":\"HowToStep\",\"name\":\"Grill it\"},{\"@type\":\"HowToStep\",\"text\":\"   \"}]}]}"], Recipe(name: "Chicken Tikka Masala", image: "https://y.com/img1.jpg", ingredients: ["1 lb chicken", "1 cup yogurt"], instructions: ["Marinate.", "Grill it"], prepTime: "1h", cookTime: "1h 30m", totalTime: "2h 30m", yield: "4", sourceUrl: "https://src/yoast_graph")),
@@ -1170,6 +1192,16 @@ final class DifferentialCorpusTests: XCTestCase {
         for row in Self.groceries {
             XCTAssertEqual(GroceryCombiner.combine(row.lines, words: row.words), row.combined, "combine: \(row.lines)")
             XCTAssertEqual(row.lines.map { Aisles.of($0, words: row.words).key }, row.aisles, "aisles: \(row.lines)")
+        }
+    }
+
+    func testPantryMatchesKotlin() {
+        for row in Self.pantry {
+            let item = PantryItem(
+                id: 1, name: row.name, quantity: nil, language: row.language, aisle: .other, inStock: true,
+                alwaysHave: false, purchasedDay: nil, expiresDay: nil
+            )
+            XCTAssertEqual(PantryMatch.covered(row.line, language: row.language, pantry: [item]), row.covered, "\(row.line) / \(row.name)")
         }
     }
 

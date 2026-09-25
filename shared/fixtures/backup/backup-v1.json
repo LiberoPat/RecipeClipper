@@ -99,5 +99,18 @@
     {"recipeId": "r-bread", "listId": "f-lunch", "addedAt": 14},
     {"recipeId": "r-bread", "listId": "l-week", "addedAt": 15},
     {"recipeId": "r-pie", "listId": "f-fakefav", "addedAt": 16}
+  ],
+  "pantry": [
+    {"id": "p-flour", "name": " Flour ", "quantity": "half a bag", "language": "en", "aisle": "baking", "inStock": true, "alwaysHave": false, "purchasedDay": 20700, "expiresDay": 20900, "updatedAt": 1789000000000},
+    {"id": "p-salt", "name": "salt", "language": "en", "aisle": "spices", "inStock": true, "alwaysHave": true, "updatedAt": 1789000000001},
+    {"id": "p-here", "name": "Butter", "language": "en", "aisle": "dairy", "inStock": false, "alwaysHave": false, "updatedAt": 1},
+    {"id": "p-flour2", "name": "FLOUR", "language": "en", "aisle": "baking", "inStock": false, "futureField": "ignored"}
+  ],
+  "groceries": [
+    {"id": "g-tomatoes", "text": "2 lb tomatoes", "language": "en", "aisle": "produce", "checked": false, "recipeId": "r-soup", "plannedDay": 20720, "updatedAt": 1789000000000},
+    {"id": "g-apples", "text": "6 apples", "language": "en", "aisle": "produce", "checked": true, "recipeId": "r-pie", "plannedDay": null, "updatedAt": 1789000000002},
+    {"id": "g-beef", "text": "1 kg beef", "language": "en", "aisle": "meat", "recipeId": "r-old"},
+    {"id": "g-milk", "text": "milk", "language": "en", "aisle": "dairy", "recipeId": "r-missing"},
+    {"id": "g-here", "text": "eggs", "language": "en", "aisle": "dairy"}
   ]
 }

@@ -2,9 +2,11 @@ package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.backup.Backup
 import com.example.recipeclipper.data.backup.BackupError
+import com.example.recipeclipper.data.backup.BackupGroceryItem
 import com.example.recipeclipper.data.backup.BackupJson
 import com.example.recipeclipper.data.backup.BackupList
 import com.example.recipeclipper.data.backup.BackupMembership
+import com.example.recipeclipper.data.backup.BackupPantryItem
 import com.example.recipeclipper.data.backup.BackupRecipe
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ExportedBackup
@@ -79,6 +81,18 @@ class DefaultBackupRepository @Inject constructor(
                 val recipe = recipeUids[ref.recipeId] ?: return@mapNotNull null
                 val list = listUids[ref.listId] ?: return@mapNotNull null
                 BackupMembership(recipe, list, ref.addedAt)
+            },
+            pantry = snapshot.pantry.map {
+                BackupPantryItem(
+                    it.uid, it.name, it.quantity, it.language, it.aisle, it.inStock, it.alwaysHave,
+                    it.purchasedDay, it.expiresDay, it.updatedAt
+                )
+            },
+            groceries = snapshot.groceries.map {
+                BackupGroceryItem(
+                    it.uid, it.text, it.language, it.aisle, it.checked, it.recipeId?.let(recipeUids::get),
+                    it.plannedDay, it.updatedAt
+                )
             }
         )
         return BackupResult.Success(ExportedBackup(BackupJson.encode(backup), now, backup.recipes.size))

@@ -38,6 +38,12 @@ data class NewList(
 
 data class NoteUpdate(val recipeId: Long, val notes: String)
 
+/** A pantry item already on this phone (#51). */
+data class ExistingPantryItem(val uid: String, val name: String, val language: String?)
+
+/** A grocery item to write, with the recipe it came from, if that recipe is here after the import. */
+data class NewGrocery(val item: BackupGroceryItem, val recipe: Target?)
+
 data class PlannedMembership(val recipe: Target, val list: Target, val addedAt: Long)
 
 /**
@@ -50,7 +56,9 @@ data class ImportPlan(
     val noteUpdates: List<NoteUpdate>,
     val newLists: List<NewList>,
     val memberships: List<PlannedMembership>,
-    val summary: ImportSummary
+    val summary: ImportSummary,
+    val newPantry: List<BackupPantryItem> = emptyList(),
+    val newGroceries: List<NewGrocery> = emptyList()
 )
 
 /**
@@ -76,6 +84,13 @@ data class ImportPlan(
  *   into free places under [historyLimit] (counting what's here and not in a list once the
  *   import's memberships are in): the most recently viewed fill them, and the rest are skipped
  *   and counted. So an import can't push a recipe already here out of history.
+ * - **Pantry** (#51): an item comes in unless one with its uid, or with its name (trimmed,
+ *   case-insensitive) in the same language, is already here or earlier in the file. The one
+ *   here keeps its stock, dates and quantity: import never changes what's in a cupboard.
+ * - **Groceries** (#50): an item comes in unless its uid is already here, after the items
+ *   already on the list, in file order. Nothing is combined or deduplicated by text (two "2
+ *   eggs" can be two recipes' eggs). It keeps its recipe only if that recipe is here after the
+ *   import (matched, or written); a recipe skipped for history leaves it without one.
  */
 object BackupMerger {
 
@@ -85,7 +100,9 @@ object BackupMerger {
         existingLists: List<ExistingList>,
         maxSortOrder: Int,
         historyLimit: Int,
-        newUid: () -> String
+        newUid: () -> String,
+        existingPantry: List<ExistingPantryItem> = emptyList(),
+        existingGroceryUids: Set<String> = emptySet()
     ): ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         val existingByUrl = HashMap<String, ExistingRecipe>()
@@ -179,6 +196,23 @@ object BackupMerger {
             .filter { !it.hasNotes && importedNote[it.id] != null }
             .map { NoteUpdate(it.id, importedNote.getValue(it.id)) }
 
+        // --- Pantry: by uid, then by name in the same language; what's here stands.
+        val takenPantryUids = existingPantry.mapTo(HashSet()) { it.uid }
+        val pantryNames = existingPantry.mapTo(HashSet()) { nameKey(it.name) to it.language }
+        val newPantry = backup.pantry.mapNotNull { item ->
+            if (item.id in takenPantryUids) return@mapNotNull null
+            if (!pantryNames.add(nameKey(item.name) to item.language)) return@mapNotNull null
+            takenPantryUids.add(item.id)
+            item.copy(name = item.name.trim())
+        }
+
+        // --- Groceries: by uid only, after what's on the list, keeping a recipe that's here.
+        val written = newRecipes.mapTo(HashSet()) { Target.New(it.id) as Target }
+        val newGroceries = backup.groceries.filter { it.id !in existingGroceryUids }.map { item ->
+            val recipe = item.recipeId?.let { recipeTargets[it] }?.takeIf { it is Target.Existing || it in written }
+            NewGrocery(item, recipe)
+        }
+
         return ImportPlan(
             newRecipes = newRecipes,
             noteUpdates = noteUpdates,
@@ -188,8 +222,12 @@ object BackupMerger {
                 recipesAdded = newRecipes.size,
                 listsAdded = newListsByName.size,
                 recipesAlreadyHere = matched.size,
-                recipesSkipped = skipped
-            )
+                recipesSkipped = skipped,
+                pantryAdded = newPantry.size,
+                groceriesAdded = newGroceries.size
+            ),
+            newPantry = newPantry,
+            newGroceries = newGroceries
         )
     }
 

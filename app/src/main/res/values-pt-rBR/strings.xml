@@ -332,4 +332,39 @@
     <string name="aisle_snacks">Castanhas e frutas secas</string>
     <string name="aisle_drinks">Bebidas</string>
     <string name="aisle_other">Outros</string>
+
+    <!-- Pantry, What I need and grocery check-off (#51) -->
+    <string name="pantry_add_hint">Adicione à despensa</string>
+    <string name="pantry_search_hint">Pesquise na despensa</string>
+    <string name="pantry_empty">Nada na despensa ainda. Digite acima o que tem nos seus armários, ou adicione itens ao marcá-los na lista de compras.</string>
+    <string name="pantry_no_results">Nada corresponde a “%1$s”.</string>
+    <string name="pantry_sort_aisle">Ordenar por corredor</string>
+    <string name="pantry_sort_expiry">Ordenar por validade</string>
+    <string name="pantry_in_stock">Em estoque</string>
+    <string name="pantry_out">Acabou</string>
+    <string name="pantry_always_have">Sempre tenho</string>
+    <string name="pantry_always_have_detail">Itens básicos nunca aparecem em “Para comprar”.</string>
+    <string name="pantry_expired">Vencido</string>
+    <string name="pantry_use_by">Consumir até %1$s</string>
+    <string name="pantry_bought">Comprado em %1$s</string>
+    <string name="pantry_edit_title">Editar item</string>
+    <string name="pantry_label_name">Nome</string>
+    <string name="pantry_label_quantity">Quantidade (opcional)</string>
+    <string name="pantry_label_expiry">Data de validade</string>
+    <string name="pantry_no_date">Sem data</string>
+    <string name="action_set_date">Escolher data</string>
+    <string name="action_clear_date">Remover data</string>
+    <string name="snackbar_pantry_out">%1$s acabou</string>
+    <string name="snackbar_added_to_groceries">Adicionado às compras: %1$s</string>
+    <string name="snackbar_pantry_deleted">Excluído: %1$s</string>
+    <string name="what_i_need_title">O que preciso</string>
+    <string name="what_i_need_buy">Para comprar</string>
+    <string name="what_i_need_have">Na sua despensa</string>
+    <string name="what_i_need_note">“Na sua despensa” quer dizer que você tem um pouco, não que tem o suficiente.</string>
+    <string name="what_i_need_nothing_to_buy">Nada para comprar: todos os ingredientes estão na sua despensa.</string>
+    <string name="what_i_need_you_have">Você tem %1$s</string>
+    <string name="what_i_need_added">Adicionado às compras</string>
+    <string name="action_add_to_pantry">Adicionar à despensa</string>
+    <string name="snackbar_offer_pantry">Comprou %1$s. Adicionar à despensa?</string>
+    <string name="snackbar_pantry_restocked">%1$s voltou para a despensa</string>
 </resources>

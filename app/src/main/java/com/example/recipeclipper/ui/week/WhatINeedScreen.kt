@@ -85,7 +85,7 @@ fun WhatINeedScreen(onBack: () -> Unit, viewModel: WhatINeedViewModel = hiltView
                                     ) {
                                         Text(
                                             stringResource(
-                                                if (state.added) R.string.what_i_need_added else R.string.action_add_buy_to_groceries
+                                                if (state.added) R.string.what_i_need_added else R.string.action_add_to_groceries
                                             )
                                         )
                                     }

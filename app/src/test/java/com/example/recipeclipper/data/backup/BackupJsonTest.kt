@@ -69,6 +69,46 @@ class BackupJsonTest {
         assertEquals(" Party food ", backup.lists[4].name)
         assertEquals(7, backup.memberships.size)
         assertEquals(BackupMembership("r-soup", "f-fav", 10), backup.memberships[0])
+
+        // The pantry (#51) and groceries (#50): later sections, no version bump.
+        assertEquals(listOf("p-flour", "p-salt", "p-here", "p-flour2"), backup.pantry.map { it.id })
+        assertEquals(
+            BackupPantryItem("p-flour", " Flour ", "half a bag", "en", "baking", inStock = true, alwaysHave = false,
+                purchasedDay = 20700, expiresDay = 20900, updatedAt = 1789000000000),
+            backup.pantry[0]
+        )
+        val defaults = backup.pantry[3] // absent fields: no dates, no quantity, updatedAt 0
+        assertEquals(false, defaults.inStock)
+        assertEquals(false, defaults.alwaysHave)
+        assertNull(defaults.quantity)
+        assertNull(defaults.expiresDay)
+        assertEquals(0L, defaults.updatedAt)
+
+        assertEquals(listOf("g-tomatoes", "g-apples", "g-beef", "g-milk", "g-here"), backup.groceries.map { it.id })
+        assertEquals(
+            BackupGroceryItem("g-tomatoes", "2 lb tomatoes", "en", "produce", checked = false, recipeId = "r-soup",
+                plannedDay = 20720, updatedAt = 1789000000000),
+            backup.groceries[0]
+        )
+        assertEquals(true, backup.groceries[1].checked)
+        assertNull(backup.groceries[3].recipeId) // names no recipe in the file: none
+    }
+
+    @Test fun `a file without pantry or groceries reads them as empty`() {
+        val backup = decodeOrFail("""{"format": "recipe-clipper-backup", "formatVersion": 1}""")
+        assertTrue(backup.pantry.isEmpty())
+        assertTrue(backup.groceries.isEmpty())
+    }
+
+    @Test fun `a pantry item needs a name, and ids are unique`() {
+        assertEquals(
+            BackupError.Malformed("pantry[0].name"),
+            error("""{"format": "recipe-clipper-backup", "formatVersion": 1, "pantry": [{"id": "p", "name": " "}]}""")
+        )
+        assertEquals(
+            BackupError.Malformed("groceries[1].id"),
+            error("""{"format": "recipe-clipper-backup", "formatVersion": 1, "groceries": [{"id": "g", "text": "a"}, {"id": "g", "text": "b"}]}""")
+        )
     }
 
     @Test fun `a newer format version is refused before anything else is read`() {
