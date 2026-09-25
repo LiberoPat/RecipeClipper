@@ -1,12 +1,19 @@
 {
   "schemaVersion": 1,
   "language": "ja",
-  "about": "IngredientScaler's and UnitConverter's amount words. mixedJoiners: regex fragments for the word between a whole number and its fraction ('2 and 1/2', '1 and ½'); in Japanese a character with no spaces ('2と1/2', '2・1/2'). continuation: regex fragments, each ending in its own whitespace, that join the two parts of a compound amount ('1 cup plus 2 tbsp'); the '+' is in the code. sizes: regex fragments, each ending in its own boundary, for what makes a number a size rather than an amount ('1-inch piece'); '%', 'cm' and 'mm' are in the code. thousandsDot: true where the language writes thousands with a dot. spelledHalves: regex fragments for a half written as words after the number ('1半丁'), which the amount pattern can't read: the line stays as written. amountAfterName: true where a line is the name, a space, then the amount ('鶏もも肉 2枚（約700g）', 'だし汁 2と1/2カップ', '醤油 大さじ1'), read by TrailingAmount; missing means false. beforeNumber: regex fragments that may stand before the amount's number without being a unit (各 'each', 約 'about', and 大, 中, 小 'large', 'medium', 'small', which Cookpad also writes for 大さじ and 小さじ): the number scales, but with no unit it never converts.",
+  "about": "IngredientScaler's and UnitConverter's amount words. mixedJoiners: regex fragments for the word between a whole number and its fraction ('2 and 1/2', '1 and ½'); in Japanese a character with no spaces ('2と1/2', '2・1/2'). continuation: regex fragments, each ending in its own whitespace, that join the two parts of a compound amount ('1 cup plus 2 tbsp'); the '+' is in the code. sizes: regex fragments, each ending in its own boundary, for what makes a number a size rather than an amount ('1-inch piece'); '%', 'cm' and 'mm' are in the code. thousandsDot: true where the language writes thousands with a dot. spelledHalves: regex fragments for a half written as words after the number ('1半丁'), which the amount pattern can't read: the line stays as written. amountAfterName: true where a line is the name, a space, then the amount ('鶏もも肉 2枚（約700g）', 'だし汁 2と1/2カップ', '醤油 大さじ1'), read by TrailingAmount; missing means false. beforeNumber: regex fragments that may stand before the amount's number without being a unit (各 'each', 約 'about', and 大, 中, 小 'large', 'medium', 'small', which Cookpad also writes for 大さじ and 小さじ): the number scales, but with no unit it never converts. alternatives: regex fragments, each ending in its own whitespace, for a word before a second amount that stands for the whole ('1 cup butter or 1/2 cup oil'); that amount needs a unit, or the line stays as written when scaled (#61). additions and subtractions: the same for a second part added or taken away later in the line ('2 eggs plus 3 yolks', '2 cups minus 2 tbsp'), where a count scales too; the '+' is in the code (#62). subtractions straight after the unit also make the converter subtract. unitPrefixes: regex fragments, each ending in its own whitespace, for a word allowed between the number and its unit when deciding whether the amount is a measure ('¾ de taza'). approximately, perItem and containers read a total in brackets after the name (#63): '(about 1/4 cup)' is a total, '(8 oz each)' and a bracket straight after a container word ('1 can (14 oz)') are package sizes that never scale; '~' and '≈' are in the code. A word missing here only costs scaling: a bracket it would have explained leaves the line as written.",
   "mixedJoiners": ["と", "・"],
   "continuation": [],
   "sizes": [],
   "thousandsDot": false,
   "spelledHalves": ["半"],
   "amountAfterName": true,
-  "beforeNumber": ["各", "約", "大", "中", "小"]
+  "beforeNumber": ["各", "約", "大", "中", "小"],
+  "alternatives": [],
+  "additions": [],
+  "subtractions": [],
+  "unitPrefixes": [],
+  "approximately": [],
+  "perItem": [],
+  "containers": []
 }

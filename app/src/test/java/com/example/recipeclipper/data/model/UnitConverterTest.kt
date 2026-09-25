@@ -309,4 +309,32 @@ class UnitConverterTest {
         // Neither half in the target unit: the calculated range replaces both.
         assertEquals("225 - 285 g spaghetti", metric("8 - 10 oz / 1/2 - 5/8 lb spaghetti"))
     }
+
+    // --- Alternatives, compound parts and totals after the name (#61, #62, #63) ---
+
+    @Test fun `each alternative converts, or the line stays as written`() {
+        assertEquals("225 g butter or 240 ml vegetable oil", metric("8 oz butter or 1 cup vegetable oil"))
+        // The oil is a liquid Ounces leaves alone, so the butter can't convert alone either.
+        assertEquals("8 oz butter or 1 cup vegetable oil", ounces("8 oz butter or 1 cup vegetable oil"))
+        assertEquals("8 oz butter or 7 3/4 oz vegetable oil", ounces("8 oz butter or 1 cup vegetable oil", liquids = true))
+        // A count is fine as it is.
+        assertEquals("2 vanilla pods or 5 ml vanilla extract", metric("2 vanilla pods or 1 tsp vanilla extract"))
+    }
+
+    @Test fun `a part taken away is subtracted`() {
+        assertEquals("450 ml milk", metric("2 cups minus 2 tbsp milk"))
+        assertEquals("395 g butter", metric("1 lb minus 2 oz butter"))
+        // A part that can't convert keeps the whole line.
+        assertEquals("2 cups minus 2 tbsp mystery", ounces("2 cups minus 2 tbsp mystery"))
+    }
+
+    @Test fun `a total after the name is the site's figure`() {
+        assertEquals("250 g flour", metric("2 cups flour (250 g)"))
+        assertEquals("8 3/4 oz flour, sifted", ounces("2 cups flour (250 g), sifted"))
+        assertEquals("240 ml milk", metric("1 cup milk (about 240 ml)"))
+        // Not the target's kind of measure: it stays beside the converted amount.
+        assertEquals("285 g unsalted butter (2 1/2 sticks)", metric("1 1/4 cups unsalted butter (2 1/2 sticks)"))
+        // A package size is never the line's amount.
+        assertEquals("2 cans (15 oz) beans", metric("2 cans (15 oz) beans"))
+    }
 }

@@ -25,7 +25,13 @@ import kotlin.math.round
  * - Bare "oz" is a weight, unless the ingredient is a known liquid, where it means fl oz.
  * - A compound amount ("1 cup plus 2 tbsp flour") is converted as a whole or not at all:
  *   an alternate measure after the second part is used for the total, otherwise both parts
- *   are converted and summed, and if either can't be the line is left as written.
+ *   are converted and summed ("minus 2 tbsp" is subtracted, #62), and if either can't be the
+ *   line is left as written.
+ * - A total in brackets after the name ("1 ⅔ cups bread flour (8 ½ ounces)", #63) is the site's
+ *   figure too, and is dropped once it is the line's amount. A package size never is.
+ * - Alternatives ("8 oz butter or 1 cup oil", #61) and later parts ("plus 2 tbsp") each convert,
+ *   or the line is left as written; an amount with no unit, or already in the system's units,
+ *   is fine as it is.
  * - "1,5 kg" is 1.5 kg and converts with a comma ("1,13 kg"); "1,500 g" could be 1.5 g or
  *   1500 g, so a line holding a comma before three digits is left as written.
  */
@@ -68,16 +74,17 @@ object UnitConverter {
             RegexOption.IGNORE_CASE
         )
 
-        // "plus 1 Tbsp." straight after the first unit. groups: 1 quantity, 2 space, 3 unit
+        // "plus 1 Tbsp." or "minus 2 tablespoons" straight after the first unit.
+        // groups: 1 a subtraction's word, 2 quantity, 3 space, 4 unit
         val continuationAtStart = Regex(
-            """^\s*${scaler.continuation}(${scaler.qty})(\s*)${units.captured}""",
+            """^\s*(?:${scaler.continuation}|(${scaler.subtraction}))(${scaler.qty})(\s*)${units.captured}""",
             RegexOption.IGNORE_CASE
         )
     }
 
     internal fun patterns(words: LanguageWords): Patterns = words.compiled(Patterns::class) { Patterns(it) }
 
-    /** The second half of a compound amount, "plus 2 tbsp". */
+    /** The second half of a compound amount, "plus 2 tbsp"; negative for "minus 2 tbsp". */
     private class Part(val quantity: Double, val unit: MeasureUnit)
 
     /** A second measure written next to the first: [base] is grams or ml, [text] as written. */
@@ -105,30 +112,61 @@ object UnitConverter {
         val p = patterns(words)
         if (p.scaler.amountAfterName) return convertTrailing(line, system, includeLiquids, words)
         if (p.scaler.unreadable(line)) return line
+        val comma = IngredientScaler.DECIMAL_COMMA.containsMatchIn(separatorFrom)
 
-        val lead = p.scaler.leading.find(line) ?: return line
+        // "1 cup butter or 1/2 cup oil" (#61): every amount converts, or the line stays as written.
+        // An amount with no unit ("2 vanilla pods") or already in the system's units is fine as it is.
+        val sides = IngredientScaler.sides(p.scaler, line)?.takeIf { it.size > 1 }
+            ?: return (convertSide(p, line, system, includeLiquids, comma) as? Side.Converted)?.text ?: line
+        val converted = sides.map { convertSide(p, line.substring(it), system, includeLiquids, comma) }
+        if (Side.Failed in converted || converted.none { it is Side.Converted }) return line
+        return buildString {
+            sides.forEachIndexed { i, range ->
+                append((converted[i] as? Side.Converted)?.text ?: line.substring(range))
+                append(line, range.last + 1, sides.getOrNull(i + 1)?.first ?: line.length)
+            }
+        }
+    }
+
+    /** One amount of a line, converted. */
+    private sealed class Side {
+        class Converted(val text: String) : Side()
+
+        /** Nothing to convert: a count, or already in the system's units. */
+        object AsItIs : Side()
+
+        /** An amount this system can't show honestly: the whole line stays as written. */
+        object Failed : Side()
+    }
+
+    private fun convertSide(p: Patterns, line: String, system: UnitSystem, includeLiquids: Boolean, comma: Boolean): Side {
+        val words = p.words
+        val lead = p.scaler.leading.find(line) ?: return Side.Failed
         val afterQty = line.substring(lead.range.last + 1)
-        if (p.scaler.notAnAmount.containsMatchIn(afterQty)) return line
+        if (p.scaler.notAnAmount.containsMatchIn(afterQty)) return Side.Failed
 
-        val low = p.scaler.parse(lead.groupValues[2]) ?: return line
+        val low = p.scaler.parse(lead.groupValues[2]) ?: return Side.Failed
         val upperText = lead.groupValues[4]
-        val high = if (upperText.isEmpty()) null else p.scaler.parse(upperText) ?: return line
+        val high = if (upperText.isEmpty()) null else p.scaler.parse(upperText) ?: return Side.Failed
         val amount = Amount(low, high, lead.groupValues[3])
 
-        val unitMatch = p.unitAtStart.find(afterQty) ?: return line
-        val unit = MeasureUnit.fromText(unitMatch.groupValues[1], words) ?: return line
+        val unitMatch = p.unitAtStart.find(afterQty) ?: return Side.AsItIs
+        val unit = MeasureUnit.fromText(unitMatch.groupValues[1], words) ?: return Side.AsItIs
+        if (unit in ownUnits(system)) return Side.AsItIs
         // A "tasse" or "Tasse" has no one size: it scales, but never converts.
-        if (unit == MeasureUnit.VARIES || unit in ownUnits(system)) return line
+        if (unit == MeasureUnit.VARIES) return Side.Failed
 
         var after = afterQty.substring(unitMatch.range.last + 1)
 
         // "1½ cups plus 1 Tbsp.": converting only the first part would be confidently wrong.
+        // "2 cups minus 2 tablespoons" takes the second part away (#62).
         var extra: Part? = null
         p.continuationAtStart.find(after)?.let { c ->
-            if (amount.high != null) return line // a range plus a part: leave it
-            val unit2 = MeasureUnit.fromText(c.groupValues[3], words)?.takeIf { it != MeasureUnit.VARIES } ?: return line
-            val quantity2 = p.scaler.parse(c.groupValues[1]) ?: return line
-            extra = Part(quantity2, unit2)
+            if (amount.high != null) return Side.Failed // a range plus a part: leave it
+            val unit2 = MeasureUnit.fromText(c.groupValues[4], words)?.takeIf { it != MeasureUnit.VARIES }
+                ?: return Side.Failed
+            val quantity2 = p.scaler.parse(c.groupValues[2]) ?: return Side.Failed
+            extra = Part(if (c.groupValues[1].isEmpty()) quantity2 else -quantity2, unit2)
             after = after.substring(c.range.last + 1)
         }
 
@@ -137,17 +175,28 @@ object UnitConverter {
         var siteRange: Pair<MeasureUnit, String>? = null
         if (extra == null) {
             p.slashRangeAtStart.find(after)?.let { r ->
-                val rangeUnit = MeasureUnit.fromText(r.groupValues[5], words) ?: return line
+                val rangeUnit = MeasureUnit.fromText(r.groupValues[5], words) ?: return Side.Failed
                 if (p.scaler.parse(r.groupValues[1]) == null ||
                     p.scaler.parse(r.groupValues[3]) == null
-                ) return line
+                ) return Side.Failed
                 siteRange = rangeUnit to r.value.substringAfter('/').trim()
                 after = after.substring(r.range.last + 1)
             }
         }
 
-        val alternate = if (siteRange == null) findAlternate(p, after) else null
+        var alternate = if (siteRange == null) findAlternate(p, after) else null
         if (alternate != null) after = after.substring(alternate.length)
+        // "1 ⅔ cups bread flour (8 ½ ounces)": the site's total after the name (#63), used like
+        // "(120 g)" after the unit, and dropped when it becomes the line's amount.
+        var total: IngredientScaler.Bracket? = null
+        if (alternate == null && siteRange == null) {
+            total = IngredientScaler.brackets(after).firstOrNull { b ->
+                IngredientScaler.kind(
+                    p.scaler, after.substring(0, b.start), after.substring(b.contentStart, b.contentEnd), true, false
+                ) == IngredientScaler.BracketKind.TOTAL
+            }
+            alternate = total?.let { alternateIn(p, after.substring(it.contentStart, it.contentEnd)) }
+        }
 
         val density = IngredientDensities.find(after, words)
         val isLiquid = density?.liquid == true
@@ -155,13 +204,13 @@ object UnitConverter {
         val extraPart = extra?.let {
             Part(it.quantity, if (it.unit == MeasureUnit.OZ && isLiquid) MeasureUnit.FL_OZ else it.unit)
         }
-        if (effective == MeasureUnit.STICK && density?.stickable != true) return line
-        if (extraPart?.unit == MeasureUnit.STICK && density?.stickable != true) return line
+        if (effective == MeasureUnit.STICK && density?.stickable != true) return Side.Failed
+        if (extraPart?.unit == MeasureUnit.STICK && density?.stickable != true) return Side.Failed
 
         val anyVolume = effective.kind == MeasureKind.VOLUME || extraPart?.unit?.kind == MeasureKind.VOLUME
         val allVolume = effective.kind == MeasureKind.VOLUME &&
                 (extraPart == null || extraPart.unit.kind == MeasureKind.VOLUME)
-        if (system != UnitSystem.METRIC && anyVolume && isLiquid && !includeLiquids) return line
+        if (system != UnitSystem.METRIC && anyVolume && isLiquid && !includeLiquids) return Side.Failed
 
         // METRIC keeps volumes as ml unless the ingredient is a known solid, which is weighed,
         // or the site wrote its own weight beside a non-liquid ("1 tsp (4 g) salt"). A range has
@@ -178,15 +227,22 @@ object UnitConverter {
             }
         }?.second
 
-        val calculated = if (asWeight) {
-            weightAmount(amount, effective, extraPart, density, alternate?.weight, isLiquid, system)
+        // A range has no single figure to borrow, and "(8 oz)" beside a liquid means fl oz.
+        val used = if (asWeight) {
+            alternate?.weight?.takeIf { amount.high == null && !(it.unit == MeasureUnit.OZ && isLiquid) }
         } else {
-            volumeAmount(amount, effective, extraPart, alternate?.volume)
+            alternate?.volume?.takeIf { amount.high == null }
         }
-        val converted = site ?: calculated ?: return line
-
-        val comma = IngredientScaler.DECIMAL_COMMA.containsMatchIn(separatorFrom)
-        return lead.groupValues[1] + IngredientScaler.withSeparator(converted, comma) + after
+        val calculated = if (asWeight) {
+            weightAmount(amount, effective, extraPart, density, used, isLiquid, system)
+        } else {
+            volumeAmount(amount, effective, extraPart, used)
+        }
+        val converted = site ?: calculated ?: return Side.Failed
+        if (total != null && used != null) {
+            after = after.substring(0, total.start).trimEnd() + after.substring(total.end)
+        }
+        return Side.Converted(lead.groupValues[1] + IngredientScaler.withSeparator(converted, comma) + after)
     }
 
     /**
@@ -275,13 +331,8 @@ object UnitConverter {
 
     private fun findAlternate(p: Patterns, after: String): Alternate? {
         PAREN_AT_START.find(after)?.let { m ->
-            val pairs = p.scaler.qtyUnit.findAll(m.groupValues[1]).toList()
-            if (pairs.isEmpty()) return null // e.g. "(packed)": not a measure, leave it
-            return Alternate(
-                weight = pairs.firstNotNullOfOrNull { measureOf(p, it, MeasureKind.WEIGHT) },
-                volume = pairs.firstNotNullOfOrNull { measureOf(p, it, MeasureKind.VOLUME) },
-                length = m.value.length
-            )
+            // e.g. "(packed)": not a measure, leave it
+            return alternateIn(p, m.groupValues[1], m.value.length)
         }
         p.slashAtStart.find(after)?.let { m ->
             val text = m.value.substringAfter('/').trim()
@@ -293,6 +344,17 @@ object UnitConverter {
             )
         }
         return null
+    }
+
+    /** The measures in a bracket's [content]; null when it holds none. */
+    private fun alternateIn(p: Patterns, content: String, length: Int = 0): Alternate? {
+        val pairs = p.scaler.qtyUnit.findAll(content).toList()
+        if (pairs.isEmpty()) return null
+        return Alternate(
+            weight = pairs.firstNotNullOfOrNull { measureOf(p, it, MeasureKind.WEIGHT) },
+            volume = pairs.firstNotNullOfOrNull { measureOf(p, it, MeasureKind.VOLUME) },
+            length = length
+        )
     }
 
     /** A weight (g, kg, oz, lb) or a metric volume (ml, cl, dl, l) from a "quantity unit" match. */

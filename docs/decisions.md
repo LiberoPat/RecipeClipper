@@ -1192,10 +1192,9 @@ lines in the differential corpus, with a `lang:` argument.
   strength in degrees.
 - **Left as written, on purpose:** GialloZafferano's trailing amounts
   ("Burro 100 g"), which can't be read without a guess.
-- **Not handled yet:** totals in parentheses after the name ("¾ de taza de
-  queso crema (180 g.)" scales the cups but not the grams, as in English) and
-  French space thousands ("1 500 g", not seen on a site yet, would scale as
-  "1").
+- **Not handled yet:** French space thousands ("1 500 g", not seen on a site
+  yet, would scale as "1"). Totals in parentheses after the name ("¾ de taza
+  de queso crema (180 g.)") were fixed by #63, below.
 
 ## Editing a recipe, and typing one in (#29)
 
@@ -1468,3 +1467,54 @@ approved as a mock-up (six frames); the owner's nine decisions are in the issue'
   selection by script in a real WebView; iOS's `ClipUITests` taps buttons on the fixture page
   (`UITestSeeding.clipFixtureHTML`) that select by script, since XCUITest can't drag a web
   selection reliably. Either way the app hears it through the page's `selectionchange`.
+
+## Alternatives, second parts and totals after the name (#61, #62, #63)
+
+The #33 collection of real lines found three shapes where the leading amount
+scaled and a second amount on the same line didn't, so the line showed two
+figures that disagreed. Each is now scaled with the line, or the whole line is
+left as written; never half.
+
+- **Sides.** `IngredientScaler` reads a line as sides: the leading amount, then
+  any amount after a joining word (`amounts.json` `alternatives`, `additions`,
+  `subtractions`, plus the "+" symbol). A joining word counts only outside
+  brackets or right after one opens, so "(or 1/2 cup oil)" is an alternative
+  and the "or" in "1 can (14 oz or 400 g)" is not. Every side scales, or the
+  line stays as written.
+- **Alternatives (#61).** The amount after "or" must have a unit: "or 1 tsp
+  vanilla extract" scales, "or 2 small onions" and German "(alternativ: 1
+  Pck. …)" keep the line as written, since a bare count after "or" is as often
+  a size as an amount. "use" is deliberately not an alternative word; King
+  Arthur's "(use 1/2 teaspoon salt if you use salted butter)" stays as written
+  through the bracket rule below instead. The converter converts each side or
+  none; a side with no unit or already in the target units is fine as it is,
+  and each side finds its density in its own name, so "melted butter or 1/4
+  cup (50g) vegetable oil" is weighed as butter and measured as oil.
+- **Second parts (#62).** A part later in the line ("2 large eggs plus 3 large
+  egg yolks", "+ 1 cucchiaio") scales, counts included. "minus" straight after
+  the unit is a compound whose second part is subtracted when converting; a
+  negative or unconvertible result leaves the line as written.
+- **Totals after the name (#63).** A bracket after the name is a total only
+  when the side is a measure (it has a unit) and the bracket holds nothing but
+  an amount: an optional "about" word (`approximately`; "~" and "≈" in code),
+  a quantity or range and unit, optionally "/" and a second one, optionally a
+  trailing period ("(180 g.)"). A total scales, and when converting it is the
+  site's figure, dropped from the line once it has become the amount.
+  A count's bracket ("4 Apfel (ca. 800g)", "1 patate douce (300-400 g)") may
+  be each item's weight, so it is never a total. Package sizes never scale:
+  a bracket straight after the count ("2 (15-ounce) cans") or a container word
+  ("1 can (14 oz)"), a count of 1 that starts with a container ("1 lata leite
+  condensado (397 g)"), or a per-item word ("each", "per"). Any other bracket
+  holding an amount with a unit is unsure, and the whole line stays as written
+  when scaled; brackets with no unit ("(Note 2)", "(2 medium)") are ignored as
+  before.
+- **Words are per language and only where confident:** en or/plus/minus;
+  de oder, alternativ; es o, más; fr ou; it o, oppure; pt ou; each language's
+  "about", per-item and container words. A missing word only costs scaling:
+  the bracket it would have explained leaves the line as written. Spanish
+  `unitPrefixes` ("de") makes "¾ de taza" a measure for the bracket rule only;
+  the converter still leaves "de taza" lines as written.
+- **Corpus rows that changed:** only "100 gr di yogurt greco … + 1 cucchiaio"
+  (it): the "+ 1 cucchiaio" now scales with the grams, and in Metric becomes
+  "+ 15 ml"; Ounces, which can't weigh a nameless spoonful, now leaves the
+  line as written instead of converting only the grams.
