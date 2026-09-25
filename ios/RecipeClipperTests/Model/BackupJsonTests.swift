@@ -94,12 +94,43 @@ final class BackupJsonTests: XCTestCase {
         ))
         XCTAssertTrue(backup.groceries[1].checked)
         XCTAssertNil(backup.groceries[3].recipeId)
+
+        // The meal plan (#49): meal types and entries, later sections too.
+        XCTAssertEqual(backup.mealTypes.map(\.id), ["t-dinner", "t-brunch", "t-fakedinner", "t-tea"])
+        XCTAssertEqual(backup.mealTypes[0], BackupMealType(id: "t-dinner", name: "Dinner", builtInKey: "dinner", sortOrder: 2, updatedAt: 1))
+        XCTAssertEqual(backup.mealTypes[2], BackupMealType(id: "t-fakedinner", name: "Dinner", builtInKey: nil, sortOrder: 5, updatedAt: 0))
+        XCTAssertEqual(backup.mealPlan.map(\.id), ["m-soup", "m-old", "m-note", "m-pie", "m-missing", "m-here"])
+        XCTAssertEqual(backup.mealPlan[0], BackupPlanEntry(
+            id: "m-soup", day: 20720, mealTypeId: "t-dinner", recipeId: "r-soup", servings: 6, note: nil, sortOrder: 0,
+            updatedAt: 1789000000000
+        ))
+        XCTAssertEqual(backup.mealPlan[2], BackupPlanEntry(
+            id: "m-note", day: 20721, mealTypeId: nil, recipeId: nil, servings: nil, note: "Leftovers", sortOrder: 1, updatedAt: 3
+        ))
+        XCTAssertNil(backup.mealPlan[4].recipeId)
     }
 
     func testAFileWithoutPantryOrGroceriesReadsThemAsEmpty() throws {
         let backup = try decodeOrFail(#"{"format": "recipe-clipper-backup", "formatVersion": 1}"#)
         XCTAssertTrue(backup.pantry.isEmpty)
         XCTAssertTrue(backup.groceries.isEmpty)
+        XCTAssertTrue(backup.mealTypes.isEmpty)
+        XCTAssertTrue(backup.mealPlan.isEmpty)
+    }
+
+    func testAPlannedMealNeedsADayAMealTypeANameAndIdsAreUnique() {
+        XCTAssertEqual(
+            error(#"{"format": "recipe-clipper-backup", "formatVersion": 1, "mealPlan": [{"id": "m", "note": "x"}]}"#),
+            .malformed("mealPlan[0].day")
+        )
+        XCTAssertEqual(
+            error(#"{"format": "recipe-clipper-backup", "formatVersion": 1, "mealTypes": [{"id": "t", "name": ""}]}"#),
+            .malformed("mealTypes[0].name")
+        )
+        XCTAssertEqual(
+            error(#"{"format": "recipe-clipper-backup", "formatVersion": 1, "mealPlan": [{"id": "m", "day": 1}, {"id": "m", "day": 2}]}"#),
+            .malformed("mealPlan[1].id")
+        )
     }
 
     func testAPantryItemNeedsANameAndIdsAreUnique() {

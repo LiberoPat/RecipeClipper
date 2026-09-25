@@ -11,6 +11,7 @@ import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ExportedBackup
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.entity.GroceryItemEntity
+import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
@@ -115,6 +116,41 @@ class BackupDaoTest {
             val again = (repo(other).import(exported.json) as BackupResult.Success).value
             assertEquals(0, again.pantryAdded)
             assertEquals(0, again.groceriesAdded)
+        } finally {
+            other.close()
+        }
+    }
+
+    /** The meal plan (#49) goes into the file and comes back: a recipe's meal keeps its recipe, a user's type is created once. */
+    @Test
+    fun mealPlanRoundTrip() = runBlocking {
+        val id = db.recipeDao().upsert(recipe("https://example.com/a"), 50)
+        val plan = db.mealPlanDao()
+        val brunch = plan.addType("Brunch", now = 1)
+        val dinner = plan.observeMealTypes().first().single { it.builtInKey == "dinner" }.id
+        plan.add(MealPlanEntryEntity(day = 20_001, mealTypeId = dinner, recipeId = id, servings = 3, note = null, sortOrder = 0, updatedAt = 5))
+        plan.add(MealPlanEntryEntity(day = 20_002, mealTypeId = brunch, recipeId = null, servings = null, note = "Pancakes", sortOrder = 0, updatedAt = 6))
+
+        val exported = (repo(db).export() as BackupResult.Success<ExportedBackup>).value
+        val other = open()
+        try {
+            val summary = (repo(other).import(exported.json) as BackupResult.Success).value
+            assertEquals(2, summary.mealsAdded)
+            assertEquals(1, summary.mealTypesAdded)
+
+            val types = other.mealPlanDao().observeMealTypes().first()
+            val meals = other.mealPlanDao().observeDays(20_000, 20_010).first()
+            assertEquals(listOf(20_001L, 20_002L), meals.map { it.day })
+            assertEquals(types.single { it.builtInKey == "dinner" }.id, meals[0].mealTypeId)
+            assertEquals(other.recipeDao().findByUrl("https://example.com/a")!!.id, meals[0].recipeId)
+            assertEquals(3, meals[0].servings)
+            assertEquals(types.single { it.name == "Brunch" }.id, meals[1].mealTypeId)
+            assertEquals("Pancakes", meals[1].note)
+
+            // Again: everything is already there.
+            val again = (repo(other).import(exported.json) as BackupResult.Success).value
+            assertEquals(0, again.mealsAdded)
+            assertEquals(0, again.mealTypesAdded)
         } finally {
             other.close()
         }

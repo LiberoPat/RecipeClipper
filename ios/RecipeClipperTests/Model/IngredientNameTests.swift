@@ -54,15 +54,39 @@ final class IngredientNameTests: XCTestCase {
         XCTAssertNil(IngredientName.of("Juice of 1 lemon"))
     }
 
-    // matches by the end of the name, as the density table does
-    func testMatchesByTheEndOfTheNameAsTheDensityTableDoes() {
+    // matches only the same ingredient, with plain modifiers
+    func testMatchesOnlyTheSameIngredientWithPlainModifiers() {
         XCTAssertTrue(IngredientName.matches("unsalted butter", "butter"))
         XCTAssertTrue(IngredientName.matches("Butter", "unsalted butter"))
         XCTAssertTrue(IngredientName.matches("flour", "flour"))
+        XCTAssertTrue(IngredientName.matches("all-purpose flour", "flour"))
+        XCTAssertTrue(IngredientName.matches("extra virgin olive oil", "olive oil"))
+        XCTAssertTrue(IngredientName.matches("large eggs", "eggs"))
         XCTAssertFalse(IngredientName.matches("butter beans", "butter"))
         XCTAssertFalse(IngredientName.matches("flour tortillas", "flour"))
         XCTAssertFalse(IngredientName.matches("", "butter"))
         XCTAssertFalse(IngredientName.matches("buttermilk", "milk"))
+    }
+
+    // a compound name never matches its shorter head noun, either way
+    func testACompoundNameNeverMatchesItsShorterHeadNounEitherWay() throws {
+        let pairs = [
+            ("rice flour", "flour"), ("almond flour", "flour"), ("peanut butter", "butter"),
+            ("apple butter", "butter"), ("condensed milk", "milk"), ("coconut milk", "milk"),
+            ("brown sugar", "sugar"), ("whole milk", "milk"), ("salted butter", "unsalted butter"),
+        ]
+        for (compound, head) in pairs {
+            XCTAssertFalse(IngredientName.matches(compound, head), "\(compound) / \(head)")
+            XCTAssertFalse(IngredientName.matches(head, compound), "\(head) / \(compound)")
+        }
+        let de = try XCTUnwrap(LanguageWords.forTag("de"))
+        XCTAssertTrue(IngredientName.matches("ungesalzene Butter", "Butter", words: de))
+        XCTAssertFalse(IngredientName.matches("Erdnuss Butter", "Butter", words: de))
+        let fr = try XCTUnwrap(LanguageWords.forTag("fr"))
+        XCTAssertFalse(IngredientName.matches("farine de riz", "riz", words: fr))
+        let ja = try XCTUnwrap(LanguageWords.forTag("ja"))
+        XCTAssertTrue(IngredientName.matches("無塩バター", "バター", words: ja))
+        XCTAssertFalse(IngredientName.matches("ピーナッツバター", "バター", words: ja))
     }
 
     // render scales, then converts with the line's own separator
