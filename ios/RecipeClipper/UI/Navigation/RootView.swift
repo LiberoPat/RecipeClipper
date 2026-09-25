@@ -137,7 +137,13 @@ struct RootView: View {
             ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in WhatINeedScreen(vm: vm) }
         case .recipes:
             ScreenHost(container.makeRecipesViewModel) { vm in
-                RecipesScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
+                // The + menu: "Type a recipe" is Home's "+ New recipe"; "Paste a link" is Home's field.
+                RecipesScreen(
+                    vm: vm,
+                    onOpenRecipe: { push(.recipe(id: $0)) },
+                    onNewRecipe: { push(.editRecipe(id: nil)) },
+                    onOpenUrl: { push(.importUrl($0)) }
+                )
             }
         case .settings:
             ScreenHost(container.makeSettingsViewModel) { vm in

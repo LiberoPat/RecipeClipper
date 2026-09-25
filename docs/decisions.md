@@ -1788,3 +1788,31 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
   unless its uid is already here (then it's left as it is, never merged or renamed); its meals
   follow the plan's rules (a recipe meal needs its recipe, a note always comes in, no meal type
   means Dinner), its recipes come in like listed ones, and a menu left with no meals is dropped.
+
+## The Recipes screen (#102)
+
+- **Owner's decision:** a Paprika-style Recipes screen *replaces* History
+  rather than sitting beside it: two lists of the same recipes, one searchable
+  and one not, would only ask "which one is it in?". It keeps everything
+  History did (newest viewed first, `instr(lower(…))` search, swipe to delete
+  with one undo per burst), and the route is `recipes` (was `history`; only
+  Home navigated to it, so no alias). Home's row says "Recipes"; the rest of
+  Home is unchanged, "+ New recipe" included.
+- **The + opens a two-item menu,** not a screen: "Type a recipe" is the #29
+  editor as it already was; "Paste a link" is a small dialog whose Go is
+  enabled only for what Home's link field would accept (`UrlInput`), then the
+  usual import route. No clipboard is read unasked: Android shows a toast and
+  iOS a permission prompt on every read.
+- **A typed-in recipe is never culled,** like a listed one, and doesn't count
+  toward the 50: a parsed recipe that falls out of history can come back by
+  sharing its link again, a typed one can't. The rule is the column
+  (`contentOrigin = 'MANUAL'` in the cull's SQL), not the `manual:` link; an
+  import treats typed-in recipes as listed. No schema change: #29 already
+  stored them with a synthetic `manual:<uuid>` `sourceUrl`. #107's free-tier
+  limit will replace the 50 cap later; this rule is one more protected kind
+  for it to count or exempt.
+- **Sort** (Recently viewed, Name, Date added) is in memory, like the
+  pantry's, and done in the ViewModel over what the query returns. Name uses
+  the phone's collation; Date added is newest id first, which works because
+  `recipes.id` is AUTOINCREMENT on both platforms (never reused), so no
+  `createdAt` column or migration was needed.

@@ -4,12 +4,22 @@ import Observation
 
 /// `recipes` is nil until the database has answered, to tell "loading" from "nothing
 /// matched". `pendingDeletes` holds the titles swiped away but not yet settled, newest last,
-/// for the undo snackbar.
+/// for the undo snackbar. `linkInput` is the "Paste a link" alert's text, shown while
+/// `pastingLink`.
 struct RecipesUiState: Equatable {
     var query = ""
     var recipes: [RecipeSummary]?
     var pendingDeletes: [String] = []
+    var sort: RecipeSort = .recentlyViewed
+    var pastingLink = false
+    var linkInput = ""
+
+    /// The alert's Go is enabled only for what Home's link field would open.
+    var canOpenLink: Bool { UrlInput.normalize(linkInput) != nil }
 }
+
+/// How the Recipes screen orders its rows (#102). Held in memory, like the pantry's sort.
+enum RecipeSort: CaseIterable { case recentlyViewed, name, dateAdded }
 
 @MainActor
 @Observable
@@ -23,6 +33,8 @@ final class RecipesViewModel {
     @ObservationIgnored private var debounceTask: Task<Void, Never>?
     @ObservationIgnored private var appliedQuery: String?
     @ObservationIgnored private var historySubscription: AnyCancellable?
+    /// What the database last answered, in its own order, so a new sort needs no new query.
+    @ObservationIgnored private var found: [RecipeSummary]?
 
     // What swipe-to-delete captured, keyed by recipe id and kept in swipe order, so a second
     // swipe within the snackbar's few seconds cannot overwrite the first and strand it.
@@ -51,7 +63,53 @@ final class RecipesViewModel {
             self.appliedQuery = query
             self.historySubscription = self.repository.observeHistory(query: query)
                 .receive(on: DispatchQueue.main)
-                .sink { [weak self] recipes in self?.uiState.recipes = recipes }
+                .sink { [weak self] recipes in
+                    guard let self else { return }
+                    self.found = recipes
+                    self.uiState.recipes = Self.sorted(recipes, self.uiState.sort)
+                }
+        }
+    }
+
+    func onSortChange(_ sort: RecipeSort) {
+        uiState.sort = sort
+        if let found { uiState.recipes = Self.sorted(found, sort) }
+    }
+
+    /// "Paste a link" from the + menu: opens the alert, empty.
+    func onPasteLink() {
+        uiState.linkInput = ""
+        uiState.pastingLink = true
+    }
+
+    func onLinkChange(_ text: String) { uiState.linkInput = text }
+
+    /// The alert went away by itself. Only the flag is cleared, as with a list's rename:
+    /// SwiftUI may run Go's action before or after resetting the binding.
+    func onLinkDismissed() { uiState.pastingLink = false }
+
+    /// The link to import, closing the alert; nil, and the alert stays, if it isn't one.
+    func onOpenLink() -> String? {
+        guard let url = UrlInput.normalize(uiState.linkInput) else { return nil }
+        uiState.pastingLink = false
+        uiState.linkInput = ""
+        return url
+    }
+
+    /// `recipes`, which the database gives newest viewed first, in `sort`'s order. Name follows
+    /// the phone's language; Date added is newest first by id, which only ever grows
+    /// (AUTOINCREMENT). Ties keep recency. Android's `RecipesViewModel.sorted`.
+    static func sorted(_ recipes: [RecipeSummary], _ sort: RecipeSort) -> [RecipeSummary] {
+        switch sort {
+        case .recentlyViewed:
+            return recipes
+        case .name:
+            return recipes.enumerated().sorted { a, b in
+                let order = a.element.title.localizedCompare(b.element.title)
+                return order == .orderedSame ? a.offset < b.offset : order == .orderedAscending
+            }.map(\.element)
+        case .dateAdded:
+            return recipes.sorted { $0.id > $1.id }
         }
     }
 

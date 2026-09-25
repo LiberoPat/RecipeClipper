@@ -156,6 +156,59 @@ final class RecipesViewModelTests: XCTestCase {
         XCTAssertEqual(repository.restoreCalls, [a, b])
     }
 
+    // MARK: - Sort and Paste a link (#102)
+
+    private let unsorted = [testSummary(2, title: "Bread"), testSummary(3, title: "apple pie"), testSummary(1, title: "Cake")]
+
+    func testRecentlyViewedIsTheDefaultOrderAsTheRepositoryGivesIt() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send(unsorted)
+        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.sort, .recentlyViewed)
+        XCTAssertEqual(vm.uiState.recipes?.map(\.id), [2, 3, 1])
+    }
+
+    func testNameSortsByTitleIgnoringCaseAndDateAddedIsNewestIdFirst() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send(unsorted)
+        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        await settleMain()
+
+        vm.onSortChange(.name)
+        XCTAssertEqual(vm.uiState.recipes?.map(\.title), ["apple pie", "Bread", "Cake"])
+        vm.onSortChange(.dateAdded)
+        XCTAssertEqual(vm.uiState.recipes?.map(\.id), [3, 2, 1])
+    }
+
+    func testPasteALinkOpensOnlyARealLinkAndClosesTheAlert() {
+        let vm = RecipesViewModel(repository: FakeRecipeRepository(), sleep: immediateSleep)
+
+        vm.onPasteLink()
+        XCTAssertTrue(vm.uiState.pastingLink)
+        vm.onLinkChange("not a link")
+        XCTAssertFalse(vm.uiState.canOpenLink)
+        XCTAssertNil(vm.onOpenLink())
+        XCTAssertTrue(vm.uiState.pastingLink)
+
+        vm.onLinkChange("  seriouseats.com/bread ")
+        XCTAssertTrue(vm.uiState.canOpenLink)
+        XCTAssertEqual(vm.onOpenLink(), "https://seriouseats.com/bread")
+        XCTAssertFalse(vm.uiState.pastingLink)
+    }
+
+    func testTheAlertGoingAwayKeepsTheTextForAGoThatRunsSecond() {
+        let vm = RecipesViewModel(repository: FakeRecipeRepository(), sleep: immediateSleep)
+        vm.onPasteLink()
+        vm.onLinkChange("https://example.com/soup")
+
+        vm.onLinkDismissed()
+
+        XCTAssertFalse(vm.uiState.pastingLink)
+        XCTAssertEqual(vm.onOpenLink(), "https://example.com/soup")
+    }
+
     func testSnackbarMessageNamesOneAndCountsMany() {
         XCTAssertNil(Strings.deletedMessage([]))
         XCTAssertEqual(Strings.deletedMessage(["Soup"]), "Deleted \"Soup\"")

@@ -48,7 +48,7 @@ Robolectric's setup, all in `app/build.gradle.kts` and
   empty Activity; and two `--add-exports`/`--add-opens` JVM flags, without
   which JDK 25 stops every Robolectric test before it starts.
 - **Robolectric's main looper has its own clock, which moves only when a test
-  moves it.** A `delay` or `debounce` in `viewModelScope` (History's and the
+  moves it.** A `delay` or `debounce` in `viewModelScope` (Recipes' and the
   Week sheet's 250 ms search debounce) never fires by itself: call
   `passTheSearchDebounce()` / `advanceMainLooperBy(ms)` (`MainLooper.kt`).
   Compose's own clock (animations, `LaunchedEffect` delays) moves by itself.
@@ -284,7 +284,7 @@ semantics, so `isStruckThrough()` reads the text's layout style. Share itself
 opens the system chooser, so the tests stop at `RecipeViewModel.shareText()`.
 
 Still without Android UI tests: the Settings screen. The iOS UI tests
-(`ios/RecipeClipperUITests`) cover Home, History (search, swipe-to-delete, the
+(`ios/RecipeClipperUITests`) cover Home, Recipes (+ → Type a recipe, search, swipe-to-delete, the
 batched undo), Settings, list detail, the save-to-list sheet with the bookmark
 it fills, the source credit, the import error screens (including "Report this
 site" opening Safari) and cook mode (`CookModeUITests`, on the `cook` seed

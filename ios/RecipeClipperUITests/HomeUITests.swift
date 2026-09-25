@@ -72,7 +72,7 @@ final class HomeUITests: RecipeUITestCase {
         openSettings()
     }
 
-    func testHistoryAndListsRowsOpenTheirScreens() {
+    func testRecipesAndListsRowsOpenTheirScreens() {
         launch(.standard)
 
         openRecipes()

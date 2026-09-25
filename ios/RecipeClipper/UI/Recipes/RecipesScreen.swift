@@ -1,9 +1,13 @@
 import SwiftUI
 
-/// Everything you've opened, newest first. Automatic: nothing here was saved on purpose.
+/// Every recipe on the phone (#102, the library that replaced History): newest viewed first by
+/// default, searchable, sortable, swipe to delete. The + adds one: typed in (the editor), or
+/// from a pasted link (the import flow Home's link field uses).
 struct RecipesScreen: View {
     let vm: RecipesViewModel
     let onOpenRecipe: (Int64) -> Void
+    var onNewRecipe: () -> Void = {}
+    var onOpenUrl: (String) -> Void = { _ in }
 
     @State private var now = currentMillis()
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
@@ -63,6 +67,39 @@ struct RecipesScreen: View {
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Menu {
+                    Button(Strings.typeRecipe, action: onNewRecipe)
+                    Button(Strings.pasteLink, action: vm.onPasteLink)
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel(Strings.addRecipe)
+                .accessibilityIdentifier("recipes.add")
+                // An exclusive choice, so radio glyphs rather than a bare checkmark.
+                Menu {
+                    sortButton(.recentlyViewed, Strings.sortRecentlyViewed, current: state.sort)
+                    sortButton(.name, Strings.sortName, current: state.sort)
+                    sortButton(.dateAdded, Strings.sortDateAdded, current: state.sort)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel(Strings.moreOptions)
+            }
+        }
+        .alert(Strings.pasteLink, isPresented: Binding(
+            get: { vm.uiState.pastingLink },
+            set: { presented in if !presented { vm.onLinkDismissed() } }
+        )) {
+            TextField(Strings.labelRecipeUrl, text: Binding(get: { vm.uiState.linkInput }, set: vm.onLinkChange))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+            Button(Strings.cancel, role: .cancel, action: vm.onLinkDismissed)
+            Button(Strings.go) { if let url = vm.onOpenLink() { onOpenUrl(url) } }
+                .disabled(!state.canOpenLink)
+        }
         .overlay(alignment: .bottom) {
             if let message = Strings.deletedMessage(state.pendingDeletes) {
                 Snackbar(message: message, actionLabel: Strings.undo, action: vm.onUndoDelete)
@@ -80,6 +117,12 @@ struct RecipesScreen: View {
             await SnackbarTimeout.run(pending: state.pendingDeletes, onTimeout: vm.onSnackbarDismissed)
         }
         .onAppear { now = currentMillis() }
+    }
+
+    private func sortButton(_ sort: RecipeSort, _ title: String, current: RecipeSort) -> some View {
+        Button { vm.onSortChange(sort) } label: {
+            Label(title, systemImage: sort == current ? "largecircle.fill.circle" : "circle")
+        }
     }
 }
 

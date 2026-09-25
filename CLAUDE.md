@@ -36,8 +36,9 @@ fix it in place rather than appending an update.
 
 ## Status
 
-Built on both platforms: share → parse → show; automatic history (capped at
-50, searchable, delete with undo); lists and the save-to-list sheet; serving
+Built on both platforms: share → parse → show; the Recipes library (#102:
+automatic history capped at 50, search, sort, delete with undo, + to type a
+recipe or paste a link); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers, with cook progress and servings saved and background timer alerts;
 sharing a recipe out as text; failure handling and offline; the microdata
@@ -100,14 +101,14 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal),
                Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
                Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy)
-ui/            navigation, home, history, recipe, clip, edit, savetolist, lists, listdetail,
+ui/            navigation, home, recipes (the library), recipe, clip, edit, savetolist, lists, listdetail,
                settings, week (with What I need), plan (Add to plan sheet), mealtypes,
                groceries (the tab and the Add to groceries sheet), pantry, theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
 reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receiver, the notification (#52)
 ```
 
-Routes: `home`, `history`, `settings` (and the hidden `settings/developer`), `lists`, `lists/{listId}`,
+Routes: `home`, `recipes` (the library; was `history`), `settings` (and the hidden `settings/developer`), `lists`, `lists/{listId}`,
 `recipe/{recipeId}?cook={cook}` (`cook=true` from a timer notification opens
 cook mode), `recipe/import?url={url}` (the share target: parse, then
 upsert with no list membership), and `edit?recipeId={recipeId}` (no id: a new
@@ -131,7 +132,7 @@ Recipes, whichever tab is open.
 - Never hold state in `remember` if it must survive rotation.
 - **Edge-to-edge** (targetSdk 36 enforces it): a screen's root surface fills
   behind the system bars and pads its content with `safeDrawingPadding()`
-  (History: its Scaffold's `contentWindowInsets = WindowInsets.safeDrawing`).
+  (Recipes: its Scaffold's `contentWindowInsets = WindowInsets.safeDrawing`).
   Never set bar colours; the theme only flips the bar icons.
 - ViewModels and repositories never import Compose, SwiftUI or UIKit, and
   never touch `Context`. Platform effects (alarm sound, keep-screen-on, the
@@ -168,7 +169,8 @@ Decisions, not suggestions. Don't relitigate them in code.
   prompt. On iOS the share extension parses and saves it, then shows a small
   "Saved" card that dismisses itself; the recipe tops "Continue cooking".
 - **History is automatic,** newest first, capped at the 50 most recently
-  viewed.
+  viewed; it lives in the Recipes library (#102), which replaced the History
+  screen.
 - **Lists are deliberate:** adding to one is an explicit second act.
   Favorites is a list like Lunch, Dinner, Desserts, Breakfast and Snacks, not
   a separate tier.
@@ -179,7 +181,8 @@ Decisions, not suggestions. Don't relitigate them in code.
 - **"Saved" means "in at least one list."** It's derived from the cross-ref
   table; there's no column. A recipe in any list is never culled, and
   neither is one planned for today or later (#49) or in a saved menu
-  (#52); none of these counts toward the 50.
+  (#52), or typed in by hand (#102: no link could bring it back); none of
+  these counts toward the 50.
 - **Leaving a list is a demotion, not a deletion.** The recipe stays in
   history and becomes cullable. Deleting is a separate, explicit action with
   its own confirmation.
@@ -217,7 +220,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   opts into dark. Don't restore an always-dark cook mode without asking.
 - **iPad (iOS only, #20):** every screen's content sits in a centred ~680pt
   column (`readableColumn()`, `UI/Common/Components.swift`) so text never
-  runs edge to edge on a wide screen; History, a `List`, sets the same width
+  runs edge to edge on a wide screen; Recipes, a `List`, sets the same width
   through row insets instead, since a `List` can't take a frame. iPhone
   portrait is unchanged.
 - **Settings:** exclusive choices are radio rows, independent toggles are
@@ -230,10 +233,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
   elsewhere too (the recipe screen follows `AppPreferences.settings`), but
   adding an entry point is the owner's call.
 - **Home:** link field, "Continue cooking" (the most recent), "Recently
-  viewed" (the five before it), History and Lists rows (always shown), the
+  viewed" (the five before it), Recipes and Lists rows (always shown), the
   Settings gear, and a small "+ New recipe" text action under the link field.
   Empty sections hide. **No "Saved" section**: it duplicated
-  Recently viewed. Search is on History only. Behind the tab-bar flag (#47)
+  Recently viewed. Search is on Recipes only. Behind the tab-bar flag (#47)
   this is the Recipes tab, otherwise unchanged.
 - **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry, owner's order,
   behind a flag default off. Each tab keeps its own back stack; Recipes is
@@ -281,7 +284,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   list; built-ins first, then user lists by `sortOrder`. Opened from the
   bookmark icon (filled = in a list). Membership is edited only here, not on
   list detail. A list is renamed and deleted on its own screen.
-- **Deleting a recipe** is a hard delete: a History swipe with an undo
+- **Recipes** (#102): every recipe, newest viewed first; a + (Type a recipe:
+  the editor; Paste a link: a dialog whose Go enables only for a link, then
+  the import) and ⋮ sort (Recently viewed, Name, Date added; radio rows, in
+  memory) beside the title; search; swipe to delete.
+- **Deleting a recipe** is a hard delete: a Recipes swipe with an undo
   snackbar (a burst of swipes shares one snackbar and one all-or-nothing
   undo), or the recipe screen's overflow menu with a confirmation dialog (no
   undo).
@@ -392,7 +399,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   menus by uid, whole, their meals by the plan's rules.
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - Ticked ingredients are written as they change; the note once typing pauses
-  (500 ms), or on leaving the screen. History search ignores notes. Cook
+  (500 ms), or on leaving the screen. Recipes search ignores notes. Cook
   progress (`cookState`, JSON: step, done steps, timers) and the chosen
   servings are written on every action, in order, through one queue; a
   running timer is saved by its deadline, so ticks never write.
@@ -431,7 +438,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (one copy, both apps). Assigning a selection replaces the field, one item per
   line, nothing guessed; Undo by snackbar or by tapping the field's tag; a
   session draft per cleaned URL, in memory only. Saved as CLIPPED: "Clipped by
-  you" under the title and in History rows.
+  you" under the title and in Recipes rows.
 - Database errors degrade instead of crashing. The Android repositories run
   every DAO call through `ErrorLog.guard`, which returns a safe fallback
   (`SaveFailed`, null, a no-op, or `CREATE_FAILED` = -1), and every Flow

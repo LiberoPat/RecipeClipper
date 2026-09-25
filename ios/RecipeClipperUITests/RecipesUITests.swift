@@ -1,6 +1,6 @@
 import XCTest
 
-/// History end to end — untested on Android (docs/testing.md). Search goes through
+/// Recipes (#102, it replaced History) end to end. Search goes through
 /// the real SQL (instr, never LIKE); delete is a hard delete with an undo snackbar that
 /// restores the row with its list membership.
 final class RecipesUITests: RecipeUITestCase {
@@ -94,7 +94,7 @@ final class RecipesUITests: RecipeUITestCase {
         requireGone(text("No recipes match \"zzz\"."))
     }
 
-    func testAnEmptyHistorySaysSo() {
+    func testAnEmptyLibrarySaysSo() {
         launch(.empty)
         openRecipes()
 
@@ -166,5 +166,33 @@ final class RecipesUITests: RecipeUITestCase {
         back()
         require(row("Chicken Adobo"))
         assertAbsent(row("Banana Bread"))
+    }
+
+    /// A field by its prompt, single-line or the editor's multiline (a text view on iOS).
+    private func field(_ prompt: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(
+            format: "(elementType == %d OR elementType == %d) AND (placeholderValue == %@ OR label == %@)",
+            XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, prompt, prompt
+        )).firstMatch
+    }
+
+    func testPlusTypeARecipeSavesItIntoRecipes() {
+        launch()
+        openRecipes()
+
+        require(app.buttons["recipes.add"]).tap()
+        require(app.buttons["Type a recipe"]).tap()
+        let name = require(field("Name"))
+        name.tap()
+        name.typeText("Weeknight Stew")
+        let ingredients = require(field("Ingredients, one per line"))
+        ingredients.tap()
+        ingredients.typeText("2 carrots")
+        require(app.buttons["edit.save"]).tap()
+
+        // Saving opens the new recipe in place of the editor; Back is Recipes, which lists it.
+        require(text("Weeknight Stew"), "the saved recipe")
+        back()
+        require(row("Weeknight Stew"), "the typed-in recipe in Recipes")
     }
 }
