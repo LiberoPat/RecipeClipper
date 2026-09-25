@@ -32,6 +32,12 @@ struct RemovedMeal: Equatable {
     let label: String
 }
 
+/// An .ics file to share: its name and its text (#52).
+struct CalendarFile: Equatable {
+    let fileName: String
+    let text: String
+}
+
 /// One cell of the month grid: `inMonth` is false for the days that fill the first and last rows.
 struct MonthDay: Equatable, Identifiable {
     let day: Int64
@@ -65,8 +71,13 @@ struct WeekUiState: Equatable {
     var month: MonthUiState?
     /// A day the week view scrolls to once, after a tap in the month view.
     var focusDay: Int64?
+    /// The shown week as a calendar file, waiting for the screen to share it (#52).
+    var calendarFile: CalendarFile?
 
     var isThisWeek: Bool { weekStart == thisWeekStart }
+
+    /// Whether the week shown has anything to put in a calendar file.
+    var hasMeals: Bool { days.contains { !$0.meals.isEmpty } }
 }
 
 /// The Week tab (#49; Android's WeekViewModel): seven days from the locale's first day of the
@@ -180,6 +191,19 @@ final class WeekViewModel {
 
     /// The week view has scrolled to `focusDay`.
     func onFocusHandled() { uiState.focusDay = nil }
+
+    // MARK: Calendar file (#52)
+
+    /// The week shown as an .ics file, for the screen to share. Nothing for an empty week.
+    func onShareCalendar() {
+        guard uiState.hasMeals else { return }
+        let names = Dictionary(uniqueKeysWithValues: uiState.mealTypes.map { ($0.id, $0.name) })
+        let text = MealPlanIcs.calendar(uiState.days.flatMap(\.meals), mealTypeNames: names, stampMillis: calendar.now())
+        uiState.calendarFile = CalendarFile(fileName: MealPlanIcs.fileName(weekStart: uiState.weekStart), text: text)
+    }
+
+    /// The share sheet has gone (or couldn't open): the file is done with.
+    func onCalendarShared() { uiState.calendarFile = nil }
 
     private func showWeek(_ start: Int64) {
         uiState.weekStart = start

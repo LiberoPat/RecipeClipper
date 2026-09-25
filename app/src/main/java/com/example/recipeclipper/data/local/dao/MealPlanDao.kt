@@ -18,7 +18,8 @@ data class PlannedMealRow(
     val servings: Int?,
     val note: String?,
     val title: String?,
-    val imageUrl: String?
+    val imageUrl: String?,
+    val uid: String
 )
 
 /** The meal plan (#49): meal types and plan entries. */
@@ -34,7 +35,7 @@ abstract class MealPlanDao {
      */
     @Query(
         """
-        SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, r.imageUrl
+        SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, r.imageUrl, e.uid
         FROM meal_plan_entries e
         JOIN meal_types t ON t.id = e.mealTypeId
         LEFT JOIN recipes r ON r.id = e.recipeId

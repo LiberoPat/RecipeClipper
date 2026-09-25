@@ -248,7 +248,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   meal types) or Remove (undo snackbar). A tapped recipe opens at its
   planned servings, for that visit only. "Month" beside the title swaps in
   a month grid (locale weeks, a dot on planned days; a tapped day opens its
-  week) (#52). "Meal types" from the Week menu:
+  week) (#52). "Share as calendar file" (Week menu): the shown week as an
+  .ics of all-day events, never invented times. "Meal types" from the Week menu:
   add, rename, reorder any, delete the user's own. "Add to plan" (recipe
   menu, first item, flag on only): this week's and next week's days, a meal
   type (Dinner first), servings (the yield first), one button.

@@ -164,7 +164,7 @@ private struct ActionRow: View {
 /// sheet is a popover and needs a source view to point at, which a SwiftUI `.sheet` wrapping a
 /// UIActivityViewController wouldn't give it. `onDone` runs when the sheet goes away (or
 /// couldn't be shown).
-private struct ShareSheetAnchor: UIViewRepresentable {
+struct ShareSheetAnchor: UIViewRepresentable {
     let item: URL?
     let onDone: () -> Void
 

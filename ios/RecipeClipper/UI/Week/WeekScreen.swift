@@ -14,6 +14,8 @@ struct WeekScreen: View {
     var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
     @State private var groceriesVM: AddToGroceriesViewModel?
     @State private var groceriesSheet: AddToGroceriesViewModel?
+    /// The week's .ics file once written, for the share sheet (#52).
+    @State private var calendarURL: URL?
 
     var body: some View {
         let state = vm.uiState
@@ -58,6 +60,22 @@ struct WeekScreen: View {
         }
         }
         .screenBackground()
+        // The week as an .ics file (#52): written and shared here, in the view layer; the
+        // ViewModel only makes the text.
+        .background(ShareSheetAnchor(item: calendarURL) {
+            calendarURL = nil
+            vm.onCalendarShared()
+        })
+        .onChange(of: state.calendarFile) { _, file in
+            guard let file else { return }
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(file.fileName)
+            do {
+                try Data(file.text.utf8).write(to: url, options: .atomic)
+                calendarURL = url
+            } catch {
+                vm.onCalendarShared()
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -75,6 +93,10 @@ struct WeekScreen: View {
                             let start = vm.uiState.weekStart
                             groceries.loadWeek(start)
                         }
+                    }
+                    if state.month == nil {
+                        Button(Strings.shareCalendar, action: vm.onShareCalendar)
+                            .disabled(!state.hasMeals)
                     }
                     Button(Strings.mealTypesTitle, action: onOpenMealTypes)
                 } label: {

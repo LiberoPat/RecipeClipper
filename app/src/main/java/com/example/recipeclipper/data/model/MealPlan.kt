@@ -32,5 +32,7 @@ data class PlannedMeal(
     val title: String?,
     val imageUrl: String?,
     val servings: Int?,
-    val note: String?
+    val note: String?,
+    /** The entry's stable uid (#26): what a calendar export (#52) names the event by. */
+    val uid: String = ""
 )

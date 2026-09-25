@@ -1,5 +1,9 @@
 package com.example.recipeclipper.ui.week
 
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,7 +58,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.core.content.FileProvider
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -70,6 +76,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
@@ -85,6 +92,8 @@ import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import java.io.File
+import java.io.IOException
 
 /**
  * The Week tab (#49): ‹ week › with "This week", then the seven days from the locale's first
@@ -113,6 +122,17 @@ fun WeekScreen(
         val message = removedMessage ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(message, actionLabel = undoLabel, withDismissAction = false)
         if (result == SnackbarResult.ActionPerformed) viewModel.onUndoRemove() else viewModel.onSnackbarDismissed()
+    }
+
+    // The week as an .ics file (#52): written to the cache and handed to the share sheet here,
+    // in the view layer; the ViewModel only makes the text.
+    val context = LocalContext.current
+    val calendarFile = state.calendarFile
+    val shareTitle = stringResource(R.string.action_share_calendar)
+    LaunchedEffect(calendarFile) {
+        if (calendarFile == null) return@LaunchedEffect
+        shareCalendarFile(context, calendarFile, shareTitle)
+        viewModel.onCalendarShared()
     }
 
     RecipeClipperTheme {
@@ -152,7 +172,9 @@ fun WeekScreen(
                                     sheet.loadWeek(state.weekStart)
                                     groceriesSheetOpen = true
                                 }
-                            }
+                            },
+                            onShareCalendar = viewModel::onShareCalendar.takeIf { month == null },
+                            canShareCalendar = state.hasMeals
                         )
                         Spacer(Modifier.height(8.dp))
                         if (month == null) {
@@ -245,7 +267,9 @@ private fun TitleRow(
     onToggleMonth: () -> Unit,
     onOpenMealTypes: () -> Unit,
     onOpenWhatINeed: (() -> Unit)?,
-    onAddToGroceries: (() -> Unit)?
+    onAddToGroceries: (() -> Unit)?,
+    onShareCalendar: (() -> Unit)?,
+    canShareCalendar: Boolean
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
         Text(
@@ -256,7 +280,7 @@ private fun TitleRow(
         TextButton(onClick = onToggleMonth, modifier = Modifier.testTag("toggleMonth")) {
             Text(stringResource(if (showingMonth) R.string.action_week_view else R.string.action_month_view))
         }
-        WeekMenu(onOpenMealTypes, onOpenWhatINeed, onAddToGroceries)
+        WeekMenu(onOpenMealTypes, onOpenWhatINeed, onAddToGroceries, onShareCalendar, canShareCalendar)
     }
 }
 
@@ -347,7 +371,13 @@ private fun MonthGrid(month: MonthUiState, today: Long, onSelect: (Long) -> Unit
 }
 
 @Composable
-private fun WeekMenu(onOpenMealTypes: () -> Unit, onOpenWhatINeed: (() -> Unit)?, onAddToGroceries: (() -> Unit)?) {
+private fun WeekMenu(
+    onOpenMealTypes: () -> Unit,
+    onOpenWhatINeed: (() -> Unit)?,
+    onAddToGroceries: (() -> Unit)?,
+    onShareCalendar: (() -> Unit)?,
+    canShareCalendar: Boolean
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
@@ -372,6 +402,16 @@ private fun WeekMenu(onOpenMealTypes: () -> Unit, onOpenWhatINeed: (() -> Unit)?
                     }
                 )
             }
+            if (onShareCalendar != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_share_calendar)) },
+                    enabled = canShareCalendar,
+                    onClick = {
+                        expanded = false
+                        onShareCalendar()
+                    }
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.meal_types_title)) },
                 onClick = {
@@ -380,6 +420,30 @@ private fun WeekMenu(onOpenMealTypes: () -> Unit, onOpenWhatINeed: (() -> Unit)?
                 }
             )
         }
+    }
+}
+
+/**
+ * Writes [file] into `cacheDir/exports/` (the FileProvider's one shared folder, as the backup
+ * export uses) and opens the share sheet on it as `text/calendar`, letting only the chosen app
+ * read it. A write failure or no app to take it just does nothing.
+ */
+private fun shareCalendarFile(context: Context, file: CalendarFile, title: String) {
+    try {
+        val dir = File(context.cacheDir, "exports").apply { mkdirs() }
+        val out = File(dir, file.fileName).apply { writeText(file.text, Charsets.UTF_8) }
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", out)
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = MealPlanIcs.MIME_TYPE
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = ClipData.newRawUri(null, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(send, title))
+    } catch (e: IOException) {
+        // Couldn't write the file: nothing to share.
+    } catch (e: ActivityNotFoundException) {
+        // Nothing can receive a file.
     }
 }
 

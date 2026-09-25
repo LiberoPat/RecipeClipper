@@ -22,6 +22,8 @@ final class MealTypesViewModel {
 
     @ObservationIgnored private let repository: MealPlanRepository
     @ObservationIgnored private var typesSubscription: AnyCancellable?
+    /// Writes run one after another, so two quick moves reach the database in the order made.
+    @ObservationIgnored private var lastWrite: Task<Void, Never>?
 
     init(repository: MealPlanRepository) {
         self.repository = repository
@@ -43,7 +45,7 @@ final class MealTypesViewModel {
         let name = uiState.newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         onCancelCreating()
-        Task { await repository.addMealType(name: name) }
+        write { await $0.addMealType(name: name) }
     }
 
     func onRenameStart(_ type: MealType) {
@@ -58,7 +60,7 @@ final class MealTypesViewModel {
         let name = uiState.renameText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         onRenameDismissed()
-        Task { await repository.renameMealType(id: type.id, name: name) }
+        write { await $0.renameMealType(id: type.id, name: name) }
     }
 
     func onRenameDismissed() {
@@ -79,7 +81,7 @@ final class MealTypesViewModel {
         // Shown at once; the database's echo agrees.
         uiState.types = order
         let ids = order.map(\.id)
-        Task { await repository.reorderMealTypes(ids) }
+        write { await $0.reorderMealTypes(ids) }
     }
 
     /// Only the user's own types offer Delete; a seeded one is ignored here too.
@@ -91,8 +93,19 @@ final class MealTypesViewModel {
     func onDeleteConfirm() {
         guard let type = uiState.deleting else { return }
         uiState.deleting = nil
-        Task { await repository.deleteMealType(id: type.id) }
+        write { await $0.deleteMealType(id: type.id) }
     }
 
     func onDeleteDismissed() { uiState.deleting = nil }
+
+    private func write(_ body: @escaping (MealPlanRepository) async -> Void) {
+        let previous = lastWrite
+        lastWrite = Task { [repository] in
+            await previous?.value
+            await body(repository)
+        }
+    }
+
+    /// Waits for every queued write. For tests.
+    func settleWrites() async { await lastWrite?.value }
 }

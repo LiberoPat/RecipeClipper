@@ -126,6 +126,8 @@ final class FakePlanCalendar: PlanCalendar {
 
     var todayValue: Int64
     var firstDay: Int
+    /// 2026-09-23 14:25:00 UTC.
+    var nowValue: Int64 = wednesday * 86_400_000 + (14 * 3600 + 25 * 60) * 1000
 
     init(today: Int64 = wednesday, firstDayOfWeek: Int = mondayFirst) {
         todayValue = today
@@ -134,4 +136,5 @@ final class FakePlanCalendar: PlanCalendar {
 
     func today() -> Int64 { todayValue }
     func firstDayOfWeek() -> Int { firstDay }
+    func now() -> Int64 { nowValue }
 }

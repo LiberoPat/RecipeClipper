@@ -394,4 +394,5 @@
     <string name="cd_previous_month">Mês anterior</string>
     <string name="cd_next_month">Próximo mês</string>
     <string name="cd_month_day_planned">%1$s, refeições planejadas</string>
+    <string name="action_share_calendar">Compartilhar como arquivo de calendário</string>
 </resources>

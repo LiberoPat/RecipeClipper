@@ -26,4 +26,6 @@ struct PlannedMeal: Equatable, Identifiable {
     let imageUrl: String?
     let servings: Int?
     let note: String?
+    /// The entry's stable uid (#26): what a calendar export (#52) names the event by.
+    var uid = ""
 }

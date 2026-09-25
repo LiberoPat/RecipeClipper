@@ -367,6 +367,9 @@ protocol PlanCalendar {
 
     /// 1 = Sunday … 7 = Saturday: the locale's own, never a fixed Monday (owner's call).
     func firstDayOfWeek() -> Int
+
+    /// Now, in epoch millis: when a calendar file (#52) was made.
+    func now() -> Int64
 }
 
 struct SystemPlanCalendar: PlanCalendar {
@@ -374,6 +377,7 @@ struct SystemPlanCalendar: PlanCalendar {
 
     func today() -> Int64 { PlanDays.today(millis: clock.now()) }
     func firstDayOfWeek() -> Int { Calendar.current.firstWeekday }
+    func now() -> Int64 { clock.now() }
 }
 
 /// The user's global defaults. Read and written through the vars; `settings` publishes them so

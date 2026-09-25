@@ -101,5 +101,6 @@ private fun PlannedMealRow.toDomain() = PlannedMeal(
     title = title,
     imageUrl = imageUrl,
     servings = servings,
-    note = note
+    note = note,
+    uid = uid
 )

@@ -1736,3 +1736,26 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
   opens October.
 - The week's own menu actions (What I need, Add this week's ingredients) act on the week shown,
   so they're hidden while the month shows; Meal types stays.
+
+### Calendar file (.ics)
+
+- **"Share as calendar file"** in the Week menu (week view only, disabled for an empty week)
+  shares the shown week as `meal-plan-YYYY-MM-DD.ics` (the week's first day) through the
+  platform share sheet, so any calendar app, mail or Files can take it. Nothing is subscribed
+  or synced: it's a snapshot, and sharing again is how it's updated.
+- **All-day events, not timed ones.** Meal types have no times (and the user's own types can
+  be anything), so giving Dinner 19:00 would invent a fact. Each meal is one all-day event on
+  its day (`DTSTART;VALUE=DATE`, `DTEND` the next day), `TRANSP:TRANSPARENT` so the day doesn't
+  show as busy.
+- **Summary: the meal type, then the recipe title or the note** ("Dinner · Chicken Adobo",
+  "Lunch · Leftovers"): note entries are events like recipes. The middle dot avoids a locale's
+  colon spacing. No servings, photo or link: the event says what's planned, the app holds the
+  recipe.
+- **The UID is the entry's stable `uid`** (`<uid>@recipe-clipper`), so a calendar that honours
+  UIDs updates an event on re-import instead of adding a twin. PlannedMeal now carries it.
+- **Pure generator, view-layer share.** `MealPlanIcs` (both platforms) turns meals into RFC 5545
+  text: CRLF lines, TEXT escaping (backslash, `;`, `,`, newline), folding at 75 UTF-8 octets
+  without splitting a code point, ASCII digits whatever the locale. The corpus's `Ics` rows pin
+  the escaping and folding to the Kotlin. The ViewModel makes the text (`PlanCalendar.now()`
+  stamps it); the screen writes it (Android: `cacheDir/exports/` through the existing
+  FileProvider, `text/calendar`; iOS: the temporary directory) and opens the share sheet.

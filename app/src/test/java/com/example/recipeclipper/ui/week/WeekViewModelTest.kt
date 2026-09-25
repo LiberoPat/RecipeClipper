@@ -281,4 +281,30 @@ class WeekViewModelTest {
         assertNull(vm.uiState.value.month)
         assertEquals(monday, vm.uiState.value.weekStart)
     }
+
+    // --- Calendar file (#52)
+
+    @Test
+    fun `the week shown is shared as an ics file, and an empty week isn't`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.hasMeals)
+        vm.onShareCalendar()
+        assertNull(vm.uiState.value.calendarFile)
+
+        plan.titles[7] = "Chicken Adobo"
+        plan.addRecipe(7, today, DINNER, servings = 4)
+        plan.addNote("Leftovers", today + 7, LUNCH) // next week: not in the file
+        advanceUntilIdle()
+        vm.onShareCalendar()
+        val file = vm.uiState.value.calendarFile!!
+        assertEquals("meal-plan-2026-09-21.ics", file.fileName)
+        assertTrue(file.text.contains("SUMMARY:Dinner · Chicken Adobo\r\n"))
+        assertTrue(file.text.contains("DTSTAMP:20260923T142500Z\r\n"))
+        assertFalse(file.text.contains("Leftovers"))
+        assertEquals(1, Regex("BEGIN:VEVENT").findAll(file.text).count())
+
+        vm.onCalendarShared()
+        assertNull(vm.uiState.value.calendarFile)
+    }
 }
