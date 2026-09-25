@@ -374,4 +374,18 @@
     <string name="developer_flag_issue">Issue #%1$d</string>
     <string name="developer_flag_changed">Diferente do padrão</string>
     <string name="developer_reset">Restaurar os padrões</string>
+
+    <!-- Pantry expiry reminders (#52) -->
+    <string name="settings_section_pantry">Despensa</string>
+    <string name="expiry_reminders_title">Lembretes de validade</string>
+    <string name="expiry_reminders_description">Uma notificação às 9 da manhã quando algo em estoque vence hoje ou amanhã</string>
+    <string name="expiry_reminders_denied">As notificações estão desativadas para o Recipe Clipper. Permita-as nos ajustes do sistema para receber lembretes.</string>
+    <string name="expiry_channel_name">Lembretes da despensa</string>
+    <string name="expiry_channel_description">Uma notificação de manhã quando algo da despensa está para vencer</string>
+    <string name="expiry_notification_title">Use logo</string>
+    <string name="expiry_one_today">%1$s vence hoje.</string>
+    <string name="expiry_many_today">%1$s vencem hoje.</string>
+    <string name="expiry_one_tomorrow">%1$s vence amanhã.</string>
+    <string name="expiry_many_tomorrow">%1$s vencem amanhã.</string>
+    <string name="expiry_names_and">%1$s e %2$s</string>
 </resources>

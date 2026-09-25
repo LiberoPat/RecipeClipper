@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.ExpiryReminderCoordinator
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.TimerAlarmScheduler
 import dagger.hilt.EntryPoint
@@ -23,6 +24,7 @@ interface TimerEntryPoint {
     fun recipeRepository(): RecipeRepository
     fun timerAlarmScheduler(): TimerAlarmScheduler
     fun clock(): Clock
+    fun expiryReminderCoordinator(): ExpiryReminderCoordinator
 }
 
 private fun entryPoint(context: Context): TimerEntryPoint =
@@ -65,6 +67,7 @@ class TimerAlarmReceiver : BroadcastReceiver() {
  * Alarms don't survive a reboot or an app update. Reschedules every timer still running in the
  * database whose deadline hasn't passed; one that ended meanwhile shows as finished when its
  * recipe is opened. (Opening a recipe also reschedules its timers, which covers a force-stop.)
+ * It also re-arms the pantry's expiry reminder (#52).
  */
 class TimerBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -78,6 +81,8 @@ class TimerBootReceiver : BroadcastReceiver() {
             entry.recipeRepository().runningTimers()
                 .filter { it.endsAt > now }
                 .forEach(scheduler::schedule)
+            // The pantry's morning reminder (#52) is an alarm too.
+            entry.expiryReminderCoordinator().refresh()
         }
     }
 }
