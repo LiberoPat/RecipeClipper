@@ -352,12 +352,15 @@ extension WeekViewModel {
     func onSaveMenuDismissed() { uiState.menus.saving = false }
 
     /// Saves the week shown as `name`. A blank name does nothing.
-    func onSaveMenu(_ name: String) async {
+    func onSaveMenu(_ name: String) {
         let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         uiState.menus.saving = false
-        let saved = await plan.saveWeekAsMenu(name: text, weekStart: uiState.weekStart)
-        uiState.menus.message = saved ? .saved(name: text) : .saveFailed
+        let weekStart = uiState.weekStart
+        Task {
+            let saved = await plan.saveWeekAsMenu(name: text, weekStart: weekStart)
+            uiState.menus.message = saved ? .saved(name: text) : .saveFailed
+        }
     }
 
     func onPickMenuStart() { uiState.menus.picking = true }
@@ -365,31 +368,34 @@ extension WeekViewModel {
     func onPickMenuDismissed() { uiState.menus.picking = false }
 
     /// Adds `menu`'s meals to the week shown, after what is planned there.
-    func onApplyMenu(_ menu: WeekMenu) async {
+    func onApplyMenu(_ menu: WeekMenu) {
         uiState.menus.picking = false
-        let added = await plan.applyMenu(id: menu.id, weekStart: uiState.weekStart)
-        uiState.menus.message = .applied(name: menu.name, count: added)
+        let weekStart = uiState.weekStart
+        Task {
+            let added = await plan.applyMenu(id: menu.id, weekStart: weekStart)
+            uiState.menus.message = .applied(name: menu.name, count: added)
+        }
     }
 
     func onRenameMenuStart(_ menu: WeekMenu) { uiState.menus.renaming = menu }
 
     func onRenameMenuDismissed() { uiState.menus.renaming = nil }
 
-    func onRenameMenu(_ name: String) async {
+    func onRenameMenu(_ name: String) {
         guard let menu = uiState.menus.renaming,
               !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         uiState.menus.renaming = nil
-        await plan.renameMenu(id: menu.id, name: name)
+        Task { await plan.renameMenu(id: menu.id, name: name) }
     }
 
     func onDeleteMenuStart(_ menu: WeekMenu) { uiState.menus.deleting = menu }
 
     func onDeleteMenuDismissed() { uiState.menus.deleting = nil }
 
-    func onDeleteMenuConfirm() async {
+    func onDeleteMenuConfirm() {
         guard let menu = uiState.menus.deleting else { return }
         uiState.menus.deleting = nil
-        await plan.deleteMenu(id: menu.id)
+        Task { await plan.deleteMenu(id: menu.id) }
     }
 
     func onMenuMessageShown() { uiState.menus.message = nil }

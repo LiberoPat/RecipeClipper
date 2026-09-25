@@ -98,6 +98,13 @@ struct WeekScreen: View {
                         Button(Strings.shareCalendar, action: vm.onShareCalendar)
                             .disabled(!state.hasMeals)
                     }
+                    if state.month == nil {
+                        Button(Strings.saveWeekAsMenu, action: vm.onSaveMenuStart)
+                            .disabled(!state.hasMeals)
+                            .accessibilityIdentifier("saveWeekAsMenu")
+                        Button(Strings.applyMenu, action: vm.onPickMenuStart)
+                            .accessibilityIdentifier("applyMenu")
+                    }
                     Button(Strings.mealTypesTitle, action: onOpenMealTypes)
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -119,6 +126,7 @@ struct WeekScreen: View {
             guard let removed = state.removed else { return }
             await SnackbarTimeout.run(pending: [removed.label], onTimeout: vm.onSnackbarDismissed)
         }
+        .modifier(WeekMenusModifier(vm: vm))
         .sheet(item: $groceriesSheet) { groceries in
             AddToGroceriesSheet(vm: groceries)
                 .presentationDetents([.medium, .large])
