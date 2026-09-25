@@ -66,7 +66,7 @@ struct RootView: View {
             groceriesStack
                 .tabItem { Label(Strings.tabGroceries, systemImage: "basket") }
                 .tag(AppTab.groceries)
-            placeholder(Strings.tabPantry, Strings.pantryPlaceholder)
+            pantryStack
                 .tabItem { Label(Strings.tabPantry, systemImage: "cabinet") }
                 .tag(AppTab.pantry)
         }
@@ -82,6 +82,7 @@ struct RootView: View {
                     vm: vm,
                     onOpenRecipe: { router.weekPath.append(.weekRecipe(id: $0, servings: $1)) },
                     onOpenMealTypes: { router.weekPath.append(.mealTypes) },
+                    onOpenWhatINeed: { router.weekPath.append(.whatINeed(weekStart: $0)) },
                     makeGroceriesVM: container.makeAddToGroceriesViewModel
                 )
             }
@@ -103,9 +104,10 @@ struct RootView: View {
         .tint(Palette.accentText)
     }
 
-    private func placeholder(_ title: String, _ description: String) -> some View {
+    /// The Pantry tab (#51): the pantry alone.
+    private var pantryStack: some View {
         NavigationStack {
-            ComingSoonScreen(title: title, description: description)
+            ScreenHost(container.makePantryViewModel) { vm in PantryScreen(vm: vm) }
         }
         .tint(Palette.accentText)
     }
@@ -129,6 +131,8 @@ struct RootView: View {
             recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil, plannedServings: servings) }
         case .mealTypes:
             ScreenHost(container.makeMealTypesViewModel) { vm in MealTypesScreen(vm: vm) }
+        case .whatINeed(let weekStart):
+            ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in WhatINeedScreen(vm: vm) }
         case .history:
             ScreenHost(container.makeHistoryViewModel) { vm in
                 HistoryScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })

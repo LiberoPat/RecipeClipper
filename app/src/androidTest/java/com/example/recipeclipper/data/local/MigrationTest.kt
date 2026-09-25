@@ -440,12 +440,54 @@ class MigrationTest {
         }
     }
 
+    /**
+     * The pantry (#51): a new table, so nothing existing changes. A version-9 database with a
+     * recipe and a grocery item keeps both, and the pantry is there, empty, ready to take an item.
+     */
+    @Test
+    fun migration9To10AddsThePantryAndKeepsEverythingElse() {
+        helper.createDatabase(name, 9).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[]', NULL,
+                   'recipe-uid', 'en', NULL, NULL, 'PARSED', NULL)
+                """.trimIndent()
+            )
+            db.execSQL(
+                "INSERT INTO grocery_items (listId, text, language, aisle, checked, sortOrder, recipeId, plannedDay, updatedAt, uid) " +
+                    "VALUES (1, '1 cup soy sauce', 'en', 'condiments', 1, 0, 7, NULL, 1, 'grocery-uid')"
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 10, true, RecipeDatabase.MIGRATION_9_10)
+
+        val db = openMigrated()
+        runBlocking {
+            assertEquals("Adobo", db.recipeDao().get(7)?.title)
+            assertEquals(listOf("1 cup soy sauce"), db.groceryDao().observeItems().first().map { it.text })
+            assertTrue(db.pantryDao().items().isEmpty())
+            db.pantryDao().insert(
+                com.example.recipeclipper.data.local.entity.PantryItemEntity(
+                    name = "soy sauce", quantity = null, language = "en", aisle = "condiments", inStock = true,
+                    alwaysHave = false, purchasedDay = 20_000, expiresDay = null, updatedAt = 1
+                )
+            )
+            assertEquals(listOf("soy sauce"), db.pantryDao().items().map { it.name })
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 9, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 10, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

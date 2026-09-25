@@ -143,6 +143,7 @@ final class AppDatabase: @unchecked Sendable {
         addContentOrigin,
         addMealPlan,
         addGroceries,
+        addPantry,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -329,6 +330,28 @@ final class AppDatabase: @unchecked Sendable {
             CREATE UNIQUE INDEX index_grocery_items_uid ON grocery_items (uid);
             CREATE INDEX index_grocery_items_listId ON grocery_items (listId);
             CREATE INDEX index_grocery_items_recipeId ON grocery_items (recipeId);
+            """)
+    }
+
+    /// Version 9 (Android's Room version 10, `MIGRATION_9_10`): the pantry (#51). `pantry_items`,
+    /// new, so nothing existing changes. Every row has a stable `uid` and an `updatedAt`, for
+    /// export and a later sync (#53). The same table as Android's.
+    private static func addPantry(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE pantry_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                quantity TEXT,
+                language TEXT,
+                aisle TEXT NOT NULL,
+                inStock INTEGER NOT NULL,
+                alwaysHave INTEGER NOT NULL,
+                purchasedDay INTEGER,
+                expiresDay INTEGER,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX index_pantry_items_uid ON pantry_items (uid);
             """)
     }
 

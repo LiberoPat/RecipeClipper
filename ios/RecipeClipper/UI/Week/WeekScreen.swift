@@ -8,6 +8,8 @@ struct WeekScreen: View {
     let vm: WeekViewModel
     let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
     let onOpenMealTypes: () -> Void
+    /// Opens the shown week's "What I need" (#51); nil hides the item.
+    var onOpenWhatINeed: ((Int64) -> Void)? = nil
     /// Makes the "Add this week's ingredients" sheet's ViewModel (#50); nil hides the item.
     var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
     @State private var groceriesVM: AddToGroceriesViewModel?
@@ -48,6 +50,9 @@ struct WeekScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    if let onOpenWhatINeed {
+                        Button(Strings.whatINeedTitle) { onOpenWhatINeed(vm.uiState.weekStart) }
+                    }
                     if let makeGroceriesVM {
                         Button(Strings.addWeekToGroceries) {
                             let groceries = groceriesVM ?? makeGroceriesVM()

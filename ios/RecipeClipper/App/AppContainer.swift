@@ -8,6 +8,7 @@ final class AppContainer {
     let listRepository: ListRepository
     let mealPlanRepository: MealPlanRepository
     let groceryRepository: GroceryRepository
+    let pantryRepository: PantryRepository
     let planCalendar: PlanCalendar
     let preferences: AppPreferences
     let clock: Clock
@@ -29,6 +30,7 @@ final class AppContainer {
         listRepository: ListRepository,
         mealPlanRepository: MealPlanRepository,
         groceryRepository: GroceryRepository,
+        pantryRepository: PantryRepository,
         backupRepository: BackupRepository,
         preferences: AppPreferences,
         clock: Clock,
@@ -44,6 +46,7 @@ final class AppContainer {
         self.listRepository = listRepository
         self.mealPlanRepository = mealPlanRepository
         self.groceryRepository = groceryRepository
+        self.pantryRepository = pantryRepository
         self.planCalendar = planCalendar ?? SystemPlanCalendar(clock: clock)
         self.backupRepository = backupRepository
         self.preferences = preferences
@@ -88,6 +91,7 @@ final class AppContainer {
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock),
+            pantryRepository: DefaultPantryRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
@@ -126,11 +130,21 @@ final class AppContainer {
     }
 
     func makeGroceriesViewModel() -> GroceriesViewModel {
-        GroceriesViewModel(repository: groceryRepository)
+        GroceriesViewModel(repository: groceryRepository, pantry: pantryRepository, calendar: planCalendar)
     }
 
     func makeAddToGroceriesViewModel() -> AddToGroceriesViewModel {
-        AddToGroceriesViewModel(repository: groceryRepository, preferences: preferences)
+        AddToGroceriesViewModel(repository: groceryRepository, preferences: preferences, pantry: pantryRepository)
+    }
+
+    func makePantryViewModel() -> PantryViewModel {
+        PantryViewModel(pantry: pantryRepository, groceries: groceryRepository, calendar: planCalendar)
+    }
+
+    func makeWhatINeedViewModel(weekStart: Int64) -> WhatINeedViewModel {
+        WhatINeedViewModel(
+            weekStart: weekStart, groceries: groceryRepository, pantry: pantryRepository, preferences: preferences
+        )
     }
 
     func makeMealTypesViewModel() -> MealTypesViewModel {

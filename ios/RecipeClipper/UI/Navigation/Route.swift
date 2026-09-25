@@ -18,6 +18,8 @@ enum Route: Hashable {
     /// `week/recipe/{id}?servings=`), and the meal types screen (`week/meal-types`).
     case weekRecipe(id: Int64, servings: Int?)
     case mealTypes
+    /// The week's "What I need" (#51; Android's `week/need/{weekStart}`).
+    case whatINeed(weekStart: Int64)
     /// "Clip it yourself" (#37) on a page with no recipe data.
     case clip(String)
 }

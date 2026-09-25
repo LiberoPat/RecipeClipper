@@ -117,8 +117,9 @@ private struct SearchField: View {
 /// An inverse card with one action, like Material's Snackbar: ink on the ground, light on ink.
 struct Snackbar: View {
     let message: String
-    let actionLabel: String
-    let action: () -> Void
+    /// Nil shows the message alone (a confirmation, with nothing to undo).
+    let actionLabel: String?
+    var action: () -> Void = {}
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -135,9 +136,11 @@ struct Snackbar: View {
                 .lineLimit(large ? nil : 2)
                 .padding(.top, large ? 8 : 0)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button(actionLabel, action: action)
-                .buttonStyle(TextActionStyle(color: Palette.inversePrimary))
-                .fixedSize()
+            if let actionLabel {
+                Button(actionLabel, action: action)
+                    .buttonStyle(TextActionStyle(color: Palette.inversePrimary))
+                    .fixedSize()
+            }
         }
         .padding(.leading, 16)
         .padding(.trailing, 4)

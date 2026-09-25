@@ -302,6 +302,41 @@ protocol GroceryRepository: AnyObject {
     func plannedIngredients(start: Int64, end: Int64) async -> [PlannedIngredients]
 }
 
+/// The pantry (#51). Shaped like GroceryRepository: every write lands at once.
+protocol PantryRepository: AnyObject {
+    /// Every item, re-emitted on change.
+    func observeItems() -> AnyPublisher<[PantryItem], Never>
+
+    /// Everything in the pantry now, for a one-off match (the grocery sheet's first ticks).
+    func items() async -> [PantryItem]
+
+    /// Adds an item in stock, in its `aisle` or else the one its name belongs to. A blank name
+    /// is ignored.
+    func add(_ item: NewPantryItem) async
+
+    func setInStock(_ ids: [Int64], inStock: Bool) async
+
+    /// Back in stock, bought on `day` (an epoch day).
+    func restock(_ ids: [Int64], day: Int64) async
+
+    /// A blank name is ignored; a blank quantity is none.
+    func edit(_ id: Int64, _ edit: PantryEdit) async
+
+    /// The rows `ids` as they are now, to undo a change to them.
+    func snapshot(_ ids: [Int64]) async -> PantrySnapshot
+
+    /// Deletes an item; nil when it was already gone.
+    func delete(_ id: Int64) async -> PantrySnapshot?
+
+    /// Puts rows back exactly as `snapshot` had them.
+    func restore(_ snapshot: PantrySnapshot) async
+}
+
+/// Pantry rows as they were, for `restore`. Opaque to callers.
+struct PantrySnapshot: Equatable {
+    let items: [PantryItemRecord]
+}
+
 /// What a grocery delete removed, for `restore`. Opaque to callers.
 struct DeletedGroceries: Equatable {
     let items: [GroceryItemRecord]

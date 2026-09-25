@@ -10,6 +10,8 @@ import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ExportedBackup
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.local.entity.GroceryItemEntity
+import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import kotlinx.coroutines.flow.first
@@ -79,6 +81,43 @@ class BackupDaoTest {
             other.close()
         }
         assertTrue(listId > 0)
+    }
+
+    /** The pantry (#51) and the grocery list (#50) go into the file and come back whole, a grocery keeping its recipe. */
+    @Test
+    fun pantryAndGroceriesRoundTrip() = runBlocking {
+        val id = db.recipeDao().upsert(recipe("https://example.com/a"), 50)
+        db.pantryDao().insert(
+            PantryItemEntity(name = "flour", quantity = "half a bag", language = "en", aisle = "baking", inStock = false,
+                alwaysHave = true, purchasedDay = 20_000, expiresDay = 20_100, updatedAt = 3)
+        )
+        db.groceryDao().add(
+            listOf(GroceryItemEntity(text = "2 eggs", language = "en", aisle = "dairy", sortOrder = 0, recipeId = id,
+                plannedDay = 20_001, updatedAt = 4))
+        )
+
+        val exported = (repo(db).export() as BackupResult.Success<ExportedBackup>).value
+        val other = open()
+        try {
+            val summary = (repo(other).import(exported.json) as BackupResult.Success).value
+            assertEquals(1, summary.pantryAdded)
+            assertEquals(1, summary.groceriesAdded)
+
+            val original = db.pantryDao().items().single()
+            assertEquals(original.copy(id = other.pantryDao().items().single().id), other.pantryDao().items().single())
+            val grocery = other.groceryDao().observeItems().first().single()
+            assertEquals("2 eggs", grocery.text)
+            assertEquals(other.recipeDao().findByUrl("https://example.com/a")!!.id, grocery.recipeId)
+            assertEquals(20_001L, grocery.plannedDay)
+            assertEquals(db.groceryDao().observeItems().first().single().uid, grocery.uid)
+
+            // Again: everything is already there.
+            val again = (repo(other).import(exported.json) as BackupResult.Success).value
+            assertEquals(0, again.pantryAdded)
+            assertEquals(0, again.groceriesAdded)
+        } finally {
+            other.close()
+        }
     }
 
     @Test
