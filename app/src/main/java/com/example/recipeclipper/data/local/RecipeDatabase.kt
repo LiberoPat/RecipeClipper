@@ -8,6 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.recipeclipper.data.local.dao.BackupDao
 import com.example.recipeclipper.data.local.dao.GroceryDao
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.local.dao.MenuDao
 import com.example.recipeclipper.data.local.dao.MealPlanDao
 import com.example.recipeclipper.data.local.dao.PantryDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
@@ -17,6 +18,8 @@ import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MealTypeEntity
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
+import com.example.recipeclipper.data.local.entity.MenuEntity
+import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.local.entity.newUid
 import com.example.recipeclipper.data.model.MealType
@@ -25,9 +28,9 @@ import com.example.recipeclipper.data.model.MealType
     entities = [
         RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class,
         MealTypeEntity::class, MealPlanEntryEntity::class, GroceryItemEntity::class,
-        PantryItemEntity::class
+        PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -39,6 +42,7 @@ abstract class RecipeDatabase : RoomDatabase() {
     abstract fun mealPlanDao(): MealPlanDao
     abstract fun groceryDao(): GroceryDao
     abstract fun pantryDao(): PantryDao
+    abstract fun menuDao(): MenuDao
 
     companion object {
         const val NAME = "recipe_clipper.db"
@@ -271,10 +275,38 @@ abstract class RecipeDatabase : RoomDatabase() {
             "CREATE UNIQUE INDEX IF NOT EXISTS `index_pantry_items_uid` ON `pantry_items` (`uid`)"
         )
 
+        /**
+         * Reusable weekly menus (#52): `menus` and `menu_entries`, both new, so nothing existing
+         * changes. Each row has a stable `uid` and an `updatedAt`, for export and a later sync
+         * (#53). The same SQL is iOS's `addMenus`.
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MENU_SQL.forEach(db::execSQL)
+            }
+        }
+
+        private val MENU_SQL = listOf(
+            "CREATE TABLE IF NOT EXISTS `menus` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`name` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_menus_uid` ON `menus` (`uid`)",
+            "CREATE TABLE IF NOT EXISTS `menu_entries` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`menuId` INTEGER NOT NULL, `dayOffset` INTEGER NOT NULL, `mealTypeId` INTEGER NOT NULL, " +
+                "`recipeId` INTEGER, `servings` INTEGER, `note` TEXT, `sortOrder` INTEGER NOT NULL, " +
+                "`updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL, " +
+                "FOREIGN KEY(`menuId`) REFERENCES `menus`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , " +
+                "FOREIGN KEY(`mealTypeId`) REFERENCES `meal_types`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+                "FOREIGN KEY(`recipeId`) REFERENCES `recipes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_menu_entries_uid` ON `menu_entries` (`uid`)",
+            "CREATE INDEX IF NOT EXISTS `index_menu_entries_menuId` ON `menu_entries` (`menuId`)",
+            "CREATE INDEX IF NOT EXISTS `index_menu_entries_mealTypeId` ON `menu_entries` (`mealTypeId`)",
+            "CREATE INDEX IF NOT EXISTS `index_menu_entries_recipeId` ON `menu_entries` (`recipeId`)"
+        )
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10
+            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11
         )
     }
 }

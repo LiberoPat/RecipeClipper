@@ -16,8 +16,14 @@ import Foundation
 ///                     "updatedAt" }],
 ///   "mealTypes":   [{ "id", "name", "builtInKey", "sortOrder", "updatedAt" }],
 ///   "mealPlan":    [{ "id", "day", "mealTypeId", "recipeId", "servings", "note", "sortOrder",
-///                     "updatedAt" }] }
+///                     "updatedAt" }],
+///   "menus":       [{ "id", "name", "updatedAt" }],
+///   "menuEntries": [{ "id", "menuId", "dayOffset", "mealTypeId", "recipeId", "servings", "note",
+///                     "sortOrder", "updatedAt" }] }
 /// ```
+///
+/// `menus` and `menuEntries` (#52) came the same way; a menu meal reads like a planned one, and
+/// one whose `menuId` names no menu in the file is malformed.
 ///
 /// `pantry` (#51), `groceries` (#50), `mealTypes` and `mealPlan` (#49) came later without a
 /// version bump: an older reader ignores them. A grocery's or a planned meal's `recipeId`
@@ -46,6 +52,8 @@ enum BackupJson {
             "groceries": backup.groceries.map(json),
             "mealTypes": backup.mealTypes.map(json),
             "mealPlan": backup.mealPlan.map(json),
+            "menus": backup.menus.map(json),
+            "menuEntries": backup.menuEntries.map(json),
         ]
         guard let data = try? JSONSerialization.data(
             withJSONObject: root, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
@@ -202,9 +210,42 @@ enum BackupJson {
         }
         try requireUniqueIds(mealPlan.map(\.id), "mealPlan")
 
+        let menus = try top.objects(root, "menus").map { path, o -> BackupMenu in
+            let r = Reader(path: path)
+            let id = try r.requiredId(o, "id")
+            guard let name = try r.string(o, "name"), !name.isBlank else { throw Malformed(path: "\(path).name") }
+            return BackupMenu(id: id, name: name, updatedAt: try r.int64(o, "updatedAt") ?? 0)
+        }
+        try requireUniqueIds(menus.map(\.id), "menus")
+
+        let menuIds = Set(menus.map(\.id))
+        let menuEntries = try top.objects(root, "menuEntries").map { path, o -> BackupMenuEntry in
+            let r = Reader(path: path)
+            let id = try r.requiredId(o, "id")
+            guard let menuId = try r.string(o, "menuId"), menuIds.contains(menuId) else {
+                throw Malformed(path: "\(path).menuId")
+            }
+            guard let offset = try r.int(o, "dayOffset"), (0...6).contains(offset) else {
+                throw Malformed(path: "\(path).dayOffset")
+            }
+            return BackupMenuEntry(
+                id: id,
+                menuId: menuId,
+                dayOffset: offset,
+                mealTypeId: try r.string(o, "mealTypeId").flatMap { mealTypeIds.contains($0) ? $0 : nil },
+                recipeId: try r.string(o, "recipeId").flatMap { recipeIds.contains($0) ? $0 : nil },
+                servings: try r.int(o, "servings"),
+                note: try r.string(o, "note").flatMap { $0.isBlank ? nil : $0 },
+                sortOrder: try r.int(o, "sortOrder") ?? 0,
+                updatedAt: try r.int64(o, "updatedAt") ?? 0
+            )
+        }
+        try requireUniqueIds(menuEntries.map(\.id), "menuEntries")
+
         return Backup(
             exportedAt: exportedAt, recipes: recipes, lists: lists, memberships: memberships,
-            pantry: pantry, groceries: groceries, mealTypes: mealTypes, mealPlan: mealPlan
+            pantry: pantry, groceries: groceries, mealTypes: mealTypes, mealPlan: mealPlan,
+            menus: menus, menuEntries: menuEntries
         )
     }
 
@@ -372,6 +413,24 @@ enum BackupJson {
         [
             "id": e.id,
             "day": NSNumber(value: e.day),
+            "mealTypeId": e.mealTypeId ?? NSNull(),
+            "recipeId": e.recipeId ?? NSNull(),
+            "servings": e.servings.map { NSNumber(value: $0) } ?? NSNull(),
+            "note": e.note ?? NSNull(),
+            "sortOrder": e.sortOrder,
+            "updatedAt": NSNumber(value: e.updatedAt),
+        ]
+    }
+
+    private static func json(_ m: BackupMenu) -> [String: Any] {
+        ["id": m.id, "name": m.name, "updatedAt": NSNumber(value: m.updatedAt)]
+    }
+
+    private static func json(_ e: BackupMenuEntry) -> [String: Any] {
+        [
+            "id": e.id,
+            "menuId": e.menuId,
+            "dayOffset": e.dayOffset,
             "mealTypeId": e.mealTypeId ?? NSNull(),
             "recipeId": e.recipeId ?? NSNull(),
             "servings": e.servings.map { NSNumber(value: $0) } ?? NSNull(),

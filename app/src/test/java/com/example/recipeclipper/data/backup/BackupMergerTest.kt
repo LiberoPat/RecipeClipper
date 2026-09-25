@@ -49,10 +49,12 @@ class BackupMergerTest {
         groceries: Set<String> = hereGroceries,
         mealTypes: List<ExistingMealType> = hereMealTypes,
         maxMealTypeSortOrder: Int = 4,
-        planUids: Set<String> = herePlan
+        planUids: Set<String> = herePlan,
+        menuUids: Set<String> = emptySet(),
+        menuEntryUids: Set<String> = emptySet()
     ) = BackupMerger.plan(
         backup, recipes, lists, maxSortOrder, historyLimit, uids(), pantry, groceries,
-        mealTypes, maxMealTypeSortOrder, planUids, today
+        mealTypes, maxMealTypeSortOrder, planUids, today, menuUids, menuEntryUids
     )
 
     @Test fun `the shared fixture merges into the expected plan`() {
@@ -268,5 +270,65 @@ class BackupMergerTest {
         val plan = plan(Backup(0, incoming, emptyList(), emptyList()))
         assertTrue(plan.noteUpdates.isEmpty())
         assertEquals(1, plan.summary.recipesAlreadyHere)
+    }
+
+    // --- Menus (#52)
+
+    private fun menuRecipe(id: String) = BackupRecipe(
+        id, "https://example.com/$id", "BLOG", id, null, listOf("1 egg"), listOf("Cook."),
+        null, null, null, null, lastViewedAt = 5, checkedIngredients = emptySet(), notes = null
+    )
+
+    private fun menuEntry(id: String, menuId: String, recipeId: String?, note: String? = null, type: String? = null) =
+        BackupMenuEntry(id, menuId, 2, type, recipeId, if (recipeId != null) 4 else null, note, 0, 9)
+
+    @Test fun `a menu comes in with its meals, and its recipes like listed ones`() {
+        val backup = Backup(
+            0, listOf(menuRecipe("r-menu")), emptyList(), emptyList(),
+            mealTypes = listOf(BackupMealType("mt-brunch", "Brunch", null, 4, 0)),
+            menus = listOf(BackupMenu("menu-a", " Week A ", 9)),
+            menuEntries = listOf(
+                menuEntry("me-1", "menu-a", "r-menu", type = "mt-brunch"),
+                menuEntry("me-2", "menu-a", null, note = "Leftovers")
+            )
+        )
+        // No free place in history: the menu's recipe still comes in.
+        val plan = plan(backup, recipes = emptyList(), historyLimit = 0)
+        assertEquals(listOf("r-menu"), plan.newRecipes.map { it.id })
+        assertEquals(1, plan.summary.menusAdded)
+        val menu = plan.newMenus.single()
+        assertEquals("Week A", menu.menu.name)
+        assertEquals(
+            listOf(Triple("me-1", Target.Existing(7) as Target, Target.New("r-menu") as Target?),
+                Triple("me-2", Target.Existing(4) as Target, null)),
+            menu.entries.map { Triple(it.entry.id, it.mealType, it.recipe) }
+        )
+        assertEquals(4, menu.entries[0].entry.servings)
+        assertEquals("Leftovers", menu.entries[1].entry.note)
+    }
+
+    @Test fun `a menu already here is left as it is`() {
+        val backup = Backup(
+            0, emptyList(), emptyList(), emptyList(),
+            menus = listOf(BackupMenu("menu-a", "Renamed there", 9)),
+            menuEntries = listOf(menuEntry("me-1", "menu-a", null, note = "Soup"))
+        )
+        val plan = plan(backup, menuUids = setOf("menu-a"), menuEntryUids = setOf("me-1"))
+        assertTrue(plan.newMenus.isEmpty())
+        assertEquals(0, plan.summary.menusAdded)
+    }
+
+    @Test fun `a menu whose meals can't come in is dropped, and a taken meal uid is replaced`() {
+        val backup = Backup(
+            0, emptyList(), emptyList(), emptyList(),
+            menus = listOf(BackupMenu("menu-a", "A", 9), BackupMenu("menu-b", "B", 9)),
+            menuEntries = listOf(
+                menuEntry("me-1", "menu-a", "r-missing"),
+                menuEntry("me-2", "menu-b", null, note = "Soup")
+            )
+        )
+        val plan = plan(backup, menuEntryUids = setOf("me-2"))
+        assertEquals(listOf("menu-b"), plan.newMenus.map { it.menu.id })
+        assertEquals("gen-1", plan.newMenus.single().entries.single().entry.id)
     }
 }

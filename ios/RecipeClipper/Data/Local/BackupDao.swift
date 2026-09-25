@@ -9,6 +9,8 @@ struct BackupSnapshot {
     var groceries: [GroceryItemRecord] = []
     var mealTypes: [MealTypeRecord] = []
     var mealPlan: [MealPlanEntryRecord] = []
+    var menus: [MenuRecord] = []
+    var menuEntries: [MenuEntryRecord] = []
 
     /// One row of `lists`, every column (ListRecord is the screen's shape, with counts).
     struct ListRow: Equatable {
@@ -61,9 +63,14 @@ struct BackupDao {
             "SELECT \(MealPlanEntryRecord.columns) FROM meal_plan_entries ORDER BY day ASC, mealTypeId ASC, sortOrder ASC, id ASC",
             map: MealPlanEntryRecord.init(row:)
         )
+        let menus = try db.query("SELECT \(MenuRecord.columns) FROM menus ORDER BY id ASC", map: MenuRecord.init(row:))
+        let menuEntries = try db.query(
+            "SELECT \(MenuEntryRecord.columns) FROM menu_entries ORDER BY menuId ASC, dayOffset ASC, mealTypeId ASC, sortOrder ASC, id ASC",
+            map: MenuEntryRecord.init(row:)
+        )
         return BackupSnapshot(
             recipes: recipes, lists: lists, memberships: memberships, pantry: pantry, groceries: groceries,
-            mealTypes: mealTypes, mealPlan: mealPlan
+            mealTypes: mealTypes, mealPlan: mealPlan, menus: menus, menuEntries: menuEntries
         )
     }
 
@@ -79,6 +86,14 @@ struct BackupDao {
 
     func existingPlanUids() throws -> Set<String> {
         Set(try db.query("SELECT uid FROM meal_plan_entries") { $0.string(0) })
+    }
+
+    func existingMenuUids() throws -> Set<String> {
+        Set(try db.query("SELECT uid FROM menus") { $0.string(0) })
+    }
+
+    func existingMenuEntryUids() throws -> Set<String> {
+        Set(try db.query("SELECT uid FROM menu_entries") { $0.string(0) })
     }
 
     func existingPantry() throws -> [ExistingPantryItem] {
@@ -130,7 +145,9 @@ struct BackupDao {
             existingMealTypes: try existingMealTypes(),
             maxMealTypeSortOrder: try maxMealTypeOrder(),
             existingPlanUids: try existingPlanUids(),
-            today: today
+            today: today,
+            existingMenuUids: try existingMenuUids(),
+            existingMenuEntryUids: try existingMenuEntryUids()
         )
 
         let recipes = RecipeDao(db: db)
@@ -217,6 +234,17 @@ struct BackupDao {
                 recipeId: p.recipe.map { rowId($0, newRecipeIds) }, servings: p.entry.servings, note: p.entry.note,
                 sortOrder: 0, updatedAt: p.entry.updatedAt, uid: p.entry.id
             ))
+        }
+        let menus = MenuDao(db: db)
+        for m in plan.newMenus {
+            let menuId = try menus.insertMenu(MenuRecord(name: m.menu.name, updatedAt: m.menu.updatedAt, uid: m.menu.id))
+            for e in m.entries {
+                try menus.insertEntry(MenuEntryRecord(
+                    menuId: menuId, dayOffset: e.entry.dayOffset, mealTypeId: rowId(e.mealType, newTypeIds),
+                    recipeId: e.recipe.map { rowId($0, newRecipeIds) }, servings: e.entry.servings, note: e.entry.note,
+                    sortOrder: e.entry.sortOrder, updatedAt: e.entry.updatedAt, uid: e.entry.id
+                ))
+            }
         }
         return plan.summary
     }

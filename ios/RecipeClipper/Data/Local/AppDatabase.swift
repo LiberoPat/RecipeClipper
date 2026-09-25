@@ -144,6 +144,7 @@ final class AppDatabase: @unchecked Sendable {
         addMealPlan,
         addGroceries,
         addPantry,
+        addMenus,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -352,6 +353,41 @@ final class AppDatabase: @unchecked Sendable {
                 uid TEXT NOT NULL
             );
             CREATE UNIQUE INDEX index_pantry_items_uid ON pantry_items (uid);
+            """)
+    }
+
+    /// Version 10 (Android's Room version 11, `MIGRATION_10_11`): reusable weekly menus (#52).
+    /// `menus` and `menu_entries`, new, so nothing existing changes. Every row has a stable `uid`
+    /// and an `updatedAt`, for export and a later sync (#53). The same tables as Android's.
+    private static func addMenus(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE menus (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX index_menus_uid ON menus (uid);
+
+            CREATE TABLE menu_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                menuId INTEGER NOT NULL,
+                dayOffset INTEGER NOT NULL,
+                mealTypeId INTEGER NOT NULL,
+                recipeId INTEGER,
+                servings INTEGER,
+                note TEXT,
+                sortOrder INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (menuId) REFERENCES menus (id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY (mealTypeId) REFERENCES meal_types (id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX index_menu_entries_uid ON menu_entries (uid);
+            CREATE INDEX index_menu_entries_menuId ON menu_entries (menuId);
+            CREATE INDEX index_menu_entries_mealTypeId ON menu_entries (mealTypeId);
+            CREATE INDEX index_menu_entries_recipeId ON menu_entries (recipeId);
             """)
     }
 

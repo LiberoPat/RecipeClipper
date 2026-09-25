@@ -115,17 +115,30 @@ abstract class MealPlanDao {
     )
     protected abstract suspend fun moveEntriesToDinner(id: Long, now: Long)
 
+    /** The same for the meals of saved menus (#52). */
+    @Query(
+        """
+        UPDATE menu_entries
+        SET mealTypeId = (SELECT id FROM meal_types WHERE builtInKey = '${MealType.DINNER}'),
+            updatedAt = :now
+        WHERE mealTypeId = :id
+          AND EXISTS(SELECT 1 FROM meal_types WHERE id = :id AND builtInKey IS NULL)
+        """
+    )
+    protected abstract suspend fun moveMenuEntriesToDinner(id: Long, now: Long)
+
     /** The guard is `builtInKey IS NULL`, in the SQL, so no code path deletes a seeded type. */
     @Query("DELETE FROM meal_types WHERE id = :id AND builtInKey IS NULL")
     protected abstract suspend fun deleteUserType(id: Long)
 
     /**
-     * Deletes a user's meal type. Its meals are never deleted with it: they move to Dinner
-     * first, in the same transaction. A seeded type is left alone.
+     * Deletes a user's meal type. Its meals, planned or in a menu, are never deleted with it:
+     * they move to Dinner first, in the same transaction. A seeded type is left alone.
      */
     @Transaction
     open suspend fun deleteType(id: Long, now: Long) {
         moveEntriesToDinner(id, now)
+        moveMenuEntriesToDinner(id, now)
         deleteUserType(id)
     }
 }

@@ -39,7 +39,9 @@ final class BackupMergerTests: XCTestCase {
         groceries: Set<String>? = nil,
         mealTypes: [ExistingMealType]? = nil,
         maxMealTypeSortOrder: Int = 4,
-        planUids: Set<String>? = nil
+        planUids: Set<String>? = nil,
+        menuUids: Set<String> = [],
+        menuEntryUids: Set<String> = []
     ) -> ImportPlan {
         var n = 0
         return BackupMerger.plan(
@@ -54,7 +56,9 @@ final class BackupMergerTests: XCTestCase {
             existingMealTypes: mealTypes ?? hereMealTypes,
             maxMealTypeSortOrder: maxMealTypeSortOrder,
             existingPlanUids: planUids ?? herePlan,
-            today: today
+            today: today,
+            existingMenuUids: menuUids,
+            existingMenuEntryUids: menuEntryUids
         )
     }
 
@@ -260,5 +264,60 @@ final class BackupMergerTests: XCTestCase {
         let plan = plan(backup)
         XCTAssertTrue(plan.noteUpdates.isEmpty)
         XCTAssertEqual(plan.summary.recipesAlreadyHere, 1)
+    }
+
+    // MARK: - Menus (#52)
+
+    private func menuEntry(_ id: String, _ menuId: String, recipe: String?, note: String? = nil, type: String? = nil) -> BackupMenuEntry {
+        BackupMenuEntry(
+            id: id, menuId: menuId, dayOffset: 2, mealTypeId: type, recipeId: recipe,
+            servings: recipe != nil ? 4 : nil, note: note, sortOrder: 0, updatedAt: 9
+        )
+    }
+
+    func testAMenuComesInWithItsMealsAndItsRecipesLikeListedOnes() {
+        let backup = Backup(
+            exportedAt: 0, recipes: [recipe("r-menu", "https://example.com/r-menu")], lists: [], memberships: [],
+            mealTypes: [BackupMealType(id: "mt-brunch", name: "Brunch", builtInKey: nil, sortOrder: 4, updatedAt: 0)],
+            menus: [BackupMenu(id: "menu-a", name: " Week A ", updatedAt: 9)],
+            menuEntries: [
+                menuEntry("me-1", "menu-a", recipe: "r-menu", type: "mt-brunch"),
+                menuEntry("me-2", "menu-a", recipe: nil, note: "Leftovers"),
+            ]
+        )
+        // No free place in history: the menu's recipe still comes in.
+        let result = plan(backup, recipes: [], historyLimit: 0)
+        XCTAssertEqual(result.newRecipes.map(\.id), ["r-menu"])
+        XCTAssertEqual(result.summary.menusAdded, 1)
+        let menu = result.newMenus.first
+        XCTAssertEqual(menu?.menu.name, "Week A")
+        XCTAssertEqual(menu?.entries.map(\.mealType), [.existing(7), .existing(4)])
+        XCTAssertEqual(menu?.entries.map(\.recipe), [.new("r-menu"), nil])
+        XCTAssertEqual(menu?.entries.first?.entry.servings, 4)
+    }
+
+    func testAMenuAlreadyHereIsLeftAsItIs() {
+        let backup = Backup(
+            exportedAt: 0, recipes: [], lists: [], memberships: [],
+            menus: [BackupMenu(id: "menu-a", name: "Renamed there", updatedAt: 9)],
+            menuEntries: [menuEntry("me-1", "menu-a", recipe: nil, note: "Soup")]
+        )
+        let result = plan(backup, menuUids: ["menu-a"], menuEntryUids: ["me-1"])
+        XCTAssertTrue(result.newMenus.isEmpty)
+        XCTAssertEqual(result.summary.menusAdded, 0)
+    }
+
+    func testAMenuWhoseMealsCantComeInIsDroppedAndATakenMealUidIsReplaced() {
+        let backup = Backup(
+            exportedAt: 0, recipes: [], lists: [], memberships: [],
+            menus: [BackupMenu(id: "menu-a", name: "A", updatedAt: 9), BackupMenu(id: "menu-b", name: "B", updatedAt: 9)],
+            menuEntries: [
+                menuEntry("me-1", "menu-a", recipe: "r-missing"),
+                menuEntry("me-2", "menu-b", recipe: nil, note: "Soup"),
+            ]
+        )
+        let result = plan(backup, menuEntryUids: ["me-2"])
+        XCTAssertEqual(result.newMenus.map(\.menu.id), ["menu-b"])
+        XCTAssertEqual(result.newMenus.first?.entries.map(\.entry.id), ["gen-1"])
     }
 }

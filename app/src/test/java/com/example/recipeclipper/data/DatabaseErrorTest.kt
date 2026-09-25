@@ -4,6 +4,10 @@ import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.ListRow
 import com.example.recipeclipper.data.local.dao.MealPlanDao
+import com.example.recipeclipper.data.local.dao.MenuDao
+import com.example.recipeclipper.data.local.dao.MenuRow
+import com.example.recipeclipper.data.local.entity.MenuEntity
+import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.dao.PlannedMealRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
@@ -66,6 +70,11 @@ class DatabaseErrorTest {
         override suspend fun planEntriesFor(recipeId: Long): List<MealPlanEntryEntity> = throw throwable()
         override suspend fun restorePlanEntry(
             id: Long, day: Long, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
+            sortOrder: Int, updatedAt: Long, uid: String
+        ) = throw throwable()
+        override suspend fun menuEntriesFor(recipeId: Long): List<MenuEntryEntity> = throw throwable()
+        override suspend fun restoreMenuEntry(
+            id: Long, menuId: Long, dayOffset: Int, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
             sortOrder: Int, updatedAt: Long, uid: String
         ) = throw throwable()
     }
@@ -180,6 +189,20 @@ class DatabaseErrorTest {
         )
     }
 
+    private class ThrowingMenuDao : MenuDao() {
+        override fun observeMenus(): Flow<List<MenuRow>> = flow { throw Boom() }
+        override suspend fun entries(menuId: Long): List<MenuEntryEntity> = throw Boom()
+        override suspend fun planEntries(start: Long, end: Long): List<MealPlanEntryEntity> = throw Boom()
+        override suspend fun insertMenu(menu: MenuEntity): Long = throw Boom()
+        override suspend fun insertEntries(entries: List<MenuEntryEntity>) = throw Boom()
+        override suspend fun nextPlanOrder(day: Long, mealTypeId: Long): Int = throw Boom()
+        override suspend fun insertPlanEntry(entry: MealPlanEntryEntity): Long = throw Boom()
+        override suspend fun saveWeek(name: String, weekStart: Long, now: Long): Long? = throw Boom()
+        override suspend fun apply(menuId: Long, weekStart: Long, now: Long): Int = throw Boom()
+        override suspend fun rename(id: Long, name: String, now: Long) = throw Boom()
+        override suspend fun delete(id: Long) = throw Boom()
+    }
+
     private class ThrowingMealPlanDao : MealPlanDao() {
         override fun observeMealTypes(): Flow<List<MealTypeEntity>> = flow { throw Boom() }
         override fun observeDays(start: Long, end: Long): Flow<List<PlannedMealRow>> = flow { throw Boom() }
@@ -194,12 +217,13 @@ class DatabaseErrorTest {
         override suspend fun renameType(id: Long, name: String, now: Long) = throw Boom()
         override suspend fun setTypeOrder(id: Long, sortOrder: Int, now: Long) = throw Boom()
         override suspend fun moveEntriesToDinner(id: Long, now: Long) = throw Boom()
+        override suspend fun moveMenuEntriesToDinner(id: Long, now: Long) = throw Boom()
         override suspend fun deleteUserType(id: Long) = throw Boom()
     }
 
     @Test fun `meal plan writes are no-ops, a delete gives null, flows go empty`() = runTest {
         val log = RecordingLog()
-        val plan = DefaultMealPlanRepository(ThrowingMealPlanDao(), Clock { 1_000L }, log)
+        val plan = DefaultMealPlanRepository(ThrowingMealPlanDao(), ThrowingMenuDao(), Clock { 1_000L }, log)
 
         plan.addRecipe(recipeId = 1, day = 20_000, mealTypeId = 3, servings = 4)
         plan.addNote("Eat out", day = 20_000, mealTypeId = 3)
@@ -211,12 +235,19 @@ class DatabaseErrorTest {
         plan.deleteMealType(5)
         assertEquals(listOf(emptyList<Any>()), plan.observeMealTypes().toList())
         assertEquals(listOf(emptyList<Any>()), plan.observeDays(20_000, 20_006).toList())
+        assertEquals(false, plan.saveWeekAsMenu("Usual", 20_000))
+        assertEquals(0, plan.applyMenu(1, 20_007))
+        plan.renameMenu(1, "Winter")
+        plan.deleteMenu(1)
+        assertEquals(listOf(emptyList<Any>()), plan.observeMenus().toList())
 
         assertEquals(
             listOf(
                 "addRecipe failed", "addNote failed", "move failed", "deleteMeal failed",
                 "addMealType failed", "renameMealType failed", "reorderMealTypes failed",
-                "deleteMealType failed", "observeMealTypes failed", "observeDays failed"
+                "deleteMealType failed", "observeMealTypes failed", "observeDays failed",
+                "saveWeekAsMenu failed", "applyMenu failed", "renameMenu failed", "deleteMenu failed",
+                "observeMenus failed"
             ),
             log.messages
         )

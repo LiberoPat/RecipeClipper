@@ -62,6 +62,19 @@ struct NewPlanEntry: Equatable {
     var recipe: MergeTarget?
 }
 
+/// A menu meal to write (#52): like `NewPlanEntry`, with its uid final.
+struct NewMenuEntry: Equatable {
+    var entry: BackupMenuEntry
+    var mealType: MergeTarget
+    var recipe: MergeTarget?
+}
+
+/// A menu to write (#52), with its meals.
+struct NewMenu: Equatable {
+    var menu: BackupMenu
+    var entries: [NewMenuEntry]
+}
+
 struct NewList: Equatable {
     var uid: String
     var name: String
@@ -94,6 +107,7 @@ struct ImportPlan: Equatable {
     var newGroceries: [NewGrocery] = []
     var newMealTypes: [NewMealType] = []
     var newPlanEntries: [NewPlanEntry] = []
+    var newMenus: [NewMenu] = []
 }
 
 /// How an export file merges into a phone that already has recipes (issue #26; the owner's
@@ -113,6 +127,9 @@ struct ImportPlan: Equatable {
 /// unless their uid is here, at the end of their day and meal type (Dinner if the file names
 /// none): a note always, a recipe's only if the recipe is here after the import (else the meal
 /// is dropped). A recipe the file plans for `today` or later comes in like a listed one.
+/// Menus (#52): a menu comes in, with its meals, unless its uid is already here; one here is
+/// left as it is. Its meals follow the plan's rules, its recipes come in like listed ones (the
+/// cull keeps them too), and a menu left with no meals is dropped.
 enum BackupMerger {
 
     static func plan(
@@ -127,7 +144,9 @@ enum BackupMerger {
         existingMealTypes: [ExistingMealType] = [],
         maxMealTypeSortOrder: Int = -1,
         existingPlanUids: Set<String> = [],
-        today: Int64? = nil
+        today: Int64? = nil,
+        existingMenuUids: Set<String> = [],
+        existingMenuEntryUids: Set<String> = []
     ) -> ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         var existingByUrl: [String: ExistingRecipe] = [:]
@@ -229,6 +248,13 @@ enum BackupMerger {
                 if let target = entry.recipeId.flatMap({ recipeTargets[$0] }) { listedTargets.insert(target) }
             }
         }
+        // A menu's recipes are kept from the cull as well.
+        let incomingMenus = backup.menus.filter { !existingMenuUids.contains($0.id) }
+        let incomingMenuIds = Set(incomingMenus.map(\.id))
+        let incomingMenuEntries = backup.menuEntries.filter { incomingMenuIds.contains($0.menuId) }
+        for entry in incomingMenuEntries {
+            if let target = entry.recipeId.flatMap({ recipeTargets[$0] }) { listedTargets.insert(target) }
+        }
         let unlistedHere = existingRecipes.filter { !$0.isListed && !listedTargets.contains(.existing($0.id)) }.count
         let freePlaces = max(0, historyLimit - unlistedHere)
         let newRecipesInOrder = newOrder.compactMap { newByUrl[$0] }
@@ -326,6 +352,25 @@ enum BackupMerger {
             return NewPlanEntry(entry: note, mealType: mealType, recipe: nil)
         }
 
+        // --- Menus: by uid, whole; their meals follow the plan's rules.
+        var takenMenuEntryUids = existingMenuEntryUids
+        let newMenus = incomingMenus.compactMap { menu -> NewMenu? in
+            let entries = incomingMenuEntries.filter { $0.menuId == menu.id }.compactMap { entry -> NewMenuEntry? in
+                guard let mealType = entry.mealTypeId.flatMap({ typeTargets[$0] }) ?? dinner else { return nil }
+                var recipe = entry.recipeId.flatMap { recipeTargets[$0] }
+                if case .new = recipe, !written.contains(recipe!) { recipe = nil }
+                guard recipe != nil || (entry.recipeId == nil && entry.note != nil) else { return nil }
+                var row = entry
+                row.id = takenMenuEntryUids.insert(entry.id).inserted ? entry.id : freshUid(&takenMenuEntryUids, newUid)
+                if recipe != nil { row.note = nil } else { row.servings = nil }
+                return NewMenuEntry(entry: row, mealType: mealType, recipe: recipe)
+            }
+            if entries.isEmpty { return nil }
+            var trimmed = menu
+            trimmed.name = menu.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            return NewMenu(menu: trimmed, entries: entries)
+        }
+
         return ImportPlan(
             newRecipes: newRecipes,
             noteUpdates: noteUpdates,
@@ -339,12 +384,14 @@ enum BackupMerger {
                 pantryAdded: newPantry.count,
                 groceriesAdded: newGroceries.count,
                 mealsAdded: newPlanEntries.count,
-                mealTypesAdded: newTypeOrder.count
+                mealTypesAdded: newTypeOrder.count,
+                menusAdded: newMenus.count
             ),
             newPantry: newPantry,
             newGroceries: newGroceries,
             newMealTypes: newTypeOrder.compactMap { newTypesByName[$0] },
-            newPlanEntries: newPlanEntries
+            newPlanEntries: newPlanEntries,
+            newMenus: newMenus
         )
     }
 

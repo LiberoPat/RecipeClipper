@@ -29,3 +29,11 @@ struct PlannedMeal: Equatable, Identifiable {
     /// The entry's stable uid (#26): what a calendar export (#52) names the event by.
     var uid = ""
 }
+
+/// A reusable weekly menu (#52; Android's `Menu`, renamed so it never shadows SwiftUI's): a named copy of a week's meals. `mealCount` is how many meals
+/// applying it adds.
+struct WeekMenu: Equatable, Identifiable {
+    let id: Int64
+    let name: String
+    let mealCount: Int
+}

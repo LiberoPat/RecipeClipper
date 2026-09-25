@@ -202,3 +202,62 @@ data class MealPlanEntryEntity(
     val updatedAt: Long,
     val uid: String = newUid()
 )
+
+/**
+ * A reusable weekly menu (#52): a named copy of a week's meals, to add to any later week. Its
+ * entries live in [MenuEntryEntity]. [uid] and [updatedAt] are for export and a later sync (#53).
+ */
+@Entity(tableName = "menus", indices = [Index(value = ["uid"], unique = true)])
+data class MenuEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val updatedAt: Long,
+    val uid: String = newUid()
+)
+
+/**
+ * One meal of a menu (#52), on [dayOffset] days after the week's first day (0 to 6), shaped like
+ * [MealPlanEntryEntity]: a recipe at [servings] (null: its own yield), or a [note]. Entries go
+ * with their menu and with their recipe (cascade). A meal type can't be deleted from under them
+ * (no cascade): deleting one moves them to Dinner, as it does planned meals.
+ */
+@Entity(
+    tableName = "menu_entries",
+    foreignKeys = [
+        ForeignKey(
+            entity = MenuEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["menuId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = MealTypeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["mealTypeId"]
+        ),
+        ForeignKey(
+            entity = RecipeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["recipeId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["uid"], unique = true),
+        Index("menuId"),
+        Index("mealTypeId"),
+        Index("recipeId")
+    ]
+)
+data class MenuEntryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val menuId: Long,
+    val dayOffset: Int,
+    val mealTypeId: Long,
+    val recipeId: Long?,
+    val servings: Int?,
+    val note: String?,
+    val sortOrder: Int,             // within its day and meal type
+    val updatedAt: Long,
+    val uid: String = newUid()
+)

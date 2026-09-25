@@ -197,12 +197,13 @@ class DefaultRecipeRepository @Inject constructor(
         val entity = recipeDao.get(id) ?: return@guard null
         val crossRefs = recipeDao.crossRefsFor(id)
         val planEntries = recipeDao.planEntriesFor(id)
+        val menuEntries = recipeDao.menuEntriesFor(id)
         recipeDao.delete(id)
-        RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries)
+        RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries, menuEntries)
     }
 
     override suspend fun restore(deleted: RecipeRepository.DeletedRecipe) =
-        log.guard("restore", Unit) { recipeDao.restore(deleted.entity, deleted.crossRefs, deleted.planEntries) }
+        log.guard("restore", Unit) { recipeDao.restore(deleted.entity, deleted.crossRefs, deleted.planEntries, deleted.menuEntries) }
 
     override fun observeHistory(query: String): Flow<List<RecipeSummary>> =
         recipeDao.observeHistory(query).map { rows -> rows.map { it.toDomain() } }.orEmptyOnError(log, "observeHistory")

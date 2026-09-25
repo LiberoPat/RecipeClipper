@@ -57,6 +57,12 @@ data class NewMealType(val uid: String, val name: String, val sortOrder: Int, va
  */
 data class NewPlanEntry(val entry: BackupPlanEntry, val mealType: Target, val recipe: Target?)
 
+/** A menu meal to write (#52): like [NewPlanEntry], with its uid final. */
+data class NewMenuEntry(val entry: BackupMenuEntry, val mealType: Target, val recipe: Target?)
+
+/** A menu to write (#52), with its meals. */
+data class NewMenu(val menu: BackupMenu, val entries: List<NewMenuEntry>)
+
 data class PlannedMembership(val recipe: Target, val list: Target, val addedAt: Long)
 
 /**
@@ -73,7 +79,8 @@ data class ImportPlan(
     val newPantry: List<BackupPantryItem> = emptyList(),
     val newGroceries: List<NewGrocery> = emptyList(),
     val newMealTypes: List<NewMealType> = emptyList(),
-    val newPlanEntries: List<NewPlanEntry> = emptyList()
+    val newPlanEntries: List<NewPlanEntry> = emptyList(),
+    val newMenus: List<NewMenu> = emptyList()
 )
 
 /**
@@ -116,6 +123,10 @@ data class ImportPlan(
  *   empty row, and deleting a recipe removes its meals too). So that a planned recipe isn't
  *   skipped for history, a recipe the file plans for [today] or later comes in like a listed one,
  *   the cull's own rule. An entry whose meal type the file doesn't name goes to Dinner.
+ * - **Menus** (#52): a menu comes in, with its meals, unless its uid is already here; one here is
+ *   left as it is, never merged or renamed. Its meals follow the plan's rules (a recipe meal
+ *   needs its recipe here, a note always comes in, no meal type means Dinner). A menu's recipes
+ *   come in like listed ones, since the cull keeps them too. A menu left with no meals is dropped.
  */
 object BackupMerger {
 
@@ -131,7 +142,9 @@ object BackupMerger {
         existingMealTypes: List<ExistingMealType> = emptyList(),
         maxMealTypeSortOrder: Int = -1,
         existingPlanUids: Set<String> = emptySet(),
-        today: Long? = null
+        today: Long? = null,
+        existingMenuUids: Set<String> = emptySet(),
+        existingMenuEntryUids: Set<String> = emptySet()
     ): ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         val existingByUrl = HashMap<String, ExistingRecipe>()
@@ -215,6 +228,11 @@ object BackupMerger {
         if (today != null) {
             incomingPlan.filter { it.day >= today }.mapNotNullTo(listedTargets) { it.recipeId?.let(recipeTargets::get) }
         }
+        // A menu's recipes are kept from the cull as well.
+        val incomingMenus = backup.menus.filter { it.id !in existingMenuUids }
+        val incomingMenuIds = incomingMenus.mapTo(HashSet()) { it.id }
+        val incomingMenuEntries = backup.menuEntries.filter { it.menuId in incomingMenuIds }
+        incomingMenuEntries.mapNotNullTo(listedTargets) { it.recipeId?.let(recipeTargets::get) }
         val unlistedHere = existingRecipes.count { !it.isListed && Target.Existing(it.id) !in listedTargets }
         val freePlaces = (historyLimit - unlistedHere).coerceAtLeast(0)
         val unlistedNew = newByUrl.values.filter { Target.New(it.id) !in listedTargets }
@@ -279,6 +297,24 @@ object BackupMerger {
             }
         }
 
+        // --- Menus: by uid, whole; their meals follow the plan's rules.
+        val takenMenuEntryUids = existingMenuEntryUids.toMutableSet()
+        val entriesByMenu = incomingMenuEntries.groupBy { it.menuId }
+        val newMenus = incomingMenus.mapNotNull { menu ->
+            val entries = entriesByMenu[menu.id].orEmpty().mapNotNull { entry ->
+                val mealType = entry.mealTypeId?.let(typeTargets::get) ?: dinner ?: return@mapNotNull null
+                val recipe = entry.recipeId?.let(recipeTargets::get)?.takeIf { it is Target.Existing || it in written }
+                val uid = if (takenMenuEntryUids.add(entry.id)) entry.id else freshUid(takenMenuEntryUids, newUid)
+                when {
+                    recipe != null -> NewMenuEntry(entry.copy(id = uid, note = null), mealType, recipe)
+                    entry.recipeId == null && entry.note != null ->
+                        NewMenuEntry(entry.copy(id = uid, servings = null), mealType, null)
+                    else -> null
+                }
+            }
+            if (entries.isEmpty()) null else NewMenu(menu.copy(name = menu.name.trim()), entries)
+        }
+
         return ImportPlan(
             newRecipes = newRecipes,
             noteUpdates = noteUpdates,
@@ -292,12 +328,14 @@ object BackupMerger {
                 pantryAdded = newPantry.size,
                 groceriesAdded = newGroceries.size,
                 mealsAdded = newPlanEntries.size,
-                mealTypesAdded = newTypesByName.size
+                mealTypesAdded = newTypesByName.size,
+                menusAdded = newMenus.size
             ),
             newPantry = newPantry,
             newGroceries = newGroceries,
             newMealTypes = newTypesByName.values.toList(),
-            newPlanEntries = newPlanEntries
+            newPlanEntries = newPlanEntries,
+            newMenus = newMenus
         )
     }
 

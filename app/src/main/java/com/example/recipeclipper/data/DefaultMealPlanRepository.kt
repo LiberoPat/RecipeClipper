@@ -1,10 +1,12 @@
 package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.local.dao.MealPlanDao
+import com.example.recipeclipper.data.local.dao.MenuDao
 import com.example.recipeclipper.data.local.dao.PlannedMealRow
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MealTypeEntity
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.Menu
 import com.example.recipeclipper.data.model.PlannedMeal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -19,6 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class DefaultMealPlanRepository @Inject constructor(
     private val dao: MealPlanDao,
+    private val menuDao: MenuDao,
     private val clock: Clock,
     private val log: ErrorLog
 ) : MealPlanRepository {
@@ -89,6 +92,27 @@ class DefaultMealPlanRepository @Inject constructor(
 
     override suspend fun deleteMealType(id: Long) =
         log.guard("deleteMealType", Unit) { dao.deleteType(id, clock.now()) }
+
+    override fun observeMenus(): Flow<List<Menu>> =
+        menuDao.observeMenus().map { rows -> rows.map { Menu(it.id, it.name, it.mealCount) } }
+            .orEmptyOnError(log, "observeMenus")
+
+    override suspend fun saveWeekAsMenu(name: String, weekStart: Long): Boolean {
+        val text = name.trim()
+        if (text.isEmpty()) return false
+        return log.guard("saveWeekAsMenu", false) { menuDao.saveWeek(text, weekStart, clock.now()) != null }
+    }
+
+    override suspend fun applyMenu(menuId: Long, weekStart: Long): Int =
+        log.guard("applyMenu", 0) { menuDao.apply(menuId, weekStart, clock.now()) }
+
+    override suspend fun renameMenu(id: Long, name: String) {
+        val text = name.trim()
+        if (text.isEmpty()) return
+        log.guard("renameMenu", Unit) { menuDao.rename(id, text, clock.now()) }
+    }
+
+    override suspend fun deleteMenu(id: Long) = log.guard("deleteMenu", Unit) { menuDao.delete(id) }
 }
 
 private fun MealTypeEntity.toDomain() = MealType(id = id, name = name, builtInKey = builtInKey, sortOrder = sortOrder)

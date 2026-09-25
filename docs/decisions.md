@@ -1759,3 +1759,32 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
   the escaping and folding to the Kotlin. The ViewModel makes the text (`PlanCalendar.now()`
   stamps it); the screen writes it (Android: `cacheDir/exports/` through the existing
   FileProvider, `text/calendar`; iOS: the temporary directory) and opens the share sheet.
+
+### Reusable weekly menus
+
+- **A menu is a named copy of a week, not a template the plan follows** (Paprika's Menus).
+  "Save week as menu…" (Week menu, week view only, disabled for an empty week) copies the
+  shown week's meals into a new menu: each keeps its weekday (`dayOffset` 0–6 from the week's
+  first day), meal type, recipe with planned servings, or note. Nothing links a planned meal
+  to a menu afterwards, so editing the plan never changes a menu, and vice versa.
+- **Applying only adds.** "Apply a menu…" opens the menus sheet (name, meal count); tapping one
+  copies its meals into the week shown on the same weekdays, each at the end of its day and
+  meal type. What is planned stays, so applying twice doubles up (visibly, and each meal
+  can be removed) rather than silently replacing a week the user built. The snackbar says how many
+  meals came in. A week starting on another weekday (a locale change) keeps offsets from the
+  week's first day, not weekday names.
+- **Names are free text,** trimmed; blank does nothing. Duplicate names are allowed; the sheet sorts
+  by name, case-insensitively.
+  Rename and Delete sit on each row's menu in the sheet (iOS: their alerts show over the
+  sheet). Deleting a menu removes it and its meals only, never the plan or a recipe.
+- **Schema:** `menus` (name, `uid`, `updatedAt`) and `menu_entries` (shaped like
+  `meal_plan_entries` with `menuId` and `dayOffset` in place of `day`), Room 11 / iOS
+  `user_version` 10. Entries cascade with their menu and with their recipe; a recipe's menu
+  meals come back with it when a delete is undone. Meal types don't cascade: deleting one
+  moves its menu meals to Dinner, as it does planned meals.
+- **A recipe in a menu is never culled** and doesn't count toward the 50, like a listed one:
+  otherwise a menu saved months ago would quietly lose its recipes to history's cap.
+- **Backup:** menus travel in the export file (`menus`, `menuEntries`). A menu comes in whole
+  unless its uid is already here (then it's left as it is, never merged or renamed); its meals
+  follow the plan's rules (a recipe meal needs its recipe, a note always comes in, no meal type
+  means Dinner), its recipes come in like listed ones, and a menu left with no meals is dropped.

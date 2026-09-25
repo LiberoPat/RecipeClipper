@@ -126,6 +126,31 @@ class BackupJsonTest {
         )
     }
 
+    @Test fun `menus decode, round-trip, and a menu meal needs its menu and a day offset`() {
+        val head = """"format": "recipe-clipper-backup", "formatVersion": 1"""
+        val backup = decodeOrFail(
+            """{$head, "menus": [{"id": "menu-a", "name": "Week A", "updatedAt": 5}],
+            "menuEntries": [{"id": "me-1", "menuId": "menu-a", "dayOffset": 3, "mealTypeId": "t-gone",
+            "recipeId": "r-gone", "servings": 4, "note": null, "sortOrder": 1, "updatedAt": 6}]}"""
+        )
+        assertEquals(listOf(BackupMenu("menu-a", "Week A", 5)), backup.menus)
+        // A meal type or recipe the file doesn't have reads as none.
+        assertEquals(BackupMenuEntry("me-1", "menu-a", 3, null, null, 4, null, 1, 6), backup.menuEntries.single())
+        assertEquals(backup, decodeOrFail(BackupJson.encode(backup)))
+        assertTrue(decodeOrFail("{$head}").menus.isEmpty())
+
+        val menu = """"menus": [{"id": "menu-a", "name": "A"}]"""
+        assertEquals(
+            BackupError.Malformed("menuEntries[0].menuId"),
+            error("""{$head, $menu, "menuEntries": [{"id": "e", "menuId": "other", "dayOffset": 0}]}""")
+        )
+        assertEquals(
+            BackupError.Malformed("menuEntries[0].dayOffset"),
+            error("""{$head, $menu, "menuEntries": [{"id": "e", "menuId": "menu-a", "dayOffset": 7}]}""")
+        )
+        assertEquals(BackupError.Malformed("menus[0].name"), error("""{$head, "menus": [{"id": "m", "name": " "}]}"""))
+    }
+
     @Test fun `a pantry item needs a name, and ids are unique`() {
         assertEquals(
             BackupError.Malformed("pantry[0].name"),

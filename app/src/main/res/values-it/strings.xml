@@ -395,4 +395,25 @@
     <string name="cd_next_month">Mese successivo</string>
     <string name="cd_month_day_planned">%1$s, pasti pianificati</string>
     <string name="action_share_calendar">Condividi come file di calendario</string>
+    <string name="action_save_week_as_menu">Salva la settimana come menu…</string>
+    <string name="action_apply_menu">Applica un menu…</string>
+    <string name="save_menu_title">Salva la settimana come menu</string>
+    <string name="rename_menu_title">Rinomina menu</string>
+    <string name="menu_name_hint">Nome del menu</string>
+    <string name="apply_menu_title">Aggiungi un menu a questa settimana</string>
+    <string name="menus_empty">Ancora nessun menu. Pianifica una settimana, poi scegli «Salva la settimana come menu…».</string>
+    <string name="delete_menu_title">Eliminare «%1$s»?</string>
+    <string name="delete_menu_body">Viene eliminato solo il menu. Il piano dei pasti e le ricette restano come sono.</string>
+    <string name="menu_saved">«%1$s» salvato</string>
+    <string name="menu_save_failed">Impossibile salvare il menu</string>
+    <plurals name="menu_meal_count">
+        <item quantity="one">%1$d pasto</item>
+        <item quantity="many">%1$d di pasti</item>
+        <item quantity="other">%1$d pasti</item>
+    </plurals>
+    <plurals name="menu_applied">
+        <item quantity="one">Aggiunto %1$d pasto da «%2$s»</item>
+        <item quantity="many">Aggiunti %1$d di pasti da «%2$s»</item>
+        <item quantity="other">Aggiunti %1$d pasti da «%2$s»</item>
+    </plurals>
 </resources>

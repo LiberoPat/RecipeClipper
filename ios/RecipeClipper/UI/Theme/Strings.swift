@@ -414,6 +414,20 @@ enum Strings {
     static var moveUp: String { String(localized: "action_move_up") }
     static var moveDown: String { String(localized: "action_move_down") }
     static var mealTypeName: String { String(localized: "label_meal_type_name") }
+    // Weekly menus (#52)
+    static var saveWeekAsMenu: String { String(localized: "action_save_week_as_menu") }
+    static var applyMenu: String { String(localized: "action_apply_menu") }
+    static var saveMenuTitle: String { String(localized: "save_menu_title") }
+    static var renameMenuTitle: String { String(localized: "rename_menu_title") }
+    static var menuNameHint: String { String(localized: "menu_name_hint") }
+    static var applyMenuTitle: String { String(localized: "apply_menu_title") }
+    static var menusEmpty: String { String(localized: "menus_empty") }
+    static func deleteMenuTitle(_ name: String) -> String { String(localized: "delete_menu_title \(name)") }
+    static var deleteMenuBody: String { String(localized: "delete_menu_body") }
+    static func menuSaved(_ name: String) -> String { String(localized: "menu_saved \(name)") }
+    static var menuSaveFailed: String { String(localized: "menu_save_failed") }
+    static func menuMealCount(_ n: Int) -> String { String(localized: "menu_meal_count \(n)") }
+    static func menuApplied(_ n: Int, _ name: String) -> String { String(localized: "menu_applied \(n) \(name)") }
     // Groceries (#50)
     static var add: String { String(localized: "action_add") }
     static var groceriesAddHint: String { String(localized: "groceries_add_hint") }
