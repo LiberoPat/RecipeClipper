@@ -27,6 +27,10 @@ import java.io.File
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
  *
+ * `Step("step", [lines])` rows (#101) pin [StepAmounts.annotate]: the step with each amount in
+ * ⟦ ⟧, once against the lines as given and once against them doubled in Metric; write only the
+ * step and the lines (optionally `, lang: "fr"`).
+ *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
@@ -50,6 +54,8 @@ class DifferentialCorpusTest {
     // A pantry row (#51): a recipe line, a pantry item's name, optionally their language.
     private val pantryRow = Regex("""^(\s*)Pant\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A calendar-file row (#52): one summary's text.
+    // A step row (#101): one step, the ingredient lines, optionally their language.
+    private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
     private val icsRow = Regex("""^(\s*)Ics\("((?:[^"\\]|\\.)*)"""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
@@ -85,6 +91,7 @@ class DifferentialCorpusTest {
         }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
+        stepRow.find(line)?.let { m -> return stepRow(m) }
         icsRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
             return m.groupValues[1] + "Ics(${q(text)}, ${q(MealPlanIcs.contentLine("SUMMARY", text))}),"
@@ -131,6 +138,19 @@ class DifferentialCorpusTest {
         val item = PantryItem(1, name, null, language, Aisle.OTHER, inStock = true, alwaysHave = false, purchasedDay = null, expiresDay = null)
         val covered = PantryMatch.covered(line, language, listOf(item))
         return m.groupValues[1] + "Pant(${q(line)}, ${q(name)}$lang, $covered),"
+    }
+
+    /** `Step(step, [lines], lang:, as given, doubled in Metric)`: [StepAmounts.annotate], marked. */
+    private fun stepRow(m: MatchResult): String {
+        val step = unescape(m.groupValues[2])
+        val lines = literal.findAll(m.groupValues[3]).map { unescape(it.groupValues[1]) }.toList()
+        val language = m.groupValues[4].ifEmpty { null }
+        val words = if (language == null) LanguageWords.ENGLISH else LanguageWords.forTag(language)!!
+        val lang = if (language == null) "" else ", lang: ${q(language)}"
+        val asGiven = StepAmounts.marked(StepAmounts.annotate(listOf(step), lines, words).single())
+        val doubled = IngredientRendering.render(lines, 2.0, UnitSystem.METRIC, false, words)
+        val metric = StepAmounts.marked(StepAmounts.annotate(listOf(step), doubled, words).single())
+        return m.groupValues[1] + "Step(${q(step)}, ${list(lines)}$lang, ${q(asGiven)}, ${q(metric)}),"
     }
 
     private fun instructionRow(line: String, words: LanguageWords, lang: String): String {

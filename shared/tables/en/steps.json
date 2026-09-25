@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "StepAmounts (#101): the words that decide whether a step's mention of an ingredient gets the line's amount ('Add the carrots' reads 'Add 2 carrots'). All lowercase; an entry ending in an apostrophe ('l'') is elided onto the next word. articles: replaced by the amount. partWords: a step that already says how much, right before the mention or before its article ('half the butter', 'the remaining sugar', '1 cup of the flour', 'a carrot'); the mention stays as written. before: words that may come right before a mention with no article ('Stir in flour', 'with salt', 'and sugar', 'Add flour'); a mention after any other word ('rice flour' when the recipe lists only flour) stays as written, unless that word starts the sentence (an imperative verb). after: words that may follow a mention ('the carrots and celery'); any other word ('the flour mixture', 'the lemon juice') means a longer, different name, so it stays as written. anyWordAfter: true where compounds are written as one word (German), so a following word never extends the name. splitWords: words after the name in a line that mean its amount is used in parts ('2 cups flour, divided', 'plus more for dusting'), so it is never inserted. plurals: [singular ending, plural ending] pairs, so 'the carrot' is '2 carrots'.",
+  "articles": ["the"],
+  "partWords": [
+    "a", "an", "of", "remaining", "rest", "remainder", "half", "halves", "quarter", "third", "some", "more",
+    "less", "all", "any", "each", "every", "another", "other", "extra", "additional", "leftover", "reserved",
+    "few", "little", "bit", "most", "enough", "several", "both", "first", "second", "last", "final", "next",
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "dozen", "couple"
+  ],
+  "before": [
+    "and", "or", "with", "in", "into", "on", "onto", "over", "to", "then", "plus",
+    "add", "stir", "whisk", "beat", "fold", "mix", "combine", "melt", "toss", "sprinkle", "pour", "sift",
+    "knead", "heat", "simmer", "chop", "dice", "slice", "mince", "peel", "grate", "drain", "rinse",
+    "crack", "scatter", "spread", "drizzle", "squeeze", "soak", "whip", "use", "place", "arrange"
+  ],
+  "after": [
+    "and", "or", "with", "in", "into", "on", "onto", "over", "to", "until", "for", "from", "at", "by",
+    "together", "then", "if", "as", "while", "so", "but", "plus", "slowly", "gradually", "gently",
+    "evenly", "well", "briefly", "thoroughly", "quickly", "one", "just", "again", "back", "first", "too",
+    "also", "along", "around", "under", "through", "aside", "out", "up"
+  ],
+  "anyWordAfter": false,
+  "splitWords": ["divided", "plus"],
+  "plurals": [["", "s"], ["", "es"], ["y", "ies"]]
+}

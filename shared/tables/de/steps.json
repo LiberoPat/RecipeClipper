@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "language": "de",
+  "about": "StepAmounts (#101): see en/steps.json for what each list does. German writes compound names as one word ('Butterkeks'), so a word after the mention never extends its name (anyWordAfter), and the verb usually comes after it ('Die Butter schmelzen').",
+  "articles": ["der", "die", "das", "den", "dem"],
+  "partWords": [
+    "ein", "eine", "einen", "einem", "einer", "eines", "von", "vom", "restliche", "restlichen", "restlicher",
+    "übrige", "übrigen", "hälfte", "rest", "etwas", "mehr", "weitere", "weiteren", "weiteres", "beide",
+    "beiden", "alle", "allen", "jeweils", "je", "zwei", "drei", "vier"
+  ],
+  "before": ["und", "oder", "mit", "sowie"],
+  "after": [],
+  "anyWordAfter": true,
+  "splitWords": ["mehr"],
+  "plurals": [["", "n"], ["", "en"], ["", "e"], ["", "er"]]
+}
