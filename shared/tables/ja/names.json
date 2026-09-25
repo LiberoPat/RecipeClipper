@@ -1,10 +1,11 @@
 {
   "schemaVersion": 1,
   "language": "ja",
-  "about": "IngredientName: the ingredient's name in a line, for matching against the pantry (#46). A Japanese line is the name, a space, then the amount (amounts.json amountAfterName), so the name is the text before the last space, with its group markers, asides in brackets ('玉ねぎ(みじん切り)', 'パセリ[乾燥]') and quote marks ('「瀬戸のほんじお®」') dropped. groupMarkers: regex fragments for the marks a site puts before the names of one group of ingredients ('☆醤油', 'A牛乳', '【A】砂糖'), with no space after them, dropped from the start, repeatedly. conjunctions: text that makes the name two ingredients ('砂糖・コンソメ', '蓮根、アボカド'), so it has no name; with no spaces, they are matched anywhere in the name. leadingWords, trailingWords and cutPhrases are for spaced languages and stay empty.",
+  "about": "IngredientName: the ingredient's name in a line, for matching against the pantry (#46). A Japanese line is the name, a space, then the amount (amounts.json amountAfterName), so the name is the text before the last space, with its group markers, asides in brackets ('玉ねぎ(みじん切り)', 'パセリ[乾燥]') and quote marks ('「瀬戸のほんじお®」') dropped. groupMarkers: regex fragments for the marks a site puts before the names of one group of ingredients ('☆醤油', 'A牛乳', '【A】砂糖'), with no space after them, dropped from the start, repeatedly. conjunctions: text that makes the name two ingredients ('砂糖・コンソメ', '蓮根、アボカド'), so it has no name; with no spaces, they are matched anywhere in the name. leadingWords, trailingWords and cutPhrases are for spaced languages and stay empty. Two names match (PantryMatch) when they are equal, or when the longer ends with the shorter and every word before it is a matchModifier or a leadingWord ('unsalted butter' is 'butter'); any other word makes a different ingredient ('rice flour' is not 'flour', 'butter beans' not 'butter'), so the line is Buy. matchModifiers are lowercase, hyphens written as spaces ('all purpose'). Languages that put modifiers after the noun ('beurre doux') need none: the end-of-name rule never matched those.",
   "leadingWords": [],
   "trailingWords": [],
   "cutPhrases": [],
   "conjunctions": ["・", "、", "，", ",", "/", "or", "または"],
+  "matchModifiers": ["無塩", "有塩", "食塩不使用"],
   "groupMarkers": ["[☆★◎●○〇◇◆□■▲△▼▽※＊*・]", "【[^】]*】", "[(（][A-Za-z][)）]", "[A-Z](?![A-Za-z])"]
 }

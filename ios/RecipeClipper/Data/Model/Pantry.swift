@@ -129,9 +129,9 @@ struct WeekNeeds: Equatable {
 }
 
 /// The pantry against a recipe's lines (#51; Android's `PantryMatch`). A line's name
-/// (`IngredientName.of`) matches a pantry item's by `IngredientName.matches`, the density
-/// table's end-of-name rule, and only in the same language. It answers "is it there", never
-/// "is there enough".
+/// (`IngredientName.of`) matches a pantry item's by `IngredientName.matches` ("unsalted butter"
+/// is "butter"; "rice flour" is never "flour", either way), and only in the same language. It
+/// answers "is it there", never "is there enough".
 enum PantryMatch {
 
     /// The pantry item tracking `name` in `language`, or nil: a matching staple first, else one
