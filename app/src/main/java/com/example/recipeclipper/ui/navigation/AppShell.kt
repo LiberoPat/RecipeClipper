@@ -86,9 +86,14 @@ fun NavHostController.selectTab(tab: Tab) {
 /**
  * A route from an intent (a shared link's import, or a timer notification's cook-mode open,
  * MainActivity's queue) always lands in Recipes: switch to that tab if another is open, then
- * navigate on top of whatever the Recipes stack held.
+ * navigate on top of whatever the Recipes stack held. A tab's own route (an expiry reminder's
+ * [Tab.PANTRY], #52) opens that tab instead, and does nothing while the tab bar is off.
  */
 fun NavHostController.openRoute(route: String, tabsEnabled: Boolean) {
+    Tab.entries.firstOrNull { it.route == route }?.let { tab ->
+        if (tabsEnabled) selectTab(tab)
+        return
+    }
     if (tabsEnabled && currentDestination.tab() != Tab.RECIPES) selectTab(Tab.RECIPES)
     navigate(route)
 }

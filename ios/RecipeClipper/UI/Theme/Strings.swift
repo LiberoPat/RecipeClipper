@@ -346,6 +346,35 @@ enum Strings {
     // Step timer notifications (#10)
     static func timerNotificationTitle(step: Int) -> String { String(localized: "timer_notification_title \(step)") }
 
+    // Pantry expiry reminders (#52)
+    static var settingsSectionPantry: String { String(localized: "settings_section_pantry") }
+    static var expiryRemindersTitle: String { String(localized: "expiry_reminders_title") }
+    static var expiryRemindersDescription: String { String(localized: "expiry_reminders_description") }
+    static var expiryRemindersDenied: String { String(localized: "expiry_reminders_denied") }
+    static var expiryNotificationTitle: String { String(localized: "expiry_notification_title") }
+
+    /// "Milk and yogurt expire tomorrow.", or both sentences when some expire today.
+    static func expiryNotificationBody(_ reminder: ExpiryReminder) -> String {
+        func sentence(_ names: [String], one: (String) -> String, many: (String) -> String) -> String {
+            let joined = ExpiryReminders.joinNames(names) { String(localized: "expiry_names_and \($0) \($1)") }
+            return ExpiryReminders.capitalized(names.count == 1 ? one(joined) : many(joined), locale: .current)
+        }
+        let today = sentence(
+            reminder.today,
+            one: { String(localized: "expiry_one_today \($0)") }, many: { String(localized: "expiry_many_today \($0)") }
+        )
+        let tomorrow = sentence(
+            reminder.tomorrow,
+            one: { String(localized: "expiry_one_tomorrow \($0)") },
+            many: { String(localized: "expiry_many_tomorrow \($0)") }
+        )
+        switch reminder.text {
+        case .today: return today
+        case .tomorrow: return tomorrow
+        case .todayAndTomorrow: return today + " " + tomorrow
+        }
+    }
+
     // Bottom tabs (#47), behind the mealPlan flag (#87)
     static var tabRecipes: String { String(localized: "tab_recipes") }
     static var tabWeek: String { String(localized: "tab_week") }

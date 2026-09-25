@@ -13,10 +13,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.reminders.ExpiryNotifications
 import com.example.recipeclipper.timers.TimerNotifications
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
+import com.example.recipeclipper.ui.navigation.Tab
 import com.example.recipeclipper.ui.navigation.openRoute
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.channels.Channel
@@ -60,7 +62,7 @@ class MainActivity : ComponentActivity() {
                 // this effect may start.
                 navController.currentBackStackEntryFlow.first()
                 for (route in intentRoutes) {
-                    // Always into the Recipes tab, whichever tab is open.
+                    // Into the Recipes tab, whichever tab is open (a tab's own route opens that tab).
                     navController.openRoute(route, tabsEnabled)
                     shareHandled = true
                 }
@@ -88,8 +90,10 @@ class MainActivity : ComponentActivity() {
         outState.putBoolean(STATE_SHARE_HANDLED, shareHandled)
     }
 
-    /** Where an intent leads: a shared link imports, a timer notification opens cook mode. */
+    /** Where an intent leads: a shared link imports, a timer notification opens cook mode, and
+     *  an expiry reminder (#52) opens the Pantry tab. */
     private fun routeFor(intent: Intent?): String? {
+        if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) return Tab.PANTRY.route
         if (intent?.action == TimerNotifications.ACTION_OPEN_COOK) {
             val id = intent.getLongExtra(TimerNotifications.EXTRA_RECIPE_ID, -1)
             return if (id > 0) Routes.cookRecipe(id) else null

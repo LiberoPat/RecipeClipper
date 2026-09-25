@@ -374,6 +374,20 @@
     <string name="developer_flag_issue">Incidencia #%1$d</string>
     <string name="developer_flag_changed">Cambiado respecto al valor predeterminado</string>
     <string name="developer_reset">Restablecer valores predeterminados</string>
+
+    <!-- Pantry expiry reminders (#52) -->
+    <string name="settings_section_pantry">Despensa</string>
+    <string name="expiry_reminders_title">Avisos de caducidad</string>
+    <string name="expiry_reminders_description">Una notificación a las 9 de la mañana cuando algo que tienes caduca hoy o mañana</string>
+    <string name="expiry_reminders_denied">Las notificaciones están desactivadas para Recipe Clipper. Actívalas en los ajustes del sistema para recibir avisos.</string>
+    <string name="expiry_channel_name">Avisos de la despensa</string>
+    <string name="expiry_channel_description">Un aviso por la mañana cuando algo de la despensa está a punto de caducar</string>
+    <string name="expiry_notification_title">Úsalo pronto</string>
+    <string name="expiry_one_today">%1$s caduca hoy.</string>
+    <string name="expiry_many_today">%1$s caducan hoy.</string>
+    <string name="expiry_one_tomorrow">%1$s caduca mañana.</string>
+    <string name="expiry_many_tomorrow">%1$s caducan mañana.</string>
+    <string name="expiry_names_and">%1$s y %2$s</string>
     <string name="action_month_view">Mes</string>
     <string name="action_week_view">Semana</string>
     <string name="action_this_month">Este mes</string>

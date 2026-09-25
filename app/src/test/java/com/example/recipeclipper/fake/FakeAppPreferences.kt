@@ -17,11 +17,12 @@ class FakeAppPreferences(
     unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
     convertLiquids: Boolean = false,
     temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
-    darkWhileCooking: Boolean = false
+    darkWhileCooking: Boolean = false,
+    expiryReminders: Boolean = false
 ) : AppPreferences {
 
     private val state = MutableStateFlow(
-        AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking)
+        AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders)
     )
 
     override val settings: StateFlow<AppSettings> = state
@@ -41,4 +42,8 @@ class FakeAppPreferences(
     override var darkWhileCooking: Boolean
         get() = state.value.darkWhileCooking
         set(value) = state.update { it.copy(darkWhileCooking = value) }
+
+    override var expiryReminders: Boolean
+        get() = state.value.expiryReminders
+        set(value) = state.update { it.copy(expiryReminders = value) }
 }

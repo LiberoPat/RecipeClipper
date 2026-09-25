@@ -1,6 +1,11 @@
 package com.example.recipeclipper.ui.settings
 
+import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
@@ -60,10 +65,11 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  *
  * Every control signals its own behaviour: exclusive choices are [RadioButton] rows, toggles
  * are [Switch] rows — never a bare checkmark for either, which is the whole reason this
- * screen exists (see CLAUDE.md). Four sections: Units (the three [UnitSystem] options, plus
+ * screen exists (see CLAUDE.md). The sections: Units (the three [UnitSystem] options, plus
  * "Also convert liquids" for Ounces only), Oven temperature (the three [TemperatureUnit]
- * options, independent of Units), Appearance ("Dark while cooking"), and Your recipes (Export
- * and Import, #26: actions, so plain rows).
+ * options, independent of Units), Appearance ("Dark while cooking"), Pantry ("Expiry
+ * reminders", #52, only with the `mealPlan` flag on), and Your recipes (Export and Import,
+ * #26: actions, so plain rows).
  */
 @Composable
 fun SettingsScreen(
@@ -75,6 +81,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.onImportPicked(it.toString()) }
+    }
+    val notificationPrompt = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        viewModel.onExpiryRemindersPermission(granted)
     }
     val shareTitle = stringResource(R.string.backup_share_title)
     val backup = state.backup
@@ -156,6 +165,44 @@ fun SettingsScreen(
                         checked = state.darkWhileCooking,
                         onCheckedChange = viewModel::onDarkWhileCookingChange
                     )
+                }
+
+                if (state.showsPantry) {
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Hairline()
+                        Spacer(Modifier.height(16.dp))
+                        SectionHeading(stringResource(R.string.settings_section_pantry))
+                        Spacer(Modifier.height(4.dp))
+                        SwitchRow(
+                            title = stringResource(R.string.expiry_reminders_title),
+                            description = stringResource(R.string.expiry_reminders_description),
+                            checked = state.expiryReminders,
+                            onCheckedChange = { on ->
+                                // Asking is a platform effect, so it lives here: only when the cook
+                                // turns reminders on, never on launch (#52).
+                                when {
+                                    !on -> viewModel.onExpiryRemindersOff()
+                                    NotificationManagerCompat.from(context).areNotificationsEnabled() ->
+                                        viewModel.onExpiryRemindersPermission(true)
+                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                                        PackageManager.PERMISSION_GRANTED ->
+                                        notificationPrompt.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    // Allowed, but switched off for the app in system settings.
+                                    else -> viewModel.onExpiryRemindersPermission(false)
+                                }
+                            }
+                        )
+                        if (state.expiryRemindersDenied && !state.expiryReminders) {
+                            Text(
+                                stringResource(R.string.expiry_reminders_denied),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                            )
+                        }
+                    }
                 }
 
                 item {
