@@ -14,8 +14,9 @@ final class ExpiryRemindersUITests: RecipeUITestCase {
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
     }
 
+    /// To the foot of Settings, so the switch sits clear of the tab bar (the flag turns it on).
     private func scrollToReminders() {
-        for _ in 0..<4 where !reminders.isHittable { app.swipeUp() }
+        for _ in 0..<3 { app.swipeUp() }
     }
 
     func testHiddenWithoutTheMealPlanFlag() {
