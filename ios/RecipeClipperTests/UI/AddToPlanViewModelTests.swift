@@ -99,6 +99,7 @@ final class MealTypesViewModelTests: XCTestCase {
         vm.onStartCreating()
         vm.onNewNameChange(" Brunch ")
         vm.onCreate()
+        await vm.settleWrites()
         await settleMain()
         XCTAssertEqual(vm.uiState.types.map(\.name), ["Breakfast", "Lunch", "Dinner", "Snack", "Brunch"])
         XCTAssertFalse(vm.uiState.creating)
@@ -109,6 +110,7 @@ final class MealTypesViewModelTests: XCTestCase {
         vm.onRenameStart(vm.uiState.types.first { $0.id == FakeMealPlanRepository.dinner }!)
         vm.onRenameTextChange("Supper")
         vm.onRenameConfirm()
+        await vm.settleWrites()
         await settleMain()
         XCTAssertEqual(vm.uiState.types.first { $0.id == FakeMealPlanRepository.dinner }?.name, "Supper")
         XCTAssertNil(vm.uiState.renaming)
@@ -117,12 +119,12 @@ final class MealTypesViewModelTests: XCTestCase {
     func testMovesATypeUpAndDownAndNotPastEitherEnd() async {
         let vm = await viewModel()
         vm.onMoveUp(vm.uiState.types.first { $0.id == FakeMealPlanRepository.snack }!)
-        await settleMain()
+        await vm.settleWrites()
         XCTAssertEqual(plan.types.value.map(\.id), [1, 2, 4, 3])
 
         vm.onMoveUp(vm.uiState.types.first!)
         vm.onMoveDown(vm.uiState.types.last!)
-        await settleMain()
+        await vm.settleWrites()
         XCTAssertEqual(plan.types.value.map(\.id), [1, 2, 4, 3])
     }
 
@@ -134,6 +136,7 @@ final class MealTypesViewModelTests: XCTestCase {
 
         vm.onDeleteStart(vm.uiState.types.first { $0.id == brunch }!)
         vm.onDeleteConfirm()
+        await vm.settleWrites()
         await settleMain()
 
         XCTAssertEqual(vm.uiState.types.map(\.name), ["Breakfast", "Lunch", "Dinner", "Snack"])
