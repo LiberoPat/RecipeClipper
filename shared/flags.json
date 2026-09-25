@@ -1,0 +1,10 @@
+{
+  "flags": [
+    {
+      "key": "mealPlan",
+      "description": "The meal plan: the bottom tabs (Recipes, Week, Groceries, Pantry) and the recipe screen's Add to plan and Add to groceries.",
+      "defaults": { "debug": false, "release": false },
+      "issue": 47
+    }
+  ]
+}

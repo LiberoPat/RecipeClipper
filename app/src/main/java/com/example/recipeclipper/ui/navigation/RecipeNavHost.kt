@@ -20,12 +20,16 @@ import com.example.recipeclipper.ui.lists.ListsScreen
 import com.example.recipeclipper.ui.recipe.RecipeScreen
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.week.WhatINeedViewModel
+import com.example.recipeclipper.ui.settings.DeveloperSettingsScreen
 import com.example.recipeclipper.ui.settings.SettingsScreen
 
 object Routes {
     const val HOME = "home"
     const val HISTORY = "history"
     const val SETTINGS = "settings"
+
+    // Hidden: seven taps on the version in Settings (#87).
+    const val DEVELOPER_SETTINGS = "settings/developer"
     const val LISTS = "lists"
     const val LIST_DETAIL = "lists/{${ListDetailViewModel.LIST_ID_ARG}}"
     const val RECIPE =
@@ -34,7 +38,7 @@ object Routes {
     // The share-target entry: parse, then persist.
     const val IMPORT = "recipe/import?${RecipeViewModel.URL_ARG}={${RecipeViewModel.URL_ARG}}"
 
-    // The tabs (#47). Only reachable while BuildConfig.MEAL_PLAN_TABS is on.
+    // The tabs (#47). Only reachable while the mealPlan flag (#87) is on.
     const val WEEK = "week"
 
     // The Week tab's own stack (#49): a planned recipe opens at its planned servings.
@@ -67,7 +71,7 @@ object Routes {
 }
 
 /**
- * The single-stack app, as it is while `BuildConfig.MEAL_PLAN_TABS` is off: exactly the
+ * The single-stack app, as it is while the `mealPlan` flag is off: exactly the
  * Recipes graph, with no tab bar. With the flag on, [AppShell] nests the same destinations
  * under the Recipes tab instead.
  */
@@ -124,7 +128,14 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     // Opened from the gear beside the Home title. Any screen could navigate here: open
     // ViewModels collect AppPreferences.settings, so none is left showing stale units.
     composable(Routes.SETTINGS) {
-        SettingsScreen(onBack = { navController.popBackStack() })
+        SettingsScreen(
+            onBack = { navController.popBackStack() },
+            onOpenDeveloperSettings = { navController.navigate(Routes.DEVELOPER_SETTINGS) }
+        )
+    }
+
+    composable(Routes.DEVELOPER_SETTINGS) {
+        DeveloperSettingsScreen(onBack = { navController.popBackStack() })
     }
 
     composable(

@@ -1,6 +1,11 @@
 package com.example.recipeclipper.di
 
+import com.example.recipeclipper.BuildConfig
 import com.example.recipeclipper.data.AndroidAppInfo
+import com.example.recipeclipper.data.flags.FeatureFlagStore
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.FlagRegistry
+import com.example.recipeclipper.data.flags.SharedPrefsFeatureFlagStore
 import com.example.recipeclipper.data.AndroidBackupFiles
 import com.example.recipeclipper.data.AndroidConnectivity
 import com.example.recipeclipper.data.AppInfo
@@ -43,8 +48,18 @@ abstract class PlatformModule {
     @Singleton
     abstract fun renderedPageSource(impl: WebViewRenderedPageSource): RenderedPageSource
 
+    @Binds
+    @Singleton
+    abstract fun featureFlagStore(impl: SharedPrefsFeatureFlagStore): FeatureFlagStore
+
     companion object {
         @Provides
         fun errorLog(): ErrorLog = AndroidErrorLog
+
+        /** The flags (#87): flags.json's defaults for this build type, under the stored overrides. */
+        @Provides
+        @Singleton
+        fun featureFlags(store: FeatureFlagStore): FeatureFlags =
+            FeatureFlags(store, FlagRegistry.definitions, isDebug = BuildConfig.DEBUG)
     }
 }
