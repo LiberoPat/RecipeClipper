@@ -1359,8 +1359,8 @@ The first real tab of #46, still behind the #47 flag.
 - **"+ Add" on a day** is one sheet: a meal type, then a recipe from history
   (searchable, the same query as History) or, once something is typed, that
   text as a note. Planned servings start as the recipe's own yield.
-- **Not yet in the export file** (#26): the plan joins it with the
-  `formatVersion` bump that #46 plans for groceries and pantry.
+- **In the export file** (#26) since the plan joined it after groceries and the
+  pantry, with no `formatVersion` bump: see the Pantry section's Export note.
 
 ## Groceries (#50)
 
@@ -1421,11 +1421,8 @@ The third tab of #46, still behind the #47 flag.
   button. It's a deliberate act, like "Add to plan", since the point is to
   untick what's in the cupboard first. "Checking off offers Add to pantry"
   waits for the pantry (#51).
-- **Not in the export file yet** (#26). The plan (#49) isn't either, and
-  grocery items point at recipes and planned days, so the plan, groceries and
-  pantry join the file together with #51, under one set of merge rules
-  (formatVersion 1 readers will ignore the new sections, as designed), rather
-  than three partial passes.
+- **In the export file** (#26) with the pantry and the plan: see the Pantry
+  section's Export note.
 
 ## Pantry (#51)
 
@@ -1444,11 +1441,8 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   confident wrong number".
 - **Have/Buy** (`PantryMatch`, pure, both platforms, pinned by the corpus's `Pant`
   rows): a line's `IngredientName.of` against the item's name by
-  `IngredientName.matches`, and only in the same language. `matches` is the
-  density table's end-of-name rule in both directions, so "unsalted butter" and
-  "butter" meet and "butter beans" and "butter" don't. It also means a pantry's
-  "rice flour" says you have "flour": "What I need" shows which pantry item it
-  matched ("You have rice flour") so the cook can see it. A staple (`alwaysHave`)
+  `IngredientName.matches`, and only in the same language. "What I need" shows
+  which pantry item it matched ("You have butter"), so the cook can check. A staple (`alwaysHave`)
   is never on Buy, in stock or not. A line the app can't name ("salt and pepper",
   a heading) stands alone and is always Buy: nothing is guessed. Lines group by
   exact name and language, each shown as written with its recipe and day; nothing
@@ -1468,6 +1462,43 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   grocery's aisle). An item already in stock, a staple, an untick, or a line with
   no name does nothing. The offer is never automatic for untracked items: the
   pantry holds what the cook chose to track.
+- **A pantry item never matches a different ingredient** (owner's decision,
+  after #51 shipped a pantry "rice flour" as Have for a recipe's "flour").
+  `matches` was the density table's end-of-name rule in both directions, which
+  let a compound name meet its head noun ("rice flour"/"flour", "peanut
+  butter"/"butter", "coconut milk"/"milk", French "farine de riz"/"riz"). Now two
+  names match only when they are equal, or when the longer ends with the shorter
+  and **every word before it is a plain modifier**: `matchModifiers` or
+  `leadingWords` in `names.json`. Any other word makes it a different ingredient,
+  in either direction, and the line is Buy.
+  - **Why a list of modifiers, not the density table's `skip` entries.** Skip
+    entries only cover compounds someone thought to list ("rice flour" is there,
+    "coconut milk" isn't), so an unlisted compound would still read as Have: a
+    confident wrong answer. A short list of words known to leave the ingredient
+    the same fails the other way: an unknown word is Buy, which the cook can
+    re-tick. That's the "never a confident wrong number" side to fail on.
+  - **What counts as a plain modifier (English):** salted/unsalted, fresh,
+    organic, free range, all purpose, plain, extra virgin, and states of the same
+    thing (softened, melted, cold, chilled, sifted), plus the sizes, containers
+    and cuts already dropped from a line's name (`leadingWords`: large, can,
+    cloves…). So "unsalted butter"/"butter", "all-purpose flour"/"flour", "extra
+    virgin olive oil"/"olive oil" and "large eggs"/"eggs" still match.
+  - **Deliberately not modifiers:** anything that names a different product on
+    the shelf: fat levels ("whole milk" is not "milk", nor "heavy cream"
+    "cream"), colours and varieties ("brown sugar", "red onion"), and processing
+    that makes a different product ("ground", "dried", "crushed", "minced",
+    "smoked"). "salted butter" and "unsalted butter" don't match each other
+    either (neither ends with the other). These are conservative calls: widen
+    the list only when a real pantry shows a miss.
+  - **Other languages:** German gets its leading adjectives (ungesalzene, frische,
+    bio…), Japanese its prefixes (無塩, 有塩), since both put the modifier first.
+    French, Spanish, Italian and Portuguese put modifiers after the noun
+    ("beurre doux"), which the end-of-name rule never matched anyway, so their
+    lists are empty: there only equal names, or a size or container word
+    before the name, match.
+  - `IngredientName.matches` has one caller, `PantryMatch.find`. Grocery
+    combining and aisles use `IngredientName.of` by exact name or the aisle
+    table, so they're unchanged.
 - **Running out offers groceries**: switching an item out shows "… is out" with
   "Add to groceries" (the name as a typed item). Typing a name already in the
   pantry puts it back in stock rather than adding a twin.
@@ -1480,8 +1511,27 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   by trimmed case-insensitive name in the same language; what's already here
   keeps its stock, dates and quantity. Grocery items merge by uid only (two "2
   eggs" can be two recipes' eggs), after the list's own items, and keep their
-  recipe only if it is on the phone after the import. The plan (#49) still isn't
-  in the file: it needs meal types merged too, and was left for its own change.
+  recipe only if it is on the phone after the import.
+- **The meal plan in the export file (#26, #49)**: two more top-level sections,
+  `mealTypes` and `mealPlan`, still `formatVersion` 1 (older readers ignore
+  them). The plan needs its meal types, so they travel with it.
+  - **Meal types:** a seeded one maps to the phone's type with the same
+    `builtInKey`, never by name, like Favorites: the file's "Dinner" finds this
+    phone's Dinner even if it was renamed "Supper". A user's own type joins one
+    here with its uid, else a *user* type here with the same trimmed,
+    case-insensitive name, else one earlier in the file, else it's created after
+    the types here. A user type called "Dinner" never joins the seeded one.
+  - **Entries merge by uid** and go at the end of their day and meal type. A
+    note always comes in. A recipe's meal comes in only if its recipe is on the
+    phone after the import (matched by link, or written), exactly as a grocery
+    keeps its recipe; otherwise the meal is **dropped**, because a meal is a
+    recipe or a note, a recipe-less, note-less row would be an empty line on the
+    Week, and deleting a recipe already removes its meals. An entry whose meal
+    type the file doesn't name goes to Dinner.
+  - **A recipe the file plans for today or later comes in like a listed one**,
+    the cull's own rule, so a full history can't make the import drop next
+    week's dinner. A recipe planned only in the past is ordinary history: it
+    takes a free place or is skipped, and its meal is dropped with it.
 
 ## Clip it yourself (#37)
 

@@ -336,7 +336,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   and `expiresDay` (epoch days). **Have/Buy is presence only**
   (`PantryMatch`): a line is Have when `IngredientName.of(line)` matches an
   in-stock item by `IngredientName.matches`, in the same language; staples
-  are never Buy; a line with no name is always Buy. Never "enough".
+  are never Buy; a line with no name is always Buy. Never "enough". Names
+  match only if equal or differing by plain modifiers (`names.json`
+  `matchModifiers`/`leadingWords`): "rice flour" is never "flour", either way.
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
   needs a migration (as `MIGRATION_1_2` did).
@@ -368,7 +370,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Favorites by `isFavorites`, other lists by uid then trimmed
   case-insensitive name; unlisted recipes only fill free history slots;
   pantry items by uid then name and language (what's here stands); grocery
-  items by uid. The plan (#49) isn't in the file yet.
+  items by uid; meal types by `builtInKey`, else uid, else user-type name;
+  planned meals by uid, a recipe's only if its recipe is here after the import.
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. History search ignores notes. Cook
