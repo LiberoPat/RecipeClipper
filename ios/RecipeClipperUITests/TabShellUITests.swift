@@ -26,8 +26,8 @@ final class TabShellUITests: RecipeUITestCase {
         launch(.standard)
 
         assertAbsent(tabBar, "a tab bar")
-        openHistory()
-        assertAbsent(tabBar, "a tab bar on History")
+        openRecipes()
+        assertAbsent(tabBar, "a tab bar on Recipes")
     }
 
     func testWithTheFlagOffAShareStillImports() {
@@ -81,8 +81,8 @@ final class TabShellUITests: RecipeUITestCase {
     func testTheBarShowsOnTheListScreensAndHidesOnARecipe() {
         launchWithTabs()
 
-        openHistory()
-        XCTAssertTrue(tabBar.isHittable, "bar on History")
+        openRecipes()
+        XCTAssertTrue(tabBar.isHittable, "bar on Recipes")
         back()
         openLists()
         XCTAssertTrue(tabBar.isHittable, "bar on Lists")
@@ -110,7 +110,7 @@ final class TabShellUITests: RecipeUITestCase {
 
     func testChoosingRecipesAgainGoesBackToHome() {
         launchWithTabs()
-        openHistory()
+        openRecipes()
 
         tab("Recipes").tap()
 

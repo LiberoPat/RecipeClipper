@@ -633,7 +633,7 @@ private fun AddToDaySheet(
             if (results != null && results.isEmpty() && adding.query.isBlank()) {
                 item {
                     Text(
-                        stringResource(R.string.history_empty),
+                        stringResource(R.string.home_empty_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

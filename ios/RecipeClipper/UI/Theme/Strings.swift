@@ -221,13 +221,18 @@ enum Strings {
     static var sectionContinueCooking: String { String(localized: "section_continue_cooking") }
     static var sectionRecentlyViewed: String { String(localized: "section_recently_viewed") }
     static var homeEmptyHint: String { String(localized: "home_empty_hint") }
-    static var navHistory: String { String(localized: "nav_history") }
 
-    // History
-    static var historyTitle: String { String(localized: "history_title") }
-    static var historyEmpty: String { String(localized: "history_empty") }
-    static func historyNoResults(_ query: String) -> String { String(localized: "history_no_results \(query)") }
-    static var searchHistory: String { String(localized: "label_search_history") }
+    // Recipes (#102; it replaced History)
+    static var recipesTitle: String { String(localized: "recipes_title") }
+    static var recipesEmpty: String { String(localized: "recipes_empty") }
+    static func recipesNoResults(_ query: String) -> String { String(localized: "recipes_no_results \(query)") }
+    static var searchRecipes: String { String(localized: "label_search_recipes") }
+    static var addRecipe: String { String(localized: "cd_add_recipe") }
+    static var typeRecipe: String { String(localized: "action_type_recipe") }
+    static var pasteLink: String { String(localized: "action_paste_link") }
+    static var sortRecentlyViewed: String { String(localized: "sort_recently_viewed") }
+    static var sortName: String { String(localized: "sort_name") }
+    static var sortDateAdded: String { String(localized: "sort_date_added") }
     static var clearSearch: String { String(localized: "cd_clear_search") }
     static func deletedOne(_ title: String) -> String { String(localized: "snackbar_deleted_one \(title)") }
     static func deletedMany(_ n: Int) -> String { String(localized: "snackbar_deleted_many \(n)") }

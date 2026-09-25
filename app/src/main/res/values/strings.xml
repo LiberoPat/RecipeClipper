@@ -149,13 +149,18 @@
     <string name="section_continue_cooking">Continue cooking</string>
     <string name="section_recently_viewed">Recently viewed</string>
     <string name="home_empty_hint">Recipes you open will show up here.</string>
-    <string name="nav_history">History</string>
 
     <!-- History screen -->
-    <string name="history_title">History</string>
-    <string name="history_empty">Nothing yet. Recipes you open are kept here automatically.</string>
-    <string name="history_no_results">No recipes match \"%1$s\".</string>
-    <string name="label_search_history">Search titles and ingredients</string>
+    <string name="recipes_title">Recipes</string>
+    <string name="recipes_empty">Nothing yet. Recipes you open are kept here, and + adds one by hand or from a link.</string>
+    <string name="recipes_no_results">No recipes match \"%1$s\".</string>
+    <string name="label_search_recipes">Search titles and ingredients</string>
+    <string name="cd_add_recipe">Add a recipe</string>
+    <string name="action_type_recipe">Type a recipe</string>
+    <string name="action_paste_link">Paste a link</string>
+    <string name="sort_recently_viewed">Recently viewed</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_date_added">Date added</string>
     <string name="cd_clear_search">Clear search</string>
     <string name="snackbar_deleted_one">Deleted \"%1$s\"</string>
     <!-- English only ever uses "other" here (the one-item case is snackbar_deleted_one, which

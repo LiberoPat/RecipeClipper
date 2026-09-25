@@ -72,9 +72,9 @@ class RecipeUITestCase: XCTestCase {
 
     // MARK: - Navigation
 
-    func openHistory() {
-        require(app.buttons["home.nav.history"]).tap()
-        require(app.textFields["Search titles and ingredients"], "History")
+    func openRecipes() {
+        require(app.buttons["home.nav.recipes"]).tap()
+        require(app.textFields["Search titles and ingredients"], "Recipes")
     }
 
     func openLists() {

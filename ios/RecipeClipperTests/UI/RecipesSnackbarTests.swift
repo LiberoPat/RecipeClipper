@@ -4,7 +4,7 @@ import XCTest
 /// The snackbar's timeout, as the History screen's `.task(id: pendingDeletes)` runs it, and
 /// what happens to captures when History goes away with the snackbar still up.
 @MainActor
-final class HistorySnackbarTests: XCTestCase {
+final class RecipesSnackbarTests: XCTestCase {
 
     private func deleted(_ id: Int64) -> DeletedRecipe {
         DeletedRecipe(
@@ -58,7 +58,7 @@ final class HistorySnackbarTests: XCTestCase {
     func testARestartedSnackbarKeepsTheEarlierCaptureForUndo() async {
         let repository = FakeRecipeRepository()
         repository.deleteResults = [1: deleted(1), 2: deleted(2)]
-        let vm = HistoryViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
         await settleMain()
 
         vm.onDelete(testSummary(1, title: "A"))
@@ -83,9 +83,9 @@ final class HistorySnackbarTests: XCTestCase {
     func testLeavingHistoryWithDeletesPendingNeverRestoresThem() async {
         let repository = FakeRecipeRepository()
         repository.deleteResults = [1: deleted(1)]
-        weak var released: HistoryViewModel?
+        weak var released: RecipesViewModel?
         do {
-            let vm = HistoryViewModel(repository: repository, sleep: immediateSleep)
+            let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
             released = vm
             await settleMain()
             vm.onDelete(testSummary(1, title: "A"))

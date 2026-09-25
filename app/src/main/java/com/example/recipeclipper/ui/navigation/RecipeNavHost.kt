@@ -12,7 +12,7 @@ import com.example.recipeclipper.ui.clip.ClipScreen
 import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.edit.EditRecipeScreen
 import com.example.recipeclipper.ui.edit.EditRecipeViewModel
-import com.example.recipeclipper.ui.history.HistoryScreen
+import com.example.recipeclipper.ui.recipes.RecipesScreen
 import com.example.recipeclipper.ui.home.HomeScreen
 import com.example.recipeclipper.ui.listdetail.ListDetailScreen
 import com.example.recipeclipper.ui.listdetail.ListDetailViewModel
@@ -25,7 +25,8 @@ import com.example.recipeclipper.ui.settings.SettingsScreen
 
 object Routes {
     const val HOME = "home"
-    const val HISTORY = "history"
+    // The library of every recipe (#102); it replaced History, whose route was `history`.
+    const val RECIPES = "recipes"
     const val SETTINGS = "settings"
 
     // Hidden: seven taps on the version in Settings (#87).
@@ -94,7 +95,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         HomeScreen(
             onOpenUrl = { navController.navigate(Routes.import(it)) },
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
-            onOpenHistory = { navController.navigate(Routes.HISTORY) },
+            onOpenRecipes = { navController.navigate(Routes.RECIPES) },
             onOpenLists = { navController.navigate(Routes.LISTS) },
             onOpenSettings = { navController.navigate(Routes.SETTINGS) },
             onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) }
@@ -118,10 +119,13 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         )
     }
 
-    composable(Routes.HISTORY) {
-        HistoryScreen(
+    composable(Routes.RECIPES) {
+        // The + menu: "Type a recipe" is Home's "+ New recipe"; "Paste a link" is Home's field.
+        RecipesScreen(
             onBack = { navController.popBackStack() },
-            onOpenRecipe = { navController.navigate(Routes.recipe(it)) }
+            onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
+            onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) },
+            onOpenUrl = { navController.navigate(Routes.import(it)) }
         )
     }
 

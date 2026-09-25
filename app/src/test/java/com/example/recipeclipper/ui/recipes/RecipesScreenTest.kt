@@ -1,6 +1,9 @@
-package com.example.recipeclipper.ui.history
+package com.example.recipeclipper.ui.recipes
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -33,7 +36,7 @@ import org.junit.runner.RunWith
  * the answer; the matching itself is SQL, covered by `RecipeDaoTest`.
  */
 @RunWith(AndroidJUnit4::class)
-class HistoryScreenTest {
+class RecipesScreenTest {
 
     @get:Rule
     val compose = createComposeRule()
@@ -74,13 +77,21 @@ class HistoryScreenTest {
     }
 
     private var opened: Long? = null
+    private var newRecipe = 0
+    private var openedUrl: String? = null
 
     private fun show(vararg recipes: RecipeSummary) {
         repository.history.value = recipes.toList()
         recipes.forEach { repository.deleteResults[it.id] = captured(it) }
-        val viewModel = HistoryViewModel(repository)
+        val viewModel = RecipesViewModel(repository)
         compose.setContent {
-            HistoryScreen(onBack = {}, onOpenRecipe = { opened = it }, viewModel = viewModel)
+            RecipesScreen(
+                onBack = {},
+                onOpenRecipe = { opened = it },
+                onNewRecipe = { newRecipe++ },
+                onOpenUrl = { openedUrl = it },
+                viewModel = viewModel
+            )
         }
     }
 
@@ -122,10 +133,57 @@ class HistoryScreenTest {
     }
 
     @Test
-    fun anEmptyHistorySaysSo() {
+    fun anEmptyLibrarySaysSo() {
         show()
 
-        waitFor("Nothing yet. Recipes you open are kept here automatically.")
+        waitFor("Nothing yet. Recipes you open are kept here, and + adds one by hand or from a link.")
+    }
+
+    // --- The + menu (#102) ---
+
+    @Test
+    fun plusTypeARecipeOpensTheEditor() {
+        show(adobo)
+
+        compose.onNodeWithContentDescription("Add a recipe").performClick()
+        compose.onNodeWithText("Type a recipe").performClick()
+
+        assertEquals(1, newRecipe)
+    }
+
+    @Test
+    fun plusPasteALinkOpensItOnlyOnceItIsALink() {
+        show(adobo)
+
+        compose.onNodeWithContentDescription("Add a recipe").performClick()
+        compose.onNodeWithText("Paste a link").performClick()
+        compose.onNodeWithText("Go").assertIsNotEnabled()
+
+        val field = compose.onNode(hasSetTextAction() and hasText("Recipe URL"))
+        field.performTextInput("not a link")
+        compose.onNodeWithText("Go").assertIsNotEnabled()
+        field.performTextClearance()
+        field.performTextInput("seriouseats.com/adobo")
+        compose.onNodeWithText("Go").assertIsEnabled().performClick()
+
+        assertEquals("https://seriouseats.com/adobo", openedUrl)
+        compose.onNodeWithText("Paste a link").assertDoesNotExist()
+    }
+
+    // --- Sort ---
+
+    @Test
+    fun sortingByNameReordersTheRows() {
+        show(carbonara, adobo) // carbonara was viewed last, so it leads
+
+        waitFor("Chicken Adobo")
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Name").performClick()
+
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasText("Chicken Adobo") or hasText("Spaghetti Carbonara"))
+                .fetchSemanticsNodes().map { it.boundsInRoot.top }.let { it.size == 2 && it[0] < it[1] }
+        }
     }
 
     // --- Search ---

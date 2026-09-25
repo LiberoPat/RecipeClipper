@@ -129,7 +129,8 @@ abstract class BackupDao {
         """
         SELECT id, uid, sourceUrl,
                (notes IS NOT NULL AND trim(notes) != '') AS hasNotes,
-               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isListed
+               (EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)
+                    OR contentOrigin = 'MANUAL') AS isListed
         FROM recipes
         """
     )

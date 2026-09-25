@@ -180,7 +180,7 @@ Exists today:
   there is one code path, not two queries picked in Kotlin. It matches
   against the ingredients column as stored (parsed, not scaled or
   unit-converted) — a search for "grams" won't find a recipe that merely
-  displays in grams; that's correct, not a bug. `HistoryViewModel` keeps the
+  displays in grams; that's correct, not a bug. `RecipesViewModel` keeps the
   query in a `MutableStateFlow` (survives rotation), debounces it ~250ms,
   and `flatMapLatest`s onto `repository.observeHistory(query)`. "History is
   empty" and "no results" are different UI states. Search is on History
@@ -201,7 +201,7 @@ Exists today:
   cross-refs. `RecipeRepository.delete` returns the captured
   entity+cross-refs pair (`RecipeRepository.DeletedRecipe`, opaque to
   callers) or null; `restore` takes it back. The captures live in
-  `HistoryViewModel` as a plain field, not in the repository — the
+  `RecipesViewModel` as a plain field, not in the repository — the
   repository stays stateless everywhere else, the same reason
   `RecipeViewModel` keeps its timer deadlines in a plain field rather than
   in `StateFlow`. That field is a `LinkedHashMap` keyed by recipe id, not a
@@ -316,7 +316,7 @@ Exists today:
   `FakeConnectivity`. Hand-written, not mocks — CLAUDE.md's
   now-satisfied condition for this was "when ViewModel unit tests are actually
   being written".
-- `RecipeViewModelTest`, `HistoryViewModelTest` and `HomeViewModelTest` are the
+- `RecipeViewModelTest`, `RecipesViewModelTest` and `HomeViewModelTest` are the
   first ViewModel test suites (`app/src/test/.../ui/...`). `MainDispatcherRule`
   (`app/src/test/.../MainDispatcherRule.kt`) installs a `StandardTestDispatcher` as
   `Dispatchers.Main`; tests run via `runTest(mainDispatcherRule.dispatcher) { }` so
@@ -324,7 +324,7 @@ Exists today:
   needed for the timer tests, which back `Clock` with `testScheduler.currentTime`.
   `collectEagerly` (`app/src/test/.../CollectUiState.kt`) starts a background
   collector on a `stateIn(WhileSubscribed(...))` flow before `advanceUntilIdle()`,
-  since `HomeViewModel.uiState` and `HistoryViewModel.uiState` emit nothing without
+  since `HomeViewModel.uiState` and `RecipesViewModel.uiState` emit nothing without
   one.
 
 ## Lists
@@ -720,7 +720,7 @@ com.example.recipeclipper/
     ├── recipe/                     RecipeScreen + RecipeViewModel
     ├── settings/                   SettingsScreen + SettingsViewModel (Home-only entry)
     ├── savetolist/                 SaveToListBottomSheet + ViewModel
-    ├── history/                    HistoryScreen + HistoryViewModel
+    ├── recipes/                    RecipesScreen + RecipesViewModel (was history/, #102)
     ├── lists/                      ListsScreen + ViewModel
     └── listdetail/                 ListDetailScreen + ViewModel
 ```
@@ -1838,3 +1838,31 @@ extract"); French names with an elided "d'" ("l'huile d'olive" against "3 c. à 
 d'olive"), because `IngredientName` keeps the elision in the name; and an ingredient also used
 for greasing or dusting when the list has only one line for it ("grease the pan with butter"
 then gets the batter's butter, since the step's words can't tell the two uses apart).
+
+## The Recipes screen (#102)
+
+- **Owner's decision:** a Paprika-style Recipes screen *replaces* History
+  rather than sitting beside it: two lists of the same recipes, one searchable
+  and one not, would only ask "which one is it in?". It keeps everything
+  History did (newest viewed first, `instr(lower(…))` search, swipe to delete
+  with one undo per burst), and the route is `recipes` (was `history`; only
+  Home navigated to it, so no alias). Home's row says "Recipes"; the rest of
+  Home is unchanged, "+ New recipe" included.
+- **The + opens a two-item menu,** not a screen: "Type a recipe" is the #29
+  editor as it already was; "Paste a link" is a small dialog whose Go is
+  enabled only for what Home's link field would accept (`UrlInput`), then the
+  usual import route. No clipboard is read unasked: Android shows a toast and
+  iOS a permission prompt on every read.
+- **A typed-in recipe is never culled,** like a listed one, and doesn't count
+  toward the 50: a parsed recipe that falls out of history can come back by
+  sharing its link again, a typed one can't. The rule is the column
+  (`contentOrigin = 'MANUAL'` in the cull's SQL), not the `manual:` link; an
+  import treats typed-in recipes as listed. No schema change: #29 already
+  stored them with a synthetic `manual:<uuid>` `sourceUrl`. #107's free-tier
+  limit will replace the 50 cap later; this rule is one more protected kind
+  for it to count or exempt.
+- **Sort** (Recently viewed, Name, Date added) is in memory, like the
+  pantry's, and done in the ViewModel over what the query returns. Name uses
+  the phone's collation; Date added is newest id first, which works because
+  `recipes.id` is AUTOINCREMENT on both platforms (never reused), so no
+  `createdAt` column or migration was needed.

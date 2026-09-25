@@ -25,7 +25,7 @@ import org.junit.Test
  * [SettingsUiState] is a plain `MutableStateFlow`, not `stateIn(WhileSubscribed(...))`, and the
  * ViewModel collects `AppPreferences.settings` itself, so it holds its value with no collector
  * needed — unlike [com.example.recipeclipper.ui.home.HomeViewModelTest] and
- * [com.example.recipeclipper.ui.history.HistoryViewModelTest], these tests don't need
+ * [com.example.recipeclipper.ui.recipes.RecipesViewModelTest], these tests don't need
  * `collectEagerly`.
  */
 @OptIn(ExperimentalCoroutinesApi::class)

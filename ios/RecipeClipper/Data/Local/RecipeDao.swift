@@ -193,7 +193,8 @@ struct RecipeDao {
     /// Deletes recipes that are in no list, oldest view first, keeping the `keep` most recently
     /// viewed of them. A recipe in any list is never touched, and neither is one planned for
     /// `today` or later (#49; an epoch day, see `PlanDays`): both are outside the cap. A recipe
-    /// planned only for past days is ordinary history again. Nor is one in a saved menu (#52).
+    /// planned only for past days is ordinary history again. Nor is one in a saved menu (#52),
+    /// nor one typed in by hand (#102, origin MANUAL): it has no link to bring it back.
     ///
     /// The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL is
     /// never true, which would silently stop the cull altogether.
@@ -206,6 +207,7 @@ struct RecipeDao {
                   AND id NOT IN (SELECT recipeId FROM meal_plan_entries
                                  WHERE recipeId IS NOT NULL AND day >= ?2)
                   AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
+                  AND contentOrigin != 'MANUAL'
                 ORDER BY lastViewedAt DESC, id DESC
                 LIMIT -1 OFFSET ?1
             )
