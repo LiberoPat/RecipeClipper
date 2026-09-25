@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Everything you've opened, newest first. Automatic: nothing here was saved on purpose.
-struct HistoryScreen: View {
-    let vm: HistoryViewModel
+struct RecipesScreen: View {
+    let vm: RecipesViewModel
     let onOpenRecipe: (Int64) -> Void
 
     @State private var now = currentMillis()
@@ -14,7 +14,7 @@ struct HistoryScreen: View {
         List {
             Group {
                 VStack(alignment: .leading, spacing: 12) {
-                    ScreenTitle(Strings.historyTitle, style: Typography.headlineSmall)
+                    ScreenTitle(Strings.recipesTitle, style: Typography.headlineSmall)
                     SearchField(query: state.query, onQueryChange: vm.onQueryChange)
                 }
                 .padding(.bottom, 12)
@@ -22,8 +22,8 @@ struct HistoryScreen: View {
 
                 if let recipes = state.recipes, recipes.isEmpty {
                     Text(state.query.trimmingCharacters(in: .whitespaces).isEmpty
-                         ? Strings.historyEmpty
-                         : Strings.historyNoResults(state.query))
+                         ? Strings.recipesEmpty
+                         : Strings.recipesNoResults(state.query))
                         .textStyle(Typography.bodyLarge)
                         .foregroundStyle(Palette.muted)
                         .listRowSeparator(.hidden)
@@ -94,7 +94,7 @@ private struct SearchField: View {
             // the query it decorates. The query text itself is not capped.
             Image(systemName: "magnifyingglass").foregroundStyle(Palette.muted)
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-            TextField(Strings.searchHistory, text: Binding(get: { query }, set: onQueryChange))
+            TextField(Strings.searchRecipes, text: Binding(get: { query }, set: onQueryChange))
                 .textStyle(Typography.bodyLarge)
                 .foregroundStyle(Palette.onBackground)
                 .autocorrectionDisabled()

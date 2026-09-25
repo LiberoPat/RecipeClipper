@@ -41,7 +41,7 @@ struct RootView: View {
                     vm: vm,
                     onOpenUrl: { router.push(.importUrl($0)) },
                     onOpenRecipe: { router.push(.recipe(id: $0)) },
-                    onOpenHistory: { router.push(.history) },
+                    onOpenRecipes: { router.push(.recipes) },
                     onOpenLists: { router.push(.lists) },
                     onOpenSettings: { router.push(.settings) },
                     onNewRecipe: { router.push(.editRecipe(id: nil)) }
@@ -135,9 +135,9 @@ struct RootView: View {
             ScreenHost(container.makeMealTypesViewModel) { vm in MealTypesScreen(vm: vm) }
         case .whatINeed(let weekStart):
             ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in WhatINeedScreen(vm: vm) }
-        case .history:
-            ScreenHost(container.makeHistoryViewModel) { vm in
-                HistoryScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
+        case .recipes:
+            ScreenHost(container.makeRecipesViewModel) { vm in
+                RecipesScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
             }
         case .settings:
             ScreenHost(container.makeSettingsViewModel) { vm in

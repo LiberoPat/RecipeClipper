@@ -3,7 +3,7 @@ import XCTest
 /// History end to end — untested on Android (docs/testing.md). Search goes through
 /// the real SQL (instr, never LIKE); delete is a hard delete with an undo snackbar that
 /// restores the row with its list membership.
-final class HistoryUITests: RecipeUITestCase {
+final class RecipesUITests: RecipeUITestCase {
 
     private var search: XCUIElement { app.textFields["Search titles and ingredients"] }
 
@@ -23,7 +23,7 @@ final class HistoryUITests: RecipeUITestCase {
 
     func testNewestFirst() {
         launch()
-        openHistory()
+        openRecipes()
 
         let titles = ["Chicken Adobo", "Spaghetti Carbonara", "Banana Bread", "Miso Soup"]
         let ys = titles.map { require(row($0)).frame.minY }
@@ -32,7 +32,7 @@ final class HistoryUITests: RecipeUITestCase {
 
     func testASavedRecipeCarriesTheSavedTag() {
         launch()
-        openHistory()
+        openRecipes()
 
         requireState(row("Chicken Adobo"), "label CONTAINS 'Saved'")
         requireState(row("Banana Bread"), "NOT (label CONTAINS 'Saved')")
@@ -40,7 +40,7 @@ final class HistoryUITests: RecipeUITestCase {
 
     func testSearchMatchesTitles() {
         launch()
-        openHistory()
+        openRecipes()
 
         type("carbon")
 
@@ -51,7 +51,7 @@ final class HistoryUITests: RecipeUITestCase {
 
     func testSearchMatchesIngredientsAndIgnoresCase() {
         launch()
-        openHistory()
+        openRecipes()
 
         type("TOFU") // only in Miso Soup's ingredients
 
@@ -63,7 +63,7 @@ final class HistoryUITests: RecipeUITestCase {
     /// "%" is a LIKE wildcard; a regression to LIKE would match everything here.
     func testAPercentSignIsLiteral() {
         launch()
-        openHistory()
+        openRecipes()
 
         type("100%")
 
@@ -73,17 +73,17 @@ final class HistoryUITests: RecipeUITestCase {
 
     func testNoResultsIsNotTheSameAsEmpty() {
         launch()
-        openHistory()
+        openRecipes()
 
         type("zzz")
 
         require(text("No recipes match \"zzz\"."))
-        assertAbsent(text("Nothing yet. Recipes you open are kept here automatically."))
+        assertAbsent(text("Nothing yet. Recipes you open are kept here, and + adds one by hand or from a link."))
     }
 
     func testClearingTheSearchBringsEverythingBack() {
         launch()
-        openHistory()
+        openRecipes()
 
         type("zzz")
         require(text("No recipes match \"zzz\"."))
@@ -96,15 +96,15 @@ final class HistoryUITests: RecipeUITestCase {
 
     func testAnEmptyHistorySaysSo() {
         launch(.empty)
-        openHistory()
+        openRecipes()
 
-        require(text("Nothing yet. Recipes you open are kept here automatically."))
+        require(text("Nothing yet. Recipes you open are kept here, and + adds one by hand or from a link."))
         assertAbsent(textContaining("No recipes match"))
     }
 
     func testSwipeDeleteShowsAnUndoSnackbarAndUndoRestores() {
         launch()
-        openHistory()
+        openRecipes()
 
         swipeDelete("Banana Bread")
 
@@ -121,7 +121,7 @@ final class HistoryUITests: RecipeUITestCase {
     /// Undo brings back list membership too, under the same id.
     func testUndoRestoresListMembership() {
         launch()
-        openHistory()
+        openRecipes()
 
         swipeDelete("Chicken Adobo")
         require(text("Deleted \"Chicken Adobo\""))
@@ -137,7 +137,7 @@ final class HistoryUITests: RecipeUITestCase {
     /// A second swipe inside the snackbar's window joins the batch; one Undo restores both.
     func testTwoDeletesShareOneSnackbarAndOneUndo() {
         launch()
-        openHistory()
+        openRecipes()
 
         // The snackbar lasts four seconds, so the second swipe must land inside it: no waits
         // between the two beyond what the taps themselves need.
@@ -156,7 +156,7 @@ final class HistoryUITests: RecipeUITestCase {
     /// Without Undo the delete stands: the snackbar goes and so does the recipe, from Home too.
     func testADeleteWithoutUndoStands() {
         launch()
-        openHistory()
+        openRecipes()
 
         swipeDelete("Banana Bread")
         require(text("Deleted \"Banana Bread\""))

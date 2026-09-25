@@ -26,7 +26,7 @@ final class TabShellUITests: RecipeUITestCase {
         launch(.standard)
 
         assertAbsent(tabBar, "a tab bar")
-        openHistory()
+        openRecipes()
         assertAbsent(tabBar, "a tab bar on History")
     }
 
@@ -81,7 +81,7 @@ final class TabShellUITests: RecipeUITestCase {
     func testTheBarShowsOnTheListScreensAndHidesOnARecipe() {
         launchWithTabs()
 
-        openHistory()
+        openRecipes()
         XCTAssertTrue(tabBar.isHittable, "bar on History")
         back()
         openLists()
@@ -110,7 +110,7 @@ final class TabShellUITests: RecipeUITestCase {
 
     func testChoosingRecipesAgainGoesBackToHome() {
         launchWithTabs()
-        openHistory()
+        openRecipes()
 
         tab("Recipes").tap()
 

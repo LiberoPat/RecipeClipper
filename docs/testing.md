@@ -72,12 +72,12 @@ steps staying separate, and the deep-JSON depth guard; `RecipeShareTextTest`,
 covering the labelled-vs-unlabelled serves line (built from a `ServingsScale?`),
 the times line omitting absent values, the no-yield recipe omitting the serves
 line, and the source URL being left out); and
-`RecipeViewModelTest`, `HistoryViewModelTest`, `HomeViewModelTest`,
+`RecipeViewModelTest`, `RecipesViewModelTest`, `HomeViewModelTest`,
 `SettingsViewModelTest` (see the Settings screen bullet above — each setter
 writes through to a `FakeAppPreferences` and updates `SettingsUiState`, and
 state is seeded from preferences on construction; `SettingsUiState` is a
 plain `MutableStateFlow`, not `stateIn(WhileSubscribed(...))`, so unlike
-`HomeViewModelTest`/`HistoryViewModelTest` it needs no `collectEagerly`).
+`HomeViewModelTest`/`RecipesViewModelTest` it needs no `collectEagerly`).
 `FakeAppPreferences` keeps its values in one `MutableStateFlow` (iOS: a
 `CurrentValueSubject`), so writing a value on the fake directly stands for
 Settings changing a default while another screen is open; the
@@ -274,7 +274,7 @@ Also `RecipeScreenTest` (reading view, servings and units, bookmark, delete,
 and the share text after scaling and converting through the UI; the source
 credit has its own `RecipeSourceCreditTest`, and the import error screen,
 including "Report this site", has `RecipeErrorScreenTest`), `CookModeTest`
-(step states, tap to jump, "Done — next step", timers), `HistoryScreenTest`
+(step states, tap to jump, "Done — next step", timers), `RecipesScreenTest`
 (search, swipe-to-dismiss, the batched undo snackbar) and `ListsScreenTest`.
 `RecipeScreenFixture` gives the recipe tests a `Clock` the test moves
 forward, so a 20-minute timer finishes as soon as the test says so; the

@@ -6,7 +6,7 @@ struct ExistingRecipe: Equatable {
     var uid: String
     var sourceUrl: String
     var hasNotes: Bool
-    /// In at least one list.
+    /// In at least one list, or typed in by hand (#102): outside the history cap either way.
     var isListed: Bool
 }
 
@@ -130,6 +130,7 @@ struct ImportPlan: Equatable {
 /// Menus (#52): a menu comes in, with its meals, unless its uid is already here; one here is
 /// left as it is. Its meals follow the plan's rules, its recipes come in like listed ones (the
 /// cull keeps them too), and a menu left with no meals is dropped.
+/// Typed-in recipes (#102, origin MANUAL) come in like listed ones, and one here counts as listed.
 enum BackupMerger {
 
     static func plan(
@@ -255,6 +256,8 @@ enum BackupMerger {
         for entry in incomingMenuEntries {
             if let target = entry.recipeId.flatMap({ recipeTargets[$0] }) { listedTargets.insert(target) }
         }
+        // So is a recipe typed in by hand (#102): it has no link to bring it back.
+        for recipe in newByUrl.values where recipe.contentOrigin == "MANUAL" { listedTargets.insert(.new(recipe.id)) }
         let unlistedHere = existingRecipes.filter { !$0.isListed && !listedTargets.contains(.existing($0.id)) }.count
         let freePlaces = max(0, historyLimit - unlistedHere)
         let newRecipesInOrder = newOrder.compactMap { newByUrl[$0] }

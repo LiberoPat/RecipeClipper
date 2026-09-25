@@ -130,7 +130,7 @@ final class SaveToListUITests: RecipeUITestCase {
         requireState(bookmark, "label == 'Save to a list'")
 
         back()
-        openHistory()
+        openRecipes()
         require(row("Chicken Adobo"), "Adobo still in history")
     }
 

@@ -506,6 +506,21 @@ final class RecipeDaoTests: XCTestCase {
         XCTAssertEqual(count, historyLimit + 1)
     }
 
+    func testATypedInRecipeIsNeverCulledAndDoesNotCountTowardTheCap() async throws {
+        var typed = dataRecipeRecord("manual:typed", viewedAt: 1)
+        typed.contentOrigin = "MANUAL"
+        let id = try await db.upsert(typed)
+
+        for n in 0..<(historyLimit + 5) {
+            try await db.upsert(dataRecipeRecord("https://a.com/\(n)", viewedAt: 1000 + Int64(n)))
+        }
+
+        let kept = try await db.get(id)
+        XCTAssertNotNil(kept, "a typed-in recipe has no link to bring it back")
+        let count = try await db.recipeCount()
+        XCTAssertEqual(count, historyLimit + 1)
+    }
+
     func testOpeningAnOldRecipeMovesItToTheTopSoItIsNotCulled() async throws {
         let old = try await db.upsert(dataRecipeRecord("https://a.com/old", viewedAt: 1))
         for n in 0..<(historyLimit - 1) {

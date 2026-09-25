@@ -180,7 +180,7 @@ Exists today:
   there is one code path, not two queries picked in Kotlin. It matches
   against the ingredients column as stored (parsed, not scaled or
   unit-converted) — a search for "grams" won't find a recipe that merely
-  displays in grams; that's correct, not a bug. `HistoryViewModel` keeps the
+  displays in grams; that's correct, not a bug. `RecipesViewModel` keeps the
   query in a `MutableStateFlow` (survives rotation), debounces it ~250ms,
   and `flatMapLatest`s onto `repository.observeHistory(query)`. "History is
   empty" and "no results" are different UI states. Search is on History
@@ -201,7 +201,7 @@ Exists today:
   cross-refs. `RecipeRepository.delete` returns the captured
   entity+cross-refs pair (`RecipeRepository.DeletedRecipe`, opaque to
   callers) or null; `restore` takes it back. The captures live in
-  `HistoryViewModel` as a plain field, not in the repository — the
+  `RecipesViewModel` as a plain field, not in the repository — the
   repository stays stateless everywhere else, the same reason
   `RecipeViewModel` keeps its timer deadlines in a plain field rather than
   in `StateFlow`. That field is a `LinkedHashMap` keyed by recipe id, not a
@@ -316,7 +316,7 @@ Exists today:
   `FakeConnectivity`. Hand-written, not mocks — CLAUDE.md's
   now-satisfied condition for this was "when ViewModel unit tests are actually
   being written".
-- `RecipeViewModelTest`, `HistoryViewModelTest` and `HomeViewModelTest` are the
+- `RecipeViewModelTest`, `RecipesViewModelTest` and `HomeViewModelTest` are the
   first ViewModel test suites (`app/src/test/.../ui/...`). `MainDispatcherRule`
   (`app/src/test/.../MainDispatcherRule.kt`) installs a `StandardTestDispatcher` as
   `Dispatchers.Main`; tests run via `runTest(mainDispatcherRule.dispatcher) { }` so
@@ -324,7 +324,7 @@ Exists today:
   needed for the timer tests, which back `Clock` with `testScheduler.currentTime`.
   `collectEagerly` (`app/src/test/.../CollectUiState.kt`) starts a background
   collector on a `stateIn(WhileSubscribed(...))` flow before `advanceUntilIdle()`,
-  since `HomeViewModel.uiState` and `HistoryViewModel.uiState` emit nothing without
+  since `HomeViewModel.uiState` and `RecipesViewModel.uiState` emit nothing without
   one.
 
 ## Lists
@@ -720,7 +720,7 @@ com.example.recipeclipper/
     ├── recipe/                     RecipeScreen + RecipeViewModel
     ├── settings/                   SettingsScreen + SettingsViewModel (Home-only entry)
     ├── savetolist/                 SaveToListBottomSheet + ViewModel
-    ├── history/                    HistoryScreen + HistoryViewModel
+    ├── recipes/                    RecipesScreen + RecipesViewModel (was history/, #102)
     ├── lists/                      ListsScreen + ViewModel
     └── listdetail/                 ListDetailScreen + ViewModel
 ```

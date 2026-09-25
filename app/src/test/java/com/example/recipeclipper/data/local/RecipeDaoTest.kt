@@ -247,6 +247,20 @@ class RecipeDaoTest {
     }
 
     @Test
+    fun aTypedInRecipeIsNeverCulledAndDoesNotCountTowardTheCap() = runBlocking {
+        val typed = recipes.upsert(
+            recipe("manual:typed", viewedAt = 1).copy(contentOrigin = "MANUAL"), HISTORY_LIMIT
+        )
+
+        repeat(HISTORY_LIMIT + 5) { n ->
+            recipes.upsert(recipe("https://a.com/$n", viewedAt = 1000L + n), HISTORY_LIMIT)
+        }
+
+        assertNotNull("a typed-in recipe has no link to bring it back", recipes.get(typed))
+        assertEquals(HISTORY_LIMIT + 1, count())
+    }
+
+    @Test
     fun openingAnOldRecipeMovesItToTheTopSoItIsNotCulled() = runBlocking {
         val old = recipes.upsert(recipe("https://a.com/old", viewedAt = 1), HISTORY_LIMIT)
         repeat(HISTORY_LIMIT - 1) { n ->

@@ -7,7 +7,7 @@ struct HomeScreen: View {
     let vm: HomeViewModel
     let onOpenUrl: (String) -> Void
     let onOpenRecipe: (Int64) -> Void
-    let onOpenHistory: () -> Void
+    let onOpenRecipes: () -> Void
     let onOpenLists: () -> Void
     let onOpenSettings: () -> Void
     var onNewRecipe: () -> Void = {}
@@ -93,8 +93,8 @@ struct HomeScreen: View {
                 // that changes shape with what is in the database.
                 VStack(spacing: 0) {
                     Hairline()
-                    NavRow(title: Strings.navHistory, action: onOpenHistory)
-                        .accessibilityIdentifier("home.nav.history")
+                    NavRow(title: Strings.recipesTitle, action: onOpenRecipes)
+                        .accessibilityIdentifier("home.nav.recipes")
                     NavRow(title: Strings.navLists, action: onOpenLists)
                         .accessibilityIdentifier("home.nav.lists")
                 }

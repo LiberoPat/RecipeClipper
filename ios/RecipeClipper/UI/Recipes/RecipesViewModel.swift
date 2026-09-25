@@ -5,7 +5,7 @@ import Observation
 /// `recipes` is nil until the database has answered, to tell "loading" from "nothing
 /// matched". `pendingDeletes` holds the titles swiped away but not yet settled, newest last,
 /// for the undo snackbar.
-struct HistoryUiState: Equatable {
+struct RecipesUiState: Equatable {
     var query = ""
     var recipes: [RecipeSummary]?
     var pendingDeletes: [String] = []
@@ -13,10 +13,10 @@ struct HistoryUiState: Equatable {
 
 @MainActor
 @Observable
-final class HistoryViewModel {
+final class RecipesViewModel {
     static let debounce = Duration.milliseconds(250)
 
-    private(set) var uiState = HistoryUiState()
+    private(set) var uiState = RecipesUiState()
 
     @ObservationIgnored private let repository: RecipeRepository
     @ObservationIgnored private let sleep: Sleep

@@ -44,7 +44,7 @@ class HomeScreenTest {
 
     private class Taps {
         var recipe: Long? = null
-        var history = 0
+        var recipes = 0
         var lists = 0
         var settings = 0
         var url: String? = null
@@ -59,7 +59,7 @@ class HomeScreenTest {
             HomeScreen(
                 onOpenUrl = { taps.url = it },
                 onOpenRecipe = { taps.recipe = it },
-                onOpenHistory = { taps.history++ },
+                onOpenRecipes = { taps.recipes++ },
                 onOpenLists = { taps.lists++ },
                 onOpenSettings = { taps.settings++ },
                 viewModel = viewModel
@@ -133,13 +133,13 @@ class HomeScreenTest {
     }
 
     @Test
-    fun historyAndListsRowsOpenTheirScreens() {
+    fun recipesAndListsRowsOpenTheirScreens() {
         val taps = show()
 
-        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Recipes").performClick()
         compose.onNodeWithText("Lists").performClick()
 
-        assertEquals(1, taps.history)
+        assertEquals(1, taps.recipes)
         assertEquals(1, taps.lists)
     }
 
@@ -148,7 +148,7 @@ class HomeScreenTest {
     fun theNavEntriesAreThereWithAnEmptyDatabase() {
         show()
 
-        compose.onNodeWithText("History").assertIsDisplayed()
+        compose.onNodeWithText("Recipes").assertIsDisplayed()
         compose.onNodeWithText("Lists").assertIsDisplayed()
         compose.onNodeWithContentDescription("Settings").assertIsDisplayed()
     }

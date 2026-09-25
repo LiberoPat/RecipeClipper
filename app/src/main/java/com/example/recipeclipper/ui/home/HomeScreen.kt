@@ -53,7 +53,7 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 fun HomeScreen(
     onOpenUrl: (String) -> Unit,
     onOpenRecipe: (Long) -> Unit,
-    onOpenHistory: () -> Unit,
+    onOpenRecipes: () -> Unit,
     onOpenLists: () -> Unit,
     onOpenSettings: () -> Unit,
     onNewRecipe: () -> Unit = {},
@@ -167,7 +167,7 @@ fun HomeScreen(
                 item {
                     Spacer(Modifier.height(20.dp))
                     Hairline()
-                    NavRow(stringResource(R.string.nav_history), onOpenHistory)
+                    NavRow(stringResource(R.string.recipes_title), onOpenRecipes)
                     NavRow(stringResource(R.string.nav_lists), onOpenLists)
                 }
             }
