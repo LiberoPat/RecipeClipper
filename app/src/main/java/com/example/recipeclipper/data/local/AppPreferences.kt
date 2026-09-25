@@ -36,6 +36,12 @@ interface AppPreferences {
     var expiryReminders: Boolean
 
     /**
+     * Chef mode (#100): short steps written on the device, in the reading view and cook mode.
+     * Off by default, and only offered behind the `chefMode` flag on a phone that can do it.
+     */
+    var chefMode: Boolean
+
+    /**
      * The current values first, then every change, never repeating a value. A screen that
      * collects this stays current when Settings changes a default while it is open (#24).
      */
@@ -43,7 +49,7 @@ interface AppPreferences {
 
     /** The values as they are right now. */
     val current: AppSettings
-        get() = AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders)
+        get() = AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode)
 }
 
 /** One snapshot of [AppPreferences], as its [AppPreferences.settings] flow emits them. */
@@ -52,5 +58,6 @@ data class AppSettings(
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
-    val expiryReminders: Boolean = false
+    val expiryReminders: Boolean = false,
+    val chefMode: Boolean = false
 )

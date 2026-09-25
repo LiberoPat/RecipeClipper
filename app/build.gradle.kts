@@ -241,6 +241,10 @@ dependencies {
 
     // Background thread for the network fetch
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+
+    // Chef mode (#100): short steps from Gemini Nano on the phone, through AICore. Its minSdk is
+    // 26 (ours is 24): the manifest overrides it and MlKitStepShortener checks the API level.
+    implementation("com.google.mlkit:genai-rewriting:1.0.0-beta1")
 }
 
 // DifferentialCorpusTest reads the iOS corpus and checks it against the Kotlin, so an edit to

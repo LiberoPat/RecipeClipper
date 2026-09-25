@@ -13,7 +13,10 @@ import org.json.JSONObject
  */
 enum class Flag(val key: String) {
     /** The meal plan (#47, #49–#51): the bottom tabs and the recipe screen's plan actions. */
-    MEAL_PLAN("mealPlan");
+    MEAL_PLAN("mealPlan"),
+
+    /** Chef mode (#100): the Settings switch for short steps written on the device. */
+    CHEF_MODE("chefMode");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

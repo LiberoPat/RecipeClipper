@@ -28,6 +28,11 @@ object ShortStepCheck {
         return candidate
     }
 
+    /** A step this short ("Serve warm.") is left as written, never sent to the model. */
+    fun worthShortening(step: String): Boolean = tidy(step).length >= MIN_LENGTH
+
+    const val MIN_LENGTH = 40
+
     /** One line: trimmed, whitespace collapsed, a leading bullet and wrapping quotes removed. */
     fun tidy(text: String): String {
         var s = text.trim().replace(SPACES, " ")

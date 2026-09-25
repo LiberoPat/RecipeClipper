@@ -56,8 +56,19 @@ sealed class RecipeContent {
         val instructions: List<String>,
         val stepTimerSeconds: List<Int?>,
         val sourceDomain: String?,
-        val words: LanguageWords? = LanguageWords.forRecipe(recipe)
-    ) : RecipeContent()
+        val words: LanguageWords? = LanguageWords.forRecipe(recipe),
+        /**
+         * Chef mode (#100): each step's short version, rendered like [instructions], lined up
+         * with them; null (or a short list) where a step has none yet, or none passed the check.
+         */
+        val shortInstructions: List<String?> = emptyList()
+    ) : RecipeContent() {
+        /** Step [index]'s short version, unless the cook asked to see it as written. */
+        fun shownStep(index: Int, asWritten: Set<Int>): String =
+            shortInstructions.getOrNull(index)?.takeIf { index !in asWritten } ?: instructions[index]
+
+        fun hasShortStep(index: Int): Boolean = shortInstructions.getOrNull(index) != null
+    }
 
     data class Error(val error: ParseError) : RecipeContent()
 }
@@ -97,5 +108,7 @@ data class RecipeUiState(
      * The shared link to clip by hand ("Clip it yourself", #37). Set exactly when
      * [reportSiteUrl] is: only a page that loaded with no recipe data can be clipped.
      */
-    val clipUrl: String? = null
+    val clipUrl: String? = null,
+    /** Chef mode (#100): the steps the cook tapped to see as written, not short. */
+    val asWrittenSteps: Set<Int> = emptySet()
 )

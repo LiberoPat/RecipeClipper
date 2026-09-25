@@ -380,6 +380,15 @@
     <string name="expiry_reminders_title">Promemoria di scadenza</string>
     <string name="expiry_reminders_description">Una notifica alle 9 del mattino quando qualcosa in dispensa scade oggi o domani</string>
     <string name="expiry_reminders_denied">Le notifiche sono disattivate per Recipe Clipper. Consentile nelle impostazioni di sistema per ricevere i promemoria.</string>
+    <!-- Chef mode (#100) -->
+    <string name="settings_section_steps">Passaggi</string>
+    <string name="chef_mode_title">Modalità chef</string>
+    <string name="chef_mode_description">Passaggi brevi, scritti su questo telefono. Toccane uno per vederlo come nella ricetta.</string>
+    <string name="chef_mode_languages">Per ricette in %1$s.</string>
+    <string name="chef_mode_unsupported">Questo telefono non può scrivere passaggi brevi.</string>
+    <string name="chef_mode_not_ready">Il modello del telefono non è ancora pronto. Riprova più tardi.</string>
+    <string name="step_show_as_written">Come nella ricetta</string>
+    <string name="step_show_short">Versione breve</string>
     <string name="expiry_channel_name">Promemoria della dispensa</string>
     <string name="expiry_channel_description">Una notifica al mattino quando qualcosa in dispensa sta per scadere</string>
     <string name="expiry_notification_title">Da usare presto</string>

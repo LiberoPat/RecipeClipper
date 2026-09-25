@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.BackupFiles
 import com.example.recipeclipper.data.BackupRepository
+import com.example.recipeclipper.data.ChefSupport
+import com.example.recipeclipper.data.ShortStepRepository
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ImportSummary
@@ -43,8 +45,16 @@ data class SettingsUiState(
     val expiryRemindersDenied: Boolean = false,
     /** e.g. "1.0 (1)", shown at the foot; tapping it [SettingsViewModel.DEVELOPER_TAPS] times
      *  opens Developer settings (#87). */
-    val appVersion: String = ""
-)
+    val appVersion: String = "",
+    /** The Steps section (#100): only with the `chefMode` flag on. */
+    val showsSteps: Boolean = false,
+    /** Chef mode as saved: short steps written on the device. */
+    val chefMode: Boolean = false,
+    /** What this phone can do, once asked; null until then. The switch works only when Available. */
+    val chefSupport: ChefSupport? = null
+) {
+    val chefModeAvailable: Boolean get() = chefSupport is ChefSupport.Available
+}
 
 /**
  * The "Your recipes" section: export and import (#26). One at a time; the screen shows the
@@ -80,11 +90,16 @@ class SettingsViewModel @Inject constructor(
     private val files: BackupFiles,
     private val appInfo: AppInfo,
     // Last and optional, so a test that doesn't care builds the screen without it (no Pantry section).
-    private val featureFlags: FeatureFlags? = null
+    private val featureFlags: FeatureFlags? = null,
+    // Chef mode (#100); without it the Steps section says the phone can't.
+    private val shortSteps: ShortStepRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    // Chef mode's support is asked once, and only with the flag on, so the model is never woken otherwise.
+    private var askedChefSupport = false
 
     init {
         viewModelScope.launch {
@@ -94,9 +109,30 @@ class SettingsViewModel @Inject constructor(
         }
         featureFlags?.let { flags ->
             viewModelScope.launch {
-                flags.values.collect { values -> _uiState.update { it.copy(showsPantry = values.isOn(Flag.MEAL_PLAN)) } }
+                flags.values.collect { values ->
+                    _uiState.update {
+                        it.copy(showsPantry = values.isOn(Flag.MEAL_PLAN), showsSteps = values.isOn(Flag.CHEF_MODE))
+                    }
+                    if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
+                }
             }
         }
+    }
+
+    private fun askChefSupport() {
+        if (askedChefSupport) return
+        askedChefSupport = true
+        viewModelScope.launch {
+            val support = shortSteps?.support() ?: ChefSupport.Unsupported
+            _uiState.update { it.copy(chefSupport = support) }
+        }
+    }
+
+    /** The Chef mode switch: only turns on where the phone can write short steps. */
+    fun onChefModeChange(enabled: Boolean) {
+        if (enabled && !_uiState.value.chefModeAvailable) return
+        preferences.chefMode = enabled
+        _uiState.update { it.copy(chefMode = enabled) }
     }
 
     /** The preferences' part of the state; the rest is this screen's own and carries over. */
@@ -106,7 +142,10 @@ class SettingsViewModel @Inject constructor(
         showsPantry = previous?.showsPantry ?: (featureFlags?.isOn(Flag.MEAL_PLAN) ?: false),
         expiryReminders = expiryReminders,
         expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,
-        appVersion = appInfo.appVersion
+        appVersion = appInfo.appVersion,
+        showsSteps = previous?.showsSteps ?: (featureFlags?.isOn(Flag.CHEF_MODE) ?: false),
+        chefMode = chefMode,
+        chefSupport = previous?.chefSupport
     )
 
     // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.

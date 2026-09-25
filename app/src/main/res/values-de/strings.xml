@@ -365,6 +365,15 @@
     <string name="expiry_reminders_title">Ablauf-Erinnerungen</string>
     <string name="expiry_reminders_description">Eine Mitteilung um 9 Uhr morgens, wenn etwas Vorrätiges heute oder morgen abläuft</string>
     <string name="expiry_reminders_denied">Mitteilungen sind für Recipe Clipper ausgeschaltet. Erlaube sie in den Systemeinstellungen, um Erinnerungen zu erhalten.</string>
+    <!-- Chef mode (#100) -->
+    <string name="settings_section_steps">Schritte</string>
+    <string name="chef_mode_title">Chefmodus</string>
+    <string name="chef_mode_description">Kurze Schritte, auf diesem Telefon geschrieben. Tippe auf einen, um ihn wie im Rezept zu sehen.</string>
+    <string name="chef_mode_languages">Für Rezepte auf %1$s.</string>
+    <string name="chef_mode_unsupported">Dieses Telefon kann keine kurzen Schritte schreiben.</string>
+    <string name="chef_mode_not_ready">Das Modell auf dem Telefon ist noch nicht bereit. Versuche es später noch einmal.</string>
+    <string name="step_show_as_written">Wie im Rezept</string>
+    <string name="step_show_short">Kurzfassung</string>
     <string name="expiry_channel_name">Vorrats-Erinnerungen</string>
     <string name="expiry_channel_description">Eine Mitteilung am Morgen, wenn etwas im Vorrat bald abläuft</string>
     <string name="expiry_notification_title">Bald verbrauchen</string>

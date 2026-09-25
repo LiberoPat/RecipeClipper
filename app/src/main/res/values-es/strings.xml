@@ -380,6 +380,15 @@
     <string name="expiry_reminders_title">Avisos de caducidad</string>
     <string name="expiry_reminders_description">Una notificación a las 9 de la mañana cuando algo que tienes caduca hoy o mañana</string>
     <string name="expiry_reminders_denied">Las notificaciones están desactivadas para Recipe Clipper. Actívalas en los ajustes del sistema para recibir avisos.</string>
+    <!-- Chef mode (#100) -->
+    <string name="settings_section_steps">Pasos</string>
+    <string name="chef_mode_title">Modo chef</string>
+    <string name="chef_mode_description">Pasos cortos, escritos en este teléfono. Toca uno para verlo como en la receta.</string>
+    <string name="chef_mode_languages">Para recetas en %1$s.</string>
+    <string name="chef_mode_unsupported">Este teléfono no puede escribir pasos cortos.</string>
+    <string name="chef_mode_not_ready">El modelo del teléfono aún no está listo. Inténtalo más tarde.</string>
+    <string name="step_show_as_written">Como en la receta</string>
+    <string name="step_show_short">Versión corta</string>
     <string name="expiry_channel_name">Avisos de la despensa</string>
     <string name="expiry_channel_description">Un aviso por la mañana cuando algo de la despensa está a punto de caducar</string>
     <string name="expiry_notification_title">Úsalo pronto</string>

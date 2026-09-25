@@ -2,6 +2,8 @@ package com.example.recipeclipper.di
 
 import com.example.recipeclipper.BuildConfig
 import com.example.recipeclipper.data.AndroidAppInfo
+import com.example.recipeclipper.data.MlKitStepShortener
+import com.example.recipeclipper.data.StepShortener
 import com.example.recipeclipper.data.flags.FeatureFlagStore
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.FlagRegistry
@@ -57,6 +59,10 @@ abstract class PlatformModule {
     @Binds
     @Singleton
     abstract fun featureFlagStore(impl: SharedPrefsFeatureFlagStore): FeatureFlagStore
+
+    @Binds
+    @Singleton
+    abstract fun stepShortener(impl: MlKitStepShortener): StepShortener
 
     companion object {
         @Provides

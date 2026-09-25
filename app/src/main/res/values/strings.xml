@@ -413,6 +413,15 @@
     <string name="expiry_reminders_title">Expiry reminders</string>
     <string name="expiry_reminders_description">A notification at 9 in the morning when something in stock expires today or tomorrow</string>
     <string name="expiry_reminders_denied">Notifications are off for Recipe Clipper. Allow them in the system settings to get reminders.</string>
+    <!-- Chef mode (#100) -->
+    <string name="settings_section_steps">Steps</string>
+    <string name="chef_mode_title">Chef mode</string>
+    <string name="chef_mode_description">Short steps, written on this phone. Tap one to see it as written.</string>
+    <string name="chef_mode_languages">For recipes in %1$s.</string>
+    <string name="chef_mode_unsupported">This phone can\'t write short steps.</string>
+    <string name="chef_mode_not_ready">The on-device model isn\'t ready yet. Try again later.</string>
+    <string name="step_show_as_written">As written</string>
+    <string name="step_show_short">Short version</string>
     <string name="expiry_channel_name">Pantry reminders</string>
     <string name="expiry_channel_description">A morning note when something in the pantry is about to expire</string>
     <string name="expiry_notification_title">Use it soon</string>
