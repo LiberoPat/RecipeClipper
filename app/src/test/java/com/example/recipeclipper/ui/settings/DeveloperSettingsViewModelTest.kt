@@ -28,7 +28,7 @@ class DeveloperSettingsViewModelTest {
     )
 
     @Test fun `lists every flag with its description, issue and state`() = runTest(mainDispatcherRule.dispatcher) {
-        val row = DeveloperSettingsViewModel(flags).uiState.value.flags.single()
+        val row = DeveloperSettingsViewModel(flags).uiState.value.flags.first { it.flag == Flag.MEAL_PLAN }
 
         assertEquals(Flag.MEAL_PLAN, row.flag)
         assertEquals("The meal plan", row.description)
@@ -42,7 +42,7 @@ class DeveloperSettingsViewModelTest {
 
         vm.onFlagChange(Flag.MEAL_PLAN, true)
         assertTrue(flags.isOn(Flag.MEAL_PLAN))
-        assertTrue(vm.uiState.value.flags.single().on)
+        assertTrue(vm.uiState.value.flags.first { it.flag == Flag.MEAL_PLAN }.on)
         assertTrue(vm.uiState.value.anyChanged)
 
         vm.onReset()
@@ -56,6 +56,6 @@ class DeveloperSettingsViewModelTest {
         store.setOverride("mealPlan", true)
         advanceUntilIdle()
 
-        assertTrue(vm.uiState.value.flags.single().on)
+        assertTrue(vm.uiState.value.flags.first { it.flag == Flag.MEAL_PLAN }.on)
     }
 }
