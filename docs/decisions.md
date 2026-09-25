@@ -1281,12 +1281,10 @@ The navigation shell for #46 (weekly meal plan, groceries, pantry), landing
 dark behind a flag so the shipped app is unchanged until the Week tab (#49)
 has something in it.
 
-- **One flag, one spelling per platform.** `BuildConfig.MEAL_PLAN_TABS` /
-  `FeatureFlags.mealPlanTabs`, both default off. iOS also honours a
-  debug-only launch argument (`-mealPlanTabs`) so `TabShellUITests` can
-  exercise the flag-on state without a release toggle; Android's
-  `AppShellTest` instead calls `AppShell` directly with `tabsEnabled = true`,
-  since Compose tests don't need a process relaunch to flip it.
+- **One flag.** Now `mealPlan` in the feature-flag system (#87, below),
+  default off in both build types. Android's `AppShellTest` calls `AppShell`
+  directly with `tabsEnabled = true`; the iOS UI tests turn it on through the
+  flag store.
 - **Where the bar shows is an allow-list, not a deny-list**
   (`tabBarRoutes` on Android; `.toolbar(.hidden, for: .tabBar)` set only on
   the recipe destination on iOS). A new screen is bar-less by default, so
@@ -1574,3 +1572,45 @@ left as written; never half.
   (it): the "+ 1 cucchiaio" now scales with the grams, and in Metric becomes
   "+ 15 ml"; Ounces, which can't weigh a nameless spoonful, now leaves the
   line as written instead of converting only the grams.
+
+## Feature flags (#87)
+
+Features that ship dark are local flags, with no server (remote flags need
+accounts and a backend the app deliberately doesn't have; revisit only if #53
+brings one).
+
+- **One registry, `shared/flags.json`:** key, a one-line description, the
+  default per build type (`debug`, `release`) and the issue. Both apps read
+  it (Android as a Java resource, iOS as a bundled file), so the list can't
+  drift. Each platform also has a typed `Flag` enum with the same keys, and a
+  unit test (`FeatureFlagsTest` / `FeatureFlagsTests`) fails if the enum and
+  the file differ, or if a flag is no longer referenced by the app's code.
+- **Typed access over an injectable store:** `FeatureFlags.isOn(Flag.MEAL_PLAN)`
+  / `isOn(.mealPlan)`. `FeatureFlagStore` holds only overrides; choosing a
+  flag's default removes its override, so a later change of default still
+  reaches everyone. ViewModels see `FeatureFlags`, never prefs; tests use
+  `FakeFeatureFlagStore` / `MemoryFeatureFlagStore`.
+- **Overrides live apart from the user's settings:** the SharedPreferences
+  file `feature_flags` and the UserDefaults suite `RecipeClipperFeatureFlags`
+  (not the App Group: the share extension never reads flags). Never
+  `unit_preferences`, so a reset can't touch a user's choices. Neither is in
+  the backup include list, deliberately.
+- **Developer settings is hidden, in release builds too** (the owner's call:
+  handy on the owner's own phone, harmless when hidden). Seven taps on the
+  version at the foot of Settings; the count is the ViewModel's, so a
+  rotation mid-way keeps it. A switch per flag (key, description, issue,
+  "Changed from the default"), then "Reset to defaults". The descriptions
+  come from flags.json and stay English: developer text, not UI. The
+  screen's own words are translated.
+- **Changes apply without a restart.** Android: MainActivity collects
+  `FeatureFlags.values` and provides them as `LocalFlagValues`; the tab shell
+  and the recipe screen read them. Turning the tab shell on or off swaps the
+  navigation graph, so the NavController is keyed by the flag and the app
+  reopens on Home (the screen says so). iOS: `FeatureFlags` is `@Observable`
+  and `RootView` reads it, so the root switches in place and the stack stays.
+- **UI tests set flags through the store,** not a special launch argument:
+  `launch(flags: ["mealPlan"])` passes `-uiTestFlags`, which the UI-test
+  container writes as overrides into its own throwaway suite.
+- **Retiring a flag:** when a feature ships for good, delete it from
+  flags.json and the enums, with its branches, in one PR. flags.json keeps no
+  history. `mealPlan` retires when the meal plan ships.

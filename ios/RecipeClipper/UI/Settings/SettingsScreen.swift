@@ -6,6 +6,8 @@ import UniformTypeIdentifiers
 /// switches — never a bare checkmark for either, which is the reason this screen exists.
 struct SettingsScreen: View {
     let vm: SettingsViewModel
+    /// Seven taps on the version (#87).
+    var onOpenDeveloperSettings: () -> Void = {}
     @State private var importing = false
 
     var body: some View {
@@ -77,6 +79,17 @@ struct SettingsScreen: View {
                             .accessibilityIdentifier("settings.backupStatus")
                     }
                 }
+
+                // The version, quietly at the foot. Seven taps open Developer settings (#87).
+                Text(Strings.settingsVersion(state.appVersion))
+                    .textStyle(Typography.bodySmall)
+                    .foregroundStyle(Palette.muted)
+                    .padding(.top, 24)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                    .onTapGesture { if vm.onVersionTapped() { onOpenDeveloperSettings() } }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityIdentifier("settings.version")
             }
             .padding(.horizontal, 20)
             .readableColumn()
@@ -201,7 +214,7 @@ private struct RadioRow: View {
 }
 
 /// An independent toggle: a title, a description and a switch.
-private struct SwitchRow: View {
+struct SwitchRow: View {
     let title: String
     let description: String
     @Binding var isOn: Bool

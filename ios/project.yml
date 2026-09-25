@@ -31,6 +31,9 @@ targets:
       - path: ../shared/web
         type: folder
         buildPhase: resources
+      # The feature-flag registry shared with Android (#87).
+      - path: ../shared/flags.json
+        buildPhase: resources
     dependencies:
       - target: RecipeClipperShare
         embed: true
