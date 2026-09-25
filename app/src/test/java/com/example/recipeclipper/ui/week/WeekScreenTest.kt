@@ -29,6 +29,7 @@ import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.DINNER
 import com.example.recipeclipper.fake.FakePlanCalendar
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.passTheSearchDebounce
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -105,6 +106,7 @@ class WeekScreenTest {
 
         scrollTo("addToDay-${today + 1}")
         compose.onNodeWithTag("addToDay-${today + 1}").performClick()
+        passTheSearchDebounce() // the sheet lists history through the search
         compose.onNodeWithText("Miso Soup").performClick()
 
         compose.runOnIdle {

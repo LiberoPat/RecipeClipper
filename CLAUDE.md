@@ -61,7 +61,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ./gradlew installDebug
 ./gradlew testDebugUnitTest           # one class: --tests "com.example.recipeclipper.data.model.IngredientScalerTest"
 ./gradlew lintDebug
-./gradlew connectedDebugAndroidTest   # device tests: wipes the app's data, see below
+./gradlew connectedDebugAndroidTest   # the few device-only tests (docs/testing.md): wipes the app's data
 cd ios && xcodegen generate           # after adding or removing iOS files
 ```
 
@@ -173,7 +173,7 @@ Decisions, not suggestions. Don't relitigate them in code.
   a separate tier.
 - **Only Favorites is permanent.** The other five seeded lists delete like a
   user's own. `isBuiltIn` means only "seeded, sorts first"; the delete guard
-  is `isFavorites`, in the SQL, and a device test fails if it regresses to
+  is `isFavorites`, in the SQL, and `ListDaoTest` fails if it regresses to
   `isBuiltIn`.
 - **"Saved" means "in at least one list."** It's derived from the cross-ref
   table; there's no column. A recipe in any list is never culled, and

@@ -23,8 +23,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The database rules from CLAUDE.md, run against real SQLite on a device: they live in SQL,
- * so a JVM test with a fake would prove nothing.
+ * The database rules from CLAUDE.md, run against real SQLite (Robolectric's native build of
+ * it, #91): they live in SQL, so a test with a fake DAO would prove nothing.
  */
 @RunWith(AndroidJUnit4::class)
 class RecipeDaoTest {
