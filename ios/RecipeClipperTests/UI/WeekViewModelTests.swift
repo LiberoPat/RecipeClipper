@@ -246,4 +246,29 @@ final class WeekViewModelTests: XCTestCase {
         XCTAssertNil(vm.uiState.month)
         XCTAssertEqual(vm.uiState.weekStart, monday)
     }
+
+    // MARK: Calendar file (#52)
+
+    func testTheWeekShownIsSharedAsAnIcsFileAndAnEmptyWeekIsnt() async {
+        let vm = viewModel()
+        await settleMain()
+        XCTAssertFalse(vm.uiState.hasMeals)
+        vm.onShareCalendar()
+        XCTAssertNil(vm.uiState.calendarFile)
+
+        plan.titles[7] = "Chicken Adobo"
+        await plan.addRecipe(recipeId: 7, day: today, mealTypeId: FakeMealPlanRepository.dinner, servings: 4)
+        await plan.addNote("Leftovers", day: today + 7, mealTypeId: FakeMealPlanRepository.lunch)
+        await settleMain()
+        vm.onShareCalendar()
+        let file = vm.uiState.calendarFile
+        XCTAssertEqual(file?.fileName, "meal-plan-2026-09-21.ics")
+        XCTAssertTrue(file?.text.contains("SUMMARY:Dinner · Chicken Adobo\r\n") ?? false)
+        XCTAssertTrue(file?.text.contains("DTSTAMP:20260923T142500Z\r\n") ?? false)
+        XCTAssertFalse(file?.text.contains("Leftovers") ?? true)
+        XCTAssertEqual(file?.text.components(separatedBy: "BEGIN:VEVENT").count, 2)
+
+        vm.onCalendarShared()
+        XCTAssertNil(vm.uiState.calendarFile)
+    }
 }

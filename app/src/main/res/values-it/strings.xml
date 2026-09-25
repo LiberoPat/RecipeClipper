@@ -380,4 +380,5 @@
     <string name="cd_previous_month">Mese precedente</string>
     <string name="cd_next_month">Mese successivo</string>
     <string name="cd_month_day_planned">%1$s, pasti pianificati</string>
+    <string name="action_share_calendar">Condividi come file di calendario</string>
 </resources>

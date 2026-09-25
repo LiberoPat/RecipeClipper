@@ -15,6 +15,9 @@ interface PlanCalendar {
 
     /** 1 = Sunday … 7 = Saturday: the locale's own, never a fixed Monday (owner's call). */
     fun firstDayOfWeek(): Int
+
+    /** Now, in epoch millis: when a calendar file (#52) was made. */
+    fun now(): Long
 }
 
 class SystemPlanCalendar @Inject constructor(private val clock: Clock) : PlanCalendar {
@@ -22,4 +25,6 @@ class SystemPlanCalendar @Inject constructor(private val clock: Clock) : PlanCal
 
     // java.util.Calendar rather than WeekFields: the same answer, without java.time (API 26).
     override fun firstDayOfWeek(): Int = Calendar.getInstance().firstDayOfWeek
+
+    override fun now(): Long = clock.now()
 }

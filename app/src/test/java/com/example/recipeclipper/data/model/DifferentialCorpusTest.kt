@@ -24,6 +24,9 @@ import java.io.File
  * `Pant("line", "pantry name")` rows (#51) pin [PantryMatch.covered]: the line against one in-stock
  * pantry item of that name, in the same language; write only those two strings.
  *
+ * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
+ * escaped and folded at 75 octets; write only the text.
+ *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
@@ -46,6 +49,8 @@ class DifferentialCorpusTest {
     private val groceryRow = Regex("""^(\s*)Groc\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
     // A pantry row (#51): a recipe line, a pantry item's name, optionally their language.
     private val pantryRow = Regex("""^(\s*)Pant\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A calendar-file row (#52): one summary's text.
+    private val icsRow = Regex("""^(\s*)Ics\("((?:[^"\\]|\\.)*)"""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
@@ -80,6 +85,10 @@ class DifferentialCorpusTest {
         }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
+        icsRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            return m.groupValues[1] + "Ics(${q(text)}, ${q(MealPlanIcs.contentLine("SUMMARY", text))}),"
+        }
         val m = row.find(line) ?: return line
         val indent = m.groupValues[1]
         val input = unescape(m.groupValues[3])

@@ -366,6 +366,7 @@ enum Strings {
     static var thisMonth: String { String(localized: "action_this_month") }
     static var previousMonth: String { String(localized: "cd_previous_month") }
     static var nextMonth: String { String(localized: "cd_next_month") }
+    static var shareCalendar: String { String(localized: "action_share_calendar") }
     static func monthDayPlanned(_ day: String) -> String { String(localized: "cd_month_day_planned \(day)") }
     static var mealTypesTitle: String { String(localized: "meal_types_title") }
     static var today: String { String(localized: "label_today") }

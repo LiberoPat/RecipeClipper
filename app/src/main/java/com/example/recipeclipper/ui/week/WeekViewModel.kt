@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.PlannedMeal
@@ -50,6 +51,9 @@ data class MoveState(
 /** A meal just removed: its id keeps two removals of the same title apart. */
 data class RemovedMeal(val id: Long, val label: String)
 
+/** An .ics file to share: its name and its text (#52). */
+data class CalendarFile(val fileName: String, val text: String)
+
 /** One cell of the month grid: [inMonth] is false for the days that fill the first and last rows. */
 data class MonthDay(val day: Long, val inMonth: Boolean, val mealCount: Int)
 
@@ -81,9 +85,14 @@ data class WeekUiState(
     /** The month view, or null while the week is shown. */
     val month: MonthUiState? = null,
     /** A day the week view scrolls to once, after a tap in the month view. */
-    val focusDay: Long? = null
+    val focusDay: Long? = null,
+    /** The shown week as a calendar file, waiting for the screen to share it (#52). */
+    val calendarFile: CalendarFile? = null
 ) {
     val isThisWeek: Boolean get() = weekStart == thisWeekStart
+
+    /** Whether the week shown has anything to put in a calendar file. */
+    val hasMeals: Boolean get() = days.any { it.meals.isNotEmpty() }
 }
 
 /**
@@ -220,6 +229,23 @@ class WeekViewModel @Inject constructor(
 
     /** The week view has scrolled to [WeekUiState.focusDay]. */
     fun onFocusHandled() = _uiState.update { it.copy(focusDay = null) }
+
+    // --- Calendar file (#52)
+
+    /** The week shown as an .ics file, for the screen to share. Nothing for an empty week. */
+    fun onShareCalendar() {
+        val state = _uiState.value
+        if (!state.hasMeals) return
+        val text = MealPlanIcs.calendar(
+            state.days.flatMap { it.meals },
+            state.mealTypes.associate { it.id to it.name },
+            calendar.now()
+        )
+        _uiState.update { it.copy(calendarFile = CalendarFile(MealPlanIcs.fileName(state.weekStart), text)) }
+    }
+
+    /** The share sheet has opened (or couldn't): the file is done with. */
+    fun onCalendarShared() = _uiState.update { it.copy(calendarFile = null) }
 
     private fun showWeek(start: Long) {
         // The same week again (a day of it tapped in the month view) keeps its loaded days: the
