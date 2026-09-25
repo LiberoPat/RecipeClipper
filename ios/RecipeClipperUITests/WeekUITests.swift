@@ -50,4 +50,15 @@ final class WeekUITests: RecipeUITestCase {
         let meal = require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch, "the planned meal")
         XCTAssertTrue(meal.label.contains("Chicken Adobo"))
     }
+
+    /// The month view (#52): Week ↔ Month, and a tapped day opens its week.
+    func testTheMonthViewOpensTheWeekOfATappedDay() {
+        openWeek()
+
+        require(app.buttons["toggleMonth"], "the Month switch").tap()
+        require(app.staticTexts["monthTitle"], "the month")
+        require(app.buttons["monthDay-\(today)"], "today in the grid").tap()
+        require(app.staticTexts["weekRange"], "the week again")
+        XCTAssertEqual(app.buttons["toggleMonth"].label, "Month")
+    }
 }

@@ -1664,3 +1664,26 @@ brings one).
 - **Retiring a flag:** when a feature ships for good, delete it from
   flags.json and the enums, with its branches, in one PR. flags.json keeps no
   history. `mealPlan` retires when the meal plan ships.
+
+## Meal plan extras (#52)
+
+The optional extras of #46, one PR each, still behind the `mealPlan` flag.
+
+### Month view
+
+- **A switch, not a destination.** "Month" beside the Week title swaps the week for a month
+  grid in place ("Week" swaps back), so the tab keeps one stack and Back never has to learn
+  about it. It's ViewModel state, so it survives rotation; it isn't remembered across launches
+  (the Week tab opens on this week, as #49 decided). No new schema: the grid reads the same
+  `observeDays` range query as the week, over the grid's first to last day.
+- **The grid is whole weeks from the locale's first day** (`PlanDays.monthGrid`, both
+  platforms), four to six rows, the days before and after the month muted but tappable. The
+  month arithmetic is plain integers (Hinnant's civil-from-days), like the rest of `PlanDays`:
+  no `java.time` on minSdk 24.
+- **A day with meals shows a paprika dot, not a count or titles.** The month answers "which
+  days are planned"; the week answers "what". Screen readers hear "…, meals planned".
+- **Tapping a day opens its week, scrolled to that day.** Which month opens: today's for this
+  week, otherwise the month holding most of the shown week (its fourth day), so Sep 28 – Oct 4
+  opens October.
+- The week's own menu actions (What I need, Add this week's ingredients) act on the week shown,
+  so they're hidden while the month shows; Meal types stays.

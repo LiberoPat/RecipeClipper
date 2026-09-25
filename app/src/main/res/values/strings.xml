@@ -407,4 +407,10 @@
     <string name="developer_flag_issue">Issue #%1$d</string>
     <string name="developer_flag_changed">Changed from the default</string>
     <string name="developer_reset">Reset to defaults</string>
+    <string name="action_month_view">Month</string>
+    <string name="action_week_view">Week</string>
+    <string name="action_this_month">This month</string>
+    <string name="cd_previous_month">Previous month</string>
+    <string name="cd_next_month">Next month</string>
+    <string name="cd_month_day_planned">%1$s, meals planned</string>
 </resources>

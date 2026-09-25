@@ -374,4 +374,10 @@
     <string name="developer_flag_issue">Ticket #%1$d</string>
     <string name="developer_flag_changed">Modifié par rapport à la valeur par défaut</string>
     <string name="developer_reset">Rétablir les valeurs par défaut</string>
+    <string name="action_month_view">Mois</string>
+    <string name="action_week_view">Semaine</string>
+    <string name="action_this_month">Ce mois-ci</string>
+    <string name="cd_previous_month">Mois précédent</string>
+    <string name="cd_next_month">Mois suivant</string>
+    <string name="cd_month_day_planned">%1$s, repas prévus</string>
 </resources>
