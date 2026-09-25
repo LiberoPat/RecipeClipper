@@ -7,6 +7,7 @@ import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.Menu
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -54,6 +55,27 @@ data class RemovedMeal(val id: Long, val label: String)
 /** An .ics file to share: its name and its text (#52). */
 data class CalendarFile(val fileName: String, val text: String)
 
+/** What the snackbar says after a menu action (#52). */
+sealed interface MenuMessage {
+    data class Saved(val name: String) : MenuMessage
+    data object SaveFailed : MenuMessage
+    data class Applied(val name: String, val count: Int) : MenuMessage
+}
+
+/**
+ * Reusable weekly menus on the Week tab (#52). [menus] is every saved menu; [saving] opens the
+ * name dialog for the week shown; [picking] opens the menus sheet (apply, rename, delete);
+ * [renaming] and [deleting] are the menu being renamed or confirmed for deletion.
+ */
+data class MenusUiState(
+    val menus: List<Menu> = emptyList(),
+    val saving: Boolean = false,
+    val picking: Boolean = false,
+    val renaming: Menu? = null,
+    val deleting: Menu? = null,
+    val message: MenuMessage? = null
+)
+
 /** One cell of the month grid: [inMonth] is false for the days that fill the first and last rows. */
 data class MonthDay(val day: Long, val inMonth: Boolean, val mealCount: Int)
 
@@ -87,7 +109,9 @@ data class WeekUiState(
     /** A day the week view scrolls to once, after a tap in the month view. */
     val focusDay: Long? = null,
     /** The shown week as a calendar file, waiting for the screen to share it (#52). */
-    val calendarFile: CalendarFile? = null
+    val calendarFile: CalendarFile? = null,
+    /** Saved weekly menus and their dialogs (#52). */
+    val menus: MenusUiState = MenusUiState()
 ) {
     val isThisWeek: Boolean get() = weekStart == thisWeekStart
 
@@ -152,6 +176,9 @@ class WeekViewModel @Inject constructor(
                     )
                 }
             }
+        }
+        viewModelScope.launch {
+            plan.observeMenus().collect { menus -> _uiState.update { it.copy(menus = it.menus.copy(menus = menus)) } }
         }
         viewModelScope.launch {
             plan.observeMealTypes().collect { types -> _uiState.update { it.copy(mealTypes = types) } }

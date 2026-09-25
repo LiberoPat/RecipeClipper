@@ -15,6 +15,8 @@ import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MealTypeEntity
+import com.example.recipeclipper.data.local.entity.MenuEntity
+import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
@@ -109,6 +111,25 @@ class DefaultBackupRepositoryTest {
             writes++
             val id = nextId++
             plan += entry.copy(id = id)
+            return id
+        }
+
+        val menus = mutableListOf<MenuEntity>()
+        val menuEntries = mutableListOf<MenuEntryEntity>()
+        override suspend fun allMenus() = menus.toList()
+        override suspend fun allMenuEntries() = menuEntries.toList()
+        override suspend fun existingMenuUids() = menus.map { it.uid }
+        override suspend fun existingMenuEntryUids() = menuEntries.map { it.uid }
+        override suspend fun insertMenu(menu: MenuEntity): Long {
+            writes++
+            val id = nextId++
+            menus += menu.copy(id = id)
+            return id
+        }
+        override suspend fun insertMenuEntry(entry: MenuEntryEntity): Long {
+            writes++
+            val id = nextId++
+            menuEntries += entry.copy(id = id)
             return id
         }
     }
@@ -283,5 +304,26 @@ class DefaultBackupRepositoryTest {
             override suspend fun allRecipes(): List<RecipeEntity> = throw IllegalStateException("locked")
         }
         assertEquals(BackupResult.Failure(BackupError.ExportFailed), DefaultBackupRepository(dao, clock, RecordingLog()).export())
+    }
+
+    @Test fun `a menu goes out and comes back into another phone onto the right rows`() = runTest {
+        val from = fixturePhone().apply {
+            menus += MenuEntity(id = 5, name = "Week A", updatedAt = 2, uid = "menu-a")
+            menuEntries += MenuEntryEntity(id = 6, menuId = 5, dayOffset = 1, mealTypeId = 7, recipeId = 2, servings = 3,
+                note = null, sortOrder = 0, updatedAt = 2, uid = "me-1")
+        }
+        val exported = (DefaultBackupRepository(from, clock, RecordingLog()).export() as BackupResult.Success<ExportedBackup>).value
+
+        val to = InMemoryBackupDao().apply {
+            mealTypes += MealTypeEntity(id = 1, name = "Dinner", builtInKey = "dinner", sortOrder = 2, updatedAt = 0, uid = "mt-other")
+        }
+        DefaultBackupRepository(to, clock, RecordingLog()).import(exported.json)
+        val menu = to.menus.single()
+        assertEquals("menu-a" to "Week A", menu.uid to menu.name)
+        val entry = to.menuEntries.single()
+        val brunch = to.mealTypes.single { it.uid == "mt-brunch" }
+        val bread = to.recipes.single { it.uid == "e-bread" }
+        assertEquals(listOf(menu.id, brunch.id, bread.id, 1L), listOf(entry.menuId, entry.mealTypeId, entry.recipeId, entry.dayOffset.toLong()))
+        assertEquals("me-1", entry.uid)
     }
 }
