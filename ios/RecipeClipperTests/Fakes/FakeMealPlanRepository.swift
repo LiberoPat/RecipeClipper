@@ -24,6 +24,9 @@ final class FakeMealPlanRepository: MealPlanRepository {
     var titles: [Int64: String] = [:]
 
     private var nextId: Int64 = 1000
+    let menus = CurrentValueSubject<[WeekMenu], Never>([])
+    /// A saved menu's meals, as offsets into the week.
+    var menuMeals: [Int64: [(dayOffset: Int64, meal: PlannedMeal)]] = [:]
     private var deleted: [Int64: PlannedMeal] = [:]
 
     func observeMealTypes() -> AnyPublisher<[MealType], Never> { types.eraseToAnyPublisher() }
@@ -137,4 +140,44 @@ final class FakePlanCalendar: PlanCalendar {
     func today() -> Int64 { todayValue }
     func firstDayOfWeek() -> Int { firstDay }
     func now() -> Int64 { nowValue }
+}
+
+// MARK: - Reusable weekly menus (#52)
+
+extension FakeMealPlanRepository {
+    func observeMenus() -> AnyPublisher<[WeekMenu], Never> { menus.eraseToAnyPublisher() }
+
+    func saveWeekAsMenu(name: String, weekStart: Int64) async -> Bool {
+        let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let week = meals.value.filter { $0.day >= weekStart && $0.day <= weekStart + 6 }
+        guard !text.isEmpty, !week.isEmpty else { return false }
+        nextId += 1
+        menuMeals[nextId] = week.map { ($0.day - weekStart, $0) }
+        menus.value = (menus.value + [WeekMenu(id: nextId, name: text, mealCount: week.count)])
+            .sorted { $0.name.lowercased() < $1.name.lowercased() }
+        return true
+    }
+
+    func applyMenu(id: Int64, weekStart: Int64) async -> Int {
+        let saved = menuMeals[id] ?? []
+        for (offset, meal) in saved {
+            nextId += 1
+            meals.value.append(PlannedMeal(
+                id: nextId, day: weekStart + offset, mealTypeId: meal.mealTypeId, recipeId: meal.recipeId,
+                title: meal.title, imageUrl: meal.imageUrl, servings: meal.servings, note: meal.note
+            ))
+        }
+        return saved.count
+    }
+
+    func renameMenu(id: Int64, name: String) async {
+        let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        menus.value = menus.value.map { $0.id == id ? WeekMenu(id: id, name: text, mealCount: $0.mealCount) : $0 }
+    }
+
+    func deleteMenu(id: Int64) async {
+        menuMeals[id] = nil
+        menus.value.removeAll { $0.id == id }
+    }
 }

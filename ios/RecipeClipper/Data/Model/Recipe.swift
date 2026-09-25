@@ -202,4 +202,6 @@ struct DeletedRecipe: Equatable {
     var uid: String? = nil
     /// Its planned meals (#49), which the delete cascades, so undo brings them back too.
     var planEntries: [MealPlanEntryRecord] = []
+    /// Its meals in saved menus (#52), which the delete cascades too.
+    var menuEntries: [MenuEntryRecord] = []
 }

@@ -307,9 +307,11 @@ final class DefaultRecipeRepository: RecipeRepository {
                 // Read before deleting: the cascade takes them with the row.
                 let memberships = try dao.crossRefsFor(id)
                 let planEntries = try dao.planEntriesFor(id)
+                let menuEntries = try dao.menuEntriesFor(id)
                 try dao.delete(id)
                 return DeletedRecipe(
-                    recipe: row.toDomain(), memberships: memberships, uid: row.uid, planEntries: planEntries
+                    recipe: row.toDomain(), memberships: memberships, uid: row.uid, planEntries: planEntries,
+                    menuEntries: menuEntries
                 )
             }
         } catch {
@@ -323,7 +325,9 @@ final class DefaultRecipeRepository: RecipeRepository {
             var record = deleted.recipe.toRecord(viewedAt: deleted.recipe.lastViewedAt)
             if let uid = deleted.uid { record.uid = uid }
             try await db.write { [record] conn in
-                try RecipeDao(db: conn).restore(record, crossRefs: deleted.memberships, planEntries: deleted.planEntries)
+                try RecipeDao(db: conn).restore(record, crossRefs: deleted.memberships, planEntries: deleted.planEntries,
+                    menuEntries: deleted.menuEntries
+                )
             }
         } catch {
             dataLog.error("restore failed: \(String(describing: error), privacy: .public)")

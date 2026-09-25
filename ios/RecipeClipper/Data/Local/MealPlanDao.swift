@@ -147,6 +147,17 @@ struct MealPlanDao {
             """,
             now, id
         )
+        // The same for the meals of saved menus (#52).
+        try db.run(
+            """
+            UPDATE menu_entries
+            SET mealTypeId = (SELECT id FROM meal_types WHERE builtInKey = '\(MealType.dinner)'),
+                updatedAt = ?1
+            WHERE mealTypeId = ?2
+              AND EXISTS (SELECT 1 FROM meal_types WHERE id = ?2 AND builtInKey IS NULL)
+            """,
+            now, id
+        )
         try db.run("DELETE FROM meal_types WHERE id = ? AND builtInKey IS NULL", id)
     }
 }

@@ -100,6 +100,14 @@ struct RecipeDao {
         )
     }
 
+    /// Read before `delete`, like `planEntriesFor`: the recipe's meals in saved menus (#52).
+    func menuEntriesFor(_ recipeId: Int64) throws -> [MenuEntryRecord] {
+        try db.query(
+            "SELECT \(MenuEntryRecord.columns) FROM menu_entries WHERE recipeId = ?",
+            recipeId, map: MenuEntryRecord.init(row:)
+        )
+    }
+
     /// Read before `delete` so undo has something to restore.
     func crossRefsFor(_ recipeId: Int64) throws -> [ListMembership] {
         try db.query(
@@ -115,11 +123,27 @@ struct RecipeDao {
     /// iPad) is skipped rather than inserted: its foreign key would fail and roll back the
     /// whole restore, so pressing Undo would lose the recipe for good over a list that no
     /// longer exists.
-    func restore(_ recipe: RecipeRecord, crossRefs: [ListMembership], planEntries: [MealPlanEntryRecord] = []) throws {
+    func restore(
+        _ recipe: RecipeRecord, crossRefs: [ListMembership], planEntries: [MealPlanEntryRecord] = [],
+        menuEntries: [MenuEntryRecord] = []
+    ) throws {
         try insert(recipe)
         // Its planned meals too (#49), each skipped if its meal type went meanwhile.
         let plan = MealPlanDao(db: db)
         for entry in planEntries { try plan.restore(entry) }
+        // And its menu meals (#52), each skipped if its menu or meal type went meanwhile.
+        for e in menuEntries {
+            try db.run(
+                """
+                INSERT INTO menu_entries (\(MenuEntryRecord.columns))
+                SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10
+                WHERE EXISTS (SELECT 1 FROM meal_types WHERE id = ?4)
+                  AND EXISTS (SELECT 1 FROM menus WHERE id = ?2)
+                """,
+                e.id, e.menuId, e.dayOffset, e.mealTypeId, e.recipeId, e.servings, e.note, e.sortOrder,
+                e.updatedAt, e.uid
+            )
+        }
         for ref in crossRefs {
             try db.run(
                 """
@@ -169,7 +193,7 @@ struct RecipeDao {
     /// Deletes recipes that are in no list, oldest view first, keeping the `keep` most recently
     /// viewed of them. A recipe in any list is never touched, and neither is one planned for
     /// `today` or later (#49; an epoch day, see `PlanDays`): both are outside the cap. A recipe
-    /// planned only for past days is ordinary history again.
+    /// planned only for past days is ordinary history again. Nor is one in a saved menu (#52).
     ///
     /// The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL is
     /// never true, which would silently stop the cull altogether.
@@ -181,6 +205,7 @@ struct RecipeDao {
                 WHERE id NOT IN (SELECT recipeId FROM recipe_list_cross_ref)
                   AND id NOT IN (SELECT recipeId FROM meal_plan_entries
                                  WHERE recipeId IS NOT NULL AND day >= ?2)
+                  AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
                 ORDER BY lastViewedAt DESC, id DESC
                 LIMIT -1 OFFSET ?1
             )

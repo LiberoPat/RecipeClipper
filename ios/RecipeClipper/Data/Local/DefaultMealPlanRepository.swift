@@ -97,3 +97,45 @@ final class DefaultMealPlanRepository: MealPlanRepository {
         }
     }
 }
+
+// MARK: - Reusable weekly menus (#52)
+
+extension DefaultMealPlanRepository {
+    func observeMenus() -> AnyPublisher<[WeekMenu], Never> {
+        db.observe { conn in try MenuDao(db: conn).menus() }
+    }
+
+    func saveWeekAsMenu(name: String, weekStart: Int64) async -> Bool {
+        let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return false }
+        let now = clock.now()
+        return await menuWrite("saveWeekAsMenu", false) { dao in
+            try dao.saveWeek(name: text, weekStart: weekStart, now: now) != nil
+        }
+    }
+
+    func applyMenu(id: Int64, weekStart: Int64) async -> Int {
+        let now = clock.now()
+        return await menuWrite("applyMenu", 0) { dao in try dao.apply(menuId: id, weekStart: weekStart, now: now) }
+    }
+
+    func renameMenu(id: Int64, name: String) async {
+        let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        let now = clock.now()
+        await menuWrite("renameMenu", ()) { dao in try dao.rename(id, name: text, now: now) }
+    }
+
+    func deleteMenu(id: Int64) async {
+        await menuWrite("deleteMenu", ()) { dao in try dao.delete(id) }
+    }
+
+    private func menuWrite<T>(_ what: String, _ fallback: T, _ body: @escaping (MenuDao) throws -> T) async -> T {
+        do {
+            return try await db.write { conn in try body(MenuDao(db: conn)) }
+        } catch {
+            dataLog.error("\(what, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+            return fallback
+        }
+    }
+}
