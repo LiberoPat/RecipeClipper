@@ -15,10 +15,30 @@ final class ClipUITests: RecipeUITestCase {
 
     private var page: XCUIElement { app.webViews.firstMatch }
 
+    /// The page's elements reach the accessibility tree from WebKit's own process, and on a busy
+    /// runner the first query for them has taken 9 s and then 28 s while the page was already on
+    /// screen (a nightly failed on a "Select title" that its own tree dump showed). Later queries
+    /// are quick. So anything on the page gets a longer wait than the app's own views.
+    private let pageTimeout: TimeInterval = 60
+
+    @discardableResult
+    private func onPage(_ element: XCUIElement, _ what: String) -> XCUIElement {
+        require(element, what, within: pageTimeout)
+    }
+
     private func fieldButton(_ field: String) -> XCUIElement { app.buttons["clip.field.\(field)"] }
 
     private func selectOnPage(_ button: String) {
-        require(page.buttons[button], button).tap()
+        onPage(page.buttons[button], button).tap()
+    }
+
+    /// Each snackbar leaves by itself four seconds later, sliding down across the field buttons,
+    /// and a tap on a button just as it passes lands on the snackbar instead (a nightly lost
+    /// "Steps 1" that way). So after reading one, wait for it to go before the next tap, rather
+    /// than hope the tap misses those few frames.
+    private func requireSnackbar(_ message: String, _ what: String) {
+        require(text(message), what)
+        requireGone(text(message), what)
     }
 
     func testClipAPageFromTheErrorScreenToASavedRecipe() {
@@ -32,15 +52,15 @@ final class ClipUITests: RecipeUITestCase {
         selectOnPage("Select title")
         require(text("1 line selected · each line becomes one item"), "the selection preview")
         fieldButton("NAME").tap()
-        require(text("Name added"), "the Name snackbar")
+        requireSnackbar("Name added", "the Name snackbar")
 
         selectOnPage("Select ingredients")
         require(text("3 lines selected · each line becomes one item"), "the selection preview")
         require(app.buttons["Ingredients 3"], "the Ingredients count").tap()
-        require(text("3 ingredients added"), "the Ingredients snackbar")
+        requireSnackbar("3 ingredients added", "the Ingredients snackbar")
 
         // The page tags the field; tapping the tag clears it, and Undo brings it back.
-        require(page.buttons["Ingredients · 3"], "the Ingredients tag").tap()
+        onPage(page.buttons["Ingredients · 3"], "the Ingredients tag").tap()
         require(text("Ingredients cleared"), "the cleared snackbar")
         app.buttons["Undo"].tap()
         require(text("Name ✓ · 3 ingredients · 0 steps · no photo"), "the summary after Undo")
@@ -48,15 +68,15 @@ final class ClipUITests: RecipeUITestCase {
         // Assigning again replaces: two steps, then one.
         selectOnPage("Select steps")
         require(app.buttons["Steps 2"], "the Steps count").tap()
-        require(text("2 steps added"), "the Steps snackbar")
+        requireSnackbar("2 steps added", "the Steps snackbar")
         selectOnPage("Select last step")
         require(app.buttons["Steps 1"], "the Steps count").tap()
-        require(text("1 step added"), "the replaced Steps snackbar")
+        requireSnackbar("1 step added", "the replaced Steps snackbar")
 
         fieldButton("PHOTO").tap()
         require(text("Tap the picture to use as the photo."), "photo picking")
-        require(page.images["Cookies photo"], "the photo on the page").tap()
-        require(text("Photo added"), "the Photo snackbar")
+        onPage(page.images["Cookies photo"], "the photo on the page").tap()
+        requireSnackbar("Photo added", "the Photo snackbar")
         require(text("Name ✓ · 3 ingredients · 1 step · photo"), "the summary")
 
         app.navigationBars.buttons["Done"].tap()

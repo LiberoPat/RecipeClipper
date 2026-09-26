@@ -102,9 +102,13 @@ class RecipeUITestCase: XCTestCase {
     // MARK: - Waiting
 
     /// Waits for `element`, or fails with the whole tree printed so the miss can be diagnosed.
+    /// `within` overrides `timeout` (web content, which is slow to reach the tree, needs longer).
     @discardableResult
-    func require(_ element: XCUIElement, _ what: String = "", file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
-        if !element.waitForExistence(timeout: timeout) {
+    func require(
+        _ element: XCUIElement, _ what: String = "", within: TimeInterval? = nil,
+        file: StaticString = #filePath, line: UInt = #line
+    ) -> XCUIElement {
+        if !element.waitForExistence(timeout: within ?? timeout) {
             print(app.debugDescription)
             XCTFail("Not found: \(what.isEmpty ? element.description : what)", file: file, line: line)
         }
