@@ -40,13 +40,17 @@ class BlogRecipeSource(
 
     override suspend fun fetch(url: String): ParseResult = fetchPage(url).result
 
-    override suspend fun fetchPage(url: String): FetchedPage = withContext(Dispatchers.IO) {
+    override suspend fun fetchPage(url: String): FetchedPage = fetchPage(url) {}
+
+    /** [fetchPage], handing the loaded page to [inspect] first: the weekly site check's view of its site rules (#120). */
+    internal suspend fun fetchPage(url: String, inspect: (Document) -> Unit): FetchedPage = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.connect(url)
                 .userAgent("Mozilla/5.0 (Linux; Android 10; Mobile) RecipeClipper/1.0")
                 .timeout(timeoutMs)
                 .get()
 
+            inspect(doc)
             parsePage(doc, url)
         } catch (e: HttpStatusException) {
             // Jsoup throws this for any non-2xx answer. 403/404/429/5xx are usually a bot
@@ -79,18 +83,33 @@ class BlogRecipeSource(
         fun parsePage(html: String, url: String): FetchedPage = parsePage(Jsoup.parse(html, url), url)
 
         private fun parsePage(doc: Document, url: String): FetchedPage {
-            val ldJsonScripts = doc.select("script[type=application/ld+json]").map { it.data() }
             // Microdata only when there is no JSON-LD recipe, so no working site changes.
-            // WP Recipe Maker's ingredient parts refine JSON-LD's lines when they line up (#118);
-            // Tasty Recipes' and Mediavine Create's cards add the group headings JSON-LD drops (#119).
-            val recipe = JsonLdRecipeParser.parse(ldJsonScripts, url, JsonLdRecipeParser.pageLanguage(doc))
-                ?.let { it.copy(ingredients = CardHeadings.refine(doc, WprmIngredients.refine(doc, it.ingredients))) }
-                ?: MicrodataRecipeParser.parse(doc, url)
+            val recipe = jsonLdRecipe(doc, url)?.let { refine(doc, url, it) } ?: MicrodataRecipeParser.parse(doc, url)
             return if (recipe != null) {
                 FetchedPage(ParseResult.Success(recipe))
             } else {
                 FetchedPage(ParseResult.Error(ParseError.NoRecipeFound), PageTextReader.read(doc))
             }
+        }
+
+        private fun jsonLdRecipe(doc: Document, url: String): Recipe? = JsonLdRecipeParser.parse(
+            doc.select("script[type=application/ld+json]").map { it.data() }, url, JsonLdRecipeParser.pageLanguage(doc)
+        )
+
+        /**
+         * JSON-LD's recipe, refined by the page: WP Recipe Maker's ingredient parts when they line
+         * up (#118), then the group headings JSON-LD drops from a plugin's card (#119) or the
+         * site's own (#120), and the site's known noise dropped from the last step (#120).
+         */
+        private fun refine(doc: Document, url: String, recipe: Recipe): Recipe = recipe.copy(
+            ingredients = SiteRules.ingredients(doc, url, WprmIngredients.refine(doc, recipe.ingredients)),
+            instructions = SiteRules.steps(url, recipe.instructions),
+        )
+
+        /** For the weekly site check (#120): whether each of [url]'s site rules still matches [doc]. */
+        internal fun siteRuleCheck(doc: Document, url: String): Map<String, Boolean>? {
+            val recipe = jsonLdRecipe(doc, url) ?: return null
+            return SiteRules.check(doc, url, WprmIngredients.refine(doc, recipe.ingredients), recipe.instructions)
         }
     }
 }
