@@ -28,6 +28,12 @@ class StepAmountsTest {
         assertEquals("Stir in ⟦240 g⟧ flour.", annotate("Stir in the flour.", lines))
     }
 
+    @Test fun `an old-style unit lends its amount, and converts with the line`() {
+        assertEquals("Melt ⟦2 T.⟧ butter.", annotate("Melt the butter.", listOf("2 T. butter")))
+        val lines = IngredientRendering.render(listOf("1/2 c. heavy cream"), 2.0, UnitSystem.METRIC, false)
+        assertEquals("Whisk in ⟦240 ml⟧ heavy cream.", annotate("Whisk in the heavy cream.", lines))
+    }
+
     @Test fun `the same ingredient in two lines stays as written`() {
         val lines = listOf("1 cup sugar", "For the frosting:", "1/2 cup sugar")
         assertEquals("Add the sugar.", annotate("Add the sugar.", lines))

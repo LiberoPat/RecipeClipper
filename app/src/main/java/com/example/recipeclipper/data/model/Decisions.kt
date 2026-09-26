@@ -22,7 +22,17 @@ enum class DecisionKind(val key: String, val options: List<String>) {
      * The text after a grocery line's ingredient (#99): a note (", shucked"), maybe a second
      * amount or ingredient ("(about three cups)", ", or frozen"), or junk ("(dfsafs -").
      */
-    TRAILING_TEXT("trailingText", listOf("note", "second_amount", "junk"));
+    TRAILING_TEXT("trailingText", listOf("note", "second_amount", "junk")),
+
+    /**
+     * The ingredient's name in a grocery line with no separator ("2 onions dfsafs" is "onions"),
+     * answered as free text (no [options]). Used only when it is in the line as whole words
+     * ([GroceryDecisions.nameSplit]); the rest of the line is then a [TRAILING_TEXT] question.
+     */
+    INGREDIENT_NAME("ingredientName", emptyList());
+
+    /** True when the answer is free text, not a pick from [options]. */
+    val freeText: Boolean get() = options.isEmpty()
 
     companion object {
         const val UNSURE = "unsure"
@@ -60,6 +70,9 @@ data class DecisionQuestion(val kind: DecisionKind, val input: String, val langu
         fun trailingText(text: String, language: String) =
             DecisionQuestion(DecisionKind.TRAILING_TEXT, normalize(text), language)
 
+        fun ingredientName(line: String, language: String) =
+            DecisionQuestion(DecisionKind.INGREDIENT_NAME, normalize(line), language)
+
         /** What joins a pair's two names in [input]. */
         const val PAIR = " | "
     }
@@ -92,6 +105,14 @@ class Decisions(private val answers: Map<DecisionQuestion, String>) {
     /** True only when the text after a grocery line's ingredient is definitely a note or junk. */
     fun ignorableTrailing(text: String, language: String?): Boolean =
         language != null && answers[DecisionQuestion.trailingText(text, language)].let { it == "note" || it == "junk" }
+
+    /** True only when the text after a grocery line's ingredient is definitely junk: Groceries hides it. */
+    fun junkTrailing(text: String, language: String?): Boolean =
+        language != null && answers[DecisionQuestion.trailingText(text, language)] == "junk"
+
+    /** The model's agreed name for a grocery [line], unchecked ([GroceryDecisions.nameSplit] checks it), or null. */
+    fun ingredientName(line: String, language: String?): String? =
+        language?.let { answers[DecisionQuestion.ingredientName(line, it)] }?.takeIf { it != DecisionKind.UNSURE }
 
     fun isAnswered(question: DecisionQuestion): Boolean = question in answers
 

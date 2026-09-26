@@ -18,7 +18,9 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.Aisle
+import com.example.recipeclipper.data.model.DecisionQuestion
 import com.example.recipeclipper.data.model.NewGroceryLine
+import com.example.recipeclipper.fake.FakeDecisionRepository
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
@@ -38,9 +40,9 @@ class GroceriesScreenTest {
 
     private val repository = FakeGroceryRepository()
 
-    private fun show(vararg lines: String) {
+    private fun show(vararg lines: String, decisions: FakeDecisionRepository? = null) {
         runBlocking { repository.add(lines.map { NewGroceryLine(it, "en") }) }
-        val viewModel = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
+        val viewModel = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), decisions)
         compose.setContent { GroceriesScreen(viewModel = viewModel) }
     }
 
@@ -73,6 +75,19 @@ class GroceriesScreenTest {
         compose.onNodeWithText("sugar").assertIsDisplayed()
         compose.onNodeWithText("1 cup sugar").assertIsDisplayed()
         compose.onNodeWithText("100 g sugar").assertIsDisplayed()
+    }
+
+    @Test
+    fun junkDecidedByTheModelIsHidden() {
+        val answers = mapOf(
+            DecisionQuestion.ingredientName("2 onions dfsafs", "en") to "onions",
+            DecisionQuestion.trailingText("dfsafs", "en") to "junk"
+        )
+        show("2 onions dfsafs", decisions = FakeDecisionRepository(answers))
+
+        compose.onNodeWithText("2 onions").assertIsDisplayed()
+        compose.onNodeWithText("2 onions dfsafs").assertDoesNotExist()
+        compose.runOnIdle { assertEquals("2 onions dfsafs", repository.items.value.single().text) }
     }
 
     @Test

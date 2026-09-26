@@ -92,9 +92,13 @@ class GroceryDecisionsTest {
         assertTrue(GroceryDecisions.samePairs(apart, Decisions.NONE).isEmpty())
     }
 
-    @Test fun asksAboutTrailingTextOnlyWhereItBlocksAPartner() {
-        val list = items("2 eggs, beaten" to Aisle.DAIRY, "3 eggs" to Aisle.DAIRY, "200 g butter, soft" to Aisle.DAIRY)
-        assertEquals(listOf(trailing(", beaten")), GroceryDecisions.trailingTexts(list, Decisions.NONE))
+    @Test fun asksAboutTrailingTextOnEveryLineThatHasSome() {
+        val list = items(
+            "2 eggs, beaten" to Aisle.DAIRY, "3 eggs" to Aisle.DAIRY, "200 g butter, soft" to Aisle.DAIRY,
+            "1 cup milk, soft" to Aisle.DAIRY, "2 eggs (about 100 g)" to Aisle.DAIRY
+        )
+        // Once per text; never text holding a figure.
+        assertEquals(listOf(trailing(", beaten"), trailing(", soft")), GroceryDecisions.trailingTexts(list, Decisions.NONE))
     }
 
     @Test fun aFreshAnswerFilesALineOutOfOtherBesideItsPartner() {
@@ -105,5 +109,56 @@ class GroceryDecisionsTest {
         assertEquals(mapOf(Aisle.PRODUCE to listOf(1L), Aisle.DAIRY to listOf(3L)), GroceryDecisions.filing(list, setOf(q1, q2), d))
         // A cached answer (not fresh) never moves anything: the user's aisle stands.
         assertTrue(GroceryDecisions.filing(list, emptySet(), d).isEmpty())
+    }
+
+    // --- Junk with no separator (#99): the model names the ingredient, the rest is trailing text
+
+    private fun name(line: String) = DecisionQuestion.ingredientName(line, "en")
+
+    @Test fun asksForTheNameOnlyWhereExtraWordsFollowAKnownOne() {
+        assertEquals(name("2 onions dfsafs"), GroceryDecisions.nameQuestion("2 onions dfsafs", en))
+        assertNull(GroceryDecisions.nameQuestion("2 onions", en))
+        assertNull(GroceryDecisions.nameQuestion("2 onions, dfsafs", en)) // the separator split applies
+        assertNull(GroceryDecisions.nameQuestion("1 cup rice flour", en)) // the table knows the whole name
+        assertNull(GroceryDecisions.nameQuestion("2 玉ねぎ dfsafs", LanguageWords.forTag("ja")!!))
+    }
+
+    @Test fun acceptsANameOnlyVerbatimOnWordBoundaries() {
+        assertEquals(GroceryDecisions.Split("2 onions", "dfsafs"), GroceryDecisions.nameSplit("2 onions dfsafs", "Onions", en))
+        assertNull(GroceryDecisions.nameSplit("2 onions dfsafs", "onion", en)) // cuts into a word
+        assertNull(GroceryDecisions.nameSplit("2 onions dfsafs", "shallots", en)) // not in the line
+        assertNull(GroceryDecisions.nameSplit("2 onions dfsafs", "2 onions", en)) // the amount is no name
+        assertNull(GroceryDecisions.nameSplit("2 onions dfsafs", "onions dfsafs", en)) // nothing left
+        assertNull(GroceryDecisions.nameSplit("2 onions dfs 3", "onions", en)) // never a figure
+    }
+
+    @Test fun junkAfterANamedIngredientIsHiddenInGroceries() {
+        val list = items("2 onions dfsafs" to Aisle.PRODUCE, "3 onions" to Aisle.PRODUCE)
+        val d = decided(name("2 onions dfsafs") to "onions", trailing("dfsafs") to "junk")
+        assertEquals("5 onions", (rows(list, d).single() as GroceryCombiner.Row.Combined).text)
+        assertEquals(listOf("2 onions", "3 onions"), GroceryCombiner.lines(rows(list, d).single()))
+        val alone = rows(items("2 onions dfsafs" to Aisle.PRODUCE), d).single() as GroceryCombiner.Row.Single
+        assertEquals("2 onions", alone.item.text)
+        // Unsure, or only a name: the line stays exactly as today.
+        val unsure = decided(name("2 onions dfsafs") to "onions", trailing("dfsafs") to "unsure")
+        assertEquals(GroceryCombiner.sections(list), GroceryCombiner.sections(list, unsure))
+        assertEquals(GroceryCombiner.sections(list), GroceryCombiner.sections(list, decided(name("2 onions dfsafs") to "unsure")))
+    }
+
+    @Test fun aNoteStillShowsAndJunkAfterASeparatorIsHiddenToo() {
+        val list = items("2 eggs, beaten" to Aisle.DAIRY, "3 eggs (dfsafs -" to Aisle.DAIRY)
+        val d = decided(trailing(", beaten") to "note", trailing("(dfsafs -") to "junk")
+        val row = rows(list, d).single() as GroceryCombiner.Row.Combined
+        assertEquals(listOf("2 eggs, beaten", "3 eggs"), GroceryCombiner.lines(row))
+        val shared = GroceryShareText.format(GroceryCombiner.sections(items("3 eggs (dfsafs -" to Aisle.DAIRY), d), "List") { it.key }
+        assertEquals("List\n\ndairy\n- 3 eggs", shared)
+    }
+
+    @Test fun theRestOfANamedLineIsAskedAboutOnceTheNameLands() {
+        val list = items("2 onions dfsafs" to Aisle.PRODUCE)
+        assertTrue(GroceryDecisions.trailingTexts(list, Decisions.NONE).isEmpty())
+        assertEquals(listOf(name("2 onions dfsafs")), GroceryDecisions.ingredientNames(list))
+        val named = decided(name("2 onions dfsafs") to "onions")
+        assertEquals(listOf(trailing("dfsafs")), GroceryDecisions.trailingTexts(list, named))
     }
 }

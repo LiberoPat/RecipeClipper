@@ -11,6 +11,7 @@ class StepTimersTest {
         assertEquals(30, StepTimers.parse("Stir for 30 seconds."))
         assertEquals(7200, StepTimers.parse("Roast for 2 hours."))
         assertEquals(600, StepTimers.parse("Rest for 10 mins."))
+        assertEquals(300, StepTimers.parse("Add 1 c. heavy cream and simmer 5 minutes."))
     }
 
     @Test fun `a range uses its lower bound`() {
@@ -36,6 +37,7 @@ class StepTimersTest {
         assertNull(StepTimers.parse("Whisk until smooth."))
         assertNull(StepTimers.parse("Heat the oven to 350°F."))
         assertNull(StepTimers.parse("Add 2 cups of flour and mix."))
+        assertNull(StepTimers.parse("Add 2 T. butter and 1 t salt."))
         assertNull(StepTimers.parse("Mince the garlic finely."))
         assertNull(StepTimers.parse(""))
     }

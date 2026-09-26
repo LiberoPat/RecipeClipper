@@ -27,8 +27,11 @@ enum class Flag(val key: String) {
     /** A recipe picked from the page's text by the on-device model when the page has no recipe data (#103). */
     LLM_EXTRACTION("llmExtraction"),
 
-    /** Typed decisions by the on-device model: count brackets, close pantry names, aisles (#104). */
-    AI_DECISIONS("aiDecisions");
+    /** Typed decisions by the on-device model: close pantry names, aisles (#104). */
+    AI_DECISIONS("aiDecisions"),
+
+    /** With [AI_DECISIONS], the count-bracket decision too (#104); off since #127, kept to re-measure. */
+    AI_COUNT_BRACKETS("aiCountBrackets");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
