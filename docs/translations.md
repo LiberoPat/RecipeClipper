@@ -22,6 +22,11 @@ should review each one before release,** starting with the terms listed below.
   never translated.
 - **The site report** (`SiteReportLink`) stays in English: it's a GitHub issue body the
   maintainer reads, not UI. Its button, "Report this site", is translated.
+- **The tour's sample recipe** (#151) is content in each UI language, once, in
+  `shared/sample/recipe.json`: written as a cook in that language would (metric, local
+  ingredient names), not word for word from the English. A draft like the rest; the tour's
+  cards and tips name the app's buttons, so they must follow any change to those labels
+  ("Done — next step", "+ New recipe", "Add to plan", "What I need").
 
 Adding a string: add the English, then all five translations, on both platforms. Mark
 the new term in the list below if you weren't sure of it.
@@ -82,6 +87,7 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Put away and clear (#146) | Guardar y quitar de la lista | Ranger et retirer | Einräumen und entfernen | Metti via e rimuovi | Guardar e remover |
 | On list (a pantry row's tag, #146) | En la lista | Sur la liste | Auf der Liste | In lista | Na lista |
 | “In your pantry” means you have some, not enough (#51) | «En tu despensa» significa que tienes algo… | « Dans votre garde-manger » signifie que vous en avez… | „In deinem Vorrat“ heißt, dass du etwas davon hast… | «Nella tua dispensa» vuol dire che ne hai… | “Na sua despensa” quer dizer que você tem um pouco… |
+| Google's on-device AI (Chef mode on an unsupported phone, #144) | la IA en el dispositivo de Google | l'IA embarquée de Google | Googles On-Device-KI | l'IA sul dispositivo di Google | a IA no dispositivo do Google |
 | Your cooks (heading, #116) | Lo que has cocinado | Vos réalisations | Selbst gekocht | I tuoi piatti | O que você fez |
 | I made this (#116) | Lo he hecho | Je l'ai fait | Hab ich gekocht | L'ho fatto | Eu fiz |
 

@@ -80,6 +80,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlannedMeal
+import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.MealTypeChoices
@@ -95,6 +96,7 @@ import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import java.io.File
 import java.io.IOException
+import com.example.recipeclipper.ui.tour.TipCallout
 
 /**
  * The Week tab (#49): ‹ week › with "This week", then the seven days from the locale's first
@@ -215,6 +217,8 @@ fun WeekScreen(
                             Hairline()
                             MonthGrid(month = month, today = state.today, onSelect = viewModel::onMonthDaySelected)
                         }
+                        // The first Week visit (#151).
+                        TipCallout(Tip.WEEK, Modifier.padding(top = 12.dp))
                     }
                 }
                 if (state.month != null) return@LazyColumn

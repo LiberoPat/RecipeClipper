@@ -23,9 +23,12 @@ the commands; iOS test commands and the simulator rules are in
   `MainActivitySmokeTest`, the end-to-end smoke set: the real app with its
   real Hilt graph, database and network stack, launched from the launcher and
   by a shared link (an `ACTION_SEND` intent to a `.invalid` host, which must
-  reach the import screen and its Try again).
+  reach the import screen and its Try again). It sets the first-run welcome
+  pending (#151): the launcher opens it and Skip leaves for Home, while the
+  shared link opens on the import screen with no welcome over it.
 
-Two waits that flaked under load (#91), and what not to undo:
+Waits that flaked under load (#91, and the nightly iOS UI tests), and what
+not to undo:
 
 - `ClipScreenTest` asks the page things (`evaluateJavascript`) inside a
   `waitUntil`. Each call gives up after 2 s and is asked again within one
@@ -34,6 +37,16 @@ Two waits that flaked under load (#91), and what not to undo:
 - iOS UI tests that delete and then tap Undo tap it as soon as the snackbar
   shows, and check the row went afterwards: the snackbar lasts four seconds of
   real time, and waiting for the row first could outlast it.
+- `ClipUITests` gives anything on the web page 60 s, not the usual 10: WebKit
+  draws it and answers accessibility queries from its own process, which on a
+  busy machine took over 10 s to show the page, and on CI 9 s and then 28 s to
+  answer one query. It also waits for each snackbar to go before the next
+  tap: the snackbar leaves by itself after four seconds, sliding down across
+  the field buttons, and a tap that met it there was lost.
+- `ShareUITests` dismisses the share sheet by tapping in the free part of the
+  screen beside it, never at the very top. On iOS 27 the iPhone's share sheet
+  is a popover starting just under the status bar, and a tap in the status bar
+  goes to the system, not the popover's dismiss region.
 
 Robolectric's setup, all in `app/build.gradle.kts` and
 `app/src/test/resources/robolectric.properties`:

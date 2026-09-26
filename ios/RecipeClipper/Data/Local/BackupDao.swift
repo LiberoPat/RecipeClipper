@@ -278,3 +278,40 @@ struct BackupDao {
         return plan.summary
     }
 }
+
+// MARK: - A shared file (#149, phase 2)
+
+extension BackupDao {
+    /// Recipes by row id, newest viewed first: what a shared file carries.
+    func recipes(ids: [Int64]) throws -> [RecipeRecord] {
+        let dao = RecipeDao(db: db)
+        return try Set(ids).compactMap { try dao.get($0) }
+            .sorted { ($0.lastViewedAt, $0.id) > ($1.lastViewedAt, $1.id) }
+    }
+
+    /// The grocery items not ticked off, in list order: what "Send as file" sends.
+    func uncheckedGroceries() throws -> [GroceryItemRecord] {
+        try db.query(
+            "SELECT \(GroceryItemRecord.columns) FROM grocery_items WHERE checked = 0 ORDER BY listId ASC, sortOrder ASC, id ASC",
+            map: GroceryItemRecord.init(row:)
+        )
+    }
+
+    /// The chosen parts of a shared file (`ShareFile.chosen`), merged like an import: recipes
+    /// by cleaned link (never replacing one here), grocery and pantry items by the import's
+    /// rules. Unlike an import, every chosen recipe comes in, as the newest viewed, and one
+    /// already here counts as viewed now; then the history cap applies, as for a shared link.
+    /// The free tier (#107) keeps the import's rule: only free places under its limit. Run
+    /// inside `AppDatabase.write`, so it is one transaction.
+    func importShare(_ share: Backup, limit: LibraryLimit, now: Int64, newUid: () -> String) throws -> ImportSummary {
+        let mergeLimit: LibraryLimit = if case .free = limit { limit } else { .unlimited }
+        let summary = try importBackup(share, limit: mergeLimit, today: nil, now: now, newUid: newUid)
+        for recipe in share.recipes {
+            try db.run("UPDATE recipes SET lastViewedAt = ? WHERE sourceUrl = ?", now, UrlCleaner.clean(recipe.sourceUrl))
+        }
+        if case .history(let keep) = limit {
+            try RecipeDao(db: db).cullHistory(keep: keep, today: PlanDays.today(millis: now))
+        }
+        return summary
+    }
+}

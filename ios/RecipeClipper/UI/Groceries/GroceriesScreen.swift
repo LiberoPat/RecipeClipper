@@ -12,6 +12,9 @@ struct GroceriesScreen: View {
     let vm: GroceriesViewModel
     var receiveVM: ReceiveListViewModel? = nil
     var onOpenPantry: () -> Void = {}
+    /// Makes "Send as file" (#149, phase 2); nil leaves it out. Made on first use.
+    var makeSendFileVM: (() -> SendFileViewModel)? = nil
+    @State private var sendFileVM: SendFileViewModel?
 
     var body: some View {
         let state = vm.uiState
@@ -19,6 +22,8 @@ struct GroceriesScreen: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {
                     ScreenTitle(Strings.tabGroceries)
+                    // The first Groceries visit (#151).
+                    TipCallout(tip: .groceries)
                     OutlinedField(
                         label: Strings.groceriesAddHint,
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),
@@ -58,6 +63,16 @@ struct GroceriesScreen: View {
                     if let text = vm.shareText(title: Strings.tabGroceries, aisleName: Strings.aisle) {
                         ShareLink(item: text, subject: Text(Strings.tabGroceries)) {
                             Label(Strings.shareGroceries, systemImage: "square.and.arrow.up")
+                        }
+                        // The unticked items and their recipes, as a file for someone else's app.
+                        if let makeSendFileVM {
+                            Button {
+                                let send = sendFileVM ?? makeSendFileVM()
+                                sendFileVM = send
+                                send.sendGroceries(title: Strings.tabGroceries)
+                            } label: {
+                                Label(Strings.sendFile, systemImage: "doc")
+                            }
                         }
                     }
                     if let receiveVM {
@@ -119,6 +134,7 @@ struct GroceriesScreen: View {
             }
         }
         .modifier(ReceiveListSheet(vm: receiveVM, onAddedToPantry: onOpenPantry))
+        .modifier(SendFileEffect(vm: sendFileVM))
     }
 }
 

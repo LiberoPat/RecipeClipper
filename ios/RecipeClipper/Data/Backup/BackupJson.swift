@@ -22,6 +22,9 @@ import Foundation
 ///                     "sortOrder", "updatedAt" }] }
 /// ```
 ///
+/// A shared file (#149, `ShareFile`) is the same format with a top-level `"kind": "share"`,
+/// holding only what was picked; a backup has no `kind`.
+///
 /// `menus` and `menuEntries` (#52) came the same way; a menu meal reads like a planned one, and
 /// one whose `menuId` names no menu in the file is malformed.
 ///
@@ -58,6 +61,8 @@ enum BackupJson {
         // Only when there are some (#116): an export without photos is the same file as before.
         var withPhotos = root
         if !backup.cookedPhotos.isEmpty { withPhotos["cookedPhotos"] = backup.cookedPhotos.map(json) }
+        // Only on a shared file (#149), so a backup is the same file as before.
+        if backup.isShare { withPhotos["kind"] = Backup.kindShare }
         guard let data = try? JSONSerialization.data(
             withJSONObject: withPhotos, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         ) else { return "{}" }
@@ -263,7 +268,8 @@ enum BackupJson {
         return Backup(
             exportedAt: exportedAt, recipes: recipes, lists: lists, memberships: memberships,
             pantry: pantry, groceries: groceries, mealTypes: mealTypes, mealPlan: mealPlan,
-            menus: menus, menuEntries: menuEntries, cookedPhotos: cookedPhotos
+            menus: menus, menuEntries: menuEntries, cookedPhotos: cookedPhotos,
+            isShare: root["kind"] as? String == Backup.kindShare
         )
     }
 

@@ -124,4 +124,20 @@ final class GroceryDecisionsTests: XCTestCase {
         let named = Decisions(answers: [name("2 onions dfsafs"): "onions"])
         XCTAssertEqual(GroceryDecisions.trailingTexts(list, decisions: named), [trailing("dfsafs")])
     }
+
+    func testANamedJunkLineIsFiledByItsIngredientWhicheverAnswerLandsLast() {
+        let list = items(("2 onions dfsafs", .other))
+        let d = Decisions(answers: [name("2 onions dfsafs"): "onions", trailing("dfsafs"): "junk"])
+        XCTAssertEqual(GroceryDecisions.cutAisle("2 onions dfsafs", words: .english, decisions: d), .produce)
+        // The junk answer was cached (from another "… dfsafs" line) and the name is new (#158) ...
+        XCTAssertEqual(GroceryDecisions.filing(list, fresh: [name("2 onions dfsafs")], decisions: d), [.produce: [1]])
+        // ... or the name was cached and the junk answer is new.
+        XCTAssertEqual(GroceryDecisions.filing(list, fresh: [trailing("dfsafs")], decisions: d), [.produce: [1]])
+        // Only the name in: nothing is cut off yet, so the line stays.
+        let named = Decisions(answers: [name("2 onions dfsafs"): "onions"])
+        XCTAssertNil(GroceryDecisions.cutAisle("2 onions dfsafs", words: .english, decisions: named))
+        XCTAssertTrue(GroceryDecisions.filing(list, fresh: [name("2 onions dfsafs")], decisions: named).isEmpty)
+        // Neither fresh: an Other the user chose stands.
+        XCTAssertTrue(GroceryDecisions.filing(list, fresh: [], decisions: d).isEmpty)
+    }
 }

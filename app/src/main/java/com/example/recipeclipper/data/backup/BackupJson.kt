@@ -30,6 +30,9 @@ import org.json.JSONTokener
  *   "cookedPhotos": [{ "id", "recipeId", "day", "note", "createdAt", "updatedAt", "file" }] }
  * ```
  *
+ * A shared file (#149, [ShareFile]) is the same format with a top-level `"kind": "share"`,
+ * holding only what was picked; a backup has no `kind`.
+ *
  * `cookedPhotos` (#116) is written only when there are some, so an export without photos is the
  * same file as before; their pictures sit beside the JSON in a zip (`BackupArchive`), at `file`
  * (`photos/<name>.jpg`, nothing else). A photo whose `recipeId` names no recipe in the file is
@@ -54,6 +57,8 @@ object BackupJson {
         root.put("format", Backup.FORMAT)
         root.put("formatVersion", Backup.FORMAT_VERSION)
         root.put("exportedAt", backup.exportedAt)
+        // Only on a shared file (#149), so a backup is the same file as before.
+        if (backup.isShare) root.put("kind", Backup.KIND_SHARE)
         root.put("recipes", JSONArray().apply { backup.recipes.forEach { put(it.toJson()) } })
         root.put("lists", JSONArray().apply { backup.lists.forEach { put(it.toJson()) } })
         root.put("memberships", JSONArray().apply { backup.memberships.forEach { put(it.toJson()) } })
@@ -259,7 +264,8 @@ object BackupJson {
         requireUniqueIds(cookedPhotos.map { it.id }, "cookedPhotos")
 
         return Backup(
-            exportedAt, recipes, lists, memberships, pantry, groceries, mealTypes, mealPlan, menus, menuEntries, cookedPhotos
+            exportedAt, recipes, lists, memberships, pantry, groceries, mealTypes, mealPlan, menus, menuEntries, cookedPhotos,
+            isShare = root.opt("kind") == Backup.KIND_SHARE
         )
     }
 

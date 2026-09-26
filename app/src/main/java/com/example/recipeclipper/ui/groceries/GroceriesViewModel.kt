@@ -64,6 +64,8 @@ data class GroceriesUiState(
 ) {
     val hasChecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { it.checked } } }
     val isEmpty: Boolean get() = sections?.isEmpty() == true
+    /** Something is left to buy: what "Send as file" sends (#149). */
+    val hasUnchecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { !it.checked } } }
 }
 
 /**

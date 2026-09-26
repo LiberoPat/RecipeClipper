@@ -77,9 +77,13 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryCombiner
 import com.example.recipeclipper.data.model.GroceryCombiner.Row as GroceryRow
+import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.ui.recipe.Hairline
+import com.example.recipeclipper.ui.sharefile.SendFileEffect
+import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import com.example.recipeclipper.ui.tour.TipCallout
 
 /**
  * The Groceries tab (#50): "Add an item", then the list by aisle. Lines naming the same
@@ -95,7 +99,9 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 fun GroceriesScreen(
     viewModel: GroceriesViewModel = hiltViewModel(),
     receiveViewModel: ReceiveListViewModel? = null,
-    onOpenPantry: () -> Unit = {}
+    onOpenPantry: () -> Unit = {},
+    // "Send as file" (#149, phase 2); null (screen tests) leaves it out.
+    sendFileViewModel: SendFileViewModel? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -116,6 +122,11 @@ fun GroceriesScreen(
         val message = removedMessage ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(message, actionLabel = undoLabel, withDismissAction = false)
         if (result == SnackbarResult.ActionPerformed) viewModel.onUndoRemove() else viewModel.onSnackbarDismissed()
+    }
+
+    val sendFailedMessage = stringResource(R.string.send_file_failed)
+    if (sendFileViewModel != null) {
+        SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
     }
 
     RecipeClipperTheme {
@@ -164,9 +175,15 @@ fun GroceriesScreen(
                                         .startChooser()
                                 }
                             },
-                            onPaste = receiveViewModel?.let { vm -> { vm.open(clipboardText(context)) } }
+                            onPaste = receiveViewModel?.let { vm -> { vm.open(clipboardText(context)) } },
+                            canSendFile = state.hasUnchecked,
+                            onSendFile = sendFileViewModel?.let { vm ->
+                                { vm.sendGroceries(resources.getString(R.string.tab_groceries)) }
+                            }
                         )
                     }
+                    // The first Groceries visit (#151).
+                    TipCallout(Tip.GROCERIES, Modifier.padding(top = 4.dp, bottom = 4.dp))
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = state.draft,
@@ -239,7 +256,13 @@ private fun clipboardText(context: Context): String? {
 }
 
 @Composable
-private fun GroceriesMenu(canShare: Boolean, onShare: () -> Unit, onPaste: (() -> Unit)?) {
+private fun GroceriesMenu(
+    canShare: Boolean,
+    onShare: () -> Unit,
+    onPaste: (() -> Unit)?,
+    canSendFile: Boolean = false,
+    onSendFile: (() -> Unit)? = null
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
@@ -254,6 +277,17 @@ private fun GroceriesMenu(canShare: Boolean, onShare: () -> Unit, onPaste: (() -
                     onShare()
                 }
             )
+            // The unticked items and their recipes, as a file for someone else's app (#149).
+            if (onSendFile != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_send_file)) },
+                    enabled = canSendFile,
+                    onClick = {
+                        expanded = false
+                        onSendFile()
+                    }
+                )
+            }
             if (onPaste != null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_paste_list)) },
