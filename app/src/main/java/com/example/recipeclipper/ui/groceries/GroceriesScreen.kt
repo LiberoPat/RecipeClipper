@@ -1,5 +1,7 @@
 package com.example.recipeclipper.ui.groceries
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.res.Resources
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -77,11 +79,18 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 /**
  * The Groceries tab (#50): "Add an item", then the list by aisle. Lines naming the same
  * ingredient sit together under its name, or as one added-up row when that's exact. Tap to
- * tick; long-press to move to another aisle or delete (with undo). The menu shares the list
- * as plain text and clears what's ticked.
+ * tick; long-press to move to another aisle or delete (with undo). The menu sends the list as
+ * plain text, pastes one in (#149) and clears what's ticked.
+ *
+ * [receiveViewModel] backs "Add this list", for a list pasted here or shared into the app; null
+ * leaves "Paste a list" out. [onOpenPantry] shows the pantry once lines were added to it.
  */
 @Composable
-fun GroceriesScreen(viewModel: GroceriesViewModel = hiltViewModel()) {
+fun GroceriesScreen(
+    viewModel: GroceriesViewModel = hiltViewModel(),
+    receiveViewModel: ReceiveListViewModel? = null,
+    onOpenPantry: () -> Unit = {}
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -147,6 +156,7 @@ fun GroceriesScreen(viewModel: GroceriesViewModel = hiltViewModel()) {
                                         .startChooser()
                                 }
                             },
+                            onPaste = receiveViewModel?.let { vm -> { vm.open(clipboardText(context)) } },
                             onClearChecked = viewModel::onClearChecked
                         )
                     }
@@ -202,11 +212,25 @@ fun GroceriesScreen(viewModel: GroceriesViewModel = hiltViewModel()) {
                 onDismiss = viewModel::onMoveDismissed
             )
         }
+        receiveViewModel?.let { ReceiveListSheet(it, onAddedToPantry = onOpenPantry) }
     }
 }
 
+/** The clipboard's text, for "Paste a list"; null when it holds none. */
+private fun clipboardText(context: Context): String? {
+    val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip ?: return null
+    if (clip.itemCount == 0) return null
+    return clip.getItemAt(0).coerceToText(context)?.toString()
+}
+
 @Composable
-private fun GroceriesMenu(canShare: Boolean, canClear: Boolean, onShare: () -> Unit, onClearChecked: () -> Unit) {
+private fun GroceriesMenu(
+    canShare: Boolean,
+    canClear: Boolean,
+    onShare: () -> Unit,
+    onPaste: (() -> Unit)?,
+    onClearChecked: () -> Unit
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
@@ -221,6 +245,15 @@ private fun GroceriesMenu(canShare: Boolean, canClear: Boolean, onShare: () -> U
                     onShare()
                 }
             )
+            if (onPaste != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_paste_list)) },
+                    onClick = {
+                        expanded = false
+                        onPaste()
+                    }
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_clear_checked)) },
                 enabled = canClear,

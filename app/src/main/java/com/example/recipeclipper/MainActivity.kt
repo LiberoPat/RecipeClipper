@@ -14,9 +14,11 @@ import androidx.navigation.compose.rememberNavController
 import com.example.recipeclipper.data.AutoBackup
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.ReceivedList
 import com.example.recipeclipper.reminders.ExpiryNotifications
 import com.example.recipeclipper.timers.TimerNotifications
 import com.example.recipeclipper.ui.common.LocalFlagValues
+import com.example.recipeclipper.ui.groceries.ReceivedListInbox
 import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
 import com.example.recipeclipper.ui.navigation.Tab
@@ -31,6 +33,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var featureFlags: FeatureFlags
+
+    @Inject
+    lateinit var receivedLists: ReceivedListInbox
 
     @Inject
     lateinit var autoBackup: AutoBackup
@@ -100,22 +105,28 @@ class MainActivity : ComponentActivity() {
         outState.putBoolean(STATE_SHARE_HANDLED, shareHandled)
     }
 
-    /** Where an intent leads: a shared link imports, a timer notification opens cook mode, and
-     *  an expiry reminder (#52) opens the Pantry tab. */
+    /** Where an intent leads: a shared link imports, a timer notification opens cook mode, an
+     *  expiry reminder (#52) opens the Pantry tab, and shared text with no link but with lines
+     *  (#149) opens Groceries on the "Add this list" sheet (only with the tabs, #47). */
     private fun routeFor(intent: Intent?): String? {
         if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) return Tab.PANTRY.route
         if (intent?.action == TimerNotifications.ACTION_OPEN_COOK) {
             val id = intent.getLongExtra(TimerNotifications.EXTRA_RECIPE_ID, -1)
             return if (id > 0) Routes.cookRecipe(id) else null
         }
-        return extractUrl(intent)?.let(Routes::import)
+        val text = sharedText(intent) ?: return null
+        Regex("https?://\\S+").find(text)?.let { return Routes.import(it.value) }
+        if (featureFlags.current.isOn(Flag.MEAL_PLAN) && ReceivedList.lines(text).isNotEmpty()) {
+            receivedLists.offer(text)
+            return Tab.GROCERIES.route
+        }
+        return null
     }
 
-    /** Browsers share a link as EXTRA_TEXT on an ACTION_SEND text/plain intent. */
-    private fun extractUrl(intent: Intent?): String? {
+    /** Browsers share a link, and messaging apps a message, as EXTRA_TEXT on ACTION_SEND text/plain. */
+    private fun sharedText(intent: Intent?): String? {
         if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return null
-        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return null
-        return Regex("https?://\\S+").find(text)?.value
+        return intent.getStringExtra(Intent.EXTRA_TEXT)
     }
 
     private companion object {

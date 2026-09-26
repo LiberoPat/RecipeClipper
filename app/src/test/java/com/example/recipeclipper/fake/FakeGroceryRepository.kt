@@ -25,6 +25,11 @@ class FakeGroceryRepository : GroceryRepository {
 
     override fun observeItems(): Flow<List<GroceryItem>> = items
 
+    /** The recipes' titles by id, as the recipes table would give them. */
+    val recipeTitles = MutableStateFlow<Map<Long, String>>(emptyMap())
+
+    override fun observeRecipeTitles(): Flow<Map<Long, String>> = recipeTitles
+
     override suspend fun add(lines: List<NewGroceryLine>) {
         var order = (items.value.maxOfOrNull { it.sortOrder } ?: -1) + 1
         items.value = items.value + lines.filter { it.text.isNotBlank() }.map { line ->

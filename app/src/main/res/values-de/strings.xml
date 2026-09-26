@@ -307,7 +307,10 @@
     <string name="action_add_week_to_groceries">Zutaten dieser Woche hinzufügen</string>
     <string name="groceries_week_empty">Für diese Woche sind keine Rezepte geplant.</string>
     <string name="action_clear_checked">Abgehakte entfernen</string>
-    <string name="action_share_groceries">Liste teilen</string>
+    <string name="action_share_groceries">Liste senden</string>
+    <string name="action_paste_list">Liste einfügen</string>
+    <string name="receive_list_title">Diese Liste hinzufügen</string>
+    <string name="receive_list_empty">In der Zwischenablage ist keine Liste. Kopiere zuerst eine und füge sie dann hier ein.</string>
     <string name="action_move_to_aisle">In anderen Gang verschieben…</string>
     <string name="move_to_aisle_title">Gang</string>
     <string name="snackbar_grocery_deleted">Gelöscht: %1$s</string>

@@ -116,10 +116,13 @@ struct RootView: View {
         .tint(Palette.accentText)
     }
 
-    /// The Groceries tab (#50): the list alone, for now.
+    /// The Groceries tab (#50): the list alone, for now. A pasted list (#149) that goes in the
+    /// pantry opens the Pantry tab.
     private var groceriesStack: some View {
         NavigationStack {
-            ScreenHost(container.makeGroceriesViewModel) { vm in GroceriesScreen(vm: vm) }
+            ScreenHost2(makeA: container.makeGroceriesViewModel, makeB: container.makeReceiveListViewModel) { vm, receiveVM in
+                GroceriesScreen(vm: vm, receiveVM: receiveVM, onOpenPantry: { router.select(.pantry) })
+            }
         }
         .tint(Palette.accentText)
     }

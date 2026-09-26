@@ -322,7 +322,10 @@
     <string name="action_add_week_to_groceries">Ajouter les ingrédients de la semaine</string>
     <string name="groceries_week_empty">Aucune recette n\'est prévue cette semaine.</string>
     <string name="action_clear_checked">Retirer les articles cochés</string>
-    <string name="action_share_groceries">Partager la liste</string>
+    <string name="action_share_groceries">Envoyer la liste</string>
+    <string name="action_paste_list">Coller une liste</string>
+    <string name="receive_list_title">Ajouter cette liste</string>
+    <string name="receive_list_empty">Le presse-papiers ne contient aucune liste. Copiez-en une d\'abord, puis collez-la ici.</string>
     <string name="action_move_to_aisle">Changer de rayon…</string>
     <string name="move_to_aisle_title">Rayon</string>
     <string name="snackbar_grocery_deleted">Supprimé : %1$s</string>

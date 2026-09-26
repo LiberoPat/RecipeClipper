@@ -48,6 +48,35 @@ final class GroceriesUITests: RecipeUITestCase {
         requireGone(line("milk"), "the deleted item")
     }
 
+    /// #149: the menu offers "Send list" once there's something to buy, and "Paste a list" reads a
+    /// sent list back into the "Add this list" sheet, whose lines go in the pantry. The text
+    /// "Send list" writes is GroceriesViewModelTests' and SendListTextTests'. The system share
+    /// sheet's buttons aren't reachable from a UI test, and the app reads nothing another app
+    /// copied without a prompt, so the launch puts the sent text on the pasteboard as the app's
+    /// own copy (`-uiTestPasteboard`).
+    func testASentListPastesBackIntoThePantry() {
+        let sent = "Groceries\n\nMeat\n- 2 lb chicken thighs (Chicken Adobo)\n\nProduce\n- 1 lime"
+        let escaped = sent.replacingOccurrences(of: "\n", with: "\\n")
+        launch(.standard, flags: ["mealPlan"], extraArguments: ["-uiTestPasteboard", escaped])
+        require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
+        let field = require(app.textFields["Add an item"], "Add an item")
+        field.tap()
+        field.typeText("milk\n")
+        require(line("milk"), "the typed item")
+
+        require(app.buttons["More options"], "the Groceries menu").tap()
+        require(app.buttons["Send list"], "Send list")
+        require(app.buttons["Paste a list"], "Paste a list").tap()
+        require(text("Add this list"), "the sheet")
+        require(line("2 lb chicken thighs (Chicken Adobo)"), "the line, naming its recipe")
+        require(line("1 lime"), "the lime").tap() // unticked: stays out
+        require(app.buttons["receiveToPantry"], "Add to pantry").tap()
+
+        // The ticked line went in the pantry, which opens.
+        require(app.switches["In stock: chicken thighs"], "the chicken in the pantry")
+        XCTAssertFalse(app.switches["In stock: lime"].exists, "an unticked line stays out")
+    }
+
     private func deleteMilk() {
         require(line("milk"), "the item").press(forDuration: 1.0)
         require(app.buttons["Delete"], "the long-press menu").tap()
