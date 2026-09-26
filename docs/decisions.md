@@ -2212,6 +2212,40 @@ garnish") that the card shows.
 - Tests: trimmed real pages in `shared/fixtures/pages/wprm-*.html` on both platforms, and `Wprm`
   rows in the differential corpus. The weekly site check fetches the zucchini tots page.
 
+## Tasty Recipes' and Mediavine Create's ingredient headings (#119)
+
+The other two common WordPress recipe cards, read after WP Recipe Maker's (#118). **Neither
+marks an ingredient's parts.** Tasty Recipes (Pinch of Yum, Joy the Baker, The Kitchen
+Whisperer) prints each ingredient as a whole `<li>`; only the amount is wrapped, for its own
+scaling (`data-amount`), and any bold name is the author's formatting. Mediavine Create
+(TidyMom, Key to My Lime) prints each ingredient's `original_text` in an `<li>`. On every page
+checked, those lines are JSON-LD's `recipeIngredient` lines word for word; the card's own only
+differ in WordPress's curled dashes and quotes ("3–4 cups", "confectioners’"). So there are no
+notes or parts to read, and **JSON-LD's lines stay exactly as they are**.
+
+**What JSON-LD drops is the group headings**, and those are added (`CardHeadings`):
+"For the chocolate cake:", "Oreo Crust:", "FOR APPLE FILLING:", "Chicken Marinade:".
+
+- **Where headings come from.** Create names its groups: an `h3`/`h4` in
+  `.mv-create-ingredient-group-header`, or, in its older markup, an `h3` straight before each
+  list. Tasty's ingredients are free text around the lists, so a heading is what Tasty's own
+  code leaves out of its JSON-LD as one: a heading element, or a paragraph that ends in a colon
+  or is wholly bold. Any other paragraph is not a heading ("Use a big bowl"). The list's own
+  title ("Ingredients", in `.tasty-recipes-ingredients-header` or
+  `.mv-create-ingredients-title`) is never one, nor is a paragraph inside an item. A heading
+  after the last ingredient heads nothing and is dropped.
+- **Only when the card lines up one-to-one** with `recipeIngredient`: the same count, and each
+  item's letters and digits (lowercased) found in its JSON-LD line, so curled punctuation and
+  spacing don't count. Otherwise nothing changes. A Tasty card with no list items (plain
+  paragraphs) already puts its headings in JSON-LD, so it's left alone.
+- **One shared helper** (`CardIngredients`) now holds what the three adapters have in common:
+  groups of items, the line-up check and the "Name:" heading lines. WP Recipe Maker keeps its
+  own check (case and spacing ignored) and its refined lines; its behaviour is unchanged.
+  Site-specific rules as data are #120.
+- Tests: trimmed real pages in `shared/fixtures/pages/tasty-*.html` and `mv-create-*.html` on
+  both platforms, and `Heads` rows in the differential corpus. The weekly site check fetches
+  Pinch of Yum's blackout chocolate cake and TidyMom's apple pie bars.
+
 ## Grocery lines merged with the model's help (#99)
 
 Part of #99, on #104's typed decisions (same `DecisionRule`, `ai_decisions` cache and
