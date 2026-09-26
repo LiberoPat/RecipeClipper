@@ -17,6 +17,7 @@ import Foundation
 ///   standard  four recipes, some in lists — see `seedStandard`
 ///   cook      one recipe with timed steps, for cook mode — see `seedCook`
 ///   chef      one recipe with a long step, for Chef mode (#100); every launch gets a stub model
+///   walkthrough  twenty realistic recipes for the walkthrough videos (#106) — see UITestWalkthroughSeed
 enum UITestSeeding {
     static let flag = "-uiTestSeed"
     static let keepPrefsFlag = "-uiTestKeepPrefs"
@@ -105,6 +106,7 @@ enum UITestSeeding {
                     case "many": try seedMany(conn, now: now)
                     case "cook": try seedCook(conn, now: now)
                     case "chef": try seedChef(conn, now: now)
+                    case "walkthrough": try UITestWalkthroughSeed.seed(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
                 }
@@ -222,7 +224,11 @@ private final class UITestStepShortener: StepShortener {
     func support() async -> ChefSupport { .available(["en"]) }
 
     func shorten(_ step: String, language: String) async -> String? {
-        step == UITestSeeding.chefStep ? UITestSeeding.chefShortStep : nil
+        switch step {
+        case UITestSeeding.chefStep: UITestSeeding.chefShortStep
+        case UITestWalkthroughSeed.whisk: UITestWalkthroughSeed.whiskShort
+        default: nil
+        }
     }
 }
 #endif
