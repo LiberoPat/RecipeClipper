@@ -5,8 +5,8 @@ package com.example.recipeclipper.data.model
  * thousand words. Pure; the iOS app's `RecipeTextWindow` is the same.
  *
  * The anchor is the ingredients heading ("Ingredients", "Zutaten", "材料": `headings.json`, every
- * shipped language at once) followed by the most lines that look like ingredient lines, a
- * little more if a steps heading follows. With no such heading, it is the densest run of
+ * shipped language at once) followed, before the next heading, by the most lines that look like
+ * ingredient lines, a little more if the steps heading follows. With no such heading, it is the densest run of
  * ingredient-looking lines. With neither, the page has no recipe to find: null, and the model
  * isn't asked. The window keeps a few lines before the anchor (the recipe card's title, times
  * and servings), then as many lines after it as fit, and starts with the page's title.
@@ -61,8 +61,16 @@ object RecipeTextWindow {
         var bestScore = 1
         for ((i, line) in lines.withIndex()) {
             if (!isHeading(line, headings.first)) continue
-            val ahead = (i + 1 until minOf(lines.size, i + 1 + LOOK_AHEAD)).count { looks[it] }
-            val steps = (i + 1 until minOf(lines.size, i + 1 + 2 * LOOK_AHEAD)).any { isHeading(lines[it], headings.second) }
+            // The ingredient lines up to the next heading, and whether that is the steps'.
+            var ahead = 0
+            var steps = false
+            var j = i + 1
+            while (j < lines.size && j <= i + LOOK_AHEAD) {
+                if (isHeading(lines[j], headings.second)) { steps = true; break }
+                if (isHeading(lines[j], headings.first)) break
+                if (looks[j]) ahead++
+                j++
+            }
             val score = ahead + if (steps) 2 else 0
             if (ahead >= 1 && score > bestScore) { best = i; bestScore = score }
         }

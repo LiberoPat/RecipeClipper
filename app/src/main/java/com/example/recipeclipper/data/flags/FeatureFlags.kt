@@ -22,7 +22,10 @@ enum class Flag(val key: String) {
     AMOUNTS_IN_STEPS("amountsInSteps"),
 
     /** The free tier (#107): 20 recipes, and the one-time unlock for unlimited ones. */
-    FREE_TIER("freeTier");
+    FREE_TIER("freeTier"),
+
+    /** A recipe picked from the page's text by the on-device model when the page has no recipe data (#103). */
+    LLM_EXTRACTION("llmExtraction");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

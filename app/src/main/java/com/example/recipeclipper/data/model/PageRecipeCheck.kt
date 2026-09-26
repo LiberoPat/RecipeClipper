@@ -107,7 +107,7 @@ object PageRecipeCheck {
                 val next = i + Character.charCount(cp)
                 val mapped = Normalizer.normalize(String(Character.toChars(cp)), Normalizer.Form.NFKC).lowercase(Locale.ROOT)
                 for (c in mapped) {
-                    if (c.isWhitespace() || c.isSpaceChar()) {
+                    if (c.isWhitespace()) {
                         if (out.isEmpty()) continue
                         if (out.last() == ' ') {
                             if (c == '\n' || c == '\r') breaks[breaks.size - 1] = true

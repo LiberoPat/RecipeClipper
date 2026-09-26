@@ -14,7 +14,13 @@ import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.UrlCleaner
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.model.PageText
+import com.example.recipeclipper.data.model.RecipeTextWindow
 import com.example.recipeclipper.data.remote.BlogRecipeSource
+import com.example.recipeclipper.data.remote.FetchedPage
+import com.example.recipeclipper.data.remote.PageRecipe
 import com.example.recipeclipper.data.remote.RecipeSource
 import com.example.recipeclipper.data.remote.RenderedPageSource
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +49,10 @@ class DefaultRecipeRepository @Inject constructor(
     private val clock: Clock,
     private val log: ErrorLog,
     private val renderedPages: RenderedPageSource = RenderedPageSource.None,
-    private val library: LibraryPolicy = LibraryPolicy.HistoryOnly
+    private val library: LibraryPolicy = LibraryPolicy.HistoryOnly,
+    private val extractor: PageRecipeExtractor = PageRecipeExtractor.None,
+    /** Null (tests that aren't about it) reads as every flag off. */
+    private val flags: FeatureFlags? = null
 ) : RecipeRepository {
 
     override suspend fun importFromUrl(sharedUrl: String): ParseResult {
@@ -51,7 +60,7 @@ class DefaultRecipeRepository @Inject constructor(
         val url = UrlCleaner.clean(sharedUrl)
         // The user's version is never refreshed by a re-share (#29): open it without a fetch.
         val usersVersion = log.guard("find user's version", null) {
-            recipeDao.findByUrl(url)?.takeIf { it.contentOrigin != RecipeDao.ORIGIN_PARSED }
+            recipeDao.findByUrl(url)?.takeIf { !ContentOrigin.isSources(it.contentOrigin) }
         }
         if (usersVersion != null) {
             val viewedAt = clock.now()
@@ -128,13 +137,38 @@ class DefaultRecipeRepository @Inject constructor(
      * doesn't load, leaves the direct fetch's cause standing: a block stays a block. Nothing
      * is shown for it; the import is just slower. Cancelling during it throws out of here
      * before anything is written.
+     *
+     * Last, only when the page loaded with no recipe data ([ParseError.NoRecipeFound]), the
+     * on-device model may pick one out of its text ([extractFromPage]; the rendered page's
+     * text if there is one).
      */
     private suspend fun fetchWithFallbacks(url: String): ParseResult {
         val fetched = fetchWithOneRetry(url)
-        if (fetched !is ParseResult.Error || !fetched.error.triesRenderedPage) return fetched
-        val html = withTimeoutOrNull(RENDER_TIMEOUT_MS) { renderedPages.render(url) } ?: return fetched
-        val rendered = withContext(Dispatchers.Default) { BlogRecipeSource.parse(html, url) }
-        return if (rendered is ParseResult.Success) rendered else fetched
+        val result = fetched.result
+        if (result !is ParseResult.Error || !result.error.triesRenderedPage) return result
+        val html = withTimeoutOrNull(RENDER_TIMEOUT_MS) { renderedPages.render(url) }
+        val rendered = html?.let { withContext(Dispatchers.Default) { BlogRecipeSource.parsePage(it, url) } }
+        if (rendered != null && rendered.result is ParseResult.Success) return rendered.result
+        if (result.error != ParseError.NoRecipeFound) return result
+        val page = rendered?.page ?: fetched.page ?: return result
+        return extractFromPage(page, url) ?: result
+    }
+
+    /**
+     * A recipe the on-device model picked out of [page]'s text (#103), behind the
+     * `llmExtraction` flag: the part of the page most likely to hold it ([RecipeTextWindow]),
+     * then only what [PageRecipe.recipe] finds on the page as written. Null, and the page stays
+     * [ParseError.NoRecipeFound] as before, on a phone or in a language the model can't read,
+     * or when too little of what it picked is on the page.
+     */
+    private suspend fun extractFromPage(page: PageText, url: String): ParseResult.Success? {
+        if (flags?.isOn(Flag.LLM_EXTRACTION) != true) return null
+        val language = withContext(Dispatchers.Default) { PageRecipe.language(page) }
+        val chars = extractor.windowChars(language) ?: return null
+        val window = withContext(Dispatchers.Default) { RecipeTextWindow.window(page, chars) } ?: return null
+        val picked = extractor.extract(window, language) ?: return null
+        val recipe = withContext(Dispatchers.Default) { PageRecipe.recipe(window, picked, page, url) }
+        return recipe?.let { ParseResult.Success(it) }
     }
 
     /**
@@ -145,11 +179,12 @@ class DefaultRecipeRepository @Inject constructor(
      * retried. The pause is a plain coroutine [delay], so a test's virtual time skips it, and
      * cancelling the import during it throws out of here before anything is written.
      */
-    private suspend fun fetchWithOneRetry(url: String): ParseResult {
-        val first = source.fetch(url)
-        if (first !is ParseResult.Error || !first.error.shouldAutoRetry) return first
+    private suspend fun fetchWithOneRetry(url: String): FetchedPage {
+        val first = source.fetchPage(url)
+        val error = (first.result as? ParseResult.Error)?.error
+        if (error == null || !error.shouldAutoRetry) return first
         delay(RETRY_PAUSE_MS)
-        return source.fetch(url)
+        return source.fetchPage(url)
     }
 
     override suspend fun saveClip(recipe: Recipe): ParseResult =

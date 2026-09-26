@@ -9,6 +9,7 @@ import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.LibraryLimit
 import kotlinx.coroutines.flow.Flow
 
@@ -251,8 +252,8 @@ abstract class RecipeDao {
      * it, by removing the oldest unprotected recipe first, one for one. If there is none, nothing
      * is written and [NOT_KEPT] is returned. Updating a recipe already here never removes one.
      *
-     * A row that is the user's version (#29: edited, clipped or typed in, `contentOrigin` not
-     * PARSED) keeps its content: the re-share only counts as a view. [replaceUsersVersion] is
+     * A row that is the user's version (#29: edited, clipped or typed in, `contentOrigin` neither
+     * PARSED nor EXTRACTED) keeps its content: the re-share only counts as a view. [replaceUsersVersion] is
      * "Update from source", which does replace it, and makes it PARSED again ([fresh] is).
      */
     @Transaction
@@ -268,7 +269,7 @@ abstract class RecipeDao {
                 delete(oldestCullable(today) ?: return NOT_KEPT)
             }
             insert(fresh)
-        } else if (existing.contentOrigin != ORIGIN_PARSED && !replaceUsersVersion) {
+        } else if (!ContentOrigin.isSources(existing.contentOrigin) && !replaceUsersVersion) {
             touch(existing.id, fresh.lastViewedAt)
             existing.id
         } else {
@@ -332,9 +333,6 @@ abstract class RecipeDao {
     }
 
     companion object {
-        /** [com.example.recipeclipper.data.model.ContentOrigin.PARSED], as stored. */
-        const val ORIGIN_PARSED = "PARSED"
-
         /** The `today` that protects no planned recipe from the cull: no day is on or after
          *  it. The default for callers with no plan in mind; the repository passes today. */
         const val NO_PLAN_PROTECTION = Long.MAX_VALUE
