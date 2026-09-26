@@ -30,6 +30,8 @@ import XCTest
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
 // WP Recipe Maker rows (#118): a card's markup and JSON-LD's lines, then WprmIngredients.refine.
 // Write only `Wprm("<markup>", ["line"]),`, the markup's attributes single-quoted.
+// Tasty Recipes and Mediavine Create rows (#119): the same, then CardHeadings.refine. Write only
+// `Heads("<markup>", ["line"]),`.
 // Trailing-text rows (#99): a grocery line, then GroceryDecisions.split's core and trailing text,
 // or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
@@ -99,6 +101,8 @@ final class DifferentialCorpusTests: XCTestCase {
             self.html = html; self.lines = lines; self.refined = refined
         }
     }
+
+    private typealias Heads = Wprm
 
     private struct Trail {
         let line: String; let words: LanguageWords; let core: String?; let trailing: String?
@@ -1312,6 +1316,20 @@ final class DifferentialCorpusTests: XCTestCase {
         Wprm("<p>No card on this page.</p>", ["1 cup rice"], ["1 cup rice"]),
     ]
 
+    private static let heads: [Heads] = [
+        Heads("<div class='tasty-recipes-ingredients'><div class='tasty-recipes-ingredients-header'><h3>Ingredients</h3></div><div class='tasty-recipes-ingredients-body'><ul><li>1 cup peanut butter</li></ul><p><strong>Oreo Crust</strong></p><ul><li>1 14&#8211;ounce package Oreos</li></ul><p>For the Topping:</p><ul><li>3 large eggs</li></ul></div></div>", ["1 cup peanut butter", "1 14-ounce package Oreos", "3 large eggs"], ["1 cup peanut butter", "Oreo Crust:", "1 14-ounce package Oreos", "For the Topping:", "3 large eggs"]),
+        Heads("<div class='tasty-recipes-ingredients'><div class='tasty-recipes-ingredients-header'><h3>Ingredients</h3></div><div class='tasty-recipes-ingredients-body'><ul><li>1 egg</li></ul><p>Use a <strong>big</strong> bowl</p><ul><li>1 cup milk</li></ul><h4>Topping</h4><ul><li>sugar</li></ul><p><strong>To serve:</strong></p></div></div>", ["1 egg", "1 cup milk", "sugar"], ["1 egg", "1 cup milk", "Topping:", "sugar"]),
+        Heads("<div class='tasty-recipes-ingredients'><p>Für den Teig:</p><ul><li>200 g Mehl &ndash; gesiebt</li><li>1 Ei</li></ul></div>", ["200 g Mehl - gesiebt", "1 Ei"], ["Für den Teig:", "200 g Mehl - gesiebt", "1 Ei"]),
+        Heads("<div class='mv-create-ingredients'><h3 class='mv-create-ingredients-title'>Ingredients</h3><div class='mv-create-ingredient-group'><div class='mv-create-ingredient-group-header'><h4>&nbsp;Brownie Cookies</h4></div><ul class='mv-create-ingredient-list'><li>1 batch brownie batter</li></ul></div><div class='mv-create-ingredient-group'><div class='mv-create-ingredient-group-header'><h4>CINNAMON &amp; SUGAR TOPPING</h4></div><ul class='mv-create-ingredient-list'><li>&frac34; cup light brown sugar, packed</li><li>3&frac12; cups confectioners&rsquo; sugar</li></ul></div></div>", ["1 batch brownie batter", "¾ cup light brown sugar, packed", "3½ cups confectioners’ sugar"], ["Brownie Cookies:", "1 batch brownie batter", "CINNAMON & SUGAR TOPPING:", "¾ cup light brown sugar, packed", "3½ cups confectioners’ sugar"]),
+        Heads("<div class='mv-create-ingredients'><h2 class='mv-create-ingredients-title'>Ingredients</h2><h3>Chicken Marinade:</h3><ul><li>1/3 cup olive oil</li></ul><h3>Vegetables:</h3><ul><li>2 red bell peppers</li></ul></div>", ["1/3 cup olive oil", "2 red bell peppers"], ["Chicken Marinade:", "1/3 cup olive oil", "Vegetables:", "2 red bell peppers"]),
+        Heads("<div class='mv-create-ingredients'><h2 class='mv-create-ingredients-title'>Ingredients</h2><h3>Chicken Marinade:</h3><ul><li>1/3 cup olive oil</li></ul><h3>Vegetables:</h3><ul><li>2 red bell peppers</li></ul></div>", ["1/3 cup olive oil"], ["1/3 cup olive oil"]),
+        Heads("<div class='mv-create-ingredients'><h2 class='mv-create-ingredients-title'>Ingredients</h2><h3>Chicken Marinade:</h3><ul><li>1/3 cup olive oil</li></ul><h3>Vegetables:</h3><ul><li>2 red bell peppers</li></ul></div>", ["1/3 cup olive oil", "2 green bell peppers"], ["1/3 cup olive oil", "2 green bell peppers"]),
+        Heads("<div class='mv-create-ingredients'><h3>Dough</h3><ul><li>2 cups flour</li></ul></div>", ["2 cups flour (sifted)"], ["Dough:", "2 cups flour (sifted)"]),
+        Heads("<div class='mv-create-ingredients'><h3>Sauce</h3><ul><li> </li></ul></div>", ["salt"], ["salt"]),
+        Heads("<div class='tasty-recipes-ingredients'><h4>Sauce</h4><ul><li>&mdash;</li></ul></div>", ["—"], ["—"]),
+        Heads("<p>No card on this page.</p>", ["1 egg"], ["1 egg"]),
+    ]
+
     private static let trails: [Trail] = [
         Trail("2 eggs (dfsafs -", "2 eggs", "(dfsafs -"),
         Trail("2 ears of corn, shucked", "2 ears of corn", ", shucked"),
@@ -1537,6 +1555,12 @@ final class DifferentialCorpusTests: XCTestCase {
     func testWprmIngredientsMatchKotlin() {
         for row in Self.wprms {
             XCTAssertEqual(WprmIngredients.refine(html: row.html, lines: row.lines), row.refined, row.lines.joined(separator: " | "))
+        }
+    }
+
+    func testCardHeadingsMatchKotlin() {
+        for row in Self.heads {
+            XCTAssertEqual(CardHeadings.refine(html: row.html, lines: row.lines), row.refined, row.lines.joined(separator: " | "))
         }
     }
 

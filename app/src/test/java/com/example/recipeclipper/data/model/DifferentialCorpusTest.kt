@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.model
 
+import com.example.recipeclipper.data.remote.CardHeadings
 import com.example.recipeclipper.data.remote.WprmIngredients
 import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
@@ -42,6 +43,8 @@ import java.io.File
  *
  * `Wprm("markup", [lines])` rows (#118) pin [WprmIngredients.refine]: JSON-LD's lines refined by
  * a WP Recipe Maker card's markup; write only the markup (single-quoted attributes) and the lines.
+ * `Heads("markup", [lines])` rows (#119) pin [CardHeadings.refine] the same way, for a Tasty Recipes
+ * or Mediavine Create card.
  *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
@@ -77,8 +80,8 @@ class DifferentialCorpusTest {
     private val countRow = Regex("""^(\s*)Count\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A close-names row (#104): two ingredient names, optionally their language.
     private val closeRow = Regex("""^(\s*)Close\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
-    // A WP Recipe Maker row (#118): a card's markup, then JSON-LD's ingredient lines.
-    private val wprmRow = Regex("""^(\s*)Wprm\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A recipe-card row: a WP Recipe Maker (#118) or Tasty/Create (#119) card's markup, then JSON-LD's lines.
+    private val cardRow = Regex("""^(\s*)(Wprm|Heads)\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     // A trailing-text row (#99): a grocery line, optionally its language.
     private val trailRow = Regex("""^(\s*)Trail\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
@@ -116,11 +119,12 @@ class DifferentialCorpusTest {
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         countRow.find(line)?.let { m -> return countRow(m) }
-        wprmRow.find(line)?.let { m ->
-            val html = unescape(m.groupValues[2])
-            val lines = literal.findAll(m.groupValues[3]).map { unescape(it.groupValues[1]) }.toList()
-            val refined = WprmIngredients.refine(Jsoup.parse(html), lines)
-            return m.groupValues[1] + "Wprm(${q(html)}, ${list(lines)}, ${list(refined)}),"
+        cardRow.find(line)?.let { m ->
+            val (kind, html) = m.groupValues[2] to unescape(m.groupValues[3])
+            val lines = literal.findAll(m.groupValues[4]).map { unescape(it.groupValues[1]) }.toList()
+            val page = Jsoup.parse(html)
+            val refined = if (kind == "Wprm") WprmIngredients.refine(page, lines) else CardHeadings.refine(page, lines)
+            return m.groupValues[1] + "$kind(${q(html)}, ${list(lines)}, ${list(refined)}),"
         }
         closeRow.find(line)?.let { m ->
             val (a, b) = unescape(m.groupValues[2]) to unescape(m.groupValues[3])
