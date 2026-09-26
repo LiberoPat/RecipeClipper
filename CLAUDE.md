@@ -5,7 +5,7 @@ Recipe Clipper: share a recipe link from any app and get just the recipe
 filler.
 
 - **Android** (`app/`): Kotlin, Jetpack Compose, single Activity. MVVM +
-  repository, Hilt, Room, Compose Navigation. minSdk 26 (ML Kit GenAI, #100), targetSdk 36,
+  repository, Hilt, Room, Compose Navigation. minSdk 26 (for ML Kit GenAI, #100), targetSdk 36,
   compileSdk 37.
 - **iOS** (`ios/`): SwiftUI, iOS 17+, no third-party dependencies, at parity
   with Android. iOS specifics (XcodeGen, the Android→iOS type map, the share

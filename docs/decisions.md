@@ -1862,13 +1862,13 @@ Part of #99: the model writes words, code owns every number.
   reading view a tap on a step with a short version shows it as written, and again short. In
   cook mode a tap already makes a step current, so the current step's card has a small
   "As written" / "Short version" button beside "STEP n" instead.
-- **minSdk 26 (was 24), pending the owner's approval.** ML Kit GenAI's minSdk is 26. Keeping 24
-  needs `<uses-sdk tools:overrideLibrary>` in a manifest, and lint then reads the app's
-  targetSdk from that element as 1 (lint 32.4 `Project.readManifest`): it flagged every "many"
-  plural (`UnusedQuantity`), and it would quietly skip every check that depends on targetSdk.
-  AGP 9 refuses SDK attributes on that element, so there is no clean override. Android 7.x
-  (API 24–25) phones can't install the app at all now; the app is unreleased. The alternative
-  is to keep 24 and leave Android's Chef mode unsupported (no ML Kit dependency) until then.
+- **minSdk 26 (Android 8.0), was 24: the owner's decision (2026-09-25).** ML Kit GenAI's minSdk
+  is 26. Keeping 24 needs `<uses-sdk tools:overrideLibrary>` in a manifest, and lint then reads
+  the app's targetSdk from that element as 1 (lint 32.4 `Project.readManifest`): it flagged
+  every "many" plural (`UnusedQuantity`), and it would quietly skip every check that depends on
+  targetSdk. AGP 9 refuses SDK attributes on that element, so there is no clean override.
+  Android 7.x (API 24–25) phones can no longer install the app; it was unreleased. The
+  alternative, keeping 24 with Android's Chef mode unsupported, was turned down.
 - **With "Amounts in steps" (#101):** a short step gets its amounts the same way, from its own
   text (`StepAmounts.annotate` over the short versions), so amounts follow whichever version is
   on screen. Both switches share the Settings Steps section; each row shows with its own flag.
