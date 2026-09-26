@@ -33,6 +33,9 @@ import java.io.File
  * ⟦ ⟧, once against the lines as given and once against them doubled in Metric; write only the
  * step and the lines (optionally `, lang: "fr"`).
  *
+ * `Trail("line")` rows (#99) pin [GroceryDecisions.split]: the line's core and the trailing text
+ * the model may be asked about, or nil; write only the line (optionally `, lang: "fr"`).
+ *
  * `Pick(.kind, "page", "picked")` rows (#103) pin [PageRecipeCheck.find]: the page's own text
  * for what the model picked, or nil; write only the kind (name, ingredient, step, other), the
  * page text and the pick.
@@ -76,6 +79,8 @@ class DifferentialCorpusTest {
     private val closeRow = Regex("""^(\s*)Close\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A WP Recipe Maker row (#118): a card's markup, then JSON-LD's ingredient lines.
     private val wprmRow = Regex("""^(\s*)Wprm\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A trailing-text row (#99): a grocery line, optionally its language.
+    private val trailRow = Regex("""^(\s*)Trail\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
@@ -123,6 +128,14 @@ class DifferentialCorpusTest {
             val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
             val close = DecisionCandidates.close(a, b, LanguageWords.forTag(language)!!)
             return m.groupValues[1] + "Close(${q(a)}, ${q(b)}$lang, $close),"
+        }
+        trailRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            val language = m.groupValues[3].ifEmpty { "en" }
+            val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+            val split = GroceryDecisions.split(text, LanguageWords.forTag(language)!!)
+            val (core, trailing) = split?.let { q(it.core) to q(it.trailing) } ?: ("nil" to "nil")
+            return m.groupValues[1] + "Trail(${q(text)}$lang, $core, $trailing),"
         }
         pickRow.find(line)?.let { p ->
             val (kind, page, picked) = Triple(p.groupValues[2], unescape(p.groupValues[3]), unescape(p.groupValues[4]))

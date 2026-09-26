@@ -68,18 +68,43 @@ final class GroceriesViewModel {
         pantrySubscription = pantry.observeItems()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in self?.pantryItems = $0 }
-        subscription = repository.observeItems()
+        let answers = decisions?.observe() ?? Just(Decisions.none).eraseToAnyPublisher()
+        subscription = repository.observeItems().combineLatest(answers)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] items in
+            .sink { [weak self] items, decided in
                 guard let self else { return }
-                self.uiState.sections = GroceryCombiner.sections(items)
+                self.latestItems = items
+                self.uiState.sections = GroceryCombiner.sections(items, decisions: decided)
                 // A row being moved that has since gone closes the aisle picker.
                 if let moving = self.uiState.moving,
                    !moving.items.allSatisfy({ i in items.contains { $0.id == i.id } }) {
                     self.uiState.moving = nil
                 }
                 self.askAisles(items)
+                self.askGroceryQuestions(items, decided)
             }
+    }
+
+    @ObservationIgnored private var latestItems: [GroceryItem] = []
+    @ObservationIgnored private var askedGrocery = Set<DecisionQuestion>()
+
+    /// Asks the model about close names and trailing text (#99), in the background. The list
+    /// shows today's grouping until an answer lands; the decisions publisher then regroups it,
+    /// and a fresh answer may file a line out of Other beside its partner.
+    private func askGroceryQuestions(_ items: [GroceryItem], _ current: Decisions) {
+        guard let decisions else { return }
+        let unchecked = items.filter { !$0.checked }
+        let open = (GroceryDecisions.trailingTexts(unchecked, decisions: current) + GroceryDecisions.samePairs(unchecked, decisions: current))
+            .filter { !current.isAnswered($0) && askedGrocery.insert($0).inserted }
+        if open.isEmpty { return }
+        Task {
+            await decisions.decide(open)
+            let after = await decisions.current()
+            let fresh = Set(open.filter { after.isAnswered($0) })
+            for (aisle, ids) in GroceryDecisions.filing(self.latestItems, fresh: fresh, decisions: after) {
+                await repository.fileFromOther(ids, aisle: aisle)
+            }
+        }
     }
 
     /// Asks the model the aisle of each item in Other whose name the keyword table doesn't know

@@ -54,6 +54,11 @@ enum DecisionPrompts {
             (instructions, text) = (same, "Ingredient names (\(language)): \"\(names[0])\" and \"\(names[names.count - 1])\"")
         case .aisle:
             (instructions, text) = (aisle, "Ingredient (\(language)): \(question.input)")
+        case .sameGrocery:
+            let names = question.input.components(separatedBy: DecisionQuestion.pair)
+            (instructions, text) = (sameGrocery, "Shopping list items (\(language)): \"\(names[0])\" and \"\(names[names.count - 1])\"")
+        case .trailingText:
+            (instructions, text) = (trailing, "Text after the ingredient (\(language)): \(question.input)")
         }
         let closing = "\nAnswer with one of: \(options.joined(separator: ", ")). Give your confidence: high, medium or low. "
             + "Answer \"unsure\" whenever you are not certain."
@@ -73,6 +78,23 @@ enum DecisionPrompts {
         A name with an extra word that makes a different product is different: "rice flour" is not "flour",
         "whole milk" is not "milk", "brown sugar" is not "sugar". Only names for the same product are the same:
         "plain flour" and "all-purpose flour", "double cream" and "heavy cream".
+        """
+
+    private static let sameGrocery = """
+        Two items on a shopping list, each the ingredient named in a recipe line. Would a shopper buy the
+        same product for both ("same"), or are they different products ("different")? Only a different
+        wording of one product is the same: "ears of corn" and "corn", "corn on the cob" and "corn",
+        "garlic cloves" and "garlic". A word that makes another product is different: "rice flour" is not
+        "flour", "whole milk" is not "milk", "brown sugar" is not "sugar", "corn flour" is not "corn".
+        """
+
+    private static let trailing = """
+        A shopping list line from a recipe has some text after the ingredient's name. What is that text?
+        "note": only a description or preparation, no amount and no other ingredient (", shucked",
+        ", finely chopped", "(optional)", ", at room temperature"). "second_amount": it gives another
+        amount or size, or another ingredient or an alternative ("(about three cups)", "plus two yolks",
+        ", or frozen corn", "and some for the pan"). "junk": meaningless characters or a typing error
+        ("(dfsafs -", "--- xx").
         """
 
     private static let aisle = """

@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.model.DecisionCandidates
+import com.example.recipeclipper.data.model.DecisionQuestion
+import com.example.recipeclipper.data.model.Decisions
+import com.example.recipeclipper.data.model.GroceryDecisions
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.model.Aisle
@@ -21,6 +24,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -90,14 +95,43 @@ class GroceriesViewModel @Inject constructor(
             pantry.observeItems().collect { pantryItems = it }
         }
         viewModelScope.launch {
-            repository.observeItems().collect { items ->
-                val sections = GroceryCombiner.sections(items)
+            val answers = decisions?.observe() ?: flowOf(Decisions.NONE)
+            repository.observeItems().combine(answers) { items, d -> items to d }.collect { (items, d) ->
+                latestItems = items
+                val sections = GroceryCombiner.sections(items, d)
                 _uiState.update { state ->
                     // A row being moved that has since gone closes the aisle picker.
                     val moving = state.moving?.takeIf { row -> row.items.all { i -> items.any { it.id == i.id } } }
                     state.copy(sections = sections, moving = moving)
                 }
                 askAisles(items)
+                askGroceryQuestions(items, d)
+            }
+        }
+    }
+
+    private var latestItems: List<GroceryItem> = emptyList()
+
+    // Grocery questions already asked in this visit, so each is asked once.
+    private val askedGrocery = mutableSetOf<DecisionQuestion>()
+
+    /**
+     * Asks the model about close names and trailing text (#99), in the background. The list
+     * shows today's grouping until an answer lands; then the decisions flow regroups it, and
+     * a fresh answer may file a line out of Other beside its partner ([GroceryDecisions.filing]).
+     */
+    private fun askGroceryQuestions(items: List<GroceryItem>, current: Decisions) {
+        val repo = decisions ?: return
+        val unchecked = items.filter { !it.checked }
+        val open = (GroceryDecisions.trailingTexts(unchecked, current) + GroceryDecisions.samePairs(unchecked, current))
+            .filter { !current.isAnswered(it) && askedGrocery.add(it) }
+        if (open.isEmpty()) return
+        viewModelScope.launch {
+            repo.decide(open)
+            val after = repo.current()
+            val fresh = open.filter { after.isAnswered(it) }.toSet()
+            for ((aisle, ids) in GroceryDecisions.filing(latestItems, fresh, after)) {
+                repository.fileFromOther(ids, aisle)
             }
         }
     }

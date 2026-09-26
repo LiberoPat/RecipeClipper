@@ -39,6 +39,12 @@ final class FoundationModelsDecisionModel: DecisionModel {
                 case .aisle:
                     let r = try await session.respond(to: prompt.text, generating: AisleReply.self, options: options).content
                     return DecisionReply(answer: "\(r.answer)", confidence: "\(r.confidence)")
+                case .sameGrocery:
+                    let r = try await session.respond(to: prompt.text, generating: SameReply.self, options: options).content
+                    return DecisionReply(answer: "\(r.answer)", confidence: "\(r.confidence)")
+                case .trailingText:
+                    let r = try await session.respond(to: prompt.text, generating: TrailingReply.self, options: options).content
+                    return DecisionReply(answer: "\(r.answer)", confidence: "\(r.confidence)")
                 }
             } catch {
                 return nil
@@ -66,6 +72,14 @@ final class FoundationModelsDecisionModel: DecisionModel {
 
 @available(iOS 26, *) @Generable struct SameReply {
     var answer: SameAnswer
+    var confidence: ReplyConfidence
+}
+
+// Case names are the option strings, so "second_amount" keeps its underscore.
+@available(iOS 26, *) @Generable enum TrailingAnswer { case note, second_amount, junk, unsure }
+
+@available(iOS 26, *) @Generable struct TrailingReply {
+    var answer: TrailingAnswer
     var confidence: ReplyConfidence
 }
 

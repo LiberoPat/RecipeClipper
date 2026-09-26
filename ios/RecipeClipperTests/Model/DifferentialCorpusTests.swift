@@ -30,6 +30,8 @@ import XCTest
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
 // WP Recipe Maker rows (#118): a card's markup and JSON-LD's lines, then WprmIngredients.refine.
 // Write only `Wprm("<markup>", ["line"]),`, the markup's attributes single-quoted.
+// Trailing-text rows (#99): a grocery line, then GroceryDecisions.split's core and trailing text,
+// or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
 // Chef mode rows (#100): a step, a short version of it, then ShortStepCheck.accept (nil: the
@@ -95,6 +97,10 @@ final class DifferentialCorpusTests: XCTestCase {
         let html: String; let lines: [String]; let refined: [String]
         init(_ html: String, _ lines: [String], _ refined: [String]) {
             self.html = html; self.lines = lines; self.refined = refined
+    private struct Trail {
+        let line: String; let words: LanguageWords; let core: String?; let trailing: String?
+        init(_ line: String, lang: String = "en", _ core: String?, _ trailing: String?) {
+            self.line = line; self.words = LanguageWords.forTag(lang)!; self.core = core; self.trailing = trailing
         }
     }
 
@@ -1301,6 +1307,19 @@ final class DifferentialCorpusTests: XCTestCase {
         Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'></span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>(minced)</span></li></ul></div></div>", ["2 (minced)"], ["2 (minced)"]),
         Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>rice</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>rinsed</span></li></ul></div></div>", ["1 cup rice"], ["1 cup rice rinsed"]),
         Wprm("<p>No card on this page.</p>", ["1 cup rice"], ["1 cup rice"]),
+    private static let trails: [Trail] = [
+        Trail("2 eggs (dfsafs -", "2 eggs", "(dfsafs -"),
+        Trail("2 ears of corn, shucked", "2 ears of corn", ", shucked"),
+        Trail("2 onions -- sdf", "2 onions", "-- sdf"),
+        Trail("200 g butter; softened", "200 g butter", "; softened"),
+        Trail("2 eggs (about 100 g)", nil, nil),
+        Trail("1 (14 oz) can tomatoes", nil, nil),
+        Trail("3 eggs", nil, nil),
+        Trail("salt, to taste", "salt", ", to taste"),
+        Trail("sun-dried tomatoes, chopped", "sun-dried tomatoes", ", chopped"),
+        Trail("2 œufs, battus", lang: "fr", "2 œufs", ", battus"),
+        Trail("3 Eier (dfsafs", lang: "de", "3 Eier", "(dfsafs"),
+        Trail("卵 2個（溶く）", lang: "ja", nil, nil),
     ]
 
     private static let steps: [Step] = [
@@ -1519,6 +1538,14 @@ final class DifferentialCorpusTests: XCTestCase {
     func testCloseNamesMatchKotlin() {
         for row in Self.closes {
             XCTAssertEqual(DecisionCandidates.close(row.a, row.b, words: row.words), row.close, "\(row.a) / \(row.b)")
+        }
+    }
+
+    func testTrailingTextMatchesKotlin() {
+        for row in Self.trails {
+            let split = GroceryDecisions.split(row.line, words: row.words)
+            XCTAssertEqual(split?.core, row.core, row.line)
+            XCTAssertEqual(split?.trailing, row.trailing, row.line)
         }
     }
 
