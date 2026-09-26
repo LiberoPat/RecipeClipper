@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.recipe
 
+import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.Recipe
@@ -128,5 +129,12 @@ data class RecipeUiState(
      */
     val clipUrl: String? = null,
     /** Chef mode (#100): the steps the cook tapped to see as written, not short. */
-    val asWrittenSteps: Set<Int> = emptySet()
+    val asWrittenSteps: Set<Int> = emptySet(),
+    /**
+     * The free library is full and every recipe in it is protected (#107): this one is shown
+     * but wasn't saved, so the screen offers Unlock and hides what needs a saved recipe.
+     */
+    val notKept: Boolean = false,
+    /** A purchase from the Unlock prompt that is pending or failed, until the screen says so. */
+    val unlockNotice: PurchaseOutcome? = null
 )

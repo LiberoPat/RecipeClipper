@@ -13,6 +13,7 @@ final class DefaultRecipeRepository: RecipeRepository {
     private let sleep: RetrySleep
     private let renderedPages: RenderedPageSource
     private let renderTimeout: Duration
+    private let library: LibraryLimitSource
 
     /// How a failed fetch waits before its single retry. Injected so a test doesn't really wait;
     /// throws on cancellation, as `Task.sleep` does.
@@ -33,8 +34,10 @@ final class DefaultRecipeRepository: RecipeRepository {
         clock: Clock,
         sleep: @escaping RetrySleep = { try await Task.sleep(for: $0) },
         renderedPages: RenderedPageSource = NoRenderedPageSource(),
-        renderTimeout: Duration = DefaultRecipeRepository.renderTimeout
+        renderTimeout: Duration = DefaultRecipeRepository.renderTimeout,
+        library: LibraryLimitSource = FixedLibraryLimit()
     ) {
+        self.library = library
         self.db = db
         self.source = source
         self.clock = clock
@@ -50,12 +53,13 @@ final class DefaultRecipeRepository: RecipeRepository {
         // The user's version is never refreshed by a re-share (#29): open it without a fetch.
         do {
             let viewedAt = clock.now()
+            let limit = library.current()
             let usersVersion = try await db.write { conn -> RecipeRecord? in
                 let dao = RecipeDao(db: conn)
                 guard var row = try dao.findByUrl(url), row.contentOrigin != RecipeDao.originParsed
                 else { return nil }
                 row.lastViewedAt = viewedAt
-                _ = try dao.upsert(row, historyLimit: historyLimit, today: PlanDays.today(millis: viewedAt)) // a view, and the cull
+                _ = try dao.upsert(row, limit: limit, today: PlanDays.today(millis: viewedAt)) // a view, and the cull
                 return row
             }
             if let usersVersion { return .success(usersVersion.toDomain()) }
@@ -72,22 +76,13 @@ final class DefaultRecipeRepository: RecipeRepository {
         let now = clock.now()
 
         switch parsed {
+        case .notKept:
+            return parsed // a fetch never answers this: only a save does
         case .success(var recipe):
             // Pin the key to the cleaned link we looked up by, so the offline fallback below
             // always finds what was saved here. (The parser already sets this; belt and braces.)
             recipe.sourceUrl = url
-            do {
-                let saved = try await db.write { conn -> RecipeRecord? in
-                    let dao = RecipeDao(db: conn)
-                    let id = try dao.upsert(recipe.toRecord(viewedAt: now), historyLimit: historyLimit, today: PlanDays.today(millis: now))
-                    return try dao.get(id)
-                }
-                guard let saved else { return .error(.saveFailed) }
-                return .success(saved.toDomain())
-            } catch {
-                dataLog.error("import save failed: \(String(describing: error), privacy: .public)")
-                return .error(.saveFailed)
-            }
+            return await save(recipe, now: now, what: "import save")
 
         case .error:
             // Offline, blocked or anything else: anything opened once still opens.
@@ -152,11 +147,12 @@ final class DefaultRecipeRepository: RecipeRepository {
         // Filed under the saved link, whatever the parse reports, so it lands on this row.
         recipe.sourceUrl = existing.sourceUrl
         let fresh = recipe.toRecord(viewedAt: clock.now())
+        let limit = library.current()
         do {
             let saved = try await db.write { conn -> RecipeRecord? in
                 let dao = RecipeDao(db: conn)
                 _ = try dao.upsert(
-                    fresh, historyLimit: historyLimit, replaceUsersVersion: true,
+                    fresh, limit: limit, replaceUsersVersion: true,
                     today: PlanDays.today(millis: fresh.lastViewedAt)
                 )
                 return try dao.get(id)
@@ -198,10 +194,12 @@ final class DefaultRecipeRepository: RecipeRepository {
         recipe.origin = .manual
         recipe.editedAt = now
         let record = recipe.toRecord(viewedAt: now)
+        let limit = library.current()
         do {
             return try await db.write { conn -> Recipe? in
                 let dao = RecipeDao(db: conn)
-                let id = try dao.upsert(record, historyLimit: historyLimit, today: PlanDays.today(millis: now))
+                let id = try dao.upsert(record, limit: limit, today: PlanDays.today(millis: now))
+                if id == RecipeDao.notKept { return recipe }
                 return try dao.get(id)?.toDomain()
             }
         } catch {
@@ -233,17 +231,37 @@ final class DefaultRecipeRepository: RecipeRepository {
         clip.sourceUrl = UrlCleaner.clean(recipe.sourceUrl)
         clip.origin = .clipped
         clip.editedAt = nil
-        let now = clock.now()
+        return await save(clip, now: clock.now(), replaceUsersVersion: true, what: "clip save")
+    }
+
+    func keep(_ recipe: Recipe) async -> ParseResult {
+        await save(recipe, now: clock.now(), what: "keep")
+    }
+
+    /// Saves `recipe` as a view at `now`, under the library's limit (#107): the saved row, or
+    /// `.notKept` when the full library had no room.
+    private func save(_ recipe: Recipe, now: Int64, replaceUsersVersion: Bool = false, what: String) async -> ParseResult {
+        let limit = library.current()
         do {
-            let saved = try await db.write { conn -> RecipeRecord? in
+            let saved = try await db.write { conn -> RecipeRecord?? in
                 let dao = RecipeDao(db: conn)
-                let id = try dao.upsert(clip.toRecord(viewedAt: now), historyLimit: historyLimit, replaceUsersVersion: true)
-                return try dao.get(id)
+                let id = try dao.upsert(
+                    recipe.toRecord(viewedAt: now), limit: limit, replaceUsersVersion: replaceUsersVersion,
+                    today: PlanDays.today(millis: now)
+                )
+                if id == RecipeDao.notKept { return .some(nil) }
+                return .some(try dao.get(id))
             }
-            guard let saved else { return .error(.saveFailed) }
-            return .success(saved.toDomain())
+            switch saved {
+            case .some(.some(let row)): return .success(row.toDomain())
+            case .some(.none):
+                var shown = recipe
+                shown.id = 0
+                return .notKept(shown)
+            case .none: return .error(.saveFailed)
+            }
         } catch {
-            dataLog.error("clip save failed: \(String(describing: error), privacy: .public)")
+            dataLog.error("\(what, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             return .error(.saveFailed)
         }
     }

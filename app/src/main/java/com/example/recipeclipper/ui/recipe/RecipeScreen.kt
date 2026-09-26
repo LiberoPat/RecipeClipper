@@ -37,7 +37,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarResult
+import com.example.recipeclipper.data.model.LibraryLimit
+import com.example.recipeclipper.ui.common.noticeMessage
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -231,7 +235,7 @@ fun RecipeScreen(
 
     // The id isn't known until the parse finishes on the import route, so the list ViewModel
     // is told which recipe it is looking at here rather than from a navigation argument.
-    val recipeId = (content as? RecipeContent.Success)?.recipe?.id
+    val recipeId = (content as? RecipeContent.Success)?.recipe?.id?.takeIf { !state.notKept }
     LaunchedEffect(recipeId) {
         if (recipeId != null) saveViewModel.setRecipe(recipeId)
     }
@@ -248,6 +252,28 @@ fun RecipeScreen(
         if (updateErrorMessage != null) {
             snackbarHostState.showSnackbar(updateErrorMessage)
             viewModel.onUpdateErrorShown()
+        }
+    }
+
+    // A full free library (#107): shown, not kept. Stays up until dismissed or unlocked, and
+    // comes back after a pending or failed purchase has been explained.
+    val notKeptMessage = stringResource(R.string.recipe_not_kept, LibraryLimit.FREE_RECIPES)
+    val unlockLabel = stringResource(R.string.unlock)
+    LaunchedEffect(state.notKept, state.unlockNotice) {
+        if (state.notKept && state.unlockNotice == null) {
+            val result = snackbarHostState.showSnackbar(
+                notKeptMessage, actionLabel = unlockLabel, withDismissAction = true,
+                duration = SnackbarDuration.Indefinite
+            )
+            if (result == SnackbarResult.ActionPerformed) viewModel.onUnlock()
+        }
+    }
+    val unlockNotice = state.unlockNotice
+    val unlockNoticeMessage = unlockNotice?.let { stringResource(it.noticeMessage()) }
+    LaunchedEffect(unlockNotice) {
+        if (unlockNoticeMessage != null) {
+            snackbarHostState.showSnackbar(unlockNoticeMessage)
+            viewModel.onUnlockNoticeShown()
         }
     }
 
@@ -408,7 +434,9 @@ private fun ReadingView(
                     Spacer(Modifier.weight(1f))
                     // Filled once the recipe is in at least one list — "saved" is derived from
                     // membership, so the icon is reading the same thing the database is.
-                    IconButton(onClick = actions.onSaveToList) {
+                    // Lists and the overflow's actions need a saved recipe: not one shown but not
+                    // kept (#107).
+                    if (!state.notKept) IconButton(onClick = actions.onSaveToList) {
                         Icon(
                             painter = painterResource(
                                 if (isSaved) R.drawable.ic_bookmark else R.drawable.ic_bookmark_border
@@ -433,7 +461,7 @@ private fun ReadingView(
                             modifier = Modifier.padding(12.dp).size(20.dp)
                         )
                     }
-                    RecipeOverflowMenu(
+                    if (!state.notKept) RecipeOverflowMenu(
                         recipeName = recipe.name,
                         canUpdateFromSource = recipe.canUpdateFromSource && !state.updatingFromSource,
                         clipped = recipe.origin == ContentOrigin.CLIPPED,
@@ -530,7 +558,8 @@ private fun ReadingView(
 
             // After the steps: the reading view still opens on the recipe, and a note like
             // "needs 10 more minutes" is read once the method is.
-            item {
+            // A recipe that wasn't kept (#107) has nowhere to keep a note.
+            if (!state.notKept) item {
                 Spacer(Modifier.height(24.dp))
                 NotesSection(
                     notes = state.notes,

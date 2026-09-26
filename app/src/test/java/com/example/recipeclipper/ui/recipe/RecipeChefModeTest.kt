@@ -7,12 +7,14 @@ import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.DefaultShortStepRepository
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.FlagRegistry
+import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
+import com.example.recipeclipper.fake.FakeEntitlements
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeShortStepDao
@@ -133,4 +135,24 @@ class RecipeChefModeTest {
         advanceUntilIdle()
         assertTrue(vm.content().shortInstructions.isEmpty())
     }
+
+    @Test fun `a recipe the free tier didn't keep shows as written until Unlock keeps it`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply {
+                importResult = ParseResult.Success(recipe().copy(id = 0), kept = false)
+            }
+            val vm = RecipeViewModel(
+                SavedStateHandle(mapOf(RecipeViewModel.URL_ARG to "https://example.com/cake")), repository,
+                preferences, Clock { testScheduler.currentTime }, FakeConnectivity(), FakeAppInfo(),
+                FakeTimerAlarmScheduler(),
+                shortSteps = DefaultShortStepRepository(FakeShortStepDao(), model, Clock { 0 }) { _, e -> throw e },
+                featureFlags = FeatureFlags(flagStore, FlagRegistry.definitions, isDebug = false),
+                entitlements = FakeEntitlements()
+            )
+            assertAsWritten(vm) // no row to cache short steps against (#107)
+
+            vm.onUnlock()
+            advanceUntilIdle()
+            assertEquals(listOf(shortOven, null), vm.content().shortInstructions)
+        }
 }

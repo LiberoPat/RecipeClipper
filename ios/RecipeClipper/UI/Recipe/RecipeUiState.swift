@@ -123,6 +123,11 @@ struct RecipeUiState: Equatable {
 
     /// Chef mode (#100): the steps the cook tapped to see as written, not short.
     var asWrittenSteps: Set<Int> = []
+    /// The free library is full and every recipe in it is protected (#107): this one is shown
+    /// but wasn't saved, so the screen offers Unlock and hides what needs a saved recipe.
+    var notKept = false
+    /// A purchase from the Unlock prompt that is pending or failed, until the view says so.
+    var unlockNotice: PurchaseOutcome?
 
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }

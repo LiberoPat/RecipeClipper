@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.CookProgress
+import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeDraft
@@ -12,8 +13,8 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
 
-/** Everything shared lands in history, capped at this many unsaved recipes. */
-const val HISTORY_LIMIT = 50
+/** While the free tier (#107) is off, history keeps this many unprotected recipes. */
+const val HISTORY_LIMIT = LibraryLimit.HISTORY_RECIPES
 
 /**
  * Fetches, parses and persists recipes. An interface so a ViewModel test can hand it a fake
@@ -29,14 +30,24 @@ interface RecipeRepository {
      *
      * A link whose saved copy is the user's version (edited or clipped, #29) is not fetched
      * at all: the re-share opens that copy and counts as a view.
+     *
+     * A new link on a full free library (#107) whose recipes are all protected is shown but
+     * not kept: `Success(recipe, kept = false)`, with no id.
      */
     suspend fun importFromUrl(sharedUrl: String): ParseResult
+
+    /**
+     * Saves a recipe that was shown but not kept (#107), once there is room (after unlocking).
+     * `Success(kept = false)` again if there still isn't.
+     */
+    suspend fun keep(recipe: Recipe): ParseResult
 
     /**
      * Saves a recipe the user clipped by hand from a page with no recipe data (#37), keyed on
      * the cleaned [Recipe.sourceUrl] like an import: a link seen before keeps its id, note and
      * list membership, and its content is replaced by the clip. Counts as a view. Returns the
-     * saved recipe, or `Error(SaveFailed)`.
+     * saved recipe, or `Error(SaveFailed)`, or `Success(kept = false)` on a full library
+     * (#107), which the clip screen doesn't leave.
      */
     suspend fun saveClip(recipe: Recipe): ParseResult
 
@@ -54,7 +65,11 @@ interface RecipeRepository {
      */
     suspend fun saveEdit(id: Long, draft: RecipeDraft): Recipe?
 
-    /** Saves a recipe typed in by hand (MANUAL, with a `manual:` link). Null as for [saveEdit]. */
+    /**
+     * Saves a recipe typed in by hand (MANUAL, with a `manual:` link). Null as for [saveEdit].
+     * On a full free library (#107) with nothing to make room, the recipe comes back with id 0:
+     * not kept, and the editor stays open.
+     */
     suspend fun addManual(draft: RecipeDraft): Recipe?
 
     /** Opens a recipe from history, a list or home. Counts as a view, so it moves to the top. */
@@ -101,4 +116,7 @@ interface RecipeRepository {
     fun observeHistory(query: String): Flow<List<RecipeSummary>>
 
     fun observeRecent(limit: Int): Flow<List<RecipeSummary>>
+
+    /** How many recipes are saved, of every kind (#107: the Recipes screen's count). */
+    fun observeCount(): Flow<Int>
 }

@@ -23,6 +23,7 @@ final class RecipeViewModel {
     @ObservationIgnored private let connectivity: Connectivity
     @ObservationIgnored private let appInfo: AppInfo
     @ObservationIgnored private let alarms: TimerAlarmScheduler
+    @ObservationIgnored private let entitlements: Entitlements
     // Opened from a timer notification: start cook mode once the recipe has loaded.
     @ObservationIgnored private var openInCookMode: Bool
     // Opened from the Week (#49): show the planned servings rather than the saved choice. For
@@ -66,10 +67,12 @@ final class RecipeViewModel {
         openInCookMode: Bool = false,
         plannedServings: Int? = nil,
         shortSteps: ShortStepRepository? = nil,
-        flags: FeatureFlags? = nil
+        flags: FeatureFlags? = nil,
+        entitlements: Entitlements = UnavailableEntitlements()
     ) {
         self.shortSteps = shortSteps
         self.flags = flags
+        self.entitlements = entitlements
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
         self.repository = repository
@@ -141,7 +144,13 @@ final class RecipeViewModel {
             }
             // A retry started meanwhile owns the screen now; this result is stale.
             guard !Task.isCancelled, let self else { return }
-            switch result {
+            var shown = result
+            if case .notKept(let recipe) = result {
+                uiState.notKept = true
+                shown = .success(recipe)
+            }
+            switch shown {
+            case .notKept: break
             case .success(var recipe):
                 if let planned = plannedServings {
                     plannedServings = nil
@@ -303,9 +312,33 @@ final class RecipeViewModel {
                 startChef()
             case .error(let error):
                 uiState.updateError = error
+            case .notKept: break // an update never adds a recipe
             }
         }
     }
+
+    /// The Unlock prompt on a recipe that wasn't kept (#107): buys the unlock, then saves the
+    /// recipe on screen. A pending or failed purchase leaves it shown and unsaved, and says so.
+    func onUnlock() {
+        Task { [weak self, entitlements, repository] in
+            let outcome = await entitlements.purchase()
+            guard let self else { return }
+            guard outcome == .unlocked else {
+                if outcome.needsNotice { uiState.unlockNotice = outcome }
+                return
+            }
+            guard var content = uiState.content.success else { return }
+            if case .success(let saved) = await repository.keep(content.recipe) {
+                content.recipe = saved
+                uiState.content = .success(content)
+                uiState.notKept = false
+                startChef() // now it has a row to keep short steps against
+            }
+        }
+    }
+
+    /// The view has shown `unlockNotice`.
+    func onUnlockNoticeShown() { uiState.unlockNotice = nil }
 
     /// The view has shown `updateError`.
     func onUpdateErrorShown() { uiState.updateError = nil }
@@ -379,7 +412,8 @@ final class RecipeViewModel {
         chefSubscription = nil
         rawShortSteps = []
         applyShortSteps()
-        guard chefOn, let shortSteps, let recipe = uiState.content.success?.recipe else { return }
+        // A recipe that wasn't kept (#107) has no row: short steps are cached per saved recipe.
+        guard chefOn, !uiState.notKept, let shortSteps, let recipe = uiState.content.success?.recipe else { return }
         let language = LanguageWords.forRecipe(recipe)?.language
         // Weak, and self is never held across the writing, so a popped screen goes at once.
         chefTask = Task { [weak self] in

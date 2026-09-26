@@ -239,6 +239,9 @@ dependencies {
     // Recipe photo
     implementation("io.coil-kt:coil-compose:2.7.0")
 
+    // The one-time unlock (#107): Google Play Billing, only behind PlayBillingEntitlements.
+    implementation("com.android.billingclient:billing-ktx:9.1.0")
+
     // Background thread for the network fetch
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 

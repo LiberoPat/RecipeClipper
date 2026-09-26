@@ -20,8 +20,12 @@ data class FlagRow(
     val changed: Boolean
 )
 
-data class DeveloperSettingsUiState(val flags: List<FlagRow> = emptyList()) {
-    val anyChanged: Boolean get() = flags.any { it.changed }
+data class DeveloperSettingsUiState(
+    val flags: List<FlagRow> = emptyList(),
+    /** The unlock (#107) counted as bought, with no store. */
+    val unlockedOverride: Boolean = false
+) {
+    val anyChanged: Boolean get() = unlockedOverride || flags.any { it.changed }
 }
 
 /** The hidden Developer settings (#87): a switch per flag and a reset, over [FeatureFlags]. */
@@ -37,6 +41,14 @@ class DeveloperSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             featureFlags.values.collect { _uiState.value = state() }
         }
+        viewModelScope.launch {
+            featureFlags.unlockedOverrides.collect { _uiState.value = state() }
+        }
+    }
+
+    fun onUnlockedOverrideChange(on: Boolean) {
+        featureFlags.setUnlockedOverride(on)
+        _uiState.value = state()
     }
 
     fun onFlagChange(flag: Flag, on: Boolean) {
@@ -50,7 +62,8 @@ class DeveloperSettingsViewModel @Inject constructor(
     }
 
     private fun state() = DeveloperSettingsUiState(
-        Flag.entries.map { flag ->
+        unlockedOverride = featureFlags.unlockedOverride,
+        flags = Flag.entries.map { flag ->
             val definition = featureFlags.definition(flag)
             FlagRow(
                 flag = flag,

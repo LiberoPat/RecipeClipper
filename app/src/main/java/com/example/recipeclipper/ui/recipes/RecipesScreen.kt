@@ -138,6 +138,7 @@ fun RecipesScreen(
                             AddMenu(onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink)
                             SortMenu(state.sort, viewModel::onSortChange)
                         }
+                        state.count?.let { LibraryCountText(it) }
                         Spacer(Modifier.height(12.dp))
                         SearchField(query = state.query, onQueryChange = viewModel::onQueryChange)
                         Spacer(Modifier.height(12.dp))
@@ -237,4 +238,16 @@ private fun DeleteBackground(dismissState: SwipeToDismissBoxState) {
     ) {
         Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.onError)
     }
+}
+
+/** "12 of 20 recipes", quietly under the title, on the free tier only (#107). */
+@Composable
+private fun LibraryCountText(count: LibraryCount) {
+    Text(
+        if (count.over) stringResource(R.string.recipes_count_over, count.recipes, count.max)
+        else stringResource(R.string.recipes_count, count.recipes, count.max),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 2.dp)
+    )
 }

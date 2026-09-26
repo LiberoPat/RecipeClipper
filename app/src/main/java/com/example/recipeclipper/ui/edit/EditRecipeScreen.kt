@@ -21,6 +21,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import com.example.recipeclipper.ui.common.LibraryFullDialog
+import com.example.recipeclipper.ui.common.noticeMessage
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +52,9 @@ fun EditRecipeScreen(
 
     LaunchedEffect(state.savedId) {
         state.savedId?.let(onSaved)
+    }
+    if (state.libraryFull) {
+        LibraryFullDialog(onUnlock = viewModel::onUnlock, onDismiss = viewModel::onLibraryFullDismiss)
     }
 
     RecipeClipperTheme {
@@ -98,6 +103,7 @@ private fun EditFields(state: EditRecipeUiState, onChange: (RecipeDraft) -> Unit
     if (state.saveFailed) {
         Message(stringResource(R.string.edit_error_save_failed))
     }
+    state.unlockNotice?.let { Message(stringResource(it.noticeMessage())) }
     Field(stringResource(R.string.edit_label_name), draft.name, { onChange(draft.copy(name = it)) })
     Field(stringResource(R.string.edit_label_yield), draft.yield, { onChange(draft.copy(yield = it)) })
     Field(stringResource(R.string.edit_label_prep), draft.prepTime, { onChange(draft.copy(prepTime = it)) })

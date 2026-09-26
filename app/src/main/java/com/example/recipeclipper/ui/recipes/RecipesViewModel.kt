@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import com.example.recipeclipper.data.LibraryPolicy
+import com.example.recipeclipper.data.model.LibraryLimit
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -34,17 +36,25 @@ data class RecipesUiState(
     val recipes: List<RecipeSummary>? = null,
     val pendingDeletes: List<String> = emptyList(),
     val sort: RecipeSort = RecipeSort.RECENTLY_VIEWED,
-    val linkInput: String? = null
+    val linkInput: String? = null,
+    /** The free library's quiet count (#107); null when there is no limit to count against. */
+    val count: LibraryCount? = null
 ) {
     /** The dialog's Open is enabled only for what Home's link field would open. */
     val canOpenLink: Boolean get() = linkInput?.let(UrlInput::normalize) != null
+}
+
+/** [recipes] saved of the free tier's [max]; a library from before the limit can be over it. */
+data class LibraryCount(val recipes: Int, val max: Int) {
+    val over: Boolean get() = recipes > max
 }
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class RecipesViewModel @Inject constructor(
     private val repository: RecipeRepository,
-    private val preferences: AppPreferences
+    private val preferences: AppPreferences,
+    library: LibraryPolicy = LibraryPolicy.HistoryOnly
 ) : ViewModel() {
 
     // The query box's live value. Kept in a StateFlow, not `remember`, so it survives rotation.
@@ -67,10 +77,18 @@ class RecipesViewModel @Inject constructor(
         .flatMapLatest { repository.observeHistory(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    // Only on the free tier: unlocked, or with the flag off, there is nothing to count against.
+    private val count = combine(repository.observeCount(), library.limits) { saved, limit ->
+        (limit as? LibraryLimit.Free)?.let { LibraryCount(saved, it.max) }
+    }
+
     val uiState: StateFlow<RecipesUiState> =
-        combine(query, recipes, pendingDeletes, sort, linkInput) { q, found, pending, order, link ->
-            RecipesUiState(q, found?.let { sorted(it, order) }, pending, order, link)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipesUiState())
+        combine(
+            combine(query, recipes, pendingDeletes, sort, linkInput) { q, found, pending, order, link ->
+                RecipesUiState(q, found?.let { sorted(it, order) }, pending, order, link)
+            },
+            count
+        ) { state, saved -> state.copy(count = saved) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipesUiState())
 
     fun onQueryChange(text: String) {
         query.value = text

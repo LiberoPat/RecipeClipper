@@ -1851,7 +1851,8 @@ Part of #99: the model writes words, code owns every number.
   another language, are pruned when it opens. A version that failed the check is saved as
   failed (null) so it isn't asked for again; a model that couldn't answer ("not now": busy, in
   the background, downloading) saves nothing and is asked next time. Derived data: not in the
-  export file, and it cascades with its recipe.
+  export file, and it cascades with its recipe. A recipe the free tier didn't keep (#107) has no
+  row to cache against, so it shows as written; Unlock keeps it and its short steps follow.
 - **Settings → Steps → "Chef mode"** (a switch; the section only with the `chefMode` flag, off in
   both builds). Where the phone can't, the switch is disabled with one line saying why (can't,
   Apple Intelligence off, model not ready); where it can, a line names the recipe languages it
@@ -1957,3 +1958,76 @@ then gets the batter's butter, since the step's words can't tell the two uses ap
   by name, default Recently viewed, an unknown name read as the default.
   It is a view preference, so it is not in the export file and not in
   Settings.
+
+## The free tier and the unlock (#107)
+
+Owner's decision (2026-09-25, rules approved as proposed): the free app keeps
+20 recipes; a one-time purchase unlocks unlimited ones. Behind the `freeTier`
+flag, off in debug and release until the store products exist; with it off
+the app is exactly as before (the history cap of 50 unprotected recipes).
+
+- **Every recipe counts toward 20:** shared, typed in, clipped, in a list,
+  planned. What changes is only which one may be removed to make room.
+- **Capture stays frictionless.** Sharing always opens the recipe. When a new
+  recipe arrives and the library already holds 20 or more, the oldest-viewed
+  recipe that is in no list, not planned for today or later, in no saved menu
+  and not typed in is deleted first, in the upsert's transaction (the same
+  protections as the old cull; menus were kept because a menu would lose the
+  recipe). Re-sharing or opening a recipe already here removes nothing.
+- **All protected: shown, not kept.** A shared recipe opens with a quiet
+  "Not saved" snackbar (Android) or bar (iOS) offering Unlock; lists, notes,
+  Edit, Delete and the plan actions are hidden, since there is no row. A
+  successful unlock then saves it (`RecipeRepository.keep`). A typed-in
+  recipe or a clip isn't shown unsaved, which would throw the typing away: the
+  editor or clip stays open behind a "Your library is full" dialog with
+  Unlock; after unlocking, Save runs again. On iOS the share extension, which
+  can't sell anything, says so on its card and points to the app.
+- **Grandfathering: the library never shrinks because of the limit.** The
+  free tier removes at most one recipe per recipe added, and only when the
+  count is already at or over 20, so a phone that holds 50 when the flag
+  turns on keeps 50: each new one replaces its oldest unprotected recipe, and
+  the count only falls below 50 when the user deletes. No "grandfathered"
+  column was needed, and nothing is removed at the moment the limit arrives.
+  The Recipes screen says "50 recipes, more than the free 20" rather than
+  "50 of 20".
+- **Unlocked means nothing is ever removed automatically**, not even the old
+  history clean-up: the owner said "unlimited recipes", and quietly deleting
+  unlisted ones would contradict that. Deleting stays the user's act.
+- **Backup import** follows the same rules: unlocked, everything comes in; on
+  the free tier, protected recipes (listed, planned, in a menu, typed in)
+  always come in and the rest only fill free places under 20, counting every
+  recipe already here. The summary says the free app keeps 20.
+- **The unlock:** one non-consumable product, `unlimited_recipes`, on both
+  stores (the owner creates it: App Store Connect in #18, Play Console in
+  #22; price is the owner's call, the StoreKit file's 2.99 is a placeholder).
+  Restorable: Settings' "Restore purchase" (iOS `AppStore.sync()`, Android a
+  fresh `queryPurchasesAsync`); both also re-check at every launch, which
+  picks up refunds and purchases made on another device.
+  - Android: Google Play Billing Library 9.1.0 (`billing-ktx`, the one new
+    dependency), in `PlayBillingEntitlements`. Purchases are acknowledged
+    (Play refunds unacknowledged ones after three days); pending purchases
+    (cash, slow cards) show as pending. Play's sheet needs the resumed
+    Activity, tracked from the Application's lifecycle callbacks so no
+    ViewModel holds one.
+  - iOS: StoreKit 2 in `StoreKitEntitlements`, listening to
+    `Transaction.updates` (Ask to Buy approvals, refunds). Locally the scheme
+    runs against `ios/RecipeClipper.storekit`.
+  - Both cache the last answer (Android its own `entitlements` prefs file,
+    not in the backup include list; iOS `UserDefaults`), so a share that
+    cold-starts the app isn't judged "locked" while the store is still being
+    asked.
+- **Seams:** `Entitlements` (data layer; fakes in tests) and the limit as a
+  value, `LibraryLimit` (`History(50)`, `Free(20)`, `Unlimited`), chosen by
+  `LibraryPolicy` from the flag, the store and Developer settings' "Unlocked"
+  override (stored beside the flag overrides as `override.unlocked`, so Reset
+  clears it). ViewModels never import Billing or StoreKit. On iOS the
+  repositories read the limit from the App Group suite (`library_limit`),
+  which `LibraryPolicy` keeps current, because the share extension saves in
+  its own process and sees neither the flags nor StoreKit.
+- **What can't be tested here:** a real purchase needs the store products
+  and accounts (#18, #22). Android's Billing code is only compiled and
+  exercised through the fake; iOS runs `StoreKitEntitlementsTests` against the
+  StoreKit file (`SKTestSession`: the price, an owned purchase found and
+  cached, then lost), and the purchase sheet is tried by hand in the simulator. Play's own
+  test tracks and license testers are the next step once the Play Console
+  product exists.

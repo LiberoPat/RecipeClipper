@@ -125,7 +125,11 @@ enum Strings {
         if s.recipesAlreadyHere > 0 && (s.recipesAdded > 0 || s.listsAdded > 0) {
             parts.append(String(localized: "backup_already_here \(s.recipesAlreadyHere)"))
         }
-        if s.recipesSkipped > 0 {
+        if s.recipesSkipped > 0, let free = s.freeLimit {
+            parts.append(s.recipesSkipped == 1
+                ? String(localized: "backup_skipped_free_one \(free)")
+                : String(localized: "backup_skipped_free_other \(s.recipesSkipped) \(free)"))
+        } else if s.recipesSkipped > 0 {
             parts.append(s.recipesSkipped == 1
                 ? String(localized: "backup_skipped_one \(historyLimit)")
                 : String(localized: "backup_skipped_other \(s.recipesSkipped) \(historyLimit)"))
@@ -162,6 +166,32 @@ enum Strings {
     static var shareSaved: String { String(localized: "share_saved") }
     static var shareOpenToCook: String { String(localized: "share_open_to_cook") }
     static var shareNoLink: String { String(localized: "share_no_link") }
+    static var shareUnlockHint: String { String(localized: "share_unlock_hint") }
+
+    // The free tier and the unlock (#107). The number is the free limit.
+    static var unlock: String { String(localized: "unlock") }
+    static func unlockPrice(_ price: String) -> String { String(localized: "unlock_price \(price)") }
+    static var unlimitedTitle: String { String(localized: "unlimited_title") }
+    static var unlimitedBody: String { String(localized: "unlimited_body \(LibraryLimit.freeRecipes)") }
+    static var unlimitedRestore: String { String(localized: "unlimited_restore") }
+    static var unlimitedUnlocked: String { String(localized: "unlimited_unlocked") }
+    static var unlimitedPending: String { String(localized: "unlimited_pending") }
+    static var recipeNotKept: String { String(localized: "recipe_not_kept \(LibraryLimit.freeRecipes)") }
+    static var libraryFullTitle: String { String(localized: "library_full_title") }
+    static var libraryFullBody: String { String(localized: "library_full_body \(LibraryLimit.freeRecipes)") }
+    static func recipesCount(_ n: Int, of max: Int) -> String {
+        n > max ? String(localized: "recipes_count_over \(n) \(max)") : String(localized: "recipes_count \(n) \(max)")
+    }
+
+    /// The words for a purchase or restore that didn't simply unlock.
+    static func unlockNotice(_ outcome: PurchaseOutcome) -> String {
+        switch outcome {
+        case .pending: String(localized: "unlimited_pending")
+        case .nothingToRestore: String(localized: "unlock_nothing")
+        case .unlocked: String(localized: "unlimited_unlocked")
+        case .cancelled, .failed: String(localized: "unlock_failed")
+        }
+    }
     static var done: String { String(localized: "action_done") }
     static var close: String { String(localized: "action_close") }
 

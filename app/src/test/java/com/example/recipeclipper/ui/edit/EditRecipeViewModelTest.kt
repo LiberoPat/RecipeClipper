@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeDraft
+import com.example.recipeclipper.data.PurchaseOutcome
+import com.example.recipeclipper.fake.FakeEntitlements
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -71,6 +73,39 @@ class EditRecipeViewModelTest {
 
         assertEquals("Toast", repository.addManualCalls.single().name)
         assertEquals(9L, vm.uiState.value.savedId)
+    }
+
+    @Test fun `a full library keeps the editor open with Unlock, which then saves (#107)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { addManualResult = soup.copy(id = 0L) }
+            val entitlements = FakeEntitlements()
+            val vm = EditRecipeViewModel(SavedStateHandle(), repository, entitlements)
+            vm.onDraftChange(RecipeDraft(name = "Toast", instructionsText = "Toast the bread."))
+            vm.onSave()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.libraryFull)
+            assertNull(vm.uiState.value.savedId)
+
+            repository.addManualResult = soup.copy(id = 9L)
+            vm.onUnlock()
+            advanceUntilIdle()
+            assertEquals(1, entitlements.purchases)
+            assertFalse(vm.uiState.value.libraryFull)
+            assertEquals(9L, vm.uiState.value.savedId)
+            assertEquals(2, repository.addManualCalls.size)
+        }
+
+    @Test fun `a pending purchase from the editor says so and saves nothing`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { addManualResult = soup.copy(id = 0L) }
+        val entitlements = FakeEntitlements().apply { purchaseOutcome = PurchaseOutcome.PENDING }
+        val vm = EditRecipeViewModel(SavedStateHandle(), repository, entitlements)
+        vm.onDraftChange(RecipeDraft(name = "Toast", instructionsText = "Toast the bread."))
+        vm.onSave()
+        advanceUntilIdle()
+        vm.onUnlock()
+        advanceUntilIdle()
+        assertEquals(PurchaseOutcome.PENDING, vm.uiState.value.unlockNotice)
+        assertEquals(1, repository.addManualCalls.size)
     }
 
     @Test fun `an invalid draft is not saved and the rule is shown`() = runTest(mainDispatcherRule.dispatcher) {

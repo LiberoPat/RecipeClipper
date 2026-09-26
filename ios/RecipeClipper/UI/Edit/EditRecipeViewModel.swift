@@ -14,6 +14,10 @@ struct EditRecipeUiState: Equatable {
     /// The recipe to edit is gone (deleted elsewhere).
     var missing = false
     var savedId: Int64?
+    /// A new recipe couldn't be saved: the free library is full and all protected (#107).
+    var libraryFull = false
+    /// A purchase from that prompt that is pending or failed; shown until the next edit.
+    var unlockNotice: PurchaseOutcome?
 
     init(isNew: Bool) {
         self.isNew = isNew
@@ -30,8 +34,10 @@ final class EditRecipeViewModel {
     private(set) var uiState: EditRecipeUiState
     @ObservationIgnored private let recipeId: Int64?
     @ObservationIgnored private let repository: RecipeRepository
+    @ObservationIgnored private let entitlements: Entitlements
 
-    init(recipeId: Int64?, repository: RecipeRepository) {
+    init(recipeId: Int64?, repository: RecipeRepository, entitlements: Entitlements = UnavailableEntitlements()) {
+        self.entitlements = entitlements
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.repository = repository
         uiState = EditRecipeUiState(isNew: self.recipeId == nil)
@@ -52,7 +58,24 @@ final class EditRecipeViewModel {
     func onDraftChange(_ draft: RecipeDraft) {
         uiState.draft = draft
         uiState.saveFailed = false
+        uiState.unlockNotice = nil
     }
+
+    /// Unlock from the full-library prompt (#107), then save the recipe as typed.
+    func onUnlock() {
+        uiState.libraryFull = false
+        Task { [weak self, entitlements] in
+            let outcome = await entitlements.purchase()
+            guard let self else { return }
+            if outcome == .unlocked {
+                onSave()
+            } else if outcome.needsNotice {
+                uiState.unlockNotice = outcome
+            }
+        }
+    }
+
+    func onLibraryFullDismiss() { uiState.libraryFull = false }
 
     func onSave() {
         let state = uiState
@@ -72,7 +95,9 @@ final class EditRecipeViewModel {
             }
             guard let self else { return }
             uiState.saving = false
-            if let saved {
+            if let saved, saved.id == 0 {
+                uiState.libraryFull = true
+            } else if let saved {
                 uiState.savedId = saved.id
             } else {
                 uiState.saveFailed = true

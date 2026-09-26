@@ -133,7 +133,15 @@ struct BackupDao {
         try db.queryOne("SELECT COALESCE(MAX(sortOrder), -1) FROM lists") { $0.int(0) } ?? -1
     }
 
-    func importBackup(_ backup: Backup, historyLimit: Int, today: Int64?, newUid: () -> String) throws -> ImportSummary {
+    func importBackup(_ backup: Backup, limit: LibraryLimit, today: Int64?, newUid: () -> String) throws -> ImportSummary {
+        // Unlimited (#107) leaves nothing out: every recipe comes in.
+        let historyLimit: Int = switch limit {
+        case .history(let keep): keep
+        case .free(let max): max
+        case .unlimited: Int.max
+        }
+        var countsEveryRecipe = false
+        if case .free = limit { countsEveryRecipe = true }
         let plan = BackupMerger.plan(
             backup,
             existingRecipes: try existingRecipes(),
@@ -148,7 +156,8 @@ struct BackupDao {
             existingPlanUids: try existingPlanUids(),
             today: today,
             existingMenuUids: try existingMenuUids(),
-            existingMenuEntryUids: try existingMenuEntryUids()
+            existingMenuEntryUids: try existingMenuEntryUids(),
+            countsEveryRecipe: countsEveryRecipe
         )
 
         let recipes = RecipeDao(db: db)

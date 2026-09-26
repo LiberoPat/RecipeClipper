@@ -19,7 +19,10 @@ enum class Flag(val key: String) {
     CHEF_MODE("chefMode"),
 
     /** Ingredient amounts inside steps (#101): the Settings switch and what it shows. */
-    AMOUNTS_IN_STEPS("amountsInSteps");
+    AMOUNTS_IN_STEPS("amountsInSteps"),
+
+    /** The free tier (#107): 20 recipes, and the one-time unlock for unlimited ones. */
+    FREE_TIER("freeTier");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
@@ -119,6 +122,24 @@ class FeatureFlags(
 
     fun reset() = store.clear()
 
+    /**
+     * Developer settings' "Unlocked" (#107): the unlock counts as bought, to test the unlimited
+     * library without a store. Kept in the same store under a key that is no flag's, so Reset
+     * clears it too.
+     */
+    val unlockedOverride: Boolean get() = store.overrides.value[UNLOCKED_OVERRIDE] == true
+
+    /** [unlockedOverride], then every change. */
+    val unlockedOverrides: Flow<Boolean> =
+        store.overrides.map { it[UNLOCKED_OVERRIDE] == true }.distinctUntilChanged()
+
+    fun setUnlockedOverride(on: Boolean) = store.setOverride(UNLOCKED_OVERRIDE, if (on) true else null)
+
     private fun valuesOf(overrides: Map<String, Boolean>) =
         FlagValues(Flag.entries.filter { overrides[it.key] ?: default(it) }.toSet())
+
+    companion object {
+        /** The store key of [unlockedOverride]; the same on iOS. */
+        const val UNLOCKED_OVERRIDE = "override.unlocked"
+    }
 }

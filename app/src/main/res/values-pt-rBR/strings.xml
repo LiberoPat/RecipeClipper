@@ -432,4 +432,24 @@
         <item quantity="many">%1$d de refeições adicionadas de “%2$s”</item>
         <item quantity="other">%1$d refeições adicionadas de “%2$s”</item>
     </plurals>
+    <!-- The free tier and the unlock (#107) -->
+    <string name="unlock">Desbloquear</string>
+    <string name="unlock_price">Desbloquear por %1$s</string>
+    <string name="unlimited_title">Receitas ilimitadas</string>
+    <string name="unlimited_body">O app gratuito guarda %1$d receitas. Uma compra única guarda todas as receitas que você adicionar.</string>
+    <string name="unlimited_restore">Restaurar compra</string>
+    <string name="unlimited_unlocked">Desbloqueado: todas as receitas são guardadas.</string>
+    <string name="unlimited_pending">Compra pendente: o desbloqueio acontece quando o pagamento for concluído.</string>
+    <string name="unlock_failed">Não foi possível acessar a loja. Tente de novo mais tarde.</string>
+    <string name="unlock_nothing">Nenhuma compra para restaurar nesta conta.</string>
+    <string name="recipe_not_kept">Não salva: suas %1$d receitas estão todas em listas, planos ou foram digitadas por você.</string>
+    <string name="library_full_title">Sua biblioteca está cheia</string>
+    <string name="library_full_body">O app gratuito guarda %1$d receitas, e as suas estão todas em listas, planos ou foram digitadas por você. Desbloqueie receitas ilimitadas ou exclua uma para abrir espaço.</string>
+    <string name="recipes_count">%1$d de %2$d receitas</string>
+    <string name="recipes_count_over">%1$d receitas, mais que as %2$d gratuitas</string>
+    <plurals name="backup_skipped_free">
+        <item quantity="one">%1$d receita antiga sem lista não foi adicionada: o app gratuito guarda %2$d receitas.</item>
+        <item quantity="many">%1$d de receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
+        <item quantity="other">%1$d receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
+    </plurals>
 </resources>

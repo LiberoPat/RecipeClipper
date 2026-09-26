@@ -6,7 +6,10 @@ import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.BackupFiles
 import com.example.recipeclipper.data.BackupRepository
 import com.example.recipeclipper.data.ChefSupport
+import com.example.recipeclipper.data.Entitlements
+import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.ShortStepRepository
+import com.example.recipeclipper.data.needsNotice
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ImportSummary
@@ -20,6 +23,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -55,10 +59,25 @@ data class SettingsUiState(
     /** Chef mode as saved: short steps written on the device. */
     val chefMode: Boolean = false,
     /** What this phone can do, once asked; null until then. The switch works only when Available. */
-    val chefSupport: ChefSupport? = null
+    val chefSupport: ChefSupport? = null,
+    /** The "Unlimited recipes" row (#107); null while the `freeTier` flag is off. */
+    val unlock: UnlockRow? = null,
+    /** A purchase or restore that didn't simply unlock; shown until the next one starts. */
+    val unlockNotice: PurchaseOutcome? = null
 ) {
     val chefModeAvailable: Boolean get() = chefSupport is ChefSupport.Available
 }
+
+/**
+ * [unlocked] counts Developer settings' override too, so testing sees the unlocked row.
+ * [busy] while the store's sheet or a restore is under way, so the buttons can't be doubled.
+ */
+data class UnlockRow(
+    val unlocked: Boolean,
+    val pending: Boolean = false,
+    val price: String? = null,
+    val busy: Boolean = false
+)
 
 /**
  * The "Your recipes" section: export and import (#26). One at a time; the screen shows the
@@ -96,7 +115,9 @@ class SettingsViewModel @Inject constructor(
     // Last and optional, so a test that doesn't care builds the screen without it (no Pantry section).
     private val featureFlags: FeatureFlags? = null,
     // Chef mode (#100); without it the Steps section says the phone can't.
-    private val shortSteps: ShortStepRepository? = null
+    private val shortSteps: ShortStepRepository? = null,
+    // The free tier's store (#107); pass it by name.
+    private val entitlements: Entitlements = Entitlements.Unavailable
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
@@ -124,6 +145,14 @@ class SettingsViewModel @Inject constructor(
                     if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
                 }
             }
+            viewModelScope.launch {
+                combine(flags.values, flags.unlockedOverrides, entitlements.state) { values, override, store ->
+                    if (!values.isOn(Flag.FREE_TIER)) null
+                    else UnlockRow(store.unlocked || override, store.pending, store.price)
+                }.collect { row ->
+                    _uiState.update { it.copy(unlock = row?.copy(busy = unlockBusy)) }
+                }
+            }
         }
     }
 
@@ -143,6 +172,31 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(chefMode = enabled) }
     }
 
+    // A purchase or restore is under way; kept apart so a store update can't clear it.
+    private var unlockBusy = false
+
+    /** "Unlock" (#107): the store's purchase sheet. */
+    fun onUnlock() = runUnlock { entitlements.purchase() }
+
+    /** "Restore purchase" (#107): asks the store for this account's purchase again. */
+    fun onRestore() = runUnlock { entitlements.restore() }
+
+    private fun runUnlock(action: suspend () -> PurchaseOutcome) {
+        if (unlockBusy) return
+        _uiState.update { it.copy(unlockNotice = null) }
+        setUnlockBusy(true)
+        viewModelScope.launch {
+            val outcome = action()
+            setUnlockBusy(false)
+            if (outcome.needsNotice) _uiState.update { it.copy(unlockNotice = outcome) }
+        }
+    }
+
+    private fun setUnlockBusy(busy: Boolean) {
+        unlockBusy = busy
+        _uiState.update { it.copy(unlock = it.unlock?.copy(busy = busy)) }
+    }
+
     /** The preferences' part of the state; the rest is this screen's own and carries over. */
     private fun AppSettings.toUiState(previous: SettingsUiState? = null) = SettingsUiState(
         unitSystem, convertLiquids, temperatureUnit, darkWhileCooking,
@@ -155,7 +209,9 @@ class SettingsViewModel @Inject constructor(
         appVersion = appInfo.appVersion,
         showsChefMode = previous?.showsChefMode ?: (featureFlags?.isOn(Flag.CHEF_MODE) ?: false),
         chefMode = chefMode,
-        chefSupport = previous?.chefSupport
+        chefSupport = previous?.chefSupport,
+        unlock = previous?.unlock,
+        unlockNotice = previous?.unlockNotice
     )
 
     // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.

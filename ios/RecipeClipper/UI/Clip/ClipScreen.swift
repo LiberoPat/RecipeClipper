@@ -80,6 +80,10 @@ struct ClipScreen: View {
         .onChange(of: state.savedRecipeId) { _, id in
             if let id { onSaved(id) }
         }
+        .libraryFullAlert(
+            isPresented: Binding(get: { vm.uiState.libraryFull }, set: { if !$0 { vm.onLibraryFullDismiss() } }),
+            onUnlock: vm.onUnlock
+        )
     }
 
     @ViewBuilder
@@ -96,7 +100,7 @@ struct ClipScreen: View {
                 vm.onDiscardDraft()
                 vm.onNoticeShown(notice.serial)
             }
-        case .saveFailed:
+        case .saveFailed, .unlock:
             Snackbar(message: text, actionLabel: Strings.cancel) { vm.onNoticeShown(notice.serial) }
         }
     }

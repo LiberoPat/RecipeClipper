@@ -146,4 +146,18 @@ class FakeRecipeRepository : RecipeRepository {
      */
     override fun observeRecent(limit: Int): Flow<List<RecipeSummary>> =
         recent.map { it.take(limit) }
+
+    /** What [observeCount] emits (#107). */
+    val count = MutableStateFlow(0)
+
+    override fun observeCount(): Flow<Int> = count
+
+    /** Staged answer for [keep]; null answers Success with the recipe given id 1. */
+    var keepResult: ParseResult? = null
+    val keepCalls = mutableListOf<Recipe>()
+
+    override suspend fun keep(recipe: Recipe): ParseResult {
+        keepCalls += recipe
+        return keepResult ?: ParseResult.Success(recipe.copy(id = 1))
+    }
 }

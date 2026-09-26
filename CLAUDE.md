@@ -38,7 +38,8 @@ fix it in place rather than appending an update.
 
 Built on both platforms: share → parse → show; the Recipes library (#102:
 automatic history capped at 50, search, sort, delete with undo, + to type a
-recipe or paste a link); lists and the save-to-list sheet; serving
+recipe or paste a link); the free tier (20 recipes) and its one-time unlock,
+behind the `freeTier` flag (#107); lists and the save-to-list sheet; serving
 scaling; unit and oven-temperature conversion; Settings; cook mode with step
 timers, with cook progress and servings saved and background timer alerts;
 sharing a recipe out as text; failure handling and offline; the microdata
@@ -89,7 +90,8 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
 di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule
 data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository, PantryRepository
-               (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests)
+               (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests),
+               Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
   remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
@@ -99,7 +101,7 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
                TrailingAmount (name-first lines: Japanese), StepAmounts (amounts inside steps, #101),
                ClipSelection, ClipDraft,
-               PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal),
+               PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal), LibraryLimit (#107),
                Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
                Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy)
 ui/            navigation, home, recipes (the library), recipe, clip, edit, savetolist, lists, listdetail,
@@ -169,9 +171,19 @@ Decisions, not suggestions. Don't relitigate them in code.
 - **Capture is frictionless.** Sharing a link parses and shows it. No save
   prompt. On iOS the share extension parses and saves it, then shows a small
   "Saved" card that dismisses itself; the recipe tops "Continue cooking".
-- **History is automatic,** newest first, capped at the 50 most recently
-  viewed; it lives in the Recipes library (#102), which replaced the History
-  screen.
+- **History is automatic,** newest first, in the Recipes library (#102,
+  which replaced the History screen). With `freeTier` off: capped at the 50
+  most recently viewed unprotected recipes.
+- **The free tier keeps 20 recipes** (#107, behind `freeTier`; details in
+  `docs/decisions.md`). Every recipe counts (shared, typed in, in a list,
+  planned). Sharing always opens the recipe. Adding one to a library at or over
+  20 first removes the oldest-viewed recipe in no list, not planned today or
+  later, in no menu and not typed in: one out for one in, so the library never
+  shrinks because of the limit and a library over 20 keeps everything. None
+  removable: shown but not kept, with Unlock (a typed or clipped one keeps its
+  editor open behind a "library full" dialog). **Unlocked** (one-time
+  non-consumable `unlimited_recipes`, restorable): nothing is ever removed
+  automatically. No save prompt otherwise.
 - **Lists are deliberate:** adding to one is an explicit second act.
   Favorites is a list like Lunch, Dinner, Desserts, Breakfast and Snacks, not
   a separate tier.
@@ -183,7 +195,7 @@ Decisions, not suggestions. Don't relitigate them in code.
   table; there's no column. A recipe in any list is never culled, and
   neither is one planned for today or later (#49) or in a saved menu
   (#52), or typed in by hand (#102: no link could bring it back); none of
-  these counts toward the 50.
+  these counts toward the 50 (on the free tier every recipe counts, #107).
 - **Leaving a list is a demotion, not a deletion.** The recipe stays in
   history and becomes cullable. Deleting is a separate, explicit action with
   its own confirmation.
@@ -237,7 +249,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   behind the `amountsInSteps` flag, #101: rules in `docs/decisions.md`; "Chef mode", behind
   the `chefMode` flag, #100; each row shows with its own flag), Pantry ("Expiry reminders",
   only with the `mealPlan` flag; asks for notifications when turned on,
-  never at launch). Reached from the gear beside
+  never at launch), Unlimited recipes (only with `freeTier`: "Unlock for
+  <store price>" and "Restore purchase", or the sentence "Unlocked: every
+  recipe is kept."; Developer settings has an "Unlocked" override). Reached from the gear beside
   the Home title, on every tab of the shell below. It could now open from
   elsewhere too (the recipe screen follows `AppPreferences.settings`), but
   adding an entry point is the owner's call.
@@ -296,7 +310,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Recipes** (#102): every recipe, newest viewed first; a + (Type a recipe:
   the editor; Paste a link: a dialog whose Go enables only for a link, then
   the import) and ⋮ sort (Recently viewed, Name, Date added; radio rows, in
-  memory) beside the title; search; swipe to delete.
+  memory) beside the title; search; swipe to delete. On the free tier a
+  quiet "12 of 20 recipes" under the title (#107).
 - **Deleting a recipe** is a hard delete: a Recipes swipe with an undo
   snackbar (a burst of swipes shares one snackbar and one all-or-nothing
   undo), or the recipe screen's overflow menu with a confirmation dialog (no
@@ -332,8 +347,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Re-sharing upserts:** same id, list membership, note and chosen servings,
   refreshed content, bumped `lastViewedAt`, ticked ingredients kept only if
   the ingredient list is unchanged, cook progress only if the steps are. In
-  the same transaction, recipes in no list beyond the 50 most recently viewed
-  are deleted. Opening from history counts as a view.
+  the same transaction the `LibraryLimit` applies (#107): the 50 cull with
+  `freeTier` off, the free tier's one-for-one for a new recipe, nothing when
+  unlocked. Opening from history counts as a view.
 - **The user's version is never refreshed** (#29, #37).
   `contentOrigin` (`PARSED` | `EDITED` | `CLIPPED` | `MANUAL`, by name; an
   unknown name reads as `EDITED`) and `editedAt` (the last saved edit). Anything
@@ -402,7 +418,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored). Import
   merges, never replaces or deletes: recipes by cleaned `sourceUrl`,
   Favorites by `isFavorites`, other lists by uid then trimmed
-  case-insensitive name; unlisted recipes only fill free history slots;
+  case-insensitive name; unlisted recipes only fill free history slots (free
+  tier: places under 20, counting every recipe; unlocked: all come in);
   pantry items by uid then name and language (what's here stands); grocery
   items by uid; meal types by `builtInKey`, else uid, else user-type name;
   planned meals by uid, a recipe's only if its recipe is here after the import;

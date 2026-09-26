@@ -25,6 +25,10 @@ final class AppContainer {
     let featureFlags: FeatureFlags
     /// Chef mode's short steps (#100); nil (tests) leaves Chef mode unsupported.
     let shortStepRepository: ShortStepRepository?
+    /// The one-time unlock (#107): StoreKit in the live app, none in tests.
+    let entitlements: Entitlements
+    /// Which library limit applies (#107), mirrored for the repositories and the extension.
+    let libraryPolicy: LibraryPolicy
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -51,7 +55,9 @@ final class AppContainer {
         sharedDatabase: AppDatabase? = nil,
         featureFlags: FeatureFlags? = nil,
         notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true),
-        shortStepRepository: ShortStepRepository? = nil
+        shortStepRepository: ShortStepRepository? = nil,
+        entitlements: Entitlements? = nil,
+        libraryMirror: DefaultsLibraryLimit? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -72,6 +78,8 @@ final class AppContainer {
         // Unless given a store, overrides last only for this run (unit tests).
         self.featureFlags = featureFlags ?? FeatureFlags(store: MemoryFeatureFlagStore())
         self.shortStepRepository = shortStepRepository
+        self.entitlements = entitlements ?? UnavailableEntitlements()
+        libraryPolicy = LibraryPolicy(flags: self.featureFlags, entitlements: self.entitlements, mirror: libraryMirror)
     }
 
     /// Called when the app comes to the foreground. The share extension saves recipes into the
@@ -111,16 +119,19 @@ final class AppContainer {
             fatalError("Couldn't open the recipe database: \(error)")
         }
         let defaults = UserDefaults(suiteName: testing ? "RecipeClipperTestHost" : AppGroup.identifier) ?? .standard
+        // The limit (#107) as the share extension reads it too, from the App Group suite.
+        let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
+        let storeKit = testing ? nil : StoreKitEntitlements()
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
                 db: database, source: BlogRecipeSource(), clock: clock,
-                renderedPages: WebViewRenderedPageSource()
+                renderedPages: WebViewRenderedPageSource(), library: libraryLimit
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock, library: libraryLimit),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             connectivity: PathConnectivity(),
@@ -132,9 +143,13 @@ final class AppContainer {
             notificationPermission: testing ? FixedNotificationPermission(granted: true) : SystemNotificationPermission(),
             shortStepRepository: DefaultShortStepRepository(
                 db: database, shortener: FoundationModelsStepShortener(), clock: clock
-            )
+            ),
+            entitlements: storeKit,
+            libraryMirror: libraryLimit
         )
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
+        storeKit?.start()
+        container.libraryPolicy.startMirroring()
         return container
     }
 
@@ -143,7 +158,7 @@ final class AppContainer {
     }
 
     func makeRecipesViewModel() -> RecipesViewModel {
-        RecipesViewModel(repository: recipeRepository, preferences: preferences)
+        RecipesViewModel(repository: recipeRepository, preferences: preferences, library: libraryPolicy)
     }
 
     func makeRecipeViewModel(
@@ -153,7 +168,7 @@ final class AppContainer {
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
             openInCookMode: openInCookMode, plannedServings: plannedServings,
-            shortSteps: shortStepRepository, flags: featureFlags
+            shortSteps: shortStepRepository, flags: featureFlags, entitlements: entitlements
         )
     }
 
@@ -188,11 +203,11 @@ final class AppContainer {
     }
 
     func makeClipViewModel(url: String) -> ClipViewModel {
-        ClipViewModel(url: url, repository: recipeRepository, drafts: clipDrafts)
+        ClipViewModel(url: url, repository: recipeRepository, drafts: clipDrafts, entitlements: entitlements)
     }
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {
-        EditRecipeViewModel(recipeId: recipeId, repository: recipeRepository)
+        EditRecipeViewModel(recipeId: recipeId, repository: recipeRepository, entitlements: entitlements)
     }
 
     func makeSaveToListViewModel() -> SaveToListViewModel {
@@ -203,7 +218,7 @@ final class AppContainer {
         SettingsViewModel(
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
             flags: featureFlags, notificationPermission: notificationPermission,
-            shortSteps: shortStepRepository
+            shortSteps: shortStepRepository, entitlements: entitlements
         )
     }
 

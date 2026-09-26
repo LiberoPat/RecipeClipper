@@ -75,4 +75,28 @@ final class RecipeChefModeTests: XCTestCase {
         await settleMain()
         XCTAssertEqual(vm.uiState.content.success?.shortInstructions, [])
     }
+
+    /// A recipe the free tier didn't keep (#107) has no row to cache short steps against: it
+    /// shows as written, and Unlock keeps it and writes them.
+    func testARecipeNotKeptShowsAsWrittenUntilUnlockKeepsIt() async throws {
+        let model = model()
+        let (_, shortSteps) = try await makeShortStepRepository(recipe(), model: model)
+        let repository = FakeRecipeRepository()
+        var shown = recipe()
+        shown.id = 0
+        repository.importResult = .notKept(shown)
+        let flags = FeatureFlags(store: MemoryFeatureFlagStore())
+        flags.set(.chefMode, true)
+        let vm = RecipeViewModel(
+            recipeId: nil, url: shown.sourceUrl, repository: repository, preferences: FakeAppPreferences(chefMode: true),
+            clock: TestClock(), shortSteps: shortSteps, flags: flags, entitlements: FakeEntitlements()
+        )
+        await settleMain()
+        XCTAssertTrue(model.asked.isEmpty)
+        XCTAssertTrue(vm.uiState.content.success?.shortInstructions.allSatisfy { $0 == nil } ?? false)
+
+        vm.onUnlock()
+        await settleMain()
+        XCTAssertEqual(vm.uiState.content.success?.shortInstructions, [shortOven, nil])
+    }
 }

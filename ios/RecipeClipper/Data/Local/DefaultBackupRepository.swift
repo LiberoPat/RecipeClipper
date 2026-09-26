@@ -7,7 +7,10 @@ final class DefaultBackupRepository: BackupRepository {
     private let db: AppDatabase
     private let clock: Clock
 
-    init(db: AppDatabase, clock: Clock) {
+    private let library: LibraryLimitSource
+
+    init(db: AppDatabase, clock: Clock, library: LibraryLimitSource = FixedLibraryLimit()) {
+        self.library = library
         self.db = db
         self.clock = clock
     }
@@ -89,9 +92,10 @@ final class DefaultBackupRepository: BackupRepository {
         case .failure(let error): return .failure(error)
         }
         let today = PlanDays.today(millis: clock.now())
+        let limit = library.current()
         do {
             let summary = try await db.write { conn in
-                try BackupDao(db: conn).importBackup(backup, historyLimit: historyLimit, today: today) {
+                try BackupDao(db: conn).importBackup(backup, limit: limit, today: today) {
                     UUID().uuidString.lowercased()
                 }
             }

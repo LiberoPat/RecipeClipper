@@ -415,4 +415,23 @@
         <item quantity="one">%1$d Mahlzeit aus „%2$s“ hinzugefügt</item>
         <item quantity="other">%1$d Mahlzeiten aus „%2$s“ hinzugefügt</item>
     </plurals>
+    <!-- The free tier and the unlock (#107) -->
+    <string name="unlock">Freischalten</string>
+    <string name="unlock_price">Für %1$s freischalten</string>
+    <string name="unlimited_title">Unbegrenzte Rezepte</string>
+    <string name="unlimited_body">Die kostenlose App behält %1$d Rezepte. Mit einem einmaligen Kauf bleibt jedes Rezept, das du hinzufügst.</string>
+    <string name="unlimited_restore">Kauf wiederherstellen</string>
+    <string name="unlimited_unlocked">Freigeschaltet: Jedes Rezept bleibt.</string>
+    <string name="unlimited_pending">Kauf ausstehend: Er wird freigeschaltet, sobald die Zahlung durch ist.</string>
+    <string name="unlock_failed">Der Store ist nicht erreichbar. Versuch es später noch einmal.</string>
+    <string name="unlock_nothing">Für dieses Konto gibt es keinen Kauf zum Wiederherstellen.</string>
+    <string name="recipe_not_kept">Nicht gespeichert: Deine %1$d Rezepte sind alle in Listen, Plänen oder selbst eingegeben.</string>
+    <string name="library_full_title">Deine Sammlung ist voll</string>
+    <string name="library_full_body">Die kostenlose App behält %1$d Rezepte, und deine sind alle in Listen, Plänen oder selbst eingegeben. Schalte unbegrenzte Rezepte frei oder lösche eines, um Platz zu schaffen.</string>
+    <string name="recipes_count">%1$d von %2$d Rezepten</string>
+    <string name="recipes_count_over">%1$d Rezepte, mehr als die kostenlosen %2$d</string>
+    <plurals name="backup_skipped_free">
+        <item quantity="one">%1$d älteres Rezept ohne Liste wurde nicht hinzugefügt: Die kostenlose App behält %2$d Rezepte.</item>
+        <item quantity="other">%1$d ältere Rezepte ohne Liste wurden nicht hinzugefügt: Die kostenlose App behält %2$d Rezepte.</item>
+    </plurals>
 </resources>

@@ -31,6 +31,11 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  * builds too. A switch per flag in `shared/flags.json`, then "Reset to defaults". A change
  * applies at once; the meal-plan flag swaps the navigation graph, so it lands on Home.
  */
+/** Developer text, English by design, like the flags' descriptions. */
+private const val UNLOCKED_OVERRIDE_TITLE = "Unlocked"
+private const val UNLOCKED_OVERRIDE_DESCRIPTION =
+    "Counts the unlimited-recipes purchase as bought, with no store: needs freeTier on to show."
+
 @Composable
 fun DeveloperSettingsScreen(onBack: () -> Unit, viewModel: DeveloperSettingsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -67,6 +72,20 @@ fun DeveloperSettingsScreen(onBack: () -> Unit, viewModel: DeveloperSettingsView
                         description = details,
                         checked = row.on,
                         onCheckedChange = { viewModel.onFlagChange(row.flag, it) }
+                    )
+                }
+
+                // Not a flag: the unlock (#107) counted as bought, to test without a store.
+                item(key = "unlocked-override") {
+                    SwitchRow(
+                        title = UNLOCKED_OVERRIDE_TITLE,
+                        description = listOfNotNull(
+                            UNLOCKED_OVERRIDE_DESCRIPTION,
+                            stringResource(R.string.developer_flag_issue, 107),
+                            if (state.unlockedOverride) stringResource(R.string.developer_flag_changed) else null
+                        ).joinToString(" · "),
+                        checked = state.unlockedOverride,
+                        onCheckedChange = viewModel::onUnlockedOverrideChange
                     )
                 }
 

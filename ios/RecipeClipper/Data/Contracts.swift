@@ -6,8 +6,8 @@ import Foundation
 // (RecipeClipperTests/Fakes). Mirrors Android's RecipeRepository / ListRepository /
 // AppPreferences / Clock interfaces one to one.
 
-/// Everything shared lands in history, capped at this many recipes that are in no list.
-let historyLimit = 50
+/// While the free tier (#107) is off, history keeps this many unprotected recipes.
+let historyLimit = LibraryLimit.historyRecipes
 
 /// The current wall-clock time in epoch milliseconds. A seam so a test can line up timer
 /// deadlines with its own virtual time.
@@ -104,12 +104,20 @@ protocol RecipeRepository: AnyObject {
     /// whatever blocked a plain fetch). When given, it's parsed directly and the fetch is
     /// skipped; only if that page holds no recipe does the ordinary fetch (with its retry and
     /// rendered-browser fallback) run, exactly as if nothing had been given.
+    ///
+    /// A new link on a full free library (#107) whose recipes are all protected is shown but
+    /// not kept: `.notKept(recipe)`, with no id.
     func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult
+
+    /// Saves a recipe that was shown but not kept (#107), once there is room (after unlocking).
+    /// `.notKept` again if there still isn't.
+    func keep(_ recipe: Recipe) async -> ParseResult
 
     /// Saves a recipe the user clipped by hand from a page with no recipe data (#37), keyed on
     /// the cleaned `sourceUrl` like an import: a link seen before keeps its id, note and list
     /// membership, and its content is replaced by the clip. Counts as a view. Returns the saved
-    /// recipe, or `.error(.saveFailed)`.
+    /// recipe, or `.error(.saveFailed)`, or `.notKept` on a full library (#107), which the clip
+    /// screen doesn't leave.
     func saveClip(_ recipe: Recipe) async -> ParseResult
 
     /// "Update from source" (#29): fetches the recipe's link again and replaces the user's
@@ -123,6 +131,8 @@ protocol RecipeRepository: AnyObject {
     func saveEdit(id: Int64, draft: RecipeDraft) async -> Recipe?
 
     /// Saves a recipe typed in by hand (MANUAL, with a `manual:` link). Nil as for `saveEdit`.
+    /// On a full free library (#107) with nothing to make room, the recipe comes back with id
+    /// 0: not kept, and the editor stays open.
     func addManual(draft: RecipeDraft) async -> Recipe?
 
     /// Opens a recipe from history, a list or home. Counts as a view. Nil if it's gone.
@@ -151,6 +161,15 @@ protocol RecipeRepository: AnyObject {
 
     /// The `limit` most recently viewed. Re-emits on change.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never>
+
+    /// How many recipes are saved, of every kind (#107: the Recipes screen's count).
+    func observeCount() -> AnyPublisher<Int, Never>
+}
+
+extension RecipeRepository {
+    func observeCount() -> AnyPublisher<Int, Never> {
+        observeHistory(query: "").map(\.count).removeDuplicates().eraseToAnyPublisher()
+    }
 }
 
 /// Schedules the background "time's up" alert for a running step timer, so it still sounds
