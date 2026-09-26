@@ -2,9 +2,13 @@ import SwiftUI
 
 /// The Pantry tab (#51; Android's PantryScreen): "Add to the pantry", a search field, then
 /// everything by aisle (or by expiry, from the menu). Each row's switch says whether it's in
-/// stock; tapping the row opens its edit sheet (quantity, staple, use-by date, delete).
+/// stock; tapping the row opens its edit sheet (quantity, staple, use-by date, delete). The menu
+/// sends what's in stock, as plain text or as a file (#149).
 struct PantryScreen: View {
     let vm: PantryViewModel
+    /// Makes "Send as file" (#149, phase 2); nil leaves it out. Made on first use.
+    var makeSendFileVM: (() -> SendFileViewModel)? = nil
+    @State private var sendFileVM: SendFileViewModel?
 
     var body: some View {
         let state = vm.uiState
@@ -57,8 +61,24 @@ struct PantryScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                // An exclusive choice, so radio glyphs rather than a bare checkmark.
                 Menu {
+                    // What's in stock, as text or as a file (#149); shown only while anything is.
+                    if let text = vm.shareText(title: Strings.tabPantry, aisleName: Strings.aisle) {
+                        ShareLink(item: text, subject: Text(Strings.tabPantry)) {
+                            Label(Strings.shareGroceries, systemImage: "square.and.arrow.up")
+                        }
+                        if let makeSendFileVM {
+                            Button {
+                                let send = sendFileVM ?? makeSendFileVM()
+                                sendFileVM = send
+                                send.sendPantry(title: Strings.tabPantry)
+                            } label: {
+                                Label(Strings.sendFile, systemImage: "doc")
+                            }
+                        }
+                        Divider()
+                    }
+                    // An exclusive choice, so radio glyphs rather than a bare checkmark.
                     sortButton(.aisle, Strings.pantrySortAisle, current: state.sort)
                     sortButton(.expiry, Strings.pantrySortExpiry, current: state.sort)
                 } label: {
@@ -88,6 +108,7 @@ struct PantryScreen: View {
                     .presentationDragIndicator(.visible)
             }
         }
+        .modifier(SendFileEffect(vm: sendFileVM))
     }
 
     private func emptyText(_ state: PantryUiState) -> String? {

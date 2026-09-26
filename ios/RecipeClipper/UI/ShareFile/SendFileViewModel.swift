@@ -16,8 +16,9 @@ struct SendFileUiState: Equatable {
     var failed = false
 }
 
-/// Makes the shared file for one recipe (the recipe screen's menu) or for the grocery list's
-/// unticked items and their recipes (the Groceries menu). Nothing leaves the phone from here:
+/// Makes the shared file for one recipe (the recipe screen's menu), for the grocery list's
+/// unticked items and their recipes (the Groceries menu), or for the pantry's in-stock items
+/// (the Pantry menu). Nothing leaves the phone from here:
 /// the screen writes the file and opens the user's own share sheet on it (Android's
 /// SendFileViewModel writes it through BackupFiles; here, as for the Week's calendar file, the
 /// view writes it).
@@ -44,6 +45,12 @@ final class SendFileViewModel {
     func sendGroceries(title: String) {
         let share = share
         send(title) { await share.groceriesFile() }
+    }
+
+    /// The pantry's in-stock items, named `title` (the Pantry tab's name).
+    func sendPantry(title: String) {
+        let share = share
+        send(title) { await share.pantryFile() }
     }
 
     /// The share sheet was opened on `file` (and has gone).
