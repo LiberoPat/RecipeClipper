@@ -57,6 +57,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun cookedPhotoRepository(
+        impl: com.example.recipeclipper.data.DefaultCookedPhotoRepository
+    ): com.example.recipeclipper.data.CookedPhotoRepository
+
+    @Binds
+    @Singleton
     abstract fun shortStepRepository(impl: DefaultShortStepRepository): ShortStepRepository
 
     @Binds

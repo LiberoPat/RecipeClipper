@@ -46,7 +46,9 @@ class RecipeScreenFixture(
     /** The `amountsInSteps` flag (#101); the switch itself is [preferences]' `amountsInSteps`. */
     val amountsInSteps: Boolean = false,
     /** Set to turn Chef mode (#100) on, flag and setting, with this as the model. */
-    val chef: FakeStepShortener? = null
+    val chef: FakeStepShortener? = null,
+    /** Set to turn "I made this" (#116) on, with these as the photos. */
+    val photos: com.example.recipeclipper.fake.FakeCookedPhotoRepository? = null
 ) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
@@ -65,6 +67,9 @@ class RecipeScreenFixture(
         private set
 
     lateinit var viewModel: RecipeViewModel
+        private set
+
+    var photosViewModel: CookedPhotosViewModel? = null
         private set
 
     fun show(compose: ComposeContentTestRule) {
@@ -88,6 +93,7 @@ class RecipeScreenFixture(
         val planViewModel = if (flagOn) AddToPlanViewModel(plan ?: FakeMealPlanRepository(), FakePlanCalendar()) else null
         val groceriesViewModel =
             if (flagOn) AddToGroceriesViewModel(groceries ?: FakeGroceryRepository(), preferences, FakePantryRepository()) else null
+        photosViewModel = photos?.let { CookedPhotosViewModel(it) }
         compose.setContent {
             RecipeScreen(
                 onBack = { backs++ },
@@ -96,7 +102,9 @@ class RecipeScreenFixture(
                 mealPlanEnabled = flagOn,
                 amountsInStepsEnabled = amountsInSteps,
                 planViewModel = planViewModel,
-                groceriesViewModel = groceriesViewModel
+                groceriesViewModel = groceriesViewModel,
+                cookedPhotosEnabled = photosViewModel != null,
+                photosViewModel = photosViewModel
             )
         }
         compose.waitForIdle()

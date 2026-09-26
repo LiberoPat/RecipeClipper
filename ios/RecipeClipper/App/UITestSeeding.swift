@@ -66,22 +66,27 @@ enum UITestSeeding {
         )
         // The free tier's limit (#107) as the app mirrors it, in the throwaway suite.
         let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
+        // "I made this" (#116): photos in a throwaway folder, emptied at every launch.
+        let photoDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestPhotos")
+        try? FileManager.default.removeItem(at: photoDirectory)
+        let photoStore = FilePhotoStore(directory: photoDirectory)
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
-                db: database, source: StubRecipeSource(), clock: clock, library: libraryLimit
+                db: database, source: StubRecipeSource(), clock: clock, library: libraryLimit, photos: photoStore
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock, photos: photoStore),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             clipFixtureHTML: clipFixtureHTML,
             featureFlags: flags,
             shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
             decisionRepository: decisions,
-            libraryMirror: libraryLimit
+            libraryMirror: libraryLimit,
+            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock)
         )
         container.libraryPolicy.startMirroring()
         return container
@@ -169,7 +174,7 @@ enum UITestSeeding {
 
     /// The step `UITestStepShortener` writes a short version of (#100).
     static let chefStep = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
-    static let chefShortStep = "Oven to 350°F; butter a 9-inch tin."
+    static let chefShortStep = "Preheat oven to 350°F; butter a 9-inch tin."
 
     private static func seedChef(_ conn: SQLiteConnection, now: Int64) throws {
         try RecipeDao(db: conn).insert(RecipeRecord(

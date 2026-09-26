@@ -57,4 +57,7 @@ object DatabaseModule {
 
     @Provides
     fun aiDecisionDao(db: RecipeDatabase): com.example.recipeclipper.data.local.dao.AiDecisionDao = db.aiDecisionDao()
+
+    @Provides
+    fun cookedPhotoDao(db: RecipeDatabase): com.example.recipeclipper.data.local.dao.CookedPhotoDao = db.cookedPhotoDao()
 }

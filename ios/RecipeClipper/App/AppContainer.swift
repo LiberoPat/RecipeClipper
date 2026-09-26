@@ -31,6 +31,8 @@ final class AppContainer {
     let entitlements: Entitlements
     /// Which library limit applies (#107), mirrored for the repositories and the extension.
     let libraryPolicy: LibraryPolicy
+    /// "I made this" (#116): the user's own photos; nil (most tests) leaves the section out.
+    let cookedPhotoRepository: CookedPhotoRepository?
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -60,8 +62,10 @@ final class AppContainer {
         shortStepRepository: ShortStepRepository? = nil,
         decisionRepository: DecisionRepository? = nil,
         entitlements: Entitlements? = nil,
-        libraryMirror: DefaultsLibraryLimit? = nil
+        libraryMirror: DefaultsLibraryLimit? = nil,
+        cookedPhotoRepository: CookedPhotoRepository? = nil
     ) {
+        self.cookedPhotoRepository = cookedPhotoRepository
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
         self.mealPlanRepository = mealPlanRepository
@@ -127,6 +131,10 @@ final class AppContainer {
         let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
         let storeKit = testing ? nil : StoreKitEntitlements()
         let featureFlags = testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore())
+        // "I made this" (#116): beside the database, or a throwaway folder under XCTest.
+        let photoStore = testing
+            ? FilePhotoStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("TestHostPhotos"))
+            : FilePhotoStore(databasePath: AppDatabase.defaultPath())
         let decisions = DefaultDecisionRepository(
             db: database, model: FoundationModelsDecisionModel(), clock: clock,
             isOn: { featureFlags?.isOn(.aiDecisions) ?? false },
@@ -137,13 +145,14 @@ final class AppContainer {
                 db: database, source: BlogRecipeSource(), clock: clock,
                 renderedPages: WebViewRenderedPageSource(), library: libraryLimit,
                 extractor: FoundationModelsPageRecipeExtractor(),
-                extractionOn: { featureFlags?.isOn(.llmExtraction) ?? false }
+                extractionOn: { featureFlags?.isOn(.llmExtraction) ?? false },
+                photos: photoStore
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock, library: libraryLimit),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock, library: libraryLimit, photos: photoStore),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             connectivity: PathConnectivity(),
@@ -158,8 +167,12 @@ final class AppContainer {
             ),
             decisionRepository: decisions,
             entitlements: storeKit,
-            libraryMirror: libraryLimit
+            libraryMirror: libraryLimit,
+            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock)
         )
+        // Files no photo names any more (a delete whose Undo never came, an import's unused
+        // copies) go once the process is past them.
+        if let photos = container.cookedPhotoRepository { Task { await photos.sweep() } }
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
         storeKit?.start()
         container.libraryPolicy.startMirroring()
@@ -171,7 +184,10 @@ final class AppContainer {
     }
 
     func makeRecipesViewModel() -> RecipesViewModel {
-        RecipesViewModel(repository: recipeRepository, preferences: preferences, library: libraryPolicy)
+        RecipesViewModel(
+            repository: recipeRepository, preferences: preferences, library: libraryPolicy,
+            cookedSort: cookedPhotoRepository != nil && featureFlags.isOn(.cookedPhotos)
+        )
     }
 
     func makeRecipeViewModel(
@@ -227,6 +243,12 @@ final class AppContainer {
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {
         EditRecipeViewModel(recipeId: recipeId, repository: recipeRepository, entitlements: entitlements)
+    }
+
+    /// "Your cooks" (#116): only behind the `cookedPhotos` flag, and only with a repository.
+    var makeCookedPhotosViewModel: (() -> CookedPhotosViewModel)? {
+        guard let photos = cookedPhotoRepository, featureFlags.isOn(.cookedPhotos) else { return nil }
+        return { CookedPhotosViewModel(repository: photos) }
     }
 
     func makeSaveToListViewModel() -> SaveToListViewModel {

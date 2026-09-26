@@ -453,4 +453,24 @@
         <item quantity="many">%1$d de receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
         <item quantity="other">%1$d receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
     </plurals>
+    <!-- "I made this" (#116) -->
+    <string name="sort_recently_cooked">Feitas recentemente</string>
+    <string name="heading_your_cooks">O que você fez</string>
+    <string name="cooked_empty">Já fez? Guarde uma foto e uma nota curta.</string>
+    <string name="action_i_made_this">Eu fiz</string>
+    <string name="action_add_photo">Adicionar foto</string>
+    <string name="action_take_photo">Tirar uma foto</string>
+    <string name="action_choose_photos">Escolher da galeria</string>
+    <string name="cd_cooked_photo">Sua foto, %1$s</string>
+    <string name="cooked_note_placeholder">Adicione uma nota curta</string>
+    <string name="cd_change_cooked_date">Alterar a data, %1$s</string>
+    <string name="cd_share_photo">Compartilhar foto</string>
+    <string name="cd_delete_photo">Excluir foto</string>
+    <string name="cd_close_photo">Fechar</string>
+    <string name="cooked_photo_deleted">Foto excluída</string>
+    <string name="cooked_add_failed">Não foi possível adicionar a foto.</string>
+    <string name="camera_unavailable">Nenhum app de câmera disponível.</string>
+    <string name="cooked_photo_missing">Foto não está neste celular</string>
+    <string name="delete_recipe_body_photo">A receita será removida do histórico e de todas as listas em que estiver, com a sua foto. Isso não pode ser desfeito.</string>
+    <string name="delete_recipe_body_photos">A receita será removida do histórico e de todas as listas em que estiver, com as suas %1$d fotos. Isso não pode ser desfeito.</string>
 </resources>

@@ -75,6 +75,11 @@ enum StepTimers {
         }
     }
 
+    /// How long one `word` of a duration lasts ("minutes", "min": 60); nil for any other word.
+    static func unitSeconds(_ word: String, words: LanguageWords) -> Int32? {
+        patterns(words).units.first { $0.words.matchEntire(word) != nil }?.seconds
+    }
+
     private static func patterns(_ words: LanguageWords) -> Patterns { words.compiled(Patterns.self, Patterns.init) }
 
     private static let maxSeconds = 24 * 3600

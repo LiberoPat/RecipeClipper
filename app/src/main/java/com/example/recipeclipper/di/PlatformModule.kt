@@ -46,6 +46,10 @@ abstract class PlatformModule {
 
     @Binds
     @Singleton
+    abstract fun photoStore(impl: com.example.recipeclipper.data.AndroidPhotoStore): com.example.recipeclipper.data.PhotoStore
+
+    @Binds
+    @Singleton
     abstract fun timerAlarmScheduler(impl: AndroidTimerAlarmScheduler): TimerAlarmScheduler
 
     @Binds

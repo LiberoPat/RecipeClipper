@@ -42,6 +42,8 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo of what you cooked, to keep with the recipe.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>fraunces.ttf</string>

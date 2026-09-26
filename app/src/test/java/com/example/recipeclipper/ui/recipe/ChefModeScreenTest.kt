@@ -25,7 +25,7 @@ class ChefModeScreenTest {
     val compose = createComposeRule()
 
     private val oven = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
-    private val shortOven = "Oven to 350°F; butter a 9-inch tin."
+    private val shortOven = "Preheat oven to 350°F; butter a 9-inch tin."
     private val fixture = RecipeScreenFixture(
         recipe = RecipeScreenFixture.testRecipe(instructions = listOf(oven, "Serve.")),
         chef = FakeStepShortener(written = mutableMapOf(oven to shortOven))

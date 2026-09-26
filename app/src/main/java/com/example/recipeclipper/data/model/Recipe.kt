@@ -103,7 +103,9 @@ data class RecipeSummary(
     /** In at least one list. Derived from list membership, never stored. */
     val isSaved: Boolean,
     /** Picked from the page by hand (#37, origin CLIPPED): the row says "Clipped by you". */
-    val isClipped: Boolean = false
+    val isClipped: Boolean = false,
+    /** The latest day (epoch day) of the user's own photos of it (#116); null for none. */
+    val lastCookedDay: Long? = null
 )
 
 /**
@@ -111,7 +113,10 @@ data class RecipeSummary(
  * it survives leaving the screen; an unknown stored name reads as [RECENTLY_VIEWED].
  */
 enum class RecipeSort {
-    RECENTLY_VIEWED, NAME, DATE_ADDED;
+    RECENTLY_VIEWED, NAME, DATE_ADDED,
+
+    /** Recipes with the user's own photos first, most recently cooked first (#116). */
+    RECENTLY_COOKED;
 
     companion object {
         fun fromStoredName(name: String?): RecipeSort = entries.firstOrNull { it.name == name } ?: RECENTLY_VIEWED
