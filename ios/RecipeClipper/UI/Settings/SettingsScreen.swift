@@ -108,6 +108,9 @@ struct SettingsScreen: View {
 
                 Divided {
                     SectionHeading(Strings.settingsSectionYourRecipes).padding(.bottom, 4)
+                    if let row = state.autoBackup {
+                        AutoBackupRows(row: row, onEnabledChange: vm.onAutoBackupChange, onBackUpNow: { vm.onBackUpNow() })
+                    }
                     // Actions, not choices: plain rows, no radio or switch.
                     ActionRow(
                         title: Strings.backupExportTitle,
@@ -123,7 +126,7 @@ struct SettingsScreen: View {
                         enabled: !state.backup.isBusy
                     ) { importing = true }
                     .accessibilityIdentifier("settings.import")
-                    if let status = statusText(state.backup) {
+                    if let status = backupStatusText(state.backup) {
                         Text(status.text)
                             .textStyle(Typography.bodyMedium)
                             .foregroundStyle(status.isError ? Palette.error : Palette.onBackground)
@@ -221,14 +224,62 @@ struct SettingsScreen: View {
         return nil
     }
 
-    private func statusText(_ status: BackupStatus) -> (text: String, isError: Bool)? {
-        switch status {
-        case .idle, .readyToShare: return nil
-        case .exporting: return (Strings.backupExporting, false)
-        case .importing: return (Strings.backupImporting, false)
-        case .imported(let summary): return (Strings.importSummary(summary), false)
-        case .failed(let error): return (Strings.message(for: error), true)
+}
+
+/// Progress, or the outcome of the last export or import, until the next one; Home's Restore
+/// (#150) shows its outcome with it too.
+func backupStatusText(_ status: BackupStatus) -> (text: String, isError: Bool)? {
+    switch status {
+    case .idle, .readyToShare: return nil
+    case .exporting: return (Strings.backupExporting, false)
+    case .importing: return (Strings.backupImporting, false)
+    case .imported(let summary): return (Strings.importSummary(summary), false)
+    case .failed(let error): return (Strings.message(for: error), true)
+    }
+}
+
+/// The automatic backup copy (#150): the switch, when the last copy was written (and whether
+/// something is wrong), and "Back up now". Quiet lines, in the error colour only when the copy
+/// has stopped working.
+private struct AutoBackupRows: View {
+    let row: AutoBackupRow
+    let onEnabledChange: (Bool) -> Void
+    let onBackUpNow: () -> Void
+
+    var body: some View {
+        SwitchRow(
+            title: Strings.autoBackupTitle,
+            description: Strings.autoBackupDescription,
+            isOn: Binding(get: { row.enabled }, set: onEnabledChange)
+        )
+        .accessibilityIdentifier("settings.autoBackup")
+        ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+            Text(line.text)
+                .textStyle(Typography.bodySmall)
+                .foregroundStyle(line.alert ? Palette.error : Palette.muted)
+                .padding(.top, 2)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
+        ActionRow(
+            title: row.running ? Strings.autoBackupRunning : Strings.autoBackupNow,
+            description: nil,
+            enabled: row.canBackUpNow,
+            action: onBackUpNow
+        )
+        .accessibilityIdentifier("settings.backUpNow")
+    }
+
+    private var lines: [(text: String, alert: Bool)] {
+        var lines: [(text: String, alert: Bool)] = []
+        if row.destination == .unavailable { lines.append((Strings.autoBackupICloudUnavailable, true)) }
+        let last = row.lastBackupAt.map {
+            Strings.autoBackupLast(Date(timeIntervalSince1970: TimeInterval($0) / 1000)
+                .formatted(date: .abbreviated, time: .shortened))
+        } ?? Strings.autoBackupNever
+        lines.append((last, false))
+        if row.lastFailed && row.destination == .ready { lines.append((Strings.autoBackupFailed, true)) }
+        if row.nudge { lines.append((Strings.autoBackupNudge, true)) }
+        return lines
     }
 }
 

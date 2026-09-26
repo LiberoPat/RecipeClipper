@@ -51,10 +51,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.HISTORY_LIMIT
+import com.example.recipeclipper.data.backup.BackupDestination
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
+import java.text.DateFormat
+import java.util.Date
 import java.util.Locale
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
@@ -85,6 +88,10 @@ fun SettingsScreen(
     val context = LocalContext.current
     val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.onImportPicked(it.toString()) }
+    }
+    // The automatic backup copy's folder (#150): the system's folder picker, kept by permission.
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        viewModel.onBackupFolderPicked(uri?.toString())
     }
     val notificationPrompt = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         viewModel.onExpiryRemindersPermission(granted)
@@ -234,6 +241,14 @@ fun SettingsScreen(
                     Spacer(Modifier.height(16.dp))
                     SectionHeading(stringResource(R.string.settings_section_your_recipes))
                     Spacer(Modifier.height(4.dp))
+                    state.autoBackup?.let { auto ->
+                        AutoBackupRows(
+                            auto,
+                            onEnabledChange = viewModel::onAutoBackupChange,
+                            onChooseFolder = { folderPicker.launch(null) },
+                            onBackUpNow = viewModel::onBackUpNow
+                        )
+                    }
                     // Actions, not choices: plain rows, no radio or switch.
                     ActionRow(
                         title = stringResource(R.string.backup_export_title),
@@ -332,9 +347,10 @@ internal fun ActionRow(title: String, description: String?, enabled: Boolean, on
     }
 }
 
-/** Progress, or the outcome of the last export or import, until the next one. */
+/** Progress, or the outcome of the last export or import, until the next one. Home's Restore
+ *  (#150) shows its outcome with it too. */
 @Composable
-private fun BackupStatusText(status: BackupStatus) {
+internal fun BackupStatusText(status: BackupStatus) {
     val resources = LocalResources.current
     val text = when (status) {
         BackupStatus.Idle, is BackupStatus.ReadyToShare -> null
@@ -390,6 +406,63 @@ private fun importSummaryText(resources: android.content.res.Resources, summary:
     return parts.joinToString(" ")
 }
 
+/**
+ * The automatic backup copy (#150): the switch, the folder, when the last copy was written (and
+ * whether something is wrong), and "Back up now". Quiet lines, in the error colour only when
+ * the copy has stopped working.
+ */
+@Composable
+private fun AutoBackupRows(
+    row: AutoBackupRow,
+    onEnabledChange: (Boolean) -> Unit,
+    onChooseFolder: () -> Unit,
+    onBackUpNow: () -> Unit
+) {
+    SwitchRow(
+        title = stringResource(R.string.auto_backup_title),
+        description = stringResource(R.string.auto_backup_description),
+        checked = row.enabled,
+        onCheckedChange = onEnabledChange
+    )
+    ActionRow(
+        title = stringResource(R.string.auto_backup_folder_title),
+        description = when (row.destination) {
+            BackupDestination.NOT_CHOSEN -> stringResource(R.string.auto_backup_folder_not_chosen)
+            else -> row.folderName?.takeIf { it.isNotEmpty() }
+        },
+        enabled = true,
+        onClick = onChooseFolder
+    )
+    val lines = buildList {
+        if (row.destination == BackupDestination.LOST) add(stringResource(R.string.auto_backup_folder_lost) to true)
+        if (row.folderRefused) add(stringResource(R.string.auto_backup_folder_refused) to true)
+        val last = row.lastBackupAt?.let {
+            val locale = LocalConfiguration.current.locales[0]
+            stringResource(
+                R.string.auto_backup_last,
+                DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, locale).format(Date(it))
+            )
+        } ?: stringResource(R.string.auto_backup_never)
+        add(last to false)
+        if (row.lastFailed && row.destination == BackupDestination.READY) add(stringResource(R.string.auto_backup_failed) to true)
+        if (row.nudge) add(stringResource(R.string.auto_backup_nudge) to true)
+    }
+    lines.forEach { (text, alert) ->
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (alert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+    }
+    ActionRow(
+        title = stringResource(if (row.running) R.string.auto_backup_running else R.string.auto_backup_now),
+        description = null,
+        enabled = row.canBackUpNow,
+        onClick = onBackUpNow
+    )
+}
+
 /** Opens the share sheet on an export file, letting only the chosen app read it. */
 private fun shareExport(context: Context, uriString: String, title: String) {
     val uri = uriString.toUri()
@@ -408,7 +481,7 @@ private fun shareExport(context: Context, uriString: String, title: String) {
 }
 
 /** What the file picker offers. Some file managers label .json as a generic binary. */
-private val IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "application/octet-stream", "application/zip")
+internal val IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "application/octet-stream", "application/zip")
 
 /** An independent toggle: a title, a one-line description, and a [Switch] — never a
  *  checkmark, which would read as an exclusive choice among its siblings. */

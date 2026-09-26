@@ -455,6 +455,24 @@
     <string name="cooked_photo_missing">Foto nicht auf diesem Gerät</string>
     <string name="delete_recipe_body_photo">Das Rezept wird aus dem Verlauf und allen Listen entfernt, mit deinem Foto davon. Das lässt sich nicht rückgängig machen.</string>
     <string name="delete_recipe_body_photos">Das Rezept wird aus dem Verlauf und allen Listen entfernt, mit deinen %1$d Fotos davon. Das lässt sich nicht rückgängig machen.</string>
+    <!-- The automatic backup copy (#150). -->
+    <string name="auto_backup_title">Automatische Sicherungskopie</string>
+    <string name="auto_backup_description">Hält eine Kopie von allem, Fotos inklusive, in einem Ordner deiner Wahl und aktualisiert sie nach Änderungen</string>
+    <string name="auto_backup_folder_title">Sicherungsordner</string>
+    <string name="auto_backup_folder_not_chosen">Noch nicht gewählt. Tippe, um einen zu wählen, etwa Google Drive.</string>
+    <string name="auto_backup_folder_lost">Recipe Clipper kann diesen Ordner nicht mehr erreichen. Tippe, um ihn erneut zu wählen.</string>
+    <string name="auto_backup_folder_refused">Dieser Ordner kann nicht für Sicherungen verwendet werden. Wähle einen anderen.</string>
+    <string name="auto_backup_last">Zuletzt gesichert: %1$s</string>
+    <string name="auto_backup_never">Noch nicht gesichert</string>
+    <string name="auto_backup_failed">Die letzte Kopie konnte nicht geschrieben werden. Versuche „Jetzt sichern“.</string>
+    <string name="auto_backup_nudge">Deine letzte Sicherung ist über 30 Tage alt, und es wird keine Kopie automatisch angelegt.</string>
+    <string name="auto_backup_now">Jetzt sichern</string>
+    <string name="auto_backup_running">Wird gesichert…</string>
+    <string name="backup_prompt_title">Eine Sicherungskopie behalten?</string>
+    <string name="backup_prompt_body">Wähle einen Ordner, etwa Google Drive, und Recipe Clipper legt dort eine Kopie deiner Rezepte und Fotos ab.</string>
+    <string name="backup_prompt_choose">Ordner wählen</string>
+    <string name="backup_prompt_not_now">Nicht jetzt</string>
+    <string name="home_restore_backup">Aus einer Sicherungsdatei wiederherstellen</string>
 
     <!-- The first-run tour (#151): welcome cards, one-time tips, Settings' Show the tour again -->
     <string name="welcome_skip">Überspringen</string>

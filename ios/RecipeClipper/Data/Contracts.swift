@@ -322,6 +322,14 @@ extension BackupRepository {
     func importBackup(_ text: String) async -> Result<ImportSummary, BackupError> {
         await importBackup(BackupPackage(json: text))
     }
+
+    /// Reads a picked file and merges it in: Settings' Import and Home's Restore (#150) alike.
+    func importFile(_ url: URL, files: BackupFiles) async -> Result<ImportSummary, BackupError> {
+        switch await files.read(url) {
+        case .failure(let error): return .failure(error)
+        case .success(let package): return await importBackup(package)
+        }
+    }
 }
 
 /// Where an export file is written and a picked one is read (Android's BackupFiles), so the

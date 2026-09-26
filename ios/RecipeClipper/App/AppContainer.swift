@@ -33,6 +33,8 @@ final class AppContainer {
     let libraryPolicy: LibraryPolicy
     /// "I made this" (#116): the user's own photos; nil (most tests) leaves the section out.
     let cookedPhotoRepository: CookedPhotoRepository?
+    /// The automatic backup copy in iCloud Drive (#150); the live app only (nil under XCTest).
+    let autoBackup: AutoBackup?
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -67,9 +69,11 @@ final class AppContainer {
         entitlements: Entitlements? = nil,
         libraryMirror: DefaultsLibraryLimit? = nil,
         cookedPhotoRepository: CookedPhotoRepository? = nil,
+        autoBackup: AutoBackup? = nil,
         // Unless given, the tour is done: a unit test sees no welcome or tip it didn't ask for.
         tourPreferences: TourPreferences = MemoryTourPreferences()
     ) {
+        self.autoBackup = autoBackup
         self.cookedPhotoRepository = cookedPhotoRepository
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -143,6 +147,7 @@ final class AppContainer {
         let photoStore = testing
             ? FilePhotoStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("TestHostPhotos"))
             : FilePhotoStore(databasePath: AppDatabase.defaultPath())
+        let backupRepository = DefaultBackupRepository(db: database, clock: clock, library: libraryLimit, photos: photoStore)
         let decisions = DefaultDecisionRepository(
             db: database, model: FoundationModelsDecisionModel(), clock: clock,
             isOn: { featureFlags?.isOn(.aiDecisions) ?? false },
@@ -160,7 +165,7 @@ final class AppContainer {
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock, library: libraryLimit, photos: photoStore),
+            backupRepository: backupRepository,
             preferences: preferences,
             clock: clock,
             connectivity: PathConnectivity(),
@@ -177,6 +182,11 @@ final class AppContainer {
             entitlements: storeKit,
             libraryMirror: libraryLimit,
             cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock),
+            // #150: never under XCTest, so a test run never writes to anyone's iCloud Drive.
+            autoBackup: testing ? nil : AutoBackup(
+                backups: backupRepository, folder: ICloudBackupFolder(),
+                store: UserDefaultsAutoBackupStore(defaults: defaults), clock: clock
+            ),
             // Under XCTest (the unit tests' host) the tour stays done, as for any test container.
             tourPreferences: testing ? MemoryTourPreferences() : preferences
         )
@@ -190,7 +200,7 @@ final class AppContainer {
     }
 
     func makeHomeViewModel() -> HomeViewModel {
-        HomeViewModel(repository: recipeRepository)
+        HomeViewModel(repository: recipeRepository, backups: backupRepository, files: backupFiles)
     }
 
     func makeRecipesViewModel() -> RecipesViewModel {
@@ -269,7 +279,7 @@ final class AppContainer {
         SettingsViewModel(
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
             flags: featureFlags, notificationPermission: notificationPermission,
-            shortSteps: shortStepRepository, entitlements: entitlements
+            shortSteps: shortStepRepository, entitlements: entitlements, autoBackup: autoBackup, clock: clock
         )
     }
 

@@ -2515,6 +2515,89 @@ simulator's missing camera prove only the wiring), EXIF orientation from a real 
 HEIC pictures from the iOS library, and an export with many photos shared and imported on the
 other platform.
 
+## The automatic backup copy (#150)
+
+The owner's question: if someone loses their phone, how do they get everything back? The phone's
+own backup (Google's Auto Backup, iCloud Backup) covers only a restore onto the same platform,
+only if the user has it on, and on Android without photos. Export (#26) works across platforms
+but is only as fresh as the last time the user remembered. So the app now keeps an export
+itself, in a cloud folder that belongs to the user. There is no server, no account, and nothing
+is sent anywhere the user didn't choose.
+
+Owner's decisions: **on by default, and photos included.**
+
+- **What is written.** The export exactly as Settings' Export makes it (`BackupRepository.export`),
+  always in the `.zip` form of #116 (`backup.json` plus `photos/`, STORED), even with no photos,
+  so every copy has the same kind of name. Import reads it like any export, on either platform.
+- **Where.**
+  - **iOS:** the `Documents` folder of the app's iCloud container
+    (`iCloud.com.liberopat.recipeclipper`). With `NSUbiquitousContainers` set to public, it
+    shows in Files as iCloud Drive → Recipe Clipper, with nothing for the user to set up. It
+    needs the iCloud Documents capability and the container on the App ID, which only the owner
+    can register (`docs/release.md`). Without them, or signed out, or with iCloud Drive off, the
+    container is nil: Settings says quietly that iCloud Drive isn't available, and nothing
+    crashes or retries loudly.
+  - **Android:** a folder the user picks once with the system's folder picker
+    (`ACTION_OPEN_DOCUMENT_TREE`), usually Google Drive, kept through a persisted URI permission
+    (`AndroidBackupFolder`, over `DocumentsContract`, with no extra library). "On by default"
+    can't mean silently on here, since nothing can be written until a folder is chosen. So the
+    switch starts on, and the app asks for the folder at two moments, never at launch and never
+    in the way of a share:
+    - Settings → Your recipes has a "Backup folder" row.
+    - Home shows a one-time "Keep a backup copy?" card once the library has a recipe and there
+      is no folder yet. "Choose a folder" or "Not now" both put it away for good
+      (`folderPromptDone`); Settings still has the row.
+- **Three copies, not one.** Each copy is a new file,
+  `recipe-clipper-backup-YYYY-MM-DD-HHmm.zip`, and the app's own copies beyond the newest three
+  are deleted only after the new one is written. A write that fails halfway (a full Drive, the
+  app killed) then never leaves the user with nothing. A single rolling file couldn't promise
+  that on Android, where a document can't be replaced atomically. Only names the app wrote
+  are ever deleted; nothing else in the folder is touched.
+- **When.** The platform only asks for a look; `AutoBackupPolicy.isDue` decides whether to
+  write. It writes when there is no copy yet, when the last copy is gone from the folder, when
+  the library changed and the last copy is at least an hour old, or when the last copy is a
+  week old (so the date stays true). "Changed" is a SHA-256 of the export with its `exportedAt`
+  blanked, plus the photos' names. So an unchanged library is never written again, and opening
+  a recipe (which moves it up the history) counts as a change.
+  - **Android:** WorkManager (plain `CoroutineWorker` reaching Hilt through an entry point, so
+    WorkManager's default initialisation stands). Three looks: a daily one (battery not low), a
+    minute after the app is left (`MainActivity.onStop`; kept, so quick returns share one), and
+    one at once when a folder is chosen.
+  - **iOS:** when the app goes to the background, inside a `beginBackgroundTask`. The write is
+    atomic, so an expired background task leaves the old copies. There is no BGTaskScheduler
+    job: a library changes only while the app or its share extension runs, and the next time
+    the app is left catches both.
+- **"Last backed up".** Settings → Your recipes shows the switch, the folder (Android), "Last
+  backed up <date>" or "Not backed up yet", "Back up now" (works even with the switch off,
+  whenever there is somewhere to write), and in the error colour: a folder whose permission
+  went ("Choose it again"), a copy that couldn't be written, iCloud Drive unavailable, and the
+  nudge. **The nudge** shows when the last copy is more than 30 days old and no automatic copy
+  is working (off, or nowhere to write). It doesn't show before the first copy: then "Not
+  backed up yet" and, on Android, the folder card are the prompt. A manual Export doesn't count
+  as a backup, because the app can't know where the share sheet put it.
+- **Where the record lives.** Android: its own SharedPreferences file `auto_backup`, deliberately
+  *not* on the Auto Backup include list. A folder permission belongs to one phone, so a phone
+  restored from Google's backup asks for its folder again instead of showing one it can't
+  reach. iOS: the settings' App Group `UserDefaults` suite (`auto_backup_*` keys), which iCloud
+  Backup restores. That is right there, because the folder belongs to the iCloud account.
+- **Restore on a fresh install.** Home, with an empty library, offers "Restore from a backup
+  file" under the empty hint. It is Settings' Import (the same picker, the same
+  `importFile`/`BackupMerger` merge, the same outcome line), so it merges and never replaces.
+  On iOS the picker opens on iCloud Drive, where the copies are.
+- **Not a flag.** It ships on, and the switch turns it off. It needs no kill switch beyond that,
+  since without iCloud or a folder it simply does nothing.
+- **Pure and tested.** `AutoBackupPolicy` (Kotlin and Swift) holds the rules: due, nudge, the
+  folder card, names, which copies go, the fingerprint. `AutoBackup` runs them against fakes in
+  `AutoBackupTest` and `AutoBackupTests`; the Settings and Home rows are covered by
+  `SettingsAutoBackupTest` and `HomeBackupTest` (Robolectric) and by `SettingsAutoBackupTests`
+  (iOS).
+
+**Needs a real phone:** Google Drive (and another provider) through the folder picker, a copy
+written there by WorkManager while the app is closed, a revoked permission showing in Settings,
+and a restore from the Drive copy on a second phone. On iOS: a device with the iCloud container
+registered, the copy appearing in Files → Recipe Clipper, and the same copy restored on a new
+iPhone and imported on Android.
+
 ## The first-run tour (#151)
 
 Owner's decision (2026-09-26): welcome cards, a bundled sample recipe and one-time tips in

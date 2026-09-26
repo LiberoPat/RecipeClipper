@@ -13,6 +13,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.example.recipeclipper.data.AutoBackup
 import com.example.recipeclipper.data.FirstRunTour
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
@@ -38,6 +39,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var featureFlags: FeatureFlags
+
+    @Inject
+    lateinit var autoBackup: AutoBackup
 
     @Inject
     lateinit var firstRunTour: FirstRunTour
@@ -116,6 +120,12 @@ class MainActivity : ComponentActivity() {
         val route = routeFor(intent) ?: return
         shareHandled = false
         intentRoutes.trySend(route)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // The automatic backup copy (#150): leaving the app is when a changed library is copied.
+        if (!isChangingConfigurations) autoBackup.onAppLeft()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
