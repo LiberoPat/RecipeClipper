@@ -2640,6 +2640,9 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
 - **It never counts toward the free tier (#107):** the library's count (`RecipeDao.count`:
   the Recipes screen's "12 of 20", the free tier's one-for-one) and an import's free places
   leave out `manual:sample`, and adding it applies no limit, so it never removes a recipe.
+  Home treats a library holding only the sample as empty (#150): "Restore from a backup
+  file" still shows, which matters most on a new phone, and the "Keep a backup copy?" card
+  waits for a recipe of the user's own.
 - **Tips:** one small callout in the screen's flow (never over it, so it never blocks),
   dismissed by a tap anywhere on it (one button for TalkBack and VoiceOver, "Dismiss tip"):
   under the Serves and units row on the first recipe opened (the row and the bookmark), at

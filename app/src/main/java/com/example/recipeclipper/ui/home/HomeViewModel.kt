@@ -37,9 +37,11 @@ data class HomeUiState(
     /** "Restore from a backup file" (#150): offered on an empty library; its outcome shows under it. */
     val restore: BackupStatus = BackupStatus.Idle,
     /** The one-time "Keep a backup copy?" card (#150): a recipe to lose, and no folder yet. */
-    val offersBackupFolder: Boolean = false
+    val offersBackupFolder: Boolean = false,
+    /** The only recipe is the tour's sample (#151), which leaves the library as good as empty. */
+    val onlySample: Boolean = false
 ) {
-    val libraryEmpty: Boolean get() = loaded && continueCooking == null
+    val libraryEmpty: Boolean get() = loaded && (continueCooking == null || onlySample)
 
     /** The restore row shows on an empty library, and stays to say how the restore went. */
     val showsRestore: Boolean get() = libraryEmpty || restore != BackupStatus.Idle
@@ -47,7 +49,7 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    repository: RecipeRepository,
+    private val repository: RecipeRepository,
     // Restore (#150): the same file reading and merge as Settings' Import. Null in tests that
     // don't care, which then offer no restore.
     private val backups: BackupRepository? = null,
@@ -78,6 +80,9 @@ class HomeViewModel @Inject constructor(
         restore,
         backupState
     ) { (url, error), recent, restoring, backup ->
+        // The sample alone (#151) still offers the restore row, and no folder card: there is
+        // nothing of the user's to restore over or to lose.
+        val onlySample = recent.size == 1 && recent[0].id == repository.sampleId()
         HomeUiState(
             loaded = true,
             urlInput = url,
@@ -85,8 +90,10 @@ class HomeViewModel @Inject constructor(
             continueCooking = recent.firstOrNull(),
             recent = recent.drop(1),
             restore = if (backups != null) restoring else BackupStatus.Idle,
-            offersBackupFolder = backup != null &&
-                AutoBackupPolicy.offersFolderPrompt(backup.record, backup.destination, libraryEmpty = recent.isEmpty())
+            offersBackupFolder = backup != null && AutoBackupPolicy.offersFolderPrompt(
+                backup.record, backup.destination, libraryEmpty = recent.isEmpty() || onlySample
+            ),
+            onlySample = onlySample
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
