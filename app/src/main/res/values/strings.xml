@@ -408,7 +408,8 @@
     <string name="what_i_need_nothing_to_buy">Nothing to buy: every ingredient is in your pantry.</string>
     <string name="what_i_need_you_have">You have %1$s</string>
     <string name="what_i_need_added">Added to groceries</string>
-    <string name="action_add_to_pantry">Add to pantry</string>
+    <!-- Unused since #146 until "Paste a list" (#149, PR #154) lands, which uses it: then drop the ignore. -->
+    <string name="action_add_to_pantry" tools:ignore="UnusedResources">Add to pantry</string>
     <string name="what_i_need_line_source" translatable="false">%1$s · %2$s</string>
     <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
     <string name="settings_version">Version %1$s</string>
