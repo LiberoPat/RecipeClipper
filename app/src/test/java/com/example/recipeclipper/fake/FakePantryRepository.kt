@@ -25,10 +25,11 @@ class FakePantryRepository(initial: List<PantryItem> = emptyList()) : PantryRepo
 
     override suspend fun items(): List<PantryItem> = items.value
 
-    override suspend fun add(item: NewPantryItem) {
-        val name = item.name.trim().takeIf { it.isNotEmpty() } ?: return
+    override suspend fun add(item: NewPantryItem): Long? {
+        val name = item.name.trim().takeIf { it.isNotEmpty() } ?: return null
+        val id = nextId++
         items.value = items.value + PantryItem(
-            id = nextId++,
+            id = id,
             name = name,
             quantity = item.quantity?.trim()?.takeIf { it.isNotEmpty() },
             language = item.language,
@@ -38,6 +39,7 @@ class FakePantryRepository(initial: List<PantryItem> = emptyList()) : PantryRepo
             purchasedDay = item.purchasedDay,
             expiresDay = null
         )
+        return id
     }
 
     override suspend fun setInStock(ids: List<Long>, inStock: Boolean) {

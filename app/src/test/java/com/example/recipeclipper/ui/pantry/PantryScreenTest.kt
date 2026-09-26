@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.pantry
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -61,19 +62,27 @@ class PantryScreenTest {
         compose.runOnIdle { assertTrue(pantry.items.value.single().inStock) }
     }
 
+    // #146: running out puts it on the list silently; the row says "On list", and tapping that
+    // takes it off again. No snackbar either way.
     @Test
-    fun runningOutOffersGroceries() {
+    fun runningOutPutsItOnTheListAndTheTagTakesItOff() {
         val pantry = show(item(1, "milk", aisle = Aisle.DAIRY))
+        compose.onNodeWithTag("onList-1").assertDoesNotExist()
         compose.onNodeWithTag("inStock-1").performClick()
         compose.onNodeWithTag("inStock-1").assertIsOff()
 
-        compose.onNodeWithText("milk is out").assertIsDisplayed()
-        compose.onNodeWithText("Add to groceries").performClick()
         compose.waitUntil(5_000) { groceries.items.value.isNotEmpty() }
         compose.runOnIdle {
             assertEquals(listOf("milk"), groceries.items.value.map { it.text })
             assertTrue(!pantry.items.value.single().inStock)
         }
+        compose.onNodeWithTag("onList-1").assertIsDisplayed().assertTextEquals("On list")
+        compose.onNodeWithText("Undo").assertDoesNotExist()
+
+        compose.onNodeWithTag("onList-1").performClick()
+        compose.waitUntil(5_000) { groceries.items.value.isEmpty() }
+        compose.onNodeWithTag("onList-1").assertDoesNotExist()
+        compose.runOnIdle { assertTrue(!pantry.items.value.single().inStock) }
     }
 
     @Test

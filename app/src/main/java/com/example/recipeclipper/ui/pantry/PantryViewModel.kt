@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
+import com.example.recipeclipper.data.model.GroceryItem
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.NewPantryItem
 import com.example.recipeclipper.data.model.PantryEdit
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 /** The edit sheet's fields, for item [id]. Written only on Save. */
@@ -31,23 +33,18 @@ data class PantryEditing(
     val purchasedDay: Long?
 )
 
-/** The snackbar. [id] tells two messages about the same item apart. */
+/** The snackbar, only ever for undo (#146). [id] tells two messages about the same item apart. */
 sealed class PantryMessage {
     abstract val id: Long
 
-    /** [item] just ran out: offers "Add to groceries". */
-    data class OutOfStock(override val id: Long, val item: PantryItem) : PantryMessage()
-
     /** [name] was deleted: offers Undo. */
     data class Deleted(override val id: Long, val name: String) : PantryMessage()
-
-    /** [name] went onto the grocery list. */
-    data class AddedToGroceries(override val id: Long, val name: String) : PantryMessage()
 }
 
 /**
  * [sections] is null until the pantry has loaded; [hasItems] says whether it holds anything at
- * all (a search can find nothing in a full pantry).
+ * all (a search can find nothing in a full pantry). [onList] holds the items whose name is on
+ * the grocery list, unticked: their rows show "On list" (#146).
  */
 data class PantryUiState(
     val sections: List<PantrySection>? = null,
@@ -57,12 +54,14 @@ data class PantryUiState(
     val draft: String = "",
     val today: Long = 0,
     val editing: PantryEditing? = null,
-    val message: PantryMessage? = null
+    val message: PantryMessage? = null,
+    val onList: Set<Long> = emptySet()
 )
 
 /**
  * The Pantry tab (#51): add by typing, search, sort by aisle or expiry, toggle in and out of
- * stock. Running out offers "Add to groceries" from the snackbar; a delete can be undone.
+ * stock. Running out puts the item on the grocery list, silently (#146); its row then says "On
+ * list", and tapping that takes it off again. A delete can be undone.
  */
 @HiltViewModel
 class PantryViewModel @Inject constructor(
@@ -75,6 +74,7 @@ class PantryViewModel @Inject constructor(
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
 
     private var items: List<PantryItem> = emptyList()
+    private var groceryItems: List<GroceryItem> = emptyList()
     private var deleted: PantryRepository.Snapshot? = null
     private var messages = 0L
 
@@ -82,12 +82,30 @@ class PantryViewModel @Inject constructor(
         viewModelScope.launch {
             pantry.observeItems().collect { all ->
                 items = all
-                _uiState.update { it.copy(hasItems = all.isNotEmpty()).arranged() }
+                _uiState.update { it.copy(hasItems = all.isNotEmpty(), onList = onList()).arranged() }
+            }
+        }
+        viewModelScope.launch {
+            groceries.observeItems().collect { list ->
+                groceryItems = list
+                _uiState.update { it.copy(onList = onList()) }
             }
         }
     }
 
     private fun PantryUiState.arranged() = copy(sections = PantryList.arrange(items, query, sort))
+
+    /**
+     * The unticked grocery lines that are [item] itself: its name as the pantry puts it there
+     * (trimmed, case-insensitive, in its language). A recipe's "2 cups flour" isn't, so taking
+     * the item off the list never loses a recipe's line.
+     */
+    private fun linesFor(item: PantryItem): List<GroceryItem> {
+        val name = item.name.trim().lowercase(Locale.ROOT)
+        return groceryItems.filter { !it.checked && it.language == item.language && it.text.trim().lowercase(Locale.ROOT) == name }
+    }
+
+    private fun onList(): Set<Long> = items.filter { linesFor(it).isNotEmpty() }.map { it.id }.toSet()
 
     fun onQueryChange(query: String) = _uiState.update { it.copy(query = query).arranged() }
 
@@ -109,23 +127,26 @@ class PantryViewModel @Inject constructor(
         }
     }
 
-    /** In → out offers "Add to groceries"; out → in means just bought, today. */
+    /**
+     * In → out puts the item on the grocery list, silently, unless it's there already (#146);
+     * out → in means just bought, today.
+     */
     fun onToggleStock(item: PantryItem) {
         viewModelScope.launch {
             if (item.inStock) {
                 pantry.setInStock(listOf(item.id), false)
-                _uiState.update { it.copy(message = PantryMessage.OutOfStock(++messages, item)) }
+                if (linesFor(item).isEmpty()) groceries.add(listOf(NewGroceryLine(item.name, item.language)))
             } else {
                 pantry.restock(listOf(item.id), calendar.today())
             }
         }
     }
 
-    fun onAddToGroceries(item: PantryItem) {
-        viewModelScope.launch {
-            groceries.add(listOf(NewGroceryLine(item.name, item.language)))
-            _uiState.update { it.copy(message = PantryMessage.AddedToGroceries(++messages, item.name)) }
-        }
+    /** The row's "On list" tag, tapped: the item's own lines leave the grocery list. No snackbar (#146). */
+    fun onTakeOffList(item: PantryItem) {
+        val ids = linesFor(item).map { it.id }
+        if (ids.isEmpty()) return
+        viewModelScope.launch { groceries.delete(ids) }
     }
 
     // --- The edit sheet

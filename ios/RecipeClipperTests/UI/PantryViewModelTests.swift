@@ -62,19 +62,46 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertTrue(vm.uiState.hasItems)
     }
 
-    func testRunningOutOffersGroceriesAndAcceptingAddsTheName() async {
-        let pantry = FakePantryRepository([item(1, "milk")])
+    func testRunningOutPutsTheItemOnGroceriesSilentlyOnceAndMarksItOnList() async {
+        let pantry = FakePantryRepository([item(1, "milk"), item(2, "rice")])
         let vm = await viewModel(pantry)
-        vm.onToggleStock(pantry.items.value[0])
-        await settleMain()
-        XCTAssertEqual(pantry.items.value.first?.inStock, false)
-        guard case .outOfStock(_, let out) = vm.uiState.message else { return XCTFail("no offer") }
-        XCTAssertTrue(groceries.items.value.isEmpty)
+        XCTAssertEqual(vm.uiState.onList, [])
 
-        vm.onAddToGroceries(out)
-        await settleMain()
+        vm.onToggleStock(pantry.items.value[0])
+        await settleMain { !self.groceries.items.value.isEmpty }
+        XCTAssertEqual(pantry.items.value.first?.inStock, false)
         XCTAssertEqual(groceries.items.value.map(\.text), ["milk"])
         XCTAssertEqual(groceries.items.value.first?.aisle, .dairy)
+        XCTAssertNil(vm.uiState.message) // no snackbar
+        await settleMain { vm.uiState.onList == [1] }
+        XCTAssertEqual(vm.uiState.onList, [1])
+
+        // Back in and out again: still one line on the list.
+        vm.onToggleStock(pantry.items.value[0])
+        await settleMain { pantry.items.value[0].inStock }
+        vm.onToggleStock(pantry.items.value[0])
+        await settleMain { !pantry.items.value[0].inStock }
+        XCTAssertEqual(groceries.items.value.map(\.text), ["milk"])
+    }
+
+    func testTappingOnListTakesOnlyTheItemsOwnUntickedLineOffTheList() async {
+        await groceries.add([
+            NewGroceryLine(text: " Milk ", language: "en"), NewGroceryLine(text: "1 cup milk", language: "en"),
+            NewGroceryLine(text: "flour", language: "en"),
+        ])
+        await groceries.setChecked([groceries.items.value[2].id], checked: true)
+        let pantry = FakePantryRepository([item(1, "milk"), item(2, "flour", inStock: false), item(3, "rice")])
+        let vm = await viewModel(pantry)
+        // A recipe's "1 cup milk" isn't the item's own line, and a ticked line is already bought.
+        await settleMain { vm.uiState.onList == [1] }
+        XCTAssertEqual(vm.uiState.onList, [1])
+
+        vm.onTakeOffList(pantry.items.value[0])
+        await settleMain { self.groceries.items.value.count == 2 }
+        XCTAssertEqual(groceries.items.value.map(\.text), ["1 cup milk", "flour"])
+        await settleMain { vm.uiState.onList.isEmpty }
+        XCTAssertEqual(vm.uiState.onList, [])
+        XCTAssertNil(vm.uiState.message)
     }
 
     func testBackInStockIsBoughtTodayWithNoOffer() async {
@@ -135,54 +162,113 @@ final class PantryViewModelTests: XCTestCase {
         (vm.uiState.sections ?? []).flatMap(\.rows).first { $0.items.contains { $0.text == text } }!
     }
 
-    func testTickingOffATrackedItemPutsItBackInStockUndoably() async {
+    /// The sheet as name and ticked.
+    private func sheet(_ vm: GroceriesViewModel) -> [String] {
+        guard let s = vm.uiState.putAway else { return [] }
+        return s.items.map { "\($0.name) \(s.ticked.contains($0.key))" }
+    }
+
+    /// Ticks `texts` behind the screen's back, then waits until the screen shows them.
+    private func tick(_ vm: GroceriesViewModel, _ texts: Set<String>) async {
+        await groceries.setChecked(groceries.items.value.filter { texts.contains($0.text) }.map(\.id), checked: true)
+        await settleMain { (vm.uiState.sections ?? []).flatMap(\.rows).flatMap(\.items).filter(\.checked).count == texts.count }
+    }
+
+    func testATickOnlyTicks() async {
         let pantry = FakePantryRepository([item(1, "Butter", inStock: false)])
-        await groceries.add([NewGroceryLine(text: "250 g unsalted butter", language: "en")])
+        await groceries.add([NewGroceryLine(text: "250 g unsalted butter", language: "en"), NewGroceryLine(text: "2 cups flour", language: "en")])
         let vm = await groceriesVM(pantry)
 
         vm.onToggle(row(vm, "250 g unsalted butter"))
-        await settleMain()
-        XCTAssertEqual(pantry.items.value[0].inStock, true)
-        XCTAssertEqual(pantry.items.value[0].purchasedDay, calendar.today())
-        XCTAssertEqual(vm.uiState.pantryOffer, .restocked(id: 1, name: "Butter"))
-
-        vm.onUndoRestock()
-        await settleMain()
-        XCTAssertEqual(pantry.items.value[0].inStock, false)
-        XCTAssertEqual(pantry.items.value[0].purchasedDay, 1)
+        vm.onToggle(row(vm, "2 cups flour"))
+        await settleMain { self.groceries.items.value.allSatisfy(\.checked) }
+        XCTAssertEqual(pantry.items.value, [item(1, "Butter", inStock: false)])
+        XCTAssertNil(vm.uiState.removed)
+        XCTAssertNil(vm.uiState.putAway)
     }
 
-    func testAnUntrackedItemIsOfferedAndAddedOnlyWhenAccepted() async {
+    func testDoneShoppingPutsAwayWhatsTickedClearsEveryTickedLineAndOneUndoRevertsItAll() async {
+        let pantry = FakePantryRepository([item(1, "Butter", inStock: false)])
+        await groceries.add(["250 g unsalted butter", "2 tbsp butter", "2 cups flour", "salt and pepper", "2 onions"]
+            .map { NewGroceryLine(text: $0, language: "en") })
+        let vm = await groceriesVM(pantry)
+        await tick(vm, ["250 g unsalted butter", "2 tbsp butter", "2 cups flour", "salt and pepper"])
+        let before = groceries.items.value
+
+        vm.onDoneShopping()
+        // One entry per pantry item or ingredient, in the list's order (both butters are the
+        // pantry's Butter); what the pantry tracks starts ticked; "salt and pepper" has no name.
+        XCTAssertEqual(sheet(vm), ["Butter true", "flour false"])
+        XCTAssertEqual(groceries.items.value, before)
+
+        vm.onPutAwayToggle(vm.uiState.putAway!.items[1].key)
+        vm.onPutAwayConfirm()
+        await settleMain { vm.uiState.removed != nil }
+        XCTAssertNil(vm.uiState.putAway)
+        XCTAssertEqual(groceries.items.value.map(\.text), ["2 onions"])
+        XCTAssertEqual(pantry.items.value.map(\.name), ["Butter", "flour"])
+        XCTAssertEqual(pantry.items.value.map(\.inStock), [true, true])
+        XCTAssertEqual(pantry.items.value.map(\.purchasedDay), [calendar.today(), calendar.today()])
+        XCTAssertEqual(pantry.items.value[1].aisle, .baking) // the grocery item's aisle
+        XCTAssertEqual(vm.uiState.removed?.putAway, true)
+
+        vm.onUndoRemove()
+        await settleMain { self.groceries.items.value.count == before.count && pantry.items.value.count == 1 }
+        XCTAssertEqual(groceries.items.value, before)
+        XCTAssertEqual(pantry.items.value, [item(1, "Butter", inStock: false)])
+        XCTAssertNil(vm.uiState.removed)
+    }
+
+    func testAnItemLeftUntickedInTheSheetStaysOutOfThePantryButLeavesTheList() async {
         let pantry = FakePantryRepository()
         await groceries.add([NewGroceryLine(text: "2 cups flour", language: "en")])
         let vm = await groceriesVM(pantry)
+        await tick(vm, ["2 cups flour"])
 
-        vm.onToggle(row(vm, "2 cups flour"))
-        await settleMain()
-        guard case .offer(_, let name, _) = vm.uiState.pantryOffer else { return XCTFail("no offer") }
-        XCTAssertEqual(name, "flour")
+        vm.onDoneShopping()
+        XCTAssertEqual(sheet(vm), ["flour false"])
+        vm.onPutAwayConfirm()
+        await settleMain { vm.uiState.removed != nil }
         XCTAssertTrue(pantry.items.value.isEmpty)
-
-        vm.onAddToPantry()
-        await settleMain()
-        XCTAssertEqual(pantry.items.value.map(\.name), ["flour"])
-        XCTAssertEqual(pantry.items.value.first?.aisle, .baking)
-        XCTAssertEqual(pantry.items.value.first?.purchasedDay, calendar.today())
+        XCTAssertTrue(groceries.items.value.isEmpty)
+        XCTAssertEqual(vm.uiState.removed?.putAway, false) // "Checked items removed"
     }
 
-    func testNothingIsOfferedWhenInStockUntickingOrUnnamed() async {
-        let pantry = FakePantryRepository([item(1, "milk")])
-        await groceries.add([NewGroceryLine(text: "1 cup milk", language: "en"), NewGroceryLine(text: "salt and pepper", language: "en")])
+    func testWithNothingThePantryCanHoldDoneShoppingClearsAtOnceUndoably() async {
+        await groceries.add([NewGroceryLine(text: "salt and pepper", language: "en"), NewGroceryLine(text: "2 eggs", language: "en")])
+        let vm = await groceriesVM(FakePantryRepository())
+        await tick(vm, ["salt and pepper"])
+
+        vm.onDoneShopping()
+        XCTAssertNil(vm.uiState.putAway)
+        await settleMain { vm.uiState.removed != nil }
+        XCTAssertEqual(groceries.items.value.map(\.text), ["2 eggs"])
+        vm.onUndoRemove()
+        await settleMain { self.groceries.items.value.count == 2 }
+        XCTAssertEqual(groceries.items.value.map(\.text), ["salt and pepper", "2 eggs"])
+    }
+
+    func testDismissingTheSheetChangesNothingAndATimedOutSnackbarKeepsThePutAway() async {
+        let pantry = FakePantryRepository([item(1, "milk", inStock: false)])
+        await groceries.add([NewGroceryLine(text: "1 cup milk", language: "en")])
         let vm = await groceriesVM(pantry)
-        vm.onToggle(row(vm, "1 cup milk"))
+        await tick(vm, ["1 cup milk"])
+
+        vm.onDoneShopping()
+        vm.onPutAwayDismissed()
         await settleMain()
-        XCTAssertNil(vm.uiState.pantryOffer)
-        vm.onToggle(row(vm, "1 cup milk"))
+        XCTAssertNil(vm.uiState.putAway)
+        XCTAssertEqual(groceries.items.value.count, 1)
+        XCTAssertEqual(pantry.items.value[0].inStock, false)
+
+        vm.onDoneShopping()
+        vm.onPutAwayConfirm()
+        await settleMain { vm.uiState.removed != nil }
+        vm.onSnackbarDismissed()
+        vm.onUndoRemove()
         await settleMain()
-        XCTAssertNil(vm.uiState.pantryOffer)
-        vm.onToggle(row(vm, "salt and pepper"))
-        await settleMain()
-        XCTAssertNil(vm.uiState.pantryOffer)
+        XCTAssertTrue(groceries.items.value.isEmpty)
+        XCTAssertEqual(pantry.items.value[0].inStock, true)
     }
 
     func testTheSheetStartsWithWhatThePantryHasUnticked() async {

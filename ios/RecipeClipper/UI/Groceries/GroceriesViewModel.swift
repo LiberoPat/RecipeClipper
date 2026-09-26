@@ -2,29 +2,42 @@ import Combine
 import Foundation
 import Observation
 
-/// What the undo snackbar says was removed: one row's `label`, or the checked items (`label` nil).
+/// What the undo snackbar says was removed: one row's `label`, or the checked items (`label`
+/// nil), and whether "Done shopping" also changed the pantry (`putAway`).
 struct RemovedGroceries: Equatable {
     let id: Int
     let label: String?
+    var putAway = false
 }
 
-/// What ticking a line off did to the pantry (#51), for the snackbar. `id` tells two apart.
-enum PantryOffer: Equatable {
-    /// A tracked item was out and is back in stock: on by default, with Undo.
-    case restocked(id: Int, name: String)
-    /// Not in the pantry yet: "Add to pantry" is offered, not done.
-    case offer(id: Int, name: String, item: NewPantryItem)
+/// One thing to put away after shopping (#146): the pantry item it restocks (`trackedId`), or a
+/// new one named `name`. `key` tells them apart in `PutAwaySheet.ticked`.
+struct PutAwayItem: Equatable, Identifiable {
+    let key: String
+    let name: String
+    let language: String
+    let aisle: Aisle
+    let trackedId: Int64?
+
+    var id: String { key }
+}
+
+/// The "Done shopping" sheet (#146): the ticked items the pantry can hold, and which of them go
+/// in. What the pantry already tracks starts ticked; the rest doesn't.
+struct PutAwaySheet: Equatable {
+    let items: [PutAwayItem]
+    var ticked: Set<String>
 }
 
 /// `sections` is nil until the list has loaded. `draft` is the "Add an item" field. `moving`
-/// is the row whose aisle is being chosen. `recipeTitles` names the recipes items came from,
-/// for "Send list" (#149).
+/// is the row whose aisle is being chosen. `putAway` is the open "Done shopping" sheet.
+/// `recipeTitles` names the recipes items came from, for "Send list" (#149).
 struct GroceriesUiState: Equatable {
     var sections: [GroceryCombiner.Section]?
     var draft = ""
     var moving: GroceryCombiner.Row?
     var removed: RemovedGroceries?
-    var pantryOffer: PantryOffer?
+    var putAway: PutAwaySheet?
     var recipeTitles: [Int64: String] = [:]
 
     var hasChecked: Bool { (sections ?? []).contains { $0.rows.contains { $0.items.contains(where: \.checked) } } }
@@ -33,7 +46,9 @@ struct GroceriesUiState: Equatable {
 
 /// The Groceries tab (#50; Android's GroceriesViewModel): the list grouped by aisle, with lines
 /// naming the same ingredient together (and added up when that's exact, `GroceryCombiner`).
-/// Everything is written as it happens; a delete or "Clear checked" can be undone.
+/// Everything is written as it happens. A tick only ticks (#146): "Done shopping" puts what was
+/// bought in the pantry and clears the ticked items in one step. A delete or "Done shopping" can
+/// be undone from the snackbar, and nothing else raises one.
 ///
 /// A typed item has no recipe, so it's read with the phone's language when the app has words
 /// for it, else English: the one place the phone's language picks the words.
@@ -50,10 +65,8 @@ final class GroceriesViewModel {
     @ObservationIgnored private var pantrySubscription: AnyCancellable?
     @ObservationIgnored private var titlesSubscription: AnyCancellable?
     @ObservationIgnored private var pantryItems: [PantryItem] = []
-    @ObservationIgnored private var restocked: PantrySnapshot?
-    @ObservationIgnored private var removedItems: DeletedGroceries?
+    @ObservationIgnored private var undo: Undo?
     @ObservationIgnored private var removals = 0
-    @ObservationIgnored private var offers = 0
     // The model's aisles for what the keyword table puts in Other (#104), and the items asked about.
     @ObservationIgnored private let decisions: DecisionRepository?
     @ObservationIgnored private var askedAisles = Set<Int64>()
@@ -147,55 +160,11 @@ final class GroceriesViewModel {
         Task { await repository.add([NewGroceryLine(text: text, language: language)]) }
     }
 
-    /// Ticks or unticks every line in `row`: a combined row is one thing to pick up. Ticking
-    /// one off feeds the pantry (#51): an item the pantry tracks that was out is back in stock at
-    /// once (undoable); one it doesn't track is offered, never added unasked. A line the app
-    /// can't name is left alone.
+    /// Ticks or unticks every line in `row`: a combined row is one thing to pick up. A tick only
+    /// ticks (#146): the pantry changes only at "Done shopping".
     func onToggle(_ row: GroceryCombiner.Row) {
         let checked = !row.items.allSatisfy(\.checked)
-        let first = row.items[0]
-        Task {
-            await repository.setChecked(row.items.map(\.id), checked: checked)
-            if checked { await toPantry(first) }
-        }
-    }
-
-    private func toPantry(_ item: GroceryItem) async {
-        guard let words = LanguageWords.forTag(item.language), let name = IngredientName.of(item.text, words: words) else { return }
-        let offer: PantryOffer
-        if let tracked = PantryMatch.find(name, language: words.language, pantry: pantryItems) {
-            if tracked.inStock || tracked.alwaysHave { return }
-            restocked = await pantry.snapshot([tracked.id])
-            await pantry.restock([tracked.id], day: calendar.today())
-            offers += 1
-            offer = .restocked(id: offers, name: tracked.name)
-        } else {
-            offers += 1
-            offer = .offer(
-                id: offers, name: name,
-                item: NewPantryItem(name: name, language: words.language, aisle: item.aisle, purchasedDay: calendar.today())
-            )
-        }
-        uiState.pantryOffer = offer
-    }
-
-    func onAddToPantry() {
-        guard case .offer(_, _, let item) = uiState.pantryOffer else { return }
-        uiState.pantryOffer = nil
-        Task { await pantry.add(item) }
-    }
-
-    func onUndoRestock() {
-        guard let snapshot = restocked else { return }
-        restocked = nil
-        uiState.pantryOffer = nil
-        Task { await pantry.restore(snapshot) }
-    }
-
-    /// The pantry snackbar timed out: what was done stands, what was offered isn't.
-    func onPantryOfferDismissed() {
-        restocked = nil
-        uiState.pantryOffer = nil
+        Task { await repository.setChecked(row.items.map(\.id), checked: checked) }
     }
 
     func onMoveStart(_ row: GroceryCombiner.Row) { uiState.moving = row }
@@ -217,29 +186,89 @@ final class GroceriesViewModel {
         }
     }
 
-    func onClearChecked() {
+    /// What the snackbar's Undo puts back: the list's items and, after "Done shopping", the pantry.
+    private struct Undo {
+        let groceries: DeletedGroceries?
+        var restocked: PantrySnapshot?
+        var added: [Int64] = []
+    }
+
+    /// "Done shopping" (#146): opens the sheet of ticked items the pantry can hold, one per
+    /// ingredient, in the list's order; what it tracks starts ticked. A line the app can't name
+    /// isn't listed but is cleared all the same; with nothing to list, the list clears at once.
+    func onDoneShopping() {
+        var items: [PutAwayItem] = []
+        for item in (uiState.sections ?? []).flatMap({ $0.rows.flatMap(\.items) }) where item.checked {
+            guard let words = LanguageWords.forTag(item.language), let name = IngredientName.of(item.text, words: words) else { continue }
+            let tracked = PantryMatch.find(name, language: words.language, pantry: pantryItems)
+            let key = tracked.map { "pantry-\($0.id)" } ?? "new-\(words.language)-\(name.lowercased())"
+            if !items.contains(where: { $0.key == key }) {
+                items.append(PutAwayItem(key: key, name: tracked?.name ?? name, language: words.language, aisle: item.aisle, trackedId: tracked?.id))
+            }
+        }
+        if items.isEmpty { return putAway([]) }
+        uiState.putAway = PutAwaySheet(items: items, ticked: Set(items.filter { $0.trackedId != nil }.map(\.key)))
+    }
+
+    func onPutAwayToggle(_ key: String) {
+        guard var sheet = uiState.putAway else { return }
+        if sheet.ticked.contains(key) { sheet.ticked.remove(key) } else { sheet.ticked.insert(key) }
+        uiState.putAway = sheet
+    }
+
+    func onPutAwayDismissed() { uiState.putAway = nil }
+
+    /// The sheet's one button: the ticked items go in the pantry, and every ticked line leaves the list.
+    func onPutAwayConfirm() {
+        guard let sheet = uiState.putAway else { return }
+        uiState.putAway = nil
+        putAway(sheet.items.filter { sheet.ticked.contains($0.key) })
+    }
+
+    /// Restocks or adds `items`, bought today, then clears every ticked line: one undo for it all.
+    private func putAway(_ items: [PutAwayItem]) {
+        let today = calendar.today()
         Task {
-            guard let deleted = await repository.clearChecked() else { return }
-            removed(deleted, nil)
+            let restock = items.compactMap(\.trackedId)
+            var restocked: PantrySnapshot?
+            if !restock.isEmpty {
+                restocked = await pantry.snapshot(restock)
+                await pantry.restock(restock, day: today)
+            }
+            var added: [Int64] = []
+            for item in items where item.trackedId == nil {
+                let new = NewPantryItem(name: item.name, language: item.language, aisle: item.aisle, purchasedDay: today)
+                if let id = await pantry.add(new) { added.append(id) }
+            }
+            let cleared = await repository.clearChecked()
+            if cleared == nil && restocked == nil && added.isEmpty { return }
+            undo = Undo(groceries: cleared, restocked: restocked, added: added)
+            removals += 1
+            uiState.removed = RemovedGroceries(id: removals, label: nil, putAway: !items.isEmpty)
         }
     }
 
     private func removed(_ deleted: DeletedGroceries, _ label: String?) {
-        removedItems = deleted
+        undo = Undo(groceries: deleted)
         removals += 1
         uiState.removed = RemovedGroceries(id: removals, label: label)
     }
 
+    /// Puts back what the last removal took: the items and, after "Done shopping", the pantry as it was.
     func onUndoRemove() {
-        guard let deleted = removedItems else { return }
-        removedItems = nil
+        guard let last = undo else { return }
+        undo = nil
         uiState.removed = nil
-        Task { await repository.restore(deleted) }
+        Task {
+            if let groceries = last.groceries { await repository.restore(groceries) }
+            if let restocked = last.restocked { await pantry.restore(restocked) }
+            for id in last.added { _ = await pantry.delete(id) }
+        }
     }
 
     /// The snackbar timed out: the removal stands.
     func onSnackbarDismissed() {
-        removedItems = nil
+        undo = nil
         uiState.removed = nil
     }
 

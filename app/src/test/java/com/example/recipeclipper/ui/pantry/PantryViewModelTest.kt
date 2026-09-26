@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.pantry
 
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.model.Aisle
+import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantrySort
 import com.example.recipeclipper.fake.FakeGroceryRepository
@@ -89,21 +90,43 @@ class PantryViewModelTest {
     }
 
     @Test
-    fun `running out offers groceries, and accepting adds the name there`() = runTest(mainDispatcherRule.dispatcher) {
-        val pantry = FakePantryRepository(listOf(item(1, "milk")))
+    fun `running out puts the item on groceries silently, once, and marks it On list`() = runTest(mainDispatcherRule.dispatcher) {
+        val pantry = FakePantryRepository(listOf(item(1, "milk"), item(2, "rice")))
         val vm = PantryViewModel(pantry, groceries, calendar)
         advanceUntilIdle()
+        assertEquals(emptySet<Long>(), vm.uiState.value.onList)
 
-        vm.onToggleStock(pantry.items.value.single())
+        vm.onToggleStock(pantry.items.value.first())
         advanceUntilIdle()
-        assertFalse(pantry.items.value.single().inStock)
-        val message = vm.uiState.value.message as PantryMessage.OutOfStock
-        assertTrue(groceries.items.value.isEmpty()) // offered, not done
-
-        vm.onAddToGroceries(message.item)
-        advanceUntilIdle()
+        assertFalse(pantry.items.value.first().inStock)
         assertEquals(listOf("milk"), groceries.items.value.map { it.text })
         assertEquals(Aisle.DAIRY, groceries.items.value.single().aisle)
+        assertNull(vm.uiState.value.message) // no snackbar
+        assertEquals(setOf(1L), vm.uiState.value.onList)
+
+        // Back in and out again: still one line on the list.
+        vm.onToggleStock(pantry.items.value.first())
+        advanceUntilIdle()
+        vm.onToggleStock(pantry.items.value.first())
+        advanceUntilIdle()
+        assertEquals(listOf("milk"), groceries.items.value.map { it.text })
+    }
+
+    @Test
+    fun `tapping On list takes only the item's own unticked line off the list`() = runTest(mainDispatcherRule.dispatcher) {
+        groceries.add(listOf(NewGroceryLine(" Milk ", "en"), NewGroceryLine("1 cup milk", "en"), NewGroceryLine("flour", "en")))
+        groceries.setChecked(listOf(groceries.items.value.last().id), true)
+        val pantry = FakePantryRepository(listOf(item(1, "milk"), item(2, "flour", inStock = false), item(3, "rice")))
+        val vm = PantryViewModel(pantry, groceries, calendar)
+        advanceUntilIdle()
+        // A recipe's "1 cup milk" isn't the item's own line, and a ticked line is already bought.
+        assertEquals(setOf(1L), vm.uiState.value.onList)
+
+        vm.onTakeOffList(pantry.items.value.first())
+        advanceUntilIdle()
+        assertEquals(listOf("1 cup milk", "flour"), groceries.items.value.map { it.text })
+        assertEquals(emptySet<Long>(), vm.uiState.value.onList)
+        assertNull(vm.uiState.value.message)
     }
 
     @Test

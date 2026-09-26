@@ -1,7 +1,7 @@
 import XCTest
 
-/// The Pantry tab (#51), behind the tab flag: type an item, run out of it and send it to
-/// groceries; tick a grocery off and add it to the pantry.
+/// The Pantry tab (#51), behind the tab flag: type an item, run out of it and it goes on the
+/// grocery list by itself, with an "On list" tag that takes it off again (#146).
 final class PantryUITests: RecipeUITestCase {
 
     private var tabBar: XCUIElement { app.tabBars.firstMatch }
@@ -10,7 +10,11 @@ final class PantryUITests: RecipeUITestCase {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
-    func testRunningOutSendsAnItemToGroceries() {
+    private var onListTag: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ OR label == %@", "onList-", "On list")).firstMatch
+    }
+
+    func testRunningOutPutsAnItemOnGroceriesAndTheTagTakesItOff() {
         launch(.empty, flags: ["mealPlan"])
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         let field = require(app.textFields["Add to the pantry"], "Add to the pantry")
@@ -19,25 +23,16 @@ final class PantryUITests: RecipeUITestCase {
         require(text("Dairy & eggs"), "the dairy aisle")
 
         require(app.switches["In stock: milk"], "the in-stock switch").tap()
-        require(text("milk is out"), "the snackbar")
-        require(app.buttons["Add to groceries"], "the snackbar's action").tap()
+        require(onListTag, "the On list tag")
+        assertAbsent(app.buttons["Undo"], "a snackbar")
 
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         require(button(containing: "milk"), "milk on the list")
-    }
-
-    func testTickingAGroceryOffOffersThePantry() {
-        launch(.empty, flags: ["mealPlan"])
-        require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
-        let field = require(app.textFields["Add an item"], "Add an item")
-        field.tap()
-        field.typeText("2 cups flour\n")
-        require(button(containing: "2 cups flour"), "the typed item").tap()
-
-        require(textContaining("Add it to the pantry?"), "the offer")
-        require(app.buttons["Add to pantry"], "the offer's action").tap()
 
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
-        require(button(containing: "flour"), "flour in the pantry")
+        require(onListTag, "the On list tag").tap()
+        requireGone(onListTag, "the tag, once off the list")
+        require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
+        requireGone(button(containing: "milk"), "milk, off the list")
     }
 }

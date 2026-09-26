@@ -25,9 +25,10 @@ final class DefaultPantryRepository: PantryRepository {
         }
     }
 
-    func add(_ item: NewPantryItem) async {
+    @discardableResult
+    func add(_ item: NewPantryItem) async -> Int64? {
         let name = item.name.kTrimmed
-        guard !name.isEmpty else { return }
+        guard !name.isEmpty else { return nil }
         let quantity = item.quantity?.kTrimmed
         let record = PantryItemRecord(
             name: name,
@@ -40,7 +41,12 @@ final class DefaultPantryRepository: PantryRepository {
             expiresDay: nil,
             updatedAt: clock.now()
         )
-        await perform("addPantryItem") { dao in try dao.insert(record) }
+        do {
+            return try await db.write { conn in try PantryDao(db: conn).insert(record) }
+        } catch {
+            dataLog.error("addPantryItem failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
     }
 
     func setInStock(_ ids: [Int64], inStock: Bool) async {

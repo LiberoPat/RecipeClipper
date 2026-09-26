@@ -8,7 +8,6 @@ import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -20,12 +19,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.DecisionQuestion
 import com.example.recipeclipper.data.model.NewGroceryLine
+import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.fake.FakeDecisionRepository
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -40,9 +41,9 @@ class GroceriesScreenTest {
 
     private val repository = FakeGroceryRepository()
 
-    private fun show(vararg lines: String, decisions: FakeDecisionRepository? = null) {
+    private fun show(vararg lines: String, decisions: FakeDecisionRepository? = null, pantry: FakePantryRepository = FakePantryRepository()) {
         runBlocking { repository.add(lines.map { NewGroceryLine(it, "en") }) }
-        val viewModel = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), decisions)
+        val viewModel = GroceriesViewModel(repository, pantry, FakePlanCalendar(), decisions)
         compose.setContent { GroceriesScreen(viewModel = viewModel) }
     }
 
@@ -122,14 +123,34 @@ class GroceriesScreenTest {
         compose.runOnIdle { assertEquals(Aisle.CONDIMENTS, repository.items.value.single().aisle) }
     }
 
+    // #146: a tick raises nothing; "Done shopping" shows while anything is ticked and opens the
+    // put-away sheet (what the pantry tracks starts ticked); one confirm updates the pantry and
+    // clears the ticked items, and Undo puts both back.
     @Test
-    fun clearCheckedRemovesOnlyTheTickedItems() {
-        show("2 onions", "1 cup milk")
-        val onions = repository.items.value.first().id
-        compose.onNodeWithTag("grocery-$onions").performClick()
-        compose.onNodeWithContentDescription("More options").performClick()
-        compose.onNodeWithText("Clear checked").performClick()
-        compose.runOnIdle { assertEquals(listOf("1 cup milk"), repository.items.value.map { it.text }) }
+    fun doneShoppingPutsAwayWhatIsTickedAndClearsItWithOneUndo() {
+        val pantry = FakePantryRepository(listOf(PantryItem(1, "milk", null, "en", Aisle.DAIRY, false, false, purchasedDay = 1, expiresDay = null)))
+        show("2 onions", "1 cup milk", pantry = pantry)
+        compose.onNodeWithTag("doneShopping").assertDoesNotExist()
+        val milk = repository.items.value.last().id
+        compose.onNodeWithTag("grocery-$milk").performClick()
+        compose.onNodeWithText("Undo").assertDoesNotExist()
+        compose.runOnIdle { assertFalse(pantry.items.value.single().inStock) }
+
+        compose.onNodeWithTag("doneShopping").performClick()
+        compose.onNodeWithTag("putAway-pantry-1").assertIsOn()
+        compose.onNodeWithTag("putAwayButton").performClick()
+        compose.runOnIdle {
+            assertEquals(listOf("2 onions"), repository.items.value.map { it.text })
+            assertTrue(pantry.items.value.single().inStock)
+        }
+        compose.onNodeWithTag("doneShopping").assertDoesNotExist()
+
+        compose.onNodeWithText("Pantry updated, checked items removed").assertIsDisplayed()
+        compose.onNodeWithText("Undo").performClick()
+        compose.runOnIdle {
+            assertEquals(listOf("2 onions", "1 cup milk"), repository.items.value.map { it.text })
+            assertFalse(pantry.items.value.single().inStock)
+        }
     }
 
     // The owner's report: a recipe added three times showed "2 corn" three times, each with a
