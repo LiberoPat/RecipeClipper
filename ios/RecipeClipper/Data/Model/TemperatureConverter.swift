@@ -46,6 +46,10 @@ enum TemperatureConverter {
         }
     }
 
+    /// A bare "180 C" or "350 F" is a temperature only in these ranges; the scaler reads them too (#135).
+    static let plausibleCelsius = 40...320
+    private static let plausibleFahrenheit = 100...600
+
     private static let pairJoiner = JRegex(#"^\s*([(/])\s*"#)
     private static let closingParen = JRegex(#"^\s*\)"#)
 
@@ -140,7 +144,7 @@ enum TemperatureConverter {
         let connector = match[4]
         let explicit = unit.count > 1 || connector.contains { "°º˚".contains($0) } || !connector.kIsBlank
         if !explicit {
-            let range = scale == .f ? 100...600 : 40...320
+            let range = scale == .f ? plausibleFahrenheit : plausibleCelsius
             if !range.contains(low) || (high.map { !range.contains($0) } ?? false) { return nil }
         }
         return Temp(low: low, separator: match[2], high: high, scale: scale)

@@ -27,6 +27,12 @@ final class StepAmountsTests: XCTestCase {
         XCTAssertEqual(annotate("Stir in the flour.", lines), "Stir in ⟦240 g⟧ flour.")
     }
 
+    func testAnOldStyleUnitLendsItsAmountAndConvertsWithTheLine() {
+        XCTAssertEqual(annotate("Melt the butter.", ["2 T. butter"]), "Melt ⟦2 T.⟧ butter.")
+        let lines = IngredientRendering.render(["1/2 c. heavy cream"], factor: 2.0, system: .metric, convertLiquids: false)
+        XCTAssertEqual(annotate("Whisk in the heavy cream.", lines), "Whisk in ⟦240 ml⟧ heavy cream.")
+    }
+
     func testTheSameIngredientInTwoLinesStaysAsWritten() {
         XCTAssertEqual(annotate("Add the sugar.", ["1 cup sugar", "For the frosting:", "1/2 cup sugar"]), "Add the sugar.")
         XCTAssertEqual(annotate("Season with salt.", ["1 tsp salt", "salt and pepper"]), "Season with salt.")

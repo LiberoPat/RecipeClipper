@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.local.RecipeDatabase
+import com.example.recipeclipper.data.local.entity.AiDecisionEntity
 import com.example.recipeclipper.data.model.CountBracket
 import com.example.recipeclipper.data.model.DecisionQuestion
 import com.example.recipeclipper.data.model.DecisionReply
@@ -41,6 +42,8 @@ class DecisionRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(context, RecipeDatabase::class.java).build()
         repository = DefaultDecisionRepository(db.aiDecisionDao(), model, flags, Clock { 5 }) { _, e -> throw e }
         flags.set(Flag.AI_DECISIONS, true)
+        // These tests ask count brackets, which also need their own flag since #127.
+        flags.set(Flag.AI_COUNT_BRACKETS, true)
     }
 
     @After
@@ -83,5 +86,19 @@ class DecisionRepositoryTest {
         assertEquals(Decisions.NONE, repository.current())
         repository.decide(listOf(DecisionQuestion.countBracket("3 large apples (about 3 cups)", "en")))
         assertEquals(2, model.asked.size)
+    }
+
+    @Test fun `with count brackets off, none is asked and a cached one changes nothing`() = runBlocking {
+        flags.set(Flag.AI_COUNT_BRACKETS, false)
+        repository.decide(listOf(question))
+        assertTrue(model.asked.isEmpty())
+        db.aiDecisionDao().insert(
+            AiDecisionEntity(kind = "countBracket", input = question.input, language = "de", answer = "each", updatedAt = 1)
+        )
+        assertNull(repository.current().countBracket(line, "de"))
+        repository.decide(listOf(DecisionQuestion.aisle("miso paste", "en")))
+        assertEquals(2, model.asked.size)
+        flags.set(Flag.AI_COUNT_BRACKETS, true)
+        assertEquals(CountBracket.EACH, repository.current().countBracket(line, "de"))
     }
 }

@@ -7,8 +7,31 @@ final class DecisionRepositoryTests: XCTestCase {
     private let line = "4 Apfel (ca. 800g)"
     private var question: DecisionQuestion { .countBracket(line, language: "de") }
 
-    private func make(_ model: FakeDecisionModel, on: @escaping () -> Bool = { true }) throws -> DefaultDecisionRepository {
-        DefaultDecisionRepository(db: try AppDatabase(path: nil), model: model, clock: DataTestClock(), isOn: on)
+    /// These tests ask count brackets, which also need their own flag since #127.
+    private func make(
+        _ model: FakeDecisionModel, db: AppDatabase? = nil, on: @escaping () -> Bool = { true },
+        brackets: @escaping () -> Bool = { true }
+    ) throws -> DefaultDecisionRepository {
+        DefaultDecisionRepository(
+            db: try db ?? AppDatabase(path: nil), model: model, clock: DataTestClock(), isOn: on, countBracketsOn: brackets
+        )
+    }
+
+    func testWithCountBracketsOffNoneIsAskedAndACachedOneChangesNothing() async throws {
+        let model = FakeDecisionModel(answer: "total")
+        let db = try AppDatabase(path: nil)
+        var brackets = false
+        let repository = try make(model, db: db, brackets: { brackets })
+        await repository.decide([question])
+        XCTAssertTrue(model.asked.isEmpty)
+        try await db.write { try AiDecisionDao(db: $0).insert(self.question, answer: "each", now: 1) }
+        let off = await repository.current()
+        XCTAssertNil(off.countBracket(line, language: "de"))
+        await repository.decide([.aisle("miso paste", language: "en")])
+        XCTAssertEqual(model.asked.count, 2)
+        brackets = true
+        let on = await repository.current()
+        XCTAssertEqual(on.countBracket(line, language: "de"), .each)
     }
 
     func testADefiniteAnswerIsAskedTwiceCachedAndNeverAskedAgain() async throws {

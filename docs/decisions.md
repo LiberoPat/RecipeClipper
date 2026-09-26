@@ -640,6 +640,25 @@ Unit conversion rules (each one exists to avoid showing a confident wrong number
   unit: the `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative, not just the last. Bon Appétit, Epicurious, Delish and Budget
   Bytes all write units this way.
+- Old-style abbreviations (#135): "c", "c.", "C" and "C." after an amount are a
+  cup (Delish: "1 1/2 c. cherry tomatoes", "1/2 c. heavy cream"), and "T"/"T."
+  a tablespoon and "t"/"t." a teaspoon, as old recipe cards write them. T and t
+  differ only by case, so `units.json` holds them as `(?-i:[Tt])` in `patterns`
+  (every caller matches case-insensitively otherwise) and as `caseSensitive`
+  `names` rules that run first; `MeasureUnit.fromText` lowercases for every
+  other rule. "Tbs" was already a tablespoon in any case. A one-letter unit
+  refuses a hyphen or apostrophe after it, so "2 T-bone steaks" stays a count.
+  "C" is also Celsius: a whole 2–3 digit number in `TemperatureConverter`'s
+  plausible Celsius range (40–320) followed by a C is no amount at all
+  (`IngredientScaler.Patterns.temperature`), so "180 C water" stays as written
+  in scaling, conversion and grocery totals, like a size ("1-inch"). "2 C
+  flour" is cups, as the temperature rule already said, and instructions are
+  still read only by `TemperatureConverter`. Because the scaler, converter,
+  `GroceryCombiner`, `IngredientName` and amounts in steps all read units
+  through `UnitPatterns` and `fromText`, they agree: "1 c. heavy cream" and
+  "1 cup heavy cream" add up to "2 c. heavy cream" (the total keeps a unit as a
+  line wrote it, as "3 cup milk" always has). "c" left `names.json`
+  `leadingWords`, which lists only unit words the converter doesn't read.
 - OUNCES leaves pourable liquids as written unless `convertLiquids` is on. METRIC ignores that flag: liquids, spoons and cups become ml (a volume
   to volume conversion, exact and density-free), and known solids become g.
   METRIC treats 1 cup as 240 ml, 1 tbsp as 15 ml and 1 tsp as 5 ml.
@@ -2152,6 +2171,14 @@ model can only pick a listed option (the rule still checks it).
   Converting is unchanged: a count has no unit to convert, so the bracket keeps its units (it
   is the site's figure, scaled). Asked when a recipe with a servings stepper opens; applied in
   the reading view, and to the week's lines (grocery sheet, What I need) once cached.
+  **Off since #127, behind a second flag, `aiCountBrackets`** (off in both builds; it acts only
+  with `aiDecisions` on too). The #105 evaluation (`docs/eval/llm-vs-regex.md`) found a 3B
+  model confidently wrong on 4 of 22 count brackets even through `DecisionRule` ("6 garlic
+  cloves (30 g)" as each, so doubled it would read "12 garlic cloves (30 g)"), and every wrong
+  answer is a wrong figure on screen. So under `aiDecisions` alone nothing is asked, and the
+  repository leaves any cached count-bracket answer out of what it emits: these lines scale
+  exactly as without the model. The prompt, the candidates and the scaling stay, so the
+  decision can be re-measured on the phone models and re-enabled by the flag.
 - **Pantry "same ingredient?"** Asked only for a line whose name no pantry item matches by
   `IngredientName.matches`, against in-stock or staple items whose names are close
   (`DecisionCandidates.close`: they share a word of 3+ letters, or one's last word ends with the
@@ -2269,10 +2296,27 @@ exact rules still decide every total.
   `GroceryDecisions.split` cuts a line at the first comma, semicolon, bracket or spaced dash
   whose left side has an ingredient name ("2 eggs" | "(dfsafs -"); never text holding a digit
   (a figure is never ignored, whatever the model says), never Japanese or unspaced languages,
-  never a package size before the name. Asked only when the line's core names what another
-  line names and the two don't already add up. Note or junk: the line is grouped and added up
-  as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"), and it still shows as written under
-  the total. Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
+  never a package size before the name. Asked for every grocery line with trailing text, a
+  lone line too (the owner's option 2), so a lone "2 eggs (dfsafs -" shows "2 eggs" once
+  decided junk; once per text and language (the cache), in the background, once per visit.
+  Only grocery lines: the reading view never asks it. Note or junk: the line is grouped and added up
+  as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"). A note still shows as written under
+  the total; **junk is hidden in Groceries** (the owner's option 1): the row, the lines under
+  a total or Together row and the shared text show the line without it ("2 eggs"). That is a
+  display-time transform from the cached answer (`GroceryDecisions.shownText`, applied in
+  `GroceryCombiner.sections`): the stored line is never rewritten, so turning `aiDecisions` off
+  shows it again, and the recipe's reading view always keeps the line as the site wrote it.
+  Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
+- **"What is the ingredient's name?"** (`ingredientName`, free text) catches junk with no
+  separator ("2 onions dfsafs"). Asked only for a line with no separator split whose name has
+  words the aisle table doesn't match after words it does ("onions dfsafs": "onions" is
+  produce, the whole isn't), once per line and language, never in unspaced languages. The
+  answer counts only when both asks agree with high confidence (`DecisionRule`: any agreed
+  non-empty text), it is in the line as whole words (`PageRecipeCheck.find`), the line up to it
+  still reads as an ingredient line whose name ends with it, and what follows is two
+  characters or more with no digit (`GroceryDecisions.nameSplit`). That rest then goes through
+  the trailing-text question above. Unsure or a failed
+  check: the line stays exactly as today. Pinned by the corpus's `NameCut` rows.
 - **Aisles.** Grouping stays per aisle. When a fresh answer lands, a line in Other moves
   beside its "same" partner, or to its core's aisle once its trailing text is note or junk
   (`GroceryDecisions.filing`, then `fileFromOther`), exactly like #104's aisle answers: only
@@ -2286,7 +2330,8 @@ exact rules still decide every total.
 
 **Needs a real phone:** whether the models say "same" for the owner's corn and garlic pairs and
 "different" for rice flour and whole milk with high confidence both times, whether they tell a
-note from junk from a second amount, and how long the questions take on a long list.
+note from junk from a second amount, whether they copy "onions" out of "2 onions dfsafs"
+verbatim and agree twice, and how long the questions take on a long list.
 
 ## A hyphenated mixed number is not a range (#125)
 

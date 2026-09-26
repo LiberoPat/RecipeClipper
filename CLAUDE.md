@@ -49,8 +49,8 @@ JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
 pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); a
 recipe picked from a page's text by the on-device model (behind its flag, #103); typed
-decisions by that model where the rules give up (count brackets, close pantry names,
-aisles; `aiDecisions` flag, #104); the
+decisions by that model where the rules give up (close pantry names, aisles;
+`aiDecisions` flag, #104; count brackets only with `aiCountBrackets` too, #127); the
 UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -387,8 +387,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
   lines used; the very same line repeated is "line × 3"; otherwise they sit
   together under the name, each as written. Every row is one tick.
   With `aiDecisions` (#99), a cached definite "same" joins close names in one
-  row, and trailing text judged a note or junk (never one with a digit) is
-  read past; the model writes no number and these rules still decide totals.
+  row, and trailing text (asked for every line with some; never text with a
+  digit) judged a note or junk is read past; the model writes no number and
+  these rules still decide totals.
+  With no separator, a model's name found verbatim in the line cuts it first.
+  Junk is hidden in Groceries (rows, lines, share) at display time, never
+  stored or hidden in the recipe; notes still show.
 - **Pantry** (#51): an item is a `name` as typed, a `language` (as a typed
   grocery's), an optional `quantity` as written (never read as a number), an
   `aisle`, `inStock`, `alwaysHave` (a staple), and optional `purchasedDay`
@@ -581,7 +585,8 @@ Each one exists to avoid showing a confident wrong number.
   sizes never scale: a bracket straight after the count or a container word,
   "1 lata … (397 g)", "each"/"per". Any other bracket holding an amount (a
   count's "4 Apfel (ca. 800g)", prose with numbers) keeps the whole line as
-  written when scaled. With `aiDecisions` (#104), a count's bracket holding
+  written when scaled. With `aiDecisions` and `aiCountBrackets` (#104, #127;
+  `aiDecisions` alone never asks or acts on it), a count's bracket holding
   only an amount follows the on-device model's cached answer: total scales it,
   each keeps its figure, unsure stays as written (rule in `docs/decisions.md`).
 - **Joining, "about", per-item and container words are per language** in
@@ -589,6 +594,8 @@ Each one exists to avoid showing a confident wrong number.
 - **A unit's trailing period ("tsp.", "oz.") belongs to the unit.** The
   `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative.
+- **"c." is a cup; "T" a tablespoon, "t" a teaspoon, case-sensitively** (#135);
+  "180 C" (a plausible Celsius number) and "T-bone" stay as written.
 - **Liquids.** Ounces leaves pourable liquids as written unless "Also
   convert liquids" is on. Metric ignores that flag: liquids, spoons and
   cups become ml (a cup is 240 ml, a tbsp 15 ml, a tsp 5 ml), and known

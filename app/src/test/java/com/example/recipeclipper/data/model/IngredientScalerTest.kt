@@ -89,6 +89,16 @@ class IngredientScalerTest {
         assertEquals("2 lb. (910 g) chicken", IngredientScaler.scale("1 lb. (455 g) chicken", 2.0))
     }
 
+    @Test fun `old-style c, T and t are units, so their alternate measures scale too`() {
+        assertEquals("1 c. (2 stick) butter, melted", scale("1/2 c. (1 stick) butter, melted", 2.0))
+        assertEquals("2 T. (30 ml) olive oil", scale("1 T. (15 ml) olive oil", 2.0))
+        assertEquals("1 t (5 ml) vanilla", scale("1/2 t (2.5 ml) vanilla", 2.0))
+        assertEquals("3 c. cherry tomatoes", scale("1 1/2 c. cherry tomatoes", 2.0))
+        // A temperature is not an amount; a T in a word is no unit.
+        assertEquals("180 C water", scale("180 C water", 2.0))
+        assertEquals("4 T-bone steaks", scale("2 T-bone steaks", 2.0))
+    }
+
     @Test fun `compound amounts scale both parts and the alternate measure`() {
         assertEquals("2 cup plus 4 tbsp (280 g) flour", IngredientScaler.scale("1 cup plus 2 tbsp (140 g) flour", 2.0))
         assertEquals(

@@ -86,6 +86,16 @@ final class IngredientScalerTests: XCTestCase {
         XCTAssertEqual("2 lb. (910 g) chicken", scale("1 lb. (455 g) chicken", 2.0))
     }
 
+    func testOldStyleCTAndTAreUnitsSoTheirAlternateMeasuresScaleToo() {
+        XCTAssertEqual("1 c. (2 stick) butter, melted", scale("1/2 c. (1 stick) butter, melted", 2.0))
+        XCTAssertEqual("2 T. (30 ml) olive oil", scale("1 T. (15 ml) olive oil", 2.0))
+        XCTAssertEqual("1 t (5 ml) vanilla", scale("1/2 t (2.5 ml) vanilla", 2.0))
+        XCTAssertEqual("3 c. cherry tomatoes", scale("1 1/2 c. cherry tomatoes", 2.0))
+        // A temperature is not an amount; a T in a word is no unit.
+        XCTAssertEqual("180 C water", scale("180 C water", 2.0))
+        XCTAssertEqual("4 T-bone steaks", scale("2 T-bone steaks", 2.0))
+    }
+
     func testCompoundAmountsScaleBothPartsAndTheAlternateMeasure() {
         XCTAssertEqual("2 cup plus 4 tbsp (280 g) flour", scale("1 cup plus 2 tbsp (140 g) flour", 2.0))
         XCTAssertEqual(

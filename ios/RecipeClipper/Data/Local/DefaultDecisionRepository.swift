@@ -37,29 +37,41 @@ final class DefaultDecisionRepository: DecisionRepository {
     private let db: AppDatabase
     private let model: DecisionModel
     private let isOn: () -> Bool
+    /// Count brackets need their own flag too (#127): off, a cached answer is never applied.
+    private let countBracketsOn: () -> Bool
     private let clock: Clock
 
-    init(db: AppDatabase, model: DecisionModel, clock: Clock, isOn: @escaping () -> Bool) {
+    init(
+        db: AppDatabase, model: DecisionModel, clock: Clock, isOn: @escaping () -> Bool,
+        countBracketsOn: @escaping () -> Bool = { false }
+    ) {
         self.db = db
         self.model = model
         self.clock = clock
         self.isOn = isOn
+        self.countBracketsOn = countBracketsOn
     }
 
     func observe() -> AnyPublisher<Decisions, Never> {
-        let isOn = self.isOn
-        return db.observe { conn in isOn() ? Decisions(answers: try AiDecisionDao(db: conn).all()) : .none }
+        let isOn = self.isOn, brackets = countBracketsOn
+        return db.observe { conn in isOn() ? try Self.load(conn, brackets: brackets()) : .none }
     }
 
     func current() async -> Decisions {
         guard isOn() else { return .none }
-        return (try? await db.read { Decisions(answers: try AiDecisionDao(db: $0).all()) }) ?? .none
+        let brackets = countBracketsOn()
+        return (try? await db.read { try Self.load($0, brackets: brackets) }) ?? .none
+    }
+
+    private static func load(_ conn: SQLiteConnection, brackets: Bool) throws -> Decisions {
+        Decisions(answers: try AiDecisionDao(db: conn).all().filter { brackets || $0.key.kind != .countBracket })
     }
 
     func decide(_ questions: [DecisionQuestion]) async {
         guard isOn() else { return }
+        let brackets = countBracketsOn()
         var seen = Set<DecisionQuestion>()
-        for q in questions where seen.insert(q).inserted {
+        for q in questions where (brackets || q.kind != .countBracket) && seen.insert(q).inserted {
             if Task.isCancelled { return }
             // One at a time; a question two screens ask at once costs a second ask, never a second row.
             await ask(q)
