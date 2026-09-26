@@ -17,7 +17,8 @@ struct CardSelector {
     private let alternatives: [Compound]
 
     /// Text each alternative needs in the page's source ("" when it needs none), so a page
-    /// without any can be passed over before its tree is built.
+    /// without any can be passed over before its tree is built. Only a value's first word, since
+    /// the page may space an attribute's words differently.
     let needles: [String]
 
     private static let tagPattern = JRegex("^[a-z][a-z0-9]*")
@@ -28,11 +29,14 @@ struct CardSelector {
     init?(_ text: String) {
         var alternatives: [Compound] = []
         for part in text.split(separator: ",", omittingEmptySubsequences: false) {
-            guard let compound = Self.compound(part.trimmingCharacters(in: .whitespaces)) else { return nil }
+            guard let compound = Self.compound(part.kTrimmed) else { return nil }
             alternatives.append(compound)
         }
         self.alternatives = alternatives
-        needles = alternatives.map { $0.conditions.first(where: { $0.op != "" })?.value ?? "" }
+        needles = alternatives.map { compound in
+            let value = compound.conditions.first(where: { $0.op != "" })?.value ?? ""
+            return value.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
+        }
     }
 
     func matches(_ e: HtmlTree.Element) -> Bool {
