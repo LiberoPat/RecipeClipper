@@ -22,7 +22,7 @@ final class ShareUITests: RecipeUITestCase {
         // Dismiss by tapping outside it, in the larger part of the screen it leaves free: below
         // a popover, above a bottom sheet. Never at the very top: that is the status bar, and a
         // tap there goes to the system, not the popover's dismiss region (on iOS 27 the popover
-        // starts right under it, and a tap at the top failed every night). Then the recipe
+        // starts right under it, and a tap at the top left it open every time). Then the recipe
         // screen is still intact.
         let screen = app.frame
         let box = sheet.frame
