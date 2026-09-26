@@ -26,6 +26,18 @@ class DecisionRuleTest {
         assertEquals(listOf("note", "second_amount", "junk", "unsure"), trailing.options)
     }
 
+    @Test fun `a name is free text, agreed twice with high confidence`() {
+        val kind = DecisionKind.INGREDIENT_NAME
+        assertEquals("red onions", DecisionRule.judge(kind, listOf(reply("Red  onions"), reply("red onions "))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("onions"), reply("red onions"))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("onions"), reply("onions", "medium"))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply(" "), reply(" "))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("unsure"), reply("unsure"))))
+        val prompt = DecisionPrompts.prompt(DecisionQuestion.ingredientName("2 Onions  dfsafs", "en"), 1)
+        assertEquals("Shopping list line (English): 2 onions dfsafs", prompt.text)
+        assertEquals(listOf("unsure"), prompt.options)
+    }
+
     @Test fun `anything less is unsure`() {
         val kind = DecisionKind.SAME_INGREDIENT
         assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("same"), reply("different"))))

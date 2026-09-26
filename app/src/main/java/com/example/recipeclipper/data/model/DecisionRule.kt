@@ -7,7 +7,7 @@ data class DecisionReply(val answer: String, val confidence: String)
  * The confidence rule (#104). On-device models give no calibrated probabilities, so a decision
  * counts only when the model is asked [ASKS] times, with the options listed in a different
  * order each time ([options]: against a bias for the first or last option), and every reply
- * picks the same definite option with confidence "high". Anything else (a disagreement,
+ * picks the same definite option (or, for a free-text kind, the same text) with confidence "high". Anything else (a disagreement,
  * "unsure", medium or low confidence, an option not on the list) is [DecisionKind.UNSURE].
  */
 object DecisionRule {
@@ -16,9 +16,11 @@ object DecisionRule {
 
     fun judge(kind: DecisionKind, replies: List<DecisionReply>): String {
         if (replies.size != ASKS) return DecisionKind.UNSURE
-        val answers = replies.map { it.answer.trim().lowercase() }
+        val answers = replies.map { DecisionQuestion.normalize(it.answer) }
         val first = answers.first()
-        val agreed = first in kind.options && answers.all { it == first }
+        // A free-text answer (a name) is any agreed non-empty text; its caller checks it.
+        val definite = if (kind.freeText) first.isNotEmpty() && first != DecisionKind.UNSURE else first in kind.options
+        val agreed = definite && answers.all { it == first }
         val sure = replies.all { it.confidence.trim().lowercase() == "high" }
         return if (agreed && sure) first else DecisionKind.UNSURE
     }
@@ -52,8 +54,11 @@ object DecisionPrompts {
                 SAME_GROCERY to "Shopping list items ($language): \"$a\" and \"$b\""
             }
             DecisionKind.TRAILING_TEXT -> TRAILING to "Text after the ingredient ($language): ${question.input}"
+            DecisionKind.INGREDIENT_NAME -> NAME to "Shopping list line ($language): ${question.input}"
         }
-        val closing = "\nAnswer with one of: ${options.joinToString(", ")}. Give your confidence: high, medium or low. " +
+        val answer = if (question.kind.freeText) "the name, copied exactly from the line, or \"unsure\""
+        else "one of: ${options.joinToString(", ")}"
+        val closing = "\nAnswer with $answer. Give your confidence: high, medium or low. " +
             "Answer \"unsure\" whenever you are not certain."
         return DecisionPrompt(question.kind, instructions + closing, text, options)
     }
@@ -73,6 +78,13 @@ object DecisionPrompts {
         amount or size, or another ingredient or an alternative ("(about three cups)", "plus two yolks",
         ", or frozen corn", "and some for the pan"). "junk": meaningless characters or a typing error
         ("(dfsafs -", "--- xx").
+    """.trimIndent()
+
+    private val NAME = """
+        A shopping list line from a recipe: an amount, maybe a unit, the ingredient's name, and maybe other
+        text after the name. What is the ingredient's name? Copy only its words from the line, without the
+        amount, the unit or anything after the name: "2 onions dfsafs" is "onions", "1 cup rice flour xx"
+        is "rice flour", "3 ripe tomatoes" is "ripe tomatoes".
     """.trimIndent()
 
     private val COUNT = """

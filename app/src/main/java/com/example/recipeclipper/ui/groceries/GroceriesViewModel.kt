@@ -123,7 +123,10 @@ class GroceriesViewModel @Inject constructor(
     private fun askGroceryQuestions(items: List<GroceryItem>, current: Decisions) {
         val repo = decisions ?: return
         val unchecked = items.filter { !it.checked }
-        val open = (GroceryDecisions.trailingTexts(unchecked, current) + GroceryDecisions.samePairs(unchecked, current))
+        val open = (
+            GroceryDecisions.ingredientNames(unchecked) + GroceryDecisions.trailingTexts(unchecked, current) +
+                GroceryDecisions.samePairs(unchecked, current)
+            )
             .filter { !current.isAnswered(it) && askedGrocery.add(it) }
         if (open.isEmpty()) return
         viewModelScope.launch {
