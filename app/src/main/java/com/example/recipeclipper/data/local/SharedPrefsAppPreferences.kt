@@ -3,6 +3,7 @@ package com.example.recipeclipper.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -69,6 +70,12 @@ class SharedPrefsAppPreferences @Inject constructor(@ApplicationContext context:
             prefs.edit { putBoolean(KEY_AMOUNTS_IN_STEPS, value) }
         }
 
+    override var recipeSort: RecipeSort
+        get() = RecipeSort.fromStoredName(prefs.getString(KEY_RECIPE_SORT, null))
+        set(value) {
+            prefs.edit { putString(KEY_RECIPE_SORT, value.name) }
+        }
+
     /**
      * Over SharedPreferences' change listener. SharedPreferences holds its listeners weakly, so
      * the listener is a local that `awaitClose` keeps alive for as long as someone collects;
@@ -90,5 +97,6 @@ class SharedPrefsAppPreferences @Inject constructor(@ApplicationContext context:
         const val KEY_EXPIRY_REMINDERS = "expiry_reminders"
         const val KEY_CHEF_MODE = "chef_mode"
         const val KEY_AMOUNTS_IN_STEPS = "amounts_in_steps"
+        const val KEY_RECIPE_SORT = "recipe_sort"
     }
 }
