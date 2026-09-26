@@ -99,37 +99,58 @@ enum GroceryCombiner {
 
     /// The list as shown: aisles in `Aisle` order, empty ones left out; within one, unchecked
     /// rows before checked ones, each in the order its first line was added.
-    static func sections(_ items: [GroceryItem]) -> [Section] {
+    static func sections(_ items: [GroceryItem], decisions: Decisions = .none) -> [Section] {
         let sorted = items.sorted { ($0.sortOrder, $0.id) < ($1.sortOrder, $1.id) }
         return Aisle.allCases.compactMap { aisle in
             let inAisle = sorted.filter { $0.aisle == aisle }
             if inAisle.isEmpty { return nil }
-            let rows = [false, true].flatMap { checked in group(inAisle.filter { $0.checked == checked }) }
+            let rows = [false, true].flatMap { checked in group(inAisle.filter { $0.checked == checked }, decisions) }
             return Section(aisle: aisle, rows: rows)
         }
     }
 
-    private static func group(_ items: [GroceryItem]) -> [Row] {
+    /// With the model's answers (#99, `GroceryDecisions`): a line whose trailing text is a note
+    /// or junk is read without it, and groups whose names are definitely the same share a row,
+    /// under the first group's name. Adding up keeps `combine`'s exact rules.
+    private static func group(_ items: [GroceryItem], _ decisions: Decisions) -> [Row] {
         // Keyed by language and name; a line with no name is its own group.
         var order: [String] = []
         var groups: [String: [GroceryItem]] = [:]
         var names: [Int64: String] = [:]
         for item in items {
-            let name = LanguageWords.forTag(item.language).flatMap { IngredientName.of(item.text, words: $0) }
+            let name = GroceryDecisions.name(item, decisions: decisions)
             if let name { names[item.id] = name }
             let key = name.map { "n\u{0}\(item.language ?? "")\u{0}\($0)" } ?? "i\u{0}\(item.id)"
             if groups[key] == nil { order.append(key) }
             groups[key, default: []].append(item)
         }
-        return order.map { key in
-            let lines = groups[key]!
+        return mergeSame(order.map { groups[$0]! }, names, decisions).map { lines in
             let first = lines[0]
             guard lines.count > 1, let name = names[first.id] else { return .single(first) }
-            if let words = LanguageWords.forTag(first.language), let total = combine(lines.map(\.text), words: words) {
+            let texts = lines.map { GroceryDecisions.effectiveText($0, decisions: decisions) }
+            let sameName = lines.allSatisfy { names[$0.id] == name }
+            if let words = LanguageWords.forTag(first.language),
+               let total = combine(texts, words: words, requireSameName: sameName) {
                 return .combined(name: name, text: total, items: lines)
             }
             return .together(name: name, items: lines)
         }
+    }
+
+    // Each group joins the first earlier one holding a name definitely the same as its own.
+    private static func mergeSame(_ groups: [[GroceryItem]], _ names: [Int64: String], _ decisions: Decisions) -> [[GroceryItem]] {
+        var out: [[GroceryItem]] = []
+        for group in groups {
+            let first = group[0]
+            if let name = names[first.id], let into = out.firstIndex(where: { o in
+                o[0].language == first.language && o.contains { names[$0.id].map { decisions.sameGrocery($0, name, language: first.language) } ?? false }
+            }) {
+                out[into] += group
+            } else {
+                out.append(group)
+            }
+        }
+        return out
     }
 
     // MARK: - Adding up
@@ -199,11 +220,15 @@ enum GroceryCombiner {
     }
 
     /// The lines added up as one line ("300 g flour"), or nil when they can't be added up
-    /// exactly, or don't all name the same ingredient in `words`' language. The words after the
-    /// total are the shortest any line wrote after its unit, as written.
-    static func combine(_ lines: [String], words: LanguageWords) -> String? {
-        guard lines.count >= 2, let name = IngredientName.of(lines[0], words: words) else { return nil }
-        if lines.contains(where: { IngredientName.of($0, words: words) != name }) { return nil }
+    /// exactly, or don't all name the same ingredient in `words`' language (not checked when
+    /// `requireSameName` is false: the model decided the names are the same, #99). The words
+    /// after the total are the shortest any line wrote after its unit, as written.
+    static func combine(_ lines: [String], words: LanguageWords, requireSameName: Bool = true) -> String? {
+        guard lines.count >= 2 else { return nil }
+        if requireSameName {
+            guard let name = IngredientName.of(lines[0], words: words) else { return nil }
+            if lines.contains(where: { IngredientName.of($0, words: words) != name }) { return nil }
+        }
         var amounts: [Amount] = []
         for line in lines {
             guard let a = amount(line, words) else { return nil }
