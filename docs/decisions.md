@@ -2152,6 +2152,14 @@ model can only pick a listed option (the rule still checks it).
   Converting is unchanged: a count has no unit to convert, so the bracket keeps its units (it
   is the site's figure, scaled). Asked when a recipe with a servings stepper opens; applied in
   the reading view, and to the week's lines (grocery sheet, What I need) once cached.
+  **Off since #127, behind a second flag, `aiCountBrackets`** (off in both builds; it acts only
+  with `aiDecisions` on too). The #105 evaluation (`docs/eval/llm-vs-regex.md`) found a 3B
+  model confidently wrong on 4 of 22 count brackets even through `DecisionRule` ("6 garlic
+  cloves (30 g)" as each, so doubled it would read "12 garlic cloves (30 g)"), and every wrong
+  answer is a wrong figure on screen. So under `aiDecisions` alone nothing is asked, and the
+  repository leaves any cached count-bracket answer out of what it emits: these lines scale
+  exactly as without the model. The prompt, the candidates and the scaling stay, so the
+  decision can be re-measured on the phone models and re-enabled by the flag.
 - **Pantry "same ingredient?"** Asked only for a line whose name no pantry item matches by
   `IngredientName.matches`, against in-stock or staple items whose names are close
   (`DecisionCandidates.close`: they share a word of 3+ letters, or one's last word ends with the

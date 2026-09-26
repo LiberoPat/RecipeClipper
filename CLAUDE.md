@@ -49,8 +49,8 @@ JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
 pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); a
 recipe picked from a page's text by the on-device model (behind its flag, #103); typed
-decisions by that model where the rules give up (count brackets, close pantry names,
-aisles; `aiDecisions` flag, #104); the
+decisions by that model where the rules give up (close pantry names, aisles;
+`aiDecisions` flag, #104; count brackets only with `aiCountBrackets` too, #127); the
 UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -579,7 +579,8 @@ Each one exists to avoid showing a confident wrong number.
   sizes never scale: a bracket straight after the count or a container word,
   "1 lata … (397 g)", "each"/"per". Any other bracket holding an amount (a
   count's "4 Apfel (ca. 800g)", prose with numbers) keeps the whole line as
-  written when scaled. With `aiDecisions` (#104), a count's bracket holding
+  written when scaled. With `aiDecisions` and `aiCountBrackets` (#104, #127;
+  `aiDecisions` alone never asks or acts on it), a count's bracket holding
   only an amount follows the on-device model's cached answer: total scales it,
   each keeps its figure, unsure stays as written (rule in `docs/decisions.md`).
 - **Joining, "about", per-item and container words are per language** in
