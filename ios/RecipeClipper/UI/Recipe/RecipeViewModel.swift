@@ -298,7 +298,8 @@ final class RecipeViewModel {
         for step in deadlines.keys { alarms.cancel(recipeId: id, step: step) }
         deadlines = [:]
         Task {
-            _ = await repository.delete(id: id)
+            // No undo here: the confirmation said the photos go with it (#116).
+            if let deleted = await repository.delete(id: id) { await repository.forget(deleted) }
             uiState.deleted = true
         }
     }

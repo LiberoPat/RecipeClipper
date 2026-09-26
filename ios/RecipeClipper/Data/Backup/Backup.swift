@@ -37,6 +37,29 @@ struct Backup: Equatable {
     var menus: [BackupMenu] = []
     /// The meals of `menus` (#52). Absent in older files, which read as empty.
     var menuEntries: [BackupMenuEntry] = []
+    /// The user's own photos (#116). Absent in older files, which read as empty. Their pictures
+    /// travel beside this JSON in a zip (`BackupArchive`), each at `BackupCookedPhoto.file`.
+    var cookedPhotos: [BackupCookedPhoto] = []
+}
+
+/// One "I made this" entry (#116). `file` is the picture's path inside the export zip
+/// (`photos/<name>.jpg`); an entry whose picture isn't in the package is left out on import.
+struct BackupCookedPhoto: Equatable {
+    var id: String
+    var recipeId: String
+    var day: Int64
+    var note: String?
+    var createdAt: Int64
+    var updatedAt: Int64
+    var file: String
+}
+
+/// What an export or an import carries (#116): the JSON, and the pictures by their path in the
+/// zip mapped to a local file. A plain `.json` backup (every export without photos, and every
+/// older one) has none.
+struct BackupPackage: Equatable {
+    var json: String
+    var photos: [String: URL] = [:]
 }
 
 struct BackupRecipe: Equatable {
@@ -188,6 +211,8 @@ struct ImportSummary: Equatable {
     var mealTypesAdded = 0
     /// New menus written (#52).
     var menusAdded = 0
+    /// New photos of the user's own cooking written (#116).
+    var photosAdded = 0
     /// The free library's size when that is what `recipesSkipped` ran into (#107), else nil.
     var freeLimit: Int?
 }
@@ -197,4 +222,6 @@ struct ExportedBackup: Equatable {
     var json: String
     var exportedAt: Int64
     var recipeCount: Int
+    /// The pictures to zip beside `json` (#116): path in the zip to the stored file.
+    var photos: [String: URL] = [:]
 }

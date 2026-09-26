@@ -5,7 +5,7 @@ import XCTest
 /// mode the current step's "As written" button does it.
 final class ChefModeUITests: RecipeUITestCase {
     private let step = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
-    private let short = "Oven to 350°F; butter a 9-inch tin."
+    private let short = "Preheat oven to 350°F; butter a 9-inch tin."
 
     /// A step's text, whatever it is exposed as (a tappable step reads as a button).
     private func labelled(_ label: String) -> XCUIElement {

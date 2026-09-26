@@ -101,6 +101,13 @@ final class FakeRecipeRepository: RecipeRepository {
         restoreCalls.append(deleted)
     }
 
+    /// Deletes that stood (#116: their photo files go).
+    private(set) var forgetCalls: [DeletedRecipe] = []
+
+    @MainActor func forget(_ deleted: DeletedRecipe) async {
+        forgetCalls.append(deleted)
+    }
+
     func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> {
         historyQueries.append(query)
         return history.eraseToAnyPublisher()

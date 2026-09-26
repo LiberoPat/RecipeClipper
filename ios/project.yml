@@ -40,13 +40,27 @@ targets:
     # The App Group holds the database and settings the share extension also uses. Keep the
     # identifier in step with AppGroup.identifier and the extension's entitlements, and
     # register it on both App IDs (docs/release.md).
+    # iCloud Documents (#150): the automatic backup copy goes to this container's Documents
+    # folder, which Files shows as "Recipe Clipper". Keep the identifier in step with
+    # ICloudBackupFolder.containerIdentifier, and register the container on the App ID
+    # (docs/release.md). Without it the app runs and says iCloud Drive isn't available.
     entitlements:
       path: RecipeClipper/RecipeClipper.entitlements
       properties:
         com.apple.security.application-groups: [group.com.liberopat.recipeclipper]
+        com.apple.developer.icloud-container-identifiers: [iCloud.com.liberopat.recipeclipper]
+        com.apple.developer.icloud-services: [CloudDocuments]
+        com.apple.developer.ubiquity-container-identifiers: [iCloud.com.liberopat.recipeclipper]
     info:
       path: RecipeClipper/Info.plist
       properties:
+        # The iCloud Drive folder's name in Files (#150). Files picks a change up only with a
+        # new CFBundleVersion.
+        NSUbiquitousContainers:
+          iCloud.com.liberopat.recipeclipper:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: Recipe Clipper
+            NSUbiquitousContainerSupportedFolderLevels: None
         CFBundleDisplayName: Recipe Clipper
         CFBundleDevelopmentRegion: en
         # The languages the String Catalog translates; keep in step with docs/translations.md.
@@ -64,6 +78,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UIBackgroundModes: [audio]
+        # "I made this" (#116): asked the first time the camera is chosen, never before.
+        NSCameraUsageDescription: Take a photo of what you cooked, to keep with the recipe.
         # HTTPS only, which is exempt; saves answering the question on every upload.
         ITSAppUsesNonExemptEncryption: false
     settings:

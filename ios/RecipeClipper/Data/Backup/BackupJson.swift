@@ -55,8 +55,11 @@ enum BackupJson {
             "menus": backup.menus.map(json),
             "menuEntries": backup.menuEntries.map(json),
         ]
+        // Only when there are some (#116): an export without photos is the same file as before.
+        var withPhotos = root
+        if !backup.cookedPhotos.isEmpty { withPhotos["cookedPhotos"] = backup.cookedPhotos.map(json) }
         guard let data = try? JSONSerialization.data(
-            withJSONObject: root, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+            withJSONObject: withPhotos, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         ) else { return "{}" }
         return String(decoding: data, as: UTF8.self)
     }
@@ -242,11 +245,31 @@ enum BackupJson {
         }
         try requireUniqueIds(menuEntries.map(\.id), "menuEntries")
 
+        // #116: a photo naming no recipe in the file is left out (it belongs to its recipe).
+        let cookedPhotos = try top.objects(root, "cookedPhotos").compactMap { path, o -> BackupCookedPhoto? in
+            let r = Reader(path: path)
+            let id = try r.requiredId(o, "id")
+            guard let file = try r.string(o, "file"), isPhotoFile(file) else { throw Malformed(path: "\(path).file") }
+            guard let day = try r.int64(o, "day") else { throw Malformed(path: "\(path).day") }
+            guard let recipeId = try r.string(o, "recipeId"), recipeIds.contains(recipeId) else { return nil }
+            return BackupCookedPhoto(
+                id: id, recipeId: recipeId, day: day,
+                note: try r.string(o, "note").flatMap { $0.isBlank ? nil : $0 },
+                createdAt: try r.int64(o, "createdAt") ?? 0, updatedAt: try r.int64(o, "updatedAt") ?? 0, file: file
+            )
+        }
+        try requireUniqueIds(cookedPhotos.map(\.id), "cookedPhotos")
+
         return Backup(
             exportedAt: exportedAt, recipes: recipes, lists: lists, memberships: memberships,
             pantry: pantry, groceries: groceries, mealTypes: mealTypes, mealPlan: mealPlan,
-            menus: menus, menuEntries: menuEntries
+            menus: menus, menuEntries: menuEntries, cookedPhotos: cookedPhotos
         )
+    }
+
+    /// A picture's path in the zip (#116): under `photos/`, one plain name, never `..` or a folder.
+    static func isPhotoFile(_ path: String) -> Bool {
+        path.range(of: "^photos/[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}$", options: .regularExpression) != nil
     }
 
     private static func requireUniqueIds(_ ids: [String], _ section: String) throws {
@@ -437,6 +460,18 @@ enum BackupJson {
             "note": e.note ?? NSNull(),
             "sortOrder": e.sortOrder,
             "updatedAt": NSNumber(value: e.updatedAt),
+        ]
+    }
+
+    private static func json(_ p: BackupCookedPhoto) -> [String: Any] {
+        [
+            "id": p.id,
+            "recipeId": p.recipeId,
+            "day": NSNumber(value: p.day),
+            "note": p.note ?? NSNull(),
+            "createdAt": NSNumber(value: p.createdAt),
+            "updatedAt": NSNumber(value: p.updatedAt),
+            "file": p.file,
         ]
     }
 

@@ -1,0 +1,48 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSCameraUsageDescription" : {
+      "comment" : "\"I made this\" (#116): asked the first time the camera is chosen.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mach ein Foto von dem, was du gekocht hast, um es beim Rezept zu behalten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take a photo of what you cooked, to keep with the recipe."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haz una foto de lo que has cocinado para guardarla con la receta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prenez en photo ce que vous avez cuisiné, pour la garder avec la recette."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scatta una foto di ciò che hai cucinato, da tenere con la ricetta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tire uma foto do que você cozinhou para guardar com a receita."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

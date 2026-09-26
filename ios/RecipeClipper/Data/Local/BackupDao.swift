@@ -11,6 +11,7 @@ struct BackupSnapshot {
     var mealPlan: [MealPlanEntryRecord] = []
     var menus: [MenuRecord] = []
     var menuEntries: [MenuEntryRecord] = []
+    var cookedPhotos: [CookedPhotoRecord] = []
 
     /// One row of `lists`, every column (ListRecord is the screen's shape, with counts).
     struct ListRow: Equatable {
@@ -70,7 +71,8 @@ struct BackupDao {
         )
         return BackupSnapshot(
             recipes: recipes, lists: lists, memberships: memberships, pantry: pantry, groceries: groceries,
-            mealTypes: mealTypes, mealPlan: mealPlan, menus: menus, menuEntries: menuEntries
+            mealTypes: mealTypes, mealPlan: mealPlan, menus: menus, menuEntries: menuEntries,
+            cookedPhotos: try CookedPhotoDao(db: db).all()
         )
     }
 
@@ -112,7 +114,8 @@ struct BackupDao {
             SELECT id, uid, sourceUrl,
                    (notes IS NOT NULL AND trim(notes) != '') AS hasNotes,
                    (EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)
-                    OR contentOrigin = 'MANUAL') AS isListed
+                    OR contentOrigin = 'MANUAL'
+                    OR EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id)) AS isListed
             FROM recipes
             """
         ) { row in
@@ -133,7 +136,12 @@ struct BackupDao {
         try db.queryOne("SELECT COALESCE(MAX(sortOrder), -1) FROM lists") { $0.int(0) } ?? -1
     }
 
-    func importBackup(_ backup: Backup, limit: LibraryLimit, today: Int64?, newUid: () -> String) throws -> ImportSummary {
+    /// `storedPhotos` (#116): the package's pictures, by path in the zip, already copied into
+    /// the photo store, to their stored names.
+    func importBackup(
+        _ backup: Backup, limit: LibraryLimit, today: Int64?, storedPhotos: [String: String] = [:], now: Int64 = 0,
+        newUid: () -> String
+    ) throws -> ImportSummary {
         // Unlimited (#107) leaves nothing out: every recipe comes in.
         let historyLimit: Int = switch limit {
         case .history(let keep): keep
@@ -157,7 +165,9 @@ struct BackupDao {
             today: today,
             existingMenuUids: try existingMenuUids(),
             existingMenuEntryUids: try existingMenuEntryUids(),
-            countsEveryRecipe: countsEveryRecipe
+            countsEveryRecipe: countsEveryRecipe,
+            existingCookedPhotoUids: Set(try db.query("SELECT uid FROM cooked_photos") { $0.string(0) }),
+            availablePhotoFiles: Set(storedPhotos.keys)
         )
 
         let recipes = RecipeDao(db: db)
@@ -255,6 +265,15 @@ struct BackupDao {
                     sortOrder: e.entry.sortOrder, updatedAt: e.entry.updatedAt, uid: e.entry.id
                 ))
             }
+        }
+        let photos = CookedPhotoDao(db: db)
+        for p in plan.newCookedPhotos {
+            guard let fileName = storedPhotos[p.photo.file] else { continue }
+            try photos.insert(CookedPhotoRecord(
+                recipeId: rowId(p.recipe, newRecipeIds), fileName: fileName, day: p.photo.day, note: p.photo.note,
+                createdAt: p.photo.createdAt > 0 ? p.photo.createdAt : now,
+                updatedAt: p.photo.updatedAt > 0 ? p.photo.updatedAt : now, uid: p.photo.id
+            ))
         }
         return plan.summary
     }

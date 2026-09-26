@@ -11,7 +11,8 @@ struct RecipeDao {
     private static let summaryColumns = """
         id, title, imageUrl, totalTime, lastViewedAt,
         EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
-        contentOrigin = 'CLIPPED' AS isClipped
+        contentOrigin = 'CLIPPED' AS isClipped,
+        (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
         """
 
     func get(_ id: Int64) throws -> RecipeRecord? {
@@ -125,9 +126,12 @@ struct RecipeDao {
     /// longer exists.
     func restore(
         _ recipe: RecipeRecord, crossRefs: [ListMembership], planEntries: [MealPlanEntryRecord] = [],
-        menuEntries: [MenuEntryRecord] = []
+        menuEntries: [MenuEntryRecord] = [], cookedPhotos: [CookedPhotoRecord] = []
     ) throws {
         try insert(recipe)
+        // Its own photos (#116): their files were kept for exactly this.
+        let photos = CookedPhotoDao(db: db)
+        for photo in cookedPhotos { try photos.insert(photo) }
         // Its planned meals too (#49), each skipped if its meal type went meanwhile.
         let plan = MealPlanDao(db: db)
         for entry in planEntries { try plan.restore(entry) }
@@ -194,7 +198,8 @@ struct RecipeDao {
     /// viewed of them. A recipe in any list is never touched, and neither is one planned for
     /// `today` or later (#49; an epoch day, see `PlanDays`): both are outside the cap. A recipe
     /// planned only for past days is ordinary history again. Nor is one in a saved menu (#52),
-    /// nor one typed in by hand (#102, origin MANUAL): it has no link to bring it back.
+    /// nor one typed in by hand (#102, origin MANUAL): it has no link to bring it back, nor one
+    /// with the user's own photos (#116).
     ///
     /// The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL is
     /// never true, which would silently stop the cull altogether.
@@ -208,6 +213,7 @@ struct RecipeDao {
                                  WHERE recipeId IS NOT NULL AND day >= ?2)
                   AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
                   AND contentOrigin != 'MANUAL'
+                  AND id NOT IN (SELECT recipeId FROM cooked_photos)
                 ORDER BY lastViewedAt DESC, id DESC
                 LIMIT -1 OFFSET ?1
             )
@@ -228,6 +234,7 @@ struct RecipeDao {
                              WHERE recipeId IS NOT NULL AND day >= ?1)
               AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
               AND contentOrigin != 'MANUAL'
+              AND id NOT IN (SELECT recipeId FROM cooked_photos)
             ORDER BY lastViewedAt ASC, id ASC
             LIMIT 1
             """,

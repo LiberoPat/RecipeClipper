@@ -39,6 +39,18 @@ enum SharedItems {
         return nil
     }
 
+    /// The first plain text the share carried (#149: a list sent from another phone, when it held
+    /// no link). Nil when there is none.
+    static func text(from providers: [NSItemProvider]) async -> String? {
+        for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
+            if let item = try? await provider.loadItem(forTypeIdentifier: UTType.plainText.identifier),
+               let text = (item as? String) ?? (item as? Data).flatMap({ String(data: $0, encoding: .utf8) }) {
+                return text
+            }
+        }
+        return nil
+    }
+
     /// The result of `Preprocessing.js`'s `ExtensionPreprocessingJS.run`, delivered as a
     /// property-list item under `NSExtensionJavaScriptPreprocessingResultsKey` (both the type
     /// identifier to load and, inside the loaded dictionary, the key holding what

@@ -8,13 +8,15 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 6 * * 1' # Mondays 06:00 UTC
-  # Also on a pull request that changes the check itself or its URL list, so
-  # an edited list is proven before it merges. Other PRs never hit the network.
+  # Also on a pull request that changes the check itself, its URL list or the
+  # site rules (#120), so an edited list or rule is proven before it merges.
+  # Other PRs never hit the network.
   pull_request:
     paths:
       - .github/workflows/site-check.yml
       - app/src/test/resources/site-check-urls.txt
       - app/src/test/java/com/example/recipeclipper/sitecheck/**
+      - shared/tables/site-rules.json
 
 concurrency:
   group: site-check
@@ -50,6 +52,9 @@ jobs:
             cat "$results" >> "$GITHUB_STEP_SUMMARY"
             if ! grep -q '| Parsed' "$results"; then
               echo "::warning::No site parsed. Every site blocking at once is unlikely; check for a parser regression."
+            fi
+            if grep -q 'Stopped matching\*\*' "$results"; then
+              echo "::warning::A site rule stopped matching its page: see Site rules below, and shared/tables/site-rules.json."
             fi
           else
             echo "The site check produced no results: the harness failed." >> "$GITHUB_STEP_SUMMARY"

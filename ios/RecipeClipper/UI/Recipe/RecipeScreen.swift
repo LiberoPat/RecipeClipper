@@ -16,6 +16,8 @@ struct RecipeScreen: View {
     var onClip: (String) -> Void = { _ in }
     /// The `amountsInSteps` flag (#101): amounts inside steps show only behind it.
     var amountsInStepsEnabled = false
+    /// Makes "Your cooks" (#116); nil (the `cookedPhotos` flag off) leaves it out.
+    var makePhotosVM: (() -> CookedPhotosViewModel)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
@@ -28,6 +30,7 @@ struct RecipeScreen: View {
     @State private var groceriesVM: AddToGroceriesViewModel?
     @State private var groceriesSheet: AddToGroceriesViewModel?
     @State private var confirmingDelete = false
+    @State private var photosVM: CookedPhotosViewModel?
     @State private var confirmingUpdate = false
 
     var body: some View {
@@ -45,7 +48,7 @@ struct RecipeScreen: View {
                 if state.cook.active {
                     CookView(content: shown, state: state, vm: vm)
                 } else {
-                    ReadingView(content: shown, state: state, vm: vm)
+                    ReadingView(content: shown, state: state, vm: vm, photos: photosVM)
                 }
             case .loading:
                 StatusView {
@@ -98,6 +101,8 @@ struct RecipeScreen: View {
             if let recipeId {
                 saveVM.setRecipe(recipeId)
                 VisibleRecipe.id = recipeId
+                if photosVM == nil { photosVM = makePhotosVM?() }
+                photosVM?.setRecipe(recipeId)
             }
             #if DEBUG
             if recipeId != nil, DebugLaunch.autoCook { vm.onCookStart() }
@@ -132,7 +137,25 @@ struct RecipeScreen: View {
             Button(Strings.delete, role: .destructive, action: vm.onDelete)
             Button(Strings.cancel, role: .cancel) {}
         } message: {
-            Text(Strings.deleteRecipeBody)
+            // The user's photos go with the recipe (#116), and the dialog says so.
+            Text(Strings.deleteRecipeBody(photos: photosVM?.uiState.photos.count ?? 0))
+        }
+        .fullScreenCover(item: Binding(
+            get: { photosVM?.uiState.open }, set: { if $0 == nil { photosVM?.onClose() } }
+        )) { photo in
+            if let photosVM { CookedPhotoViewer(vm: photosVM, photo: photo, recipeName: content?.recipe.name ?? "") }
+        }
+        .overlay(alignment: .bottom) {
+            if let photosVM, photosVM.uiState.deleted != nil {
+                Snackbar(message: Strings.cookedPhotoDeleted, actionLabel: Strings.undo, action: photosVM.onUndoDelete)
+                    .frame(maxWidth: ReadableWidth.column)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 80)
+            }
+        }
+        .task(id: photosVM?.uiState.deleted?.id) {
+            guard let photosVM, let deleted = photosVM.uiState.deleted else { return }
+            await SnackbarTimeout.run(pending: [deleted.uid], onTimeout: photosVM.onDeleteSettled)
         }
         // A clip (#37) says what it loses in its own words: the parts picked from the page.
         .alert(clipped ? Strings.updateFromSourceClipTitle : Strings.updateFromSourceTitle, isPresented: $confirmingUpdate) {

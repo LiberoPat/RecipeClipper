@@ -52,7 +52,8 @@ class DefaultRecipeRepository @Inject constructor(
     private val library: LibraryPolicy = LibraryPolicy.HistoryOnly,
     private val extractor: PageRecipeExtractor = PageRecipeExtractor.None,
     /** Null (tests that aren't about it) reads as every flag off. */
-    private val flags: FeatureFlags? = null
+    private val flags: FeatureFlags? = null,
+    private val photos: PhotoStore = NoPhotoStore
 ) : RecipeRepository {
 
     override suspend fun importFromUrl(sharedUrl: String): ParseResult {
@@ -249,12 +250,18 @@ class DefaultRecipeRepository @Inject constructor(
         val crossRefs = recipeDao.crossRefsFor(id)
         val planEntries = recipeDao.planEntriesFor(id)
         val menuEntries = recipeDao.menuEntriesFor(id)
+        val cookedPhotos = recipeDao.cookedPhotosFor(id)
         recipeDao.delete(id)
-        RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries, menuEntries)
+        RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries, menuEntries, cookedPhotos)
     }
 
     override suspend fun restore(deleted: RecipeRepository.DeletedRecipe) =
-        log.guard("restore", Unit) { recipeDao.restore(deleted.entity, deleted.crossRefs, deleted.planEntries, deleted.menuEntries) }
+        log.guard("restore", Unit) { recipeDao.restore(deleted.entity, deleted.crossRefs, deleted.planEntries, deleted.menuEntries, deleted.cookedPhotos) }
+
+    // The photos belong to the recipe (#116): once its delete stands, their files go too.
+    override suspend fun forget(deleted: RecipeRepository.DeletedRecipe) {
+        if (deleted.cookedPhotos.isNotEmpty()) photos.delete(deleted.cookedPhotos.map { it.fileName })
+    }
 
     override fun observeHistory(query: String): Flow<List<RecipeSummary>> =
         recipeDao.observeHistory(query).map { rows -> rows.map { it.toDomain() } }.orEmptyOnError(log, "observeHistory")

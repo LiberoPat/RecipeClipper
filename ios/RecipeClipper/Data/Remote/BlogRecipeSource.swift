@@ -124,13 +124,15 @@ final class BlogRecipeSource: RecipeSource {
     static func parse(html: String, url: String) -> ParseResult {
         let blocks = JsonLdRecipeParser.extractJsonLdBlocks(fromHtml: html)
         // Microdata only when there is no JSON-LD recipe, so no working site changes.
-        // WP Recipe Maker's ingredient parts refine JSON-LD's lines when they line up (#118);
-        // Tasty Recipes' and Mediavine Create's cards add the group headings JSON-LD drops (#119).
+        // JSON-LD's recipe is refined by the page: WP Recipe Maker's ingredient parts when they
+        // line up (#118), then the group headings JSON-LD drops from a plugin's card (#119) or the
+        // site's own (#120), and the site's known noise dropped from the last step (#120).
         let jsonLd = JsonLdRecipeParser.parse(blocks, sourceUrl: url, pageLanguage: JsonLdRecipeParser.pageLanguage(html: html))
             .map { recipe -> Recipe in
                 var refined = recipe
                 let wprm = WprmIngredients.refine(html: html, lines: recipe.ingredients)
-                refined.ingredients = CardHeadings.refine(html: html, lines: wprm)
+                refined.ingredients = SiteRules.ingredients(html: html, url: url, lines: wprm)
+                refined.instructions = SiteRules.steps(url: url, steps: recipe.instructions)
                 return refined
             }
         guard let recipe = jsonLd ?? MicrodataRecipeParser.parse(html: html, sourceUrl: url) else {

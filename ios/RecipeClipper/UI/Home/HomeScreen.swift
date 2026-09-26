@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Home: the link field (kept so the app can be tried without the share sheet), then whatever
 /// there is to pick up again. Sections with nothing in them don't appear, but the Recipes /
@@ -13,6 +14,7 @@ struct HomeScreen: View {
     var onNewRecipe: () -> Void = {}
 
     @State private var now = currentMillis()
+    @State private var restoring = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// The gear grows a little with the title beside it, capped: it is chrome.
     @ScaledMetric(relativeTo: .title) private var gearScaled: CGFloat = 20
@@ -89,6 +91,23 @@ struct HomeScreen: View {
                         .padding(.top, 28)
                 }
 
+                // A fresh install with an empty library (#150): bring a backup back in.
+                if state.showsRestore && vm.canRestore {
+                    Button(Strings.homeRestoreBackup) { restoring = true }
+                        .buttonStyle(TextActionStyle())
+                        .disabled(state.restore == .importing)
+                        .padding(.top, 8)
+                        .accessibilityIdentifier("home.restore")
+                    if let status = backupStatusText(state.restore) {
+                        Text(status.text)
+                            .textStyle(Typography.bodyMedium)
+                            .foregroundStyle(status.isError ? Palette.error : Palette.onBackground)
+                            .padding(.top, 8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityIdentifier("home.restoreStatus")
+                    }
+                }
+
                 // Both entries are unconditional: a fixed block is easier to aim at than one
                 // that changes shape with what is in the database.
                 VStack(spacing: 0) {
@@ -109,6 +128,13 @@ struct HomeScreen: View {
         .screenBackground()
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { now = currentMillis() }
+        // The same picker as Settings' Import.
+        .fileImporter(isPresented: $restoring, allowedContentTypes: [.json, .plainText, .zip]) { result in
+            switch result {
+            case .success(let url): vm.onRestorePicked(url)
+            case .failure: vm.onRestorePickFailed()
+            }
+        }
     }
 
     private func go() {

@@ -31,7 +31,10 @@ enum class Flag(val key: String) {
     AI_DECISIONS("aiDecisions"),
 
     /** With [AI_DECISIONS], the count-bracket decision too (#104); off since #127, kept to re-measure. */
-    AI_COUNT_BRACKETS("aiCountBrackets");
+    AI_COUNT_BRACKETS("aiCountBrackets"),
+
+    /** "I made this" (#116): your photos and notes on a recipe, and the Recently cooked sort. */
+    COOKED_PHOTOS("cookedPhotos");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

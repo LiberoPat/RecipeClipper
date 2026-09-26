@@ -48,18 +48,24 @@ class LiveSiteCheck {
         val source = BlogRecipeSource(JvmConnectivity)
         val outcomes = urls.map { url ->
             val start = System.nanoTime()
-            val first = source.fetch(url)
+            // Whether the site's rules (#120) match the page, from the fetch that is reported.
+            var rules: Map<String, Boolean>? = null
+            suspend fun fetch(): ParseResult {
+                rules = null
+                return source.fetchPage(url) { rules = BlogRecipeSource.siteRuleCheck(it, url) }.result
+            }
+            val first = fetch()
             val firstError = (first as? ParseResult.Error)?.error
             // The repository's rule: one retry after 2 s, for a block or a non-timeout
             // failure only. What the user would end up seeing is what's reported.
             val (result, firstCause) = if (firstError?.shouldAutoRetry == true) {
                 delay(2_000)
-                source.fetch(url) to firstError
+                fetch() to firstError
             } else {
                 first to null
             }
             val millis = (System.nanoTime() - start) / 1_000_000
-            SiteReport.Outcome(url, result, firstCause, millis).also {
+            SiteReport.Outcome(url, result, firstCause, millis, rules).also {
                 println("${SiteReport.site(url)}: " + when (result) {
                     is ParseResult.Success -> "parsed, ${result.recipe.ingredients.size} ingredients, " +
                         "${result.recipe.instructions.size} steps"

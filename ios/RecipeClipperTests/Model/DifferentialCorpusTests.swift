@@ -32,12 +32,15 @@ import XCTest
 // Write only `Wprm("<markup>", ["line"]),`, the markup's attributes single-quoted.
 // Tasty Recipes and Mediavine Create rows (#119): the same, then CardHeadings.refine. Write only
 // `Heads("<markup>", ["line"]),`.
+// Site-rule rows (#120): a host, a page's markup, JSON-LD's lines and steps, then SiteRules.ingredients
+// and SiteRules.steps for that host. Write only `Site("delish.com", "<markup>", ["line"], ["step"]),`.
 // Trailing-text rows (#99): a grocery line, then GroceryDecisions.split's core and trailing text,
 // or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
-// Chef mode rows (#100): a step, a short version of it, then ShortStepCheck.accept (nil: the
-// step shows as written). Write only `Short("Bake for 20 minutes.", "Bake 20 min."),`.
+// Chef mode rows (#100): a step, a short version of it, optionally the recipe's ingredient lines
+// (#129), then ShortStepCheck.accept (nil: the step shows as written). Write only
+// `Short("Bake for 20 minutes.", "Bake 20 min."),` or `Short("…", "…", lines: ["2 eggs"]),`.
 // Step rows (#101): a step, the ingredient lines, then StepAmounts.annotate marked with ⟦ ⟧, against
 // the lines as given and against them doubled in Metric. Write only `Step("Add the eggs.", ["2 eggs"]),`.
 // Page-pick rows (#103): a kind, a page's text, what the model picked, then PageRecipeCheck.find
@@ -104,6 +107,15 @@ final class DifferentialCorpusTests: XCTestCase {
 
     private typealias Heads = Wprm
 
+    private struct Site {
+        let host: String; let html: String; let lines: [String]; let steps: [String]
+        let refined: [String]; let refinedSteps: [String]
+        init(_ host: String, _ html: String, _ lines: [String], _ steps: [String], _ refined: [String], _ refinedSteps: [String]) {
+            self.host = host; self.html = html; self.lines = lines; self.steps = steps
+            self.refined = refined; self.refinedSteps = refinedSteps
+        }
+    }
+
     private struct Trail {
         let line: String; let words: LanguageWords; let core: String?; let trailing: String?
         init(_ line: String, lang: String = "en", _ core: String?, _ trailing: String?) {
@@ -133,9 +145,9 @@ final class DifferentialCorpusTests: XCTestCase {
     }
 
     private struct Short {
-        let original: String; let short: String; let words: LanguageWords; let accepted: String?
-        init(_ original: String, _ short: String, lang: String = "en", _ accepted: String?) {
-            self.original = original; self.short = short; self.words = LanguageWords.forTag(lang)!
+        let original: String; let short: String; let lines: [String]; let words: LanguageWords; let accepted: String?
+        init(_ original: String, _ short: String, lines: [String] = [], lang: String = "en", _ accepted: String?) {
+            self.original = original; self.short = short; self.lines = lines; self.words = LanguageWords.forTag(lang)!
             self.accepted = accepted
         }
     }
@@ -1361,6 +1373,21 @@ final class DifferentialCorpusTests: XCTestCase {
         Heads("<p>No card on this page.</p>", ["1 egg"], ["1 egg"]),
     ]
 
+    private static let sites: [Site] = [
+        Site("bbcgoodfood.com", "<section id='ingredients-list'><section><ul class='ingredients-list list'><li class='ingredients-list__item list-item'><span>200g </span>caster sugar</li></ul></section><section><h3 class='ingredients-list__heading heading-5'>For the filling</h3><ul><li class='ingredients-list__item'>100g butter<div class='ingredients-list__item-note'> softened</div></li></ul></section><div class='pocket ingredients-list__heading'>Keep the screen awake</div></section>", ["200g caster sugar", "100g butter softened"], ["Mix."], ["200g caster sugar", "For the filling:", "100g butter softened"], ["Mix."]),
+        Site("bbcgoodfood.com", "<section id='ingredients-list'><ul><li class='Ingredients-List__Item'>200g caster sugar</li></ul><h3 class='ingredients-list__heading'>Filling</h3><ul><li class='Ingredients-List__Item'>100g butter</li></ul></section>", ["200g caster sugar", "100g butter"], ["Mix."], ["200g caster sugar", "100g butter"], ["Mix."]),
+        Site("cooking.nytimes.com", "<div class='ingredients_ingredients__FLjsC'><h2 class='ingredients_heading__RdSek'>Ingredients</h2><h3 class='pantry--label ingredientgroup_name__xNtpC'>FOR THE CAKE</h3><ul><li><p class='ingredient_ingredient__rfjvs'>2 cups/400 grams sugar</p></li></ul><h3 class='pantry--label ingredientgroup_name__Zz9'>FOR THE FROSTING</h3><ul><li><p>1 cup/226 grams butter, softened</p></li></ul></div>", ["2 cups/400 grams sugar", "1 cup/226 grams butter, softened"], ["Mix."], ["FOR THE CAKE:", "2 cups/400 grams sugar", "FOR THE FROSTING:", "1 cup/226 grams butter, softened"], ["Mix."]),
+        Site("cooking.nytimes.com", "<div class='ingredients_ingredients__FLjsC'><h2>Ingredients</h2><ul><li><p>2 cups sugar</p></li><li><p>1 cup butter</p></li></ul></div>", ["2 cups sugar", "1 cup butter"], ["Mix."], ["2 cups sugar", "1 cup butter"], ["Mix."]),
+        Site("bonappetit.com", "<div data-testid='IngredientList'><h2 class='Hed-kolHYW'>Ingredients</h2><div class='List-YLAfh'><h3 class='  BaseText-fEwdHD   SubHed-icPlCN '>Cake</h3><p class='Amount-URdWv'>½</p><div class='BaseText-fEwdHD Description-dTzQRt'>cup (75 g) golden raisins</div><p class='Amount-URdWv'></p><div class='Description-dTzQRt'>Generous pinch of <a href='x'>kosher salt</a></div></div></div><div data-testid='IngredientList'><h2>Nutrition Per Serving</h2><div class='Description-dTzQRt'>Calories 810</div></div>", ["½ cup (75 g) golden raisins", "Generous pinch of kosher salt"], ["Mix.", "Bake until golden. Editor’s note: This recipe was first printed in May 2016. Head this way for more of our favorite Easter desserts →"], ["Cake:", "½ cup (75 g) golden raisins", "Generous pinch of kosher salt"], ["Mix.", "Bake until golden."]),
+        Site("epicurious.com", "<div data-testid='IngredientList'><div><h3 class='SubHed-icPlCN'>Special Equipment</h3><div class='Description-dTzQRt'>A 12-cup Bundt pan</div></div></div>", ["A 12-cup Bundt pan"], ["Editor’s note: First printed in 1990."], ["Special Equipment:", "A 12-cup Bundt pan"], ["Editor’s note: First printed in 1990."]),
+        Site("epicurious.com", "<p>No card.</p>", ["1 egg"], ["Mix.", "Editor’s note: First printed in 1990.", "Bake. Editor’s note: Retested in 2026."], ["1 egg"], ["Mix.", "Editor’s note: First printed in 1990.", "Bake."]),
+        Site("epicurious.com", "<p>No card.</p>", ["1 egg"], ["Mix.", "Bake.Editor’s note: x", "Serve. The editor’s note: y"], ["1 egg"], ["Mix.", "Bake.Editor’s note: x", "Serve. The editor’s note: y"]),
+        Site("delish.com", "<div class='ingredients-body'><div><h3 class='css-xrnqow'>For the crust</h3><ul class='ingredient-lists'><li><label><input type='checkbox'><span></span></label><span><strong>6 Tbsp.</strong> butter, melted</span></li><li><span><strong>1</strong> (<strong>8-oz.</strong>) package cream cheese</span></li><li><span>Pinch kosher salt</span></li></ul></div></div>", ["6 tbsp. butter, melted", "1 (8-oz.) package cream cheese", "Pinch kosher salt"], ["Mix."], ["For the crust:", "6 tbsp. butter, melted", "1 (8-oz.) package cream cheese", "Pinch kosher salt"], ["Mix."]),
+        Site("delish.com", "<div class='ingredients-body'><h3>Topping</h3><ul><li><strong>2 cups</strong></li></ul></div>", ["2 c."], ["Mix."], ["2 c."], ["Mix."]),
+        Site("example.com", "<div class='ingredients-body'><h3>For the crust</h3><ul><li><strong>6 Tbsp.</strong> butter</li></ul></div>", ["6 tbsp. butter"], ["Bake. Editor’s note: x"], ["6 tbsp. butter"], ["Bake. Editor’s note: x"]),
+        Site("bbcgoodfood.com", "<div class='tasty-recipes-ingredients'><p><strong>Dough:</strong></p><ul><li>2 cups flour</li></ul></div>", ["2 cups flour"], ["Mix."], ["Dough:", "2 cups flour"], ["Mix."]),
+    ]
+
     private static let trails: [Trail] = [
         Trail("2 eggs (dfsafs -", "2 eggs", "(dfsafs -"),
         Trail("2 ears of corn, shucked", "2 ears of corn", ", shucked"),
@@ -1441,20 +1468,41 @@ final class DifferentialCorpusTests: XCTestCase {
     ]
 
     private static let shortSteps: [Short] = [
-        Short("Preheat the oven to 350°F (180°C) and grease a 9x13-inch baking pan.", "Oven to 350°F (180°C); grease a 9x13-inch pan.", "Oven to 350°F (180°C); grease a 9x13-inch pan."),
+        Short("Preheat the oven to 350°F (180°C) and grease a 9x13-inch baking pan.", "Oven to 350°F (180°C); grease a 9x13-inch pan.", nil),
         Short("Bake for 25 to 30 minutes, until the top is golden.", "Bake 25–30 min until golden.", "Bake 25–30 min until golden."),
         Short("Bake for 20 minutes, until the top is golden.", "Bake 25 min.", nil),
         Short("Add 1 1/2 cups of the flour and mix gently until combined.", "Add 1/2 cup flour; mix.", nil),
         Short("Microwave for 30 seconds, then stir well.", "Microwave 30 min, stir.", nil),
         Short("Roast at 200°C for 1 hour, turning halfway through.", "Roast at 200°F, 1 hr.", nil),
-        Short("Preheat the oven to 350°F (180°C) with a rack in the middle.", "Oven to 350°F, rack in middle.", "Oven to 350°F, rack in middle."),
-        Short("Stir in ½ teaspoon of salt until it dissolves.", "- \"Stir in ½ tsp salt.\"", "Stir in ½ tsp salt."),
+        Short("Preheat the oven to 350°F (180°C) with a rack in the middle.", "Oven to 350°F, rack in middle.", nil),
+        Short("Stir in ½ teaspoon of salt until it dissolves.", "- \"Stir in ½ tsp salt.\"", nil),
         Short("Simmer for 1 hour 30 minutes, stirring now and then.", "Simmer 1 hr 30 min, stirring.", "Simmer 1 hr 30 min, stirring."),
         Short("Cut into 4 to 6 wedges and serve warm with the sauce.", "Cut into 4–6 wedges; serve with sauce.", "Cut into 4–6 wedges; serve with sauce."),
-        Short("Nach und nach 1,5 l Brühe zugießen und dabei ständig rühren.", "1,5 l Brühe nach und nach zugießen.", lang: "de", "1,5 l Brühe nach und nach zugießen."),
+        Short("Nach und nach 1,5 l Brühe zugießen und dabei ständig rühren.", "1,5 l Brühe nach und nach zugießen.", lang: "de", nil),
         Short("Nach und nach 1,5 l Brühe zugießen und dabei ständig rühren.", "1.5 l Brühe zugießen.", lang: "de", nil),
-        Short("Enfourner 25 à 30 minutes à 180 °C, jusqu'à ce que le dessus soit doré.", "Cuire 25–30 min à 180 °C.", lang: "fr", "Cuire 25–30 min à 180 °C."),
-        Short("鍋に入れて、中火で５分煮る。ときどき混ぜる。", "中火で5分煮る。", lang: "ja", "中火で5分煮る。"),
+        Short("Enfourner 25 à 30 minutes à 180 °C, jusqu'à ce que le dessus soit doré.", "Cuire 25–30 min à 180 °C.", lang: "fr", nil),
+        Short("鍋に入れて、中火で５分煮る。ときどき混ぜる。", "中火で5分煮る。", lang: "ja", nil),
+        Short("Preheat the oven to 350°F (180°C) and grease a 9x13-inch baking pan.", "Preheat oven to 350°F (180°C); grease a 9x13-inch baking pan.", "Preheat oven to 350°F (180°C); grease a 9x13-inch baking pan."),
+        Short("Preheat the oven to 375°F. Lightly grease (or line with parchment) two baking sheets.", "Preheat the oven to 375°F.", nil),
+        Short("In a medium bowl, whisk together the flour, baking soda, baking powder and salt.", "In a medium bowl, whisk flour, baking soda, baking powder and salt.", lines: ["2 cups flour", "1 tsp baking soda", "1/2 tsp baking powder", "1/2 tsp salt"], "In a medium bowl, whisk flour, baking soda, baking powder and salt."),
+        Short("In a mixing bowl, mash the ripe bananas with a fork until smooth. Stir in the melted butter.", "Stir in the melted butter.", lines: ["3 ripe bananas", "1/3 cup butter, melted"], nil),
+        Short("Add the garlic and onion and cook until soft.", "Add garlic; cook until soft.", lines: ["2 cloves garlic, minced", "1 onion, diced"], nil),
+        Short("Add the garlic and onion and cook until soft.", "Add garlic; cook until soft.", "Add garlic; cook until soft."),
+        Short("Set aside for 30 mins to rest if you have time, or start cooking straight away.", "Set aside for 30 mins to rest, then start cooking.", nil),
+        Short("Alternative: Use 1/3 cup Chinese All Purpose Stir Fry Sauce, if you have some in stock.", "Use 1/3 cup Chinese All Purpose Stir Fry Sauce, if you have some in stock.", nil),
+        Short("Beat in the egg, again beating until smooth. Scrape the bottom and sides of the bowl with a spatula.", "Beat in the egg, then scrape down the bowl.", nil),
+        Short("Remove from the oven and let cool in the pan for a few minutes. Then remove and cool on a rack.", "Remove from oven and let cool in pan. Then remove and cool on rack.", nil),
+        Short("In the meantime wrap tofu in a clean, absorbent towel and set something heavy on top to press out the liquid.", "Press tofu for an hour.", nil),
+        Short("Whisk the eggs with the sugar until pale and thick.", "Whisk eggs, sugar and vanilla until pale.", nil),
+        Short("Store cookies, well wrapped, at room temperature for up to 5 days; freeze for longer storage.", "Store cookies, well wrapped, at room temp for up to 5 days. Freeze for longer.", "Store cookies, well wrapped, at room temp for up to 5 days. Freeze for longer."),
+        Short("Once the tofu is done baking, add directly to the sauce and marinate for 5 minutes, stirring occasionally.", "Once the tofu is done baking, add directly to the sauce and marinate for 5 mins, stir.", "Once the tofu is done baking, add directly to the sauce and marinate for 5 mins, stir."),
+        Short("Let the dough rest, then add the rest of the flour and knead until smooth.", "Let the dough rest, then knead in flour until smooth.", "Let the dough rest, then knead in flour until smooth."),
+        Short("When ready to bake, preheat oven to 350 degrees. Line a baking sheet with parchment paper.", "Set oven to 350 degrees. Line a baking sheet with parchment paper.", nil),
+        Short("Nach und nach 1,5 l Brühe zugießen und dabei ständig rühren.", "1,5 l Brühe nach und nach zugießen, ständig rühren.", lang: "de", "1,5 l Brühe nach und nach zugießen, ständig rühren."),
+        Short("Enfourner 25 à 30 minutes à 180 °C, jusqu'à ce que le dessus soit doré.", "Enfourner 25–30 min à 180 °C, jusqu'à ce que le dessus soit doré.", lang: "fr", "Enfourner 25–30 min à 180 °C, jusqu'à ce que le dessus soit doré."),
+        Short("Precalentar el horno a 180 °C y engrasar un molde redondo.", "Precalentar horno a 180 °C; engrasar un molde.", lang: "es", "Precalentar horno a 180 °C; engrasar un molde."),
+        Short("Precalentar el horno a 180 °C y engrasar un molde redondo.", "Horno a 180 °C; engrasar un molde.", lang: "es", nil),
+        Short("鍋に入れて、中火で５分煮る。ときどき混ぜる。", "鍋に入れ、中火で5分煮てときどき混ぜる。", lang: "ja", "鍋に入れ、中火で5分煮てときどき混ぜる。"),
     ]
 
     private struct Pick {
@@ -1566,7 +1614,7 @@ final class DifferentialCorpusTests: XCTestCase {
 
     func testShortStepCheckMatchesKotlin() {
         for row in Self.shortSteps {
-            XCTAssertEqual(ShortStepCheck.accept(row.original, row.short, words: row.words), row.accepted, row.short)
+            XCTAssertEqual(ShortStepCheck.accept(row.original, row.short, words: row.words, ingredients: row.lines), row.accepted, row.short)
         }
     }
 
@@ -1613,6 +1661,14 @@ final class DifferentialCorpusTests: XCTestCase {
     func testCardHeadingsMatchKotlin() {
         for row in Self.heads {
             XCTAssertEqual(CardHeadings.refine(html: row.html, lines: row.lines), row.refined, row.lines.joined(separator: " | "))
+        }
+    }
+
+    func testSiteRulesMatchKotlin() {
+        for row in Self.sites {
+            let url = "https://www.\(row.host)/r"
+            XCTAssertEqual(SiteRules.ingredients(html: row.html, url: url, lines: row.lines), row.refined, row.host)
+            XCTAssertEqual(SiteRules.steps(url: url, steps: row.steps), row.refinedSteps, row.host)
         }
     }
 

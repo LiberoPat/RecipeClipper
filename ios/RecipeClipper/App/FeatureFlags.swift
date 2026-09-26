@@ -20,6 +20,8 @@ enum Flag: String, CaseIterable {
     case aiDecisions
     /// With `aiDecisions`, the count-bracket decision too (#104); off since #127, kept to re-measure.
     case aiCountBrackets
+    /// "I made this" (#116): your photos and notes on a recipe, and the Recently cooked sort.
+    case cookedPhotos
 }
 
 /// One flag as `shared/flags.json` declares it.

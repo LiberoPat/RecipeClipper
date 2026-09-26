@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.model
 
 import com.example.recipeclipper.data.remote.CardHeadings
+import com.example.recipeclipper.data.remote.SiteRules
 import com.example.recipeclipper.data.remote.WprmIngredients
 import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
@@ -41,6 +42,10 @@ import java.io.File
  * asked the line's name) and [GroceryDecisions.nameSplit] (the core and trailing text once it
  * answers with that name, or nil); write only the line (optionally `, lang: "fr"`) and the name.
  *
+ * `Short("step", "short")` rows (#100) pin [ShortStepCheck.accept]: the short version, tidied, or
+ * nil; write only the step and the short version (optionally `, lines: [...]`, the recipe's
+ * ingredient lines (#129), and `, lang: "de"`).
+ *
  * `Pick(.kind, "page", "picked")` rows (#103) pin [PageRecipeCheck.find]: the page's own text
  * for what the model picked, or nil; write only the kind (name, ingredient, step, other), the
  * page text and the pick.
@@ -49,6 +54,10 @@ import java.io.File
  * a WP Recipe Maker card's markup; write only the markup (single-quoted attributes) and the lines.
  * `Heads("markup", [lines])` rows (#119) pin [CardHeadings.refine] the same way, for a Tasty Recipes
  * or Mediavine Create card.
+ *
+ * `Site("host", "markup", [lines], [steps])` rows (#120) pin [SiteRules]: JSON-LD's lines and steps
+ * refined by the host's rules in `site-rules.json` (then any site's cards) on that markup; write
+ * only the host (no "www."), the markup (single-quoted attributes), the lines and the steps.
  *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
@@ -76,8 +85,9 @@ class DifferentialCorpusTest {
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
     private val icsRow = Regex("""^(\s*)Ics\("((?:[^"\\]|\\.)*)"""")
-    // A Chef mode row (#100): a step, a short version of it, optionally their language.
-    private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A Chef mode row (#100): a step, a short version of it, optionally the recipe's ingredient
+    // lines (#129) and their language.
+    private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lines: \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*])?(?:, lang: "([a-z]+)")?""")
     // A page-pick row (#103): the kind, the page's text, what the model picked from it.
     private val pickRow = Regex("""^(\s*)Pick\(\.(name|ingredient|step|other), "((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"""")
     // A count-bracket row (#104): an ingredient line, optionally its language.
@@ -86,6 +96,10 @@ class DifferentialCorpusTest {
     private val closeRow = Regex("""^(\s*)Close\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A recipe-card row: a WP Recipe Maker (#118) or Tasty/Create (#119) card's markup, then JSON-LD's lines.
     private val cardRow = Regex("""^(\s*)(Wprm|Heads)\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A site-rule row (#120): a host, a page's markup, then JSON-LD's lines and steps.
+    private val siteRow = Regex(
+        """^(\s*)Site\("([a-z0-9.-]+)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]"""
+    )
     // A trailing-text row (#99): a grocery line, optionally its language.
     private val trailRow = Regex("""^(\s*)Trail\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A name-cut row (#99): a grocery line, optionally its language, the model's name for it.
@@ -132,6 +146,14 @@ class DifferentialCorpusTest {
             val refined = if (kind == "Wprm") WprmIngredients.refine(page, lines) else CardHeadings.refine(page, lines)
             return m.groupValues[1] + "$kind(${q(html)}, ${list(lines)}, ${list(refined)}),"
         }
+        siteRow.find(line)?.let { m ->
+            val (host, html) = m.groupValues[2] to unescape(m.groupValues[3])
+            val (lines, steps) = listOf(4, 5).map { g -> literal.findAll(m.groupValues[g]).map { unescape(it.groupValues[1]) }.toList() }
+            val url = "https://www.$host/r"
+            val refined = SiteRules.ingredients(Jsoup.parse(html), url, lines)
+            return m.groupValues[1] +
+                "Site(${q(host)}, ${q(html)}, ${list(lines)}, ${list(steps)}, ${list(refined)}, ${list(SiteRules.steps(url, steps))}),"
+        }
         closeRow.find(line)?.let { m ->
             val (a, b) = unescape(m.groupValues[2]) to unescape(m.groupValues[3])
             val language = m.groupValues[4].ifEmpty { "en" }
@@ -163,11 +185,13 @@ class DifferentialCorpusTest {
         }
         shortRow.find(line)?.let { s ->
             val (step, short) = unescape(s.groupValues[2]) to unescape(s.groupValues[3])
-            val language = s.groupValues[4].ifEmpty { null }
+            val lines = literal.findAll(s.groupValues[4]).map { unescape(it.groupValues[1]) }.toList()
+            val language = s.groupValues[5].ifEmpty { null }
             val words = if (language == null) LanguageWords.ENGLISH else LanguageWords.forTag(language)!!
+            val given = if (lines.isEmpty()) "" else ", lines: ${list(lines)}"
             val lang = if (language == null) "" else ", lang: ${q(language)}"
-            val accepted = ShortStepCheck.accept(step, short, words)?.let { q(it) } ?: "nil"
-            return s.groupValues[1] + "Short(${q(step)}, ${q(short)}$lang, $accepted),"
+            val accepted = ShortStepCheck.accept(step, short, words, lines)?.let { q(it) } ?: "nil"
+            return s.groupValues[1] + "Short(${q(step)}, ${q(short)}$given$lang, $accepted),"
         }
         stepRow.find(line)?.let { m -> return stepRow(m) }
         icsRow.find(line)?.let { m ->

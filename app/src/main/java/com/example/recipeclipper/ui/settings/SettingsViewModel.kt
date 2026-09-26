@@ -3,6 +3,12 @@ package com.example.recipeclipper.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.AppInfo
+import com.example.recipeclipper.data.AutoBackup
+import com.example.recipeclipper.data.AutoBackupState
+import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.importFile
+import com.example.recipeclipper.data.backup.AutoBackupPolicy
+import com.example.recipeclipper.data.backup.BackupDestination
 import com.example.recipeclipper.data.BackupFiles
 import com.example.recipeclipper.data.BackupRepository
 import com.example.recipeclipper.data.ChefSupport
@@ -63,7 +69,9 @@ data class SettingsUiState(
     /** The "Unlimited recipes" row (#107); null while the `freeTier` flag is off. */
     val unlock: UnlockRow? = null,
     /** A purchase or restore that didn't simply unlock; shown until the next one starts. */
-    val unlockNotice: PurchaseOutcome? = null
+    val unlockNotice: PurchaseOutcome? = null,
+    /** The automatic backup copy's rows (#150); null without one (tests that don't care). */
+    val autoBackup: AutoBackupRow? = null
 ) {
     val chefModeAvailable: Boolean get() = chefSupport is ChefSupport.Available
 }
@@ -78,6 +86,39 @@ data class UnlockRow(
     val price: String? = null,
     val busy: Boolean = false
 )
+
+/**
+ * The automatic backup copy's rows in Your recipes (#150): the switch, the folder (Android),
+ * "Last backed up", "Back up now", and a nudge when the last copy is over 30 days old and nothing
+ * is copying. [lastBackupAt] is null before the first copy.
+ */
+data class AutoBackupRow(
+    val enabled: Boolean,
+    val destination: BackupDestination,
+    val folderName: String?,
+    val lastBackupAt: Long?,
+    val lastFailed: Boolean,
+    val nudge: Boolean,
+    val running: Boolean = false,
+    /** The picked folder's permission couldn't be kept; shown until the next pick. */
+    val folderRefused: Boolean = false
+) {
+    /** "Back up now" needs somewhere to write. */
+    val canBackUpNow: Boolean get() = destination == BackupDestination.READY && !running
+
+    companion object {
+        fun of(state: AutoBackupState, now: Long, previous: AutoBackupRow?, running: Boolean) = AutoBackupRow(
+            enabled = state.record.enabled,
+            destination = state.destination,
+            folderName = state.record.folderName,
+            lastBackupAt = state.record.lastBackupAt,
+            lastFailed = state.record.lastFailed,
+            nudge = AutoBackupPolicy.needsNudge(state.record, state.destination, now),
+            running = running,
+            folderRefused = previous?.folderRefused ?: false
+        )
+    }
+}
 
 /**
  * The "Your recipes" section: export and import (#26). One at a time; the screen shows the
@@ -117,7 +158,10 @@ class SettingsViewModel @Inject constructor(
     // Chef mode (#100); without it the Steps section says the phone can't.
     private val shortSteps: ShortStepRepository? = null,
     // The free tier's store (#107); pass it by name.
-    private val entitlements: Entitlements = Entitlements.Unavailable
+    private val entitlements: Entitlements = Entitlements.Unavailable,
+    // The automatic backup copy (#150); without it the section keeps only Export and Import.
+    private val autoBackup: AutoBackup? = null,
+    private val clock: Clock = Clock { System.currentTimeMillis() }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
@@ -130,6 +174,17 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             preferences.settings.collect { settings ->
                 _uiState.update { settings.toUiState(it) }
+            }
+        }
+        autoBackup?.let { backup ->
+            // The folder's permission may have gone while the app was closed.
+            backup.recheckDestination()
+            viewModelScope.launch {
+                backup.state.collect { state ->
+                    _uiState.update {
+                        it.copy(autoBackup = AutoBackupRow.of(state, clock.now(), it.autoBackup, backupRunning))
+                    }
+                }
             }
         }
         featureFlags?.let { flags ->
@@ -211,7 +266,8 @@ class SettingsViewModel @Inject constructor(
         chefMode = chefMode,
         chefSupport = previous?.chefSupport,
         unlock = previous?.unlock,
-        unlockNotice = previous?.unlockNotice
+        unlockNotice = previous?.unlockNotice,
+        autoBackup = previous?.autoBackup
     )
 
     // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.
@@ -277,7 +333,7 @@ class SettingsViewModel @Inject constructor(
             val status = when (val exported = backups.export()) {
                 is BackupResult.Failure -> BackupStatus.Failed(exported.error)
                 is BackupResult.Success ->
-                    files.writeExport(exported.value.json, exported.value.exportedAt)
+                    files.writeExport(exported.value.json, exported.value.exportedAt, exported.value.photos)
                         ?.let { BackupStatus.ReadyToShare(it) }
                         ?: BackupStatus.Failed(BackupError.ExportFailed)
             }
@@ -297,18 +353,47 @@ class SettingsViewModel @Inject constructor(
         if (_uiState.value.backup.isBusy) return
         _uiState.update { it.copy(backup = BackupStatus.Importing) }
         viewModelScope.launch {
-            val status = when (val text = files.readText(uri)) {
-                is BackupResult.Failure -> BackupStatus.Failed(text.error)
-                is BackupResult.Success -> when (val imported = backups.import(text.value)) {
-                    is BackupResult.Success -> BackupStatus.Imported(imported.value)
-                    is BackupResult.Failure -> BackupStatus.Failed(imported.error)
-                }
-            }
-            _uiState.update { it.copy(backup = status) }
+            _uiState.update { it.copy(backup = backups.importFile(files, uri).toStatus()) }
         }
+    }
+
+    /** The automatic copy's switch (#150). On again, it looks for a copy to write at once. */
+    fun onAutoBackupChange(enabled: Boolean) {
+        autoBackup?.setEnabled(enabled)
+    }
+
+    /** A folder picked in the system's folder picker (#150); null when the picker was cancelled. */
+    fun onBackupFolderPicked(uri: String?) {
+        val chosen = uri != null && autoBackup?.chooseFolder(uri) == true
+        _uiState.update { it.copy(autoBackup = it.autoBackup?.copy(folderRefused = uri != null && !chosen)) }
+    }
+
+    /** "Back up now" (#150): a copy at once, even with the automatic copy off. */
+    fun onBackUpNow() {
+        val backup = autoBackup ?: return
+        if (backupRunning) return
+        setBackupRunning(true)
+        viewModelScope.launch {
+            backup.run(force = true)
+            setBackupRunning(false)
+        }
+    }
+
+    // "Back up now" is under way; kept apart so a record update can't clear it.
+    private var backupRunning = false
+
+    private fun setBackupRunning(running: Boolean) {
+        backupRunning = running
+        _uiState.update { it.copy(autoBackup = it.autoBackup?.copy(running = running)) }
     }
 
     companion object {
         const val DEVELOPER_TAPS = 7
     }
+}
+
+/** An import's outcome as the status line shows it (Settings' Import, Home's Restore). */
+fun BackupResult<ImportSummary>.toStatus(): BackupStatus = when (this) {
+    is BackupResult.Success -> BackupStatus.Imported(value)
+    is BackupResult.Failure -> BackupStatus.Failed(error)
 }

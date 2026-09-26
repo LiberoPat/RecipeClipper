@@ -3,7 +3,9 @@ package com.example.recipeclipper.data
 import android.content.Context
 import androidx.core.net.toUri
 import androidx.core.content.FileProvider
+import com.example.recipeclipper.data.backup.BackupArchive
 import com.example.recipeclipper.data.backup.BackupError
+import com.example.recipeclipper.data.backup.BackupPackage
 import com.example.recipeclipper.data.backup.BackupResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -23,20 +25,23 @@ import javax.inject.Inject
  */
 interface BackupFiles {
 
-    /** Writes [json] as `recipe-clipper-YYYY-MM-DD.json` and returns a URI the share sheet can
-     *  read, or null if it couldn't be written. */
-    suspend fun writeExport(json: String, exportedAt: Long): String?
+    /** Writes [json] as `recipe-clipper-YYYY-MM-DD.json`, or with [photos] (#116: path in the
+     *  zip to the stored file) as a `.zip` of both ([BackupArchive]), and returns a URI the share
+     *  sheet can read, or null if it couldn't be written. */
+    suspend fun writeExport(json: String, exportedAt: Long, photos: Map<String, String> = emptyMap()): String?
 
-    /** The text of the picked file, [BackupError.ReadFailed] if it couldn't be read, or
-     *  [BackupError.NotABackup] if it's far bigger than any export. */
-    suspend fun readText(uri: String): BackupResult<String>
+    /** The picked file: a plain JSON export, or a zip with its pictures unpacked to the cache.
+     *  [BackupError.ReadFailed] if it couldn't be read, or [BackupError.NotABackup] if its JSON
+     *  is far bigger than any export or a zip holds none. */
+    suspend fun read(uri: String): BackupResult<BackupPackage>
 
     companion object {
         /** Far beyond any real export (a few hundred recipes is well under 2 MB). */
         const val MAX_BYTES = 20 * 1024 * 1024
 
-        fun fileName(exportedAt: Long): String =
-            "recipe-clipper-" + SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(exportedAt)) + ".json"
+        fun fileName(exportedAt: Long, zip: Boolean = false): String =
+            "recipe-clipper-" + SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(exportedAt)) +
+                if (zip) ".zip" else ".json"
     }
 }
 
@@ -47,12 +52,18 @@ class AndroidBackupFiles @Inject constructor(
     private val log: ErrorLog
 ) : BackupFiles {
 
-    override suspend fun writeExport(json: String, exportedAt: Long): String? = withContext(Dispatchers.IO) {
+    override suspend fun writeExport(json: String, exportedAt: Long, photos: Map<String, String>): String? = withContext(Dispatchers.IO) {
         try {
             // The cache, so the system may clear it; one file a day, overwritten by a re-export.
             val dir = File(context.cacheDir, EXPORT_DIR).apply { mkdirs() }
-            val file = File(dir, BackupFiles.fileName(exportedAt))
-            file.writeText(json, Charsets.UTF_8)
+            val file = File(dir, BackupFiles.fileName(exportedAt, zip = photos.isNotEmpty()))
+            if (photos.isEmpty()) {
+                file.writeText(json, Charsets.UTF_8)
+            } else {
+                file.outputStream().buffered().use { out ->
+                    BackupArchive.write(out, json, photos.mapValues { File(it.value) })
+                }
+            }
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file).toString()
         } catch (e: CancellationException) {
             throw e
@@ -62,11 +73,18 @@ class AndroidBackupFiles @Inject constructor(
         }
     }
 
-    override suspend fun readText(uri: String): BackupResult<String> = withContext(Dispatchers.IO) {
+    override suspend fun read(uri: String): BackupResult<BackupPackage> = withContext(Dispatchers.IO) {
         try {
-            val input = context.contentResolver.openInputStream(uri.toUri())
+            val input = context.contentResolver.openInputStream(uri.toUri())?.buffered()
                 ?: return@withContext BackupResult.Failure(BackupError.ReadFailed)
             input.use { stream ->
+                // A zip (#116) carries its pictures; anything else is read as a plain JSON export.
+                stream.mark(4)
+                val head = ByteArray(4).also { stream.read(it) }
+                stream.reset()
+                if (BackupArchive.isZip(head)) {
+                    return@withContext BackupArchive.read(stream, File(context.cacheDir, IMPORT_PHOTOS_DIR), BackupFiles.MAX_BYTES)
+                }
                 val out = ByteArrayOutputStream()
                 val buffer = ByteArray(64 * 1024)
                 while (true) {
@@ -77,17 +95,18 @@ class AndroidBackupFiles @Inject constructor(
                         return@withContext BackupResult.Failure(BackupError.NotABackup)
                     }
                 }
-                BackupResult.Success(out.toString(Charsets.UTF_8.name()))
+                BackupResult.Success(BackupPackage(out.toString(Charsets.UTF_8.name())))
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            log.error("readText failed", e)
+            log.error("read backup failed", e)
             BackupResult.Failure(BackupError.ReadFailed)
         }
     }
 
     private companion object {
         const val EXPORT_DIR = "exports"
+        const val IMPORT_PHOTOS_DIR = "import-photos"
     }
 }

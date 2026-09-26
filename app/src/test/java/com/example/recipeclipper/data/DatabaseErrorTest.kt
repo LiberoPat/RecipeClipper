@@ -76,6 +76,10 @@ class DatabaseErrorTest {
             sortOrder: Int, updatedAt: Long, uid: String
         ) = throw throwable()
         override suspend fun menuEntriesFor(recipeId: Long): List<MenuEntryEntity> = throw throwable()
+        override suspend fun cookedPhotosFor(recipeId: Long): List<com.example.recipeclipper.data.local.entity.CookedPhotoEntity> =
+            throw throwable()
+        override suspend fun insertCookedPhotos(photos: List<com.example.recipeclipper.data.local.entity.CookedPhotoEntity>) =
+            throw throwable()
         override suspend fun restoreMenuEntry(
             id: Long, menuId: Long, dayOffset: Int, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
             sortOrder: Int, updatedAt: Long, uid: String

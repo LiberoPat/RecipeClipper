@@ -67,7 +67,7 @@ class DefaultShortStepRepository @Inject constructor(
                 recipeId = recipe.id,
                 stepHash = hashes[i],
                 language = language,
-                shortText = ShortStepCheck.accept(step, written, words),
+                shortText = ShortStepCheck.accept(step, written, words, recipe.ingredients),
                 updatedAt = clock.now()
             )
             log.guard("Saving a short step", Unit) { dao.insert(row) }

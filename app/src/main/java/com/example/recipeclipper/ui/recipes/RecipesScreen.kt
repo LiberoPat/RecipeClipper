@@ -46,7 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.common.RecipeRow
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
@@ -63,7 +65,8 @@ fun RecipesScreen(
     onOpenRecipe: (Long) -> Unit,
     onNewRecipe: () -> Unit = {},
     onOpenUrl: (String) -> Unit = {},
-    viewModel: RecipesViewModel = hiltViewModel()
+    viewModel: RecipesViewModel = hiltViewModel(),
+    cookedPhotosEnabled: Boolean = LocalFlagValues.current.isOn(Flag.COOKED_PHOTOS)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     state.linkInput?.let { link ->
@@ -136,7 +139,7 @@ fun RecipesScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             AddMenu(onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink)
-                            SortMenu(state.sort, viewModel::onSortChange)
+                            SortMenu(state.sort, viewModel::onSortChange, showCooked = cookedPhotosEnabled)
                         }
                         state.count?.let { LibraryCountText(it) }
                         Spacer(Modifier.height(12.dp))

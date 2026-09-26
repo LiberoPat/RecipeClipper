@@ -8,8 +8,10 @@ final class DefaultBackupRepository: BackupRepository {
     private let clock: Clock
 
     private let library: LibraryLimitSource
+    private let photos: PhotoStore?
 
-    init(db: AppDatabase, clock: Clock, library: LibraryLimitSource = FixedLibraryLimit()) {
+    init(db: AppDatabase, clock: Clock, library: LibraryLimitSource = FixedLibraryLimit(), photos: PhotoStore? = nil) {
+        self.photos = photos
         self.library = library
         self.db = db
         self.clock = clock
@@ -82,26 +84,53 @@ final class DefaultBackupRepository: BackupRepository {
                 )
             }
         )
-        return .success(ExportedBackup(json: BackupJson.encode(backup), exportedAt: now, recipeCount: backup.recipes.count))
+        // The pictures travel beside the JSON (#116), each named after its row.
+        var withPhotos = backup
+        var pictures: [String: URL] = [:]
+        if let photos {
+            withPhotos.cookedPhotos = snapshot.cookedPhotos.compactMap { p in
+                guard let recipe = recipeUids[p.recipeId] else { return nil }
+                let file = "photos/photo-\(p.id).jpg"
+                pictures[file] = URL(fileURLWithPath: photos.path(p.fileName))
+                return BackupCookedPhoto(
+                    id: p.uid, recipeId: recipe, day: p.day, note: p.note, createdAt: p.createdAt,
+                    updatedAt: p.updatedAt, file: file
+                )
+            }
+        }
+        return .success(ExportedBackup(
+            json: BackupJson.encode(withPhotos), exportedAt: now, recipeCount: backup.recipes.count, photos: pictures
+        ))
     }
 
-    func importBackup(_ text: String) async -> Result<ImportSummary, BackupError> {
+    func importBackup(_ package: BackupPackage) async -> Result<ImportSummary, BackupError> {
         let backup: Backup
-        switch BackupJson.decode(text) {
+        switch BackupJson.decode(package.json) {
         case .success(let decoded): backup = decoded
         case .failure(let error): return .failure(error)
         }
-        let today = PlanDays.today(millis: clock.now())
+        // Copy in the pictures the file's photos name first; a photo whose picture didn't come
+        // stays out. Copies the import didn't use are swept later (the store's grace period).
+        var stored: [String: String] = [:]
+        if let photos {
+            for file in Set(backup.cookedPhotos.map(\.file)) {
+                guard let local = package.photos[file], let name = await photos.adopt(local) else { continue }
+                stored[file] = name
+            }
+        }
+        let now = clock.now()
+        let today = PlanDays.today(millis: now)
         let limit = library.current()
         do {
-            let summary = try await db.write { conn in
-                try BackupDao(db: conn).importBackup(backup, limit: limit, today: today) {
+            let summary = try await db.write { [stored] conn in
+                try BackupDao(db: conn).importBackup(backup, limit: limit, today: today, storedPhotos: stored, now: now) {
                     UUID().uuidString.lowercased()
                 }
             }
             return .success(summary)
         } catch {
             dataLog.error("import failed: \(String(describing: error), privacy: .public)")
+            await photos?.delete(Array(stored.values))
             return .failure(.saveFailed)
         }
     }
@@ -110,10 +139,15 @@ final class DefaultBackupRepository: BackupRepository {
 /// Writes exports into the temporary directory and reads picked files, which from the file
 /// importer are security-scoped: access is opened for the read and closed after it.
 final class FileBackupFiles: BackupFiles {
-    func writeExport(json: String, exportedAt: Int64) async -> URL? {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(backupFileName(exportedAt: exportedAt))
+    func writeExport(json: String, exportedAt: Int64, photos: [String: URL]) async -> URL? {
+        let name = backupFileName(exportedAt: exportedAt, zip: !photos.isEmpty)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         do {
-            try Data(json.utf8).write(to: url, options: .atomic)
+            // With photos (#116), a zip of the JSON and the pictures.
+            let data = photos.isEmpty
+                ? Data(json.utf8)
+                : BackupArchive.write(json: json, photos: photos.sorted { $0.key < $1.key }.map { (path: $0.key, file: $0.value) })
+            try data.write(to: url, options: .atomic)
             return url
         } catch {
             dataLog.error("writeExport failed: \(String(describing: error), privacy: .public)")
@@ -121,18 +155,25 @@ final class FileBackupFiles: BackupFiles {
         }
     }
 
-    func readText(_ url: URL) async -> Result<String, BackupError> {
+    func read(_ url: URL) async -> Result<BackupPackage, BackupError> {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         do {
             let handle = try FileHandle(forReadingFrom: url)
             defer { try? handle.close() }
+            // A zip (#116) carries its pictures; anything else is read as a plain JSON export.
+            if BackupArchive.isZip(try handle.read(upToCount: 4) ?? Data()) {
+                let zip = try Data(contentsOf: url, options: .mappedIfSafe)
+                let unpacked = FileManager.default.temporaryDirectory.appendingPathComponent("import-photos")
+                return BackupArchive.read(zip, photoDirectory: unpacked, maxJsonBytes: backupMaxBytes)
+            }
+            try handle.seek(toOffset: 0)
             let data = try handle.read(upToCount: backupMaxBytes + 1) ?? Data()
             if data.count > backupMaxBytes { return .failure(.notABackup) }
             guard let text = String(data: data, encoding: .utf8) else { return .failure(.notABackup) }
-            return .success(text)
+            return .success(BackupPackage(json: text))
         } catch {
-            dataLog.error("readText failed: \(String(describing: error), privacy: .public)")
+            dataLog.error("read backup failed: \(String(describing: error), privacy: .public)")
             return .failure(.readFailed)
         }
     }

@@ -7,6 +7,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.recipeclipper.data.local.dao.AiDecisionDao
 import com.example.recipeclipper.data.local.dao.BackupDao
+import com.example.recipeclipper.data.local.dao.CookedPhotoDao
+import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.AiDecisionEntity
 import com.example.recipeclipper.data.local.dao.GroceryDao
 import com.example.recipeclipper.data.local.dao.ListDao
@@ -33,9 +35,9 @@ import com.example.recipeclipper.data.model.MealType
         RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class,
         MealTypeEntity::class, MealPlanEntryEntity::class, GroceryItemEntity::class,
         PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class,
-        AiDecisionEntity::class
+        AiDecisionEntity::class, CookedPhotoEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -50,6 +52,7 @@ abstract class RecipeDatabase : RoomDatabase() {
     abstract fun menuDao(): MenuDao
     abstract fun shortStepDao(): ShortStepDao
     abstract fun aiDecisionDao(): AiDecisionDao
+    abstract fun cookedPhotoDao(): CookedPhotoDao
 
     companion object {
         const val NAME = "recipe_clipper.db"
@@ -349,10 +352,27 @@ abstract class RecipeDatabase : RoomDatabase() {
                 "ON `ai_decisions` (`kind`, `input`, `language`)"
         )
 
+        /** "I made this" (#116): the user's own photos of a recipe, deleted with it. */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                COOKED_PHOTOS_SQL.forEach(db::execSQL)
+            }
+        }
+
+        private val COOKED_PHOTOS_SQL = listOf(
+            "CREATE TABLE IF NOT EXISTS `cooked_photos` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`recipeId` INTEGER NOT NULL, `fileName` TEXT NOT NULL, `day` INTEGER NOT NULL, `note` TEXT, " +
+                "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL, " +
+                "FOREIGN KEY(`recipeId`) REFERENCES `recipes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE INDEX IF NOT EXISTS `index_cooked_photos_recipeId` ON `cooked_photos` (`recipeId`)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_cooked_photos_uid` ON `cooked_photos` (`uid`)"
+        )
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13
+            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+            MIGRATION_13_14
         )
     }
 }

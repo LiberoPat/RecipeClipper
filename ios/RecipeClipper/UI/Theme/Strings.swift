@@ -109,6 +109,18 @@ enum Strings {
     static var backupExporting: String { String(localized: "backup_exporting") }
     static var backupImporting: String { String(localized: "backup_importing") }
 
+    // Settings → Your recipes: the automatic backup copy (#150)
+    static var autoBackupTitle: String { String(localized: "auto_backup_title") }
+    static var autoBackupDescription: String { String(localized: "auto_backup_description_icloud") }
+    static var autoBackupICloudUnavailable: String { String(localized: "auto_backup_icloud_unavailable") }
+    static func autoBackupLast(_ date: String) -> String { String(localized: "auto_backup_last \(date)") }
+    static var autoBackupNever: String { String(localized: "auto_backup_never") }
+    static var autoBackupFailed: String { String(localized: "auto_backup_failed") }
+    static var autoBackupNudge: String { String(localized: "auto_backup_nudge") }
+    static var autoBackupNow: String { String(localized: "auto_backup_now") }
+    static var autoBackupRunning: String { String(localized: "auto_backup_running") }
+    static var homeRestoreBackup: String { String(localized: "home_restore_backup") }
+
     static func backupRecipes(_ n: Int) -> String { String(localized: "backup_recipes \(n)") }
     static func backupLists(_ n: Int) -> String { String(localized: "backup_lists \(n)") }
 
@@ -487,6 +499,12 @@ enum Strings {
     static var groceriesWeekEmpty: String { String(localized: "groceries_week_empty") }
     static var clearChecked: String { String(localized: "action_clear_checked") }
     static var shareGroceries: String { String(localized: "action_share_groceries") }
+    // A list sent from another phone, shared in or pasted (#149).
+    static var pasteList: String { String(localized: "action_paste_list") }
+    static var receiveListTitle: String { String(localized: "receive_list_title") }
+    static var receiveListEmpty: String { String(localized: "receive_list_empty") }
+    /// The share card, once the lines are in the pantry (iOS only: Android opens the Pantry tab).
+    static var receiveListAddedPantry: String { String(localized: "receive_list_added_pantry") }
     static var moveToAisle: String { String(localized: "action_move_to_aisle") }
     static var moveToAisleTitle: String { String(localized: "move_to_aisle_title") }
     static func groceryDeleted(_ label: String) -> String { String(localized: "snackbar_grocery_deleted \(label)") }
@@ -545,4 +563,31 @@ enum Strings {
     static var addToPantry: String { String(localized: "action_add_to_pantry") }
     static func offerPantry(_ name: String) -> String { String(localized: "snackbar_offer_pantry \(name)") }
     static func pantryRestocked(_ name: String) -> String { String(localized: "snackbar_pantry_restocked \(name)") }
+
+    // "I made this" (#116)
+    static var sortRecentlyCooked: String { String(localized: "sort_recently_cooked") }
+    static var headingYourCooks: String { String(localized: "heading_your_cooks") }
+    static var cookedEmpty: String { String(localized: "cooked_empty") }
+    static var iMadeThis: String { String(localized: "action_i_made_this") }
+    static var addPhoto: String { String(localized: "action_add_photo") }
+    static var takePhoto: String { String(localized: "action_take_photo") }
+    static var choosePhotos: String { String(localized: "action_choose_photos") }
+    static func cookedPhoto(_ date: String) -> String { String(localized: "cd_cooked_photo \(date)") }
+    static var cookedNotePlaceholder: String { String(localized: "cooked_note_placeholder") }
+    static func changeCookedDate(_ date: String) -> String { String(localized: "cd_change_cooked_date \(date)") }
+    static var sharePhoto: String { String(localized: "cd_share_photo") }
+    static var deletePhoto: String { String(localized: "cd_delete_photo") }
+    static var closePhoto: String { String(localized: "cd_close_photo") }
+    static var cookedPhotoDeleted: String { String(localized: "cooked_photo_deleted") }
+    static var cookedAddFailed: String { String(localized: "cooked_add_failed") }
+    static var cameraUnavailable: String { String(localized: "camera_unavailable") }
+    static var cookedPhotoMissing: String { String(localized: "cooked_photo_missing") }
+    /// The recipe's delete confirmation when it has photos: they go with it.
+    static func deleteRecipeBody(photos: Int) -> String {
+        switch photos {
+        case 0: deleteRecipeBody
+        case 1: String(localized: "delete_recipe_body_photo")
+        default: String(localized: "delete_recipe_body_photos \(photos)")
+        }
+    }
 }

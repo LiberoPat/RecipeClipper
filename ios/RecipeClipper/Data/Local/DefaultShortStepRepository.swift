@@ -82,7 +82,7 @@ final class DefaultShortStepRepository: ShortStepRepository {
             let hash = hashes[index]
             if written.contains(hash) || !ShortStepCheck.worthShortening(step) { continue }
             guard let short = await shortener.shorten(step, language: language), !Task.isCancelled else { continue }
-            let accepted = ShortStepCheck.accept(step, short, words: words)
+            let accepted = ShortStepCheck.accept(step, short, words: words, ingredients: recipe.ingredients)
             let now = clock.now()
             do {
                 try await db.write { conn in

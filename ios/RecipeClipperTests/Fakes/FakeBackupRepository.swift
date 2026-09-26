@@ -15,8 +15,12 @@ final class FakeBackupRepository: BackupRepository {
         return exportResult
     }
 
-    func importBackup(_ text: String) async -> Result<ImportSummary, BackupError> {
-        importedTexts.append(text)
+    /// The pictures each import was given (#116), by path in the zip.
+    private(set) var importedPhotos: [[String: URL]] = []
+
+    func importBackup(_ package: BackupPackage) async -> Result<ImportSummary, BackupError> {
+        importedTexts.append(package.json)
+        importedPhotos.append(package.photos)
         return importResult
     }
 }
@@ -28,12 +32,16 @@ final class FakeBackupFiles: BackupFiles {
     var writeURL: URL? = URL(fileURLWithPath: "/tmp/recipe-clipper-test.json")
     private(set) var written: [(json: String, exportedAt: Int64)] = []
 
-    func writeExport(json: String, exportedAt: Int64) async -> URL? {
+    /// The pictures each `writeExport` was given (#116).
+    private(set) var writtenPhotos: [[String: URL]] = []
+
+    func writeExport(json: String, exportedAt: Int64, photos: [String: URL]) async -> URL? {
         written.append((json, exportedAt))
+        writtenPhotos.append(photos)
         return writeURL
     }
 
-    func readText(_ url: URL) async -> Result<String, BackupError> {
-        files[url].map { .success($0) } ?? .failure(.readFailed)
+    func read(_ url: URL) async -> Result<BackupPackage, BackupError> {
+        files[url].map { .success(BackupPackage(json: $0)) } ?? .failure(.readFailed)
     }
 }

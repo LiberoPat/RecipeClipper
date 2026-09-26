@@ -106,6 +106,8 @@ struct RecipeSummary: Equatable, Identifiable {
     let isSaved: Bool
     /// Picked from the page by hand (#37, origin CLIPPED): the row says "Clipped by you".
     var isClipped: Bool = false
+    /// The latest day (epoch day) of the user's own photos of it (#116); nil for none.
+    var lastCookedDay: Int64? = nil
 }
 
 /// How the Recipes screen orders its rows (#102). Remembered in `AppPreferences` by its
@@ -113,6 +115,8 @@ struct RecipeSummary: Equatable, Identifiable {
 /// `.recentlyViewed`.
 enum RecipeSort: String, CaseIterable {
     case recentlyViewed = "RECENTLY_VIEWED", name = "NAME", dateAdded = "DATE_ADDED"
+    /// Recipes with the user's own photos first, most recently cooked first (#116).
+    case recentlyCooked = "RECENTLY_COOKED"
 
     init(storedName: String?) {
         self = storedName.flatMap(RecipeSort.init(rawValue:)) ?? .recentlyViewed
@@ -226,4 +230,6 @@ struct DeletedRecipe: Equatable {
     var planEntries: [MealPlanEntryRecord] = []
     /// Its meals in saved menus (#52), which the delete cascades too.
     var menuEntries: [MenuEntryRecord] = []
+    /// Its own photos (#116): their rows; the files stay until `RecipeRepository.forget`.
+    var cookedPhotos: [CookedPhotoRecord] = []
 }

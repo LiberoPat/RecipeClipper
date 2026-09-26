@@ -147,6 +147,7 @@ final class AppDatabase: @unchecked Sendable {
         addMenus,
         addShortSteps,
         addAiDecisions,
+        addCookedPhotos,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -395,6 +396,26 @@ final class AppDatabase: @unchecked Sendable {
             );
             CREATE UNIQUE INDEX index_ai_decisions_uid ON ai_decisions (uid);
             CREATE UNIQUE INDEX index_ai_decisions_kind_input_language ON ai_decisions (kind, input, language);
+            """)
+    }
+
+    /// Version 13 (Android's Room version 14, `MIGRATION_13_14`): "I made this" (#116), the
+    /// user's own photos of a recipe, deleted with it. `fileName` names a JPEG in the photo store.
+    private static func addCookedPhotos(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE cooked_photos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                recipeId INTEGER NOT NULL,
+                fileName TEXT NOT NULL,
+                day INTEGER NOT NULL,
+                note TEXT,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
+            );
+            CREATE INDEX index_cooked_photos_recipeId ON cooked_photos (recipeId);
+            CREATE UNIQUE INDEX index_cooked_photos_uid ON cooked_photos (uid);
             """)
     }
 

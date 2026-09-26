@@ -27,3 +27,10 @@ https://www.skinnytaste.com/air-fryer-chicken-breast/
 https://www.recipetineats.com/greek-zucchini-tots/  # WP Recipe Maker ingredient parts and groups (#118)
 https://pinchofyum.com/blackout-chocolate-cake  # Tasty Recipes ingredient headings (#119)
 https://tidymom.net/apple-pie-bars/  # Mediavine Create ingredient headings (#119)
+# Pages whose site rules (shared/tables/site-rules.json, #120) add group headings; the
+# report flags a rule that stops matching. The fixtures in shared/fixtures/pages/site-*.
+https://cooking.nytimes.com/recipes/1026066-lemon-layer-cake-with-cream-cheese-frosting
+https://www.bbcgoodfood.com/recipes/classic-victoria-sandwich-recipe
+https://www.bonappetit.com/recipe/bas-best-carrot-cake
+https://www.epicurious.com/recipes/food/views/ba-syn-7up-cake
+https://www.delish.com/cooking/recipe-ideas/a21968799/cannoli-pie-recipe/

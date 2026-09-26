@@ -274,17 +274,26 @@ enum GroceryCombiner {
     /// once, "2 corn × 3". Empty for a line on its own.
     static func lines(_ row: Row) -> [String] {
         if case .single = row { return [] }
+        return lineGroups(row).map(lineText)
+    }
+
+    /// The row's items grouped as `lines` shows them: the same line (spaces and case aside) is
+    /// one group, in the order first added.
+    static func lineGroups(_ row: Row) -> [[GroceryItem]] {
         var order: [String] = []
-        var seen: [String: [String]] = [:]
+        var seen: [String: [GroceryItem]] = [:]
         for item in row.items {
             let key = normalize(item.text)
             if seen[key] == nil { order.append(key) }
-            seen[key, default: []].append(item.text.kTrimmed)
+            seen[key, default: []].append(item)
         }
-        return order.map { key in
-            let same = seen[key]!
-            return same.count == 1 ? same[0] : "\(same[0]) × \(same.count)"
-        }
+        return order.map { seen[$0]! }
+    }
+
+    /// One of `lineGroups` as written, "2 corn × 3" when added more than once.
+    static func lineText(_ group: [GroceryItem]) -> String {
+        let text = group[0].text.kTrimmed
+        return group.count == 1 ? text : "\(text) × \(group.count)"
     }
 
     /// The lines added up, or nil. `requireSameName` false skips the same-name check: the model
@@ -346,12 +355,27 @@ enum GroceryCombiner {
     private static func normalize(_ text: String) -> String { whitespace.replace(text.kTrimmed, with: " ").lowercased() }
 }
 
-/// The grocery list as plain text for sharing (#50): the title, then each aisle's name and its
-/// unchecked rows, as shown. Checked items are left out: they're already in the basket.
+/// The grocery list as plain text for sending (#50, #149; Android's GroceryShareText): the
+/// title, then each aisle's name and its unchecked rows, as shown, one per line after "- ".
+/// Checked items are left out: they're already in the basket. Each line ends with the recipes
+/// it's for, in brackets ("- 2 lb chicken thighs (Sheet-pan chicken)"): every one, for a row
+/// several recipes added to. `recipeTitles` names them by id; a typed item names none.
 enum GroceryShareText {
 
-    static func format(_ sections: [GroceryCombiner.Section], title: String, aisleName: (Aisle) -> String) -> String {
+    static func format(
+        _ sections: [GroceryCombiner.Section], title: String, recipeTitles: [Int64: String] = [:],
+        aisleName: (Aisle) -> String
+    ) -> String {
         var lines = [title]
+        func line(_ text: String, _ items: [GroceryItem]) {
+            var recipes: [String] = []
+            for item in items {
+                guard let id = item.recipeId, let title = recipeTitles[id]?.kTrimmed, !title.isEmpty,
+                      !recipes.contains(title) else { continue }
+                recipes.append(title)
+            }
+            lines.append(recipes.isEmpty ? "- \(text)" : "- \(text) (\(recipes.joined(separator: ", ")))")
+        }
         for section in sections {
             let rows = section.rows.filter { row in !row.items.contains { $0.checked } }
             if rows.isEmpty { continue }
@@ -359,13 +383,47 @@ enum GroceryShareText {
             lines.append(aisleName(section.aisle))
             for row in rows {
                 switch row {
-                case .single(let item): lines.append("- \(item.text)")
-                case .combined(_, let text, _): lines.append("- \(text)")
-                case .together: lines += GroceryCombiner.lines(row).map { "- \($0)" }
+                case .single(let item): line(item.text, row.items)
+                case .combined(_, let text, _): line(text, row.items)
+                case .together:
+                    for group in GroceryCombiner.lineGroups(row) { line(GroceryCombiner.lineText(group), group) }
                 }
             }
         }
         return lines.joined(separator: "\n")
+    }
+}
+
+/// A list shared into the app as plain text (#149; Android's ReceivedList): the lines to offer,
+/// as written. A bulleted list, like the one "Send list" writes, is read by its bullets: only the
+/// "- " (or "• ", "* "…) lines are items, so its title and aisle headings are left out. Text
+/// with no bullets offers every line. Blank lines, headings ending in ":" and lines with no
+/// letter or digit are never items. Nothing else changes: amounts, "× 3" and a recipe's name in
+/// brackets stay as written, and a line is read like a typed item once it's added.
+enum ReceivedList {
+
+    private static let bullets: Set<Character> = ["-", "*", "•", "◦", "▪", "·", "–", "—"]
+
+    static func lines(_ text: String) -> [String] {
+        // CharacterSet.newlines is Kotlin's \r\n, \n, VT, FF, \r, NEL, LS and PS; "\r\n" is one
+        // Character in Swift, so it is split on explicitly.
+        let all = text.replacingOccurrences(of: "\r\n", with: "\n")
+            .components(separatedBy: .newlines)
+            .map(\.kTrimmed)
+            .filter { !$0.isEmpty }
+        let bulleted = all.compactMap(withoutBullet)
+        let items = bulleted.isEmpty ? all : bulleted
+        return items.filter { line in
+            GrocerySources.buyable(line) && line.contains { $0.isLetter || $0.isWholeNumber }
+        }
+    }
+
+    // "- 2 eggs" is "2 eggs"; a line with no bullet, or a bullet with nothing after it, is nil.
+    private static func withoutBullet(_ line: String) -> String? {
+        let chars = Array(line)
+        guard chars.count >= 2, bullets.contains(chars[0]), chars[1].isWhitespace else { return nil }
+        let rest = String(chars.dropFirst()).kTrimmed
+        return rest.isEmpty ? nil : rest
     }
 }
 

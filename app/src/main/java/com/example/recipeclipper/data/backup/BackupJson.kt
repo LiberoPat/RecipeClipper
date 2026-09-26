@@ -26,8 +26,14 @@ import org.json.JSONTokener
  *                     "updatedAt" }],
  *   "menus":       [{ "id", "name", "updatedAt" }],
  *   "menuEntries": [{ "id", "menuId", "dayOffset", "mealTypeId", "recipeId", "servings", "note",
- *                     "sortOrder", "updatedAt" }] }
+ *                     "sortOrder", "updatedAt" }],
+ *   "cookedPhotos": [{ "id", "recipeId", "day", "note", "createdAt", "updatedAt", "file" }] }
  * ```
+ *
+ * `cookedPhotos` (#116) is written only when there are some, so an export without photos is the
+ * same file as before; their pictures sit beside the JSON in a zip (`BackupArchive`), at `file`
+ * (`photos/<name>.jpg`, nothing else). A photo whose `recipeId` names no recipe in the file is
+ * left out: a photo belongs to its recipe.
  *
  * `pantry` (#51), `groceries` (#50), `mealTypes` and `mealPlan` (#49) came later without a
  * version bump: an older reader ignores them. A grocery's `recipeId` naming no recipe in the
@@ -57,6 +63,9 @@ object BackupJson {
         root.put("mealPlan", JSONArray().apply { backup.mealPlan.forEach { put(it.toJson()) } })
         root.put("menus", JSONArray().apply { backup.menus.forEach { put(it.toJson()) } })
         root.put("menuEntries", JSONArray().apply { backup.menuEntries.forEach { put(it.toJson()) } })
+        if (backup.cookedPhotos.isNotEmpty()) {
+            root.put("cookedPhotos", JSONArray().apply { backup.cookedPhotos.forEach { put(it.toJson()) } })
+        }
         return root.toString(2)
     }
 
@@ -231,8 +240,31 @@ object BackupJson {
         }
         requireUniqueIds(menuEntries.map { it.id }, "menuEntries")
 
-        return Backup(exportedAt, recipes, lists, memberships, pantry, groceries, mealTypes, mealPlan, menus, menuEntries)
+        val cookedPhotos = top.objects(root, "cookedPhotos").mapNotNull { (path, o) ->
+            val r = Reader(path)
+            val id = r.requiredId(o, "id")
+            val file = r.string(o, "file")?.takeIf { PHOTO_FILE.matches(it) } ?: throw MalformedException("$path.file")
+            val day = r.long(o, "day") ?: throw MalformedException("$path.day")
+            val recipeId = r.string(o, "recipeId")?.takeIf { it in recipeIds } ?: return@mapNotNull null
+            BackupCookedPhoto(
+                id = id,
+                recipeId = recipeId,
+                day = day,
+                note = r.string(o, "note")?.takeIf { it.isNotBlank() },
+                createdAt = r.long(o, "createdAt") ?: 0L,
+                updatedAt = r.long(o, "updatedAt") ?: 0L,
+                file = file
+            )
+        }
+        requireUniqueIds(cookedPhotos.map { it.id }, "cookedPhotos")
+
+        return Backup(
+            exportedAt, recipes, lists, memberships, pantry, groceries, mealTypes, mealPlan, menus, menuEntries, cookedPhotos
+        )
     }
+
+    /** A picture's path in the zip: under `photos/`, one plain name, never `..` or a folder. */
+    val PHOTO_FILE = Regex("photos/[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}")
 
     private fun requireUniqueIds(ids: List<String>, section: String) {
         val seen = HashSet<String>()
@@ -411,6 +443,16 @@ object BackupJson {
         put("note", note.orNull())
         put("sortOrder", sortOrder)
         put("updatedAt", updatedAt)
+    }
+
+    private fun BackupCookedPhoto.toJson() = JSONObject().apply {
+        put("id", id)
+        put("recipeId", recipeId)
+        put("day", day)
+        put("note", note.orNull())
+        put("createdAt", createdAt)
+        put("updatedAt", updatedAt)
+        put("file", file)
     }
 
     /** `put(key, null)` removes the key in org.json; an explicit JSON null keeps the shape. */

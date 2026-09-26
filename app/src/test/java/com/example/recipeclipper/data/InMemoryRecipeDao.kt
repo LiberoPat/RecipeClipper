@@ -73,6 +73,9 @@ internal class InMemoryRecipeDao : RecipeDao() {
         sortOrder: Int, updatedAt: Long, uid: String
     ) {}
     override suspend fun menuEntriesFor(recipeId: Long) = emptyList<MenuEntryEntity>()
+    override suspend fun cookedPhotosFor(recipeId: Long) =
+        emptyList<com.example.recipeclipper.data.local.entity.CookedPhotoEntity>()
+    override suspend fun insertCookedPhotos(photos: List<com.example.recipeclipper.data.local.entity.CookedPhotoEntity>) {}
     override suspend fun restoreMenuEntry(
         id: Long, menuId: Long, dayOffset: Int, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
         sortOrder: Int, updatedAt: Long, uid: String

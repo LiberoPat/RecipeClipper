@@ -353,7 +353,8 @@ class RecipeViewModel @Inject constructor(
         deadlines.keys.forEach { alarms.cancel(id, it) }
         deadlines.clear()
         viewModelScope.launch {
-            repository.delete(id)
+            // No undo here: the confirmation said the photos go with it (#116).
+            repository.delete(id)?.let { repository.forget(it) }
             _uiState.update { it.copy(deleted = true) }
         }
     }

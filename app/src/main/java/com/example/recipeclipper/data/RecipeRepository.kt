@@ -2,6 +2,7 @@ package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MenuEntryEntity
+import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.CookProgress
@@ -100,7 +101,9 @@ interface RecipeRepository {
         val entity: RecipeEntity,
         val crossRefs: List<RecipeListCrossRef>,
         val planEntries: List<MealPlanEntryEntity> = emptyList(),
-        val menuEntries: List<MenuEntryEntity> = emptyList()
+        val menuEntries: List<MenuEntryEntity> = emptyList(),
+        /** The user's own photos (#116): their rows; the files stay until [forget]. */
+        val cookedPhotos: List<CookedPhotoEntity> = emptyList()
     )
 
     /**
@@ -111,6 +114,9 @@ interface RecipeRepository {
 
     /** Undoes a [delete]: the recipe comes back with its original id and list membership. */
     suspend fun restore(deleted: DeletedRecipe)
+
+    /** The [delete] stands (no undo now): removes what only an undo needed, its photo files. */
+    suspend fun forget(deleted: DeletedRecipe) {}
 
     /** Titles and ingredients matching [query]; everything when [query] is blank. */
     fun observeHistory(query: String): Flow<List<RecipeSummary>>

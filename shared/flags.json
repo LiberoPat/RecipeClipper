@@ -41,6 +41,12 @@
       "description": "With aiDecisions on, also asks the model whether a count's bracket is the total or each item's, and scales the line by its answer. Off, those lines scale as without the model. Kept to re-measure: the #105 evaluation found it confidently wrong on 4 of 22.",
       "defaults": { "debug": false, "release": false },
       "issue": 127
+    },
+    {
+      "key": "cookedPhotos",
+      "description": "\"I made this\": your own photos of a recipe, each with a date and a short note, in a \"Your cooks\" gallery under the recipe; the Recipes screen's Recently cooked sort. Recipes with photos are never removed automatically, and photos go into the export file either way.",
+      "defaults": { "debug": false, "release": false },
+      "issue": 116
     }
   ]
 }

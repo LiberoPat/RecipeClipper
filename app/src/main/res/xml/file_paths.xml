@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- What the FileProvider may share: export files, and nothing else. -->
+<!-- What the FileProvider may share: export files; the camera's one capture file, which the
+     camera app writes; and the user's own photos (#116), shared out one at a time. -->
 <paths>
     <cache-path name="exports" path="exports/" />
+    <cache-path name="camera" path="camera/" />
+    <files-path name="cooked_photos" path="cooked_photos/" />
 </paths>
