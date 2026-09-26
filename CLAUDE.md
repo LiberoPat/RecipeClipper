@@ -21,7 +21,7 @@ needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
 unit, timer, temperature, yield, range, amount, duration, detection,
-ingredient-name, aisle and step words, condensed section names, recipe headings; tracking parameters), loaded by both apps (Android as
+ingredient-name, aisle, step and Chef-mode words, condensed section names, recipe headings; tracking parameters), loaded by both apps (Android as
 Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
 table there, never in code; the logic that reads it stays written twice. **Each
 language has its own folder** (`shared/tables/<code>/`: en, de, es, fr, it,
@@ -233,7 +233,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Chef mode** (#100, `chefMode` flag): short steps written by the on-device
   model behind the `StepShortener` seam, shown only if `ShortStepCheck`
   passes (shorter; every number in it is in the step; the step's times and
-  temperatures exactly). Timers and rendering come from the step as written.
+  temperatures exactly; no ingredient, action, equipment, qualifier or time
+  word dropped and no word added, by `chef.json`, #129). Timers and rendering come from the step as written.
   Reading view: tap a step for it as written. Cook mode: the current card's
   "As written" button. While writing, the step shows as written.
 - **Theme:** Fraunces (display) over Karla (body); ground `#FBF9F6`, ink

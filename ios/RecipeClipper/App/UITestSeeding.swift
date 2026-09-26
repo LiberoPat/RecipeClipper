@@ -155,7 +155,7 @@ enum UITestSeeding {
 
     /// The step `UITestStepShortener` writes a short version of (#100).
     static let chefStep = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
-    static let chefShortStep = "Oven to 350°F; butter a 9-inch tin."
+    static let chefShortStep = "Preheat oven to 350°F; butter a 9-inch tin."
 
     private static func seedChef(_ conn: SQLiteConnection, now: Int64) throws {
         try RecipeDao(db: conn).insert(RecipeRecord(
