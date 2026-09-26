@@ -48,6 +48,21 @@ abstract class PlatformModule {
     @Binds
     abstract fun backupFiles(impl: AndroidBackupFiles): BackupFiles
 
+    // The automatic copy (#150): the chosen folder, its record, and WorkManager.
+    @Binds
+    abstract fun backupFolder(impl: com.example.recipeclipper.data.AndroidBackupFolder): com.example.recipeclipper.data.BackupFolder
+
+    @Binds
+    @Singleton
+    abstract fun autoBackupStore(
+        impl: com.example.recipeclipper.data.local.SharedPrefsAutoBackupStore
+    ): com.example.recipeclipper.data.AutoBackupStore
+
+    @Binds
+    abstract fun autoBackupScheduler(
+        impl: com.example.recipeclipper.data.WorkManagerAutoBackupScheduler
+    ): com.example.recipeclipper.data.AutoBackupScheduler
+
     @Binds
     @Singleton
     abstract fun photoStore(impl: com.example.recipeclipper.data.AndroidPhotoStore): com.example.recipeclipper.data.PhotoStore
