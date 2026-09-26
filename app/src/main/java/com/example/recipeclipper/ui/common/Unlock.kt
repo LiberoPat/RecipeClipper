@@ -9,6 +9,7 @@ import androidx.compose.ui.res.stringResource
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.model.LibraryLimit
+import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /** The words for a purchase or restore that didn't simply unlock (#107). */
 @StringRes
@@ -22,14 +23,18 @@ fun PurchaseOutcome.noticeMessage(): Int = when (this) {
 /**
  * A typed-in or clipped recipe can't be saved (#107): the free library is full and every
  * recipe is protected. The editor or clip stays open behind it, so nothing typed is lost.
+ * It carries its own theme: both callers show it outside their screen's theme block, where
+ * Material's baseline purple and Roboto would otherwise apply.
  */
 @Composable
 fun LibraryFullDialog(onUnlock: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.library_full_title)) },
-        text = { Text(stringResource(R.string.library_full_body, LibraryLimit.FREE_RECIPES)) },
-        confirmButton = { TextButton(onClick = onUnlock) { Text(stringResource(R.string.unlock)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
-    )
+    RecipeClipperTheme {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(R.string.library_full_title)) },
+            text = { Text(stringResource(R.string.library_full_body, LibraryLimit.FREE_RECIPES)) },
+            confirmButton = { TextButton(onClick = onUnlock) { Text(stringResource(R.string.unlock)) } },
+            dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
+        )
+    }
 }
