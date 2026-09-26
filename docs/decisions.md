@@ -1861,8 +1861,13 @@ then gets the batter's butter, since the step's words can't tell the two uses ap
   stored them with a synthetic `manual:<uuid>` `sourceUrl`. #107's free-tier
   limit will replace the 50 cap later; this rule is one more protected kind
   for it to count or exempt.
-- **Sort** (Recently viewed, Name, Date added) is in memory, like the
-  pantry's, and done in the ViewModel over what the query returns. Name uses
+- **Sort** (Recently viewed, Name, Date added) is done in the
+  ViewModel over what the query returns. Name uses
   the phone's collation; Date added is newest id first, which works because
   `recipes.id` is AUTOINCREMENT on both platforms (never reused), so no
   `createdAt` column or migration was needed.
+- **The sort is remembered** (owner's decision, after #109 held it in
+  memory and reset it on every visit): `recipe_sort` in `AppPreferences`,
+  by name, default Recently viewed, an unknown name read as the default.
+  It is a view preference, so it is not in the export file and not in
+  Settings.

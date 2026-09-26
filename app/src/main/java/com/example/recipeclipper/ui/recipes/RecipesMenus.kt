@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.RecipeSort
 
 /** The + in the Recipes header (#102): type a recipe in, or paste a link. */
 @Composable

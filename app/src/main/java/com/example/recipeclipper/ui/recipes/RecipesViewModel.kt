@@ -3,6 +3,8 @@ package com.example.recipeclipper.ui.recipes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.home.UrlInput
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,13 +17,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.Collator
 import javax.inject.Inject
-
-/** How the Recipes screen orders its rows (#102). Held in memory, like the pantry's sort. */
-enum class RecipeSort { RECENTLY_VIEWED, NAME, DATE_ADDED }
 
 /**
  * [recipes] is null until the database has answered, to tell "loading" from "nothing
@@ -42,12 +42,17 @@ data class RecipesUiState(
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class RecipesViewModel @Inject constructor(private val repository: RecipeRepository) : ViewModel() {
+class RecipesViewModel @Inject constructor(
+    private val repository: RecipeRepository,
+    private val preferences: AppPreferences
+) : ViewModel() {
 
     // The query box's live value. Kept in a StateFlow, not `remember`, so it survives rotation.
     private val query = MutableStateFlow("")
     private val pendingDeletes = MutableStateFlow<List<String>>(emptyList())
-    private val sort = MutableStateFlow(RecipeSort.RECENTLY_VIEWED)
+    // Remembered in AppPreferences, so it survives leaving the screen; the flow keeps the
+    // screen in step with what is stored.
+    private val sort = preferences.settings.map { it.recipeSort }.distinctUntilChanged()
     private val linkInput = MutableStateFlow<String?>(null)
 
     // What swipe-to-dismiss captured, keyed by recipe id so a second swipe within the
@@ -72,7 +77,7 @@ class RecipesViewModel @Inject constructor(private val repository: RecipeReposit
     }
 
     fun onSortChange(value: RecipeSort) {
-        sort.value = value
+        preferences.recipeSort = value
     }
 
     /** "Paste a link" from the + menu: opens the dialog, empty. */

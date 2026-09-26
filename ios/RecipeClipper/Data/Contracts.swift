@@ -413,6 +413,8 @@ protocol AppPreferences: AnyObject {
     /// Ingredient amounts inside steps (#101): "Add the carrots" reads "Add 2 carrots". Off by
     /// default, and shown only with the `amountsInSteps` flag on.
     var amountsInSteps: Bool { get set }
+    /// The Recipes screen's sort (#102): a view preference, kept so it survives leaving the screen.
+    var recipeSort: RecipeSort { get set }
 
     /// The current values first, then every change, never repeating a value. Delivery may be
     /// asynchronous, so a subscriber receives on main.
@@ -428,7 +430,8 @@ extension AppPreferences {
             temperatureUnit: temperatureUnit,
             darkWhileCooking: darkWhileCooking,
             expiryReminders: expiryReminders,
-            amountsInSteps: amountsInSteps
+            amountsInSteps: amountsInSteps,
+            recipeSort: recipeSort
         )
     }
 }
@@ -441,4 +444,5 @@ struct AppSettings: Equatable {
     var darkWhileCooking = false
     var expiryReminders = false
     var amountsInSteps = false
+    var recipeSort: RecipeSort = .recentlyViewed
 }

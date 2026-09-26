@@ -379,7 +379,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - Settings live in the SharedPreferences file `unit_preferences` (never
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
   under the same keys: `unit_system`, `convert_liquids`, `temperature_unit`,
-  `dark_while_cooking`, `expiry_reminders`, `amounts_in_steps`, each enum stored by name. `AppPreferences.settings`
+  `dark_while_cooking`, `expiry_reminders`, `amounts_in_steps`, `recipe_sort` (the Recipes
+  screen's sort), each enum stored by name, an unknown one read as the default. `AppPreferences.settings`
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.

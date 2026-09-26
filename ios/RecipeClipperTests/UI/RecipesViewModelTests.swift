@@ -17,7 +17,7 @@ final class RecipesViewModelTests: XCTestCase {
 
     func testRapidQueryChangesAreDebouncedIntoOneRepositoryQuery() async {
         let repository = FakeRecipeRepository()
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
 
         vm.onQueryChange("a")
         vm.onQueryChange("ab")
@@ -31,7 +31,7 @@ final class RecipesViewModelTests: XCTestCase {
     func testTheDebounceReallyWaits250ms() async {
         let repository = FakeRecipeRepository()
         let clock = TestClock()
-        let vm = RecipesViewModel(repository: repository, sleep: clock.sleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: clock.sleep)
         await clock.advance(by: 250)
         XCTAssertEqual(repository.historyQueries, [""])
 
@@ -45,7 +45,7 @@ final class RecipesViewModelTests: XCTestCase {
 
     func testTheSameQueryAgainDoesNotResubscribe() async {
         let repository = FakeRecipeRepository()
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
 
         vm.onQueryChange("soup")
@@ -59,7 +59,7 @@ final class RecipesViewModelTests: XCTestCase {
     func testRecipesStaysNilUntilTheRepositoryAnswers() async {
         let repository = FakeRecipeRepository()
         repository.history.send([testSummary(1)])
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
 
         // Still "loading", not "nothing matched".
         XCTAssertNil(vm.uiState.recipes)
@@ -70,7 +70,7 @@ final class RecipesViewModelTests: XCTestCase {
     }
 
     func testAnEmptyAnswerIsEmptyNotNil() async {
-        let vm = RecipesViewModel(repository: FakeRecipeRepository(), sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: FakeRecipeRepository(), preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
 
         XCTAssertEqual(vm.uiState.recipes, [])
@@ -79,7 +79,7 @@ final class RecipesViewModelTests: XCTestCase {
     func testDeletingARecipeCapturesItAndSetsPendingDeletes() async {
         let repository = FakeRecipeRepository()
         repository.deleteResults[1] = deleted(1, "Chicken Adobo")
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
 
         vm.onDelete(testSummary(1, title: "Chicken Adobo"))
@@ -91,7 +91,7 @@ final class RecipesViewModelTests: XCTestCase {
 
     func testARecipeAlreadyGoneIsNotPending() async {
         let repository = FakeRecipeRepository()
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
 
         vm.onDelete(testSummary(1))
@@ -104,7 +104,7 @@ final class RecipesViewModelTests: XCTestCase {
         let repository = FakeRecipeRepository()
         let removed = deleted(1, "Chicken Adobo")
         repository.deleteResults[1] = removed
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
         vm.onDelete(testSummary(1, title: "Chicken Adobo"))
         await settleMain()
@@ -119,7 +119,7 @@ final class RecipesViewModelTests: XCTestCase {
     func testDismissingTheSnackbarClearsPendingDeletesWithoutRestoring() async {
         let repository = FakeRecipeRepository()
         repository.deleteResults[1] = deleted(1, "Chicken Adobo")
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
         vm.onDelete(testSummary(1, title: "Chicken Adobo"))
         await settleMain()
@@ -138,7 +138,7 @@ final class RecipesViewModelTests: XCTestCase {
         let b = deleted(2, "B")
         repository.deleteResults[1] = a
         repository.deleteResults[2] = b
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
 
         vm.onDelete(testSummary(1, title: "A"))
@@ -163,7 +163,7 @@ final class RecipesViewModelTests: XCTestCase {
     func testRecentlyViewedIsTheDefaultOrderAsTheRepositoryGivesIt() async {
         let repository = FakeRecipeRepository()
         repository.history.send(unsorted)
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
 
         XCTAssertEqual(vm.uiState.sort, .recentlyViewed)
@@ -173,7 +173,7 @@ final class RecipesViewModelTests: XCTestCase {
     func testNameSortsByTitleIgnoringCaseAndDateAddedIsNewestIdFirst() async {
         let repository = FakeRecipeRepository()
         repository.history.send(unsorted)
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
 
         vm.onSortChange(.name)
@@ -182,8 +182,24 @@ final class RecipesViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.recipes?.map(\.id), [3, 2, 1])
     }
 
+    func testTheStoredSortIsAppliedOnOpenAndANewChoiceIsStored() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send(unsorted)
+        let preferences = FakeAppPreferences(recipeSort: .name)
+        let vm = RecipesViewModel(repository: repository, preferences: preferences, sleep: immediateSleep)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.sort, .name)
+        XCTAssertEqual(vm.uiState.recipes?.map(\.title), ["apple pie", "Bread", "Cake"])
+
+        vm.onSortChange(.dateAdded)
+        await settleMain()
+        XCTAssertEqual(preferences.recipeSort, .dateAdded)
+        XCTAssertEqual(vm.uiState.recipes?.map(\.id), [3, 2, 1])
+    }
+
     func testPasteALinkOpensOnlyARealLinkAndClosesTheAlert() {
-        let vm = RecipesViewModel(repository: FakeRecipeRepository(), sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: FakeRecipeRepository(), preferences: FakeAppPreferences(), sleep: immediateSleep)
 
         vm.onPasteLink()
         XCTAssertTrue(vm.uiState.pastingLink)
@@ -199,7 +215,7 @@ final class RecipesViewModelTests: XCTestCase {
     }
 
     func testTheAlertGoingAwayKeepsTheTextForAGoThatRunsSecond() {
-        let vm = RecipesViewModel(repository: FakeRecipeRepository(), sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: FakeRecipeRepository(), preferences: FakeAppPreferences(), sleep: immediateSleep)
         vm.onPasteLink()
         vm.onLinkChange("https://example.com/soup")
 

@@ -4,7 +4,9 @@ import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.collectEagerly
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.entity.RecipeEntity
+import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -42,7 +44,7 @@ class RecipesViewModelTest {
     @Test fun `rapid query changes are debounced into one repository query`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = FakeRecipeRepository()
-            val vm = RecipesViewModel(repository)
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
             collectEagerly(vm.uiState)
 
             vm.onQueryChange("a")
@@ -56,7 +58,7 @@ class RecipesViewModelTest {
     @Test fun `recipes stays null until the repository answers`() = runTest(mainDispatcherRule.dispatcher) {
         val repository = FakeRecipeRepository()
         repository.history.value = listOf(summary(1))
-        val vm = RecipesViewModel(repository)
+        val vm = RecipesViewModel(repository, FakeAppPreferences())
 
         // Nothing has run on the Main dispatcher yet: still "loading", not "nothing matched".
         assertNull(vm.uiState.value.recipes)
@@ -71,7 +73,7 @@ class RecipesViewModelTest {
         val repository = FakeRecipeRepository()
         val deleted = RecipeRepository.DeletedRecipe(entity(1, "Chicken Adobo"), emptyList())
         repository.deleteResults[1L] = deleted
-        val vm = RecipesViewModel(repository)
+        val vm = RecipesViewModel(repository, FakeAppPreferences())
         collectEagerly(vm.uiState)
         advanceUntilIdle()
 
@@ -87,7 +89,7 @@ class RecipesViewModelTest {
             val repository = FakeRecipeRepository()
             val deleted = RecipeRepository.DeletedRecipe(entity(1, "Chicken Adobo"), emptyList())
             repository.deleteResults[1L] = deleted
-            val vm = RecipesViewModel(repository)
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
             collectEagerly(vm.uiState)
             advanceUntilIdle()
             vm.onDelete(summary(1, "Chicken Adobo"))
@@ -105,7 +107,7 @@ class RecipesViewModelTest {
             val repository = FakeRecipeRepository()
             val deleted = RecipeRepository.DeletedRecipe(entity(1, "Chicken Adobo"), emptyList())
             repository.deleteResults[1L] = deleted
-            val vm = RecipesViewModel(repository)
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
             collectEagerly(vm.uiState)
             advanceUntilIdle()
             vm.onDelete(summary(1, "Chicken Adobo"))
@@ -125,7 +127,7 @@ class RecipesViewModelTest {
             val deletedB = RecipeRepository.DeletedRecipe(entity(2, "B"), emptyList())
             repository.deleteResults[1L] = deletedA
             repository.deleteResults[2L] = deletedB
-            val vm = RecipesViewModel(repository)
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
             collectEagerly(vm.uiState)
             advanceUntilIdle()
 
@@ -148,7 +150,7 @@ class RecipesViewModelTest {
         runTest(mainDispatcherRule.dispatcher) {
             val repository = FakeRecipeRepository()
             repository.history.value = listOf(summary(2, "Bread"), summary(3, "apple pie"), summary(1, "Cake"))
-            val vm = RecipesViewModel(repository)
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
             collectEagerly(vm.uiState)
             advanceUntilIdle()
 
@@ -160,7 +162,7 @@ class RecipesViewModelTest {
         runTest(mainDispatcherRule.dispatcher) {
             val repository = FakeRecipeRepository()
             repository.history.value = listOf(summary(2, "Bread"), summary(3, "apple pie"), summary(1, "Cake"))
-            val vm = RecipesViewModel(repository)
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
             collectEagerly(vm.uiState)
 
             vm.onSortChange(RecipeSort.NAME)
@@ -172,9 +174,27 @@ class RecipesViewModelTest {
             assertEquals(listOf(3L, 2L, 1L), vm.uiState.value.recipes?.map { it.id })
         }
 
+    @Test fun `the stored sort is applied on open, and a new choice is stored`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            repository.history.value = listOf(summary(2, "Bread"), summary(3, "apple pie"), summary(1, "Cake"))
+            val preferences = FakeAppPreferences(recipeSort = RecipeSort.NAME)
+            val vm = RecipesViewModel(repository, preferences)
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+
+            assertEquals(RecipeSort.NAME, vm.uiState.value.sort)
+            assertEquals(listOf("apple pie", "Bread", "Cake"), vm.uiState.value.recipes?.map { it.title })
+
+            vm.onSortChange(RecipeSort.DATE_ADDED)
+            advanceUntilIdle()
+            assertEquals(RecipeSort.DATE_ADDED, preferences.recipeSort)
+            assertEquals(listOf(3L, 2L, 1L), vm.uiState.value.recipes?.map { it.id })
+        }
+
     @Test fun `paste a link opens only a real link, and closes the dialog`() =
         runTest(mainDispatcherRule.dispatcher) {
-            val vm = RecipesViewModel(FakeRecipeRepository())
+            val vm = RecipesViewModel(FakeRecipeRepository(), FakeAppPreferences())
             collectEagerly(vm.uiState)
 
             vm.onPasteLink()
@@ -196,7 +216,7 @@ class RecipesViewModelTest {
         }
 
     @Test fun `dismissing the link dialog closes it`() = runTest(mainDispatcherRule.dispatcher) {
-        val vm = RecipesViewModel(FakeRecipeRepository())
+        val vm = RecipesViewModel(FakeRecipeRepository(), FakeAppPreferences())
         collectEagerly(vm.uiState)
 
         vm.onPasteLink()
