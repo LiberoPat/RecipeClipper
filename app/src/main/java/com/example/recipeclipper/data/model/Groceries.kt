@@ -241,7 +241,7 @@ object GroceryCombiner {
         val lead = p.leading.find(line) ?: return null
         if (lead.groupValues[4].isNotEmpty()) return null // a range is no one figure
         val rest = line.substring(lead.range.last + 1)
-        if (p.notAnAmount.containsMatchIn(rest)) return null
+        if (p.notAnAmount.containsMatchIn(rest) || p.temperature(lead, rest)) return null
         val value = p.parse(lead.groupValues[2])?.takeIf { it > 0 } ?: return null
 
         val unitMatch = c.unitAtStart.find(rest)

@@ -232,6 +232,43 @@ class UnitConverterTest {
         assertEquals("1 lb. butter", ounces("1 lb. butter"))
     }
 
+    // --- Old-style abbreviations (#135): "c." is a cup, "T" a tablespoon, "t" a teaspoon ---
+
+    @Test fun `c is a cup, in either case, with or without its period`() {
+        // Delish writes cups this way.
+        assertEquals("120 ml heavy cream", metric("1/2 c. heavy cream"))
+        assertEquals("360 ml cherry tomatoes", metric("1 1/2 c. cherry tomatoes"))
+        assertEquals("1 1/2 c. cherry tomatoes", ounces("1 1/2 c. cherry tomatoes")) // not in the table
+        assertEquals("120 g flour", metric("1 c. flour"))
+        assertEquals("240 g flour", metric("2 C flour"))
+        assertEquals("240 g flour", metric("2 C. flour"))
+        assertEquals("240 g flour", metric("2 c flour"))
+        assertEquals("4 1/4 oz flour", ounces("1 c. flour"))
+    }
+
+    @Test fun `capital T is a tablespoon and small t a teaspoon`() {
+        assertEquals("25 g sugar", metric("2 T. sugar"))
+        assertEquals("25 g sugar", metric("2 T sugar"))
+        assertEquals("8.5 g sugar", metric("2 t. sugar"))
+        assertEquals("8.5 g sugar", metric("2 t sugar"))
+        assertEquals("28 g butter", metric("2 T. butter"))
+        assertEquals("6 g baking soda", metric("1 t. baking soda"))
+        assertEquals("15 ml salt", metric("1 T salt"))
+        assertEquals("5 ml salt", metric("1 t salt"))
+        assertEquals("45 ml olive oil", metric("3 Tbs olive oil"))
+    }
+
+    @Test fun `a letter that is not a unit stays as written`() {
+        // "180 C" is a temperature, never 180 cups; "180°C" never reads as a cup at all.
+        assertEquals("180 C water", metric("180 C water"))
+        assertEquals("180 C. water", ounces("180 C. water", liquids = true))
+        assertEquals("180°C oil", metric("180°C oil"))
+        // Part of a word, not a unit.
+        assertEquals("2 T-bone steaks", metric("2 T-bone steaks"))
+        assertEquals("2 Tomatoes", metric("2 Tomatoes"))
+        assertEquals("1 cantaloupe", metric("1 cantaloupe"))
+    }
+
     // --- Compound amounts: "1 cup plus 2 tbsp" ---
 
     @Test fun `a compound amount uses the site's figure for the whole amount`() {
