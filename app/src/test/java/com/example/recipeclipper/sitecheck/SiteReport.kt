@@ -16,13 +16,21 @@ import java.net.URI
  */
 internal object SiteReport {
 
-    /** One URL's result. [firstCause] is set when the first attempt failed and was retried. */
+    /**
+     * One URL's result. [firstCause] is set when the first attempt failed and was retried.
+     * [rules] names each of the site's rules in `site-rules.json` and whether it still matches
+     * the page (#120); null when the site has none or the page didn't load.
+     */
     data class Outcome(
         val url: String,
         val result: ParseResult,
         val firstCause: ParseError? = null,
         val millis: Long = 0,
+        val rules: Map<String, Boolean>? = null,
     )
+
+    /** What the table says of a site rule that no longer matches; the workflow warns on it. */
+    const val STOPPED = "Stopped matching"
 
     /** One URL per line; blank lines and anything after `#` are ignored. */
     fun parseUrlList(text: String): List<String> =
@@ -69,6 +77,24 @@ internal object SiteReport {
                     appendLine("| $site | Failed${cell(retried)} | ${cell(describe(r.error))} | | | | | | $seconds |")
             }
         }
+        // The site rules (#120), for the pages that loaded: a selector that no longer finds the
+        // site's markup shows here, not as a failure.
+        val ruled = outcomes.filter { !it.rules.isNullOrEmpty() }
+        if (ruled.isEmpty()) return@buildString
+        appendLine()
+        appendLine("### Site rules")
+        appendLine()
+        appendLine("Each rule in shared/tables/site-rules.json for a site above. One marked " +
+            "$STOPPED needs its selectors or phrases checked against the page.")
+        appendLine()
+        appendLine("| Site | Rule | Result |")
+        appendLine("|---|---|---|")
+        for (o in ruled) {
+            val site = "[${cell(site(o.url))}](${o.url.replace(")", "%29")})"
+            o.rules!!.forEach { (rule, matched) ->
+                appendLine("| $site | ${cell(rule)} | ${if (matched) "Matched" else "**$STOPPED**"} |")
+            }
+        }
     }
 
     fun json(outcomes: List<Outcome>, runAt: String): String {
@@ -79,6 +105,7 @@ internal object SiteReport {
                 .put("site", site(o.url))
                 .put("millis", o.millis)
             o.firstCause?.let { entry.put("firstCause", describe(it)) }
+            o.rules?.let { entry.put("siteRules", JSONObject(it)) }
             when (val r = o.result) {
                 is ParseResult.Success -> entry
                     .put("outcome", "parsed")

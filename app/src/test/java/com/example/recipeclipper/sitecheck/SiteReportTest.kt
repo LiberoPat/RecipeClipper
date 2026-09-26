@@ -53,6 +53,20 @@ class SiteReportTest {
         assertTrue(md, "| Failed | FetchFailed(bad \\| pipe line) |" in md)
     }
 
+    @Test fun `a site rule that stopped matching is flagged, in the table and the JSON`() {
+        val outcomes = listOf(
+            SiteReport.Outcome(recipe.sourceUrl, ParseResult.Success(recipe), rules = mapOf("ingredients" to true, "step noise" to false)),
+            SiteReport.Outcome("https://b.example/x", ParseResult.Success(recipe)),
+        )
+        val md = SiteReport.markdown(outcomes, "t")
+        assertTrue(md, "| [soup.example](https://www.soup.example/soup) | ingredients | Matched |" in md)
+        assertTrue(md, "| [soup.example](https://www.soup.example/soup) | step noise | **Stopped matching** |" in md)
+        assertTrue(md, "b.example) |" !in md.substringAfter("### Site rules"))
+        val entry = JSONObject(SiteReport.json(outcomes, "t")).getJSONArray("results").getJSONObject(0)
+        assertEquals(false, entry.getJSONObject("siteRules").getBoolean("step noise"))
+        assertTrue("### Site rules" !in SiteReport.markdown(outcomes.drop(1), "t"))
+    }
+
     @Test fun `the JSON records outcomes only, never recipe text`() {
         val json = SiteReport.json(listOf(SiteReport.Outcome(recipe.sourceUrl, ParseResult.Success(recipe))), "t")
         val entry = JSONObject(json).getJSONArray("results").getJSONObject(0)
