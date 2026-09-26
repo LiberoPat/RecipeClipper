@@ -32,6 +32,8 @@ import XCTest
 // Write only `Wprm("<markup>", ["line"]),`, the markup's attributes single-quoted.
 // Tasty Recipes and Mediavine Create rows (#119): the same, then CardHeadings.refine. Write only
 // `Heads("<markup>", ["line"]),`.
+// Site-rule rows (#120): a host, a page's markup, JSON-LD's lines and steps, then SiteRules.ingredients
+// and SiteRules.steps for that host. Write only `Site("delish.com", "<markup>", ["line"], ["step"]),`.
 // Trailing-text rows (#99): a grocery line, then GroceryDecisions.split's core and trailing text,
 // or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
@@ -103,6 +105,15 @@ final class DifferentialCorpusTests: XCTestCase {
     }
 
     private typealias Heads = Wprm
+
+    private struct Site {
+        let host: String; let html: String; let lines: [String]; let steps: [String]
+        let refined: [String]; let refinedSteps: [String]
+        init(_ host: String, _ html: String, _ lines: [String], _ steps: [String], _ refined: [String], _ refinedSteps: [String]) {
+            self.host = host; self.html = html; self.lines = lines; self.steps = steps
+            self.refined = refined; self.refinedSteps = refinedSteps
+        }
+    }
 
     private struct Trail {
         let line: String; let words: LanguageWords; let core: String?; let trailing: String?
@@ -1339,6 +1350,21 @@ final class DifferentialCorpusTests: XCTestCase {
         Heads("<p>No card on this page.</p>", ["1 egg"], ["1 egg"]),
     ]
 
+    private static let sites: [Site] = [
+        Site("bbcgoodfood.com", "<section id='ingredients-list'><section><ul class='ingredients-list list'><li class='ingredients-list__item list-item'><span>200g </span>caster sugar</li></ul></section><section><h3 class='ingredients-list__heading heading-5'>For the filling</h3><ul><li class='ingredients-list__item'>100g butter<div class='ingredients-list__item-note'> softened</div></li></ul></section><div class='pocket ingredients-list__heading'>Keep the screen awake</div></section>", ["200g caster sugar", "100g butter softened"], ["Mix."], ["200g caster sugar", "For the filling:", "100g butter softened"], ["Mix."]),
+        Site("bbcgoodfood.com", "<section id='ingredients-list'><ul><li class='Ingredients-List__Item'>200g caster sugar</li></ul><h3 class='ingredients-list__heading'>Filling</h3><ul><li class='Ingredients-List__Item'>100g butter</li></ul></section>", ["200g caster sugar", "100g butter"], ["Mix."], ["200g caster sugar", "100g butter"], ["Mix."]),
+        Site("cooking.nytimes.com", "<div class='ingredients_ingredients__FLjsC'><h2 class='ingredients_heading__RdSek'>Ingredients</h2><h3 class='pantry--label ingredientgroup_name__xNtpC'>FOR THE CAKE</h3><ul><li><p class='ingredient_ingredient__rfjvs'>2 cups/400 grams sugar</p></li></ul><h3 class='pantry--label ingredientgroup_name__Zz9'>FOR THE FROSTING</h3><ul><li><p>1 cup/226 grams butter, softened</p></li></ul></div>", ["2 cups/400 grams sugar", "1 cup/226 grams butter, softened"], ["Mix."], ["FOR THE CAKE:", "2 cups/400 grams sugar", "FOR THE FROSTING:", "1 cup/226 grams butter, softened"], ["Mix."]),
+        Site("cooking.nytimes.com", "<div class='ingredients_ingredients__FLjsC'><h2>Ingredients</h2><ul><li><p>2 cups sugar</p></li><li><p>1 cup butter</p></li></ul></div>", ["2 cups sugar", "1 cup butter"], ["Mix."], ["2 cups sugar", "1 cup butter"], ["Mix."]),
+        Site("bonappetit.com", "<div data-testid='IngredientList'><h2 class='Hed-kolHYW'>Ingredients</h2><div class='List-YLAfh'><h3 class='  BaseText-fEwdHD   SubHed-icPlCN '>Cake</h3><p class='Amount-URdWv'>½</p><div class='BaseText-fEwdHD Description-dTzQRt'>cup (75 g) golden raisins</div><p class='Amount-URdWv'></p><div class='Description-dTzQRt'>Generous pinch of <a href='x'>kosher salt</a></div></div></div><div data-testid='IngredientList'><h2>Nutrition Per Serving</h2><div class='Description-dTzQRt'>Calories 810</div></div>", ["½ cup (75 g) golden raisins", "Generous pinch of kosher salt"], ["Mix.", "Bake until golden. Editor’s note: This recipe was first printed in May 2016. Head this way for more of our favorite Easter desserts →"], ["Cake:", "½ cup (75 g) golden raisins", "Generous pinch of kosher salt"], ["Mix.", "Bake until golden."]),
+        Site("epicurious.com", "<div data-testid='IngredientList'><div><h3 class='SubHed-icPlCN'>Special Equipment</h3><div class='Description-dTzQRt'>A 12-cup Bundt pan</div></div></div>", ["A 12-cup Bundt pan"], ["Editor’s note: First printed in 1990."], ["Special Equipment:", "A 12-cup Bundt pan"], ["Editor’s note: First printed in 1990."]),
+        Site("epicurious.com", "<p>No card.</p>", ["1 egg"], ["Mix.", "Editor’s note: First printed in 1990.", "Bake. Editor’s note: Retested in 2026."], ["1 egg"], ["Mix.", "Editor’s note: First printed in 1990.", "Bake."]),
+        Site("epicurious.com", "<p>No card.</p>", ["1 egg"], ["Mix.", "Bake.Editor’s note: x", "Serve. The editor’s note: y"], ["1 egg"], ["Mix.", "Bake.Editor’s note: x", "Serve. The editor’s note: y"]),
+        Site("delish.com", "<div class='ingredients-body'><div><h3 class='css-xrnqow'>For the crust</h3><ul class='ingredient-lists'><li><label><input type='checkbox'><span></span></label><span><strong>6 Tbsp.</strong> butter, melted</span></li><li><span><strong>1</strong> (<strong>8-oz.</strong>) package cream cheese</span></li><li><span>Pinch kosher salt</span></li></ul></div></div>", ["6 tbsp. butter, melted", "1 (8-oz.) package cream cheese", "Pinch kosher salt"], ["Mix."], ["For the crust:", "6 tbsp. butter, melted", "1 (8-oz.) package cream cheese", "Pinch kosher salt"], ["Mix."]),
+        Site("delish.com", "<div class='ingredients-body'><h3>Topping</h3><ul><li><strong>2 cups</strong></li></ul></div>", ["2 c."], ["Mix."], ["2 c."], ["Mix."]),
+        Site("example.com", "<div class='ingredients-body'><h3>For the crust</h3><ul><li><strong>6 Tbsp.</strong> butter</li></ul></div>", ["6 tbsp. butter"], ["Bake. Editor’s note: x"], ["6 tbsp. butter"], ["Bake. Editor’s note: x"]),
+        Site("bbcgoodfood.com", "<div class='tasty-recipes-ingredients'><p><strong>Dough:</strong></p><ul><li>2 cups flour</li></ul></div>", ["2 cups flour"], ["Mix."], ["Dough:", "2 cups flour"], ["Mix."]),
+    ]
+
     private static let trails: [Trail] = [
         Trail("2 eggs (dfsafs -", "2 eggs", "(dfsafs -"),
         Trail("2 ears of corn, shucked", "2 ears of corn", ", shucked"),
@@ -1571,6 +1597,14 @@ final class DifferentialCorpusTests: XCTestCase {
     func testCardHeadingsMatchKotlin() {
         for row in Self.heads {
             XCTAssertEqual(CardHeadings.refine(html: row.html, lines: row.lines), row.refined, row.lines.joined(separator: " | "))
+        }
+    }
+
+    func testSiteRulesMatchKotlin() {
+        for row in Self.sites {
+            let url = "https://www.\(row.host)/r"
+            XCTAssertEqual(SiteRules.ingredients(html: row.html, url: url, lines: row.lines), row.refined, row.host)
+            XCTAssertEqual(SiteRules.steps(url: url, steps: row.steps), row.refinedSteps, row.host)
         }
     }
 

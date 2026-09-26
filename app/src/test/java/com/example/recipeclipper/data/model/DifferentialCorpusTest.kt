@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.model
 
 import com.example.recipeclipper.data.remote.CardHeadings
+import com.example.recipeclipper.data.remote.SiteRules
 import com.example.recipeclipper.data.remote.WprmIngredients
 import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
@@ -46,6 +47,10 @@ import java.io.File
  * `Heads("markup", [lines])` rows (#119) pin [CardHeadings.refine] the same way, for a Tasty Recipes
  * or Mediavine Create card.
  *
+ * `Site("host", "markup", [lines], [steps])` rows (#120) pin [SiteRules]: JSON-LD's lines and steps
+ * refined by the host's rules in `site-rules.json` (then any site's cards) on that markup; write
+ * only the host (no "www."), the markup (single-quoted attributes), the lines and the steps.
+ *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
@@ -82,6 +87,10 @@ class DifferentialCorpusTest {
     private val closeRow = Regex("""^(\s*)Close\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A recipe-card row: a WP Recipe Maker (#118) or Tasty/Create (#119) card's markup, then JSON-LD's lines.
     private val cardRow = Regex("""^(\s*)(Wprm|Heads)\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A site-rule row (#120): a host, a page's markup, then JSON-LD's lines and steps.
+    private val siteRow = Regex(
+        """^(\s*)Site\("([a-z0-9.-]+)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]"""
+    )
     // A trailing-text row (#99): a grocery line, optionally its language.
     private val trailRow = Regex("""^(\s*)Trail\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
@@ -125,6 +134,14 @@ class DifferentialCorpusTest {
             val page = Jsoup.parse(html)
             val refined = if (kind == "Wprm") WprmIngredients.refine(page, lines) else CardHeadings.refine(page, lines)
             return m.groupValues[1] + "$kind(${q(html)}, ${list(lines)}, ${list(refined)}),"
+        }
+        siteRow.find(line)?.let { m ->
+            val (host, html) = m.groupValues[2] to unescape(m.groupValues[3])
+            val (lines, steps) = listOf(4, 5).map { g -> literal.findAll(m.groupValues[g]).map { unescape(it.groupValues[1]) }.toList() }
+            val url = "https://www.$host/r"
+            val refined = SiteRules.ingredients(Jsoup.parse(html), url, lines)
+            return m.groupValues[1] +
+                "Site(${q(host)}, ${q(html)}, ${list(lines)}, ${list(steps)}, ${list(refined)}, ${list(SiteRules.steps(url, steps))}),"
         }
         closeRow.find(line)?.let { m ->
             val (a, b) = unescape(m.groupValues[2]) to unescape(m.groupValues[3])
