@@ -52,13 +52,15 @@ data class PutAwaySheet(val items: List<PutAwayItem>, val ticked: Set<String>)
 /**
  * [sections] is null until the list has loaded. [draft] is the "Add an item" field. [moving]
  * is the row whose aisle is being chosen. [putAway] is the open "Done shopping" sheet.
+ * [recipeTitles] names the recipes items came from, for "Send list" (#149).
  */
 data class GroceriesUiState(
     val sections: List<GroceryCombiner.Section>? = null,
     val draft: String = "",
     val moving: GroceryCombiner.Row? = null,
     val removed: RemovedGroceries? = null,
-    val putAway: PutAwaySheet? = null
+    val putAway: PutAwaySheet? = null,
+    val recipeTitles: Map<Long, String> = emptyMap()
 ) {
     val hasChecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { it.checked } } }
     val isEmpty: Boolean get() = sections?.isEmpty() == true
@@ -108,6 +110,9 @@ class GroceriesViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             pantry.observeItems().collect { pantryItems = it }
+        }
+        viewModelScope.launch {
+            repository.observeRecipeTitles().collect { titles -> _uiState.update { it.copy(recipeTitles = titles) } }
         }
         viewModelScope.launch {
             val answers = decisions?.observe() ?: flowOf(Decisions.NONE)
@@ -282,11 +287,15 @@ class GroceriesViewModel @Inject constructor(
         _uiState.update { it.copy(removed = null) }
     }
 
-    /** The list as plain text for the share sheet; null when there's nothing left to buy. */
+    /**
+     * "Send list" (#149): every unticked item as plain text for the share sheet, each naming the
+     * recipes it's for; null when there's nothing left to buy.
+     */
     fun shareText(title: String, aisleName: (Aisle) -> String): String? {
-        val sections = _uiState.value.sections.orEmpty()
+        val state = _uiState.value
+        val sections = state.sections.orEmpty()
         if (sections.none { s -> s.rows.any { r -> r.items.none { it.checked } } }) return null
-        return GroceryShareText.format(sections, title, aisleName)
+        return GroceryShareText.format(sections, title, state.recipeTitles, aisleName)
     }
 }
 

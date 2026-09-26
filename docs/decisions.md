@@ -1443,7 +1443,7 @@ The third tab of #46, still behind the #47 flag.
     listed once, "× 3". Before, each line had its own box, so a repeated
     recipe looked like separate items.
 - **Checked and shared.** Ticking a row ticks all its lines; checked
-  rows sort after unchecked ones in each aisle and are struck through. Share
+  rows sort after unchecked ones in each aisle and are struck through. Share ("Send list" since #149)
   sends the unchecked rows as plain text by aisle. Delete and clearing the
   checked rows are undoable from one snackbar (one undo at a time, as on the
   Week). "Clear checked" became "Done shopping" (#146, below).
@@ -2513,6 +2513,132 @@ photo that exists.
 simulator's missing camera prove only the wiring), EXIF orientation from a real portrait shot,
 HEIC pictures from the iOS library, and an export with many photos shared and imported on the
 other platform.
+
+## The automatic backup copy (#150)
+
+The owner's question: if someone loses their phone, how do they get everything back? The phone's
+own backup (Google's Auto Backup, iCloud Backup) covers only a restore onto the same platform,
+only if the user has it on, and on Android without photos. Export (#26) works across platforms
+but is only as fresh as the last time the user remembered. So the app now keeps an export
+itself, in a cloud folder that belongs to the user. There is no server, no account, and nothing
+is sent anywhere the user didn't choose.
+
+Owner's decisions: **on by default, and photos included.**
+
+- **What is written.** The export exactly as Settings' Export makes it (`BackupRepository.export`),
+  always in the `.zip` form of #116 (`backup.json` plus `photos/`, STORED), even with no photos,
+  so every copy has the same kind of name. Import reads it like any export, on either platform.
+- **Where.**
+  - **iOS:** the `Documents` folder of the app's iCloud container
+    (`iCloud.com.liberopat.recipeclipper`). With `NSUbiquitousContainers` set to public, it
+    shows in Files as iCloud Drive → Recipe Clipper, with nothing for the user to set up. It
+    needs the iCloud Documents capability and the container on the App ID, which only the owner
+    can register (`docs/release.md`). Without them, or signed out, or with iCloud Drive off, the
+    container is nil: Settings says quietly that iCloud Drive isn't available, and nothing
+    crashes or retries loudly.
+  - **Android:** a folder the user picks once with the system's folder picker
+    (`ACTION_OPEN_DOCUMENT_TREE`), usually Google Drive, kept through a persisted URI permission
+    (`AndroidBackupFolder`, over `DocumentsContract`, with no extra library). "On by default"
+    can't mean silently on here, since nothing can be written until a folder is chosen. So the
+    switch starts on, and the app asks for the folder at two moments, never at launch and never
+    in the way of a share:
+    - Settings → Your recipes has a "Backup folder" row.
+    - Home shows a one-time "Keep a backup copy?" card once the library has a recipe and there
+      is no folder yet. "Choose a folder" or "Not now" both put it away for good
+      (`folderPromptDone`); Settings still has the row.
+- **Three copies, not one.** Each copy is a new file,
+  `recipe-clipper-backup-YYYY-MM-DD-HHmm.zip`, and the app's own copies beyond the newest three
+  are deleted only after the new one is written. A write that fails halfway (a full Drive, the
+  app killed) then never leaves the user with nothing. A single rolling file couldn't promise
+  that on Android, where a document can't be replaced atomically. Only names the app wrote
+  are ever deleted; nothing else in the folder is touched.
+- **When.** The platform only asks for a look; `AutoBackupPolicy.isDue` decides whether to
+  write. It writes when there is no copy yet, when the last copy is gone from the folder, when
+  the library changed and the last copy is at least an hour old, or when the last copy is a
+  week old (so the date stays true). "Changed" is a SHA-256 of the export with its `exportedAt`
+  blanked, plus the photos' names. So an unchanged library is never written again, and opening
+  a recipe (which moves it up the history) counts as a change.
+  - **Android:** WorkManager (plain `CoroutineWorker` reaching Hilt through an entry point, so
+    WorkManager's default initialisation stands). Three looks: a daily one (battery not low), a
+    minute after the app is left (`MainActivity.onStop`; kept, so quick returns share one), and
+    one at once when a folder is chosen.
+  - **iOS:** when the app goes to the background, inside a `beginBackgroundTask`. The write is
+    atomic, so an expired background task leaves the old copies. There is no BGTaskScheduler
+    job: a library changes only while the app or its share extension runs, and the next time
+    the app is left catches both.
+- **"Last backed up".** Settings → Your recipes shows the switch, the folder (Android), "Last
+  backed up <date>" or "Not backed up yet", "Back up now" (works even with the switch off,
+  whenever there is somewhere to write), and in the error colour: a folder whose permission
+  went ("Choose it again"), a copy that couldn't be written, iCloud Drive unavailable, and the
+  nudge. **The nudge** shows when the last copy is more than 30 days old and no automatic copy
+  is working (off, or nowhere to write). It doesn't show before the first copy: then "Not
+  backed up yet" and, on Android, the folder card are the prompt. A manual Export doesn't count
+  as a backup, because the app can't know where the share sheet put it.
+- **Where the record lives.** Android: its own SharedPreferences file `auto_backup`, deliberately
+  *not* on the Auto Backup include list. A folder permission belongs to one phone, so a phone
+  restored from Google's backup asks for its folder again instead of showing one it can't
+  reach. iOS: the settings' App Group `UserDefaults` suite (`auto_backup_*` keys), which iCloud
+  Backup restores. That is right there, because the folder belongs to the iCloud account.
+- **Restore on a fresh install.** Home, with an empty library, offers "Restore from a backup
+  file" under the empty hint. It is Settings' Import (the same picker, the same
+  `importFile`/`BackupMerger` merge, the same outcome line), so it merges and never replaces.
+  On iOS the picker opens on iCloud Drive, where the copies are.
+- **Not a flag.** It ships on, and the switch turns it off. It needs no kill switch beyond that,
+  since without iCloud or a folder it simply does nothing.
+- **Pure and tested.** `AutoBackupPolicy` (Kotlin and Swift) holds the rules: due, nudge, the
+  folder card, names, which copies go, the fingerprint. `AutoBackup` runs them against fakes in
+  `AutoBackupTest` and `AutoBackupTests`; the Settings and Home rows are covered by
+  `SettingsAutoBackupTest` and `HomeBackupTest` (Robolectric) and by `SettingsAutoBackupTests`
+  (iOS).
+
+**Needs a real phone:** Google Drive (and another provider) through the folder picker, a copy
+written there by WorkManager while the app is closed, a revoked permission showing in Settings,
+and a restore from the Drive copy on a second phone. On iOS: a device with the iCloud container
+registered, the copy appearing in Files → Recipe Clipper, and the same copy restored on a new
+iPhone and imported on Android.
+
+## Sending a grocery list, and receiving one (#149, phase 1)
+
+Two people shop for one household; one may not have the app. Phase 1 is plain text, which
+works either way.
+
+- **Owner's decisions:** "Send list" sends every unticked item (no picker); each item names
+  the recipe it's for; no live shared list (phase 3, sync, is dropped). Phase 2 (a small
+  export file for recipes and items) is its own PR.
+- **The text** (`GroceryShareText`): the title, then each aisle's name and its unticked rows,
+  "- " before each, as the screen shows them (a combined row is its total; lines kept
+  together are each listed, a repeat as "× 3"). A line ends with its recipes in brackets,
+  "- 2 lb chicken thighs (Sheet-pan chicken)": every recipe the row's lines came from, each
+  once, in the order added. The titles come from the recipes table through `recipeId`
+  (`observeRecipeTitles`), so a typed item, or one whose recipe was deleted (`SET NULL`),
+  names none. No link and no Markdown: it reads as a message.
+- **Reading a list back** (`ReceivedList`, pure, both platforms): when any line starts with a
+  bullet ("- ", "• ", "* ", en or em dash…), only bulleted lines are items, so a sent list's
+  title and aisle headings drop out; text with no bullets offers every line. Blank lines,
+  headings (a line ending in ":") and lines with no letter or digit are never items. "-5" is
+  not a bullet. Nothing else is read: "× 3" and "(Recipe)" stay in the line as written, since
+  guessing what a stranger's text means is how a confident wrong list happens.
+- **"Add this list"**: the lines with checkboxes, all ticked, then **Add to groceries** or
+  **Add to pantry**, one tap, no second confirm. Lines are added as written and read like a
+  typed item: the phone's language, unless the lines' words clearly say another the app
+  has. On the grocery list they combine as any lines do (`GroceryCombiner`). In the pantry
+  each line becomes its `IngredientName` (the whole line when there's none), once per name;
+  a name the pantry already tracks is put back in stock instead of added twice (a staple is
+  left alone), as ticking a grocery line off did before #146. Adding to the pantry shows the Pantry.
+- **Where a list comes in.** "Paste a list" in the Groceries menu reads the clipboard when
+  tapped (an empty one shows the sheet with a sentence saying so). On Android, shared text
+  with a link still imports the link, exactly as before; text with no link but with lines
+  opens the Groceries tab on the sheet (through `ReceivedListInbox`, in memory), only with
+  the `mealPlan` flag. The iOS share extension can't open the app (#19), so it shows the same
+  sheet in its card and writes to the App Group database itself; the app catches up when it
+  becomes active, like a shared recipe. The extension never sees the flags, so the app
+  mirrors `mealPlan` into the App Group suite as `groceries_on` (as #107's limit is); off, a
+  list shared in is "no link", as before.
+- **Not built:** a "Send list" in the Pantry (the issue's sketch) waits for the owner to say
+  what a pantry sends (in stock, out of stock, or chosen items).
+- **Tests:** the iOS UI test can't drive the system share sheet or read another app's copy
+  without the paste prompt, so the launch seeds the pasteboard (`-uiTestPasteboard`, debug
+  only); the sent text itself is pinned by unit tests on both platforms.
 
 ## Done shopping: putting things away in one step (#146)
 

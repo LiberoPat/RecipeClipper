@@ -117,6 +117,12 @@ import writes nothing; `SettingsViewModelTest` covers the Your recipes rows.
 `BackupDaoTest` (Robolectric) runs the import transaction against real SQL
 (IGNORE keeps `addedAt`, rollback on a bad file); iOS's `BackupDaoTests` do the
 same on in-memory SQLite.
+The automatic backup copy (#150): `AutoBackupPolicyTest` / `AutoBackupPolicyTests` pin the
+rules on both platforms (due, nudge, names, which copies go, the fingerprint);
+`AutoBackupTest` / `AutoBackupTests` run a copy against a fake export and folder; the
+Settings rows and Home's restore and folder card are `SettingsAutoBackupTest` and
+`HomeBackupTest` (Robolectric) and `SettingsAutoBackupTests` (iOS). The real Google Drive
+folder, WorkManager with the app closed, and iCloud Drive need a device (`docs/decisions.md`).
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to

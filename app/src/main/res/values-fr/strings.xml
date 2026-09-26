@@ -321,7 +321,10 @@
     <string name="add_to_groceries_title">Ajouter aux courses</string>
     <string name="action_add_week_to_groceries">Ajouter les ingrédients de la semaine</string>
     <string name="groceries_week_empty">Aucune recette n\'est prévue cette semaine.</string>
-    <string name="action_share_groceries">Partager la liste</string>
+    <string name="action_share_groceries">Envoyer la liste</string>
+    <string name="action_paste_list">Coller une liste</string>
+    <string name="receive_list_title">Ajouter cette liste</string>
+    <string name="receive_list_empty">Le presse-papiers ne contient aucune liste. Copiez-en une d\'abord, puis collez-la ici.</string>
     <string name="action_move_to_aisle">Changer de rayon…</string>
     <string name="move_to_aisle_title">Rayon</string>
     <string name="snackbar_grocery_deleted">Supprimé : %1$s</string>
@@ -474,4 +477,22 @@
     <string name="cooked_photo_missing">Photo absente de ce téléphone</string>
     <string name="delete_recipe_body_photo">La recette sera retirée de l\'historique et de toutes les listes où elle figure, avec votre photo. Cette action est irréversible.</string>
     <string name="delete_recipe_body_photos">La recette sera retirée de l\'historique et de toutes les listes où elle figure, avec vos %1$d photos. Cette action est irréversible.</string>
+    <!-- The automatic backup copy (#150). -->
+    <string name="auto_backup_title">Copie de sauvegarde automatique</string>
+    <string name="auto_backup_description">Garde une copie de tout, photos comprises, dans un dossier de votre choix, et la met à jour après chaque modification</string>
+    <string name="auto_backup_folder_title">Dossier de sauvegarde</string>
+    <string name="auto_backup_folder_not_chosen">Pas encore choisi. Touchez pour en choisir un, comme Google Drive.</string>
+    <string name="auto_backup_folder_lost">Recipe Clipper n\'a plus accès à ce dossier. Touchez pour le choisir à nouveau.</string>
+    <string name="auto_backup_folder_refused">Ce dossier ne peut pas servir aux sauvegardes. Choisissez-en un autre.</string>
+    <string name="auto_backup_last">Dernière sauvegarde : %1$s</string>
+    <string name="auto_backup_never">Pas encore sauvegardé</string>
+    <string name="auto_backup_failed">La dernière copie n\'a pas pu être écrite. Essayez « Sauvegarder maintenant ».</string>
+    <string name="auto_backup_nudge">Votre dernière sauvegarde date de plus de 30 jours, et aucune copie n\'est faite automatiquement.</string>
+    <string name="auto_backup_now">Sauvegarder maintenant</string>
+    <string name="auto_backup_running">Sauvegarde…</string>
+    <string name="backup_prompt_title">Garder une copie de sauvegarde ?</string>
+    <string name="backup_prompt_body">Choisissez un dossier, comme Google Drive, et Recipe Clipper y gardera une copie de vos recettes et de vos photos.</string>
+    <string name="backup_prompt_choose">Choisir un dossier</string>
+    <string name="backup_prompt_not_now">Plus tard</string>
+    <string name="home_restore_backup">Restaurer depuis un fichier de sauvegarde</string>
 </resources>

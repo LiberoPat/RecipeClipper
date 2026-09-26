@@ -3,10 +3,15 @@ import SwiftUI
 /// The Groceries tab (#50; Android's GroceriesScreen): "Add an item", then the list by aisle.
 /// Lines naming the same ingredient sit together under its name, or as one added-up row when
 /// that's exact. Tap to tick; long-press to move to another aisle or delete (with undo). The
-/// menu shares the list as plain text. While anything is ticked, "Done shopping" (#146) puts it
-/// away in the pantry and clears it, with undo.
+/// menu sends the list as plain text and pastes one in (#149). While anything is ticked, "Done
+/// shopping" (#146) puts it away in the pantry and clears it, with undo.
+///
+/// `receiveVM` backs "Add this list" for a pasted list; nil leaves "Paste a list" out.
+/// `onOpenPantry` shows the pantry once lines were added to it.
 struct GroceriesScreen: View {
     let vm: GroceriesViewModel
+    var receiveVM: ReceiveListViewModel? = nil
+    var onOpenPantry: () -> Void = {}
 
     var body: some View {
         let state = vm.uiState
@@ -53,6 +58,11 @@ struct GroceriesScreen: View {
                     if let text = vm.shareText(title: Strings.tabGroceries, aisleName: Strings.aisle) {
                         ShareLink(item: text, subject: Text(Strings.tabGroceries)) {
                             Label(Strings.shareGroceries, systemImage: "square.and.arrow.up")
+                        }
+                    }
+                    if let receiveVM {
+                        Button { receiveVM.open(UIPasteboard.general.string) } label: {
+                            Label(Strings.pasteList, systemImage: "doc.on.clipboard")
                         }
                     }
                 } label: {
@@ -107,6 +117,38 @@ struct GroceriesScreen: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
+        }
+        .modifier(ReceiveListSheet(vm: receiveVM, onAddedToPantry: onOpenPantry))
+    }
+}
+
+/// "Add this list" in a sheet while the receive ViewModel has lines; it closes once they're
+/// added, and lines added to the pantry show the pantry.
+private struct ReceiveListSheet: ViewModifier {
+    let vm: ReceiveListViewModel?
+    let onAddedToPantry: () -> Void
+
+    func body(content: Content) -> some View {
+        if let vm {
+            content
+                .sheet(isPresented: Binding(get: { vm.uiState.lines != nil }, set: { if !$0 { vm.onDismiss() } })) {
+                    ScrollView {
+                        ReceiveListView(vm: vm)
+                            .padding(.horizontal, 20)
+                            .readableColumn()
+                            .padding(.vertical, 24)
+                    }
+                    .presentationBackground(Palette.background)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                }
+                .onChange(of: vm.uiState.added) { _, added in
+                    guard let added else { return }
+                    vm.onDismiss()
+                    if added == .pantry { onAddedToPantry() }
+                }
+        } else {
+            content
         }
     }
 }

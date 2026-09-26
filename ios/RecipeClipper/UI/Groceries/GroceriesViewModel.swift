@@ -31,12 +31,14 @@ struct PutAwaySheet: Equatable {
 
 /// `sections` is nil until the list has loaded. `draft` is the "Add an item" field. `moving`
 /// is the row whose aisle is being chosen. `putAway` is the open "Done shopping" sheet.
+/// `recipeTitles` names the recipes items came from, for "Send list" (#149).
 struct GroceriesUiState: Equatable {
     var sections: [GroceryCombiner.Section]?
     var draft = ""
     var moving: GroceryCombiner.Row?
     var removed: RemovedGroceries?
     var putAway: PutAwaySheet?
+    var recipeTitles: [Int64: String] = [:]
 
     var hasChecked: Bool { (sections ?? []).contains { $0.rows.contains { $0.items.contains(where: \.checked) } } }
     var isEmpty: Bool { sections?.isEmpty == true }
@@ -61,6 +63,7 @@ final class GroceriesViewModel {
     @ObservationIgnored private let phoneLanguage: () -> String?
     @ObservationIgnored private var subscription: AnyCancellable?
     @ObservationIgnored private var pantrySubscription: AnyCancellable?
+    @ObservationIgnored private var titlesSubscription: AnyCancellable?
     @ObservationIgnored private var pantryItems: [PantryItem] = []
     @ObservationIgnored private var undo: Undo?
     @ObservationIgnored private var removals = 0
@@ -81,6 +84,9 @@ final class GroceriesViewModel {
         pantrySubscription = pantry.observeItems()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in self?.pantryItems = $0 }
+        titlesSubscription = repository.observeRecipeTitles()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.uiState.recipeTitles = $0 }
         let answers = decisions?.observe() ?? Just(Decisions.none).eraseToAnyPublisher()
         subscription = repository.observeItems().combineLatest(answers)
             .receive(on: DispatchQueue.main)
@@ -266,11 +272,12 @@ final class GroceriesViewModel {
         uiState.removed = nil
     }
 
-    /// The list as plain text for the share sheet; nil when there's nothing left to buy.
+    /// "Send list" (#149): every unticked item as plain text for the share sheet, each naming the
+    /// recipes it's for; nil when there's nothing left to buy.
     func shareText(title: String, aisleName: (Aisle) -> String) -> String? {
         let sections = uiState.sections ?? []
         guard sections.contains(where: { $0.rows.contains { $0.items.allSatisfy { !$0.checked } } }) else { return nil }
-        return GroceryShareText.format(sections, title: title, aisleName: aisleName)
+        return GroceryShareText.format(sections, title: title, recipeTitles: uiState.recipeTitles, aisleName: aisleName)
     }
 }
 

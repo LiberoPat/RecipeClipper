@@ -353,7 +353,11 @@
     <string name="add_to_groceries_title">Add to groceries</string>
     <string name="action_add_week_to_groceries">Add this week\'s ingredients</string>
     <string name="groceries_week_empty">No recipes are planned this week.</string>
-    <string name="action_share_groceries">Share list</string>
+    <string name="action_share_groceries">Send list</string>
+    <!-- A list sent from another phone, shared in or pasted (#149) -->
+    <string name="action_paste_list">Paste a list</string>
+    <string name="receive_list_title">Add this list</string>
+    <string name="receive_list_empty">There\'s no list on the clipboard. Copy one first, then paste it here.</string>
     <string name="action_move_to_aisle">Move to aisle…</string>
     <string name="move_to_aisle_title">Aisle</string>
     <string name="snackbar_grocery_deleted">Deleted %1$s</string>
@@ -408,8 +412,7 @@
     <string name="what_i_need_nothing_to_buy">Nothing to buy: every ingredient is in your pantry.</string>
     <string name="what_i_need_you_have">You have %1$s</string>
     <string name="what_i_need_added">Added to groceries</string>
-    <!-- Unused since #146 until "Paste a list" (#149, PR #154) lands, which uses it: then drop the ignore. -->
-    <string name="action_add_to_pantry" tools:ignore="UnusedResources">Add to pantry</string>
+    <string name="action_add_to_pantry">Add to pantry</string>
     <string name="what_i_need_line_source" translatable="false">%1$s · %2$s</string>
     <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
     <string name="settings_version">Version %1$s</string>
@@ -507,4 +510,22 @@
     <string name="delete_recipe_body_photo">This removes it from history and any lists it\'s in, with your photo of it. This can\'t be undone.</string>
     <!-- Two or more (one has its own string): every shipped language says "N photos" alike. -->
     <string name="delete_recipe_body_photos" tools:ignore="PluralsCandidate">This removes it from history and any lists it\'s in, with your %1$d photos of it. This can\'t be undone.</string>
+    <!-- The automatic backup copy (#150). -->
+    <string name="auto_backup_title">Automatic backup copy</string>
+    <string name="auto_backup_description">Keeps a copy of everything, photos included, in a folder you choose, and refreshes it after changes</string>
+    <string name="auto_backup_folder_title">Backup folder</string>
+    <string name="auto_backup_folder_not_chosen">Not chosen yet. Tap to choose one, such as Google Drive.</string>
+    <string name="auto_backup_folder_lost">Recipe Clipper can no longer reach this folder. Tap to choose it again.</string>
+    <string name="auto_backup_folder_refused">That folder can\'t be used for backups. Choose another.</string>
+    <string name="auto_backup_last">Last backed up %1$s</string>
+    <string name="auto_backup_never">Not backed up yet</string>
+    <string name="auto_backup_failed">The last copy couldn\'t be written. Try Back up now.</string>
+    <string name="auto_backup_nudge">Your last backup is more than 30 days old, and no copy is being kept automatically.</string>
+    <string name="auto_backup_now">Back up now</string>
+    <string name="auto_backup_running">Backing up…</string>
+    <string name="backup_prompt_title">Keep a backup copy?</string>
+    <string name="backup_prompt_body">Choose a folder, such as Google Drive, and Recipe Clipper keeps a copy of your recipes and photos there.</string>
+    <string name="backup_prompt_choose">Choose a folder</string>
+    <string name="backup_prompt_not_now">Not now</string>
+    <string name="home_restore_backup">Restore from a backup file</string>
 </resources>
