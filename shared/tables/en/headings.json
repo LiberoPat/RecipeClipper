@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "Headings that open a recipe's ingredients or its steps, for a page with no recipe data (#103). They only choose which part of the page's text goes to the on-device model. A line matches when it is short and starts with one of these, lowercased, as whole words.",
+  "ingredients": [
+    "ingredients"
+  ],
+  "steps": [
+    "directions",
+    "instructions",
+    "method",
+    "preparation",
+    "steps"
+  ]
+}
