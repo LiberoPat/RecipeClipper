@@ -48,7 +48,9 @@ class RecipeScreenFixture(
     /** Set to turn Chef mode (#100) on, flag and setting, with this as the model. */
     val chef: FakeStepShortener? = null,
     /** Set to turn "I made this" (#116) on, with these as the photos. */
-    val photos: com.example.recipeclipper.fake.FakeCookedPhotoRepository? = null
+    val photos: com.example.recipeclipper.fake.FakeCookedPhotoRepository? = null,
+    /** Set to show "Send as file" (#149), as the navigation does. */
+    val sendFile: com.example.recipeclipper.ui.sharefile.SendFileViewModel? = null
 ) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
@@ -104,7 +106,8 @@ class RecipeScreenFixture(
                 planViewModel = planViewModel,
                 groceriesViewModel = groceriesViewModel,
                 cookedPhotosEnabled = photosViewModel != null,
-                photosViewModel = photosViewModel
+                photosViewModel = photosViewModel,
+                sendFileViewModel = sendFile
             )
         }
         compose.waitForIdle()
