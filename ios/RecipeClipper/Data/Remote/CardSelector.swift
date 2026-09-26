@@ -29,7 +29,7 @@ struct CardSelector {
     init?(_ text: String) {
         var alternatives: [Compound] = []
         for part in text.split(separator: ",", omittingEmptySubsequences: false) {
-            guard let compound = Self.compound(part.kTrimmed) else { return nil }
+            guard let compound = Self.compound(String(part).kTrimmed) else { return nil }
             alternatives.append(compound)
         }
         self.alternatives = alternatives
