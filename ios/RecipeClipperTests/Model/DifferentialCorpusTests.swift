@@ -111,6 +111,14 @@ final class DifferentialCorpusTests: XCTestCase {
         }
     }
 
+    private struct NameCut {
+        let line: String; let words: LanguageWords; let name: String; let ask: Bool; let core: String?; let trailing: String?
+        init(_ line: String, lang: String = "en", _ name: String, _ ask: Bool, _ core: String?, _ trailing: String?) {
+            self.line = line; self.words = LanguageWords.forTag(lang)!; self.name = name; self.ask = ask
+            self.core = core; self.trailing = trailing
+        }
+    }
+
     private struct Step {
         let step: String; let lines: [String]; let words: LanguageWords; let asGiven: String; let metric: String
         init(_ step: String, _ lines: [String], lang: String = "en", _ asGiven: String, _ metric: String) {
@@ -1354,6 +1362,25 @@ final class DifferentialCorpusTests: XCTestCase {
         Trail("卵 2個（溶く）", lang: "ja", nil, nil),
     ]
 
+    // Name-cut rows (#99): a grocery line and the model's name for it, then whether the name is
+    // asked (GroceryDecisions.nameQuestion) and nameSplit's core and trailing text, or nil.
+    // Write only `NameCut("2 onions dfsafs", "onions"),`.
+    private static let nameCuts: [NameCut] = [
+        NameCut("2 onions dfsafs", "onions", true, "2 onions", "dfsafs"),
+        NameCut("2 onions dfsafs", "Onions", true, "2 onions", "dfsafs"),
+        NameCut("2 onions dfsafs", "onion", true, nil, nil),
+        NameCut("2 onions dfsafs", "2 onions", true, nil, nil),
+        NameCut("2 onions dfsafs", "onions dfsafs", true, nil, nil),
+        NameCut("2 onions dfsafs", "shallots", true, nil, nil),
+        NameCut("2 onions dfs 3", "onions", false, nil, nil),
+        NameCut("2 onions, dfsafs", "onions", false, "2 onions", ", dfsafs"),
+        NameCut("1 cup rice flour xx", "rice flour", true, "1 cup rice flour", "xx"),
+        NameCut("1 cup rice flour", "rice flour", false, nil, nil),
+        NameCut("200 g butter qwerty", "butter", true, "200 g butter", "qwerty"),
+        NameCut("3 tomates asdf", lang: "fr", "tomates", true, "3 tomates", "asdf"),
+        NameCut("玉ねぎ 2個 dfsafs", lang: "ja", "玉ねぎ", false, nil, nil),
+    ]
+
     private static let steps: [Step] = [
         Step("Add the carrots and cook 5 minutes.", ["2 carrots, peeled and diced", "1 onion, chopped"], "Add ⟦2⟧ carrots and cook 5 minutes.", "Add ⟦4⟧ carrots and cook 5 minutes."),
         Step("Stir in the flour.", ["1 cup all-purpose flour"], "Stir in ⟦1 cup⟧ flour.", "Stir in ⟦240 g⟧ flour."),
@@ -1577,6 +1604,15 @@ final class DifferentialCorpusTests: XCTestCase {
     func testCloseNamesMatchKotlin() {
         for row in Self.closes {
             XCTAssertEqual(DecisionCandidates.close(row.a, row.b, words: row.words), row.close, "\(row.a) / \(row.b)")
+        }
+    }
+
+    func testNameCutsMatchKotlin() {
+        for row in Self.nameCuts {
+            XCTAssertEqual(GroceryDecisions.nameQuestion(row.line, words: row.words) != nil, row.ask, row.line)
+            let split = GroceryDecisions.nameSplit(row.line, name: row.name, words: row.words)
+            XCTAssertEqual(split?.core, row.core, "\(row.line) / \(row.name)")
+            XCTAssertEqual(split?.trailing, row.trailing, "\(row.line) / \(row.name)")
         }
     }
 

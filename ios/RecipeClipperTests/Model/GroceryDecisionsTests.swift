@@ -68,4 +68,56 @@ final class GroceryDecisionsTests: XCTestCase {
         XCTAssertEqual(GroceryDecisions.filing(list, fresh: [q1, q2], decisions: d), [.produce: [1], .dairy: [3]])
         XCTAssertTrue(GroceryDecisions.filing(list, fresh: [], decisions: d).isEmpty)
     }
+
+    // MARK: Junk with no separator: the model names the ingredient, the rest is trailing text
+
+    private func name(_ line: String) -> DecisionQuestion { .ingredientName(line, language: "en") }
+    private let en = LanguageWords.forTag("en")!
+
+    func testAsksForTheNameOnlyWhereExtraWordsFollowAKnownOne() {
+        XCTAssertEqual(GroceryDecisions.nameQuestion("2 onions dfsafs", words: en), name("2 onions dfsafs"))
+        XCTAssertNil(GroceryDecisions.nameQuestion("2 onions", words: en))
+        XCTAssertNil(GroceryDecisions.nameQuestion("2 onions, dfsafs", words: en))
+        XCTAssertNil(GroceryDecisions.nameQuestion("1 cup rice flour", words: en))
+        XCTAssertNil(GroceryDecisions.nameQuestion("2 玉ねぎ dfsafs", words: LanguageWords.forTag("ja")!))
+    }
+
+    func testAcceptsANameOnlyVerbatimOnWordBoundaries() {
+        XCTAssertEqual(GroceryDecisions.nameSplit("2 onions dfsafs", name: "Onions", words: en), .init(core: "2 onions", trailing: "dfsafs"))
+        XCTAssertNil(GroceryDecisions.nameSplit("2 onions dfsafs", name: "onion", words: en))
+        XCTAssertNil(GroceryDecisions.nameSplit("2 onions dfsafs", name: "shallots", words: en))
+        XCTAssertNil(GroceryDecisions.nameSplit("2 onions dfsafs", name: "2 onions", words: en))
+        XCTAssertNil(GroceryDecisions.nameSplit("2 onions dfsafs", name: "onions dfsafs", words: en))
+        XCTAssertNil(GroceryDecisions.nameSplit("2 onions dfs 3", name: "onions", words: en))
+    }
+
+    func testJunkAfterANamedIngredientIsHiddenInGroceries() {
+        let list = items(("2 onions dfsafs", .produce), ("3 onions", .produce))
+        let d: [DecisionQuestion: String] = [name("2 onions dfsafs"): "onions", trailing("dfsafs"): "junk"]
+        XCTAssertEqual(combinedText(rows(list, d).first), "5 onions")
+        XCTAssertEqual(GroceryCombiner.lines(rows(list, d)[0]), ["2 onions", "3 onions"])
+        guard case .single(let alone) = rows(items(("2 onions dfsafs", .produce)), d).first else { return XCTFail("not single") }
+        XCTAssertEqual(alone.text, "2 onions")
+        // Unsure, or only a name: the line stays exactly as today.
+        let unsure: [DecisionQuestion: String] = [name("2 onions dfsafs"): "onions", trailing("dfsafs"): "unsure"]
+        XCTAssertEqual(GroceryCombiner.sections(list, decisions: Decisions(answers: unsure)), GroceryCombiner.sections(list))
+        let noName = Decisions(answers: [name("2 onions dfsafs"): "unsure"])
+        XCTAssertEqual(GroceryCombiner.sections(list, decisions: noName), GroceryCombiner.sections(list))
+    }
+
+    func testANoteStillShowsAndJunkAfterASeparatorIsHiddenToo() {
+        let list = items(("2 eggs, beaten", .dairy), ("3 eggs (dfsafs -", .dairy))
+        let d: [DecisionQuestion: String] = [trailing(", beaten"): "note", trailing("(dfsafs -"): "junk"]
+        XCTAssertEqual(GroceryCombiner.lines(rows(list, d)[0]), ["2 eggs, beaten", "3 eggs"])
+        let one = GroceryCombiner.sections(items(("3 eggs (dfsafs -", .dairy)), decisions: Decisions(answers: d))
+        XCTAssertEqual(GroceryShareText.format(one, title: "List", aisleName: \.rawValue), "List\n\ndairy\n- 3 eggs")
+    }
+
+    func testTheRestOfANamedLineIsAskedAboutOnceTheNameLands() {
+        let list = items(("2 onions dfsafs", .produce))
+        XCTAssertTrue(GroceryDecisions.trailingTexts(list, decisions: .none).isEmpty)
+        XCTAssertEqual(GroceryDecisions.ingredientNames(list), [name("2 onions dfsafs")])
+        let named = Decisions(answers: [name("2 onions dfsafs"): "onions"])
+        XCTAssertEqual(GroceryDecisions.trailingTexts(list, decisions: named), [trailing("dfsafs")])
+    }
 }

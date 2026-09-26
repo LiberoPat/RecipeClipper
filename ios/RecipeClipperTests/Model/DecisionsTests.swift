@@ -26,6 +26,17 @@ final class DecisionsTests: XCTestCase {
         XCTAssertEqual(DecisionRule.options(.countBracket, 1), ["each", "total", "unsure"])
     }
 
+    func testANameIsFreeTextAgreedTwiceWithHighConfidence() {
+        XCTAssertEqual(DecisionRule.judge(.ingredientName, [reply("Red  onions"), reply("red onions ")]), "red onions")
+        XCTAssertEqual(DecisionRule.judge(.ingredientName, [reply("onions"), reply("red onions")]), "unsure")
+        XCTAssertEqual(DecisionRule.judge(.ingredientName, [reply("onions"), reply("onions", "medium")]), "unsure")
+        XCTAssertEqual(DecisionRule.judge(.ingredientName, [reply(" "), reply(" ")]), "unsure")
+        XCTAssertEqual(DecisionRule.judge(.ingredientName, [reply("unsure"), reply("unsure")]), "unsure")
+        let prompt = DecisionPrompts.prompt(.ingredientName("2 Onions  dfsafs", language: "en"), 1)
+        XCTAssertEqual(prompt.text, "Shopping list line (English): 2 onions dfsafs")
+        XCTAssertEqual(prompt.options, ["unsure"])
+    }
+
     func testTheCountBracketAnswerDrivesTheScaler() {
         XCTAssertEqual(IngredientScaler.scale("4 Apfel (ca. 800g)", factor: 2, words: de), "4 Apfel (ca. 800g)")
         XCTAssertEqual(IngredientScaler.scale("4 Apfel (ca. 800g)", factor: 2, words: de, bracket: .total), "8 Apfel (ca. 1600g)")
