@@ -38,8 +38,9 @@ final class TabShellUITests: RecipeUITestCase {
         require(textContaining("Couldn't find recipe data"), "the import")
     }
 
-    /// Developer settings (#87): seven taps on the version open it, and turning the flag on
-    /// brings the tab bar at once, with no relaunch.
+    /// Developer settings (#87): seven taps on the version open it, and the flag's switch brings
+    /// the tab bar and takes it away at once, with no relaunch. Reset puts the flag back to the
+    /// build's default, and the shell follows that at once too.
     func testDeveloperSettingsTurnsTheTabsOnWithoutARestart() {
         launch(.standard)
         openSettings()
@@ -47,11 +48,24 @@ final class TabShellUITests: RecipeUITestCase {
         for _ in 0..<7 { require(version, "the version").tap() }
         require(text("Developer settings"), "Developer settings")
 
-        require(app.switches.firstMatch, "the mealPlan switch").tap()
-
+        let mealPlan = require(app.switches.firstMatch, "the mealPlan switch")
+        mealPlan.tap()
         require(tabBar, "the tab bar, once the flag is on")
-        require(app.buttons["developer.reset"], "Reset").tap()
-        requireGone(tabBar, "the tab bar, once reset")
+        mealPlan.tap()
+        requireGone(tabBar, "the tab bar, once the flag is off")
+
+        // UI tests start with every flag off, whatever its default (#152 turned mealPlan's on),
+        // so the build's default decides what Reset shows. Read it from the switch once Reset
+        // has applied (the button is disabled when nothing differs from the defaults), rather
+        // than assume it. When a flag is already at its default, Reset has nothing to do.
+        let reset = require(app.buttons["developer.reset"], "Reset")
+        if reset.isEnabled { reset.tap() }
+        requireState(reset, "isEnabled == false", "Reset, once every flag is at its default")
+        if mealPlan.value as? String == "1" {
+            require(tabBar, "the tab bar, once reset to the default (on)")
+        } else {
+            requireGone(tabBar, "the tab bar, once reset to the default (off)")
+        }
     }
 
     // MARK: - Flag on

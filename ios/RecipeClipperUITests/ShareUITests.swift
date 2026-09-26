@@ -12,13 +12,22 @@ final class ShareUITests: RecipeUITestCase {
 
         require(app.buttons["Share recipe"]).tap()
         // UIActivityViewController's own collection view, however it is presented: a popover
-        // anchored to the button on iPad, a bottom sheet on iPhone.
+        // anchored to the button (iPad, and iPhone since iOS 26), or a bottom sheet (older
+        // iPhones). Its targets come from the share service's own process after the frame, so
+        // wait for them too: then the sheet is where it will stay.
         let sheet = require(app.otherElements["ActivityListView"], "the share sheet")
+        require(sheet.cells.firstMatch, "the share sheet's targets")
         XCTAssertEqual(app.state, .runningForeground)
 
-        // Dismiss by tapping outside it: the popover's full-screen dismiss region on iPad, the
-        // dimmed background above the sheet on iPhone. Then the recipe screen is still intact.
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
+        // Dismiss by tapping outside it, in the larger part of the screen it leaves free: below
+        // a popover, above a bottom sheet. Never at the very top: that is the status bar, and a
+        // tap there goes to the system, not the popover's dismiss region (on iOS 27 the popover
+        // starts right under it, and a tap at the top left it open every time). Then the recipe
+        // screen is still intact.
+        let screen = app.frame
+        let box = sheet.frame
+        let y = screen.maxY - box.maxY > box.minY ? (box.maxY + screen.maxY) / 2 : box.minY / 2
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: screen.midX, dy: y)).tap()
         requireGone(sheet, "the share sheet")
         require(bookmark, "the recipe screen")
     }
