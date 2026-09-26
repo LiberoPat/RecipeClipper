@@ -70,7 +70,10 @@ struct GroceryItem: Equatable, Identifiable {
 ///   units that convert exactly into each other (metric weight, imperial weight, metric volume,
 ///   US volume, sticks, or counts with identical words), in a unit the lines used that shows
 ///   the total exactly.
-/// - Otherwise they sit together under their name, each as written.
+/// - A bracket or slash after the amount must be only a note ("(, minced)"): one that could hold
+///   a second amount (a digit, a fraction, a unit word) stops the total.
+/// - The same line added more than once, and not summed, is one row "line × 3" (`repeated`).
+/// - Otherwise they sit together under their name, each as written, as one row with one tick.
 enum GroceryCombiner {
 
     enum Row: Equatable, Identifiable {
@@ -110,25 +113,32 @@ enum GroceryCombiner {
     }
 
     private static func group(_ items: [GroceryItem]) -> [Row] {
-        // Keyed by language and name; a line with no name is its own group.
+        // Keyed by language and name; a line with no name only groups with the very same line.
         var order: [String] = []
         var groups: [String: [GroceryItem]] = [:]
         var names: [Int64: String] = [:]
         for item in items {
             let name = LanguageWords.forTag(item.language).flatMap { IngredientName.of(item.text, words: $0) }
             if let name { names[item.id] = name }
-            let key = name.map { "n\u{0}\(item.language ?? "")\u{0}\($0)" } ?? "i\u{0}\(item.id)"
+            let key = name.map { "n\u{0}\(item.language ?? "")\u{0}\($0)" }
+                ?? "l\u{0}\(item.language ?? "")\u{0}\(normalize(item.text))"
             if groups[key] == nil { order.append(key) }
             groups[key, default: []].append(item)
         }
         return order.map { key in
             let lines = groups[key]!
             let first = lines[0]
-            guard lines.count > 1, let name = names[first.id] else { return .single(first) }
-            if let words = LanguageWords.forTag(first.language), let total = combine(lines.map(\.text), words: words) {
-                return .combined(name: name, text: total, items: lines)
+            guard lines.count > 1 else { return .single(first) }
+            let texts = lines.map(\.text)
+            let name = names[first.id]
+            let total: String?
+            if let name, let words = LanguageWords.forTag(first.language) {
+                total = combine(texts, words: words)
+            } else {
+                total = repeated(texts)
             }
-            return .together(name: name, items: lines)
+            if let total { return .combined(name: name ?? first.text.kTrimmed, text: total, items: lines) }
+            return .together(name: name!, items: lines)
         }
     }
 
@@ -184,7 +194,7 @@ enum GroceryCombiner {
         guard let unitMatch = c.unitAtStart.find(rest) else {
             // A count: "2 eggs". Only the very same words add up, and never a package size.
             let tail = rest.kTrimmed
-            guard let first = tail.first, first.isLetter, !tail.contains("("), !tail.contains("/") else { return nil }
+            guard let first = tail.first, first.isLetter, notesOnly(tail, c) else { return nil }
             return Amount(family: .count, value: value, unit: nil, unitText: "", rest: tail)
         }
         guard let unit = MeasureUnit.fromText(unitMatch[1], words: words), let (family, size) = sizeOf(unit) else {
@@ -194,7 +204,7 @@ enum GroceryCombiner {
         // "1 cup plus 2 tbsp", "1 cup (120 g)", "1 cup/120 g": more than one figure.
         if c.continuationAtStart.containsMatch(in: after) { return nil }
         let next = after.drop { $0.isWhitespace }
-        if next.hasPrefix("(") || next.hasPrefix("/") { return nil }
+        if next.hasPrefix("(") || next.hasPrefix("/") || !notesOnly(after, c) { return nil }
         return Amount(family: family, value: value * size, unit: unit, unitText: unitMatch[1].kTrimmed, rest: after.kTrimmed)
     }
 
@@ -202,6 +212,54 @@ enum GroceryCombiner {
     /// exactly, or don't all name the same ingredient in `words`' language. The words after the
     /// total are the shortest any line wrote after its unit, as written.
     static func combine(_ lines: [String], words: LanguageWords) -> String? {
+        sum(lines, words: words) ?? repeated(lines)
+    }
+
+    private static let fractions = Set("¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞")
+
+    /// Whether whatever `text` holds in brackets or after a slash is only a note ("(, minced)",
+    /// "/ kosher salt", an unclosed "(see note"), never a second amount: no digit, no fraction
+    /// and no unit word from the bracket or slash on.
+    private static func notesOnly(_ text: String, _ c: UnitConverter.Patterns) -> Bool {
+        guard let start = text.firstIndex(where: { $0 == "(" || $0 == "/" }) else { return true }
+        let note = Array(text[start...])
+        if note.contains(where: { ("0"..."9").contains($0) || ("０"..."９").contains($0) || fractions.contains($0) }) {
+            return false
+        }
+        for i in note.indices where note[i].isLetter && (i == 0 || !note[i - 1].isLetter) {
+            let word = String(note[i...])
+            guard let unit = c.unitAtStart.find(word) else { continue }
+            let after = word.u16Substring(from: unit.end)
+            if after.first.map({ !$0.isLetter }) ?? true { return false }
+        }
+        return true
+    }
+
+    /// The same line added more than once and not summed ("1 lb / 500 g zucchinis × 3"): exact,
+    /// whatever the line says. Nil unless every line is the same, spaces and case aside.
+    static func repeated(_ lines: [String]) -> String? {
+        guard lines.count >= 2, lines.allSatisfy({ normalize($0) == normalize(lines[0]) }) else { return nil }
+        return "\(lines[0].kTrimmed) × \(lines.count)"
+    }
+
+    /// The lines shown under a row, as written, in order; a line added more than once is shown
+    /// once, "2 corn × 3". Empty for a line on its own.
+    static func lines(_ row: Row) -> [String] {
+        if case .single = row { return [] }
+        var order: [String] = []
+        var seen: [String: [String]] = [:]
+        for item in row.items {
+            let key = normalize(item.text)
+            if seen[key] == nil { order.append(key) }
+            seen[key, default: []].append(item.text.kTrimmed)
+        }
+        return order.map { key in
+            let same = seen[key]!
+            return same.count == 1 ? same[0] : "\(same[0]) × \(same.count)"
+        }
+    }
+
+    private static func sum(_ lines: [String], words: LanguageWords) -> String? {
         guard lines.count >= 2, let name = IngredientName.of(lines[0], words: words) else { return nil }
         if lines.contains(where: { IngredientName.of($0, words: words) != name }) { return nil }
         var amounts: [Amount] = []
@@ -270,7 +328,7 @@ enum GroceryShareText {
                 switch row {
                 case .single(let item): lines.append("- \(item.text)")
                 case .combined(_, let text, _): lines.append("- \(text)")
-                case .together(_, let items): lines += items.map { "- \($0.text)" }
+                case .together: lines += GroceryCombiner.lines(row).map { "- \($0)" }
                 }
             }
         }
