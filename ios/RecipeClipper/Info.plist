@@ -44,6 +44,18 @@
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo of what you cooked, to keep with the recipe.</string>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.com.liberopat.recipeclipper</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Recipe Clipper</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>None</string>
+		</dict>
+	</dict>
 	<key>UIAppFonts</key>
 	<array>
 		<string>fraunces.ttf</string>

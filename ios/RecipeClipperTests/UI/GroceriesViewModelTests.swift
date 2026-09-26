@@ -207,16 +207,17 @@ final class GroceriesViewModelTests: XCTestCase {
         await add("2 onions", "1 cup milk")
         let vm = await viewModel()
         await repository.setChecked([repository.items.value[0].id], checked: true)
-        await settleMain()
+        // Wait until the screen shows the tick: Clear checked clears what the screen shows.
+        await settleMain { vm.uiState.hasChecked }
 
         vm.onClearChecked()
-        await settleMain()
+        await settleMain { self.repository.items.value.count == 1 }
         XCTAssertEqual(repository.items.value.map(\.text), ["1 cup milk"])
         XCTAssertNotNil(vm.uiState.removed)
         XCTAssertNil(vm.uiState.removed?.label)
 
         vm.onUndoRemove()
-        await settleMain()
+        await settleMain { self.repository.items.value.count == 2 }
         XCTAssertEqual(repository.items.value.count, 2)
     }
 
@@ -228,6 +229,18 @@ final class GroceriesViewModelTests: XCTestCase {
         await repository.setChecked([repository.items.value[1].id], checked: true)
         await settleMain()
         XCTAssertEqual(vm.shareText(title: "Groceries", aisleName: \.key), "Groceries\n\nproduce\n- 2 onions")
+    }
+
+    /// "Send list" (#149) names the recipe each item is for.
+    func testSendListNamesEachItemsRecipe() async {
+        let vm = await viewModel()
+        await repository.add([NewGroceryLine(text: "2 lb chicken thighs", language: "en", recipeId: 1)])
+        repository.recipeTitles.send([1: "Sheet-pan chicken"])
+        await settleMain { vm.uiState.recipeTitles[1] != nil }
+        XCTAssertEqual(
+            vm.shareText(title: "Groceries", aisleName: \.key),
+            "Groceries\n\nmeat\n- 2 lb chicken thighs (Sheet-pan chicken)"
+        )
     }
 
     // MARK: - The add sheet

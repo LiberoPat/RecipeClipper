@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// The composition root: the one place concrete types are constructed. Everything else sees
 /// only the protocols in Data/Contracts.swift.
@@ -33,6 +34,8 @@ final class AppContainer {
     let libraryPolicy: LibraryPolicy
     /// "I made this" (#116): the user's own photos; nil (most tests) leaves the section out.
     let cookedPhotoRepository: CookedPhotoRepository?
+    /// The automatic backup copy in iCloud Drive (#150); the live app only (nil under XCTest).
+    let autoBackup: AutoBackup?
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -63,8 +66,10 @@ final class AppContainer {
         decisionRepository: DecisionRepository? = nil,
         entitlements: Entitlements? = nil,
         libraryMirror: DefaultsLibraryLimit? = nil,
-        cookedPhotoRepository: CookedPhotoRepository? = nil
+        cookedPhotoRepository: CookedPhotoRepository? = nil,
+        autoBackup: AutoBackup? = nil
     ) {
+        self.autoBackup = autoBackup
         self.cookedPhotoRepository = cookedPhotoRepository
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -135,6 +140,7 @@ final class AppContainer {
         let photoStore = testing
             ? FilePhotoStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("TestHostPhotos"))
             : FilePhotoStore(databasePath: AppDatabase.defaultPath())
+        let backupRepository = DefaultBackupRepository(db: database, clock: clock, library: libraryLimit, photos: photoStore)
         let decisions = DefaultDecisionRepository(
             db: database, model: FoundationModelsDecisionModel(), clock: clock,
             isOn: { featureFlags?.isOn(.aiDecisions) ?? false },
@@ -152,7 +158,7 @@ final class AppContainer {
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock, library: libraryLimit, photos: photoStore),
+            backupRepository: backupRepository,
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             connectivity: PathConnectivity(),
@@ -168,7 +174,12 @@ final class AppContainer {
             decisionRepository: decisions,
             entitlements: storeKit,
             libraryMirror: libraryLimit,
-            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock)
+            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock),
+            // #150: never under XCTest, so a test run never writes to anyone's iCloud Drive.
+            autoBackup: testing ? nil : AutoBackup(
+                backups: backupRepository, folder: ICloudBackupFolder(),
+                store: UserDefaultsAutoBackupStore(defaults: defaults), clock: clock
+            )
         )
         // Files no photo names any more (a delete whose Undo never came, an import's unused
         // copies) go once the process is past them.
@@ -176,11 +187,12 @@ final class AppContainer {
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
         storeKit?.start()
         container.libraryPolicy.startMirroring()
+        container.startGroceriesMirroring(DefaultsGroceriesSwitch(defaults: defaults))
         return container
     }
 
     func makeHomeViewModel() -> HomeViewModel {
-        HomeViewModel(repository: recipeRepository)
+        HomeViewModel(repository: recipeRepository, backups: backupRepository, files: backupFiles)
     }
 
     func makeRecipesViewModel() -> RecipesViewModel {
@@ -214,6 +226,19 @@ final class AppContainer {
         GroceriesViewModel(
             repository: groceryRepository, pantry: pantryRepository, calendar: planCalendar, decisions: decisionRepository
         )
+    }
+
+    /// Keeps the share extension's copy of the `mealPlan` flag (#149) current: now, and after
+    /// every change, as `LibraryPolicy` does the library limit.
+    func startGroceriesMirroring(_ mirror: DefaultsGroceriesSwitch) {
+        let on = withObservationTracking { featureFlags.isOn(.mealPlan) } onChange: { [weak self] in
+            Task { @MainActor in self?.startGroceriesMirroring(mirror) }
+        }
+        mirror.store(on)
+    }
+
+    func makeReceiveListViewModel() -> ReceiveListViewModel {
+        ReceiveListViewModel(groceries: groceryRepository, pantry: pantryRepository, calendar: planCalendar)
     }
 
     func makeAddToGroceriesViewModel() -> AddToGroceriesViewModel {
@@ -259,7 +284,7 @@ final class AppContainer {
         SettingsViewModel(
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
             flags: featureFlags, notificationPermission: notificationPermission,
-            shortSteps: shortStepRepository, entitlements: entitlements
+            shortSteps: shortStepRepository, entitlements: entitlements, autoBackup: autoBackup, clock: clock
         )
     }
 

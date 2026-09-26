@@ -26,11 +26,23 @@ plan is in issues #18 (iOS), #22 (Android), #20–#21 and #23.
    the entitlements already name it; check it did.) Then share a recipe from
    Safari on a device and confirm it appears in the app, and read the
    extension's memory in Console (see docs/testing.md).
-4. **Reserve the name.** App Store Connect → Apps → + → New App, bundle ID
+4. **Register the iCloud container** (#150, the automatic backup copy). The
+   app writes its latest export to `iCloud.com.liberopat.recipeclipper`, whose
+   `Documents` folder Files shows as "Recipe Clipper". On developer.apple.com →
+   Identifiers → iCloud Containers, add `iCloud.com.liberopat.recipeclipper`,
+   then enable the iCloud capability (iCloud Documents; CloudKit isn't needed)
+   on the app's App ID, not the extension's, and assign that container. (Xcode's
+   automatic signing may do this on the first device build, as the entitlements
+   already name it; check it did.) Until then the app runs normally and Settings
+   says iCloud Drive isn't available. On a device signed in to iCloud with
+   iCloud Drive on, open and leave the app, then check Files → iCloud Drive →
+   Recipe Clipper for a `recipe-clipper-backup-….zip`. The folder's name shows
+   in Files only after a build with a new `CURRENT_PROJECT_VERSION`.
+5. **Reserve the name.** App Store Connect → Apps → + → New App, bundle ID
    `com.liberopat.recipeclipper`. The name must be unique on the store (#21).
-5. **Privacy.** Enter the privacy policy URL (below). In App Privacy, answer
+6. **Privacy.** Enter the privacy policy URL (below). In App Privacy, answer
    "Data Not Collected".
-6. **Build numbers.** Raise `CURRENT_PROJECT_VERSION` in `ios/project.yml`
+7. **Build numbers.** Raise `CURRENT_PROJECT_VERSION` in `ios/project.yml`
    before every upload, and `MARKETING_VERSION` for each release.
 
 ## Android

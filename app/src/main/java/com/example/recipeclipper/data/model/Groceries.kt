@@ -297,9 +297,23 @@ object GroceryCombiner {
      */
     fun lines(row: Row): List<String> {
         if (row is Row.Single) return emptyList()
-        val counts = LinkedHashMap<String, MutableList<String>>()
-        for (item in row.items) counts.getOrPut(normalize(item.text)) { mutableListOf() } += item.text.trim()
-        return counts.values.map { if (it.size == 1) it.first() else "${it.first()} × ${it.size}" }
+        return lineGroups(row).map { lineText(it) }
+    }
+
+    /**
+     * The row's items grouped as [lines] shows them: the same line (spaces and case aside) is one
+     * group, in the order first added.
+     */
+    fun lineGroups(row: Row): List<List<GroceryItem>> {
+        val groups = LinkedHashMap<String, MutableList<GroceryItem>>()
+        for (item in row.items) groups.getOrPut(normalize(item.text)) { mutableListOf() } += item
+        return groups.values.toList()
+    }
+
+    /** One of [lineGroups] as written, "2 corn × 3" when added more than once. */
+    fun lineText(group: List<GroceryItem>): String {
+        val text = group.first().text.trim()
+        return if (group.size == 1) text else "$text × ${group.size}"
     }
 
     /**
@@ -366,15 +380,27 @@ object GroceryCombiner {
 }
 
 /**
- * The grocery list as plain text for sharing (#50): the title, then each aisle's name and its
- * unchecked rows, as shown. A combined row is its total; lines kept together are each listed.
- * Checked items are left out: they're already in the basket. [aisleName] and [title] are the
- * screen's words.
+ * The grocery list as plain text for sending (#50, #149): the title, then each aisle's name and
+ * its unchecked rows, as shown, one per line after "- ". A combined row is its total; lines kept
+ * together are each listed. Checked items are left out: they're already in the basket. Each line
+ * ends with the recipes it's for, in brackets ("- 2 lb chicken thighs (Sheet-pan chicken)"):
+ * every one, for a row several recipes added to. [recipeTitles] names them by id; a typed item
+ * names none. [aisleName] and [title] are the screen's words.
  */
 object GroceryShareText {
 
-    fun format(sections: List<GroceryCombiner.Section>, title: String, aisleName: (Aisle) -> String): String {
+    fun format(
+        sections: List<GroceryCombiner.Section>,
+        title: String,
+        recipeTitles: Map<Long, String> = emptyMap(),
+        aisleName: (Aisle) -> String
+    ): String {
         val lines = mutableListOf(title)
+        fun line(text: String, items: List<GroceryItem>) {
+            val recipes = items.mapNotNull { item -> item.recipeId?.let { recipeTitles[it]?.trim() } }
+                .filter { it.isNotEmpty() }.distinct()
+            lines += if (recipes.isEmpty()) "- $text" else "- $text (${recipes.joinToString(", ")})"
+        }
         for (section in sections) {
             val rows = section.rows.filter { row -> row.items.none { it.checked } }
             if (rows.isEmpty()) continue
@@ -382,13 +408,41 @@ object GroceryShareText {
             lines += aisleName(section.aisle)
             for (row in rows) {
                 when (row) {
-                    is GroceryCombiner.Row.Single -> lines += "- ${row.item.text}"
-                    is GroceryCombiner.Row.Combined -> lines += "- ${row.text}"
-                    is GroceryCombiner.Row.Together -> GroceryCombiner.lines(row).forEach { lines += "- $it" }
+                    is GroceryCombiner.Row.Single -> line(row.item.text, row.items)
+                    is GroceryCombiner.Row.Combined -> line(row.text, row.items)
+                    is GroceryCombiner.Row.Together ->
+                        GroceryCombiner.lineGroups(row).forEach { line(GroceryCombiner.lineText(it), it) }
                 }
             }
         }
         return lines.joinToString("\n")
+    }
+}
+
+/**
+ * A list shared into the app as plain text (#149): the lines to offer, as written. A bulleted
+ * list, like the one "Send list" writes, is read by its bullets: only the "- " (or "• ", "* "…)
+ * lines are items, so its title and aisle headings are left out. Text with no bullets offers
+ * every line. Blank lines, headings ending in ":" and lines with no letter or digit are never
+ * items. Nothing else changes: amounts, "× 3" and a recipe's name in brackets stay as written,
+ * and a line is read like a typed item once it's added.
+ */
+object ReceivedList {
+
+    private val NEWLINE = Regex("\r\n|[\n\u000B\u000C\r\u0085  ]")
+    private const val BULLETS = "-*•◦▪·–—"
+
+    fun lines(text: String): List<String> {
+        val all = text.split(NEWLINE).map { it.trim() }.filter { it.isNotEmpty() }
+        val bulleted = all.mapNotNull(::withoutBullet)
+        val items = if (bulleted.isEmpty()) all else bulleted
+        return items.filter { line -> GrocerySources.buyable(line) && line.any { it.isLetterOrDigit() } }
+    }
+
+    // "- 2 eggs" is "2 eggs"; a line with no bullet, or a bullet with nothing after it, is null.
+    private fun withoutBullet(line: String): String? {
+        if (line.length < 2 || line[0] !in BULLETS || !line[1].isWhitespace()) return null
+        return line.substring(1).trim().takeIf { it.isNotEmpty() }
     }
 }
 

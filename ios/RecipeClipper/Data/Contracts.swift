@@ -308,6 +308,14 @@ extension BackupRepository {
     func importBackup(_ text: String) async -> Result<ImportSummary, BackupError> {
         await importBackup(BackupPackage(json: text))
     }
+
+    /// Reads a picked file and merges it in: Settings' Import and Home's Restore (#150) alike.
+    func importFile(_ url: URL, files: BackupFiles) async -> Result<ImportSummary, BackupError> {
+        switch await files.read(url) {
+        case .failure(let error): return .failure(error)
+        case .success(let package): return await importBackup(package)
+        }
+    }
 }
 
 /// Where an export file is written and a picked one is read (Android's BackupFiles), so the
@@ -400,6 +408,10 @@ struct DeletedMeal: Equatable {
 protocol GroceryRepository: AnyObject {
     /// Every item on the list, in the order added. Re-emits on change.
     func observeItems() -> AnyPublisher<[GroceryItem], Never>
+
+    /// The title of every recipe an item on the list came from, by recipe id (#149: "Send list"
+    /// names them). Re-emits on change.
+    func observeRecipeTitles() -> AnyPublisher<[Int64: String], Never>
 
     /// Adds `lines` at the end of the list, each in the aisle its name belongs to. Blank lines
     /// are skipped.

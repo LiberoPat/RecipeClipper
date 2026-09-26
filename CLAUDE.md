@@ -45,7 +45,8 @@ timers, with cook progress and servings saved and background timer alerts;
 sharing a recipe out as text; failure handling and offline; the microdata
 fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
-JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
+JSON file (Settings), an automatic copy of it in the user's own cloud folder, and
+"Restore from a backup file" on an empty Home (#150); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
 pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); a
 recipe picked from a page's text by the on-device model (behind its flag, #103); typed
@@ -92,13 +93,15 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 
 ```
 MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
-di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule
+di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule,
+               OnDeviceModelModule (Chef mode and decision models, swappable for the walkthroughs)
 data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository, PantryRepository
                (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests),
                Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
                CookedPhotoRepository + PhotoStore ("I made this" photos, #116)
+               AutoBackup + BackupFolder (the automatic backup copy, WorkManager, #150)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, CardHeadings, CardIngredients),
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, SiteRules, CardHeadings, CardSelector, CardIngredients),
                MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
@@ -268,7 +271,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Home:** link field, "Continue cooking" (the most recent), "Recently
   viewed" (the five before it), Recipes and Lists rows (always shown), the
   Settings gear, and a small "+ New recipe" text action under the link field.
-  Empty sections hide. **No "Saved" section**: it duplicated
+  Empty sections hide. An empty library offers "Restore from a backup file"
+  (Import); Android's one-time "Keep a backup copy?" card (#150). **No "Saved" section**: it duplicated
   Recently viewed. Search is on Recipes only. Behind the tab-bar flag (#47)
   this is the Recipes tab, otherwise unchanged.
 - **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry, owner's order,
@@ -294,8 +298,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
   type (Dinner first), servings (the yield first), one button.
 - **Groceries** (#50, behind the flag): "Add an item", then the list by
   aisle (unchecked first); tap ticks, long-press offers "Move to aisle…" and
-  Delete (undo snackbar); the menu shares it as plain text (unchecked only)
-  and clears checked (undo). "Add to groceries" (recipe menu, after Add to
+  Delete (undo snackbar); the menu sends the list ("Send list": every
+  unticked item as plain text, each naming its recipes in brackets, #149),
+  pastes one and clears checked (undo). "Paste a list", or text with no link
+  shared into the app (Android: the Groceries tab; iOS: the share extension's
+  card), opens "Add this list": its lines, all ticked, then Add to groceries
+  or Add to pantry, as written. "Add to groceries" (recipe menu, after Add to
   plan) and "Add this week's ingredients" (Week menu) open one sheet: the
   lines as the reading view renders them (the week's at each meal's planned
   servings), headings left out, all ticked except what the pantry has
@@ -440,7 +448,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   backed up until it's added to both. That excludes the export/import temp
   file below, which lives in `cacheDir`, never backed up anyway. The user's
   photos (`filesDir/cooked_photos`) are left out on purpose (the 25 MB quota);
-  the export file carries them. iOS keeps the database, and `CookedPhotos/`
+  the export file carries them. So is `auto_backup.xml` (#150): a folder's
+  permission belongs to one phone. iOS keeps the database, and `CookedPhotos/`
   beside it, in the App Group container, which backups include. Proof and the adb
   recipe: `docs/testing.md`.
 - **Export/import** (#26) is one versioned JSON file
@@ -457,6 +466,16 @@ Settled; don't reintroduce what they removed. The history behind each is in
   menus by uid, whole, their meals by the plan's rules; photos by uid, only
   with their picture, their recipe coming in like a listed one.
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
+- **The automatic copy** (#150, on by default, photos included): the export as
+  a `.zip`, `recipe-clipper-backup-YYYY-MM-DD-HHmm.zip`, the newest three kept
+  (only names it wrote are ever deleted). iOS: the iCloud container's
+  `Documents` ("Recipe Clipper" in Files); Android: a folder picked once
+  (`ACTION_OPEN_DOCUMENT_TREE`, persisted permission), asked for in Settings
+  and once on Home after the first recipe, never at launch; WorkManager daily
+  and after the app is left, iOS on going to the background. Written only when
+  `AutoBackupPolicy.isDue` (changed and an hour since, or a week). Settings →
+  Your recipes: switch, folder, "Last backed up", "Back up now", a nudge after
+  30 days with nothing copying. Nothing goes to any server.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. Recipes search ignores notes. Cook
   progress (`cookState`, JSON: step, done steps, timers) and the chosen
@@ -522,9 +541,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **WP Recipe Maker's ingredient parts refine JSON-LD's lines** (#118,
   `WprmIngredients`), only when the card lines up one-to-one with
   `recipeIngredient`: "amount unit name" plus the notes as the card shows
-  them; each named group adds a "Group:" heading line. Tasty Recipes and
-  Mediavine Create cards (#119, `CardHeadings`) hold whole lines only: JSON-LD's
-  lines stay, and only the group headings JSON-LD drops are added.
+  them; each named group adds a "Group:" heading line. Other cards hold whole
+  lines only: JSON-LD's lines stay, and only the group headings JSON-LD drops are
+  added (`CardHeadings`). Which cards, per plugin (Tasty Recipes, Mediavine
+  Create, #119) or per site (NYT Cooking, BBC Good Food, …, #120), and a site's
+  known noise at the end of the last step, are data in
+  `shared/tables/site-rules.json` (`SiteRules`; selector subset in
+  `CardSelector`): a site quirk is a table edit, never code.
 - **A recipe needs a name, plus ingredients or steps.**
 - **Last, the on-device model picks from the page's text** (#103,
   `llmExtraction` flag): only after `NoRecipeFound` on a page that loaded,

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The app's root. With the `mealPlan` flag off (#87, until the meal plan ships) it is the single
 /// Recipes NavigationStack, exactly as before the tab shell. On, that same stack is the first of
@@ -19,10 +20,27 @@ struct RootView: View {
             // The share extension saves from its own process; catch up on coming back.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { container.refreshAfterExternalChanges() }
+                // The automatic backup copy (#150): leaving the app is when a changed library is
+                // copied, with a little background time asked for so the write can finish.
+                if phase == .background, let autoBackup = container.autoBackup { backUp(autoBackup) }
             }
             #if DEBUG
             .task { if router.path.isEmpty { router.path = DebugLaunch.initialPath } }
             #endif
+    }
+
+    /// A platform effect, so here: the background time the copy runs in.
+    private func backUp(_ autoBackup: AutoBackup) {
+        let app = UIApplication.shared
+        var task = UIBackgroundTaskIdentifier.invalid
+        task = app.beginBackgroundTask(withName: "auto-backup") {
+            app.endBackgroundTask(task)
+            task = .invalid
+        }
+        Task {
+            await autoBackup.run()
+            if task != .invalid { app.endBackgroundTask(task) }
+        }
     }
 
     @ViewBuilder
@@ -98,10 +116,13 @@ struct RootView: View {
         .tint(Palette.accentText)
     }
 
-    /// The Groceries tab (#50): the list alone, for now.
+    /// The Groceries tab (#50): the list alone, for now. A pasted list (#149) that goes in the
+    /// pantry opens the Pantry tab.
     private var groceriesStack: some View {
         NavigationStack {
-            ScreenHost(container.makeGroceriesViewModel) { vm in GroceriesScreen(vm: vm) }
+            ScreenHost2(makeA: container.makeGroceriesViewModel, makeB: container.makeReceiveListViewModel) { vm, receiveVM in
+                GroceriesScreen(vm: vm, receiveVM: receiveVM, onOpenPantry: { router.select(.pantry) })
+            }
         }
         .tint(Palette.accentText)
     }
