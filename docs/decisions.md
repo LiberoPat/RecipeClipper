@@ -2253,3 +2253,18 @@ exact rules still decide every total.
 **Needs a real phone:** whether the models say "same" for the owner's corn and garlic pairs and
 "different" for rice flour and whole milk with high confidence both times, whether they tell a
 note from junk from a second amount, and how long the questions take on a long list.
+
+## A hyphenated mixed number is not a range (#125)
+
+Taste of Home writes "1-1/2 cups sugar". The range reading ("1" to "1/2") scaled each end
+and showed "2-1 cups" for ×2. Now a whole number, a dash (hyphen, en or em dash, the ones the
+range code reads) and a fraction with no spaces ("1-1/2", "1-3/4", "2-½") is one quantity,
+the first alternative of the shared quantity pattern, so every reader of the leading amount
+agrees: the scaler, the unit converter, `GroceryCombiner`, `IngredientName`, amounts in
+steps (#101), step timers ("Bake 1-1/2 hours" is 1 h 30) and the trailing-amount reader.
+- Only a proper fraction: "1-3/2" is neither a mixed number nor a range anyone writes, so the
+  line stays as written.
+- Not after a slash or a decimal (lookbehinds), so "1/2-3/4" and "0.17-1/3" stay ranges.
+- Spaces make a range: "1 - 2", "1-1 1/2" and "1-1/2 to 2" (a range from 1 1/2) are
+  unchanged.
+Pinned by the scaler tests on both platforms and the corpus's #125 rows.
