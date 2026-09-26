@@ -76,6 +76,18 @@ class HomeBackupTest {
         compose.onNodeWithText("Restore from a backup file").assertDoesNotExist()
     }
 
+    /** The tour's sample alone (#151) is nothing of the user's: restore is still offered, no card. */
+    @Test
+    fun aLibraryHoldingOnlyTheSampleStillOffersRestoreAndNoFolderCard() {
+        repository.sample = 7
+        repository.recent.value = listOf(RecipeSummary(7, "Tomato and White Bean Soup", null, null, 1, false))
+        show()
+
+        compose.onNodeWithText("Tomato and White Bean Soup").assertIsDisplayed()
+        compose.onNodeWithText("Restore from a backup file").assertIsDisplayed()
+        compose.onNodeWithText("Keep a backup copy?").assertDoesNotExist()
+    }
+
     @Test
     fun theFolderCardWaitsForARecipeAndNotNowPutsItAway() {
         show()

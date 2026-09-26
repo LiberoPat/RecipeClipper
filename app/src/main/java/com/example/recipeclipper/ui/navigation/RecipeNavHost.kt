@@ -22,6 +22,8 @@ import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.week.WhatINeedViewModel
 import com.example.recipeclipper.ui.settings.DeveloperSettingsScreen
 import com.example.recipeclipper.ui.settings.SettingsScreen
+import com.example.recipeclipper.ui.tour.WelcomeScreen
+import com.example.recipeclipper.ui.tour.WelcomeViewModel
 
 object Routes {
     const val HOME = "home"
@@ -65,6 +67,11 @@ object Routes {
 
     // "Clip it yourself" (#37), from a page with no recipe data.
     const val CLIP = "clip?${ClipViewModel.URL_ARG}={${ClipViewModel.URL_ARG}}"
+
+    // The first-run welcome (#151): at the first plain launch, and from Settings' "Show the tour again".
+    const val WELCOME = "welcome?${WelcomeViewModel.AGAIN_ARG}={${WelcomeViewModel.AGAIN_ARG}}"
+
+    fun welcome(again: Boolean) = "welcome?${WelcomeViewModel.AGAIN_ARG}=$again"
 
     fun clip(url: String) = "clip?${ClipViewModel.URL_ARG}=${Uri.encode(url)}"
     fun list(id: Long) = "lists/$id"
@@ -134,7 +141,29 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     composable(Routes.SETTINGS) {
         SettingsScreen(
             onBack = { navController.popBackStack() },
-            onOpenDeveloperSettings = { navController.navigate(Routes.DEVELOPER_SETTINGS) }
+            onOpenDeveloperSettings = { navController.navigate(Routes.DEVELOPER_SETTINGS) },
+            onShowTour = { navController.navigate(Routes.welcome(again = true)) }
+        )
+    }
+
+    // Full screen, with no tab bar. Start and Skip go back to where it was opened from; "Try it"
+    // replaces it with the sample recipe, so Back from the recipe goes there too.
+    composable(
+        route = Routes.WELCOME,
+        arguments = listOf(
+            navArgument(WelcomeViewModel.AGAIN_ARG) {
+                type = NavType.BoolType
+                defaultValue = false
+            }
+        )
+    ) {
+        WelcomeScreen(
+            onDone = { navController.popBackStack() },
+            onOpenRecipe = { id ->
+                navController.navigate(Routes.recipe(id)) {
+                    popUpTo(Routes.WELCOME) { inclusive = true }
+                }
+            }
         )
     }
 

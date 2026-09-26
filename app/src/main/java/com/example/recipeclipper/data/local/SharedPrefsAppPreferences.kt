@@ -5,7 +5,9 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.TemperatureUnit
+import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.data.model.UnitSystem
+import com.example.recipeclipper.data.model.WelcomeState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -15,10 +17,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** The real, `SharedPreferences`-backed [AppPreferences]. The ViewModel only ever sees the
- *  interface, never the `Context` inside this. */
+/** The real, `SharedPreferences`-backed [AppPreferences] and [TourPreferences]. The ViewModel
+ *  only ever sees an interface, never the `Context` inside this. */
 @Singleton
-class SharedPrefsAppPreferences @Inject constructor(@ApplicationContext context: Context) : AppPreferences {
+class SharedPrefsAppPreferences @Inject constructor(
+    @ApplicationContext context: Context
+) : AppPreferences, TourPreferences {
 
     // The file keeps its original name: renaming it would strand every existing user's
     // saved unit choice for no gain.
@@ -89,7 +93,35 @@ class SharedPrefsAppPreferences @Inject constructor(@ApplicationContext context:
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }.conflate().distinctUntilChanged()
 
+    override var welcome: WelcomeState
+        get() = WelcomeState.fromStoredName(prefs.getString(KEY_WELCOME, null))
+        set(value) {
+            prefs.edit { putString(KEY_WELCOME, value.name) }
+        }
+
+    override var sampleAdded: Boolean
+        get() = prefs.getBoolean(KEY_SAMPLE_ADDED, false)
+        set(value) {
+            prefs.edit { putBoolean(KEY_SAMPLE_ADDED, value) }
+        }
+
+    override fun setTipSeen(tip: Tip, seen: Boolean) {
+        prefs.edit { putBoolean(tip.key, seen) }
+    }
+
+    private fun currentSeenTips(): Set<Tip> = Tip.entries.filterTo(mutableSetOf()) { prefs.getBoolean(it.key, false) }
+
+    /** Over the same change listener as [settings]. */
+    override val seenTips: Flow<Set<Tip>> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> trySend(currentSeenTips()) }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        send(currentSeenTips())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.conflate().distinctUntilChanged()
+
     private companion object {
+        const val KEY_WELCOME = "tour_welcome"
+        const val KEY_SAMPLE_ADDED = "tour_sample_added"
         const val KEY_SYSTEM = "unit_system"
         const val KEY_LIQUIDS = "convert_liquids"
         const val KEY_DARK_COOKING = "dark_while_cooking"

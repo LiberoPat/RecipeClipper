@@ -5,13 +5,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.example.recipeclipper.data.AutoBackup
+import com.example.recipeclipper.data.FirstRunTour
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.reminders.ExpiryNotifications
@@ -21,9 +24,14 @@ import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
 import com.example.recipeclipper.ui.navigation.Tab
 import com.example.recipeclipper.ui.navigation.openRoute
+import com.example.recipeclipper.ui.tour.LocalTips
+import com.example.recipeclipper.ui.tour.TipsHost
+import com.example.recipeclipper.ui.tour.TipsViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -35,6 +43,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var autoBackup: AutoBackup
 
+    @Inject
+    lateinit var firstRunTour: FirstRunTour
+
+    // The one-time tips (#151), provided to every screen through LocalTips.
+    private val tips: TipsViewModel by viewModels()
+
     // Routes from intents (a shared link, a tapped timer notification) wait here until the
     // NavHost is composed and can navigate to them.
     private val intentRoutes = Channel<String>(Channel.BUFFERED)
@@ -45,6 +59,10 @@ class MainActivity : ComponentActivity() {
     // would otherwise die with the old activity, re-delivers it.
     private var shareHandled = false
 
+    // Whether this start has decided on the welcome (#151). Saved like shareHandled, so a
+    // rotation doesn't open it twice, and a flag change that swaps the NavController doesn't either.
+    private var welcomeChecked = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Edge-to-edge is enforced from targetSdk 35 and can't be opted out of from 36, so
@@ -52,6 +70,10 @@ class MainActivity : ComponentActivity() {
         // its content with the safe-drawing insets. Icon contrast is set by the theme.
         enableEdgeToEdge()
         shareHandled = savedInstanceState?.getBoolean(STATE_SHARE_HANDLED) ?: false
+        welcomeChecked = savedInstanceState?.getBoolean(STATE_WELCOME_CHECKED) ?: false
+        // A launch that opens something (a shared link, a notification) isn't a plain one: the
+        // welcome waits for the next plain launch, so a shared link still opens on the recipe.
+        val plainLaunch = routeFor(intent) == null
 
         setContent {
             // The flags (#87) as they change in Developer settings. Turning the tab shell on or
@@ -65,13 +87,24 @@ class MainActivity : ComponentActivity() {
                 // tab bar on, the NavHost sits inside a Scaffold, which composes it later than
                 // this effect may start.
                 navController.currentBackStackEntryFlow.first()
-                for (route in intentRoutes) {
-                    // Into the Recipes tab, whichever tab is open (a tab's own route opens that tab).
-                    navController.openRoute(route, tabsEnabled)
-                    shareHandled = true
+                // Decided once per start (#151), before any intent's route opens, so the library
+                // it counts is the one this launch found.
+                val showWelcome = !welcomeChecked && firstRunTour.onLaunch(plainLaunch)
+                welcomeChecked = true
+                // Back on the main thread, which navigation needs, whichever thread the database
+                // answered on: an effect's dispatcher isn't always the main one (tests).
+                withContext(Dispatchers.Main.immediate) {
+                    if (showWelcome) navController.navigate(Routes.welcome(again = false))
+                    for (route in intentRoutes) {
+                        // Into the Recipes tab, whichever tab is open (a tab's own route opens that tab).
+                        navController.openRoute(route, tabsEnabled)
+                        shareHandled = true
+                    }
                 }
             }
-            CompositionLocalProvider(LocalFlagValues provides flags) {
+            val tipsState by tips.uiState.collectAsStateWithLifecycle()
+            val tipsHost = remember(tipsState) { TipsHost(tipsState.shown, tips::onDismiss) }
+            CompositionLocalProvider(LocalFlagValues provides flags, LocalTips provides tipsHost) {
                 AppShell(navController, tabsEnabled)
             }
         }
@@ -98,6 +131,7 @@ class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(STATE_SHARE_HANDLED, shareHandled)
+        outState.putBoolean(STATE_WELCOME_CHECKED, welcomeChecked)
     }
 
     /** Where an intent leads: a shared link imports, a timer notification opens cook mode, and
@@ -120,5 +154,6 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val STATE_SHARE_HANDLED = "share_handled"
+        const val STATE_WELCOME_CHECKED = "welcome_checked"
     }
 }

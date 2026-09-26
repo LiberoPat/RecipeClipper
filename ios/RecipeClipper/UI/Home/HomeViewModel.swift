@@ -12,8 +12,10 @@ struct HomeUiState: Equatable {
     var recent: [RecipeSummary] = []
     /// "Restore from a backup file" (#150): offered on an empty library; its outcome shows under it.
     var restore: BackupStatus = .idle
+    /// The only recipe is the tour's sample (#151), which leaves the library as good as empty.
+    var onlySample = false
 
-    var libraryEmpty: Bool { loaded && continueCooking == nil }
+    var libraryEmpty: Bool { loaded && (continueCooking == nil || onlySample) }
 
     /// The restore row shows on an empty library, and stays to say how the restore went.
     var showsRestore: Bool { libraryEmpty || restore != .idle }
@@ -42,6 +44,16 @@ final class HomeViewModel {
                 uiState.loaded = true
                 uiState.continueCooking = recent.first
                 uiState.recent = Array(recent.dropFirst())
+                uiState.onlySample = false
+                // The sample alone (#151) still offers the restore row: there is nothing of
+                // the user's to restore over.
+                if recent.count == 1, let only = recent.first {
+                    Task { [weak self] in
+                        let sample = await repository.sampleId()
+                        guard let self, uiState.continueCooking?.id == only.id, uiState.recent.isEmpty else { return }
+                        uiState.onlySample = sample == only.id
+                    }
+                }
             }
             .store(in: &cancellables)
     }

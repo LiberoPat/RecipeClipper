@@ -14,15 +14,18 @@ import os
 final class ShareViewController: UIViewController {
 
     private let viewModel: ShareImportViewModel
+    private let repository: RecipeRepository?
     private var started = false
 
     override init(nibName: String?, bundle: Bundle?) {
-        viewModel = ShareImportViewModel(repository: Self.makeRepository(), connectivity: PathConnectivity())
+        repository = Self.makeRepository()
+        viewModel = ShareImportViewModel(repository: repository, connectivity: PathConnectivity())
         super.init(nibName: nibName, bundle: bundle)
     }
 
     required init?(coder: NSCoder) {
-        viewModel = ShareImportViewModel(repository: Self.makeRepository(), connectivity: PathConnectivity())
+        repository = Self.makeRepository()
+        viewModel = ShareImportViewModel(repository: repository, connectivity: PathConnectivity())
         super.init(coder: coder)
     }
 
@@ -79,7 +82,12 @@ final class ShareViewController: UIViewController {
         started = true
         let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
             .flatMap { $0.attachments ?? [] }
-        Task { @MainActor [viewModel] in
+        Task { @MainActor [viewModel, repository] in
+            // A new user's first share, before the app was ever opened: the welcome (#151)
+            // waits for the app's first opening instead of being skipped for this recipe.
+            if let repository, let defaults = UserDefaults(suiteName: AppGroup.identifier) {
+                await FirstRunTour.noteShare(defaults: defaults, recipes: repository)
+            }
             let input = await SharedItems.read(from: providers)
             MemoryFootprint.log("read the shared items")
             viewModel.start(with: input)

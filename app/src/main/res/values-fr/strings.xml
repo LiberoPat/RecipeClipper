@@ -491,4 +491,38 @@
     <string name="backup_prompt_choose">Choisir un dossier</string>
     <string name="backup_prompt_not_now">Plus tard</string>
     <string name="home_restore_backup">Restaurer depuis un fichier de sauvegarde</string>
+
+    <!-- The first-run tour (#151): welcome cards, one-time tips, Settings' Show the tour again -->
+    <string name="welcome_skip">Passer</string>
+    <string name="welcome_next">Suivant</string>
+    <string name="welcome_back">Retour</string>
+    <string name="welcome_page">Carte %1$d sur %2$d</string>
+    <string name="welcome_try_sample">Essayer avec une recette d\'exemple</string>
+    <string name="welcome_start">Commencer</string>
+    <string name="welcome_app_title">Juste la recette</string>
+    <string name="welcome_app_body">Recipe Clipper garde les ingrédients, les étapes, les temps et les portions d\'une recette, et laisse de côté le récit, les publicités et les fenêtres surgissantes.</string>
+    <string name="welcome_app_offline">Chaque recette que vous ouvrez est gardée sur votre téléphone : elle s\'ouvre aussi hors connexion.</string>
+    <string name="welcome_clip_title">Découpez une recette</string>
+    <string name="welcome_clip_share">Dans votre navigateur ou une autre appli, touchez Partager, puis Recipe Clipper : la recette s\'ouvre ici.</string>
+    <string name="welcome_clip_paste">Ou copiez le lien et collez-le sur le premier écran.</string>
+    <string name="welcome_clip_type">Ou saisissez vous-même une recette avec + Nouvelle recette.</string>
+    <string name="welcome_daily_title">Au quotidien</string>
+    <string name="welcome_daily_servings">Changez les portions avec − et +, et les unités avec le menu à côté.</string>
+    <string name="welcome_daily_lists">Touchez le signet pour enregistrer une recette dans une liste.</string>
+    <string name="welcome_daily_cook">Le mode cuisine met une étape en avant à la fois, lance ses minuteurs et garde l\'écran allumé.</string>
+    <string name="welcome_daily_chef">Le mode chef, dans Paramètres, raccourcit les longues étapes sur les téléphones qui le permettent.</string>
+    <string name="welcome_weekly_title">Chaque semaine</string>
+    <string name="welcome_weekly_plan">Planifiez vos repas dans Semaine : Ajouter au planning depuis le menu d\'une recette, ou + Ajouter sur un jour.</string>
+    <string name="welcome_weekly_need">Ce qu\'il me faut, dans le menu de Semaine, réunit les ingrédients de la semaine et ce que votre garde-manger contient déjà.</string>
+    <string name="welcome_weekly_groceries">Ajoutez-les aux Courses et cochez-les pendant vos achats.</string>
+    <string name="welcome_weekly_pantry">Ce que vous cochez peut aller dans votre Garde-manger : la semaine suivante sait ce que vous avez.</string>
+    <string name="tip_recipe">Changez les portions avec − et +, et les unités avec le menu à côté. Le signet enregistre cette recette dans une liste.</string>
+    <string name="tip_cook_mode">Touchez une étape pour en faire l\'étape en cours, et « Terminé — étape suivante » pour avancer. Une étape avec une durée a un minuteur, et l\'écran reste allumé.</string>
+    <string name="tip_week">Planifiez la semaine avec + Ajouter sur un jour, ou Ajouter au planning depuis le menu d\'une recette. Ce qu\'il me faut est dans le menu ici.</string>
+    <string name="tip_groceries">Cochez au fil de vos achats : ce que vous cochez peut aller dans votre garde-manger. Maintenez un article appuyé pour le déplacer dans un autre rayon.</string>
+    <string name="tip_pantry">Ce que vous avez chez vous. Désactivez un article quand il est épuisé, et Ce qu\'il me faut le mettra à acheter.</string>
+    <string name="cd_dismiss_tip">Fermer l\'astuce</string>
+    <string name="settings_section_help">Aide</string>
+    <string name="settings_show_tour">Revoir la présentation</string>
+    <string name="settings_show_tour_description">Les cartes de bienvenue, et une astuce sur chaque écran une fois de plus.</string>
 </resources>

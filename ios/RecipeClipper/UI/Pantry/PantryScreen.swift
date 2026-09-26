@@ -12,6 +12,8 @@ struct PantryScreen: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {
                     ScreenTitle(Strings.tabPantry)
+                    // The first Pantry visit (#151).
+                    TipCallout(tip: .pantry)
                     OutlinedField(
                         label: Strings.pantryAddHint,
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),

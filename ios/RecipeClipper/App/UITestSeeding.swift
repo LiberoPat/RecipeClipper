@@ -10,7 +10,8 @@ import Foundation
 ///     (which is how a test proves a setting survives a relaunch);
 ///   - feature flags (#87) in their own throwaway suite, wiped likewise, then overridden on
 ///     through the store for each key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`);
-///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on.
+///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on;
+///   - the first-run tour (#151) done, unless `-uiTestTour` asks for a fresh install's.
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -25,6 +26,9 @@ enum UITestSeeding {
     static let defaultsSuite = "RecipeClipperUITests"
     static let flagsFlag = "-uiTestFlags"
     static let flagsSuite = "RecipeClipperUITestsFlags"
+    /// The first-run tour (#151) as a fresh install has it. Without it the tour is done, so no
+    /// welcome or tip gets in the way of the other suites.
+    static let tourFlag = "-uiTestTour"
 
     /// The title every import resolves to under test.
     static let stubRecipeTitle = "Stub Chicken Soup"
@@ -53,6 +57,12 @@ enum UITestSeeding {
         if !arguments.contains(keepPrefsFlag) {
             defaults.removePersistentDomain(forName: defaultsSuite)
         }
+        let preferences = UserDefaultsAppPreferences(defaults: defaults)
+        if !arguments.contains(tourFlag) {
+            preferences.welcome = .seen
+            preferences.sampleAdded = true
+            for tip in Tip.allCases { preferences.setTipSeen(tip, true) }
+        }
         let flagStore = UserDefaultsFeatureFlagStore(suiteName: flagsSuite)
         if !arguments.contains(keepPrefsFlag) { flagStore.clear() }
         let flags = FeatureFlags(store: flagStore)
@@ -79,14 +89,15 @@ enum UITestSeeding {
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock, photos: photoStore),
-            preferences: UserDefaultsAppPreferences(defaults: defaults),
+            preferences: preferences,
             clock: clock,
             clipFixtureHTML: clipFixtureHTML,
             featureFlags: flags,
             shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
             decisionRepository: decisions,
             libraryMirror: libraryLimit,
-            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock)
+            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock),
+            tourPreferences: preferences
         )
         container.libraryPolicy.startMirroring()
         return container

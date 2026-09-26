@@ -24,10 +24,13 @@ import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.recipeclipper.MainActivity
 import com.example.recipeclipper.data.flags.FeatureFlagStore
+import com.example.recipeclipper.data.local.TourPreferences
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.Tip
+import com.example.recipeclipper.data.model.WelcomeState
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltTestApplication
 import kotlinx.coroutines.flow.first
@@ -60,6 +63,7 @@ abstract class WalkthroughBase {
     @Inject lateinit var recipeDao: RecipeDao
     @Inject lateinit var listDao: ListDao
     @Inject lateinit var flagStore: FeatureFlagStore
+    @Inject lateinit var tour: TourPreferences
 
     private var scenario: ActivityScenario<MainActivity>? = null
 
@@ -72,6 +76,9 @@ abstract class WalkthroughBase {
         )
         runBlocking { seed() }
         flags.forEach { flagStore.setOverride(it, true) }
+        // The first-run tour (#151) done, so no welcome or tip appears in a video.
+        tour.welcome = WelcomeState.SEEN
+        Tip.entries.forEach { tour.setTipSeen(it, true) }
         scenario = ActivityScenario.launch(MainActivity::class.java)
         waitFor(hasText("Recipe URL"))
         shell("screenrecord --bit-rate 6000000 $VIDEO")

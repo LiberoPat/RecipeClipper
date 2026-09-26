@@ -584,4 +584,43 @@ enum Strings {
         default: String(localized: "delete_recipe_body_photos \(photos)")
         }
     }
+
+    // The first-run tour (#151)
+    static var welcomeSkip: String { String(localized: "welcome_skip") }
+    static var welcomeNext: String { String(localized: "welcome_next") }
+    static var welcomeBack: String { String(localized: "welcome_back") }
+    static func welcomePage(_ n: Int, of total: Int) -> String { String(localized: "welcome_page \(n) \(total)") }
+    static var welcomeTrySample: String { String(localized: "welcome_try_sample") }
+    static var welcomeStart: String { String(localized: "welcome_start") }
+    static var welcomeAppTitle: String { String(localized: "welcome_app_title") }
+    static var welcomeAppBody: String { String(localized: "welcome_app_body") }
+    static var welcomeAppOffline: String { String(localized: "welcome_app_offline") }
+    static var welcomeClipTitle: String { String(localized: "welcome_clip_title") }
+    /// iOS's own wording: the share extension saves the recipe without opening the app.
+    static var welcomeClipShare: String { String(localized: "welcome_clip_share_ios") }
+    static var welcomeClipPaste: String { String(localized: "welcome_clip_paste") }
+    static var welcomeClipType: String { String(localized: "welcome_clip_type") }
+    static var welcomeDailyTitle: String { String(localized: "welcome_daily_title") }
+    static var welcomeDailyServings: String { String(localized: "welcome_daily_servings") }
+    static var welcomeDailyLists: String { String(localized: "welcome_daily_lists") }
+    static var welcomeDailyCook: String { String(localized: "welcome_daily_cook") }
+    static var welcomeDailyChef: String { String(localized: "welcome_daily_chef") }
+    static var welcomeWeeklyTitle: String { String(localized: "welcome_weekly_title") }
+    static var welcomeWeeklyPlan: String { String(localized: "welcome_weekly_plan") }
+    static var welcomeWeeklyNeed: String { String(localized: "welcome_weekly_need") }
+    static var welcomeWeeklyGroceries: String { String(localized: "welcome_weekly_groceries") }
+    static var welcomeWeeklyPantry: String { String(localized: "welcome_weekly_pantry") }
+    static func tip(_ tip: Tip) -> String {
+        switch tip {
+        case .recipe: String(localized: "tip_recipe")
+        case .cookMode: String(localized: "tip_cook_mode")
+        case .week: String(localized: "tip_week")
+        case .groceries: String(localized: "tip_groceries")
+        case .pantry: String(localized: "tip_pantry")
+        }
+    }
+    static var dismissTip: String { String(localized: "cd_dismiss_tip") }
+    static var settingsSectionHelp: String { String(localized: "settings_section_help") }
+    static var settingsShowTour: String { String(localized: "settings_show_tour") }
+    static var settingsShowTourDescription: String { String(localized: "settings_show_tour_description") }
 }

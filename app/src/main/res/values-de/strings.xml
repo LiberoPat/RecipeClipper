@@ -473,4 +473,38 @@
     <string name="backup_prompt_choose">Ordner wählen</string>
     <string name="backup_prompt_not_now">Nicht jetzt</string>
     <string name="home_restore_backup">Aus einer Sicherungsdatei wiederherstellen</string>
+
+    <!-- The first-run tour (#151): welcome cards, one-time tips, Settings' Show the tour again -->
+    <string name="welcome_skip">Überspringen</string>
+    <string name="welcome_next">Weiter</string>
+    <string name="welcome_back">Zurück</string>
+    <string name="welcome_page">Karte %1$d von %2$d</string>
+    <string name="welcome_try_sample">Mit einem Beispielrezept ausprobieren</string>
+    <string name="welcome_start">Loslegen</string>
+    <string name="welcome_app_title">Nur das Rezept</string>
+    <string name="welcome_app_body">Recipe Clipper behält Zutaten, Schritte, Zeiten und Portionen eines Rezepts und lässt die Lebensgeschichte, die Werbung und die Pop-ups weg.</string>
+    <string name="welcome_app_offline">Jedes Rezept, das du öffnest, bleibt auf deinem Handy, also öffnet es sich auch offline.</string>
+    <string name="welcome_clip_title">Rezept ausschneiden</string>
+    <string name="welcome_clip_share">Tippe im Browser oder in einer anderen App auf Teilen und dann auf Recipe Clipper: Das Rezept öffnet sich hier.</string>
+    <string name="welcome_clip_paste">Oder kopiere den Link und füge ihn auf dem ersten Bildschirm ein.</string>
+    <string name="welcome_clip_type">Oder tippe ein Rezept selbst ein, mit + Neues Rezept.</string>
+    <string name="welcome_daily_title">Jeden Tag</string>
+    <string name="welcome_daily_servings">Ändere die Portionen mit − und + und die Einheiten mit dem Menü daneben.</string>
+    <string name="welcome_daily_lists">Tippe auf das Lesezeichen, um ein Rezept in einer Liste zu speichern.</string>
+    <string name="welcome_daily_cook">Der Kochmodus hebt einen Schritt nach dem anderen hervor, führt seine Timer und lässt den Bildschirm an.</string>
+    <string name="welcome_daily_chef">Der Chefmodus in den Einstellungen kürzt lange Schritte auf Handys, die das können.</string>
+    <string name="welcome_weekly_title">Jede Woche</string>
+    <string name="welcome_weekly_plan">Plane deine Mahlzeiten in Woche: Zum Plan hinzufügen im Menü eines Rezepts oder + Hinzufügen an einem Tag.</string>
+    <string name="welcome_weekly_need">Was ich brauche, im Menü von Woche, listet die Zutaten der Woche und was dein Vorrat schon hat.</string>
+    <string name="welcome_weekly_groceries">Füge sie zu Einkauf hinzu und hake sie beim Einkaufen ab.</string>
+    <string name="welcome_weekly_pantry">Was du abhakst, kann in deinen Vorrat, damit die nächste Woche weiß, was du hast.</string>
+    <string name="tip_recipe">Ändere die Portionen mit − und + und die Einheiten mit dem Menü daneben. Das Lesezeichen speichert dieses Rezept in einer Liste.</string>
+    <string name="tip_cook_mode">Tippe auf einen Schritt, um ihn zum aktuellen zu machen, und auf „Fertig – nächster Schritt“, um weiterzugehen. Ein Schritt mit einer Zeit hat einen Timer, und der Bildschirm bleibt an.</string>
+    <string name="tip_week">Plane die Woche mit + Hinzufügen an einem Tag oder mit Zum Plan hinzufügen im Menü eines Rezepts. Was ich brauche steht hier im Menü.</string>
+    <string name="tip_groceries">Hake beim Einkaufen ab: Was du abhakst, kann in deinen Vorrat. Halte einen Eintrag gedrückt, um ihn in einen anderen Gang zu verschieben.</string>
+    <string name="tip_pantry">Was du zu Hause hast. Schalte einen Eintrag aus, wenn er aufgebraucht ist, dann führt Was ich brauche ihn zum Kaufen auf.</string>
+    <string name="cd_dismiss_tip">Tipp schließen</string>
+    <string name="settings_section_help">Hilfe</string>
+    <string name="settings_show_tour">Einführung erneut zeigen</string>
+    <string name="settings_show_tour_description">Die Willkommenskarten und noch einmal ein Tipp auf jedem Bildschirm.</string>
 </resources>

@@ -8,6 +8,8 @@ struct SettingsScreen: View {
     let vm: SettingsViewModel
     /// Seven taps on the version (#87).
     var onOpenDeveloperSettings: () -> Void = {}
+    /// "Show the tour again" (#151).
+    var onShowTour: () -> Void = {}
     @State private var importing = false
 
     var body: some View {
@@ -132,6 +134,18 @@ struct SettingsScreen: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .accessibilityIdentifier("settings.backupStatus")
                     }
+                }
+
+                // "Show the tour again" (#151): an action, so a plain row.
+                Divided {
+                    SectionHeading(Strings.settingsSectionHelp).padding(.bottom, 4)
+                    ActionRow(
+                        title: Strings.settingsShowTour,
+                        description: Strings.settingsShowTourDescription,
+                        enabled: true,
+                        action: onShowTour
+                    )
+                    .accessibilityIdentifier("settings.showTour")
                 }
 
                 // "Unlimited recipes" (#107), only with the `freeTier` flag. Actions, not choices,

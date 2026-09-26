@@ -2597,3 +2597,59 @@ written there by WorkManager while the app is closed, a revoked permission showi
 and a restore from the Drive copy on a second phone. On iOS: a device with the iCloud container
 registered, the copy appearing in Files → Recipe Clipper, and the same copy restored on a new
 iPhone and imported on Android.
+
+## The first-run tour (#151)
+
+Owner's decision (2026-09-26): welcome cards, a bundled sample recipe and one-time tips in
+place; the sample is saved like a real recipe; every flow, daily and weekly, is covered.
+
+- **Welcome cards,** full screen with no tab bar, skippable: what the app does; how to clip
+  (Share, paste, "+ New recipe"; iOS says the extension saves it to Home); every day
+  (servings and units, the bookmark, cook mode, and Chef mode with its flag); every week
+  (Week, What I need, Groceries, Pantry), only with `mealPlan` on. So three or four cards;
+  the last offers "Try it with a sample recipe" (opens it) or "Start". Skip, Start, Try it,
+  and Android's Back from the first card all mark it seen. No pager: one card at a time with
+  Back and Next, which reads well with TalkBack and VoiceOver ("Card 2 of 4") and scrolls at
+  the largest text sizes.
+- **When it shows** (`FirstRunTour`, the same rules on both platforms): once per app start,
+  only on a plain launch. A launch that opens something (a shared link, a notification, a
+  deep link) shows that and leaves the welcome pending for the next plain launch: capture
+  stays frictionless. Someone who already has recipes the first time the tour runs (an older
+  version's user, or a restored backup: Android's Auto Backup and iOS's device backup put the
+  database back before the first launch) never gets it, nor the recipe and cook mode tips;
+  the Week, Groceries and Pantry tips still show for them, as those tabs are new to them now
+  that the flags are on. iOS's share extension saves without opening the app, so it notes a
+  new user's first share (`FirstRunTour.noteShare`: library empty, welcome undecided); the
+  recipe it adds then doesn't make them look like an old user, and the welcome shows at the
+  app's first opening.
+- **State** lives in `unit_preferences` / the settings suite, backed up with the settings,
+  under the same keys on both platforms: `tour_welcome` (`UNDECIDED` | `PENDING` | `SEEN` by
+  name; unknown reads as undecided), `tour_sample_added`, and `tour_tip_recipe`,
+  `tour_tip_cook_mode`, `tour_tip_week`, `tour_tip_groceries`, `tour_tip_pantry` (true once
+  dismissed).
+- **The sample recipe** is written for the app (a tomato and white bean soup; no photo, so
+  nothing to license), in each UI language, once, in `shared/sample/recipe.json`: the UI's
+  language picks it, else English, and it is saved in that language so its lines scale and
+  convert with that language's tables. It shows the features off: Serves 4, US measures in
+  English (so Metric and Ounces change it), timers in steps, an oven temperature, and a
+  "Meanwhile" step that overlaps the simmer. It is saved like a typed-in recipe: MANUAL
+  under the fixed link `manual:sample`, so it is never fetched, has no Update from source or
+  source credit, and is never culled. It is added once, when the welcome first shows;
+  deleted, it stays deleted. "Try it" after "Show the tour again" opens it if it's there, and
+  adds it again only if it's gone.
+- **It never counts toward the free tier (#107):** the library's count (`RecipeDao.count`:
+  the Recipes screen's "12 of 20", the free tier's one-for-one) and an import's free places
+  leave out `manual:sample`, and adding it applies no limit, so it never removes a recipe.
+  Home treats a library holding only the sample as empty (#150): "Restore from a backup
+  file" still shows, which matters most on a new phone, and the "Keep a backup copy?" card
+  waits for a recipe of the user's own.
+- **Tips:** one small callout in the screen's flow (never over it, so it never blocks),
+  dismissed by a tap anywhere on it (one button for TalkBack and VoiceOver, "Dismiss tip"):
+  under the Serves and units row on the first recipe opened (the row and the bookmark), at
+  the top of the first cook mode (outside the steps' list), and under the title of the first
+  Week, Groceries and Pantry visits. Those three hide with `mealPlan` off. One app-wide
+  `TipsViewModel` is handed to every screen (Android `LocalTips`, iOS the environment), so a
+  screen only names its tip; with none provided nothing shows, so screen tests are as before.
+- **"Show the tour again"** is an action row in Settings' Help section: the welcome again,
+  and every tip once more. The reading view is otherwise unchanged: the tip is the only
+  addition, and only until it is tapped.

@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.newUid
 import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.CookProgress
+import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.ManualRecipe
 import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.model.ParseError
@@ -12,6 +13,7 @@ import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.SampleRecipe
 import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.UrlCleaner
 import com.example.recipeclipper.data.flags.Flag
@@ -217,6 +219,17 @@ class DefaultRecipeRepository @Inject constructor(
             recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
                 ?: ParseResult.Error(ParseError.SaveFailed)
         }
+
+    override suspend fun sampleId(): Long? = log.guard("sampleId", null) {
+        recipeDao.findByUrl(SampleRecipe.SOURCE_URL)?.id
+    }
+
+    override suspend fun addSample(recipe: Recipe): Long? = log.guard("addSample", null) {
+        val now = clock.now()
+        val sample = recipe.copy(sourceUrl = SampleRecipe.SOURCE_URL, origin = ContentOrigin.MANUAL)
+        // Unlimited: the sample counts toward no limit, so adding it never removes a recipe.
+        recipeDao.upsert(sample.toEntity(now), LibraryLimit.Unlimited).takeIf { it != RecipeDao.NOT_KEPT }
+    }
 
     override suspend fun open(id: Long): Recipe? = log.guard("open", null) {
         val entity = recipeDao.get(id) ?: return@guard null

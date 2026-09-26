@@ -523,4 +523,38 @@
     <string name="backup_prompt_choose">Choose a folder</string>
     <string name="backup_prompt_not_now">Not now</string>
     <string name="home_restore_backup">Restore from a backup file</string>
+
+    <!-- The first-run tour (#151): welcome cards, one-time tips, Settings' Show the tour again -->
+    <string name="welcome_skip">Skip</string>
+    <string name="welcome_next">Next</string>
+    <string name="welcome_back">Back</string>
+    <string name="welcome_page">Card %1$d of %2$d</string>
+    <string name="welcome_try_sample">Try it with a sample recipe</string>
+    <string name="welcome_start">Start</string>
+    <string name="welcome_app_title">Just the recipe</string>
+    <string name="welcome_app_body">Recipe Clipper keeps a recipe\'s ingredients, steps, times and servings, and leaves out the life story, the ads and the pop-ups.</string>
+    <string name="welcome_app_offline">Every recipe you open is kept on your phone, so it opens offline too.</string>
+    <string name="welcome_clip_title">Clip a recipe</string>
+    <string name="welcome_clip_share">In your browser or any app, tap Share, then Recipe Clipper: the recipe opens here.</string>
+    <string name="welcome_clip_paste">Or copy the link and paste it on the first screen.</string>
+    <string name="welcome_clip_type">Or type a recipe in yourself with + New recipe.</string>
+    <string name="welcome_daily_title">Every day</string>
+    <string name="welcome_daily_servings">Change the servings with − and +, and the units with the menu beside them.</string>
+    <string name="welcome_daily_lists">Tap the bookmark to save a recipe to a list.</string>
+    <string name="welcome_daily_cook">Cook mode highlights one step at a time, runs its timers and keeps the screen on.</string>
+    <string name="welcome_daily_chef">Chef mode, in Settings, shortens long steps on phones that can.</string>
+    <string name="welcome_weekly_title">Every week</string>
+    <string name="welcome_weekly_plan">Plan your meals in Week: Add to plan from a recipe\'s menu, or + Add on a day.</string>
+    <string name="welcome_weekly_need">What I need, in the Week menu, lists the week\'s ingredients and what your pantry already has.</string>
+    <string name="welcome_weekly_groceries">Add them to Groceries, and tick them off as you shop.</string>
+    <string name="welcome_weekly_pantry">What you tick off can go into your Pantry, so the next week knows what you have.</string>
+    <string name="tip_recipe">Change the servings with − and +, and the units with the menu beside them. The bookmark saves this recipe to a list.</string>
+    <string name="tip_cook_mode">Tap a step to make it current, and “Done — next step” to move on. A step with a time has a timer, and the screen stays on.</string>
+    <string name="tip_week">Plan the week with + Add on a day, or Add to plan from a recipe\'s menu. What I need is in the menu here.</string>
+    <string name="tip_groceries">Tick things off as you shop: what you tick can go into your pantry. Touch and hold an item to move it to another aisle.</string>
+    <string name="tip_pantry">What you have at home. Switch an item off when it runs out, and What I need lists it to buy.</string>
+    <string name="cd_dismiss_tip">Dismiss tip</string>
+    <string name="settings_section_help">Help</string>
+    <string name="settings_show_tour">Show the tour again</string>
+    <string name="settings_show_tour_description">The welcome cards, and a tip on each screen once more.</string>
 </resources>

@@ -491,4 +491,38 @@
     <string name="backup_prompt_choose">Escolher pasta</string>
     <string name="backup_prompt_not_now">Agora não</string>
     <string name="home_restore_backup">Restaurar de um arquivo de backup</string>
+
+    <!-- The first-run tour (#151): welcome cards, one-time tips, Settings' Show the tour again -->
+    <string name="welcome_skip">Pular</string>
+    <string name="welcome_next">Próximo</string>
+    <string name="welcome_back">Voltar</string>
+    <string name="welcome_page">Cartão %1$d de %2$d</string>
+    <string name="welcome_try_sample">Experimente com uma receita de exemplo</string>
+    <string name="welcome_start">Começar</string>
+    <string name="welcome_app_title">Só a receita</string>
+    <string name="welcome_app_body">O Recipe Clipper guarda os ingredientes, os passos, os tempos e as porções de uma receita, e deixa de fora a história, os anúncios e os pop-ups.</string>
+    <string name="welcome_app_offline">Cada receita que você abre fica no seu celular, então ela abre também sem internet.</string>
+    <string name="welcome_clip_title">Recorte uma receita</string>
+    <string name="welcome_clip_share">No navegador ou em qualquer app, toque em Compartilhar e depois em Recipe Clipper: a receita abre aqui.</string>
+    <string name="welcome_clip_paste">Ou copie o link e cole na primeira tela.</string>
+    <string name="welcome_clip_type">Ou digite você mesmo uma receita em + Nova receita.</string>
+    <string name="welcome_daily_title">No dia a dia</string>
+    <string name="welcome_daily_servings">Mude as porções com − e +, e as unidades com o menu ao lado.</string>
+    <string name="welcome_daily_lists">Toque no marcador para salvar uma receita em uma lista.</string>
+    <string name="welcome_daily_cook">O modo cozinhar destaca um passo de cada vez, controla os timers e mantém a tela ligada.</string>
+    <string name="welcome_daily_chef">O modo chef, em Configurações, encurta passos longos nos celulares compatíveis.</string>
+    <string name="welcome_weekly_title">Toda semana</string>
+    <string name="welcome_weekly_plan">Planeje suas refeições em Semana: Adicionar ao plano no menu de uma receita, ou + Adicionar em um dia.</string>
+    <string name="welcome_weekly_need">O que preciso, no menu de Semana, lista os ingredientes da semana e o que a despensa já tem.</string>
+    <string name="welcome_weekly_groceries">Adicione em Compras e marque enquanto faz as compras.</string>
+    <string name="welcome_weekly_pantry">O que você marca pode ir para a Despensa, e a próxima semana já sabe o que você tem.</string>
+    <string name="tip_recipe">Mude as porções com − e +, e as unidades com o menu ao lado. O marcador salva esta receita em uma lista.</string>
+    <string name="tip_cook_mode">Toque em um passo para torná-lo o atual, e em “Feito — próximo passo” para avançar. Um passo com tempo tem timer, e a tela fica ligada.</string>
+    <string name="tip_week">Planeje a semana com + Adicionar em um dia, ou com Adicionar ao plano no menu de uma receita. O que preciso está no menu daqui.</string>
+    <string name="tip_groceries">Marque os itens enquanto compra: o que você marca pode ir para a despensa. Toque e segure um item para movê-lo para outro corredor.</string>
+    <string name="tip_pantry">O que você tem em casa. Desligue um item quando acabar, e O que preciso vai listá-lo para comprar.</string>
+    <string name="cd_dismiss_tip">Fechar dica</string>
+    <string name="settings_section_help">Ajuda</string>
+    <string name="settings_show_tour">Ver a apresentação de novo</string>
+    <string name="settings_show_tour_description">Os cartões de boas-vindas, e uma dica em cada tela mais uma vez.</string>
 </resources>

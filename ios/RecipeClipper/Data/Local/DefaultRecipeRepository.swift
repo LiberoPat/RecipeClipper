@@ -399,4 +399,33 @@ final class DefaultRecipeRepository: RecipeRepository {
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never> {
         db.observe { conn in try RecipeDao(db: conn).recent(limit: limit).map { $0.toDomain() } }
     }
+
+    /// Every recipe but the tour's sample (#151), which never takes a free-tier place.
+    func observeCount() -> AnyPublisher<Int, Never> {
+        db.observe { conn in try RecipeDao(db: conn).count() }
+    }
+
+    func sampleId() async -> Int64? {
+        do {
+            return try await db.read { conn in try RecipeDao(db: conn).findByUrl(SampleRecipe.sourceUrl)?.id }
+        } catch {
+            dataLog.error("sampleId failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    func addSample(_ recipe: Recipe) async -> Int64? {
+        var sample = recipe
+        sample.sourceUrl = SampleRecipe.sourceUrl
+        sample.origin = .manual
+        let record = sample.toRecord(viewedAt: clock.now())
+        do {
+            // Unlimited: the sample counts toward no limit, so adding it never removes a recipe.
+            let id = try await db.write { conn in try RecipeDao(db: conn).upsert(record, limit: .unlimited) }
+            return id == RecipeDao.notKept ? nil : id
+        } catch {
+            dataLog.error("addSample failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
 }

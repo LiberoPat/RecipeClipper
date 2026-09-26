@@ -76,6 +76,17 @@ interface RecipeRepository {
     /** Opens a recipe from history, a list or home. Counts as a view, so it moves to the top. */
     suspend fun open(id: Long): Recipe?
 
+    /** The tour's sample recipe's id (#151), or null if it isn't in the library. */
+    suspend fun sampleId(): Long?
+
+    /**
+     * Saves the tour's sample recipe (#151; [recipe] is `SampleRecipe.forLanguage`) as a
+     * typed-in recipe under `SampleRecipe.SOURCE_URL`. No library limit applies: it counts
+     * toward none, so it never removes a recipe. The sample already here keeps its id and
+     * content, and counts as a view. Null if the save failed.
+     */
+    suspend fun addSample(recipe: Recipe): Long?
+
     suspend fun setChecked(id: Long, checked: Set<Int>)
 
     /** Saves the user's note on a recipe. A blank note is stored as no note. */
@@ -123,6 +134,6 @@ interface RecipeRepository {
 
     fun observeRecent(limit: Int): Flow<List<RecipeSummary>>
 
-    /** How many recipes are saved, of every kind (#107: the Recipes screen's count). */
+    /** How many recipes are saved, of every kind but the tour's sample (#107: the Recipes screen's count; #151). */
     fun observeCount(): Flow<Int>
 }
