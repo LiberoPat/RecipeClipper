@@ -161,4 +161,21 @@ class GroceryDecisionsTest {
         val named = decided(name("2 onions dfsafs") to "onions")
         assertEquals(listOf(trailing("dfsafs")), GroceryDecisions.trailingTexts(list, named))
     }
+
+    @Test fun aNamedJunkLineIsFiledByItsIngredientWhicheverAnswerLandsLast() {
+        val list = items("2 onions dfsafs" to Aisle.OTHER)
+        val d = decided(name("2 onions dfsafs") to "onions", trailing("dfsafs") to "junk")
+        assertEquals(Aisle.PRODUCE, GroceryDecisions.cutAisle("2 onions dfsafs", en, d))
+        val produce = mapOf(Aisle.PRODUCE to listOf(1L))
+        // The junk answer was cached (from another "… dfsafs" line) and the name is new (#158) ...
+        assertEquals(produce, GroceryDecisions.filing(list, setOf(name("2 onions dfsafs")), d))
+        // ... or the name was cached and the junk answer is new.
+        assertEquals(produce, GroceryDecisions.filing(list, setOf(trailing("dfsafs")), d))
+        // Only the name in: nothing is cut off yet, so the line stays.
+        val named = decided(name("2 onions dfsafs") to "onions")
+        assertNull(GroceryDecisions.cutAisle("2 onions dfsafs", en, named))
+        assertTrue(GroceryDecisions.filing(list, setOf(name("2 onions dfsafs")), named).isEmpty())
+        // Neither fresh: an Other the user chose stands.
+        assertTrue(GroceryDecisions.filing(list, emptySet(), d).isEmpty())
+    }
 }

@@ -133,21 +133,30 @@ object GroceryDecisions {
         }.distinct()
 
     /**
+     * Where the table puts [line]'s core once the model's answers cut it (at a separator, or
+     * after its name for the line) and judge the trailing text a note or junk, or null: no such
+     * cut yet, or a core the table also puts in Other.
+     */
+    fun cutAisle(line: String, words: LanguageWords, decisions: Decisions): Aisle? {
+        val split = split(line, words, decisions) ?: return null
+        if (!decisions.ignorableTrailing(split.trailing, words.language)) return null
+        return Aisles.of(split.core, words).takeIf { it != Aisle.OTHER }
+    }
+
+    /**
      * Where answers that just landed ([fresh]) file lines from Other: beside a line in another
-     * aisle now decided the same, or where the table puts a line's core once its trailing text
-     * is a note or junk. Only lines in Other move, and only on a fresh answer, so an aisle the
-     * user chose stands.
+     * aisle now decided the same, or where the table puts a line's core once it is cut
+     * ([cutAisle]), whichever of the cut's answers (the name, the trailing text) landed last.
+     * Only lines in Other move, and only on a fresh answer, so an aisle the user chose stands.
      */
     fun filing(items: List<GroceryItem>, fresh: Set<DecisionQuestion>, decisions: Decisions): Map<Aisle, List<Long>> {
         val moves = LinkedHashMap<Long, Aisle>()
         for (item in items.filter { it.aisle == Aisle.OTHER }) {
             val words = LanguageWords.forTag(item.language) ?: continue
             val split = split(item.text, words, decisions)
-            if (split != null && DecisionQuestion.trailingText(split.trailing, words.language) in fresh &&
-                decisions.ignorableTrailing(split.trailing, words.language)
-            ) {
-                Aisles.of(split.core, words).takeIf { it != Aisle.OTHER }?.let { moves[item.id] = it }
-            }
+            val cutFresh = split != null && (DecisionQuestion.trailingText(split.trailing, words.language) in fresh ||
+                DecisionQuestion.ingredientName(item.text, words.language) in fresh)
+            if (cutFresh) cutAisle(item.text, words, decisions)?.let { moves[item.id] = it }
             val name = name(item, decisions) ?: continue
             if (item.id in moves) continue
             items.firstOrNull { other ->

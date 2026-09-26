@@ -106,6 +106,26 @@ class GroceriesViewModelTest {
         }
 
     @Test
+    fun `a named junk line leaves Other for its ingredient's aisle whichever answer lands last`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val name = DecisionQuestion.ingredientName("2 onions dfsafs", "en")
+            val junk = DecisionQuestion.trailingText("dfsafs", "en")
+            // One answer is already cached (say from another line), the other lands now (#158).
+            for (cached in listOf(junk, name)) {
+                val groceries = FakeGroceryRepository()
+                groceries.add(listOf(NewGroceryLine("2 onions dfsafs", "en")))
+                assertEquals(Aisle.OTHER, groceries.items.value.single().aisle)
+                val decisions = FakeDecisionRepository(mapOf(name to "onions", junk to "junk"))
+                decisions.decide(listOf(cached))
+                GroceriesViewModel(groceries, FakePantryRepository(), FakePlanCalendar(), decisions)
+                advanceUntilIdle()
+
+                assertEquals(listOf(cached, if (cached == junk) name else junk), decisions.asked.filter { it == name || it == junk })
+                assertEquals(Aisle.PRODUCE, groceries.items.value.single().aisle)
+            }
+        }
+
+    @Test
     fun `a lone line's trailing text is asked about, hidden when junk and shown when a note`() =
         runTest(mainDispatcherRule.dispatcher) {
             add("2 eggs (dfsafs -", "1 cup milk, warmed")

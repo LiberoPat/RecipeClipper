@@ -41,6 +41,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarResult
 import com.example.recipeclipper.data.model.LibraryLimit
+import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.ui.common.noticeMessage
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -68,6 +69,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
+import com.example.recipeclipper.ui.sharefile.SendFileEffect
+import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,6 +88,7 @@ import com.example.recipeclipper.ui.plan.AddToPlanViewModel
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import com.example.recipeclipper.ui.tour.TipCallout
 
 /** Every event the recipe screen can raise, bundled so views take one parameter, not eighteen. */
 internal class RecipeActions(
@@ -115,7 +119,9 @@ internal class RecipeActions(
     /** "Add to plan" (#49); null hides it, as while the tab flag is off. */
     val onAddToPlan: (() -> Unit)? = null,
     /** "Add to groceries" (#50); null hides it, as while the tab flag is off. */
-    val onAddToGroceries: (() -> Unit)? = null
+    val onAddToGroceries: (() -> Unit)? = null,
+    /** "Send as file" (#149): the recipe as a small file for someone else's app; null hides it. */
+    val onSendFile: (() -> Unit)? = null
 )
 
 @Composable
@@ -132,7 +138,9 @@ fun RecipeScreen(
     groceriesViewModel: AddToGroceriesViewModel? = if (mealPlanEnabled) hiltViewModel() else null,
     cookedPhotosEnabled: Boolean = LocalFlagValues.current.isOn(Flag.COOKED_PHOTOS),
     // "I made this" (#116), only behind its flag, like the plan's sheets above.
-    photosViewModel: CookedPhotosViewModel? = if (cookedPhotosEnabled) hiltViewModel() else null
+    photosViewModel: CookedPhotosViewModel? = if (cookedPhotosEnabled) hiltViewModel() else null,
+    // "Send as file" (#149): the navigation passes one; null (screen tests) leaves it out.
+    sendFileViewModel: SendFileViewModel? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
@@ -146,7 +154,9 @@ fun RecipeScreen(
     var groceriesSheetOpen by rememberSaveable { mutableStateOf(false) }
     // The first timer started asks for permission to post its "time's up" notification.
     val askForNotifications = rememberNotificationPrompt()
-    val actions = remember(viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel, groceriesViewModel) {
+    val actions = remember(
+        viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel, groceriesViewModel, sendFileViewModel
+    ) {
         RecipeActions(
             onBack = onBack,
             onRetry = viewModel::onRetry,
@@ -224,6 +234,13 @@ fun RecipeScreen(
                         groceriesSheetOpen = true
                     }
                 }
+            },
+            onSendFile = if (sendFileViewModel == null) null else {
+                {
+                    (viewModel.uiState.value.content as? RecipeContent.Success)?.let { loaded ->
+                        sendFileViewModel.sendRecipe(loaded.recipe.id, loaded.recipe.name)
+                    }
+                }
             }
         )
     }
@@ -259,6 +276,11 @@ fun RecipeScreen(
         }
     }
 
+    // "Send as file" (#149): the share sheet on the written file, or a line saying it failed.
+    val sendFailedMessage = stringResource(R.string.send_file_failed)
+    if (sendFileViewModel != null) {
+        SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
+    }
     val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState)
 
     // A full free library (#107): shown, not kept. Stays up until dismissed or unlocked, and
@@ -478,7 +500,8 @@ private fun ReadingView(
                         onDelete = actions.onDelete,
                         photoCount = photoCount,
                         onAddToPlan = actions.onAddToPlan,
-                        onAddToGroceries = actions.onAddToGroceries
+                        onAddToGroceries = actions.onAddToGroceries,
+                        onSendFile = actions.onSendFile
                     )
                 }
             }
@@ -530,6 +553,8 @@ private fun ReadingView(
                     onServingsChange = actions.onServingsChange,
                     onUnitSystemChange = actions.onUnitSystemChange
                 )
+                // The first recipe opened (#151): the row above, and the bookmark.
+                TipCallout(Tip.RECIPE, Modifier.padding(top = 12.dp))
                 Spacer(Modifier.height(20.dp))
                 SectionHeading(stringResource(R.string.heading_ingredients))
                 Spacer(Modifier.height(6.dp))
@@ -629,7 +654,8 @@ private fun RecipeOverflowMenu(
     onDelete: () -> Unit,
     photoCount: Int = 0,
     onAddToPlan: (() -> Unit)? = null,
-    onAddToGroceries: (() -> Unit)? = null
+    onAddToGroceries: (() -> Unit)? = null,
+    onSendFile: (() -> Unit)? = null
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var confirming by rememberSaveable { mutableStateOf(false) }
@@ -656,6 +682,17 @@ private fun RecipeOverflowMenu(
                 onClick = {
                     expanded = false
                     onAddToGroceries()
+                }
+            )
+        }
+        // The share icon stays one tap for text; the file is the second way to send it.
+        if (onSendFile != null) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_send_file)) },
+                leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    onSendFile()
                 }
             )
         }

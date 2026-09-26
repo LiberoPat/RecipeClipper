@@ -30,6 +30,10 @@ interface BackupFiles {
      *  sheet can read, or null if it couldn't be written. */
     suspend fun writeExport(json: String, exportedAt: Long, photos: Map<String, String> = emptyMap()): String?
 
+    /** Writes a shared file (#149) as [name] and returns a URI the share sheet can read, or null
+     *  if it couldn't be written. */
+    suspend fun writeShare(json: String, name: String): String?
+
     /** The picked file: a plain JSON export, or a zip with its pictures unpacked to the cache.
      *  [BackupError.ReadFailed] if it couldn't be read, or [BackupError.NotABackup] if its JSON
      *  is far bigger than any export or a zip holds none. */
@@ -73,6 +77,21 @@ class AndroidBackupFiles @Inject constructor(
         }
     }
 
+    override suspend fun writeShare(json: String, name: String): String? = withContext(Dispatchers.IO) {
+        try {
+            // A folder of its own, emptied first: one shared file at a time, named for its reader.
+            val dir = File(context.cacheDir, SHARE_DIR).apply { deleteRecursively(); mkdirs() }
+            val file = File(dir, name)
+            file.writeText(json, Charsets.UTF_8)
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file).toString()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.error("writeShare failed", e)
+            null
+        }
+    }
+
     override suspend fun read(uri: String): BackupResult<BackupPackage> = withContext(Dispatchers.IO) {
         try {
             val input = context.contentResolver.openInputStream(uri.toUri())?.buffered()
@@ -107,6 +126,7 @@ class AndroidBackupFiles @Inject constructor(
 
     private companion object {
         const val EXPORT_DIR = "exports"
+        const val SHARE_DIR = "exports/share"
         const val IMPORT_PHOTOS_DIR = "import-photos"
     }
 }

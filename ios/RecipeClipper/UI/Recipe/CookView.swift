@@ -25,6 +25,8 @@ struct CookView: View {
                 // Sized ahead of the steps' scroll view, so an expanded list gets its full
                 // allowance at the larger text sizes instead of an even share of the height.
                 .layoutPriority(1)
+            // The first cook mode (#151). Outside the steps' scroll, so a step's id stays its row's.
+            TipCallout(tip: .cookMode, padding: EdgeInsets(top: 8, leading: 20, bottom: 0, trailing: 20))
 
             ScrollViewReader { proxy in
                 ScrollView {

@@ -217,8 +217,18 @@ protocol RecipeRepository: AnyObject {
     /// The `limit` most recently viewed. Re-emits on change.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never>
 
-    /// How many recipes are saved, of every kind (#107: the Recipes screen's count).
+    /// How many recipes are saved, of every kind but the tour's sample (#107: the Recipes
+    /// screen's count; #151).
     func observeCount() -> AnyPublisher<Int, Never>
+
+    /// The tour's sample recipe's id (#151), or nil if it isn't in the library.
+    func sampleId() async -> Int64?
+
+    /// Saves the tour's sample recipe (#151; `recipe` is `SampleRecipe.forLanguage`) as a typed-in
+    /// recipe under `SampleRecipe.sourceUrl`. No library limit applies: it counts toward none, so
+    /// it never removes a recipe. The sample already here keeps its id and content, and counts
+    /// as a view. Nil if the save failed.
+    func addSample(_ recipe: Recipe) async -> Int64?
 }
 
 extension RecipeRepository {
@@ -227,6 +237,10 @@ extension RecipeRepository {
     func observeCount() -> AnyPublisher<Int, Never> {
         observeHistory(query: "").map(\.count).removeDuplicates().eraseToAnyPublisher()
     }
+
+    // Test doubles that have nothing to do with the tour (#151) needn't implement these.
+    func sampleId() async -> Int64? { nil }
+    func addSample(_ recipe: Recipe) async -> Int64? { nil }
 }
 
 /// Schedules the background "time's up" alert for a running step timer, so it still sounds
@@ -316,6 +330,21 @@ extension BackupRepository {
         case .success(let package): return await importBackup(package)
         }
     }
+}
+
+/// The file that carries picked recipes and items to someone else's Recipe Clipper (#149, phase
+/// 2; Android's ShareFileRepository; the rules are `ShareFile`). Nothing is sent anywhere from
+/// here: the screen hands the file to the user's own share sheet.
+protocol ShareFileRepository: AnyObject {
+    /// The file for recipe `recipeId`, complete; nil if it's gone or can't be read.
+    func recipeFile(recipeId: Int64) async -> String?
+
+    /// The file for every grocery item not ticked off, with the recipes they came from; nil
+    /// when none is left to buy.
+    func groceriesFile() async -> String?
+
+    /// Merges what the receiver chose from `file`; a failure writes nothing.
+    func receive(_ file: Backup, choice: ShareChoice) async -> Result<ImportSummary, BackupError>
 }
 
 /// Where an export file is written and a picked one is read (Android's BackupFiles), so the

@@ -38,7 +38,12 @@ data class Backup(
      * The user's own photos (#116). Absent in older files, which read as empty. Their pictures
      * travel beside this JSON in a zip ([BackupPackage]), each at [BackupCookedPhoto.file].
      */
-    val cookedPhotos: List<BackupCookedPhoto> = emptyList()
+    val cookedPhotos: List<BackupCookedPhoto> = emptyList(),
+    /**
+     * A shared file (#149, `"kind": "share"`), not a backup: a few recipes and items picked to
+     * send to someone else ([ShareFile]). Absent in every backup, which is a whole library.
+     */
+    val isShare: Boolean = false
 ) {
     companion object {
         /** The `format` marker: tells an export apart from any other JSON file. */
@@ -50,6 +55,12 @@ data class Backup(
          * they don't know, and import only ever adds.
          */
         const val FORMAT_VERSION = 1
+
+        /**
+         * The `kind` of a shared file (#149). An older app ignores the key and would merge the
+         * file like any export, which only ever adds, so it needs no version bump.
+         */
+        const val KIND_SHARE = "share"
     }
 }
 
