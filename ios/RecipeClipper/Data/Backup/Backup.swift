@@ -21,6 +21,10 @@ struct Backup: Equatable {
     /// know, and import only ever adds.
     static let formatVersion = 1
 
+    /// The `kind` of a shared file (#149). An older app ignores the key and would merge the file
+    /// like any export, which only ever adds, so it needs no version bump.
+    static let kindShare = "share"
+
     var exportedAt: Int64
     var recipes: [BackupRecipe]
     var lists: [BackupList]
@@ -40,6 +44,9 @@ struct Backup: Equatable {
     /// The user's own photos (#116). Absent in older files, which read as empty. Their pictures
     /// travel beside this JSON in a zip (`BackupArchive`), each at `BackupCookedPhoto.file`.
     var cookedPhotos: [BackupCookedPhoto] = []
+    /// A shared file (#149, `"kind": "share"`), not a backup: a few recipes and items picked to
+    /// send to someone else (`ShareFile`). Absent in every backup, which is a whole library.
+    var isShare = false
 }
 
 /// One "I made this" entry (#116). `file` is the picture's path inside the export zip

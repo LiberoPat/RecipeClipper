@@ -36,6 +36,9 @@ final class AppContainer {
     let cookedPhotoRepository: CookedPhotoRepository?
     /// The automatic backup copy in iCloud Drive (#150); the live app only (nil under XCTest).
     let autoBackup: AutoBackup?
+    /// The file that carries recipes and items to someone else (#149); nil (most tests) leaves
+    /// "Send as file" out and ignores a file opened with the app.
+    let shareFileRepository: ShareFileRepository?
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -67,8 +70,10 @@ final class AppContainer {
         entitlements: Entitlements? = nil,
         libraryMirror: DefaultsLibraryLimit? = nil,
         cookedPhotoRepository: CookedPhotoRepository? = nil,
-        autoBackup: AutoBackup? = nil
+        autoBackup: AutoBackup? = nil,
+        shareFileRepository: ShareFileRepository? = nil
     ) {
+        self.shareFileRepository = shareFileRepository
         self.autoBackup = autoBackup
         self.cookedPhotoRepository = cookedPhotoRepository
         self.recipeRepository = recipeRepository
@@ -179,7 +184,8 @@ final class AppContainer {
             autoBackup: testing ? nil : AutoBackup(
                 backups: backupRepository, folder: ICloudBackupFolder(),
                 store: UserDefaultsAutoBackupStore(defaults: defaults), clock: clock
-            )
+            ),
+            shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit)
         )
         // Files no photo names any more (a delete whose Undo never came, an import's unused
         // copies) go once the process is past them.
@@ -235,6 +241,18 @@ final class AppContainer {
             Task { @MainActor in self?.startGroceriesMirroring(mirror) }
         }
         mirror.store(on)
+    }
+
+    /// Makes "Send as file"'s ViewModel (#149); nil without a share file repository.
+    var makeSendFileViewModel: (() -> SendFileViewModel)? {
+        guard let share = shareFileRepository else { return nil }
+        return { SendFileViewModel(share: share) }
+    }
+
+    /// The sheet a file opened with the app shows (#149): one for the app's life, since the file
+    /// can arrive over any screen.
+    private(set) lazy var receiveFileViewModel: ReceiveFileViewModel? = shareFileRepository.map { [featureFlags] share in
+        ReceiveFileViewModel(files: backupFiles, share: share, groceriesOn: { featureFlags.isOn(.mealPlan) })
     }
 
     func makeReceiveListViewModel() -> ReceiveListViewModel {

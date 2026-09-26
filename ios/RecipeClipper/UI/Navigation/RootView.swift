@@ -16,7 +16,18 @@ struct RootView: View {
 
     var body: some View {
         root
-            .onOpenURL { router.handle($0) }
+            // A file sent from another Recipe Clipper (#149) opens its sheet over whatever is on
+            // screen; a `recipeclipper://` link imports as before.
+            .onOpenURL { url in
+                if url.isFileURL { container.receiveFileViewModel?.open(url) } else { router.handle(url) }
+            }
+            .modifier(ReceiveFileSheet(vm: container.receiveFileViewModel) { added in
+                switch added {
+                case .groceries: router.select(.groceries)
+                case .pantry: router.select(.pantry)
+                case .recipes: router.openInRecipes(.recipes)
+                }
+            })
             // The share extension saves from its own process; catch up on coming back.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { container.refreshAfterExternalChanges() }
@@ -25,7 +36,11 @@ struct RootView: View {
                 if phase == .background, let autoBackup = container.autoBackup { backUp(autoBackup) }
             }
             #if DEBUG
-            .task { if router.path.isEmpty { router.path = DebugLaunch.initialPath } }
+            .task {
+                if router.path.isEmpty { router.path = DebugLaunch.initialPath }
+                // A UI test's stand-in for a file opened from Messages (#149).
+                if let file = UITestSeeding.receivedFileURL() { container.receiveFileViewModel?.open(file) }
+            }
             #endif
     }
 
@@ -121,7 +136,10 @@ struct RootView: View {
     private var groceriesStack: some View {
         NavigationStack {
             ScreenHost2(makeA: container.makeGroceriesViewModel, makeB: container.makeReceiveListViewModel) { vm, receiveVM in
-                GroceriesScreen(vm: vm, receiveVM: receiveVM, onOpenPantry: { router.select(.pantry) })
+                GroceriesScreen(
+                    vm: vm, receiveVM: receiveVM, onOpenPantry: { router.select(.pantry) },
+                    makeSendFileVM: container.makeSendFileViewModel
+                )
             }
         }
         .tint(Palette.accentText)
@@ -202,12 +220,15 @@ struct RootView: View {
         let makePlanVM: (() -> AddToPlanViewModel)? = tabsEnabled ? { container.makeAddToPlanViewModel() } : nil
         let makeGroceriesVM: (() -> AddToGroceriesViewModel)? =
             tabsEnabled ? { container.makeAddToGroceriesViewModel() } : nil
+        // "Send as file" (#149), whatever the flags.
+        let makeSendFileVM = container.makeSendFileViewModel
         return ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
             RecipeScreen(
                 vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
                 makePlanVM: makePlanVM, makeGroceriesVM: makeGroceriesVM, onClip: { push(.clip($0)) },
                 amountsInStepsEnabled: container.featureFlags.isOn(.amountsInSteps),
-                makePhotosVM: container.makeCookedPhotosViewModel
+                makePhotosVM: container.makeCookedPhotosViewModel,
+                makeSendFileVM: makeSendFileVM
             )
         }
         // The reading view and cook mode are full screen, so a recipe still opens on the recipe.

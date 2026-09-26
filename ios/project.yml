@@ -73,6 +73,22 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.liberopat.recipeclipper
             CFBundleURLSchemes: [recipeclipper]
+        # A file sent from another Recipe Clipper (#149): recipes and grocery or pantry items.
+        # The app declares the type and opens it (a copy, handed to onOpenURL); keep the
+        # identifier, extension and MIME type in step with ShareFile (both platforms).
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.liberopat.recipeclipper.share
+            UTTypeDescription: Recipe Clipper file
+            UTTypeConformsTo: [public.json]
+            UTTypeTagSpecification:
+              public.filename-extension: [recipeclipper]
+              public.mime-type: [application/vnd.recipeclipper+json]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Recipe Clipper file
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes: [com.liberopat.recipeclipper.share]
+        LSSupportsOpeningDocumentsInPlace: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
