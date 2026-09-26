@@ -16,13 +16,22 @@ import java.net.URI
  */
 internal object SiteReport {
 
-    /** One URL's result. [firstCause] is set when the first attempt failed and was retried. */
+    /**
+     * One URL's result. [firstCause] is set when the first attempt failed and was retried.
+     * [rules] names each of the site's rules in `site-rules.json` and whether it matches this
+     * page (#120); null when the site has none or the page didn't load. The report judges a rule
+     * over all of its site's pages.
+     */
     data class Outcome(
         val url: String,
         val result: ParseResult,
         val firstCause: ParseError? = null,
         val millis: Long = 0,
+        val rules: Map<String, Boolean>? = null,
     )
+
+    /** What the table says of a site rule that no longer matches; the workflow warns on it. */
+    const val STOPPED = "Stopped matching"
 
     /** One URL per line; blank lines and anything after `#` are ignored. */
     fun parseUrlList(text: String): List<String> =
@@ -69,6 +78,29 @@ internal object SiteReport {
                     appendLine("| $site | Failed${cell(retried)} | ${cell(describe(r.error))} | | | | | | $seconds |")
             }
         }
+        // The site rules (#120), for the pages that loaded, judged per site: a selector that no
+        // longer finds the site's markup shows here, not as a failure. A rule need not match every
+        // page (not every Epicurious recipe has an editor's note, or groups to head); one that
+        // matches none of its site's pages has stopped matching.
+        val bySite = outcomes.filter { !it.rules.isNullOrEmpty() }.groupBy { site(it.url) }
+        if (bySite.isEmpty()) return@buildString
+        appendLine()
+        appendLine("### Site rules")
+        appendLine()
+        appendLine("Each rule in shared/tables/site-rules.json for a site above, over that site's " +
+            "pages. One marked $STOPPED matched none of them: check its selectors or phrases " +
+            "against the pages.")
+        appendLine()
+        appendLine("| Site | Rule | Result | Pages matched |")
+        appendLine("|---|---|---|---|")
+        for ((site, pages) in bySite) {
+            for (rule in pages.flatMap { it.rules!!.keys }.distinct()) {
+                val checked = pages.mapNotNull { it.rules!![rule] }
+                val matched = checked.count { it }
+                val result = if (matched > 0) "Matched" else "**$STOPPED**"
+                appendLine("| ${cell(site)} | ${cell(rule)} | $result | $matched of ${checked.size} |")
+            }
+        }
     }
 
     fun json(outcomes: List<Outcome>, runAt: String): String {
@@ -79,6 +111,7 @@ internal object SiteReport {
                 .put("site", site(o.url))
                 .put("millis", o.millis)
             o.firstCause?.let { entry.put("firstCause", describe(it)) }
+            o.rules?.let { entry.put("siteRules", JSONObject(it)) }
             when (val r = o.result) {
                 is ParseResult.Success -> entry
                     .put("outcome", "parsed")

@@ -439,7 +439,8 @@ both.
 - **iOS UI tests** (`ios-ui-tests.yml`), about 18 minutes: nightly at 03:00
   UTC and on demand (Actions → iOS UI tests → Run workflow).
 - **Recipe site check** (`site-check.yml`, #32): Mondays at 06:00 UTC and on
-  demand, and on a pull request that changes the check or its URL list. It
+  demand, and on a pull request that changes the check, its URL list or
+  `shared/tables/site-rules.json`. It
   runs the real `BlogRecipeSource` (JSON-LD, then microdata) over
   the ~20 pages in `app/src/test/resources/site-check-urls.txt`, applying the
   repository's one retry, and writes a table to the job summary: per site,
@@ -448,7 +449,10 @@ both.
   uploads `results.md` and `results.json` as the `site-check-<run>` artifact
   (kept 90 days): compare runs, since blocking flips run to run. A blocked
   site never fails the job; a broken harness does, and "no site parsed" raises
-  a warning. Only outcomes are recorded, never the pages or recipe text.
+  a warning. A "Site rules" section lists each rule of a site with rules
+  (#120) as Matched (on at least one of the site's pages) or **Stopped
+  matching** (on none), and the latter raises a warning.
+  Only outcomes are recorded, never the pages or recipe text.
   Locally: `./gradlew testDebugUnitTest -PsiteCheck` (results in
   `app/build/site-check/`). Without `-PsiteCheck`, `LiveSiteCheck` is excluded
   in `app/build.gradle.kts`, so the normal runs never touch the network.
