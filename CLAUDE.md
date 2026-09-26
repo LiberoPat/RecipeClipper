@@ -384,6 +384,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   convertible family (g/kg, oz/lb, metric ml family, US tsp/tbsp/fl oz/cup,
   sticks, or counts with identical words), total shown exactly in a unit the
   lines used; otherwise they sit together under the name, each as written.
+  With `aiDecisions` (#99), a cached definite "same" joins close names in one
+  row, and trailing text judged a note or junk (never one with a digit) is
+  read past; the model writes no number and these rules still decide totals.
 - **Pantry** (#51): an item is a `name` as typed, a `language` (as a typed
   grocery's), an optional `quantity` as written (never read as a number), an
   `aisle`, `inStock`, `alwaysHave` (a staple), and optional `purchasedDay`

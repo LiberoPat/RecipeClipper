@@ -2167,3 +2167,45 @@ supported languages), or the flag off: nothing is asked and everything is exactl
 **Needs a real phone to judge:** how often each model is definite and high-confidence (the rule
 may leave most questions unsure), whether its answers are right (especially the owner's
 "different" pairs), and the time per question (two asks each). CI and the tests use fakes only.
+
+## Grocery lines merged with the model's help (#99)
+
+Part of #99, on #104's typed decisions (same `DecisionRule`, `ai_decisions` cache and
+`aiDecisions` flag). The owner asked for help with differently worded lines that are one
+thing to buy ("2 ears of corn" + "2 corn", "corn on the cob" + "corn", "3 garlic cloves" + "2
+cloves garlic") and with text after the ingredient ("(dfsafs -", ", shucked"). **The model never
+does arithmetic or writes a number**: it answers two typed questions, and `GroceryCombiner`'s
+exact rules still decide every total.
+
+- **"Same thing to buy?"** (`sameGrocery`: same / different / unsure). Asked for two unchecked
+  lines in one language whose names differ, are `DecisionCandidates.close` (the pantry's
+  closeness test), and whose aisles could meet (the same aisle, or one in Other). Its own kind,
+  not the pantry's, because the question differs (two list lines, not a recipe and a pantry
+  item); the owner's "different" pairs are written into it, with "corn flour" is not "corn".
+  A definite "same" puts the two groups in one row under the first group's name. **Adding up
+  is unchanged:** only exact amounts in one unit family, and counts only with identical words
+  after the number. So "200 g sweetcorn" + "100 g corn" is "300 g corn", but "2 ears of corn"
+  + "2 corn" and "3 garlic cloves" + "2 cloves garlic" sit together in one row, each as written:
+  whether an ear is one "corn" is exactly the kind of guess that makes a confident wrong number.
+- **"What is this trailing text?"** (`trailingText`: note / second_amount / junk / unsure).
+  `GroceryDecisions.split` cuts a line at the first comma, semicolon, bracket or spaced dash
+  whose left side has an ingredient name ("2 eggs" | "(dfsafs -"); never text holding a digit
+  (a figure is never ignored, whatever the model says), never Japanese or unspaced languages,
+  never a package size before the name. Asked only when the line's core names what another
+  line names and the two don't already add up. Note or junk: the line is grouped and added up
+  as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"), and it still shows as written under
+  the total. Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
+- **Aisles.** Grouping stays per aisle. When a fresh answer lands, a line in Other moves
+  beside its "same" partner, or to its core's aisle once its trailing text is note or junk
+  (`GroceryDecisions.filing`, then `fileFromOther`), exactly like #104's aisle answers: only
+  lines still in Other, only on an answer that just landed, so an aisle the user chose stands.
+- **Lazily, in the background.** The Groceries screen asks after each change of the list,
+  each question once per visit and once ever per text/pair and language (the cache); it
+  shows today's grouping until an answer lands, then regroups from the decisions flow. Flag
+  off, an unsupported phone or language: no question, and the list is exactly today's (a test
+  on each platform compares it with `sections(items)`). Deleting, ticking and moving rows are
+  as before. Sharing sends what the screen shows.
+
+**Needs a real phone:** whether the models say "same" for the owner's corn and garlic pairs and
+"different" for rice flour and whole milk with high confidence both times, whether they tell a
+note from junk from a second amount, and how long the questions take on a long list.
