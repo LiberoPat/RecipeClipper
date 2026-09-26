@@ -45,15 +45,18 @@ protocol PageRecipeExtractor: AnyObject {
     /// How much page text, in characters, it can read now for a recipe in `language` ("en"), or
     /// nil when it can't (an unsupported phone or language, or a model not ready).
     func windowChars(language: String) async -> Int?
-    /// What the model picked out of `text` as the recipe, or nil. Unchecked: `PageRecipeCheck`
-    /// keeps only what is on the page.
+    /// What the model picked out of `text` as the recipe, all but its steps (asked apart, so a long
+    /// recipe's reply fits: #128), or nil. Unchecked: `PageRecipeCheck` keeps only what is on the page.
     func extract(_ text: String, language: String) async -> PageSelection?
+    /// The steps of the recipe called `name` that the model picked out of `text`, or nil when it couldn't answer.
+    func extractSteps(_ text: String, language: String, name: String) async -> [String]?
 }
 
 /// Reads nothing: the default for tests that aren't about extraction, and the UI-test graph.
 final class NoPageRecipeExtractor: PageRecipeExtractor {
     func windowChars(language: String) async -> Int? { nil }
     func extract(_ text: String, language: String) async -> PageSelection? { nil }
+    func extractSteps(_ text: String, language: String, name: String) async -> [String]? { nil }
 }
 
 /// The on-device model making typed decisions (#104), Android's `DecisionModel`:

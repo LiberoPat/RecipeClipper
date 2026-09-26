@@ -2064,8 +2064,9 @@ ones).
 
 - **Android: ML Kit GenAI's Prompt API** (`com.google.mlkit:genai-prompt:1.0.0-beta4`,
   `Generation.getClient()`, `checkStatus()`, `download()`, `generateContent(generateContentRequest(
-  TextPart(…)) { temperature = 0f; topK = 1; maxOutputTokens = 1024 })`). Input under 4,000
-  tokens. Rewriting, which Chef mode uses, takes under 256 tokens and only rewrites, so it can't
+  TextPart(…)) { temperature = 0f; topK = 1; maxOutputTokens = 4096 })`). Input under 4,000
+  tokens; 4,096 output tokens is the most `GenerateContentRequest` accepts (it throws "must be
+  between 1 and 4096"; #128 raised it from 1,024, which cut off a 20-ingredient recipe). Rewriting, which Chef mode uses, takes under 256 tokens and only rewrites, so it can't
   read a page; Summarization writes bullets. The Prompt API's structured output
   (`@Generable` data classes) is alpha and needs the `genai-schema-compiler` KSP processor, so
   instead the reply is one JSON object parsed strictly (`PageSelectionJson`: optionally in one
@@ -2081,7 +2082,14 @@ ones).
   minus 1,800 for instructions, schema and reply. Tokens become characters at 3 per token (1 in
   Japanese), a deliberate underestimate. A page over the limit fails the call (nil), never
   shows a partial recipe.
-- **Seam:** `PageRecipeExtractor` (`windowChars(language)`, `extract(text, language)`) beside
+- **Two parts** (#128): the model is asked for the recipe without its steps (name, yield,
+  times, ingredients), then, in a fresh call on the same window, for the steps of the recipe by
+  that name. Each reply is about half as long, so a long recipe fits: on iOS the reply shares
+  `contextSize` with the page, and #105's RecipeTin Eats recipe (20 ingredients, 14 steps)
+  overflowed 1,024 tokens in one reply. No name asks nothing more; either call failing is
+  `NoRecipeFound`, never a recipe without its steps. The cost is a second read of the window.
+- **Seam:** `PageRecipeExtractor` (`windowChars(language)`, `extract(text, language)`,
+  `extractSteps(text, language, name)`) beside
   `StepShortener`; `MlKitPageRecipeExtractor` and `FoundationModelsPageRecipeExtractor` are the
   only files that import the model APIs; tests use `FakePageRecipeExtractor`. The share
   extension has no extractor (memory), so a shared link it imports behaves as before.
@@ -2110,14 +2118,27 @@ ones).
   lifted out of "1 cup plus 2 tbsp"; a name, ingredient or step must hold a letter. The name is
   required; the recipe still needs ingredients or steps (the parsers' rule), otherwise it's
   `NoRecipeFound` as before. Times go through the parsers' `formatDuration`.
+- **One recipe's lines only** (#128, pinned by the corpus's `Verify` rows): a page can show a
+  second recipe (a "you'll also love" card), whose lines are on the page too, so the check above
+  passes them. The window's lines are cut into cards at each ingredients heading that follows a
+  steps heading ("Ingredients … Directions … Ingredients", `headings.json`, every shipped
+  language). Each picked ingredient and step counts once in every card it is found in; the card
+  holding the most is the recipe's (a tie goes to the earlier), and only lines found in it are
+  kept, as its own text. Deliberately narrow, because a dropped line is silent: a second
+  "Ingredients for the glaze" heading before the steps is the same recipe; a method that
+  repeats its ingredients (Great British Chefs) has no second heading; with every pick in one
+  card, the usual case, nothing changes. Yield and times are not lines and aren't checked this
+  way. The #105 evaluation's Delish "second recipe" turned out not to be one: that URL now
+  serves Creamy Tuscan Chicken, whose JSON-LD writes "c." where its card writes "cups", so its
+  own lines scored as wrong (the harness now compares units by meaning).
 - **Provenance:** `contentOrigin` `EXTRACTED` (no schema change: the column is text). It is the
   source's, like `PARSED`: a re-share fetches and refreshes it, and an edit makes it `EDITED`.
   An older app reads the unknown name as `EDITED`, the safe side. The reading view says, quietly
   under the source credit, "Picked from the page text — check against the source", with Open
   original as usual.
 - **Needs a real phone to judge:** whether the models copy text faithfully enough for the
-  verifier to keep most lines, how long a page takes, and whether 1,024 output tokens hold a long
-  recipe on Android. CI and the tests run the fake model only.
+  verifier to keep most lines, how long a page takes (two calls since #128), and whether Gemini
+  Nano honours 4,096 output tokens. CI and the tests run the fake model only.
 
 ## Typed decisions on the device (#104)
 

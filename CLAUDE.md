@@ -508,10 +508,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **A recipe needs a name, plus ingredients or steps.**
 - **Last, the on-device model picks from the page's text** (#103,
   `llmExtraction` flag): only after `NoRecipeFound` on a page that loaded,
-  through `PageRecipeExtractor`, on the part `RecipeTextWindow` chooses.
+  through `PageRecipeExtractor`, on the part `RecipeTextWindow` chooses, asked
+  in two parts (the recipe, then its steps, #128).
   `PageRecipeCheck` keeps only what is on that text (folded; never cutting
-  into a word or number; an ingredient starts its line) and shows the page's
-  own characters. Saved as `EXTRACTED`, with a quiet "Picked from the page
+  into a word or number; an ingredient starts its line; one recipe card's
+  lines only, #128) and shows the page's own characters. Saved as `EXTRACTED`, with a quiet "Picked from the page
   text" line. Rules in `docs/decisions.md`.
 - **Pages behind a login, or rendered by JavaScript,** expose no recipe data
   to the direct fetch. Only the rendered fetch can see the latter.

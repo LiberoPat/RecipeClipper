@@ -1,23 +1,37 @@
 import Foundation
 
-/// Task 2: a page with no recipe data. Today: `NoRecipeFound`. #103: window → model → PageRecipeCheck.
+/// Task 2: a page with no recipe data. Today: `NoRecipeFound`. #103: window → model → PageRecipeCheck,
+/// asked in two parts since #128 (the recipe, then the named recipe's steps), as the apps ask.
 enum PagesTask {
     /// The iOS extractor's instructions (FoundationModelsPageRecipeExtractor) and its fields as JSON.
     static let instructions = """
         You pick a recipe out of a web page's text. Copy every value exactly as it is written on \
         the page, character for character: never write, fix, translate, shorten or summarise. One \
-        ingredient line per item and one step per item, in page order. Leave out anything that \
-        isn't on the page. If the page holds no recipe, leave the name and the lists empty.
-        Reply with a JSON object: "name", "ingredients" (array), "steps" (array), and "yield", "prepTime", \
+        ingredient line per item, in page order. Leave out anything that isn't on the page. If the \
+        page holds no recipe, leave the name and the ingredients empty.
+        Reply with a JSON object: "name", "ingredients" (array), and "yield", "prepTime", \
         "cookTime", "totalTime" as the page writes them, or null.
         """
     static let schema: [String: Any] = [
-        "type": "object", "required": ["name", "ingredients", "steps"],
+        "type": "object", "required": ["name", "ingredients"],
         "properties": [
             "name": ["type": "string"], "ingredients": ["type": "array", "items": ["type": "string"]],
-            "steps": ["type": "array", "items": ["type": "string"]], "yield": ["type": ["string", "null"]],
+            "yield": ["type": ["string", "null"]],
             "prepTime": ["type": ["string", "null"]], "cookTime": ["type": ["string", "null"]], "totalTime": ["type": ["string", "null"]],
         ],
+    ]
+    static func stepsInstructions(_ name: String) -> String {
+        """
+        You pick the steps of the recipe "\(name)" out of a web page's text. Copy each step exactly \
+        as it is written on the page, character for character: never write, fix, translate, \
+        shorten or summarise. One step per item, in page order. Leave out anything that isn't on \
+        the page. If the page holds no steps for it, leave the list empty.
+        Reply with a JSON object: "steps" (array).
+        """
+    }
+    static let stepsSchema: [String: Any] = [
+        "type": "object", "required": ["steps"],
+        "properties": ["steps": ["type": "array", "items": ["type": "string"]]],
     ]
     /// iOS 26: contextSize 4,096 minus 1,800 reserved, at 3 characters a token.
     static let windowChars = (4096 - 1800) * 3
@@ -37,10 +51,15 @@ enum PagesTask {
             }
             guard llm else { continue }
             let reply = Llm.chat(system: instructions, user: window, json: schema)
-            seconds.append(reply.seconds)
             guard let o = Llm.object(reply.text) else { modelFailed += 1; log.append("\(page.url)\tunreadable reply"); continue }
+            guard let name = o["name"] as? String, !name.trimmingCharacters(in: .whitespaces).isEmpty else {
+                log.append("\(page.url)\tno name"); continue
+            }
+            let stepsReply = Llm.chat(system: stepsInstructions(name), user: window, json: stepsSchema)
+            seconds.append(reply.seconds + stepsReply.seconds)
+            guard let s = Llm.object(stepsReply.text) else { modelFailed += 1; log.append("\(page.url)\tunreadable steps reply"); continue }
             let picked = PageSelection(
-                name: o["name"] as? String, ingredients: o["ingredients"] as? [String] ?? [], steps: o["steps"] as? [String] ?? [],
+                name: name, ingredients: o["ingredients"] as? [String] ?? [], steps: s["steps"] as? [String] ?? [],
                 yield: o["yield"] as? String, prepTime: o["prepTime"] as? String, cookTime: o["cookTime"] as? String,
                 totalTime: o["totalTime"] as? String)
             pickedIng += picked.ingredients.count

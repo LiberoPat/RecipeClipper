@@ -10,6 +10,11 @@ import Foundation
 /// space). What shows is the page's own text for the span. A span never cuts into a word or a
 /// number; an ingredient starts its line (after a bullet); a name, ingredient or step holds a
 /// letter. The rest is dropped; a recipe needs a name plus ingredients or steps.
+///
+/// One recipe's lines only (#128): a page can hold a second recipe, whose lines are on the page
+/// too. The text is cut into cards at each ingredients heading that follows a steps heading
+/// ("Ingredients … Directions … Ingredients"), and only the ingredients and steps found in the
+/// card holding the most of them are kept (a tie goes to the earlier card).
 enum PageRecipeCheck {
 
     enum Kind: String { case name, ingredient, step, other }
@@ -18,8 +23,19 @@ enum PageRecipeCheck {
     static func verify(_ page: String, _ picked: PageSelection) -> PageSelection? {
         let folded = Folded(page)
         guard let name = picked.name.flatMap({ find(folded, $0, .name) }) else { return nil }
-        let ingredients = picked.ingredients.compactMap { find(folded, $0, .ingredient) }
-        let steps = picked.steps.compactMap { find(folded, $0, .step) }
+        let foundIngredients = picked.ingredients.map { spans(folded, $0, .ingredient) }
+        let foundSteps = picked.steps.map { spans(folded, $0, .step) }
+        let card = folded.cards()
+        var counts = Array(repeating: 0, count: (card.last ?? 0) + 1)
+        for found in foundIngredients + foundSteps {
+            for c in Set(found.map { card[$0.line] }) { counts[c] += 1 }
+        }
+        // The first card with the most, as Kotlin's maxByOrNull.
+        var recipe = 0
+        for c in counts.indices where counts[c] > counts[recipe] { recipe = c }
+        func kept(_ found: [Span]) -> String? { found.first { card[$0.line] == recipe }?.text }
+        let ingredients = foundIngredients.compactMap(kept)
+        let steps = foundSteps.compactMap(kept)
         if ingredients.isEmpty && steps.isEmpty { return nil }
         func other(_ s: String?) -> String? { s.flatMap { find(folded, $0, .other) } }
         return PageSelection(
@@ -32,19 +48,28 @@ enum PageRecipeCheck {
     static func find(_ page: String, _ picked: String, kind: Kind) -> String? { find(Folded(page), picked, kind) }
 
     private static func find(_ page: Folded, _ picked: String, _ kind: Kind) -> String? {
+        spans(page, picked, kind).first?.text
+    }
+
+    /// Where `find` finds a pick: the page's own text, and the line it starts on.
+    private struct Span { let text: String; let line: Int }
+
+    /// Every place `picked` is on `page` as a whole span of this `kind`, in page order.
+    private static func spans(_ page: Folded, _ picked: String, _ kind: Kind) -> [Span] {
         let needle = Folded(picked).text
-        if needle.isEmpty { return nil }
-        if kind != .other && !needle.contains(where: isLetter) { return nil }
+        if needle.isEmpty { return [] }
+        if kind != .other && !needle.contains(where: isLetter) { return [] }
         let text = page.text
+        var found: [Span] = []
         var at = 0
         while at + needle.count <= text.count {
             if text[at] == needle[0], Array(text[at..<(at + needle.count)]) == needle,
                startsCleanly(page, at, needle, kind), endsCleanly(page, at + needle.count, needle) {
-                return page.original(at, at + needle.count)
+                found.append(Span(text: page.original(at, at + needle.count), line: page.lines[at]))
             }
             at += 1
         }
-        return nil
+        return found
     }
 
     private static func startsCleanly(_ page: Folded, _ at: Int, _ needle: [UInt16], _ kind: Kind) -> Bool {

@@ -70,6 +70,27 @@ final class DataExtractionTests: XCTestCase {
         XCTAssertTrue(model.asked.first?.contains("Ingredients\n3 very ripe bananas, mashed") ?? false)
     }
 
+    func testItAsksInTwoPartsTheIngredientsThenTheNamedRecipesSteps() async throws {
+        let recipe = try recipe(await importPage())
+        XCTAssertEqual(model.asked.count, 1)
+        XCTAssertEqual(model.askedSteps, ["Grandma's Banana Bread"])
+        XCTAssertEqual(recipe.instructions, picks.steps)
+    }
+
+    func testNoNameAsksNothingMoreAndStepsItCantAnswerAreNoRecipeNeverHalfOfOne() async throws {
+        model.picks?.name = nil
+        let unnamed = await importPage()
+        XCTAssertEqual(unnamed, noRecipe)
+        XCTAssertTrue(model.askedSteps.isEmpty)
+        model.picks = picks
+        model.answersSteps = false
+        let noSteps = await importPage()
+        XCTAssertEqual(noSteps, noRecipe)
+        XCTAssertEqual(model.askedSteps.count, 1)
+        let count = try await db.recipeCount()
+        XCTAssertEqual(count, 0)
+    }
+
     func testLinesTheModelMadeUpAreDroppedTheRestKept() async throws {
         model.picks?.ingredients = picks.ingredients + ["2 cups chocolate chips", "4 very ripe bananas, mashed"]
         model.picks?.steps = ["Fold in the chocolate chips.", "Mix in the flour."]
