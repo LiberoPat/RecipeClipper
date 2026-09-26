@@ -45,6 +45,8 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.StepTimers
+import com.example.recipeclipper.data.model.Tip
+import com.example.recipeclipper.ui.tour.TipCallout
 
 private enum class StepStatus { DONE, CURRENT, UPCOMING }
 
@@ -76,6 +78,8 @@ internal fun CookView(
             onExit = actions.onCookExit
         )
         IngredientsBar(content, state, actions)
+        // The first cook mode (#151). Outside the steps' list, so a step's index stays its row's.
+        TipCallout(Tip.COOK_MODE, Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp))
 
         LazyColumn(
             state = listState,

@@ -41,6 +41,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarResult
 import com.example.recipeclipper.data.model.LibraryLimit
+import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.ui.common.noticeMessage
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -85,6 +86,7 @@ import com.example.recipeclipper.ui.plan.AddToPlanViewModel
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import com.example.recipeclipper.ui.tour.TipCallout
 
 /** Every event the recipe screen can raise, bundled so views take one parameter, not eighteen. */
 internal class RecipeActions(
@@ -521,6 +523,8 @@ private fun ReadingView(
                     onServingsChange = actions.onServingsChange,
                     onUnitSystemChange = actions.onUnitSystemChange
                 )
+                // The first recipe opened (#151): the row above, and the bookmark.
+                TipCallout(Tip.RECIPE, Modifier.padding(top = 12.dp))
                 Spacer(Modifier.height(20.dp))
                 SectionHeading(stringResource(R.string.heading_ingredients))
                 Spacer(Modifier.height(6.dp))

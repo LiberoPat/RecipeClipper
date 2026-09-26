@@ -93,6 +93,20 @@ class FakeRecipeRepository : RecipeRepository {
 
     override suspend fun open(id: Long): Recipe? = openResult
 
+    /** The tour's sample (#151): its id while it is "in the library", else null. */
+    var sample: Long? = null
+
+    /** Every sample [addSample] was given; null [addSampleResult] fails the save. */
+    val addSampleCalls = mutableListOf<Recipe>()
+    var addSampleResult: Long? = 99
+
+    override suspend fun sampleId(): Long? = sample
+
+    override suspend fun addSample(recipe: Recipe): Long? {
+        addSampleCalls += recipe
+        return (sample ?: addSampleResult)?.also { sample = it }
+    }
+
     override suspend fun updateFromSource(id: Long): ParseResult {
         updateFromSourceCalls += id
         return updateFromSourceResult

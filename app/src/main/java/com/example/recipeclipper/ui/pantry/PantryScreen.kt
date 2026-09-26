@@ -69,11 +69,13 @@ import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryList
 import com.example.recipeclipper.data.model.PantrySort
 import com.example.recipeclipper.data.model.PlanDays
+import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.ui.groceries.label
 import com.example.recipeclipper.ui.plan.shortDate
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import com.example.recipeclipper.ui.tour.TipCallout
 
 /**
  * The Pantry tab (#51): "Add to the pantry", a search field, then everything by aisle (or by
@@ -126,6 +128,8 @@ fun PantryScreen(viewModel: PantryViewModel = hiltViewModel()) {
                         )
                         SortMenu(state.sort, viewModel::onSortChange)
                     }
+                    // The first Pantry visit (#151).
+                    TipCallout(Tip.PANTRY, Modifier.padding(top = 4.dp, bottom = 4.dp))
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = state.draft,

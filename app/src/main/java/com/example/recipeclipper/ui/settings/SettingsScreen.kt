@@ -71,13 +71,14 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  * screen exists (see CLAUDE.md). The sections: Units (the three [UnitSystem] options, plus
  * "Also convert liquids" for Ounces only), Oven temperature (the three [TemperatureUnit]
  * options, independent of Units), Appearance ("Dark while cooking"), Pantry ("Expiry
- * reminders", #52, only with the `mealPlan` flag on), and Your recipes (Export and Import,
- * #26: actions, so plain rows).
+ * reminders", #52, only with the `mealPlan` flag on), Your recipes (Export and Import,
+ * #26: actions, so plain rows), and Help ("Show the tour again", #151, an action too).
  */
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenDeveloperSettings: () -> Unit = {},
+    onShowTour: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -247,6 +248,20 @@ fun SettingsScreen(
                         onClick = { importPicker.launch(IMPORT_MIME_TYPES) }
                     )
                     BackupStatusText(backup)
+                }
+
+                item {
+                    Spacer(Modifier.height(16.dp))
+                    Hairline()
+                    Spacer(Modifier.height(16.dp))
+                    SectionHeading(stringResource(R.string.settings_section_help))
+                    Spacer(Modifier.height(4.dp))
+                    ActionRow(
+                        title = stringResource(R.string.settings_show_tour),
+                        description = stringResource(R.string.settings_show_tour_description),
+                        enabled = true,
+                        onClick = onShowTour
+                    )
                 }
 
                 state.unlock?.let { row ->

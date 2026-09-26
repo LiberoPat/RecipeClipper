@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.backup
 
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.SampleRecipe
 import com.example.recipeclipper.data.model.UrlCleaner
 import java.util.Locale
 
@@ -239,9 +240,11 @@ object BackupMerger {
         // So is a recipe typed in by hand (#102): it has no link to bring it back.
         newByUrl.values.filter { it.contentOrigin == "MANUAL" }.mapTo(listedTargets) { Target.New(it.id) }
         val unlistedHere = existingRecipes.count { !it.isListed && Target.Existing(it.id) !in listedTargets }
-        // The free tier (#107) counts every recipe, here and coming in protected, not only history.
+        // The free tier (#107) counts every recipe, here and coming in protected, not only history;
+        // never the tour's sample (#151).
         val taken = if (countsEveryRecipe) {
-            existingRecipes.size + newByUrl.values.count { Target.New(it.id) in listedTargets }
+            existingRecipes.count { !SampleRecipe.isSample(it.sourceUrl) } +
+                newByUrl.values.count { Target.New(it.id) in listedTargets && !SampleRecipe.isSample(it.sourceUrl) }
         } else {
             unlistedHere
         }

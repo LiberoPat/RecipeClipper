@@ -453,4 +453,38 @@
         <item quantity="many">%1$d di vecchie ricette senza lista non sono state aggiunte: l\'app gratuita conserva %2$d ricette.</item>
         <item quantity="other">%1$d vecchie ricette senza lista non sono state aggiunte: l\'app gratuita conserva %2$d ricette.</item>
     </plurals>
+
+    <!-- The first-run tour (#151): welcome cards, one-time tips, Settings' Show the tour again -->
+    <string name="welcome_skip">Salta</string>
+    <string name="welcome_next">Avanti</string>
+    <string name="welcome_back">Indietro</string>
+    <string name="welcome_page">Scheda %1$d di %2$d</string>
+    <string name="welcome_try_sample">Prova con una ricetta di esempio</string>
+    <string name="welcome_start">Inizia</string>
+    <string name="welcome_app_title">Solo la ricetta</string>
+    <string name="welcome_app_body">Recipe Clipper tiene ingredienti, passaggi, tempi e porzioni di una ricetta, e lascia fuori la storia, la pubblicità e i pop-up.</string>
+    <string name="welcome_app_offline">Ogni ricetta che apri resta sul telefono, così si apre anche offline.</string>
+    <string name="welcome_clip_title">Ritaglia una ricetta</string>
+    <string name="welcome_clip_share">Nel browser o in qualsiasi app, tocca Condividi e poi Recipe Clipper: la ricetta si apre qui.</string>
+    <string name="welcome_clip_paste">Oppure copia il link e incollalo nella prima schermata.</string>
+    <string name="welcome_clip_type">Oppure scrivi tu una ricetta con + Nuova ricetta.</string>
+    <string name="welcome_daily_title">Ogni giorno</string>
+    <string name="welcome_daily_servings">Cambia le porzioni con − e +, e le unità con il menu accanto.</string>
+    <string name="welcome_daily_lists">Tocca il segnalibro per salvare una ricetta in una lista.</string>
+    <string name="welcome_daily_cook">La modalità cucina evidenzia un passaggio alla volta, gestisce i timer e tiene lo schermo acceso.</string>
+    <string name="welcome_daily_chef">La modalità chef, nelle Impostazioni, accorcia i passaggi lunghi sui telefoni che lo supportano.</string>
+    <string name="welcome_weekly_title">Ogni settimana</string>
+    <string name="welcome_weekly_plan">Pianifica i pasti in Settimana: Aggiungi al piano dal menu di una ricetta, o + Aggiungi su un giorno.</string>
+    <string name="welcome_weekly_need">Cosa mi serve, nel menu di Settimana, elenca gli ingredienti della settimana e quello che la dispensa ha già.</string>
+    <string name="welcome_weekly_groceries">Aggiungili alla Spesa e spuntali mentre fai la spesa.</string>
+    <string name="welcome_weekly_pantry">Quello che spunti può finire nella Dispensa, così la settimana dopo sa cosa hai.</string>
+    <string name="tip_recipe">Cambia le porzioni con − e +, e le unità con il menu accanto. Il segnalibro salva questa ricetta in una lista.</string>
+    <string name="tip_cook_mode">Tocca un passaggio per renderlo quello attuale, e «Fatto — passaggio successivo» per andare avanti. Un passaggio con un tempo ha un timer, e lo schermo resta acceso.</string>
+    <string name="tip_week">Pianifica la settimana con + Aggiungi su un giorno, o con Aggiungi al piano dal menu di una ricetta. Cosa mi serve è nel menu qui.</string>
+    <string name="tip_groceries">Spunta mentre fai la spesa: quello che spunti può finire nella dispensa. Tieni premuto un articolo per spostarlo in un altro reparto.</string>
+    <string name="tip_pantry">Quello che hai in casa. Disattiva un articolo quando finisce, e Cosa mi serve lo mette tra le cose da comprare.</string>
+    <string name="cd_dismiss_tip">Chiudi suggerimento</string>
+    <string name="settings_section_help">Aiuto</string>
+    <string name="settings_show_tour">Rivedi la presentazione</string>
+    <string name="settings_show_tour_description">Le schede di benvenuto, e di nuovo un suggerimento in ogni schermata.</string>
 </resources>

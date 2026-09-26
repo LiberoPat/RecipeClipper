@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.model.LibraryLimit
+import com.example.recipeclipper.data.model.SampleRecipe
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -60,6 +61,20 @@ class FreeTierDaoTest {
         db.mealPlanDao().add(
             MealPlanEntryEntity(day = day, mealTypeId = dinner, recipeId = id, servings = null, note = null, sortOrder = 0, updatedAt = 1)
         )
+    }
+
+    /** The tour's sample (#151) takes no place: not counted, and adding it removes nothing. */
+    @Test
+    fun theSampleRecipeTakesNoPlace() = runBlocking {
+        val old = existing(20)
+        val sample = recipes.upsert(recipe(SampleRecipe.SOURCE_URL, 50, "MANUAL"), LibraryLimit.Unlimited, today = today)
+        assertEquals("the sample isn't counted", 20, recipes.count())
+        assertEquals(20, recipes.observeCount().first())
+        assertNotNull("nothing made room for it", recipes.get(old[0]))
+
+        add("https://a.com/new", viewedAt = 10_000)
+        assertNull("a new recipe still makes room one for one", recipes.get(old[0]))
+        assertNotNull("never the sample, which is typed in", recipes.get(sample))
     }
 
     @Test

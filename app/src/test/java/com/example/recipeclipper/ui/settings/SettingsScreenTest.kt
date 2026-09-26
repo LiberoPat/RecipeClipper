@@ -42,6 +42,7 @@ class SettingsScreenTest {
 
     private class Taps {
         var developerSettingsOpened = 0
+        var tourShown = 0
     }
 
     private fun show(
@@ -55,6 +56,7 @@ class SettingsScreenTest {
             SettingsScreen(
                 onBack = {},
                 onOpenDeveloperSettings = { taps.developerSettingsOpened++ },
+                onShowTour = { taps.tourShown++ },
                 viewModel = viewModel
             )
         }
@@ -194,6 +196,17 @@ class SettingsScreenTest {
     }
 
     // --- Developer settings (#87) ---
+
+    /** "Show the tour again" (#151): an action row under Help. */
+    @Test
+    fun showTheTourAgainIsAnActionUnderHelp() {
+        val taps = show()
+        scrollTo("Show the tour again")
+        compose.onNodeWithText("Help").assertExists()
+        compose.onNodeWithText("The welcome cards, and a tip on each screen once more.").assertExists()
+        compose.onNodeWithText("Show the tour again").performClick()
+        assertEquals(1, taps.tourShown)
+    }
 
     @Test
     fun theVersionShowsAndItsSeventhTapOpensDeveloperSettingsThenCountsAgain() {
