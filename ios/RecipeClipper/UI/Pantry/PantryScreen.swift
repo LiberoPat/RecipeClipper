@@ -42,7 +42,7 @@ struct PantryScreen: View {
                     .padding(.bottom, 2)
                     .accessibilityAddTraits(.isHeader)
                     ForEach(section.items) { item in
-                        PantryRow(item: item, today: state.today, vm: vm)
+                        PantryRow(item: item, today: state.today, onList: state.onList.contains(item.id), vm: vm)
                     }
                 }
             }
@@ -101,17 +101,12 @@ struct PantryScreen: View {
         }
     }
 
+    /// Snackbars only for undo (#146).
     @ViewBuilder
     private func snackbar(_ message: PantryMessage) -> some View {
         switch message {
-        case .outOfStock(_, let item):
-            Snackbar(message: Strings.pantryOutSnackbar(item.name), actionLabel: Strings.addToGroceries) {
-                vm.onAddToGroceries(item)
-            }
         case .deleted(_, let name):
             Snackbar(message: Strings.pantryDeleted(name), actionLabel: Strings.undo, action: vm.onUndoDelete)
-        case .addedToGroceries(_, let name):
-            Snackbar(message: Strings.addedToGroceries(name), actionLabel: nil)
         }
     }
 }
@@ -119,6 +114,7 @@ struct PantryScreen: View {
 private struct PantryRow: View {
     let item: PantryItem
     let today: Int64
+    let onList: Bool
     let vm: PantryViewModel
 
     var body: some View {
@@ -146,6 +142,21 @@ private struct PantryRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            if onList {
+                // A state, not a message (#146): on the grocery list; tapping takes it off.
+                Button { vm.onTakeOffList(item) } label: {
+                    Text(Strings.pantryOnList)
+                        .textStyle(Typography.bodySmall)
+                        .foregroundStyle(Palette.accentText)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .overlay(Capsule().stroke(Palette.hairline, lineWidth: 1))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(Strings.pantryTakeOffList)
+                .accessibilityIdentifier("onList-\(item.id)")
+            }
             Toggle(Strings.pantryInStock, isOn: Binding(get: { item.inStock }, set: { _ in vm.onToggleStock(item) }))
                 .labelsHidden()
                 .tint(Palette.primary)

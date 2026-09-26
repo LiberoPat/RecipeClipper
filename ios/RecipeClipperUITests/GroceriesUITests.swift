@@ -1,7 +1,7 @@
 import XCTest
 
 /// The Groceries tab (#50), behind the tab flag: add a recipe's lines from its menu, see them
-/// by aisle, type an item, and delete one with Undo.
+/// by aisle, type an item, delete one with Undo, and put ticked items away (#146).
 final class GroceriesUITests: RecipeUITestCase {
 
     private var tabBar: XCUIElement { app.tabBars.firstMatch }
@@ -51,5 +51,34 @@ final class GroceriesUITests: RecipeUITestCase {
     private func deleteMilk() {
         require(line("milk"), "the item").press(forDuration: 1.0)
         require(app.buttons["Delete"], "the long-press menu").tap()
+    }
+
+    /// #146: a tick only ticks; "Done shopping" opens the put-away sheet, and one confirm puts
+    /// the ticked ones in the pantry and clears the list, with one Undo for both.
+    func testDoneShoppingPutsTickedItemsAwayWithOneUndo() {
+        launch(.empty, flags: ["mealPlan"])
+        require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
+        let field = require(app.textFields["Add an item"], "Add an item")
+        field.tap()
+        field.typeText("2 cups flour\n")
+        assertAbsent(app.buttons["doneShopping"], "Done shopping, with nothing ticked")
+        require(line("2 cups flour"), "the typed item").tap()
+        assertAbsent(app.buttons["Undo"], "a snackbar for a tick")
+
+        // Undo takes it all back: the line returns, and the pantry stays empty.
+        putFlourAway()
+        require(app.buttons["Undo"], "the snackbar").tap()
+        require(line("2 cups flour"), "the item, back")
+
+        putFlourAway()
+        requireGone(line("2 cups flour"), "the cleared item")
+        require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
+        require(app.switches["In stock: flour"], "flour in the pantry")
+    }
+
+    private func putFlourAway() {
+        require(app.buttons["doneShopping"], "Done shopping").tap()
+        require(app.buttons["putAway-new-en-flour"], "flour in the sheet, unticked").tap()
+        require(app.buttons["putAwayButton"], "the sheet's button").tap()
     }
 }

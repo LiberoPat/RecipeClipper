@@ -204,6 +204,11 @@ pinned for iOS by the corpus's `Pant` rows. iOS mirrors the rest in
 `PantryDaoTests` (with the user_version 8 → 9 step), `PantryTests`,
 `PantryViewModelTests` and `PantryUITests`.
 
+"Done shopping" and the pantry's "On list" tag (#146): `GroceriesPantryTest` (the sheet's
+first ticks, put-away, one undo for the list and the pantry), `GroceriesScreenTest`,
+`PantryViewModelTest` and `PantryScreenTest`; iOS mirrors them in `PantryViewModelTests`,
+`GroceriesUITests` (Done shopping, Undo) and `PantryUITests` (the tag).
+
 Amounts inside steps (#101): `StepAmountsTest` (JVM) and `StepAmountsTests` (iOS) run
 the rules on steps modelled on real pages, and the corpus's `Step` rows pin the Swift to the
 Kotlin (each step against its lines as given and doubled in Metric; write only

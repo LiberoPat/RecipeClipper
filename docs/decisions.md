@@ -1444,8 +1444,9 @@ The third tab of #46, still behind the #47 flag.
     recipe looked like separate items.
 - **Checked and shared.** Ticking a row ticks all its lines; checked
   rows sort after unchecked ones in each aisle and are struck through. Share
-  sends the unchecked rows as plain text by aisle. Delete and "Clear checked"
-  are undoable from one snackbar (one undo at a time, as on the Week).
+  sends the unchecked rows as plain text by aisle. Delete and clearing the
+  checked rows are undoable from one snackbar (one undo at a time, as on the
+  Week). "Clear checked" became "Done shopping" (#146, below).
 - **Adding.** "Add to groceries" in the recipe menu and "Add this week's
   ingredients" in the Week menu open the same sheet (Paprika's basket): every
   line ticked, headings (a line ending in ":") and blanks left out, one
@@ -1486,13 +1487,10 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
 - **The grocery sheet starts with what the pantry covers unticked** (in stock or a
   staple), so "untick what's in the cupboard" is done for the cook, who still
   sees and can re-tick every line.
-- **Ticking a grocery off feeds the pantry**, the issue's "on by default for
-  tracked items": if the pantry tracks that ingredient and it was out, it's back
-  in stock at once, bought today, with Undo in the snackbar; if the pantry doesn't
-  track it, the snackbar only offers "Add to pantry" (the ingredient's name, the
-  grocery's aisle). An item already in stock, a staple, an untick, or a line with
-  no name does nothing. The offer is never automatic for untracked items: the
-  pantry holds what the cook chose to track.
+- **Ticking a grocery off fed the pantry** at first (a restock with Undo, or an
+  "Add to pantry" offer, in a snackbar per tick). #146 replaced that with "Done
+  shopping": see its section below. What stays: an untracked item goes in only
+  when the cook ticks it, since the pantry holds what the cook chose to track.
 - **A pantry item never matches a different ingredient** (owner's decision,
   after #51 shipped a pantry "rice flour" as Have for a recipe's "flour").
   `matches` was the density table's end-of-name rule in both directions, which
@@ -1530,9 +1528,10 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   - `IngredientName.matches` has one caller, `PantryMatch.find`. Grocery
     combining and aisles use `IngredientName.of` by exact name or the aisle
     table, so they're unchanged.
-- **Running out offers groceries**: switching an item out shows "… is out" with
-  "Add to groceries" (the name as a typed item). Typing a name already in the
-  pantry puts it back in stock rather than adding a twin.
+- **Running out puts it on the list** (#146; it was a snackbar offer before):
+  switching an item out adds its name as a typed item, silently, and the row
+  shows "On list". Typing a name already in the pantry puts it back in stock
+  rather than adding a twin.
 - **Expiry**: a badge only (#52 later added an opt-in morning reminder) (Expired before today; the date in paprika from today
   to 3 days ahead), no notifications, as the epic says. Sort by aisle (the
   default) or by expiry (soonest first, undated last), from the menu as radio
@@ -2514,3 +2513,33 @@ photo that exists.
 simulator's missing camera prove only the wiring), EXIF orientation from a real portrait shot,
 HEIC pictures from the iOS library, and an export with many photos shared and imported on the
 other platform.
+
+## Done shopping: putting things away in one step (#146)
+
+The owner found the per-tick snackbars annoying and easy to miss: tick one more item and the
+offer for the first was replaced and gone. Owner's decisions:
+
+- **A tick only ticks.** No snackbar, no pantry change, nothing offered.
+- **One "Done shopping" button replaces "Clear checked"** (one button rather than "Put away…"
+  beside "Clear checked"). It shows at the bottom of Groceries while anything is ticked, and
+  opens a sheet of the ticked items with checkboxes: one row per pantry item or ingredient
+  name (two butters the pantry tracks as "Butter" are one row), in the list's order. What the
+  pantry tracks starts ticked; the rest starts unticked, since the pantry holds what the cook
+  chose to track. One confirm restocks the ticked tracked items and adds the ticked new ones
+  (the ingredient's name, the grocery's aisle, bought today), then clears **every** ticked
+  line, listed or not. A line the app can't name ("salt and pepper") isn't listed but is
+  cleared; with nothing to list, the button clears at once.
+- **Pantry-tracked items restock only at put-away,** never on the tick.
+- **One undo for all of it.** The snackbar ("Pantry updated, checked items removed", or
+  "Checked items removed" when nothing went in the pantry) puts back the cleared lines, the
+  restocked items as they were (a snapshot) and deletes the added ones.
+  `PantryRepository.add` returns the new id for that.
+- **Snackbars only for undo:** a delete, or Done shopping. The rest of the app already used
+  them that way.
+- **Pantry to groceries shows a state, not a message.** Switching an item out adds its name to
+  the list silently (unless its line is there already), and the row shows a small "On list"
+  tag; tapping the tag takes it off the list, with no snackbar. "On list" means an unticked
+  grocery line that is the item's own name (trimmed, case-insensitive, same language): what
+  switching it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
+  deletes a recipe's line, which is why no undo is needed. No schema change: the link is the
+  name.

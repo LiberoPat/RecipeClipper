@@ -18,16 +18,19 @@ final class FakePantryRepository: PantryRepository {
 
     func items() async -> [PantryItem] { items.value }
 
-    func add(_ item: NewPantryItem) async {
+    @discardableResult
+    func add(_ item: NewPantryItem) async -> Int64? {
         let name = item.name.kTrimmed
-        guard !name.isEmpty else { return }
+        guard !name.isEmpty else { return nil }
         let quantity = item.quantity?.kTrimmed
+        let id = nextId
         items.value.append(PantryItem(
-            id: nextId, name: name, quantity: quantity?.isEmpty == false ? quantity : nil, language: item.language,
+            id: id, name: name, quantity: quantity?.isEmpty == false ? quantity : nil, language: item.language,
             aisle: item.aisle ?? Aisles.of(name, words: LanguageWords.forTag(item.language)),
             inStock: true, alwaysHave: false, purchasedDay: item.purchasedDay, expiresDay: nil
         ))
         nextId += 1
+        return id
     }
 
     func setInStock(_ ids: [Int64], inStock: Bool) async {
