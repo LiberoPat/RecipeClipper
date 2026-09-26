@@ -607,3 +607,10 @@ project still uses AGP's legacy DSL and separate Kotlin plugin
 (`android.newDsl=false`, `android.builtInKotlin=false` in `gradle.properties`),
 which AGP 9 prints deprecation warnings for on every build. `local.properties`
 holds the machine-specific SDK path and is git-ignored.
+
+## Regex vs on-device LLM evaluation (#105)
+
+`tools/eval/` is a dev-only harness (never built into the apps or run by CI) that compiles the
+iOS `Data/Model` sources with a Swift command-line driver and scores the parsers against local
+models (Ollama, llama-server). How to run it, the gold sets and the results:
+`docs/eval/llm-vs-regex.md`.

@@ -2182,6 +2182,70 @@ supported languages), or the flag off: nothing is asked and everything is exactl
 may leave most questions unsure), whether its answers are right (especially the owner's
 "different" pairs), and the time per question (two asks each). CI and the tests use fakes only.
 
+## WP Recipe Maker's ingredient parts (#118)
+
+Most food blogs build their recipe card with a WordPress plugin, and WP Recipe Maker (RecipeTin
+Eats, Minimalist Baker, Skinnytaste, Love and Lemons) marks each ingredient's parts in the HTML:
+`wprm-recipe-ingredient-amount`, `-unit`, `-name` and `-notes`, inside named groups. Its JSON-LD
+lines wrap the notes in brackets, whatever the notes already hold: "2 garlic cloves (, minced)",
+"1 lb / 500 g zucchinis ((courgettes))". Love and Lemons' JSON-LD even drops a note ("for
+garnish") that the card shows.
+
+- **JSON-LD stays first.** The parts only refine its `recipeIngredient` lines, and only when a
+  card's ingredients line up one-to-one: the same count, and each part's name found in its
+  JSON-LD line (case and spacing ignored). Otherwise the JSON-LD lines stay as they were. A page
+  can hold several cards; the first that lines up is used. Microdata recipes aren't refined.
+- **Notes stay on the line, after the name, as the card shows them.** A recipe's ingredients are
+  plain lines with no notes field; adding one would mean a schema change and teaching scaling,
+  conversion, groceries, editing and export about it. The scaler reads the leading amount, and
+  a bracket or second amount after the name follows the existing rules (#61, #63), so a note
+  never changes what scales. The line is amount, unit and name joined by spaces; notes that
+  start with a comma follow directly ("2 garlic cloves, minced"); otherwise a comma when the
+  page puts one between name and notes ("kosher salt, *see notes"), else a space ("zucchinis
+  (courgettes)").
+- **Groups become heading lines** ("Batter:", "Minted Yoghurt (optional):"), the colon form the
+  rest of the app already reads as a heading (groceries, ingredient names, step amounts). An
+  unnamed group adds none. Headings change the ingredient list, so ticked ingredients reset once
+  on the first re-share after this change, as for any changed list.
+- **The owner's "2 corn (dfsafs -"** (#121) isn't on the Greek zucchini tots page; the page's
+  real lines of that shape, "2 garlic cloves (, minced)", now read "2 garlic cloves, minced".
+- Tests: trimmed real pages in `shared/fixtures/pages/wprm-*.html` on both platforms, and `Wprm`
+  rows in the differential corpus. The weekly site check fetches the zucchini tots page.
+
+## Tasty Recipes' and Mediavine Create's ingredient headings (#119)
+
+The other two common WordPress recipe cards, read after WP Recipe Maker's (#118). **Neither
+marks an ingredient's parts.** Tasty Recipes (Pinch of Yum, Joy the Baker, The Kitchen
+Whisperer) prints each ingredient as a whole `<li>`; only the amount is wrapped, for its own
+scaling (`data-amount`), and any bold name is the author's formatting. Mediavine Create
+(TidyMom, Key to My Lime) prints each ingredient's `original_text` in an `<li>`. On every page
+checked, those lines are JSON-LD's `recipeIngredient` lines word for word; the card's own only
+differ in WordPress's curled dashes and quotes ("3–4 cups", "confectioners’"). So there are no
+notes or parts to read, and **JSON-LD's lines stay exactly as they are**.
+
+**What JSON-LD drops is the group headings**, and those are added (`CardHeadings`):
+"For the chocolate cake:", "Oreo Crust:", "FOR APPLE FILLING:", "Chicken Marinade:".
+
+- **Where headings come from.** Create names its groups: an `h3`/`h4` in
+  `.mv-create-ingredient-group-header`, or, in its older markup, an `h3` straight before each
+  list. Tasty's ingredients are free text around the lists, so a heading is what Tasty's own
+  code leaves out of its JSON-LD as one: a heading element, or a paragraph that ends in a colon
+  or is wholly bold. Any other paragraph is not a heading ("Use a big bowl"). The list's own
+  title ("Ingredients", in `.tasty-recipes-ingredients-header` or
+  `.mv-create-ingredients-title`) is never one, nor is a paragraph inside an item. A heading
+  after the last ingredient heads nothing and is dropped.
+- **Only when the card lines up one-to-one** with `recipeIngredient`: the same count, and each
+  item's letters and digits (lowercased) found in its JSON-LD line, so curled punctuation and
+  spacing don't count. Otherwise nothing changes. A Tasty card with no list items (plain
+  paragraphs) already puts its headings in JSON-LD, so it's left alone.
+- **One shared helper** (`CardIngredients`) now holds what the three adapters have in common:
+  groups of items, the line-up check and the "Name:" heading lines. WP Recipe Maker keeps its
+  own check (case and spacing ignored) and its refined lines; its behaviour is unchanged.
+  Site-specific rules as data are #120.
+- Tests: trimmed real pages in `shared/fixtures/pages/tasty-*.html` and `mv-create-*.html` on
+  both platforms, and `Heads` rows in the differential corpus. The weekly site check fetches
+  Pinch of Yum's blackout chocolate cake and TidyMom's apple pie bars.
+
 ## Grocery lines merged with the model's help (#99)
 
 Part of #99, on #104's typed decisions (same `DecisionRule`, `ai_decisions` cache and
@@ -2239,3 +2303,18 @@ exact rules still decide every total.
 "different" for rice flour and whole milk with high confidence both times, whether they tell a
 note from junk from a second amount, whether they copy "onions" out of "2 onions dfsafs"
 verbatim and agree twice, and how long the questions take on a long list.
+
+## A hyphenated mixed number is not a range (#125)
+
+Taste of Home writes "1-1/2 cups sugar". The range reading ("1" to "1/2") scaled each end
+and showed "2-1 cups" for ×2. Now a whole number, a dash (hyphen, en or em dash, the ones the
+range code reads) and a fraction with no spaces ("1-1/2", "1-3/4", "2-½") is one quantity,
+the first alternative of the shared quantity pattern, so every reader of the leading amount
+agrees: the scaler, the unit converter, `GroceryCombiner`, `IngredientName`, amounts in
+steps (#101), step timers ("Bake 1-1/2 hours" is 1 h 30) and the trailing-amount reader.
+- Only a proper fraction: "1-3/2" is neither a mixed number nor a range anyone writes, so the
+  line stays as written.
+- Not after a slash or a decimal (lookbehinds), so "1/2-3/4" and "0.17-1/3" stay ranges.
+- Spaces make a range: "1 - 2", "1-1 1/2" and "1-1/2 to 2" (a range from 1 1/2) are
+  unchanged.
+Pinned by the scaler tests on both platforms and the corpus's #125 rows.

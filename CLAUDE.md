@@ -96,8 +96,8 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests),
                Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource,
-               PageTextReader, PageRecipe (#103)
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, CardHeadings, CardIngredients),
+               MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
@@ -502,6 +502,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
   - Jetpack's `.jetpack-recipe-directions` supplies the steps when there's no
     `recipeInstructions`.
   - The photo falls back to `og:image`.
+- **WP Recipe Maker's ingredient parts refine JSON-LD's lines** (#118,
+  `WprmIngredients`), only when the card lines up one-to-one with
+  `recipeIngredient`: "amount unit name" plus the notes as the card shows
+  them; each named group adds a "Group:" heading line. Tasty Recipes and
+  Mediavine Create cards (#119, `CardHeadings`) hold whole lines only: JSON-LD's
+  lines stay, and only the group headings JSON-LD drops are added.
 - **A recipe needs a name, plus ingredients or steps.**
 - **Last, the on-device model picks from the page's text** (#103,
   `llmExtraction` flag): only after `NoRecipeFound` on a page that loaded,
