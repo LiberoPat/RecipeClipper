@@ -1,8 +1,10 @@
 package com.example.recipeclipper.ui.groceries
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
@@ -113,5 +115,29 @@ class GroceriesScreenTest {
         compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Clear checked").performClick()
         compose.runOnIdle { assertEquals(listOf("1 cup milk"), repository.items.value.map { it.text }) }
+    }
+
+    // The owner's report: a recipe added three times showed "2 corn" three times, each with a
+    // tick of its own, and ticking one ticked them all.
+    @Test
+    fun theSameRecipeAddedThreeTimesIsOneRowWithOneTick() {
+        show("2 corn", "2 corn", "2 corn")
+        compose.onNodeWithText("6 corn").assertIsDisplayed()
+        compose.onNodeWithText("2 corn \u00d7 3").assertIsDisplayed()
+        compose.onAllNodes(isToggleable()).assertCountEquals(1)
+    }
+
+    @Test
+    fun linesThatCannotBeAddedUpAreOneRowWithOneTick() {
+        show("2 corn (about 1 lb)", "2 corn (about 1 lb)", "1 cup corn kernels", "3 corn")
+        compose.onNodeWithText("2 corn (about 1 lb) \u00d7 2").assertIsDisplayed()
+        compose.onNodeWithText("3 corn").assertIsDisplayed()
+        compose.onAllNodes(isToggleable()).assertCountEquals(2)
+        val first = repository.items.value.first().id
+        compose.onNodeWithTag("grocery-$first").assertIsOff().performClick()
+        compose.onNodeWithTag("grocery-$first").assertIsOn()
+        compose.runOnIdle {
+            assertEquals(listOf(true, true, false, true), repository.items.value.map { it.checked })
+        }
     }
 }

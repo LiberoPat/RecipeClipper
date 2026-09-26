@@ -60,7 +60,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -69,6 +68,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.Aisle
+import com.example.recipeclipper.data.model.GroceryCombiner
 import com.example.recipeclipper.data.model.GroceryCombiner.Row as GroceryRow
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
@@ -234,8 +234,9 @@ private fun GroceriesMenu(canShare: Boolean, canClear: Boolean, onShare: () -> U
 }
 
 /**
- * A row on the list. A line on its own or an added-up total is one tick; lines that can't be
- * added up honestly sit under their ingredient's name, each with its own tick.
+ * A row on the list, always one tick. An added-up total shows its lines under it; lines that
+ * can't be added up honestly sit under their ingredient's name, as written, without ticks of
+ * their own: ticking the row ticks them all.
  */
 @Composable
 private fun GroceryRowView(
@@ -247,7 +248,7 @@ private fun GroceryRowView(
     when (row) {
         is GroceryRow.Single -> CheckLine(
             text = row.item.text,
-            detail = null,
+            detail = emptyList(),
             checked = row.item.checked,
             tag = "grocery-${row.item.id}",
             onToggle = { onToggle(row) },
@@ -256,33 +257,22 @@ private fun GroceryRowView(
         )
         is GroceryRow.Combined -> CheckLine(
             text = row.text,
-            detail = row.items.joinToString(" + ") { it.text },
+            detail = listOf(GroceryCombiner.lines(row).joinToString(" + ")).filter { it != row.text },
             checked = row.items.all { it.checked },
             tag = "grocery-${row.items.first().id}",
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
             onDelete = { onDelete(row, row.text) }
         )
-        is GroceryRow.Together -> Column {
-            Text(
-                row.name,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            row.items.forEach { item ->
-                val single = GroceryRow.Single(item)
-                CheckLine(
-                    text = item.text,
-                    detail = null,
-                    checked = item.checked,
-                    tag = "grocery-${item.id}",
-                    onToggle = { onToggle(single) },
-                    onMove = { onMove(single) },
-                    onDelete = { onDelete(single, item.text) }
-                )
-            }
-        }
+        is GroceryRow.Together -> CheckLine(
+            text = row.name,
+            detail = GroceryCombiner.lines(row),
+            checked = row.items.all { it.checked },
+            tag = "grocery-${row.items.first().id}",
+            onToggle = { onToggle(row) },
+            onMove = { onMove(row) },
+            onDelete = { onDelete(row, row.name) }
+        )
     }
 }
 
@@ -290,7 +280,7 @@ private fun GroceryRowView(
 @Composable
 private fun CheckLine(
     text: String,
-    detail: String?,
+    detail: List<String>,
     checked: Boolean,
     tag: String,
     onToggle: () -> Unit,
@@ -318,9 +308,9 @@ private fun CheckLine(
                     textDecoration = if (checked) TextDecoration.LineThrough else null,
                     color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                 )
-                if (detail != null) {
+                detail.forEach { line ->
                     Text(
-                        detail,
+                        line,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

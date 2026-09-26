@@ -88,7 +88,9 @@ class GroceryCombinerTest {
     }
 
     @Test fun packageSizesStayAsWritten() {
-        assertNull(combine("1 (14 oz) can tomatoes", "1 (14 oz) can tomatoes"))
+        // The same line twice is honest as it stands, times two; a different size never meets it.
+        assertEquals("1 (14 oz) can tomatoes \u00d7 2", combine("1 (14 oz) can tomatoes", "1 (14 oz) can tomatoes"))
+        assertNull(combine("1 (14 oz) can tomatoes", "1 (28 oz) can tomatoes"))
     }
 
     @Test fun anAmountWithoutANumberStaysAsWritten() {
@@ -103,7 +105,8 @@ class GroceryCombinerTest {
 
     @Test fun unitsWhoseSizeVariesNeverAddUp() {
         val fr = LanguageWords.forTag("fr")!!
-        assertNull(combine("1 tasse de farine", "1 tasse de farine", words = fr))
+        assertNull(combine("1 tasse de farine", "2 tasses de farine", words = fr))
+        assertEquals("1 tasse de farine \u00d7 2", combine("1 tasse de farine", "1 tasse de farine", words = fr))
     }
 
     @Test fun japaneseLinesAreNeverAddedUp() {
@@ -152,12 +155,15 @@ class GroceryCombinerTest {
         assertEquals(listOf("100 g flour", "1 tsp baking powder", "200 g flour"), rows.map { (it as GroceryCombiner.Row.Single).item.text })
     }
 
-    @Test fun linesWithNoNameOrNoLanguageStandAlone() {
+    @Test fun linesWithNoNameOrNoLanguageGroupOnlyWithTheSameLine() {
         val rows = GroceryCombiner.sections(
-            listOf(item("salt and pepper"), item("salt and pepper"), item("2 eggs", language = null), item("2 eggs", language = null))
+            listOf(item("salt and pepper"), item("salt and pepper"), item("olive oil and butter"),
+                item("2 eggs", language = null), item("2 eggs", language = null))
         ).flatMap { it.rows }
-        assertTrue(rows.all { it is GroceryCombiner.Row.Single })
-        assertEquals(4, rows.size)
+        assertEquals(
+            listOf("salt and pepper × 2", "olive oil and butter", "2 eggs × 2"),
+            rows.map { (it as? GroceryCombiner.Row.Combined)?.text ?: (it as GroceryCombiner.Row.Single).item.text }
+        )
     }
 
     @Test fun anItemMovedToAnotherAisleLeavesItsGroup() {
@@ -176,5 +182,43 @@ class GroceryCombinerTest {
             "Groceries\n\nProduce\n- 2 onions\n\nBaking\n- 300 g flour\n- 1 cup sugar\n- 100 g sugar",
             GroceryShareText.format(sections, "Groceries") { it.name.lowercase().replaceFirstChar(Char::uppercase) }
         )
+    }
+
+    // --- Adding the same recipe more than once (the owner's report: three "2 corn" rows)
+
+    @Test fun theSameLineAddedThreeTimesIsOneRow() {
+        for ((line, total) in listOf("2 corn" to "6 corn", "1 cup milk" to "3 cup milk", "2 eggs" to "6 eggs")) {
+            val row = GroceryCombiner.sections(List(3) { item(line).copy(recipeId = 7) }).flatMap { it.rows }.single()
+            assertEquals(total, (row as GroceryCombiner.Row.Combined).text)
+            assertEquals(listOf("$line × 3"), GroceryCombiner.lines(row))
+        }
+    }
+
+    @Test fun aNoteInBracketsStillAddsUp() {
+        assertEquals("6 corn (dfsafs -", combine("2 corn (dfsafs -", "2 corn (dfsafs -", "2 corn (dfsafs -"))
+        assertEquals("6 corn, shucked", combine("2 corn, shucked", "2 corn, shucked", "2 corn, shucked"))
+        // recipetineats.com's Greek zucchini tots, as WP Recipe Maker writes its notes.
+        assertEquals("4 garlic cloves (, minced)", combine("2 garlic cloves (, minced)", "2 garlic cloves (, minced)"))
+        // Two names either side of the slash: not one ingredient to add up, but the same line twice.
+        assertEquals("1/4 tsp cooking salt / kosher salt \u00d7 2", combine("1/4 tsp cooking salt / kosher salt", "1/4 tsp cooking salt / kosher salt"))
+    }
+
+    @Test fun aBracketThatCouldBeAnotherAmountIsNeverSummed() {
+        // Summed, the "1 lb" or "2 teaspoon" beside the total would be wrong: the line, times three.
+        assertEquals("2 corn (about 1 lb) × 3", combine("2 corn (about 1 lb)", "2 corn (about 1 lb)", "2 corn (about 1 lb)"))
+        assertEquals("1 tbsp dried oregano ((or 2 teaspoon other dried herbs)) × 2",
+            combine("1 tbsp dried oregano ((or 2 teaspoon other dried herbs))", "1 tbsp dried oregano ((or 2 teaspoon other dried herbs))"))
+        assertEquals("2 corn (about a pound) × 2", combine("2 corn (about a pound)", "2 corn (about a pound)"))
+        assertEquals("1 lb / 500 g zucchinis ((courgettes)) × 2",
+            combine("1 lb / 500 g zucchinis ((courgettes))", "1 lb / 500 g zucchinis ((courgettes))"))
+        // Different lines with a possible second amount aren't the same line: they sit together.
+        assertNull(combine("2 corn (about 1 lb)", "3 corn"))
+    }
+
+    @Test fun linesThatCannotBeSummedAreOneRowWithTheirLinesUnderIt() {
+        val row = GroceryCombiner.sections(
+            listOf(item("1 cup sugar"), item("100 g sugar"), item("1 cup sugar"))
+        ).single().rows.single() as GroceryCombiner.Row.Together
+        assertEquals(listOf("1 cup sugar × 2", "100 g sugar"), GroceryCombiner.lines(row))
     }
 }
