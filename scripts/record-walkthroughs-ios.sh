@@ -28,9 +28,9 @@ for t in "${TESTS[@]}"; do
   sleep 1
   began=$(python3 -c 'import time; print(time.time())')
   (cd ios && TEST_RUNNER_RC_WALKTHROUGH=1 xcodebuild -project RecipeClipper.xcodeproj -scheme RecipeClipper \
-    -destination "id=$SIM" -derivedDataPath "$DD" test-without-building \
+    -destination "id=$SIM" -derivedDataPath "$DD" -collect-test-diagnostics never test-without-building \
     "-only-testing:RecipeClipperUITests/WalkthroughUITests/$t" > "$log" 2>&1) || echo "FAILED: $t (see $log)"
-  kill -INT $rec; wait $rec || true
+  kill -INT $rec 2>/dev/null || true; wait $rec || true
   start=$(grep -o 'WALKTHROUGH-START [0-9.]*' "$log" | head -1 | cut -d' ' -f2)
   end=$(grep -o 'WALKTHROUGH-END [0-9.]*' "$log" | tail -1 | cut -d' ' -f2)
   if [ -z "$start" ] || [ -z "$end" ]; then echo "no marks: $t"; continue; fi

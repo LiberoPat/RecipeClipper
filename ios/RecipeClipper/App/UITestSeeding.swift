@@ -66,7 +66,7 @@ enum UITestSeeding {
         )
         // The free tier's limit (#107) as the app mirrors it, in the throwaway suite.
         let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
-        return AppContainer(
+        let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
                 db: database, source: StubRecipeSource(), clock: clock, library: libraryLimit
             ),
@@ -83,6 +83,8 @@ enum UITestSeeding {
             decisionRepository: decisions,
             libraryMirror: libraryLimit
         )
+        container.libraryPolicy.startMirroring()
+        return container
     }
 
     /// The page "Clip it yourself" shows under test, in place of the live one. XCUITest can't
