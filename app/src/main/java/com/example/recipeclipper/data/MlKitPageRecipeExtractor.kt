@@ -39,9 +39,15 @@ class MlKitPageRecipeExtractor @Inject constructor() : PageRecipeExtractor {
         }
     }
 
-    override suspend fun extract(text: String, language: String): PageSelection? = attempt {
+    override suspend fun extract(text: String, language: String): PageSelection? =
+        ask(RECIPE_PROMPT + text)?.copy(steps = emptyList())
+
+    override suspend fun extractSteps(text: String, language: String, name: String): List<String>? =
+        ask(STEPS_PROMPT.replace(NAME, name) + text)?.steps
+
+    private suspend fun ask(prompt: String): PageSelection? = attempt {
         lock.withLock {
-            val request = generateContentRequest(TextPart(PROMPT + text)) {
+            val request = generateContentRequest(TextPart(prompt)) {
                 temperature = 0f
                 topK = 1
                 candidateCount = 1
@@ -79,19 +85,36 @@ class MlKitPageRecipeExtractor @Inject constructor() : PageRecipeExtractor {
     private companion object {
         /** The Prompt API takes under 4,000 tokens: this much page text, beside the prompt. */
         const val WINDOW_TOKENS = 3_000
-        const val MAX_OUTPUT_TOKENS = 1_024
+
+        /**
+         * The most the Prompt API takes (`GenerateContentRequest` rejects more than 4,096 in
+         * genai-prompt 1.0.0-beta4); 1,024 cut off a 20-ingredient recipe in the #105 evaluation.
+         */
+        const val MAX_OUTPUT_TOKENS = 4_096
 
         /** The recipe languages it is offered for: those Google lists for Gemini Nano's text features. */
         val LANGUAGES = setOf("en", "de", "es", "fr", "it", "ja")
 
-        val PROMPT = """
+        /** The recipe, all but its steps, which [STEPS_PROMPT] asks for (#128). */
+        val RECIPE_PROMPT = """
             You pick a recipe out of a web page's text. Copy every value exactly as it is written on
             the page, character for character: never write, fix, translate, shorten or summarise.
             Reply with one JSON object and nothing else:
-            {"name": string, "ingredients": [string], "steps": [string], "yield": string or null,
+            {"name": string, "ingredients": [string], "yield": string or null,
             "prepTime": string or null, "cookTime": string or null, "totalTime": string or null}
-            One ingredient line per item, one step per item, in page order. If the page holds no
-            recipe, reply {}.
+            One ingredient line per item, in page order. If the page holds no recipe, reply {}.
+
+            Page text:
+
+        """.trimIndent() + "\n"
+
+        private const val NAME = "{name}"
+
+        val STEPS_PROMPT = """
+            You pick the steps of the recipe "$NAME" out of a web page's text. Copy each step exactly
+            as it is written on the page, character for character: never write, fix, translate,
+            shorten or summarise. Reply with one JSON object and nothing else: {"steps": [string]}
+            One step per item, in page order. If the page holds no steps for it, reply {}.
 
             Page text:
 

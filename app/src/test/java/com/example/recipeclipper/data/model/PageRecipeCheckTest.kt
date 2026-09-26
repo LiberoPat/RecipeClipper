@@ -73,4 +73,86 @@ class PageRecipeCheckTest {
         assertNull(PageRecipeCheck.verify(page, picked.copy(name = "Banana Loaf")))
         assertNull(PageRecipeCheck.verify(page, picked.copy(ingredients = listOf("2 eggs"))))
     }
+
+    // --- One recipe's lines only (#128) ---
+
+    /** Delish's card as the #105 evaluation's window read it (trimmed), then another recipe's card. */
+    private val delish = """
+        Creamy Tuscan Chicken
+        Download the Delish app for free!
+        Ingredients
+        1 Tbsp. extra-virgin olive oil
+        4 (6- to 8-oz.) boneless, skinless chicken breasts
+        Kosher salt
+        3 Tbsp. unsalted butter
+        1 1/2 cups cherry tomatoes, halved
+        3 cups baby spinach
+        1/2 cup heavy cream
+        Directions
+        Step 1In a large skillet over medium heat, heat oil.
+        Step 2Stir in cream and Parmesan and bring to a simmer.
+        LIKE THIS RECIPE? THEN YOU'LL LOVE:
+        Creamy Tuscan Orzo
+        35 mins
+        Ingredients
+        1 cup orzo
+        2 cups low-sodium chicken broth
+        1/2 cup heavy cream
+        Directions
+        Step 1Bring the broth to a boil and stir in the orzo.
+    """.trimIndent()
+
+    private val tuscan = listOf(
+        "1 Tbsp. extra-virgin olive oil", "4 (6- to 8-oz.) boneless, skinless chicken breasts", "Kosher salt",
+        "3 Tbsp. unsalted butter", "1 1/2 cups cherry tomatoes, halved", "3 cups baby spinach", "1/2 cup heavy cream"
+    )
+    private val tuscanSteps = listOf(
+        "Step 1In a large skillet over medium heat, heat oil.", "Step 2Stir in cream and Parmesan and bring to a simmer."
+    )
+
+    @Test fun `every line of the recipe's own card is kept`() {
+        val kept = PageRecipeCheck.verify(delish, PageSelection("Creamy Tuscan Chicken", tuscan, tuscanSteps))!!
+        assertEquals(tuscan, kept.ingredients)
+        assertEquals(tuscanSteps, kept.steps)
+    }
+
+    @Test fun `lines found only in another recipe's card are dropped`() {
+        val picked = PageSelection(
+            "Creamy Tuscan Chicken",
+            tuscan.take(3) + "1 cup orzo" + tuscan.drop(3) + "2 cups low-sodium chicken broth",
+            tuscanSteps + "Step 1Bring the broth to a boil and stir in the orzo."
+        )
+        val kept = PageRecipeCheck.verify(delish, picked)!!
+        assertEquals(tuscan, kept.ingredients)
+        assertEquals(tuscanSteps, kept.steps)
+    }
+
+    @Test fun `the recipe is the card holding most of the picked lines`() {
+        val orzo = PageSelection(
+            "Creamy Tuscan Orzo", listOf("1 cup orzo", "2 cups low-sodium chicken broth", "1/2 cup heavy cream", "Kosher salt"),
+            listOf("Step 1Bring the broth to a boil and stir in the orzo.")
+        )
+        val kept = PageRecipeCheck.verify(delish, orzo)!!
+        assertEquals(listOf("1 cup orzo", "2 cups low-sodium chicken broth", "1/2 cup heavy cream"), kept.ingredients)
+        assertEquals(orzo.steps, kept.steps)
+    }
+
+    @Test fun `a second ingredients heading before the steps is the same recipe`() {
+        val cake = """
+            Lemon Cake
+            Ingredients
+            2 cups flour
+            1 cup sugar
+            Ingredients for the glaze
+            1 cup powdered sugar
+            Instructions
+            Mix the flour and sugar.
+            Whisk the powdered sugar with lemon juice.
+        """.trimIndent()
+        val picked = PageSelection(
+            "Lemon Cake", listOf("2 cups flour", "1 cup sugar", "1 cup powdered sugar"),
+            listOf("Mix the flour and sugar.", "Whisk the powdered sugar with lemon juice.")
+        )
+        assertEquals(picked, PageRecipeCheck.verify(cake, picked))
+    }
 }

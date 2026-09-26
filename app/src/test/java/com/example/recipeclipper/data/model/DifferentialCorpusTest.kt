@@ -41,6 +41,9 @@ import java.io.File
  * for what the model picked, or nil; write only the kind (name, ingredient, step, other), the
  * page text and the pick.
  *
+ * `Verify("page", "name", [ingredients], [steps])` rows (#128) pin [PageRecipeCheck.verify]: the
+ * ingredients and steps it keeps, one recipe's only (nil, nil: no recipe); write only those four.
+ *
  * `Wprm("markup", [lines])` rows (#118) pin [WprmIngredients.refine]: JSON-LD's lines refined by
  * a WP Recipe Maker card's markup; write only the markup (single-quoted attributes) and the lines.
  * `Heads("markup", [lines])` rows (#119) pin [CardHeadings.refine] the same way, for a Tasty Recipes
@@ -76,6 +79,9 @@ class DifferentialCorpusTest {
     private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A page-pick row (#103): the kind, the page's text, what the model picked from it.
     private val pickRow = Regex("""^(\s*)Pick\(\.(name|ingredient|step|other), "((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"""")
+    // A whole-pick row (#128): the page's text, then the picked name, ingredients and steps.
+    private val verifyRow =
+        Regex("""^(\s*)Verify\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     // A count-bracket row (#104): an ingredient line, optionally its language.
     private val countRow = Regex("""^(\s*)Count\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A close-names row (#104): two ingredient names, optionally their language.
@@ -140,6 +146,14 @@ class DifferentialCorpusTest {
             val split = GroceryDecisions.split(text, LanguageWords.forTag(language)!!)
             val (core, trailing) = split?.let { q(it.core) to q(it.trailing) } ?: ("nil" to "nil")
             return m.groupValues[1] + "Trail(${q(text)}$lang, $core, $trailing),"
+        }
+        verifyRow.find(line)?.let { v ->
+            val (page, name) = unescape(v.groupValues[2]) to unescape(v.groupValues[3])
+            val (ingredients, steps) = listOf(v.groupValues[4], v.groupValues[5])
+                .map { g -> literal.findAll(g).map { unescape(it.groupValues[1]) }.toList() }
+            val kept = PageRecipeCheck.verify(page, PageSelection(name, ingredients, steps))
+            val result = kept?.let { "${list(it.ingredients)}, ${list(it.steps)}" } ?: "nil, nil"
+            return v.groupValues[1] + "Verify(${q(page)}, ${q(name)}, ${list(ingredients)}, ${list(steps)}, $result),"
         }
         pickRow.find(line)?.let { p ->
             val (kind, page, picked) = Triple(p.groupValues[2], unescape(p.groupValues[3]), unescape(p.groupValues[4]))

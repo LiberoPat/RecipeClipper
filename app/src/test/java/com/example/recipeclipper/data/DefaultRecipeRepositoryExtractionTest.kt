@@ -71,6 +71,24 @@ class DefaultRecipeRepositoryExtractionTest {
         assertTrue(model.asked.single().contains("Ingredients\n3 very ripe bananas, mashed"))
     }
 
+    @Test fun `it asks in two parts, the ingredients and then the named recipe's steps`() = runTest {
+        val recipe = (import() as ParseResult.Success).recipe
+        assertEquals(1, model.asked.size)
+        assertEquals(listOf("Grandma's Banana Bread"), model.askedSteps)
+        assertEquals(picks.steps, recipe.instructions)
+    }
+
+    @Test fun `no name asks nothing more, and steps it can't answer are no recipe, never half of one`() = runTest {
+        model.picks = picks.copy(name = null)
+        assertEquals(ParseResult.Error(ParseError.NoRecipeFound), import())
+        assertTrue(model.askedSteps.isEmpty())
+        model.picks = picks
+        model.answersSteps = false
+        assertEquals(ParseResult.Error(ParseError.NoRecipeFound), import())
+        assertEquals(1, model.askedSteps.size)
+        assertTrue(dao.rows.isEmpty())
+    }
+
     @Test fun `lines the model made up are dropped, the rest kept`() = runTest {
         model.picks = picks.copy(
             ingredients = picks.ingredients + "2 cups chocolate chips" + "4 very ripe bananas, mashed",
