@@ -51,15 +51,20 @@ final class GroceriesViewModel {
     @ObservationIgnored private var removedItems: DeletedGroceries?
     @ObservationIgnored private var removals = 0
     @ObservationIgnored private var offers = 0
+    // The model's aisles for what the keyword table puts in Other (#104), and the items asked about.
+    @ObservationIgnored private let decisions: DecisionRepository?
+    @ObservationIgnored private var askedAisles = Set<Int64>()
 
     init(
         repository: GroceryRepository, pantry: PantryRepository, calendar: PlanCalendar,
+        decisions: DecisionRepository? = nil,
         phoneLanguage: @escaping () -> String? = { Locale.current.language.languageCode?.identifier }
     ) {
         self.repository = repository
         self.pantry = pantry
         self.calendar = calendar
         self.phoneLanguage = phoneLanguage
+        self.decisions = decisions
         pantrySubscription = pantry.observeItems()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in self?.pantryItems = $0 }
@@ -73,7 +78,31 @@ final class GroceriesViewModel {
                    !moving.items.allSatisfy({ i in items.contains { $0.id == i.id } }) {
                     self.uiState.moving = nil
                 }
+                self.askAisles(items)
             }
+    }
+
+    /// Asks the model the aisle of each item in Other whose name the keyword table doesn't know
+    /// (#104), in the background. Only an answer that lands now files the items, and only those
+    /// still in Other: an item in Other whose aisle was already decided was put there by the user.
+    private func askAisles(_ items: [GroceryItem]) {
+        guard let decisions else { return }
+        var byQuestion: [DecisionQuestion: [Int64]] = [:]
+        for item in items where item.aisle == .other && !item.checked && askedAisles.insert(item.id).inserted {
+            if let q = DecisionCandidates.aisle(item.text, language: item.language) { byQuestion[q, default: []].append(item.id) }
+        }
+        if byQuestion.isEmpty { return }
+        Task {
+            let before = await decisions.current()
+            let open = byQuestion.filter { !before.isAnswered($0.key) }
+            if open.isEmpty { return }
+            await decisions.decide(Array(open.keys))
+            let after = await decisions.current()
+            for (question, ids) in open {
+                guard let aisle = after.aisle(question.input, language: question.language) else { continue }
+                await repository.fileFromOther(ids, aisle: aisle)
+            }
+        }
     }
 
     func onDraftChange(_ text: String) { uiState.draft = text }
@@ -221,11 +250,17 @@ final class AddToGroceriesViewModel {
     @ObservationIgnored private let repository: GroceryRepository
     @ObservationIgnored private let preferences: AppPreferences
     @ObservationIgnored private let pantry: PantryRepository
+    @ObservationIgnored private let decisions: DecisionRepository?
 
-    init(repository: GroceryRepository, preferences: AppPreferences, pantry: PantryRepository) {
+    /// `decisions`: the model's answers (#104); none without it.
+    init(
+        repository: GroceryRepository, preferences: AppPreferences, pantry: PantryRepository,
+        decisions: DecisionRepository? = nil
+    ) {
         self.repository = repository
         self.preferences = preferences
         self.pantry = pantry
+        self.decisions = decisions
     }
 
     /// One recipe, its `rendered` lines exactly as the reading view shows them.
@@ -241,11 +276,21 @@ final class AddToGroceriesViewModel {
     private func untickCovered(_ sources: [GrocerySource]) async {
         let items = await pantry.items()
         guard !Task.isCancelled, !items.isEmpty, uiState.sources == sources else { return }
+        // Answers already cached count now (#104); new questions are asked for next time, so
+        // ticks never change under the cook while the sheet is open.
+        let decided = await decisions?.current() ?? .none
+        var questions: [DecisionQuestion] = []
         for source in sources {
-            for (index, line) in source.lines.enumerated() where PantryMatch.covered(line, language: source.language, pantry: items) {
+            for (index, line) in source.lines.enumerated()
+            where PantryMatch.covered(line, language: source.language, pantry: items, decisions: decided) {
                 uiState.unticked.insert(SourceLine(source: source.key, index: index))
             }
+            if let words = LanguageWords.forTag(source.language) {
+                let names = source.lines.compactMap { IngredientName.of($0, words: words) }
+                questions += DecisionCandidates.samePairs(names, language: source.language, pantry: items)
+            }
         }
+        if let decisions, !questions.isEmpty { Task { await decisions.decide(questions) } }
     }
 
     /// Every recipe planned from `start` for seven days, at its planned servings, in the
@@ -259,7 +304,10 @@ final class AddToGroceriesViewModel {
             let planned = await repository.plannedIngredients(start: start, end: start + 6)
             guard !Task.isCancelled else { return }
             let settings = preferences.current
-            let sources = GrocerySources.fromPlan(planned, system: settings.unitSystem, convertLiquids: settings.convertLiquids)
+            let decided = await self.decisions?.current() ?? .none
+            let sources = GrocerySources.fromPlan(
+                planned, system: settings.unitSystem, convertLiquids: settings.convertLiquids, decisions: decided
+            )
             uiState.sources = sources
             await untickCovered(sources)
         }

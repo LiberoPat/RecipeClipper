@@ -25,6 +25,8 @@ final class AppContainer {
     let featureFlags: FeatureFlags
     /// Chef mode's short steps (#100); nil (tests) leaves Chef mode unsupported.
     let shortStepRepository: ShortStepRepository?
+    /// The on-device model's typed decisions (#104); nil (tests) keeps today's rules.
+    let decisionRepository: DecisionRepository?
     /// The one-time unlock (#107): StoreKit in the live app, none in tests.
     let entitlements: Entitlements
     /// Which library limit applies (#107), mirrored for the repositories and the extension.
@@ -56,6 +58,7 @@ final class AppContainer {
         featureFlags: FeatureFlags? = nil,
         notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true),
         shortStepRepository: ShortStepRepository? = nil,
+        decisionRepository: DecisionRepository? = nil,
         entitlements: Entitlements? = nil,
         libraryMirror: DefaultsLibraryLimit? = nil
     ) {
@@ -78,6 +81,7 @@ final class AppContainer {
         // Unless given a store, overrides last only for this run (unit tests).
         self.featureFlags = featureFlags ?? FeatureFlags(store: MemoryFeatureFlagStore())
         self.shortStepRepository = shortStepRepository
+        self.decisionRepository = decisionRepository
         self.entitlements = entitlements ?? UnavailableEntitlements()
         libraryPolicy = LibraryPolicy(flags: self.featureFlags, entitlements: self.entitlements, mirror: libraryMirror)
     }
@@ -123,6 +127,10 @@ final class AppContainer {
         let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
         let storeKit = testing ? nil : StoreKitEntitlements()
         let featureFlags = testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore())
+        let decisions = DefaultDecisionRepository(
+            db: database, model: FoundationModelsDecisionModel(), clock: clock,
+            isOn: { featureFlags?.isOn(.aiDecisions) ?? false }
+        )
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
                 db: database, source: BlogRecipeSource(), clock: clock,
@@ -132,7 +140,7 @@ final class AppContainer {
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
-            groceryRepository: DefaultGroceryRepository(db: database, clock: clock),
+            groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock, library: libraryLimit),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
@@ -147,6 +155,7 @@ final class AppContainer {
             shortStepRepository: DefaultShortStepRepository(
                 db: database, shortener: FoundationModelsStepShortener(), clock: clock
             ),
+            decisionRepository: decisions,
             entitlements: storeKit,
             libraryMirror: libraryLimit
         )
@@ -171,7 +180,8 @@ final class AppContainer {
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
             openInCookMode: openInCookMode, plannedServings: plannedServings,
-            shortSteps: shortStepRepository, flags: featureFlags, entitlements: entitlements
+            shortSteps: shortStepRepository, flags: featureFlags, entitlements: entitlements,
+            decisions: decisionRepository
         )
     }
 
@@ -184,11 +194,15 @@ final class AppContainer {
     }
 
     func makeGroceriesViewModel() -> GroceriesViewModel {
-        GroceriesViewModel(repository: groceryRepository, pantry: pantryRepository, calendar: planCalendar)
+        GroceriesViewModel(
+            repository: groceryRepository, pantry: pantryRepository, calendar: planCalendar, decisions: decisionRepository
+        )
     }
 
     func makeAddToGroceriesViewModel() -> AddToGroceriesViewModel {
-        AddToGroceriesViewModel(repository: groceryRepository, preferences: preferences, pantry: pantryRepository)
+        AddToGroceriesViewModel(
+            repository: groceryRepository, preferences: preferences, pantry: pantryRepository, decisions: decisionRepository
+        )
     }
 
     func makePantryViewModel() -> PantryViewModel {
@@ -197,7 +211,8 @@ final class AppContainer {
 
     func makeWhatINeedViewModel(weekStart: Int64) -> WhatINeedViewModel {
         WhatINeedViewModel(
-            weekStart: weekStart, groceries: groceryRepository, pantry: pantryRepository, preferences: preferences
+            weekStart: weekStart, groceries: groceryRepository, pantry: pantryRepository, preferences: preferences,
+            decisions: decisionRepository
         )
     }
 

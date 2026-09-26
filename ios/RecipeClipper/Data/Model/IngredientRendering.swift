@@ -7,13 +7,16 @@ import Foundation
 /// `words` are the recipe's language's (#14); nil leaves every line as written.
 enum IngredientRendering {
 
+    /// `decisions`: the model's definite answers about count brackets (#104); `.none` is as before.
     static func render(
-        _ lines: [String], factor: Double, system: UnitSystem, convertLiquids: Bool, words: LanguageWords? = .english
+        _ lines: [String], factor: Double, system: UnitSystem, convertLiquids: Bool, words: LanguageWords? = .english,
+        decisions: Decisions = .none
     ) -> [String] {
         lines.map {
-            UnitConverter.convert(
-                IngredientScaler.scale($0, factor: factor, words: words), system: system, includeLiquids: convertLiquids,
-                separatorFrom: $0, words: words
+            let bracket = decisions.countBracket($0, language: words?.language)
+            return UnitConverter.convert(
+                IngredientScaler.scale($0, factor: factor, words: words, bracket: bracket), system: system,
+                includeLiquids: convertLiquids, separatorFrom: $0, words: words
             )
         }
     }

@@ -146,6 +146,7 @@ final class AppDatabase: @unchecked Sendable {
         addPantry,
         addMenus,
         addShortSteps,
+        addAiDecisions,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -376,6 +377,24 @@ final class AppDatabase: @unchecked Sendable {
             );
             CREATE UNIQUE INDEX index_short_steps_uid ON short_steps (uid);
             CREATE UNIQUE INDEX index_short_steps_recipeId_stepHash_language ON short_steps (recipeId, stepHash, language);
+            """)
+    }
+
+    /// Version 12 (Android's Room version 13, `MIGRATION_12_13`): the on-device model's typed
+    /// decisions (#104), one row per question (kind, normalised input, language). Never exported.
+    private static func addAiDecisions(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE ai_decisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                kind TEXT NOT NULL,
+                input TEXT NOT NULL,
+                language TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX index_ai_decisions_uid ON ai_decisions (uid);
+            CREATE UNIQUE INDEX index_ai_decisions_kind_input_language ON ai_decisions (kind, input, language);
             """)
     }
 

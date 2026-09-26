@@ -326,7 +326,10 @@ enum GrocerySources {
 
     /// The week's planned recipes, each rendered as the reading view would show it at its
     /// planned servings. A recipe with no usable yield, or no planned servings, shows as written.
-    static func fromPlan(_ planned: [PlannedIngredients], system: UnitSystem, convertLiquids: Bool) -> [GrocerySource] {
+    /// `decisions`: count brackets already decided (#104), as the reading view applies them.
+    static func fromPlan(
+        _ planned: [PlannedIngredients], system: UnitSystem, convertLiquids: Bool, decisions: Decisions = .none
+    ) -> [GrocerySource] {
         planned.compactMap { p in
             let tag = p.language ?? LanguageWords.resolve(declared: nil, page: nil) {
                 LanguageWords.detectionText(name: p.title, ingredients: p.ingredients)
@@ -335,7 +338,8 @@ enum GrocerySources {
             let base = Servings.parse(p.yield, words: words)
             let factor = (base != nil && p.servings != nil) ? Double(p.servings!) / Double(base!) : 1.0
             let lines = IngredientRendering.render(
-                p.ingredients, factor: factor, system: system, convertLiquids: convertLiquids, words: words
+                p.ingredients, factor: factor, system: system, convertLiquids: convertLiquids, words: words,
+                decisions: decisions
             ).filter(buyable)
             if lines.isEmpty { return nil }
             return GrocerySource(

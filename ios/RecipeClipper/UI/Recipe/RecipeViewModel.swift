@@ -54,6 +54,11 @@ final class RecipeViewModel {
     /// The loaded recipe's short steps as saved, before rendering; empty while Chef mode is off.
     @ObservationIgnored private var rawShortSteps: [String?] = []
 
+    // The model's decided count brackets (#104); `.none` (today's rendering) until one lands.
+    @ObservationIgnored private let decisionRepository: DecisionRepository?
+    @ObservationIgnored private var decisions = Decisions.none
+    @ObservationIgnored private var decisionSubscription: AnyCancellable?
+
     init(
         recipeId: Int64?,
         url: String?,
@@ -68,9 +73,11 @@ final class RecipeViewModel {
         plannedServings: Int? = nil,
         shortSteps: ShortStepRepository? = nil,
         flags: FeatureFlags? = nil,
-        entitlements: Entitlements = UnavailableEntitlements()
+        entitlements: Entitlements = UnavailableEntitlements(),
+        decisions: DecisionRepository? = nil
     ) {
         self.shortSteps = shortSteps
+        self.decisionRepository = decisions
         self.flags = flags
         self.entitlements = entitlements
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
@@ -94,6 +101,13 @@ final class RecipeViewModel {
             amountsInSteps: settings.amountsInSteps
         )
         chefOn = (flags?.isOn(.chefMode) ?? false) && settings.chefMode
+        decisionSubscription = decisions?.observe()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] answers in
+                guard let self, answers != self.decisions else { return }
+                self.decisions = answers
+                self.rerender()
+            }
         // Settings can change a default while this screen is alive underneath it; this keeps
         // the open recipe in step instead of showing the units it was opened with (#24).
         settingsSubscription = preferences.settings
@@ -161,6 +175,7 @@ final class RecipeViewModel {
                 uiState.notes = recipe.notes ?? ""
                 restoreCook(recipe)
                 startChef()
+                askCountBrackets()
                 if openInCookMode {
                     openInCookMode = false
                     onCookStart()
@@ -310,6 +325,7 @@ final class RecipeViewModel {
                 uiState.asWrittenSteps = []
                 restoreCook(fresh)
                 startChef()
+                askCountBrackets()
             case .error(let error):
                 uiState.updateError = error
             case .notKept: break // an update never adds a recipe
@@ -399,6 +415,14 @@ final class RecipeViewModel {
         applyStepAmounts(&content)
         uiState.content = .success(content)
         applyShortSteps()
+    }
+
+    /// Asks the model about the loaded recipe's count brackets (#104), in the background: lines
+    /// show as today until an answer lands. Only a recipe with a servings stepper can scale.
+    private func askCountBrackets() {
+        guard let decisionRepository, let content = uiState.content.success, content.servings != nil else { return }
+        let questions = DecisionCandidates.countBrackets(content.recipe.ingredients, words: content.words)
+        if !questions.isEmpty { Task { await decisionRepository.decide(questions) } }
     }
 
     // MARK: Chef mode (#100): short steps written on the device
@@ -662,7 +686,10 @@ final class RecipeViewModel {
         _ recipe: Recipe, _ words: LanguageWords?, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool
     ) -> [String] {
         let factor = servings.map { Double($0.target) / Double($0.base) } ?? 1.0
-        return IngredientRendering.render(recipe.ingredients, factor: factor, system: system, convertLiquids: convertLiquids, words: words)
+        return IngredientRendering.render(
+            recipe.ingredients, factor: factor, system: system, convertLiquids: convertLiquids, words: words,
+            decisions: decisions
+        )
     }
 
     // Instructions aren't scaled, but oven temperatures follow the chosen temperature unit —

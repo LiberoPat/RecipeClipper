@@ -136,10 +136,19 @@ enum PantryMatch {
 
     /// The pantry item tracking `name` in `language`, or nil: a matching staple first, else one
     /// in stock, else one that's out.
-    static func find(_ name: String, language: String?, pantry: [PantryItem]) -> PantryItem? {
+    /// Only when no name matches, a staple or in-stock item the model said is the same (#104,
+    /// `decisions`) counts: its "same" can only turn Buy into Have, never the other way.
+    static func find(_ name: String, language: String?, pantry: [PantryItem], decisions: Decisions = .none) -> PantryItem? {
         guard let words = LanguageWords.forTag(language) else { return nil }
-        let matching = pantry.filter { $0.language == words.language && IngredientName.matches(name, $0.name, words: words) }
-        return matching.first { $0.alwaysHave } ?? matching.first { $0.inStock } ?? matching.first
+        let sameLanguage = pantry.filter { $0.language == words.language }
+        let matching = sameLanguage.filter { IngredientName.matches(name, $0.name, words: words) }
+        if !matching.isEmpty {
+            return matching.first { $0.alwaysHave } ?? matching.first { $0.inStock } ?? matching.first
+        }
+        let same = sameLanguage.filter {
+            ($0.alwaysHave || $0.inStock) && decisions.sameIngredient(name, $0.name, language: words.language)
+        }
+        return same.first { $0.alwaysHave } ?? same.first
     }
 
     static func status(_ item: PantryItem?) -> NeedStatus {
@@ -149,15 +158,15 @@ enum PantryMatch {
     }
 
     /// True when `line` needn't be bought: its ingredient is in stock, or a staple.
-    static func covered(_ line: String, language: String?, pantry: [PantryItem]) -> Bool {
+    static func covered(_ line: String, language: String?, pantry: [PantryItem], decisions: Decisions = .none) -> Bool {
         guard let words = LanguageWords.forTag(language), let name = IngredientName.of(line, words: words) else { return false }
-        return status(find(name, language: words.language, pantry: pantry)) != .buy
+        return status(find(name, language: words.language, pantry: pantry, decisions: decisions)) != .buy
     }
 
     /// The week's "What I need": every planned recipe's lines (`sources`, already rendered),
     /// grouped by ingredient in the order first met, split into Buy and Have. Staples are with
     /// Have, never Buy.
-    static func weekNeeds(_ sources: [GrocerySource], pantry: [PantryItem]) -> WeekNeeds {
+    static func weekNeeds(_ sources: [GrocerySource], pantry: [PantryItem], decisions: Decisions = .none) -> WeekNeeds {
         var keys: [String] = []
         var groups: [String: [NeedLine]] = [:]
         var names: [String: String] = [:]
@@ -182,7 +191,7 @@ enum PantryMatch {
         let rows = keys.map { key -> NeedRow in
             let lines = groups[key]!
             let name = names[key]
-            let item = name.flatMap { find($0, language: lines[0].language, pantry: pantry) }
+            let item = name.flatMap { find($0, language: lines[0].language, pantry: pantry, decisions: decisions) }
             return NeedRow(name: name, lines: lines, status: status(item), pantryName: item?.name)
         }
         return WeekNeeds(buy: rows.filter { $0.status == .buy }, have: rows.filter { $0.status != .buy })

@@ -31,6 +31,26 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertEqual(text, "300 g flour")
     }
 
+    func testAnItemInOtherIsFiledWhereTheModelDecidedOnceAndAUsersMoveStands() async {
+        await add("2 tbsp furikake", "1 jar gochugaru flakes", "2 onions")
+        let decisions = FakeDecisionRepository([.aisle("furikake", language: "en"): "spices"])
+        let vm = GroceriesViewModel(
+            repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), decisions: decisions
+        )
+        await settleMain()
+        await settleMain()
+        let aisles = Dictionary(uniqueKeysWithValues: repository.items.value.map { ($0.text, $0.aisle) })
+        XCTAssertEqual(aisles["2 tbsp furikake"], .spices)
+        XCTAssertEqual(aisles["1 jar gochugaru flakes"], .other)
+        XCTAssertFalse(decisions.asked.contains { $0.input == "onions" })
+
+        let id = repository.items.value.first { $0.text == "2 tbsp furikake" }!.id
+        await repository.setAisle([id], aisle: .other)
+        await settleMain()
+        XCTAssertEqual(repository.items.value.first { $0.id == id }?.aisle, .other)
+        XCTAssertEqual(vm.uiState.sections?.filter { $0.aisle == .other }.count, 1)
+    }
+
     func testATypedItemGoesOnTheListInThePhonesLanguage() async {
         let vm = await viewModel(language: "de")
         vm.onDraftChange("  Milch ")

@@ -38,6 +38,14 @@ final class FakeGroceryRepository: GroceryRepository {
         }
     }
 
+    func fileFromOther(_ ids: [Int64], aisle: Aisle) async {
+        items.value = items.value.map { item in
+            var i = item
+            if ids.contains(i.id) && i.aisle == .other { i.aisle = aisle }
+            return i
+        }
+    }
+
     func setAisle(_ ids: [Int64], aisle: Aisle) async {
         items.value = items.value.map { item in
             var i = item
