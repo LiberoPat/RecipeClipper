@@ -28,16 +28,20 @@ object IngredientScaler {
         '⅜' to 3 / 8.0, '⅝' to 5 / 8.0, '⅞' to 7 / 8.0
     )
 
-    // "1 1/2", "2 and 1/2", "1 and ½", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that
-    // order. The "and" is the language's (amounts.json "mixedJoiners"). A fraction's slash may
-    // be the typographic U+2044 ("1⁄2", as BBC Good Food writes it), a symbol rather than a
-    // word, so it stays here. A comma followed by one or two digits is a decimal comma; one
-    // followed by three ("1,500") may be a thousands separator, so it is never read as part
-    // of a quantity, and AMBIGUOUS_COMMA leaves the line. Where the language writes thousands
+    // "1-1/2", "1 1/2", "2 and 1/2", "1 and ½", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in
+    // that order. A whole number, a dash and a fraction with no spaces ("1-1/2", "2–½", as Taste
+    // of Home writes them) are a mixed number, never a range down to the fraction (#125), and
+    // [parse] reads only a proper fraction there. Not after a slash or a decimal, so "1/2-3/4"
+    // and "0.17-1/3" stay ranges. The "and" is the language's (amounts.json "mixedJoiners").
+    // A fraction's slash may be the typographic U+2044 ("1⁄2", as BBC Good Food writes it), a
+    // symbol rather than a word, so it stays here. A comma followed by one or two digits is a
+    // decimal comma; one followed by three ("1,500") may be a thousands separator, so it is
+    // never read as part of a quantity, and AMBIGUOUS_COMMA leaves the line. Where the language writes thousands
     // with a dot (amounts.json "thousandsDot"), "1.500" is 1500 (#76): only a dot before
     // exactly three digits, so "1.5" and "0.25" stay decimals.
     private fun qtyPattern(joiner: String, thousandsDot: Boolean) =
-        """(?:\d+\s+(?:$joiner\s+)?\d+[/⁄]\d+|\d+\s+$joiner\s+[$UNICODE_FRACTIONS]|\d+\s*[$UNICODE_FRACTIONS]|""" +
+        """(?:(?<![\d.,])(?<!\d[/⁄])\d+[-–—](?:\d+[/⁄]\d+|[$UNICODE_FRACTIONS])|""" +
+            """\d+\s+(?:$joiner\s+)?\d+[/⁄]\d+|\d+\s+$joiner\s+[$UNICODE_FRACTIONS]|\d+\s*[$UNICODE_FRACTIONS]|""" +
             """\d+[/⁄]\d+|""" + (if (thousandsDot) """\d{1,3}\.\d{3}(?![\d.,])|""" else "") +
             """\d+(?:\.\d+|,\d{1,2}(?!\d))?|[$UNICODE_FRACTIONS])"""
 
@@ -486,12 +490,17 @@ object IngredientScaler {
     // has already checked: "2 and 1/2" is "2 1/2" in any language.
     private val JOINER = Regex("""\s+\p{L}[\p{L}\s]*?\s+(?=[\d$UNICODE_FRACTIONS])""")
 
+    // "1-1/2" is "1 1/2", the one dash the quantity pattern lets through (#125).
+    private val MIXED_DASH = Regex("""(?<=\d)[-–—]""")
+
     /** [thousandsDot]: the quantity comes from a language that writes "1.500" for 1500. */
     internal fun parse(quantity: String, thousandsDot: Boolean = false): Double? {
         // The quantity pattern only lets a comma through as a decimal comma, never before three digits.
         // "2 and 1/2" is "2 1/2", and "1⁄2" (U+2044) is "1/2".
         val digits = if (thousandsDot) THOUSANDS_DOT.replace(quantity.trim(), "") else quantity.trim()
-        val q = digits.replace(',', '.').replace('⁄', '/').replace(JOINER, " ")
+        val written = digits.replace(',', '.').replace('⁄', '/').replace(JOINER, " ")
+        val dashed = MIXED_DASH.containsMatchIn(written)
+        val q = MIXED_DASH.replace(written, " ")
         val last = q.last()
         UNICODE_VALUES[last]?.let { fraction ->
             val whole = q.dropLast(1).trim()
@@ -501,7 +510,8 @@ object IngredientScaler {
         for (part in q.split(Regex("""\s+"""))) {
             total += if ('/' in part) {
                 val (n, d) = part.split('/').map { it.toDoubleOrNull() ?: return null }
-                if (d == 0.0) return null
+                // "1-3/2" is neither a mixed number nor a range anyone writes.
+                if (d == 0.0 || (dashed && n >= d)) return null
                 n / d
             } else {
                 part.toDoubleOrNull() ?: return null

@@ -37,6 +37,35 @@ final class IngredientScalerTests: XCTestCase {
         XCTAssertEqual("2-4 tbsp oil", scale("1-2 tbsp oil", 2.0))
         XCTAssertEqual("2–4 tbsp oil", scale("1–2 tbsp oil", 2.0))
         XCTAssertEqual("2 to 4 tbsp oil", scale("1 to 2 tbsp oil", 2.0))
+        XCTAssertEqual("4-6 tbsp oil", scale("2-3 tbsp oil", 2.0))
+        XCTAssertEqual("1-1 1/2 cup milk", scale("1/2-3/4 cup milk", 2.0))
+        XCTAssertEqual("1-2 cup milk", scale("½-1 cup milk", 2.0))
+        XCTAssertEqual("2 - 4 cups water", scale("1 - 2 cups water", 2.0))
+        XCTAssertEqual("2-3 cups water", scale("1-1 1/2 cups water", 2.0))
+    }
+
+    // Taste of Home writes "1-1/2 cups": a whole number, a dash and a proper fraction, with no
+    // spaces, are a mixed number, never a range running down to the fraction (#125).
+    func testAHyphenatedMixedNumberIsOneAmountNotARange() {
+        XCTAssertEqual("3 cups sugar", scale("1-1/2 cups sugar", 2.0))
+        XCTAssertEqual("3 1/2 cups all-purpose flour", scale("1-3/4 cups all-purpose flour", 2.0))
+        XCTAssertEqual("3 cups sugar", scale("1–1/2 cups sugar", 2.0))
+        XCTAssertEqual("5 tsp salt", scale("2-½ tsp salt", 2.0))
+        XCTAssertEqual("3 to 4 cups milk", scale("1-1/2 to 2 cups milk", 2.0))
+        XCTAssertEqual("3-4 cups milk", scale("1-1/2-2 cups milk", 2.0))
+        // Not a proper fraction: neither a mixed number nor a range anyone writes, so as written.
+        XCTAssertEqual("1-3/2 cups sugar", scale("1-3/2 cups sugar", 2.0))
+    }
+
+    func testEveryReaderOfTheLeadingAmountTakesAHyphenatedMixedNumberWhole() {
+        XCTAssertEqual("300 g sugar", UnitConverter.convert("1-1/2 cups sugar", system: .metric, includeLiquids: false))
+        XCTAssertEqual("2 cups sugar", GroceryCombiner.combine(["1-1/2 cups sugar", "1/2 cup sugar"], words: .english))
+        XCTAssertEqual("all purpose flour", IngredientName.of("1-3/4 cups all-purpose flour"))
+        XCTAssertEqual(
+            "Stir in ⟦1-1/2 cups⟧ sugar.",
+            StepAmounts.marked(StepAmounts.annotate(["Stir in the sugar."], lines: ["1-1/2 cups sugar"], words: .english)[0])
+        )
+        XCTAssertEqual(5400, StepTimers.parse("Bake for 1-1/2 hours."))
     }
 
     func testOnlyTheLeadingQuantityIsScaled() {
