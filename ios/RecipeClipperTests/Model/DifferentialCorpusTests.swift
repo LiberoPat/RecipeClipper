@@ -28,6 +28,8 @@ import XCTest
 // Count-bracket rows (#104): a line, whether it asks the model (needsCountDecision), then the
 // line doubled when unsure, total and each. Write only `Count("4 Apfel (ca. 800g)", lang: "de"),`.
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
+// Trailing-text rows (#99): a grocery line, then GroceryDecisions.split's core and trailing text,
+// or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
 // Chef mode rows (#100): a step, a short version of it, then ShortStepCheck.accept (nil: the
@@ -86,6 +88,13 @@ final class DifferentialCorpusTests: XCTestCase {
         let a: String; let b: String; let words: LanguageWords; let close: Bool
         init(_ a: String, _ b: String, lang: String = "en", _ close: Bool) {
             self.a = a; self.b = b; self.words = LanguageWords.forTag(lang)!; self.close = close
+        }
+    }
+
+    private struct Trail {
+        let line: String; let words: LanguageWords; let core: String?; let trailing: String?
+        init(_ line: String, lang: String = "en", _ core: String?, _ trailing: String?) {
+            self.line = line; self.words = LanguageWords.forTag(lang)!; self.core = core; self.trailing = trailing
         }
     }
 
@@ -1267,6 +1276,21 @@ final class DifferentialCorpusTests: XCTestCase {
         Close("バター", "無塩バター", lang: "ja", false),
     ]
 
+    private static let trails: [Trail] = [
+        Trail("2 eggs (dfsafs -", "2 eggs", "(dfsafs -"),
+        Trail("2 ears of corn, shucked", "2 ears of corn", ", shucked"),
+        Trail("2 onions -- sdf", "2 onions", "-- sdf"),
+        Trail("200 g butter; softened", "200 g butter", "; softened"),
+        Trail("2 eggs (about 100 g)", nil, nil),
+        Trail("1 (14 oz) can tomatoes", nil, nil),
+        Trail("3 eggs", nil, nil),
+        Trail("salt, to taste", "salt", ", to taste"),
+        Trail("sun-dried tomatoes, chopped", "sun-dried tomatoes", ", chopped"),
+        Trail("2 œufs, battus", lang: "fr", "2 œufs", ", battus"),
+        Trail("3 Eier (dfsafs", lang: "de", "3 Eier", "(dfsafs"),
+        Trail("卵 2個（溶く）", lang: "ja", nil, nil),
+    ]
+
     private static let steps: [Step] = [
         Step("Add the carrots and cook 5 minutes.", ["2 carrots, peeled and diced", "1 onion, chopped"], "Add ⟦2⟧ carrots and cook 5 minutes.", "Add ⟦4⟧ carrots and cook 5 minutes."),
         Step("Stir in the flour.", ["1 cup all-purpose flour"], "Stir in ⟦1 cup⟧ flour.", "Stir in ⟦240 g⟧ flour."),
@@ -1477,6 +1501,14 @@ final class DifferentialCorpusTests: XCTestCase {
     func testCloseNamesMatchKotlin() {
         for row in Self.closes {
             XCTAssertEqual(DecisionCandidates.close(row.a, row.b, words: row.words), row.close, "\(row.a) / \(row.b)")
+        }
+    }
+
+    func testTrailingTextMatchesKotlin() {
+        for row in Self.trails {
+            let split = GroceryDecisions.split(row.line, words: row.words)
+            XCTAssertEqual(split?.core, row.core, row.line)
+            XCTAssertEqual(split?.trailing, row.trailing, row.line)
         }
     }
 
