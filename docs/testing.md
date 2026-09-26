@@ -345,6 +345,33 @@ or the calls will fail as "not mocked".
   (#22). Until then Unlock answers "Couldn't reach the store", and the
   override is the way to test the unlocked library.
 
+## "I made this" photos (#116)
+
+- **Turning it on:** Developer settings → `cookedPhotos`.
+- **Automated:**
+  - Android, against real SQLite and real files: `CookedPhotoDaoTest` (order, edits, cull and
+    free-tier protection, cascade with Undo, the sweep) and `CookedPhotoBackupTest` (the zip
+    round trip past a full history, and a plain JSON export).
+  - Android, JVM: `BackupArchiveTest` (the shared `backup-v1-photos.zip`, path checks),
+    `CookedPhotosViewModelTest`, the Recently cooked sort in `RecipesViewModelTest`, and
+    `RecipeCookedPhotosScreenTest` (Robolectric). `MigrationTest.migration13To14…` on the
+    device.
+  - iOS: `CookedPhotoTests` (real SQLite, ImageIO downscaling, the zip round trip),
+    `BackupArchiveTests` and `CookedPhotosViewModelTests`, and one UI test,
+    `CookedPhotosUITests` (the section behind its flag, camera or library; the camera, or
+    the no-camera alert, opens and closes without adding a photo). The simulator's virtual
+    camera never captures, so no iOS UI test reaches the full-screen viewer.
+- **By hand, on a phone:**
+  - Take a photo in portrait and landscape; it should stay upright in the gallery and full
+    screen.
+  - Pick several photos from the library, including a HEIC on iOS.
+  - On iOS, in the full-screen viewer: write a note, change the date, close and reopen (both
+    kept), then Delete and Undo.
+  - Share one: the photo arrives with the recipe name.
+  - Export with photos (a `.zip`), then import it on the other platform.
+  - On Android, the first camera use asks nothing (the app declares no `CAMERA`). On iOS it
+    asks once, in the phone's language.
+
 ## iOS share extension: end to end and memory
 
 The extension's logic is unit-tested (`RecipeClipperTests/Share`). What
@@ -525,7 +552,9 @@ What goes is an include list: `app/src/main/res/xml/data_extraction_rules.xml`
 (API 23–30, Auto Backup). Both name `recipe_clipper.db`, `-wal`, `-shm` and
 `unit_preferences.xml`, so recipes, lists, ticked ingredients and settings
 travel, and nothing else does. Coil's image cache is in `cacheDir`, which is
-never backed up; photos refill from the network.
+never backed up; photos refill from the network. The user's own "I made this"
+photos (`filesDir/cooked_photos`, #116) stay out too: their rows come back
+without the files and say "Photo not on this phone" (docs/decisions.md).
 
 Proven on an API 37 emulator (September 2026) with the local transport. The
 app was seeded through its UI (a shared recipe, two ingredients ticked, the

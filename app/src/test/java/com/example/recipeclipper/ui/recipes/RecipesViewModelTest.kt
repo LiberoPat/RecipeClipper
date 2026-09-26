@@ -218,6 +218,50 @@ class RecipesViewModelTest {
             assertEquals(listOf(3L, 2L, 1L), vm.uiState.value.recipes?.map { it.id })
         }
 
+    @Test fun `recently cooked puts cooked recipes first, latest cook first, only with its flag (#116)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            repository.history.value = listOf(
+                summary(3), summary(2).copy(lastCookedDay = 10), summary(1).copy(lastCookedDay = 12)
+            )
+            val flags = com.example.recipeclipper.data.flags.FeatureFlags(
+                com.example.recipeclipper.fake.FakeFeatureFlagStore(mapOf("cookedPhotos" to true)),
+                com.example.recipeclipper.data.flags.FlagRegistry.definitions, isDebug = false
+            )
+            val preferences = FakeAppPreferences(recipeSort = RecipeSort.RECENTLY_COOKED)
+            val on = RecipesViewModel(repository, preferences, flags = flags)
+            val off = RecipesViewModel(repository, preferences)
+            collectEagerly(on.uiState)
+            collectEagerly(off.uiState)
+            advanceUntilIdle()
+
+            assertEquals(listOf(1L, 2L, 3L), on.uiState.value.recipes?.map { it.id })
+            // With the flag off a stored Recently cooked reads as the default.
+            assertEquals(RecipeSort.RECENTLY_VIEWED, off.uiState.value.sort)
+            assertEquals(listOf(3L, 2L, 1L), off.uiState.value.recipes?.map { it.id })
+        }
+
+    @Test fun `a swiped delete forgets its photos only once it stands (#116)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            val deleted = RecipeRepository.DeletedRecipe(entity(1, "Cake"), emptyList())
+            repository.deleteResults[1L] = deleted
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
+            collectEagerly(vm.uiState)
+
+            vm.onDelete(summary(1, "Cake"))
+            advanceUntilIdle()
+            vm.onUndoDelete()
+            advanceUntilIdle()
+            assertTrue(repository.forgetCalls.isEmpty())
+
+            vm.onDelete(summary(1, "Cake"))
+            advanceUntilIdle()
+            vm.onSnackbarDismissed()
+            advanceUntilIdle()
+            assertEquals(listOf(deleted), repository.forgetCalls)
+        }
+
     @Test fun `paste a link opens only a real link, and closes the dialog`() =
         runTest(mainDispatcherRule.dispatcher) {
             val vm = RecipesViewModel(FakeRecipeRepository(), FakeAppPreferences())

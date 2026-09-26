@@ -484,4 +484,25 @@
         <item quantity="one">%1$d older recipe in no list wasn\'t added: the free app keeps %2$d recipes.</item>
         <item quantity="other">%1$d older recipes in no list weren\'t added: the free app keeps %2$d recipes.</item>
     </plurals>
+    <!-- "I made this" (#116) -->
+    <string name="sort_recently_cooked">Recently cooked</string>
+    <string name="heading_your_cooks">Your cooks</string>
+    <string name="cooked_empty">Made it? Keep a photo and a short note.</string>
+    <string name="action_i_made_this">I made this</string>
+    <string name="action_add_photo">Add a photo</string>
+    <string name="action_take_photo">Take a photo</string>
+    <string name="action_choose_photos">Choose from library</string>
+    <string name="cd_cooked_photo">Your photo, %1$s</string>
+    <string name="cooked_note_placeholder">Add a short note</string>
+    <string name="cd_change_cooked_date">Change the date, %1$s</string>
+    <string name="cd_share_photo">Share photo</string>
+    <string name="cd_delete_photo">Delete photo</string>
+    <string name="cd_close_photo">Close</string>
+    <string name="cooked_photo_deleted">Photo deleted</string>
+    <string name="cooked_add_failed">That photo couldn\'t be added.</string>
+    <string name="camera_unavailable">No camera app is available.</string>
+    <string name="cooked_photo_missing">Photo not on this phone</string>
+    <string name="delete_recipe_body_photo">This removes it from history and any lists it\'s in, with your photo of it. This can\'t be undone.</string>
+    <!-- Two or more (one has its own string): every shipped language says "N photos" alike. -->
+    <string name="delete_recipe_body_photos" tools:ignore="PluralsCandidate">This removes it from history and any lists it\'s in, with your %1$d photos of it. This can\'t be undone.</string>
 </resources>
