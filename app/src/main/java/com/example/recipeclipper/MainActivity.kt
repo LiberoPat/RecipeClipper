@@ -27,8 +27,10 @@ import com.example.recipeclipper.ui.tour.LocalTips
 import com.example.recipeclipper.ui.tour.TipsHost
 import com.example.recipeclipper.ui.tour.TipsViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -81,16 +83,19 @@ class MainActivity : ComponentActivity() {
                 // tab bar on, the NavHost sits inside a Scaffold, which composes it later than
                 // this effect may start.
                 navController.currentBackStackEntryFlow.first()
-                // Decided before any intent's route opens, so the library it counts is the one
-                // this launch found.
-                if (!welcomeChecked) {
-                    welcomeChecked = true
-                    if (firstRunTour.onLaunch(plainLaunch)) navController.navigate(Routes.welcome(again = false))
-                }
-                for (route in intentRoutes) {
-                    // Into the Recipes tab, whichever tab is open (a tab's own route opens that tab).
-                    navController.openRoute(route, tabsEnabled)
-                    shareHandled = true
+                // Decided once per start (#151), before any intent's route opens, so the library
+                // it counts is the one this launch found.
+                val showWelcome = !welcomeChecked && firstRunTour.onLaunch(plainLaunch)
+                welcomeChecked = true
+                // Back on the main thread, which navigation needs, whichever thread the database
+                // answered on: an effect's dispatcher isn't always the main one (tests).
+                withContext(Dispatchers.Main.immediate) {
+                    if (showWelcome) navController.navigate(Routes.welcome(again = false))
+                    for (route in intentRoutes) {
+                        // Into the Recipes tab, whichever tab is open (a tab's own route opens that tab).
+                        navController.openRoute(route, tabsEnabled)
+                        shareHandled = true
+                    }
                 }
             }
             val tipsState by tips.uiState.collectAsStateWithLifecycle()

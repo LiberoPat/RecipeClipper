@@ -39,13 +39,15 @@ class MainActivitySmokeTest {
         scenario?.close()
     }
 
-    // A fresh install: no tour state (#151), whatever an earlier test left.
+    // A new user whose welcome is still to come (#151), whatever an earlier test or run left
+    // in the settings or the library.
     @Before
-    fun forgetTheTour() {
-        context.getSharedPreferences("unit_preferences", Context.MODE_PRIVATE).edit().clear().commit()
+    fun welcomePending() {
+        context.getSharedPreferences("unit_preferences", Context.MODE_PRIVATE).edit()
+            .clear().putString("tour_welcome", "PENDING").commit()
     }
 
-    /** A fresh install's first plain launch opens the welcome (#151); Skip leaves it for Home. */
+    /** A new user's plain launch opens the welcome (#151); Skip leaves it for Home. */
     @Test
     fun theLauncherOpensTheWelcomeThenHome() {
         scenario = ActivityScenario.launch(MainActivity::class.java)
