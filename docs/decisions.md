@@ -1887,9 +1887,13 @@ Part of #99: the model writes words, code owns every number.
   export file, and it cascades with its recipe. A recipe the free tier didn't keep (#107) has no
   row to cache against, so it shows as written; Unlock keeps it and its short steps follow.
 - **Settings → Steps → "Chef mode"** (a switch; the section only with the `chefMode` flag, off in
-  both builds). Where the phone can't, the switch is disabled with one line saying why (can't,
-  Apple Intelligence off, model not ready); where it can, a line names the recipe languages it
-  writes. A recipe in another language keeps its steps as written, silently. Android offers
+  both builds). Where the phone can't, the switch is disabled with one line saying why (an
+  unsupported phone, Apple Intelligence off, model not ready); where it can, a line names the
+  recipe languages it writes. The unsupported line names what the phone lacks (#144: "can't
+  write short steps" read like a bug on a Galaxy S23): Google's on-device AI with examples
+  (Pixel 9 or newer, Galaxy S25 or newer), or Apple Intelligence (iPhone 15 Pro or newer, iOS
+  26 or later); Apple Intelligence off says where to turn it on (the iPhone's Settings).
+  A recipe in another language keeps its steps as written, silently. Android offers
   Chef mode while the model is still downloadable: the first recipe starts the download and
   shows its steps as written meanwhile.
 - **On screen:** while short steps are written, the steps show as written (no spinner). In the

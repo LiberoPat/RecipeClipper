@@ -393,7 +393,7 @@
     <string name="chef_mode_title">Modo chef</string>
     <string name="chef_mode_description">Passos curtos, escritos neste celular. Toque em um para vê-lo como na receita.</string>
     <string name="chef_mode_languages">Para receitas em %1$s.</string>
-    <string name="chef_mode_unsupported">Este celular não consegue escrever passos curtos.</string>
+    <string name="chef_mode_unsupported">Requer um celular com a IA no dispositivo do Google, como um Pixel 9 ou mais recente ou um Galaxy S25 ou mais recente.</string>
     <string name="chef_mode_not_ready">O modelo do celular ainda não está pronto. Tente mais tarde.</string>
     <string name="step_show_as_written">Como na receita</string>
     <string name="step_show_short">Versão curta</string>

@@ -393,7 +393,7 @@
     <string name="chef_mode_title">Modalità chef</string>
     <string name="chef_mode_description">Passaggi brevi, scritti su questo telefono. Toccane uno per vederlo come nella ricetta.</string>
     <string name="chef_mode_languages">Per ricette in %1$s.</string>
-    <string name="chef_mode_unsupported">Questo telefono non può scrivere passaggi brevi.</string>
+    <string name="chef_mode_unsupported">Richiede un telefono con l\'IA sul dispositivo di Google, come un Pixel 9 o successivo o un Galaxy S25 o successivo.</string>
     <string name="chef_mode_not_ready">Il modello del telefono non è ancora pronto. Riprova più tardi.</string>
     <string name="step_show_as_written">Come nella ricetta</string>
     <string name="step_show_short">Versione breve</string>
