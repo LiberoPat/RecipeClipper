@@ -25,3 +25,5 @@ https://pinchofyum.com/the-best-soft-chocolate-chip-cookies
 https://www.onceuponachef.com/recipes/banana-bread.html
 https://www.skinnytaste.com/air-fryer-chicken-breast/
 https://www.recipetineats.com/greek-zucchini-tots/  # WP Recipe Maker ingredient parts and groups (#118)
+https://pinchofyum.com/blackout-chocolate-cake  # Tasty Recipes ingredient headings (#119)
+https://tidymom.net/apple-pie-bars/  # Mediavine Create ingredient headings (#119)

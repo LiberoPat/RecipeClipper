@@ -36,6 +36,16 @@ class GroceryCombinerTest {
         assertEquals("2/3 cup sugar", combine("1/3 cup sugar", "1/3 cup sugar"))
     }
 
+    @Test fun oldStyleAbbreviationsAddUpWithTheWordsTheyStandFor() {
+        // #135: "c." is a cup, "T" a tablespoon and "t" a teaspoon, so Delish's lines add to others.
+        assertEquals("2 c. heavy cream", combine("1 c. heavy cream", "1 cup heavy cream"))
+        assertEquals("2 cups heavy cream", combine("1/2 c. heavy cream", "1 1/2 cups heavy cream"))
+        assertEquals("2 T. butter", combine("1 T. butter", "1 tbsp butter"))
+        assertEquals("1 1/3 T. salt", combine("1 t. salt", "1 T. salt"))
+        // "180 C" is a temperature, not 180 cups.
+        assertNull(combine("180 C water", "1 cup water"))
+    }
+
     @Test fun imperialWeightsAddUp() {
         assertEquals("1 1/2 lb ground beef", combine("1 lb ground beef", "8 oz ground beef"))
     }

@@ -1,5 +1,7 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.remote.CardIngredients.Group
+import com.example.recipeclipper.data.remote.CardIngredients.Item
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.TextNode
 
@@ -21,21 +23,11 @@ import org.jsoup.nodes.TextNode
  */
 internal object WprmIngredients {
 
-    private class Group(val name: String, val items: List<Item>)
-    private class Item(val name: String, val line: String)
-
     /** [lines], refined by the first WPRM ingredient list in [page] that lines up with them. */
     fun refine(page: Element, lines: List<String>): List<String> {
         for (container in page.select(".wprm-recipe-ingredients-container")) {
             val groups = read(container) ?: continue
-            val items = groups.flatMap { it.items }
-            if (items.size != lines.size || items.isEmpty()) continue
-            val linesUp = items.indices.all { normalize(lines[it]).contains(normalize(items[it].name)) }
-            if (!linesUp) continue
-            return groups.flatMap { g ->
-                val heading = g.name.removeSuffix(":").trim()
-                (if (heading.isEmpty()) emptyList() else listOf("$heading:")) + g.items.map { it.line }
-            }
+            return CardIngredients.lineUp(groups, lines, ::normalize) ?: continue
         }
         return lines
     }
@@ -69,11 +61,8 @@ internal object WprmIngredients {
         else -> " $notes"
     }
 
-    private fun text(e: Element): String = collapse(e.text())
+    private fun text(e: Element): String = CardIngredients.text(e)
 
-    private fun normalize(s: String): String = collapse(s.lowercase())
-
-    /** Runs of whitespace (a no-break space too) as one space, trimmed, as the iOS port splits them. */
-    private fun collapse(s: String): String = String(CharArray(s.length) { if (s[it].isWhitespace()) ' ' else s[it] })
-        .split(' ').filter { it.isNotEmpty() }.joinToString(" ")
+    /** The name is found in its JSON-LD line with case and spacing ignored. */
+    private fun normalize(s: String): String = CardIngredients.collapse(s.lowercase())
 }

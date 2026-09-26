@@ -14,6 +14,14 @@ final class IngredientNameTests: XCTestCase {
         XCTAssertEqual(IngredientName.of("2 medium onions, finely chopped"), "onions")
     }
 
+    // drops an old-style unit, c, T or t
+    func testDropsAnOldStyleUnitCTOrT() {
+        XCTAssertEqual(IngredientName.of("1/2 c. heavy cream"), "heavy cream")
+        XCTAssertEqual(IngredientName.of("2 C flour"), "flour")
+        XCTAssertEqual(IngredientName.of("2 T. butter"), "butter")
+        XCTAssertEqual(IngredientName.of("1 t salt"), "salt")
+    }
+
     // drops alternate measures, package sizes and compound amounts
     func testDropsAlternateMeasuresPackageSizesAndCompoundAmounts() {
         XCTAssertEqual(IngredientName.of("1 1/2 cups (190 g) all-purpose flour"), "all purpose flour")

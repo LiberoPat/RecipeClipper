@@ -32,9 +32,15 @@
     },
     {
       "key": "aiDecisions",
-      "description": "Typed decisions by the on-device model where the rules give up: whether a count's bracket is the total or each item's (scaling), whether a close pantry name is the same ingredient (Have/Buy), and the aisle of an item the keyword table puts in Other. Only a definite answer given twice with high confidence acts; unsupported phones and languages behave as before.",
+      "description": "Typed decisions by the on-device model where the rules give up: whether a close pantry name is the same ingredient (Have/Buy), and the aisle of an item the keyword table puts in Other. Only a definite answer given twice with high confidence acts; unsupported phones and languages behave as before. Count brackets stay as written unless aiCountBrackets is on too.",
       "defaults": { "debug": false, "release": false },
       "issue": 104
+    },
+    {
+      "key": "aiCountBrackets",
+      "description": "With aiDecisions on, also asks the model whether a count's bracket is the total or each item's, and scales the line by its answer. Off, those lines scale as without the model. Kept to re-measure: the #105 evaluation found it confidently wrong on 4 of 22.",
+      "defaults": { "debug": false, "release": false },
+      "issue": 127
     },
     {
       "key": "cookedPhotos",

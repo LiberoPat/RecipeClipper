@@ -88,6 +88,61 @@ class GroceriesViewModelTest {
         }
 
     @Test
+    fun `junk with no separator is hidden once the model names the ingredient, and the stored line is kept`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            add("2 onions dfsafs", "3 onions")
+            val name = DecisionQuestion.ingredientName("2 onions dfsafs", "en")
+            val junk = DecisionQuestion.trailingText("dfsafs", "en")
+            val decisions = FakeDecisionRepository(mapOf(name to "onions", junk to "junk"))
+            val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), decisions)
+            advanceUntilIdle()
+
+            assertEquals(listOf(name, junk), decisions.asked.filter { it == name || it == junk })
+            val row = vm.rows().single() as GroceryCombiner.Row.Combined
+            assertEquals("5 onions", row.text)
+            assertEquals(listOf("2 onions", "3 onions"), GroceryCombiner.lines(row))
+            assertEquals("Groceries\n\nproduce\n- 5 onions", vm.shareText("Groceries") { it.key })
+            assertTrue(repository.items.value.any { it.text == "2 onions dfsafs" })
+        }
+
+    @Test
+    fun `a lone line's trailing text is asked about, hidden when junk and shown when a note`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            add("2 eggs (dfsafs -", "1 cup milk, warmed")
+            val junk = DecisionQuestion.trailingText("(dfsafs -", "en")
+            val note = DecisionQuestion.trailingText(", warmed", "en")
+            val decisions = FakeDecisionRepository(mapOf(junk to "junk", note to "note"))
+            val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), decisions)
+            advanceUntilIdle()
+
+            assertEquals(1, decisions.asked.count { it == junk })
+            assertTrue(note in decisions.asked)
+            val shown = vm.rows().map { (it as GroceryCombiner.Row.Single).item.text }
+            assertEquals(setOf("2 eggs", "1 cup milk, warmed"), shown.toSet())
+            assertTrue(repository.items.value.any { it.text == "2 eggs (dfsafs -" })
+        }
+
+    @Test
+    fun `a lone line with no answer shows exactly as today`() = runTest(mainDispatcherRule.dispatcher) {
+        add("2 eggs (dfsafs -", "1 cup milk, warmed")
+        val decisions = FakeDecisionRepository()
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), decisions)
+        advanceUntilIdle()
+        assertTrue(DecisionQuestion.trailingText("(dfsafs -", "en") in decisions.asked)
+        assertEquals(GroceryCombiner.sections(repository.items.value), vm.uiState.value.sections)
+    }
+
+    @Test
+    fun `with no name answered the junk line shows exactly as today`() = runTest(mainDispatcherRule.dispatcher) {
+        add("2 onions dfsafs", "3 onions")
+        val decisions = FakeDecisionRepository() // the flag off, an unsupported phone or no answer
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), decisions)
+        advanceUntilIdle()
+        assertEquals(GroceryCombiner.sections(repository.items.value), vm.uiState.value.sections)
+        assertTrue(vm.rows().any { r -> r.items.any { it.text == "2 onions dfsafs" } })
+    }
+
+    @Test
     fun `without answers the grocery list is exactly as today`() = runTest(mainDispatcherRule.dispatcher) {
         add("2 ears of corn", "2 corn", "2 eggs, beaten", "3 eggs")
         val decisions = FakeDecisionRepository()

@@ -13,8 +13,8 @@ import Foundation
 /// `WprmIngredients`, pinned to it by the differential corpus.
 enum WprmIngredients {
 
-    private struct Item { let name: String; let line: String }
-    private struct Group { let name: String; let items: [Item] }
+    private typealias Item = CardIngredients.Item
+    private typealias Group = CardIngredients.Group
 
     /// `lines`, refined by the first WPRM ingredient list in `html` that lines up with them.
     static func refine(html: String, lines: [String]) -> [String] {
@@ -22,17 +22,9 @@ enum WprmIngredients {
         let tree = HtmlTree(html)
         let containers = tree.elements.indices.filter { tree.elements[$0].hasClass("wprm-recipe-ingredients-container") }
         for container in containers {
-            guard let groups = read(tree, container) else { continue }
-            let items = groups.flatMap(\.items)
-            if items.isEmpty || items.count != lines.count { continue }
-            let linesUp = items.indices.allSatisfy { normalize(lines[$0]).contains(normalize(items[$0].name)) }
-            if !linesUp { continue }
-            return groups.flatMap { g -> [String] in
-                var heading = g.name
-                if heading.hasSuffix(":") { heading.removeLast() }
-                heading = heading.kTrimmed
-                return (heading.isEmpty ? [] : [heading + ":"]) + g.items.map(\.line)
-            }
+            guard let groups = read(tree, container),
+                  let refined = CardIngredients.lineUp(groups, lines, normalize: normalize) else { continue }
+            return refined
         }
         return lines
     }
@@ -69,7 +61,7 @@ enum WprmIngredients {
         let name = part("name")
         if name.isEmpty { return nil }
         let line = [part("amount"), part("unit"), name].filter { !$0.isEmpty }.joined(separator: " ")
-        return Item(name: name, line: line + noteSuffix(tree, li, part("notes")))
+        return Item(key: name, line: line + noteSuffix(tree, li, part("notes")))
     }
 
     /// The notes as the card shows them after the name: a comma when the page puts one there.
@@ -83,15 +75,13 @@ enum WprmIngredients {
         return (commaBetween ? ", " : " ") + notes
     }
 
-    /// Elements inside `index` (itself included, as Jsoup's `select` does) that match, in document order.
     private static func within(_ tree: HtmlTree, _ index: Int, _ match: (HtmlTree.Element) -> Bool) -> [Int] {
-        ([index] + Array(tree.descendants(of: index))).filter { match(tree.elements[$0]) }
+        CardIngredients.within(tree, index, match)
     }
 
-    private static func text(_ tree: HtmlTree, _ index: Int) -> String {
-        tree.text(of: index).split(whereSeparator: \.isWhitespace).joined(separator: " ")
-    }
+    private static func text(_ tree: HtmlTree, _ index: Int) -> String { CardIngredients.text(tree, index) }
 
+    /// The name is found in its JSON-LD line with case and spacing ignored.
     private static func normalize(_ s: String) -> String {
         s.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }

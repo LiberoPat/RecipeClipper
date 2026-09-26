@@ -57,6 +57,9 @@ class TemperatureConverterTest {
 
     @Test fun `a bare letter with a plausible temperature converts`() {
         assertEquals("Bake at 180°C", celsius("Bake at 350 F"))
+        assertEquals("Bake at 350°F", fahrenheit("Bake at 180 C"))
+        // A cup written "c." (#135) is never a temperature.
+        assertEquals("Stir in 1/2 c. heavy cream", fahrenheit("Stir in 1/2 c. heavy cream"))
     }
 
     @Test fun `things that are not temperatures are left alone`() {

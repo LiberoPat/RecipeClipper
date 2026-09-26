@@ -16,8 +16,10 @@ enum Flag: String, CaseIterable {
     case freeTier
     /// A recipe picked from the page's text by the on-device model when the page has no recipe data (#103).
     case llmExtraction
-    /// Typed decisions by the on-device model: count brackets, close pantry names, aisles (#104).
+    /// Typed decisions by the on-device model: close pantry names, aisles (#104).
     case aiDecisions
+    /// With `aiDecisions`, the count-bracket decision too (#104); off since #127, kept to re-measure.
+    case aiCountBrackets
     /// "I made this" (#116): your photos and notes on a recipe, and the Recently cooked sort.
     case cookedPhotos
 }

@@ -234,6 +234,43 @@ final class UnitConverterTests: XCTestCase {
         XCTAssertEqual("1 lb. butter", ounces("1 lb. butter"))
     }
 
+    // --- Old-style abbreviations (#135): "c." is a cup, "T" a tablespoon, "t" a teaspoon ---
+
+    func testCIsACupInEitherCaseWithOrWithoutItsPeriod() {
+        // Delish writes cups this way.
+        XCTAssertEqual("120 ml heavy cream", metric("1/2 c. heavy cream"))
+        XCTAssertEqual("360 ml cherry tomatoes", metric("1 1/2 c. cherry tomatoes"))
+        XCTAssertEqual("1 1/2 c. cherry tomatoes", ounces("1 1/2 c. cherry tomatoes")) // not in the table
+        XCTAssertEqual("120 g flour", metric("1 c. flour"))
+        XCTAssertEqual("240 g flour", metric("2 C flour"))
+        XCTAssertEqual("240 g flour", metric("2 C. flour"))
+        XCTAssertEqual("240 g flour", metric("2 c flour"))
+        XCTAssertEqual("4 1/4 oz flour", ounces("1 c. flour"))
+    }
+
+    func testCapitalTIsATablespoonAndSmallTATeaspoon() {
+        XCTAssertEqual("25 g sugar", metric("2 T. sugar"))
+        XCTAssertEqual("25 g sugar", metric("2 T sugar"))
+        XCTAssertEqual("8.5 g sugar", metric("2 t. sugar"))
+        XCTAssertEqual("8.5 g sugar", metric("2 t sugar"))
+        XCTAssertEqual("28 g butter", metric("2 T. butter"))
+        XCTAssertEqual("6 g baking soda", metric("1 t. baking soda"))
+        XCTAssertEqual("15 ml salt", metric("1 T salt"))
+        XCTAssertEqual("5 ml salt", metric("1 t salt"))
+        XCTAssertEqual("45 ml olive oil", metric("3 Tbs olive oil"))
+    }
+
+    func testALetterThatIsNotAUnitStaysAsWritten() {
+        // "180 C" is a temperature, never 180 cups; "180°C" never reads as a cup at all.
+        XCTAssertEqual("180 C water", metric("180 C water"))
+        XCTAssertEqual("180 C. water", ounces("180 C. water", liquids: true))
+        XCTAssertEqual("180°C oil", metric("180°C oil"))
+        // Part of a word, not a unit.
+        XCTAssertEqual("2 T-bone steaks", metric("2 T-bone steaks"))
+        XCTAssertEqual("2 Tomatoes", metric("2 Tomatoes"))
+        XCTAssertEqual("1 cantaloupe", metric("1 cantaloupe"))
+    }
+
     // --- Compound amounts: "1 cup plus 2 tbsp" ---
 
     func testACompoundAmountUsesTheSitesFigureForTheWholeAmount() {

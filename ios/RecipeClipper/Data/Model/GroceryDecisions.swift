@@ -36,10 +36,74 @@ enum GroceryDecisions {
         return s
     }
 
+    /// The name question for a line with no separator whose name has words the aisle table
+    /// doesn't match after ones it does ("2 onions dfsafs"), or nil (see the Kotlin).
+    static func nameQuestion(_ line: String, words: LanguageWords) -> DecisionQuestion? {
+        if !words.spaced || IngredientScaler.patterns(words).amountAfterName || split(line, words: words) != nil { return nil }
+        guard let name = IngredientName.of(line, words: words) else { return nil }
+        let parts = name.components(separatedBy: " ")
+        guard parts.count >= 2, Aisles.ofName(name, words: words) == .other else { return nil }
+        let known = (1..<parts.count).contains { Aisles.ofName(parts.prefix($0).joined(separator: " "), words: words) != .other }
+        return known ? .ingredientName(line, language: words.language) : nil
+    }
+
+    /// The line cut after the model's `name` for it, or nil: the name must be in the line as whole
+    /// words (`PageRecipeCheck.find`), the line up to it must read as an ingredient line whose
+    /// name ends with it, and what is left must be two characters or more with no digit.
+    static func nameSplit(_ line: String, name: String, words: LanguageWords) -> Split? {
+        if !words.spaced || IngredientScaler.patterns(words).amountAfterName { return nil }
+        guard let found = PageRecipeCheck.find(line, name, kind: .name) else { return nil }
+        let ns = line as NSString, u = Array(line.utf16), length = (found as NSString).length
+        var at = ns.range(of: found, options: .literal).location
+        while at != NSNotFound {
+            let end = at + length
+            let clean = (at == 0 || !PageRecipeCheck.isLetterOrDigit(u[at - 1]))
+                && (end == u.count || !PageRecipeCheck.isLetterOrDigit(u[end]))
+            if clean {
+                let core = trimEnd(line.u16Substring(0, end))
+                let trailing = line.u16Substring(from: end).kTrimmed
+                guard let coreName = IngredientName.of(core, words: words),
+                      coreName.hasSuffix(DecisionQuestion.normalize(found)) else { return nil }
+                if trailing.utf16.count < 2 || trailing.unicodeScalars.contains(where: { CharacterSet.decimalDigits.contains($0) }) {
+                    return nil
+                }
+                return Split(core: core, trailing: trailing)
+            }
+            at = ns.range(of: found, options: .literal, range: NSRange(location: at + 1, length: u.count - at - 1)).location
+        }
+        return nil
+    }
+
+    /// `split`, else, for a line with no separator, the cut after the model's name for it.
+    static func split(_ line: String, words: LanguageWords, decisions: Decisions) -> Split? {
+        if let split = split(line, words: words) { return split }
+        return decisions.ingredientName(line, language: words.language).flatMap { nameSplit(line, name: $0, words: words) }
+    }
+
     /// The text the combiner reads `item` as: its core once its trailing text is a note or junk.
     static func effectiveText(_ item: GroceryItem, decisions: Decisions) -> String {
-        guard let words = LanguageWords.forTag(item.language), let split = split(item.text, words: words) else { return item.text }
+        guard let words = LanguageWords.forTag(item.language),
+              let split = split(item.text, words: words, decisions: decisions) else { return item.text }
         return decisions.ignorableTrailing(split.trailing, language: words.language) ? split.core : item.text
+    }
+
+    /// The text Groceries shows for `item`: its core once its trailing text is definitely junk,
+    /// else as written (a note still shows). Display only: the stored line is never rewritten.
+    static func shownText(_ item: GroceryItem, decisions: Decisions) -> String {
+        guard let words = LanguageWords.forTag(item.language),
+              let split = split(item.text, words: words, decisions: decisions) else { return item.text }
+        return decisions.junkTrailing(split.trailing, language: words.language) ? split.core : item.text
+    }
+
+    /// The name questions worth asking (`nameQuestion`) for `items`.
+    static func ingredientNames(_ items: [GroceryItem]) -> [DecisionQuestion] {
+        var out: [DecisionQuestion] = []
+        for item in items {
+            if let words = LanguageWords.forTag(item.language), let q = nameQuestion(item.text, words: words), !out.contains(q) {
+                out.append(q)
+            }
+        }
+        return out
     }
 
     /// `item`'s name as the combiner groups it, or nil.
@@ -66,19 +130,15 @@ enum GroceryDecisions {
         return out
     }
 
-    /// Trailing text on a line whose core names what another line names, where they don't add up as written.
+    /// The trailing-text questions for every line with trailing text (the owner's option 2): cut
+    /// at a separator (`split`) or after the model's name for it (`nameSplit`), once per text.
     static func trailingTexts(_ items: [GroceryItem], decisions: Decisions) -> [DecisionQuestion] {
         var out: [DecisionQuestion] = []
         for item in items {
-            guard let words = LanguageWords.forTag(item.language), let split = split(item.text, words: words),
-                  let core = IngredientName.of(split.core, words: words) else { continue }
-            let partner = items.contains { other in
-                other.id != item.id && other.language == item.language && aislesMeet(item, other)
-                    && (IngredientName.of(other.text, words: words) == core || name(other, decisions: decisions) == core)
-                    && GroceryCombiner.combine([item.text, other.text], words: words) == nil
-            }
+            guard let words = LanguageWords.forTag(item.language),
+                  let split = split(item.text, words: words, decisions: decisions) else { continue }
             let q = DecisionQuestion.trailingText(split.trailing, language: words.language)
-            if partner && !out.contains(q) { out.append(q) }
+            if !out.contains(q) { out.append(q) }
         }
         return out
     }
@@ -88,7 +148,7 @@ enum GroceryDecisions {
         var moves: [(Int64, Aisle)] = []
         for item in items where item.aisle == .other {
             guard let words = LanguageWords.forTag(item.language) else { continue }
-            if let split = split(item.text, words: words),
+            if let split = split(item.text, words: words, decisions: decisions),
                fresh.contains(.trailingText(split.trailing, language: words.language)),
                decisions.ignorableTrailing(split.trailing, language: words.language) {
                 let aisle = Aisles.of(split.core, words: words)

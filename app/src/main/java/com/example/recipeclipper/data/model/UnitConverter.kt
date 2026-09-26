@@ -143,7 +143,7 @@ object UnitConverter {
         val words = p.words
         val lead = p.scaler.leading.find(line) ?: return Side.Failed
         val afterQty = line.substring(lead.range.last + 1)
-        if (p.scaler.notAnAmount.containsMatchIn(afterQty)) return Side.Failed
+        if (p.scaler.notAnAmount.containsMatchIn(afterQty) || p.scaler.temperature(lead, afterQty)) return Side.Failed
 
         val low = p.scaler.parse(lead.groupValues[2]) ?: return Side.Failed
         val upperText = lead.groupValues[4]

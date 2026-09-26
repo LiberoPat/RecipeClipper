@@ -137,7 +137,8 @@ final class AppContainer {
             : FilePhotoStore(databasePath: AppDatabase.defaultPath())
         let decisions = DefaultDecisionRepository(
             db: database, model: FoundationModelsDecisionModel(), clock: clock,
-            isOn: { featureFlags?.isOn(.aiDecisions) ?? false }
+            isOn: { featureFlags?.isOn(.aiDecisions) ?? false },
+            countBracketsOn: { featureFlags?.isOn(.aiCountBrackets) ?? false }
         )
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(

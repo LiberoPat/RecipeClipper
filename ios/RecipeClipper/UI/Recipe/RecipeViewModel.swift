@@ -419,8 +419,10 @@ final class RecipeViewModel {
     }
 
     /// Asks the model about the loaded recipe's count brackets (#104), in the background: lines
-    /// show as today until an answer lands. Only a recipe with a servings stepper can scale.
+    /// show as today until an answer lands. Only a recipe with a servings stepper can scale, and
+    /// only with `aiCountBrackets` on (#127).
     private func askCountBrackets() {
+        guard flags?.isOn(.aiCountBrackets) == true else { return }
         guard let decisionRepository, let content = uiState.content.success, content.servings != nil else { return }
         let questions = DecisionCandidates.countBrackets(content.recipe.ingredients, words: content.words)
         if !questions.isEmpty { Task { await decisionRepository.decide(questions) } }

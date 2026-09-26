@@ -474,9 +474,11 @@ class RecipeViewModel @Inject constructor(
 
     /**
      * Asks the model about the loaded recipe's count brackets (#104), in the background: lines
-     * show as today until an answer lands. Only a recipe with a servings stepper can scale.
+     * show as today until an answer lands. Only a recipe with a servings stepper can scale, and
+     * only with `aiCountBrackets` on (#127).
      */
     private fun askCountBrackets() {
+        if (featureFlags?.isOn(Flag.AI_COUNT_BRACKETS) != true) return
         val repo = decisionRepository ?: return
         val content = _uiState.value.content as? RecipeContent.Success ?: return
         if (content.servings == null) return
