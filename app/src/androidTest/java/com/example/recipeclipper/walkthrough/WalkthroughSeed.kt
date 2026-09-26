@@ -1,5 +1,9 @@
 package com.example.recipeclipper.walkthrough
 
+import com.example.recipeclipper.data.model.DecisionKind
+import com.example.recipeclipper.data.model.DecisionReply
+import com.example.recipeclipper.fake.FakeDecisionModel
+
 /**
  * The walkthrough videos' library (#106): the same twenty realistic recipes as iOS's
  * `UITestWalkthroughSeed`, viewed in this order, newest first, each in a list (so none is
@@ -78,6 +82,19 @@ object WalkthroughSeed {
     ).map { (title, ingredients) ->
         Seed(title, title.lowercase().replace(" ", "-"), "4", ingredients, listOf("Prepare the ingredients.", "Cook and serve."))
     }
+
+    /**
+     * The typed-decision model's answers, simulated (#99, #104; iOS `UITestDecisionModel`): close
+     * grocery or pantry names are the same thing; trailing text is junk if it holds "dfsafs",
+     * else a note; anything else it can't answer.
+     */
+    fun decisionModel() = FakeDecisionModel(languages = setOf("en"), reply = { prompt ->
+        when (prompt.kind) {
+            DecisionKind.SAME_GROCERY, DecisionKind.SAME_INGREDIENT -> DecisionReply("same", "high")
+            DecisionKind.TRAILING_TEXT -> DecisionReply(if ("dfsafs" in prompt.text) "junk" else "note", "high")
+            else -> null
+        }
+    })
 
     fun listFor(title: String): String = when (title) {
         "Banana Bread", "Buttermilk Pancakes", "French Toast" -> "Breakfast"

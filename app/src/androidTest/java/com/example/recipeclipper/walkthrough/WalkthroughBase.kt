@@ -12,6 +12,7 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
@@ -128,7 +129,10 @@ abstract class WalkthroughBase {
 
     fun tap(matcher: SemanticsMatcher, pauseMs: Long = 1500) {
         waitFor(matcher)
-        compose.onAllNodes(matcher)[0].performClick()
+        Espresso.closeSoftKeyboard()
+        val node = compose.onAllNodes(matcher)[0]
+        runCatching { node.performScrollTo() } // off screen in a scrolling form; no-op elsewhere
+        node.performClick()
         pause(pauseMs)
     }
 

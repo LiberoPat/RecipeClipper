@@ -6,6 +6,23 @@ import Foundation
 /// same recipes. Viewed in this order, newest first. "Grandma's Lentil Soup" is stored as picked
 /// from the page text by the model (#103); the Sponge Cake's first steps are the ones the stub
 /// Chef mode model shortens (#100).
+/// The typed-decision model under UI test (#104, #99): canned answers, so the walkthrough's
+/// grocery clip shows merging without Apple Intelligence ("AI answers simulated"). Close
+/// grocery or pantry names are the same thing; trailing text is junk if it holds "dfsafs",
+/// else a note; anything else it can't answer. Android's walkthrough uses the same answers.
+final class UITestDecisionModel: DecisionModel {
+    func supports(language: String) async -> Bool { language == "en" }
+
+    func ask(_ prompt: DecisionPrompt) async -> DecisionReply? {
+        switch prompt.kind {
+        case .sameGrocery, .sameIngredient: DecisionReply(answer: "same", confidence: "high")
+        case .trailingText:
+            DecisionReply(answer: prompt.text.contains("dfsafs") ? "junk" : "note", confidence: "high")
+        default: nil
+        }
+    }
+}
+
 enum UITestWalkthroughSeed {
     struct Seed {
         let title: String

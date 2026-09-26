@@ -12,7 +12,7 @@ DD=${DERIVED_DATA:-/tmp/rc-walkthrough-dd}
 TESTS=("$@")
 [ ${#TESTS[@]} -eq 0 ] && TESTS=(test01_tabsAndWeek test02_groceries test03_pantryAndWhatINeed test04_weeklyMenus
   test05_expiryReminders test06_recipesScreen test07_amountsInSteps test08_chefModeStubModel test09_freeTier
-  test10_pageExtractionLine)
+  test10_pageExtractionLine test11_groceriesAiMergingSimulated)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
 (cd ios && xcodebuild -project RecipeClipper.xcodeproj -scheme RecipeClipper -destination "id=$SIM" \
@@ -35,8 +35,8 @@ for t in "${TESTS[@]}"; do
   end=$(grep -o 'WALKTHROUGH-END [0-9.]*' "$log" | tail -1 | cut -d' ' -f2)
   if [ -z "$start" ] || [ -z "$end" ]; then echo "no marks: $t"; continue; fi
   from=$(python3 -c "print(max(0, $start - $began - 0.5))")
-  length=$(python3 -c "print($end - $start + 1.0)")
-  avconvert --source "$raw" --preset PresetMediumQuality --start "$from" --duration "$length" \
+  length=$(python3 -c "print($end - $start + 0.3)")
+  avconvert --source "$raw" --preset Preset1280x720 --start "$from" --duration "$length" \
     --output "$OUT/ios-$slug.mp4" --replace >/dev/null
   echo "ios-$slug.mp4 ${length%.*}s"
 done

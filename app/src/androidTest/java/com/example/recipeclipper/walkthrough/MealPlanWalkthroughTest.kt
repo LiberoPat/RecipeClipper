@@ -2,8 +2,9 @@ package com.example.recipeclipper.walkthrough
 
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import com.example.recipeclipper.data.DecisionModel
 import com.example.recipeclipper.data.StepShortener
-import com.example.recipeclipper.di.ChefModelModule
+import com.example.recipeclipper.di.OnDeviceModelModule
 import com.example.recipeclipper.fake.FakeStepShortener
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -13,8 +14,11 @@ import java.time.LocalDate
 
 /** Walkthroughs 01–05 (#106): the tab bar, Week, Groceries, Pantry, menus, expiry reminders. */
 @HiltAndroidTest
-@UninstallModules(ChefModelModule::class)
+@UninstallModules(OnDeviceModelModule::class)
 class MealPlanWalkthroughTest : WalkthroughBase() {
+
+    @BindValue @JvmField
+    val decisionModel: DecisionModel = WalkthroughSeed.decisionModel()
 
     @BindValue @JvmField
     val shortener: StepShortener = FakeStepShortener()
@@ -97,5 +101,22 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
         tapDescription("Settings")
         repeat(3) { swipeUp() }
         tap("Expiry reminders", 2500)
+    }
+
+    /**
+     * Grocery lines merged with the model's help (#99), its answers simulated
+     * ([WalkthroughSeed.decisionModel]): close names become one row, trailing notes are ignored.
+     */
+    @Test
+    fun test11_groceriesAiMergingSimulated() {
+        start("mealPlan", "aiDecisions")
+        tap("Groceries")
+        listOf(listOf("200 g sweetcorn", "100 g corn"), listOf("2 eggs, beaten", "3 eggs"))
+            .forEach { pair ->
+                pair.forEach { type("groceryDraft", it) }
+                pause(2500)
+            }
+        swipeUp()
+        pause(2000)
     }
 }

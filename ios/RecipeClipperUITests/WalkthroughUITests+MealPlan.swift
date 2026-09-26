@@ -87,7 +87,23 @@ extension WalkthroughUITests {
         start(flags: ["mealPlan"])
         require(app.buttons["Settings"]).tap()
         pause()
+        // To the foot of Settings, so the switch sits clear of the tab bar.
+        for _ in 0..<3 { app.swipeUp(); pause(0.6) }
         flipSwitch("Expiry reminders")
         pause()
+    }
+
+    /// Grocery lines merged with the model's help (#99), its answers simulated by the UI-test
+    /// stub (`UITestDecisionModel`): close names become one row, trailing notes are ignored.
+    func test11_groceriesAiMergingSimulated() {
+        start(flags: ["mealPlan", "aiDecisions"])
+        tab("Groceries")
+        let field = app.textFields["Add an item"]
+        for pair in [["200 g sweetcorn", "100 g corn"], ["2 eggs, beaten", "3 eggs"]] {
+            for item in pair { type("\(item)\n", into: field) }
+            pause(2.5)
+        }
+        app.swipeUp()
+        pause(2.5)
     }
 }

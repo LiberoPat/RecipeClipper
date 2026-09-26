@@ -9,7 +9,8 @@ import Foundation
 ///   - a throwaway UserDefaults suite, wiped at launch unless `-uiTestKeepPrefs` is also passed
 ///     (which is how a test proves a setting survives a relaunch);
 ///   - feature flags (#87) in their own throwaway suite, wiped likewise, then overridden on
-///     through the store for each key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`).
+///     through the store for each key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`);
+///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on.
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -60,18 +61,27 @@ enum UITestSeeding {
                 if let flag = Flag(rawValue: String(key)) { flags.set(flag, true) }
             }
         }
+        let decisions = DefaultDecisionRepository(
+            db: database, model: UITestDecisionModel(), clock: clock, isOn: { flags.isOn(.aiDecisions) }
+        )
+        // The free tier's limit (#107) as the app mirrors it, in the throwaway suite.
+        let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
         return AppContainer(
-            recipeRepository: DefaultRecipeRepository(db: database, source: StubRecipeSource(), clock: clock),
+            recipeRepository: DefaultRecipeRepository(
+                db: database, source: StubRecipeSource(), clock: clock, library: libraryLimit
+            ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
-            groceryRepository: DefaultGroceryRepository(db: database, clock: clock),
+            groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             clipFixtureHTML: clipFixtureHTML,
             featureFlags: flags,
-            shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock)
+            shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
+            decisionRepository: decisions,
+            libraryMirror: libraryLimit
         )
     }
 

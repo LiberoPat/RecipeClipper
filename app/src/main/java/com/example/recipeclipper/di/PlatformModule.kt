@@ -2,8 +2,6 @@ package com.example.recipeclipper.di
 
 import com.example.recipeclipper.BuildConfig
 import com.example.recipeclipper.data.AndroidAppInfo
-import com.example.recipeclipper.data.DecisionModel
-import com.example.recipeclipper.data.MlKitDecisionModel
 import com.example.recipeclipper.data.MlKitPageRecipeExtractor
 import com.example.recipeclipper.data.PageRecipeExtractor
 import com.example.recipeclipper.data.flags.FeatureFlagStore
@@ -69,10 +67,6 @@ abstract class PlatformModule {
     @Binds
     @Singleton
     abstract fun pageRecipeExtractor(impl: MlKitPageRecipeExtractor): PageRecipeExtractor
-
-    @Binds
-    @Singleton
-    abstract fun decisionModel(impl: MlKitDecisionModel): DecisionModel
 
     @Binds
     @Singleton

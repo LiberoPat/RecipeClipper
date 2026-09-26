@@ -4,8 +4,9 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performTextInput
 import com.example.recipeclipper.data.ChefSupport
+import com.example.recipeclipper.data.DecisionModel
 import com.example.recipeclipper.data.StepShortener
-import com.example.recipeclipper.di.ChefModelModule
+import com.example.recipeclipper.di.OnDeviceModelModule
 import com.example.recipeclipper.fake.FakeStepShortener
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -18,8 +19,11 @@ import org.junit.Test
  * such: no model runs).
  */
 @HiltAndroidTest
-@UninstallModules(ChefModelModule::class)
+@UninstallModules(OnDeviceModelModule::class)
 class RecipesWalkthroughTest : WalkthroughBase() {
+
+    @BindValue @JvmField
+    val decisionModel: DecisionModel = WalkthroughSeed.decisionModel()
 
     @BindValue @JvmField
     val shortener: StepShortener = FakeStepShortener(
@@ -47,7 +51,6 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     fun test06_recipesScreen() {
         start()
         tapScrolling("Recipes")
-        swipeUp()
         menu("Name")
         typeARecipe()
         back()
