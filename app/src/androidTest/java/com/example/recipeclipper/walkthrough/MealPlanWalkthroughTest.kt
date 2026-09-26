@@ -130,7 +130,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
     @Test
     fun test12_groceriesJunkHidden() {
         start("mealPlan", "aiDecisions")
-        tap("Banana Bread")
+        tapScrolling("Banana Bread") // below the fold on Home (a lazy list)
         waitFor(hasText(WalkthroughSeed.JUNK_LINE, substring = true))
         pause(2500)
         menu("Add to groceries")
