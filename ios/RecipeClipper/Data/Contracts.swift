@@ -300,31 +300,40 @@ protocol BackupRepository: AnyObject {
 
     /// Merges an export file into what's here (never replaces, never deletes; see
     /// BackupMerger). A file that can't be read writes nothing and says why.
-    func importBackup(_ text: String) async -> Result<ImportSummary, BackupError>
+    func importBackup(_ package: BackupPackage) async -> Result<ImportSummary, BackupError>
+}
+
+extension BackupRepository {
+    /// A plain JSON export: no pictures.
+    func importBackup(_ text: String) async -> Result<ImportSummary, BackupError> {
+        await importBackup(BackupPackage(json: text))
+    }
 }
 
 /// Where an export file is written and a picked one is read (Android's BackupFiles), so the
 /// Settings ViewModel stays free of the file system and its test can use a fake.
 protocol BackupFiles: AnyObject {
-    /// Writes `json` as `recipe-clipper-YYYY-MM-DD.json` and returns its URL for the share
-    /// sheet, or nil if it couldn't be written.
-    func writeExport(json: String, exportedAt: Int64) async -> URL?
+    /// Writes `json` as `recipe-clipper-YYYY-MM-DD.json`, or with `photos` (#116: path in the
+    /// zip to the stored file) as a `.zip` of both, and returns its URL for the share sheet, or
+    /// nil if it couldn't be written.
+    func writeExport(json: String, exportedAt: Int64, photos: [String: URL]) async -> URL?
 
-    /// The picked file's text, `.readFailed` if it couldn't be read, or `.notABackup` if it's
-    /// far bigger than any export (or not text).
-    func readText(_ url: URL) async -> Result<String, BackupError>
+    /// The picked file: a plain JSON export, or a zip with its pictures unpacked. `.readFailed`
+    /// if it couldn't be read, or `.notABackup` if its JSON is far bigger than any export (or
+    /// not text), or a zip holds none.
+    func read(_ url: URL) async -> Result<BackupPackage, BackupError>
 }
 
 /// Far beyond any real export (a few hundred recipes is well under 2 MB).
 let backupMaxBytes = 20 * 1024 * 1024
 
 /// `recipe-clipper-YYYY-MM-DD.json`, in the phone's time zone.
-func backupFileName(exportedAt: Int64) -> String {
+func backupFileName(exportedAt: Int64, zip: Bool = false) -> String {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.dateFormat = "yyyy-MM-dd"
     let date = Date(timeIntervalSince1970: TimeInterval(exportedAt) / 1000)
-    return "recipe-clipper-" + formatter.string(from: date) + ".json"
+    return "recipe-clipper-" + formatter.string(from: date) + (zip ? ".zip" : ".json")
 }
 
 /// The week meal plan (#49; Android's MealPlanRepository): what is planned on which day, and

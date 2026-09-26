@@ -244,7 +244,7 @@ final class SettingsViewModel {
             case .failure(let error):
                 uiState.backup = .failed(error)
             case .success(let exported):
-                if let url = await files.writeExport(json: exported.json, exportedAt: exported.exportedAt) {
+                if let url = await files.writeExport(json: exported.json, exportedAt: exported.exportedAt, photos: exported.photos) {
                     uiState.backup = .readyToShare(url)
                 } else {
                     uiState.backup = .failed(.exportFailed)
@@ -264,11 +264,11 @@ final class SettingsViewModel {
         guard !uiState.backup.isBusy else { return nil }
         uiState.backup = .importing
         return Task {
-            switch await files.readText(url) {
+            switch await files.read(url) {
             case .failure(let error):
                 uiState.backup = .failed(error)
-            case .success(let text):
-                switch await backups.importBackup(text) {
+            case .success(let package):
+                switch await backups.importBackup(package) {
                 case .success(let summary): uiState.backup = .imported(summary)
                 case .failure(let error): uiState.backup = .failed(error)
                 }
