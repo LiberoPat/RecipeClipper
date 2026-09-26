@@ -48,11 +48,32 @@ object DecisionPrompts {
                 SAME to "Ingredient names ($language): \"$a\" and \"$b\""
             }
             DecisionKind.AISLE -> AISLE to "Ingredient ($language): ${question.input}"
+            DecisionKind.SAME_GROCERY -> question.input.split(DecisionQuestion.PAIR).let { (a, b) ->
+                SAME_GROCERY to "Shopping list items ($language): \"$a\" and \"$b\""
+            }
+            DecisionKind.TRAILING_TEXT -> TRAILING to "Text after the ingredient ($language): ${question.input}"
         }
         val closing = "\nAnswer with one of: ${options.joinToString(", ")}. Give your confidence: high, medium or low. " +
             "Answer \"unsure\" whenever you are not certain."
         return DecisionPrompt(question.kind, instructions + closing, text, options)
     }
+
+    private val SAME_GROCERY = """
+        Two items on a shopping list, each the ingredient named in a recipe line. Would a shopper buy the
+        same product for both ("same"), or are they different products ("different")? Only a different
+        wording of one product is the same: "ears of corn" and "corn", "corn on the cob" and "corn",
+        "garlic cloves" and "garlic". A word that makes another product is different: "rice flour" is not
+        "flour", "whole milk" is not "milk", "brown sugar" is not "sugar", "corn flour" is not "corn".
+    """.trimIndent()
+
+    private val TRAILING = """
+        A shopping list line from a recipe has some text after the ingredient's name. What is that text?
+        "note": only a description or preparation, no amount and no other ingredient (", shucked",
+        ", finely chopped", "(optional)", ", at room temperature"). "second_amount": it gives another
+        amount or size, or another ingredient or an alternative ("(about three cups)", "plus two yolks",
+        ", or frozen corn", "and some for the pan"). "junk": meaningless characters or a typing error
+        ("(dfsafs -", "--- xx").
+    """.trimIndent()
 
     private val COUNT = """
         A recipe's ingredient line starts with a count of items and has an amount in brackets after the name.
