@@ -13,7 +13,16 @@ enum class DecisionKind(val key: String, val options: List<String>) {
     SAME_INGREDIENT("sameIngredient", listOf("same", "different")),
 
     /** The aisle of an ingredient the keyword table puts in Other. "other" keeps it there. */
-    AISLE("aisle", Aisle.entries.map { it.key });
+    AISLE("aisle", Aisle.entries.map { it.key }),
+
+    /** Two grocery lines' close names (#99): the same thing to buy, so one row, or not. */
+    SAME_GROCERY("sameGrocery", listOf("same", "different")),
+
+    /**
+     * The text after a grocery line's ingredient (#99): a note (", shucked"), maybe a second
+     * amount or ingredient ("(about three cups)", ", or frozen"), or junk ("(dfsafs -").
+     */
+    TRAILING_TEXT("trailingText", listOf("note", "second_amount", "junk"));
 
     companion object {
         const val UNSURE = "unsure"
@@ -44,6 +53,13 @@ data class DecisionQuestion(val kind: DecisionKind, val input: String, val langu
 
         fun aisle(name: String, language: String) = DecisionQuestion(DecisionKind.AISLE, normalize(name), language)
 
+        /** Either order is the same question. */
+        fun sameGrocery(a: String, b: String, language: String) =
+            DecisionQuestion(DecisionKind.SAME_GROCERY, listOf(normalize(a), normalize(b)).sorted().joinToString(PAIR), language)
+
+        fun trailingText(text: String, language: String) =
+            DecisionQuestion(DecisionKind.TRAILING_TEXT, normalize(text), language)
+
         /** What joins a pair's two names in [input]. */
         const val PAIR = " | "
     }
@@ -68,6 +84,14 @@ class Decisions(private val answers: Map<DecisionQuestion, String>) {
     fun aisle(name: String, language: String?): Aisle? =
         language?.let { answers[DecisionQuestion.aisle(name, it)] }
             ?.let { key -> Aisle.entries.firstOrNull { it.key == key && it != Aisle.OTHER } }
+
+    /** True only for a definite "same" about two grocery names. */
+    fun sameGrocery(a: String, b: String, language: String?): Boolean =
+        language != null && answers[DecisionQuestion.sameGrocery(a, b, language)] == "same"
+
+    /** True only when the text after a grocery line's ingredient is definitely a note or junk. */
+    fun ignorableTrailing(text: String, language: String?): Boolean =
+        language != null && answers[DecisionQuestion.trailingText(text, language)].let { it == "note" || it == "junk" }
 
     fun isAnswered(question: DecisionQuestion): Boolean = question in answers
 

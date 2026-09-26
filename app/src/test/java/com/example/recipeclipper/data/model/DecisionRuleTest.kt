@@ -12,6 +12,18 @@ class DecisionRuleTest {
     @Test fun `the same definite answer twice with high confidence is accepted`() {
         assertEquals("total", DecisionRule.judge(DecisionKind.COUNT_BRACKET, listOf(reply("total"), reply(" Total "))))
         assertEquals("dairy", DecisionRule.judge(DecisionKind.AISLE, listOf(reply("dairy"), reply("dairy"))))
+        val trailing = DecisionKind.TRAILING_TEXT
+        assertEquals("second_amount", DecisionRule.judge(trailing, listOf(reply("second_amount"), reply("second_amount"))))
+        assertEquals("unsure", DecisionRule.judge(trailing, listOf(reply("note"), reply("junk"))))
+    }
+
+    @Test fun `the grocery questions carry their pair or text`() {
+        val same = DecisionPrompts.prompt(DecisionQuestion.sameGrocery("Corn", "ears of corn", "en"), 1)
+        assertEquals("Shopping list items (English): \"corn\" and \"ears of corn\"", same.text)
+        assertEquals(listOf("different", "same", "unsure"), same.options)
+        val trailing = DecisionPrompts.prompt(DecisionQuestion.trailingText(", Shucked", "en"), 0)
+        assertEquals("Text after the ingredient (English): , shucked", trailing.text)
+        assertEquals(listOf("note", "second_amount", "junk", "unsure"), trailing.options)
     }
 
     @Test fun `anything less is unsure`() {

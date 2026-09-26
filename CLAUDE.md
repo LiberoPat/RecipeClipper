@@ -386,6 +386,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   holds no digit, fraction or unit word), total shown exactly in a unit the
   lines used; the very same line repeated is "line × 3"; otherwise they sit
   together under the name, each as written. Every row is one tick.
+  With `aiDecisions` (#99), a cached definite "same" joins close names in one
+  row, and trailing text judged a note or junk (never one with a digit) is
+  read past; the model writes no number and these rules still decide totals.
 - **Pantry** (#51): an item is a `name` as typed, a `language` (as a typed
   grocery's), an optional `quantity` as written (never read as a number), an
   `aisle`, `inStock`, `alwaysHave` (a staple), and optional `purchasedDay`

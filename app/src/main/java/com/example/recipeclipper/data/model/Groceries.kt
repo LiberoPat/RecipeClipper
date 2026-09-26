@@ -124,40 +124,75 @@ object GroceryCombiner {
      * The list as shown: aisles in [Aisle] order, empty ones left out; within one, unchecked
      * rows before checked ones, each in the order its first line was added.
      */
-    fun sections(items: List<GroceryItem>): List<Section> {
+    fun sections(items: List<GroceryItem>, decisions: Decisions = Decisions.NONE): List<Section> {
         val sorted = items.sortedWith(compareBy({ it.sortOrder }, { it.id }))
         return Aisle.entries.mapNotNull { aisle ->
             val inAisle = sorted.filter { it.aisle == aisle }
             if (inAisle.isEmpty()) return@mapNotNull null
             val rows = listOf(false, true).flatMap { checked ->
-                group(inAisle.filter { it.checked == checked })
+                group(inAisle.filter { it.checked == checked }, decisions)
             }
             Section(aisle, rows)
         }
     }
 
-    private fun group(items: List<GroceryItem>): List<Row> {
+    /**
+     * With the model's answers (#99, [GroceryDecisions]): a line whose trailing text is
+     * definitely a note or junk is read without it, and groups whose names are definitely the
+     * same share a row, under the first group's name. Adding up is unchanged: [combine]'s exact
+     * rules, on the lines as read, so counts still need identical words ("2 ears of corn" and
+     * "2 corn" sit together, each as written).
+     */
+    private fun group(items: List<GroceryItem>, decisions: Decisions): List<Row> {
         // Keyed by language and name; a line with no name only groups with the very same line.
         val groups = LinkedHashMap<Any, MutableList<GroceryItem>>()
         val names = HashMap<Long, String?>()
         for (item in items) {
-            val name = LanguageWords.forTag(item.language)?.let { IngredientName.of(item.text, it) }
+            val name = GroceryDecisions.name(item, decisions)
             names[item.id] = name
             val key: Any = if (name == null) Triple("line", item.language, normalize(item.text)) else (item.language to name)
             groups.getOrPut(key) { mutableListOf() } += item
         }
-        return groups.values.map { lines ->
+        val merged = mergeSame(groups.values.toList(), names, decisions)
+        return merged.map { lines ->
             val first = lines.first()
             val name = names[first.id]
             val words = LanguageWords.forTag(first.language)
             val texts = lines.map { it.text }
-            val total = if (name != null && words != null) combine(texts, words) else repeated(texts)
+            val read = lines.map { GroceryDecisions.effectiveText(it, decisions) }
+            val sameName = lines.all { names[it.id] == name }
+            val total = if (name != null && words != null) {
+                sum(read, words, requireSameName = sameName) ?: repeated(texts)
+            } else {
+                repeated(texts)
+            }
             when {
                 lines.size == 1 -> Row.Single(first)
                 total != null -> Row.Combined(name ?: first.text.trim(), total, lines)
                 else -> Row.Together(name!!, lines)
             }
         }
+    }
+
+    // Each group joins the first earlier one holding a name definitely the same as its own.
+    private fun mergeSame(
+        groups: List<MutableList<GroceryItem>>,
+        names: Map<Long, String?>,
+        decisions: Decisions
+    ): List<List<GroceryItem>> {
+        val out = mutableListOf<MutableList<GroceryItem>>()
+        for (group in groups) {
+            val first = group.first()
+            val name = names[first.id]
+            val into = name?.let {
+                out.firstOrNull { o ->
+                    o.first().language == first.language && o.map { names[it.id] }.distinct()
+                        .any { n -> n != null && decisions.sameGrocery(n, name, first.language) }
+                }
+            }
+            if (into != null) into += group else out += group
+        }
+        return out
     }
 
     // --- Adding up
@@ -272,10 +307,16 @@ object GroceryCombiner {
      */
     fun combine(lines: List<String>, words: LanguageWords): String? = sum(lines, words) ?: repeated(lines)
 
-    private fun sum(lines: List<String>, words: LanguageWords): String? {
+    /**
+     * The lines added up, or null. [requireSameName] false skips the same-name check: the model
+     * decided the names are the same (#99); the amounts' rules are unchanged.
+     */
+    private fun sum(lines: List<String>, words: LanguageWords, requireSameName: Boolean = true): String? {
         if (lines.size < 2) return null
-        val name = IngredientName.of(lines.first(), words) ?: return null
-        if (lines.any { IngredientName.of(it, words) != name }) return null
+        if (requireSameName) {
+            val name = IngredientName.of(lines.first(), words) ?: return null
+            if (lines.any { IngredientName.of(it, words) != name }) return null
+        }
         val amounts = lines.map { amount(it, words) ?: return null }
         val family = amounts.first().family
         if (amounts.any { it.family != family }) return null
