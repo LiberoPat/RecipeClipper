@@ -104,9 +104,9 @@ final class DataExtractionTests: XCTestCase {
     }
 
     func testOnlyAPageThatLoadedWithNoRecipeDataIsRead() async {
-        source.next = .error(.blocked(403))
+        source.next = .error(.blocked(httpStatus: 403))
         let blocked = await importPage()
-        XCTAssertEqual(blocked, .error(.blocked(403)))
+        XCTAssertEqual(blocked, .error(.blocked(httpStatus: 403)))
         XCTAssertTrue(model.asked.isEmpty)
     }
 

@@ -97,7 +97,12 @@ the rendered fallback after it over a `FakeRenderedPageSource`: rendered once
 and only after `Blocked` or `NoRecipeFound`, never for `Offline` or a
 timeout, the 20 s cap, a rendered page with no recipe keeping the cause, and
 cancelling mid-render writing nothing; iOS has the same cases in
-`DataRepositoryTests`),
+`DataRepositoryTests`), `DefaultRecipeRepositoryExtractionTest` (iOS
+`DataExtractionTests`: a recipe picked from a page's text, #103, over the
+shared page fixture in `shared/fixtures/pages` and `FakePageRecipeExtractor`:
+kept in the page's own words, invented lines dropped, nothing verifiable or an
+unsupported language or the flag off staying `NoRecipeFound`, never after a
+block; no real model runs in CI),
 `BlogRecipeSourceStatusTest` (which statuses and exceptions become which
 cause, against a fake `Connectivity`), `DatabaseErrorTest` (every repository
 call degrades and logs instead of throwing, and cancellation is never
