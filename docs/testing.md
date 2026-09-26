@@ -309,6 +309,29 @@ change timing; do it with a device run to check.
 Plain JUnit tests will need `testImplementation("org.json:json:<version>")`
 or the calls will fail as "not mocked".
 
+## The free tier and the unlock (#107)
+
+- **Turning it on:** Developer settings (7 taps on the version) → `freeTier`.
+  "Unlocked" beside it counts the purchase as bought, with no store; Reset
+  clears both.
+- **The rules** are tested against real SQLite (`FreeTierDaoTest` /
+  `FreeTierDaoTests`: one for one at 20, protections, a library over 20 keeps
+  everything, all protected is not kept, unlocked is never culled), through
+  the repository over an in-memory DAO (`DefaultRecipeRepositoryLimitTest`),
+  in the backup merger, and in the ViewModels over a fake `Entitlements`.
+- **iOS StoreKit:** `StoreKitEntitlementsTests` runs `StoreKitEntitlements`
+  against `ios/RecipeClipper.storekit` with `SKTestSession` (no dialogs): the
+  price, a purchase made by the session (`buyProduct`) found and cached, and
+  locked again once it's gone. `Product.purchase()` itself waits forever in a
+  hosted unit test (no window scene for its sheet), so the sheet is checked by
+  hand: running the app from Xcode uses the same file (the scheme's StoreKit
+  configuration), so Unlock, Ask to Buy and Restore work in the simulator;
+  Debug → StoreKit → Manage Transactions refunds or deletes the purchase.
+- **Android Play Billing can't be exercised here:** it needs the app on a
+  Play test track with the `unlimited_recipes` product and a license tester
+  (#22). Until then Unlock answers "Couldn't reach the store", and the
+  override is the way to test the unlocked library.
+
 ## iOS share extension: end to end and memory
 
 The extension's logic is unit-tested (`RecipeClipperTests/Share`). What

@@ -251,11 +251,12 @@ fun RecipeScreen(
         }
     }
 
-    // A full free library (#107): shown, not kept. Stays up until dismissed or unlocked.
+    // A full free library (#107): shown, not kept. Stays up until dismissed or unlocked, and
+    // comes back after a pending or failed purchase has been explained.
     val notKeptMessage = stringResource(R.string.recipe_not_kept, LibraryLimit.FREE_RECIPES)
     val unlockLabel = stringResource(R.string.unlock)
-    LaunchedEffect(state.notKept) {
-        if (state.notKept) {
+    LaunchedEffect(state.notKept, state.unlockNotice) {
+        if (state.notKept && state.unlockNotice == null) {
             val result = snackbarHostState.showSnackbar(
                 notKeptMessage, actionLabel = unlockLabel, withDismissAction = true,
                 duration = SnackbarDuration.Indefinite

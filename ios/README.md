@@ -85,6 +85,13 @@ tests (in-memory SQLite in the simulator), not device tests.
 
 ## Platform differences worth knowing
 
+- **The unlock (#107) is StoreKit 2** (`App/StoreKitEntitlements.swift`), product
+  `unlimited_recipes`. The scheme's StoreKit configuration is `RecipeClipper.storekit` (set in
+  `project.yml`), so Unlock and Restore work in the simulator without App Store Connect.
+  The share extension never sees StoreKit or the flags: the app mirrors the library limit
+  into the App Group suite (`library_limit`, kept by `LibraryPolicy`) and the extension's
+  repository reads it there. A recipe it can't keep says so on the card.
+
 - **The share extension imports by itself.** iOS has no supported way for a share extension
   to open its app (the responder-chain `openURL` trick this replaced was an App Review risk
   and already broke once, in iOS 18). So the extension runs the same
