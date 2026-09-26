@@ -5,8 +5,8 @@ enum class SourceType { BLOG, REDDIT }
 
 /**
  * Whose words a recipe's content is (#29, #37), stored by name in `contentOrigin`.
- * Only [PARSED] is the source's: every other value is the user's version, which a re-share
- * never refreshes. "Update from source" is the one way back to [PARSED].
+ * Only [PARSED] and [EXTRACTED] are the source's: every other value is the user's version,
+ * which a re-share never refreshes. "Update from source" is the one way back to the source's.
  */
 enum class ContentOrigin {
     /** As parsed from its link. Refreshed on every re-share. */
@@ -16,19 +16,25 @@ enum class ContentOrigin {
     /** Picked from the page by hand (#37). Stays CLIPPED when edited. */
     CLIPPED,
     /** Typed in by hand; its link is a synthetic [ManualRecipe] key, never fetched. */
-    MANUAL;
+    MANUAL,
+    /** Picked from the page's text by the on-device model (#103), every line checked to be on
+     *  the page. The source's, like [PARSED]: refreshed on every re-share. */
+    EXTRACTED;
 
     /** The user's version: a re-share opens it as it is, without fetching. */
-    val isUsersVersion: Boolean get() = this != PARSED
+    val isUsersVersion: Boolean get() = !isSources(name)
 
-    /** The origin after the user saves an edit: a parsed recipe becomes EDITED; the rest keep theirs. */
-    fun afterEdit(): ContentOrigin = if (this == PARSED) EDITED else this
+    /** The origin after the user saves an edit: the source's becomes EDITED; the rest keep theirs. */
+    fun afterEdit(): ContentOrigin = if (isUsersVersion) this else EDITED
 
     companion object {
         /** Stored by name; an unknown name (a newer app's) reads as the user's version, EDITED,
          *  so it is never overwritten by a re-share. */
         fun fromName(name: String?): ContentOrigin =
             if (name == null) PARSED else entries.firstOrNull { it.name == name } ?: EDITED
+
+        /** A stored `contentOrigin` that is the source's, so a re-share refreshes it. */
+        fun isSources(name: String?): Boolean = name == PARSED.name || name == EXTRACTED.name
     }
 }
 

@@ -70,6 +70,7 @@
     <string name="update_from_source_clip_body">This loads the page again and replaces the name, ingredients, steps and photo you clipped with the site\'s own recipe data. It stays in your lists and history.</string>
     <string name="clipped_by_you">Clipped by you</string>
     <string name="clipped_by_you_on">Clipped by you · %1$s</string>
+    <string name="extracted_from_page">Picked from the page text — check against the source</string>
     <plurals name="clip_lines_selected">
         <item quantity="one">%1$d line selected</item>
         <item quantity="other">%1$d lines selected</item>

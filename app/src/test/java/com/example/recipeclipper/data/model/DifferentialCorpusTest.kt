@@ -31,6 +31,10 @@ import java.io.File
  * ⟦ ⟧, once against the lines as given and once against them doubled in Metric; write only the
  * step and the lines (optionally `, lang: "fr"`).
  *
+ * `Pick(.kind, "page", "picked")` rows (#103) pin [PageRecipeCheck.find]: the page's own text
+ * for what the model picked, or nil; write only the kind (name, ingredient, step, other), the
+ * page text and the pick.
+ *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
@@ -59,6 +63,8 @@ class DifferentialCorpusTest {
     private val icsRow = Regex("""^(\s*)Ics\("((?:[^"\\]|\\.)*)"""")
     // A Chef mode row (#100): a step, a short version of it, optionally their language.
     private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A page-pick row (#103): the kind, the page's text, what the model picked from it.
+    private val pickRow = Regex("""^(\s*)Pick\(\.(name|ingredient|step|other), "((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
@@ -93,6 +99,11 @@ class DifferentialCorpusTest {
         }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
+        pickRow.find(line)?.let { p ->
+            val (kind, page, picked) = Triple(p.groupValues[2], unescape(p.groupValues[3]), unescape(p.groupValues[4]))
+            val found = PageRecipeCheck.find(page, picked, PageRecipeCheck.Kind.valueOf(kind.uppercase()))
+            return p.groupValues[1] + "Pick(.$kind, ${q(page)}, ${q(picked)}, ${found?.let { q(it) } ?: "nil"}),"
+        }
         shortRow.find(line)?.let { s ->
             val (step, short) = unescape(s.groupValues[2]) to unescape(s.groupValues[3])
             val language = s.groupValues[4].ifEmpty { null }

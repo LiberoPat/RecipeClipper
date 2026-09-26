@@ -286,6 +286,7 @@
     <string name="update_from_source_clip_body">La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nei tuoi elenchi e nella cronologia.</string>
     <string name="clipped_by_you">Ritagliata da te</string>
     <string name="clipped_by_you_on">Ritagliata da te · %1$s</string>
+    <string name="extracted_from_page">Presa dal testo della pagina: verificala con la fonte</string>
     <plurals name="clip_lines_selected">
         <item quantity="one">%1$d riga selezionata</item>
         <item quantity="many">%1$d di righe selezionate</item>

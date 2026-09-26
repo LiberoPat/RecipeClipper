@@ -85,6 +85,7 @@ enum Strings {
     static var updateFromSourceClipBody: String { String(localized: "update_from_source_clip_body") }
     static var clippedByYou: String { String(localized: "clipped_by_you") }
     static func clippedByYou(on domain: String) -> String { String(localized: "clipped_by_you_on \(domain)") }
+    static var extractedFromPage: String { String(localized: "extracted_from_page") }
 
     // Errors
     static var errorNoRecipeFound: String { String(localized: "error_no_recipe_found") }

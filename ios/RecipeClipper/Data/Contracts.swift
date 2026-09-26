@@ -22,6 +22,38 @@ struct SystemClock: Clock {
 /// Fetches and parses one recipe page. Pure network + parse; persists nothing.
 protocol RecipeSource {
     func fetch(url: String) async -> ParseResult
+    /// `fetch`, plus the page's text when it loaded but held no recipe data (#103), for the
+    /// on-device model to pick one from. A source that can't say gives no text.
+    func fetchPage(url: String) async -> FetchedPage
+}
+
+extension RecipeSource {
+    func fetchPage(url: String) async -> FetchedPage { FetchedPage(result: await fetch(url: url)) }
+}
+
+/// A fetch's result, and `page` only when that is `.noRecipeFound` on a page that loaded.
+struct FetchedPage {
+    var result: ParseResult
+    var page: PageText? = nil
+}
+
+/// The on-device model reading a page with no recipe data (#103), beside `StepShortener`:
+/// `FoundationModelsPageRecipeExtractor` is the real one (Apple's Foundation Models, guided
+/// generation); tests use `FakePageRecipeExtractor`. The parsers never call it: the repository
+/// does, only after they found nothing.
+protocol PageRecipeExtractor: AnyObject {
+    /// How much page text, in characters, it can read now for a recipe in `language` ("en"), or
+    /// nil when it can't (an unsupported phone or language, or a model not ready).
+    func windowChars(language: String) async -> Int?
+    /// What the model picked out of `text` as the recipe, or nil. Unchecked: `PageRecipeCheck`
+    /// keeps only what is on the page.
+    func extract(_ text: String, language: String) async -> PageSelection?
+}
+
+/// Reads nothing: the default for tests that aren't about extraction, and the UI-test graph.
+final class NoPageRecipeExtractor: PageRecipeExtractor {
+    func windowChars(language: String) async -> Int? { nil }
+    func extract(_ text: String, language: String) async -> PageSelection? { nil }
 }
 
 /// Loads a page in an off-screen browser, lets its JavaScript run, and returns the resulting

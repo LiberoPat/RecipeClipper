@@ -94,6 +94,22 @@ class RecipeSourceCreditTest {
     }
 
     @Test
+    fun aRecipePickedByTheModelSaysSoQuietlyAndOnlyIt() {
+        show(recipe.copy(origin = ContentOrigin.EXTRACTED))
+
+        compose.onNodeWithText("Picked from the page text — check against the source").assertIsDisplayed()
+        compose.onNodeWithText("smittenkitchen.com").assertIsDisplayed()
+        compose.onNodeWithText("Open original").assertIsDisplayed()
+    }
+
+    @Test
+    fun aParsedRecipeHasNoPickedLine() {
+        show()
+
+        compose.onNodeWithText("Picked from the page text — check against the source").assertDoesNotExist()
+    }
+
+    @Test
     fun aClipWarnsInItsOwnWordsBeforeUpdatingFromSource() {
         show(recipe.copy(origin = ContentOrigin.CLIPPED))
 

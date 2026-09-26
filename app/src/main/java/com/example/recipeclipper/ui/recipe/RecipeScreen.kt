@@ -498,6 +498,15 @@ private fun ReadingView(
                         clipped = recipe.origin == ContentOrigin.CLIPPED,
                         onOpen = { actions.onOpenOriginal(recipe.sourceUrl) }
                     )
+                    // Picked by the on-device model (#103): every line is on the page, but
+                    // which lines were picked is the model's call, so say so, quietly.
+                    if (recipe.origin == ContentOrigin.EXTRACTED) {
+                        Text(
+                            stringResource(R.string.extracted_from_page),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(Modifier.height(4.dp))
                 } else {
                     Spacer(Modifier.height(14.dp))

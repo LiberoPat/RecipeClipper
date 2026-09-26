@@ -2031,3 +2031,76 @@ the app is exactly as before (the history cap of 50 unprotected recipes).
   cached, then lost), and the purchase sheet is tried by hand in the simulator. Play's own
   test tracks and license testers are the next step once the Play Console
   product exists.
+
+## A recipe picked from the page's text (#103)
+
+Part of #99. When a page loads but JSON-LD and microdata find no recipe (`NoRecipeFound`,
+after the rendered fetch too), the on-device model may pick one out of the page's text. The
+parsers stay first and unchanged; this runs only after them, behind the `llmExtraction` flag
+(off in both builds).
+
+**"Never guess a recipe from prose" becomes "never invent one": the model may only pick text
+that's on the page** (the owner's direction on #99). What it returns is checked line by line,
+and what shows is the page's own characters for each line found, never the model's. A line the
+page doesn't have is dropped; a number is never cut into; code still owns every number
+(scaling, conversion, timers and temperatures read the kept lines exactly as they read parsed
+ones).
+
+**The APIs, as checked on 2026-09-25:**
+
+- **Android: ML Kit GenAI's Prompt API** (`com.google.mlkit:genai-prompt:1.0.0-beta4`,
+  `Generation.getClient()`, `checkStatus()`, `download()`, `generateContent(generateContentRequest(
+  TextPart(…)) { temperature = 0f; topK = 1; maxOutputTokens = 1024 })`). Input under 4,000
+  tokens. Rewriting, which Chef mode uses, takes under 256 tokens and only rewrites, so it can't
+  read a page; Summarization writes bullets. The Prompt API's structured output
+  (`@Generable` data classes) is alpha and needs the `genai-schema-compiler` KSP processor, so
+  instead the reply is one JSON object parsed strictly (`PageSelectionJson`: optionally in one
+  code fence, nothing around it, every field the right type, else no answer at all). Offered for
+  en, de, es, fr, it and ja (the languages Google lists for Gemini Nano's text features; no
+  Portuguese). A model still downloadable starts its download and the page stays
+  `NoRecipeFound` meanwhile.
+- **iOS: Foundation Models with guided generation** (`@Generable struct PickedRecipe`, `@Guide`
+  per field, `session.respond(to:generating:options:)`, a fresh session per page,
+  `GenerationOptions(temperature: 0)`), iOS 26+ with Apple Intelligence on, for the recipe
+  languages in `supportedLanguages`. No reply is parsed: the fields come back typed.
+- **How much text:** Android 3,000 tokens of page; iOS `contextSize` (4,096 on 26, 8,192 on 27)
+  minus 1,800 for instructions, schema and reply. Tokens become characters at 3 per token (1 in
+  Japanese), a deliberate underestimate. A page over the limit fails the call (nil), never
+  shows a partial recipe.
+- **Seam:** `PageRecipeExtractor` (`windowChars(language)`, `extract(text, language)`) beside
+  `StepShortener`; `MlKitPageRecipeExtractor` and `FoundationModelsPageRecipeExtractor` are the
+  only files that import the model APIs; tests use `FakePageRecipeExtractor`. The share
+  extension has no extractor (memory), so a shared link it imports behaves as before.
+
+**Design.**
+
+- **The source hands over the page's text** with `NoRecipeFound` (`RecipeSource.fetchPage`,
+  `FetchedPage`); the repository prefers the rendered page's text when there is one. Only a page
+  that loaded is read: never after a block, offline or a failed fetch.
+- **Page text** (`PageTextReader`, pure, Jsoup / the iOS `HtmlTree`): one line per block, each
+  as Jsoup's `text()` gives it; scripts, styles, `nav`, `footer`, buttons and the like left out.
+  The title is the first `<h1>`, else `og:title`, else `<title>`; the photo is `og:image`.
+- **The window** (`RecipeTextWindow`, pure, both platforms): the ingredients heading
+  (`headings.json`, every shipped language at once) followed, before the next heading, by the
+  most ingredient-looking lines (an amount first, or a short line holding a number), with a
+  bonus when the steps heading follows; else the densest run of such lines (three in ten); else
+  nothing, and the model isn't asked (a login page or an article costs no model call). Up to 12
+  lines before the anchor (a fifth of the budget: the card's title, times and servings), then as
+  many as fit, with the page title first if the window doesn't already hold it.
+- **The verifier** (`PageRecipeCheck`, pure, both platforms, pinned by the corpus's `Pick`
+  rows): each picked string is looked for in the window's text, both folded the same way (NFKC,
+  so "½" is "1/2"; typographic quotes, dashes, "⁄" and "×" as ASCII; lowercase; whitespace runs,
+  line breaks included, as one space). A match must not start or end inside a word, nor inside a
+  number ("2 cups" in "12 cups", "25 minutes" in "20-25 minutes", "5 hours" in "1.5 hours"); an
+  ingredient must start its line, after nothing but a bullet or checkbox, so "2 tbsp" can't be
+  lifted out of "1 cup plus 2 tbsp"; a name, ingredient or step must hold a letter. The name is
+  required; the recipe still needs ingredients or steps (the parsers' rule), otherwise it's
+  `NoRecipeFound` as before. Times go through the parsers' `formatDuration`.
+- **Provenance:** `contentOrigin` `EXTRACTED` (no schema change: the column is text). It is the
+  source's, like `PARSED`: a re-share fetches and refreshes it, and an edit makes it `EDITED`.
+  An older app reads the unknown name as `EDITED`, the safe side. The reading view says, quietly
+  under the source credit, "Picked from the page text — check against the source", with Open
+  original as usual.
+- **Needs a real phone to judge:** whether the models copy text faithfully enough for the
+  verifier to keep most lines, how long a page takes, and whether 1,024 output tokens hold a long
+  recipe on Android. CI and the tests run the fake model only.

@@ -253,7 +253,7 @@ struct RecipeDao {
     /// written and `notKept` is returned. Updating a recipe already here never removes one.
     /// Call inside a write.
     ///
-    /// A row that is the user's version (#29: `contentOrigin` not PARSED) keeps its content:
+    /// A row that is the user's version (#29: `contentOrigin` neither PARSED nor EXTRACTED) keeps its content:
     /// the re-share only counts as a view. `replaceUsersVersion` is "Update from source", which
     /// does replace it, and makes it PARSED again (`fresh` is).
     func upsert(
@@ -262,7 +262,7 @@ struct RecipeDao {
     ) throws -> Int64 {
         let id: Int64
         if let existing = try findByUrl(fresh.sourceUrl) {
-            if existing.contentOrigin != Self.originParsed && !replaceUsersVersion {
+            if !ContentOrigin.isSources(existing.contentOrigin) && !replaceUsersVersion {
                 try touch(existing.id, now: fresh.lastViewedAt)
             } else {
                 try update(keepingUserState(existing, fresh))
@@ -323,7 +323,4 @@ struct RecipeDao {
         updated.servingsTarget = existing.servingsTarget
         return updated
     }
-
-    /// `ContentOrigin.parsed`, as stored.
-    static let originParsed = "PARSED"
 }

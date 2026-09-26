@@ -276,6 +276,7 @@
     <string name="update_from_source_clip_body">Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und im Verlauf.</string>
     <string name="clipped_by_you">Von dir ausgeschnitten</string>
     <string name="clipped_by_you_on">Von dir ausgeschnitten · %1$s</string>
+    <string name="extracted_from_page">Aus dem Seitentext übernommen – mit der Quelle abgleichen</string>
     <plurals name="clip_lines_selected">
         <item quantity="one">%1$d Zeile markiert</item>
         <item quantity="other">%1$d Zeilen markiert</item>

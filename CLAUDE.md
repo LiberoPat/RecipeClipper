@@ -21,7 +21,7 @@ needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
 unit, timer, temperature, yield, range, amount, duration, detection,
-ingredient-name, aisle and step words, condensed section names; tracking parameters), loaded by both apps (Android as
+ingredient-name, aisle and step words, condensed section names, recipe headings; tracking parameters), loaded by both apps (Android as
 Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
 table there, never in code; the logic that reads it stays written twice. **Each
 language has its own folder** (`shared/tables/<code>/`: en, de, es, fr, it,
@@ -47,7 +47,8 @@ fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
 JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
-pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); the
+pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); a
+recipe picked from a page's text by the on-device model (behind its flag, #103); the
 UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -93,14 +94,15 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests),
                Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser), MicrodataRecipeParser, RenderedPageSource,
+               PageTextReader, PageRecipe (#103)
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
                LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
                TrailingAmount (name-first lines: Japanese), StepAmounts (amounts inside steps, #101),
-               ClipSelection, ClipDraft,
+               ClipSelection, ClipDraft, PageText, RecipeTextWindow, PageRecipeCheck (#103),
                PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal), LibraryLimit (#107),
                Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
                Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy)
@@ -199,8 +201,9 @@ Decisions, not suggestions. Don't relitigate them in code.
 - **Leaving a list is a demotion, not a deletion.** The recipe stays in
   history and becomes cullable. Deleting is a separate, explicit action with
   its own confirmation.
-- **Never guess a recipe from prose, and never show a confident wrong
-  number.** Anything the app doesn't understand stays as written.
+- **Never invent a recipe, and never show a confident wrong number.** The
+  on-device model may only pick text that's on the page (#103). Anything the
+  app doesn't understand stays as written.
 
 ## UI decisions
 
@@ -351,9 +354,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   `freeTier` off, the free tier's one-for-one for a new recipe, nothing when
   unlocked. Opening from history counts as a view.
 - **The user's version is never refreshed** (#29, #37).
-  `contentOrigin` (`PARSED` | `EDITED` | `CLIPPED` | `MANUAL`, by name; an
-  unknown name reads as `EDITED`) and `editedAt` (the last saved edit). Anything
-  but `PARSED` is the user's: a re-share opens it without fetching and only
+  `contentOrigin` (`PARSED` | `EDITED` | `CLIPPED` | `MANUAL` | `EXTRACTED`, by
+  name; an unknown name reads as `EDITED`) and `editedAt` (the last saved edit).
+  Anything but `PARSED` or `EXTRACTED` (#103) is the user's: a re-share opens it without fetching and only
   counts as a view. "Update from source" is the one way back: it fetches,
   replaces the content, keeps the id, note and lists, and sets `PARSED` and
   no `editedAt`; a failure changes nothing. An edit makes `PARSED` into
@@ -488,6 +491,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
     `recipeInstructions`.
   - The photo falls back to `og:image`.
 - **A recipe needs a name, plus ingredients or steps.**
+- **Last, the on-device model picks from the page's text** (#103,
+  `llmExtraction` flag): only after `NoRecipeFound` on a page that loaded,
+  through `PageRecipeExtractor`, on the part `RecipeTextWindow` chooses.
+  `PageRecipeCheck` keeps only what is on that text (folded; never cutting
+  into a word or number; an ingredient starts its line) and shows the page's
+  own characters. Saved as `EXTRACTED`, with a quiet "Picked from the page
+  text" line. Rules in `docs/decisions.md`.
 - **Pages behind a login, or rendered by JavaScript,** expose no recipe data
   to the direct fetch. Only the rendered fetch can see the latter.
 - Every extracted string except `sourceUrl` goes through `stripHtml` (Jsoup's

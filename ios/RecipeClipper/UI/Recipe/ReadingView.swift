@@ -29,6 +29,15 @@ struct ReadingView: View {
                 if let domain = content.sourceDomain, let sourceUrl {
                     SourceCredit(domain: domain, url: sourceUrl, clipped: recipe.origin == .clipped)
                         .padding(.bottom, 4)
+                    // Picked by the on-device model (#103): every line is on the page, but which
+                    // lines were picked is the model's call, so say so, quietly.
+                    if recipe.origin == .extracted {
+                        Text(Strings.extractedFromPage)
+                            .textStyle(Typography.bodySmall)
+                            .foregroundStyle(Palette.muted)
+                            .padding(.bottom, 4)
+                            .accessibilityIdentifier("recipe.extractedFromPage")
+                    }
                 }
                 Times(prep: recipe.prepTime, cook: recipe.cookTime, total: recipe.totalTime)
                     .padding(.bottom, 16)

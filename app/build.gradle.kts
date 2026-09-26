@@ -249,6 +249,10 @@ dependencies {
     // 26 is why ours is 26: overriding it (<uses-sdk tools:overrideLibrary>) makes lint read the
     // app's targetSdk as 1, which silences targetSdk-based checks (docs/decisions.md).
     implementation("com.google.mlkit:genai-rewriting:1.0.0-beta1")
+    // A recipe picked from a page's text (#103): the Prompt API, as Rewriting takes only short
+    // inputs. Its structured output needs an alpha KSP schema compiler, so the reply is JSON
+    // parsed strictly instead (docs/decisions.md).
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
 }
 
 // DifferentialCorpusTest reads the iOS corpus and checks it against the Kotlin, so an edit to

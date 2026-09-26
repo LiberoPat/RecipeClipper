@@ -38,31 +38,32 @@ class BlogRecipeSource(
     private val timeoutMs: Int = 15_000
 ) : RecipeSource {
 
-    override suspend fun fetch(url: String): ParseResult = withContext(Dispatchers.IO) {
+    override suspend fun fetch(url: String): ParseResult = fetchPage(url).result
+
+    override suspend fun fetchPage(url: String): FetchedPage = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.connect(url)
                 .userAgent("Mozilla/5.0 (Linux; Android 10; Mobile) RecipeClipper/1.0")
                 .timeout(timeoutMs)
                 .get()
 
-            parse(doc, url)
+            parsePage(doc, url)
         } catch (e: HttpStatusException) {
             // Jsoup throws this for any non-2xx answer. 403/404/429/5xx are usually a bot
             // block that lifts on its own (see ParseError.Blocked); anything else stays a
             // plain fetch failure naming the status.
-            ParseResult.Error(ParseError.forHttpStatus(e.statusCode))
+            FetchedPage(ParseResult.Error(ParseError.forHttpStatus(e.statusCode)))
         } catch (e: CancellationException) {
             throw e // cancellation is never a failure to report
         } catch (e: IOException) {
-            ParseResult.Error(
-                when {
-                    !connectivity.isOnline() -> ParseError.Offline
-                    e is SocketTimeoutException -> ParseError.FetchFailed(e.message, timedOut = true)
-                    else -> ParseError.FetchFailed(e.message)
-                }
-            )
+            val cause = when {
+                !connectivity.isOnline() -> ParseError.Offline
+                e is SocketTimeoutException -> ParseError.FetchFailed(e.message, timedOut = true)
+                else -> ParseError.FetchFailed(e.message)
+            }
+            FetchedPage(ParseResult.Error(cause))
         } catch (e: Exception) {
-            ParseResult.Error(ParseError.FetchFailed(e.message))
+            FetchedPage(ParseResult.Error(ParseError.FetchFailed(e.message)))
         }
     }
 
@@ -72,14 +73,21 @@ class BlogRecipeSource(
          * HTML a [RenderedPageSource] returns. Pure and CPU-bound, so callers run it off the
          * main thread. iOS has the same `BlogRecipeSource.parse(html:url:)`.
          */
-        fun parse(html: String, url: String): ParseResult = parse(Jsoup.parse(html, url), url)
+        fun parse(html: String, url: String): ParseResult = parsePage(html, url).result
 
-        private fun parse(doc: Document, url: String): ParseResult {
+        /** [parse], plus the page's text when it holds no recipe data (#103). */
+        fun parsePage(html: String, url: String): FetchedPage = parsePage(Jsoup.parse(html, url), url)
+
+        private fun parsePage(doc: Document, url: String): FetchedPage {
             val ldJsonScripts = doc.select("script[type=application/ld+json]").map { it.data() }
             // Microdata only when there is no JSON-LD recipe, so no working site changes.
             val recipe = JsonLdRecipeParser.parse(ldJsonScripts, url, JsonLdRecipeParser.pageLanguage(doc))
                 ?: MicrodataRecipeParser.parse(doc, url)
-            return if (recipe != null) ParseResult.Success(recipe) else ParseResult.Error(ParseError.NoRecipeFound)
+            return if (recipe != null) {
+                FetchedPage(ParseResult.Success(recipe))
+            } else {
+                FetchedPage(ParseResult.Error(ParseError.NoRecipeFound), PageTextReader.read(doc))
+            }
         }
     }
 }
