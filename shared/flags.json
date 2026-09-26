@@ -45,7 +45,7 @@
     {
       "key": "cookedPhotos",
       "description": "\"I made this\": your own photos of a recipe, each with a date and a short note, in a \"Your cooks\" gallery under the recipe; the Recipes screen's Recently cooked sort. Recipes with photos are never removed automatically, and photos go into the export file either way.",
-      "defaults": { "debug": false, "release": false },
+      "defaults": { "debug": true, "release": true },
       "issue": 116
     }
   ]

@@ -121,9 +121,9 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(router.path, [])
     }
 
-    func testTheTabsAreInTheOwnersOrderAndTheBarShipsOff() {
+    func testTheTabsAreInTheOwnersOrderAndTheBarShipsOn() {
         XCTAssertEqual(AppTab.allCases, [.recipes, .week, .groceries, .pantry])
         XCTAssertEqual(FlagRegistry.definitions.first { $0.key == Flag.mealPlan.rawValue }?.defaults,
-                       FlagDefinition.Defaults(debug: false, release: false))
+                       FlagDefinition.Defaults(debug: true, release: true))
     }
 }
