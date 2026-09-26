@@ -28,7 +28,10 @@ enum class Flag(val key: String) {
     LLM_EXTRACTION("llmExtraction"),
 
     /** Typed decisions by the on-device model: count brackets, close pantry names, aisles (#104). */
-    AI_DECISIONS("aiDecisions");
+    AI_DECISIONS("aiDecisions"),
+
+    /** "I made this" (#116): your photos and notes on a recipe, and the Recently cooked sort. */
+    COOKED_PHOTOS("cookedPhotos");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

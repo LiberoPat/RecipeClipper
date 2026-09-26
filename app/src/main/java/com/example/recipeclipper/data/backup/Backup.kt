@@ -33,7 +33,12 @@ data class Backup(
     /** Saved weekly menus (#52). Absent in older files, which read as empty. */
     val menus: List<BackupMenu> = emptyList(),
     /** The meals of [menus]. Absent in older files, which read as empty. */
-    val menuEntries: List<BackupMenuEntry> = emptyList()
+    val menuEntries: List<BackupMenuEntry> = emptyList(),
+    /**
+     * The user's own photos (#116). Absent in older files, which read as empty. Their pictures
+     * travel beside this JSON in a zip ([BackupPackage]), each at [BackupCookedPhoto.file].
+     */
+    val cookedPhotos: List<BackupCookedPhoto> = emptyList()
 ) {
     companion object {
         /** The `format` marker: tells an export apart from any other JSON file. */
@@ -167,6 +172,27 @@ data class BackupMenuEntry(
 )
 
 /**
+ * One "I made this" entry (#116). [file] is the picture's path inside the export zip
+ * (`photos/<id>.jpg`); an entry whose picture isn't in the package is left out on import.
+ */
+data class BackupCookedPhoto(
+    val id: String,
+    val recipeId: String,
+    val day: Long,
+    val note: String?,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val file: String
+)
+
+/**
+ * What an export or an import carries: the JSON, and the pictures by their path in the zip
+ * ([BackupCookedPhoto.file]) mapped to a readable local file. A plain `.json` backup (every
+ * export without photos, and every older one) has none.
+ */
+data class BackupPackage(val json: String, val photos: Map<String, String> = emptyMap())
+
+/**
  * Why an export or an import failed, as a cause: the Settings screen picks the words. An
  * import that fails for any of these has written nothing.
  */
@@ -215,9 +241,17 @@ data class ImportSummary(
     val mealTypesAdded: Int = 0,
     /** New menus written (#52). */
     val menusAdded: Int = 0,
+    /** New photos of the user's own cooking written (#116). */
+    val photosAdded: Int = 0,
     /** The free library's size when that is what [recipesSkipped] ran into (#107), else null. */
     val freeLimit: Int? = null
 )
 
 /** An export ready to hand to the share sheet. */
-data class ExportedBackup(val json: String, val exportedAt: Long, val recipeCount: Int)
+data class ExportedBackup(
+    val json: String,
+    val exportedAt: Long,
+    val recipeCount: Int,
+    /** The pictures to zip beside [json] (#116): path in the zip to the stored file. */
+    val photos: Map<String, String> = emptyMap()
+)

@@ -277,7 +277,7 @@ class SettingsViewModel @Inject constructor(
             val status = when (val exported = backups.export()) {
                 is BackupResult.Failure -> BackupStatus.Failed(exported.error)
                 is BackupResult.Success ->
-                    files.writeExport(exported.value.json, exported.value.exportedAt)
+                    files.writeExport(exported.value.json, exported.value.exportedAt, exported.value.photos)
                         ?.let { BackupStatus.ReadyToShare(it) }
                         ?: BackupStatus.Failed(BackupError.ExportFailed)
             }
@@ -297,9 +297,9 @@ class SettingsViewModel @Inject constructor(
         if (_uiState.value.backup.isBusy) return
         _uiState.update { it.copy(backup = BackupStatus.Importing) }
         viewModelScope.launch {
-            val status = when (val text = files.readText(uri)) {
-                is BackupResult.Failure -> BackupStatus.Failed(text.error)
-                is BackupResult.Success -> when (val imported = backups.import(text.value)) {
+            val status = when (val picked = files.read(uri)) {
+                is BackupResult.Failure -> BackupStatus.Failed(picked.error)
+                is BackupResult.Success -> when (val imported = backups.import(picked.value)) {
                     is BackupResult.Success -> BackupStatus.Imported(imported.value)
                     is BackupResult.Failure -> BackupStatus.Failed(imported.error)
                 }

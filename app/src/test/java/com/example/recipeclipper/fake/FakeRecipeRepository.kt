@@ -135,6 +135,13 @@ class FakeRecipeRepository : RecipeRepository {
         restoreCalls += deleted
     }
 
+    /** Deletes that stood (#116: their photo files go). */
+    val forgetCalls = mutableListOf<RecipeRepository.DeletedRecipe>()
+
+    override suspend fun forget(deleted: RecipeRepository.DeletedRecipe) {
+        forgetCalls += deleted
+    }
+
     override fun observeHistory(query: String): Flow<List<RecipeSummary>> {
         historyQueries += query
         return history

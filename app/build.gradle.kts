@@ -238,6 +238,9 @@ dependencies {
 
     // Recipe photo
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // "I made this" (#116): a photo's EXIF orientation. Coil already brings it; the framework's
+    // android.media copy is the one lint warns about (buggy on older releases).
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
 
     // The one-time unlock (#107): Google Play Billing, only behind PlayBillingEntitlements.
     implementation("com.android.billingclient:billing-ktx:9.1.0")

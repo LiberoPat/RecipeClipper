@@ -207,6 +207,9 @@ protocol RecipeRepository: AnyObject {
     /// Undoes `delete`: same id, same list membership.
     func restore(_ deleted: DeletedRecipe) async
 
+    /// The `delete` stands (no undo now): removes what only an undo needed, its photo files (#116).
+    func forget(_ deleted: DeletedRecipe) async
+
     /// Titles and ingredients containing `query` (case-insensitive, literal substring —
     /// never LIKE); everything when `query` is empty. Newest view first. Re-emits on change.
     func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never>
@@ -219,6 +222,8 @@ protocol RecipeRepository: AnyObject {
 }
 
 extension RecipeRepository {
+    func forget(_ deleted: DeletedRecipe) async {}
+
     func observeCount() -> AnyPublisher<Int, Never> {
         observeHistory(query: "").map(\.count).removeDuplicates().eraseToAnyPublisher()
     }

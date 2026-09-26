@@ -18,6 +18,8 @@ enum Flag: String, CaseIterable {
     case llmExtraction
     /// Typed decisions by the on-device model: count brackets, close pantry names, aisles (#104).
     case aiDecisions
+    /// "I made this" (#116): your photos and notes on a recipe, and the Recently cooked sort.
+    case cookedPhotos
 }
 
 /// One flag as `shared/flags.json` declares it.
