@@ -57,8 +57,12 @@ final class GroceryDecisionsTests: XCTestCase {
         XCTAssertEqual(GroceryDecisions.samePairs(list, decisions: .none), [same("ears of corn", "corn")])
         let apart = items(("3 garlic cloves", .spices), ("2 cloves garlic", .produce))
         XCTAssertTrue(GroceryDecisions.samePairs(apart, decisions: .none).isEmpty)
-        let eggs = items(("2 eggs, beaten", .dairy), ("3 eggs", .dairy), ("200 g butter, soft", .dairy))
-        XCTAssertEqual(GroceryDecisions.trailingTexts(eggs, decisions: .none), [trailing(", beaten")])
+        let eggs = items(
+            ("2 eggs, beaten", .dairy), ("3 eggs", .dairy), ("200 g butter, soft", .dairy),
+            ("1 cup milk, soft", .dairy), ("2 eggs (about 100 g)", .dairy)
+        )
+        // Every line with trailing text, once per text; never text holding a figure.
+        XCTAssertEqual(GroceryDecisions.trailingTexts(eggs, decisions: .none), [trailing(", beaten"), trailing(", soft")])
     }
 
     func testAFreshAnswerFilesALineOutOfOtherBesideItsPartner() {

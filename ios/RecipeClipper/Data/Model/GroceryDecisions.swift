@@ -130,27 +130,15 @@ enum GroceryDecisions {
         return out
     }
 
-    /// Trailing text on a line whose core names what another line names, where they don't add up
-    /// as written; and the rest of a line cut after the model's name for it (`nameSplit`).
+    /// The trailing-text questions for every line with trailing text (the owner's option 2): cut
+    /// at a separator (`split`) or after the model's name for it (`nameSplit`), once per text.
     static func trailingTexts(_ items: [GroceryItem], decisions: Decisions) -> [DecisionQuestion] {
         var out: [DecisionQuestion] = []
         for item in items {
-            guard let words = LanguageWords.forTag(item.language) else { continue }
-            guard let split = split(item.text, words: words) else {
-                if let named = self.split(item.text, words: words, decisions: decisions) {
-                    let q = DecisionQuestion.trailingText(named.trailing, language: words.language)
-                    if !out.contains(q) { out.append(q) }
-                }
-                continue
-            }
-            guard let core = IngredientName.of(split.core, words: words) else { continue }
-            let partner = items.contains { other in
-                other.id != item.id && other.language == item.language && aislesMeet(item, other)
-                    && (IngredientName.of(other.text, words: words) == core || name(other, decisions: decisions) == core)
-                    && GroceryCombiner.combine([item.text, other.text], words: words) == nil
-            }
+            guard let words = LanguageWords.forTag(item.language),
+                  let split = split(item.text, words: words, decisions: decisions) else { continue }
             let q = DecisionQuestion.trailingText(split.trailing, language: words.language)
-            if partner && !out.contains(q) { out.append(q) }
+            if !out.contains(q) { out.append(q) }
         }
         return out
     }

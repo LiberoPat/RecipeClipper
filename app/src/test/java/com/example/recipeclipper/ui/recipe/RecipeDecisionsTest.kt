@@ -62,6 +62,28 @@ class RecipeDecisionsTest {
         assertEquals(listOf("6 large apples, peeled and sliced (about 6 cups)", "2 cup sugar"), vm.ingredients())
     }
 
+    @Test fun `the reading view never asks about grocery text and keeps the line as written`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val lines = listOf("2 eggs (dfsafs -", "2 onions dfsafs")
+            val decisions = FakeDecisionRepository(
+                mapOf(
+                    DecisionQuestion.trailingText("(dfsafs -", "en") to "junk",
+                    DecisionQuestion.ingredientName("2 onions dfsafs", "en") to "onions",
+                    DecisionQuestion.trailingText("dfsafs", "en") to "junk"
+                )
+            )
+            val vm = RecipeViewModel(
+                SavedStateHandle(mapOf(RecipeViewModel.RECIPE_ID_ARG to 1L)),
+                FakeRecipeRepository().apply { openResult = recipe.copy(ingredients = lines) },
+                FakeAppPreferences(), Clock { testScheduler.currentTime },
+                FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler(),
+                featureFlags = flags(Flag.AI_DECISIONS, Flag.AI_COUNT_BRACKETS), decisionRepository = decisions
+            )
+            advanceUntilIdle()
+            assertEquals(emptyList<DecisionQuestion>(), decisions.asked)
+            assertEquals(lines, vm.ingredients())
+        }
+
     @Test fun `unsure, or no model, keeps today's line`() = runTest(mainDispatcherRule.dispatcher) {
         for (decisions in listOf(FakeDecisionRepository(mapOf(question to "unsure")), null)) {
             val vm = viewModel(decisions, flags(Flag.AI_DECISIONS, Flag.AI_COUNT_BRACKETS))

@@ -92,9 +92,13 @@ class GroceryDecisionsTest {
         assertTrue(GroceryDecisions.samePairs(apart, Decisions.NONE).isEmpty())
     }
 
-    @Test fun asksAboutTrailingTextOnlyWhereItBlocksAPartner() {
-        val list = items("2 eggs, beaten" to Aisle.DAIRY, "3 eggs" to Aisle.DAIRY, "200 g butter, soft" to Aisle.DAIRY)
-        assertEquals(listOf(trailing(", beaten")), GroceryDecisions.trailingTexts(list, Decisions.NONE))
+    @Test fun asksAboutTrailingTextOnEveryLineThatHasSome() {
+        val list = items(
+            "2 eggs, beaten" to Aisle.DAIRY, "3 eggs" to Aisle.DAIRY, "200 g butter, soft" to Aisle.DAIRY,
+            "1 cup milk, soft" to Aisle.DAIRY, "2 eggs (about 100 g)" to Aisle.DAIRY
+        )
+        // Once per text; never text holding a figure.
+        assertEquals(listOf(trailing(", beaten"), trailing(", soft")), GroceryDecisions.trailingTexts(list, Decisions.NONE))
     }
 
     @Test fun aFreshAnswerFilesALineOutOfOtherBesideItsPartner() {
