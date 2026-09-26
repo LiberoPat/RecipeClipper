@@ -74,6 +74,11 @@ internal object PageTextReader {
                 else -> { out.append(c); lastWhite = false }
             }
         }
-        return out.toString().trim { it <= ' ' }
+        // Java's trim: anything up to U+0020, control characters included, not Kotlin's isWhitespace.
+        var start = 0
+        var end = out.length
+        while (start < end && out[start] <= ' ') start++
+        while (end > start && out[end - 1] <= ' ') end--
+        return out.substring(start, end)
     }
 }
