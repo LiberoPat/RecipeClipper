@@ -15,6 +15,8 @@ enum ShareImportUiState: Equatable {
     case notKept(title: String)
     /// Nothing shared carried a web link.
     case noLink
+    /// No link, but a list (#149): `receiveList` holds its lines, for Groceries or the Pantry.
+    case list
 }
 
 /// The share extension's one screen. The import itself is `RecipeRepository.importFromUrl`, the
@@ -28,15 +30,26 @@ final class ShareImportViewModel {
 
     @ObservationIgnored private let repository: RecipeRepository?
     @ObservationIgnored private let connectivity: Connectivity
+    @ObservationIgnored private let makeReceiveList: (@MainActor () -> ReceiveListViewModel?)?
     @ObservationIgnored private var input: SharedInput?
+    @ObservationIgnored private var text: String?
+    /// "Add this list" (#149), made only for shared text with no link but with lines, and only
+    /// when the grocery list and the pantry are on.
+    @ObservationIgnored private(set) var receiveList: ReceiveListViewModel?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
 
     /// `repository` is nil when the extension couldn't open the shared database (no App Group
     /// container, or the file wouldn't open): every import then fails as `saveFailed`.
-    init(repository: RecipeRepository?, connectivity: Connectivity = StaticConnectivity()) {
+    /// `makeReceiveList` makes the list sheet's ViewModel (#149); nil, or nil from it (the
+    /// grocery list is off, or there's no database), keeps a list shared in as `.noLink`.
+    init(
+        repository: RecipeRepository?, connectivity: Connectivity = StaticConnectivity(),
+        makeReceiveList: (@MainActor () -> ReceiveListViewModel?)? = nil
+    ) {
         self.repository = repository
         self.connectivity = connectivity
+        self.makeReceiveList = makeReceiveList
     }
 
     deinit {
@@ -44,9 +57,11 @@ final class ShareImportViewModel {
         reconnectTask?.cancel()
     }
 
-    /// Called once, with whatever the share carried (nil: no web link in it).
-    func start(with input: SharedInput?) {
+    /// Called once, with whatever the share carried (nil: no web link in it) and, when it had
+    /// no link, its plain `text`.
+    func start(with input: SharedInput?, text: String? = nil) {
         self.input = input
+        self.text = text
         load()
     }
 
@@ -66,7 +81,14 @@ final class ShareImportViewModel {
         reconnectTask?.cancel()
         reconnectTask = nil
         guard let input else {
-            uiState = .noLink
+            if let text, !ReceivedList.lines(text).isEmpty,
+               let list = receiveList ?? makeReceiveList?() {
+                receiveList = list
+                list.open(text)
+                uiState = .list
+            } else {
+                uiState = .noLink
+            }
             return
         }
         guard let repository else {

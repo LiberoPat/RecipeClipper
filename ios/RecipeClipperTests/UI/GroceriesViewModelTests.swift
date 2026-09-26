@@ -230,6 +230,18 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertEqual(vm.shareText(title: "Groceries", aisleName: \.key), "Groceries\n\nproduce\n- 2 onions")
     }
 
+    /// "Send list" (#149) names the recipe each item is for.
+    func testSendListNamesEachItemsRecipe() async {
+        let vm = await viewModel()
+        await repository.add([NewGroceryLine(text: "2 lb chicken thighs", language: "en", recipeId: 1)])
+        repository.recipeTitles.send([1: "Sheet-pan chicken"])
+        await settleMain { vm.uiState.recipeTitles[1] != nil }
+        XCTAssertEqual(
+            vm.shareText(title: "Groceries", aisleName: \.key),
+            "Groceries\n\nmeat\n- 2 lb chicken thighs (Sheet-pan chicken)"
+        )
+    }
+
     // MARK: - The add sheet
 
     func testARecipesLinesAreAllTickedAndHeadingsAndBlanksAreLeftOut() {

@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// The composition root: the one place concrete types are constructed. Everything else sees
 /// only the protocols in Data/Contracts.swift.
@@ -163,6 +164,7 @@ final class AppContainer {
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
         storeKit?.start()
         container.libraryPolicy.startMirroring()
+        container.startGroceriesMirroring(DefaultsGroceriesSwitch(defaults: defaults))
         return container
     }
 
@@ -198,6 +200,19 @@ final class AppContainer {
         GroceriesViewModel(
             repository: groceryRepository, pantry: pantryRepository, calendar: planCalendar, decisions: decisionRepository
         )
+    }
+
+    /// Keeps the share extension's copy of the `mealPlan` flag (#149) current: now, and after
+    /// every change, as `LibraryPolicy` does the library limit.
+    func startGroceriesMirroring(_ mirror: DefaultsGroceriesSwitch) {
+        let on = withObservationTracking { featureFlags.isOn(.mealPlan) } onChange: { [weak self] in
+            Task { @MainActor in self?.startGroceriesMirroring(mirror) }
+        }
+        mirror.store(on)
+    }
+
+    func makeReceiveListViewModel() -> ReceiveListViewModel {
+        ReceiveListViewModel(groceries: groceryRepository, pantry: pantryRepository, calendar: planCalendar)
     }
 
     func makeAddToGroceriesViewModel() -> AddToGroceriesViewModel {

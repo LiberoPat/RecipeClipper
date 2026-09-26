@@ -387,6 +387,10 @@ protocol GroceryRepository: AnyObject {
     /// Every item on the list, in the order added. Re-emits on change.
     func observeItems() -> AnyPublisher<[GroceryItem], Never>
 
+    /// The title of every recipe an item on the list came from, by recipe id (#149: "Send list"
+    /// names them). Re-emits on change.
+    func observeRecipeTitles() -> AnyPublisher<[Int64: String], Never>
+
     /// Adds `lines` at the end of the list, each in the aisle its name belongs to. Blank lines
     /// are skipped.
     func add(_ lines: [NewGroceryLine]) async
