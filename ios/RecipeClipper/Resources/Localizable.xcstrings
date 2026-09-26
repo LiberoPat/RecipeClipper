@@ -12594,47 +12594,6 @@
         }
       }
     },
-    "action_clear_checked" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear checked"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quitar lo marcado"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Retirer les articles cochés"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abgehakte entfernen"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rimuovi le spunte"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remover os marcados"
-          }
-        }
-      }
-    },
     "action_share_groceries" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13000,6 +12959,170 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Itens marcados removidos"
+          }
+        }
+      }
+    },
+    "snackbar_done_shopping" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantry updated, checked items removed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Despensa actualizada, artículos marcados eliminados"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garde-manger mis à jour, articles cochés retirés"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorrat aktualisiert, abgehakte Artikel entfernt"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dispensa aggiornata, articoli spuntati rimossi"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Despensa atualizada, itens marcados removidos"
+          }
+        }
+      }
+    },
+    "action_done_shopping" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done shopping"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compra terminada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Courses terminées"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einkauf erledigt"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spesa fatta"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compras feitas"
+          }
+        }
+      }
+    },
+    "put_away_intro" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tick what goes in the pantry. Everything checked comes off the list."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marca lo que va a la despensa. Todo lo marcado sale de la lista."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cochez ce qui va au garde-manger. Tous les articles cochés quittent la liste."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hake ab, was in den Vorrat kommt. Alles Abgehakte verschwindet von der Liste."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spunta cosa va in dispensa. Tutto ciò che è spuntato esce dalla lista."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marque o que vai para a despensa. Tudo o que foi marcado sai da lista."
+          }
+        }
+      }
+    },
+    "action_put_away" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Put away and clear"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar y quitar de la lista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ranger et retirer"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einräumen und entfernen"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metti via e rimuovi"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar e remover"
           }
         }
       }
@@ -13666,37 +13789,37 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nothing in the pantry yet. Type what's in your cupboards above, or add things as you tick them off the grocery list."
+            "value" : "Nothing in the pantry yet. Type what's in your cupboards above, or put things away when you're done shopping."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aún no hay nada en la despensa. Escribe arriba lo que tienes en los armarios, o añade cosas al marcarlas en la lista de la compra."
+            "value" : "Aún no hay nada en la despensa. Escribe arriba lo que tienes en los armarios, o guarda las cosas al terminar la compra."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rien dans le garde-manger pour l'instant. Saisissez ci-dessus ce qu'il y a dans vos placards, ou ajoutez des articles en les cochant sur la liste de courses."
+            "value" : "Rien dans le garde-manger pour l'instant. Saisissez ci-dessus ce qu'il y a dans vos placards, ou rangez vos achats une fois les courses terminées."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch nichts im Vorrat. Tippe oben ein, was in deinen Schränken ist, oder füge Dinge hinzu, wenn du sie auf der Einkaufsliste abhakst."
+            "value" : "Noch nichts im Vorrat. Tippe oben ein, was in deinen Schränken ist, oder räume Dinge ein, wenn du mit dem Einkauf fertig bist."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La dispensa è ancora vuota. Scrivi qui sopra cosa c'è nei tuoi armadietti, o aggiungi le cose mentre le spunti dalla lista della spesa."
+            "value" : "La dispensa è ancora vuota. Scrivi qui sopra cosa c'è nei tuoi armadietti, o metti via le cose quando hai finito la spesa."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nada na despensa ainda. Digite acima o que tem nos seus armários, ou adicione itens ao marcá-los na lista de compras."
+            "value" : "Nada na despensa ainda. Digite acima o que tem nos seus armários, ou guarde as compras quando terminar."
           }
         }
       }
@@ -13902,6 +14025,88 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Acabou"
+          }
+        }
+      }
+    },
+    "pantry_on_list" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On list"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En la lista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur la liste"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf der Liste"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In lista"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na lista"
+          }
+        }
+      }
+    },
+    "pantry_take_off_list" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take off the grocery list"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar de la lista de la compra"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer de la liste de courses"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von der Einkaufsliste nehmen"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Togli dalla lista della spesa"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tirar da lista de compras"
           }
         }
       }
@@ -14398,88 +14603,6 @@
         }
       }
     },
-    "snackbar_pantry_out %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ is out"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se acabó: %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ épuisé"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ ist aus"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ è finito"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ acabou"
-          }
-        }
-      }
-    },
-    "snackbar_added_to_groceries %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Added %@ to groceries"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Añadido a la compra: %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouté aux courses : %@"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ zum Einkauf hinzugefügt"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aggiunto alla spesa: %@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adicionado às compras: %@"
-          }
-        }
-      }
-    },
     "snackbar_pantry_deleted %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14845,88 +14968,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adicionar à despensa"
-          }
-        }
-      }
-    },
-    "snackbar_offer_pantry %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Got %@. Add it to the pantry?"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ya tienes %@. ¿Añadirlo a la despensa?"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ acheté. L'ajouter au garde-manger ?"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ besorgt. Zum Vorrat hinzufügen?"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Preso: %@. Aggiungerlo alla dispensa?"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comprou %@. Adicionar à despensa?"
-          }
-        }
-      }
-    },
-    "snackbar_pantry_restocked %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ is back in stock in the pantry"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ vuelve a estar en la despensa"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ est de nouveau en stock"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ ist wieder im Vorrat"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ è di nuovo in dispensa"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ voltou para a despensa"
           }
         }
       }

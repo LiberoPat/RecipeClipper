@@ -12,21 +12,26 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -80,7 +85,8 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  * The Groceries tab (#50): "Add an item", then the list by aisle. Lines naming the same
  * ingredient sit together under its name, or as one added-up row when that's exact. Tap to
  * tick; long-press to move to another aisle or delete (with undo). The menu sends the list as
- * plain text, pastes one in (#149) and clears what's ticked.
+ * plain text and pastes one in (#149). While anything is ticked, "Done shopping" (#146) puts it
+ * away in the pantry and clears it, with undo.
  *
  * [receiveViewModel] backs "Add this list", for a list pasted here or shared into the app; null
  * leaves "Paste a list" out. [onOpenPantry] shows the pantry once lines were added to it.
@@ -96,10 +102,14 @@ fun GroceriesScreen(
     val context = LocalContext.current
     val resources = LocalResources.current
 
+    // Snackbars only for undo (#146): a delete, or "Done shopping".
     val removed = state.removed
     val removedMessage = removed?.let {
-        if (it.label == null) stringResource(R.string.snackbar_checked_cleared)
-        else stringResource(R.string.snackbar_grocery_deleted, it.label)
+        when {
+            it.label != null -> stringResource(R.string.snackbar_grocery_deleted, it.label)
+            it.putAway -> stringResource(R.string.snackbar_done_shopping)
+            else -> stringResource(R.string.snackbar_checked_cleared)
+        }
     }
     val undoLabel = stringResource(R.string.action_undo)
     LaunchedEffect(removed) {
@@ -108,26 +118,25 @@ fun GroceriesScreen(
         if (result == SnackbarResult.ActionPerformed) viewModel.onUndoRemove() else viewModel.onSnackbarDismissed()
     }
 
-    val offer = state.pantryOffer
-    val offerMessage = when (offer) {
-        is PantryOffer.Restocked -> stringResource(R.string.snackbar_pantry_restocked, offer.name)
-        is PantryOffer.Offer -> stringResource(R.string.snackbar_offer_pantry, offer.name)
-        null -> null
-    }
-    val offerAction = stringResource(if (offer is PantryOffer.Offer) R.string.action_add_to_pantry else R.string.action_undo)
-    LaunchedEffect(offer) {
-        val message = offerMessage ?: return@LaunchedEffect
-        val result = snackbarHostState.showSnackbar(message, actionLabel = offerAction, withDismissAction = false)
-        when {
-            result != SnackbarResult.ActionPerformed -> viewModel.onPantryOfferDismissed()
-            offer is PantryOffer.Offer -> viewModel.onAddToPantry()
-            else -> viewModel.onUndoRestock()
-        }
-    }
-
     RecipeClipperTheme {
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
+            // "Done shopping" (#146), while anything is ticked: one step to put away and clear.
+            bottomBar = {
+                if (state.hasChecked) {
+                    Button(
+                        onClick = viewModel::onDoneShopping,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                            .testTag("doneShopping")
+                    ) {
+                        Text(stringResource(R.string.action_done_shopping))
+                    }
+                }
+            },
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets.safeDrawing
         ) { padding ->
@@ -144,7 +153,6 @@ fun GroceriesScreen(
                         )
                         GroceriesMenu(
                             canShare = !state.isEmpty,
-                            canClear = state.hasChecked,
                             onShare = {
                                 val title = resources.getString(R.string.tab_groceries)
                                 viewModel.shareText(title) { resources.aisleName(it) }?.let { text ->
@@ -156,8 +164,7 @@ fun GroceriesScreen(
                                         .startChooser()
                                 }
                             },
-                            onPaste = receiveViewModel?.let { vm -> { vm.open(clipboardText(context)) } },
-                            onClearChecked = viewModel::onClearChecked
+                            onPaste = receiveViewModel?.let { vm -> { vm.open(clipboardText(context)) } }
                         )
                     }
                     Spacer(Modifier.height(8.dp))
@@ -212,6 +219,14 @@ fun GroceriesScreen(
                 onDismiss = viewModel::onMoveDismissed
             )
         }
+        state.putAway?.let { sheet ->
+            PutAwaySheetView(
+                sheet = sheet,
+                onToggle = viewModel::onPutAwayToggle,
+                onConfirm = viewModel::onPutAwayConfirm,
+                onDismiss = viewModel::onPutAwayDismissed
+            )
+        }
         receiveViewModel?.let { ReceiveListSheet(it, onAddedToPantry = onOpenPantry) }
     }
 }
@@ -224,13 +239,7 @@ private fun clipboardText(context: Context): String? {
 }
 
 @Composable
-private fun GroceriesMenu(
-    canShare: Boolean,
-    canClear: Boolean,
-    onShare: () -> Unit,
-    onPaste: (() -> Unit)?,
-    onClearChecked: () -> Unit
-) {
+private fun GroceriesMenu(canShare: Boolean, onShare: () -> Unit, onPaste: (() -> Unit)?) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
@@ -254,14 +263,6 @@ private fun GroceriesMenu(
                     }
                 )
             }
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_clear_checked)) },
-                enabled = canClear,
-                onClick = {
-                    expanded = false
-                    onClearChecked()
-                }
-            )
         }
     }
 }
@@ -394,6 +395,58 @@ private fun MoveToAisleSheet(current: Aisle, onSelect: (Aisle) -> Unit, onDismis
                     RadioButton(selected = aisle == current, onClick = null)
                     Spacer(Modifier.width(12.dp))
                     Text(stringResource(aisle.label()), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * "Done shopping" (#146): the ticked items the pantry can hold, with checkboxes (what it tracks
+ * starts ticked), and one button that puts the ticked ones away and clears every ticked line.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PutAwaySheetView(sheet: PutAwaySheet, onToggle: (String) -> Unit, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        LazyColumn(
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding().testTag("putAway")
+        ) {
+            item(key = "title") {
+                SectionHeading(stringResource(R.string.action_done_shopping))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.put_away_intro),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+            items(sheet.items, key = { it.key }) { item ->
+                val ticked = item.key in sheet.ticked
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(value = ticked, role = Role.Checkbox, onValueChange = { onToggle(item.key) })
+                        .padding(vertical = 4.dp)
+                        .testTag("putAway-${item.key}")
+                ) {
+                    Checkbox(checked = ticked, onCheckedChange = null)
+                    Spacer(Modifier.width(12.dp))
+                    Text(item.name, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+            item(key = "confirm") {
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = onConfirm,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().testTag("putAwayButton")
+                ) {
+                    Text(stringResource(R.string.action_put_away))
                 }
             }
         }

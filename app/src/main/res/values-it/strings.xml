@@ -321,7 +321,6 @@
     <string name="add_to_groceries_title">Aggiungi alla spesa</string>
     <string name="action_add_week_to_groceries">Aggiungi gli ingredienti della settimana</string>
     <string name="groceries_week_empty">Nessuna ricetta in programma questa settimana.</string>
-    <string name="action_clear_checked">Rimuovi le spunte</string>
     <string name="action_share_groceries">Invia la lista</string>
     <string name="action_paste_list">Incolla una lista</string>
     <string name="receive_list_title">Aggiungi questa lista</string>
@@ -330,6 +329,10 @@
     <string name="move_to_aisle_title">Reparto</string>
     <string name="snackbar_grocery_deleted">Eliminato: %1$s</string>
     <string name="snackbar_checked_cleared">Articoli spuntati rimossi</string>
+    <string name="snackbar_done_shopping">Dispensa aggiornata, articoli spuntati rimossi</string>
+    <string name="action_done_shopping">Spesa fatta</string>
+    <string name="put_away_intro">Spunta cosa va in dispensa. Tutto ciò che è spuntato esce dalla lista.</string>
+    <string name="action_put_away">Metti via e rimuovi</string>
     <string name="aisle_produce">Frutta e verdura</string>
     <string name="aisle_meat">Carne</string>
     <string name="aisle_seafood">Pesce</string>
@@ -348,12 +351,14 @@
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Aggiungi alla dispensa</string>
     <string name="pantry_search_hint">Cerca nella dispensa</string>
-    <string name="pantry_empty">La dispensa è ancora vuota. Scrivi qui sopra cosa c\'è nei tuoi armadietti, o aggiungi le cose mentre le spunti dalla lista della spesa.</string>
+    <string name="pantry_empty">La dispensa è ancora vuota. Scrivi qui sopra cosa c\'è nei tuoi armadietti, o metti via le cose quando hai finito la spesa.</string>
     <string name="pantry_no_results">Nessun risultato per «%1$s».</string>
     <string name="pantry_sort_aisle">Ordina per reparto</string>
     <string name="pantry_sort_expiry">Ordina per scadenza</string>
     <string name="pantry_in_stock">Disponibile</string>
     <string name="pantry_out">Finito</string>
+    <string name="pantry_on_list">In lista</string>
+    <string name="pantry_take_off_list">Togli dalla lista della spesa</string>
     <string name="pantry_always_have">Sempre in casa</string>
     <string name="pantry_always_have_detail">Gli essenziali non sono mai in «Da comprare».</string>
     <string name="pantry_expired">Scaduto</string>
@@ -366,8 +371,6 @@
     <string name="pantry_no_date">Nessuna data</string>
     <string name="action_set_date">Scegli data</string>
     <string name="action_clear_date">Rimuovi data</string>
-    <string name="snackbar_pantry_out">%1$s è finito</string>
-    <string name="snackbar_added_to_groceries">Aggiunto alla spesa: %1$s</string>
     <string name="snackbar_pantry_deleted">Eliminato: %1$s</string>
     <string name="what_i_need_title">Cosa mi serve</string>
     <string name="what_i_need_buy">Da comprare</string>
@@ -377,8 +380,6 @@
     <string name="what_i_need_you_have">Hai %1$s</string>
     <string name="what_i_need_added">Aggiunto alla spesa</string>
     <string name="action_add_to_pantry">Aggiungi alla dispensa</string>
-    <string name="snackbar_offer_pantry">Preso: %1$s. Aggiungerlo alla dispensa?</string>
-    <string name="snackbar_pantry_restocked">%1$s è di nuovo in dispensa</string>
     <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
     <string name="settings_version">Versione %1$s</string>
     <string name="developer_settings_title">Impostazioni sviluppatore</string>

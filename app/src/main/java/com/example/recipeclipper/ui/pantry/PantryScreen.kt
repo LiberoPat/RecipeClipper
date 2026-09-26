@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.pantry
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +55,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -85,26 +87,17 @@ fun PantryScreen(viewModel: PantryViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Snackbars only for undo (#146).
     val message = state.message
     val text = when (message) {
-        is PantryMessage.OutOfStock -> stringResource(R.string.snackbar_pantry_out, message.item.name)
         is PantryMessage.Deleted -> stringResource(R.string.snackbar_pantry_deleted, message.name)
-        is PantryMessage.AddedToGroceries -> stringResource(R.string.snackbar_added_to_groceries, message.name)
         null -> null
     }
-    val action = when (message) {
-        is PantryMessage.OutOfStock -> stringResource(R.string.action_add_to_groceries)
-        is PantryMessage.Deleted -> stringResource(R.string.action_undo)
-        else -> null
-    }
+    val undoLabel = stringResource(R.string.action_undo)
     LaunchedEffect(message) {
         if (message == null || text == null) return@LaunchedEffect
-        val result = snackbarHostState.showSnackbar(text, actionLabel = action, withDismissAction = false)
-        when {
-            result != SnackbarResult.ActionPerformed -> viewModel.onMessageDismissed()
-            message is PantryMessage.OutOfStock -> viewModel.onAddToGroceries(message.item)
-            message is PantryMessage.Deleted -> viewModel.onUndoDelete()
-        }
+        val result = snackbarHostState.showSnackbar(text, actionLabel = undoLabel, withDismissAction = false)
+        if (result == SnackbarResult.ActionPerformed) viewModel.onUndoDelete() else viewModel.onMessageDismissed()
     }
 
     RecipeClipperTheme {
@@ -178,8 +171,10 @@ fun PantryScreen(viewModel: PantryViewModel = hiltViewModel()) {
                         PantryRow(
                             item = item,
                             today = state.today,
+                            onList = item.id in state.onList,
                             onToggle = { viewModel.onToggleStock(item) },
-                            onEdit = { viewModel.onEdit(item) }
+                            onEdit = { viewModel.onEdit(item) },
+                            onTakeOffList = { viewModel.onTakeOffList(item) }
                         )
                     }
                 }
@@ -217,7 +212,14 @@ private fun SortMenu(sort: PantrySort, onSort: (PantrySort) -> Unit) {
 }
 
 @Composable
-private fun PantryRow(item: PantryItem, today: Long, onToggle: () -> Unit, onEdit: () -> Unit) {
+private fun PantryRow(
+    item: PantryItem,
+    today: Long,
+    onList: Boolean,
+    onToggle: () -> Unit,
+    onEdit: () -> Unit,
+    onTakeOffList: () -> Unit
+) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -252,6 +254,21 @@ private fun PantryRow(item: PantryItem, today: Long, onToggle: () -> Unit, onEdi
                     modifier = Modifier.testTag("expiry-${item.id}")
                 )
             }
+        }
+        if (onList) {
+            // A state, not a message (#146): on the grocery list; tapping takes it off.
+            Text(
+                stringResource(R.string.pantry_on_list),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .clip(RoundedCornerShape(50))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
+                    .clickable(onClickLabel = stringResource(R.string.pantry_take_off_list), role = Role.Button, onClick = onTakeOffList)
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .testTag("onList-${item.id}")
+            )
         }
         Spacer(Modifier.width(12.dp))
         val label = stringResource(R.string.pantry_in_stock) + ": " + item.name

@@ -3,7 +3,8 @@ import SwiftUI
 /// The Groceries tab (#50; Android's GroceriesScreen): "Add an item", then the list by aisle.
 /// Lines naming the same ingredient sit together under its name, or as one added-up row when
 /// that's exact. Tap to tick; long-press to move to another aisle or delete (with undo). The
-/// menu sends the list as plain text, pastes one in (#149) and clears what's ticked.
+/// menu sends the list as plain text and pastes one in (#149). While anything is ticked, "Done
+/// shopping" (#146) puts it away in the pantry and clears it, with undo.
 ///
 /// `receiveVM` backs "Add this list" for a pasted list; nil leaves "Paste a list" out.
 /// `onOpenPantry` shows the pantry once lines were added to it.
@@ -64,48 +65,55 @@ struct GroceriesScreen: View {
                             Label(Strings.pasteList, systemImage: "doc.on.clipboard")
                         }
                     }
-                    Button { vm.onClearChecked() } label: {
-                        Label(Strings.clearChecked, systemImage: "checkmark.circle")
-                    }
-                    .disabled(!state.hasChecked)
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
                 .accessibilityLabel(Strings.moreOptions)
             }
         }
-        .overlay(alignment: .bottom) {
-            if let removed = state.removed {
-                Snackbar(
-                    message: removed.label.map(Strings.groceryDeleted) ?? Strings.checkedCleared,
-                    actionLabel: Strings.undo,
-                    action: vm.onUndoRemove
-                )
-                .frame(maxWidth: ReadableWidth.column)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            } else if let offer = state.pantryOffer {
-                pantrySnackbar(offer)
+        // Snackbars only for undo (#146): a delete, or "Done shopping". "Done shopping" itself
+        // shows while anything is ticked; the snackbar sits above it.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                if let removed = state.removed {
+                    Snackbar(
+                        message: removed.label.map(Strings.groceryDeleted)
+                            ?? (removed.putAway ? Strings.doneShoppingCleared : Strings.checkedCleared),
+                        actionLabel: Strings.undo,
+                        action: vm.onUndoRemove
+                    )
                     .frame(maxWidth: ReadableWidth.column)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                if state.hasChecked {
+                    Button(Strings.doneShopping, action: vm.onDoneShopping)
+                        .buttonStyle(PrimaryButtonStyle(fillWidth: true))
+                        .accessibilityIdentifier("doneShopping")
+                        .frame(maxWidth: ReadableWidth.column)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(Palette.background)
+                }
             }
         }
         .animation(.easeOut(duration: 0.2), value: state.removed == nil)
-        .animation(.easeOut(duration: 0.2), value: state.pantryOffer == nil)
         .task(id: state.removed) {
             guard let removed = state.removed else { return }
             await SnackbarTimeout.run(pending: ["\(removed.id)"], onTimeout: vm.onSnackbarDismissed)
         }
-        .task(id: state.pantryOffer) {
-            guard state.pantryOffer != nil else { return }
-            await SnackbarTimeout.run(pending: ["pantry"], onTimeout: vm.onPantryOfferDismissed)
-        }
         .sheet(isPresented: Binding(get: { state.moving != nil }, set: { if !$0 { vm.onMoveDismissed() } })) {
             if let moving = vm.uiState.moving {
                 MoveToAisleSheet(current: moving.items[0].aisle, onSelect: vm.onMoveTo)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        .sheet(isPresented: Binding(get: { state.putAway != nil }, set: { if !$0 { vm.onPutAwayDismissed() } })) {
+            if let sheet = vm.uiState.putAway {
+                PutAwaySheetView(sheet: sheet, vm: vm)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
@@ -145,16 +153,45 @@ private struct ReceiveListSheet: ViewModifier {
     }
 }
 
-extension GroceriesScreen {
-    /// Ticking off fed the pantry (#51): a restock with Undo, or an offer to add.
-    @ViewBuilder
-    fileprivate func pantrySnackbar(_ offer: PantryOffer) -> some View {
-        switch offer {
-        case .restocked(_, let name):
-            Snackbar(message: Strings.pantryRestocked(name), actionLabel: Strings.undo, action: vm.onUndoRestock)
-        case .offer(_, let name, _):
-            Snackbar(message: Strings.offerPantry(name), actionLabel: Strings.addToPantry, action: vm.onAddToPantry)
+/// "Done shopping" (#146): the ticked items the pantry can hold, with checkboxes (what it tracks
+/// starts ticked), and one button that puts the ticked ones away and clears every ticked line.
+private struct PutAwaySheetView: View {
+    let sheet: PutAwaySheet
+    let vm: GroceriesViewModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                SectionHeading(Strings.doneShopping).padding(.bottom, 4)
+                Text(Strings.putAwayIntro)
+                    .textStyle(Typography.bodyMedium)
+                    .foregroundStyle(Palette.muted)
+                    .padding(.bottom, 8)
+                ForEach(sheet.items) { item in
+                    let ticked = sheet.ticked.contains(item.key)
+                    Button { vm.onPutAwayToggle(item.key) } label: {
+                        HStack(spacing: 12) {
+                            CheckboxGlyph(checked: ticked)
+                            Text(item.name).textStyle(Typography.bodyLarge).foregroundStyle(Palette.onBackground)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(ticked ? [.isSelected] : [])
+                    .accessibilityIdentifier("putAway-\(item.key)")
+                }
+                Button(Strings.putAway, action: vm.onPutAwayConfirm)
+                    .buttonStyle(PrimaryButtonStyle(fillWidth: true))
+                    .padding(.top, 12)
+                    .accessibilityIdentifier("putAwayButton")
+            }
+            .padding(.horizontal, 20)
+            .readableColumn()
+            .padding(.vertical, 24)
         }
+        .presentationBackground(Palette.background)
     }
 }
 

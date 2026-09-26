@@ -321,7 +321,6 @@
     <string name="add_to_groceries_title">Ajouter aux courses</string>
     <string name="action_add_week_to_groceries">Ajouter les ingrédients de la semaine</string>
     <string name="groceries_week_empty">Aucune recette n\'est prévue cette semaine.</string>
-    <string name="action_clear_checked">Retirer les articles cochés</string>
     <string name="action_share_groceries">Envoyer la liste</string>
     <string name="action_paste_list">Coller une liste</string>
     <string name="receive_list_title">Ajouter cette liste</string>
@@ -330,6 +329,10 @@
     <string name="move_to_aisle_title">Rayon</string>
     <string name="snackbar_grocery_deleted">Supprimé : %1$s</string>
     <string name="snackbar_checked_cleared">Articles cochés retirés</string>
+    <string name="snackbar_done_shopping">Garde-manger mis à jour, articles cochés retirés</string>
+    <string name="action_done_shopping">Courses terminées</string>
+    <string name="put_away_intro">Cochez ce qui va au garde-manger. Tous les articles cochés quittent la liste.</string>
+    <string name="action_put_away">Ranger et retirer</string>
     <string name="aisle_produce">Fruits et légumes</string>
     <string name="aisle_meat">Viande</string>
     <string name="aisle_seafood">Poisson et fruits de mer</string>
@@ -348,12 +351,14 @@
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Ajouter au garde-manger</string>
     <string name="pantry_search_hint">Rechercher dans le garde-manger</string>
-    <string name="pantry_empty">Rien dans le garde-manger pour l\'instant. Saisissez ci-dessus ce qu\'il y a dans vos placards, ou ajoutez des articles en les cochant sur la liste de courses.</string>
+    <string name="pantry_empty">Rien dans le garde-manger pour l\'instant. Saisissez ci-dessus ce qu\'il y a dans vos placards, ou rangez vos achats une fois les courses terminées.</string>
     <string name="pantry_no_results">Aucun résultat pour « %1$s ».</string>
     <string name="pantry_sort_aisle">Trier par rayon</string>
     <string name="pantry_sort_expiry">Trier par date limite</string>
     <string name="pantry_in_stock">En stock</string>
     <string name="pantry_out">Épuisé</string>
+    <string name="pantry_on_list">Sur la liste</string>
+    <string name="pantry_take_off_list">Retirer de la liste de courses</string>
     <string name="pantry_always_have">Toujours en réserve</string>
     <string name="pantry_always_have_detail">Les produits de base ne figurent jamais dans « À acheter ».</string>
     <string name="pantry_expired">Périmé</string>
@@ -366,8 +371,6 @@
     <string name="pantry_no_date">Aucune date</string>
     <string name="action_set_date">Choisir une date</string>
     <string name="action_clear_date">Effacer la date</string>
-    <string name="snackbar_pantry_out">%1$s épuisé</string>
-    <string name="snackbar_added_to_groceries">Ajouté aux courses : %1$s</string>
     <string name="snackbar_pantry_deleted">Supprimé : %1$s</string>
     <string name="what_i_need_title">Ce qu\'il me faut</string>
     <string name="what_i_need_buy">À acheter</string>
@@ -377,8 +380,6 @@
     <string name="what_i_need_you_have">Vous avez : %1$s</string>
     <string name="what_i_need_added">Ajouté aux courses</string>
     <string name="action_add_to_pantry">Ajouter au garde-manger</string>
-    <string name="snackbar_offer_pantry">%1$s acheté. L\'ajouter au garde-manger ?</string>
-    <string name="snackbar_pantry_restocked">%1$s est de nouveau en stock</string>
     <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
     <string name="settings_version">Version %1$s</string>
     <string name="developer_settings_title">Paramètres développeur</string>

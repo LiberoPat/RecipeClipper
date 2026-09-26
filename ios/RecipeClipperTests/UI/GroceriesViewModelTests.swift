@@ -203,14 +203,15 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertNil(vm.uiState.removed)
     }
 
-    func testClearCheckedRemovesOnlyTheTickedItemsAndCanBeUndone() async {
+    func testDoneShoppingRemovesOnlyTheTickedItemsAndCanBeUndone() async {
         await add("2 onions", "1 cup milk")
         let vm = await viewModel()
         await repository.setChecked([repository.items.value[0].id], checked: true)
-        // Wait until the screen shows the tick: Clear checked clears what the screen shows.
+        // Wait until the screen shows the tick: the put-away sheet lists what the screen shows.
         await settleMain { vm.uiState.hasChecked }
 
-        vm.onClearChecked()
+        vm.onDoneShopping()
+        vm.onPutAwayConfirm()
         await settleMain { self.repository.items.value.count == 1 }
         XCTAssertEqual(repository.items.value.map(\.text), ["1 cup milk"])
         XCTAssertNotNil(vm.uiState.removed)

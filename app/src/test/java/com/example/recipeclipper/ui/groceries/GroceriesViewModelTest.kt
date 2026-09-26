@@ -237,14 +237,15 @@ class GroceriesViewModelTest {
     }
 
     @Test
-    fun `clear checked removes only the ticked items, and can be undone`() = runTest(mainDispatcherRule.dispatcher) {
+    fun `done shopping removes only the ticked items, and can be undone`() = runTest(mainDispatcherRule.dispatcher) {
         add("2 onions", "1 cup milk")
         val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
         advanceUntilIdle()
         repository.setChecked(listOf(repository.items.value.first().id), true)
         advanceUntilIdle()
 
-        vm.onClearChecked()
+        vm.onDoneShopping()
+        vm.onPutAwayConfirm()
         advanceUntilIdle()
         assertEquals(listOf("1 cup milk"), repository.items.value.map { it.text })
         assertNull(vm.uiState.value.removed!!.label)

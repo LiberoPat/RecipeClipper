@@ -295,25 +295,29 @@ Settled; don't reintroduce what they removed. The history behind each is in
   menu, first item, flag on only): this week's and next week's days, a meal
   type (Dinner first), servings (the yield first), one button.
 - **Groceries** (#50, behind the flag): "Add an item", then the list by
-  aisle (unchecked first); tap ticks, long-press offers "Move to aisle…" and
-  Delete (undo snackbar); the menu sends the list ("Send list": every
-  unticked item as plain text, each naming its recipes in brackets, #149),
-  pastes one and clears checked (undo). "Paste a list", or text with no link
-  shared into the app (Android: the Groceries tab; iOS: the share extension's
-  card), opens "Add this list": its lines, all ticked, then Add to groceries
-  or Add to pantry, as written. "Add to groceries" (recipe menu, after Add to
-  plan) and "Add this week's ingredients" (Week menu) open one sheet: the
-  lines as the reading view renders them (the week's at each meal's planned
-  servings), headings left out, all ticked except what the pantry has
-  (#51), one button. Ticking an item off feeds the pantry: an item it tracks
-  that was out is back in stock at once (Undo in the snackbar); one it
-  doesn't track is only offered ("Add to pantry").
+  aisle (unchecked first); tap ticks, and a tick only ticks (#146);
+  long-press offers "Move to aisle…" and Delete (undo snackbar); the menu
+  sends the list ("Send list": every unticked item as plain text, each naming
+  its recipes in brackets, #149) and pastes one. "Paste a list", or text with
+  no link shared into the app (Android: the Groceries tab; iOS: the share
+  extension's card), opens "Add this list": its lines, all ticked, then Add
+  to groceries or Add to pantry, as written. "Add to groceries" (recipe menu,
+  after Add to plan) and "Add this week's ingredients" (Week menu) open one
+  sheet: the lines as the reading view renders them (the week's at each
+  meal's planned servings), headings left out, all ticked except what the
+  pantry has (#51), one button. **"Done shopping"** (#146, shown while
+  anything is ticked; there is no "Clear checked"): a sheet of the ticked
+  items with checkboxes, pantry-tracked ones ticked, the rest not; one
+  confirm restocks or adds the ticked ones (only here, never on the tick) and
+  clears every ticked line, with one Undo for both. Snackbars only for undo.
 - **Pantry** (#51, behind the flag): "Add to the pantry", search, then items
   by aisle (menu: by expiry, radio glyphs); a switch per row for in stock;
   tap for the edit sheet (quantity as written, "Always have", a use-by date,
   Delete with undo). Expired or within 3 days shows a paprika badge; an
   opt-in 9:00 notification lists what expires today or tomorrow (#52,
-  Settings → Pantry). Switching an item out offers "Add to groceries".
+  Settings → Pantry). Switching an item out puts its name on the grocery
+  list silently; the row then shows "On list", and tapping that takes it off
+  (no snackbar) (#146).
   "What I need" (Week menu): the shown week's lines at planned servings,
   grouped by ingredient, "To buy" then "In your pantry", with a note that
   having some isn't having enough; "Add to groceries" adds the To buy lines.

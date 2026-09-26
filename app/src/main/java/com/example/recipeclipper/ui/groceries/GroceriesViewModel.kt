@@ -31,34 +31,35 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
 
-/** What the undo snackbar says was removed: one row's [label], or the checked items ([label] null). */
-data class RemovedGroceries(val id: Long, val label: String?)
+/**
+ * What the undo snackbar says was removed: one row's [label], or the checked items ([label]
+ * null), and whether "Done shopping" also changed the pantry ([putAway]).
+ */
+data class RemovedGroceries(val id: Long, val label: String?, val putAway: Boolean = false)
 
 /**
- * What ticking a line off did to the pantry (#51), for the snackbar. [id] tells two apart.
+ * One thing to put away after shopping (#146): the pantry item it restocks ([trackedId]), or a
+ * new one named [name]. [key] tells them apart in [PutAwaySheet.ticked].
  */
-sealed class PantryOffer {
-    abstract val id: Long
-    abstract val name: String
+data class PutAwayItem(val key: String, val name: String, val language: String, val aisle: Aisle, val trackedId: Long?)
 
-    /** A tracked item was out and is back in stock: on by default, with Undo. */
-    data class Restocked(override val id: Long, override val name: String) : PantryOffer()
-
-    /** Not in the pantry yet: "Add to pantry" is offered, not done. */
-    data class Offer(override val id: Long, override val name: String, val item: NewPantryItem) : PantryOffer()
-}
+/**
+ * The "Done shopping" sheet (#146): the ticked items the pantry can hold, and which of them go
+ * in. What the pantry already tracks starts ticked; the rest doesn't.
+ */
+data class PutAwaySheet(val items: List<PutAwayItem>, val ticked: Set<String>)
 
 /**
  * [sections] is null until the list has loaded. [draft] is the "Add an item" field. [moving]
- * is the row whose aisle is being chosen. [recipeTitles] names the recipes items came from, for
- * "Send list" (#149).
+ * is the row whose aisle is being chosen. [putAway] is the open "Done shopping" sheet.
+ * [recipeTitles] names the recipes items came from, for "Send list" (#149).
  */
 data class GroceriesUiState(
     val sections: List<GroceryCombiner.Section>? = null,
     val draft: String = "",
     val moving: GroceryCombiner.Row? = null,
     val removed: RemovedGroceries? = null,
-    val pantryOffer: PantryOffer? = null,
+    val putAway: PutAwaySheet? = null,
     val recipeTitles: Map<Long, String> = emptyMap()
 ) {
     val hasChecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { it.checked } } }
@@ -68,7 +69,9 @@ data class GroceriesUiState(
 /**
  * The Groceries tab (#50): the list grouped by aisle, with lines naming the same ingredient
  * together (and added up when that's exact, [GroceryCombiner]). Everything is written as it
- * happens; a delete or "Clear checked" can be undone from the snackbar.
+ * happens. A tick only ticks (#146): "Done shopping" puts what was bought in the pantry and
+ * clears the ticked items in one step. A delete or "Done shopping" can be undone from the
+ * snackbar, and nothing else raises one.
  *
  * A typed item has no recipe, so it's read with the phone's language when the app has words
  * for it, else English: the one place the phone's language picks the words, since the person
@@ -86,11 +89,16 @@ class GroceriesViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(GroceriesUiState())
     val uiState: StateFlow<GroceriesUiState> = _uiState.asStateFlow()
 
-    private var removedItems: GroceryRepository.DeletedItems? = null
+    private var undo: Undo? = null
     private var removals = 0L
     private var pantryItems: List<PantryItem> = emptyList()
-    private var restocked: PantryRepository.Snapshot? = null
-    private var offers = 0L
+
+    /** What the snackbar's Undo puts back: the list's items and, after "Done shopping", the pantry. */
+    private class Undo(
+        val groceries: GroceryRepository.DeletedItems?,
+        val restocked: PantryRepository.Snapshot? = null,
+        val added: List<Long> = emptyList()
+    )
 
     // Declared before init: a list that is already there is collected during construction.
     private var latestItems: List<GroceryItem> = emptyList()
@@ -180,54 +188,12 @@ class GroceriesViewModel @Inject constructor(
     }
 
     /**
-     * Ticks or unticks every line in [row]: a combined row is one thing to pick up. Ticking one
-     * off feeds the pantry (#51): an item the pantry tracks that was out is back in stock at once
-     * (undoable); one it doesn't track is offered, never added unasked. A line the app can't
-     * name is left alone.
+     * Ticks or unticks every line in [row]: a combined row is one thing to pick up. A tick only
+     * ticks (#146): the pantry changes only at "Done shopping".
      */
     fun onToggle(row: GroceryCombiner.Row) {
         val checked = !row.items.all { it.checked }
-        viewModelScope.launch {
-            repository.setChecked(row.items.map { it.id }, checked)
-            if (checked) toPantry(row.items.first())
-        }
-    }
-
-    private suspend fun toPantry(item: GroceryItem) {
-        val words = LanguageWords.forTag(item.language) ?: return
-        val name = IngredientName.of(item.text, words) ?: return
-        val tracked = PantryMatch.find(name, words.language, pantryItems)
-        val offer = when {
-            tracked == null -> PantryOffer.Offer(
-                ++offers, name, NewPantryItem(name, words.language, item.aisle, purchasedDay = calendar.today())
-            )
-            tracked.inStock || tracked.alwaysHave -> return
-            else -> {
-                restocked = pantry.snapshot(listOf(tracked.id))
-                pantry.restock(listOf(tracked.id), calendar.today())
-                PantryOffer.Restocked(++offers, tracked.name)
-            }
-        }
-        _uiState.update { it.copy(pantryOffer = offer) }
-    }
-
-    fun onAddToPantry() {
-        val offer = _uiState.value.pantryOffer as? PantryOffer.Offer ?: return
-        _uiState.update { it.copy(pantryOffer = null) }
-        viewModelScope.launch { pantry.add(offer.item) }
-    }
-
-    fun onUndoRestock() {
-        val snapshot = restocked ?: return
-        restocked = null
-        _uiState.update { it.copy(pantryOffer = null) }
-        viewModelScope.launch { pantry.restore(snapshot) }
-    }
-
-    /** The pantry snackbar timed out or was dismissed: what was done stands, what was offered isn't. */
-    fun onPantryOfferDismissed() {
-        restocked = null
-        _uiState.update { it.copy(pantryOffer = null) }
+        viewModelScope.launch { repository.setChecked(row.items.map { it.id }, checked) }
     }
 
     fun onMoveStart(row: GroceryCombiner.Row) = _uiState.update { it.copy(moving = row) }
@@ -249,28 +215,75 @@ class GroceriesViewModel @Inject constructor(
         }
     }
 
-    fun onClearChecked() {
+    /**
+     * "Done shopping" (#146): opens the sheet of ticked items the pantry can hold, one per
+     * ingredient, in the list's order; what it tracks starts ticked. A line the app can't name
+     * isn't listed but is cleared all the same; with nothing to list, the list clears at once.
+     */
+    fun onDoneShopping() {
+        val items = mutableListOf<PutAwayItem>()
+        for (item in _uiState.value.sections.orEmpty().flatMap { s -> s.rows.flatMap { it.items } }) {
+            if (!item.checked) continue
+            val words = LanguageWords.forTag(item.language) ?: continue
+            val name = IngredientName.of(item.text, words) ?: continue
+            val tracked = PantryMatch.find(name, words.language, pantryItems)
+            val key = tracked?.let { "pantry-${it.id}" } ?: "new-${words.language}-${name.lowercase(Locale.ROOT)}"
+            if (items.none { it.key == key }) items += PutAwayItem(key, tracked?.name ?: name, words.language, item.aisle, tracked?.id)
+        }
+        if (items.isEmpty()) return putAway(emptyList())
+        val ticked = items.filter { it.trackedId != null }.map { it.key }.toSet()
+        _uiState.update { it.copy(putAway = PutAwaySheet(items, ticked)) }
+    }
+
+    fun onPutAwayToggle(key: String) = _uiState.update { state ->
+        val sheet = state.putAway ?: return@update state
+        state.copy(putAway = sheet.copy(ticked = if (key in sheet.ticked) sheet.ticked - key else sheet.ticked + key))
+    }
+
+    fun onPutAwayDismissed() = _uiState.update { it.copy(putAway = null) }
+
+    /** The sheet's one button: the ticked items go in the pantry, and every ticked line leaves the list. */
+    fun onPutAwayConfirm() {
+        val sheet = _uiState.value.putAway ?: return
+        _uiState.update { it.copy(putAway = null) }
+        putAway(sheet.items.filter { it.key in sheet.ticked })
+    }
+
+    /** Restocks or adds [items], bought today, then clears every ticked line: one undo for it all. */
+    private fun putAway(items: List<PutAwayItem>) {
+        val today = calendar.today()
         viewModelScope.launch {
-            val deleted = repository.clearChecked() ?: return@launch
-            removed(deleted, null)
+            val restock = items.mapNotNull { it.trackedId }
+            val restocked = if (restock.isEmpty()) null else pantry.snapshot(restock).also { pantry.restock(restock, today) }
+            val added = items.filter { it.trackedId == null }
+                .mapNotNull { pantry.add(NewPantryItem(it.name, it.language, it.aisle, purchasedDay = today)) }
+            val cleared = repository.clearChecked()
+            if (cleared == null && restocked == null && added.isEmpty()) return@launch
+            undo = Undo(cleared, restocked, added)
+            _uiState.update { it.copy(removed = RemovedGroceries(++removals, null, putAway = items.isNotEmpty())) }
         }
     }
 
     private fun removed(deleted: GroceryRepository.DeletedItems, label: String?) {
-        removedItems = deleted
+        undo = Undo(deleted)
         _uiState.update { it.copy(removed = RemovedGroceries(++removals, label)) }
     }
 
+    /** Puts back what the last removal took: the items and, after "Done shopping", the pantry as it was. */
     fun onUndoRemove() {
-        val deleted = removedItems ?: return
-        removedItems = null
+        val last = undo ?: return
+        undo = null
         _uiState.update { it.copy(removed = null) }
-        viewModelScope.launch { repository.restore(deleted) }
+        viewModelScope.launch {
+            last.groceries?.let { repository.restore(it) }
+            last.restocked?.let { pantry.restore(it) }
+            last.added.forEach { pantry.delete(it) }
+        }
     }
 
     /** The snackbar timed out or was dismissed: the removal stands. */
     fun onSnackbarDismissed() {
-        removedItems = null
+        undo = null
         _uiState.update { it.copy(removed = null) }
     }
 

@@ -497,7 +497,6 @@ enum Strings {
     static var addToGroceriesTitle: String { String(localized: "add_to_groceries_title") }
     static var addWeekToGroceries: String { String(localized: "action_add_week_to_groceries") }
     static var groceriesWeekEmpty: String { String(localized: "groceries_week_empty") }
-    static var clearChecked: String { String(localized: "action_clear_checked") }
     static var shareGroceries: String { String(localized: "action_share_groceries") }
     // A list sent from another phone, shared in or pasted (#149).
     static var pasteList: String { String(localized: "action_paste_list") }
@@ -509,6 +508,11 @@ enum Strings {
     static var moveToAisleTitle: String { String(localized: "move_to_aisle_title") }
     static func groceryDeleted(_ label: String) -> String { String(localized: "snackbar_grocery_deleted \(label)") }
     static var checkedCleared: String { String(localized: "snackbar_checked_cleared") }
+    // "Done shopping" (#146)
+    static var doneShoppingCleared: String { String(localized: "snackbar_done_shopping") }
+    static var doneShopping: String { String(localized: "action_done_shopping") }
+    static var putAwayIntro: String { String(localized: "put_away_intro") }
+    static var putAway: String { String(localized: "action_put_away") }
 
     static func aisle(_ aisle: Aisle) -> String {
         switch aisle {
@@ -538,6 +542,8 @@ enum Strings {
     static var pantrySortExpiry: String { String(localized: "pantry_sort_expiry") }
     static var pantryInStock: String { String(localized: "pantry_in_stock") }
     static var pantryOut: String { String(localized: "pantry_out") }
+    static var pantryOnList: String { String(localized: "pantry_on_list") }
+    static var pantryTakeOffList: String { String(localized: "pantry_take_off_list") }
     static var pantryAlwaysHave: String { String(localized: "pantry_always_have") }
     static var pantryAlwaysHaveDetail: String { String(localized: "pantry_always_have_detail") }
     static var pantryExpired: String { String(localized: "pantry_expired") }
@@ -550,8 +556,6 @@ enum Strings {
     static var pantryNoDate: String { String(localized: "pantry_no_date") }
     static var setDate: String { String(localized: "action_set_date") }
     static var clearDate: String { String(localized: "action_clear_date") }
-    static func pantryOutSnackbar(_ name: String) -> String { String(localized: "snackbar_pantry_out \(name)") }
-    static func addedToGroceries(_ name: String) -> String { String(localized: "snackbar_added_to_groceries \(name)") }
     static func pantryDeleted(_ name: String) -> String { String(localized: "snackbar_pantry_deleted \(name)") }
     static var whatINeedTitle: String { String(localized: "what_i_need_title") }
     static var whatINeedBuy: String { String(localized: "what_i_need_buy") }
@@ -561,8 +565,6 @@ enum Strings {
     static func whatINeedYouHave(_ name: String) -> String { String(localized: "what_i_need_you_have \(name)") }
     static var whatINeedAdded: String { String(localized: "what_i_need_added") }
     static var addToPantry: String { String(localized: "action_add_to_pantry") }
-    static func offerPantry(_ name: String) -> String { String(localized: "snackbar_offer_pantry \(name)") }
-    static func pantryRestocked(_ name: String) -> String { String(localized: "snackbar_pantry_restocked \(name)") }
 
     // "I made this" (#116)
     static var sortRecentlyCooked: String { String(localized: "sort_recently_cooked") }

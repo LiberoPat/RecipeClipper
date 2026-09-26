@@ -446,9 +446,10 @@ protocol PantryRepository: AnyObject {
     /// Everything in the pantry now, for a one-off match (the grocery sheet's first ticks).
     func items() async -> [PantryItem]
 
-    /// Adds an item in stock, in its `aisle` or else the one its name belongs to. A blank name
-    /// is ignored.
-    func add(_ item: NewPantryItem) async
+    /// Adds an item in stock, in its `aisle` or else the one its name belongs to. Returns its id,
+    /// for an undo to `delete` it; nil when the name was blank (ignored) or the write failed.
+    @discardableResult
+    func add(_ item: NewPantryItem) async -> Int64?
 
     func setInStock(_ ids: [Int64], inStock: Bool) async
 

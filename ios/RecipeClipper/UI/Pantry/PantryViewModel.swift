@@ -12,18 +12,15 @@ struct PantryEditing: Equatable {
     let purchasedDay: Int64?
 }
 
-/// The snackbar. `id` tells two messages about the same item apart.
+/// The snackbar, only ever for undo (#146). `id` tells two messages about the same item apart.
 enum PantryMessage: Equatable {
-    /// `item` just ran out: offers "Add to groceries".
-    case outOfStock(id: Int, item: PantryItem)
     /// `name` was deleted: offers Undo.
     case deleted(id: Int, name: String)
-    /// `name` went onto the grocery list.
-    case addedToGroceries(id: Int, name: String)
 }
 
 /// `sections` is nil until the pantry has loaded; `hasItems` says whether it holds anything at
-/// all (a search can find nothing in a full pantry).
+/// all (a search can find nothing in a full pantry). `onList` holds the items whose name is on
+/// the grocery list, unticked: their rows show "On list" (#146).
 struct PantryUiState: Equatable {
     var sections: [PantrySection]?
     var hasItems = false
@@ -33,11 +30,13 @@ struct PantryUiState: Equatable {
     var today: Int64 = 0
     var editing: PantryEditing?
     var message: PantryMessage?
+    var onList: Set<Int64> = []
 }
 
 /// The Pantry tab (#51; Android's PantryViewModel): add by typing, search, sort by aisle or
-/// expiry, toggle in and out of stock. Running out offers "Add to groceries" from the
-/// snackbar; a delete can be undone.
+/// expiry, toggle in and out of stock. Running out puts the item on the grocery list, silently
+/// (#146); its row then says "On list", and tapping that takes it off again. A delete can be
+/// undone.
 @MainActor
 @Observable
 final class PantryViewModel {
@@ -48,7 +47,9 @@ final class PantryViewModel {
     @ObservationIgnored private let calendar: PlanCalendar
     @ObservationIgnored private let phoneLanguage: () -> String?
     @ObservationIgnored private var subscription: AnyCancellable?
+    @ObservationIgnored private var grocerySubscription: AnyCancellable?
     @ObservationIgnored private var items: [PantryItem] = []
+    @ObservationIgnored private var groceryItems: [GroceryItem] = []
     @ObservationIgnored private var deleted: PantrySnapshot?
     @ObservationIgnored private var messages = 0
 
@@ -67,13 +68,31 @@ final class PantryViewModel {
                 guard let self else { return }
                 self.items = all
                 self.uiState.hasItems = !all.isEmpty
+                self.uiState.onList = self.onList()
                 self.arrange()
+            }
+        grocerySubscription = groceries.observeItems()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] list in
+                guard let self else { return }
+                self.groceryItems = list
+                self.uiState.onList = self.onList()
             }
     }
 
     private func arrange() {
         uiState.sections = PantryList.arrange(items, query: uiState.query, sort: uiState.sort)
     }
+
+    /// The unticked grocery lines that are `item` itself: its name as the pantry puts it there
+    /// (trimmed, case-insensitive, in its language). A recipe's "2 cups flour" isn't, so taking
+    /// the item off the list never loses a recipe's line.
+    private func lines(for item: PantryItem) -> [GroceryItem] {
+        let name = item.name.kTrimmed.lowercased()
+        return groceryItems.filter { !$0.checked && $0.language == item.language && $0.text.kTrimmed.lowercased() == name }
+    }
+
+    private func onList() -> Set<Int64> { Set(items.filter { !lines(for: $0).isEmpty }.map(\.id)) }
 
     func onQueryChange(_ query: String) {
         uiState.query = query
@@ -104,26 +123,26 @@ final class PantryViewModel {
         }
     }
 
-    /// In → out offers "Add to groceries"; out → in means just bought, today.
+    /// In → out puts the item on the grocery list, silently, unless it's there already (#146);
+    /// out → in means just bought, today.
     func onToggleStock(_ item: PantryItem) {
         Task {
             if item.inStock {
                 await pantry.setInStock([item.id], inStock: false)
-                messages += 1
-                uiState.message = .outOfStock(id: messages, item: item)
+                if lines(for: item).isEmpty {
+                    await groceries.add([NewGroceryLine(text: item.name, language: item.language)])
+                }
             } else {
                 await pantry.restock([item.id], day: calendar.today())
             }
         }
     }
 
-    func onAddToGroceries(_ item: PantryItem) {
-        uiState.message = nil
-        Task {
-            await groceries.add([NewGroceryLine(text: item.name, language: item.language)])
-            messages += 1
-            uiState.message = .addedToGroceries(id: messages, name: item.name)
-        }
+    /// The row's "On list" tag, tapped: the item's own lines leave the grocery list. No snackbar (#146).
+    func onTakeOffList(_ item: PantryItem) {
+        let ids = lines(for: item).map(\.id)
+        guard !ids.isEmpty else { return }
+        Task { _ = await groceries.delete(ids) }
     }
 
     // MARK: The edit sheet
