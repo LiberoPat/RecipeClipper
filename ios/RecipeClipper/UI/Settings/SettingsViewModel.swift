@@ -19,6 +19,10 @@ struct SettingsUiState: Equatable {
     /// e.g. "1.0 (1)", shown at the foot; tapping it `SettingsViewModel.developerTaps` times opens
     /// Developer settings (#87).
     var appVersion = ""
+    /// Chef mode as saved: short steps written on the device (#100).
+    var chefMode = false
+    /// What this phone can do, once asked; nil until then. The switch works only when available.
+    var chefSupport: ChefSupport?
     /// A purchase or restore is under way (#107), so the buttons can't be doubled.
     var unlockBusy = false
     /// A purchase or restore that didn't simply unlock; shown until the next one starts.
@@ -68,6 +72,8 @@ final class SettingsViewModel {
     @ObservationIgnored private var versionTaps = 0
     @ObservationIgnored private let flags: FeatureFlags?
     @ObservationIgnored private let notificationPermission: NotificationPermission
+    @ObservationIgnored private let shortSteps: ShortStepRepository?
+    @ObservationIgnored private var askedChefSupport = false
     @ObservationIgnored private let entitlements: Entitlements
 
     static let developerTaps = 7
@@ -76,9 +82,11 @@ final class SettingsViewModel {
         preferences: AppPreferences, backups: BackupRepository, files: BackupFiles, appVersion: String = "",
         flags: FeatureFlags? = nil,
         notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true),
+        shortSteps: ShortStepRepository? = nil,
         entitlements: Entitlements = UnavailableEntitlements()
     ) {
         self.flags = flags
+        self.shortSteps = shortSteps
         self.entitlements = entitlements
         self.notificationPermission = notificationPermission
         self.preferences = preferences
@@ -96,6 +104,7 @@ final class SettingsViewModel {
                 next.backup = self.uiState.backup
                 next.expiryRemindersDenied = self.uiState.expiryRemindersDenied
                 next.appVersion = self.appVersion
+                next.chefSupport = self.uiState.chefSupport
                 next.unlockBusy = self.uiState.unlockBusy
                 next.unlockNotice = self.uiState.unlockNotice
                 self.uiState = next
@@ -109,16 +118,39 @@ final class SettingsViewModel {
             temperatureUnit: settings.temperatureUnit,
             darkWhileCooking: settings.darkWhileCooking,
             expiryReminders: settings.expiryReminders,
-            amountsInSteps: settings.amountsInSteps
+            amountsInSteps: settings.amountsInSteps,
+            chefMode: settings.chefMode
         )
     }
 
-    /// The Steps section (#101): only with the `amountsInSteps` flag on.
+    /// The Steps section's "Amounts in steps" (#101): only with the `amountsInSteps` flag on.
     var showsSteps: Bool { flags?.isOn(.amountsInSteps) ?? false }
+
+    /// The Steps section's "Chef mode" (#100): only with the `chefMode` flag on.
+    var showsChefMode: Bool { flags?.isOn(.chefMode) ?? false }
 
     func onAmountsInStepsChange(_ enabled: Bool) {
         preferences.amountsInSteps = enabled
         uiState.amountsInSteps = enabled
+    }
+
+    /// Asks the phone what Chef mode can do, once, when its row first shows, so the model is
+    /// never woken otherwise. Returns the work so a test can await it.
+    @discardableResult
+    func onStepsShown() -> Task<Void, Never>? {
+        guard showsChefMode, uiState.chefSupport == nil, !askedChefSupport else { return nil }
+        askedChefSupport = true
+        return Task { [weak self, shortSteps] in
+            let support = await shortSteps?.support() ?? .unsupported
+            self?.uiState.chefSupport = support
+        }
+    }
+
+    /// The Chef mode switch: only turns on where the phone can write short steps.
+    func onChefModeChange(_ enabled: Bool) {
+        if enabled && !(uiState.chefSupport?.isAvailable ?? false) { return }
+        preferences.chefMode = enabled
+        uiState.chefMode = enabled
     }
 
     /// The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind

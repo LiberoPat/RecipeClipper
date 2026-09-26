@@ -429,6 +429,9 @@ protocol AppPreferences: AnyObject {
     /// A morning notification when something in the pantry is about to expire (#52). Off by
     /// default; Settings turns it on only once notifications are allowed.
     var expiryReminders: Bool { get set }
+    /// Chef mode (#100): short steps written on the device, in the reading view and cook mode.
+    /// Off by default, and only offered behind the `chefMode` flag on a phone that can do it.
+    var chefMode: Bool { get set }
     /// Ingredient amounts inside steps (#101): "Add the carrots" reads "Add 2 carrots". Off by
     /// default, and shown only with the `amountsInSteps` flag on.
     var amountsInSteps: Bool { get set }
@@ -449,10 +452,55 @@ extension AppPreferences {
             temperatureUnit: temperatureUnit,
             darkWhileCooking: darkWhileCooking,
             expiryReminders: expiryReminders,
+            chefMode: chefMode,
             amountsInSteps: amountsInSteps,
             recipeSort: recipeSort
         )
     }
+}
+
+/// Chef mode's seam onto the on-device model (#100). `FoundationModelsStepShortener` is the real
+/// one (Apple's Foundation Models); tests use `FakeStepShortener`. Nothing else in the app
+/// imports the model's framework.
+protocol StepShortener: AnyObject {
+    /// Whether this phone can write short steps, and for recipes in which languages.
+    func support() async -> ChefSupport
+    /// The model's short version of `step`, written in `language` (the recipe's, e.g. "en"), or
+    /// nil when it can't write one right now. Unchecked: `ShortStepCheck` decides if it shows.
+    func shorten(_ step: String, language: String) async -> String?
+}
+
+/// What Settings says about Chef mode on this phone.
+enum ChefSupport: Equatable {
+    /// It can write short steps for recipes in `languages` (codes such as "en").
+    case available(Set<String>)
+    /// Apple Intelligence is turned off.
+    case notEnabled
+    /// The model is still being set up (downloading).
+    case notReady
+    /// This phone can't run the on-device model.
+    case unsupported
+
+    func covers(_ language: String?) -> Bool {
+        if case .available(let languages) = self, let language { return languages.contains(language) }
+        return false
+    }
+
+    var isAvailable: Bool {
+        if case .available = self { return true }
+        return false
+    }
+}
+
+/// Chef mode's short steps (#100): written on the device, checked, and cached.
+protocol ShortStepRepository: AnyObject {
+    func support() async -> ChefSupport
+    /// `recipe`'s saved short steps, one per step (nil: show it as written), then every change.
+    func observe(_ recipe: Recipe) -> AnyPublisher<[String?], Never>
+    /// Writes the short steps `recipe` is missing, one at a time in order, each saved once
+    /// `ShortStepCheck` has judged it, and drops rows for steps it no longer has. A step the model
+    /// can't do right now is asked again next time; one it failed is not.
+    func fill(_ recipe: Recipe) async
 }
 
 /// One snapshot of AppPreferences, as its `settings` publisher emits them.
@@ -462,6 +510,7 @@ struct AppSettings: Equatable {
     var temperatureUnit: TemperatureUnit = .asWritten
     var darkWhileCooking = false
     var expiryReminders = false
+    var chefMode = false
     var amountsInSteps = false
     var recipeSort: RecipeSort = .recentlyViewed
 }

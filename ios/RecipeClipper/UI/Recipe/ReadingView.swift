@@ -54,7 +54,9 @@ struct ReadingView: View {
                 SectionHeading(Strings.headingInstructions)
                     .padding(.top, 24)
                     .padding(.bottom, 6)
-                ForEach(Array(content.instructions.enumerated()), id: \.offset) { index, step in
+                ForEach(Array(content.instructions.indices), id: \.self) { index in
+                    // Chef mode (#100): a step with a short version shows it; a tap shows it as written.
+                    let step = content.shownStep(index, asWritten: state.asWrittenSteps)
                     // The number column grows with the text up to the largest standard size.
                     // At the accessibility sizes a column wide enough for "12" at ~60pt would
                     // take a third of the screen from the step, so the number goes above it.
@@ -67,12 +69,18 @@ struct ReadingView: View {
                             .textStyle(Typography.titleMedium)
                             .foregroundStyle(Palette.accentText)
                             .frame(width: stacked ? nil : numberColumn, alignment: .leading)
-                        stepText(step, content.stepParts(index), accent: Palette.accentText)
+                        stepText(step, content.shownStepParts(index, asWritten: state.asWrittenSteps), accent: Palette.accentText)
                             .textStyle(Typography.bodyLarge)
                             .foregroundStyle(Palette.onBackground)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                    .modifier(ShortStepToggle(
+                        enabled: content.hasShortStep(index),
+                        asWritten: state.asWrittenSteps.contains(index),
+                        toggle: { vm.onStepAsWrittenToggle(index) }
+                    ))
                 }
 
                 // After the steps: the reading view still opens on the recipe, and a note like
@@ -253,6 +261,25 @@ private struct TimeCell: View {
 private struct TimeEntry {
     let label: String
     let value: String
+}
+
+/// Chef mode (#100): a step with a short version toggles to the step as written on a tap, and
+/// back. Without one the row is plain text, as before.
+private struct ShortStepToggle: ViewModifier {
+    let enabled: Bool
+    let asWritten: Bool
+    let toggle: () -> Void
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .onTapGesture(perform: toggle)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(asWritten ? Strings.stepShowShort : Strings.stepShowAsWritten)
+        } else {
+            content
+        }
+    }
 }
 
 /// A step's text with the amounts inserted from its ingredient lines (#101) set apart, in

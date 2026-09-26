@@ -317,6 +317,16 @@ enum Strings {
     static var settingsSectionAppearance: String { String(localized: "settings_section_appearance") }
     static func settingsVersion(_ version: String) -> String { String(localized: "settings_version \(version)") }
 
+    // Chef mode (#100)
+    static var chefModeTitle: String { String(localized: "chef_mode_title") }
+    static var chefModeDescription: String { String(localized: "chef_mode_description") }
+    static func chefModeLanguages(_ list: String) -> String { String(localized: "chef_mode_languages \(list)") }
+    static var chefModeUnsupported: String { String(localized: "chef_mode_unsupported") }
+    static var chefModeNotReady: String { String(localized: "chef_mode_not_ready") }
+    static var chefModeNotEnabled: String { String(localized: "chef_mode_not_enabled") }
+    static var stepShowAsWritten: String { String(localized: "step_show_as_written") }
+    static var stepShowShort: String { String(localized: "step_show_short") }
+
     // Developer settings (#87): hidden, 7 taps on the version in Settings
     static var developerSettingsTitle: String { String(localized: "developer_settings_title") }
     static var developerSettingsIntro: String { String(localized: "developer_settings_intro") }

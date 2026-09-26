@@ -5,7 +5,7 @@ Recipe Clipper: share a recipe link from any app and get just the recipe
 filler.
 
 - **Android** (`app/`): Kotlin, Jetpack Compose, single Activity. MVVM +
-  repository, Hilt, Room, Compose Navigation. minSdk 24, targetSdk 36,
+  repository, Hilt, Room, Compose Navigation. minSdk 26 (for ML Kit GenAI, #100), targetSdk 36,
   compileSdk 37.
 - **iOS** (`ios/`): SwiftUI, iOS 17+, no third-party dependencies, at parity
   with Android. iOS specifics (XcodeGen, the Android→iOS type map, the share
@@ -47,7 +47,7 @@ fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
 JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
-pantry with the week's Have/Buy, behind the tab flag (#49–#51); the
+pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); the
 UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -225,6 +225,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
   `FLAG_KEEP_SCREEN_ON`; ingredients collapse to a tap-to-expand bar. Tapping
   a step makes it current; only "Done — next step" advances (leaning that
   way; confirm when cooking with it).
+- **Chef mode** (#100, `chefMode` flag): short steps written by the on-device
+  model behind the `StepShortener` seam, shown only if `ShortStepCheck`
+  passes (shorter; every number in it is in the step; the step's times and
+  temperatures exactly). Timers and rendering come from the step as written.
+  Reading view: tap a step for it as written. Cook mode: the current card's
+  "As written" button. While writing, the step shows as written.
 - **Theme:** Fraunces (display) over Karla (body); ground `#FBF9F6`, ink
   `#1C1917`, muted `#6B6259`, hairline `#E7E1D9`, paprika `#BF4A2B`. Dark mode
   is the system's call (no in-app toggle) and uses the on-ink tokens
@@ -240,7 +246,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
   Ounces only), Oven temperature (independent of units, default As
   written), Appearance ("Dark while cooking"), Steps ("Amounts in steps", off,
-  behind the `amountsInSteps` flag, #101: rules in `docs/decisions.md`), Pantry ("Expiry reminders",
+  behind the `amountsInSteps` flag, #101: rules in `docs/decisions.md`; "Chef mode", behind
+  the `chefMode` flag, #100; each row shows with its own flag), Pantry ("Expiry reminders",
   only with the `mealPlan` flag; asks for notifications when turned on,
   never at launch), Unlimited recipes (only with `freeTier`: "Unlock for
   <store price>" and "Restore purchase", or the sentence "Unlocked: every
@@ -320,11 +327,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 11** (iOS `user_version` 10):
+- Room database `recipe_clipper.db`, **version 12** (iOS `user_version` 11):
   `recipes` (with nullable `notes`, `language`, `cookState`,
   `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading),
   `meal_types` and `meal_plan_entries` (#49), `grocery_items` (#50),
-  `pantry_items` (#51), `menus` and `menu_entries` (#52). Recipes, lists, the
+  `pantry_items` (#51), `menus` and `menu_entries` (#52), `short_steps` (#100, derived: never exported). Recipes, lists, the
   plan, grocery, pantry and menu tables
   carry a unique, never-changing `uid`: what an export file calls them. Plan,
   grocery, pantry and menu rows also carry
@@ -395,7 +402,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - Settings live in the SharedPreferences file `unit_preferences` (never
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
   under the same keys: `unit_system`, `convert_liquids`, `temperature_unit`,
-  `dark_while_cooking`, `expiry_reminders`, `amounts_in_steps`, `recipe_sort` (the Recipes
+  `dark_while_cooking`, `expiry_reminders`, `chef_mode`, `amounts_in_steps`, `recipe_sort` (the Recipes
   screen's sort), each enum stored by name, an unknown one read as the default. `AppPreferences.settings`
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a

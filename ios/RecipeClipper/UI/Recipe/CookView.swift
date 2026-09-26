@@ -29,11 +29,14 @@ struct CookView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 10) {
-                        ForEach(Array(steps.enumerated()), id: \.offset) { index, text in
+                        ForEach(Array(steps.indices), id: \.self) { index in
                             CookStep(
                                 index: index,
-                                text: text,
-                                amounts: content.stepParts(index),
+                                // Chef mode (#100): the short version, unless asked for as written.
+                                text: content.shownStep(index, asWritten: state.asWrittenSteps),
+                                amounts: content.shownStepParts(index, asWritten: state.asWrittenSteps),
+                                shortToggle: !content.hasShortStep(index) ? nil
+                                    : state.asWrittenSteps.contains(index) ? Strings.stepShowShort : Strings.stepShowAsWritten,
                                 status: index == cook.currentStep ? .current
                                     : cook.doneSteps.contains(index) ? .done : .upcoming,
                                 timerSeconds: index < content.stepTimerSeconds.count ? content.stepTimerSeconds[index] : nil,
@@ -217,6 +220,9 @@ private struct CookStep: View {
     let index: Int
     let text: String
     let amounts: [StepAmounts.Part]?
+    /// Chef mode (#100): the current step's "As written" / "Short version" button; nil: none. A
+    /// tap on a step already makes it current, so the switch is a small button on the card.
+    let shortToggle: String?
     let status: StepStatus
     let timerSeconds: Int?
     let timerWords: LanguageWords
@@ -229,10 +235,18 @@ private struct CookStep: View {
     var body: some View {
         if status == .current {
             VStack(alignment: .leading, spacing: 0) {
-                Text(Strings.cookStepLabel(index + 1))
-                    .textStyle(Typography.labelSmall)
-                    .foregroundStyle(Palette.accentText)
-                    .padding(.bottom, 8)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(Strings.cookStepLabel(index + 1))
+                        .textStyle(Typography.labelSmall)
+                        .foregroundStyle(Palette.accentText)
+                    Spacer()
+                    if let shortToggle {
+                        Button(shortToggle) { vm.onStepAsWrittenToggle(index) }
+                            .textStyle(Typography.labelMedium)
+                            .foregroundStyle(Palette.accentText)
+                    }
+                }
+                .padding(.bottom, 8)
                 stepText(text, amounts, accent: Palette.accentText)
                     .textStyle(Typography.cookStep)
                     .foregroundStyle(Palette.onBackground)

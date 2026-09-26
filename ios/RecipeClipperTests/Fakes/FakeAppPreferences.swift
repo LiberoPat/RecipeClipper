@@ -13,6 +13,7 @@ final class FakeAppPreferences: AppPreferences {
         temperatureUnit: TemperatureUnit = .asWritten,
         darkWhileCooking: Bool = false,
         expiryReminders: Bool = false,
+        chefMode: Bool = false,
         amountsInSteps: Bool = false,
         recipeSort: RecipeSort = .recentlyViewed
     ) {
@@ -22,6 +23,7 @@ final class FakeAppPreferences: AppPreferences {
             temperatureUnit: temperatureUnit,
             darkWhileCooking: darkWhileCooking,
             expiryReminders: expiryReminders,
+            chefMode: chefMode,
             amountsInSteps: amountsInSteps,
             recipeSort: recipeSort
         ))
@@ -64,5 +66,10 @@ final class FakeAppPreferences: AppPreferences {
     var expiryReminders: Bool {
         get { subject.value.expiryReminders }
         set { subject.value.expiryReminders = newValue }
+    }
+
+    var chefMode: Bool {
+        get { subject.value.chefMode }
+        set { subject.value.chefMode = newValue }
     }
 }

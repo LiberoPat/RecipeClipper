@@ -83,7 +83,9 @@ internal fun CookView(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
         ) {
-            itemsIndexed(steps) { index, text ->
+            itemsIndexed(steps) { index, _ ->
+                // Chef mode (#100): the short version where there is one, unless asked for as written.
+                val text = content.shownStep(index, state.asWrittenSteps)
                 val status = when {
                     index == cook.currentStep -> StepStatus.CURRENT
                     index in cook.doneSteps -> StepStatus.DONE
@@ -92,14 +94,19 @@ internal fun CookView(
                 CookStep(
                     index = index,
                     text = text,
-                    amounts = content.stepAmounts?.getOrNull(index),
+                    amounts = content.shownStepAmounts(index, state.asWrittenSteps),
                     status = status,
                     timerSeconds = content.stepTimerSeconds.getOrNull(index),
                     // A step has a timer only when the app has the recipe's words.
                     timerWords = content.words ?: LanguageWords.ENGLISH,
                     timer = cook.timers[index],
                     isLast = index == steps.lastIndex,
-                    actions = actions
+                    actions = actions,
+                    shortToggle = when {
+                        !content.hasShortStep(index) -> null
+                        index in state.asWrittenSteps -> stringResource(R.string.step_show_short)
+                        else -> stringResource(R.string.step_show_as_written)
+                    }
                 )
             }
         }
@@ -200,7 +207,10 @@ private fun CookStep(
     timerWords: LanguageWords,
     timer: StepTimer?,
     isLast: Boolean,
-    actions: RecipeActions
+    actions: RecipeActions,
+    // Chef mode (#100): the current step's "As written" / "Short version" switch; null: none.
+    // A tap on a step already makes it current, so the switch is a small button on the card.
+    shortToggle: String? = null
 ) {
     val colors = MaterialTheme.colorScheme
     val body = MaterialTheme.typography.bodyLarge
@@ -212,12 +222,23 @@ private fun CookStep(
                 .border(BorderStroke(2.dp, colors.primary), RoundedCornerShape(18.dp))
                 .padding(20.dp)
         ) {
-            Text(
-                stringResource(R.string.cook_step_label, index + 1),
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.tertiary
-            )
-            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.cook_step_label, index + 1),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.tertiary,
+                    modifier = Modifier.weight(1f)
+                )
+                if (shortToggle != null) {
+                    TextButton(
+                        onClick = { actions.onStepAsWrittenToggle(index) },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    ) {
+                        Text(shortToggle, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+            Spacer(Modifier.height(if (shortToggle != null) 0.dp else 8.dp))
             Text(stepText(text, amounts, colors.tertiary), style = body.copy(fontSize = 21.sp, lineHeight = 30.sp))
             if (timerSeconds != null || timer != null) {
                 Spacer(Modifier.height(16.dp))

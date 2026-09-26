@@ -38,7 +38,8 @@ class RecipeNotKeptScreenTest {
         val repository = FakeRecipeRepository().apply { importResult = ParseResult.Success(shown, kept = false) }
         val viewModel = RecipeViewModel(
             SavedStateHandle(mapOf(RecipeViewModel.URL_ARG to "https://a.com/soup")), repository, FakeAppPreferences(),
-            { 0L }, FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler(), FakeEntitlements()
+            { 0L }, FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler(),
+            entitlements = FakeEntitlements()
         )
         val saveViewModel = SaveToListViewModel(FakeListRepository())
         compose.setContent {

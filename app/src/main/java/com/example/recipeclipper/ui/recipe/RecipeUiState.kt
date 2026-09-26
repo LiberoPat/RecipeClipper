@@ -61,8 +61,31 @@ sealed class RecipeContent {
         val stepTimerSeconds: List<Int?>,
         val sourceDomain: String?,
         val words: LanguageWords? = LanguageWords.forRecipe(recipe),
-        val stepAmounts: List<List<StepAmounts.Part>>? = null
-    ) : RecipeContent()
+        val stepAmounts: List<List<StepAmounts.Part>>? = null,
+        /**
+         * Chef mode (#100): each step's short version, rendered like [instructions], lined up
+         * with them; null (or a short list) where a step has none yet, or none passed the check.
+         * [shortStepAmounts] are their amounts inside steps, as [stepAmounts] are the steps'.
+         */
+        val shortInstructions: List<String?> = emptyList(),
+        val shortStepAmounts: List<List<StepAmounts.Part>>? = null
+    ) : RecipeContent() {
+        private fun showsShort(index: Int, asWritten: Set<Int>) =
+            shortInstructions.getOrNull(index) != null && index !in asWritten
+
+        /** Step [index]'s short version, unless the cook asked to see it as written. */
+        fun shownStep(index: Int, asWritten: Set<Int>): String =
+            if (showsShort(index, asWritten)) shortInstructions[index]!! else instructions[index]
+
+        /** The amounts inside the step as [shownStep] shows it; null when amounts are off. */
+        fun shownStepAmounts(index: Int, asWritten: Set<Int>): List<StepAmounts.Part>? = when {
+            stepAmounts == null -> null
+            showsShort(index, asWritten) -> shortStepAmounts?.getOrNull(index)
+            else -> stepAmounts.getOrNull(index)
+        }
+
+        fun hasShortStep(index: Int): Boolean = shortInstructions.getOrNull(index) != null
+    }
 
     data class Error(val error: ParseError) : RecipeContent()
 }
@@ -105,6 +128,8 @@ data class RecipeUiState(
      * [reportSiteUrl] is: only a page that loaded with no recipe data can be clipped.
      */
     val clipUrl: String? = null,
+    /** Chef mode (#100): the steps the cook tapped to see as written, not short. */
+    val asWrittenSteps: Set<Int> = emptySet(),
     /**
      * The free library is full and every recipe in it is protected (#107): this one is shown
      * but wasn't saved, so the screen offers Unlock and hides what needs a saved recipe.

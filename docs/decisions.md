@@ -1789,6 +1789,93 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
   follow the plan's rules (a recipe meal needs its recipe, a note always comes in, no meal type
   means Dinner), its recipes come in like listed ones, and a menu left with no meals is dropped.
 
+## Chef mode: short steps written on the device (#100)
+
+Part of #99: the model writes words, code owns every number.
+
+**The on-device APIs, as checked on 2026-09-25** (official docs, and the iOS 27 SDK's
+`FoundationModels.swiftinterface`):
+
+- **iOS: Apple's Foundation Models framework** (`import FoundationModels`, iOS 26+, Apple
+  Intelligence devices). `SystemLanguageModel.default.availability` is `.available` or
+  `.unavailable(reason)`, the reason one of `.deviceNotEligible`, `.appleIntelligenceNotEnabled`
+  and `.modelNotReady` (still downloading). `supportedLanguages` (a `Set<Locale.Language>`) and
+  `supportsLocale(_:)` say which languages it writes. `contextSize` is 4,096 tokens on 26.0 and
+  8,192 on 27.0 (newer devices). A `LanguageModelSession(instructions:)` is stateful, so each
+  step gets a fresh one; `respond(to:options:)` returns `Response<String>.content`;
+  `GenerationOptions(temperature:)`. It throws on guardrail violations and unsupported
+  languages. The app targets iOS 17, so everything sits behind `#available(iOS 26, *)` and
+  `#if canImport(FoundationModels)`; on an older phone Chef mode is unsupported.
+- **Android: ML Kit GenAI on Gemini Nano, through AICore.** Three candidates:
+  - *Rewriting* (`com.google.mlkit:genai-rewriting:1.0.0-beta1`): `Rewriting.getClient(
+    RewriterOptions.builder(context).setOutputType(SHORTEN).setLanguage(…))`. Input under
+    256 tokens (a step is well under). Languages: English, Japanese, French, German, Italian,
+    Spanish, Korean; **no Portuguese**. Returns suggestions sorted by confidence.
+  - *Summarization* (`genai-summarization:1.0.0-beta1`): bulleted summaries of articles and
+    chats; the wrong shape for one step.
+  - *Prompt API* (`genai-prompt:1.0.0-beta4`): free prompts to Gemini Nano, under 4,000 tokens,
+    on fewer phones (nano-v2 to v4 lists).
+  All three: `checkFeatureStatus()` (Prompt: `checkStatus()`) returns `UNAVAILABLE`,
+  `DOWNLOADABLE`, `DOWNLOADING` or `AVAILABLE`; `downloadFeature(callback)` fetches the model;
+  minSdk 26 (the app's is 24, so the manifest overrides the library's and code checks the
+  API level); not on unlocked bootloaders; inference only while the app is the top foreground
+  app (`BACKGROUND_USE_BLOCKED`), with short-term (`BUSY`) and daily battery quotas
+  (`PER_APP_BATTERY_USE_QUOTA_EXCEEDED`). Supported phones: Pixel 9 and later, Galaxy
+  S25/S26, OnePlus 13–15 and others on Google's list.
+  **Chosen: Rewriting with `SHORTEN`**, the API built for exactly this, on the most phones.
+- **iOS: Foundation Models, `LanguageModelSession(instructions:)`**, a fresh session per step
+  and `GenerationOptions(temperature: 0)`. The instructions ask for the step shortened in its own
+  language with every number, time, temperature and unit kept as written. The languages offered
+  are `supportedLanguages` that the app also reads recipes in.
+
+**Design.**
+
+- **The seam:** `StepShortener` (`support()`, `shorten(step, language)`), implemented once per
+  platform (`MlKitStepShortener`, `FoundationModelsStepShortener`) and faked in tests; nothing
+  else imports ML Kit or FoundationModels. `ShortStepRepository` sits on top: it caches, checks
+  and prunes, and is what the ViewModels see.
+- **The gate, `ShortStepCheck`** (pure, both platforms, pinned by the corpus's `Short` rows): a
+  short version shows only if it is shorter than the step, every number in it appears in the
+  step as written ("1,5", "1 1/2", "½", each end of a range; "1.5" for "1,5" fails), and it
+  states exactly the step's durations (amount and unit length, via `StepTimers.durations`) and
+  temperatures (value and scale, via `TemperatureConverter.temperatures`): none changed, added or
+  dropped. Dropping a time or an oven temperature fails too, beyond the issue's wording, since
+  "Bake until golden" loses what the cook needs; the other half of "350°F (180°C)" may go.
+  A step under 40 characters is never sent. Anything else shows as written.
+- **Code still owns the numbers:** step timers come from the step as written, and a short step
+  is rendered like the step (temperatures in the chosen unit), so the model never writes a
+  number the cook sees that the step didn't state. Sharing a recipe sends the steps as written.
+- **Cache:** `short_steps` (Room 12, iOS `user_version` 11), one row per recipe, step text
+  (SHA-256 of it as stored) and language, with `uid` and `updatedAt` like the other tables. A
+  changed step has no row and is written again; rows for steps the recipe no longer has, or in
+  another language, are pruned when it opens. A version that failed the check is saved as
+  failed (null) so it isn't asked for again; a model that couldn't answer ("not now": busy, in
+  the background, downloading) saves nothing and is asked next time. Derived data: not in the
+  export file, and it cascades with its recipe. A recipe the free tier didn't keep (#107) has no
+  row to cache against, so it shows as written; Unlock keeps it and its short steps follow.
+- **Settings → Steps → "Chef mode"** (a switch; the section only with the `chefMode` flag, off in
+  both builds). Where the phone can't, the switch is disabled with one line saying why (can't,
+  Apple Intelligence off, model not ready); where it can, a line names the recipe languages it
+  writes. A recipe in another language keeps its steps as written, silently. Android offers
+  Chef mode while the model is still downloadable: the first recipe starts the download and
+  shows its steps as written meanwhile.
+- **On screen:** while short steps are written, the steps show as written (no spinner). In the
+  reading view a tap on a step with a short version shows it as written, and again short. In
+  cook mode a tap already makes a step current, so the current step's card has a small
+  "As written" / "Short version" button beside "STEP n" instead.
+- **minSdk 26 (Android 8.0), was 24: the owner's decision (2026-09-25).** ML Kit GenAI's minSdk
+  is 26. Keeping 24 needs `<uses-sdk tools:overrideLibrary>` in a manifest, and lint then reads
+  the app's targetSdk from that element as 1 (lint 32.4 `Project.readManifest`): it flagged
+  every "many" plural (`UnusedQuantity`), and it would quietly skip every check that depends on
+  targetSdk. AGP 9 refuses SDK attributes on that element, so there is no clean override.
+  Android 7.x (API 24–25) phones can no longer install the app; it was unreleased. The
+  alternative, keeping 24 with Android's Chef mode unsupported, was turned down.
+- **With "Amounts in steps" (#101):** a short step gets its amounts the same way, from its own
+  text (`StepAmounts.annotate` over the short versions), so amounts follow whichever version is
+  on screen. Both switches share the Settings Steps section; each row shows with its own flag.
+- **Needs a real phone to judge:** the model's output quality, how often the gate rejects it,
+  speed per step, and battery. CI and the tests run the fake model only.
+
 ## Ingredient amounts inside steps (#101)
 
 Part of #99. "Add the carrots" reads "Add **2** carrots": a Settings switch, "Amounts in steps"

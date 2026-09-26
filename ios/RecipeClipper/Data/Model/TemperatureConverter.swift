@@ -86,9 +86,32 @@ enum TemperatureConverter {
         return out
     }
 
+    /// Every temperature `text` states, each as its keys ("350F", "180-200C"); "350°F (180°C)"
+    /// is one temperature with two keys. What `ShortStepCheck` compares, so a short step can't
+    /// change a scale or drop an oven setting. Empty for nil `words`.
+    static func temperatures(_ text: String, words: LanguageWords?) -> [[String]] {
+        guard let words else { return [] }
+        let p = words.compiled(Patterns.self, Patterns.init)
+        var found: [[String]] = []
+        var cursor = 0
+        while let match = p.tempAnywhere.find(text, from: cursor) {
+            cursor = match.end
+            guard let temp = parse(p, match) else { continue }
+            let pair = findPair(p, text, firstEnd: cursor, first: temp)
+            found.append([key(temp)] + (pair.map { [key($0.temp)] } ?? []))
+            if let pair { cursor = pair.end }
+        }
+        return found
+    }
+
+    private static func key(_ t: Temp) -> String {
+        "\(t.low)\(t.high.map { "-\($0)" } ?? "")\(t.scale.rawValue)"
+    }
+
     private struct Pair {
         let value: String
         let end: Int
+        let temp: Temp
     }
 
     /// The other-scale temperature written straight after `first`, if there is one.
@@ -105,7 +128,7 @@ enum TemperatureConverter {
             guard let close = closingParen.find(text.u16Substring(from: end)) else { return nil }
             end += close.value.u16Count
         }
-        return Pair(value: match.value, end: end)
+        return Pair(value: match.value, end: end, temp: second)
     }
 
     private static func parse(_ p: Patterns, _ match: JMatch) -> Temp? {

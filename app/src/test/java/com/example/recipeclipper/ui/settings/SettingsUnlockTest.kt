@@ -32,7 +32,8 @@ class SettingsUnlockTest {
     private val entitlements = FakeEntitlements(UnlockState(price = "€2.99"))
 
     private fun settings() = SettingsViewModel(
-        FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo(), flags, entitlements
+        FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo(), flags,
+        entitlements = entitlements
     )
 
     @Test fun `no row while the free tier is off`() = runTest(mainDispatcherRule.dispatcher) {

@@ -24,6 +24,8 @@ class RecipeUITestCase: XCTestCase {
         /// minutes.", "Rest off the heat for 3 seconds.", "Serve with rice."; its lines include
         /// "1 lb beef" (amounts inside steps, #101).
         case cook
+        /// "Sponge Cake" alone: a long step the stub model shortens (Chef mode, #100), then "Serve."
+        case chef
     }
 
     override func setUp() {

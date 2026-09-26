@@ -388,6 +388,14 @@
     <string name="expiry_reminders_title">Rappels de péremption</string>
     <string name="expiry_reminders_description">Une notification à 9 h quand un article en stock périme aujourd’hui ou demain</string>
     <string name="expiry_reminders_denied">Les notifications sont désactivées pour Recipe Clipper. Autorisez-les dans les réglages du système pour recevoir des rappels.</string>
+    <!-- Chef mode (#100) -->
+    <string name="chef_mode_title">Mode chef</string>
+    <string name="chef_mode_description">Des étapes courtes, écrites sur ce téléphone. Touchez-en une pour la voir comme dans la recette.</string>
+    <string name="chef_mode_languages">Pour les recettes en %1$s.</string>
+    <string name="chef_mode_unsupported">Ce téléphone ne peut pas écrire d\'étapes courtes.</string>
+    <string name="chef_mode_not_ready">Le modèle du téléphone n\'est pas encore prêt. Réessayez plus tard.</string>
+    <string name="step_show_as_written">Comme dans la recette</string>
+    <string name="step_show_short">Version courte</string>
     <string name="expiry_channel_name">Rappels du garde-manger</string>
     <string name="expiry_channel_description">Une notification le matin quand un article du garde-manger va bientôt périmer</string>
     <string name="expiry_notification_title">À utiliser bientôt</string>

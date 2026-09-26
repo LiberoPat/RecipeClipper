@@ -261,3 +261,36 @@ data class MenuEntryEntity(
     val updatedAt: Long,
     val uid: String = newUid()
 )
+
+/**
+ * Chef mode's short version of one step (#100), written on the device. Derived data, never in
+ * the export file: keyed by recipe, the step's text ([stepHash], its SHA-256) and the language
+ * it was written in, so a changed step has no row and is written again; rows for steps the
+ * recipe no longer has are pruned. [shortText] null: the model's version failed
+ * `ShortStepCheck`, so the step shows as written and isn't asked for again. [uid] and
+ * [updatedAt] follow the other tables (#53).
+ */
+@Entity(
+    tableName = "short_steps",
+    foreignKeys = [
+        ForeignKey(
+            entity = RecipeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["recipeId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["uid"], unique = true),
+        Index(value = ["recipeId", "stepHash", "language"], unique = true)
+    ]
+)
+data class ShortStepEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val recipeId: Long,
+    val stepHash: String,
+    val language: String,
+    val shortText: String?,
+    val updatedAt: Long,
+    val uid: String = newUid()
+)

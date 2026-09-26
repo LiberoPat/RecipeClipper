@@ -12,6 +12,7 @@ import com.example.recipeclipper.data.local.dao.MenuDao
 import com.example.recipeclipper.data.local.dao.MealPlanDao
 import com.example.recipeclipper.data.local.dao.PantryDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
+import com.example.recipeclipper.data.local.dao.ShortStepDao
 import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
@@ -21,6 +22,7 @@ import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.MenuEntity
 import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.local.entity.ShortStepEntity
 import com.example.recipeclipper.data.local.entity.newUid
 import com.example.recipeclipper.data.model.MealType
 
@@ -28,9 +30,9 @@ import com.example.recipeclipper.data.model.MealType
     entities = [
         RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class,
         MealTypeEntity::class, MealPlanEntryEntity::class, GroceryItemEntity::class,
-        PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class
+        PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -43,6 +45,7 @@ abstract class RecipeDatabase : RoomDatabase() {
     abstract fun groceryDao(): GroceryDao
     abstract fun pantryDao(): PantryDao
     abstract fun menuDao(): MenuDao
+    abstract fun shortStepDao(): ShortStepDao
 
     companion object {
         const val NAME = "recipe_clipper.db"
@@ -303,10 +306,30 @@ abstract class RecipeDatabase : RoomDatabase() {
             "CREATE INDEX IF NOT EXISTS `index_menu_entries_recipeId` ON `menu_entries` (`recipeId`)"
         )
 
+        /**
+         * Chef mode's short steps (#100): one new table of derived data, so nothing existing
+         * changes. The same SQL is iOS's `addShortSteps`.
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                SHORT_STEPS_SQL.forEach(db::execSQL)
+            }
+        }
+
+        private val SHORT_STEPS_SQL = listOf(
+            "CREATE TABLE IF NOT EXISTS `short_steps` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`recipeId` INTEGER NOT NULL, `stepHash` TEXT NOT NULL, `language` TEXT NOT NULL, " +
+                "`shortText` TEXT, `updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL, " +
+                "FOREIGN KEY(`recipeId`) REFERENCES `recipes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_short_steps_uid` ON `short_steps` (`uid`)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_short_steps_recipeId_stepHash_language` " +
+                "ON `short_steps` (`recipeId`, `stepHash`, `language`)"
+        )
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11
+            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12
         )
     }
 }

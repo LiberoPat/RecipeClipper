@@ -11,6 +11,7 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let temperatureUnit = "temperature_unit"
         static let darkWhileCooking = "dark_while_cooking"
         static let expiryReminders = "expiry_reminders"
+        static let chefMode = "chef_mode"
         static let amountsInSteps = "amounts_in_steps"
         static let recipeSort = "recipe_sort"
     }
@@ -45,6 +46,11 @@ final class UserDefaultsAppPreferences: AppPreferences {
     var expiryReminders: Bool {
         get { defaults.bool(forKey: Key.expiryReminders) }
         set { defaults.set(newValue, forKey: Key.expiryReminders) }
+    }
+
+    var chefMode: Bool {
+        get { defaults.bool(forKey: Key.chefMode) }
+        set { defaults.set(newValue, forKey: Key.chefMode) }
     }
 
     var amountsInSteps: Bool {

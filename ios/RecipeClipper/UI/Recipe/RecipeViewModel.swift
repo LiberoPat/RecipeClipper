@@ -45,6 +45,15 @@ final class RecipeViewModel {
     @ObservationIgnored private var notesTask: Task<Void, Never>?
     @ObservationIgnored private var settingsSubscription: AnyCancellable?
 
+    // Chef mode (#100): on when both its flag and its setting are.
+    @ObservationIgnored private let shortSteps: ShortStepRepository?
+    @ObservationIgnored private let flags: FeatureFlags?
+    @ObservationIgnored private var chefOn = false
+    @ObservationIgnored private var chefTask: Task<Void, Never>?
+    @ObservationIgnored private var chefSubscription: AnyCancellable?
+    /// The loaded recipe's short steps as saved, before rendering; empty while Chef mode is off.
+    @ObservationIgnored private var rawShortSteps: [String?] = []
+
     init(
         recipeId: Int64?,
         url: String?,
@@ -57,8 +66,12 @@ final class RecipeViewModel {
         alarms: TimerAlarmScheduler = NoOpTimerAlarmScheduler(),
         openInCookMode: Bool = false,
         plannedServings: Int? = nil,
+        shortSteps: ShortStepRepository? = nil,
+        flags: FeatureFlags? = nil,
         entitlements: Entitlements = UnavailableEntitlements()
     ) {
+        self.shortSteps = shortSteps
+        self.flags = flags
         self.entitlements = entitlements
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
@@ -80,6 +93,7 @@ final class RecipeViewModel {
             darkWhileCooking: settings.darkWhileCooking,
             amountsInSteps: settings.amountsInSteps
         )
+        chefOn = (flags?.isOn(.chefMode) ?? false) && settings.chefMode
         // Settings can change a default while this screen is alive underneath it; this keeps
         // the open recipe in step instead of showing the units it was opened with (#24).
         settingsSubscription = preferences.settings
@@ -95,6 +109,7 @@ final class RecipeViewModel {
         tickTask?.cancel()
         reconnectTask?.cancel()
         notesTask?.cancel()
+        chefTask?.cancel()
         // A note typed just before leaving is still written: one short write, owned by no one.
         if let pending = pendingNotes {
             Task { [repository] in await repository.setNotes(id: pending.id, notes: pending.text) }
@@ -112,6 +127,7 @@ final class RecipeViewModel {
         uiState.content = .loading
         uiState.reportSiteUrl = nil
         uiState.clipUrl = nil
+        uiState.asWrittenSteps = []
         // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
         loadTask = Task { [weak self, recipeId, shareUrl, repository] in
             let result: ParseResult
@@ -144,6 +160,7 @@ final class RecipeViewModel {
                 uiState.checkedIngredients = recipe.checkedIngredients
                 uiState.notes = recipe.notes ?? ""
                 restoreCook(recipe)
+                startChef()
                 if openInCookMode {
                     openInCookMode = false
                     onCookStart()
@@ -290,7 +307,9 @@ final class RecipeViewModel {
                 for step in deadlines.keys { alarms.cancel(recipeId: recipe.id, step: step) }
                 uiState.content = .success(successContent(fresh))
                 uiState.checkedIngredients = fresh.checkedIngredients
+                uiState.asWrittenSteps = []
                 restoreCook(fresh)
+                startChef()
             case .error(let error):
                 uiState.updateError = error
             case .notKept: break // an update never adds a recipe
@@ -313,6 +332,7 @@ final class RecipeViewModel {
                 content.recipe = saved
                 uiState.content = .success(content)
                 uiState.notKept = false
+                startChef() // now it has a row to keep short steps against
             }
         }
     }
@@ -328,7 +348,7 @@ final class RecipeViewModel {
         let scale = ServingsScale(base: servings.base, target: min(max(target, 1), Servings.max))
         content.servings = scale
         content.ingredients = render(content.recipe, content.words, scale, uiState.unitSystem, uiState.convertLiquids)
-        content.stepAmounts = stepAmounts(content)
+        applyStepAmounts(&content)
         uiState.content = .success(content)
         // The recipe's own yield is saved as no choice at all.
         let id = content.recipe.id
@@ -351,6 +371,11 @@ final class RecipeViewModel {
     /// darkWhileCooking is a display choice and leaves the recipe alone, and scaled servings,
     /// ticks and cook progress are kept either way.
     private func applySettings(_ settings: AppSettings) {
+        let chef = (flags?.isOn(.chefMode) ?? false) && settings.chefMode
+        if chef != chefOn {
+            chefOn = chef
+            startChef()
+        }
         let rendersDifferently = settings.unitSystem != uiState.unitSystem
             || settings.convertLiquids != uiState.convertLiquids
             || settings.temperatureUnit != uiState.temperatureUnit
@@ -371,8 +396,58 @@ final class RecipeViewModel {
         guard var content = uiState.content.success else { return }
         content.ingredients = render(content.recipe, content.words, content.servings, uiState.unitSystem, uiState.convertLiquids)
         content.instructions = renderInstructions(content.recipe, content.words, uiState.temperatureUnit)
-        content.stepAmounts = stepAmounts(content)
+        applyStepAmounts(&content)
         uiState.content = .success(content)
+        applyShortSteps()
+    }
+
+    // MARK: Chef mode (#100): short steps written on the device
+
+    /// (Re)starts the loaded recipe's short steps: the saved ones show at once, and the missing
+    /// ones are written one by one, the steps showing as written meanwhile. Nothing happens on a
+    /// phone or recipe language the model can't do; Chef mode off clears them.
+    private func startChef() {
+        chefTask?.cancel()
+        chefTask = nil
+        chefSubscription = nil
+        rawShortSteps = []
+        applyShortSteps()
+        // A recipe that wasn't kept (#107) has no row: short steps are cached per saved recipe.
+        guard chefOn, !uiState.notKept, let shortSteps, let recipe = uiState.content.success?.recipe else { return }
+        let language = LanguageWords.forRecipe(recipe)?.language
+        // Weak, and self is never held across the writing, so a popped screen goes at once.
+        chefTask = Task { [weak self] in
+            let support = await shortSteps.support()
+            guard !Task.isCancelled, support.covers(language) else { return }
+            self?.chefSubscription = shortSteps.observe(recipe)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] shorts in
+                    self?.rawShortSteps = shorts
+                    self?.applyShortSteps()
+                }
+            await shortSteps.fill(recipe)
+        }
+    }
+
+    /// The saved short steps, rendered like the steps they stand for.
+    private func applyShortSteps() {
+        guard var content = uiState.content.success else { return }
+        let shorts = rawShortSteps.count == content.recipe.instructions.count ? rawShortSteps : []
+        let unit = uiState.temperatureUnit
+        let rendered = shorts.map { $0.map { renderStep($0, content.words, unit) } }
+        guard rendered != content.shortInstructions else { return }
+        content.shortInstructions = rendered
+        applyStepAmounts(&content)
+        uiState.content = .success(content)
+    }
+
+    /// Chef mode: shows step `index` as written, or short again.
+    func onStepAsWrittenToggle(_ index: Int) {
+        if uiState.asWrittenSteps.contains(index) {
+            uiState.asWrittenSteps.remove(index)
+        } else {
+            uiState.asWrittenSteps.insert(index)
+        }
     }
 
     // MARK: Cook mode
@@ -565,11 +640,19 @@ final class RecipeViewModel {
             sourceDomain: SourceDomain.of(recipe.sourceUrl),
             words: words
         )
-        success.stepAmounts = stepAmounts(success)
+        applyStepAmounts(&success)
         return success
     }
 
     // Amounts inside steps (#101), from the lines as rendered, so they follow servings and units.
+    // Chef mode's short steps (#100) get theirs the same way.
+    private func applyStepAmounts(_ content: inout RecipeSuccess) {
+        content.stepAmounts = stepAmounts(content)
+        content.shortStepAmounts = uiState.amountsInSteps && content.shortInstructions.contains { $0 != nil }
+            ? StepAmounts.annotate(content.shortInstructions.map { $0 ?? "" }, lines: content.ingredients, words: content.words)
+            : nil
+    }
+
     private func stepAmounts(_ content: RecipeSuccess) -> [[StepAmounts.Part]]? {
         uiState.amountsInSteps ? StepAmounts.annotate(content.instructions, lines: content.ingredients, words: content.words) : nil
     }
@@ -585,6 +668,11 @@ final class RecipeViewModel {
     // Instructions aren't scaled, but oven temperatures follow the chosen temperature unit —
     // independent of the ingredient unit system.
     private func renderInstructions(_ recipe: Recipe, _ words: LanguageWords?, _ unit: TemperatureUnit) -> [String] {
-        recipe.instructions.map { TemperatureConverter.convert($0, unit: unit, words: words) }
+        recipe.instructions.map { renderStep($0, words, unit) }
+    }
+
+    // One step as shown, as written or Chef mode's short version (#100): the same rendering.
+    private func renderStep(_ step: String, _ words: LanguageWords?, _ unit: TemperatureUnit) -> String {
+        TemperatureConverter.convert(step, unit: unit, words: words)
     }
 }

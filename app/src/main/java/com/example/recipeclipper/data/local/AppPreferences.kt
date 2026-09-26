@@ -37,6 +37,12 @@ interface AppPreferences {
     var expiryReminders: Boolean
 
     /**
+     * Chef mode (#100): short steps written on the device, in the reading view and cook mode.
+     * Off by default, and only offered behind the `chefMode` flag on a phone that can do it.
+     */
+    var chefMode: Boolean
+
+    /**
      * Ingredient amounts inside steps (#101): "Add the carrots" reads "Add 2 carrots". Off by
      * default, and shown only with the `amountsInSteps` flag on.
      */
@@ -53,7 +59,10 @@ interface AppPreferences {
 
     /** The values as they are right now. */
     val current: AppSettings
-        get() = AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, amountsInSteps, recipeSort)
+        get() = AppSettings(
+            unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps,
+            recipeSort
+        )
 }
 
 /** One snapshot of [AppPreferences], as its [AppPreferences.settings] flow emits them. */
@@ -63,6 +72,7 @@ data class AppSettings(
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
     val expiryReminders: Boolean = false,
+    val chefMode: Boolean = false,
     val amountsInSteps: Boolean = false,
     val recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED
 )

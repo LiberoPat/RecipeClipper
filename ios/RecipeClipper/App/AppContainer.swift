@@ -23,6 +23,8 @@ final class AppContainer {
     private(set) var expiryReminders: ExpiryReminderCoordinator?
     /// The feature flags (#87), read by the root view and Developer settings.
     let featureFlags: FeatureFlags
+    /// Chef mode's short steps (#100); nil (tests) leaves Chef mode unsupported.
+    let shortStepRepository: ShortStepRepository?
     /// The one-time unlock (#107): StoreKit in the live app, none in tests.
     let entitlements: Entitlements
     /// Which library limit applies (#107), mirrored for the repositories and the extension.
@@ -53,6 +55,7 @@ final class AppContainer {
         sharedDatabase: AppDatabase? = nil,
         featureFlags: FeatureFlags? = nil,
         notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true),
+        shortStepRepository: ShortStepRepository? = nil,
         entitlements: Entitlements? = nil,
         libraryMirror: DefaultsLibraryLimit? = nil
     ) {
@@ -74,6 +77,7 @@ final class AppContainer {
         self.sharedDatabase = sharedDatabase
         // Unless given a store, overrides last only for this run (unit tests).
         self.featureFlags = featureFlags ?? FeatureFlags(store: MemoryFeatureFlagStore())
+        self.shortStepRepository = shortStepRepository
         self.entitlements = entitlements ?? UnavailableEntitlements()
         libraryPolicy = LibraryPolicy(flags: self.featureFlags, entitlements: self.entitlements, mirror: libraryMirror)
     }
@@ -137,6 +141,9 @@ final class AppContainer {
             sharedDatabase: testing ? nil : database,
             featureFlags: testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore()),
             notificationPermission: testing ? FixedNotificationPermission(granted: true) : SystemNotificationPermission(),
+            shortStepRepository: DefaultShortStepRepository(
+                db: database, shortener: FoundationModelsStepShortener(), clock: clock
+            ),
             entitlements: storeKit,
             libraryMirror: libraryLimit
         )
@@ -160,7 +167,8 @@ final class AppContainer {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
-            openInCookMode: openInCookMode, plannedServings: plannedServings, entitlements: entitlements
+            openInCookMode: openInCookMode, plannedServings: plannedServings,
+            shortSteps: shortStepRepository, flags: featureFlags, entitlements: entitlements
         )
     }
 
@@ -209,7 +217,8 @@ final class AppContainer {
     func makeSettingsViewModel() -> SettingsViewModel {
         SettingsViewModel(
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
-            flags: featureFlags, notificationPermission: notificationPermission, entitlements: entitlements
+            flags: featureFlags, notificationPermission: notificationPermission,
+            shortSteps: shortStepRepository, entitlements: entitlements
         )
     }
 

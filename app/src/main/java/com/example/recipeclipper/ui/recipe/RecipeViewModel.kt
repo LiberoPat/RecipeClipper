@@ -4,10 +4,14 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.AppInfo
+import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.ShortStepRepository
 import com.example.recipeclipper.data.TimerAlarmScheduler
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.CookProgress
@@ -61,6 +65,10 @@ class RecipeViewModel @Inject constructor(
     private val connectivity: Connectivity,
     private val appInfo: AppInfo,
     private val alarms: TimerAlarmScheduler,
+    // Chef mode (#100) and the free tier (#107). Optional, so a test that doesn't care leaves
+    // them out (chef mode off, nothing to unlock); pass them by name.
+    private val shortSteps: ShortStepRepository? = null,
+    private val featureFlags: FeatureFlags? = null,
     private val entitlements: Entitlements = Entitlements.Unavailable
 ) : ViewModel() {
 
@@ -107,10 +115,27 @@ class RecipeViewModel @Inject constructor(
     private val pendingWrites = ArrayDeque<suspend () -> Unit>()
     private var writer: Job? = null
 
+    // Chef mode (#100): on when both its flag and its setting are. Declared before init, which
+    // starts the collectors that set them.
+    private var chefFlag = false
+    private var chefSetting = false
+    private var chefOn = false
+    private var chefJob: Job? = null
+    // The loaded recipe's short steps as saved, before rendering; empty while Chef mode is off.
+    private var rawShortSteps: List<String?> = emptyList()
+
     init {
         // Settings can change a default while this screen is alive underneath it; this keeps
         // the open recipe in step instead of showing the units it was opened with (#24).
         viewModelScope.launch { unitPreferences.settings.collect(::applySettings) }
+        featureFlags?.let { flags ->
+            viewModelScope.launch {
+                flags.values.collect {
+                    chefFlag = it.isOn(Flag.CHEF_MODE)
+                    onChefChanged()
+                }
+            }
+        }
         load()
     }
 
@@ -136,6 +161,7 @@ class RecipeViewModel @Inject constructor(
                     val content = state.content as? RecipeContent.Success
                     state.copy(notKept = false, content = content?.copy(recipe = saved.recipe) ?: state.content)
                 }
+                startChef() // now it has a row to keep short steps against
             }
         }
     }
@@ -145,7 +171,9 @@ class RecipeViewModel @Inject constructor(
     private fun load() {
         loadJob?.cancel()
         reconnectJob?.cancel()
-        _uiState.update { it.copy(content = RecipeContent.Loading, reportSiteUrl = null, clipUrl = null) }
+        _uiState.update {
+            it.copy(content = RecipeContent.Loading, reportSiteUrl = null, clipUrl = null, asWrittenSteps = emptySet())
+        }
         loadJob = viewModelScope.launch {
             val result = when {
                 recipeId != null -> repository.open(recipeId)
@@ -174,6 +202,7 @@ class RecipeViewModel @Inject constructor(
             }
             if (result is ParseResult.Success) {
                 restoreCook(result.recipe)
+                startChef()
                 if (openInCookMode) {
                     openInCookMode = false
                     onCookStart()
@@ -332,10 +361,12 @@ class RecipeViewModel @Inject constructor(
                             state.amountsInSteps
                         ),
                         checkedIngredients = result.recipe.checkedIngredients,
-                        updatingFromSource = false
+                        updatingFromSource = false,
+                        asWrittenSteps = emptySet()
                     )
                 }
                 restoreCook(result.recipe)
+                startChef()
             } else {
                 val error = (result as ParseResult.Error).error
                 _uiState.update { it.copy(updatingFromSource = false, updateError = error) }
@@ -383,6 +414,8 @@ class RecipeViewModel @Inject constructor(
      * scaled servings, ticks and cook progress are kept either way.
      */
     private fun applySettings(settings: AppSettings) {
+        chefSetting = settings.chefMode
+        onChefChanged()
         _uiState.update { state ->
             val next = state.copy(
                 unitSystem = settings.unitSystem,
@@ -406,14 +439,70 @@ class RecipeViewModel @Inject constructor(
     // Re-renders the loaded recipe under [state]'s units, keeping its chosen servings.
     private fun rerender(state: RecipeUiState): RecipeUiState {
         val content = state.content as? RecipeContent.Success ?: return state
-        return state.copy(
-            content = content.copy(
-                ingredients = render(
-                    content.recipe, content.words, content.servings, state.unitSystem, state.convertLiquids
-                ),
-                instructions = renderInstructions(content.recipe, content.words, state.temperatureUnit)
-            ).withStepAmounts(state.amountsInSteps)
+        return withShortSteps(
+            state.copy(
+                content = content.copy(
+                    ingredients = render(
+                        content.recipe, content.words, content.servings, state.unitSystem, state.convertLiquids
+                    ),
+                    instructions = renderInstructions(content.recipe, content.words, state.temperatureUnit)
+                ).withStepAmounts(state.amountsInSteps)
+            )
         )
+    }
+
+    // --- Chef mode (#100): short steps written on the device ---
+
+    private fun onChefChanged() {
+        val on = chefFlag && chefSetting
+        if (on == chefOn) return
+        chefOn = on
+        startChef()
+    }
+
+    /**
+     * (Re)starts the loaded recipe's short steps: the saved ones show at once, and the missing
+     * ones are written one by one, the steps showing as written meanwhile. Nothing happens on a
+     * phone or recipe language the model can't do; Chef mode off clears them.
+     */
+    private fun startChef() {
+        chefJob?.cancel()
+        chefJob = null
+        rawShortSteps = emptyList()
+        _uiState.update(::withShortSteps)
+        val recipe = (_uiState.value.content as? RecipeContent.Success)?.recipe ?: return
+        if (_uiState.value.notKept) return // not saved (#107): short steps are cached per saved recipe
+        val repository = shortSteps ?: return
+        if (!chefOn) return
+        chefJob = viewModelScope.launch {
+            val support = repository.support()
+            if (support !is ChefSupport.Available || !support.covers(LanguageWords.forRecipe(recipe)?.language)) {
+                return@launch
+            }
+            launch { repository.fill(recipe) }
+            repository.observe(recipe).collect { shorts ->
+                rawShortSteps = shorts
+                _uiState.update(::withShortSteps)
+            }
+        }
+    }
+
+    // The saved short steps, rendered like the steps they stand for.
+    private fun withShortSteps(state: RecipeUiState): RecipeUiState {
+        val content = state.content as? RecipeContent.Success ?: return state
+        val shorts = rawShortSteps.takeIf { it.size == content.recipe.instructions.size }.orEmpty()
+        val rendered = shorts.map { short -> short?.let { renderStep(it, content.words, state.temperatureUnit) } }
+        return state.copy(
+            content = content.copy(shortInstructions = rendered).withStepAmounts(state.amountsInSteps)
+        )
+    }
+
+    /** Chef mode: shows step [index] as written, or short again. */
+    fun onStepAsWrittenToggle(index: Int) {
+        _uiState.update { state ->
+            val shown = state.asWrittenSteps
+            state.copy(asWrittenSteps = if (index in shown) shown - index else shown + index)
+        }
     }
 
     // --- Cook mode ---
@@ -640,9 +729,16 @@ class RecipeViewModel @Inject constructor(
         ).withStepAmounts(amountsInSteps)
     }
 
-    // Amounts inside steps (#101), from the lines as rendered, so they follow servings and units.
-    private fun RecipeContent.Success.withStepAmounts(on: Boolean): RecipeContent.Success =
-        copy(stepAmounts = if (on) StepAmounts.annotate(instructions, ingredients, words) else null)
+    // Amounts inside steps (#101), from the lines as rendered, so they follow servings and units;
+    // Chef mode's short steps (#100) get theirs the same way.
+    private fun RecipeContent.Success.withStepAmounts(on: Boolean): RecipeContent.Success = copy(
+        stepAmounts = if (on) StepAmounts.annotate(instructions, ingredients, words) else null,
+        shortStepAmounts = if (on && shortInstructions.any { it != null }) {
+            StepAmounts.annotate(shortInstructions.map { it.orEmpty() }, ingredients, words)
+        } else {
+            null
+        }
+    )
 
     // Scale first, then convert, so a converted amount always matches the chosen servings.
     private fun render(
@@ -659,7 +755,11 @@ class RecipeViewModel @Inject constructor(
     // Instructions aren't scaled (a step can mention any number), but oven temperatures
     // follow the chosen temperature unit — independent of the ingredient unit system.
     private fun renderInstructions(recipe: Recipe, words: LanguageWords?, temperatureUnit: TemperatureUnit): List<String> =
-        recipe.instructions.map { TemperatureConverter.convert(it, temperatureUnit, words) }
+        recipe.instructions.map { renderStep(it, words, temperatureUnit) }
+
+    // One step as shown, as written or Chef mode's short version (#100): the same rendering.
+    private fun renderStep(step: String, words: LanguageWords?, temperatureUnit: TemperatureUnit): String =
+        TemperatureConverter.convert(step, temperatureUnit, words)
 
     companion object {
         const val RECIPE_ID_ARG = "recipeId"

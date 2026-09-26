@@ -8,9 +8,15 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.SavedStateHandle
 import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.DefaultShortStepRepository
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.fake.FakeAppInfo
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
+import com.example.recipeclipper.fake.FakeShortStepDao
+import com.example.recipeclipper.fake.FakeStepShortener
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
 import com.example.recipeclipper.fake.FakeGroceryRepository
@@ -38,7 +44,9 @@ class RecipeScreenFixture(
     /** Set to show "Add to groceries" (#50), as behind the tab flag. */
     val groceries: FakeGroceryRepository? = null,
     /** The `amountsInSteps` flag (#101); the switch itself is [preferences]' `amountsInSteps`. */
-    val amountsInSteps: Boolean = false
+    val amountsInSteps: Boolean = false,
+    /** Set to turn Chef mode (#100) on, flag and setting, with this as the model. */
+    val chef: FakeStepShortener? = null
 ) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
@@ -67,7 +75,12 @@ class RecipeScreenFixture(
             Clock { now.get() },
             FakeConnectivity(),
             FakeAppInfo(),
-            FakeTimerAlarmScheduler()
+            FakeTimerAlarmScheduler(),
+            chef?.let { DefaultShortStepRepository(FakeShortStepDao(), it, Clock { 0 }) { _, e -> throw e } },
+            chef?.let {
+                preferences.chefMode = true
+                FeatureFlags(FakeFeatureFlagStore(mapOf("chefMode" to true)), FlagRegistry.definitions, isDebug = false)
+            }
         )
         val saveViewModel = SaveToListViewModel(lists)
         // Behind the flag both menu items show, so both sheets need a ViewModel (not Hilt's).

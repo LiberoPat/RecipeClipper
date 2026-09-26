@@ -104,6 +104,8 @@ internal class RecipeActions(
     val onTimerToggle: (Int) -> Unit,
     val onTimerReset: (Int) -> Unit,
     val onTimerAlerted: (Int) -> Unit,
+    /** Chef mode (#100): a step with a short version shows as written, or short again. */
+    val onStepAsWrittenToggle: (Int) -> Unit = {},
     val onShare: () -> Unit,
     val onOpenOriginal: (url: String) -> Unit,
     val onSaveToList: () -> Unit,
@@ -173,6 +175,7 @@ fun RecipeScreen(
             onTimerToggle = viewModel::onTimerToggle,
             onTimerReset = viewModel::onTimerReset,
             onTimerAlerted = viewModel::onTimerAlerted,
+            onStepAsWrittenToggle = viewModel::onStepAsWrittenToggle,
             onShare = {
                 viewModel.shareText(shareLabels(resources))?.let { text ->
                     val title = (viewModel.uiState.value.content as? RecipeContent.Success)
@@ -528,8 +531,18 @@ private fun ReadingView(
                 Spacer(Modifier.height(6.dp))
             }
 
-            itemsIndexed(content.instructions) { index, step ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            itemsIndexed(content.instructions) { index, _ ->
+                // Chef mode (#100): a step with a short version shows it; a tap shows it as written.
+                val step = content.shownStep(index, state.asWrittenSteps)
+                val toggle = if (content.hasShortStep(index)) {
+                    val label = stringResource(
+                        if (index in state.asWrittenSteps) R.string.step_show_short else R.string.step_show_as_written
+                    )
+                    Modifier.clickable(onClickLabel = label) { actions.onStepAsWrittenToggle(index) }
+                } else {
+                    Modifier
+                }
+                Row(Modifier.fillMaxWidth().then(toggle).padding(vertical = 8.dp)) {
                     Text(
                         "${index + 1}",
                         style = MaterialTheme.typography.titleMedium,
@@ -537,7 +550,7 @@ private fun ReadingView(
                         modifier = Modifier.width(32.dp)
                     )
                     Text(
-                        stepText(step, content.stepAmounts?.getOrNull(index), MaterialTheme.colorScheme.tertiary),
+                        stepText(step, content.shownStepAmounts(index, state.asWrittenSteps), MaterialTheme.colorScheme.tertiary),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }

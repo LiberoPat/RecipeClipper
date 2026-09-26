@@ -40,11 +40,35 @@ struct RecipeSuccess: Equatable {
     var sourceDomain: String?
     var words: LanguageWords?
     var stepAmounts: [[StepAmounts.Part]]? = nil
+    /// Chef mode (#100): each step's short version, rendered like `instructions`, lined up with
+    /// them; nil (or a short array) where a step has none yet, or none passed the check.
+    /// `shortStepAmounts` are their amounts inside steps, as `stepAmounts` are the steps'.
+    var shortInstructions: [String?] = []
+    var shortStepAmounts: [[StepAmounts.Part]]? = nil
+
+    private func showsShort(_ index: Int, _ asWritten: Set<Int>) -> Bool {
+        index < shortInstructions.count && shortInstructions[index] != nil && !asWritten.contains(index)
+    }
+
+    /// Step `index`'s short version, unless the cook asked to see it as written.
+    func shownStep(_ index: Int, asWritten: Set<Int>) -> String {
+        showsShort(index, asWritten) ? shortInstructions[index]! : instructions[index]
+    }
+
+    func hasShortStep(_ index: Int) -> Bool { index < shortInstructions.count && shortInstructions[index] != nil }
 
     /// Step `index` with its amounts, or nil to show it as written.
     func stepParts(_ index: Int) -> [StepAmounts.Part]? {
         guard let stepAmounts, index < stepAmounts.count else { return nil }
         return stepAmounts[index]
+    }
+
+    /// The amounts inside the step as `shownStep` shows it; nil when amounts are off.
+    func shownStepParts(_ index: Int, asWritten: Set<Int>) -> [StepAmounts.Part]? {
+        guard stepAmounts != nil else { return nil }
+        guard showsShort(index, asWritten) else { return stepParts(index) }
+        guard let shortStepAmounts, index < shortStepAmounts.count else { return nil }
+        return shortStepAmounts[index]
     }
 
     /// The same, with every step as written: how the view shows it while the flag is off.
@@ -97,6 +121,8 @@ struct RecipeUiState: Equatable {
     /// `reportSiteUrl` is: only a page that loaded with no recipe data can be clipped.
     var clipUrl: String?
 
+    /// Chef mode (#100): the steps the cook tapped to see as written, not short.
+    var asWrittenSteps: Set<Int> = []
     /// The free library is full and every recipe in it is protected (#107): this one is shown
     /// but wasn't saved, so the screen offers Unlock and hides what needs a saved recipe.
     var notKept = false

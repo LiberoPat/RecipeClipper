@@ -49,6 +49,9 @@ object StepTimers {
         )
 
         fun secondsOf(unit: String): Int = unitSeconds.first { (words, _) -> words.matches(unit) }.second
+
+        // Any way of joining a range's two ends, so "20 to 25" and "20–25" compare equal.
+        val rangeJoin = Regex("""\s*(?:[-–—]|$range)\s*""", RegexOption.IGNORE_CASE)
     }
 
     private fun patterns(words: LanguageWords): Patterns = words.compiled(Patterns::class) { Patterns(it) }
@@ -72,6 +75,22 @@ object StepTimers {
         }
         return total.takeIf { it in 1..MAX_SECONDS }
     }
+
+    /**
+     * Every duration [step] states, as "amount/seconds" keys ("20/60", "25-30/60"), the amount
+     * as written with a range's join made "-": what [ShortStepCheck] compares, so a short step
+     * can't change a time. Empty for [words] null.
+     */
+    fun durations(step: String, words: LanguageWords?): List<String> {
+        val p = patterns(words ?: return emptyList())
+        val text = words.readable(step)
+        return p.duration.findAll(text).map { m ->
+            val amount = text.substring(m.range.first, m.groups[2]!!.range.first).trimEnd(' ', '-')
+            amount.replace(p.rangeJoin, "-").replace(SPACES, " ") + "/" + p.secondsOf(m.groupValues[2])
+        }.toList()
+    }
+
+    private val SPACES = Regex("""\s+""")
 
     private fun toSeconds(p: Patterns, quantity: String, unit: String): Int? {
         val amount = p.scaler.parse(quantity) ?: return null

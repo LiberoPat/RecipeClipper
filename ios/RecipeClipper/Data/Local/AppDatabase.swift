@@ -145,6 +145,7 @@ final class AppDatabase: @unchecked Sendable {
         addGroceries,
         addPantry,
         addMenus,
+        addShortSteps,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -359,6 +360,25 @@ final class AppDatabase: @unchecked Sendable {
     /// Version 10 (Android's Room version 11, `MIGRATION_10_11`): reusable weekly menus (#52).
     /// `menus` and `menu_entries`, new, so nothing existing changes. Every row has a stable `uid`
     /// and an `updatedAt`, for export and a later sync (#53). The same tables as Android's.
+    /// Version 11 (Android's Room version 12, `MIGRATION_11_12`): Chef mode's short steps (#100),
+    /// derived data keyed by recipe, the step's text (SHA-256) and language. Never exported.
+    private static func addShortSteps(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE short_steps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                recipeId INTEGER NOT NULL,
+                stepHash TEXT NOT NULL,
+                language TEXT NOT NULL,
+                shortText TEXT,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX index_short_steps_uid ON short_steps (uid);
+            CREATE UNIQUE INDEX index_short_steps_recipeId_stepHash_language ON short_steps (recipeId, stepHash, language);
+            """)
+    }
+
     private static func addMenus(_ db: SQLiteConnection) throws {
         try db.execute("""
             CREATE TABLE menus (

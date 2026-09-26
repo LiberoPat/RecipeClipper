@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -48,11 +49,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.HISTORY_LIMIT
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
+import java.util.Locale
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
@@ -167,19 +170,22 @@ fun SettingsScreen(
                     )
                 }
 
-                if (state.showsSteps) {
+                if (state.showsSteps || state.showsChefMode) {
                     item {
                         Spacer(Modifier.height(16.dp))
                         Hairline()
                         Spacer(Modifier.height(16.dp))
                         SectionHeading(stringResource(R.string.settings_section_steps))
                         Spacer(Modifier.height(4.dp))
-                        SwitchRow(
-                            title = stringResource(R.string.amounts_in_steps_title),
-                            description = stringResource(R.string.amounts_in_steps_description),
-                            checked = state.amountsInSteps,
-                            onCheckedChange = viewModel::onAmountsInStepsChange
-                        )
+                        if (state.showsSteps) {
+                            SwitchRow(
+                                title = stringResource(R.string.amounts_in_steps_title),
+                                description = stringResource(R.string.amounts_in_steps_description),
+                                checked = state.amountsInSteps,
+                                onCheckedChange = viewModel::onAmountsInStepsChange
+                            )
+                        }
+                        if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
                     }
                 }
 
@@ -395,13 +401,14 @@ internal fun SwitchRow(
     title: String,
     description: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
             .padding(vertical = 10.dp)
     ) {
         Column(Modifier.weight(1f)) {
@@ -413,8 +420,39 @@ internal fun SwitchRow(
             )
         }
         Spacer(Modifier.width(12.dp))
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
+}
+
+/**
+ * Chef mode (#100): one switch. Where the phone can't write short steps it is disabled, with one
+ * line saying why; where it can, a line names the recipe languages it writes.
+ */
+@Composable
+private fun ChefModeRow(state: SettingsUiState, onChefModeChange: (Boolean) -> Unit) {
+    SwitchRow(
+        title = stringResource(R.string.chef_mode_title),
+        description = stringResource(R.string.chef_mode_description),
+        checked = state.chefMode && state.chefModeAvailable,
+        onCheckedChange = onChefModeChange,
+        enabled = state.chefModeAvailable
+    )
+    val support = state.chefSupport ?: return
+    val locale = LocalConfiguration.current.locales[0]
+    val note = when (support) {
+        is ChefSupport.Available -> stringResource(
+            R.string.chef_mode_languages,
+            support.languages.map { Locale.forLanguageTag(it).getDisplayLanguage(locale) }.sorted().joinToString(", ")
+        )
+        ChefSupport.NotReady -> stringResource(R.string.chef_mode_not_ready)
+        ChefSupport.NotEnabled, ChefSupport.Unsupported -> stringResource(R.string.chef_mode_unsupported)
+    }
+    Text(
+        note,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+    )
 }
 
 @Composable

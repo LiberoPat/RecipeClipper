@@ -23,6 +23,9 @@ enum StepTimers {
         // "1 hour 30 minutes", "2 minutes and 30 seconds". groups: 1 quantity, 2 unit
         let followOn: JRegex
 
+        // Any way of joining a range's two ends, so "20 to 25" and "20–25" compare equal.
+        let rangeJoin: JRegex
+
         init(_ words: LanguageWords) {
             let table = SharedTables.objects(words.table("timers"), "units")
             units = table.map {
@@ -47,10 +50,28 @@ enum StepTimers {
                 #"^\s*(?:"# + followOnWords + #"\s+)?("# + qty + #")\s*-?\s*"# + unit + boundary,
                 ignoreCase: true
             )
+            rangeJoin = JRegex(#"\s*(?:[-–—]|"# + words.rangeWords + #")\s*"#, ignoreCase: true)
         }
 
         func seconds(_ unit: String) -> Int32 {
             units.first { $0.words.matchEntire(unit) != nil }!.seconds
+        }
+
+    }
+
+    private static let spaces = JRegex(#"\s+"#)
+
+    /// Every duration `step` states, as "amount/seconds" keys ("20/60", "25-30/60"), the amount
+    /// as written with a range's join made "-": what `ShortStepCheck` compares, so a short step
+    /// can't change a time. Empty for nil `words`.
+    static func durations(_ step: String, words: LanguageWords?) -> [String] {
+        guard let words else { return [] }
+        let p = patterns(words)
+        let text = words.readable(step)
+        return p.duration.findAll(text).map { m in
+            var amount = text.u16Substring(m.start, m.ranges[2].location)
+            while let last = amount.last, last == " " || last == "-" { amount.removeLast() }
+            return spaces.replace(p.rangeJoin.replace(amount, with: "-"), with: " ") + "/" + String(p.seconds(m[2]))
         }
     }
 

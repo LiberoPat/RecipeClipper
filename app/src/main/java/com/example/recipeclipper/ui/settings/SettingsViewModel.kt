@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.BackupFiles
 import com.example.recipeclipper.data.BackupRepository
+import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.Entitlements
 import com.example.recipeclipper.data.PurchaseOutcome
+import com.example.recipeclipper.data.ShortStepRepository
 import com.example.recipeclipper.data.needsNotice
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupResult
@@ -40,7 +42,7 @@ data class SettingsUiState(
     val backup: BackupStatus = BackupStatus.Idle,
     /** The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind it. */
     val showsPantry: Boolean = false,
-    /** The Steps section (#101): only with the `amountsInSteps` flag on. */
+    /** The Steps section's "Amounts in steps" (#101): only with the `amountsInSteps` flag on. */
     val showsSteps: Boolean = false,
     /** Ingredient amounts inside steps. */
     val amountsInSteps: Boolean = false,
@@ -52,11 +54,19 @@ data class SettingsUiState(
     /** e.g. "1.0 (1)", shown at the foot; tapping it [SettingsViewModel.DEVELOPER_TAPS] times
      *  opens Developer settings (#87). */
     val appVersion: String = "",
+    /** The Steps section's "Chef mode" (#100): only with the `chefMode` flag on. */
+    val showsChefMode: Boolean = false,
+    /** Chef mode as saved: short steps written on the device. */
+    val chefMode: Boolean = false,
+    /** What this phone can do, once asked; null until then. The switch works only when Available. */
+    val chefSupport: ChefSupport? = null,
     /** The "Unlimited recipes" row (#107); null while the `freeTier` flag is off. */
     val unlock: UnlockRow? = null,
     /** A purchase or restore that didn't simply unlock; shown until the next one starts. */
     val unlockNotice: PurchaseOutcome? = null
-)
+) {
+    val chefModeAvailable: Boolean get() = chefSupport is ChefSupport.Available
+}
 
 /**
  * [unlocked] counts Developer settings' override too, so testing sees the unlocked row.
@@ -104,11 +114,17 @@ class SettingsViewModel @Inject constructor(
     private val appInfo: AppInfo,
     // Last and optional, so a test that doesn't care builds the screen without it (no Pantry section).
     private val featureFlags: FeatureFlags? = null,
+    // Chef mode (#100); without it the Steps section says the phone can't.
+    private val shortSteps: ShortStepRepository? = null,
+    // The free tier's store (#107); pass it by name.
     private val entitlements: Entitlements = Entitlements.Unavailable
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    // Chef mode's support is asked once, and only with the flag on, so the model is never woken otherwise.
+    private var askedChefSupport = false
 
     init {
         viewModelScope.launch {
@@ -120,8 +136,13 @@ class SettingsViewModel @Inject constructor(
             viewModelScope.launch {
                 flags.values.collect { values ->
                     _uiState.update {
-                        it.copy(showsPantry = values.isOn(Flag.MEAL_PLAN), showsSteps = values.isOn(Flag.AMOUNTS_IN_STEPS))
+                        it.copy(
+                            showsPantry = values.isOn(Flag.MEAL_PLAN),
+                            showsSteps = values.isOn(Flag.AMOUNTS_IN_STEPS),
+                            showsChefMode = values.isOn(Flag.CHEF_MODE)
+                        )
                     }
+                    if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
                 }
             }
             viewModelScope.launch {
@@ -133,6 +154,22 @@ class SettingsViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun askChefSupport() {
+        if (askedChefSupport) return
+        askedChefSupport = true
+        viewModelScope.launch {
+            val support = shortSteps?.support() ?: ChefSupport.Unsupported
+            _uiState.update { it.copy(chefSupport = support) }
+        }
+    }
+
+    /** The Chef mode switch: only turns on where the phone can write short steps. */
+    fun onChefModeChange(enabled: Boolean) {
+        if (enabled && !_uiState.value.chefModeAvailable) return
+        preferences.chefMode = enabled
+        _uiState.update { it.copy(chefMode = enabled) }
     }
 
     // A purchase or restore is under way; kept apart so a store update can't clear it.
@@ -170,6 +207,9 @@ class SettingsViewModel @Inject constructor(
         expiryReminders = expiryReminders,
         expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,
         appVersion = appInfo.appVersion,
+        showsChefMode = previous?.showsChefMode ?: (featureFlags?.isOn(Flag.CHEF_MODE) ?: false),
+        chefMode = chefMode,
+        chefSupport = previous?.chefSupport,
         unlock = previous?.unlock,
         unlockNotice = previous?.unlockNotice
     )

@@ -39,7 +39,8 @@ class RecipeNotKeptTest {
 
     private fun viewModel() = RecipeViewModel(
         SavedStateHandle(mapOf(RecipeViewModel.URL_ARG to "https://a.com/soup")), repository, FakeAppPreferences(),
-        Clock { 0 }, FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler(), entitlements
+        Clock { 0 }, FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler(),
+        entitlements = entitlements
     )
 
     @Test fun `a recipe that wasn't kept is shown, marked not kept`() = runTest(mainDispatcherRule.dispatcher) {

@@ -53,15 +53,36 @@ struct SettingsScreen: View {
                     )
                 }
 
-                if vm.showsSteps {
+                if vm.showsSteps || vm.showsChefMode {
                     Divided {
                         SectionHeading(Strings.settingsSectionSteps).padding(.bottom, 4)
-                        SwitchRow(
-                            title: Strings.amountsInStepsTitle,
-                            description: Strings.amountsInStepsDescription,
-                            isOn: Binding(get: { vm.uiState.amountsInSteps }, set: vm.onAmountsInStepsChange)
-                        )
+                        if vm.showsSteps {
+                            SwitchRow(
+                                title: Strings.amountsInStepsTitle,
+                                description: Strings.amountsInStepsDescription,
+                                isOn: Binding(get: { vm.uiState.amountsInSteps }, set: vm.onAmountsInStepsChange)
+                            )
+                        }
+                        if vm.showsChefMode {
+                            // Chef mode (#100): disabled, with one line saying why, where the phone can't.
+                            let available = state.chefSupport?.isAvailable ?? false
+                            SwitchRow(
+                                title: Strings.chefModeTitle,
+                                description: Strings.chefModeDescription,
+                                isOn: Binding(get: { vm.uiState.chefMode && available }, set: vm.onChefModeChange)
+                            )
+                            .disabled(!available)
+                            .accessibilityIdentifier("settings.chefMode")
+                            if let note = chefNote(state.chefSupport) {
+                                Text(note)
+                                    .textStyle(Typography.bodySmall)
+                                    .foregroundStyle(Palette.muted)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .accessibilityIdentifier("settings.chefModeNote")
+                            }
+                        }
                     }
+                    .onAppear { vm.onStepsShown() }
                 }
 
                 if vm.showsPantry {
@@ -165,6 +186,19 @@ struct SettingsScreen: View {
             case .success(let url): vm.onImportPicked(url)
             case .failure: vm.onImportPickFailed()
             }
+        }
+    }
+
+    /// Chef mode's one line: the recipe languages it writes, or why the switch is off.
+    private func chefNote(_ support: ChefSupport?) -> String? {
+        switch support {
+        case nil: return nil
+        case .available(let languages):
+            let names = languages.map { Locale.current.localizedString(forLanguageCode: $0) ?? $0 }.sorted()
+            return Strings.chefModeLanguages(names.joined(separator: ", "))
+        case .notEnabled: return Strings.chefModeNotEnabled
+        case .notReady: return Strings.chefModeNotReady
+        case .unsupported: return Strings.chefModeUnsupported
         }
     }
 
