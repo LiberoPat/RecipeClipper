@@ -27,6 +27,34 @@ struct SettingsUiState: Equatable {
     var unlockBusy = false
     /// A purchase or restore that didn't simply unlock; shown until the next one starts.
     var unlockNotice: PurchaseOutcome?
+    /// The automatic backup copy's rows (#150); nil without one (tests that don't care).
+    var autoBackup: AutoBackupRow?
+}
+
+/// The automatic backup copy's rows in Your recipes (#150; Android's `AutoBackupRow`): the
+/// switch, "Last backed up", "Back up now", and a nudge when the last copy is over 30 days old
+/// and nothing is copying. `lastBackupAt` is nil before the first copy.
+struct AutoBackupRow: Equatable {
+    var enabled: Bool
+    var destination: BackupDestination
+    var lastBackupAt: Int64?
+    var lastFailed: Bool
+    var nudge: Bool
+    var running = false
+
+    /// "Back up now" needs somewhere to write.
+    var canBackUpNow: Bool { destination == .ready && !running }
+
+    static func of(_ state: AutoBackupState, now: Int64, running: Bool) -> AutoBackupRow {
+        AutoBackupRow(
+            enabled: state.record.enabled,
+            destination: state.destination,
+            lastBackupAt: state.record.lastBackupAt,
+            lastFailed: state.record.lastFailed,
+            nudge: AutoBackupPolicy.needsNudge(state.record, state.destination, now: now),
+            running: running
+        )
+    }
 }
 
 /// Android's `UnlockRow`: the "Unlimited recipes" row's state (#107).
@@ -54,6 +82,14 @@ enum BackupStatus: Equatable {
         default: return false
         }
     }
+
+    /// An import's outcome as the status line shows it (Settings' Import, Home's Restore).
+    init(_ result: Result<ImportSummary, BackupError>) {
+        switch result {
+        case .success(let summary): self = .imported(summary)
+        case .failure(let error): self = .failed(error)
+        }
+    }
 }
 
 /// Injects AppPreferences directly rather than going through a repository: these are
@@ -75,6 +111,9 @@ final class SettingsViewModel {
     @ObservationIgnored private let shortSteps: ShortStepRepository?
     @ObservationIgnored private var askedChefSupport = false
     @ObservationIgnored private let entitlements: Entitlements
+    @ObservationIgnored private let autoBackup: AutoBackup?
+    @ObservationIgnored private let clock: Clock
+    @ObservationIgnored private var autoBackupSubscription: AnyCancellable?
 
     static let developerTaps = 7
 
@@ -83,8 +122,12 @@ final class SettingsViewModel {
         flags: FeatureFlags? = nil,
         notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true),
         shortSteps: ShortStepRepository? = nil,
-        entitlements: Entitlements = UnavailableEntitlements()
+        entitlements: Entitlements = UnavailableEntitlements(),
+        autoBackup: AutoBackup? = nil,
+        clock: Clock = SystemClock()
     ) {
+        self.autoBackup = autoBackup
+        self.clock = clock
         self.flags = flags
         self.shortSteps = shortSteps
         self.entitlements = entitlements
@@ -107,8 +150,35 @@ final class SettingsViewModel {
                 next.chefSupport = self.uiState.chefSupport
                 next.unlockBusy = self.uiState.unlockBusy
                 next.unlockNotice = self.uiState.unlockNotice
+                next.autoBackup = self.uiState.autoBackup
                 self.uiState = next
             }
+        if let autoBackup {
+            autoBackupSubscription = autoBackup.state
+                .sink { [weak self] state in
+                    guard let self else { return }
+                    uiState.autoBackup = .of(state, now: self.clock.now(), running: uiState.autoBackup?.running ?? false)
+                }
+            // iCloud may have come or gone while the app was closed.
+            autoBackup.refreshDestination()
+        }
+    }
+
+    /// The automatic copy's switch (#150).
+    func onAutoBackupChange(_ enabled: Bool) {
+        autoBackup?.setEnabled(enabled)
+    }
+
+    /// "Back up now" (#150): a copy at once, even with the automatic copy off. Returns the work
+    /// so a test can await it.
+    @discardableResult
+    func onBackUpNow() -> Task<Void, Never>? {
+        guard let autoBackup, uiState.autoBackup?.running == false else { return nil }
+        uiState.autoBackup?.running = true
+        return Task {
+            await autoBackup.run(force: true)
+            uiState.autoBackup?.running = false
+        }
     }
 
     private static func uiState(_ settings: AppSettings) -> SettingsUiState {
@@ -244,7 +314,7 @@ final class SettingsViewModel {
             case .failure(let error):
                 uiState.backup = .failed(error)
             case .success(let exported):
-                if let url = await files.writeExport(json: exported.json, exportedAt: exported.exportedAt) {
+                if let url = await files.writeExport(json: exported.json, exportedAt: exported.exportedAt, photos: exported.photos) {
                     uiState.backup = .readyToShare(url)
                 } else {
                     uiState.backup = .failed(.exportFailed)
@@ -264,15 +334,7 @@ final class SettingsViewModel {
         guard !uiState.backup.isBusy else { return nil }
         uiState.backup = .importing
         return Task {
-            switch await files.readText(url) {
-            case .failure(let error):
-                uiState.backup = .failed(error)
-            case .success(let text):
-                switch await backups.importBackup(text) {
-                case .success(let summary): uiState.backup = .imported(summary)
-                case .failure(let error): uiState.backup = .failed(error)
-                }
-            }
+            uiState.backup = BackupStatus(await backups.importFile(url, files: files))
         }
     }
 

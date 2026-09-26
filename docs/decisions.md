@@ -2298,6 +2298,59 @@ notes or parts to read, and **JSON-LD's lines stay exactly as they are**.
   both platforms, and `Heads` rows in the differential corpus. The weekly site check fetches
   Pinch of Yum's blackout chocolate cake and TidyMom's apple pie bars.
 
+## Site-specific parsing rules as data (#120)
+
+The big sites were fetched with the app's user agent (2026-09-26). Every one that answered
+already parsed from JSON-LD; what they lost was the same thing #119 found on plugin cards: **the
+ingredient group headings** ("FOR THE FROSTING", "For the filling", "Cream cheese frosting and
+assembly"). NYT Cooking, BBC Good Food, Bon Appétit, Epicurious and Delish drop them; Taste of
+Home already puts them in JSON-LD, and King Arthur had none to lose. Bon Appétit and Epicurious
+also end the last step with "Editor’s note: this recipe was first printed in … Head this way for
+more … →". Serious Eats, AllRecipes, Simply Recipes and Food & Wine answer the direct fetch with
+a bot check, so there is nothing there to write a rule for.
+
+- **One table, `shared/tables/site-rules.json`, read by both apps** (`SiteRules`). Data only:
+  CSS selectors and phrases, never code. `cards` are the plugin cards any site may have (Tasty
+  Recipes and Mediavine Create, moved here from `CardHeadings`' hard-coded list); `sites` are
+  keyed by host without "www." (`SourceDomain`), and a site's own cards are tried before the
+  plugins'. A card is `list`, `item`, `heading` and optional `title` and `amount` selectors.
+  Everything `CardHeadings` already required still holds: a heading must be a heading element,
+  end in a colon or be wholly bold, and a card is used only when its items line up one-to-one
+  with `recipeIngredient` (same count, each item's letters and digits in its line). A rule can
+  only add headings or drop known noise; it can't change a line.
+- **The selector subset is matched by hand** (`CardSelector`, both platforms): a tag, `.class`,
+  `#id`, `[attr]`, `[attr=v]`, `[attr^=v]`, `[attr*=v]`, compounded, in comma lists, no
+  combinators (a card's parts are only looked for inside its list). Jsoup's `select` on Android
+  and the iOS `HtmlTree` would otherwise disagree at the edges. Anything else in the table is a
+  mistake and fails loudly (Android throws, iOS traps). The hashed class names (NYT's
+  `ingredientgroup_name__xNtpC`, Condé Nast's `SubHed-icPlCN`) are matched by their stable
+  prefix with `*=`.
+- **WP Recipe Maker stays code** (`WprmIngredients`): it rewrites lines from their parts, puts
+  the notes' comma back and matches ignoring only case and spacing. None of that is a selector.
+- **`amount`: parts of an item left out when matching it.** Delish's card writes "3 cups" and
+  "6 Tbsp." where its JSON-LD writes "3 c." and "6 tbsp.", so its `<strong>` amount is removed
+  before the line-up check. JSON-LD's line is still what shows. On iOS the removal cuts those
+  elements' source out of the item's, then reads the text as any element's. An amount in the
+  middle of a line ("4 (6- to **8-oz.**) chicken breasts") leaves a key that is no longer one
+  run of the JSON-LD line, so that card doesn't line up and its page gets no headings: a safe
+  miss, left as is.
+- **`stepNoise`: phrases that start noise at the end of the last step.** The last step is cut
+  where a phrase starts it or follows a space; a last step that was all noise goes, unless it
+  was the only step. Only the last step, only on that site: an editor's note in the middle of a
+  method is left alone.
+- **`version`, raised on every edit**, beside `schemaVersion` (the format). A copy fetched later
+  without an app release (the issue's "later, optionally") would be used only if newer than the
+  bundled one; nothing fetches one yet.
+- **The weekly site check flags a rule that stops matching.** Its report adds a "Site rules"
+  section, judged per site over the site's pages in the run: Matched when a site's card lines up
+  or its noise is found on at least one of them, else **Stopped matching**, and the workflow
+  warns on that. Not per page, because a rule need not fit every page: not every Epicurious
+  recipe has an editor's note, and a Delish card with an amount mid-line never lines up. The
+  JSON keeps each page's result. It runs when the table changes too.
+- Tests: trimmed real pages in `shared/fixtures/pages/site-*.html` (`SiteRulesTest` /
+  `SiteRulesTests`), and `Site` rows in the differential corpus. The site check fetches one
+  page per site with rules.
+
 ## Grocery lines merged with the model's help (#99)
 
 Part of #99, on #104's typed decisions (same `DecisionRule`, `ai_decisions` cache and
@@ -2372,6 +2425,178 @@ steps (#101), step timers ("Bake 1-1/2 hours" is 1 h 30) and the trailing-amount
 - Spaces make a range: "1 - 2", "1-1 1/2" and "1-1/2 to 2" (a range from 1 1/2) are
   unchanged.
 Pinned by the scaler tests on both platforms and the corpus's #125 rows.
+
+## "I made this": your photos on a recipe (#116)
+
+Owner's request: a private cooking journal on the phone, with no server and no accounts. It is
+the groundwork for the backlog social feed (#117). Behind `cookedPhotos`, off by default. With
+the flag off nothing shows, but the rules below (protection, deleting, backup) apply to any
+photo that exists.
+
+- **One photo per entry.** Each photo has its own `day` (an epoch day, like the plan's, so the
+  date never slips across time zones) and an optional note of up to 280 characters. Picking
+  several photos makes several entries. Adding is frictionless: a photo is saved at once,
+  cooked today, and the first new one opens full screen so its note and date are right there.
+  There is no "add" form to fill in first.
+- **Where it shows.** "Your cooks" is the reading view's last section, after the steps and the
+  note, so the reading view still opens on the recipe. Cook mode doesn't show it.
+- **Storage.** Table `cooked_photos` (Room 14 / iOS `user_version` 13): `recipeId` CASCADE,
+  `fileName`, `day`, `note`, `createdAt`, `updatedAt`, `uid`. The picture is a JPEG in the
+  app's own storage, named by the store and never by the user:
+  - Android: `filesDir/cooked_photos`.
+  - iOS: `CookedPhotos/` beside the database in the App Group container.
+
+  Each picture is downscaled so its long edge is at most 2048 px, turned upright from its EXIF
+  orientation, and saved at JPEG quality 85: a few hundred KB, sharp on any phone.
+  - Android decodes with `BitmapFactory` (`inSampleSize`, then a `Matrix`) and reads EXIF with
+    androidx `ExifInterface`. That library already came in through Coil and is now declared,
+    because lint flags the framework copy.
+  - iOS uses ImageIO's thumbnail API (`kCGImageSourceCreateThumbnailWithTransform`), which
+    needs neither UIKit nor the main thread.
+- **Files outlive rows until a delete stands.** Deleting a photo, or a recipe with photos,
+  removes the rows at once and keeps the files, so Undo can restore them.
+  - A delete stands when the snackbar goes away (Recipes swipe, a photo's own Delete), or at
+    once for the recipe screen's confirmed delete. Then `RecipeRepository.forget` /
+    `CookedPhotoRepository.forget` removes the files.
+  - A launch sweep removes any file no row names and older than 10 minutes. That catches an
+    app killed while its snackbar was up, and an import's unused copies. The grace period
+    covers an add or an import still writing.
+- **Protection.** A recipe with photos is never culled and never removed by the free tier's
+  one-for-one, like a listed one: the photos would go with it. On import, a recipe with photos
+  coming in comes in like a listed one.
+- **Deleting a recipe deletes its photos.** The issue suggested asking whether to keep them;
+  the owner decided the photos belong to the recipe. The confirmation says "with your 2 photos
+  of it".
+- **Recipes: "Recently cooked"** is a fourth sort (behind the flag): recipes with photos come
+  first, ordered by their latest photo's day, and the rest follow in recency order. It is a
+  sort, not a filter, so nothing disappears from the library. A stored Recently cooked reads
+  as Recently viewed while the flag is off.
+- **Sharing a photo** sends the JPEG through the share sheet with the recipe's name as plain
+  text (Android `EXTRA_TEXT` through the FileProvider's new `cooked_photos` path; iOS
+  `ShareLink` with a message).
+- **Camera and library, and permissions.**
+  - Android: the Photo Picker needs no permission. The camera is the camera app through
+    `ACTION_IMAGE_CAPTURE`, writing to one reused file in the cache. The app doesn't declare
+    `CAMERA`, so no permission is needed or asked for.
+  - iOS: `PhotosPicker` needs none. The camera is `UIImagePickerController`; iOS asks for
+    access the first time the camera is chosen, with `NSCameraUsageDescription`, translated
+    through `InfoPlist.xcstrings`. On a device without a camera (the simulator), choosing it
+    says so.
+- **Backup** (#26):
+  - **Format.** An export with photos is a `.zip` holding `backup.json` (the same JSON, with a
+    new `cookedPhotos` section: id, recipeId, day, note, createdAt, updatedAt, file) and each
+    picture at `photos/<name>.jpg`. An export without photos is the same `.json` file as before,
+    byte for byte, so with the flag off nothing changes. A file that doesn't start with a zip
+    signature is read as JSON, so every older backup imports.
+  - **Why a zip, not base64 in the JSON.** Base64 would mean a single string of tens of MB
+    (+33%), held in memory while parsing. A zip keeps the JSON small and the pictures as files.
+  - **How the zip is written.** Entries are STORED (JPEGs don't compress). iOS has no zip API,
+    so `BackupArchive` writes and reads the format by hand: it reads through the central
+    directory, and also takes DEFLATE entries (Compression's raw deflate), so a zip re-packed
+    by another tool still imports. Android uses `java.util.zip`.
+  - **Safety.** A picture's path must be `photos/` plus one plain name, and anything else in the
+    zip is ignored. The JSON is capped at 20 MB, as before, and each picture at 30 MB.
+  - **Merge.** Photos come in by uid, only with their picture, and only onto a recipe that is
+    here after the import. `backup-v1-photos.zip` (written by Python's `zipfile`, a third
+    writer) is read by both platforms' tests.
+- **Android's cloud backup leaves the photos out.** The include list (database and settings)
+  stays as it is: Auto Backup's 25 MB per-app quota would stop the whole app's backup, recipes
+  included, once there are enough photos. A phone restored that way has the entries but not
+  the pictures. Each entry keeps its day and note, shows "Photo not on this phone" in place of
+  the picture, and offers no Share (`CookedPhoto.hasPicture`). The launch sweep only ever
+  deletes files no row names, never a row whose file is missing. On Android, photos move to a
+  new phone through the export `.zip`. On iOS, iCloud Backup carries them: `CookedPhotos/`
+  sits beside the database in the App Group container, which nothing excludes from backup.
+  Pinned by `CookedPhotoDaoTest` and `RecipeCookedPhotosScreenTest` (Android) and
+  `CookedPhotoTests` (iOS).
+
+**Needs a real phone:** the camera itself (the Android emulator's virtual scene and the iOS
+simulator's missing camera prove only the wiring), EXIF orientation from a real portrait shot,
+HEIC pictures from the iOS library, and an export with many photos shared and imported on the
+other platform.
+
+## The automatic backup copy (#150)
+
+The owner's question: if someone loses their phone, how do they get everything back? The phone's
+own backup (Google's Auto Backup, iCloud Backup) covers only a restore onto the same platform,
+only if the user has it on, and on Android without photos. Export (#26) works across platforms
+but is only as fresh as the last time the user remembered. So the app now keeps an export
+itself, in a cloud folder that belongs to the user. There is no server, no account, and nothing
+is sent anywhere the user didn't choose.
+
+Owner's decisions: **on by default, and photos included.**
+
+- **What is written.** The export exactly as Settings' Export makes it (`BackupRepository.export`),
+  always in the `.zip` form of #116 (`backup.json` plus `photos/`, STORED), even with no photos,
+  so every copy has the same kind of name. Import reads it like any export, on either platform.
+- **Where.**
+  - **iOS:** the `Documents` folder of the app's iCloud container
+    (`iCloud.com.liberopat.recipeclipper`). With `NSUbiquitousContainers` set to public, it
+    shows in Files as iCloud Drive → Recipe Clipper, with nothing for the user to set up. It
+    needs the iCloud Documents capability and the container on the App ID, which only the owner
+    can register (`docs/release.md`). Without them, or signed out, or with iCloud Drive off, the
+    container is nil: Settings says quietly that iCloud Drive isn't available, and nothing
+    crashes or retries loudly.
+  - **Android:** a folder the user picks once with the system's folder picker
+    (`ACTION_OPEN_DOCUMENT_TREE`), usually Google Drive, kept through a persisted URI permission
+    (`AndroidBackupFolder`, over `DocumentsContract`, with no extra library). "On by default"
+    can't mean silently on here, since nothing can be written until a folder is chosen. So the
+    switch starts on, and the app asks for the folder at two moments, never at launch and never
+    in the way of a share:
+    - Settings → Your recipes has a "Backup folder" row.
+    - Home shows a one-time "Keep a backup copy?" card once the library has a recipe and there
+      is no folder yet. "Choose a folder" or "Not now" both put it away for good
+      (`folderPromptDone`); Settings still has the row.
+- **Three copies, not one.** Each copy is a new file,
+  `recipe-clipper-backup-YYYY-MM-DD-HHmm.zip`, and the app's own copies beyond the newest three
+  are deleted only after the new one is written. A write that fails halfway (a full Drive, the
+  app killed) then never leaves the user with nothing. A single rolling file couldn't promise
+  that on Android, where a document can't be replaced atomically. Only names the app wrote
+  are ever deleted; nothing else in the folder is touched.
+- **When.** The platform only asks for a look; `AutoBackupPolicy.isDue` decides whether to
+  write. It writes when there is no copy yet, when the last copy is gone from the folder, when
+  the library changed and the last copy is at least an hour old, or when the last copy is a
+  week old (so the date stays true). "Changed" is a SHA-256 of the export with its `exportedAt`
+  blanked, plus the photos' names. So an unchanged library is never written again, and opening
+  a recipe (which moves it up the history) counts as a change.
+  - **Android:** WorkManager (plain `CoroutineWorker` reaching Hilt through an entry point, so
+    WorkManager's default initialisation stands). Three looks: a daily one (battery not low), a
+    minute after the app is left (`MainActivity.onStop`; kept, so quick returns share one), and
+    one at once when a folder is chosen.
+  - **iOS:** when the app goes to the background, inside a `beginBackgroundTask`. The write is
+    atomic, so an expired background task leaves the old copies. There is no BGTaskScheduler
+    job: a library changes only while the app or its share extension runs, and the next time
+    the app is left catches both.
+- **"Last backed up".** Settings → Your recipes shows the switch, the folder (Android), "Last
+  backed up <date>" or "Not backed up yet", "Back up now" (works even with the switch off,
+  whenever there is somewhere to write), and in the error colour: a folder whose permission
+  went ("Choose it again"), a copy that couldn't be written, iCloud Drive unavailable, and the
+  nudge. **The nudge** shows when the last copy is more than 30 days old and no automatic copy
+  is working (off, or nowhere to write). It doesn't show before the first copy: then "Not
+  backed up yet" and, on Android, the folder card are the prompt. A manual Export doesn't count
+  as a backup, because the app can't know where the share sheet put it.
+- **Where the record lives.** Android: its own SharedPreferences file `auto_backup`, deliberately
+  *not* on the Auto Backup include list. A folder permission belongs to one phone, so a phone
+  restored from Google's backup asks for its folder again instead of showing one it can't
+  reach. iOS: the settings' App Group `UserDefaults` suite (`auto_backup_*` keys), which iCloud
+  Backup restores. That is right there, because the folder belongs to the iCloud account.
+- **Restore on a fresh install.** Home, with an empty library, offers "Restore from a backup
+  file" under the empty hint. It is Settings' Import (the same picker, the same
+  `importFile`/`BackupMerger` merge, the same outcome line), so it merges and never replaces.
+  On iOS the picker opens on iCloud Drive, where the copies are.
+- **Not a flag.** It ships on, and the switch turns it off. It needs no kill switch beyond that,
+  since without iCloud or a folder it simply does nothing.
+- **Pure and tested.** `AutoBackupPolicy` (Kotlin and Swift) holds the rules: due, nudge, the
+  folder card, names, which copies go, the fingerprint. `AutoBackup` runs them against fakes in
+  `AutoBackupTest` and `AutoBackupTests`; the Settings and Home rows are covered by
+  `SettingsAutoBackupTest` and `HomeBackupTest` (Robolectric) and by `SettingsAutoBackupTests`
+  (iOS).
+
+**Needs a real phone:** Google Drive (and another provider) through the folder picker, a copy
+written there by WorkManager while the app is closed, a revoked permission showing in Settings,
+and a restore from the Drive copy on a second phone. On iOS: a device with the iCloud container
+registered, the copy appearing in Files → Recipe Clipper, and the same copy restored on a new
+iPhone and imported on Android.
 
 ## Sending a grocery list, and receiving one (#149, phase 1)
 

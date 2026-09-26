@@ -456,4 +456,42 @@
         <item quantity="many">%1$d de receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
         <item quantity="other">%1$d receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
     </plurals>
+    <!-- "I made this" (#116) -->
+    <string name="sort_recently_cooked">Feitas recentemente</string>
+    <string name="heading_your_cooks">O que você fez</string>
+    <string name="cooked_empty">Já fez? Guarde uma foto e uma nota curta.</string>
+    <string name="action_i_made_this">Eu fiz</string>
+    <string name="action_add_photo">Adicionar foto</string>
+    <string name="action_take_photo">Tirar uma foto</string>
+    <string name="action_choose_photos">Escolher da galeria</string>
+    <string name="cd_cooked_photo">Sua foto, %1$s</string>
+    <string name="cooked_note_placeholder">Adicione uma nota curta</string>
+    <string name="cd_change_cooked_date">Alterar a data, %1$s</string>
+    <string name="cd_share_photo">Compartilhar foto</string>
+    <string name="cd_delete_photo">Excluir foto</string>
+    <string name="cd_close_photo">Fechar</string>
+    <string name="cooked_photo_deleted">Foto excluída</string>
+    <string name="cooked_add_failed">Não foi possível adicionar a foto.</string>
+    <string name="camera_unavailable">Nenhum app de câmera disponível.</string>
+    <string name="cooked_photo_missing">Foto não está neste celular</string>
+    <string name="delete_recipe_body_photo">A receita será removida do histórico e de todas as listas em que estiver, com a sua foto. Isso não pode ser desfeito.</string>
+    <string name="delete_recipe_body_photos">A receita será removida do histórico e de todas as listas em que estiver, com as suas %1$d fotos. Isso não pode ser desfeito.</string>
+    <!-- The automatic backup copy (#150). -->
+    <string name="auto_backup_title">Cópia de backup automática</string>
+    <string name="auto_backup_description">Mantém uma cópia de tudo, fotos incluídas, em uma pasta que você escolher, e a atualiza depois de cada mudança</string>
+    <string name="auto_backup_folder_title">Pasta de backup</string>
+    <string name="auto_backup_folder_not_chosen">Ainda não escolhida. Toque para escolher uma, como o Google Drive.</string>
+    <string name="auto_backup_folder_lost">O Recipe Clipper não consegue mais acessar esta pasta. Toque para escolhê-la de novo.</string>
+    <string name="auto_backup_folder_refused">Essa pasta não pode ser usada para backups. Escolha outra.</string>
+    <string name="auto_backup_last">Último backup: %1$s</string>
+    <string name="auto_backup_never">Ainda sem backup</string>
+    <string name="auto_backup_failed">Não foi possível gravar a última cópia. Tente “Fazer backup agora”.</string>
+    <string name="auto_backup_nudge">Seu último backup tem mais de 30 dias, e nenhuma cópia está sendo feita automaticamente.</string>
+    <string name="auto_backup_now">Fazer backup agora</string>
+    <string name="auto_backup_running">Fazendo backup…</string>
+    <string name="backup_prompt_title">Manter uma cópia de backup?</string>
+    <string name="backup_prompt_body">Escolha uma pasta, como o Google Drive, e o Recipe Clipper vai manter lá uma cópia das suas receitas e fotos.</string>
+    <string name="backup_prompt_choose">Escolher pasta</string>
+    <string name="backup_prompt_not_now">Agora não</string>
+    <string name="home_restore_backup">Restaurar de um arquivo de backup</string>
 </resources>

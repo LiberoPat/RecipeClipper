@@ -45,12 +45,14 @@ timers, with cook progress and servings saved and background timer alerts;
 sharing a recipe out as text; failure handling and offline; the microdata
 fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
-JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
+JSON file (Settings), an automatic copy of it in the user's own cloud folder, and
+"Restore from a backup file" on an empty Home (#150); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
 pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); a
 recipe picked from a page's text by the on-device model (behind its flag, #103); typed
 decisions by that model where the rules give up (close pantry names, aisles;
-`aiDecisions` flag, #104; count brackets only with `aiCountBrackets` too, #127); the
+`aiDecisions` flag, #104; count brackets only with `aiCountBrackets` too, #127);
+"I made this", your own photos and notes on a recipe (`cookedPhotos` flag, #116); the
 UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -91,12 +93,15 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 
 ```
 MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
-di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule
+di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule,
+               OnDeviceModelModule (Chef mode and decision models, swappable for the walkthroughs)
 data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository, PantryRepository
                (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests),
                Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
+               CookedPhotoRepository + PhotoStore ("I made this" photos, #116)
+               AutoBackup + BackupFolder (the automatic backup copy, WorkManager, #150)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, CardHeadings, CardIngredients),
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, SiteRules, CardHeadings, CardSelector, CardIngredients),
                MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
@@ -182,7 +187,7 @@ Decisions, not suggestions. Don't relitigate them in code.
   `docs/decisions.md`). Every recipe counts (shared, typed in, in a list,
   planned). Sharing always opens the recipe. Adding one to a library at or over
   20 first removes the oldest-viewed recipe in no list, not planned today or
-  later, in no menu and not typed in: one out for one in, so the library never
+  later, in no menu, not typed in and with none of your photos: one out for one in, so the library never
   shrinks because of the limit and a library over 20 keeps everything. None
   removable: shown but not kept, with Unlock (a typed or clipped one keeps its
   editor open behind a "library full" dialog). **Unlocked** (one-time
@@ -198,8 +203,8 @@ Decisions, not suggestions. Don't relitigate them in code.
 - **"Saved" means "in at least one list."** It's derived from the cross-ref
   table; there's no column. A recipe in any list is never culled, and
   neither is one planned for today or later (#49) or in a saved menu
-  (#52), or typed in by hand (#102: no link could bring it back); none of
-  these counts toward the 50 (on the free tier every recipe counts, #107).
+  (#52), or typed in by hand (#102: no link could bring it back), or with the
+  user's own photos (#116); none of these counts toward the 50 (on the free tier every recipe counts, #107).
 - **Leaving a list is a demotion, not a deletion.** The recipe stays in
   history and becomes cullable. Deleting is a separate, explicit action with
   its own confirmation.
@@ -264,7 +269,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Home:** link field, "Continue cooking" (the most recent), "Recently
   viewed" (the five before it), Recipes and Lists rows (always shown), the
   Settings gear, and a small "+ New recipe" text action under the link field.
-  Empty sections hide. **No "Saved" section**: it duplicated
+  Empty sections hide. An empty library offers "Restore from a backup file"
+  (Import); Android's one-time "Keep a backup copy?" card (#150). **No "Saved" section**: it duplicated
   Recently viewed. Search is on Recipes only. Behind the tab-bar flag (#47)
   this is the Recipes tab, otherwise unchanged.
 - **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry, owner's order,
@@ -319,13 +325,18 @@ Settled; don't reintroduce what they removed. The history behind each is in
   list detail. A list is renamed and deleted on its own screen.
 - **Recipes** (#102): every recipe, newest viewed first; a + (Type a recipe:
   the editor; Paste a link: a dialog whose Go enables only for a link, then
-  the import) and ⋮ sort (Recently viewed, Name, Date added; radio rows, in
-  memory) beside the title; search; swipe to delete. On the free tier a
+  the import) and ⋮ sort (Recently viewed, Name, Date added, and Recently cooked
+  behind `cookedPhotos`; radio rows, remembered) beside the title; search; swipe to delete. On the free tier a
   quiet "12 of 20 recipes" under the title (#107).
 - **Deleting a recipe** is a hard delete: a Recipes swipe with an undo
   snackbar (a burst of swipes shares one snackbar and one all-or-nothing
   undo), or the recipe screen's overflow menu with a confirmation dialog (no
-  undo).
+  undo). The user's photos go with the recipe, and the dialog says so.
+- **"I made this"** (#116, `cookedPhotos` flag): "Your cooks" is the reading
+  view's last section (after the note), a row of dated thumbnails and "I made
+  this" (camera or library). Each photo is an entry cooked today; the new one
+  opens full screen for its note (short, saved as typing pauses) and date; Share
+  sends the photo plus the recipe name; Delete has an undo snackbar.
 - **Editing** (#29) is its own screen, from the recipe overflow menu (Edit,
   then "Update from source" for an edited or clipped recipe with a link,
   behind a warning, then Delete): name, yield, three times, ingredients and
@@ -337,14 +348,15 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 13** (iOS `user_version` 12):
+- Room database `recipe_clipper.db`, **version 14** (iOS `user_version` 13):
   `recipes` (with nullable `notes`, `language`, `cookState`,
   `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading),
   `meal_types` and `meal_plan_entries` (#49), `grocery_items` (#50),
-  `pantry_items` (#51), `menus` and `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never exported). Recipes, lists, the
-  plan, grocery, pantry and menu tables
+  `pantry_items` (#51), `menus` and `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never exported), `cooked_photos`
+  (#116, cascading). Recipes, lists, the
+  plan, grocery, pantry, menu and photo tables
   carry a unique, never-changing `uid`: what an export file calls them. Plan,
-  grocery, pantry and menu rows also carry
+  grocery, pantry, menu and photo rows also carry
   `updatedAt` (for #53). The schema is exported to `app/schemas/`: commit it. **Never use
   destructive migration**, and give every migration a `MigrationTest`.
   iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations, in
@@ -432,11 +444,16 @@ Settled; don't reintroduce what they removed. The history behind each is in
   `backup_rules.xml`): the database with its `-wal`/`-shm`, and
   `unit_preferences.xml`. Anything else, a new file or a renamed one, is not
   backed up until it's added to both. That excludes the export/import temp
-  file below, which lives in `cacheDir`, never backed up anyway. iOS keeps the
-  database in Application Support, which backups include. Proof and the adb
+  file below, which lives in `cacheDir`, never backed up anyway. The user's
+  photos (`filesDir/cooked_photos`) are left out on purpose (the 25 MB quota);
+  the export file carries them. So is `auto_backup.xml` (#150): a folder's
+  permission belongs to one phone. iOS keeps the database, and `CookedPhotos/`
+  beside it, in the App Group container, which backups include. Proof and the adb
   recipe: `docs/testing.md`.
 - **Export/import** (#26) is one versioned JSON file
-  (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored). Import
+  (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored); with photos
+  (#116) a `.zip` of that JSON (`backup.json`) and `photos/*.jpg`, STORED
+  (`BackupArchive`, `backup-v1-photos.zip`). Either imports. Import
   merges, never replaces or deletes: recipes by cleaned `sourceUrl`,
   Favorites by `isFavorites`, other lists by uid then trimmed
   case-insensitive name; unlisted recipes only fill free history slots (free
@@ -444,8 +461,19 @@ Settled; don't reintroduce what they removed. The history behind each is in
   pantry items by uid then name and language (what's here stands); grocery
   items by uid; meal types by `builtInKey`, else uid, else user-type name;
   planned meals by uid, a recipe's only if its recipe is here after the import;
-  menus by uid, whole, their meals by the plan's rules.
+  menus by uid, whole, their meals by the plan's rules; photos by uid, only
+  with their picture, their recipe coming in like a listed one.
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
+- **The automatic copy** (#150, on by default, photos included): the export as
+  a `.zip`, `recipe-clipper-backup-YYYY-MM-DD-HHmm.zip`, the newest three kept
+  (only names it wrote are ever deleted). iOS: the iCloud container's
+  `Documents` ("Recipe Clipper" in Files); Android: a folder picked once
+  (`ACTION_OPEN_DOCUMENT_TREE`, persisted permission), asked for in Settings
+  and once on Home after the first recipe, never at launch; WorkManager daily
+  and after the app is left, iOS on going to the background. Written only when
+  `AutoBackupPolicy.isDue` (changed and an hour since, or a week). Settings →
+  Your recipes: switch, folder, "Last backed up", "Back up now", a nudge after
+  30 days with nothing copying. Nothing goes to any server.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. Recipes search ignores notes. Cook
   progress (`cookState`, JSON: step, done steps, timers) and the chosen
@@ -511,9 +539,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **WP Recipe Maker's ingredient parts refine JSON-LD's lines** (#118,
   `WprmIngredients`), only when the card lines up one-to-one with
   `recipeIngredient`: "amount unit name" plus the notes as the card shows
-  them; each named group adds a "Group:" heading line. Tasty Recipes and
-  Mediavine Create cards (#119, `CardHeadings`) hold whole lines only: JSON-LD's
-  lines stay, and only the group headings JSON-LD drops are added.
+  them; each named group adds a "Group:" heading line. Other cards hold whole
+  lines only: JSON-LD's lines stay, and only the group headings JSON-LD drops are
+  added (`CardHeadings`). Which cards, per plugin (Tasty Recipes, Mediavine
+  Create, #119) or per site (NYT Cooking, BBC Good Food, …, #120), and a site's
+  known noise at the end of the last step, are data in
+  `shared/tables/site-rules.json` (`SiteRules`; selector subset in
+  `CardSelector`): a site quirk is a table edit, never code.
 - **A recipe needs a name, plus ingredients or steps.**
 - **Last, the on-device model picks from the page's text** (#103,
   `llmExtraction` flag): only after `NoRecipeFound` on a page that loaded,

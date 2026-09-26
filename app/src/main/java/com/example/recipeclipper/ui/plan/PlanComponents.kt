@@ -63,6 +63,9 @@ internal fun shortDate(day: Long): String = format(day, "MMMd")
 /** "23" */
 internal fun dayOfMonth(day: Long): String = format(day, "d")
 
+/** "Oct 12, 2026", in the locale's order: the day a photo was cooked (#116). */
+internal fun fullDate(day: Long): String = format(day, "yMMMd")
+
 /** "September 2026", in the locale's order. */
 internal fun monthTitle(day: Long): String = format(day, "yMMMM")
 

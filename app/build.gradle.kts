@@ -41,7 +41,13 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // `-Pwalkthrough` swaps in the Hilt test runner for the walkthrough videos (#106,
+        // WalkthroughTest); every other device test needs the real Application.
+        testInstrumentationRunner = if (project.hasProperty("walkthrough")) {
+            "com.example.recipeclipper.walkthrough.WalkthroughRunner"
+        } else {
+            "androidx.test.runner.AndroidJUnitRunner"
+        }
     }
 
     buildFeatures {
@@ -211,6 +217,9 @@ dependencies {
     val hilt = "2.60.1"
     implementation("com.google.dagger:hilt-android:$hilt")
     ksp("com.google.dagger:hilt-compiler:$hilt")
+    // The walkthrough videos (#106) swap Chef mode's model for a stub in the real app.
+    androidTestImplementation("com.google.dagger:hilt-android-testing:$hilt")
+    kspAndroidTest("com.google.dagger:hilt-compiler:$hilt")
 
     // Persistence
     val room = "2.8.5"
@@ -238,9 +247,15 @@ dependencies {
 
     // Recipe photo
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // "I made this" (#116): a photo's EXIF orientation. Coil already brings it; the framework's
+    // android.media copy is the one lint warns about (buggy on older releases).
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
 
     // The one-time unlock (#107): Google Play Billing, only behind PlayBillingEntitlements.
     implementation("com.android.billingclient:billing-ktx:9.1.0")
+
+    // The automatic backup copy (#150): a daily look and one after the app is left.
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
 
     // Background thread for the network fetch
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

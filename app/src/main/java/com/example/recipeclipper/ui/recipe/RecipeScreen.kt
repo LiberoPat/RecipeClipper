@@ -129,7 +129,10 @@ fun RecipeScreen(
     amountsInStepsEnabled: Boolean = LocalFlagValues.current.isOn(Flag.AMOUNTS_IN_STEPS),
     // Only resolved behind the tab flag (#49), so screen tests without Hilt need not pass one.
     planViewModel: AddToPlanViewModel? = if (mealPlanEnabled) hiltViewModel() else null,
-    groceriesViewModel: AddToGroceriesViewModel? = if (mealPlanEnabled) hiltViewModel() else null
+    groceriesViewModel: AddToGroceriesViewModel? = if (mealPlanEnabled) hiltViewModel() else null,
+    cookedPhotosEnabled: Boolean = LocalFlagValues.current.isOn(Flag.COOKED_PHOTOS),
+    // "I made this" (#116), only behind its flag, like the plan's sheets above.
+    photosViewModel: CookedPhotosViewModel? = if (cookedPhotosEnabled) hiltViewModel() else null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
@@ -238,6 +241,7 @@ fun RecipeScreen(
     val recipeId = (content as? RecipeContent.Success)?.recipe?.id?.takeIf { !state.notKept }
     LaunchedEffect(recipeId) {
         if (recipeId != null) saveViewModel.setRecipe(recipeId)
+        if (recipeId != null) photosViewModel?.setRecipe(recipeId)
     }
     // While this recipe is on screen its timers beep here instead of posting a notification.
     MarkRecipeVisible(recipeId)
@@ -254,6 +258,8 @@ fun RecipeScreen(
             viewModel.onUpdateErrorShown()
         }
     }
+
+    val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState)
 
     // A full free library (#107): shown, not kept. Stays up until dismissed or unlocked, and
     // comes back after a pending or failed purchase has been explained.
@@ -295,7 +301,7 @@ fun RecipeScreen(
                         // Amounts in steps (#101) show only behind their flag.
                         val shown = if (amountsInStepsEnabled) content else content.copy(stepAmounts = null)
                         if (cooking) CookView(shown, state, actions)
-                        else ReadingView(shown, state, actions, saveState.isSaved)
+                        else ReadingView(shown, state, actions, saveState.isSaved, photos?.count ?: 0, photos?.section)
                     }
                     is RecipeContent.Loading -> StatusView(actions.onBack) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -417,7 +423,9 @@ private fun ReadingView(
     content: RecipeContent.Success,
     state: RecipeUiState,
     actions: RecipeActions,
-    isSaved: Boolean
+    isSaved: Boolean,
+    photoCount: Int = 0,
+    cookedPhotos: (@Composable () -> Unit)? = null
 ) {
     val recipe = content.recipe
     // Only whether the keyboard is up for the note, so the cooking bar steps aside for it.
@@ -468,6 +476,7 @@ private fun ReadingView(
                         onEdit = actions.onEdit,
                         onUpdateFromSource = actions.onUpdateFromSource,
                         onDelete = actions.onDelete,
+                        photoCount = photoCount,
                         onAddToPlan = actions.onAddToPlan,
                         onAddToGroceries = actions.onAddToGroceries
                     )
@@ -576,6 +585,11 @@ private fun ReadingView(
                     onFocusChange = { editingNotes = it }
                 )
             }
+            // "Your cooks" (#116): last, so the reading view still opens on the recipe.
+            if (!state.notKept && cookedPhotos != null) item {
+                Spacer(Modifier.height(28.dp))
+                cookedPhotos()
+            }
         }
 
         if (content.instructions.isNotEmpty() && !editingNotes) {
@@ -613,6 +627,7 @@ private fun RecipeOverflowMenu(
     onEdit: () -> Unit,
     onUpdateFromSource: () -> Unit,
     onDelete: () -> Unit,
+    photoCount: Int = 0,
     onAddToPlan: (() -> Unit)? = null,
     onAddToGroceries: (() -> Unit)? = null
 ) {
@@ -695,7 +710,16 @@ private fun RecipeOverflowMenu(
         AlertDialog(
             onDismissRequest = { confirming = false },
             title = { Text(stringResource(R.string.delete_recipe_title, recipeName)) },
-            text = { Text(stringResource(R.string.delete_recipe_body)) },
+            // The user's photos go with the recipe (#116), and the dialog says so.
+            text = {
+                Text(
+                    when (photoCount) {
+                        0 -> stringResource(R.string.delete_recipe_body)
+                        1 -> stringResource(R.string.delete_recipe_body_photo)
+                        else -> stringResource(R.string.delete_recipe_body_photos, photoCount)
+                    }
+                )
+            },
             confirmButton = {
                 TextButton(onClick = { confirming = false; onDelete() }) {
                     Text(stringResource(R.string.action_delete))

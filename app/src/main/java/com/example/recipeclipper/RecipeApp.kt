@@ -1,12 +1,15 @@
 package com.example.recipeclipper
 
 import android.app.Application
+import com.example.recipeclipper.data.AutoBackup
+import com.example.recipeclipper.data.CookedPhotoRepository
 import com.example.recipeclipper.data.ExpiryReminderCoordinator
 import com.example.recipeclipper.data.PlayBillingEntitlements
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -18,6 +21,12 @@ class RecipeApp : Application() {
     @Inject
     lateinit var billing: PlayBillingEntitlements
 
+    @Inject
+    lateinit var cookedPhotos: CookedPhotoRepository
+
+    @Inject
+    lateinit var autoBackup: AutoBackup
+
     override fun onCreate() {
         super.onCreate()
         // The pantry's expiry reminder (#52) follows the pantry, the setting and the flag for as
@@ -25,5 +34,10 @@ class RecipeApp : Application() {
         expiryReminders.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))
         // The unlock (#107): asks Play on every start, and tracks the Activity for its sheet.
         billing.start(this)
+        // "I made this" (#116): files no photo names any more (a delete whose Undo never came,
+        // an import's unused copies) go once the process is past them.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { cookedPhotos.sweep() }
+        // The automatic backup copy (#150): a daily look for a copy to write.
+        autoBackup.start()
     }
 }

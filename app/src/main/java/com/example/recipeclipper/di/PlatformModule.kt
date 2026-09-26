@@ -2,12 +2,8 @@ package com.example.recipeclipper.di
 
 import com.example.recipeclipper.BuildConfig
 import com.example.recipeclipper.data.AndroidAppInfo
-import com.example.recipeclipper.data.DecisionModel
-import com.example.recipeclipper.data.MlKitDecisionModel
 import com.example.recipeclipper.data.MlKitPageRecipeExtractor
-import com.example.recipeclipper.data.MlKitStepShortener
 import com.example.recipeclipper.data.PageRecipeExtractor
-import com.example.recipeclipper.data.StepShortener
 import com.example.recipeclipper.data.flags.FeatureFlagStore
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.FlagRegistry
@@ -48,6 +44,25 @@ abstract class PlatformModule {
     @Binds
     abstract fun backupFiles(impl: AndroidBackupFiles): BackupFiles
 
+    // The automatic copy (#150): the chosen folder, its record, and WorkManager.
+    @Binds
+    abstract fun backupFolder(impl: com.example.recipeclipper.data.AndroidBackupFolder): com.example.recipeclipper.data.BackupFolder
+
+    @Binds
+    @Singleton
+    abstract fun autoBackupStore(
+        impl: com.example.recipeclipper.data.local.SharedPrefsAutoBackupStore
+    ): com.example.recipeclipper.data.AutoBackupStore
+
+    @Binds
+    abstract fun autoBackupScheduler(
+        impl: com.example.recipeclipper.data.WorkManagerAutoBackupScheduler
+    ): com.example.recipeclipper.data.AutoBackupScheduler
+
+    @Binds
+    @Singleton
+    abstract fun photoStore(impl: com.example.recipeclipper.data.AndroidPhotoStore): com.example.recipeclipper.data.PhotoStore
+
     @Binds
     @Singleton
     abstract fun timerAlarmScheduler(impl: AndroidTimerAlarmScheduler): TimerAlarmScheduler
@@ -70,15 +85,7 @@ abstract class PlatformModule {
 
     @Binds
     @Singleton
-    abstract fun stepShortener(impl: MlKitStepShortener): StepShortener
-
-    @Binds
-    @Singleton
     abstract fun pageRecipeExtractor(impl: MlKitPageRecipeExtractor): PageRecipeExtractor
-
-    @Binds
-    @Singleton
-    abstract fun decisionModel(impl: MlKitDecisionModel): DecisionModel
 
     @Binds
     @Singleton

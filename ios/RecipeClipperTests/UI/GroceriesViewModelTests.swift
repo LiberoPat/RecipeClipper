@@ -207,16 +207,17 @@ final class GroceriesViewModelTests: XCTestCase {
         await add("2 onions", "1 cup milk")
         let vm = await viewModel()
         await repository.setChecked([repository.items.value[0].id], checked: true)
-        await settleMain()
+        // Wait until the screen shows the tick: Clear checked clears what the screen shows.
+        await settleMain { vm.uiState.hasChecked }
 
         vm.onClearChecked()
-        await settleMain()
+        await settleMain { self.repository.items.value.count == 1 }
         XCTAssertEqual(repository.items.value.map(\.text), ["1 cup milk"])
         XCTAssertNotNil(vm.uiState.removed)
         XCTAssertNil(vm.uiState.removed?.label)
 
         vm.onUndoRemove()
-        await settleMain()
+        await settleMain { self.repository.items.value.count == 2 }
         XCTAssertEqual(repository.items.value.count, 2)
     }
 

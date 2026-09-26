@@ -119,6 +119,35 @@ data class PantryItemEntity(
     val uid: String = newUid()
 )
 
+/**
+ * One "I made this" entry (#116): a photo of what the user cooked from a recipe, with the
+ * [day] it was cooked (an epoch day, like the plan's) and an optional short [note]. [fileName]
+ * is the downscaled JPEG in the app's photo store (`PhotoStore`), never a path. Deleting the
+ * recipe deletes its entries (CASCADE); their files go once the delete stands.
+ */
+@Entity(
+    tableName = "cooked_photos",
+    foreignKeys = [
+        ForeignKey(
+            entity = RecipeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["recipeId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["recipeId"]), Index(value = ["uid"], unique = true)]
+)
+data class CookedPhotoEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val recipeId: Long,
+    val fileName: String,
+    val day: Long,
+    val note: String?,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val uid: String = newUid()
+)
+
 /** A fresh stable id for a new row. The same form the migrations backfill with. */
 fun newUid(): String = UUID.randomUUID().toString()
 

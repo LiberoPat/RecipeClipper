@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.example.recipeclipper.data.AutoBackup
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.ReceivedList
@@ -35,6 +36,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var receivedLists: ReceivedListInbox
+
+    @Inject
+    lateinit var autoBackup: AutoBackup
 
     // Routes from intents (a shared link, a tapped timer notification) wait here until the
     // NavHost is composed and can navigate to them.
@@ -88,6 +92,12 @@ class MainActivity : ComponentActivity() {
         val route = routeFor(intent) ?: return
         shareHandled = false
         intentRoutes.trySend(route)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // The automatic backup copy (#150): leaving the app is when a changed library is copied.
+        if (!isChangingConfigurations) autoBackup.onAppLeft()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

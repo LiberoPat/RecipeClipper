@@ -13,7 +13,8 @@ import UIKit
 ///     through the store for each key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`);
 ///   - `-uiTestPasteboard <text>` puts `text` on the pasteboard as the app's own copy, so "Paste
 ///     a list" (#149) reads it without the paste prompt, which a UI test can't rely on. A launch
-///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline.
+///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline;
+///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on.
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -21,6 +22,7 @@ import UIKit
 ///   standard  four recipes, some in lists — see `seedStandard`
 ///   cook      one recipe with timed steps, for cook mode — see `seedCook`
 ///   chef      one recipe with a long step, for Chef mode (#100); every launch gets a stub model
+///   walkthrough  twenty realistic recipes for the walkthrough videos (#106) — see UITestWalkthroughSeed
 enum UITestSeeding {
     static let flag = "-uiTestSeed"
     static let keepPrefsFlag = "-uiTestKeepPrefs"
@@ -67,19 +69,35 @@ enum UITestSeeding {
         if let index = arguments.firstIndex(of: pasteboardFlag), index + 1 < arguments.count {
             UIPasteboard.general.string = arguments[index + 1].replacingOccurrences(of: "\\n", with: "\n")
         }
-        return AppContainer(
-            recipeRepository: DefaultRecipeRepository(db: database, source: StubRecipeSource(), clock: clock),
+        let decisions = DefaultDecisionRepository(
+            db: database, model: UITestDecisionModel(), clock: clock, isOn: { flags.isOn(.aiDecisions) }
+        )
+        // The free tier's limit (#107) as the app mirrors it, in the throwaway suite.
+        let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
+        // "I made this" (#116): photos in a throwaway folder, emptied at every launch.
+        let photoDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestPhotos")
+        try? FileManager.default.removeItem(at: photoDirectory)
+        let photoStore = FilePhotoStore(directory: photoDirectory)
+        let container = AppContainer(
+            recipeRepository: DefaultRecipeRepository(
+                db: database, source: StubRecipeSource(), clock: clock, library: libraryLimit, photos: photoStore
+            ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
-            groceryRepository: DefaultGroceryRepository(db: database, clock: clock),
+            groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock, photos: photoStore),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             clipFixtureHTML: clipFixtureHTML,
             featureFlags: flags,
-            shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock)
+            shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
+            decisionRepository: decisions,
+            libraryMirror: libraryLimit,
+            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock)
         )
+        container.libraryPolicy.startMirroring()
+        return container
     }
 
     /// The page "Clip it yourself" shows under test, in place of the live one. XCUITest can't
@@ -113,6 +131,7 @@ enum UITestSeeding {
                     case "many": try seedMany(conn, now: now)
                     case "cook": try seedCook(conn, now: now)
                     case "chef": try seedChef(conn, now: now)
+                    case "walkthrough": try UITestWalkthroughSeed.seed(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
                 }
@@ -230,7 +249,11 @@ private final class UITestStepShortener: StepShortener {
     func support() async -> ChefSupport { .available(["en"]) }
 
     func shorten(_ step: String, language: String) async -> String? {
-        step == UITestSeeding.chefStep ? UITestSeeding.chefShortStep : nil
+        switch step {
+        case UITestSeeding.chefStep: UITestSeeding.chefShortStep
+        case UITestWalkthroughSeed.whisk: UITestWalkthroughSeed.whiskShort
+        default: nil
+        }
     }
 }
 #endif
