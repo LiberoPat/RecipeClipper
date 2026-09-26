@@ -26,8 +26,9 @@ data class SendFileUiState(
 )
 
 /**
- * Writes the shared file for one recipe (the recipe screen's menu) or for the grocery list's
- * unticked items and their recipes (the Groceries menu). Nothing leaves the phone from here:
+ * Writes the shared file for one recipe (the recipe screen's menu), for the grocery list's
+ * unticked items and their recipes (the Groceries menu), or for the pantry's in-stock items
+ * (the Pantry menu). Nothing leaves the phone from here:
  * the screen opens the user's own share sheet on the file.
  */
 @HiltViewModel
@@ -44,6 +45,9 @@ class SendFileViewModel @Inject constructor(
 
     /** The grocery list's unticked items, named [title] (the Groceries tab's name). */
     fun sendGroceries(title: String) = send(title) { share.groceriesFile() }
+
+    /** The pantry's in-stock items, named [title] (the Pantry tab's name). */
+    fun sendPantry(title: String) = send(title) { share.pantryFile() }
 
     /** The share sheet was opened on [SendFileUiState.file]. */
     fun onSent() {

@@ -72,6 +72,21 @@ class ShareFileViewModelsTest {
         assertEquals(listOf("{json}" to "Groceries.recipeclipper"), files.shared)
     }
 
+    @Test
+    fun `the pantry is written as a file named for the tab`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = SendFileViewModel(share, files)
+        vm.sendPantry("Pantry")
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.failed)
+        vm.onFailureShown()
+
+        share.pantryFile = "{pantry}"
+        vm.sendPantry("Pantry")
+        advanceUntilIdle()
+        assertEquals(listOf("{pantry}" to "Pantry.recipeclipper"), files.shared)
+        assertEquals(SentFile(files.shareUri!!, "Pantry.recipeclipper"), vm.uiState.value.file)
+    }
+
     // --- Receiving
 
     @Test

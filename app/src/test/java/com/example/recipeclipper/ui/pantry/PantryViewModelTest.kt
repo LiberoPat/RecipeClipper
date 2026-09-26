@@ -69,6 +69,39 @@ class PantryViewModelTest {
         assertTrue(pantry.items.value.single().inStock)
     }
 
+    // #149: "Send list" sends what's in stock, as the sort arranges it, whatever the search.
+    @Test
+    fun `Send list is what's in stock, by the screen's sort, whatever the search`() = runTest(mainDispatcherRule.dispatcher) {
+        val pantry = FakePantryRepository(
+            listOf(
+                item(1, "milk", aisle = Aisle.DAIRY, expires = 20_730), item(2, "apples", aisle = Aisle.PRODUCE),
+                item(3, "rice", aisle = Aisle.GRAINS, expires = 20_725), item(4, "oats", inStock = false, aisle = Aisle.GRAINS)
+            )
+        )
+        val vm = PantryViewModel(pantry, groceries, calendar)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.hasInStock)
+
+        vm.onQueryChange("milk")
+        assertEquals("Pantry\n\nproduce\n- apples\n\ndairy\n- milk\n\ngrains\n- rice", vm.shareText("Pantry") { it.key })
+        vm.onSortChange(PantrySort.EXPIRY)
+        assertEquals("Pantry\n\n- rice\n- milk\n- apples", vm.shareText("Pantry") { it.key })
+    }
+
+    @Test
+    fun `with nothing in stock there's nothing to send`() = runTest(mainDispatcherRule.dispatcher) {
+        val pantry = FakePantryRepository(listOf(item(1, "milk", inStock = false)))
+        val vm = PantryViewModel(pantry, groceries, calendar)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.hasInStock)
+        assertNull(vm.shareText("Pantry") { it.key })
+
+        vm.onToggleStock(pantry.items.value.single())
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.hasInStock)
+        assertEquals("Pantry\n\nother\n- milk", vm.shareText("Pantry") { it.key })
+    }
+
     @Test
     fun `search and sort rearrange what's shown`() = runTest(mainDispatcherRule.dispatcher) {
         val pantry = FakePantryRepository(
