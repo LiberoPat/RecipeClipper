@@ -12,21 +12,25 @@ import Foundation
 enum ShortStepCheck {
 
     /// `short`, tidied, when it may stand for `original`; nil to show `original` as written.
-    static func accept(_ original: String, _ short: String?, words: LanguageWords?) -> String? {
+    static func accept(_ original: String, _ short: String?, words: LanguageWords?, ingredients: [String] = []) -> String? {
         guard let words, let short else { return nil }
         let candidate = tidy(short)
         // UTF-16 lengths, as Kotlin's String.length.
         if candidate.isEmpty || candidate.utf16.count >= tidy(original).utf16.count { return nil }
         if !numbers(candidate).isSubset(of: numbers(original)) { return nil }
-        if Set(StepTimers.durations(original, words: words)) != Set(StepTimers.durations(candidate, words: words)) {
-            return nil
+        if !keepsTimes(original, candidate, words: words) { return nil }
+        return candidate
+    }
+
+    /// True when `short` states exactly `original`'s times and temperatures: none changed, none
+    /// added, none dropped ("350°F (180°C)" may keep either half).
+    static func keepsTimes(_ original: String, _ short: String, words: LanguageWords) -> Bool {
+        if Set(StepTimers.durations(original, words: words)) != Set(StepTimers.durations(short, words: words)) {
+            return false
         }
         let stated = TemperatureConverter.temperatures(original, words: words)
-        let kept = Set(TemperatureConverter.temperatures(candidate, words: words).flatMap { $0 })
-        if !kept.isSubset(of: Set(stated.flatMap { $0 })) || stated.contains(where: { $0.allSatisfy { !kept.contains($0) } }) {
-            return nil
-        }
-        return candidate
+        let kept = Set(TemperatureConverter.temperatures(short, words: words).flatMap { $0 })
+        return kept.isSubset(of: Set(stated.flatMap { $0 })) && !stated.contains(where: { $0.allSatisfy { !kept.contains($0) } })
     }
 
     /// A step this short ("Serve warm.") is left as written, never sent to the model.
