@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "language": "de",
+  "about": "ShortStepCheck's words (#129); see en/chef.json for what each key does. Verbs as recipes write them (infinitive), one word each; endings let 'rührt' and 'rühren' match.",
+  "actions": [
+    "vorheizen", "einfetten", "fetten", "auslegen", "abdecken", "zudecken", "bedecken", "einwickeln", "pressen",
+    "abtropfen", "abgießen", "abspülen", "einweichen", "sieben", "schlagen", "verquirlen", "unterheben", "kneten",
+    "ausrollen", "rollen", "rühren", "verrühren", "mischen", "vermischen", "vermengen", "pürieren", "zerdrücken",
+    "hacken", "würfeln", "schneiden", "reiben", "schälen", "würzen", "marinieren", "bestreuen", "beträufeln",
+    "bestreichen", "verteilen", "gießen", "ausdrücken", "köcheln", "dünsten", "dämpfen", "braten", "anbraten",
+    "rösten", "backen", "grillen", "schmelzen", "abkühlen", "auskühlen", "kühlen", "einfrieren", "auftauen",
+    "ruhen", "gehen", "wenden", "abschöpfen", "ablöschen"
+  ],
+  "equipment": [
+    "backofen", "ofen", "pfanne", "topf", "schüssel", "backblech", "blech", "form", "backform", "auflaufform",
+    "kastenform", "springform", "sieb", "mixer", "küchenmaschine", "rost", "gitter", "backpapier", "alufolie",
+    "folie", "deckel", "mikrowelle", "schneebesen", "pürierstab", "thermometer", "wok"
+  ],
+  "qualifiers": ["nicht", "kein", "keine", "nie", "ohne", "wenn", "falls", "optional", "alternativ", "stattdessen", "bis"],
+  "notAfter": ["der", "die", "das", "den", "dem", "ein", "eine", "einen"],
+  "functionWords": [
+    "der", "die", "das", "den", "dem", "des", "ein", "eine", "einen", "einem", "einer", "und", "oder", "dann",
+    "danach", "mit", "in", "im", "ins", "auf", "an", "am", "zu", "zum", "zur", "von", "vom", "für", "aus", "bei",
+    "über", "unter", "es", "sie", "ihn", "sich", "ist", "sind", "wird", "werden", "etwa", "ca", "dabei", "dazu",
+    "darauf", "bis", "nach", "vor", "sobald", "während", "grad"
+  ],
+  "abbreviations": [["temp", "temperatur"]],
+  "endings": [["en", ""], ["n", ""], ["e", ""], ["t", ""], ["et", ""], ["st", ""], ["es", ""], ["s", ""], ["er", ""]]
+}

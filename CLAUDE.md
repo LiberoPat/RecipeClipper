@@ -21,7 +21,7 @@ needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
 unit, timer, temperature, yield, range, amount, duration, detection,
-ingredient-name, aisle and step words, condensed section names, recipe headings; tracking parameters), loaded by both apps (Android as
+ingredient-name, aisle, step and Chef-mode words, condensed section names, recipe headings; tracking parameters), loaded by both apps (Android as
 Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
 table there, never in code; the logic that reads it stays written twice. **Each
 language has its own folder** (`shared/tables/<code>/`: en, de, es, fr, it,
@@ -50,7 +50,8 @@ with no recipe data, #37); the week meal plan, the grocery list and the
 pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); a
 recipe picked from a page's text by the on-device model (behind its flag, #103); typed
 decisions by that model where the rules give up (close pantry names, aisles;
-`aiDecisions` flag, #104; count brackets only with `aiCountBrackets` too, #127); the
+`aiDecisions` flag, #104; count brackets only with `aiCountBrackets` too, #127);
+"I made this", your own photos and notes on a recipe (`cookedPhotos` flag, #116); the
 UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -95,6 +96,7 @@ di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, Plat
 data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository, PantryRepository
                (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests),
                Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
+               CookedPhotoRepository + PhotoStore ("I made this" photos, #116)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
   remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, CardHeadings, CardIngredients),
                MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
@@ -184,7 +186,7 @@ Decisions, not suggestions. Don't relitigate them in code.
   `docs/decisions.md`). Every recipe counts (shared, typed in, in a list,
   planned). Sharing always opens the recipe. Adding one to a library at or over
   20 first removes the oldest-viewed recipe in no list, not planned today or
-  later, in no menu and not typed in: one out for one in, so the library never
+  later, in no menu, not typed in and with none of your photos: one out for one in, so the library never
   shrinks because of the limit and a library over 20 keeps everything. None
   removable: shown but not kept, with Unlock (a typed or clipped one keeps its
   editor open behind a "library full" dialog). **Unlocked** (one-time
@@ -200,8 +202,8 @@ Decisions, not suggestions. Don't relitigate them in code.
 - **"Saved" means "in at least one list."** It's derived from the cross-ref
   table; there's no column. A recipe in any list is never culled, and
   neither is one planned for today or later (#49) or in a saved menu
-  (#52), or typed in by hand (#102: no link could bring it back); none of
-  these counts toward the 50 (on the free tier every recipe counts, #107).
+  (#52), or typed in by hand (#102: no link could bring it back), or with the
+  user's own photos (#116); none of these counts toward the 50 (on the free tier every recipe counts, #107).
 - **Leaving a list is a demotion, not a deletion.** The recipe stays in
   history and becomes cullable. Deleting is a separate, explicit action with
   its own confirmation.
@@ -235,7 +237,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Chef mode** (#100, `chefMode` flag): short steps written by the on-device
   model behind the `StepShortener` seam, shown only if `ShortStepCheck`
   passes (shorter; every number in it is in the step; the step's times and
-  temperatures exactly). Timers and rendering come from the step as written.
+  temperatures exactly; no ingredient, action, equipment, qualifier or time
+  word dropped and no word added, by `chef.json`, #129). Timers and rendering come from the step as written.
   Reading view: tap a step for it as written. Cook mode: the current card's
   "As written" button. While writing, the step shows as written.
 - **Theme:** Fraunces (display) over Karla (body); ground `#FBF9F6`, ink
@@ -316,13 +319,18 @@ Settled; don't reintroduce what they removed. The history behind each is in
   list detail. A list is renamed and deleted on its own screen.
 - **Recipes** (#102): every recipe, newest viewed first; a + (Type a recipe:
   the editor; Paste a link: a dialog whose Go enables only for a link, then
-  the import) and ⋮ sort (Recently viewed, Name, Date added; radio rows, in
-  memory) beside the title; search; swipe to delete. On the free tier a
+  the import) and ⋮ sort (Recently viewed, Name, Date added, and Recently cooked
+  behind `cookedPhotos`; radio rows, remembered) beside the title; search; swipe to delete. On the free tier a
   quiet "12 of 20 recipes" under the title (#107).
 - **Deleting a recipe** is a hard delete: a Recipes swipe with an undo
   snackbar (a burst of swipes shares one snackbar and one all-or-nothing
   undo), or the recipe screen's overflow menu with a confirmation dialog (no
-  undo).
+  undo). The user's photos go with the recipe, and the dialog says so.
+- **"I made this"** (#116, `cookedPhotos` flag): "Your cooks" is the reading
+  view's last section (after the note), a row of dated thumbnails and "I made
+  this" (camera or library). Each photo is an entry cooked today; the new one
+  opens full screen for its note (short, saved as typing pauses) and date; Share
+  sends the photo plus the recipe name; Delete has an undo snackbar.
 - **Editing** (#29) is its own screen, from the recipe overflow menu (Edit,
   then "Update from source" for an edited or clipped recipe with a link,
   behind a warning, then Delete): name, yield, three times, ingredients and
@@ -334,14 +342,15 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 13** (iOS `user_version` 12):
+- Room database `recipe_clipper.db`, **version 14** (iOS `user_version` 13):
   `recipes` (with nullable `notes`, `language`, `cookState`,
   `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading),
   `meal_types` and `meal_plan_entries` (#49), `grocery_items` (#50),
-  `pantry_items` (#51), `menus` and `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never exported). Recipes, lists, the
-  plan, grocery, pantry and menu tables
+  `pantry_items` (#51), `menus` and `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never exported), `cooked_photos`
+  (#116, cascading). Recipes, lists, the
+  plan, grocery, pantry, menu and photo tables
   carry a unique, never-changing `uid`: what an export file calls them. Plan,
-  grocery, pantry and menu rows also carry
+  grocery, pantry, menu and photo rows also carry
   `updatedAt` (for #53). The schema is exported to `app/schemas/`: commit it. **Never use
   destructive migration**, and give every migration a `MigrationTest`.
   iOS mirrors the schema in SQLite, with `PRAGMA user_version` migrations, in
@@ -429,11 +438,15 @@ Settled; don't reintroduce what they removed. The history behind each is in
   `backup_rules.xml`): the database with its `-wal`/`-shm`, and
   `unit_preferences.xml`. Anything else, a new file or a renamed one, is not
   backed up until it's added to both. That excludes the export/import temp
-  file below, which lives in `cacheDir`, never backed up anyway. iOS keeps the
-  database in Application Support, which backups include. Proof and the adb
+  file below, which lives in `cacheDir`, never backed up anyway. The user's
+  photos (`filesDir/cooked_photos`) are left out on purpose (the 25 MB quota);
+  the export file carries them. iOS keeps the database, and `CookedPhotos/`
+  beside it, in the App Group container, which backups include. Proof and the adb
   recipe: `docs/testing.md`.
 - **Export/import** (#26) is one versioned JSON file
-  (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored). Import
+  (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored); with photos
+  (#116) a `.zip` of that JSON (`backup.json`) and `photos/*.jpg`, STORED
+  (`BackupArchive`, `backup-v1-photos.zip`). Either imports. Import
   merges, never replaces or deletes: recipes by cleaned `sourceUrl`,
   Favorites by `isFavorites`, other lists by uid then trimmed
   case-insensitive name; unlisted recipes only fill free history slots (free
@@ -441,7 +454,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   pantry items by uid then name and language (what's here stands); grocery
   items by uid; meal types by `builtInKey`, else uid, else user-type name;
   planned meals by uid, a recipe's only if its recipe is here after the import;
-  menus by uid, whole, their meals by the plan's rules.
+  menus by uid, whole, their meals by the plan's rules; photos by uid, only
+  with their picture, their recipe coming in like a listed one.
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - Ticked ingredients are written as they change; the note once typing pauses
   (500 ms), or on leaving the screen. Recipes search ignores notes. Cook

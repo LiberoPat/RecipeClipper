@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "ShortStepCheck's words (#129); see en/chef.json for what each key does. Japanese has no spaces, so the check compares characters: every kanji and katakana of the short step must be in the step, and each entry below (a stem, matched as a substring) must be in both or neither. functionWords, abbreviations, endings and notAfter are unused.",
+  "actions": [
+    "予熱", "混ぜ", "焼", "煮", "茹で", "ゆで", "炒め", "揚げ", "蒸", "冷", "切", "刻", "漬け", "溶か", "こね",
+    "のば", "包", "巻", "塗", "絞", "裏返", "水気", "寝か", "敷", "覆", "ふた", "ラップ"
+  ],
+  "equipment": [
+    "鍋", "フライパン", "オーブン", "ボウル", "天板", "型", "ホイル", "クッキングシート", "ざる", "電子レンジ",
+    "トースター", "まな板", "蓋", "網", "温度計"
+  ],
+  "qualifiers": ["ない", "せず", "場合", "好み", "まで"],
+  "notAfter": [],
+  "functionWords": [],
+  "abbreviations": [],
+  "endings": []
+}

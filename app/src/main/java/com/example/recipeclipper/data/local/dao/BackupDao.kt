@@ -13,6 +13,7 @@ import com.example.recipeclipper.data.backup.ExistingPantryItem
 import com.example.recipeclipper.data.backup.ExistingRecipe
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.backup.Target
+import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.ListEntity
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
@@ -34,7 +35,8 @@ data class BackupSnapshot(
     val mealTypes: List<MealTypeEntity>,
     val mealPlan: List<MealPlanEntryEntity>,
     val menus: List<MenuEntity> = emptyList(),
-    val menuEntries: List<MenuEntryEntity> = emptyList()
+    val menuEntries: List<MenuEntryEntity> = emptyList(),
+    val cookedPhotos: List<CookedPhotoEntity> = emptyList()
 )
 
 /**
@@ -74,12 +76,21 @@ abstract class BackupDao {
     @Query("SELECT * FROM menu_entries ORDER BY menuId ASC, dayOffset ASC, mealTypeId ASC, sortOrder ASC, id ASC")
     abstract suspend fun allMenuEntries(): List<MenuEntryEntity>
 
+    @Query("SELECT * FROM cooked_photos ORDER BY recipeId ASC, day DESC, createdAt DESC, id DESC")
+    abstract suspend fun allCookedPhotos(): List<CookedPhotoEntity>
+
     @Transaction
     open suspend fun snapshot(): BackupSnapshot =
         BackupSnapshot(
             allRecipes(), allLists(), allCrossRefs(), allPantry(), allGroceries(), allMealTypes(), allPlanEntries(),
-            allMenus(), allMenuEntries()
+            allMenus(), allMenuEntries(), allCookedPhotos()
         )
+
+    @Query("SELECT uid FROM cooked_photos")
+    abstract suspend fun existingCookedPhotoUids(): List<String>
+
+    @Insert
+    abstract suspend fun insertCookedPhoto(photo: CookedPhotoEntity): Long
 
     @Query("SELECT uid FROM menus")
     abstract suspend fun existingMenuUids(): List<String>
@@ -131,7 +142,8 @@ abstract class BackupDao {
         SELECT id, uid, sourceUrl,
                (notes IS NOT NULL AND trim(notes) != '') AS hasNotes,
                (EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)
-                    OR contentOrigin = 'MANUAL') AS isListed
+                    OR contentOrigin = 'MANUAL'
+                    OR EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id)) AS isListed
         FROM recipes
         """
     )
@@ -158,7 +170,15 @@ abstract class BackupDao {
     abstract suspend fun fillNote(id: Long, notes: String)
 
     @Transaction
-    open suspend fun importBackup(backup: Backup, limit: LibraryLimit, today: Long?, newUid: () -> String): ImportSummary {
+    open suspend fun importBackup(
+        backup: Backup,
+        limit: LibraryLimit,
+        today: Long?,
+        newUid: () -> String,
+        /** The package's pictures (#116), by path in the zip, already copied in: their stored names. */
+        storedPhotos: Map<String, String> = emptyMap(),
+        now: Long = 0L
+    ): ImportSummary {
         // Unlimited (#107) leaves nothing out: every recipe comes in.
         val historyLimit = when (limit) {
             is LibraryLimit.History -> limit.keep
@@ -180,7 +200,9 @@ abstract class BackupDao {
             existingPlanUids = existingPlanUids().toSet(),
             today = today,
             existingMenuUids = existingMenuUids().toSet(),
-            existingMenuEntryUids = existingMenuEntryUids().toSet()
+            existingMenuEntryUids = existingMenuEntryUids().toSet(),
+            existingCookedPhotoUids = existingCookedPhotoUids().toSet(),
+            availablePhotoFiles = storedPhotos.keys
         )
 
         val newRecipeIds = HashMap<String, Long>()
@@ -303,6 +325,19 @@ abstract class BackupDao {
                     )
                 )
             }
+        }
+        for (p in plan.newCookedPhotos) {
+            insertCookedPhoto(
+                CookedPhotoEntity(
+                    uid = p.photo.id,
+                    recipeId = p.recipe.rowId(newRecipeIds),
+                    fileName = storedPhotos.getValue(p.photo.file),
+                    day = p.photo.day,
+                    note = p.photo.note,
+                    createdAt = p.photo.createdAt.takeIf { it > 0 } ?: now,
+                    updatedAt = p.photo.updatedAt.takeIf { it > 0 } ?: now
+                )
+            )
         }
         return plan.summary
     }

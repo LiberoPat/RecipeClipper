@@ -1,7 +1,9 @@
 package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.backup.Backup
+import com.example.recipeclipper.data.backup.BackupCookedPhoto
 import com.example.recipeclipper.data.backup.BackupError
+import com.example.recipeclipper.data.backup.BackupPackage
 import com.example.recipeclipper.data.backup.BackupGroceryItem
 import com.example.recipeclipper.data.backup.BackupJson
 import com.example.recipeclipper.data.backup.BackupList
@@ -35,7 +37,10 @@ interface BackupRepository {
      * [com.example.recipeclipper.data.backup.BackupMerger]). A file that can't be read writes
      * nothing and says why.
      */
-    suspend fun import(text: String): BackupResult<ImportSummary>
+    suspend fun import(text: String): BackupResult<ImportSummary> = import(BackupPackage(text))
+
+    /** [import] of a package: the JSON, and the pictures of the user's photos beside it (#116). */
+    suspend fun import(backup: BackupPackage): BackupResult<ImportSummary>
 }
 
 /**
@@ -48,7 +53,8 @@ class DefaultBackupRepository @Inject constructor(
     private val backupDao: BackupDao,
     private val clock: Clock,
     private val log: ErrorLog,
-    private val library: LibraryPolicy = LibraryPolicy.HistoryOnly
+    private val library: LibraryPolicy = LibraryPolicy.HistoryOnly,
+    private val photos: PhotoStore = NoPhotoStore
 ) : BackupRepository {
 
     override suspend fun export(): BackupResult<ExportedBackup> {
@@ -117,17 +123,39 @@ class DefaultBackupRepository @Inject constructor(
                 )
             }
         )
-        return BackupResult.Success(ExportedBackup(BackupJson.encode(backup), now, backup.recipes.size))
+        // The pictures travel beside the JSON (#116), each named after its row.
+        val pictures = LinkedHashMap<String, String>()
+        val withPhotos = backup.copy(
+            cookedPhotos = snapshot.cookedPhotos.mapNotNull { photo ->
+                val recipe = recipeUids[photo.recipeId] ?: return@mapNotNull null
+                val file = "photos/photo-${photo.id}.jpg"
+                pictures[file] = photos.path(photo.fileName)
+                BackupCookedPhoto(photo.uid, recipe, photo.day, photo.note, photo.createdAt, photo.updatedAt, file)
+            }
+        )
+        return BackupResult.Success(ExportedBackup(BackupJson.encode(withPhotos), now, backup.recipes.size, pictures))
     }
 
-    override suspend fun import(text: String): BackupResult<ImportSummary> {
-        val backup = when (val decoded = BackupJson.decode(text)) {
-            is BackupResult.Success -> decoded.value
-            is BackupResult.Failure -> return decoded
+    override suspend fun import(backup: BackupPackage): BackupResult<ImportSummary> {
+        val decoded = when (val result = BackupJson.decode(backup.json)) {
+            is BackupResult.Success -> result.value
+            is BackupResult.Failure -> return result
         }
+        // Copy in the pictures the file's photos name first; a photo whose picture didn't come
+        // stays out. Copies the import didn't use are swept later (PhotoStore's grace period).
+        val stored = HashMap<String, String>()
+        for (file in decoded.cookedPhotos.mapTo(LinkedHashSet()) { it.file }) {
+            val local = backup.photos[file] ?: continue
+            photos.adopt(local)?.let { stored[file] = it }
+        }
+        val now = clock.now()
         val summary = log.guard("import", null) {
-            backupDao.importBackup(backup, library.limit, PlanDays.today(clock.now())) { UUID.randomUUID().toString() }
-        } ?: return BackupResult.Failure(BackupError.SaveFailed)
+            backupDao.importBackup(decoded, library.limit, PlanDays.today(now), { UUID.randomUUID().toString() }, stored, now)
+        }
+        if (summary == null) {
+            photos.delete(stored.values)
+            return BackupResult.Failure(BackupError.SaveFailed)
+        }
         return BackupResult.Success(summary)
     }
 }

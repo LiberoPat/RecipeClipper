@@ -453,4 +453,24 @@
         <item quantity="many">%1$d de recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$d recetas.</item>
         <item quantity="other">%1$d recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$d recetas.</item>
     </plurals>
+    <!-- "I made this" (#116) -->
+    <string name="sort_recently_cooked">Cocinadas recientemente</string>
+    <string name="heading_your_cooks">Lo que has cocinado</string>
+    <string name="cooked_empty">¿La has hecho? Guarda una foto y una nota breve.</string>
+    <string name="action_i_made_this">Lo he hecho</string>
+    <string name="action_add_photo">Añadir una foto</string>
+    <string name="action_take_photo">Hacer una foto</string>
+    <string name="action_choose_photos">Elegir de la galería</string>
+    <string name="cd_cooked_photo">Tu foto, %1$s</string>
+    <string name="cooked_note_placeholder">Añade una nota breve</string>
+    <string name="cd_change_cooked_date">Cambiar la fecha, %1$s</string>
+    <string name="cd_share_photo">Compartir foto</string>
+    <string name="cd_delete_photo">Eliminar foto</string>
+    <string name="cd_close_photo">Cerrar</string>
+    <string name="cooked_photo_deleted">Foto eliminada</string>
+    <string name="cooked_add_failed">No se pudo añadir la foto.</string>
+    <string name="camera_unavailable">No hay ninguna app de cámara.</string>
+    <string name="cooked_photo_missing">La foto no está en este teléfono</string>
+    <string name="delete_recipe_body_photo">La receta se eliminará del historial y de todas las listas en las que esté, junto con tu foto. No se puede deshacer.</string>
+    <string name="delete_recipe_body_photos">La receta se eliminará del historial y de todas las listas en las que esté, junto con tus %1$d fotos. No se puede deshacer.</string>
 </resources>

@@ -64,18 +64,23 @@ enum UITestSeeding {
                 if let flag = Flag(rawValue: String(key)) { flags.set(flag, true) }
             }
         }
+        // "I made this" (#116): photos in a throwaway folder, emptied at every launch.
+        let photoDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestPhotos")
+        try? FileManager.default.removeItem(at: photoDirectory)
+        let photoStore = FilePhotoStore(directory: photoDirectory)
         return AppContainer(
-            recipeRepository: DefaultRecipeRepository(db: database, source: StubRecipeSource(), clock: clock),
+            recipeRepository: DefaultRecipeRepository(db: database, source: StubRecipeSource(), clock: clock, photos: photoStore),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock, photos: photoStore),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             clipFixtureHTML: clipFixtureHTML,
             featureFlags: flags,
-            shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock)
+            shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
+            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock)
         )
     }
 
@@ -160,7 +165,7 @@ enum UITestSeeding {
 
     /// The step `UITestStepShortener` writes a short version of (#100).
     static let chefStep = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
-    static let chefShortStep = "Oven to 350°F; butter a 9-inch tin."
+    static let chefShortStep = "Preheat oven to 350°F; butter a 9-inch tin."
 
     private static func seedChef(_ conn: SQLiteConnection, now: Int64) throws {
         try RecipeDao(db: conn).insert(RecipeRecord(

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "ShortStepCheck's words (#129): what a short step (Chef mode, #100) must keep and may add. Lowercase, one word each (letters, an apostrophe inside). actions, equipment and qualifiers: a word of these in the step must still be in the short step; an action right after a notAfter word is a noun ('the rest of the flour') and needn't be. functionWords: the only words a short step may add that the step doesn't have. abbreviations: [short, long] pairs that count as the same word. endings: [ending, replacement] pairs; a word matches another when both reduce to the same base by at most one of them ('whisking' is 'whisk', 'baking' is 'bake', 'stirring' is 'stir', a doubled last letter dropped). A language written without spaces (language.json spaced false) matches these as substrings, both ways: an entry in exactly one of the two fails.",
+  "actions": [
+    "preheat", "grease", "line", "cover", "uncover", "wrap", "press", "drain", "rinse", "soak", "strain",
+    "sift", "whisk", "beat", "cream", "fold", "knead", "roll", "stir", "mix", "combine", "blend", "puree",
+    "purée", "mash", "chop", "dice", "slice", "mince", "grate", "peel", "cut", "trim", "pound", "season",
+    "marinate", "brine", "rub", "coat", "dredge", "dust", "sprinkle", "drizzle", "brush", "spray", "spread",
+    "pour", "squeeze", "scrape", "shape", "boil", "simmer", "poach", "steam", "fry", "sauté", "saute", "sear",
+    "roast", "bake", "broil", "grill", "toast", "microwave", "melt", "reduce", "cool", "chill", "refrigerate",
+    "freeze", "thaw", "rest", "proof", "rise", "flip", "rotate", "toss", "crack", "whip", "skim", "baste",
+    "deglaze"
+  ],
+  "equipment": [
+    "oven", "pan", "skillet", "saucepan", "pot", "wok", "bowl", "dish", "tray", "sheet", "tin", "rack",
+    "griddle", "blender", "processor", "mixer", "spatula", "foil", "parchment", "paper", "towel", "lid",
+    "colander", "sieve", "strainer", "thermometer", "cooker", "fryer", "jug", "grater"
+  ],
+  "qualifiers": [
+    "not", "no", "never", "don't", "without", "unless", "if", "optional", "optionally", "alternative",
+    "alternatively", "instead", "until"
+  ],
+  "notAfter": ["the", "a", "an"],
+  "functionWords": [
+    "the", "a", "an", "and", "or", "then", "to", "of", "in", "into", "on", "onto", "at", "by", "for", "from",
+    "with", "over", "under", "up", "down", "out", "off", "through", "around", "about", "it", "its", "it's",
+    "them", "they", "their", "this", "that", "these", "those", "you", "your", "is", "are", "be", "will",
+    "should", "can", "until", "till", "while", "when", "once", "after", "before", "as", "so", "also", "just",
+    "again", "together", "back", "degrees", "degree"
+  ],
+  "abbreviations": [["temp", "temperature"], ["approx", "approximately"]],
+  "endings": [["ies", "y"], ["es", ""], ["s", ""], ["ed", ""], ["ed", "e"], ["d", ""], ["ing", ""], ["ing", "e"]]
+}

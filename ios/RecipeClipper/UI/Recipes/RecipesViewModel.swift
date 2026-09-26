@@ -36,6 +36,9 @@ final class RecipesViewModel {
     @ObservationIgnored private var historySubscription: AnyCancellable?
     @ObservationIgnored private var countSubscription: AnyCancellable?
     @ObservationIgnored private let library: LibraryPolicy?
+    /// Recently cooked (#116) only while its flag is on; stored, it reads as the default.
+    @ObservationIgnored private let cookedSort: Bool
+    var showsCookedSort: Bool { cookedSort }
     /// What the database last answered, in its own order, so a new sort needs no new query.
     @ObservationIgnored private var found: [RecipeSummary]?
 
@@ -46,17 +49,18 @@ final class RecipesViewModel {
 
     init(
         repository: RecipeRepository, preferences: AppPreferences, sleep: @escaping Sleep = Sleeps.real,
-        library: LibraryPolicy? = nil
+        library: LibraryPolicy? = nil, cookedSort: Bool = false
     ) {
+        self.cookedSort = cookedSort
         self.repository = repository
         self.preferences = preferences
         self.sleep = sleep
         self.library = library
         // Remembered in AppPreferences, so it survives leaving the screen; read now so the
         // first frame is right, then kept in step with what is stored.
-        uiState.sort = preferences.recipeSort
+        uiState.sort = Self.shown(preferences.recipeSort, cookedSort: cookedSort)
         sortSubscription = preferences.settings
-            .map(\.recipeSort)
+            .map { [cookedSort] in Self.shown($0.recipeSort, cookedSort: cookedSort) }
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] sort in self?.applySort(sort) }
@@ -134,6 +138,10 @@ final class RecipesViewModel {
     /// `recipes`, which the database gives newest viewed first, in `sort`'s order. Name follows
     /// the phone's language; Date added is newest first by id, which only ever grows
     /// (AUTOINCREMENT). Ties keep recency. Android's `RecipesViewModel.sorted`.
+    private static func shown(_ sort: RecipeSort, cookedSort: Bool) -> RecipeSort {
+        sort == .recentlyCooked && !cookedSort ? .recentlyViewed : sort
+    }
+
     static func sorted(_ recipes: [RecipeSummary], _ sort: RecipeSort) -> [RecipeSummary] {
         switch sort {
         case .recentlyViewed:
@@ -145,6 +153,12 @@ final class RecipesViewModel {
             }.map(\.element)
         case .dateAdded:
             return recipes.sorted { $0.id > $1.id }
+        case .recentlyCooked:
+            // #116: cooked ones first, latest cook first; the rest keep recency after them.
+            return recipes.enumerated().sorted { a, b in
+                let x = a.element.lastCookedDay ?? Int64.min, y = b.element.lastCookedDay ?? Int64.min
+                return x == y ? a.offset < b.offset : x > y
+            }.map(\.element)
         }
     }
 
@@ -172,7 +186,12 @@ final class RecipesViewModel {
 
     /// The snackbar timed out: the deletes stand.
     func onSnackbarDismissed() {
+        // Their photos (#116) were kept only for Undo.
+        let settled = capturedOrder.compactMap { captured[$0] }
         clearCaptured()
+        if !settled.isEmpty {
+            Task { for deleted in settled { await repository.forget(deleted) } }
+        }
     }
 
     private func clearCaptured() {

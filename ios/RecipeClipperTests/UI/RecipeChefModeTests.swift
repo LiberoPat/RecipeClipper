@@ -6,7 +6,7 @@ import XCTest
 final class RecipeChefModeTests: XCTestCase {
     private let oven = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
     private let bake = "Bake for 25 to 30 minutes, until the top is golden and springy."
-    private let shortOven = "Oven to 350°F; butter a 9-inch tin."
+    private let shortOven = "Preheat oven to 350°F; butter a 9-inch tin."
 
     private func recipe(language: String = "en") -> Recipe {
         Recipe(
@@ -51,7 +51,7 @@ final class RecipeChefModeTests: XCTestCase {
 
     func testShortStepsRenderTemperaturesLikeTheSteps() async throws {
         let vm = try await open(recipe(), model: model(), preferences: FakeAppPreferences(temperatureUnit: .celsius, chefMode: true))
-        XCTAssertEqual(vm.uiState.content.success?.shortInstructions.first, "Oven to 180°C; butter a 9-inch tin.")
+        XCTAssertEqual(vm.uiState.content.success?.shortInstructions.first, "Preheat oven to 180°C; butter a 9-inch tin.")
     }
 
     func testOffUnflaggedUnsupportedOrAnotherLanguageAsksNothing() async throws {

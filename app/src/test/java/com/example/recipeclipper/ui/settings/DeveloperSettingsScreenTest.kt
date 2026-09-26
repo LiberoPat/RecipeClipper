@@ -3,10 +3,12 @@ package com.example.recipeclipper.ui.settings
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
@@ -45,7 +47,10 @@ class DeveloperSettingsScreenTest {
         assertFalse(flags.isOn(Flag.MEAL_PLAN))
         compose.onNode(hasText("Changed from the default", substring = true)).assertIsDisplayed()
 
+        // With enough flags the button is below the fold of the lazy list.
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Reset to defaults"))
         compose.onNodeWithText("Reset to defaults").performClick()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("mealPlan"))
 
         mealPlan.assertIsOn()
         assertTrue(flags.isOn(Flag.MEAL_PLAN))
