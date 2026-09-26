@@ -17,8 +17,10 @@ Part of #99. Run on 2026-09-25 on the owner's Mac (M1 Pro, 32 GB, macOS 26.6.2) 
   wrong on 4 of 22 count brackets (a wrong figure on screen); JevK5 was no better there. For
   aisles, JevK5 (open weights, 4B) was right on 20 of 20 names the table can't file, at 0.5 s.
   Same-ingredient answers erred only toward "different", which the app never acts on.
-- **Chef mode: the check isn't enough.** Half the steps pass `ShortStepCheck`, but by hand 19 of
-  those 42 drop an action or ingredient, or invent one, and no number moves to catch it.
+- **Chef mode: the check wasn't enough.** Half the steps passed `ShortStepCheck`, but by hand 19
+  of those 42 dropped an action or ingredient, or invented one, and no number moved to catch it.
+  **#129** made the check keep the words too: on 78 replies read by hand, faithful among shown
+  rose from 38% to 76% (unfaithful shown 34 → 4), at the cost of 8 of 21 faithful ones.
 - Measured with a 3B stand-in (Apple Intelligence is off on this Mac; Gemini Nano is device
   only), on small samples. The phone models may do better or worse; the harness is ready to
   re-run.
@@ -167,6 +169,28 @@ something**, and the check can't see it because no number moved:
 So about **29% of steps got a short version that is both shorter and faithful**, and 24% of steps
 showed one that isn't.
 
+#### Re-run with the word check (#129, 2026-09-26)
+
+A fresh run over the site-check pages (103 steps). Its 78 shorter replies were read by hand into
+`tools/eval/gold/chef.jsonl` (21 faithful, 57 not; the recipes' ingredient lines in
+`gold/chef-recipes.jsonl`). `run.sh chef --no-llm` replays exactly those replies through the
+check; a fresh `run.sh chef` gave the same table.
+
+| Check | Shown | Faithful among shown | Unfaithful shown | Faithful rejected |
+|---|---:|---:|---:|---:|
+| Before (numbers, times and temperatures) | 55 | 21 (38%) | 34 | 0 of 21 |
+| After (#129: the words too) | 17 | 13 (76%) | 4 | 8 of 21 |
+
+- **Still shown, and wrong (4):** a dropped "re-cover" (the step's earlier "cover" is still
+  there), "according to the packet instructions" turned into its example's fixed 1 minute, a
+  dropped "the tray on the bottom might need a few extra minutes", a dropped "place the other
+  cardboard on top".
+- **Faithful, but rejected (8):** "if" dropped from an aside (2), a dropped thermometer, bowl or
+  "coat", "set oven" for "preheat", an added "placing" or "adhesion". The check has no synonyms,
+  on purpose: a doubtful short step shows as written.
+- So about 13% of steps now get a short version that is both shorter and faithful (20% before),
+  and 4% show one that isn't (33% before).
+
 ## Method
 
 **Outcomes.** Every item is scored as one of three things, because the product rule ("never show
@@ -229,7 +253,11 @@ doesn't already match and is `DecisionCandidates.close`; a name the table puts i
 
 **4. Chef mode.** Up to 8 steps per gold recipe (English, at least `ShortStepCheck.worthShortening`),
 shortened with the iOS `StepShortener` instructions, then `ShortStepCheck.accept`. Accepted
-pairs were read by hand for meaning, which the check can't judge.
+pairs were read by hand for meaning, which the check can't judge. For #129 every shorter reply
+was read by hand, whether the check passed it or not: faithful means a cook reading only the
+short step does the same thing (every action, ingredient, piece of equipment and cue kept,
+nothing added). The check gets the recipe's ingredient lines, as the app's repositories pass
+them.
 
 ## Caveats
 
@@ -292,6 +320,9 @@ wrong numbers, but by hand 19 of the 42 short steps it let through lost or inven
 A cheap extra gate: every ingredient name (from the recipe's own lines) and every cooking verb
 of the step must still be in the short version; that would have caught about half of these.
 Then re-measure with Apple's and Google's models, which are tuned for exactly this rewrite.
+**Done in #129** (the re-run above): the gate now also keeps ingredients, actions, equipment,
+qualifiers and time words and allows no new word; Chef mode stays off until a phone model is
+measured with it.
 
 **Nothing in the app changes in this PR.** The follow-ups are #125 (the regex bug), and the
 suggestions above, each the owner's call.
