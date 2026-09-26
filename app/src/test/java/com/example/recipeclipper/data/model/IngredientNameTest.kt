@@ -19,6 +19,13 @@ class IngredientNameTest {
         assertEquals("onions", name("2 medium onions, finely chopped"))
     }
 
+    @Test fun `drops an old-style unit, c, T or t`() {
+        assertEquals("heavy cream", name("1/2 c. heavy cream"))
+        assertEquals("flour", name("2 C flour"))
+        assertEquals("butter", name("2 T. butter"))
+        assertEquals("salt", name("1 t salt"))
+    }
+
     @Test fun `drops alternate measures, package sizes and compound amounts`() {
         assertEquals("all purpose flour", name("1 1/2 cups (190 g) all-purpose flour"))
         assertEquals("bread flour", name("1 cup/120 grams bread flour"))

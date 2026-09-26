@@ -39,6 +39,9 @@ enum IngredientScaler {
             #"\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# + unicodeFractions + #"])"#
     }
 
+    private static let celsiusAfter = JRegex(#"^\s*[Cc]\.?(?!\p{L})"#)
+    private static let temperatureNumber = JRegex(#"\d{2,3}"#)
+
     /// "1,5": the line writes decimals with a comma, so its output does too.
     static let decimalComma = JRegex(#"\d,\d{1,2}(?!\d)"#)
 
@@ -81,6 +84,15 @@ enum IngredientScaler {
 
         // A quantity followed by a unit. groups: 1 quantity, 2 space, 3 unit
         let qtyUnit: JRegex
+
+        /// "180 C water": a whole number TemperatureConverter would read as a bare Celsius
+        /// temperature, then a C, is no amount of cups (#135). `lead` is a `leading` match and
+        /// `rest` the text after it; the line stays as written, like a size after `notAnAmount`.
+        func temperature(_ lead: JMatch, _ rest: String) -> Bool {
+            IngredientScaler.celsiusAfter.containsMatch(in: rest) && [lead[2], lead[4]].filter { !$0.isEmpty }.allSatisfy {
+                IngredientScaler.temperatureNumber.matchEntire($0) != nil && TemperatureConverter.plausibleCelsius.contains(Int($0) ?? -1)
+            }
+        }
 
         // "1 cup (120 g) flour": a second measure of the same amount, right after a unit word.
         // A parenthesis straight after the number ("1 (14 oz) can") or after a container word
@@ -266,7 +278,7 @@ enum IngredientScaler {
             let text = line.u16Substring(from: start)
             guard let match = p.leading.find(text) else { return nil }
             let rest = text.u16Substring(from: match.end)
-            if p.notAnAmount.containsMatch(in: rest) { return nil }
+            if p.notAnAmount.containsMatch(in: rest) || p.temperature(match, rest) { return nil }
             let measure = p.unitAtStart.containsMatch(in: rest)
             // "or 2 small onions": an alternative needs a unit to be read as one (#61).
             if alternative && !measure { return nil }

@@ -14,9 +14,11 @@ enum DecisionRule {
 
     static func judge(_ kind: DecisionKind, _ replies: [DecisionReply]) -> String {
         guard replies.count == asks else { return DecisionKind.unsure }
-        let answers = replies.map { $0.answer.kTrimmed.lowercased() }
+        let answers = replies.map { DecisionQuestion.normalize($0.answer) }
         let first = answers[0]
-        let agreed = kind.options.contains(first) && answers.allSatisfy { $0 == first }
+        // A free-text answer (a name) is any agreed non-empty text; its caller checks it.
+        let definite = kind.freeText ? !first.isEmpty && first != DecisionKind.unsure : kind.options.contains(first)
+        let agreed = definite && answers.allSatisfy { $0 == first }
         let sure = replies.allSatisfy { $0.confidence.kTrimmed.lowercased() == "high" }
         return agreed && sure ? first : DecisionKind.unsure
     }
@@ -59,11 +61,22 @@ enum DecisionPrompts {
             (instructions, text) = (sameGrocery, "Shopping list items (\(language)): \"\(names[0])\" and \"\(names[names.count - 1])\"")
         case .trailingText:
             (instructions, text) = (trailing, "Text after the ingredient (\(language)): \(question.input)")
+        case .ingredientName:
+            (instructions, text) = (name, "Shopping list line (\(language)): \(question.input)")
         }
-        let closing = "\nAnswer with one of: \(options.joined(separator: ", ")). Give your confidence: high, medium or low. "
+        let answer = question.kind.freeText ? "the name, copied exactly from the line, or \"unsure\""
+            : "one of: \(options.joined(separator: ", "))"
+        let closing = "\nAnswer with \(answer). Give your confidence: high, medium or low. "
             + "Answer \"unsure\" whenever you are not certain."
         return DecisionPrompt(kind: question.kind, instructions: instructions + closing, text: text, options: options)
     }
+
+    private static let name = """
+        A shopping list line from a recipe: an amount, maybe a unit, the ingredient's name, and maybe other
+        text after the name. What is the ingredient's name? Copy only its words from the line, without the
+        amount, the unit or anything after the name: "2 onions dfsafs" is "onions", "1 cup rice flour xx"
+        is "rice flour", "3 ripe tomatoes" is "ripe tomatoes".
+        """
 
     private static let count = """
         A recipe's ingredient line starts with a count of items and has an amount in brackets after the name.

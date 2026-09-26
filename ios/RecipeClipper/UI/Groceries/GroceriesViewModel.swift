@@ -94,7 +94,8 @@ final class GroceriesViewModel {
     private func askGroceryQuestions(_ items: [GroceryItem], _ current: Decisions) {
         guard let decisions else { return }
         let unchecked = items.filter { !$0.checked }
-        let open = (GroceryDecisions.trailingTexts(unchecked, decisions: current) + GroceryDecisions.samePairs(unchecked, decisions: current))
+        let open = (GroceryDecisions.ingredientNames(unchecked) + GroceryDecisions.trailingTexts(unchecked, decisions: current)
+            + GroceryDecisions.samePairs(unchecked, decisions: current))
             .filter { !current.isAnswered($0) && askedGrocery.insert($0).inserted }
         if open.isEmpty { return }
         Task {

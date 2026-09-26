@@ -12,6 +12,13 @@ func settleMain() async {
     }
 }
 
+/// Settles until `done` holds (or about ten seconds pass), for background work whose timing
+/// varies under load: the caller's asserts then check the state, not the clock.
+@MainActor
+func settleMain(until done: () -> Bool) async {
+    for _ in 0 ..< 250 where !done() { await settleMain() }
+}
+
 /// A debounce that doesn't really wait: it yields once, then honours cancellation, so rapid
 /// changes that replace each other before running still collapse to the last one.
 let immediateSleep: Sleep = { _ in

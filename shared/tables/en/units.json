@@ -1,17 +1,19 @@
 {
   "schemaVersion": 1,
   "language": "en",
-  "about": "Unit words (UnitPatterns and MeasureUnit.fromText). patterns: regex fragments, tried in this order as one alternation; each must stay a whole word (the code adds an optional trailing period and a no-letter lookahead). names: how matched text maps to a unit, first rule wins; the text is lowercased, its periods removed and its whitespace collapsed, then it names the unit when it equals one of exact or starts with one of prefixes. unit is the code's MeasureUnit name.",
+  "about": "Unit words (UnitPatterns and MeasureUnit.fromText). patterns: regex fragments, tried in this order as one alternation; each must stay a whole word (the code adds an optional trailing period and a no-letter lookahead). They match case-insensitively, except inside (?-i:...): the old-style 'T' is a tablespoon and 't' a teaspoon (#135). A one-letter unit also refuses a hyphen or apostrophe after it ('T-bone'). names: how matched text maps to a unit, first rule wins; the text has its periods removed and its whitespace collapsed, and is lowercased unless the rule is caseSensitive, then it names the unit when it equals one of exact or starts with one of prefixes. unit is the code's MeasureUnit name.",
   "patterns": [
-    "fl\\.?\\s*oz", "fluid\\s+ounces?", "tsps?", "teaspoons?", "tbsps?", "tbs", "tablespoons?", "cups?",
+    "fl\\.?\\s*oz", "fluid\\s+ounces?", "tsps?", "teaspoons?", "tbsps?", "tbs", "tablespoons?", "cups?", "c(?![-'’])",
     "millilit(?:er|re)s?", "ml", "kilograms?", "kilos?", "kg", "grams?", "g", "lit(?:er|re)s?", "l",
-    "sticks?", "ounces?", "oz", "lbs?", "pounds?"
+    "sticks?", "ounces?", "oz", "lbs?", "pounds?", "(?-i:[Tt])(?![-'’])"
   ],
   "names": [
+    { "unit": "TBSP", "exact": ["T"], "caseSensitive": true },
+    { "unit": "TSP", "exact": ["t"], "caseSensitive": true },
     { "unit": "FL_OZ", "prefixes": ["fl"] },
     { "unit": "TSP", "prefixes": ["tsp", "teaspoon"] },
     { "unit": "TBSP", "prefixes": ["tbs", "tablespoon"] },
-    { "unit": "CUP", "prefixes": ["cup"] },
+    { "unit": "CUP", "exact": ["c"], "prefixes": ["cup"] },
     { "unit": "ML", "exact": ["ml"], "prefixes": ["millil"] },
     { "unit": "KG", "exact": ["kg"], "prefixes": ["kilo"] },
     { "unit": "G", "exact": ["g"], "prefixes": ["gram"] },

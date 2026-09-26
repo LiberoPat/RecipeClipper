@@ -44,6 +44,10 @@ object TemperatureConverter {
         val tempAtStart = Regex("""^$temp""")
     }
 
+    /** A bare "180 C" or "350 F" is a temperature only in these ranges; the scaler reads them too (#135). */
+    internal val PLAUSIBLE_CELSIUS = 40..320
+    private val PLAUSIBLE_FAHRENHEIT = 100..600
+
     private val PAIR_JOINER = Regex("""^\s*([(/])\s*""")
     private val CLOSING_PAREN = Regex("""^\s*\)""")
 
@@ -138,7 +142,7 @@ object TemperatureConverter {
         val connector = match.groupValues[4]
         val explicit = unit.length > 1 || connector.any { it in "°º˚" } || connector.isNotBlank()
         if (!explicit) {
-            val range = if (scale == Scale.F) 100..600 else 40..320
+            val range = if (scale == Scale.F) PLAUSIBLE_FAHRENHEIT else PLAUSIBLE_CELSIUS
             if (low !in range || (high != null && high !in range)) return null
         }
         return Temp(low, match.groupValues[2], high, scale)

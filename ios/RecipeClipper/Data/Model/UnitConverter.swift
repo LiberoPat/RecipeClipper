@@ -170,7 +170,7 @@ enum UnitConverter {
         let words = p.words
         guard let lead = p.scaler.leading.find(line) else { return .failed }
         let afterQty = line.u16Substring(from: lead.end)
-        if p.scaler.notAnAmount.containsMatch(in: afterQty) { return .failed }
+        if p.scaler.notAnAmount.containsMatch(in: afterQty) || p.scaler.temperature(lead, afterQty) { return .failed }
 
         guard let low = p.scaler.parse(lead[2]) else { return .failed }
         let upperText = lead[4]

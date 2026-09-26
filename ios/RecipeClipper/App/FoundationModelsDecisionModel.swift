@@ -45,6 +45,9 @@ final class FoundationModelsDecisionModel: DecisionModel {
                 case .trailingText:
                     let r = try await session.respond(to: prompt.text, generating: TrailingReply.self, options: options).content
                     return DecisionReply(answer: "\(r.answer)", confidence: "\(r.confidence)")
+                case .ingredientName:
+                    let r = try await session.respond(to: prompt.text, generating: NameReply.self, options: options).content
+                    return DecisionReply(answer: r.answer, confidence: "\(r.confidence)")
                 }
             } catch {
                 return nil
@@ -80,6 +83,13 @@ final class FoundationModelsDecisionModel: DecisionModel {
 
 @available(iOS 26, *) @Generable struct TrailingReply {
     var answer: TrailingAnswer
+    var confidence: ReplyConfidence
+}
+
+// Free text: the name as written in the line, or "unsure". `GroceryDecisions.nameSplit` checks it.
+@available(iOS 26, *) @Generable struct NameReply {
+    @Guide(description: "The ingredient's name, copied exactly from the line, or unsure")
+    var answer: String
     var confidence: ReplyConfidence
 }
 
