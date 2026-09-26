@@ -69,6 +69,34 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertEqual(totals, ["5 eggs"])
     }
 
+    func testJunkWithNoSeparatorIsHiddenOnceTheModelNamesTheIngredient() async {
+        await add("2 onions dfsafs", "3 onions")
+        let name = DecisionQuestion.ingredientName("2 onions dfsafs", language: "en")
+        let junk = DecisionQuestion.trailingText("dfsafs", language: "en")
+        let decisions = FakeDecisionRepository([name: "onions", junk: "junk"])
+        let vm = GroceriesViewModel(
+            repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), decisions: decisions
+        )
+        for _ in 0..<4 { await settleMain() }
+
+        XCTAssertEqual(decisions.asked.filter { $0 == name || $0 == junk }, [name, junk])
+        guard case .combined(_, let text, _) = rows(vm).first else { return XCTFail("not combined") }
+        XCTAssertEqual(text, "5 onions")
+        XCTAssertEqual(GroceryCombiner.lines(rows(vm)[0]), ["2 onions", "3 onions"])
+        XCTAssertEqual(vm.shareText(title: "Groceries", aisleName: \.key), "Groceries\n\nproduce\n- 5 onions")
+        XCTAssertTrue(repository.items.value.contains { $0.text == "2 onions dfsafs" })
+    }
+
+    func testWithNoNameAnsweredTheJunkLineShowsExactlyAsToday() async {
+        await add("2 onions dfsafs", "3 onions")
+        let vm = GroceriesViewModel(
+            repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), decisions: FakeDecisionRepository([:])
+        )
+        for _ in 0..<4 { await settleMain() }
+        XCTAssertEqual(vm.uiState.sections, GroceryCombiner.sections(repository.items.value))
+        XCTAssertTrue(rows(vm).contains { $0.items.contains { $0.text == "2 onions dfsafs" } })
+    }
+
     func testWithoutAnswersTheGroceryListIsExactlyAsToday() async {
         await add("2 ears of corn", "2 corn", "2 eggs, beaten", "3 eggs")
         let vm = GroceriesViewModel(
