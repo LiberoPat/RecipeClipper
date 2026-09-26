@@ -49,22 +49,26 @@ class DefaultDecisionRepository @Inject constructor(
     // One question at a time, so two screens never ask the same one twice.
     private val lock = Mutex()
 
+    // Count brackets need their own flag too (#127): off, a cached answer is never applied.
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observe(): Flow<Decisions> =
-        flags.values.map { it.isOn(Flag.AI_DECISIONS) }.distinctUntilChanged().flatMapLatest { on ->
-            if (!on) flowOf(Decisions.NONE)
-            else dao.observe().orEmptyOnError(log, "observeDecisions").map { rows ->
-                Decisions(
-                    rows.mapNotNull { row ->
-                        DecisionKind.fromKey(row.kind)?.let { DecisionQuestion(it, row.input, row.language) to row.answer }
-                    }.toMap()
-                )
+        flags.values.map { it.isOn(Flag.AI_DECISIONS) to it.isOn(Flag.AI_COUNT_BRACKETS) }.distinctUntilChanged()
+            .flatMapLatest { (on, brackets) ->
+                if (!on) flowOf(Decisions.NONE)
+                else dao.observe().orEmptyOnError(log, "observeDecisions").map { rows ->
+                    Decisions(
+                        rows.mapNotNull { row ->
+                            DecisionKind.fromKey(row.kind)?.takeIf { brackets || it != DecisionKind.COUNT_BRACKET }
+                                ?.let { DecisionQuestion(it, row.input, row.language) to row.answer }
+                        }.toMap()
+                    )
+                }
             }
-        }
 
     override suspend fun decide(questions: Collection<DecisionQuestion>) {
         if (!flags.isOn(Flag.AI_DECISIONS)) return
-        for (question in questions.distinct()) {
+        val brackets = flags.isOn(Flag.AI_COUNT_BRACKETS)
+        for (question in questions.distinct().filter { brackets || it.kind != DecisionKind.COUNT_BRACKET }) {
             lock.withLock { ask(question) }
         }
     }
