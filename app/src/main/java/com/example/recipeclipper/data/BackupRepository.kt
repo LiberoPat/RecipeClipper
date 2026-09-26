@@ -43,6 +43,13 @@ interface BackupRepository {
     suspend fun import(backup: BackupPackage): BackupResult<ImportSummary>
 }
 
+/** Reads a picked file and merges it in: Settings' Import and Home's Restore (#150) alike. */
+suspend fun BackupRepository.importFile(files: BackupFiles, uri: String): BackupResult<ImportSummary> =
+    when (val picked = files.read(uri)) {
+        is BackupResult.Failure -> picked
+        is BackupResult.Success -> import(picked.value)
+    }
+
 /**
  * The real [BackupRepository]. Database failures are logged and become [BackupError.ExportFailed]
  * or [BackupError.SaveFailed] (the import is one transaction, so a failed one wrote nothing);

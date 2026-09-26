@@ -26,6 +26,8 @@ class RecipeUITestCase: XCTestCase {
         case cook
         /// "Sponge Cake" alone: a long step the stub model shortens (Chef mode, #100), then "Serve."
         case chef
+        /// Twenty realistic recipes, each in a list, for the walkthrough videos (#106).
+        case walkthrough
     }
 
     override func setUp() {

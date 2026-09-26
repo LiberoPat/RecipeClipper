@@ -1,5 +1,7 @@
 package com.example.recipeclipper.ui.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +44,9 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.common.RecipeRow
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.settings.BackupStatus
+import com.example.recipeclipper.ui.settings.BackupStatusText
+import com.example.recipeclipper.ui.settings.IMPORT_MIME_TYPES
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -61,6 +66,14 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val now = remember { System.currentTimeMillis() }
+    // Restore from a backup file (#150): the same file picker as Settings' Import.
+    val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { viewModel.onRestorePicked(it.toString()) }
+    }
+    // The one-time folder card (#150): the system's folder picker.
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        viewModel.onBackupFolderPicked(uri?.toString())
+    }
     // Computed here, not inside the LazyColumn content lambda: that lambda isn't itself a
     // composable context (only the item {} blocks nested in it are), so stringResource can't
     // be called directly from it.
@@ -155,6 +168,33 @@ fun HomeScreen(
                     }
                 }
 
+                // A fresh install with an empty library (#150): bring a backup back in.
+                if (state.showsRestore && viewModel.canRestore) {
+                    item {
+                        TextButton(
+                            onClick = { restorePicker.launch(IMPORT_MIME_TYPES) },
+                            enabled = state.restore != BackupStatus.Importing,
+                            modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp)
+                        ) {
+                            Text(
+                                stringResource(R.string.home_restore_backup),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                        BackupStatusText(state.restore)
+                    }
+                }
+
+                if (state.offersBackupFolder) {
+                    item {
+                        BackupFolderCard(
+                            onChoose = { folderPicker.launch(null) },
+                            onDismiss = viewModel::onBackupPromptDismissed
+                        )
+                    }
+                }
+
                 // Both entries are unconditional. The first (then History) used to appear only once there was a
                 // "continue cooking" recipe, so the block changed shape depending on what was
                 // in the database; a fixed block is easier to aim at than one that moves.
@@ -170,6 +210,41 @@ fun HomeScreen(
                     NavRow(stringResource(R.string.recipes_title), onOpenRecipes)
                     NavRow(stringResource(R.string.nav_lists), onOpenLists)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * "Keep a backup copy?" (#150): asked once, after the first recipe, never at launch and never in
+ * the way of a share. Either answer puts it away for good; Settings keeps the folder row.
+ */
+@Composable
+private fun BackupFolderCard(onChoose: () -> Unit, onDismiss: () -> Unit) {
+    Column(Modifier.padding(top = 24.dp)) {
+        Hairline()
+        Spacer(Modifier.height(16.dp))
+        Text(stringResource(R.string.backup_prompt_title), style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.backup_prompt_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(Modifier.offset(x = (-12).dp)) {
+            TextButton(onClick = onChoose) {
+                Text(
+                    stringResource(R.string.backup_prompt_choose),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+            TextButton(onClick = onDismiss) {
+                Text(
+                    stringResource(R.string.backup_prompt_not_now),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

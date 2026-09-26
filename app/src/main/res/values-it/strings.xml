@@ -473,4 +473,22 @@
     <string name="cooked_photo_missing">Foto non presente su questo telefono</string>
     <string name="delete_recipe_body_photo">La ricetta verrà rimossa dalla cronologia e da tutte le liste in cui si trova, insieme alla tua foto. L\'operazione non si può annullare.</string>
     <string name="delete_recipe_body_photos">La ricetta verrà rimossa dalla cronologia e da tutte le liste in cui si trova, insieme alle tue %1$d foto. L\'operazione non si può annullare.</string>
+    <!-- The automatic backup copy (#150). -->
+    <string name="auto_backup_title">Copia di backup automatica</string>
+    <string name="auto_backup_description">Tiene una copia di tutto, foto comprese, in una cartella a tua scelta, e la aggiorna dopo ogni modifica</string>
+    <string name="auto_backup_folder_title">Cartella di backup</string>
+    <string name="auto_backup_folder_not_chosen">Non ancora scelta. Tocca per sceglierne una, come Google Drive.</string>
+    <string name="auto_backup_folder_lost">Recipe Clipper non riesce più ad accedere a questa cartella. Tocca per sceglierla di nuovo.</string>
+    <string name="auto_backup_folder_refused">Quella cartella non può essere usata per i backup. Scegline un\'altra.</string>
+    <string name="auto_backup_last">Ultimo backup: %1$s</string>
+    <string name="auto_backup_never">Nessun backup ancora</string>
+    <string name="auto_backup_failed">Non è stato possibile scrivere l\'ultima copia. Prova «Esegui backup ora».</string>
+    <string name="auto_backup_nudge">Il tuo ultimo backup ha più di 30 giorni e nessuna copia viene fatta automaticamente.</string>
+    <string name="auto_backup_now">Esegui backup ora</string>
+    <string name="auto_backup_running">Backup in corso…</string>
+    <string name="backup_prompt_title">Tenere una copia di backup?</string>
+    <string name="backup_prompt_body">Scegli una cartella, come Google Drive, e Recipe Clipper ci terrà una copia delle tue ricette e foto.</string>
+    <string name="backup_prompt_choose">Scegli una cartella</string>
+    <string name="backup_prompt_not_now">Non ora</string>
+    <string name="home_restore_backup">Ripristina da un file di backup</string>
 </resources>

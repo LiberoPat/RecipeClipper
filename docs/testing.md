@@ -117,6 +117,12 @@ import writes nothing; `SettingsViewModelTest` covers the Your recipes rows.
 `BackupDaoTest` (Robolectric) runs the import transaction against real SQL
 (IGNORE keeps `addedAt`, rollback on a bad file); iOS's `BackupDaoTests` do the
 same on in-memory SQLite.
+The automatic backup copy (#150): `AutoBackupPolicyTest` / `AutoBackupPolicyTests` pin the
+rules on both platforms (due, nudge, names, which copies go, the fingerprint);
+`AutoBackupTest` / `AutoBackupTests` run a copy against a fake export and folder; the
+Settings rows and Home's restore and folder card are `SettingsAutoBackupTest` and
+`HomeBackupTest` (Robolectric) and `SettingsAutoBackupTests` (iOS). The real Google Drive
+folder, WorkManager with the app closed, and iCloud Drive need a device (`docs/decisions.md`).
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to
@@ -412,6 +418,36 @@ release): peak footprint at "import finished" was 41.8 MB for a 250 KB page,
 44.3 MB for a 2 MB page, 51.0 MB for the `/blocked` (403) page, and 67.8 MB
 for a 10 MB page — all comfortably under the ~120 MB estimate, and run to
 run this varies by several MB on the simulator.
+
+## Walkthrough videos (#106)
+
+Scripted walkthroughs of the new features, one short video per feature per platform, for
+people to watch rather than to catch regressions (the feature suites do that). They seed
+twenty realistic recipes, each in a list (iOS `UITestWalkthroughSeed`, Android
+`WalkthroughSeed`), turn flags on as Developer settings would, and pause between steps.
+Where a feature needs the on-device model, a stub answers: Chef mode's short steps and the
+grocery merging's typed decisions ("AI answers simulated": close names "same", trailing
+text a "note", or "junk" if it holds "dfsafs", and the name of a line ending in "dfsafs"
+with no separator: the Banana Bread's "2 eggs dfsafs", for the junk-hiding clip). The
+page-extraction recipe is stored as `EXTRACTED`, so no model runs for it.
+
+- **iOS:** `WalkthroughUITests` (`ios/RecipeClipperUITests/WalkthroughUITests*.swift`),
+  skipped unless `TEST_RUNNER_RC_WALKTHROUGH=1`, so CI and the nightly UI run skip them.
+  `scripts/record-walkthroughs-ios.sh <sim-udid> [out-dir] [test …]` builds, records each
+  test with `simctl io recordVideo --codec h264`, trims to the test's
+  `WALKTHROUGH-START`/`END` marks and re-encodes with `avconvert` (1280 high). Use your own
+  simulator; it is switched to light mode.
+- **Android:** `MealPlanWalkthroughTest` and `RecipesWalkthroughTest` in
+  `app/src/androidTest/.../walkthrough`, run only under `-Pwalkthrough`, which swaps in
+  `WalkthroughRunner` (Hilt's test Application, so `@UninstallModules(OnDeviceModelModule)`
+  can bind the stubs); under the plain runner they skip. Each test records itself with
+  `screenrecord`. `scripts/record-walkthroughs-android.sh <serial> [out-dir] [Class#test …]`
+  installs both APKs, clears the app before each test (`pm clear`), pulls and re-encodes the
+  video. It wipes the app's data: use the agents' emulator (emulator-5580, under the lock),
+  never a device someone uses.
+- Output defaults to `~/Downloads/RecipeClipper-walkthroughs/` (`ios-NN-name.mp4`,
+  `android-NN-name.mp4`), never the repo. On a miss, the Android script saves the screen at
+  `/tmp/android-NN-name-miss.png`; the iOS log is under `$DERIVED_DATA/raw/`.
 
 ## CI
 
