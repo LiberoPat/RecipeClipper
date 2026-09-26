@@ -83,6 +83,16 @@ final class SettingsAutoBackupTests: XCTestCase {
         XCTAssertEqual(summary.recipesAdded, 3)
     }
 
+    /// The tour's sample alone (#151) is nothing of the user's: restore is still offered.
+    func testALibraryHoldingOnlyTheSampleStillOffersRestore() async {
+        let repository = FakeRecipeRepository()
+        repository.sample = 7
+        repository.recent.send([testSummary(7)])
+        let vm = HomeViewModel(repository: repository, backups: FakeBackupRepository(), files: FakeBackupFiles())
+        await settleMain { vm.uiState.showsRestore }
+        XCTAssertTrue(vm.uiState.showsRestore)
+    }
+
     func testALibraryWithRecipesOffersNoRestore() async {
         let repository = FakeRecipeRepository()
         repository.recent.send([testSummary(1)])

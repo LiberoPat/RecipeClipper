@@ -14,24 +14,28 @@ import os
 final class ShareViewController: UIViewController {
 
     private let viewModel: ShareImportViewModel
+    private let repository: RecipeRepository?
     private var started = false
 
     override init(nibName: String?, bundle: Bundle?) {
-        viewModel = Self.makeViewModel()
+        (viewModel, repository) = Self.makeViewModel()
         super.init(nibName: nibName, bundle: bundle)
     }
 
     required init?(coder: NSCoder) {
-        viewModel = Self.makeViewModel()
+        (viewModel, repository) = Self.makeViewModel()
         super.init(coder: coder)
     }
 
-    private static func makeViewModel() -> ShareImportViewModel {
+    /// The card's ViewModel, and its repository, which the first-run tour's note (#151) reads too.
+    private static func makeViewModel() -> (ShareImportViewModel, RecipeRepository?) {
         let db = openDatabase()
-        return ShareImportViewModel(
-            repository: db.map(makeRepository), connectivity: PathConnectivity(),
+        let repository = db.map(makeRepository)
+        let viewModel = ShareImportViewModel(
+            repository: repository, connectivity: PathConnectivity(),
             makeReceiveList: { db.flatMap(makeReceiveList) }
         )
+        return (viewModel, repository)
     }
 
     /// The database file the app reads. Nil if the App Group container is missing (this build
@@ -103,7 +107,12 @@ final class ShareViewController: UIViewController {
         started = true
         let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
             .flatMap { $0.attachments ?? [] }
-        Task { @MainActor [viewModel] in
+        Task { @MainActor [viewModel, repository] in
+            // A new user's first share, before the app was ever opened: the welcome (#151)
+            // waits for the app's first opening instead of being skipped for this recipe.
+            if let repository, let defaults = UserDefaults(suiteName: AppGroup.identifier) {
+                await FirstRunTour.noteShare(defaults: defaults, recipes: repository)
+            }
             let input = await SharedItems.read(from: providers)
             // No link: perhaps a list sent from another phone (#149).
             let text = input == nil ? await SharedItems.text(from: providers) : nil

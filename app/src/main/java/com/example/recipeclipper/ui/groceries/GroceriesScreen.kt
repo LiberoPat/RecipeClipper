@@ -72,11 +72,13 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryCombiner
 import com.example.recipeclipper.data.model.GroceryCombiner.Row as GroceryRow
+import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import com.example.recipeclipper.ui.tour.TipCallout
 
 /**
  * The Groceries tab (#50): "Add an item", then the list by aisle. Lines naming the same
@@ -173,6 +175,8 @@ fun GroceriesScreen(
                             }
                         )
                     }
+                    // The first Groceries visit (#151).
+                    TipCallout(Tip.GROCERIES, Modifier.padding(top = 4.dp, bottom = 4.dp))
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = state.draft,
