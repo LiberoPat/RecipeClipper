@@ -29,19 +29,15 @@ extension WalkthroughUITests {
         for title in ["Chicken Adobo", "Weeknight Chili", "Chicken Adobo"] { // Adobo twice: "× 2"
             open(title)
             recipeMenu("Add to groceries")
-            app.swipeUp()
-            pause()
             require(app.buttons["addToGroceriesButton"], "the sheet's button").tap()
-            pause()
+            pause(0.8)
             back()
-            pause()
         }
         tab("Groceries")
         pause()
-        type("milk\n", into: app.textFields["Add an item"])
         for item in ["chicken thighs", "soy sauce"] {
             require(line(item), item).tap()
-            pause(2)
+            pause(1.5)
         }
         app.swipeUp()
         pause(2)
