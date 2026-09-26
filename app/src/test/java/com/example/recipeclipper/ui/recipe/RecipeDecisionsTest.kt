@@ -76,7 +76,8 @@ class RecipeDecisionsTest {
                 SavedStateHandle(mapOf(RecipeViewModel.RECIPE_ID_ARG to 1L)),
                 FakeRecipeRepository().apply { openResult = recipe.copy(ingredients = lines) },
                 FakeAppPreferences(), Clock { testScheduler.currentTime },
-                FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler(), decisionRepository = decisions
+                FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler(),
+                featureFlags = flags(Flag.AI_DECISIONS, Flag.AI_COUNT_BRACKETS), decisionRepository = decisions
             )
             advanceUntilIdle()
             assertEquals(emptyList<DecisionQuestion>(), decisions.asked)

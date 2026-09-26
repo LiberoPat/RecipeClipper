@@ -87,6 +87,35 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertTrue(repository.items.value.contains { $0.text == "2 onions dfsafs" })
     }
 
+    func testALoneLinesTrailingTextIsAskedAboutHiddenWhenJunkAndShownWhenANote() async {
+        await add("2 eggs (dfsafs -", "1 cup milk, warmed")
+        let junk = DecisionQuestion.trailingText("(dfsafs -", language: "en")
+        let note = DecisionQuestion.trailingText(", warmed", language: "en")
+        let decisions = FakeDecisionRepository([junk: "junk", note: "note"])
+        let vm = GroceriesViewModel(
+            repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), decisions: decisions
+        )
+        let shown = { self.rows(vm).compactMap { row -> String? in if case .single(let item) = row { return item.text } else { return nil } } }
+        await settleMain { Set(shown()) == ["2 eggs", "1 cup milk, warmed"] }
+
+        XCTAssertEqual(decisions.asked.filter { $0 == junk }.count, 1)
+        XCTAssertTrue(decisions.asked.contains(note))
+        XCTAssertEqual(Set(shown()), ["2 eggs", "1 cup milk, warmed"])
+        XCTAssertTrue(repository.items.value.contains { $0.text == "2 eggs (dfsafs -" })
+    }
+
+    func testALoneLineWithNoAnswerShowsExactlyAsToday() async {
+        await add("2 eggs (dfsafs -", "1 cup milk, warmed")
+        let junk = DecisionQuestion.trailingText("(dfsafs -", language: "en")
+        let decisions = FakeDecisionRepository([:])
+        let vm = GroceriesViewModel(
+            repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), decisions: decisions
+        )
+        await settleMain { decisions.asked.contains(junk) }
+        XCTAssertTrue(decisions.asked.contains(junk))
+        XCTAssertEqual(vm.uiState.sections, GroceryCombiner.sections(repository.items.value))
+    }
+
     func testWithNoNameAnsweredTheJunkLineShowsExactlyAsToday() async {
         await add("2 onions dfsafs", "3 onions")
         let vm = GroceriesViewModel(

@@ -8,10 +8,12 @@ final class RecipeDecisionsTests: XCTestCase {
     private let apples = "3 large apples, peeled and sliced (about 3 cups)"
     private var question: DecisionQuestion { .countBracket(apples, language: "en") }
 
-    private func open(_ decisions: FakeDecisionRepository?, flagsOn: [Flag]) async -> RecipeViewModel {
+    private func open(
+        _ decisions: FakeDecisionRepository?, flagsOn: [Flag], ingredients: [String]? = nil
+    ) async -> RecipeViewModel {
         let repository = FakeRecipeRepository()
         repository.openResult = Recipe(
-            name: "Apple Crumble", image: nil, ingredients: [apples, "1 cup sugar"], instructions: ["Bake."],
+            name: "Apple Crumble", image: nil, ingredients: ingredients ?? [apples, "1 cup sugar"], instructions: ["Bake."],
             prepTime: nil, cookTime: nil, totalTime: nil, yield: "4 servings",
             sourceUrl: "https://example.com/crumble", id: 1, language: "en"
         )
@@ -41,5 +43,21 @@ final class RecipeDecisionsTests: XCTestCase {
         XCTAssertTrue(decisions.asked.isEmpty)
         XCTAssertEqual(vm.uiState.content.success?.ingredients, off.uiState.content.success?.ingredients)
         XCTAssertEqual(vm.uiState.content.success?.ingredients, [apples, "2 cup sugar"])
+    }
+
+    func testTheReadingViewNeverAsksAboutGroceryTextAndKeepsTheLineAsWritten() async {
+        let lines = ["2 eggs (dfsafs -", "2 onions dfsafs"]
+        let decisions = FakeDecisionRepository([
+            .trailingText("(dfsafs -", language: "en"): "junk",
+            .ingredientName("2 onions dfsafs", language: "en"): "onions",
+            .trailingText("dfsafs", language: "en"): "junk",
+        ])
+        let off = await open(nil, flagsOn: [], ingredients: lines)
+        let vm = await open(decisions, flagsOn: [.aiDecisions, .aiCountBrackets], ingredients: lines)
+        XCTAssertTrue(decisions.asked.isEmpty)
+        let shown = vm.uiState.content.success?.ingredients ?? []
+        XCTAssertEqual(shown, off.uiState.content.success?.ingredients)
+        XCTAssertEqual(shown.count, 2)
+        XCTAssertTrue(shown.allSatisfy { $0.contains("dfsafs") })
     }
 }
