@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import UIKit
 
 /// Debug builds only: `-uiTestSeed <scenario>` makes the app build its container for the
 /// XCUITest suite (RecipeClipperUITests) instead of the real one. Nothing touches the disk or
@@ -9,7 +10,10 @@ import Foundation
 ///   - a throwaway UserDefaults suite, wiped at launch unless `-uiTestKeepPrefs` is also passed
 ///     (which is how a test proves a setting survives a relaunch);
 ///   - feature flags (#87) in their own throwaway suite, wiped likewise, then overridden on
-///     through the store for each key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`).
+///     through the store for each key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`);
+///   - `-uiTestPasteboard <text>` puts `text` on the pasteboard as the app's own copy, so "Paste
+///     a list" (#149) reads it without the paste prompt, which a UI test can't rely on. A launch
+///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline.
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -23,6 +27,7 @@ enum UITestSeeding {
     static let defaultsSuite = "RecipeClipperUITests"
     static let flagsFlag = "-uiTestFlags"
     static let flagsSuite = "RecipeClipperUITestsFlags"
+    static let pasteboardFlag = "-uiTestPasteboard"
 
     /// The title every import resolves to under test.
     static let stubRecipeTitle = "Stub Chicken Soup"
@@ -58,6 +63,9 @@ enum UITestSeeding {
             for key in arguments[index + 1].split(separator: ",") {
                 if let flag = Flag(rawValue: String(key)) { flags.set(flag, true) }
             }
+        }
+        if let index = arguments.firstIndex(of: pasteboardFlag), index + 1 < arguments.count {
+            UIPasteboard.general.string = arguments[index + 1].replacingOccurrences(of: "\\n", with: "\n")
         }
         return AppContainer(
             recipeRepository: DefaultRecipeRepository(db: database, source: StubRecipeSource(), clock: clock),

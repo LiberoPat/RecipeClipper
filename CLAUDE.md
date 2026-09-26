@@ -290,8 +290,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
   type (Dinner first), servings (the yield first), one button.
 - **Groceries** (#50, behind the flag): "Add an item", then the list by
   aisle (unchecked first); tap ticks, long-press offers "Move to aisle…" and
-  Delete (undo snackbar); the menu shares it as plain text (unchecked only)
-  and clears checked (undo). "Add to groceries" (recipe menu, after Add to
+  Delete (undo snackbar); the menu sends the list ("Send list": every
+  unticked item as plain text, each naming its recipes in brackets, #149),
+  pastes one and clears checked (undo). "Paste a list", or text with no link
+  shared into the app (Android: the Groceries tab; iOS: the share extension's
+  card), opens "Add this list": its lines, all ticked, then Add to groceries
+  or Add to pantry, as written. "Add to groceries" (recipe menu, after Add to
   plan) and "Add this week's ingredients" (Week menu) open one sheet: the
   lines as the reading view renders them (the week's at each meal's planned
   servings), headings left out, all ticked except what the pantry has
