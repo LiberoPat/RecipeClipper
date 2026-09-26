@@ -58,7 +58,7 @@ final class RecipesSnackbarTests: XCTestCase {
     func testARestartedSnackbarKeepsTheEarlierCaptureForUndo() async {
         let repository = FakeRecipeRepository()
         repository.deleteResults = [1: deleted(1), 2: deleted(2)]
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
 
         vm.onDelete(testSummary(1, title: "A"))
@@ -85,7 +85,7 @@ final class RecipesSnackbarTests: XCTestCase {
         repository.deleteResults = [1: deleted(1)]
         weak var released: RecipesViewModel?
         do {
-            let vm = RecipesViewModel(repository: repository, sleep: immediateSleep)
+            let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
             released = vm
             await settleMain()
             vm.onDelete(testSummary(1, title: "A"))

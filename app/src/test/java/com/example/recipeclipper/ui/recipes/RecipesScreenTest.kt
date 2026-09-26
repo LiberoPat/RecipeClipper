@@ -19,6 +19,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.passTheSearchDebounce
 import org.junit.Assert.assertEquals
@@ -83,7 +84,7 @@ class RecipesScreenTest {
     private fun show(vararg recipes: RecipeSummary) {
         repository.history.value = recipes.toList()
         recipes.forEach { repository.deleteResults[it.id] = captured(it) }
-        val viewModel = RecipesViewModel(repository)
+        val viewModel = RecipesViewModel(repository, FakeAppPreferences())
         compose.setContent {
             RecipesScreen(
                 onBack = {},

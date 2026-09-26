@@ -13,7 +13,8 @@ final class FakeAppPreferences: AppPreferences {
         temperatureUnit: TemperatureUnit = .asWritten,
         darkWhileCooking: Bool = false,
         expiryReminders: Bool = false,
-        amountsInSteps: Bool = false
+        amountsInSteps: Bool = false,
+        recipeSort: RecipeSort = .recentlyViewed
     ) {
         subject = CurrentValueSubject(AppSettings(
             unitSystem: unitSystem,
@@ -21,13 +22,19 @@ final class FakeAppPreferences: AppPreferences {
             temperatureUnit: temperatureUnit,
             darkWhileCooking: darkWhileCooking,
             expiryReminders: expiryReminders,
-            amountsInSteps: amountsInSteps
+            amountsInSteps: amountsInSteps,
+            recipeSort: recipeSort
         ))
     }
 
     var amountsInSteps: Bool {
         get { subject.value.amountsInSteps }
         set { subject.value.amountsInSteps = newValue }
+    }
+
+    var recipeSort: RecipeSort {
+        get { subject.value.recipeSort }
+        set { subject.value.recipeSort = newValue }
     }
 
     var settings: AnyPublisher<AppSettings, Never> {

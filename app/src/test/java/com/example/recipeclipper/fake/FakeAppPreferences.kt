@@ -2,6 +2,7 @@ package com.example.recipeclipper.fake
 
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
+import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,11 +20,12 @@ class FakeAppPreferences(
     temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     darkWhileCooking: Boolean = false,
     expiryReminders: Boolean = false,
-    amountsInSteps: Boolean = false
+    amountsInSteps: Boolean = false,
+    recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED
 ) : AppPreferences {
 
     private val state = MutableStateFlow(
-        AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, amountsInSteps)
+        AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, amountsInSteps, recipeSort)
     )
 
     override val settings: StateFlow<AppSettings> = state
@@ -51,4 +53,8 @@ class FakeAppPreferences(
     override var amountsInSteps: Boolean
         get() = state.value.amountsInSteps
         set(value) = state.update { it.copy(amountsInSteps = value) }
+
+    override var recipeSort: RecipeSort
+        get() = state.value.recipeSort
+        set(value) = state.update { it.copy(recipeSort = value) }
 }
