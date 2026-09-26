@@ -93,14 +93,15 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 
 ```
 MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
-di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule
+di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule,
+               OnDeviceModelModule (Chef mode and decision models, swappable for the walkthroughs)
 data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository, PantryRepository
                (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests),
                Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
                CookedPhotoRepository + PhotoStore ("I made this" photos, #116)
                AutoBackup + BackupFolder (the automatic backup copy, WorkManager, #150)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, CardHeadings, CardIngredients),
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, SiteRules, CardHeadings, CardSelector, CardIngredients),
                MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
@@ -534,9 +535,13 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **WP Recipe Maker's ingredient parts refine JSON-LD's lines** (#118,
   `WprmIngredients`), only when the card lines up one-to-one with
   `recipeIngredient`: "amount unit name" plus the notes as the card shows
-  them; each named group adds a "Group:" heading line. Tasty Recipes and
-  Mediavine Create cards (#119, `CardHeadings`) hold whole lines only: JSON-LD's
-  lines stay, and only the group headings JSON-LD drops are added.
+  them; each named group adds a "Group:" heading line. Other cards hold whole
+  lines only: JSON-LD's lines stay, and only the group headings JSON-LD drops are
+  added (`CardHeadings`). Which cards, per plugin (Tasty Recipes, Mediavine
+  Create, #119) or per site (NYT Cooking, BBC Good Food, …, #120), and a site's
+  known noise at the end of the last step, are data in
+  `shared/tables/site-rules.json` (`SiteRules`; selector subset in
+  `CardSelector`): a site quirk is a table edit, never code.
 - **A recipe needs a name, plus ingredients or steps.**
 - **Last, the on-device model picks from the page's text** (#103,
   `llmExtraction` flag): only after `NoRecipeFound` on a page that loaded,

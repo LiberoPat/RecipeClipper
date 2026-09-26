@@ -419,6 +419,36 @@ release): peak footprint at "import finished" was 41.8 MB for a 250 KB page,
 for a 10 MB page — all comfortably under the ~120 MB estimate, and run to
 run this varies by several MB on the simulator.
 
+## Walkthrough videos (#106)
+
+Scripted walkthroughs of the new features, one short video per feature per platform, for
+people to watch rather than to catch regressions (the feature suites do that). They seed
+twenty realistic recipes, each in a list (iOS `UITestWalkthroughSeed`, Android
+`WalkthroughSeed`), turn flags on as Developer settings would, and pause between steps.
+Where a feature needs the on-device model, a stub answers: Chef mode's short steps and the
+grocery merging's typed decisions ("AI answers simulated": close names "same", trailing
+text a "note", or "junk" if it holds "dfsafs", and the name of a line ending in "dfsafs"
+with no separator: the Banana Bread's "2 eggs dfsafs", for the junk-hiding clip). The
+page-extraction recipe is stored as `EXTRACTED`, so no model runs for it.
+
+- **iOS:** `WalkthroughUITests` (`ios/RecipeClipperUITests/WalkthroughUITests*.swift`),
+  skipped unless `TEST_RUNNER_RC_WALKTHROUGH=1`, so CI and the nightly UI run skip them.
+  `scripts/record-walkthroughs-ios.sh <sim-udid> [out-dir] [test …]` builds, records each
+  test with `simctl io recordVideo --codec h264`, trims to the test's
+  `WALKTHROUGH-START`/`END` marks and re-encodes with `avconvert` (1280 high). Use your own
+  simulator; it is switched to light mode.
+- **Android:** `MealPlanWalkthroughTest` and `RecipesWalkthroughTest` in
+  `app/src/androidTest/.../walkthrough`, run only under `-Pwalkthrough`, which swaps in
+  `WalkthroughRunner` (Hilt's test Application, so `@UninstallModules(OnDeviceModelModule)`
+  can bind the stubs); under the plain runner they skip. Each test records itself with
+  `screenrecord`. `scripts/record-walkthroughs-android.sh <serial> [out-dir] [Class#test …]`
+  installs both APKs, clears the app before each test (`pm clear`), pulls and re-encodes the
+  video. It wipes the app's data: use the agents' emulator (emulator-5580, under the lock),
+  never a device someone uses.
+- Output defaults to `~/Downloads/RecipeClipper-walkthroughs/` (`ios-NN-name.mp4`,
+  `android-NN-name.mp4`), never the repo. On a miss, the Android script saves the screen at
+  `/tmp/android-NN-name-miss.png`; the iOS log is under `$DERIVED_DATA/raw/`.
+
 ## CI
 
 GitHub Actions, in `.github/workflows/`. On a pull request each platform's job
@@ -445,7 +475,8 @@ both.
 - **iOS UI tests** (`ios-ui-tests.yml`), about 18 minutes: nightly at 03:00
   UTC and on demand (Actions → iOS UI tests → Run workflow).
 - **Recipe site check** (`site-check.yml`, #32): Mondays at 06:00 UTC and on
-  demand, and on a pull request that changes the check or its URL list. It
+  demand, and on a pull request that changes the check, its URL list or
+  `shared/tables/site-rules.json`. It
   runs the real `BlogRecipeSource` (JSON-LD, then microdata) over
   the ~20 pages in `app/src/test/resources/site-check-urls.txt`, applying the
   repository's one retry, and writes a table to the job summary: per site,
@@ -454,7 +485,10 @@ both.
   uploads `results.md` and `results.json` as the `site-check-<run>` artifact
   (kept 90 days): compare runs, since blocking flips run to run. A blocked
   site never fails the job; a broken harness does, and "no site parsed" raises
-  a warning. Only outcomes are recorded, never the pages or recipe text.
+  a warning. A "Site rules" section lists each rule of a site with rules
+  (#120) as Matched (on at least one of the site's pages) or **Stopped
+  matching** (on none), and the latter raises a warning.
+  Only outcomes are recorded, never the pages or recipe text.
   Locally: `./gradlew testDebugUnitTest -PsiteCheck` (results in
   `app/build/site-check/`). Without `-PsiteCheck`, `LiveSiteCheck` is excluded
   in `app/build.gradle.kts`, so the normal runs never touch the network.

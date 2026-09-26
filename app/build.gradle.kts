@@ -41,7 +41,13 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // `-Pwalkthrough` swaps in the Hilt test runner for the walkthrough videos (#106,
+        // WalkthroughTest); every other device test needs the real Application.
+        testInstrumentationRunner = if (project.hasProperty("walkthrough")) {
+            "com.example.recipeclipper.walkthrough.WalkthroughRunner"
+        } else {
+            "androidx.test.runner.AndroidJUnitRunner"
+        }
     }
 
     buildFeatures {
@@ -211,6 +217,9 @@ dependencies {
     val hilt = "2.60.1"
     implementation("com.google.dagger:hilt-android:$hilt")
     ksp("com.google.dagger:hilt-compiler:$hilt")
+    // The walkthrough videos (#106) swap Chef mode's model for a stub in the real app.
+    androidTestImplementation("com.google.dagger:hilt-android-testing:$hilt")
+    kspAndroidTest("com.google.dagger:hilt-compiler:$hilt")
 
     // Persistence
     val room = "2.8.5"

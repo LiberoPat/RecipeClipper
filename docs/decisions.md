@@ -2298,6 +2298,59 @@ notes or parts to read, and **JSON-LD's lines stay exactly as they are**.
   both platforms, and `Heads` rows in the differential corpus. The weekly site check fetches
   Pinch of Yum's blackout chocolate cake and TidyMom's apple pie bars.
 
+## Site-specific parsing rules as data (#120)
+
+The big sites were fetched with the app's user agent (2026-09-26). Every one that answered
+already parsed from JSON-LD; what they lost was the same thing #119 found on plugin cards: **the
+ingredient group headings** ("FOR THE FROSTING", "For the filling", "Cream cheese frosting and
+assembly"). NYT Cooking, BBC Good Food, Bon Appétit, Epicurious and Delish drop them; Taste of
+Home already puts them in JSON-LD, and King Arthur had none to lose. Bon Appétit and Epicurious
+also end the last step with "Editor’s note: this recipe was first printed in … Head this way for
+more … →". Serious Eats, AllRecipes, Simply Recipes and Food & Wine answer the direct fetch with
+a bot check, so there is nothing there to write a rule for.
+
+- **One table, `shared/tables/site-rules.json`, read by both apps** (`SiteRules`). Data only:
+  CSS selectors and phrases, never code. `cards` are the plugin cards any site may have (Tasty
+  Recipes and Mediavine Create, moved here from `CardHeadings`' hard-coded list); `sites` are
+  keyed by host without "www." (`SourceDomain`), and a site's own cards are tried before the
+  plugins'. A card is `list`, `item`, `heading` and optional `title` and `amount` selectors.
+  Everything `CardHeadings` already required still holds: a heading must be a heading element,
+  end in a colon or be wholly bold, and a card is used only when its items line up one-to-one
+  with `recipeIngredient` (same count, each item's letters and digits in its line). A rule can
+  only add headings or drop known noise; it can't change a line.
+- **The selector subset is matched by hand** (`CardSelector`, both platforms): a tag, `.class`,
+  `#id`, `[attr]`, `[attr=v]`, `[attr^=v]`, `[attr*=v]`, compounded, in comma lists, no
+  combinators (a card's parts are only looked for inside its list). Jsoup's `select` on Android
+  and the iOS `HtmlTree` would otherwise disagree at the edges. Anything else in the table is a
+  mistake and fails loudly (Android throws, iOS traps). The hashed class names (NYT's
+  `ingredientgroup_name__xNtpC`, Condé Nast's `SubHed-icPlCN`) are matched by their stable
+  prefix with `*=`.
+- **WP Recipe Maker stays code** (`WprmIngredients`): it rewrites lines from their parts, puts
+  the notes' comma back and matches ignoring only case and spacing. None of that is a selector.
+- **`amount`: parts of an item left out when matching it.** Delish's card writes "3 cups" and
+  "6 Tbsp." where its JSON-LD writes "3 c." and "6 tbsp.", so its `<strong>` amount is removed
+  before the line-up check. JSON-LD's line is still what shows. On iOS the removal cuts those
+  elements' source out of the item's, then reads the text as any element's. An amount in the
+  middle of a line ("4 (6- to **8-oz.**) chicken breasts") leaves a key that is no longer one
+  run of the JSON-LD line, so that card doesn't line up and its page gets no headings: a safe
+  miss, left as is.
+- **`stepNoise`: phrases that start noise at the end of the last step.** The last step is cut
+  where a phrase starts it or follows a space; a last step that was all noise goes, unless it
+  was the only step. Only the last step, only on that site: an editor's note in the middle of a
+  method is left alone.
+- **`version`, raised on every edit**, beside `schemaVersion` (the format). A copy fetched later
+  without an app release (the issue's "later, optionally") would be used only if newer than the
+  bundled one; nothing fetches one yet.
+- **The weekly site check flags a rule that stops matching.** Its report adds a "Site rules"
+  section, judged per site over the site's pages in the run: Matched when a site's card lines up
+  or its noise is found on at least one of them, else **Stopped matching**, and the workflow
+  warns on that. Not per page, because a rule need not fit every page: not every Epicurious
+  recipe has an editor's note, and a Delish card with an amount mid-line never lines up. The
+  JSON keeps each page's result. It runs when the table changes too.
+- Tests: trimmed real pages in `shared/fixtures/pages/site-*.html` (`SiteRulesTest` /
+  `SiteRulesTests`), and `Site` rows in the differential corpus. The site check fetches one
+  page per site with rules.
+
 ## Grocery lines merged with the model's help (#99)
 
 Part of #99, on #104's typed decisions (same `DecisionRule`, `ai_decisions` cache and
