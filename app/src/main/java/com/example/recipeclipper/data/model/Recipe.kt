@@ -101,6 +101,18 @@ data class RecipeSummary(
 )
 
 /**
+ * How the Recipes screen orders its rows (#102). Remembered in `AppPreferences` by name, so
+ * it survives leaving the screen; an unknown stored name reads as [RECENTLY_VIEWED].
+ */
+enum class RecipeSort {
+    RECENTLY_VIEWED, NAME, DATE_ADDED;
+
+    companion object {
+        fun fromStoredName(name: String?): RecipeSort = entries.firstOrNull { it.name == name } ?: RECENTLY_VIEWED
+    }
+}
+
+/**
  * Why a [ParseResult] or a load failed, as a cause rather than a sentence: a parser or a
  * repository has no business choosing presentation copy. The UI resolves one of these to
  * text via `stringResource`. [FetchFailed.detail] is the exception, not to be confused for

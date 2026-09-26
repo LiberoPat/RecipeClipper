@@ -14,6 +14,8 @@ struct RecipeScreen: View {
     var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
     /// Opens "Clip it yourself" on the shared link (#37).
     var onClip: (String) -> Void = { _ in }
+    /// The `amountsInSteps` flag (#101): amounts inside steps show only behind it.
+    var amountsInStepsEnabled = false
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
@@ -39,10 +41,11 @@ struct RecipeScreen: View {
         Group {
             switch state.content {
             case .success(let success):
+                let shown = amountsInStepsEnabled ? success : success.withoutStepAmounts
                 if state.cook.active {
-                    CookView(content: success, state: state, vm: vm)
+                    CookView(content: shown, state: state, vm: vm)
                 } else {
-                    ReadingView(content: success, state: state, vm: vm)
+                    ReadingView(content: shown, state: state, vm: vm)
                 }
             case .loading:
                 StatusView {

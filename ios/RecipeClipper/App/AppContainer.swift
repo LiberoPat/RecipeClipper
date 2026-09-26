@@ -151,7 +151,7 @@ final class AppContainer {
     }
 
     func makeRecipesViewModel() -> RecipesViewModel {
-        RecipesViewModel(repository: recipeRepository, library: libraryPolicy)
+        RecipesViewModel(repository: recipeRepository, preferences: preferences, library: libraryPolicy)
     }
 
     func makeRecipeViewModel(

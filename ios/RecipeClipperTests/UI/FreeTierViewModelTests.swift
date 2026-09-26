@@ -121,14 +121,14 @@ final class FreeTierViewModelTests: XCTestCase {
         repository.history.send((1...12).map { testSummary($0) })
         let store = FakeEntitlements()
         let policy = LibraryPolicy(flags: flags(freeTier: true), entitlements: store)
-        let vm = RecipesViewModel(repository: repository, sleep: immediateSleep, library: policy)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep, library: policy)
         await settleMain()
         XCTAssertEqual(vm.count?.saved, 12)
         XCTAssertEqual(vm.count?.max, 20)
 
         store.state.unlocked = true
         XCTAssertNil(vm.count)
-        let off = RecipesViewModel(repository: repository, sleep: immediateSleep)
+        let off = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
         await settleMain()
         XCTAssertNil(off.count)
     }

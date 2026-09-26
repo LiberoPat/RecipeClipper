@@ -20,9 +20,6 @@ struct RecipesUiState: Equatable {
     var canOpenLink: Bool { UrlInput.normalize(linkInput) != nil }
 }
 
-/// How the Recipes screen orders its rows (#102). Held in memory, like the pantry's sort.
-enum RecipeSort: CaseIterable { case recentlyViewed, name, dateAdded }
-
 @MainActor
 @Observable
 final class RecipesViewModel {
@@ -31,6 +28,8 @@ final class RecipesViewModel {
     private(set) var uiState = RecipesUiState()
 
     @ObservationIgnored private let repository: RecipeRepository
+    @ObservationIgnored private let preferences: AppPreferences
+    @ObservationIgnored private var sortSubscription: AnyCancellable?
     @ObservationIgnored private let sleep: Sleep
     @ObservationIgnored private var debounceTask: Task<Void, Never>?
     @ObservationIgnored private var appliedQuery: String?
@@ -45,10 +44,22 @@ final class RecipesViewModel {
     @ObservationIgnored private var captured: [Int64: DeletedRecipe] = [:]
     @ObservationIgnored private var capturedOrder: [Int64] = []
 
-    init(repository: RecipeRepository, sleep: @escaping Sleep = Sleeps.real, library: LibraryPolicy? = nil) {
+    init(
+        repository: RecipeRepository, preferences: AppPreferences, sleep: @escaping Sleep = Sleeps.real,
+        library: LibraryPolicy? = nil
+    ) {
         self.repository = repository
+        self.preferences = preferences
         self.sleep = sleep
         self.library = library
+        // Remembered in AppPreferences, so it survives leaving the screen; read now so the
+        // first frame is right, then kept in step with what is stored.
+        uiState.sort = preferences.recipeSort
+        sortSubscription = preferences.settings
+            .map(\.recipeSort)
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] sort in self?.applySort(sort) }
         schedule(query: "")
         if library != nil {
             countSubscription = repository.observeCount()
@@ -88,7 +99,14 @@ final class RecipesViewModel {
         }
     }
 
+    /// Stored at once and applied at once, rather than waiting for `settings` to echo it.
     func onSortChange(_ sort: RecipeSort) {
+        preferences.recipeSort = sort
+        applySort(sort)
+    }
+
+    private func applySort(_ sort: RecipeSort) {
+        guard sort != uiState.sort else { return }
         uiState.sort = sort
         if let found { uiState.recipes = Self.sorted(found, sort) }
     }

@@ -7,6 +7,12 @@
       "issue": 47
     },
     {
+      "key": "amountsInSteps",
+      "description": "Ingredient amounts inside steps: Settings' Steps section and its 'Amounts in steps' switch (off by default), which puts each line's amount, as scaled and converted, where a step names the ingredient.",
+      "defaults": { "debug": false, "release": false },
+      "issue": 101
+    },
+    {
       "key": "freeTier",
       "description": "The free tier: 20 recipes, a one-time unlock for unlimited, the Settings row to buy or restore it and the Recipes count. Off until the store products exist.",
       "defaults": { "debug": false, "release": false },

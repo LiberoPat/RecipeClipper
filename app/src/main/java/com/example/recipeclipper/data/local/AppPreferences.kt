@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.local
 
+import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 import kotlinx.coroutines.flow.Flow
@@ -36,6 +37,15 @@ interface AppPreferences {
     var expiryReminders: Boolean
 
     /**
+     * Ingredient amounts inside steps (#101): "Add the carrots" reads "Add 2 carrots". Off by
+     * default, and shown only with the `amountsInSteps` flag on.
+     */
+    var amountsInSteps: Boolean
+
+    /** The Recipes screen's sort (#102): a view preference, kept so it survives leaving the screen. */
+    var recipeSort: RecipeSort
+
+    /**
      * The current values first, then every change, never repeating a value. A screen that
      * collects this stays current when Settings changes a default while it is open (#24).
      */
@@ -43,7 +53,7 @@ interface AppPreferences {
 
     /** The values as they are right now. */
     val current: AppSettings
-        get() = AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders)
+        get() = AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, amountsInSteps, recipeSort)
 }
 
 /** One snapshot of [AppPreferences], as its [AppPreferences.settings] flow emits them. */
@@ -52,5 +62,7 @@ data class AppSettings(
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
-    val expiryReminders: Boolean = false
+    val expiryReminders: Boolean = false,
+    val amountsInSteps: Boolean = false,
+    val recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED
 )

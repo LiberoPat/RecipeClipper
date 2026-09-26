@@ -167,6 +167,22 @@ fun SettingsScreen(
                     )
                 }
 
+                if (state.showsSteps) {
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Hairline()
+                        Spacer(Modifier.height(16.dp))
+                        SectionHeading(stringResource(R.string.settings_section_steps))
+                        Spacer(Modifier.height(4.dp))
+                        SwitchRow(
+                            title = stringResource(R.string.amounts_in_steps_title),
+                            description = stringResource(R.string.amounts_in_steps_description),
+                            checked = state.amountsInSteps,
+                            onCheckedChange = viewModel::onAmountsInStepsChange
+                        )
+                    }
+                }
+
                 if (state.showsPantry) {
                     item {
                         Spacer(Modifier.height(16.dp))

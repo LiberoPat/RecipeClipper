@@ -11,7 +11,7 @@ class SharedTablesTest {
 
     private val languageTables = listOf(
         "densities", "units", "timers", "temperature", "yield", "ranges", "sections",
-        "amounts", "durations", "language", "names", "aisles"
+        "amounts", "durations", "language", "names", "aisles", "steps"
     )
 
     @Test

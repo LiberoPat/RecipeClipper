@@ -53,6 +53,17 @@ struct SettingsScreen: View {
                     )
                 }
 
+                if vm.showsSteps {
+                    Divided {
+                        SectionHeading(Strings.settingsSectionSteps).padding(.bottom, 4)
+                        SwitchRow(
+                            title: Strings.amountsInStepsTitle,
+                            description: Strings.amountsInStepsDescription,
+                            isOn: Binding(get: { vm.uiState.amountsInSteps }, set: vm.onAmountsInStepsChange)
+                        )
+                    }
+                }
+
                 if vm.showsPantry {
                     Divided {
                         SectionHeading(Strings.settingsSectionPantry).padding(.bottom, 4)

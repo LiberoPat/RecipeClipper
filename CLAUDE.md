@@ -21,7 +21,7 @@ needs only its input (`Ing("1,5 kg flour"),`).
 
 **The word and density tables live once, in `shared/tables/`** (JSON: densities,
 unit, timer, temperature, yield, range, amount, duration, detection,
-ingredient-name and aisle words, condensed section names; tracking parameters), loaded by both apps (Android as
+ingredient-name, aisle and step words, condensed section names; tracking parameters), loaded by both apps (Android as
 Java resources through `SharedTables`, iOS as a bundled `tables/` folder). Edit a
 table there, never in code; the logic that reads it stays written twice. **Each
 language has its own folder** (`shared/tables/<code>/`: en, de, es, fr, it,
@@ -99,7 +99,8 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
                LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
-               TrailingAmount (name-first lines: Japanese), ClipSelection, ClipDraft,
+               TrailingAmount (name-first lines: Japanese), StepAmounts (amounts inside steps, #101),
+               ClipSelection, ClipDraft,
                PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal), LibraryLimit (#107),
                Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
                Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy)
@@ -238,7 +239,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Sections: Units (with "Also convert liquids" for
   Ounces only), Oven temperature (independent of units, default As
-  written), Appearance ("Dark while cooking"), Pantry ("Expiry reminders",
+  written), Appearance ("Dark while cooking"), Steps ("Amounts in steps", off,
+  behind the `amountsInSteps` flag, #101: rules in `docs/decisions.md`), Pantry ("Expiry reminders",
   only with the `mealPlan` flag; asks for notifications when turned on,
   never at launch), Unlimited recipes (only with `freeTier`: "Unlock for
   <store price>" and "Restore purchase", or the sentence "Unlocked: every
@@ -393,7 +395,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - Settings live in the SharedPreferences file `unit_preferences` (never
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
   under the same keys: `unit_system`, `convert_liquids`, `temperature_unit`,
-  `dark_while_cooking`, `expiry_reminders`, each enum stored by name. `AppPreferences.settings`
+  `dark_while_cooking`, `expiry_reminders`, `amounts_in_steps`, `recipe_sort` (the Recipes
+  screen's sort), each enum stored by name, an unknown one read as the default. `AppPreferences.settings`
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.

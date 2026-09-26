@@ -15,6 +15,9 @@ enum class Flag(val key: String) {
     /** The meal plan (#47, #49–#51): the bottom tabs and the recipe screen's plan actions. */
     MEAL_PLAN("mealPlan"),
 
+    /** Ingredient amounts inside steps (#101): the Settings switch and what it shows. */
+    AMOUNTS_IN_STEPS("amountsInSteps"),
+
     /** The free tier (#107): 20 recipes, and the one-time unlock for unlimited ones. */
     FREE_TIER("freeTier");
 

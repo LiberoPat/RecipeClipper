@@ -100,6 +100,17 @@ struct RecipeSummary: Equatable, Identifiable {
     var isClipped: Bool = false
 }
 
+/// How the Recipes screen orders its rows (#102). Remembered in `AppPreferences` by its
+/// Android name, so it survives leaving the screen; an unknown stored name reads as
+/// `.recentlyViewed`.
+enum RecipeSort: String, CaseIterable {
+    case recentlyViewed = "RECENTLY_VIEWED", name = "NAME", dateAdded = "DATE_ADDED"
+
+    init(storedName: String?) {
+        self = storedName.flatMap(RecipeSort.init(rawValue:)) ?? .recentlyViewed
+    }
+}
+
 /// A list of recipes as a screen needs it. `isFavorites` is carried from the column rather
 /// than matched on the name, so it survives a rename. `containsRecipe` is meaningful only
 /// where a recipe was named in the query (the save-to-list sheet).

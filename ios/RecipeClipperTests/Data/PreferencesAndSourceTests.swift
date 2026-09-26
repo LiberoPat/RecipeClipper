@@ -56,6 +56,19 @@ final class UserDefaultsAppPreferencesTests: XCTestCase {
         XCTAssertEqual(prefs.unitSystem, .asWritten)
     }
 
+    func testRecipeSortDefaultsRoundTripsByNameAndFallsBack() {
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).recipeSort, .recentlyViewed)
+
+        UserDefaultsAppPreferences(defaults: defaults).recipeSort = .dateAdded
+        XCTAssertEqual(defaults.string(forKey: "recipe_sort"), "DATE_ADDED")
+        let reread = UserDefaultsAppPreferences(defaults: defaults)
+        XCTAssertEqual(reread.recipeSort, .dateAdded)
+        XCTAssertEqual(reread.current.recipeSort, .dateAdded)
+
+        defaults.set("RATING", forKey: "recipe_sort")
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).recipeSort, .recentlyViewed)
+    }
+
     func testAStoredGramsReadsAsMetric() {
         // GRAMS was a fourth option until #17. Its users wanted weights, not As written.
         defaults.set("GRAMS", forKey: "unit_system")

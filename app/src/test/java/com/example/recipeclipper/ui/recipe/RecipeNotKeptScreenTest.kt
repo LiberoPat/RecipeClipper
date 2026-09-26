@@ -40,8 +40,9 @@ class RecipeNotKeptScreenTest {
             SavedStateHandle(mapOf(RecipeViewModel.URL_ARG to "https://a.com/soup")), repository, FakeAppPreferences(),
             { 0L }, FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler(), FakeEntitlements()
         )
+        val saveViewModel = SaveToListViewModel(FakeListRepository())
         compose.setContent {
-            RecipeScreen(onBack = {}, viewModel = viewModel, saveViewModel = SaveToListViewModel(FakeListRepository()))
+            RecipeScreen(onBack = {}, viewModel = viewModel, saveViewModel = saveViewModel)
         }
 
         compose.onNodeWithText("Soup").assertIsDisplayed()

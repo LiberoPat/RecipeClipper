@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.ServingsScale
+import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 
@@ -48,7 +49,9 @@ sealed class RecipeContent {
      * or null. [sourceDomain] is the site credited under the title ("smittenkitchen.com"),
      * or null when the source link has no recognisable host (then no credit is shown).
      * [words] are the recipe's language's (#14), which the view uses for the yield's kind and
-     * the timer labels; null for a language the app has no words for.
+     * the timer labels; null for a language the app has no words for. [stepAmounts] lines up
+     * with [instructions]: each step with the ingredient amounts inside it (#101), or null
+     * when "Amounts in steps" is off.
      */
     data class Success(
         val recipe: Recipe,
@@ -57,7 +60,8 @@ sealed class RecipeContent {
         val instructions: List<String>,
         val stepTimerSeconds: List<Int?>,
         val sourceDomain: String?,
-        val words: LanguageWords? = LanguageWords.forRecipe(recipe)
+        val words: LanguageWords? = LanguageWords.forRecipe(recipe),
+        val stepAmounts: List<List<StepAmounts.Part>>? = null
     ) : RecipeContent()
 
     data class Error(val error: ParseError) : RecipeContent()
@@ -69,7 +73,8 @@ sealed class RecipeContent {
  * Servings, by contrast, belong to one recipe. [convertLiquids] only matters for OUNCES.
  * [temperatureUnit] is independent of [unitSystem] — see [TemperatureUnit]'s doc.
  * [darkWhileCooking] forces the ink scheme in cook mode even in light mode; off by default,
- * so cook mode follows the system theme like every other screen.
+ * so cook mode follows the system theme like every other screen. [amountsInSteps] is the
+ * Settings switch (#101), behind the `amountsInSteps` flag, which the screen checks.
  */
 data class RecipeUiState(
     val content: RecipeContent = RecipeContent.Loading,
@@ -80,6 +85,7 @@ data class RecipeUiState(
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
+    val amountsInSteps: Boolean = false,
     val cook: CookState = CookState(),
     /** Set once the recipe has been deleted, so the screen can navigate back. */
     val deleted: Boolean = false,
