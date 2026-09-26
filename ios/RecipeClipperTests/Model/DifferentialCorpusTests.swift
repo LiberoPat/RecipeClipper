@@ -31,6 +31,8 @@ import XCTest
 // step shows as written). Write only `Short("Bake for 20 minutes.", "Bake 20 min."),`.
 // Step rows (#101): a step, the ingredient lines, then StepAmounts.annotate marked with ⟦ ⟧, against
 // the lines as given and against them doubled in Metric. Write only `Step("Add the eggs.", ["2 eggs"]),`.
+// Page-pick rows (#103): a kind, a page's text, what the model picked, then PageRecipeCheck.find
+// (the page's own text for it, or nil). Write only `Pick(.ingredient, "1 cup flour", "1 cup flour"),`.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -1283,6 +1285,39 @@ final class DifferentialCorpusTests: XCTestCase {
         Short("鍋に入れて、中火で５分煮る。ときどき混ぜる。", "中火で5分煮る。", lang: "ja", "中火で5分煮る。"),
     ]
 
+    private struct Pick {
+        let kind: PageRecipeCheck.Kind; let page: String; let picked: String; let found: String?
+        init(_ kind: PageRecipeCheck.Kind, _ page: String, _ picked: String, _ found: String?) {
+            self.kind = kind; self.page = page; self.picked = picked; self.found = found
+        }
+    }
+
+    private static let picks: [Pick] = [
+        Pick(.ingredient, "Ingredients\n▢ ⅓ cup melted butter\n1 ½ cups flour", "1/3 cup melted butter", "⅓ cup melted butter"),
+        Pick(.ingredient, "Ingredients\n1 ½ cups flour", "1 1/2 cups flour", "1 ½ cups flour"),
+        Pick(.ingredient, "Ingredients\n1 ½ cups flour", "½ cups flour", nil),
+        Pick(.ingredient, "Ingredients\n12 cups popcorn", "2 cups popcorn", nil),
+        Pick(.ingredient, "Ingredients\n2 cups flour", "2 cups sugar", nil),
+        Pick(.ingredient, "Servings: 10 slices", "10 slices", nil),
+        Pick(.other, "Servings: 10 slices", "10 slices", "10 slices"),
+        Pick(.other, "Prep Time: 15 minutes Cook Time: 1 hour", "15 minutes", "15 minutes"),
+        Pick(.name, "Grandma’s Banana Bread\nIngredients", "grandma's banana bread", "Grandma’s Banana Bread"),
+        Pick(.name, "Grandma’s Banana Bread", "Banana Loaf", nil),
+        Pick(.step, "1. Preheat the oven to 350°F (175°C). Bake for 55 to 65 minutes.", "Bake for 55 to 65 minutes.", "Bake for 55 to 65 minutes."),
+        Pick(.step, "Bake for 20-25 minutes.", "25 minutes.", nil),
+        Pick(.step, "Bake for 20-25 minutes.", "Bake for 20", nil),
+        Pick(.step, "Bake for 20-25 minutes.", "Bake for 20–25 minutes.", "Bake for 20-25 minutes."),
+        Pick(.step, "Bake for 1.5 hours.", "5 hours.", nil),
+        Pick(.step, "Mix the flour and the\nsugar in a bowl.", "Mix the flour and the sugar in a bowl.", "Mix the flour and the sugar in a bowl."),
+        Pick(.step, "Stir in the sugar.", "tir in the sugar.", nil),
+        Pick(.step, "Bake at 350°F.", "350", nil),
+        Pick(.step, "Mettre la farine  dans un bol\u{a0}; mélanger.", "Mettre la farine dans un bol ; mélanger.", "Mettre la farine dans un bol\u{a0}; mélanger."),
+        Pick(.step, "Mehl in die Schüssel geben. Dann 2 Eier unterrühren.", "Dann 2 Eier unterrühren.", "Dann 2 Eier unterrühren."),
+        Pick(.ingredient, "材料（2人分）\n砂糖 大さじ２\n醤油 大さじ1", "砂糖 大さじ2", "砂糖 大さじ２"),
+        Pick(.step, "鍋に入れて、中火で5分煮る。", "中火で5分煮る。", "中火で5分煮る。"),
+        Pick(.step, "Add 9×13-inch pan.", "Add 9x13-inch pan.", "Add 9×13-inch pan."),
+    ]
+
     private static let jsonLd: [(String, [String], Recipe?)] = [
         ("wprm_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Article\",\"@id\":\"https://x.com/#article\",\"headline\":\"Best Brownies\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"}},{\"@type\":\"WebPage\",\"@id\":\"https://x.com/\"},{\"@type\":\"Recipe\",\"name\":\"Fudgy Brownies &amp; Ice Cream\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"},\"image\":[\"https://x.com/a-1x1.jpg\",\"https://x.com/a-4x3.jpg\"],\"recipeYield\":[\"16\",\"16 brownies\"],\"prepTime\":\"PT15M\",\"cookTime\":\"PT25M\",\"totalTime\":\"PT40M\",\"recipeIngredient\":[\"1 cup (226g) butter\",\"2 cups (400g) sugar\",\"&frac12; cup cocoa\",\"<strong>3</strong> eggs\",\"\"],\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Batter\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Preheat oven to 350&deg;F.\",\"name\":\"Preheat oven to 350&deg;F.\",\"url\":\"https://x.com/#s1\"},{\"@type\":\"HowToStep\",\"text\":\"Melt butter &amp; sugar.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Bake\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"<p>Bake 25 minutes.</p>\"}]}]}]}"], Recipe(name: "Fudgy Brownies & Ice Cream", image: "https://x.com/a-1x1.jpg", ingredients: ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], instructions: ["Preheat oven to 350°F.", "Melt butter & sugar.", "Bake 25 minutes."], prepTime: "15m", cookTime: "25m", totalTime: "40m", yield: "16", sourceUrl: "https://src/wprm_graph")),
         ("yoast_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":[\"WebPage\",\"ItemPage\"],\"@id\":\"https://y.com/p/\"},{\"@type\":[\"Recipe\"],\"name\":\"Chicken Tikka Masala\",\"image\":[{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img1.jpg\",\"width\":1200},{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img2.jpg\"}],\"recipeYield\":\"4\",\"prepTime\":\"PT1H\",\"cookTime\":\"PT1H30M\",\"totalTime\":\"PT2H30M\",\"recipeIngredient\":[\"1 lb chicken\",\"1 cup yogurt\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Marinate.\",\"name\":\"Marinate\"},{\"@type\":\"HowToStep\",\"name\":\"Grill it\"},{\"@type\":\"HowToStep\",\"text\":\"   \"}]}]}"], Recipe(name: "Chicken Tikka Masala", image: "https://y.com/img1.jpg", ingredients: ["1 lb chicken", "1 cup yogurt"], instructions: ["Marinate.", "Grill it"], prepTime: "1h", cookTime: "1h 30m", totalTime: "2h 30m", yield: "4", sourceUrl: "https://src/yoast_graph")),
@@ -1348,6 +1383,12 @@ final class DifferentialCorpusTests: XCTestCase {
         for row in Self.groceries {
             XCTAssertEqual(GroceryCombiner.combine(row.lines, words: row.words), row.combined, "combine: \(row.lines)")
             XCTAssertEqual(row.lines.map { Aisles.of($0, words: row.words).key }, row.aisles, "aisles: \(row.lines)")
+        }
+    }
+
+    func testPageRecipeCheckMatchesKotlin() {
+        for row in Self.picks {
+            XCTAssertEqual(PageRecipeCheck.find(row.page, row.picked, kind: row.kind), row.found, row.picked)
         }
     }
 
