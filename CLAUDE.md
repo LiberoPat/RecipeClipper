@@ -92,7 +92,8 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 
 ```
 MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
-di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule
+di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule,
+               OnDeviceModelModule (Chef mode and decision models, swappable for the walkthroughs)
 data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository, PantryRepository
                (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests),
                Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
