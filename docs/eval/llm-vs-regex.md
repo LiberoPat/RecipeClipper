@@ -11,8 +11,9 @@ Part of #99. Run on 2026-09-25 on the owner's Mac (M1 Pro, 32 GB, macOS 26.6.2) 
   on the same two lines, a real regex bug the evaluation found: "1-1/2 cups" doubled shows
   "2-1 cups" (#125).
 - **Pages with no recipe data: the model helps a lot.** From nothing today to 15 of 16 recipes,
-  84% of the ingredient lines, no invented line (`PageRecipeCheck` held), but 3 real lines from
-  another recipe on the same page slipped in, and one long recipe overflowed 1,024 output tokens.
+  84% of the ingredient lines, no invented line (`PageRecipeCheck` held), and one long recipe
+  overflowed 1,024 output tokens. (The 3 "wrong" Delish lines first read as another recipe's
+  were a scoring artifact; see section 2.) #128 follows up: section 2b.
 - **Decisions: act only on aisles.** With `DecisionRule`, the generative model was confidently
   wrong on 4 of 22 count brackets (a wrong figure on screen); JevK5 was no better there. For
   aisles, JevK5 (open weights, 4B) was right on 20 of 20 names the table can't file, at 0.5 s.
@@ -89,15 +90,48 @@ Every confident wrong, in full:
 - The checker dropped 6 of 136 ingredient strings and 7 of 91 steps the model returned as not on
   the page. No invented line got through.
 - **The 3 wrong lines are all on Delish:** "1 1/2 cups cherry tomatoes, halved", "3 cups baby
-  spinach", "1/2 cup heavy cream", from a Tuscan recipe elsewhere on the cookie page, mixed into
-  the cookies' ingredients. They are on the page, so `PageRecipeCheck` can't catch them. This is
-  the extraction's real risk: never an invented line, but a real line from the wrong recipe.
+  spinach", "1/2 cup heavy cream". They first read as a Tuscan recipe's lines mixed into the
+  cookies', but #128 found the cookie URL now serves Creamy Tuscan Chicken: they are its own
+  lines, and they scored wrong only because its JSON-LD writes "c." where the card writes
+  "cups" (the harness now compares units by meaning). A real line from a second recipe on the
+  page remains the extraction's real risk, which the check can't catch because the line is on
+  the page; #128 added the one-card rule for it.
 - Taste of Home's card words its steps differently from its own JSON-LD. The 7 steps the model
   picked there are the card's, so they're counted right after reading them.
 - One page (RecipeTin Eats, 20 ingredients and 14 steps) failed: the reply was cut off at
   1,024 output tokens and wasn't valid JSON. That is the limit #103 set on Android, so a long
   recipe may not fit.
 - Steps found is the weak number (65%): the model often stops early or merges steps.
+
+### 2b. Page extraction after #128
+
+The same task on the site-check pages fetched on 2026-09-26 (17 pages: 16 that answered plus the
+fixture), qwen2.5:3b. The harness now compares units by meaning ("c." is "cups"), and since #128
+runs three arms on the same windows: #103's one call copying the lines out, with a 1,024-token
+reply (Android before #128) and with the apps' 4,096, and #128's line runs as the apps now ask
+(the window numbered, the model naming runs of line numbers, the lines taken from the window by
+`PageLines`, then `PageRecipeCheck` with its one-card rule).
+
+| Approach | Recipes shown | Name right | Gold ingredient lines found | Ingredient lines shown: right / wrong | Gold steps found | Steps shown: right / wrong | Median latency |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Today (parsers only) | 0 | – | 0 / 170 | 0 / 0 | 0 / 94 | 0 / 0 | – |
+| #103: one call, lines copied out, 1,024 reply tokens (before #128) | 16 | 14 | 148 / 170 | 153 / 3 | 62 / 94 | 83 / 7 | 10.2 s |
+| Two calls (the recipe, then its steps), 1,024 each (tried, dropped) | 13 | 9 | 116 / 170 | 116 / 12 | 51 / 94 | 67 / 20 | 10.5 s |
+| #103: one call, 4,096 reply tokens | not yet run | | | | | | |
+| #128: line runs, 4,096 reply tokens | not yet run | | | | | | |
+
+- **Before #128:** RecipeTin Eats' chow mein still failed (its reply cut off at 1,024 tokens).
+  Delish scored 12 of 12 once units compare by meaning. The 3 wrong ingredient lines are the
+  Greek zucchini tots' group headings ("Zucchini", "Batter", "Minted Yoghurt"), which the
+  JSON-LD gold lacks.
+- **Two calls were worse** and were dropped: the ingredients-only call put 12 of RecipeTin's
+  steps into its ingredients, Delish's steps call returned its ingredient lines, and 4 steps
+  replies still ran past 1,024 tokens (Minimalist Baker's alone was about 1,450).
+- **The last two rows are pending:** the harness is ready (`tools/eval/fetch-pages.sh`, then
+  `tools/eval/run.sh pages`, which runs all three arms), but the agent session that built the
+  line runs could not run it. The page cache wasn't kept and the URL list has grown to 25, so
+  take all three arms from that one run (the two-calls row stays as recorded). Keep line runs
+  only if they are at least as good as #103's one call.
 
 ### 3. Decisions (#104)
 
@@ -272,6 +306,9 @@ changes before turning it on:
 2. Guard against a real line from the wrong recipe: for example, keep only the ingredient lines
    that sit in one run under the chosen ingredients heading in the window, or drop picked lines
    far from the rest. The check can't catch these today because they are on the page.
+
+#128 took both up: 4,096 reply tokens on Android, line runs instead of copied lines, and the
+one-card rule (section 2b).
 
 **Decisions (#104):**
 

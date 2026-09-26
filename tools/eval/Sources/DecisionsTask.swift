@@ -37,6 +37,8 @@ enum DecisionsTask {
                     let a = Aisles.ofName(row[2], words: words)
                     ruleAnswer = a == .other ? nil : a.rawValue
                     appAsks = a == .other
+                case .sameGrocery, .trailingText:
+                    continue // added after #105 (#99); no gold rows for them yet
                 }
                 if appAsks { asked += 1 }
                 let scopes = appAsks ? [0, 1] : [0]

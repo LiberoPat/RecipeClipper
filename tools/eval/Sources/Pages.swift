@@ -45,13 +45,45 @@ struct EvalPage {
         return pages
     }
 
-    /// Folded for comparison: NFKC ("½" is "1⁄2"), the fraction slash as "/", lowercase, and every
-    /// character but letters, digits, "/" and "." as a space (checkboxes, brackets, commas).
+    /// Folded for comparison: NFKC ("½" is "1⁄2"), the fraction slash as "/", every character but
+    /// letters, digits, "/" and "." as a space (checkboxes, brackets, commas), lowercase, and each
+    /// unit by meaning, not spelling (#128): "c." is "cups" is "cup", "T" "Tbsp." "tablespoons",
+    /// "oz." "ounces". A one-letter unit ("c", "t", "T", "g", "l") only after a number.
     static func fold(_ s: String) -> String {
-        let t = s.precomposedStringWithCompatibilityMapping.replacingOccurrences(of: "⁄", with: "/").lowercased()
+        let t = s.precomposedStringWithCompatibilityMapping.replacingOccurrences(of: "⁄", with: "/")
         let kept = t.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) || $0 == "/" || $0 == "." ? Character($0) : " " }
-        return String(kept).split(separator: " ").joined(separator: " ")
+        var out: [String] = []
+        for word in String(kept).split(separator: " ").map(String.init) {
+            let afterNumber = out.last.map { $0.first?.isNumber == true } ?? false
+            let bare = word.hasSuffix(".") && word.count > 1 ? String(word.dropLast()) : word
+            if afterNumber, bare == "T" { out.append("tbsp"); continue }
+            if afterNumber, bare == "t" { out.append("tsp"); continue }
+            let lower = bare.lowercased()
+            if let unit = units[lower], afterNumber || lower.count > 1 { out.append(unit); continue }
+            out.append(word.lowercased())
+        }
+        return out.joined(separator: " ")
     }
+
+    /// Unit spellings, by the one each means.
+    private static let units: [String: String] = {
+        let spellings: [String: [String]] = [
+            "cup": ["c", "cup", "cups"],
+            "tbsp": ["tbsp", "tbsps", "tbs", "tbl", "tbls", "tablespoon", "tablespoons"],
+            "tsp": ["tsp", "tsps", "teaspoon", "teaspoons"],
+            "oz": ["oz", "ozs", "ounce", "ounces"],
+            "lb": ["lb", "lbs", "pound", "pounds"],
+            "g": ["g", "gr", "gram", "grams", "gramme", "grammes"],
+            "kg": ["kg", "kgs", "kilogram", "kilograms"],
+            "ml": ["ml", "milliliter", "milliliters", "millilitre", "millilitres"],
+            "l": ["l", "liter", "liters", "litre", "litres"],
+            "pt": ["pt", "pint", "pints"],
+            "qt": ["qt", "quart", "quarts"],
+        ]
+        var map: [String: String] = [:]
+        for (unit, words) in spellings { for w in words { map[w] = unit } }
+        return map
+    }()
 
     /// A kept line is right when it is a gold line, or the start of one (the card or the JSON-LD
     /// adds a note the other lacks) of at least three words; a step may also sit inside a longer

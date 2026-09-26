@@ -15,6 +15,11 @@ import java.util.Locale
  * ("2 cups" inside "12 cups", "25 minutes" inside "20-25 minutes"); an ingredient must start its
  * line (after a bullet); a name, ingredient or step must hold a letter. Anything not found
  * that way is dropped, and what is left is a recipe only with a name plus ingredients or steps.
+ *
+ * One recipe's lines only (#128): a page can hold a second recipe, whose lines are on the page
+ * too. The text is cut into cards at each ingredients heading that follows a steps heading
+ * ("Ingredients … Directions … Ingredients"), and only the ingredients and steps found in the
+ * card holding the most of them are kept (a tie goes to the earlier card).
  */
 object PageRecipeCheck {
 
@@ -24,8 +29,15 @@ object PageRecipeCheck {
     fun verify(page: String, picked: PageSelection): PageSelection? {
         val folded = Folded(page)
         val name = picked.name?.let { find(folded, it, Kind.NAME) } ?: return null
-        val ingredients = picked.ingredients.mapNotNull { find(folded, it, Kind.INGREDIENT) }
-        val steps = picked.steps.mapNotNull { find(folded, it, Kind.STEP) }
+        val foundIngredients = picked.ingredients.map { spans(folded, it, Kind.INGREDIENT) }
+        val foundSteps = picked.steps.map { spans(folded, it, Kind.STEP) }
+        val card = folded.cards()
+        val counts = IntArray(card.last() + 1)
+        for (found in foundIngredients + foundSteps) found.map { card[it.line] }.distinct().forEach { counts[it]++ }
+        val recipe = counts.indices.maxByOrNull { counts[it] } ?: 0
+        fun kept(found: List<Span>) = found.firstOrNull { card[it.line] == recipe }?.text
+        val ingredients = foundIngredients.mapNotNull(::kept)
+        val steps = foundSteps.mapNotNull(::kept)
         if (ingredients.isEmpty() && steps.isEmpty()) return null
         fun other(s: String?) = s?.let { find(folded, it, Kind.OTHER) }
         return PageSelection(
@@ -37,17 +49,24 @@ object PageRecipeCheck {
     /** The page's own text for [picked], if it is on [page] as a whole span of this [kind]. */
     fun find(page: String, picked: String, kind: Kind): String? = find(Folded(page), picked, kind)
 
-    private fun find(page: Folded, picked: String, kind: Kind): String? {
+    private fun find(page: Folded, picked: String, kind: Kind): String? = spans(page, picked, kind).firstOrNull()?.text
+
+    /** Where [find] finds [picked]: the page's own text, and the line it starts on. */
+    private class Span(val text: String, val line: Int)
+
+    /** Every place [picked] is on [page] as a whole span of this [kind], in page order. */
+    private fun spans(page: Folded, picked: String, kind: Kind): List<Span> {
         val needle = Folded(picked).text
-        if (needle.isEmpty()) return null
-        if (kind != Kind.OTHER && needle.none { it.isLetter() }) return null
+        if (needle.isEmpty()) return emptyList()
+        if (kind != Kind.OTHER && needle.none { it.isLetter() }) return emptyList()
+        val found = mutableListOf<Span>()
         var from = 0
         while (true) {
             val at = page.text.indexOf(needle, from)
-            if (at < 0) return null
+            if (at < 0) return found
             val end = at + needle.length
             if (startsCleanly(page, at, needle, kind) && endsCleanly(page, end, needle)) {
-                return page.original(at, end)
+                found += Span(page.original(at, end), page.lineAt(at))
             }
             from = at + 1
         }
@@ -132,6 +151,35 @@ object PageRecipeCheck {
         /** The source text behind folded [from] until [to], its whitespace runs as one space. */
         fun original(from: Int, to: Int): String =
             source.substring(starts[from], ends[to - 1]).trim().replace(WHITESPACE, " ")
+
+        /** The line folded [at] is on, counting only lines that hold more than whitespace. */
+        fun lineAt(at: Int): Int = lines[at]
+
+        private val lines: IntArray by lazy {
+            var n = 0
+            IntArray(text.length) { i -> n.also { if (lineBreak[i]) n++ } }
+        }
+
+        /**
+         * Each line's card: a new one starts at an ingredients heading that follows a steps
+         * heading, so a second recipe's card further down is apart from the first.
+         */
+        fun cards(): IntArray {
+            val lines = mutableListOf<String>()
+            var start = 0
+            for (i in text.indices) if (lineBreak[i]) { lines += text.substring(start, i); start = i + 1 }
+            lines += text.substring(start)
+            var card = 0
+            var steps = false
+            return IntArray(lines.size) { k ->
+                if (RecipeTextWindow.isIngredientsHeading(lines[k])) {
+                    if (steps) { card++; steps = false }
+                } else if (RecipeTextWindow.isStepsHeading(lines[k])) {
+                    steps = true
+                }
+                card
+            }
+        }
     }
 
     private val WHITESPACE = Regex("\\s+")

@@ -104,7 +104,7 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
                TrailingAmount (name-first lines: Japanese), StepAmounts (amounts inside steps, #101),
-               ClipSelection, ClipDraft, PageText, RecipeTextWindow, PageRecipeCheck (#103),
+               ClipSelection, ClipDraft, PageText, RecipeTextWindow, PageLines (#128), PageRecipeCheck (#103),
                PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal), LibraryLimit (#107),
                Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
                Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy)
@@ -512,10 +512,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **A recipe needs a name, plus ingredients or steps.**
 - **Last, the on-device model picks from the page's text** (#103,
   `llmExtraction` flag): only after `NoRecipeFound` on a page that loaded,
-  through `PageRecipeExtractor`, on the part `RecipeTextWindow` chooses.
+  through `PageRecipeExtractor`, on the part `RecipeTextWindow` chooses, its
+  lines numbered: the model names runs of line numbers and `PageLines` takes
+  those lines as written (#128).
   `PageRecipeCheck` keeps only what is on that text (folded; never cutting
-  into a word or number; an ingredient starts its line) and shows the page's
-  own characters. Saved as `EXTRACTED`, with a quiet "Picked from the page
+  into a word or number; an ingredient starts its line; one recipe card's
+  lines only, #128) and shows the page's own characters. Saved as `EXTRACTED`, with a quiet "Picked from the page
   text" line. Rules in `docs/decisions.md`.
 - **Pages behind a login, or rendered by JavaScript,** expose no recipe data
   to the direct fetch. Only the rendered fetch can see the latter.
