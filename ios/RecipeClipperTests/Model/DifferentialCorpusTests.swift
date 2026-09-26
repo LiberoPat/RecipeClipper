@@ -97,6 +97,9 @@ final class DifferentialCorpusTests: XCTestCase {
         let html: String; let lines: [String]; let refined: [String]
         init(_ html: String, _ lines: [String], _ refined: [String]) {
             self.html = html; self.lines = lines; self.refined = refined
+        }
+    }
+
     private struct Trail {
         let line: String; let words: LanguageWords; let core: String?; let trailing: String?
         init(_ line: String, lang: String = "en", _ core: String?, _ trailing: String?) {
@@ -1307,6 +1310,8 @@ final class DifferentialCorpusTests: XCTestCase {
         Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'></span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>(minced)</span></li></ul></div></div>", ["2 (minced)"], ["2 (minced)"]),
         Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>rice</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>rinsed</span></li></ul></div></div>", ["1 cup rice"], ["1 cup rice rinsed"]),
         Wprm("<p>No card on this page.</p>", ["1 cup rice"], ["1 cup rice"]),
+    ]
+
     private static let trails: [Trail] = [
         Trail("2 eggs (dfsafs -", "2 eggs", "(dfsafs -"),
         Trail("2 ears of corn, shucked", "2 ears of corn", ", shucked"),
