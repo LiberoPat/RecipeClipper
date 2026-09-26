@@ -18,6 +18,8 @@ import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ExportedBackup
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.local.dao.BackupDao
+import com.example.recipeclipper.data.local.entity.GroceryItemEntity
+import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.model.PlanDays
 import java.util.UUID
 import javax.inject.Inject
@@ -74,27 +76,7 @@ class DefaultBackupRepository @Inject constructor(
         val now = clock.now()
         val backup = Backup(
             exportedAt = now,
-            recipes = snapshot.recipes.map {
-                BackupRecipe(
-                    id = it.uid,
-                    sourceUrl = it.sourceUrl,
-                    sourceType = it.sourceType,
-                    title = it.title,
-                    imageUrl = it.imageUrl,
-                    ingredients = it.ingredients,
-                    instructions = it.instructions,
-                    prepTime = it.prepTime,
-                    cookTime = it.cookTime,
-                    totalTime = it.totalTime,
-                    servings = it.servings,
-                    lastViewedAt = it.lastViewedAt,
-                    checkedIngredients = it.checkedIngredients,
-                    notes = it.notes,
-                    language = it.language,
-                    contentOrigin = it.contentOrigin,
-                    editedAt = it.editedAt
-                )
-            },
+            recipes = snapshot.recipes.map { it.toBackup() },
             lists = snapshot.lists.map {
                 BackupList(it.uid, it.name, it.isFavorites, it.isBuiltIn, it.sortOrder, it.createdAt)
             },
@@ -109,12 +91,7 @@ class DefaultBackupRepository @Inject constructor(
                     it.purchasedDay, it.expiresDay, it.updatedAt
                 )
             },
-            groceries = snapshot.groceries.map {
-                BackupGroceryItem(
-                    it.uid, it.text, it.language, it.aisle, it.checked, it.recipeId?.let(recipeUids::get),
-                    it.plannedDay, it.updatedAt
-                )
-            },
+            groceries = snapshot.groceries.map { it.toBackup(recipeUids) },
             mealTypes = snapshot.mealTypes.map { BackupMealType(it.uid, it.name, it.builtInKey, it.sortOrder, it.updatedAt) },
             mealPlan = snapshot.mealPlan.map {
                 BackupPlanEntry(
@@ -166,3 +143,29 @@ class DefaultBackupRepository @Inject constructor(
         return BackupResult.Success(summary)
     }
 }
+
+/** A recipe as the export file holds it (#26), and as a shared file sends it (#149). */
+internal fun RecipeEntity.toBackup() = BackupRecipe(
+    id = uid,
+    sourceUrl = sourceUrl,
+    sourceType = sourceType,
+    title = title,
+    imageUrl = imageUrl,
+    ingredients = ingredients,
+    instructions = instructions,
+    prepTime = prepTime,
+    cookTime = cookTime,
+    totalTime = totalTime,
+    servings = servings,
+    lastViewedAt = lastViewedAt,
+    checkedIngredients = checkedIngredients,
+    notes = notes,
+    language = language,
+    contentOrigin = contentOrigin,
+    editedAt = editedAt
+)
+
+/** A grocery item as the export file holds it; [recipeUids] maps recipe row ids to uids. */
+internal fun GroceryItemEntity.toBackup(recipeUids: Map<Long, String>) = BackupGroceryItem(
+    uid, text, language, aisle, checked, recipeId?.let(recipeUids::get), plannedDay, updatedAt
+)

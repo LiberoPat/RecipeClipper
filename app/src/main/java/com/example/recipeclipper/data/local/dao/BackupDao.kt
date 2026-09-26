@@ -11,6 +11,7 @@ import com.example.recipeclipper.data.backup.ExistingList
 import com.example.recipeclipper.data.backup.ExistingMealType
 import com.example.recipeclipper.data.backup.ExistingPantryItem
 import com.example.recipeclipper.data.backup.ExistingRecipe
+import com.example.recipeclipper.data.backup.ImportPlan
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.backup.Target
 import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
@@ -24,6 +25,7 @@ import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.LibraryLimit
+import com.example.recipeclipper.data.model.UrlCleaner
 
 /** Everything an export holds, read in one transaction so it is one consistent moment. */
 data class BackupSnapshot(
@@ -204,7 +206,50 @@ abstract class BackupDao {
             existingCookedPhotoUids = existingCookedPhotoUids().toSet(),
             availablePhotoFiles = storedPhotos.keys
         )
+        writePlan(plan, storedPhotos, now)
+        return plan.summary
+    }
 
+    /** Recipes by row id, for a shared file (#149). */
+    @Query("SELECT * FROM recipes WHERE id IN (:ids) ORDER BY lastViewedAt DESC, id DESC")
+    abstract suspend fun recipesByIds(ids: List<Long>): List<RecipeEntity>
+
+    /** The grocery items not ticked off, in list order: what "Send as file" sends (#149). */
+    @Query("SELECT * FROM grocery_items WHERE checked = 0 ORDER BY listId ASC, sortOrder ASC, id ASC")
+    abstract suspend fun uncheckedGroceries(): List<GroceryItemEntity>
+
+    /** A received recipe already here counts as viewed now, like a re-share (#149). */
+    @Query("UPDATE recipes SET lastViewedAt = :now WHERE sourceUrl IN (:urls)")
+    abstract suspend fun touchByUrl(urls: List<String>, now: Long)
+
+    /**
+     * The chosen parts of a shared file (#149, `ShareFile.chosen`), merged like an import:
+     * recipes by cleaned link (never replacing one here), grocery and pantry items by the import's
+     * rules. Unlike an import, every chosen recipe comes in, as the newest viewed, and one already
+     * here counts as viewed now: the caller then applies the history cap, as a shared link does.
+     * The free tier (#107) keeps the import's rule: only free places under its limit.
+     */
+    @Transaction
+    open suspend fun importShare(share: Backup, limit: LibraryLimit, newUid: () -> String, now: Long): ImportSummary {
+        val plan = BackupMerger.plan(
+            backup = share,
+            existingRecipes = existingRecipes(),
+            existingLists = existingLists(),
+            maxSortOrder = maxSortOrder(),
+            historyLimit = if (limit is LibraryLimit.Free) limit.max else Int.MAX_VALUE,
+            newUid = newUid,
+            countsEveryRecipe = limit is LibraryLimit.Free,
+            existingPantry = existingPantry(),
+            existingGroceryUids = existingGroceryUids().toSet()
+        )
+        writePlan(plan, emptyMap(), now)
+        val urls = share.recipes.map { UrlCleaner.clean(it.sourceUrl) }
+        if (urls.isNotEmpty()) touchByUrl(urls, now)
+        return plan.summary
+    }
+
+    /** Writes what [BackupMerger] planned. Called inside a transaction. */
+    private suspend fun writePlan(plan: ImportPlan, storedPhotos: Map<String, String>, now: Long) {
         val newRecipeIds = HashMap<String, Long>()
         for (r in plan.newRecipes) {
             newRecipeIds[r.id] = insertRecipe(
@@ -339,6 +384,5 @@ abstract class BackupDao {
                 )
             )
         }
-        return plan.summary
     }
 }

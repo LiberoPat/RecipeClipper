@@ -50,7 +50,8 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
     ) {
         RecipeScreen(
             onBack = { navController.popBackStack() },
-            onEdit = { navController.navigate(Routes.edit(it)) }
+            onEdit = { navController.navigate(Routes.edit(it)) },
+            sendFileViewModel = hiltViewModel()
         )
     }
 }

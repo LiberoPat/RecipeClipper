@@ -14,6 +14,7 @@ fun NavGraphBuilder.groceriesDestinations(navController: NavHostController) {
     composable(Routes.GROCERIES) {
         GroceriesScreen(
             receiveViewModel = hiltViewModel(),
+            sendFileViewModel = hiltViewModel(),
             onOpenPantry = { navController.selectTab(Tab.PANTRY) }
         )
     }

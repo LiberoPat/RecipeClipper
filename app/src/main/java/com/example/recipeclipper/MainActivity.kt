@@ -1,6 +1,7 @@
 package com.example.recipeclipper
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -9,9 +10,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.core.content.IntentCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.example.recipeclipper.data.AutoBackup
+import com.example.recipeclipper.data.backup.ShareFile
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.ReceivedList
@@ -23,6 +27,9 @@ import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
 import com.example.recipeclipper.ui.navigation.Tab
 import com.example.recipeclipper.ui.navigation.openRoute
+import com.example.recipeclipper.ui.sharefile.ReceiveFileHost
+import com.example.recipeclipper.ui.sharefile.ReceivedFileInbox
+import com.example.recipeclipper.ui.sharefile.ReceivedWhere
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
@@ -39,6 +46,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var autoBackup: AutoBackup
+
+    @Inject
+    lateinit var receivedFiles: ReceivedFileInbox
 
     // Routes from intents (a shared link, a tapped timer notification) wait here until the
     // NavHost is composed and can navigate to them.
@@ -78,6 +88,18 @@ class MainActivity : ComponentActivity() {
             }
             CompositionLocalProvider(LocalFlagValues provides flags) {
                 AppShell(navController, tabsEnabled)
+                // A shared file (#149) opens its sheet over whatever is on screen; once added,
+                // the app shows where the things went.
+                ReceiveFileHost(hiltViewModel()) { where ->
+                    navController.openRoute(
+                        when (where) {
+                            ReceivedWhere.GROCERIES -> Tab.GROCERIES.route
+                            ReceivedWhere.PANTRY -> Tab.PANTRY.route
+                            ReceivedWhere.RECIPES -> Routes.RECIPES
+                        },
+                        tabsEnabled
+                    )
+                }
             }
         }
 
@@ -114,6 +136,13 @@ class MainActivity : ComponentActivity() {
             val id = intent.getLongExtra(TimerNotifications.EXTRA_RECIPE_ID, -1)
             return if (id > 0) Routes.cookRecipe(id) else null
         }
+        // A shared file (#149) opens its sheet where the user is; handled, so a rotation doesn't
+        // open it again.
+        sharedFile(intent)?.let { uri ->
+            receivedFiles.offer(uri)
+            shareHandled = true
+            return null
+        }
         val text = sharedText(intent) ?: return null
         Regex("https?://\\S+").find(text)?.let { return Routes.import(it.value) }
         if (featureFlags.current.isOn(Flag.MEAL_PLAN) && ReceivedList.lines(text).isNotEmpty()) {
@@ -121,6 +150,17 @@ class MainActivity : ComponentActivity() {
             return Tab.GROCERIES.route
         }
         return null
+    }
+
+    /** A Recipe Clipper file (#149): opened (VIEW) or shared in (SEND), by its type or its name. */
+    private fun sharedFile(intent: Intent?): String? {
+        val uri = when (intent?.action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+            else -> null
+        } ?: return null
+        val named = uri.lastPathSegment?.endsWith(".${ShareFile.EXTENSION}", ignoreCase = true) == true
+        return uri.toString().takeIf { intent.type == ShareFile.MIME_TYPE || named }
     }
 
     /** Browsers share a link, and messaging apps a message, as EXTRA_TEXT on ACTION_SEND text/plain. */

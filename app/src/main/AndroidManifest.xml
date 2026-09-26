@@ -40,6 +40,27 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+
+            <!-- A Recipe Clipper file (#149): recipes and grocery items sent from another phone,
+                 opened from a message or a file manager, or shared in. By its own type... -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/vnd.recipeclipper+json" />
+            </intent-filter>
+            <!-- ...or by its name, for apps that hand it over as a generic file. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.recipeclipper" />
+                <data android:pathPattern=".*\\..*\\.recipeclipper" />
+                <data android:pathPattern=".*\\..*\\..*\\.recipeclipper" />
+            </intent-filter>
         </activity>
 
         <!-- Shares an export file (Settings → Export recipes) with the app the user picks.

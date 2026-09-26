@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.navigation
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -154,7 +155,8 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     ) {
         RecipeScreen(
             onBack = { navController.popBackStack() },
-            onEdit = { navController.navigate(Routes.edit(it)) }
+            onEdit = { navController.navigate(Routes.edit(it)) },
+            sendFileViewModel = hiltViewModel()
         )
     }
 
@@ -193,7 +195,8 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         RecipeScreen(
             onBack = { navController.popBackStack() },
             onEdit = { navController.navigate(Routes.edit(it)) },
-            onClip = { navController.navigate(Routes.clip(it)) }
+            onClip = { navController.navigate(Routes.clip(it)) },
+            sendFileViewModel = hiltViewModel()
         )
     }
 

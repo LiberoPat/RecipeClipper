@@ -63,6 +63,17 @@ class FakeBackupFiles : BackupFiles {
         return writeUri
     }
 
+    /** What [writeShare] returns; null stands for a failed write. */
+    var shareUri: String? = "content://test/exports/share/shared.recipeclipper"
+
+    /** json to name, for every [writeShare] call (#149). */
+    val shared = mutableListOf<Pair<String, String>>()
+
+    override suspend fun writeShare(json: String, name: String): String? {
+        shared += json to name
+        return shareUri
+    }
+
     override suspend fun read(uri: String): BackupResult<BackupPackage> =
         files[uri]?.let { BackupResult.Success(BackupPackage(it, photos[uri].orEmpty())) }
             ?: BackupResult.Failure(BackupError.ReadFailed)
