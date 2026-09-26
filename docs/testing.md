@@ -358,12 +358,15 @@ or the calls will fail as "not mocked".
     device.
   - iOS: `CookedPhotoTests` (real SQLite, ImageIO downscaling, the zip round trip),
     `BackupArchiveTests` and `CookedPhotosViewModelTests`, and one UI test,
-    `CookedPhotosUITests` (the section behind its flag, camera or library, the simulator's
-    "no camera").
+    `CookedPhotosUITests` (the section behind its flag, camera or library; the camera, or
+    the no-camera alert, opens and closes without adding a photo). The simulator's virtual
+    camera never captures, so no iOS UI test reaches the full-screen viewer.
 - **By hand, on a phone:**
   - Take a photo in portrait and landscape; it should stay upright in the gallery and full
     screen.
   - Pick several photos from the library, including a HEIC on iOS.
+  - On iOS, in the full-screen viewer: write a note, change the date, close and reopen (both
+    kept), then Delete and Undo.
   - Share one: the photo arrives with the recipe name.
   - Export with photos (a `.zip`), then import it on the other platform.
   - On Android, the first camera use asks nothing (the app declares no `CAMERA`). On iOS it

@@ -2,10 +2,11 @@ import XCTest
 
 /// "I made this" (#116; Android's RecipeCookedPhotosScreenTest): "Your cooks" sits at the foot
 /// of the reading view only behind its flag, and offers the camera or the library. The iOS 27
-/// simulator has a virtual camera, so the test takes a picture through the real
-/// UIImagePickerController, writes a note, and deletes the photo with Undo. On a simulator
-/// without a camera, choosing it says so instead. PhotosPicker is tried by hand
-/// (docs/testing.md).
+/// simulator opens the real UIImagePickerController, but its virtual camera shows a grey
+/// preview and never captures, so the test only checks that the camera (or, on a simulator
+/// without one, the no-camera alert) opens and closes without adding a photo. The note, the
+/// date and Delete with Undo are covered by CookedPhotosViewModelTests and tried by hand, with
+/// PhotosPicker (docs/testing.md).
 final class CookedPhotosUITests: RecipeUITestCase {
 
     private var iMadeThis: XCUIElement { app.buttons["cooked.iMadeThis"] }
@@ -24,7 +25,7 @@ final class CookedPhotosUITests: RecipeUITestCase {
         assertAbsent(text("Your cooks"), "Your cooks with the flag off")
     }
 
-    func testAPhotoFromTheCameraGetsANoteAndADeleteCanBeUndone() throws {
+    func testIMadeThisOpensTheCameraAndClosingItAddsNothing() {
         launch(flags: ["cookedPhotos"])
         openRecipe("Miso Soup")
         scrollToTheEnd()
@@ -33,30 +34,26 @@ final class CookedPhotosUITests: RecipeUITestCase {
         require(app.buttons["Choose from library"], "the library choice")
         require(app.buttons["Take a photo"], "the camera choice").tap()
 
-        let noCamera = app.alerts["No camera app is available."]
-        let shutter = app.buttons["PhotoCapture"]
         // The first use asks for camera access (a system alert, outside the app).
         let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.buttons["Allow"]
         if allow.waitForExistence(timeout: 3) { allow.tap() }
-        guard shutter.waitForExistence(timeout: 10) else {
-            require(noCamera, "the camera, or the no-camera alert")
-            noCamera.buttons.firstMatch.tap()
-            throw XCTSkip("This simulator has no camera")
+
+        let noCamera = app.alerts["No camera app is available."]
+        let closeCamera = app.buttons["DismissButton"]
+        let deadline = Date().addingTimeInterval(timeout)
+        while !closeCamera.exists && !noCamera.exists && Date() < deadline {
+            _ = closeCamera.waitForExistence(timeout: 0.5)
         }
-        shutter.tap()
-        require(app.buttons["Use Photo"], "Use Photo").tap()
+        if noCamera.exists {
+            noCamera.buttons.firstMatch.tap()
+            requireGone(noCamera, "the no-camera alert")
+        } else {
+            require(app.buttons["PhotoCapture"], "the camera, or the no-camera alert")
+            closeCamera.tap()
+            requireGone(closeCamera, "the camera")
+        }
 
-        // The new photo opens full screen, for its note.
-        let note = require(app.textFields["cooked.note"], "the note field")
-        note.tap()
-        note.typeText("Less salt")
-        require(app.buttons["Close"]).tap()
-        require(thumbnail, "the photo in Your cooks").tap()
-        XCTAssertEqual(require(app.textFields["cooked.note"]).value as? String, "Less salt")
-
-        require(app.buttons["cooked.delete"], "Delete photo").tap()
-        requireGone(thumbnail, "the deleted photo")
-        require(app.buttons["Undo"], "Undo").tap()
-        require(thumbnail, "the photo back after Undo")
+        XCTAssertTrue(require(iMadeThis, "back on the recipe").isHittable)
+        assertAbsent(thumbnail, "a photo after closing the camera")
     }
 }
