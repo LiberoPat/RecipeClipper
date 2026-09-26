@@ -387,8 +387,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   lines used; the very same line repeated is "line × 3"; otherwise they sit
   together under the name, each as written. Every row is one tick.
   With `aiDecisions` (#99), a cached definite "same" joins close names in one
-  row, and trailing text judged a note or junk (never one with a digit) is
-  read past; the model writes no number and these rules still decide totals.
+  row, and trailing text (asked for every line with some; never text with a
+  digit) judged a note or junk is read past; the model writes no number and
+  these rules still decide totals.
   With no separator, a model's name found verbatim in the line cuts it first.
   Junk is hidden in Groceries (rows, lines, share) at display time, never
   stored or hidden in the recipe; notes still show.

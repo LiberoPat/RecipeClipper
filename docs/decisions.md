@@ -2277,8 +2277,10 @@ exact rules still decide every total.
   `GroceryDecisions.split` cuts a line at the first comma, semicolon, bracket or spaced dash
   whose left side has an ingredient name ("2 eggs" | "(dfsafs -"); never text holding a digit
   (a figure is never ignored, whatever the model says), never Japanese or unspaced languages,
-  never a package size before the name. Asked only when the line's core names what another
-  line names and the two don't already add up. Note or junk: the line is grouped and added up
+  never a package size before the name. Asked for every grocery line with trailing text, a
+  lone line too (the owner's option 2), so a lone "2 eggs (dfsafs -" shows "2 eggs" once
+  decided junk; once per text and language (the cache), in the background, once per visit.
+  Only grocery lines: the reading view never asks it. Note or junk: the line is grouped and added up
   as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"). A note still shows as written under
   the total; **junk is hidden in Groceries** (the owner's option 1): the row, the lines under
   a total or Together row and the shared text show the line without it ("2 eggs"). That is a
@@ -2294,7 +2296,7 @@ exact rules still decide every total.
   non-empty text), it is in the line as whole words (`PageRecipeCheck.find`), the line up to it
   still reads as an ingredient line whose name ends with it, and what follows is two
   characters or more with no digit (`GroceryDecisions.nameSplit`). That rest then goes through
-  the trailing-text question above, asked without needing a partner line. Unsure or a failed
+  the trailing-text question above. Unsure or a failed
   check: the line stays exactly as today. Pinned by the corpus's `NameCut` rows.
 - **Aisles.** Grouping stays per aisle. When a fresh answer lands, a line in Other moves
   beside its "same" partner, or to its core's aisle once its trailing text is note or junk
