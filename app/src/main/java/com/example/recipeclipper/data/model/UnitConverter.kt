@@ -373,7 +373,7 @@ object UnitConverter {
     // --- Formatting ---
 
     /** Grams as g/kg, or millilitres as ml/L: one decimal under 10, whole numbers up to 100, then 5s. */
-    private fun metricText(low: Double, high: Double?, separator: String, small: String, large: String): String? {
+    internal fun metricText(low: Double, high: Double?, separator: String, small: String, large: String): String? {
         val top = maxOf(low, high ?: low)
         if (top < 0.5) return null
         val useLarge = top >= 1000
@@ -394,7 +394,7 @@ object UnitConverter {
     private fun formatThousands(v: Double): String =
         BigDecimal(v / 1000).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 
-    private fun ounceText(gramsLow: Double, gramsHigh: Double?, separator: String): String? {
+    internal fun ounceText(gramsLow: Double, gramsHigh: Double?, separator: String): String? {
         val low = gramsLow / GRAMS_PER_OUNCE
         val high = gramsHigh?.div(GRAMS_PER_OUNCE)
         if (maxOf(low, high ?: low) < 0.125) return null // a pinch in ounces means nothing

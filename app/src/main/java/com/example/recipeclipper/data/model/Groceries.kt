@@ -202,9 +202,9 @@ object GroceryCombiner {
     // --- Adding up
 
     /** Units that convert exactly into each other, and each unit's size in the family's smallest. */
-    private enum class Family { METRIC_WEIGHT, IMPERIAL_WEIGHT, METRIC_VOLUME, US_VOLUME, STICK, COUNT }
+    internal enum class Family { METRIC_WEIGHT, IMPERIAL_WEIGHT, METRIC_VOLUME, US_VOLUME, STICK, COUNT }
 
-    private fun sizeOf(unit: MeasureUnit): Pair<Family, Double>? = when (unit) {
+    internal fun sizeOf(unit: MeasureUnit): Pair<Family, Double>? = when (unit) {
         MeasureUnit.G -> Family.METRIC_WEIGHT to 1.0
         MeasureUnit.KG -> Family.METRIC_WEIGHT to 1000.0
         MeasureUnit.OZ -> Family.IMPERIAL_WEIGHT to 1.0
@@ -269,7 +269,7 @@ object GroceryCombiner {
      * no unit word from the bracket or slash on. "(about 1 lb)" or "(or 2 tsp dried)" could be
      * another amount, so a total beside it would be a confident wrong number.
      */
-    private fun notesOnly(text: String, c: UnitConverter.Patterns): Boolean {
+    internal fun notesOnly(text: String, c: UnitConverter.Patterns): Boolean {
         val start = text.indexOfFirst { it == '(' || it == '/' }
         if (start < 0) return true
         val note = text.substring(start)
@@ -360,7 +360,7 @@ object GroceryCombiner {
     }
 
     /** [value] formatted as the scaler writes amounts, or null if that would round it. */
-    private fun exactly(value: Double, metric: Boolean, comma: Boolean): String? {
+    internal fun exactly(value: Double, metric: Boolean, comma: Boolean): String? {
         val plain = if (metric) IngredientScaler.formatMetric(value) else IngredientScaler.format(value)
         val shown = IngredientScaler.parse(plain) ?: return null
         if (abs(shown - value) > 1e-9 * max(1.0, abs(value))) return null
