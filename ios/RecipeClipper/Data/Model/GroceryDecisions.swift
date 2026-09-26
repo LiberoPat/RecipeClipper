@@ -143,16 +143,26 @@ enum GroceryDecisions {
         return out
     }
 
-    /// Where answers that just landed (`fresh`) file lines from Other (see the Kotlin).
+    /// Where the table puts `line`'s core once the model's answers cut it and judge the trailing
+    /// text a note or junk, or nil (see the Kotlin).
+    static func cutAisle(_ line: String, words: LanguageWords, decisions: Decisions) -> Aisle? {
+        guard let split = split(line, words: words, decisions: decisions),
+              decisions.ignorableTrailing(split.trailing, language: words.language) else { return nil }
+        let aisle = Aisles.of(split.core, words: words)
+        return aisle == .other ? nil : aisle
+    }
+
+    /// Where answers that just landed (`fresh`) file lines from Other: the cut's aisle once
+    /// either of its answers (the name, the trailing text) is fresh (see the Kotlin).
     static func filing(_ items: [GroceryItem], fresh: Set<DecisionQuestion>, decisions: Decisions) -> [Aisle: [Int64]] {
         var moves: [(Int64, Aisle)] = []
         for item in items where item.aisle == .other {
             guard let words = LanguageWords.forTag(item.language) else { continue }
             if let split = split(item.text, words: words, decisions: decisions),
-               fresh.contains(.trailingText(split.trailing, language: words.language)),
-               decisions.ignorableTrailing(split.trailing, language: words.language) {
-                let aisle = Aisles.of(split.core, words: words)
-                if aisle != .other { moves.append((item.id, aisle)); continue }
+               fresh.contains(.trailingText(split.trailing, language: words.language))
+                || fresh.contains(.ingredientName(item.text, language: words.language)),
+               let aisle = cutAisle(item.text, words: words, decisions: decisions) {
+                moves.append((item.id, aisle)); continue
             }
             guard let name = name(item, decisions: decisions) else { continue }
             let partner = items.first { other in

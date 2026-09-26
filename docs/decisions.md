@@ -2403,6 +2403,9 @@ exact rules still decide every total.
   beside its "same" partner, or to its core's aisle once its trailing text is note or junk
   (`GroceryDecisions.filing`, then `fileFromOther`), exactly like #104's aisle answers: only
   lines still in Other, only on an answer that just landed, so an aisle the user chose stands.
+  The core's aisle (`cutAisle`) follows whichever of its answers lands last, the name or the
+  trailing text (#158: the junk answer is often cached already, from another line), and a
+  line added once both are cached takes it at once, as it takes a cached aisle answer.
 - **Lazily, in the background.** The Groceries screen asks after each change of the list,
   each question once per visit and once ever per text/pair and language (the cache); it
   shows today's grouping until an answer lands, then regroups from the decisions flow. Flag

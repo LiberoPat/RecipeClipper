@@ -39,8 +39,10 @@ import java.io.File
  * the model may be asked about, or nil; write only the line (optionally `, lang: "fr"`).
  *
  * `NameCut("line", "name")` rows (#99) pin [GroceryDecisions.nameQuestion] (whether the model is
- * asked the line's name) and [GroceryDecisions.nameSplit] (the core and trailing text once it
- * answers with that name, or nil); write only the line (optionally `, lang: "fr"`) and the name.
+ * asked the line's name), [GroceryDecisions.nameSplit] (the core and trailing text once it
+ * answers with that name, or nil) and [GroceryDecisions.cutAisle] (the aisle key once that
+ * trailing text is also junk, or nil, #158); write only the line (optionally `, lang: "fr"`)
+ * and the name.
  *
  * `Short("step", "short")` rows (#100) pin [ShortStepCheck.accept]: the short version, tidied, or
  * nil; write only the step and the short version (optionally `, lines: [...]`, the recipe's
@@ -168,7 +170,11 @@ class DifferentialCorpusTest {
             val ask = GroceryDecisions.nameQuestion(text, words) != null
             val split = GroceryDecisions.nameSplit(text, name, words)
             val (core, trailing) = split?.let { q(it.core) to q(it.trailing) } ?: ("nil" to "nil")
-            return m.groupValues[1] + "NameCut(${q(text)}$lang, ${q(name)}, $ask, $core, $trailing),"
+            val named = mapOf(DecisionQuestion.ingredientName(text, words.language) to name)
+            val junk = GroceryDecisions.split(text, words, Decisions(named))
+                ?.let { named + (DecisionQuestion.trailingText(it.trailing, words.language) to "junk") } ?: named
+            val aisle = GroceryDecisions.cutAisle(text, words, Decisions(junk))?.let { q(it.key) } ?: "nil"
+            return m.groupValues[1] + "NameCut(${q(text)}$lang, ${q(name)}, $ask, $core, $trailing, $aisle),"
         }
         trailRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
