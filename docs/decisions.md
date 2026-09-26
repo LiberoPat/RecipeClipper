@@ -2305,7 +2305,10 @@ a bot check, so there is nothing there to write a rule for.
 - **`amount`: parts of an item left out when matching it.** Delish's card writes "3 cups" and
   "6 Tbsp." where its JSON-LD writes "3 c." and "6 tbsp.", so its `<strong>` amount is removed
   before the line-up check. JSON-LD's line is still what shows. On iOS the removal cuts those
-  elements' source out of the item's, then reads the text as any element's.
+  elements' source out of the item's, then reads the text as any element's. An amount in the
+  middle of a line ("4 (6- to **8-oz.**) chicken breasts") leaves a key that is no longer one
+  run of the JSON-LD line, so that card doesn't line up and its page gets no headings: a safe
+  miss, left as is.
 - **`stepNoise`: phrases that start noise at the end of the last step.** The last step is cut
   where a phrase starts it or follows a space; a last step that was all noise goes, unless it
   was the only step. Only the last step, only on that site: an editor's note in the middle of a
@@ -2314,8 +2317,11 @@ a bot check, so there is nothing there to write a rule for.
   without an app release (the issue's "later, optionally") would be used only if newer than the
   bundled one; nothing fetches one yet.
 - **The weekly site check flags a rule that stops matching.** Its report adds a "Site rules"
-  section (Matched, or **Stopped matching** for a site's card that no longer lines up or its
-  noise no longer found), and the workflow warns on it. It runs when the table changes too.
+  section, judged per site over the site's pages in the run: Matched when a site's card lines up
+  or its noise is found on at least one of them, else **Stopped matching**, and the workflow
+  warns on that. Not per page, because a rule need not fit every page: not every Epicurious
+  recipe has an editor's note, and a Delish card with an amount mid-line never lines up. The
+  JSON keeps each page's result. It runs when the table changes too.
 - Tests: trimmed real pages in `shared/fixtures/pages/site-*.html` (`SiteRulesTest` /
   `SiteRulesTests`), and `Site` rows in the differential corpus. The site check fetches one
   page per site with rules.

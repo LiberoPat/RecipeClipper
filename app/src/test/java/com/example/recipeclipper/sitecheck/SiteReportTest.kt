@@ -59,12 +59,24 @@ class SiteReportTest {
             SiteReport.Outcome("https://b.example/x", ParseResult.Success(recipe)),
         )
         val md = SiteReport.markdown(outcomes, "t")
-        assertTrue(md, "| [soup.example](https://www.soup.example/soup) | ingredients | Matched |" in md)
-        assertTrue(md, "| [soup.example](https://www.soup.example/soup) | step noise | **Stopped matching** |" in md)
-        assertTrue(md, "b.example) |" !in md.substringAfter("### Site rules"))
+        assertTrue(md, "| soup.example | ingredients | Matched | 1 of 1 |" in md)
+        assertTrue(md, "| soup.example | step noise | **Stopped matching** | 0 of 1 |" in md)
+        assertTrue(md, "b.example |" !in md.substringAfter("### Site rules"))
         val entry = JSONObject(SiteReport.json(outcomes, "t")).getJSONArray("results").getJSONObject(0)
         assertEquals(false, entry.getJSONObject("siteRules").getBoolean("step noise"))
         assertTrue("### Site rules" !in SiteReport.markdown(outcomes.drop(1), "t"))
+    }
+
+    @Test fun `a site rule is judged over all of its site's pages`() {
+        // Not every page has an editor's note, or groups to head: one page of the site is enough.
+        val outcomes = listOf(
+            SiteReport.Outcome(recipe.sourceUrl, ParseResult.Success(recipe), rules = mapOf("ingredients" to true, "step noise" to false)),
+            SiteReport.Outcome("https://soup.example/stew", ParseResult.Success(recipe), rules = mapOf("ingredients" to false, "step noise" to true)),
+        )
+        val md = SiteReport.markdown(outcomes, "t")
+        assertTrue(md, "| soup.example | ingredients | Matched | 1 of 2 |" in md)
+        assertTrue(md, "| soup.example | step noise | Matched | 1 of 2 |" in md)
+        assertTrue(md, "Stopped matching**" !in md)
     }
 
     @Test fun `the JSON records outcomes only, never recipe text`() {

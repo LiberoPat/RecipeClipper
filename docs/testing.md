@@ -423,7 +423,8 @@ both.
   (kept 90 days): compare runs, since blocking flips run to run. A blocked
   site never fails the job; a broken harness does, and "no site parsed" raises
   a warning. A "Site rules" section lists each rule of a site with rules
-  (#120) as Matched or **Stopped matching**, and the latter raises a warning.
+  (#120) as Matched (on at least one of the site's pages) or **Stopped
+  matching** (on none), and the latter raises a warning.
   Only outcomes are recorded, never the pages or recipe text.
   Locally: `./gradlew testDebugUnitTest -PsiteCheck` (results in
   `app/build/site-check/`). Without `-PsiteCheck`, `LiveSiteCheck` is excluded
