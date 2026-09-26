@@ -6,6 +6,7 @@ import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.Aisles
 import com.example.recipeclipper.data.model.Decisions
+import com.example.recipeclipper.data.model.GroceryDecisions
 import com.example.recipeclipper.data.model.IngredientName
 import com.example.recipeclipper.data.model.GroceryItem
 import com.example.recipeclipper.data.model.LanguageWords
@@ -38,9 +39,13 @@ class DefaultGroceryRepository @Inject constructor(
         val items = lines.mapNotNull { line ->
             val text = line.text.trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
             val words = LanguageWords.forTag(line.language)
-            // The keyword table first; for what it puts in Other, an aisle the model decided (#104).
+            // The keyword table first; for what it puts in Other, the table on the line as the
+            // model's answers already cut it (#158), then an aisle the model decided (#104).
             val aisle = Aisles.of(text, words).takeIf { it != Aisle.OTHER }
-                ?: words?.let { w -> IngredientName.of(text, w)?.let { decided.aisle(it, w.language) } }
+                ?: words?.let { w ->
+                    GroceryDecisions.cutAisle(text, w, decided)
+                        ?: IngredientName.of(text, w)?.let { decided.aisle(it, w.language) }
+                }
                 ?: Aisle.OTHER
             GroceryItemEntity(
                 text = text,

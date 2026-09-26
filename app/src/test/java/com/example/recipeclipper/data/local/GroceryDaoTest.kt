@@ -4,10 +4,15 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.DefaultGroceryRepository
 import com.example.recipeclipper.data.local.dao.GroceryDao
 import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
+import com.example.recipeclipper.data.model.DecisionQuestion
+import com.example.recipeclipper.data.model.NewGroceryLine
+import com.example.recipeclipper.fake.FakeDecisionRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -64,6 +69,19 @@ class GroceryDaoTest {
         assertEquals(listOf("a", "b", "c"), texts())
         assertEquals(listOf(0, 1, 2), groceries.observeItems().first().map { it.sortOrder })
         assertEquals(3, groceries.observeItems().first().map { it.uid }.toSet().size)
+    }
+
+    @Test
+    fun aLineAddedOnceTheModelHasCutItIsFiledByItsIngredient() = runBlocking {
+        // Both answers were cached before the line came (#158): no answer lands to file it later.
+        val name = DecisionQuestion.ingredientName("2 onions dfsafs", "en")
+        val junk = DecisionQuestion.trailingText("dfsafs", "en")
+        val decisions = FakeDecisionRepository(mapOf(name to "onions", junk to "junk"))
+        val repository = DefaultGroceryRepository(groceries, Clock { 1 }, { _, e -> throw e }, decisions)
+        repository.add(listOf(NewGroceryLine("2 onions dfsafs", "en")))
+        decisions.decide(listOf(name, junk))
+        repository.add(listOf(NewGroceryLine("2 onions dfsafs", "en")))
+        assertEquals(listOf("other", "produce"), groceries.observeItems().first().map { it.aisle })
     }
 
     @Test

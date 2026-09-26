@@ -25,10 +25,13 @@ final class DefaultGroceryRepository: GroceryRepository {
             let text = line.text.kTrimmed
             guard !text.isEmpty else { return nil }
             let words = LanguageWords.forTag(line.language)
-            // The keyword table first; for what it puts in Other, an aisle the model decided (#104).
+            // The keyword table first; for what it puts in Other, the table on the line as the
+            // model's answers already cut it (#158), then an aisle the model decided (#104).
             var aisle = Aisles.of(text, words: words)
-            if aisle == .other, let words, let name = IngredientName.of(text, words: words) {
-                aisle = decided.aisle(name, language: words.language) ?? .other
+            if aisle == .other, let words {
+                aisle = GroceryDecisions.cutAisle(text, words: words, decisions: decided)
+                    ?? IngredientName.of(text, words: words).flatMap { decided.aisle($0, language: words.language) }
+                    ?? .other
             }
             return GroceryItemRecord(
                 text: text, language: line.language,

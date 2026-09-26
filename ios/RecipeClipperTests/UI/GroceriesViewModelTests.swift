@@ -91,6 +91,27 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertTrue(repository.items.value.contains { $0.text == "2 onions dfsafs" })
     }
 
+    func testANamedJunkLineLeavesOtherForItsIngredientsAisleWhicheverAnswerLandsLast() async {
+        let name = DecisionQuestion.ingredientName("2 onions dfsafs", language: "en")
+        let junk = DecisionQuestion.trailingText("dfsafs", language: "en")
+        // One answer is already cached (say from another line), the other lands now (#158).
+        for cached in [junk, name] {
+            let groceries = FakeGroceryRepository()
+            await groceries.add([NewGroceryLine(text: "2 onions dfsafs", language: "en")])
+            XCTAssertEqual(groceries.items.value.first?.aisle, .other)
+            let decisions = FakeDecisionRepository([name: "onions", junk: "junk"])
+            await decisions.decide([cached])
+            let vm = GroceriesViewModel(
+                repository: groceries, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), decisions: decisions
+            )
+            await settleMain { vm.uiState.sections?.map(\.aisle) == [.produce] }
+
+            XCTAssertEqual(decisions.asked.filter { $0 == name || $0 == junk }, [cached, cached == junk ? name : junk])
+            XCTAssertEqual(groceries.items.value.first?.aisle, .produce)
+            XCTAssertEqual(vm.uiState.sections?.map(\.aisle), [.produce])
+        }
+    }
+
     func testALoneLinesTrailingTextIsAskedAboutHiddenWhenJunkAndShownWhenANote() async {
         await add("2 eggs (dfsafs -", "1 cup milk, warmed")
         let junk = DecisionQuestion.trailingText("(dfsafs -", language: "en")
