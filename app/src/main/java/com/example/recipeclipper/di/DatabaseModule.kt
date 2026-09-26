@@ -54,4 +54,7 @@ object DatabaseModule {
 
     @Provides
     fun shortStepDao(db: RecipeDatabase): ShortStepDao = db.shortStepDao()
+
+    @Provides
+    fun aiDecisionDao(db: RecipeDatabase): com.example.recipeclipper.data.local.dao.AiDecisionDao = db.aiDecisionDao()
 }

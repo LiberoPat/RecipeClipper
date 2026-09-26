@@ -71,6 +71,10 @@ abstract class GroceryDao {
     @Query("UPDATE grocery_items SET aisle = :aisle, updatedAt = :now WHERE id IN (:ids)")
     abstract suspend fun setAisle(ids: List<Long>, aisle: String, now: Long)
 
+    /** The model's aisle (#104), only for items still in Other. */
+    @Query("UPDATE grocery_items SET aisle = :aisle, updatedAt = :now WHERE id IN (:ids) AND aisle = 'other'")
+    abstract suspend fun fileFromOther(ids: List<Long>, aisle: String, now: Long)
+
     @Query("DELETE FROM grocery_items WHERE id IN (:ids)")
     abstract suspend fun delete(ids: List<Long>)
 

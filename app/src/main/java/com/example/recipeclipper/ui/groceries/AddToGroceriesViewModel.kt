@@ -2,7 +2,12 @@ package com.example.recipeclipper.ui.groceries
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.GroceryRepository
+import com.example.recipeclipper.data.model.DecisionCandidates
+import com.example.recipeclipper.data.model.Decisions
+import com.example.recipeclipper.data.model.IngredientName
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.model.GrocerySource
@@ -43,7 +48,9 @@ data class AddToGroceriesUiState(
 class AddToGroceriesViewModel @Inject constructor(
     private val repository: GroceryRepository,
     private val preferences: AppPreferences,
-    private val pantry: PantryRepository
+    private val pantry: PantryRepository,
+    // The model's decisions (#104); none without it.
+    private val decisions: DecisionRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddToGroceriesUiState())
@@ -63,9 +70,19 @@ class AddToGroceriesViewModel @Inject constructor(
     private suspend fun untickCovered(sources: List<GrocerySource>) {
         val items = pantry.items()
         if (items.isEmpty()) return
+        // Answers already cached count now (#104); new questions are asked for next time, so
+        // ticks never change under the cook while the sheet is open.
+        val decided = decisions?.current() ?: Decisions.NONE
         val covered = sources.flatMap { source ->
-            source.lines.indices.filter { PantryMatch.covered(source.lines[it], source.language, items) }
+            source.lines.indices.filter { PantryMatch.covered(source.lines[it], source.language, items, decided) }
                 .map { SourceLine(source.key, it) }
+        }
+        decisions?.let { repo ->
+            val questions = sources.flatMap { source ->
+                val words = LanguageWords.forTag(source.language) ?: return@flatMap emptyList()
+                DecisionCandidates.samePairs(source.lines.mapNotNull { IngredientName.of(it, words) }, source.language, items)
+            }
+            if (questions.isNotEmpty()) viewModelScope.launch { repo.decide(questions) }
         }
         _uiState.update { state -> if (state.sources === sources) state.copy(unticked = state.unticked + covered) else state }
     }
@@ -76,7 +93,9 @@ class AddToGroceriesViewModel @Inject constructor(
         viewModelScope.launch {
             val planned = repository.plannedIngredients(start, start + 6)
             val settings = preferences.current
-            val sources = GrocerySources.fromPlan(planned, settings.unitSystem, settings.convertLiquids)
+            val sources = GrocerySources.fromPlan(
+                planned, settings.unitSystem, settings.convertLiquids, decisions?.current() ?: Decisions.NONE
+            )
             _uiState.update { it.copy(sources = sources) }
             untickCovered(sources)
         }

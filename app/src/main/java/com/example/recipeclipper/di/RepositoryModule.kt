@@ -61,5 +61,11 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun decisionRepository(
+        impl: com.example.recipeclipper.data.DefaultDecisionRepository
+    ): com.example.recipeclipper.data.DecisionRepository
+
+    @Binds
+    @Singleton
     abstract fun unitPreferences(impl: SharedPrefsAppPreferences): AppPreferences
 }

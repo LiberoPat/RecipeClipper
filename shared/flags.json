@@ -29,6 +29,12 @@
       "description": "A recipe picked from the page's text by the on-device model when the page has no JSON-LD or microdata recipe: every line kept is checked to be on the page, and the reading view says so. Unsupported phones and languages behave as before.",
       "defaults": { "debug": false, "release": false },
       "issue": 103
+    },
+    {
+      "key": "aiDecisions",
+      "description": "Typed decisions by the on-device model where the rules give up: whether a count's bracket is the total or each item's (scaling), whether a close pantry name is the same ingredient (Have/Buy), and the aisle of an item the keyword table puts in Other. Only a definite answer given twice with high confidence acts; unsupported phones and languages behave as before.",
+      "defaults": { "debug": false, "release": false },
+      "issue": 104
     }
   ]
 }

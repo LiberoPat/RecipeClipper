@@ -135,12 +135,21 @@ object PantryMatch {
 
     /**
      * The pantry item tracking [name] in [language], or null when none is: a matching staple
-     * first, else one in stock, else one that's out. [status] turns it into Have or Buy.
+     * first, else one in stock, else one that's out. [status] turns it into Have or Buy. Only
+     * when no name matches, a staple or in-stock item the model said is the same (#104,
+     * [decisions]) counts: its "same" can only turn Buy into Have, never the other way.
      */
-    fun find(name: String, language: String?, pantry: List<PantryItem>): PantryItem? {
+    fun find(name: String, language: String?, pantry: List<PantryItem>, decisions: Decisions = Decisions.NONE): PantryItem? {
         val words = LanguageWords.forTag(language) ?: return null
-        val matching = pantry.filter { it.language == words.language && IngredientName.matches(name, it.name, words) }
-        return matching.firstOrNull { it.alwaysHave } ?: matching.firstOrNull { it.inStock } ?: matching.firstOrNull()
+        val sameLanguage = pantry.filter { it.language == words.language }
+        val matching = sameLanguage.filter { IngredientName.matches(name, it.name, words) }
+        if (matching.isNotEmpty()) {
+            return matching.firstOrNull { it.alwaysHave } ?: matching.firstOrNull { it.inStock } ?: matching.first()
+        }
+        val same = sameLanguage.filter {
+            (it.alwaysHave || it.inStock) && decisions.sameIngredient(name, it.name, words.language)
+        }
+        return same.firstOrNull { it.alwaysHave } ?: same.firstOrNull()
     }
 
     fun status(item: PantryItem?): NeedStatus = when {
@@ -151,10 +160,10 @@ object PantryMatch {
     }
 
     /** True when [line] needn't be bought: its ingredient is in stock, or a staple. */
-    fun covered(line: String, language: String?, pantry: List<PantryItem>): Boolean {
+    fun covered(line: String, language: String?, pantry: List<PantryItem>, decisions: Decisions = Decisions.NONE): Boolean {
         val words = LanguageWords.forTag(language) ?: return false
         val name = IngredientName.of(line, words) ?: return false
-        return status(find(name, words.language, pantry)) != NeedStatus.BUY
+        return status(find(name, words.language, pantry, decisions)) != NeedStatus.BUY
     }
 
     /**
@@ -162,7 +171,7 @@ object PantryMatch {
      * grouped by ingredient in the order first met, split into Buy and Have. Staples are with
      * Have, never Buy.
      */
-    fun weekNeeds(sources: List<GrocerySource>, pantry: List<PantryItem>): WeekNeeds {
+    fun weekNeeds(sources: List<GrocerySource>, pantry: List<PantryItem>, decisions: Decisions = Decisions.NONE): WeekNeeds {
         val groups = LinkedHashMap<Any, MutableList<NeedLine>>()
         val names = HashMap<Any, String?>()
         var unnamed = 0
@@ -178,7 +187,7 @@ object PantryMatch {
         }
         val rows = groups.map { (key, lines) ->
             val name = names[key]
-            val item = name?.let { find(it, lines.first().language, pantry) }
+            val item = name?.let { find(it, lines.first().language, pantry, decisions) }
             NeedRow(name, lines, status(item), item?.name)
         }
         return WeekNeeds(

@@ -5,6 +5,8 @@ import com.example.recipeclipper.data.local.dao.PlannedIngredientsRow
 import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.Aisles
+import com.example.recipeclipper.data.model.Decisions
+import com.example.recipeclipper.data.model.IngredientName
 import com.example.recipeclipper.data.model.GroceryItem
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.NewGroceryLine
@@ -23,7 +25,8 @@ import javax.inject.Singleton
 class DefaultGroceryRepository @Inject constructor(
     private val dao: GroceryDao,
     private val clock: Clock,
-    private val log: ErrorLog
+    private val log: ErrorLog,
+    private val decisions: DecisionRepository? = null
 ) : GroceryRepository {
 
     override fun observeItems(): Flow<List<GroceryItem>> =
@@ -31,12 +34,18 @@ class DefaultGroceryRepository @Inject constructor(
 
     override suspend fun add(lines: List<NewGroceryLine>) {
         val now = clock.now()
+        val decided = decisions?.current() ?: Decisions.NONE
         val items = lines.mapNotNull { line ->
             val text = line.text.trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            val words = LanguageWords.forTag(line.language)
+            // The keyword table first; for what it puts in Other, an aisle the model decided (#104).
+            val aisle = Aisles.of(text, words).takeIf { it != Aisle.OTHER }
+                ?: words?.let { w -> IngredientName.of(text, w)?.let { decided.aisle(it, w.language) } }
+                ?: Aisle.OTHER
             GroceryItemEntity(
                 text = text,
                 language = line.language,
-                aisle = Aisles.of(text, LanguageWords.forTag(line.language)).key,
+                aisle = aisle.key,
                 sortOrder = 0, // the DAO puts them last, in order
                 recipeId = line.recipeId,
                 plannedDay = line.plannedDay,
@@ -52,6 +61,9 @@ class DefaultGroceryRepository @Inject constructor(
 
     override suspend fun setAisle(ids: List<Long>, aisle: Aisle) =
         log.guard("setGroceryAisle", Unit) { dao.setAisle(ids, aisle.key, clock.now()) }
+
+    override suspend fun fileFromOther(ids: List<Long>, aisle: Aisle) =
+        log.guard("fileGroceryAisle", Unit) { dao.fileFromOther(ids, aisle.key, clock.now()) }
 
     override suspend fun delete(ids: List<Long>): GroceryRepository.DeletedItems? = log.guard("deleteGroceries", null) {
         val entities = dao.items(ids).ifEmpty { return@guard null }

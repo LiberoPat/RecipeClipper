@@ -15,6 +15,9 @@ import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.CookProgress
+import com.example.recipeclipper.data.DecisionRepository
+import com.example.recipeclipper.data.model.DecisionCandidates
+import com.example.recipeclipper.data.model.Decisions
 import com.example.recipeclipper.data.model.IngredientRendering
 import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.LanguageWords
@@ -69,7 +72,9 @@ class RecipeViewModel @Inject constructor(
     // them out (chef mode off, nothing to unlock); pass them by name.
     private val shortSteps: ShortStepRepository? = null,
     private val featureFlags: FeatureFlags? = null,
-    private val entitlements: Entitlements = Entitlements.Unavailable
+    private val entitlements: Entitlements = Entitlements.Unavailable,
+    // The on-device model's count-bracket decisions (#104); none without it.
+    private val decisionRepository: DecisionRepository? = null
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -124,7 +129,20 @@ class RecipeViewModel @Inject constructor(
     // The loaded recipe's short steps as saved, before rendering; empty while Chef mode is off.
     private var rawShortSteps: List<String?> = emptyList()
 
+    // The model's decided count brackets (#104); NONE (today's rendering) until one lands.
+    private var decisions: Decisions = Decisions.NONE
+
     init {
+        decisionRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.observe().collect {
+                    if (it != decisions) {
+                        decisions = it
+                        _uiState.update(::rerender)
+                    }
+                }
+            }
+        }
         // Settings can change a default while this screen is alive underneath it; this keeps
         // the open recipe in step instead of showing the units it was opened with (#24).
         viewModelScope.launch { unitPreferences.settings.collect(::applySettings) }
@@ -203,6 +221,7 @@ class RecipeViewModel @Inject constructor(
             if (result is ParseResult.Success) {
                 restoreCook(result.recipe)
                 startChef()
+                askCountBrackets()
                 if (openInCookMode) {
                     openInCookMode = false
                     onCookStart()
@@ -367,6 +386,7 @@ class RecipeViewModel @Inject constructor(
                 }
                 restoreCook(result.recipe)
                 startChef()
+                askCountBrackets()
             } else {
                 val error = (result as ParseResult.Error).error
                 _uiState.update { it.copy(updatingFromSource = false, updateError = error) }
@@ -449,6 +469,18 @@ class RecipeViewModel @Inject constructor(
                 ).withStepAmounts(state.amountsInSteps)
             )
         )
+    }
+
+    /**
+     * Asks the model about the loaded recipe's count brackets (#104), in the background: lines
+     * show as today until an answer lands. Only a recipe with a servings stepper can scale.
+     */
+    private fun askCountBrackets() {
+        val repo = decisionRepository ?: return
+        val content = _uiState.value.content as? RecipeContent.Success ?: return
+        if (content.servings == null) return
+        val questions = DecisionCandidates.countBrackets(content.recipe.ingredients, content.words)
+        if (questions.isNotEmpty()) viewModelScope.launch { repo.decide(questions) }
     }
 
     // --- Chef mode (#100): short steps written on the device ---
@@ -749,7 +781,7 @@ class RecipeViewModel @Inject constructor(
         convertLiquids: Boolean
     ): List<String> {
         val factor = servings?.let { it.target.toDouble() / it.base } ?: 1.0
-        return IngredientRendering.render(recipe.ingredients, factor, system, convertLiquids, words)
+        return IngredientRendering.render(recipe.ingredients, factor, system, convertLiquids, words, decisions)
     }
 
     // Instructions aren't scaled (a step can mention any number), but oven temperatures
