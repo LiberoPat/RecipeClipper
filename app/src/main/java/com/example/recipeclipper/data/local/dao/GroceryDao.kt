@@ -22,12 +22,25 @@ data class PlannedIngredientsRow(
     val language: String?
 )
 
+/** A recipe's id and title. */
+data class RecipeTitleRow(val id: Long, val title: String)
+
 /** The grocery list (#50). One list for now ([GroceryItemEntity.DEFAULT_LIST]). */
 @Dao
 abstract class GroceryDao {
 
     @Query("SELECT * FROM grocery_items WHERE listId = :listId ORDER BY sortOrder ASC, id ASC")
     abstract fun observeItems(listId: Long = GroceryItemEntity.DEFAULT_LIST): Flow<List<GroceryItemEntity>>
+
+    /** The recipes the list's items came from (#149), for naming them in "Send list". */
+    @Query(
+        """
+        SELECT DISTINCT r.id, r.title FROM recipes r
+        JOIN grocery_items g ON g.recipeId = r.id
+        WHERE g.listId = :listId
+        """
+    )
+    abstract fun observeRecipeTitles(listId: Long = GroceryItemEntity.DEFAULT_LIST): Flow<List<RecipeTitleRow>>
 
     @Query("SELECT * FROM grocery_items WHERE id IN (:ids)")
     abstract suspend fun items(ids: List<Long>): List<GroceryItemEntity>
