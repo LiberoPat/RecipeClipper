@@ -54,7 +54,9 @@ The Team ID and the other release steps are in `../docs/release.md`.
 
 `-uiTestSeed` (`App/UITestSeeding.swift`) swaps in an in-memory database with seeded recipes
 and an offline recipe source; the UI tests use it. Under XCTest the app always uses an
-in-memory database and a throwaway defaults suite, so tests never touch real data.
+in-memory database and a throwaway defaults suite, so tests never touch real data. The
+first-run tour (#151) is marked done in both, so no welcome or tip gets in a test's way;
+`-uiTestTour` (`WelcomeUITests`) launches as a fresh install instead.
 
 ## Architecture — how it maps to Android
 
