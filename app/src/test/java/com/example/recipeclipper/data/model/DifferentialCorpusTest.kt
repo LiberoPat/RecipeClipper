@@ -34,6 +34,10 @@ import java.io.File
  * `Trail("line")` rows (#99) pin [GroceryDecisions.split]: the line's core and the trailing text
  * the model may be asked about, or nil; write only the line (optionally `, lang: "fr"`).
  *
+ * `NameCut("line", "name")` rows (#99) pin [GroceryDecisions.nameQuestion] (whether the model is
+ * asked the line's name) and [GroceryDecisions.nameSplit] (the core and trailing text once it
+ * answers with that name, or nil); write only the line (optionally `, lang: "fr"`) and the name.
+ *
  * `Pick(.kind, "page", "picked")` rows (#103) pin [PageRecipeCheck.find]: the page's own text
  * for what the model picked, or nil; write only the kind (name, ingredient, step, other), the
  * page text and the pick.
@@ -74,6 +78,8 @@ class DifferentialCorpusTest {
     private val closeRow = Regex("""^(\s*)Close\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A trailing-text row (#99): a grocery line, optionally its language.
     private val trailRow = Regex("""^(\s*)Trail\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A name-cut row (#99): a grocery line, optionally its language, the model's name for it.
+    private val nameCutRow = Regex("""^(\s*)NameCut\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?, "((?:[^"\\]|\\.)*)"""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
@@ -115,6 +121,15 @@ class DifferentialCorpusTest {
             val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
             val close = DecisionCandidates.close(a, b, LanguageWords.forTag(language)!!)
             return m.groupValues[1] + "Close(${q(a)}, ${q(b)}$lang, $close),"
+        }
+        nameCutRow.find(line)?.let { m ->
+            val (text, name) = unescape(m.groupValues[2]) to unescape(m.groupValues[4])
+            val words = LanguageWords.forTag(m.groupValues[3].ifEmpty { "en" })!!
+            val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(m.groupValues[3])}"
+            val ask = GroceryDecisions.nameQuestion(text, words) != null
+            val split = GroceryDecisions.nameSplit(text, name, words)
+            val (core, trailing) = split?.let { q(it.core) to q(it.trailing) } ?: ("nil" to "nil")
+            return m.groupValues[1] + "NameCut(${q(text)}$lang, ${q(name)}, $ask, $core, $trailing),"
         }
         trailRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
