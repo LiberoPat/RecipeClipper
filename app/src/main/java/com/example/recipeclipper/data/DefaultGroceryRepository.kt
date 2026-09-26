@@ -32,6 +32,10 @@ class DefaultGroceryRepository @Inject constructor(
     override fun observeItems(): Flow<List<GroceryItem>> =
         dao.observeItems().map { rows -> rows.map { it.toDomain() } }.orEmptyOnError(log, "observeGroceries")
 
+    override fun observeRecipeTitles(): Flow<Map<Long, String>> =
+        dao.observeRecipeTitles().orEmptyOnError(log, "observeGroceryRecipeTitles")
+            .map { rows -> rows.associate { it.id to it.title } }
+
     override suspend fun add(lines: List<NewGroceryLine>) {
         val now = clock.now()
         val decided = decisions?.current() ?: Decisions.NONE

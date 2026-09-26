@@ -17,36 +17,60 @@ final class ShareViewController: UIViewController {
     private var started = false
 
     override init(nibName: String?, bundle: Bundle?) {
-        viewModel = ShareImportViewModel(repository: Self.makeRepository(), connectivity: PathConnectivity())
+        viewModel = Self.makeViewModel()
         super.init(nibName: nibName, bundle: bundle)
     }
 
     required init?(coder: NSCoder) {
-        viewModel = ShareImportViewModel(repository: Self.makeRepository(), connectivity: PathConnectivity())
+        viewModel = Self.makeViewModel()
         super.init(coder: coder)
     }
 
-    /// The same repository the app builds, over the shared database file. Nil if the App
-    /// Group container is missing (this build isn't entitled to it) or the file won't open.
-    /// No rendered (off-screen WebView) fallback here: it would cost the extension memory it
-    /// doesn't have, so a page that needs it fails in the card and works from the app.
-    private static func makeRepository() -> RecipeRepository? {
+    private static func makeViewModel() -> ShareImportViewModel {
+        let db = openDatabase()
+        return ShareImportViewModel(
+            repository: db.map(makeRepository), connectivity: PathConnectivity(),
+            makeReceiveList: { db.flatMap(makeReceiveList) }
+        )
+    }
+
+    /// The database file the app reads. Nil if the App Group container is missing (this build
+    /// isn't entitled to it) or the file won't open: every import then fails as `saveFailed`.
+    private static func openDatabase() -> AppDatabase? {
         guard let path = AppDatabase.sharedPath() else {
             shareLog.error("App Group container unavailable; can't save")
             return nil
         }
         do {
-            let clock = SystemClock()
-            // The limit (#107) the app mirrors into the App Group suite: this process never
-            // sees the flags or StoreKit.
-            let library = DefaultsLibraryLimit(defaults: UserDefaults(suiteName: AppGroup.identifier) ?? .standard)
-            return DefaultRecipeRepository(
-                db: try AppDatabase(path: path), source: BlogRecipeSource(), clock: clock, library: library
-            )
+            return try AppDatabase(path: path)
         } catch {
             shareLog.error("couldn't open the shared database: \(String(describing: error), privacy: .public)")
             return nil
         }
+    }
+
+    /// The same repository the app builds, over the shared database file. No rendered
+    /// (off-screen WebView) fallback here: it would cost the extension memory it doesn't have,
+    /// so a page that needs it fails in the card and works from the app.
+    private static func makeRepository(_ db: AppDatabase) -> RecipeRepository {
+        // The limit (#107) the app mirrors into the App Group suite: this process never
+        // sees the flags or StoreKit.
+        let library = DefaultsLibraryLimit(defaults: UserDefaults(suiteName: AppGroup.identifier) ?? .standard)
+        return DefaultRecipeRepository(db: db, source: BlogRecipeSource(), clock: SystemClock(), library: library)
+    }
+
+    /// "Add this list" (#149) over the same database, only while the app has the grocery list
+    /// and the pantry on (the `mealPlan` flag, mirrored into the App Group suite).
+    @MainActor
+    private static func makeReceiveList(_ db: AppDatabase) -> ReceiveListViewModel? {
+        guard let defaults = UserDefaults(suiteName: AppGroup.identifier),
+              DefaultsGroceriesSwitch(defaults: defaults).isOn else { return nil }
+        let clock = SystemClock()
+        return ReceiveListViewModel(
+            groceries: DefaultGroceryRepository(db: db, clock: clock),
+            pantry: DefaultPantryRepository(db: db, clock: clock),
+            calendar: SystemPlanCalendar(clock: clock)
+        )
     }
 
     override func viewDidLoad() {
@@ -81,8 +105,10 @@ final class ShareViewController: UIViewController {
             .flatMap { $0.attachments ?? [] }
         Task { @MainActor [viewModel] in
             let input = await SharedItems.read(from: providers)
+            // No link: perhaps a list sent from another phone (#149).
+            let text = input == nil ? await SharedItems.text(from: providers) : nil
             MemoryFootprint.log("read the shared items")
-            viewModel.start(with: input)
+            viewModel.start(with: input, text: text)
             await viewModel.currentLoad?.value
             MemoryFootprint.log("import finished")
         }

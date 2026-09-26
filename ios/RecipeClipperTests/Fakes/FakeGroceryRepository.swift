@@ -14,6 +14,11 @@ final class FakeGroceryRepository: GroceryRepository {
 
     func observeItems() -> AnyPublisher<[GroceryItem], Never> { items.eraseToAnyPublisher() }
 
+    /// The recipes' titles by id, as the recipes table would give them.
+    let recipeTitles = CurrentValueSubject<[Int64: String], Never>([:])
+
+    func observeRecipeTitles() -> AnyPublisher<[Int64: String], Never> { recipeTitles.eraseToAnyPublisher() }
+
     func add(_ lines: [NewGroceryLine]) async {
         var order = (items.value.map(\.sortOrder).max() ?? -1) + 1
         var added: [GroceryItem] = []

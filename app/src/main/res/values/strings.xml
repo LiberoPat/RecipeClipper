@@ -354,7 +354,11 @@
     <string name="action_add_week_to_groceries">Add this week\'s ingredients</string>
     <string name="groceries_week_empty">No recipes are planned this week.</string>
     <string name="action_clear_checked">Clear checked</string>
-    <string name="action_share_groceries">Share list</string>
+    <string name="action_share_groceries">Send list</string>
+    <!-- A list sent from another phone, shared in or pasted (#149) -->
+    <string name="action_paste_list">Paste a list</string>
+    <string name="receive_list_title">Add this list</string>
+    <string name="receive_list_empty">There\'s no list on the clipboard. Copy one first, then paste it here.</string>
     <string name="action_move_to_aisle">Move to aisle…</string>
     <string name="move_to_aisle_title">Aisle</string>
     <string name="snackbar_grocery_deleted">Deleted %1$s</string>

@@ -1443,7 +1443,7 @@ The third tab of #46, still behind the #47 flag.
     listed once, "× 3". Before, each line had its own box, so a repeated
     recipe looked like separate items.
 - **Checked and shared.** Ticking a row ticks all its lines; checked
-  rows sort after unchecked ones in each aisle and are struck through. Share
+  rows sort after unchecked ones in each aisle and are struck through. Share ("Send list" since #149)
   sends the unchecked rows as plain text by aisle. Delete and "Clear checked"
   are undoable from one snackbar (one undo at a time, as on the Week).
 - **Adding.** "Add to groceries" in the recipe menu and "Add this week's
@@ -2597,3 +2597,46 @@ written there by WorkManager while the app is closed, a revoked permission showi
 and a restore from the Drive copy on a second phone. On iOS: a device with the iCloud container
 registered, the copy appearing in Files → Recipe Clipper, and the same copy restored on a new
 iPhone and imported on Android.
+
+## Sending a grocery list, and receiving one (#149, phase 1)
+
+Two people shop for one household; one may not have the app. Phase 1 is plain text, which
+works either way.
+
+- **Owner's decisions:** "Send list" sends every unticked item (no picker); each item names
+  the recipe it's for; no live shared list (phase 3, sync, is dropped). Phase 2 (a small
+  export file for recipes and items) is its own PR.
+- **The text** (`GroceryShareText`): the title, then each aisle's name and its unticked rows,
+  "- " before each, as the screen shows them (a combined row is its total; lines kept
+  together are each listed, a repeat as "× 3"). A line ends with its recipes in brackets,
+  "- 2 lb chicken thighs (Sheet-pan chicken)": every recipe the row's lines came from, each
+  once, in the order added. The titles come from the recipes table through `recipeId`
+  (`observeRecipeTitles`), so a typed item, or one whose recipe was deleted (`SET NULL`),
+  names none. No link and no Markdown: it reads as a message.
+- **Reading a list back** (`ReceivedList`, pure, both platforms): when any line starts with a
+  bullet ("- ", "• ", "* ", en or em dash…), only bulleted lines are items, so a sent list's
+  title and aisle headings drop out; text with no bullets offers every line. Blank lines,
+  headings (a line ending in ":") and lines with no letter or digit are never items. "-5" is
+  not a bullet. Nothing else is read: "× 3" and "(Recipe)" stay in the line as written, since
+  guessing what a stranger's text means is how a confident wrong list happens.
+- **"Add this list"**: the lines with checkboxes, all ticked, then **Add to groceries** or
+  **Add to pantry**, one tap, no second confirm. Lines are added as written and read like a
+  typed item: the phone's language, unless the lines' words clearly say another the app
+  has. On the grocery list they combine as any lines do (`GroceryCombiner`). In the pantry
+  each line becomes its `IngredientName` (the whole line when there's none), once per name;
+  a name the pantry already tracks is put back in stock instead of added twice (a staple is
+  left alone), as ticking a grocery line off does. Adding to the pantry shows the Pantry.
+- **Where a list comes in.** "Paste a list" in the Groceries menu reads the clipboard when
+  tapped (an empty one shows the sheet with a sentence saying so). On Android, shared text
+  with a link still imports the link, exactly as before; text with no link but with lines
+  opens the Groceries tab on the sheet (through `ReceivedListInbox`, in memory), only with
+  the `mealPlan` flag. The iOS share extension can't open the app (#19), so it shows the same
+  sheet in its card and writes to the App Group database itself; the app catches up when it
+  becomes active, like a shared recipe. The extension never sees the flags, so the app
+  mirrors `mealPlan` into the App Group suite as `groceries_on` (as #107's limit is); off, a
+  list shared in is "no link", as before.
+- **Not built:** a "Send list" in the Pantry (the issue's sketch) waits for the owner to say
+  what a pantry sends (in stock, out of stock, or chosen items).
+- **Tests:** the iOS UI test can't drive the system share sheet or read another app's copy
+  without the paste prompt, so the launch seeds the pasteboard (`-uiTestPasteboard`, debug
+  only); the sent text itself is pinned by unit tests on both platforms.
