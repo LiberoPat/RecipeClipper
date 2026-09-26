@@ -89,7 +89,7 @@ enum PagesTask {
         out += "| Today (parsers only) | 0 | – | 0 / \(goldIng) | 0 / 0 | 0 / \(goldSteps) | 0 / 0 | – | – |\n"
         if llm {
             let median = seconds.isEmpty ? "–" : String(format: "%.1f s", seconds.sorted()[seconds.count / 2])
-            out += "| #103: window + LLM + PageRecipeCheck | \(recovered) | \(nameRight) | \(coveredIng) / \(goldIng) | \(rightIng) / \(wrongIng) | \(coveredSteps) / \(goldSteps) | \(rightSteps) / \(wrongSteps) | \(noWindow) | \(median) |\n"
+            out += "| #128: window + LLM in two parts + PageRecipeCheck (one card) | \(recovered) | \(nameRight) | \(coveredIng) / \(goldIng) | \(rightIng) / \(wrongIng) | \(coveredSteps) / \(goldSteps) | \(rightSteps) / \(wrongSteps) | \(noWindow) | \(median) |\n"
             out += "\nChecker: of \(pickedIng) ingredient and \(pickedSteps) step strings the model returned, it dropped "
                 + "\(rejectedIng) and \(rejectedSteps) as not on the page (pages it rejected whole not counted); \(modelFailed) unreadable replies.\n"
         }
