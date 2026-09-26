@@ -18,6 +18,10 @@ final class DefaultGroceryRepository: GroceryRepository {
         db.observe { conn in try GroceryDao(db: conn).items().map(\.domain) }
     }
 
+    func observeRecipeTitles() -> AnyPublisher<[Int64: String], Never> {
+        db.observe { conn in try GroceryDao(db: conn).recipeTitles() }
+    }
+
     func add(_ lines: [NewGroceryLine]) async {
         let now = clock.now()
         let decided = await decisions?.current() ?? .none

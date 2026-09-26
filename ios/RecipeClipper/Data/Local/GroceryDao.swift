@@ -12,6 +12,19 @@ struct GroceryDao {
         )
     }
 
+    /// The recipes the list's items came from (#149), by id, for naming them in "Send list".
+    func recipeTitles(listId: Int64 = GroceryItemRecord.defaultList) throws -> [Int64: String] {
+        let rows = try db.query(
+            """
+            SELECT DISTINCT r.id, r.title FROM recipes r
+            JOIN grocery_items g ON g.recipeId = r.id
+            WHERE g.listId = ?
+            """,
+            listId
+        ) { ($0.int64(0), $0.string(1)) }
+        return Dictionary(rows, uniquingKeysWith: { first, _ in first })
+    }
+
     func items(ids: [Int64]) throws -> [GroceryItemRecord] {
         try ids.compactMap { id in
             try db.queryOne(
