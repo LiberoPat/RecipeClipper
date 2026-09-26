@@ -216,17 +216,48 @@ struct RecipeDao {
         )
     }
 
+    /// The free tier's one-for-one removal (#107): the oldest-viewed recipe `cullHistory` could
+    /// delete (the same protections: keep this WHERE in step with it), or nil if every recipe is
+    /// protected.
+    func oldestCullable(today: Int64 = noPlanProtection) throws -> Int64? {
+        try db.queryOne(
+            """
+            SELECT id FROM recipes
+            WHERE id NOT IN (SELECT recipeId FROM recipe_list_cross_ref)
+              AND id NOT IN (SELECT recipeId FROM meal_plan_entries
+                             WHERE recipeId IS NOT NULL AND day >= ?1)
+              AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
+              AND contentOrigin != 'MANUAL'
+            ORDER BY lastViewedAt ASC, id ASC
+            LIMIT 1
+            """,
+            today
+        ) { $0.int64(0) }
+    }
+
+    /// Every recipe, of every kind (#107: the Recipes screen's count).
+    func count() throws -> Int {
+        try db.queryOne("SELECT COUNT(*) FROM recipes") { $0.int(0) } ?? 0
+    }
+
+    /// `upsert`'s answer when a full free library had no room (#107): no row has id 0.
+    static let notKept: Int64 = 0
+
     /// Saves a freshly parsed recipe and returns its id. A link seen before is updated in
     /// place, keeping its id, its uid (`update` never writes it), its list membership, its
     /// note, its chosen servings, its ticked ingredients only if the ingredients are unchanged,
-    /// and its cook progress only if the steps are unchanged (both hold indexes). The history
-    /// cap is enforced in the same transaction. Call inside a write.
+    /// and its cook progress only if the steps are unchanged (both hold indexes). The `limit` is
+    /// applied in the same transaction (see `LibraryLimit`): a `.history` cap is culled after the
+    /// save; a `.free` one only when a new recipe joins a library already at or over it, by
+    /// removing the oldest unprotected recipe first, one for one. If there is none, nothing is
+    /// written and `notKept` is returned. Updating a recipe already here never removes one.
+    /// Call inside a write.
     ///
     /// A row that is the user's version (#29: `contentOrigin` not PARSED) keeps its content:
     /// the re-share only counts as a view. `replaceUsersVersion` is "Update from source", which
     /// does replace it, and makes it PARSED again (`fresh` is).
     func upsert(
-        _ fresh: RecipeRecord, historyLimit: Int, replaceUsersVersion: Bool = false,
+        _ fresh: RecipeRecord, limit: LibraryLimit, replaceUsersVersion: Bool = false,
         today: Int64 = noPlanProtection
     ) throws -> Int64 {
         let id: Int64
@@ -238,12 +269,24 @@ struct RecipeDao {
             }
             id = existing.id
         } else {
+            if case .free(let max) = limit, try count() >= max {
+                guard let oldest = try oldestCullable(today: today) else { return Self.notKept }
+                try delete(oldest)
+            }
             var inserted = fresh
             inserted.id = 0
             id = try insert(inserted)
         }
-        try cullHistory(keep: historyLimit, today: today)
+        if case .history(let keep) = limit { try cullHistory(keep: keep, today: today) }
         return id
+    }
+
+    /// `upsert` under the old history cap: the app before #107, and most tests.
+    func upsert(
+        _ fresh: RecipeRecord, historyLimit: Int, replaceUsersVersion: Bool = false,
+        today: Int64 = noPlanProtection
+    ) throws -> Int64 {
+        try upsert(fresh, limit: .history(keep: historyLimit), replaceUsersVersion: replaceUsersVersion, today: today)
     }
 
     /// Saves the user's edit of recipe `id` (#29): `edited`'s content, with `origin` and

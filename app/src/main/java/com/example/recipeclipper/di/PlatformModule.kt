@@ -22,6 +22,10 @@ import com.example.recipeclipper.data.remote.RenderedPageSource
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
+import com.example.recipeclipper.data.DefaultLibraryPolicy
+import com.example.recipeclipper.data.Entitlements
+import com.example.recipeclipper.data.LibraryPolicy
+import com.example.recipeclipper.data.PlayBillingEntitlements
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
@@ -57,6 +61,14 @@ abstract class PlatformModule {
     @Binds
     @Singleton
     abstract fun featureFlagStore(impl: SharedPrefsFeatureFlagStore): FeatureFlagStore
+
+    @Binds
+    @Singleton
+    abstract fun entitlements(impl: PlayBillingEntitlements): Entitlements
+
+    @Binds
+    @Singleton
+    abstract fun libraryPolicy(impl: DefaultLibraryPolicy): LibraryPolicy
 
     companion object {
         @Provides

@@ -421,4 +421,24 @@
         <item quantity="many">%1$d de repas ajoutés depuis « %2$s »</item>
         <item quantity="other">%1$d repas ajoutés depuis « %2$s »</item>
     </plurals>
+    <!-- The free tier and the unlock (#107) -->
+    <string name="unlock">Débloquer</string>
+    <string name="unlock_price">Débloquer pour %1$s</string>
+    <string name="unlimited_title">Recettes illimitées</string>
+    <string name="unlimited_body">L\'app gratuite garde %1$d recettes. Un achat unique garde toutes celles que vous ajoutez.</string>
+    <string name="unlimited_restore">Restaurer l\'achat</string>
+    <string name="unlimited_unlocked">Débloqué : toutes les recettes sont gardées.</string>
+    <string name="unlimited_pending">Achat en attente : il se débloque dès que le paiement aboutit.</string>
+    <string name="unlock_failed">Impossible de joindre la boutique. Réessayez plus tard.</string>
+    <string name="unlock_nothing">Aucun achat à restaurer sur ce compte.</string>
+    <string name="recipe_not_kept">Non enregistrée : vos %1$d recettes sont toutes dans des listes, des plans ou saisies à la main.</string>
+    <string name="library_full_title">Votre bibliothèque est pleine</string>
+    <string name="library_full_body">L\'app gratuite garde %1$d recettes, et les vôtres sont toutes dans des listes, des plans ou saisies à la main. Débloquez les recettes illimitées, ou supprimez-en une pour faire de la place.</string>
+    <string name="recipes_count">%1$d recettes sur %2$d</string>
+    <string name="recipes_count_over">%1$d recettes, plus que les %2$d gratuites</string>
+    <plurals name="backup_skipped_free">
+        <item quantity="one">%1$d ancienne recette sans liste n\'a pas été ajoutée : l\'app gratuite garde %2$d recettes.</item>
+        <item quantity="many">%1$d d\'anciennes recettes sans liste n\'ont pas été ajoutées : l\'app gratuite garde %2$d recettes.</item>
+        <item quantity="other">%1$d anciennes recettes sans liste n\'ont pas été ajoutées : l\'app gratuite garde %2$d recettes.</item>
+    </plurals>
 </resources>

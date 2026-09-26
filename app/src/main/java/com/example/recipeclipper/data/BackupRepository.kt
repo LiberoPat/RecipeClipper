@@ -47,7 +47,8 @@ interface BackupRepository {
 class DefaultBackupRepository @Inject constructor(
     private val backupDao: BackupDao,
     private val clock: Clock,
-    private val log: ErrorLog
+    private val log: ErrorLog,
+    private val library: LibraryPolicy = LibraryPolicy.HistoryOnly
 ) : BackupRepository {
 
     override suspend fun export(): BackupResult<ExportedBackup> {
@@ -125,7 +126,7 @@ class DefaultBackupRepository @Inject constructor(
             is BackupResult.Failure -> return decoded
         }
         val summary = log.guard("import", null) {
-            backupDao.importBackup(backup, HISTORY_LIMIT, PlanDays.today(clock.now())) { UUID.randomUUID().toString() }
+            backupDao.importBackup(backup, library.limit, PlanDays.today(clock.now())) { UUID.randomUUID().toString() }
         } ?: return BackupResult.Failure(BackupError.SaveFailed)
         return BackupResult.Success(summary)
     }

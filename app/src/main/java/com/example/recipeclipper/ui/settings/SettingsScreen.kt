@@ -227,6 +227,12 @@ fun SettingsScreen(
                     BackupStatusText(backup)
                 }
 
+                state.unlock?.let { row ->
+                    item {
+                        UnlockSection(row, state.unlockNotice, viewModel::onUnlock, viewModel::onRestore)
+                    }
+                }
+
                 item {
                     // The version, quietly at the foot. Seven taps open Developer settings (#87);
                     // the count is the ViewModel's, so it survives a rotation.
@@ -269,9 +275,9 @@ private fun RadioRow(title: String, description: String, selected: Boolean, onCl
     }
 }
 
-/** A row that does something when tapped: a title and a one-line description. */
+/** A row that does something when tapped: a title and, usually, a one-line description. */
 @Composable
-private fun ActionRow(title: String, description: String, enabled: Boolean, onClick: () -> Unit) {
+internal fun ActionRow(title: String, description: String?, enabled: Boolean, onClick: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -279,11 +285,13 @@ private fun ActionRow(title: String, description: String, enabled: Boolean, onCl
             .padding(vertical = 10.dp)
     ) {
         Text(title, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            description,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (description != null) {
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -331,9 +339,16 @@ private fun importSummaryText(resources: android.content.res.Resources, summary:
         )
     }
     if (summary.recipesSkipped > 0) {
-        parts += resources.getQuantityString(
-            R.plurals.backup_skipped, summary.recipesSkipped, summary.recipesSkipped, HISTORY_LIMIT
-        )
+        val freeLimit = summary.freeLimit
+        parts += if (freeLimit != null) {
+            resources.getQuantityString(
+                R.plurals.backup_skipped_free, summary.recipesSkipped, summary.recipesSkipped, freeLimit
+            )
+        } else {
+            resources.getQuantityString(
+                R.plurals.backup_skipped, summary.recipesSkipped, summary.recipesSkipped, HISTORY_LIMIT
+            )
+        }
     }
     return parts.joinToString(" ")
 }

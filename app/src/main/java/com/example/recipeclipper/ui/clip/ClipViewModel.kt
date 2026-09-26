@@ -4,7 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.ClipDraftStore
+import com.example.recipeclipper.data.Entitlements
+import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.needsNotice
 import com.example.recipeclipper.data.model.ClipDraft
 import com.example.recipeclipper.data.model.ClipField
 import com.example.recipeclipper.data.model.ClipSelection
@@ -26,6 +29,9 @@ sealed class ClipMessage {
     /** A session draft for this page was brought back; offers Discard. */
     object DraftRestored : ClipMessage()
     object SaveFailed : ClipMessage()
+
+    /** The Unlock from the full-library prompt (#107) is pending or failed. */
+    data class Unlock(val outcome: PurchaseOutcome) : ClipMessage()
 }
 
 /** A [ClipMessage] to show once. [serial] tells two identical messages apart. */
@@ -45,7 +51,9 @@ data class ClipUiState(
     val reviewing: Boolean = false,
     val saving: Boolean = false,
     val notice: ClipNotice? = null,
-    val savedRecipeId: Long? = null
+    val savedRecipeId: Long? = null,
+    /** The clip couldn't be saved: the free library is full and all protected (#107). */
+    val libraryFull: Boolean = false
 )
 
 /**
@@ -60,7 +68,8 @@ data class ClipUiState(
 class ClipViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val repository: RecipeRepository,
-    private val drafts: ClipDraftStore
+    private val drafts: ClipDraftStore,
+    private val entitlements: Entitlements = Entitlements.Unavailable
 ) : ViewModel() {
 
     private val url: String = UrlCleaner.clean(savedStateHandle.get<String>(URL_ARG).orEmpty())
@@ -166,7 +175,9 @@ class ClipViewModel @Inject constructor(
         _uiState.update { it.copy(saving = true) }
         viewModelScope.launch {
             when (val result = repository.saveClip(recipe)) {
-                is ParseResult.Success -> {
+                is ParseResult.Success -> if (!result.kept) {
+                    _uiState.update { it.copy(saving = false, libraryFull = true) }
+                } else {
                     drafts.remove(url)
                     clearSavedState()
                     _uiState.update { it.copy(saving = false, savedRecipeId = result.recipe.id) }
@@ -177,6 +188,18 @@ class ClipViewModel @Inject constructor(
             }
         }
     }
+
+    /** Unlock from the full-library prompt (#107), then save the clip as it stands. */
+    fun onUnlock() {
+        _uiState.update { it.copy(libraryFull = false) }
+        viewModelScope.launch {
+            val outcome = entitlements.purchase()
+            if (outcome == PurchaseOutcome.UNLOCKED) onSave()
+            else if (outcome.needsNotice) _uiState.update { it.copy(notice = notice(ClipMessage.Unlock(outcome))) }
+        }
+    }
+
+    fun onLibraryFullDismiss() = _uiState.update { it.copy(libraryFull = false) }
 
     // --- Internals ---
 

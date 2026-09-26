@@ -169,6 +169,10 @@ sealed class ParseError {
 }
 
 sealed class ParseResult {
-    data class Success(val recipe: Recipe) : ParseResult()
+    /**
+     * [kept] false (#107): the library is full and every recipe in it is protected, so
+     * [recipe] is shown but was not saved (its id is 0).
+     */
+    data class Success(val recipe: Recipe, val kept: Boolean = true) : ParseResult()
     data class Error(val error: ParseError) : ParseResult()
 }

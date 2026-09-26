@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.BackupFiles
 import com.example.recipeclipper.data.BackupRepository
+import com.example.recipeclipper.data.Entitlements
+import com.example.recipeclipper.data.PurchaseOutcome
+import com.example.recipeclipper.data.needsNotice
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ImportSummary
@@ -18,6 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -43,7 +47,22 @@ data class SettingsUiState(
     val expiryRemindersDenied: Boolean = false,
     /** e.g. "1.0 (1)", shown at the foot; tapping it [SettingsViewModel.DEVELOPER_TAPS] times
      *  opens Developer settings (#87). */
-    val appVersion: String = ""
+    val appVersion: String = "",
+    /** The "Unlimited recipes" row (#107); null while the `freeTier` flag is off. */
+    val unlock: UnlockRow? = null,
+    /** A purchase or restore that didn't simply unlock; shown until the next one starts. */
+    val unlockNotice: PurchaseOutcome? = null
+)
+
+/**
+ * [unlocked] counts Developer settings' override too, so testing sees the unlocked row.
+ * [busy] while the store's sheet or a restore is under way, so the buttons can't be doubled.
+ */
+data class UnlockRow(
+    val unlocked: Boolean,
+    val pending: Boolean = false,
+    val price: String? = null,
+    val busy: Boolean = false
 )
 
 /**
@@ -80,7 +99,8 @@ class SettingsViewModel @Inject constructor(
     private val files: BackupFiles,
     private val appInfo: AppInfo,
     // Last and optional, so a test that doesn't care builds the screen without it (no Pantry section).
-    private val featureFlags: FeatureFlags? = null
+    private val featureFlags: FeatureFlags? = null,
+    private val entitlements: Entitlements = Entitlements.Unavailable
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
@@ -96,7 +116,40 @@ class SettingsViewModel @Inject constructor(
             viewModelScope.launch {
                 flags.values.collect { values -> _uiState.update { it.copy(showsPantry = values.isOn(Flag.MEAL_PLAN)) } }
             }
+            viewModelScope.launch {
+                combine(flags.values, flags.unlockedOverrides, entitlements.state) { values, override, store ->
+                    if (!values.isOn(Flag.FREE_TIER)) null
+                    else UnlockRow(store.unlocked || override, store.pending, store.price)
+                }.collect { row ->
+                    _uiState.update { it.copy(unlock = row?.copy(busy = unlockBusy)) }
+                }
+            }
         }
+    }
+
+    // A purchase or restore is under way; kept apart so a store update can't clear it.
+    private var unlockBusy = false
+
+    /** "Unlock" (#107): the store's purchase sheet. */
+    fun onUnlock() = runUnlock { entitlements.purchase() }
+
+    /** "Restore purchase" (#107): asks the store for this account's purchase again. */
+    fun onRestore() = runUnlock { entitlements.restore() }
+
+    private fun runUnlock(action: suspend () -> PurchaseOutcome) {
+        if (unlockBusy) return
+        _uiState.update { it.copy(unlockNotice = null) }
+        setUnlockBusy(true)
+        viewModelScope.launch {
+            val outcome = action()
+            setUnlockBusy(false)
+            if (outcome.needsNotice) _uiState.update { it.copy(unlockNotice = outcome) }
+        }
+    }
+
+    private fun setUnlockBusy(busy: Boolean) {
+        unlockBusy = busy
+        _uiState.update { it.copy(unlock = it.unlock?.copy(busy = busy)) }
     }
 
     /** The preferences' part of the state; the rest is this screen's own and carries over. */
@@ -106,7 +159,9 @@ class SettingsViewModel @Inject constructor(
         showsPantry = previous?.showsPantry ?: (featureFlags?.isOn(Flag.MEAL_PLAN) ?: false),
         expiryReminders = expiryReminders,
         expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,
-        appVersion = appInfo.appVersion
+        appVersion = appInfo.appVersion,
+        unlock = previous?.unlock,
+        unlockNotice = previous?.unlockNotice
     )
 
     // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.

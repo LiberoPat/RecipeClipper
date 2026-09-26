@@ -214,7 +214,9 @@ data class ImportSummary(
     /** New meal types created (types that joined one already here don't count). */
     val mealTypesAdded: Int = 0,
     /** New menus written (#52). */
-    val menusAdded: Int = 0
+    val menusAdded: Int = 0,
+    /** The free library's size when that is what [recipesSkipped] ran into (#107), else null. */
+    val freeLimit: Int? = null
 )
 
 /** An export ready to hand to the share sheet. */
