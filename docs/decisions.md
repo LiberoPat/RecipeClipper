@@ -2645,6 +2645,67 @@ works either way.
   without the paste prompt, so the launch seeds the pasteboard (`-uiTestPasteboard`, debug
   only); the sent text itself is pinned by unit tests on both platforms.
 
+## Sending recipes and groceries as a file (#149, phase 2)
+
+Plain text (phase 1) works for anyone, but a recipe sent as text arrives as words, and a list
+as lines to re-read. When both people have the app, a small file can carry the recipe whole
+(no fetch, so a site that blocks the fetch doesn't matter) and the grocery items as the app
+stores them. No server, no account: the file goes through the user's own share sheet.
+
+- **The format is #26's export, partial and marked.** `ShareFile` (pure, both platforms) makes
+  a `Backup` with `"kind": "share"` at the top and only what was picked: no lists,
+  memberships, plan, menus or photos. `formatVersion` stays 1. An older app never offers
+  itself for the file (it has no intent filter or document type for it), and if someone picks
+  it through an older app's Settings → Import anyway, that app ignores `kind` as an unknown key
+  and merges it like any export, which only ever adds: nothing is replaced or lost, so no bump
+  is needed. A backup never has `kind`, so every backup file is byte for byte as before.
+  Settings' Import in this app also takes a share file, merged whole. The canonical example is
+  `shared/fixtures/backup/share-v1.recipeclipper`, read by `ShareFileTest(s)` on both.
+- **Its own type, so the other phone opens it in the app.** `<title>.recipeclipper` (the title
+  made safe as a file name, 60 characters at most), MIME `application/vnd.recipeclipper+json`.
+  Android: an intent filter for VIEW and SEND by that type, and VIEW by the name for apps that
+  hand files over as `*/*`; the app's FileProvider (`ShareFileProvider`) reports the type, since
+  a plain FileProvider calls an unknown extension `application/octet-stream` and a messaging
+  app passes that on. iOS: an exported UTType, `com.liberopat.recipeclipper.share` (conforms to
+  `public.json`), and a document type the app owns, opened as a copy through `onOpenURL`.
+- **What is sent.** "Send as file" is in the recipe screen's overflow menu (the share icon
+  stays one tap for text) and in the Groceries menu after "Send list", which stays the first
+  and default. A recipe goes complete, as saved: not scaled or converted (the receiver scales
+  it), with its origin (an edit stays the user's version on the other phone too), but without
+  what is the sender's own: ticks, the note, the last view (it is set to the time sent).
+  Groceries send every unticked item, as stored, with the recipes they came from, so each
+  still names its recipe on the other side; no planned day (a day on someone else's plan).
+  The Pantry sends nothing yet: phase 1 left open what a pantry would send. The receiver
+  already reads pantry items, which the format carries.
+- **What the receiver chooses.** "Add from this file" opens over whatever is on screen: the
+  recipes, the grocery items (each with its recipe beneath) and the pantry items, every row
+  ticked, then two radio rows for the pantry items (the Pantry, or Groceries as their names),
+  then one Add. Groceries and Pantry rows show only with the `mealPlan` flag, like their tabs.
+  Once added, the app shows where things went: Groceries, else the Pantry, else Recipes. A
+  file that can't be read says why (the export's errors), with nothing to add.
+- **How it merges: `BackupMerger`, with two differences from an import.** Recipes match by the
+  cleaned `sourceUrl`; one already here keeps its content, ticks and note (never replaced).
+  Unlike an import, every ticked recipe comes in, as the newest viewed, and one already here
+  counts as viewed now, and then the history cap runs, as for a shared link: sending someone a
+  recipe is sharing it into their app. The free tier (#107) keeps the import's rule (only free
+  places; the sheet stays up to say how many were left out). Grocery items come in by uid, so
+  the same file opened twice adds each once; one keeps its recipe only if that recipe was
+  ticked too (or matched one here). Pantry items follow the import: an item already here by
+  uid, or by name and language, stands as it is. Sent to Groceries instead, a pantry item
+  becomes a grocery line of its name, keeping its uid for the same reason.
+- **Tests.** Pure: `ShareFileTest` / `ShareFileTests` (the fixture, the round trip, what is
+  sent, what is chosen, the file name). Against SQLite: `ShareFileRepositoryTest` (Robolectric)
+  and `ShareFileRepositoryTests`. ViewModels over fakes: `ShareFileViewModelsTest(s)`. Screens:
+  `SendReceiveFileScreenTest` (Robolectric: both menus hand the share sheet the file, only
+  readable by the picked app; the sheet adds what is ticked). iOS UI: `ShareFileUITests`, where
+  `-uiTestReceiveFile` (debug only) opens a canned file at launch, because a UI test can't open
+  a file from Messages.
+
+**Needs a real phone:** sending the file through Messages, WhatsApp, Mail and AirDrop, and
+opening it from each on the other phone (Android: which apps pass the type or the name, so the
+app is offered; iOS: "Open in Recipe Clipper" from Files and Messages), in both directions
+between Android and iOS.
+
 ## The first-run tour (#151)
 
 Owner's decision (2026-09-26): welcome cards, a bundled sample recipe and one-time tips in

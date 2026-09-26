@@ -85,7 +85,8 @@ class SendReceiveFileScreenTest {
         runBlocking { groceries.add(listOf(NewGroceryLine("2 onions", "en"))) }
         share.groceriesFile = "{groceries}"
         val viewModel = GroceriesViewModel(groceries, FakePantryRepository(), FakePlanCalendar())
-        compose.setContent { GroceriesScreen(viewModel = viewModel, sendFileViewModel = SendFileViewModel(share, files)) }
+        val send = SendFileViewModel(share, files)
+        compose.setContent { GroceriesScreen(viewModel = viewModel, sendFileViewModel = send) }
 
         compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Send as file").performClick()
