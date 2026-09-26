@@ -122,29 +122,15 @@ object GroceryDecisions {
     }
 
     /**
-     * The trailing-text questions worth asking: a line whose core names what another line in
-     * its language names, where the two don't already add up as written; and the rest of a line
-     * cut after the model's name for it ([nameSplit]), asked about because it could change.
+     * The trailing-text questions for every line with trailing text (the owner's option 2): cut
+     * at a separator ([split]), or after the model's name for it ([nameSplit]). Each is asked
+     * once per text and language (the cache), so a lone "2 eggs (dfsafs -" can show "2 eggs".
      */
-    fun trailingTexts(items: List<GroceryItem>, decisions: Decisions): List<DecisionQuestion> {
-        val out = LinkedHashSet<DecisionQuestion>()
-        for (item in items) {
-            val words = LanguageWords.forTag(item.language) ?: continue
-            val split = split(item.text, words)
-            if (split == null) {
-                split(item.text, words, decisions)?.let { out += DecisionQuestion.trailingText(it.trailing, words.language) }
-                continue
-            }
-            val core = IngredientName.of(split.core, words) ?: continue
-            val partner = items.any { other ->
-                other.id != item.id && other.language == item.language && aislesMeet(item, other) &&
-                    (IngredientName.of(other.text, words) == core || name(other, decisions) == core) &&
-                    GroceryCombiner.combine(listOf(item.text, other.text), words) == null
-            }
-            if (partner) out += DecisionQuestion.trailingText(split.trailing, words.language)
-        }
-        return out.toList()
-    }
+    fun trailingTexts(items: List<GroceryItem>, decisions: Decisions): List<DecisionQuestion> =
+        items.mapNotNull { item ->
+            val words = LanguageWords.forTag(item.language) ?: return@mapNotNull null
+            split(item.text, words, decisions)?.let { DecisionQuestion.trailingText(it.trailing, words.language) }
+        }.distinct()
 
     /**
      * Where answers that just landed ([fresh]) file lines from Other: beside a line in another
