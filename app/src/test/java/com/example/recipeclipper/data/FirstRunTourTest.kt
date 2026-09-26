@@ -43,12 +43,12 @@ class FirstRunTourTest {
     }
 
     @Test
-    fun `someone who already has recipes never gets the welcome, nor the recipe and cook mode tips`() = runBlocking {
+    fun `someone who already has recipes never gets the welcome, nor any tip`() = runBlocking {
         recipes.count.value = 12
 
         assertFalse(tour.onLaunch(plain = true))
         assertEquals(WelcomeState.SEEN, preferences.welcome)
-        assertEquals(setOf(Tip.RECIPE, Tip.COOK_MODE), preferences.seenTips.first())
+        assertEquals(Tip.entries.toSet(), preferences.seenTips.first())
         assertFalse(tour.onLaunch(plain = true))
     }
 
