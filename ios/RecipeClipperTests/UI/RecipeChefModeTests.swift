@@ -23,7 +23,7 @@ final class RecipeChefModeTests: XCTestCase {
         let repository = FakeRecipeRepository()
         repository.openResult = recipe
         let flags = FeatureFlags(store: MemoryFeatureFlagStore())
-        if flagOn { flags.set(.chefMode, true) }
+        flags.set(.chefMode, flagOn)
         let vm = RecipeViewModel(
             recipeId: recipe.id, url: nil, repository: repository, preferences: preferences, clock: TestClock(),
             shortSteps: shortSteps, flags: flags

@@ -1658,9 +1658,21 @@ left as written; never half.
 
 ## Feature flags (#87)
 
-Features that ship dark are local flags, with no server (remote flags need
+Features sit behind local flags, with no server (remote flags need
 accounts and a backend the app deliberately doesn't have; revisit only if #53
 brings one).
+
+- **On by default, in debug and release (the owner's call, September 2026).**
+  Features used to ship dark and be switched on one by one; now every flag
+  defaults on, and one is switched off only when its feature has a known bug
+  or can't work yet. `freeTier` stays off until the store product
+  `unlimited_recipes` exists (on without it, users would hit the 20-recipe
+  limit with an Unlock that can't complete), and `aiCountBrackets` stays off
+  because the #105 evaluation found it confidently wrong on 4 of 22 lines.
+  The flags stay as kill switches rather than being retired.
+- **Tests don't lean on the defaults.** A unit test that needs a flag on or
+  off sets it through the fake store. iOS UI tests start with every flag off
+  and turn on only the ones `launch(flags:)` names (`UITestSeeding`).
 
 - **One registry, `shared/flags.json`:** key, a one-line description, the
   default per build type (`debug`, `release`) and the issue. Both apps read
@@ -1694,9 +1706,9 @@ brings one).
 - **UI tests set flags through the store,** not a special launch argument:
   `launch(flags: ["mealPlan"])` passes `-uiTestFlags`, which the UI-test
   container writes as overrides into its own throwaway suite.
-- **Retiring a flag:** when a feature ships for good, delete it from
-  flags.json and the enums, with its branches, in one PR. flags.json keeps no
-  history. `mealPlan` retires when the meal plan ships.
+- **Retiring a flag:** a flag stays while it's useful as a kill switch. When
+  one is no longer wanted, delete it from flags.json and the enums, with its
+  branches, in one PR. flags.json keeps no history.
 
 ## Pantry expiry reminders (#52)
 

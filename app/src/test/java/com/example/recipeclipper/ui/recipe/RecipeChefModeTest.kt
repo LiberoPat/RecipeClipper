@@ -99,7 +99,7 @@ class RecipeChefModeTest {
     }
 
     @Test fun `the flag off shows steps as written`() = runTest(mainDispatcherRule.dispatcher) {
-        flagStore.setOverride("chefMode", null)
+        flagStore.setOverride("chefMode", false)
         assertAsWritten(open())
     }
 

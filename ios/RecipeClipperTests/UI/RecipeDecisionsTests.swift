@@ -18,7 +18,7 @@ final class RecipeDecisionsTests: XCTestCase {
             sourceUrl: "https://example.com/crumble", id: 1, language: "en"
         )
         let flags = FeatureFlags(store: MemoryFeatureFlagStore())
-        for flag in flagsOn { flags.set(flag, true) }
+        for flag in Flag.allCases { flags.set(flag, flagsOn.contains(flag)) }
         let vm = RecipeViewModel(
             recipeId: 1, url: nil, repository: repository, preferences: FakeAppPreferences(), clock: TestClock(),
             flags: flags, decisions: decisions
