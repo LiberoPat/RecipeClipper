@@ -121,7 +121,8 @@ cook mode), `recipe/import?url={url}` (the share target: parse, then
 upsert with no list membership), and `edit?recipeId={recipeId}` (no id: a new
 recipe; saving replaces the edit screen, and the recipe screen under it, with
 `recipe/{id}`), and `clip?url={url}` (Clip it yourself; saving replaces it and
-the error screen under it with `recipe/{id}`). Behind the `mealPlan` feature
+the error screen under it with `recipe/{id}`), and `welcome?again={again}` (the
+first-run tour, #151). Behind the `mealPlan` feature
 flag (#47, default off, so the app is unchanged): a
 bottom tab bar nests this same graph under a Recipes tab alongside `week`
 (with its own `week/recipe/{recipeId}?servings={servings}` and
@@ -180,7 +181,7 @@ Decisions, not suggestions. Don't relitigate them in code.
   most recently viewed unprotected recipes.
 - **The free tier keeps 20 recipes** (#107, behind `freeTier`; details in
   `docs/decisions.md`). Every recipe counts (shared, typed in, in a list,
-  planned). Sharing always opens the recipe. Adding one to a library at or over
+  planned; never the tour's sample, #151). Sharing always opens the recipe. Adding one to a library at or over
   20 first removes the oldest-viewed recipe in no list, not planned today or
   later, in no menu and not typed in: one out for one in, so the library never
   shrinks because of the limit and a library over 20 keeps everything. None
@@ -256,7 +257,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   only with the `mealPlan` flag; asks for notifications when turned on,
   never at launch), Unlimited recipes (only with `freeTier`: "Unlock for
   <store price>" and "Restore purchase", or the sentence "Unlocked: every
-  recipe is kept."; Developer settings has an "Unlocked" override). Reached from the gear beside
+  recipe is kept."; Developer settings has an "Unlocked" override), Help ("Show the tour
+  again", #151). Reached from the gear beside
   the Home title, on every tab of the shell below. It could now open from
   elsewhere too (the recipe screen follows `AppPreferences.settings`), but
   adding an entry point is the owner's call.
@@ -329,6 +331,12 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Sharing a recipe out** sends plain text (no Markdown), as shown on
   screen, scaled and converted, without the source link. The share icon sits
   beside Back in the reading view, not in cook mode.
+- **First-run tour** (#151, `FirstRunTour`; rules in `docs/decisions.md`): 3–4
+  skippable welcome cards on the first plain launch only (never over a shared
+  link; never for a library that already has recipes), the last offering the
+  sample recipe (`manual:sample`, counted by no limit) or Start; one tap-to-dismiss
+  tip in the flow of the first recipe, cook mode, Week, Groceries and Pantry;
+  "Show the tour again" in Settings' Help.
 
 ## Data rules
 
@@ -419,7 +427,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
   under the same keys: `unit_system`, `convert_liquids`, `temperature_unit`,
   `dark_while_cooking`, `expiry_reminders`, `chef_mode`, `amounts_in_steps`, `recipe_sort` (the Recipes
-  screen's sort), each enum stored by name, an unknown one read as the default. `AppPreferences.settings`
+  screen's sort), and the tour's `tour_welcome`, `tour_sample_added`, `tour_tip_*` (#151),
+  each enum stored by name, an unknown one read as the default. `AppPreferences.settings`
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.

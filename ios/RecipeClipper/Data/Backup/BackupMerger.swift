@@ -262,8 +262,10 @@ enum BackupMerger {
         let unlistedHere = existingRecipes.filter { !$0.isListed && !listedTargets.contains(.existing($0.id)) }.count
         let newRecipesInOrder = newOrder.compactMap { newByUrl[$0] }
         // The free tier (#107) counts every recipe, here and coming in protected, not only history.
+        // Never the tour's sample (#151).
         let taken = countsEveryRecipe
-            ? existingRecipes.count + newRecipesInOrder.filter { listedTargets.contains(.new($0.id)) }.count
+            ? existingRecipes.filter { !SampleRecipe.isSample($0.sourceUrl) }.count
+                + newRecipesInOrder.filter { listedTargets.contains(.new($0.id)) && !SampleRecipe.isSample($0.sourceUrl) }.count
             : unlistedHere
         let freePlaces = max(0, historyLimit - taken)
         let unlistedNew = newRecipesInOrder.filter { !listedTargets.contains(.new($0.id)) }

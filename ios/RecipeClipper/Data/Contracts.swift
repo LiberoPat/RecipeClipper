@@ -214,14 +214,28 @@ protocol RecipeRepository: AnyObject {
     /// The `limit` most recently viewed. Re-emits on change.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never>
 
-    /// How many recipes are saved, of every kind (#107: the Recipes screen's count).
+    /// How many recipes are saved, of every kind but the tour's sample (#107: the Recipes
+    /// screen's count; #151).
     func observeCount() -> AnyPublisher<Int, Never>
+
+    /// The tour's sample recipe's id (#151), or nil if it isn't in the library.
+    func sampleId() async -> Int64?
+
+    /// Saves the tour's sample recipe (#151; `recipe` is `SampleRecipe.forLanguage`) as a typed-in
+    /// recipe under `SampleRecipe.sourceUrl`. No library limit applies: it counts toward none, so
+    /// it never removes a recipe. The sample already here keeps its id and content, and counts
+    /// as a view. Nil if the save failed.
+    func addSample(_ recipe: Recipe) async -> Int64?
 }
 
 extension RecipeRepository {
     func observeCount() -> AnyPublisher<Int, Never> {
         observeHistory(query: "").map(\.count).removeDuplicates().eraseToAnyPublisher()
     }
+
+    // Test doubles that have nothing to do with the tour (#151) needn't implement these.
+    func sampleId() async -> Int64? { nil }
+    func addSample(_ recipe: Recipe) async -> Int64? { nil }
 }
 
 /// Schedules the background "time's up" alert for a running step timer, so it still sounds

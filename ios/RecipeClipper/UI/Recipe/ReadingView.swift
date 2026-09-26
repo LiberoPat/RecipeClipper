@@ -50,6 +50,8 @@ struct ReadingView: View {
                     onUnitSystemChange: vm.onUnitSystemChange
                 )
                 .padding(.bottom, 20)
+                // The first recipe opened (#151): the row above, and the bookmark.
+                TipCallout(tip: .recipe, padding: EdgeInsets(top: 0, leading: 0, bottom: 20, trailing: 0))
 
                 SectionHeading(Strings.headingIngredients).padding(.bottom, 6)
                 ForEach(Array(content.ingredients.enumerated()), id: \.offset) { index, ingredient in

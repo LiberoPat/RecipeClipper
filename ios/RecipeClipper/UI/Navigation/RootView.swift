@@ -15,7 +15,16 @@ struct RootView: View {
 
     var body: some View {
         root
+            // The one-time tips (#151): every screen's TipCallout reads them from here.
+            .environment(container.tips)
             .onOpenURL { router.handle($0) }
+            // The first-run welcome (#151), over whichever tab is open.
+            .fullScreenCover(item: $router.welcome) { request in
+                ScreenHost({ container.makeWelcomeViewModel(again: request.again) }) { vm in
+                    WelcomeScreen(vm: vm, onExit: router.closeWelcome)
+                }
+            }
+            .task { await router.checkWelcome(container.firstRunTour.onLaunch) }
             // The share extension saves from its own process; catch up on coming back.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { container.refreshAfterExternalChanges() }
@@ -147,7 +156,11 @@ struct RootView: View {
             }
         case .settings:
             ScreenHost(container.makeSettingsViewModel) { vm in
-                SettingsScreen(vm: vm, onOpenDeveloperSettings: { push(.developerSettings) })
+                SettingsScreen(
+                    vm: vm,
+                    onOpenDeveloperSettings: { push(.developerSettings) },
+                    onShowTour: { router.welcome = WelcomeRequest(again: true) }
+                )
             }
         case .developerSettings:
             ScreenHost(container.makeDeveloperSettingsViewModel) { vm in DeveloperSettingsScreen(vm: vm) }

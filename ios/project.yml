@@ -34,6 +34,10 @@ targets:
       # The feature-flag registry shared with Android (#87).
       - path: ../shared/flags.json
         buildPhase: resources
+      # The first-run tour's sample recipe (#151), in each UI language, as a sample/ folder.
+      - path: ../shared/sample
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: RecipeClipperShare
         embed: true

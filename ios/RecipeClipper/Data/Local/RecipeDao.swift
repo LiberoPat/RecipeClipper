@@ -235,9 +235,10 @@ struct RecipeDao {
         ) { $0.int64(0) }
     }
 
-    /// Every recipe, of every kind (#107: the Recipes screen's count).
+    /// Every recipe, of every kind but the tour's sample (#107: the Recipes screen's count;
+    /// #151): the sample never takes a free-tier place.
     func count() throws -> Int {
-        try db.queryOne("SELECT COUNT(*) FROM recipes") { $0.int(0) } ?? 0
+        try db.queryOne("SELECT COUNT(*) FROM recipes WHERE sourceUrl != ?1", SampleRecipe.sourceUrl) { $0.int(0) } ?? 0
     }
 
     /// `upsert`'s answer when a full free library had no room (#107): no row has id 0.

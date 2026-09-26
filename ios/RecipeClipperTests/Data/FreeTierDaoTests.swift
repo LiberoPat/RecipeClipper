@@ -35,6 +35,21 @@ final class FreeTierDaoTests: XCTestCase {
         }
     }
 
+    /// The tour's sample (#151) takes no place: not counted, and adding it removes nothing.
+    func testTheSampleRecipeTakesNoPlace() async throws {
+        let old = try await existing(20)
+        let sample = try await add(SampleRecipe.sourceUrl, viewedAt: 50, limit: .unlimited, origin: "MANUAL")
+        let count = try await db.read { try RecipeDao(db: $0).count() }
+        XCTAssertEqual(count, 20, "the sample isn't counted")
+        let kept = try await db.get(old[0])
+        XCTAssertNotNil(kept, "nothing made room for it")
+
+        try await add("https://a.com/new", viewedAt: 10_000)
+        let gone = try await db.get(old[0]), stays = try await db.get(sample)
+        XCTAssertNil(gone, "a new recipe still makes room one for one")
+        XCTAssertNotNil(stays, "never the sample, which is typed in")
+    }
+
     func testUnderTheLimitNothingIsRemoved() async throws {
         let first = try await existing(19)
         try await add("https://a.com/new", viewedAt: 10_000)

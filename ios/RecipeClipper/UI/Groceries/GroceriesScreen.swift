@@ -13,6 +13,8 @@ struct GroceriesScreen: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {
                     ScreenTitle(Strings.tabGroceries)
+                    // The first Groceries visit (#151).
+                    TipCallout(tip: .groceries)
                     OutlinedField(
                         label: Strings.groceriesAddHint,
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),

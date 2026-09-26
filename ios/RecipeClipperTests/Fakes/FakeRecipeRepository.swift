@@ -111,4 +111,18 @@ final class FakeRecipeRepository: RecipeRepository {
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never> {
         recent.map { Array($0.prefix(limit)) }.eraseToAnyPublisher()
     }
+
+    /// The tour's sample (#151): its id while it is "in the library", else nil.
+    var sample: Int64?
+    /// Every sample `addSample` was given; a nil `addSampleResult` fails the save.
+    private(set) var addSampleCalls: [Recipe] = []
+    var addSampleResult: Int64? = 99
+
+    @MainActor func sampleId() async -> Int64? { sample }
+
+    @MainActor func addSample(_ recipe: Recipe) async -> Int64? {
+        addSampleCalls.append(recipe)
+        if sample == nil { sample = addSampleResult }
+        return sample
+    }
 }
