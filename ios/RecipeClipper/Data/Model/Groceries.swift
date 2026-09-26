@@ -216,7 +216,7 @@ enum GroceryCombiner {
         guard let lead = p.leading.find(line) else { return nil }
         if !lead[4].isEmpty { return nil } // a range is no one figure
         let rest = line.u16Substring(from: lead.end)
-        if p.notAnAmount.containsMatch(in: rest) { return nil }
+        if p.notAnAmount.containsMatch(in: rest) || p.temperature(lead, rest) { return nil }
         guard let value = p.parse(lead[2]), value > 0 else { return nil }
 
         guard let unitMatch = c.unitAtStart.find(rest) else {
