@@ -33,6 +33,7 @@ struct CookView: View {
                             CookStep(
                                 index: index,
                                 text: text,
+                                amounts: content.stepParts(index),
                                 status: index == cook.currentStep ? .current
                                     : cook.doneSteps.contains(index) ? .done : .upcoming,
                                 timerSeconds: index < content.stepTimerSeconds.count ? content.stepTimerSeconds[index] : nil,
@@ -215,6 +216,7 @@ private struct IngredientsBar: View {
 private struct CookStep: View {
     let index: Int
     let text: String
+    let amounts: [StepAmounts.Part]?
     let status: StepStatus
     let timerSeconds: Int?
     let timerWords: LanguageWords
@@ -231,7 +233,7 @@ private struct CookStep: View {
                     .textStyle(Typography.labelSmall)
                     .foregroundStyle(Palette.accentText)
                     .padding(.bottom, 8)
-                Text(text)
+                stepText(text, amounts, accent: Palette.accentText)
                     .textStyle(Typography.cookStep)
                     .foregroundStyle(Palette.onBackground)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -260,7 +262,8 @@ private struct CookStep: View {
                             .textStyle(Typography.titleMedium)
                             .foregroundStyle(done ? Palette.muted : Palette.accentText)
                             .frame(width: stacked ? nil : numberColumn, alignment: .leading)
-                        Text(text)
+                        // A done step is dimmed as a whole; its amounts keep only their weight.
+                        stepText(text, amounts, accent: done ? nil : Palette.accentText)
                             .textStyle(Typography.bodyLarge)
                             .strikethrough(done)
                             .foregroundStyle(Palette.muted)

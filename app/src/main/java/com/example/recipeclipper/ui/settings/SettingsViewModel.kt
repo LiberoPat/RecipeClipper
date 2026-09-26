@@ -36,6 +36,10 @@ data class SettingsUiState(
     val backup: BackupStatus = BackupStatus.Idle,
     /** The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind it. */
     val showsPantry: Boolean = false,
+    /** The Steps section (#101): only with the `amountsInSteps` flag on. */
+    val showsSteps: Boolean = false,
+    /** Ingredient amounts inside steps. */
+    val amountsInSteps: Boolean = false,
     /** A morning notification when pantry items are about to expire. */
     val expiryReminders: Boolean = false,
     /** Turning reminders on was refused (notifications not allowed): the switch stays off and
@@ -94,7 +98,11 @@ class SettingsViewModel @Inject constructor(
         }
         featureFlags?.let { flags ->
             viewModelScope.launch {
-                flags.values.collect { values -> _uiState.update { it.copy(showsPantry = values.isOn(Flag.MEAL_PLAN)) } }
+                flags.values.collect { values ->
+                    _uiState.update {
+                        it.copy(showsPantry = values.isOn(Flag.MEAL_PLAN), showsSteps = values.isOn(Flag.AMOUNTS_IN_STEPS))
+                    }
+                }
             }
         }
     }
@@ -104,6 +112,8 @@ class SettingsViewModel @Inject constructor(
         unitSystem, convertLiquids, temperatureUnit, darkWhileCooking,
         backup = previous?.backup ?: BackupStatus.Idle,
         showsPantry = previous?.showsPantry ?: (featureFlags?.isOn(Flag.MEAL_PLAN) ?: false),
+        showsSteps = previous?.showsSteps ?: (featureFlags?.isOn(Flag.AMOUNTS_IN_STEPS) ?: false),
+        amountsInSteps = amountsInSteps,
         expiryReminders = expiryReminders,
         expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,
         appVersion = appInfo.appVersion
@@ -141,6 +151,11 @@ class SettingsViewModel @Inject constructor(
     fun onDarkWhileCookingChange(enabled: Boolean) {
         preferences.darkWhileCooking = enabled
         _uiState.update { it.copy(darkWhileCooking = enabled) }
+    }
+
+    fun onAmountsInStepsChange(enabled: Boolean) {
+        preferences.amountsInSteps = enabled
+        _uiState.update { it.copy(amountsInSteps = enabled) }
     }
 
     /**

@@ -194,6 +194,9 @@
 
     <string name="dark_while_cooking_title">Dark while cooking</string>
     <string name="dark_while_cooking_description">Keep cook mode on an ink screen in light mode</string>
+    <string name="settings_section_steps">Steps</string>
+    <string name="amounts_in_steps_title">Amounts in steps</string>
+    <string name="amounts_in_steps_description">Show each ingredient\'s amount where a step names it</string>
 
     <!-- Settings screen -->
     <string name="nav_settings">Settings</string>

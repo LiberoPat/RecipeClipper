@@ -14,6 +14,8 @@ struct SettingsUiState: Equatable {
     /// Turning reminders on was refused (notifications not allowed): the switch stays off and
     /// says why, until it is turned on successfully.
     var expiryRemindersDenied = false
+    /// Ingredient amounts inside steps (#101).
+    var amountsInSteps = false
     /// e.g. "1.0 (1)", shown at the foot; tapping it `SettingsViewModel.developerTaps` times opens
     /// Developer settings (#87).
     var appVersion = ""
@@ -89,8 +91,17 @@ final class SettingsViewModel {
             convertLiquids: settings.convertLiquids,
             temperatureUnit: settings.temperatureUnit,
             darkWhileCooking: settings.darkWhileCooking,
-            expiryReminders: settings.expiryReminders
+            expiryReminders: settings.expiryReminders,
+            amountsInSteps: settings.amountsInSteps
         )
+    }
+
+    /// The Steps section (#101): only with the `amountsInSteps` flag on.
+    var showsSteps: Bool { flags?.isOn(.amountsInSteps) ?? false }
+
+    func onAmountsInStepsChange(_ enabled: Bool) {
+        preferences.amountsInSteps = enabled
+        uiState.amountsInSteps = enabled
     }
 
     /// The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind

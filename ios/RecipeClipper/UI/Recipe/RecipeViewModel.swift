@@ -74,7 +74,8 @@ final class RecipeViewModel {
             unitSystem: settings.unitSystem,
             convertLiquids: settings.convertLiquids,
             temperatureUnit: settings.temperatureUnit,
-            darkWhileCooking: settings.darkWhileCooking
+            darkWhileCooking: settings.darkWhileCooking,
+            amountsInSteps: settings.amountsInSteps
         )
         // Settings can change a default while this screen is alive underneath it; this keeps
         // the open recipe in step instead of showing the units it was opened with (#24).
@@ -295,6 +296,7 @@ final class RecipeViewModel {
         let scale = ServingsScale(base: servings.base, target: min(max(target, 1), Servings.max))
         content.servings = scale
         content.ingredients = render(content.recipe, content.words, scale, uiState.unitSystem, uiState.convertLiquids)
+        content.stepAmounts = stepAmounts(content)
         uiState.content = .success(content)
         // The recipe's own yield is saved as no choice at all.
         let id = content.recipe.id
@@ -320,11 +322,13 @@ final class RecipeViewModel {
         let rendersDifferently = settings.unitSystem != uiState.unitSystem
             || settings.convertLiquids != uiState.convertLiquids
             || settings.temperatureUnit != uiState.temperatureUnit
+            || settings.amountsInSteps != uiState.amountsInSteps
         var state = uiState
         state.unitSystem = settings.unitSystem
         state.convertLiquids = settings.convertLiquids
         state.temperatureUnit = settings.temperatureUnit
         state.darkWhileCooking = settings.darkWhileCooking
+        state.amountsInSteps = settings.amountsInSteps
         // Assigned only when something changed, so an echo of our own write notifies no view.
         guard state != uiState else { return }
         uiState = state
@@ -335,6 +339,7 @@ final class RecipeViewModel {
         guard var content = uiState.content.success else { return }
         content.ingredients = render(content.recipe, content.words, content.servings, uiState.unitSystem, uiState.convertLiquids)
         content.instructions = renderInstructions(content.recipe, content.words, uiState.temperatureUnit)
+        content.stepAmounts = stepAmounts(content)
         uiState.content = .success(content)
     }
 
@@ -519,7 +524,7 @@ final class RecipeViewModel {
         let servings = Servings.parse(recipe.yield, words: words).map { base in
             ServingsScale(base: base, target: recipe.servingsTarget.map { min(max($0, 1), Servings.max) } ?? base)
         }
-        return RecipeSuccess(
+        var success = RecipeSuccess(
             recipe: recipe,
             servings: servings,
             ingredients: render(recipe, words, servings, uiState.unitSystem, uiState.convertLiquids),
@@ -528,6 +533,13 @@ final class RecipeViewModel {
             sourceDomain: SourceDomain.of(recipe.sourceUrl),
             words: words
         )
+        success.stepAmounts = stepAmounts(success)
+        return success
+    }
+
+    // Amounts inside steps (#101), from the lines as rendered, so they follow servings and units.
+    private func stepAmounts(_ content: RecipeSuccess) -> [[StepAmounts.Part]]? {
+        uiState.amountsInSteps ? StepAmounts.annotate(content.instructions, lines: content.ingredients, words: content.words) : nil
     }
 
     // Scale first, then convert, so a converted amount always matches the chosen servings.

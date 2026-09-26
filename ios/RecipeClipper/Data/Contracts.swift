@@ -410,6 +410,9 @@ protocol AppPreferences: AnyObject {
     /// A morning notification when something in the pantry is about to expire (#52). Off by
     /// default; Settings turns it on only once notifications are allowed.
     var expiryReminders: Bool { get set }
+    /// Ingredient amounts inside steps (#101): "Add the carrots" reads "Add 2 carrots". Off by
+    /// default, and shown only with the `amountsInSteps` flag on.
+    var amountsInSteps: Bool { get set }
 
     /// The current values first, then every change, never repeating a value. Delivery may be
     /// asynchronous, so a subscriber receives on main.
@@ -424,7 +427,8 @@ extension AppPreferences {
             convertLiquids: convertLiquids,
             temperatureUnit: temperatureUnit,
             darkWhileCooking: darkWhileCooking,
-            expiryReminders: expiryReminders
+            expiryReminders: expiryReminders,
+            amountsInSteps: amountsInSteps
         )
     }
 }
@@ -436,4 +440,5 @@ struct AppSettings: Equatable {
     var temperatureUnit: TemperatureUnit = .asWritten
     var darkWhileCooking = false
     var expiryReminders = false
+    var amountsInSteps = false
 }

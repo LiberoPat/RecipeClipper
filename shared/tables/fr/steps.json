@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "language": "fr",
+  "about": "StepAmounts (#101): see en/steps.json for what each list does. A qualifier follows the noun ('farine de riz', 'sucre glace'), so only the words in after may follow a mention. The partitive ('du beurre', 'de la farine') counts as a part: it may be some of it.",
+  "articles": ["le", "la", "les", "l'"],
+  "partWords": [
+    "un", "une", "de", "du", "des", "d'", "reste", "restant", "restante", "restants", "restantes", "moitié",
+    "peu", "plus", "tout", "toute", "tous", "toutes", "autre", "autres", "chaque", "deux", "trois", "quatre"
+  ],
+  "before": ["et", "ou", "avec"],
+  "after": ["et", "ou", "avec", "dans", "à", "au", "aux", "sur", "en", "puis", "jusqu'à", "petit"],
+  "anyWordAfter": false,
+  "splitWords": ["plus"],
+  "plurals": [["", "s"], ["", "x"]]
+}

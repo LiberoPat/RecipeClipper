@@ -27,6 +27,8 @@ import XCTest
 // in the same language). Write only `Pant("2 cups flour", "flour"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
+// Step rows (#101): a step, the ingredient lines, then StepAmounts.annotate marked with ⟦ ⟧, against
+// the lines as given and against them doubled in Metric. Write only `Step("Add the eggs.", ["2 eggs"]),`.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -63,6 +65,14 @@ final class DifferentialCorpusTests: XCTestCase {
         let line: String; let name: String; let language: String; let covered: Bool
         init(_ line: String, _ name: String, lang: String = "en", _ covered: Bool) {
             self.line = line; self.name = name; self.language = lang; self.covered = covered
+        }
+    }
+
+    private struct Step {
+        let step: String; let lines: [String]; let words: LanguageWords; let asGiven: String; let metric: String
+        init(_ step: String, _ lines: [String], lang: String = "en", _ asGiven: String, _ metric: String) {
+            self.step = step; self.lines = lines; self.words = LanguageWords.forTag(lang)!
+            self.asGiven = asGiven; self.metric = metric
         }
     }
 
@@ -1203,6 +1213,38 @@ final class DifferentialCorpusTests: XCTestCase {
         Pant("無塩バター 20g", "バター", lang: "ja", true),
     ]
 
+    private static let steps: [Step] = [
+        Step("Add the carrots and cook 5 minutes.", ["2 carrots, peeled and diced", "1 onion, chopped"], "Add ⟦2⟧ carrots and cook 5 minutes.", "Add ⟦4⟧ carrots and cook 5 minutes."),
+        Step("Stir in the flour.", ["1 cup all-purpose flour"], "Stir in ⟦1 cup⟧ flour.", "Stir in ⟦240 g⟧ flour."),
+        Step("Cream the butter and sugar together until light and fluffy.", ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], "Cream ⟦1 cup (226g)⟧ butter and ⟦2 cups (400g)⟧ sugar together until light and fluffy.", "Cream ⟦452g⟧ butter and ⟦800g⟧ sugar together until light and fluffy."),
+        Step("Beat in the eggs one at a time.", ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], "Beat in ⟦3⟧ eggs one at a time.", "Beat in ⟦6⟧ eggs one at a time."),
+        Step("Whisk flour, baking powder and salt together.", ["2 cups flour", "1 tsp baking powder", "1/2 tsp salt"], "Whisk ⟦2 cups⟧ flour, ⟦1 tsp⟧ baking powder and ⟦1/2 tsp⟧ salt together.", "Whisk ⟦480 g⟧ flour, ⟦8 g⟧ baking powder and ⟦5 ml⟧ salt together."),
+        Step("Add the sugar.", ["1 cup sugar", "For the frosting:", "1/2 cup sugar"], "Add the sugar.", "Add the sugar."),
+        Step("Season with salt.", ["1 tsp salt", "salt and pepper"], "Season with salt.", "Season with salt."),
+        Step("Add 1 cup of the flour, then half the butter and the remaining sugar.", ["2 cups flour", "115 g butter", "1 cup sugar"], "Add 1 cup of the flour, then half the butter and the remaining sugar.", "Add 1 cup of the flour, then half the butter and the remaining sugar."),
+        Step("Dust with rice flour and fold in the flour mixture.", ["2 cups flour"], "Dust with rice flour and fold in the flour mixture.", "Dust with rice flour and fold in the flour mixture."),
+        Step("Add the brown sugar and the sugar.", ["1 cup packed brown sugar", "1 cup sugar"], "Add ⟦1 cup packed⟧ brown sugar and ⟦1 cup⟧ sugar.", "Add ⟦425 g packed⟧ brown sugar and ⟦400 g⟧ sugar."),
+        Step("Chop the onions.", ["2 onions (about 300 g)"], "Chop the onions.", "Chop the onions."),
+        Step("Add the flour.", ["2 cups flour, divided"], "Add the flour.", "Add the flour."),
+        Step("Melt the butter, then brush the pan with butter.", ["4 tbsp butter"], "Melt ⟦4 tbsp⟧ butter, then brush the pan with butter.", "Melt ⟦115 g⟧ butter, then brush the pan with butter."),
+        Step("Heat the olive oil in a large skillet over medium heat.", ["3 tbsp extra-virgin olive oil"], "Heat ⟦3 tbsp⟧ olive oil in a large skillet over medium heat.", "Heat ⟦90 ml⟧ olive oil in a large skillet over medium heat."),
+        Step("Add the garlic and cook until fragrant.", ["3 cloves garlic, minced"], "Add ⟦3 cloves⟧ garlic and cook until fragrant.", "Add ⟦6 cloves⟧ garlic and cook until fragrant."),
+        Step("Pour in the milk and whisk until smooth.", ["1 1/2 cups whole milk"], "Pour in the milk and whisk until smooth.", "Pour in the milk and whisk until smooth."),
+        Step("Add the onion.", ["1 red onion, diced"], "Add the onion.", "Add the onion."),
+        Step("Add the lemon juice and zest.", ["1 lemon"], "Add the lemon juice and zest.", "Add the lemon juice and zest."),
+        Step("Stir in the chocolate chips.", ["1 1/2 cups (255g) semisweet chocolate chips"], "Stir in the chocolate chips.", "Stir in the chocolate chips."),
+        Step("Toss the pasta with the butter, cheese and pepper.", ["1 lb spaghetti", "4 tbsp butter", "1 cup grated Parmesan cheese", "1 tsp black pepper"], "Toss the pasta with ⟦4 tbsp⟧ butter, cheese and pepper.", "Toss the pasta with ⟦115 g⟧ butter, cheese and pepper."),
+        Step("Add the eggs, one at a time, beating well after each.", ["3 large eggs, room temperature"], "Add ⟦3 large⟧ eggs, one at a time, beating well after each.", "Add ⟦6 large⟧ eggs, one at a time, beating well after each."),
+        Step("Ajoutez la farine et les œufs, puis le beurre fondu.", ["200 g de farine", "3 œufs", "50 g de beurre"], lang: "fr", "Ajoutez ⟦200 g de⟧ farine et ⟦3⟧ œufs, puis le beurre fondu.", "Ajoutez ⟦400 g de⟧ farine et ⟦6⟧ œufs, puis le beurre fondu."),
+        Step("Faites chauffer l'huile d'olive dans une poêle.", ["3 cuillères à soupe d'huile d'olive"], lang: "fr", "Faites chauffer l'huile d'olive dans une poêle.", "Faites chauffer l'huile d'olive dans une poêle."),
+        Step("Die Butter schmelzen und den Zucker unterrühren.", ["200 g Butter", "150 g Zucker"], lang: "de", "⟦200 g⟧ Butter schmelzen und ⟦150 g⟧ Zucker unterrühren.", "⟦400 g⟧ Butter schmelzen und ⟦300 g⟧ Zucker unterrühren."),
+        Step("Die Hälfte der Butter schmelzen.", ["200 g Butter"], lang: "de", "Die Hälfte der Butter schmelzen.", "Die Hälfte der Butter schmelzen."),
+        Step("Añade la harina poco a poco y el azúcar.", ["250 g de harina", "100 g de azúcar"], lang: "es", "Añade ⟦250 g de⟧ harina poco a poco y ⟦100 g de⟧ azúcar.", "Añade ⟦500 g de⟧ harina poco a poco y ⟦200 g de⟧ azúcar."),
+        Step("Aggiungete le carote e l'olio.", ["2 carote", "3 cucchiai di olio"], lang: "it", "Aggiungete ⟦2⟧ carote e ⟦3 cucchiai di⟧ olio.", "Aggiungete ⟦4⟧ carote e ⟦90 ml di⟧ olio."),
+        Step("Junte os ovos e a farinha de trigo e misture.", ["2 ovos", "2 xícaras de farinha de trigo"], lang: "pt", "Junte ⟦2⟧ ovos e ⟦2 xícaras de⟧ farinha de trigo e misture.", "Junte ⟦4⟧ ovos e ⟦480 g de⟧ farinha de trigo e misture."),
+        Step("醤油とみりんを加える。", ["醤油 大さじ1", "みりん 大さじ2"], lang: "ja", "醤油とみりんを加える。", "醤油とみりんを加える。"),
+    ]
+
     private static let ics: [Ics] = [
         Ics("Dinner · Chicken Adobo", "SUMMARY:Dinner · Chicken Adobo"),
         Ics("Lunch · Leftovers, reheated; with rice\\beans", "SUMMARY:Lunch · Leftovers\\, reheated\\; with rice\\\\beans"),
@@ -1279,6 +1321,14 @@ final class DifferentialCorpusTests: XCTestCase {
         for row in Self.groceries {
             XCTAssertEqual(GroceryCombiner.combine(row.lines, words: row.words), row.combined, "combine: \(row.lines)")
             XCTAssertEqual(row.lines.map { Aisles.of($0, words: row.words).key }, row.aisles, "aisles: \(row.lines)")
+        }
+    }
+
+    func testStepAmountsMatchKotlin() {
+        for row in Self.steps {
+            XCTAssertEqual(StepAmounts.marked(StepAmounts.annotate([row.step], lines: row.lines, words: row.words)[0]), row.asGiven, row.step)
+            let doubled = IngredientRendering.render(row.lines, factor: 2.0, system: .metric, convertLiquids: false, words: row.words)
+            XCTAssertEqual(StepAmounts.marked(StepAmounts.annotate([row.step], lines: doubled, words: row.words)[0]), row.metric, row.step)
         }
     }
 
