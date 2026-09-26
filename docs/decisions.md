@@ -640,6 +640,25 @@ Unit conversion rules (each one exists to avoid showing a confident wrong number
   unit: the `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative, not just the last. Bon Appétit, Epicurious, Delish and Budget
   Bytes all write units this way.
+- Old-style abbreviations (#135): "c", "c.", "C" and "C." after an amount are a
+  cup (Delish: "1 1/2 c. cherry tomatoes", "1/2 c. heavy cream"), and "T"/"T."
+  a tablespoon and "t"/"t." a teaspoon, as old recipe cards write them. T and t
+  differ only by case, so `units.json` holds them as `(?-i:[Tt])` in `patterns`
+  (every caller matches case-insensitively otherwise) and as `caseSensitive`
+  `names` rules that run first; `MeasureUnit.fromText` lowercases for every
+  other rule. "Tbs" was already a tablespoon in any case. A one-letter unit
+  refuses a hyphen or apostrophe after it, so "2 T-bone steaks" stays a count.
+  "C" is also Celsius: a whole 2–3 digit number in `TemperatureConverter`'s
+  plausible Celsius range (40–320) followed by a C is no amount at all
+  (`IngredientScaler.Patterns.temperature`), so "180 C water" stays as written
+  in scaling, conversion and grocery totals, like a size ("1-inch"). "2 C
+  flour" is cups, as the temperature rule already said, and instructions are
+  still read only by `TemperatureConverter`. Because the scaler, converter,
+  `GroceryCombiner`, `IngredientName` and amounts in steps all read units
+  through `UnitPatterns` and `fromText`, they agree: "1 c. heavy cream" and
+  "1 cup heavy cream" add up to "2 c. heavy cream" (the total keeps a unit as a
+  line wrote it, as "3 cup milk" always has). "c" left `names.json`
+  `leadingWords`, which lists only unit words the converter doesn't read.
 - OUNCES leaves pourable liquids as written unless `convertLiquids` is on. METRIC ignores that flag: liquids, spoons and cups become ml (a volume
   to volume conversion, exact and density-free), and known solids become g.
   METRIC treats 1 cup as 240 ml, 1 tbsp as 15 ml and 1 tsp as 5 ml.

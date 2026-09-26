@@ -45,6 +45,9 @@ object IngredientScaler {
             """\d+[/⁄]\d+|""" + (if (thousandsDot) """\d{1,3}\.\d{3}(?![\d.,])|""" else "") +
             """\d+(?:\.\d+|,\d{1,2}(?!\d))?|[$UNICODE_FRACTIONS])"""
 
+    private val CELSIUS_AFTER = Regex("""^\s*[Cc]\.?(?!\p{L})""")
+    private val TEMPERATURE_NUMBER = Regex("""\d{2,3}""")
+
     /** "1,5": the line writes decimals with a comma, so its output does too. */
     internal val DECIMAL_COMMA = Regex("""\d,\d{1,2}(?!\d)""")
 
@@ -103,6 +106,16 @@ object IngredientScaler {
                 .joinToString("|", "(?:", ")"),
             RegexOption.IGNORE_CASE
         )
+
+        /**
+         * "180 C water": a whole number TemperatureConverter would read as a bare Celsius
+         * temperature, then a C, is no amount of cups (#135). [lead] is a [leading] match and
+         * [rest] the text after it; the line stays as written, like a size after [notAnAmount].
+         */
+        fun temperature(lead: MatchResult, rest: String): Boolean =
+            CELSIUS_AFTER.containsMatchIn(rest) && listOf(lead.groupValues[2], lead.groupValues[4])
+                .filter { it.isNotEmpty() }
+                .all { TEMPERATURE_NUMBER.matches(it) && it.toInt() in TemperatureConverter.PLAUSIBLE_CELSIUS }
 
         // A quantity followed by a unit. groups: 1 quantity, 2 space, 3 unit
         val qtyUnit = Regex("""($qty)(\s*)${units.captured}""", RegexOption.IGNORE_CASE)
@@ -248,7 +261,7 @@ object IngredientScaler {
             val text = line.substring(start)
             val match = p.leading.find(text) ?: return null
             val rest = text.substring(match.range.last + 1)
-            if (p.notAnAmount.containsMatchIn(rest)) return null
+            if (p.notAnAmount.containsMatchIn(rest) || p.temperature(match, rest)) return null
             val measure = p.unitAtStart.containsMatchIn(rest)
             // "or 2 small onions": an alternative needs a unit to be read as one (#61).
             if (alternative && !measure) return null

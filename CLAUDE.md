@@ -594,6 +594,8 @@ Each one exists to avoid showing a confident wrong number.
 - **A unit's trailing period ("tsp.", "oz.") belongs to the unit.** The
   `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative.
+- **"c." is a cup; "T" a tablespoon, "t" a teaspoon, case-sensitively** (#135);
+  "180 C" (a plausible Celsius number) and "T-bone" stay as written.
 - **Liquids.** Ounces leaves pourable liquids as written unless "Also
   convert liquids" is on. Metric ignores that flag: liquids, spoons and
   cups become ml (a cup is 240 ml, a tbsp 15 ml, a tsp 5 ml), and known

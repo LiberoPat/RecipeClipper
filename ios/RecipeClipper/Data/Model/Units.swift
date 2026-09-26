@@ -75,20 +75,26 @@ enum MeasureUnit: CaseIterable {
         "L": .l, "CL": .cl, "DL": .dl, "G": .g, "KG": .kg, "OZ": .oz, "LB": .lb, "VARIES": .varies,
     ]
 
-    // shared/tables/<language>/units.json "names": the first rule the text satisfies wins.
+    // shared/tables/<language>/units.json "names": the first rule the text satisfies wins. A
+    // caseSensitive rule reads the text as written: "T" is a tablespoon, "t" a teaspoon (#135).
     private final class Names {
-        let names: [(unit: MeasureUnit, exact: [String], prefixes: [String])]
+        let names: [(unit: MeasureUnit, exact: [String], prefixes: [String], caseSensitive: Bool)]
         init(_ words: LanguageWords) {
             names = SharedTables.objects(words.table("units"), "names").map {
-                (byTableName[$0["unit"] as? String ?? ""]!, SharedTables.strings($0, "exact"), SharedTables.strings($0, "prefixes"))
+                (
+                    byTableName[$0["unit"] as? String ?? ""]!, SharedTables.strings($0, "exact"),
+                    SharedTables.strings($0, "prefixes"), $0["caseSensitive"] as? Bool ?? false
+                )
             }
         }
     }
 
     static func fromText(_ text: String, words: LanguageWords = .english) -> MeasureUnit? {
-        let s = whitespace.replace(text.lowercased().replacingOccurrences(of: ".", with: ""), with: " ")
+        let asWritten = whitespace.replace(text.replacingOccurrences(of: ".", with: ""), with: " ")
+        let lower = asWritten.lowercased()
         return words.compiled(Names.self, Names.init).names.first { name in
-            name.exact.contains(s) || name.prefixes.contains { s.hasPrefix($0) }
+            let s = name.caseSensitive ? asWritten : lower
+            return name.exact.contains(s) || name.prefixes.contains { s.hasPrefix($0) }
         }?.unit
     }
 }
