@@ -12,7 +12,7 @@ DD=${DERIVED_DATA:-/tmp/rc-walkthrough-dd}
 TESTS=("$@")
 [ ${#TESTS[@]} -eq 0 ] && TESTS=(test01_tabsAndWeek test02_groceries test03_pantryAndWhatINeed test04_weeklyMenus
   test05_expiryReminders test06_recipesScreen test07_amountsInSteps test08_chefModeStubModel test09_freeTier
-  test10_pageExtractionLine test11_groceriesAiMergingSimulated)
+  test10_pageExtractionLine test11_groceriesAiMergingSimulated test12_groceriesJunkHidden)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
 (cd ios && xcodebuild -project RecipeClipper.xcodeproj -scheme RecipeClipper -destination "id=$SIM" \

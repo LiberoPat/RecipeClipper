@@ -9,7 +9,8 @@ import com.example.recipeclipper.fake.FakeDecisionModel
  * `UITestWalkthroughSeed`, viewed in this order, newest first, each in a list (so none is
  * removable and the free tier's "20 of 20" meets the library-full prompt). "Grandma's Lentil
  * Soup" is stored as picked from the page text (#103); the Sponge Cake's first two steps are
- * the ones the stub Chef mode model shortens (#100).
+ * the ones the stub Chef mode model shortens (#100); the Banana Bread's [JUNK_LINE] ends in
+ * junk (#132).
  */
 object WalkthroughSeed {
     class Seed(
@@ -26,6 +27,9 @@ object WalkthroughSeed {
     const val CHEF_SHORT = "Oven to 350°F; butter a 9-inch tin."
     const val WHISK = "Whisk the eggs and sugar in a large bowl until pale, thick and doubled in volume, about 8 minutes."
     const val WHISK_SHORT = "Whisk eggs and sugar until pale and thick, about 8 minutes."
+
+    /** A line ending in junk, as a site might publish it (#132): hidden in Groceries only. */
+    const val JUNK_LINE = "2 eggs dfsafs"
 
     val recipes: List<Seed> = listOf(
         Seed("Chicken Adobo", "chicken-adobo", "4",
@@ -59,7 +63,7 @@ object WalkthroughSeed {
             origin = "EXTRACTED"),
         Seed("Banana Bread", "banana-bread", "1 loaf",
             listOf("3 ripe bananas", "2 cups flour", "1 tsp baking soda", "1/2 cup butter, melted",
-                "3/4 cup brown sugar", "2 eggs"),
+                "3/4 cup brown sugar", JUNK_LINE),
             listOf("Mash the bananas and stir in the butter, sugar and eggs.", "Fold in the flour and baking soda.",
                 "Bake at 350°F for 60 minutes.")),
         Seed("Miso Soup", "miso-soup", "4",
@@ -86,12 +90,16 @@ object WalkthroughSeed {
     /**
      * The typed-decision model's answers, simulated (#99, #104; iOS `UITestDecisionModel`): close
      * grocery or pantry names are the same thing; trailing text is junk if it holds "dfsafs",
-     * else a note; anything else it can't answer.
+     * else a note; a line with no separator ending in "dfsafs" is named by its words between the
+     * amount and the junk ("2 eggs dfsafs" is "eggs"); anything else it can't answer.
      */
     fun decisionModel() = FakeDecisionModel(languages = setOf("en"), reply = { prompt ->
         when (prompt.kind) {
             DecisionKind.SAME_GROCERY, DecisionKind.SAME_INGREDIENT -> DecisionReply("same", "high")
             DecisionKind.TRAILING_TEXT -> DecisionReply(if ("dfsafs" in prompt.text) "junk" else "note", "high")
+            DecisionKind.INGREDIENT_NAME -> prompt.text.substringAfter("): ").takeIf { it.endsWith(" dfsafs") }
+                ?.removeSuffix(" dfsafs")?.split(' ')?.dropWhile { word -> word.any { it.isDigit() } }
+                ?.joinToString(" ")?.let { DecisionReply(it, "high") }
             else -> null
         }
     })

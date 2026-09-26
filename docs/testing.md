@@ -394,8 +394,9 @@ twenty realistic recipes, each in a list (iOS `UITestWalkthroughSeed`, Android
 `WalkthroughSeed`), turn flags on as Developer settings would, and pause between steps.
 Where a feature needs the on-device model, a stub answers: Chef mode's short steps and the
 grocery merging's typed decisions ("AI answers simulated": close names "same", trailing
-text a "note", or "junk" if it holds "dfsafs"). The page-extraction recipe is stored as
-`EXTRACTED`, so no model runs for it.
+text a "note", or "junk" if it holds "dfsafs", and the name of a line ending in "dfsafs"
+with no separator: the Banana Bread's "2 eggs dfsafs", for the junk-hiding clip). The
+page-extraction recipe is stored as `EXTRACTED`, so no model runs for it.
 
 - **iOS:** `WalkthroughUITests` (`ios/RecipeClipperUITests/WalkthroughUITests*.swift`),
   skipped unless `TEST_RUNNER_RC_WALKTHROUGH=1`, so CI and the nightly UI run skip them.

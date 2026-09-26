@@ -1,6 +1,7 @@
 import XCTest
 
-/// Walkthroughs 01–05: the tab bar, Week, Groceries, Pantry, menus and expiry reminders.
+/// Walkthroughs 01–05, 11 and 12: the tab bar, Week, Groceries, Pantry, menus, expiry reminders,
+/// and Groceries with the model's (simulated) help.
 extension WalkthroughUITests {
 
     func test01_tabsAndWeek() {
@@ -101,5 +102,22 @@ extension WalkthroughUITests {
         }
         app.swipeUp()
         pause(2.5)
+    }
+
+    /// Junk after a grocery line's ingredient (#132), judged by the model (simulated, as above):
+    /// the recipe keeps "2 eggs dfsafs" as written; Groceries shows "2 eggs".
+    func test12_groceriesJunkHidden() {
+        start(flags: ["mealPlan", "aiDecisions"])
+        open("Banana Bread")
+        require(textContaining("2 eggs dfsafs"), "the line as written")
+        pause(2.5)
+        recipeMenu("Add to groceries")
+        pause(1.5)
+        require(app.buttons["addToGroceriesButton"], "the sheet's button").tap()
+        pause(0.8)
+        back()
+        tab("Groceries")
+        require(line("2 eggs"), "the grocery line")
+        pause(3)
     }
 }

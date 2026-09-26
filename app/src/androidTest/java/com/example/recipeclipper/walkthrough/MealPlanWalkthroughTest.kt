@@ -12,7 +12,10 @@ import dagger.hilt.android.testing.UninstallModules
 import org.junit.Test
 import java.time.LocalDate
 
-/** Walkthroughs 01–05 (#106): the tab bar, Week, Groceries, Pantry, menus, expiry reminders. */
+/**
+ * Walkthroughs 01–05, 11 and 12 (#106): the tab bar, Week, Groceries, Pantry, menus, expiry
+ * reminders, and Groceries with the model's (simulated) help.
+ */
 @HiltAndroidTest
 @UninstallModules(OnDeviceModelModule::class)
 class MealPlanWalkthroughTest : WalkthroughBase() {
@@ -118,5 +121,24 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
             }
         swipeUp()
         pause(2000)
+    }
+
+    /**
+     * Junk after a grocery line's ingredient (#132), judged by the model (simulated, as above):
+     * the recipe keeps "2 eggs dfsafs" as written; Groceries shows "2 eggs".
+     */
+    @Test
+    fun test12_groceriesJunkHidden() {
+        start("mealPlan", "aiDecisions")
+        tap("Banana Bread")
+        waitFor(hasText(WalkthroughSeed.JUNK_LINE, substring = true))
+        pause(2500)
+        menu("Add to groceries")
+        pause(1500)
+        tapTag("addToGroceriesButton")
+        back()
+        tap("Groceries")
+        waitFor(hasText("2 eggs"))
+        pause(3000)
     }
 }

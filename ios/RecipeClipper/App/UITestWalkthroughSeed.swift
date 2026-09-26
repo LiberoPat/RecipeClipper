@@ -5,20 +5,29 @@ import Foundation
 /// a lived-in library and the free tier reads "20 of 20". Android's `WalkthroughSeed` holds the
 /// same recipes. Viewed in this order, newest first. "Grandma's Lentil Soup" is stored as picked
 /// from the page text by the model (#103); the Sponge Cake's first steps are the ones the stub
-/// Chef mode model shortens (#100).
+/// Chef mode model shortens (#100); the Banana Bread's `junkLine` ends in junk (#132).
 /// The typed-decision model under UI test (#104, #99): canned answers, so the walkthrough's
 /// grocery clip shows merging without Apple Intelligence ("AI answers simulated"). Close
 /// grocery or pantry names are the same thing; trailing text is junk if it holds "dfsafs",
-/// else a note; anything else it can't answer. Android's walkthrough uses the same answers.
+/// else a note; a line with no separator ending in "dfsafs" is named by its words between the
+/// amount and the junk ("2 eggs dfsafs" is "eggs"); anything else it can't answer. Android's
+/// walkthrough uses the same answers.
 final class UITestDecisionModel: DecisionModel {
     func supports(language: String) async -> Bool { language == "en" }
 
     func ask(_ prompt: DecisionPrompt) async -> DecisionReply? {
         switch prompt.kind {
-        case .sameGrocery, .sameIngredient: DecisionReply(answer: "same", confidence: "high")
+        case .sameGrocery, .sameIngredient:
+            return DecisionReply(answer: "same", confidence: "high")
         case .trailingText:
-            DecisionReply(answer: prompt.text.contains("dfsafs") ? "junk" : "note", confidence: "high")
-        default: nil
+            return DecisionReply(answer: prompt.text.contains("dfsafs") ? "junk" : "note", confidence: "high")
+        case .ingredientName:
+            guard let line = prompt.text.components(separatedBy: "): ").last, line.hasSuffix(" dfsafs") else { return nil }
+            let name = line.dropLast(" dfsafs".count).split(separator: " ")
+                .drop { word in word.contains { $0.isNumber } }.joined(separator: " ")
+            return DecisionReply(answer: name, confidence: "high")
+        default:
+            return nil
         }
     }
 }
@@ -36,6 +45,8 @@ enum UITestWalkthroughSeed {
 
     static let whisk = "Whisk the eggs and sugar in a large bowl until pale, thick and doubled in volume, about 8 minutes."
     static let whiskShort = "Whisk eggs and sugar until pale and thick, about 8 minutes."
+    /// A line ending in junk, as a site might publish it (#132): hidden in Groceries only.
+    static let junkLine = "2 eggs dfsafs"
 
     static let recipes: [Seed] = [
         Seed(title: "Chicken Adobo", slug: "chicken-adobo", servings: "4",
@@ -70,7 +81,7 @@ enum UITestWalkthroughSeed {
              origin: "EXTRACTED"),
         Seed(title: "Banana Bread", slug: "banana-bread", servings: "1 loaf",
              ingredients: ["3 ripe bananas", "2 cups flour", "1 tsp baking soda", "1/2 cup butter, melted",
-                           "3/4 cup brown sugar", "2 eggs"],
+                           "3/4 cup brown sugar", junkLine],
              steps: ["Mash the bananas and stir in the butter, sugar and eggs.", "Fold in the flour and baking soda.",
                      "Bake at 350°F for 60 minutes."]),
         Seed(title: "Miso Soup", slug: "miso-soup", servings: "4",
