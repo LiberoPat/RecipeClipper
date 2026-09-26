@@ -106,12 +106,10 @@ object ExpiryNotifications {
         ) return
         val manager = NotificationManagerCompat.from(context)
         if (!manager.areNotificationsEnabled()) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID, context.getString(R.string.expiry_channel_name), NotificationManager.IMPORTANCE_DEFAULT
-            ).apply { description = context.getString(R.string.expiry_channel_description) }
-            context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            CHANNEL_ID, context.getString(R.string.expiry_channel_name), NotificationManager.IMPORTANCE_DEFAULT
+        ).apply { description = context.getString(R.string.expiry_channel_description) }
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         val text = body(context, reminder)
         val open = PendingIntent.getActivity(
             context, 0,

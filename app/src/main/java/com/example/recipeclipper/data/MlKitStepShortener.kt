@@ -1,7 +1,6 @@
 package com.example.recipeclipper.data
 
 import android.content.Context
-import android.os.Build
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.genai.common.DownloadCallback
 import com.google.mlkit.genai.common.FeatureStatus
@@ -23,7 +22,7 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Chef mode's short steps from Gemini Nano on the phone (#100): ML Kit GenAI's Rewriting API
- * with the SHORTEN style, through AICore. Needs API 26 and a supported phone; anything else is
+ * with the SHORTEN style, through AICore. Needs a supported phone; anything else is
  * [ChefSupport.Unsupported]. The model downloads on first use (the steps show as written
  * meanwhile), and inference only runs while the app is in front, one step at a time; any
  * failure is "not now" (null), never an error on screen.
@@ -38,7 +37,6 @@ class MlKitStepShortener @Inject constructor(
     private var downloadStarted = false
 
     override suspend fun support(): ChefSupport {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return ChefSupport.Unsupported
         val status = attempt { lock.withLock { client("en")?.checkFeatureStatus()?.await() } }
         return when (status) {
             FeatureStatus.AVAILABLE, FeatureStatus.DOWNLOADABLE, FeatureStatus.DOWNLOADING ->
@@ -48,7 +46,6 @@ class MlKitStepShortener @Inject constructor(
     }
 
     override suspend fun shorten(step: String, language: String): String? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
         return attempt {
             lock.withLock {
                 val client = client(language) ?: return@withLock null

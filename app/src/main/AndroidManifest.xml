@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-
-    <!-- Chef mode (#100): ML Kit GenAI needs API 26; MlKitStepShortener never calls it below. -->
-    <uses-sdk tools:overrideLibrary="com.google.mlkit.genai.rewriting,com.google.mlkit.genai.common" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Connectivity: telling "offline" from other failures, and reloading on reconnect. -->

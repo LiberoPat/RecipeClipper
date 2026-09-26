@@ -26,7 +26,6 @@ object TimerNotifications {
     const val EXTRA_RECIPE_ID = "recipeId"
 
     private fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
             context.getString(R.string.timer_channel_name),

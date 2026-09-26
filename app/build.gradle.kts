@@ -37,7 +37,7 @@ android {
 
     defaultConfig {
         applicationId = "com.liberopat.recipeclipper"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -51,7 +51,7 @@ android {
 
     compileOptions {
         // Kotlin's jvmTarget follows targetCompatibility under built-in Kotlin. D8 desugars
-        // Java 17 bytecode for minSdk 24; Java 8 made javac (Hilt's generated code) warn
+        // Java 17 bytecode for minSdk 26; Java 8 made javac (Hilt's generated code) warn
         // that source/target 8 is obsolete.
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -242,8 +242,9 @@ dependencies {
     // Background thread for the network fetch
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
-    // Chef mode (#100): short steps from Gemini Nano on the phone, through AICore. Its minSdk is
-    // 26 (ours is 24): the manifest overrides it and MlKitStepShortener checks the API level.
+    // Chef mode (#100): short steps from Gemini Nano on the phone, through AICore. Its minSdk of
+    // 26 is why ours is 26: overriding it (<uses-sdk tools:overrideLibrary>) makes lint read the
+    // app's targetSdk as 1, which silences targetSdk-based checks (docs/decisions.md).
     implementation("com.google.mlkit:genai-rewriting:1.0.0-beta1")
 }
 
