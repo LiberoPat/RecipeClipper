@@ -116,8 +116,9 @@ extension GroceriesScreen {
     }
 }
 
-/// A row on the list. A line on its own or an added-up total is one tick; lines that can't be
-/// added up honestly sit under their ingredient's name, each with its own tick.
+/// A row on the list, always one tick. An added-up total shows its lines under it; lines that
+/// can't be added up honestly sit under their ingredient's name, as written, without ticks of
+/// their own: ticking the row ticks them all.
 private struct GroceryRowView: View {
     let row: GroceryCombiner.Row
     let vm: GroceriesViewModel
@@ -125,29 +126,26 @@ private struct GroceryRowView: View {
     var body: some View {
         switch row {
         case .single(let item):
-            CheckLine(text: item.text, detail: nil, checked: item.checked, row: row, label: item.text, vm: vm)
+            CheckLine(text: item.text, detail: [], checked: item.checked, row: row, label: item.text, vm: vm)
         case .combined(_, let text, let items):
+            // "2 corn × 3" under "6 corn"; nothing under a line that is its own detail.
             CheckLine(
-                text: text, detail: items.map(\.text).joined(separator: " + "),
+                text: text, detail: [GroceryCombiner.lines(row).joined(separator: " + ")].filter { $0 != text },
                 checked: items.allSatisfy(\.checked), row: row, label: text, vm: vm
             )
         case .together(let name, let items):
-            VStack(alignment: .leading, spacing: 0) {
-                Text(name)
-                    .textStyle(Typography.titleSmall)
-                    .foregroundStyle(Palette.muted)
-                    .padding(.top, 8)
-                ForEach(items) { item in
-                    CheckLine(text: item.text, detail: nil, checked: item.checked, row: .single(item), label: item.text, vm: vm)
-                }
-            }
+            // One tick for the ingredient; its lines, as written, have none of their own.
+            CheckLine(
+                text: name, detail: GroceryCombiner.lines(row),
+                checked: items.allSatisfy(\.checked), row: row, label: name, vm: vm
+            )
         }
     }
 }
 
 private struct CheckLine: View {
     let text: String
-    let detail: String?
+    let detail: [String]
     let checked: Bool
     let row: GroceryCombiner.Row
     let label: String
@@ -162,8 +160,8 @@ private struct CheckLine: View {
                         .textStyle(Typography.bodyLarge)
                         .strikethrough(checked)
                         .foregroundStyle(checked ? Palette.muted : Palette.onBackground)
-                    if let detail {
-                        Text(detail).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
+                    ForEach(Array(detail.enumerated()), id: \.offset) { _, line in
+                        Text(line).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -1409,7 +1409,21 @@ The third tab of #46, still behind the #47 flag.
   lines sit together under the name, each as written. Japanese lines (amount
   after the name) are never combined. The combined row shows its lines under
   it, so the sum can always be checked.
-- **Checked and shared.** Ticking a combined row ticks all its lines; checked
+- **Adding the same recipe again** (the owner's "2 corn, 2 corn, 2 corn"):
+  - A note after the amount doesn't stop a total. What follows a bracket or
+    slash counts as a note only with no digit, fraction or unit word in it, so
+    "(, minced)" (WP Recipe Maker's notes) or an unclosed "(see note" add up,
+    while "(about 1 lb)", "(or 2 teaspoon dried)" or "(about a pound)" never
+    do: the figure beside the total would be wrong.
+  - The same line added more than once that can't be summed is one row,
+    "1 lb / 500 g zucchinis × 3": exact, whatever the line says. That holds
+    for a line with no name ("salt and pepper") or no language, which groups
+    only with the very same line.
+  - Lines that sit together are still one row with one tick (the name, its
+    lines listed under it without ticks), and a line added more than once is
+    listed once, "× 3". Before, each line had its own box, so a repeated
+    recipe looked like separate items.
+- **Checked and shared.** Ticking a row ticks all its lines; checked
   rows sort after unchecked ones in each aisle and are struck through. Share
   sends the unchecked rows as plain text by aisle. Delete and "Clear checked"
   are undoable from one snackbar (one undo at a time, as on the Week).

@@ -382,8 +382,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
   exact** (`GroceryCombiner`): same name and language, each a single amount
   (no range, "plus", second measure or package size), all in one exactly
   convertible family (g/kg, oz/lb, metric ml family, US tsp/tbsp/fl oz/cup,
-  sticks, or counts with identical words), total shown exactly in a unit the
-  lines used; otherwise they sit together under the name, each as written.
+  sticks, or counts with identical words; a bracket or slash note only if it
+  holds no digit, fraction or unit word), total shown exactly in a unit the
+  lines used; the very same line repeated is "line × 3"; otherwise they sit
+  together under the name, each as written. Every row is one tick.
   With `aiDecisions` (#99), a cached definite "same" joins close names in one
   row, and trailing text judged a note or junk (never one with a digit) is
   read past; the model writes no number and these rules still decide totals.

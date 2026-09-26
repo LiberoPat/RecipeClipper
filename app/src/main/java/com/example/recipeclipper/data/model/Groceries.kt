@@ -92,7 +92,11 @@ data class GroceryItem(
  *   ("2 eggs" and "3 eggs"). Grams never add to ounces, nor cups to grams.
  * - The total is written in one of the units the lines used, the largest that shows it exactly
  *   ("1 cup" + "2 tbsp" is "1 1/8 cup"); if none can, nothing is combined.
- * - Otherwise they sit together under their name ([Row.Together]), each as written.
+ * - A bracket or slash after the amount must be only a note ("(, minced)"): one that could hold
+ *   a second amount (a digit, a fraction, a unit word) stops the total.
+ * - The same line added more than once, and not summed, is one row "line × 3" ([repeated]).
+ * - Otherwise they sit together under their name ([Row.Together]), each as written, as one row
+ *   with one tick.
  *
  * Japanese lines (amount after the name) are never combined. A bare "oz" is a weight here,
  * never fl oz, so "8 oz milk" and "1 cup milk" stay apart.
@@ -110,7 +114,7 @@ object GroceryCombiner {
         /** Several lines added up into [text]. */
         data class Combined(val name: String, val text: String, override val items: List<GroceryItem>) : Row()
 
-        /** Several lines naming [name] that can't be added up honestly, shown each as written. */
+        /** Several lines naming [name] that can't be added up honestly: one row, each line as written. */
         data class Together(val name: String, override val items: List<GroceryItem>) : Row()
     }
 
@@ -140,28 +144,32 @@ object GroceryCombiner {
      * "2 corn" sit together, each as written).
      */
     private fun group(items: List<GroceryItem>, decisions: Decisions): List<Row> {
-        // Keyed by language and name; a line with no name is its own group.
+        // Keyed by language and name; a line with no name only groups with the very same line.
         val groups = LinkedHashMap<Any, MutableList<GroceryItem>>()
         val names = HashMap<Long, String?>()
         for (item in items) {
             val name = GroceryDecisions.name(item, decisions)
             names[item.id] = name
-            val key: Any = if (name == null) item.id else (item.language to name)
+            val key: Any = if (name == null) Triple("line", item.language, normalize(item.text)) else (item.language to name)
             groups.getOrPut(key) { mutableListOf() } += item
         }
         val merged = mergeSame(groups.values.toList(), names, decisions)
         return merged.map { lines ->
             val first = lines.first()
             val name = names[first.id]
+            val words = LanguageWords.forTag(first.language)
+            val texts = lines.map { it.text }
+            val read = lines.map { GroceryDecisions.effectiveText(it, decisions) }
+            val sameName = lines.all { names[it.id] == name }
+            val total = if (name != null && words != null) {
+                sum(read, words, requireSameName = sameName) ?: repeated(texts)
+            } else {
+                repeated(texts)
+            }
             when {
-                lines.size == 1 || name == null -> Row.Single(first)
-                else -> {
-                    val words = LanguageWords.forTag(first.language)
-                    val texts = lines.map { GroceryDecisions.effectiveText(it, decisions) }
-                    val sameName = lines.all { names[it.id] == name }
-                    val total = words?.let { combine(texts, it, requireSameName = sameName) }
-                    if (total != null) Row.Combined(name, total, lines) else Row.Together(name, lines)
-                }
+                lines.size == 1 -> Row.Single(first)
+                total != null -> Row.Combined(name ?: first.text.trim(), total, lines)
+                else -> Row.Together(name!!, lines)
             }
         }
     }
@@ -236,7 +244,7 @@ object GroceryCombiner {
         if (unitMatch == null) {
             // A count: "2 eggs". Only the very same words add up, and never a package size.
             val tail = rest.trim()
-            if (tail.isEmpty() || !tail.first().isLetter() || '(' in tail || '/' in tail) return null
+            if (tail.isEmpty() || !tail.first().isLetter() || !notesOnly(tail, c)) return null
             return Amount(Family.COUNT, value, null, "", tail)
         }
         val unit = MeasureUnit.fromText(unitMatch.groupValues[1], words) ?: return null
@@ -245,18 +253,65 @@ object GroceryCombiner {
         // "1 cup plus 2 tbsp", "1 cup (120 g)", "1 cup/120 g": more than one figure.
         if (c.continuationAtStart.containsMatchIn(after)) return null
         val next = after.trimStart()
-        if (next.startsWith("(") || next.startsWith("/")) return null
+        if (next.startsWith("(") || next.startsWith("/") || !notesOnly(after, c)) return null
         return Amount(family, value * size, unit, unitMatch.groupValues[1].trim(), after.trim())
     }
 
+    private const val FRACTIONS = "¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞"
+
     /**
-     * The lines added up as one line ("300 g flour"), or null when they can't be added up
-     * exactly, or don't all name the same ingredient in [words]' language (not checked when
-     * [requireSameName] is false: the model decided the names are the same, #99). The words after the
+     * Whether whatever [text] holds in brackets or after a slash is only a note ("(, minced)",
+     * "/ kosher salt", an unclosed "(see note"), never a second amount: no digit, no fraction and
+     * no unit word from the bracket or slash on. "(about 1 lb)" or "(or 2 tsp dried)" could be
+     * another amount, so a total beside it would be a confident wrong number.
+     */
+    private fun notesOnly(text: String, c: UnitConverter.Patterns): Boolean {
+        val start = text.indexOfFirst { it == '(' || it == '/' }
+        if (start < 0) return true
+        val note = text.substring(start)
+        if (note.any { it in '0'..'9' || it in '０'..'９' || it in FRACTIONS }) return false
+        return note.indices.none { i ->
+            if (!note[i].isLetter() || (i > 0 && note[i - 1].isLetter())) return@none false
+            val word = note.substring(i)
+            val unit = c.unitAtStart.find(word) ?: return@none false
+            unit.range.last + 1 >= word.length || !word[unit.range.last + 1].isLetter()
+        }
+    }
+
+    /**
+     * The same line added more than once and not summed ("1 lb / 500 g zucchinis × 3"): exact,
+     * whatever the line says. Null unless every line is the same, spaces and case aside.
+     */
+    fun repeated(lines: List<String>): String? {
+        if (lines.size < 2 || lines.any { normalize(it) != normalize(lines.first()) }) return null
+        return "${lines.first().trim()} × ${lines.size}"
+    }
+
+    /**
+     * The lines shown under a row, as written, in order; a line added more than once is shown
+     * once, "2 corn × 3". Empty for a line on its own.
+     */
+    fun lines(row: Row): List<String> {
+        if (row is Row.Single) return emptyList()
+        val counts = LinkedHashMap<String, MutableList<String>>()
+        for (item in row.items) counts.getOrPut(normalize(item.text)) { mutableListOf() } += item.text.trim()
+        return counts.values.map { if (it.size == 1) it.first() else "${it.first()} × ${it.size}" }
+    }
+
+    /**
+     * The lines added up as one line ("300 g flour"), or the same line added again and again
+     * ([repeated]), or null when they can't be added up exactly, or don't all name the same
+     * ingredient in [words]' language. The words after the
      * total are the shortest any line wrote after its unit, as written ("200 g butter, softened"
      * and "100 g butter" are "300 g butter").
      */
-    fun combine(lines: List<String>, words: LanguageWords, requireSameName: Boolean = true): String? {
+    fun combine(lines: List<String>, words: LanguageWords): String? = sum(lines, words) ?: repeated(lines)
+
+    /**
+     * The lines added up, or null. [requireSameName] false skips the same-name check: the model
+     * decided the names are the same (#99); the amounts' rules are unchanged.
+     */
+    private fun sum(lines: List<String>, words: LanguageWords, requireSameName: Boolean = true): String? {
         if (lines.size < 2) return null
         if (requireSameName) {
             val name = IngredientName.of(lines.first(), words) ?: return null
@@ -325,7 +380,7 @@ object GroceryShareText {
                 when (row) {
                     is GroceryCombiner.Row.Single -> lines += "- ${row.item.text}"
                     is GroceryCombiner.Row.Combined -> lines += "- ${row.text}"
-                    is GroceryCombiner.Row.Together -> row.items.forEach { lines += "- ${it.text}" }
+                    is GroceryCombiner.Row.Together -> GroceryCombiner.lines(row).forEach { lines += "- $it" }
                 }
             }
         }

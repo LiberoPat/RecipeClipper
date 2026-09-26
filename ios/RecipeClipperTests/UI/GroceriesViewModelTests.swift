@@ -250,12 +250,40 @@ final class GroceryCombinerTests: XCTestCase {
         XCTAssertTrue(rows.allSatisfy { if case .single = $0 { return true } else { return false } })
     }
 
-    func testLinesWithNoNameOrNoLanguageStandAlone() {
+    func testLinesWithNoNameOrNoLanguageGroupOnlyWithTheSameLine() {
         let rows = GroceryCombiner.sections([
-            item("salt and pepper"), item("salt and pepper"), item("2 eggs", language: nil), item("2 eggs", language: nil),
+            item("salt and pepper"), item("salt and pepper"), item("olive oil and butter"),
+            item("2 eggs", language: nil), item("2 eggs", language: nil),
         ]).flatMap(\.rows)
-        XCTAssertEqual(rows.count, 4)
-        XCTAssertTrue(rows.allSatisfy { if case .single = $0 { return true } else { return false } })
+        let texts: [String] = rows.map {
+            switch $0 {
+            case .combined(_, let text, _): return text
+            case .single(let item): return item.text
+            case .together(let name, _): return "together \(name)"
+            }
+        }
+        XCTAssertEqual(texts, ["salt and pepper × 2", "olive oil and butter", "2 eggs × 2"])
+    }
+
+    // The owner's report: a recipe added three times showed "2 corn" three times, each with a
+    // tick of its own.
+    func testTheSameLineAddedThreeTimesIsOneRow() {
+        for (line, total) in [("2 corn", "6 corn"), ("1 cup milk", "3 cup milk"), ("2 corn (dfsafs -", "6 corn (dfsafs -")] {
+            let rows = GroceryCombiner.sections((0..<3).map { _ in item(line) }).flatMap(\.rows)
+            XCTAssertEqual(rows.count, 1, line)
+            guard case .combined(_, let text, let items) = rows[0] else { return XCTFail(line) }
+            XCTAssertEqual(text, total)
+            XCTAssertEqual(items.count, 3)
+            XCTAssertEqual(GroceryCombiner.lines(rows[0]), ["\(line) × 3"])
+        }
+        XCTAssertEqual(GroceryCombiner.combine(["2 corn (about 1 lb)", "2 corn (about 1 lb)"], words: .english), "2 corn (about 1 lb) × 2")
+    }
+
+    func testLinesThatCannotBeSummedAreOneRowWithTheirLinesUnderIt() {
+        let rows = GroceryCombiner.sections([item("1 cup sugar"), item("100 g sugar"), item("1 cup sugar")])[0].rows
+        XCTAssertEqual(rows.count, 1)
+        guard case .together = rows[0] else { return XCTFail("sugar") }
+        XCTAssertEqual(GroceryCombiner.lines(rows[0]), ["1 cup sugar × 2", "100 g sugar"])
     }
 
     func testAnItemMovedToAnotherAisleLeavesItsGroup() {
