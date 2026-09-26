@@ -47,7 +47,8 @@ final class GroceryDaoTests: XCTestCase {
         await repository.add([NewGroceryLine(text: "2 onions dfsafs", language: "en")])
         await decisions.decide([name, junk])
         await repository.add([NewGroceryLine(text: "2 onions dfsafs", language: "en")])
-        XCTAssertEqual(try await items().map(\.aisle), ["other", "produce"])
+        let aisles = try await items().map(\.aisle)
+        XCTAssertEqual(aisles, ["other", "produce"])
     }
 
     func testCheckingMovingAndDeletingTouchOnlyTheGivenItems() async throws {
