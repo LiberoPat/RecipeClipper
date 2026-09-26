@@ -15,7 +15,8 @@ protocol CookedPhotoRepository: AnyObject {
     func restore(_ photo: CookedPhoto) async
     /// The delete stands: removes the files of `photos`.
     func forget(_ photos: [CookedPhoto]) async
-    /// Removes stored files no entry names, except very recent ones (an add in flight).
+    /// Removes stored files no entry names, except very recent ones (an add in flight). Never an
+    /// entry: one whose file is missing keeps its day and note.
     func sweep() async
 }
 
@@ -104,7 +105,7 @@ extension CookedPhotoRecord {
     func domain(_ store: PhotoStore) -> CookedPhoto {
         CookedPhoto(
             id: id, recipeId: recipeId, fileName: fileName, path: store.path(fileName), day: day, note: note,
-            createdAt: createdAt, updatedAt: updatedAt, uid: uid
+            createdAt: createdAt, updatedAt: updatedAt, uid: uid, hasPicture: store.exists(fileName)
         )
     }
 

@@ -8,7 +8,9 @@ import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -75,6 +77,22 @@ class RecipeCookedPhotosScreenTest {
         compose.onNodeWithText("Undo").performClick()
         compose.waitUntil(5_000) { photos.photos.value.size == 1 }
         assertEquals(emptyList<String>(), photos.forgotten)
+    }
+
+    /** A phone restored from Android's backup has the entry but not its file. */
+    @Test
+    fun aPhotoWhoseFileIsMissingSaysSoAndKeepsItsNoteWithNoShare() {
+        photos.photo(RecipeScreenFixture.RECIPE_ID, note = "Less salt", hasPicture = false)
+        RecipeScreenFixture(photos = photos).show(compose)
+        scrollTo("Your cooks")
+        compose.onNodeWithText("Photo not on this phone").assertExists()
+
+        compose.onAllNodesWithContentDescription("Your photo", substring = true).onFirst().tap()
+
+        compose.onAllNodesWithText("Photo not on this phone").assertCountEquals(2)
+        compose.onNodeWithText("Less salt").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Delete photo").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Share photo").assertDoesNotExist()
     }
 
     @Test

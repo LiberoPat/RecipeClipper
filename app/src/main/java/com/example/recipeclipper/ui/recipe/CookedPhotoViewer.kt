@@ -67,14 +67,16 @@ internal fun CookedPhotoViewer(photo: CookedPhoto, noteDraft: String, actions: C
                         Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_close_photo))
                     }
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { actions.onShare(photo) }) {
-                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share_photo))
+                    if (photo.hasPicture) {
+                        IconButton(onClick = { actions.onShare(photo) }) {
+                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share_photo))
+                        }
                     }
                     IconButton(onClick = actions.onDelete) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete_photo))
                     }
                 }
-                CookedImage(photo.path, Modifier.fillMaxWidth().weight(1f), ContentScale.Fit)
+                CookedImage(photo, Modifier.fillMaxWidth().weight(1f), ContentScale.Fit)
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

@@ -35,7 +35,10 @@ interface CookedPhotoRepository {
     /** The delete stands: removes the files of [photos]. */
     suspend fun forget(photos: List<CookedPhoto>)
 
-    /** Removes stored files no entry names, except very recent ones (an add in flight). */
+    /**
+     * Removes stored files no entry names, except very recent ones (an add in flight). Never an
+     * entry: one whose file is missing (restored from Android's backup) keeps its day and note.
+     */
     suspend fun sweep()
 }
 
@@ -89,7 +92,7 @@ class DefaultCookedPhotoRepository @Inject constructor(
     }
 
     private fun CookedPhotoEntity.toDomain() =
-        CookedPhoto(id, recipeId, fileName, store.path(fileName), day, note, createdAt, updatedAt, uid)
+        CookedPhoto(id, recipeId, fileName, store.path(fileName), day, note, createdAt, updatedAt, uid, store.exists(fileName))
 }
 
 internal fun CookedPhoto.toEntity() =

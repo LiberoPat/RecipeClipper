@@ -21,6 +21,9 @@ interface PhotoStore {
     /** The absolute path of the stored file [name]. */
     fun path(name: String): String
 
+    /** Whether the file [name] is here: a phone restored from Android's backup has the rows only. */
+    fun exists(name: String): Boolean
+
     /** Every stored file, with when it was last written (epoch millis). */
     suspend fun files(): Map<String, Long>
 
@@ -42,6 +45,7 @@ object NoPhotoStore : PhotoStore {
     override suspend fun importPicture(source: String): String? = null
     override suspend fun adopt(path: String): String? = null
     override fun path(name: String): String = name
+    override fun exists(name: String): Boolean = false
     override suspend fun files(): Map<String, Long> = emptyMap()
     override suspend fun delete(names: Collection<String>) = Unit
 }

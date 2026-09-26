@@ -5,6 +5,8 @@ package com.example.recipeclipper.data.model
  * they cooked it (a local epoch day, [PlanDays]) and an optional short [note]. [path] is the
  * stored JPEG's absolute path, for showing and sharing it; the file lives in the app's own
  * storage, downscaled, and belongs to the recipe (deleting the recipe deletes it).
+ * [hasPicture] is false when the file isn't here (a phone restored from Android's backup, which
+ * leaves photos out): the entry keeps its day and note, and says the photo isn't on this phone.
  */
 data class CookedPhoto(
     val id: Long,
@@ -15,7 +17,8 @@ data class CookedPhoto(
     val note: String?,
     val createdAt: Long,
     val updatedAt: Long,
-    val uid: String
+    val uid: String,
+    val hasPicture: Boolean = true
 ) {
     companion object {
         /** The longest note kept: "short", a line or two under a photo. */

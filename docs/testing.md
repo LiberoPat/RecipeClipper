@@ -552,7 +552,9 @@ What goes is an include list: `app/src/main/res/xml/data_extraction_rules.xml`
 (API 23–30, Auto Backup). Both name `recipe_clipper.db`, `-wal`, `-shm` and
 `unit_preferences.xml`, so recipes, lists, ticked ingredients and settings
 travel, and nothing else does. Coil's image cache is in `cacheDir`, which is
-never backed up; photos refill from the network.
+never backed up; photos refill from the network. The user's own "I made this"
+photos (`filesDir/cooked_photos`, #116) stay out too: their rows come back
+without the files and say "Photo not on this phone" (docs/decisions.md).
 
 Proven on an API 37 emulator (September 2026) with the local transport. The
 app was seeded through its UI (a shared recipe, two ingredients ticked, the

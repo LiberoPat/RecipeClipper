@@ -125,6 +125,24 @@ final class CookedPhotoTests: XCTestCase {
         XCTAssertNotEqual(orphan, kept.fileName)
     }
 
+    /// A restore that brings the database without the files (#116): the entry stays.
+    func testAPhotoWhoseFileIsMissingKeepsItsDayAndNoteAndTheSweepKeepsIt() async throws {
+        let id = try await insert(1)
+        let photo = try await unwrap(photos.add(recipeId: id, pictures: [jpeg()]).first)
+        XCTAssertTrue(photo.hasPicture)
+        await photos.edit(id: photo.id, day: 19_000, note: "Less salt")
+        await store.delete([photo.fileName])
+        clock.time = Int64(Date().timeIntervalSince1970 * 1000) + photoSweepGraceMillis * 2
+
+        await photos.sweep()
+
+        let restored = try await current(id)
+        XCTAssertEqual(restored.count, 1)
+        XCTAssertEqual(restored.first?.day, 19_000)
+        XCTAssertEqual(restored.first?.note, "Less salt")
+        XCTAssertEqual(restored.first?.hasPicture, false)
+    }
+
     func testPhotosRoundTripThroughTheZipPastAFullHistory() async throws {
         let id = try await insert(1)
         let photo = try await unwrap(photos.add(recipeId: id, pictures: [jpeg()]).first)

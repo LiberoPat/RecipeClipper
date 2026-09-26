@@ -11,6 +11,8 @@ protocol PhotoStore: AnyObject {
     /// Copies a file that is already a stored photo (one from a backup) in; its new name, or nil.
     func adopt(_ file: URL) async -> String?
     func path(_ name: String) -> String
+    /// Whether the file `name` is here: a phone restored without it has the row only.
+    func exists(_ name: String) -> Bool
     /// Every stored file, with when it was last written (epoch millis).
     func files() async -> [String: Int64]
     func delete(_ names: [String]) async
@@ -21,8 +23,9 @@ let photoMaxEdge = 2048
 /// A file this young may belong to an add still being written: the sweep leaves it.
 let photoSweepGraceMillis: Int64 = 10 * 60 * 1000
 
-/// `CookedPhotos/` beside the database (the App Group container, backed up with it), written
-/// with ImageIO, so neither UIKit nor the main thread is involved.
+/// `CookedPhotos/` beside the database (the App Group container, which iCloud Backup carries
+/// with it: never mark it excluded from backup), written with ImageIO, so neither UIKit nor the
+/// main thread is involved.
 final class FilePhotoStore: PhotoStore {
     private let directory: URL
 
@@ -60,6 +63,8 @@ final class FilePhotoStore: PhotoStore {
     }
 
     func path(_ name: String) -> String { directory.appendingPathComponent(name).path }
+
+    func exists(_ name: String) -> Bool { FileManager.default.fileExists(atPath: path(name)) }
 
     func files() async -> [String: Int64] {
         let keys: [URLResourceKey] = [.contentModificationDateKey]

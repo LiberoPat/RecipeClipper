@@ -15,10 +15,12 @@ struct CookedPhotoViewer: View {
                 Button { vm.onClose() } label: { Image(systemName: "xmark") }
                     .accessibilityLabel(Strings.closePhoto)
                 Spacer()
-                ShareLink(item: URL(fileURLWithPath: photo.path), message: Text(recipeName)) {
-                    Image(systemName: "square.and.arrow.up")
+                if photo.hasPicture {
+                    ShareLink(item: URL(fileURLWithPath: photo.path), message: Text(recipeName)) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel(Strings.sharePhoto)
                 }
-                .accessibilityLabel(Strings.sharePhoto)
                 Button { vm.onDelete() } label: { Image(systemName: "trash") }
                     .accessibilityLabel(Strings.deletePhoto)
                     .accessibilityIdentifier("cooked.delete")

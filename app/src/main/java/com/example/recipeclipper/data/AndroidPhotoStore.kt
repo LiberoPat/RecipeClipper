@@ -19,8 +19,9 @@ import kotlin.math.min
 
 /**
  * [PhotoStore] in `filesDir/cooked_photos/`: private to the app, kept until the app is removed,
- * and (like every file but the database and settings) outside Android's cloud backup, whose 25 MB
- * quota photos would overrun. The export file carries them instead (#26, #116).
+ * and (like every file but the database and settings) outside Android's Auto Backup, whose 25 MB
+ * quota photos would overrun, stopping the whole app's backup. The export file carries them
+ * instead (#26, #116); a phone restored from Auto Backup has the rows without their files.
  */
 class AndroidPhotoStore @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -65,6 +66,8 @@ class AndroidPhotoStore @Inject constructor(
     }
 
     override fun path(name: String): String = File(File(context.filesDir, DIR), name).absolutePath
+
+    override fun exists(name: String): Boolean = File(path(name)).isFile
 
     override suspend fun files(): Map<String, Long> = withContext(Dispatchers.IO) {
         dir().listFiles().orEmpty().filter { it.isFile && it.name.endsWith(EXTENSION) }

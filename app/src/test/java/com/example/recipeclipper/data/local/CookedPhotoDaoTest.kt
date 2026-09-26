@@ -116,4 +116,21 @@ class CookedPhotoDaoTest {
         photos.sweep()
         assertEquals(setOf(kept.fileName, young), store.files().keys)
     }
+
+    /** Android's backup restores the database but not the files (#116): the entry stays. */
+    @Test fun aPhotoWhoseFileIsMissingKeepsItsDayAndNoteAndTheSweepKeepsIt() = runBlocking {
+        val id = insert(1)
+        val photo = photos.add(id, listOf("pic")).single()
+        assertTrue(photo.hasPicture)
+        photos.edit(photo.id, 19_000L, "Less salt")
+        store.delete(listOf(photo.fileName))
+        now += PhotoStore.SWEEP_GRACE_MILLIS * 2
+
+        photos.sweep()
+
+        val restored = photos.observe(id).first().single()
+        assertEquals(19_000L, restored.day)
+        assertEquals("Less salt", restored.note)
+        assertEquals(false, restored.hasPicture)
+    }
 }

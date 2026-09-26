@@ -77,7 +77,7 @@ internal fun CookedPhotosSection(
                     Column(
                         Modifier.width(THUMB).clickable { onOpen(photo) }.semantics { contentDescription = label }
                     ) {
-                        CookedImage(photo.path, Modifier.size(THUMB).clip(RoundedCornerShape(10.dp)), ContentScale.Crop)
+                        CookedImage(photo, Modifier.size(THUMB).clip(RoundedCornerShape(10.dp)), ContentScale.Crop)
                         Text(
                             shortDate(photo.day),
                             style = MaterialTheme.typography.labelMedium,
@@ -121,25 +121,35 @@ private fun AddPhotoMenu(sources: PhotoSources, anchor: @Composable (open: () ->
     }
 }
 
-/** A stored photo; one whose file isn't here (a restore without photos) says so instead. */
+/**
+ * A stored photo; one whose file isn't here (a phone restored from Android's backup, which leaves
+ * photos out) or can't be read says so instead.
+ */
 @Composable
-internal fun CookedImage(path: String, modifier: Modifier, scale: ContentScale) {
+internal fun CookedImage(photo: CookedPhoto, modifier: Modifier, scale: ContentScale) {
+    if (!photo.hasPicture) {
+        PhotoMissing(modifier)
+        return
+    }
     SubcomposeAsyncImage(
-        model = File(path),
+        model = File(photo.path),
         contentDescription = null,
         contentScale = scale,
         modifier = modifier,
-        error = {
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), Alignment.Center) {
-                Text(
-                    stringResource(R.string.cooked_photo_missing),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(6.dp)
-                )
-            }
-        }
+        error = { PhotoMissing(Modifier.fillMaxSize()) }
     )
+}
+
+@Composable
+private fun PhotoMissing(modifier: Modifier) {
+    Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), Alignment.Center) {
+        Text(
+            stringResource(R.string.cooked_photo_missing),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(6.dp)
+        )
+    }
 }
 
 private val THUMB = 96.dp

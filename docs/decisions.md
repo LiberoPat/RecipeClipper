@@ -2422,10 +2422,15 @@ photo that exists.
     here after the import. `backup-v1-photos.zip` (written by Python's `zipfile`, a third
     writer) is read by both platforms' tests.
 - **Android's cloud backup leaves the photos out.** The include list (database and settings)
-  stays as it is: Auto Backup's 25 MB quota would fail the whole backup once there are enough
-  photos. A phone restored that way has the entries but not the pictures; each shows "Photo not
-  on this phone". The export file is the way to move photos. iOS backs up the App Group
-  container, photos included.
+  stays as it is: Auto Backup's 25 MB per-app quota would stop the whole app's backup, recipes
+  included, once there are enough photos. A phone restored that way has the entries but not
+  the pictures. Each entry keeps its day and note, shows "Photo not on this phone" in place of
+  the picture, and offers no Share (`CookedPhoto.hasPicture`). The launch sweep only ever
+  deletes files no row names, never a row whose file is missing. On Android, photos move to a
+  new phone through the export `.zip`. On iOS, iCloud Backup carries them: `CookedPhotos/`
+  sits beside the database in the App Group container, which nothing excludes from backup.
+  Pinned by `CookedPhotoDaoTest` and `RecipeCookedPhotosScreenTest` (Android) and
+  `CookedPhotoTests` (iOS).
 
 **Needs a real phone:** the camera itself (the Android emulator's virtual scene and the iOS
 simulator's missing camera prove only the wiring), EXIF orientation from a real portrait shot,

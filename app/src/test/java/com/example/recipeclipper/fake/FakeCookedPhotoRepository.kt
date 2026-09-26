@@ -19,9 +19,9 @@ class FakeCookedPhotoRepository(var today: Long = 20_000L) : CookedPhotoReposito
         private set
     private var nextId = 1L
 
-    fun photo(recipeId: Long, day: Long = today, note: String? = null): CookedPhoto {
+    fun photo(recipeId: Long, day: Long = today, note: String? = null, hasPicture: Boolean = true): CookedPhoto {
         val id = nextId++
-        return CookedPhoto(id, recipeId, "p$id.jpg", "/photos/p$id.jpg", day, note, id, id, "uid-$id")
+        return CookedPhoto(id, recipeId, "p$id.jpg", "/photos/p$id.jpg", day, note, id, id, "uid-$id", hasPicture)
             .also { photos.value = photos.value + it }
     }
 

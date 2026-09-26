@@ -19,6 +19,8 @@ class FakePhotoStore(val dir: File = Files.createTempDirectory("photos").toFile(
 
     override fun path(name: String): String = File(dir, name).absolutePath
 
+    override fun exists(name: String): Boolean = File(dir, name).isFile
+
     override suspend fun files(): Map<String, Long> =
         dir.listFiles().orEmpty().associate { it.name to it.lastModified() }
 
