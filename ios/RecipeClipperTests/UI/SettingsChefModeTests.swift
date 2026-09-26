@@ -22,12 +22,12 @@ final class SettingsChefModeTests: XCTestCase {
 
     func testHiddenWithoutTheFlag() async throws {
         let vm = try await makeViewModel(support: .available(["en"]), flagOn: false)
-        XCTAssertFalse(vm.showsSteps)
+        XCTAssertFalse(vm.showsChefMode)
     }
 
     func testTurnsOnWhereThePhoneCan() async throws {
         let vm = try await makeViewModel(support: .available(["en", "de"]))
-        XCTAssertTrue(vm.showsSteps)
+        XCTAssertTrue(vm.showsChefMode)
         await vm.onStepsShown()?.value
         XCTAssertEqual(vm.uiState.chefSupport, .available(["en", "de"]))
         vm.onChefModeChange(true)

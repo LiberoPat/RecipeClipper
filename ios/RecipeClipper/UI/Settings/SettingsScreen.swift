@@ -53,24 +53,33 @@ struct SettingsScreen: View {
                     )
                 }
 
-                if vm.showsSteps {
-                    // Chef mode (#100): disabled, with one line saying why, where the phone can't.
-                    let available = state.chefSupport?.isAvailable ?? false
+                if vm.showsSteps || vm.showsChefMode {
                     Divided {
                         SectionHeading(Strings.settingsSectionSteps).padding(.bottom, 4)
-                        SwitchRow(
-                            title: Strings.chefModeTitle,
-                            description: Strings.chefModeDescription,
-                            isOn: Binding(get: { vm.uiState.chefMode && available }, set: vm.onChefModeChange)
-                        )
-                        .disabled(!available)
-                        .accessibilityIdentifier("settings.chefMode")
-                        if let note = chefNote(state.chefSupport) {
-                            Text(note)
-                                .textStyle(Typography.bodySmall)
-                                .foregroundStyle(Palette.muted)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .accessibilityIdentifier("settings.chefModeNote")
+                        if vm.showsSteps {
+                            SwitchRow(
+                                title: Strings.amountsInStepsTitle,
+                                description: Strings.amountsInStepsDescription,
+                                isOn: Binding(get: { vm.uiState.amountsInSteps }, set: vm.onAmountsInStepsChange)
+                            )
+                        }
+                        if vm.showsChefMode {
+                            // Chef mode (#100): disabled, with one line saying why, where the phone can't.
+                            let available = state.chefSupport?.isAvailable ?? false
+                            SwitchRow(
+                                title: Strings.chefModeTitle,
+                                description: Strings.chefModeDescription,
+                                isOn: Binding(get: { vm.uiState.chefMode && available }, set: vm.onChefModeChange)
+                            )
+                            .disabled(!available)
+                            .accessibilityIdentifier("settings.chefMode")
+                            if let note = chefNote(state.chefSupport) {
+                                Text(note)
+                                    .textStyle(Typography.bodySmall)
+                                    .foregroundStyle(Palette.muted)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .accessibilityIdentifier("settings.chefModeNote")
+                            }
                         }
                     }
                     .onAppear { vm.onStepsShown() }

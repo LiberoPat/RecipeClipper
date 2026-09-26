@@ -43,6 +43,8 @@ class RecipeScreenFixture(
     val plan: FakeMealPlanRepository? = null,
     /** Set to show "Add to groceries" (#50), as behind the tab flag. */
     val groceries: FakeGroceryRepository? = null,
+    /** The `amountsInSteps` flag (#101); the switch itself is [preferences]' `amountsInSteps`. */
+    val amountsInSteps: Boolean = false,
     /** Set to turn Chef mode (#100) on, flag and setting, with this as the model. */
     val chef: FakeStepShortener? = null
 ) {
@@ -92,6 +94,7 @@ class RecipeScreenFixture(
                 viewModel = viewModel,
                 saveViewModel = saveViewModel,
                 mealPlanEnabled = flagOn,
+                amountsInStepsEnabled = amountsInSteps,
                 planViewModel = planViewModel,
                 groceriesViewModel = groceriesViewModel
             )

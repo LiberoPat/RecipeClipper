@@ -10,6 +10,8 @@ enum Flag: String, CaseIterable {
     case mealPlan
     /// Chef mode (#100): the Settings switch for short steps written on the device.
     case chefMode
+    /// Ingredient amounts inside steps (#101): the Settings switch and what it shows.
+    case amountsInSteps
 }
 
 /// One flag as `shared/flags.json` declares it.

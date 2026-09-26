@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.ServingsScale
+import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 
@@ -47,7 +48,9 @@ sealed class RecipeContent {
      * or null. [sourceDomain] is the site credited under the title ("smittenkitchen.com"),
      * or null when the source link has no recognisable host (then no credit is shown).
      * [words] are the recipe's language's (#14), which the view uses for the yield's kind and
-     * the timer labels; null for a language the app has no words for.
+     * the timer labels; null for a language the app has no words for. [stepAmounts] lines up
+     * with [instructions]: each step with the ingredient amounts inside it (#101), or null
+     * when "Amounts in steps" is off.
      */
     data class Success(
         val recipe: Recipe,
@@ -57,15 +60,28 @@ sealed class RecipeContent {
         val stepTimerSeconds: List<Int?>,
         val sourceDomain: String?,
         val words: LanguageWords? = LanguageWords.forRecipe(recipe),
+        val stepAmounts: List<List<StepAmounts.Part>>? = null,
         /**
          * Chef mode (#100): each step's short version, rendered like [instructions], lined up
          * with them; null (or a short list) where a step has none yet, or none passed the check.
+         * [shortStepAmounts] are their amounts inside steps, as [stepAmounts] are the steps'.
          */
-        val shortInstructions: List<String?> = emptyList()
+        val shortInstructions: List<String?> = emptyList(),
+        val shortStepAmounts: List<List<StepAmounts.Part>>? = null
     ) : RecipeContent() {
+        private fun showsShort(index: Int, asWritten: Set<Int>) =
+            shortInstructions.getOrNull(index) != null && index !in asWritten
+
         /** Step [index]'s short version, unless the cook asked to see it as written. */
         fun shownStep(index: Int, asWritten: Set<Int>): String =
-            shortInstructions.getOrNull(index)?.takeIf { index !in asWritten } ?: instructions[index]
+            if (showsShort(index, asWritten)) shortInstructions[index]!! else instructions[index]
+
+        /** The amounts inside the step as [shownStep] shows it; null when amounts are off. */
+        fun shownStepAmounts(index: Int, asWritten: Set<Int>): List<StepAmounts.Part>? = when {
+            stepAmounts == null -> null
+            showsShort(index, asWritten) -> shortStepAmounts?.getOrNull(index)
+            else -> stepAmounts.getOrNull(index)
+        }
 
         fun hasShortStep(index: Int): Boolean = shortInstructions.getOrNull(index) != null
     }
@@ -79,7 +95,8 @@ sealed class RecipeContent {
  * Servings, by contrast, belong to one recipe. [convertLiquids] only matters for OUNCES.
  * [temperatureUnit] is independent of [unitSystem] — see [TemperatureUnit]'s doc.
  * [darkWhileCooking] forces the ink scheme in cook mode even in light mode; off by default,
- * so cook mode follows the system theme like every other screen.
+ * so cook mode follows the system theme like every other screen. [amountsInSteps] is the
+ * Settings switch (#101), behind the `amountsInSteps` flag, which the screen checks.
  */
 data class RecipeUiState(
     val content: RecipeContent = RecipeContent.Loading,
@@ -90,6 +107,7 @@ data class RecipeUiState(
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
+    val amountsInSteps: Boolean = false,
     val cook: CookState = CookState(),
     /** Set once the recipe has been deleted, so the screen can navigate back. */
     val deleted: Boolean = false,

@@ -38,6 +38,10 @@ data class SettingsUiState(
     val backup: BackupStatus = BackupStatus.Idle,
     /** The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind it. */
     val showsPantry: Boolean = false,
+    /** The Steps section's "Amounts in steps" (#101): only with the `amountsInSteps` flag on. */
+    val showsSteps: Boolean = false,
+    /** Ingredient amounts inside steps. */
+    val amountsInSteps: Boolean = false,
     /** A morning notification when pantry items are about to expire. */
     val expiryReminders: Boolean = false,
     /** Turning reminders on was refused (notifications not allowed): the switch stays off and
@@ -46,8 +50,8 @@ data class SettingsUiState(
     /** e.g. "1.0 (1)", shown at the foot; tapping it [SettingsViewModel.DEVELOPER_TAPS] times
      *  opens Developer settings (#87). */
     val appVersion: String = "",
-    /** The Steps section (#100): only with the `chefMode` flag on. */
-    val showsSteps: Boolean = false,
+    /** The Steps section's "Chef mode" (#100): only with the `chefMode` flag on. */
+    val showsChefMode: Boolean = false,
     /** Chef mode as saved: short steps written on the device. */
     val chefMode: Boolean = false,
     /** What this phone can do, once asked; null until then. The switch works only when Available. */
@@ -111,7 +115,11 @@ class SettingsViewModel @Inject constructor(
             viewModelScope.launch {
                 flags.values.collect { values ->
                     _uiState.update {
-                        it.copy(showsPantry = values.isOn(Flag.MEAL_PLAN), showsSteps = values.isOn(Flag.CHEF_MODE))
+                        it.copy(
+                            showsPantry = values.isOn(Flag.MEAL_PLAN),
+                            showsSteps = values.isOn(Flag.AMOUNTS_IN_STEPS),
+                            showsChefMode = values.isOn(Flag.CHEF_MODE)
+                        )
                     }
                     if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
                 }
@@ -140,10 +148,12 @@ class SettingsViewModel @Inject constructor(
         unitSystem, convertLiquids, temperatureUnit, darkWhileCooking,
         backup = previous?.backup ?: BackupStatus.Idle,
         showsPantry = previous?.showsPantry ?: (featureFlags?.isOn(Flag.MEAL_PLAN) ?: false),
+        showsSteps = previous?.showsSteps ?: (featureFlags?.isOn(Flag.AMOUNTS_IN_STEPS) ?: false),
+        amountsInSteps = amountsInSteps,
         expiryReminders = expiryReminders,
         expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,
         appVersion = appInfo.appVersion,
-        showsSteps = previous?.showsSteps ?: (featureFlags?.isOn(Flag.CHEF_MODE) ?: false),
+        showsChefMode = previous?.showsChefMode ?: (featureFlags?.isOn(Flag.CHEF_MODE) ?: false),
         chefMode = chefMode,
         chefSupport = previous?.chefSupport
     )
@@ -180,6 +190,11 @@ class SettingsViewModel @Inject constructor(
     fun onDarkWhileCookingChange(enabled: Boolean) {
         preferences.darkWhileCooking = enabled
         _uiState.update { it.copy(darkWhileCooking = enabled) }
+    }
+
+    fun onAmountsInStepsChange(enabled: Boolean) {
+        preferences.amountsInSteps = enabled
+        _uiState.update { it.copy(amountsInSteps = enabled) }
     }
 
     /**

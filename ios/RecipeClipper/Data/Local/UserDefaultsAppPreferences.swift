@@ -12,6 +12,7 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let darkWhileCooking = "dark_while_cooking"
         static let expiryReminders = "expiry_reminders"
         static let chefMode = "chef_mode"
+        static let amountsInSteps = "amounts_in_steps"
     }
 
     private let defaults: UserDefaults
@@ -49,6 +50,11 @@ final class UserDefaultsAppPreferences: AppPreferences {
     var chefMode: Bool {
         get { defaults.bool(forKey: Key.chefMode) }
         set { defaults.set(newValue, forKey: Key.chefMode) }
+    }
+
+    var amountsInSteps: Bool {
+        get { defaults.bool(forKey: Key.amountsInSteps) }
+        set { defaults.set(newValue, forKey: Key.amountsInSteps) }
     }
 
     /// Over `UserDefaults.didChangeNotification` (Android: the SharedPreferences change

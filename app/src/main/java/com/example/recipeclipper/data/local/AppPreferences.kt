@@ -42,6 +42,12 @@ interface AppPreferences {
     var chefMode: Boolean
 
     /**
+     * Ingredient amounts inside steps (#101): "Add the carrots" reads "Add 2 carrots". Off by
+     * default, and shown only with the `amountsInSteps` flag on.
+     */
+    var amountsInSteps: Boolean
+
+    /**
      * The current values first, then every change, never repeating a value. A screen that
      * collects this stays current when Settings changes a default while it is open (#24).
      */
@@ -49,7 +55,9 @@ interface AppPreferences {
 
     /** The values as they are right now. */
     val current: AppSettings
-        get() = AppSettings(unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode)
+        get() = AppSettings(
+            unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps
+        )
 }
 
 /** One snapshot of [AppPreferences], as its [AppPreferences.settings] flow emits them. */
@@ -59,5 +67,6 @@ data class AppSettings(
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
     val expiryReminders: Boolean = false,
-    val chefMode: Boolean = false
+    val chefMode: Boolean = false,
+    val amountsInSteps: Boolean = false
 )

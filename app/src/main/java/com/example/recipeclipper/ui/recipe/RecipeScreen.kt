@@ -122,6 +122,7 @@ fun RecipeScreen(
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel(),
     mealPlanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.MEAL_PLAN),
+    amountsInStepsEnabled: Boolean = LocalFlagValues.current.isOn(Flag.AMOUNTS_IN_STEPS),
     // Only resolved behind the tab flag (#49), so screen tests without Hilt need not pass one.
     planViewModel: AddToPlanViewModel? = if (mealPlanEnabled) hiltViewModel() else null,
     groceriesViewModel: AddToGroceriesViewModel? = if (mealPlanEnabled) hiltViewModel() else null
@@ -264,9 +265,12 @@ fun RecipeScreen(
             // cutout and the keyboard.
             Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                 when (content) {
-                    is RecipeContent.Success ->
-                        if (cooking) CookView(content, state, actions)
-                        else ReadingView(content, state, actions, saveState.isSaved)
+                    is RecipeContent.Success -> {
+                        // Amounts in steps (#101) show only behind their flag.
+                        val shown = if (amountsInStepsEnabled) content else content.copy(stepAmounts = null)
+                        if (cooking) CookView(shown, state, actions)
+                        else ReadingView(shown, state, actions, saveState.isSaved)
+                    }
                     is RecipeContent.Loading -> StatusView(actions.onBack) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
@@ -517,7 +521,10 @@ private fun ReadingView(
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.width(32.dp)
                     )
-                    Text(step, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        stepText(step, content.shownStepAmounts(index, state.asWrittenSteps), MaterialTheme.colorScheme.tertiary),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
             }
 

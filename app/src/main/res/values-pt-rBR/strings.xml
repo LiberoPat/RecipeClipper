@@ -110,6 +110,9 @@
     </plurals>
     <string name="dark_while_cooking_title">Escuro ao cozinhar</string>
     <string name="dark_while_cooking_description">Modo cozinhar com fundo escuro mesmo no modo claro</string>
+    <string name="settings_section_steps">Passos</string>
+    <string name="amounts_in_steps_title">Quantidades nos passos</string>
+    <string name="amounts_in_steps_description">Mostra a quantidade de cada ingrediente onde um passo o menciona</string>
     <string name="nav_settings">Configurações</string>
     <string name="settings_title">Configurações</string>
     <string name="settings_section_units">Unidades</string>
@@ -386,7 +389,6 @@
     <string name="expiry_reminders_description">Uma notificação às 9 da manhã quando algo em estoque vence hoje ou amanhã</string>
     <string name="expiry_reminders_denied">As notificações estão desativadas para o Recipe Clipper. Permita-as nos ajustes do sistema para receber lembretes.</string>
     <!-- Chef mode (#100) -->
-    <string name="settings_section_steps">Passos</string>
     <string name="chef_mode_title">Modo chef</string>
     <string name="chef_mode_description">Passos curtos, escritos neste celular. Toque em um para vê-lo como na receita.</string>
     <string name="chef_mode_languages">Para receitas em %1$s.</string>

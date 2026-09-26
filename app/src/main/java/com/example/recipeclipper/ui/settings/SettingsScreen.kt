@@ -170,8 +170,23 @@ fun SettingsScreen(
                     )
                 }
 
-                if (state.showsSteps) {
-                    item { StepsSection(state, viewModel::onChefModeChange) }
+                if (state.showsSteps || state.showsChefMode) {
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Hairline()
+                        Spacer(Modifier.height(16.dp))
+                        SectionHeading(stringResource(R.string.settings_section_steps))
+                        Spacer(Modifier.height(4.dp))
+                        if (state.showsSteps) {
+                            SwitchRow(
+                                title = stringResource(R.string.amounts_in_steps_title),
+                                description = stringResource(R.string.amounts_in_steps_description),
+                                checked = state.amountsInSteps,
+                                onCheckedChange = viewModel::onAmountsInStepsChange
+                            )
+                        }
+                        if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
+                    }
                 }
 
                 if (state.showsPantry) {
@@ -399,12 +414,7 @@ internal fun SwitchRow(
  * line saying why; where it can, a line names the recipe languages it writes.
  */
 @Composable
-private fun StepsSection(state: SettingsUiState, onChefModeChange: (Boolean) -> Unit) {
-    Spacer(Modifier.height(16.dp))
-    Hairline()
-    Spacer(Modifier.height(16.dp))
-    SectionHeading(stringResource(R.string.settings_section_steps))
-    Spacer(Modifier.height(4.dp))
+private fun ChefModeRow(state: SettingsUiState, onChefModeChange: (Boolean) -> Unit) {
     SwitchRow(
         title = stringResource(R.string.chef_mode_title),
         description = stringResource(R.string.chef_mode_description),

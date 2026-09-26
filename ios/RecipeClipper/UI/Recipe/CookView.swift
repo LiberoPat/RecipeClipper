@@ -34,6 +34,7 @@ struct CookView: View {
                                 index: index,
                                 // Chef mode (#100): the short version, unless asked for as written.
                                 text: content.shownStep(index, asWritten: state.asWrittenSteps),
+                                amounts: content.shownStepParts(index, asWritten: state.asWrittenSteps),
                                 shortToggle: !content.hasShortStep(index) ? nil
                                     : state.asWrittenSteps.contains(index) ? Strings.stepShowShort : Strings.stepShowAsWritten,
                                 status: index == cook.currentStep ? .current
@@ -218,6 +219,7 @@ private struct IngredientsBar: View {
 private struct CookStep: View {
     let index: Int
     let text: String
+    let amounts: [StepAmounts.Part]?
     /// Chef mode (#100): the current step's "As written" / "Short version" button; nil: none. A
     /// tap on a step already makes it current, so the switch is a small button on the card.
     let shortToggle: String?
@@ -245,7 +247,7 @@ private struct CookStep: View {
                     }
                 }
                 .padding(.bottom, 8)
-                Text(text)
+                stepText(text, amounts, accent: Palette.accentText)
                     .textStyle(Typography.cookStep)
                     .foregroundStyle(Palette.onBackground)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -274,7 +276,8 @@ private struct CookStep: View {
                             .textStyle(Typography.titleMedium)
                             .foregroundStyle(done ? Palette.muted : Palette.accentText)
                             .frame(width: stacked ? nil : numberColumn, alignment: .leading)
-                        Text(text)
+                        // A done step is dimmed as a whole; its amounts keep only their weight.
+                        stepText(text, amounts, accent: done ? nil : Palette.accentText)
                             .textStyle(Typography.bodyLarge)
                             .strikethrough(done)
                             .foregroundStyle(Palette.muted)

@@ -29,6 +29,8 @@ struct CookState: Equatable {
 /// the title ("smittenkitchen.com"), or nil when the source link has no recognisable host
 /// (then no credit is shown). `words` are the recipe's language's (#14), which the view uses
 /// for the yield's kind and the timer labels; nil for a language the app has no words for.
+/// `stepAmounts` lines up with `instructions`: each step with the ingredient amounts inside it
+/// (#101), or nil when "Amounts in steps" is off.
 struct RecipeSuccess: Equatable {
     var recipe: Recipe
     var servings: ServingsScale?
@@ -37,19 +39,44 @@ struct RecipeSuccess: Equatable {
     var stepTimerSeconds: [Int?]
     var sourceDomain: String?
     var words: LanguageWords?
+    var stepAmounts: [[StepAmounts.Part]]? = nil
     /// Chef mode (#100): each step's short version, rendered like `instructions`, lined up with
     /// them; nil (or a short array) where a step has none yet, or none passed the check.
+    /// `shortStepAmounts` are their amounts inside steps, as `stepAmounts` are the steps'.
     var shortInstructions: [String?] = []
+    var shortStepAmounts: [[StepAmounts.Part]]? = nil
+
+    private func showsShort(_ index: Int, _ asWritten: Set<Int>) -> Bool {
+        index < shortInstructions.count && shortInstructions[index] != nil && !asWritten.contains(index)
+    }
 
     /// Step `index`'s short version, unless the cook asked to see it as written.
     func shownStep(_ index: Int, asWritten: Set<Int>) -> String {
-        if index < shortInstructions.count, !asWritten.contains(index), let short = shortInstructions[index] {
-            return short
-        }
-        return instructions[index]
+        showsShort(index, asWritten) ? shortInstructions[index]! : instructions[index]
     }
 
     func hasShortStep(_ index: Int) -> Bool { index < shortInstructions.count && shortInstructions[index] != nil }
+
+    /// Step `index` with its amounts, or nil to show it as written.
+    func stepParts(_ index: Int) -> [StepAmounts.Part]? {
+        guard let stepAmounts, index < stepAmounts.count else { return nil }
+        return stepAmounts[index]
+    }
+
+    /// The amounts inside the step as `shownStep` shows it; nil when amounts are off.
+    func shownStepParts(_ index: Int, asWritten: Set<Int>) -> [StepAmounts.Part]? {
+        guard stepAmounts != nil else { return nil }
+        guard showsShort(index, asWritten) else { return stepParts(index) }
+        guard let shortStepAmounts, index < shortStepAmounts.count else { return nil }
+        return shortStepAmounts[index]
+    }
+
+    /// The same, with every step as written: how the view shows it while the flag is off.
+    var withoutStepAmounts: RecipeSuccess {
+        var copy = self
+        copy.stepAmounts = nil
+        return copy
+    }
 }
 
 enum RecipeContent: Equatable {
@@ -75,6 +102,8 @@ struct RecipeUiState: Equatable {
     var convertLiquids = false
     var temperatureUnit: TemperatureUnit = .asWritten
     var darkWhileCooking = false
+    /// The Settings switch (#101), behind the `amountsInSteps` flag, which the view checks.
+    var amountsInSteps = false
     var cook = CookState()
     /// Set once the recipe has been deleted, so the screen can navigate back.
     var deleted = false

@@ -69,7 +69,7 @@ struct ReadingView: View {
                             .textStyle(Typography.titleMedium)
                             .foregroundStyle(Palette.accentText)
                             .frame(width: stacked ? nil : numberColumn, alignment: .leading)
-                        Text(step)
+                        stepText(step, content.shownStepParts(index, asWritten: state.asWrittenSteps), accent: Palette.accentText)
                             .textStyle(Typography.bodyLarge)
                             .foregroundStyle(Palette.onBackground)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -277,4 +277,21 @@ private struct ShortStepToggle: ViewModifier {
             content
         }
     }
+}
+
+/// A step's text with the amounts inserted from its ingredient lines (#101) set apart, in
+/// `accent` (nil keeps the text's colour) and a heavier weight, so an insertion never reads as
+/// the site's own words. `parts` nil: the step as written.
+func stepText(_ text: String, _ parts: [StepAmounts.Part]?, accent: Color?) -> Text {
+    guard let parts else { return Text(text) }
+    var out = AttributedString()
+    for part in parts {
+        var run = AttributedString(part.text)
+        if part.amount {
+            run.inlinePresentationIntent = .stronglyEmphasized
+            if let accent { run.foregroundColor = accent }
+        }
+        out += run
+    }
+    return Text(out)
 }

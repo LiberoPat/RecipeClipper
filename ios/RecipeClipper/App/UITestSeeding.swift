@@ -141,7 +141,7 @@ enum UITestSeeding {
     private static func seedCook(_ conn: SQLiteConnection, now: Int64) throws {
         try RecipeDao(db: conn).insert(RecipeRecord(
             sourceUrl: "https://example.com/chili", title: "Weeknight Chili", imageUrl: nil,
-            ingredients: ["2 cups flour", "1 cup milk"],
+            ingredients: ["2 cups flour", "1 cup milk", "1 lb beef"],
             instructions: [
                 "Brown the beef in a large pot.",
                 "Simmer for 20 minutes.",

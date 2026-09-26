@@ -110,6 +110,9 @@
     </plurals>
     <string name="dark_while_cooking_title">Sombre en cuisine</string>
     <string name="dark_while_cooking_description">Mode cuisine sur fond sombre, même en mode clair</string>
+    <string name="settings_section_steps">Étapes</string>
+    <string name="amounts_in_steps_title">Quantités dans les étapes</string>
+    <string name="amounts_in_steps_description">Affiche la quantité de chaque ingrédient là où une étape le nomme</string>
     <string name="nav_settings">Paramètres</string>
     <string name="settings_title">Paramètres</string>
     <string name="settings_section_units">Unités</string>
@@ -386,7 +389,6 @@
     <string name="expiry_reminders_description">Une notification à 9 h quand un article en stock périme aujourd’hui ou demain</string>
     <string name="expiry_reminders_denied">Les notifications sont désactivées pour Recipe Clipper. Autorisez-les dans les réglages du système pour recevoir des rappels.</string>
     <!-- Chef mode (#100) -->
-    <string name="settings_section_steps">Étapes</string>
     <string name="chef_mode_title">Mode chef</string>
     <string name="chef_mode_description">Des étapes courtes, écrites sur ce téléphone. Touchez-en une pour la voir comme dans la recette.</string>
     <string name="chef_mode_languages">Pour les recettes en %1$s.</string>

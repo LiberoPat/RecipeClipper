@@ -413,6 +413,9 @@ protocol AppPreferences: AnyObject {
     /// Chef mode (#100): short steps written on the device, in the reading view and cook mode.
     /// Off by default, and only offered behind the `chefMode` flag on a phone that can do it.
     var chefMode: Bool { get set }
+    /// Ingredient amounts inside steps (#101): "Add the carrots" reads "Add 2 carrots". Off by
+    /// default, and shown only with the `amountsInSteps` flag on.
+    var amountsInSteps: Bool { get set }
 
     /// The current values first, then every change, never repeating a value. Delivery may be
     /// asynchronous, so a subscriber receives on main.
@@ -428,7 +431,8 @@ extension AppPreferences {
             temperatureUnit: temperatureUnit,
             darkWhileCooking: darkWhileCooking,
             expiryReminders: expiryReminders,
-            chefMode: chefMode
+            chefMode: chefMode,
+            amountsInSteps: amountsInSteps
         )
     }
 }
@@ -485,4 +489,5 @@ struct AppSettings: Equatable {
     var darkWhileCooking = false
     var expiryReminders = false
     var chefMode = false
+    var amountsInSteps = false
 }

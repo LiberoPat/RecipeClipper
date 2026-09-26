@@ -14,6 +14,8 @@ struct SettingsUiState: Equatable {
     /// Turning reminders on was refused (notifications not allowed): the switch stays off and
     /// says why, until it is turned on successfully.
     var expiryRemindersDenied = false
+    /// Ingredient amounts inside steps (#101).
+    var amountsInSteps = false
     /// e.g. "1.0 (1)", shown at the foot; tapping it `SettingsViewModel.developerTaps` times opens
     /// Developer settings (#87).
     var appVersion = ""
@@ -99,18 +101,27 @@ final class SettingsViewModel {
             temperatureUnit: settings.temperatureUnit,
             darkWhileCooking: settings.darkWhileCooking,
             expiryReminders: settings.expiryReminders,
+            amountsInSteps: settings.amountsInSteps,
             chefMode: settings.chefMode
         )
     }
 
-    /// The Steps section (#100): only with the `chefMode` flag on.
-    var showsSteps: Bool { flags?.isOn(.chefMode) ?? false }
+    /// The Steps section's "Amounts in steps" (#101): only with the `amountsInSteps` flag on.
+    var showsSteps: Bool { flags?.isOn(.amountsInSteps) ?? false }
 
-    /// Asks the phone what Chef mode can do, once, when the Steps section first shows, so the
-    /// model is never woken otherwise. Returns the work so a test can await it.
+    /// The Steps section's "Chef mode" (#100): only with the `chefMode` flag on.
+    var showsChefMode: Bool { flags?.isOn(.chefMode) ?? false }
+
+    func onAmountsInStepsChange(_ enabled: Bool) {
+        preferences.amountsInSteps = enabled
+        uiState.amountsInSteps = enabled
+    }
+
+    /// Asks the phone what Chef mode can do, once, when its row first shows, so the model is
+    /// never woken otherwise. Returns the work so a test can await it.
     @discardableResult
     func onStepsShown() -> Task<Void, Never>? {
-        guard uiState.chefSupport == nil, !askedChefSupport else { return nil }
+        guard showsChefMode, uiState.chefSupport == nil, !askedChefSupport else { return nil }
         askedChefSupport = true
         return Task { [weak self, shortSteps] in
             let support = await shortSteps?.support() ?? .unsupported

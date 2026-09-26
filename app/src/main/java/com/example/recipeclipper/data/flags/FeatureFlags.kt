@@ -16,7 +16,10 @@ enum class Flag(val key: String) {
     MEAL_PLAN("mealPlan"),
 
     /** Chef mode (#100): the Settings switch for short steps written on the device. */
-    CHEF_MODE("chefMode");
+    CHEF_MODE("chefMode"),
+
+    /** Ingredient amounts inside steps (#101): the Settings switch and what it shows. */
+    AMOUNTS_IN_STEPS("amountsInSteps");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

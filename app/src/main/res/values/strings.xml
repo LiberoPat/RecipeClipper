@@ -194,6 +194,9 @@
 
     <string name="dark_while_cooking_title">Dark while cooking</string>
     <string name="dark_while_cooking_description">Keep cook mode on an ink screen in light mode</string>
+    <string name="settings_section_steps">Steps</string>
+    <string name="amounts_in_steps_title">Amounts in steps</string>
+    <string name="amounts_in_steps_description">Show each ingredient\'s amount where a step names it</string>
 
     <!-- Settings screen -->
     <string name="nav_settings">Settings</string>
@@ -419,7 +422,6 @@
     <string name="expiry_reminders_description">A notification at 9 in the morning when something in stock expires today or tomorrow</string>
     <string name="expiry_reminders_denied">Notifications are off for Recipe Clipper. Allow them in the system settings to get reminders.</string>
     <!-- Chef mode (#100) -->
-    <string name="settings_section_steps">Steps</string>
     <string name="chef_mode_title">Chef mode</string>
     <string name="chef_mode_description">Short steps, written on this phone. Tap one to see it as written.</string>
     <string name="chef_mode_languages">For recipes in %1$s.</string>

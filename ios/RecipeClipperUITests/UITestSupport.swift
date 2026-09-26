@@ -21,7 +21,8 @@ class RecipeUITestCase: XCTestCase {
         /// added after Adobo), Banana Bread, Miso Soup — viewed in that order, newest first.
         case standard
         /// "Weeknight Chili" alone: steps "Brown the beef in a large pot.", "Simmer for 20
-        /// minutes.", "Rest off the heat for 3 seconds.", "Serve with rice."
+        /// minutes.", "Rest off the heat for 3 seconds.", "Serve with rice."; its lines include
+        /// "1 lb beef" (amounts inside steps, #101).
         case cook
         /// "Sponge Cake" alone: a long step the stub model shortens (Chef mode, #100), then "Serve."
         case chef

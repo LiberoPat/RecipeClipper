@@ -199,6 +199,14 @@ pinned for iOS by the corpus's `Pant` rows. iOS mirrors the rest in
 `PantryDaoTests` (with the user_version 8 → 9 step), `PantryTests`,
 `PantryViewModelTests` and `PantryUITests`.
 
+Amounts inside steps (#101): `StepAmountsTest` (JVM) and `StepAmountsTests` (iOS) run
+the rules on steps modelled on real pages, and the corpus's `Step` rows pin the Swift to the
+Kotlin (each step against its lines as given and doubled in Metric; write only
+`Step("Add the eggs.", ["2 eggs"]),`). `RecipeStepAmountsTest` (and iOS
+`RecipeStepAmountsTests`) shows the amount following servings, units and the switch;
+`RecipeStepAmountsScreenTest` and `AmountsInStepsSettingsTest` (Robolectric) and
+`AmountsInStepsUITests` (iOS, the `cook` scenario's "1 lb beef") cover the screens.
+
 Pantry expiry reminders (#52): when they fall and what they list is JVM-tested
 (`ExpiryRemindersTest`, `ExpiryReminderCoordinatorTest`,
 `SettingsExpiryRemindersTest`) and mirrored on iOS (`ExpiryRemindersTests`,

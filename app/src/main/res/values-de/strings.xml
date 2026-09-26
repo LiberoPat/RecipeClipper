@@ -105,6 +105,9 @@
     </plurals>
     <string name="dark_while_cooking_title">Dunkel beim Kochen</string>
     <string name="dark_while_cooking_description">Kochmodus auch im hellen Modus dunkel anzeigen</string>
+    <string name="settings_section_steps">Schritte</string>
+    <string name="amounts_in_steps_title">Mengen in den Schritten</string>
+    <string name="amounts_in_steps_description">Zeigt die Menge jeder Zutat dort, wo ein Schritt sie nennt</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="settings_title">Einstellungen</string>
     <string name="settings_section_units">Einheiten</string>
@@ -371,7 +374,6 @@
     <string name="expiry_reminders_description">Eine Mitteilung um 9 Uhr morgens, wenn etwas Vorrätiges heute oder morgen abläuft</string>
     <string name="expiry_reminders_denied">Mitteilungen sind für Recipe Clipper ausgeschaltet. Erlaube sie in den Systemeinstellungen, um Erinnerungen zu erhalten.</string>
     <!-- Chef mode (#100) -->
-    <string name="settings_section_steps">Schritte</string>
     <string name="chef_mode_title">Chefmodus</string>
     <string name="chef_mode_description">Kurze Schritte, auf diesem Telefon geschrieben. Tippe auf einen, um ihn wie im Rezept zu sehen.</string>
     <string name="chef_mode_languages">Für Rezepte auf %1$s.</string>

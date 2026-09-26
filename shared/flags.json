@@ -11,6 +11,12 @@
       "description": "Chef mode: the Settings switch (Steps section) for short steps written on the device, shown in the reading view and cook mode.",
       "defaults": { "debug": false, "release": false },
       "issue": 100
+    },
+    {
+      "key": "amountsInSteps",
+      "description": "Ingredient amounts inside steps: Settings' Steps section and its 'Amounts in steps' switch (off by default), which puts each line's amount, as scaled and converted, where a step names the ingredient.",
+      "defaults": { "debug": false, "release": false },
+      "issue": 101
     }
   ]
 }

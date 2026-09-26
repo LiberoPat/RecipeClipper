@@ -275,6 +275,9 @@ enum Strings {
 
     static var darkWhileCookingTitle: String { String(localized: "dark_while_cooking_title") }
     static var darkWhileCookingDescription: String { String(localized: "dark_while_cooking_description") }
+    static var settingsSectionSteps: String { String(localized: "settings_section_steps") }
+    static var amountsInStepsTitle: String { String(localized: "amounts_in_steps_title") }
+    static var amountsInStepsDescription: String { String(localized: "amounts_in_steps_description") }
 
     // Settings
     static var navSettings: String { String(localized: "nav_settings") }
@@ -285,7 +288,6 @@ enum Strings {
     static func settingsVersion(_ version: String) -> String { String(localized: "settings_version \(version)") }
 
     // Chef mode (#100)
-    static var settingsSectionSteps: String { String(localized: "settings_section_steps") }
     static var chefModeTitle: String { String(localized: "chef_mode_title") }
     static var chefModeDescription: String { String(localized: "chef_mode_description") }
     static func chefModeLanguages(_ list: String) -> String { String(localized: "chef_mode_languages \(list)") }

@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.DefaultShortStepRepository
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
@@ -108,6 +109,22 @@ class RecipeChefModeTest {
         model.support = ChefSupport.Unsupported
         assertAsWritten(open())
     }
+
+    @Test fun `amounts in steps (#101) follow the step as shown, short or as written`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val carrots = "Add the carrots to the pot, stir well and let everything cook gently."
+            model.written[carrots] = "Add the carrots; stir."
+            preferences.amountsInSteps = true
+            val vm = open(recipe().copy(ingredients = listOf("2 carrots, diced"), instructions = listOf(carrots)))
+            advanceUntilIdle()
+
+            assertEquals("Add ⟦2⟧ carrots; stir.", StepAmounts.marked(vm.content().shownStepAmounts(0, emptySet())!!))
+            vm.onStepAsWrittenToggle(0)
+            assertEquals(
+                "Add ⟦2⟧ carrots to the pot, stir well and let everything cook gently.",
+                StepAmounts.marked(vm.content().shownStepAmounts(0, vm.uiState.value.asWrittenSteps)!!)
+            )
+        }
 
     @Test fun `turning Chef mode off clears the short steps`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = open()

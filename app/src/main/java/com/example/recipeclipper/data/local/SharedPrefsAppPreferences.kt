@@ -63,6 +63,12 @@ class SharedPrefsAppPreferences @Inject constructor(@ApplicationContext context:
             prefs.edit { putBoolean(KEY_CHEF_MODE, value) }
         }
 
+    override var amountsInSteps: Boolean
+        get() = prefs.getBoolean(KEY_AMOUNTS_IN_STEPS, false)
+        set(value) {
+            prefs.edit { putBoolean(KEY_AMOUNTS_IN_STEPS, value) }
+        }
+
     /**
      * Over SharedPreferences' change listener. SharedPreferences holds its listeners weakly, so
      * the listener is a local that `awaitClose` keeps alive for as long as someone collects;
@@ -83,5 +89,6 @@ class SharedPrefsAppPreferences @Inject constructor(@ApplicationContext context:
         const val KEY_TEMPERATURE_UNIT = "temperature_unit"
         const val KEY_EXPIRY_REMINDERS = "expiry_reminders"
         const val KEY_CHEF_MODE = "chef_mode"
+        const val KEY_AMOUNTS_IN_STEPS = "amounts_in_steps"
     }
 }
