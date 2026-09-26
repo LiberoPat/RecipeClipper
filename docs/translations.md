@@ -22,6 +22,11 @@ should review each one before release,** starting with the terms listed below.
   never translated.
 - **The site report** (`SiteReportLink`) stays in English: it's a GitHub issue body the
   maintainer reads, not UI. Its button, "Report this site", is translated.
+- **The tour's sample recipe** (#151) is content in each UI language, once, in
+  `shared/sample/recipe.json`: written as a cook in that language would (metric, local
+  ingredient names), not word for word from the English. A draft like the rest; the tour's
+  cards and tips name the app's buttons, so they must follow any change to those labels
+  ("Done — next step", "+ New recipe", "Add to plan", "What I need").
 
 Adding a string: add the English, then all five translations, on both platforms. Mark
 the new term in the list below if you weren't sure of it.

@@ -18,6 +18,7 @@ import com.example.recipeclipper.data.SystemPlanCalendar
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.SharedPrefsAppPreferences
 import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.local.TourPreferences
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -74,4 +75,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun unitPreferences(impl: SharedPrefsAppPreferences): AppPreferences
+
+    /** The first-run tour's state (#151), in the same file as the settings. */
+    @Binds
+    @Singleton
+    abstract fun tourPreferences(impl: SharedPrefsAppPreferences): TourPreferences
 }

@@ -23,7 +23,9 @@ the commands; iOS test commands and the simulator rules are in
   `MainActivitySmokeTest`, the end-to-end smoke set: the real app with its
   real Hilt graph, database and network stack, launched from the launcher and
   by a shared link (an `ACTION_SEND` intent to a `.invalid` host, which must
-  reach the import screen and its Try again).
+  reach the import screen and its Try again). It sets the first-run welcome
+  pending (#151): the launcher opens it and Skip leaves for Home, while the
+  shared link opens on the import screen with no welcome over it.
 
 Two waits that flaked under load (#91), and what not to undo:
 

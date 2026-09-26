@@ -14,7 +14,8 @@ import UIKit
 ///   - `-uiTestPasteboard <text>` puts `text` on the pasteboard as the app's own copy, so "Paste
 ///     a list" (#149) reads it without the paste prompt, which a UI test can't rely on. A launch
 ///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline;
-///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on.
+///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on;
+///   - the first-run tour (#151) done, unless `-uiTestTour` asks for a fresh install's.
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -30,6 +31,9 @@ enum UITestSeeding {
     static let flagsFlag = "-uiTestFlags"
     static let flagsSuite = "RecipeClipperUITestsFlags"
     static let pasteboardFlag = "-uiTestPasteboard"
+    /// The first-run tour (#151) as a fresh install has it. Without it the tour is done, so no
+    /// welcome or tip gets in the way of the other suites.
+    static let tourFlag = "-uiTestTour"
 
     /// The title every import resolves to under test.
     static let stubRecipeTitle = "Stub Chicken Soup"
@@ -57,6 +61,12 @@ enum UITestSeeding {
         let defaults = UserDefaults(suiteName: defaultsSuite) ?? .standard
         if !arguments.contains(keepPrefsFlag) {
             defaults.removePersistentDomain(forName: defaultsSuite)
+        }
+        let preferences = UserDefaultsAppPreferences(defaults: defaults)
+        if !arguments.contains(tourFlag) {
+            preferences.welcome = .seen
+            preferences.sampleAdded = true
+            for tip in Tip.allCases { preferences.setTipSeen(tip, true) }
         }
         let flagStore = UserDefaultsFeatureFlagStore(suiteName: flagsSuite)
         if !arguments.contains(keepPrefsFlag) { flagStore.clear() }
@@ -87,14 +97,15 @@ enum UITestSeeding {
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
             backupRepository: DefaultBackupRepository(db: database, clock: clock, photos: photoStore),
-            preferences: UserDefaultsAppPreferences(defaults: defaults),
+            preferences: preferences,
             clock: clock,
             clipFixtureHTML: clipFixtureHTML,
             featureFlags: flags,
             shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
             decisionRepository: decisions,
             libraryMirror: libraryLimit,
-            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock)
+            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock),
+            tourPreferences: preferences
         )
         container.libraryPolicy.startMirroring()
         return container
