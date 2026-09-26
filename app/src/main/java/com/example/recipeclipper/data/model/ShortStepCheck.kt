@@ -158,7 +158,7 @@ object ShortStepCheck {
     }
 
     // One language's chef.json, plus the names table's words that don't name an ingredient.
-    private class Words(words: LanguageWords) {
+    private class Words(private val words: LanguageWords) {
         private val table = words.table("chef")
         private fun pairs(key: String): List<Pair<String, String>> = table.getJSONArray(key).let { a ->
             List(a.length()) { a.getJSONArray(it).getString(0) to a.getJSONArray(it).getString(1) }
