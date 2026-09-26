@@ -56,8 +56,9 @@ final class SettingsAutoBackupTests: XCTestCase {
     }
 
     func testAnOldCopyWithNothingCopyingNudges() async {
-        let f = AutoBackupFixture(AutoBackupRecord(enabled: false))
-        f.store.update { $0.lastBackupAt = f.clock.time - AutoBackupPolicy.nudgeAfterMs - 1 }
+        // The record as the store holds it when the app starts (AutoBackup reads it once).
+        let now = SettableClock().time
+        let f = AutoBackupFixture(AutoBackupRecord(enabled: false, lastBackupAt: now - AutoBackupPolicy.nudgeAfterMs - 1))
         let vm = settings(f)
         XCTAssertEqual(vm.uiState.autoBackup?.nudge, true)
 
