@@ -36,6 +36,9 @@ final class AppContainer {
     let cookedPhotoRepository: CookedPhotoRepository?
     /// The automatic backup copy in iCloud Drive (#150); the live app only (nil under XCTest).
     let autoBackup: AutoBackup?
+    /// The file that carries recipes and items to someone else (#149); nil (most tests) leaves
+    /// "Send as file" out and ignores a file opened with the app.
+    let shareFileRepository: ShareFileRepository?
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -43,6 +46,9 @@ final class AppContainer {
     /// The live database, when there is one on disk that another process (the share
     /// extension) can also write to.
     private let sharedDatabase: AppDatabase?
+    /// The first-run tour (#151): its rules, and the tips every screen reads from the environment.
+    let firstRunTour: FirstRunTour
+    let tips: TipsViewModel
 
     init(
         recipeRepository: RecipeRepository,
@@ -67,8 +73,12 @@ final class AppContainer {
         entitlements: Entitlements? = nil,
         libraryMirror: DefaultsLibraryLimit? = nil,
         cookedPhotoRepository: CookedPhotoRepository? = nil,
-        autoBackup: AutoBackup? = nil
+        autoBackup: AutoBackup? = nil,
+        shareFileRepository: ShareFileRepository? = nil,
+        // Unless given, the tour is done: a unit test sees no welcome or tip it didn't ask for.
+        tourPreferences: TourPreferences = MemoryTourPreferences()
     ) {
+        self.shareFileRepository = shareFileRepository
         self.autoBackup = autoBackup
         self.cookedPhotoRepository = cookedPhotoRepository
         self.recipeRepository = recipeRepository
@@ -93,6 +103,8 @@ final class AppContainer {
         self.decisionRepository = decisionRepository
         self.entitlements = entitlements ?? UnavailableEntitlements()
         libraryPolicy = LibraryPolicy(flags: self.featureFlags, entitlements: self.entitlements, mirror: libraryMirror)
+        firstRunTour = FirstRunTour(preferences: tourPreferences, recipes: recipeRepository)
+        tips = TipsViewModel(preferences: tourPreferences, flags: self.featureFlags)
     }
 
     /// Called when the app comes to the foreground. The share extension saves recipes into the
@@ -132,6 +144,7 @@ final class AppContainer {
             fatalError("Couldn't open the recipe database: \(error)")
         }
         let defaults = UserDefaults(suiteName: testing ? "RecipeClipperTestHost" : AppGroup.identifier) ?? .standard
+        let preferences = UserDefaultsAppPreferences(defaults: defaults)
         // The limit (#107) as the share extension reads it too, from the App Group suite.
         let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
         let storeKit = testing ? nil : StoreKitEntitlements()
@@ -159,7 +172,7 @@ final class AppContainer {
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
             backupRepository: backupRepository,
-            preferences: UserDefaultsAppPreferences(defaults: defaults),
+            preferences: preferences,
             clock: clock,
             connectivity: PathConnectivity(),
             // Under XCTest nothing is scheduled, so a test run never raises the notification
@@ -179,7 +192,10 @@ final class AppContainer {
             autoBackup: testing ? nil : AutoBackup(
                 backups: backupRepository, folder: ICloudBackupFolder(),
                 store: UserDefaultsAutoBackupStore(defaults: defaults), clock: clock
-            )
+            ),
+            shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
+            // Under XCTest (the unit tests' host) the tour stays done, as for any test container.
+            tourPreferences: testing ? MemoryTourPreferences() : preferences
         )
         // Files no photo names any more (a delete whose Undo never came, an import's unused
         // copies) go once the process is past them.
@@ -237,6 +253,18 @@ final class AppContainer {
         mirror.store(on)
     }
 
+    /// Makes "Send as file"'s ViewModel (#149); nil without a share file repository.
+    var makeSendFileViewModel: (() -> SendFileViewModel)? {
+        guard let share = shareFileRepository else { return nil }
+        return { SendFileViewModel(share: share) }
+    }
+
+    /// The sheet a file opened with the app shows (#149): one for the app's life, since the file
+    /// can arrive over any screen.
+    private(set) lazy var receiveFileViewModel: ReceiveFileViewModel? = shareFileRepository.map { [featureFlags] share in
+        ReceiveFileViewModel(files: backupFiles, share: share, groceriesOn: { featureFlags.isOn(.mealPlan) })
+    }
+
     func makeReceiveListViewModel() -> ReceiveListViewModel {
         ReceiveListViewModel(groceries: groceryRepository, pantry: pantryRepository, calendar: planCalendar)
     }
@@ -286,6 +314,11 @@ final class AppContainer {
             flags: featureFlags, notificationPermission: notificationPermission,
             shortSteps: shortStepRepository, entitlements: entitlements, autoBackup: autoBackup, clock: clock
         )
+    }
+
+    /// The welcome (#151): at the first plain launch, or from "Show the tour again" (`again`).
+    func makeWelcomeViewModel(again: Bool) -> WelcomeViewModel {
+        WelcomeViewModel(tour: firstRunTour, flags: featureFlags, again: again)
     }
 
     func makeDeveloperSettingsViewModel() -> DeveloperSettingsViewModel {

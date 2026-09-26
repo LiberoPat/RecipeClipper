@@ -125,9 +125,13 @@ final class DifferentialCorpusTests: XCTestCase {
 
     private struct NameCut {
         let line: String; let words: LanguageWords; let name: String; let ask: Bool; let core: String?; let trailing: String?
-        init(_ line: String, lang: String = "en", _ name: String, _ ask: Bool, _ core: String?, _ trailing: String?) {
+        let aisle: String?
+        init(
+            _ line: String, lang: String = "en", _ name: String, _ ask: Bool, _ core: String?, _ trailing: String?,
+            _ aisle: String?
+        ) {
             self.line = line; self.words = LanguageWords.forTag(lang)!; self.name = name; self.ask = ask
-            self.core = core; self.trailing = trailing
+            self.core = core; self.trailing = trailing; self.aisle = aisle
         }
     }
 
@@ -1404,22 +1408,24 @@ final class DifferentialCorpusTests: XCTestCase {
     ]
 
     // Name-cut rows (#99): a grocery line and the model's name for it, then whether the name is
-    // asked (GroceryDecisions.nameQuestion) and nameSplit's core and trailing text, or nil.
+    // asked (GroceryDecisions.nameQuestion), nameSplit's core and trailing text, or nil, and
+    // cutAisle's aisle key once that trailing text is also junk, or nil (#158).
     // Write only `NameCut("2 onions dfsafs", "onions"),`.
     private static let nameCuts: [NameCut] = [
-        NameCut("2 onions dfsafs", "onions", true, "2 onions", "dfsafs"),
-        NameCut("2 onions dfsafs", "Onions", true, "2 onions", "dfsafs"),
-        NameCut("2 onions dfsafs", "onion", true, nil, nil),
-        NameCut("2 onions dfsafs", "2 onions", true, nil, nil),
-        NameCut("2 onions dfsafs", "onions dfsafs", true, nil, nil),
-        NameCut("2 onions dfsafs", "shallots", true, nil, nil),
-        NameCut("2 onions dfs 3", "onions", false, nil, nil),
-        NameCut("2 onions, dfsafs", "onions", false, "2 onions", ", dfsafs"),
-        NameCut("1 cup rice flour xx", "rice flour", true, "1 cup rice flour", "xx"),
-        NameCut("1 cup rice flour", "rice flour", false, nil, nil),
-        NameCut("200 g butter qwerty", "butter", true, "200 g butter", "qwerty"),
-        NameCut("3 tomates asdf", lang: "fr", "tomates", true, "3 tomates", "asdf"),
-        NameCut("玉ねぎ 2個 dfsafs", lang: "ja", "玉ねぎ", false, nil, nil),
+        NameCut("2 onions dfsafs", "onions", true, "2 onions", "dfsafs", "produce"),
+        NameCut("2 onions dfsafs", "Onions", true, "2 onions", "dfsafs", "produce"),
+        NameCut("2 onions dfsafs", "onion", true, nil, nil, nil),
+        NameCut("2 onions dfsafs", "2 onions", true, nil, nil, nil),
+        NameCut("2 onions dfsafs", "onions dfsafs", true, nil, nil, nil),
+        NameCut("2 onions dfsafs", "shallots", true, nil, nil, nil),
+        NameCut("2 onions dfs 3", "onions", false, nil, nil, nil),
+        NameCut("2 onions, dfsafs", "onions", false, "2 onions", ", dfsafs", "produce"),
+        NameCut("1 cup rice flour xx", "rice flour", true, "1 cup rice flour", "xx", "baking"),
+        NameCut("1 cup rice flour", "rice flour", false, nil, nil, nil),
+        NameCut("200 g butter qwerty", "butter", true, "200 g butter", "qwerty", "dairy"),
+        NameCut("2 tbsp furikake dfsafs", "furikake", false, "2 tbsp furikake", "dfsafs", nil),
+        NameCut("3 tomates asdf", lang: "fr", "tomates", true, "3 tomates", "asdf", "produce"),
+        NameCut("玉ねぎ 2個 dfsafs", lang: "ja", "玉ねぎ", false, nil, nil, nil),
     ]
 
     private static let steps: [Step] = [
@@ -1684,6 +1690,12 @@ final class DifferentialCorpusTests: XCTestCase {
             let split = GroceryDecisions.nameSplit(row.line, name: row.name, words: row.words)
             XCTAssertEqual(split?.core, row.core, "\(row.line) / \(row.name)")
             XCTAssertEqual(split?.trailing, row.trailing, "\(row.line) / \(row.name)")
+            var answers: [DecisionQuestion: String] = [.ingredientName(row.line, language: row.words.language): row.name]
+            if let cut = GroceryDecisions.split(row.line, words: row.words, decisions: Decisions(answers: answers)) {
+                answers[.trailingText(cut.trailing, language: row.words.language)] = "junk"
+            }
+            let aisle = GroceryDecisions.cutAisle(row.line, words: row.words, decisions: Decisions(answers: answers))
+            XCTAssertEqual(aisle?.key, row.aisle, "\(row.line) / \(row.name)")
         }
     }
 

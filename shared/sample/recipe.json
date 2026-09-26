@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "about": "The first-run tour's sample recipe (#151), bundled by both apps and saved like a typed-in recipe under the link manual:sample, so it works offline and never counts toward the free tier. Written for this app, not taken from any site. One entry per UI language: the phone's language picks it, else English. Times are ISO durations, so they read the same in every language; each entry's language key is the recipe's language, which picks the tables its lines are scaled and converted with.",
+  "recipes": {
+    "en": {
+      "name": "Tomato and White Bean Soup",
+      "yield": "4 servings",
+      "prepTime": "PT10M",
+      "cookTime": "PT25M",
+      "totalTime": "PT35M",
+      "ingredients": [
+        "2 tbsp olive oil",
+        "1 onion, finely chopped",
+        "3 cloves garlic, thinly sliced",
+        "1 tsp smoked paprika",
+        "1 can (14 oz) chopped tomatoes",
+        "2 cans (15 oz each) white beans, drained and rinsed",
+        "3 cups vegetable stock",
+        "4 oz baby spinach",
+        "1 tbsp lemon juice",
+        "4 slices crusty bread, to serve"
+      ],
+      "instructions": [
+        "Warm the olive oil in a large pot over medium heat. Add the onion and cook for 8 minutes, stirring now and then, until soft.",
+        "Add the garlic and paprika and stir for 1 minute.",
+        "Tip in the tomatoes, beans and stock. Bring to a boil, then lower the heat and simmer for 15 minutes.",
+        "Meanwhile, toast the bread in a 400°F (200°C) oven for 6 minutes, until golden.",
+        "Stir the spinach into the soup until it wilts, about 2 minutes. Add the lemon juice, then season with salt and pepper.",
+        "Ladle into bowls and serve with the toast."
+      ]
+    },
+    "es": {
+      "name": "Sopa de tomate y alubias blancas",
+      "yield": "4 raciones",
+      "prepTime": "PT10M",
+      "cookTime": "PT25M",
+      "totalTime": "PT35M",
+      "ingredients": [
+        "2 cucharadas de aceite de oliva",
+        "1 cebolla, picada fina",
+        "3 dientes de ajo, en láminas finas",
+        "1 cucharadita de pimentón ahumado",
+        "400 g de tomate triturado",
+        "800 g de alubias blancas cocidas, escurridas y enjuagadas",
+        "750 ml de caldo de verduras",
+        "120 g de espinacas baby",
+        "1 cucharada de zumo de limón",
+        "4 rebanadas de pan rústico, para servir"
+      ],
+      "instructions": [
+        "Calienta el aceite en una olla grande a fuego medio. Añade la cebolla y cocínala durante 8 minutos, removiendo de vez en cuando, hasta que esté blanda.",
+        "Añade el ajo y el pimentón y remueve durante 1 minuto.",
+        "Incorpora el tomate, las alubias y el caldo. Lleva a ebullición, baja el fuego y cuece a fuego lento durante 15 minutos.",
+        "Mientras tanto, tuesta el pan en el horno a 200 °C durante 6 minutos, hasta que esté dorado.",
+        "Añade las espinacas a la sopa y remueve hasta que se ablanden, unos 2 minutos. Agrega el zumo de limón y salpimienta.",
+        "Sirve en cuencos con las tostadas."
+      ]
+    },
+    "fr": {
+      "name": "Soupe de tomates aux haricots blancs",
+      "yield": "4 portions",
+      "prepTime": "PT10M",
+      "cookTime": "PT25M",
+      "totalTime": "PT35M",
+      "ingredients": [
+        "2 cuillères à soupe d'huile d'olive",
+        "1 oignon, finement haché",
+        "3 gousses d'ail, émincées",
+        "1 cuillère à café de paprika fumé",
+        "400 g de tomates concassées",
+        "800 g de haricots blancs cuits, égouttés et rincés",
+        "750 ml de bouillon de légumes",
+        "120 g de jeunes pousses d'épinards",
+        "1 cuillère à soupe de jus de citron",
+        "4 tranches de pain de campagne, pour servir"
+      ],
+      "instructions": [
+        "Faites chauffer l'huile dans une grande casserole à feu moyen. Ajoutez l'oignon et faites-le cuire 8 minutes en remuant de temps en temps, jusqu'à ce qu'il soit tendre.",
+        "Ajoutez l'ail et le paprika et remuez pendant 1 minute.",
+        "Versez les tomates, les haricots et le bouillon. Portez à ébullition, puis baissez le feu et laissez mijoter 15 minutes.",
+        "Pendant ce temps, faites griller le pain au four à 200 °C pendant 6 minutes, jusqu'à ce qu'il soit doré.",
+        "Incorporez les épinards à la soupe jusqu'à ce qu'ils tombent, environ 2 minutes. Ajoutez le jus de citron, puis salez et poivrez.",
+        "Servez dans des bols avec le pain grillé."
+      ]
+    },
+    "de": {
+      "name": "Tomatensuppe mit weißen Bohnen",
+      "yield": "4 Portionen",
+      "prepTime": "PT10M",
+      "cookTime": "PT25M",
+      "totalTime": "PT35M",
+      "ingredients": [
+        "2 EL Olivenöl",
+        "1 Zwiebel, fein gehackt",
+        "3 Knoblauchzehen, in dünnen Scheiben",
+        "1 TL geräuchertes Paprikapulver",
+        "400 g stückige Tomaten",
+        "800 g gekochte weiße Bohnen, abgetropft und abgespült",
+        "750 ml Gemüsebrühe",
+        "120 g junger Blattspinat",
+        "1 EL Zitronensaft",
+        "4 Scheiben Bauernbrot zum Servieren"
+      ],
+      "instructions": [
+        "Das Öl in einem großen Topf bei mittlerer Hitze erwärmen. Die Zwiebel darin 8 Minuten unter gelegentlichem Rühren weich dünsten.",
+        "Knoblauch und Paprikapulver zugeben und 1 Minute rühren.",
+        "Tomaten, Bohnen und Brühe dazugeben. Aufkochen, dann die Hitze reduzieren und 15 Minuten köcheln lassen.",
+        "Inzwischen das Brot im Ofen bei 200 °C 6 Minuten goldbraun rösten.",
+        "Den Spinat in die Suppe rühren, bis er zusammenfällt, etwa 2 Minuten. Den Zitronensaft zugeben und mit Salz und Pfeffer abschmecken.",
+        "In Schalen füllen und mit dem gerösteten Brot servieren."
+      ]
+    },
+    "it": {
+      "name": "Zuppa di pomodoro e fagioli bianchi",
+      "yield": "4 porzioni",
+      "prepTime": "PT10M",
+      "cookTime": "PT25M",
+      "totalTime": "PT35M",
+      "ingredients": [
+        "2 cucchiai di olio d'oliva",
+        "1 cipolla, tritata finemente",
+        "3 spicchi d'aglio, affettati sottili",
+        "1 cucchiaino di paprika affumicata",
+        "400 g di polpa di pomodoro",
+        "800 g di fagioli cannellini lessati, scolati e sciacquati",
+        "750 ml di brodo vegetale",
+        "120 g di spinacini",
+        "1 cucchiaio di succo di limone",
+        "4 fette di pane casereccio, per servire"
+      ],
+      "instructions": [
+        "Scalda l'olio in una pentola capiente a fuoco medio. Aggiungi la cipolla e cuocila per 8 minuti, mescolando di tanto in tanto, finché è morbida.",
+        "Aggiungi l'aglio e la paprika e mescola per 1 minuto.",
+        "Unisci il pomodoro, i fagioli e il brodo. Porta a bollore, poi abbassa la fiamma e cuoci a fuoco lento per 15 minuti.",
+        "Nel frattempo, tosta il pane in forno a 200 °C per 6 minuti, finché è dorato.",
+        "Unisci gli spinacini alla zuppa e mescola finché appassiscono, circa 2 minuti. Aggiungi il succo di limone e regola di sale e pepe.",
+        "Servi nelle ciotole con il pane tostato."
+      ]
+    },
+    "pt": {
+      "name": "Sopa de tomate com feijão-branco",
+      "yield": "4 porções",
+      "prepTime": "PT10M",
+      "cookTime": "PT25M",
+      "totalTime": "PT35M",
+      "ingredients": [
+        "2 colheres (sopa) de azeite",
+        "1 cebola picada",
+        "3 dentes de alho em lâminas finas",
+        "1 colher (chá) de páprica defumada",
+        "400 g de tomate pelado picado",
+        "800 g de feijão-branco cozido, escorrido e lavado",
+        "750 ml de caldo de legumes",
+        "120 g de espinafre baby",
+        "1 colher (sopa) de suco de limão",
+        "4 fatias de pão italiano, para servir"
+      ],
+      "instructions": [
+        "Aqueça o azeite em uma panela grande em fogo médio. Junte a cebola e refogue por 8 minutos, mexendo de vez em quando, até ficar macia.",
+        "Acrescente o alho e a páprica e mexa por 1 minuto.",
+        "Junte o tomate, o feijão e o caldo. Deixe ferver, abaixe o fogo e cozinhe por 15 minutos.",
+        "Enquanto isso, toste o pão no forno a 200 °C por 6 minutos, até dourar.",
+        "Misture o espinafre à sopa até murchar, cerca de 2 minutos. Adicione o suco de limão e tempere com sal e pimenta.",
+        "Sirva em tigelas com o pão tostado."
+      ]
+    }
+  }
+}

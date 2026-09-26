@@ -46,7 +46,8 @@ sharing a recipe out as text; failure handling and offline; the microdata
 fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
 JSON file (Settings), an automatic copy of it in the user's own cloud folder, and
-"Restore from a backup file" on an empty Home (#150); "Clip it yourself" (select a recipe by hand on a page
+"Restore from a backup file" on an empty Home (#150); a recipe, or the grocery list's
+unticked items, sent as a small file that another Recipe Clipper opens (#149); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
 pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); a
 recipe picked from a page's text by the on-device model (behind its flag, #103); typed
@@ -92,7 +93,8 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 ## Where things are (Android)
 
 ```
-MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists
+MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists;
+               a received .recipeclipper file → ReceivedFileInbox → its sheet over any screen (#149)
 di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule,
                OnDeviceModelModule (Chef mode and decision models, swappable for the walkthroughs)
 data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository, PantryRepository
@@ -100,6 +102,7 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
                CookedPhotoRepository + PhotoStore ("I made this" photos, #116)
                AutoBackup + BackupFolder (the automatic backup copy, WorkManager, #150)
+               ShareFileRepository (the file sent to someone else, #149; rules in backup/ShareFile)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
   remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, SiteRules, CardHeadings, CardSelector, CardIngredients),
                MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
@@ -115,7 +118,8 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy)
 ui/            navigation, home, recipes (the library), recipe, clip, edit, savetolist, lists, listdetail,
                settings, week (with What I need), plan (Add to plan sheet), mealtypes,
-               groceries (the tab and the Add to groceries sheet), pantry, theme, common
+               groceries (the tab and the Add to groceries sheet), pantry, sharefile (Send as file,
+               the received file's sheet, #149), theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
 reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receiver, the notification (#52)
 ```
@@ -126,7 +130,8 @@ cook mode), `recipe/import?url={url}` (the share target: parse, then
 upsert with no list membership), and `edit?recipeId={recipeId}` (no id: a new
 recipe; saving replaces the edit screen, and the recipe screen under it, with
 `recipe/{id}`), and `clip?url={url}` (Clip it yourself; saving replaces it and
-the error screen under it with `recipe/{id}`). Behind the `mealPlan` feature
+the error screen under it with `recipe/{id}`), and `welcome?again={again}` (the
+first-run tour, #151). Behind the `mealPlan` feature
 flag (#47, on by default): a
 bottom tab bar nests this same graph under a Recipes tab alongside `week`
 (with its own `week/recipe/{recipeId}?servings={servings}` and
@@ -187,7 +192,7 @@ Decisions, not suggestions. Don't relitigate them in code.
   most recently viewed unprotected recipes.
 - **The free tier keeps 20 recipes** (#107, behind `freeTier`; details in
   `docs/decisions.md`). Every recipe counts (shared, typed in, in a list,
-  planned). Sharing always opens the recipe. Adding one to a library at or over
+  planned; never the tour's sample, #151). Sharing always opens the recipe. Adding one to a library at or over
   20 first removes the oldest-viewed recipe in no list, not planned today or
   later, in no menu, not typed in and with none of your photos: one out for one in, so the library never
   shrinks because of the limit and a library over 20 keeps everything. None
@@ -264,7 +269,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   only with the `mealPlan` flag; asks for notifications when turned on,
   never at launch), Unlimited recipes (only with `freeTier`: "Unlock for
   <store price>" and "Restore purchase", or the sentence "Unlocked: every
-  recipe is kept."; Developer settings has an "Unlocked" override). Reached from the gear beside
+  recipe is kept."; Developer settings has an "Unlocked" override), Help ("Show the tour
+  again", #151). Reached from the gear beside
   the Home title, on every tab of the shell below. It could now open from
   elsewhere too (the recipe screen follows `AppPreferences.settings`), but
   adding an entry point is the owner's call.
@@ -299,7 +305,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Groceries** (#50, behind the flag): "Add an item", then the list by
   aisle (unchecked first); tap ticks, long-press offers "Move to aisle…" and
   Delete (undo snackbar); the menu sends the list ("Send list": every
-  unticked item as plain text, each naming its recipes in brackets, #149),
+  unticked item as plain text, each naming its recipes in brackets, #149;
+  "Send as file": the same items and their recipes as a file, below),
   pastes one and clears checked (undo). "Paste a list", or text with no link
   shared into the app (Android: the Groceries tab; iOS: the share extension's
   card), opens "Add this list": its lines, all ticked, then Add to groceries
@@ -346,7 +353,14 @@ Settled; don't reintroduce what they removed. The history behind each is in
   steps (the parsers' rule); nothing typed is converted or guessed.
 - **Sharing a recipe out** sends plain text (no Markdown), as shown on
   screen, scaled and converted, without the source link. The share icon sits
-  beside Back in the reading view, not in cook mode.
+  beside Back in the reading view, not in cook mode. "Send as file" (overflow
+  menu; Groceries' menu for the unticked items) is the second way (#149).
+- **First-run tour** (#151, `FirstRunTour`; rules in `docs/decisions.md`): 3–4
+  skippable welcome cards on the first plain launch only (never over a shared
+  link; never for a library that already has recipes), the last offering the
+  sample recipe (`manual:sample`, counted by no limit) or Start; one tap-to-dismiss
+  tip in the flow of the first recipe, cook mode, Week, Groceries and Pantry;
+  "Show the tour again" in Settings' Help.
 
 ## Data rules
 
@@ -438,7 +452,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
   under the same keys: `unit_system`, `convert_liquids`, `temperature_unit`,
   `dark_while_cooking`, `expiry_reminders`, `chef_mode`, `amounts_in_steps`, `recipe_sort` (the Recipes
-  screen's sort), each enum stored by name, an unknown one read as the default. `AppPreferences.settings`
+  screen's sort), and the tour's `tour_welcome`, `tour_sample_added`, `tour_tip_*` (#151),
+  each enum stored by name, an unknown one read as the default. `AppPreferences.settings`
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
   preference collect it rather than reading once.
@@ -466,6 +481,15 @@ Settled; don't reintroduce what they removed. The history behind each is in
   menus by uid, whole, their meals by the plan's rules; photos by uid, only
   with their picture, their recipe coming in like a listed one.
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
+- **The file sent to someone else** (#149, `ShareFile`): the same JSON, with
+  `"kind": "share"` and only what was picked (recipes complete but without
+  ticks or note; unticked grocery items; no lists, plan or photos), as
+  `<title>.recipeclipper` (`application/vnd.recipeclipper+json`, UTType
+  `com.liberopat.recipeclipper.share`; formatVersion stays 1). Opening one
+  shows "Add from this file": every part ticked, pantry items to the Pantry or
+  Groceries, one Add, merged by `BackupMerger` (never replacing), each chosen
+  recipe coming in as the newest viewed, then the history cap as for a shared
+  link. It leaves the phone only through the user's own share sheet.
 - **The automatic copy** (#150, on by default, photos included): the export as
   a `.zip`, `recipe-clipper-backup-YYYY-MM-DD-HHmm.zip`, the newest three kept
   (only names it wrote are ever deleted). iOS: the iCloud container's

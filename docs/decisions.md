@@ -1924,9 +1924,13 @@ Part of #99: the model writes words, code owns every number.
   export file, and it cascades with its recipe. A recipe the free tier didn't keep (#107) has no
   row to cache against, so it shows as written; Unlock keeps it and its short steps follow.
 - **Settings → Steps → "Chef mode"** (a switch; the section only with the `chefMode` flag, off in
-  both builds). Where the phone can't, the switch is disabled with one line saying why (can't,
-  Apple Intelligence off, model not ready); where it can, a line names the recipe languages it
-  writes. A recipe in another language keeps its steps as written, silently. Android offers
+  both builds). Where the phone can't, the switch is disabled with one line saying why (an
+  unsupported phone, Apple Intelligence off, model not ready); where it can, a line names the
+  recipe languages it writes. The unsupported line names what the phone lacks (#144: "can't
+  write short steps" read like a bug on a Galaxy S23): Google's on-device AI with examples
+  (Pixel 9 or newer, Galaxy S25 or newer), or Apple Intelligence (iPhone 15 Pro or newer, iOS
+  26 or later); Apple Intelligence off says where to turn it on (the iPhone's Settings).
+  A recipe in another language keeps its steps as written, silently. Android offers
   Chef mode while the model is still downloadable: the first recipe starts the download and
   shows its steps as written meanwhile.
 - **On screen:** while short steps are written, the steps show as written (no spinner). In the
@@ -2411,6 +2415,9 @@ exact rules still decide every total.
   beside its "same" partner, or to its core's aisle once its trailing text is note or junk
   (`GroceryDecisions.filing`, then `fileFromOther`), exactly like #104's aisle answers: only
   lines still in Other, only on an answer that just landed, so an aisle the user chose stands.
+  The core's aisle (`cutAisle`) follows whichever of its answers lands last, the name or the
+  trailing text (#158: the junk answer is often cached already, from another line), and a
+  line added once both are cached takes it at once, as it takes a cached aisle answer.
 - **Lazily, in the background.** The Groceries screen asks after each change of the list,
   each question once per visit and once ever per text/pair and language (the cache); it
   shows today's grouping until an answer lands, then regroups from the decisions flow. Flag
@@ -2652,3 +2659,120 @@ works either way.
 - **Tests:** the iOS UI test can't drive the system share sheet or read another app's copy
   without the paste prompt, so the launch seeds the pasteboard (`-uiTestPasteboard`, debug
   only); the sent text itself is pinned by unit tests on both platforms.
+
+## Sending recipes and groceries as a file (#149, phase 2)
+
+Plain text (phase 1) works for anyone, but a recipe sent as text arrives as words, and a list
+as lines to re-read. When both people have the app, a small file can carry the recipe whole
+(no fetch, so a site that blocks the fetch doesn't matter) and the grocery items as the app
+stores them. No server, no account: the file goes through the user's own share sheet.
+
+- **The format is #26's export, partial and marked.** `ShareFile` (pure, both platforms) makes
+  a `Backup` with `"kind": "share"` at the top and only what was picked: no lists,
+  memberships, plan, menus or photos. `formatVersion` stays 1. An older app never offers
+  itself for the file (it has no intent filter or document type for it), and if someone picks
+  it through an older app's Settings → Import anyway, that app ignores `kind` as an unknown key
+  and merges it like any export, which only ever adds: nothing is replaced or lost, so no bump
+  is needed. A backup never has `kind`, so every backup file is byte for byte as before.
+  Settings' Import in this app also takes a share file, merged whole. The canonical example is
+  `shared/fixtures/backup/share-v1.recipeclipper`, read by `ShareFileTest(s)` on both.
+- **Its own type, so the other phone opens it in the app.** `<title>.recipeclipper` (the title
+  made safe as a file name, 60 characters at most), MIME `application/vnd.recipeclipper+json`.
+  Android: an intent filter for VIEW and SEND by that type, and VIEW by the name for apps that
+  hand files over as `*/*`; the app's FileProvider (`ShareFileProvider`) reports the type, since
+  a plain FileProvider calls an unknown extension `application/octet-stream` and a messaging
+  app passes that on. iOS: an exported UTType, `com.liberopat.recipeclipper.share` (conforms to
+  `public.json`), and a document type the app owns, opened as a copy through `onOpenURL`.
+- **What is sent.** "Send as file" is in the recipe screen's overflow menu (the share icon
+  stays one tap for text) and in the Groceries menu after "Send list", which stays the first
+  and default. A recipe goes complete, as saved: not scaled or converted (the receiver scales
+  it), with its origin (an edit stays the user's version on the other phone too), but without
+  what is the sender's own: ticks, the note, the last view (it is set to the time sent).
+  Groceries send every unticked item, as stored, with the recipes they came from, so each
+  still names its recipe on the other side; no planned day (a day on someone else's plan).
+  The Pantry sends nothing yet: phase 1 left open what a pantry would send. The receiver
+  already reads pantry items, which the format carries.
+- **What the receiver chooses.** "Add from this file" opens over whatever is on screen: the
+  recipes, the grocery items (each with its recipe beneath) and the pantry items, every row
+  ticked, then two radio rows for the pantry items (the Pantry, or Groceries as their names),
+  then one Add. Groceries and Pantry rows show only with the `mealPlan` flag, like their tabs.
+  Once added, the app shows where things went: Groceries, else the Pantry, else Recipes. A
+  file that can't be read says why (the export's errors), with nothing to add.
+- **How it merges: `BackupMerger`, with two differences from an import.** Recipes match by the
+  cleaned `sourceUrl`; one already here keeps its content, ticks and note (never replaced).
+  Unlike an import, every ticked recipe comes in, as the newest viewed, and one already here
+  counts as viewed now, and then the history cap runs, as for a shared link: sending someone a
+  recipe is sharing it into their app. The free tier (#107) keeps the import's rule (only free
+  places; the sheet stays up to say how many were left out). Grocery items come in by uid, so
+  the same file opened twice adds each once; one keeps its recipe only if that recipe was
+  ticked too (or matched one here). Pantry items follow the import: an item already here by
+  uid, or by name and language, stands as it is. Sent to Groceries instead, a pantry item
+  becomes a grocery line of its name, keeping its uid for the same reason.
+- **Tests.** Pure: `ShareFileTest` / `ShareFileTests` (the fixture, the round trip, what is
+  sent, what is chosen, the file name). Against SQLite: `ShareFileRepositoryTest` (Robolectric)
+  and `ShareFileRepositoryTests`. ViewModels over fakes: `ShareFileViewModelsTest(s)`. Screens:
+  `SendReceiveFileScreenTest` (Robolectric: both menus hand the share sheet the file, only
+  readable by the picked app; the sheet adds what is ticked). iOS UI: `ShareFileUITests`, where
+  `-uiTestReceiveFile` (debug only) opens a canned file at launch, because a UI test can't open
+  a file from Messages.
+
+**Needs a real phone:** sending the file through Messages, WhatsApp, Mail and AirDrop, and
+opening it from each on the other phone (Android: which apps pass the type or the name, so the
+app is offered; iOS: "Open in Recipe Clipper" from Files and Messages), in both directions
+between Android and iOS.
+
+## The first-run tour (#151)
+
+Owner's decision (2026-09-26): welcome cards, a bundled sample recipe and one-time tips in
+place; the sample is saved like a real recipe; every flow, daily and weekly, is covered.
+
+- **Welcome cards,** full screen with no tab bar, skippable: what the app does; how to clip
+  (Share, paste, "+ New recipe"; iOS says the extension saves it to Home); every day
+  (servings and units, the bookmark, cook mode, and Chef mode with its flag); every week
+  (Week, What I need, Groceries, Pantry), only with `mealPlan` on. So three or four cards;
+  the last offers "Try it with a sample recipe" (opens it) or "Start". Skip, Start, Try it,
+  and Android's Back from the first card all mark it seen. No pager: one card at a time with
+  Back and Next, which reads well with TalkBack and VoiceOver ("Card 2 of 4") and scrolls at
+  the largest text sizes.
+- **When it shows** (`FirstRunTour`, the same rules on both platforms): once per app start,
+  only on a plain launch. A launch that opens something (a shared link, a notification, a
+  deep link) shows that and leaves the welcome pending for the next plain launch: capture
+  stays frictionless. Someone who already has recipes the first time the tour runs (an older
+  version's user, or a restored backup: Android's Auto Backup and iOS's device backup put the
+  database back before the first launch) never gets it, nor the recipe and cook mode tips;
+  the Week, Groceries and Pantry tips still show for them, as those tabs are new to them now
+  that the flags are on. iOS's share extension saves without opening the app, so it notes a
+  new user's first share (`FirstRunTour.noteShare`: library empty, welcome undecided); the
+  recipe it adds then doesn't make them look like an old user, and the welcome shows at the
+  app's first opening.
+- **State** lives in `unit_preferences` / the settings suite, backed up with the settings,
+  under the same keys on both platforms: `tour_welcome` (`UNDECIDED` | `PENDING` | `SEEN` by
+  name; unknown reads as undecided), `tour_sample_added`, and `tour_tip_recipe`,
+  `tour_tip_cook_mode`, `tour_tip_week`, `tour_tip_groceries`, `tour_tip_pantry` (true once
+  dismissed).
+- **The sample recipe** is written for the app (a tomato and white bean soup; no photo, so
+  nothing to license), in each UI language, once, in `shared/sample/recipe.json`: the UI's
+  language picks it, else English, and it is saved in that language so its lines scale and
+  convert with that language's tables. It shows the features off: Serves 4, US measures in
+  English (so Metric and Ounces change it), timers in steps, an oven temperature, and a
+  "Meanwhile" step that overlaps the simmer. It is saved like a typed-in recipe: MANUAL
+  under the fixed link `manual:sample`, so it is never fetched, has no Update from source or
+  source credit, and is never culled. It is added once, when the welcome first shows;
+  deleted, it stays deleted. "Try it" after "Show the tour again" opens it if it's there, and
+  adds it again only if it's gone.
+- **It never counts toward the free tier (#107):** the library's count (`RecipeDao.count`:
+  the Recipes screen's "12 of 20", the free tier's one-for-one) and an import's free places
+  leave out `manual:sample`, and adding it applies no limit, so it never removes a recipe.
+  Home treats a library holding only the sample as empty (#150): "Restore from a backup
+  file" still shows, which matters most on a new phone, and the "Keep a backup copy?" card
+  waits for a recipe of the user's own.
+- **Tips:** one small callout in the screen's flow (never over it, so it never blocks),
+  dismissed by a tap anywhere on it (one button for TalkBack and VoiceOver, "Dismiss tip"):
+  under the Serves and units row on the first recipe opened (the row and the bookmark), at
+  the top of the first cook mode (outside the steps' list), and under the title of the first
+  Week, Groceries and Pantry visits. Those three hide with `mealPlan` off. One app-wide
+  `TipsViewModel` is handed to every screen (Android `LocalTips`, iOS the environment), so a
+  screen only names its tip; with none provided nothing shows, so screen tests are as before.
+- **"Show the tour again"** is an action row in Settings' Help section: the welcome again,
+  and every tip once more. The reading view is otherwise unchanged: the tip is the only
+  addition, and only until it is tapped.

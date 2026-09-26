@@ -18,6 +18,9 @@ struct RecipeScreen: View {
     var amountsInStepsEnabled = false
     /// Makes "Your cooks" (#116); nil (the `cookedPhotos` flag off) leaves it out.
     var makePhotosVM: (() -> CookedPhotosViewModel)? = nil
+    /// Makes "Send as file" (#149): the recipe as a small file for someone else's app; nil
+    /// leaves it out. Made on first use and kept for the screen's life.
+    var makeSendFileVM: (() -> SendFileViewModel)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
@@ -32,6 +35,7 @@ struct RecipeScreen: View {
     @State private var confirmingDelete = false
     @State private var photosVM: CookedPhotosViewModel?
     @State private var confirmingUpdate = false
+    @State private var sendFileVM: SendFileViewModel?
 
     var body: some View {
         let state = vm.uiState
@@ -97,6 +101,8 @@ struct RecipeScreen: View {
             isPresented: Binding(get: { vm.uiState.unlockNotice != nil }, set: { if !$0 { vm.onUnlockNoticeShown() } })
         ) {}
         .timerAlerts(state.cook.timers, onAlerted: vm.onTimerAlerted)
+        // "Send as file" (#149): the share sheet on the written file, or a line saying it failed.
+        .modifier(SendFileEffect(vm: sendFileVM))
         .task(id: recipeId) {
             if let recipeId {
                 saveVM.setRecipe(recipeId)
@@ -251,6 +257,17 @@ struct RecipeScreen: View {
                 } label: {
                     Label(Strings.addToGroceries, systemImage: "basket")
                 }
+            }
+            // The share icon stays one tap for text; the file is the second way to send it.
+            if let makeSendFileVM {
+                Button {
+                    let send = sendFileVM ?? makeSendFileVM()
+                    sendFileVM = send
+                    send.sendRecipe(content.recipe.id, title: content.recipe.name)
+                } label: {
+                    Label(Strings.sendFile, systemImage: "doc")
+                }
+                .accessibilityIdentifier("recipe.sendFile")
             }
             Button { onEdit(content.recipe.id) } label: {
                 Label(Strings.edit, systemImage: "pencil")

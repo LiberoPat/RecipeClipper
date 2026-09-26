@@ -252,10 +252,14 @@ abstract class RecipeDao {
     )
     abstract suspend fun oldestCullable(today: Long = NO_PLAN_PROTECTION): Long?
 
-    @Query("SELECT COUNT(*) FROM recipes")
+    /**
+     * Every recipe but the tour's sample (#151, `SampleRecipe.SOURCE_URL`, spelled out here
+     * because a query is a constant): it never takes a free-tier place (#107).
+     */
+    @Query("SELECT COUNT(*) FROM recipes WHERE sourceUrl != 'manual:sample'")
     abstract suspend fun count(): Int
 
-    @Query("SELECT COUNT(*) FROM recipes")
+    @Query("SELECT COUNT(*) FROM recipes WHERE sourceUrl != 'manual:sample'")
     abstract fun observeCount(): Flow<Int>
 
     /**

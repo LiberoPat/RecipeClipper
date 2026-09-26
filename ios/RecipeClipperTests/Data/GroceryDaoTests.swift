@@ -38,6 +38,19 @@ final class GroceryDaoTests: XCTestCase {
         XCTAssertEqual(Set(rows.map(\.uid)).count, 3)
     }
 
+    func testALineAddedOnceTheModelHasCutItIsFiledByItsIngredient() async throws {
+        // Both answers were cached before the line came (#158): no answer lands to file it later.
+        let name = DecisionQuestion.ingredientName("2 onions dfsafs", language: "en")
+        let junk = DecisionQuestion.trailingText("dfsafs", language: "en")
+        let decisions = FakeDecisionRepository([name: "onions", junk: "junk"])
+        let repository = DefaultGroceryRepository(db: db, clock: DataTestClock(), decisions: decisions)
+        await repository.add([NewGroceryLine(text: "2 onions dfsafs", language: "en")])
+        await decisions.decide([name, junk])
+        await repository.add([NewGroceryLine(text: "2 onions dfsafs", language: "en")])
+        let aisles = try await items().map(\.aisle)
+        XCTAssertEqual(aisles, ["other", "produce"])
+    }
+
     func testCheckingMovingAndDeletingTouchOnlyTheGivenItems() async throws {
         try await db.write { try GroceryDao(db: $0).add([self.item("a"), self.item("b"), self.item("c")]) }
         let ids = try await items().map(\.id)

@@ -193,6 +193,8 @@ struct WeekScreen: View {
                 )
             }
             Hairline()
+            // The first Week visit (#151).
+            TipCallout(tip: .week, padding: EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0))
         }
         .padding(.top, 4)
     }
