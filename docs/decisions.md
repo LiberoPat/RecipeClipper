@@ -2253,3 +2253,87 @@ exact rules still decide every total.
 **Needs a real phone:** whether the models say "same" for the owner's corn and garlic pairs and
 "different" for rice flour and whole milk with high confidence both times, whether they tell a
 note from junk from a second amount, and how long the questions take on a long list.
+
+## "I made this": your photos on a recipe (#116)
+
+Owner's request: a private cooking journal on the phone, with no server and no accounts. It is
+the groundwork for the backlog social feed (#117). Behind `cookedPhotos`, off by default. With
+the flag off nothing shows, but the rules below (protection, deleting, backup) apply to any
+photo that exists.
+
+- **One photo per entry.** Each photo has its own `day` (an epoch day, like the plan's, so the
+  date never slips across time zones) and an optional note of up to 280 characters. Picking
+  several photos makes several entries. Adding is frictionless: a photo is saved at once,
+  cooked today, and the first new one opens full screen so its note and date are right there.
+  There is no "add" form to fill in first.
+- **Where it shows.** "Your cooks" is the reading view's last section, after the steps and the
+  note, so the reading view still opens on the recipe. Cook mode doesn't show it.
+- **Storage.** Table `cooked_photos` (Room 14 / iOS `user_version` 13): `recipeId` CASCADE,
+  `fileName`, `day`, `note`, `createdAt`, `updatedAt`, `uid`. The picture is a JPEG in the
+  app's own storage, named by the store and never by the user:
+  - Android: `filesDir/cooked_photos`.
+  - iOS: `CookedPhotos/` beside the database in the App Group container.
+
+  Each picture is downscaled so its long edge is at most 2048 px, turned upright from its EXIF
+  orientation, and saved at JPEG quality 85: a few hundred KB, sharp on any phone.
+  - Android decodes with `BitmapFactory` (`inSampleSize`, then a `Matrix`) and reads EXIF with
+    androidx `ExifInterface`. That library already came in through Coil and is now declared,
+    because lint flags the framework copy.
+  - iOS uses ImageIO's thumbnail API (`kCGImageSourceCreateThumbnailWithTransform`), which
+    needs neither UIKit nor the main thread.
+- **Files outlive rows until a delete stands.** Deleting a photo, or a recipe with photos,
+  removes the rows at once and keeps the files, so Undo can restore them.
+  - A delete stands when the snackbar goes away (Recipes swipe, a photo's own Delete), or at
+    once for the recipe screen's confirmed delete. Then `RecipeRepository.forget` /
+    `CookedPhotoRepository.forget` removes the files.
+  - A launch sweep removes any file no row names and older than 10 minutes. That catches an
+    app killed while its snackbar was up, and an import's unused copies. The grace period
+    covers an add or an import still writing.
+- **Protection.** A recipe with photos is never culled and never removed by the free tier's
+  one-for-one, like a listed one: the photos would go with it. On import, a recipe with photos
+  coming in comes in like a listed one.
+- **Deleting a recipe deletes its photos.** The issue suggested asking whether to keep them;
+  the owner decided the photos belong to the recipe. The confirmation says "with your 2 photos
+  of it".
+- **Recipes: "Recently cooked"** is a fourth sort (behind the flag): recipes with photos come
+  first, ordered by their latest photo's day, and the rest follow in recency order. It is a
+  sort, not a filter, so nothing disappears from the library. A stored Recently cooked reads
+  as Recently viewed while the flag is off.
+- **Sharing a photo** sends the JPEG through the share sheet with the recipe's name as plain
+  text (Android `EXTRA_TEXT` through the FileProvider's new `cooked_photos` path; iOS
+  `ShareLink` with a message).
+- **Camera and library, and permissions.**
+  - Android: the Photo Picker needs no permission. The camera is the camera app through
+    `ACTION_IMAGE_CAPTURE`, writing to one reused file in the cache. The app doesn't declare
+    `CAMERA`, so no permission is needed or asked for.
+  - iOS: `PhotosPicker` needs none. The camera is `UIImagePickerController`; iOS asks for
+    access the first time the camera is chosen, with `NSCameraUsageDescription`, translated
+    through `InfoPlist.xcstrings`. On a device without a camera (the simulator), choosing it
+    says so.
+- **Backup** (#26):
+  - **Format.** An export with photos is a `.zip` holding `backup.json` (the same JSON, with a
+    new `cookedPhotos` section: id, recipeId, day, note, createdAt, updatedAt, file) and each
+    picture at `photos/<name>.jpg`. An export without photos is the same `.json` file as before,
+    byte for byte, so with the flag off nothing changes. A file that doesn't start with a zip
+    signature is read as JSON, so every older backup imports.
+  - **Why a zip, not base64 in the JSON.** Base64 would mean a single string of tens of MB
+    (+33%), held in memory while parsing. A zip keeps the JSON small and the pictures as files.
+  - **How the zip is written.** Entries are STORED (JPEGs don't compress). iOS has no zip API,
+    so `BackupArchive` writes and reads the format by hand: it reads through the central
+    directory, and also takes DEFLATE entries (Compression's raw deflate), so a zip re-packed
+    by another tool still imports. Android uses `java.util.zip`.
+  - **Safety.** A picture's path must be `photos/` plus one plain name, and anything else in the
+    zip is ignored. The JSON is capped at 20 MB, as before, and each picture at 30 MB.
+  - **Merge.** Photos come in by uid, only with their picture, and only onto a recipe that is
+    here after the import. `backup-v1-photos.zip` (written by Python's `zipfile`, a third
+    writer) is read by both platforms' tests.
+- **Android's cloud backup leaves the photos out.** The include list (database and settings)
+  stays as it is: Auto Backup's 25 MB quota would fail the whole backup once there are enough
+  photos. A phone restored that way has the entries but not the pictures; each shows "Photo not
+  on this phone". The export file is the way to move photos. iOS backs up the App Group
+  container, photos included.
+
+**Needs a real phone:** the camera itself (the Android emulator's virtual scene and the iOS
+simulator's missing camera prove only the wiring), EXIF orientation from a real portrait shot,
+HEIC pictures from the iOS library, and an export with many photos shared and imported on the
+other platform.

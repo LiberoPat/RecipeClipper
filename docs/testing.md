@@ -345,6 +345,30 @@ or the calls will fail as "not mocked".
   (#22). Until then Unlock answers "Couldn't reach the store", and the
   override is the way to test the unlocked library.
 
+## "I made this" photos (#116)
+
+- **Turning it on:** Developer settings → `cookedPhotos`.
+- **Automated:**
+  - Android, against real SQLite and real files: `CookedPhotoDaoTest` (order, edits, cull and
+    free-tier protection, cascade with Undo, the sweep) and `CookedPhotoBackupTest` (the zip
+    round trip past a full history, and a plain JSON export).
+  - Android, JVM: `BackupArchiveTest` (the shared `backup-v1-photos.zip`, path checks),
+    `CookedPhotosViewModelTest`, the Recently cooked sort in `RecipesViewModelTest`, and
+    `RecipeCookedPhotosScreenTest` (Robolectric). `MigrationTest.migration13To14…` on the
+    device.
+  - iOS: `CookedPhotoTests` (real SQLite, ImageIO downscaling, the zip round trip),
+    `BackupArchiveTests` and `CookedPhotosViewModelTests`, and one UI test,
+    `CookedPhotosUITests` (the section behind its flag, camera or library, the simulator's
+    "no camera").
+- **By hand, on a phone:**
+  - Take a photo in portrait and landscape; it should stay upright in the gallery and full
+    screen.
+  - Pick several photos from the library, including a HEIC on iOS.
+  - Share one: the photo arrives with the recipe name.
+  - Export with photos (a `.zip`), then import it on the other platform.
+  - On Android, the first camera use asks nothing (the app declares no `CAMERA`). On iOS it
+    asks once, in the phone's language.
+
 ## iOS share extension: end to end and memory
 
 The extension's logic is unit-tested (`RecipeClipperTests/Share`). What
