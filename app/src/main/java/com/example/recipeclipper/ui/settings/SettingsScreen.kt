@@ -426,7 +426,8 @@ internal fun SwitchRow(
 
 /**
  * Chef mode (#100): one switch. Where the phone can't write short steps it is disabled, with one
- * line saying why; where it can, a line names the recipe languages it writes.
+ * line saying why (naming the phones it needs, #144, so it doesn't read like a bug); where it can,
+ * a line names the recipe languages it writes.
  */
 @Composable
 private fun ChefModeRow(state: SettingsUiState, onChefModeChange: (Boolean) -> Unit) {
@@ -445,7 +446,8 @@ private fun ChefModeRow(state: SettingsUiState, onChefModeChange: (Boolean) -> U
             support.languages.map { Locale.forLanguageTag(it).getDisplayLanguage(locale) }.sorted().joinToString(", ")
         )
         ChefSupport.NotReady -> stringResource(R.string.chef_mode_not_ready)
-        ChefSupport.NotEnabled, ChefSupport.Unsupported -> stringResource(R.string.chef_mode_unsupported)
+        // NotEnabled is Apple Intelligence switched off: iOS only, as ML Kit has no such state.
+        ChefSupport.Unsupported, ChefSupport.NotEnabled -> stringResource(R.string.chef_mode_unsupported)
     }
     Text(
         note,

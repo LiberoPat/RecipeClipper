@@ -426,7 +426,7 @@
     <string name="chef_mode_title">Chef mode</string>
     <string name="chef_mode_description">Short steps, written on this phone. Tap one to see it as written.</string>
     <string name="chef_mode_languages">For recipes in %1$s.</string>
-    <string name="chef_mode_unsupported">This phone can\'t write short steps.</string>
+    <string name="chef_mode_unsupported">Needs a phone with Google\'s on-device AI, such as a Pixel 9 or newer or a Galaxy S25 or newer.</string>
     <string name="chef_mode_not_ready">The on-device model isn\'t ready yet. Try again later.</string>
     <string name="step_show_as_written">As written</string>
     <string name="step_show_short">Short version</string>

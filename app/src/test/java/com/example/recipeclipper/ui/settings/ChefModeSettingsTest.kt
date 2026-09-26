@@ -77,7 +77,7 @@ class ChefModeSettingsTest {
         flags.set(Flag.CHEF_MODE, true)
         model.support = ChefSupport.Unsupported
         show()
-        scrollTo("This phone can't write short steps.")
+        scrollTo("Needs a phone with Google's on-device AI, such as a Pixel 9 or newer or a Galaxy S25 or newer.")
         switch().assertIsOff().assertIsNotEnabled().performClick()
         assertFalse(preferences.chefMode)
     }

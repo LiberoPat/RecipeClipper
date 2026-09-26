@@ -378,7 +378,7 @@
     <string name="chef_mode_title">Chefmodus</string>
     <string name="chef_mode_description">Kurze Schritte, auf diesem Telefon geschrieben. Tippe auf einen, um ihn wie im Rezept zu sehen.</string>
     <string name="chef_mode_languages">Für Rezepte auf %1$s.</string>
-    <string name="chef_mode_unsupported">Dieses Telefon kann keine kurzen Schritte schreiben.</string>
+    <string name="chef_mode_unsupported">Benötigt ein Telefon mit Googles On-Device-KI, etwa ein Pixel 9 oder neuer oder ein Galaxy S25 oder neuer.</string>
     <string name="chef_mode_not_ready">Das Modell auf dem Telefon ist noch nicht bereit. Versuche es später noch einmal.</string>
     <string name="step_show_as_written">Wie im Rezept</string>
     <string name="step_show_short">Kurzfassung</string>
