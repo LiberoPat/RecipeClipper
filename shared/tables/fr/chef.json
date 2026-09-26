@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "language": "fr",
+  "about": "ShortStepCheck's words (#129); see en/chef.json for what each key does. Verbs in the infinitive, one word each; endings let 'préchauffez', 'préchauffer' and 'préchauffé' match. An elided article ('l'eau') also matches the word after it.",
+  "actions": [
+    "préchauffer", "beurrer", "graisser", "huiler", "chemiser", "tapisser", "couvrir", "recouvrir", "envelopper",
+    "presser", "égoutter", "rincer", "tremper", "tamiser", "fouetter", "battre", "incorporer", "pétrir", "étaler",
+    "abaisser", "rouler", "mélanger", "remuer", "mixer", "écraser", "hacher", "émincer", "couper", "trancher",
+    "râper", "éplucher", "peler", "assaisonner", "saler", "poivrer", "mariner", "saupoudrer", "arroser",
+    "badigeonner", "verser", "bouillir", "mijoter", "pocher", "frire", "poêler", "saisir", "dorer", "rôtir",
+    "griller", "fondre", "refroidir", "réfrigérer", "congeler", "reposer", "lever", "retourner", "enfourner",
+    "écumer", "déglacer"
+  ],
+  "equipment": [
+    "four", "poêle", "casserole", "cocotte", "marmite", "sauteuse", "saladier", "bol", "plat", "plaque", "moule",
+    "grille", "tamis", "passoire", "mixeur", "robot", "fouet", "papier", "aluminium", "film", "couvercle",
+    "thermomètre", "wok"
+  ],
+  "qualifiers": [
+    "ne", "pas", "jamais", "sans", "si", "facultatif", "facultative", "éventuellement", "optionnel", "alternative",
+    "sinon", "jusqu'à"
+  ],
+  "notAfter": ["le", "la", "les", "un", "une", "du", "des", "l'"],
+  "functionWords": [
+    "le", "la", "les", "un", "une", "des", "du", "de", "et", "ou", "puis", "ensuite", "dans", "sur", "à", "au",
+    "aux", "avec", "pour", "par", "en", "il", "elle", "ils", "elles", "y", "se", "sont", "est", "jusqu'à",
+    "pendant", "environ", "bien", "dès", "que", "degrés"
+  ],
+  "abbreviations": [["temp", "température"]],
+  "endings": [
+    ["ez", ""], ["er", ""], ["ées", ""], ["és", ""], ["ée", ""], ["é", ""], ["ant", ""], ["ir", ""],
+    ["e", ""], ["es", ""], ["s", ""], ["x", ""]
+  ]
+}
