@@ -24,8 +24,6 @@ internal object WprmIngredients {
     private class Group(val name: String, val items: List<Item>)
     private class Item(val name: String, val line: String)
 
-    private val spaces = Regex("\\s+")
-
     /** [lines], refined by the first WPRM ingredient list in [page] that lines up with them. */
     fun refine(page: Element, lines: List<String>): List<String> {
         for (container in page.select(".wprm-recipe-ingredients-container")) {
@@ -71,7 +69,11 @@ internal object WprmIngredients {
         else -> " $notes"
     }
 
-    private fun text(e: Element): String = e.text().replace(spaces, " ").trim()
+    private fun text(e: Element): String = collapse(e.text())
 
-    private fun normalize(s: String): String = s.lowercase().replace(spaces, " ").trim()
+    private fun normalize(s: String): String = collapse(s.lowercase())
+
+    /** Runs of whitespace (a no-break space too) as one space, trimmed, as the iOS port splits them. */
+    private fun collapse(s: String): String = String(CharArray(s.length) { if (s[it].isWhitespace()) ' ' else s[it] })
+        .split(' ').filter { it.isNotEmpty() }.joinToString(" ")
 }

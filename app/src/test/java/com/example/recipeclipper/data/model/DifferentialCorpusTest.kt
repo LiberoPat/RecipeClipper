@@ -1,5 +1,7 @@
 package com.example.recipeclipper.data.model
 
+import com.example.recipeclipper.data.remote.WprmIngredients
+import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -35,6 +37,9 @@ import java.io.File
  * for what the model picked, or nil; write only the kind (name, ingredient, step, other), the
  * page text and the pick.
  *
+ * `Wprm("markup", [lines])` rows (#118) pin [WprmIngredients.refine]: JSON-LD's lines refined by
+ * a WP Recipe Maker card's markup; write only the markup (single-quoted attributes) and the lines.
+ *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
@@ -69,6 +74,8 @@ class DifferentialCorpusTest {
     private val countRow = Regex("""^(\s*)Count\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A close-names row (#104): two ingredient names, optionally their language.
     private val closeRow = Regex("""^(\s*)Close\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A WP Recipe Maker row (#118): a card's markup, then JSON-LD's ingredient lines.
+    private val wprmRow = Regex("""^(\s*)Wprm\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
@@ -104,6 +111,12 @@ class DifferentialCorpusTest {
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         countRow.find(line)?.let { m -> return countRow(m) }
+        wprmRow.find(line)?.let { m ->
+            val html = unescape(m.groupValues[2])
+            val lines = literal.findAll(m.groupValues[3]).map { unescape(it.groupValues[1]) }.toList()
+            val refined = WprmIngredients.refine(Jsoup.parse(html), lines)
+            return m.groupValues[1] + "Wprm(${q(html)}, ${list(lines)}, ${list(refined)}),"
+        }
         closeRow.find(line)?.let { m ->
             val (a, b) = unescape(m.groupValues[2]) to unescape(m.groupValues[3])
             val language = m.groupValues[4].ifEmpty { "en" }
