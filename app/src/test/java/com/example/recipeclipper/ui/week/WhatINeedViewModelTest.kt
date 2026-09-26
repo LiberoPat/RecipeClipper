@@ -7,7 +7,9 @@ import com.example.recipeclipper.data.model.NeedStatus
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PlannedIngredients
 import com.example.recipeclipper.data.model.UnitSystem
+import com.example.recipeclipper.data.model.DecisionQuestion
 import com.example.recipeclipper.fake.FakeAppPreferences
+import com.example.recipeclipper.fake.FakeDecisionRepository
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,6 +45,30 @@ class WhatINeedViewModelTest {
     private fun viewModel(pantry: FakePantryRepository, system: UnitSystem = UnitSystem.AS_WRITTEN) = WhatINeedViewModel(
         SavedStateHandle(mapOf(WhatINeedViewModel.WEEK_START_ARG to 100L)), groceries, pantry, FakeAppPreferences(unitSystem = system),
     )
+
+    @Test
+    fun `a close pantry name the model calls the same moves a line to Have once it lands (#104)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val pantry = FakePantryRepository(listOf(item(1, "flour"), item(2, "duck eggs")))
+            val question = DecisionQuestion.sameIngredient("eggs", "duck eggs", "en")
+            val decisions = FakeDecisionRepository(mapOf(question to "same"))
+            val vm = WhatINeedViewModel(
+                SavedStateHandle(mapOf(WhatINeedViewModel.WEEK_START_ARG to 100L)), groceries, pantry,
+                FakeAppPreferences(), decisions
+            )
+            advanceUntilIdle()
+            assertEquals(listOf(question), decisions.asked.distinct())
+            assertEquals(listOf("salt"), vm.uiState.value.needs!!.buy.map { it.name })
+            assertEquals("duck eggs", vm.uiState.value.needs!!.have.first { it.name == "eggs" }.pantryName)
+
+            // Without a definite "same" the line stays Buy.
+            val unsure = WhatINeedViewModel(
+                SavedStateHandle(mapOf(WhatINeedViewModel.WEEK_START_ARG to 100L)), groceries, pantry,
+                FakeAppPreferences(), FakeDecisionRepository(mapOf(question to "unsure"))
+            )
+            advanceUntilIdle()
+            assertEquals(listOf("eggs", "salt"), unsure.uiState.value.needs!!.buy.map { it.name })
+        }
 
     @Test
     fun `the week's lines at planned servings, marked Have or Buy, staples out of Buy`() = runTest(mainDispatcherRule.dispatcher) {

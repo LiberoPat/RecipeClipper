@@ -65,6 +65,10 @@ class DifferentialCorpusTest {
     private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A page-pick row (#103): the kind, the page's text, what the model picked from it.
     private val pickRow = Regex("""^(\s*)Pick\(\.(name|ingredient|step|other), "((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"""")
+    // A count-bracket row (#104): an ingredient line, optionally its language.
+    private val countRow = Regex("""^(\s*)Count\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A close-names row (#104): two ingredient names, optionally their language.
+    private val closeRow = Regex("""^(\s*)Close\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
@@ -99,6 +103,14 @@ class DifferentialCorpusTest {
         }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
+        countRow.find(line)?.let { m -> return countRow(m) }
+        closeRow.find(line)?.let { m ->
+            val (a, b) = unescape(m.groupValues[2]) to unescape(m.groupValues[3])
+            val language = m.groupValues[4].ifEmpty { "en" }
+            val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
+            val close = DecisionCandidates.close(a, b, LanguageWords.forTag(language)!!)
+            return m.groupValues[1] + "Close(${q(a)}, ${q(b)}$lang, $close),"
+        }
         pickRow.find(line)?.let { p ->
             val (kind, page, picked) = Triple(p.groupValues[2], unescape(p.groupValues[3]), unescape(p.groupValues[4]))
             val found = PageRecipeCheck.find(page, picked, PageRecipeCheck.Kind.valueOf(kind.uppercase()))
@@ -148,6 +160,20 @@ class DifferentialCorpusTest {
         val combined = GroceryCombiner.combine(lines, words)?.let { q(it) } ?: "nil"
         val aisles = list(lines.map { Aisles.of(it, words).key })
         return m.groupValues[1] + "Groc(${list(lines)}$lang, $combined, $aisles),"
+    }
+
+    /**
+     * `Count(line, lang:, asks, [unsure, total, each])`: [IngredientScaler.needsCountDecision], then
+     * the line doubled with each answer to the count-bracket question.
+     */
+    private fun countRow(m: MatchResult): String {
+        val line = unescape(m.groupValues[2])
+        val language = m.groupValues[3].ifEmpty { null }
+        val words = if (language == null) LanguageWords.ENGLISH else LanguageWords.forTag(language)!!
+        val lang = if (language == null) "" else ", lang: ${q(language)}"
+        val asks = IngredientScaler.needsCountDecision(line, words)
+        val doubled = listOf(null, CountBracket.TOTAL, CountBracket.EACH).map { IngredientScaler.scale(line, 2.0, words, it) }
+        return m.groupValues[1] + "Count(${q(line)}$lang, $asks, ${list(doubled)}),"
     }
 
     /** `Pant(line, name, lang:, covered)`: [PantryMatch.covered] against one in-stock item called [name]. */
