@@ -28,6 +28,8 @@ import XCTest
 // Count-bracket rows (#104): a line, whether it asks the model (needsCountDecision), then the
 // line doubled when unsure, total and each. Write only `Count("4 Apfel (ca. 800g)", lang: "de"),`.
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
+// WP Recipe Maker rows (#118): a card's markup and JSON-LD's lines, then WprmIngredients.refine.
+// Write only `Wprm("<markup>", ["line"]),`, the markup's attributes single-quoted.
 // Trailing-text rows (#99): a grocery line, then GroceryDecisions.split's core and trailing text,
 // or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
@@ -88,6 +90,13 @@ final class DifferentialCorpusTests: XCTestCase {
         let a: String; let b: String; let words: LanguageWords; let close: Bool
         init(_ a: String, _ b: String, lang: String = "en", _ close: Bool) {
             self.a = a; self.b = b; self.words = LanguageWords.forTag(lang)!; self.close = close
+        }
+    }
+
+    private struct Wprm {
+        let html: String; let lines: [String]; let refined: [String]
+        init(_ html: String, _ lines: [String], _ refined: [String]) {
+            self.html = html; self.lines = lines; self.refined = refined
         }
     }
 
@@ -1291,6 +1300,18 @@ final class DifferentialCorpusTests: XCTestCase {
         Close("バター", "無塩バター", lang: "ja", false),
     ]
 
+    private static let wprms: [Wprm] = [
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><h4 class='wprm-recipe-group-name wprm-recipe-ingredient-group-name'>Batter</h4><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'>garlic cloves</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>, minced</span></li><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1 lb / 500 g </span> <span class='wprm-recipe-ingredient-name'>zucchinis </span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>(courgettes)</span></li></ul></div></div>", ["2  garlic cloves (, minced)", "1 lb / 500 g   zucchinis  ((courgettes))"], ["Batter:", "2 garlic cloves, minced", "1 lb / 500 g zucchinis (courgettes)"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1/2</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>plain flour</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>(all-purpose flour), can sub gluten-free flour</span></li></ul></div><div class='wprm-recipe-ingredient-group'><h4 class='wprm-recipe-group-name wprm-recipe-ingredient-group-name'>Minted Yoghurt (optional)</h4><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>tbsp</span> <span class='wprm-recipe-ingredient-name'>fresh mint</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>, finely chopped</span></li></ul></div></div>", ["1/2 cup plain flour ((all-purpose flour), can sub gluten-free flour)", "1 tbsp fresh mint (, finely chopped)"], ["1/2 cup plain flour (all-purpose flour), can sub gluten-free flour", "Minted Yoghurt (optional):", "1 tbsp fresh mint, finely chopped"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><h4 class='wprm-recipe-group-name wprm-recipe-ingredient-group-name'>Sauce:</h4><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-name'>kosher salt</span>, <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>*see notes</span></li></ul></div></div>", ["kosher salt (*see notes)"], ["Sauce:", "kosher salt, *see notes"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><ul><li class=wprm-recipe-ingredient><span class=wprm-recipe-ingredient-amount>1½</span> <span class=wprm-recipe-ingredient-unit>cups</span> <span class=wprm-recipe-ingredient-name>cooked <a href=x>chickpeas</a></span>,&#32;<span class=wprm-recipe-ingredient-notes>drained &amp; rinsed</span></li></ul></div>", ["1½ cups cooked chickpeas (drained & rinsed)"], ["1½ cups cooked chickpeas, drained & rinsed"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'>eggs</span></li><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>milk</span></li></ul></div></div>", ["2 eggs"], ["2 eggs"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'>eggs</span></li><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>milk</span></li></ul></div></div>", ["2 eggs", "1 cup cream"], ["2 eggs", "1 cup cream"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'></span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>(minced)</span></li></ul></div></div>", ["2 (minced)"], ["2 (minced)"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>rice</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>rinsed</span></li></ul></div></div>", ["1 cup rice"], ["1 cup rice rinsed"]),
+        Wprm("<p>No card on this page.</p>", ["1 cup rice"], ["1 cup rice"]),
+    ]
+
     private static let trails: [Trail] = [
         Trail("2 eggs (dfsafs -", "2 eggs", "(dfsafs -"),
         Trail("2 ears of corn, shucked", "2 ears of corn", ", shucked"),
@@ -1510,6 +1531,12 @@ final class DifferentialCorpusTests: XCTestCase {
                 IngredientScaler.scale(row.line, factor: 2.0, words: row.words, bracket: $0)
             }
             XCTAssertEqual(doubled, row.doubled, row.line)
+        }
+    }
+
+    func testWprmIngredientsMatchKotlin() {
+        for row in Self.wprms {
+            XCTAssertEqual(WprmIngredients.refine(html: row.html, lines: row.lines), row.refined, row.lines.joined(separator: " | "))
         }
     }
 

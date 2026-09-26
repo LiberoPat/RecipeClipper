@@ -2182,6 +2182,36 @@ supported languages), or the flag off: nothing is asked and everything is exactl
 may leave most questions unsure), whether its answers are right (especially the owner's
 "different" pairs), and the time per question (two asks each). CI and the tests use fakes only.
 
+## WP Recipe Maker's ingredient parts (#118)
+
+Most food blogs build their recipe card with a WordPress plugin, and WP Recipe Maker (RecipeTin
+Eats, Minimalist Baker, Skinnytaste, Love and Lemons) marks each ingredient's parts in the HTML:
+`wprm-recipe-ingredient-amount`, `-unit`, `-name` and `-notes`, inside named groups. Its JSON-LD
+lines wrap the notes in brackets, whatever the notes already hold: "2 garlic cloves (, minced)",
+"1 lb / 500 g zucchinis ((courgettes))". Love and Lemons' JSON-LD even drops a note ("for
+garnish") that the card shows.
+
+- **JSON-LD stays first.** The parts only refine its `recipeIngredient` lines, and only when a
+  card's ingredients line up one-to-one: the same count, and each part's name found in its
+  JSON-LD line (case and spacing ignored). Otherwise the JSON-LD lines stay as they were. A page
+  can hold several cards; the first that lines up is used. Microdata recipes aren't refined.
+- **Notes stay on the line, after the name, as the card shows them.** A recipe's ingredients are
+  plain lines with no notes field; adding one would mean a schema change and teaching scaling,
+  conversion, groceries, editing and export about it. The scaler reads the leading amount, and
+  a bracket or second amount after the name follows the existing rules (#61, #63), so a note
+  never changes what scales. The line is amount, unit and name joined by spaces; notes that
+  start with a comma follow directly ("2 garlic cloves, minced"); otherwise a comma when the
+  page puts one between name and notes ("kosher salt, *see notes"), else a space ("zucchinis
+  (courgettes)").
+- **Groups become heading lines** ("Batter:", "Minted Yoghurt (optional):"), the colon form the
+  rest of the app already reads as a heading (groceries, ingredient names, step amounts). An
+  unnamed group adds none. Headings change the ingredient list, so ticked ingredients reset once
+  on the first re-share after this change, as for any changed list.
+- **The owner's "2 corn (dfsafs -"** (#121) isn't on the Greek zucchini tots page; the page's
+  real lines of that shape, "2 garlic cloves (, minced)", now read "2 garlic cloves, minced".
+- Tests: trimmed real pages in `shared/fixtures/pages/wprm-*.html` on both platforms, and `Wprm`
+  rows in the differential corpus. The weekly site check fetches the zucchini tots page.
+
 ## Grocery lines merged with the model's help (#99)
 
 Part of #99, on #104's typed decisions (same `DecisionRule`, `ai_decisions` cache and
