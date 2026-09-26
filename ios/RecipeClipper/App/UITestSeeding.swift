@@ -9,8 +9,9 @@ import UIKit
 ///   - a stub RecipeSource, so any import resolves offline to one canned recipe;
 ///   - a throwaway UserDefaults suite, wiped at launch unless `-uiTestKeepPrefs` is also passed
 ///     (which is how a test proves a setting survives a relaunch);
-///   - feature flags (#87) in their own throwaway suite, wiped likewise, then overridden on
-///     through the store for each key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`);
+///   - feature flags (#87) in their own throwaway suite, wiped likewise and set off whatever the
+///     build's defaults, then turned on through the store for each key in `-uiTestFlags key1,key2`
+///     (`UITestSupport.launch(flags:)`);
 ///   - `-uiTestPasteboard <text>` puts `text` on the pasteboard as the app's own copy, so "Paste
 ///     a list" (#149) reads it without the paste prompt, which a UI test can't rely on. A launch
 ///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline;
@@ -105,8 +106,12 @@ enum UITestSeeding {
             for tip in Tip.allCases { preferences.setTipSeen(tip, true) }
         }
         let flagStore = UserDefaultsFeatureFlagStore(suiteName: flagsSuite)
-        if !arguments.contains(keepPrefsFlag) { flagStore.clear() }
         let flags = FeatureFlags(store: flagStore)
+        if !arguments.contains(keepPrefsFlag) {
+            // Every flag off first, whatever the build's defaults: a test turns on only what it names.
+            flagStore.clear()
+            for flag in Flag.allCases { flags.set(flag, false) }
+        }
         if let index = arguments.firstIndex(of: flagsFlag), index + 1 < arguments.count {
             for key in arguments[index + 1].split(separator: ",") {
                 if let flag = Flag(rawValue: String(key)) { flags.set(flag, true) }

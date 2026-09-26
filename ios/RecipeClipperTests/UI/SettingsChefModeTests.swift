@@ -13,7 +13,7 @@ final class SettingsChefModeTests: XCTestCase {
         )
         let (_, shortSteps) = try await makeShortStepRepository(recipe, model: FakeStepShortener(support: support))
         let flags = FeatureFlags(store: MemoryFeatureFlagStore())
-        if flagOn { flags.set(.chefMode, true) }
+        flags.set(.chefMode, flagOn)
         return SettingsViewModel(
             preferences: preferences, backups: FakeBackupRepository(), files: FakeBackupFiles(), flags: flags,
             shortSteps: shortSteps
