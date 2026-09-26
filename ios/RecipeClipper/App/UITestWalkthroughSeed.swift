@@ -44,7 +44,7 @@ enum UITestWalkthroughSeed {
     }
 
     static let whisk = "Whisk the eggs and sugar in a large bowl until pale, thick and doubled in volume, about 8 minutes."
-    static let whiskShort = "Whisk eggs and sugar until pale and thick, about 8 minutes."
+    static let whiskShort = "Whisk eggs and sugar in a bowl until pale and thick, about 8 minutes."
     /// A line ending in junk, as a site might publish it (#132): hidden in Groceries only.
     static let junkLine = "2 eggs dfsafs"
 

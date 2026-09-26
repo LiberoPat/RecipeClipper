@@ -24,9 +24,9 @@ object WalkthroughSeed {
     )
 
     const val CHEF_STEP = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
-    const val CHEF_SHORT = "Oven to 350°F; butter a 9-inch tin."
+    const val CHEF_SHORT = "Preheat oven to 350°F; butter a 9-inch tin."
     const val WHISK = "Whisk the eggs and sugar in a large bowl until pale, thick and doubled in volume, about 8 minutes."
-    const val WHISK_SHORT = "Whisk eggs and sugar until pale and thick, about 8 minutes."
+    const val WHISK_SHORT = "Whisk eggs and sugar in a bowl until pale and thick, about 8 minutes."
 
     /** A line ending in junk, as a site might publish it (#132): hidden in Groceries only. */
     const val JUNK_LINE = "2 eggs dfsafs"

@@ -6,6 +6,8 @@ import XCTest
 /// The seeded step the stub model shortens (UITestSeeding.chefStep, in the app target).
 enum UITestWalkthroughStep {
     static let chef = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
+    /// Its short version (UITestSeeding.chefShortStep).
+    static let chefShort = "Preheat oven to 350°F; butter a 9-inch tin."
 }
 
 extension WalkthroughUITests {
@@ -75,7 +77,7 @@ extension WalkthroughUITests {
         open("Sponge Cake")
         app.swipeUp()
         pause(2.5)
-        let short = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Oven to 350°F; butter a 9-inch tin.")).firstMatch
+        let short = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", UITestWalkthroughStep.chefShort)).firstMatch
         require(short, "the short step").tap() // as written…
         pause(2.5)
         let written = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", UITestWalkthroughStep.chef)).firstMatch
