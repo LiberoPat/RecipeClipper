@@ -78,6 +78,17 @@ struct ShareImportView: View {
                 Button(Strings.tryAgain, action: vm.onRetry).buttonStyle(PrimaryButtonStyle())
             }
 
+        case .notKept(let title):
+            Text(title)
+                .textStyle(Typography.titleLarge)
+                .foregroundStyle(Palette.onBackground)
+                .lineLimit(3)
+            message(Strings.recipeNotKept)
+            Text(Strings.shareUnlockHint)
+                .textStyle(Typography.bodyMedium)
+                .foregroundStyle(Palette.muted)
+            buttons { Button(Strings.close, action: onCancel).buttonStyle(PrimaryButtonStyle()) }
+
         case .noLink:
             message(Strings.shareNoLink)
             buttons { Button(Strings.close, action: onCancel).buttonStyle(TextActionStyle()) }

@@ -26,6 +26,18 @@ struct DeveloperSettingsScreen: View {
                     .accessibilityIdentifier("developer.flag.\(row.flag.rawValue)")
                 }
 
+                // Not a flag: the unlock (#107) counted as bought, to test without a store.
+                // Developer text, English by design, like the flags' descriptions.
+                SwitchRow(
+                    title: "Unlocked",
+                    description: ([
+                        "Counts the unlimited-recipes purchase as bought, with no store: needs freeTier on to show.",
+                        Strings.developerFlagIssue(107)
+                    ] + (state.unlockedOverride ? [Strings.developerFlagChanged] : [])).joined(separator: " · "),
+                    isOn: Binding(get: { state.unlockedOverride }, set: { vm.onUnlockedOverrideChange($0) })
+                )
+                .accessibilityIdentifier("developer.unlocked")
+
                 Rectangle().fill(Palette.hairline).frame(height: 1).padding(.top, 16)
                 Button(action: vm.onReset) {
                     Text(Strings.developerReset)

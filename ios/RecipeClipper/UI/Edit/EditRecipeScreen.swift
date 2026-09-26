@@ -40,6 +40,10 @@ struct EditRecipeScreen: View {
         .onChange(of: state.savedId) { _, id in
             if let id { onSaved(id) }
         }
+        .libraryFullAlert(
+            isPresented: Binding(get: { vm.uiState.libraryFull }, set: { if !$0 { vm.onLibraryFullDismiss() } }),
+            onUnlock: vm.onUnlock
+        )
     }
 
     @ViewBuilder
@@ -49,6 +53,9 @@ struct EditRecipeScreen: View {
         }
         if state.saveFailed {
             message(Strings.editErrorSaveFailed)
+        }
+        if let notice = state.unlockNotice {
+            message(Strings.unlockNotice(notice))
         }
         OutlinedField(label: Strings.editLabelName, text: binding(\.name))
         OutlinedField(label: Strings.editLabelYield, text: binding(\.yield))

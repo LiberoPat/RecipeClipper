@@ -41,6 +41,18 @@ final class FakeRecipeRepository: RecipeRepository {
 
     @MainActor func open(id: Int64) async -> Recipe? { openResult }
 
+    /// Staged answer for `keep` (#107); nil answers success with the recipe given id 1.
+    var keepResult: ParseResult?
+    private(set) var keepCalls: [Recipe] = []
+
+    @MainActor func keep(_ recipe: Recipe) async -> ParseResult {
+        keepCalls.append(recipe)
+        if let keepResult { return keepResult }
+        var saved = recipe
+        saved.id = 1
+        return .success(saved)
+    }
+
     /// Staged answers for "Update from source", edits and new recipes, and every call made.
     var updateFromSourceResult: ParseResult = .error(.nothingToShow)
     private(set) var updateFromSourceCalls: [Int64] = []

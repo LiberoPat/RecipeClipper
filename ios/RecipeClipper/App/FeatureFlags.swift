@@ -8,6 +8,8 @@ import Observation
 enum Flag: String, CaseIterable {
     /// The meal plan (#47, #49–#51): the bottom tabs and the recipe screen's plan actions.
     case mealPlan
+    /// The free tier (#107): 20 recipes, and the one-time unlock for unlimited ones.
+    case freeTier
 }
 
 /// One flag as `shared/flags.json` declares it.
@@ -135,6 +137,19 @@ final class FeatureFlags {
 
     func reset() {
         store.clear()
+        overrides = store.overrides
+    }
+
+    /// The store key of `unlockedOverride`; the same on Android.
+    static let unlockedOverrideKey = "override.unlocked"
+
+    /// Developer settings' "Unlocked" (#107): the unlock counts as bought, to test the unlimited
+    /// library without a store. Kept in the same store under a key that is no flag's, so Reset
+    /// clears it too.
+    var unlockedOverride: Bool { overrides[Self.unlockedOverrideKey] == true }
+
+    func setUnlockedOverride(_ on: Bool) {
+        store.setOverride(Self.unlockedOverrideKey, on ? true : nil)
         overrides = store.overrides
     }
 }

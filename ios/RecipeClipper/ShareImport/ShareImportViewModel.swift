@@ -10,6 +10,9 @@ enum ShareImportUiState: Equatable {
     /// Saved (or, after a failed fetch, found already saved) under this title.
     case saved(title: String)
     case failed(ParseError)
+    /// The free library is full and every recipe is protected (#107): parsed, not saved. The
+    /// unlock is bought in the app, which this extension can't open.
+    case notKept(title: String)
     /// Nothing shared carried a web link.
     case noLink
 }
@@ -77,6 +80,8 @@ final class ShareImportViewModel {
             switch result {
             case .success(let recipe):
                 uiState = .saved(title: recipe.name)
+            case .notKept(let recipe):
+                uiState = .notKept(title: recipe.name)
             case .error(let error):
                 uiState = .failed(error)
                 if error.reloadsOnReconnect { reloadOnReconnect() }

@@ -77,11 +77,14 @@ struct ReadingView: View {
 
                 // After the steps: the reading view still opens on the recipe, and a note like
                 // "needs 10 more minutes" is read once the method is.
-                NotesSection(
-                    notes: Binding(get: { state.notes }, set: { vm.onNotesChange($0) }),
-                    focused: $editingNotes
-                )
-                .padding(.top, 24)
+                // A recipe that wasn't kept (#107) has nowhere to keep a note.
+                if !state.notKept {
+                    NotesSection(
+                        notes: Binding(get: { state.notes }, set: { vm.onNotesChange($0) }),
+                        focused: $editingNotes
+                    )
+                    .padding(.top, 24)
+                }
             }
             .padding(.horizontal, 20)
             .readableColumn()

@@ -133,6 +133,9 @@ targets:
       - path: ../shared/fixtures
         type: folder
         buildPhase: resources
+      # The StoreKit configuration (#107), for StoreKitEntitlementsTests' SKTestSession.
+      - path: RecipeClipper.storekit
+        buildPhase: resources
     dependencies:
       - target: RecipeClipper
     settings:
@@ -154,6 +157,9 @@ targets:
         TEST_TARGET_NAME: RecipeClipper
 schemes:
   RecipeClipper:
+    # Runs from Xcode buy and restore the unlock (#107) against this file, not the App Store.
+    run:
+      storeKitConfiguration: RecipeClipper.storekit
     build:
       targets:
         RecipeClipper: all

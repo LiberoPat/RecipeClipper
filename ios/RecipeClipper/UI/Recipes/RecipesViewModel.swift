@@ -13,6 +13,8 @@ struct RecipesUiState: Equatable {
     var sort: RecipeSort = .recentlyViewed
     var pastingLink = false
     var linkInput = ""
+    /// Every recipe saved, whatever the query (#107: the free tier's count).
+    var savedCount: Int?
 
     /// The alert's Go is enabled only for what Home's link field would open.
     var canOpenLink: Bool { UrlInput.normalize(linkInput) != nil }
@@ -33,6 +35,8 @@ final class RecipesViewModel {
     @ObservationIgnored private var debounceTask: Task<Void, Never>?
     @ObservationIgnored private var appliedQuery: String?
     @ObservationIgnored private var historySubscription: AnyCancellable?
+    @ObservationIgnored private var countSubscription: AnyCancellable?
+    @ObservationIgnored private let library: LibraryPolicy?
     /// What the database last answered, in its own order, so a new sort needs no new query.
     @ObservationIgnored private var found: [RecipeSummary]?
 
@@ -41,10 +45,23 @@ final class RecipesViewModel {
     @ObservationIgnored private var captured: [Int64: DeletedRecipe] = [:]
     @ObservationIgnored private var capturedOrder: [Int64] = []
 
-    init(repository: RecipeRepository, sleep: @escaping Sleep = Sleeps.real) {
+    init(repository: RecipeRepository, sleep: @escaping Sleep = Sleeps.real, library: LibraryPolicy? = nil) {
         self.repository = repository
         self.sleep = sleep
+        self.library = library
         schedule(query: "")
+        if library != nil {
+            countSubscription = repository.observeCount()
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] count in self?.uiState.savedCount = count }
+        }
+    }
+
+    /// "12 of 20 recipes" (#107), on the free tier only: unlocked, or with the flag off, there
+    /// is nothing to count against. Reads the observable policy, so the view follows it.
+    var count: (saved: Int, max: Int)? {
+        guard case .free(let max) = library?.limit, let saved = uiState.savedCount else { return nil }
+        return (saved, max)
     }
 
     func onQueryChange(_ text: String) {

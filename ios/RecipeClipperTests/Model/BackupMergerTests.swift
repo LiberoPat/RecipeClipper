@@ -256,6 +256,23 @@ final class BackupMergerTests: XCTestCase {
         XCTAssertEqual(plan.summary.recipesSkipped, 0)
     }
 
+    func testOnTheFreeTierEveryRecipeHereCountsListedOnesToo() {
+        // 15 here, 10 of them listed: only 5 places are free under 20, not 20 - 5 (#107).
+        let here = (1...15).map {
+            ExistingRecipe(id: Int64($0), uid: "u\($0)", sourceUrl: "https://h.example/\($0)", hasNotes: false, isListed: $0 <= 10)
+        }
+        let incoming = (1...8).map { recipe("f\($0)", "https://f.example/\($0)", viewed: Int64($0) * 10) }
+        var n = 0
+        let plan = BackupMerger.plan(
+            Backup(exportedAt: 0, recipes: incoming, lists: [], memberships: []),
+            existingRecipes: here, existingLists: [], maxSortOrder: 0, historyLimit: 20,
+            newUid: { n += 1; return "gen-\(n)" }, countsEveryRecipe: true
+        )
+        XCTAssertEqual(plan.newRecipes.map(\.id).sorted(), ["f4", "f5", "f6", "f7", "f8"])
+        XCTAssertEqual(plan.summary.recipesSkipped, 3)
+        XCTAssertEqual(plan.summary.freeLimit, 20)
+    }
+
     func testARecipeHereThatTheFilePutsInAListFreesItsPlaceInHistory() {
         let here = (1...50).map { ExistingRecipe(id: Int64($0), uid: "u\($0)", sourceUrl: "https://h.example/\($0)", hasNotes: false, isListed: false) }
         let backup = Backup(
