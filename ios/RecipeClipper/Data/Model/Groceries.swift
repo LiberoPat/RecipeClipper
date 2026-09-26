@@ -103,7 +103,15 @@ enum GroceryCombiner {
     /// The list as shown: aisles in `Aisle` order, empty ones left out; within one, unchecked
     /// rows before checked ones, each in the order its first line was added.
     static func sections(_ items: [GroceryItem], decisions: Decisions = .none) -> [Section] {
-        let sorted = items.sorted { ($0.sortOrder, $0.id) < ($1.sortOrder, $1.id) }
+        // Text decided junk is hidden everywhere in Groceries (#99), never stored so.
+        let shown = items.map { item in
+            let text = GroceryDecisions.shownText(item, decisions: decisions)
+            return text == item.text ? item : GroceryItem(
+                id: item.id, text: text, language: item.language, aisle: item.aisle, checked: item.checked,
+                sortOrder: item.sortOrder, recipeId: item.recipeId, plannedDay: item.plannedDay
+            )
+        }
+        let sorted = shown.sorted { ($0.sortOrder, $0.id) < ($1.sortOrder, $1.id) }
         return Aisle.allCases.compactMap { aisle in
             let inAisle = sorted.filter { $0.aisle == aisle }
             if inAisle.isEmpty { return nil }
@@ -208,7 +216,7 @@ enum GroceryCombiner {
         guard let lead = p.leading.find(line) else { return nil }
         if !lead[4].isEmpty { return nil } // a range is no one figure
         let rest = line.u16Substring(from: lead.end)
-        if p.notAnAmount.containsMatch(in: rest) { return nil }
+        if p.notAnAmount.containsMatch(in: rest) || p.temperature(lead, rest) { return nil }
         guard let value = p.parse(lead[2]), value > 0 else { return nil }
 
         guard let unitMatch = c.unitAtStart.find(rest) else {

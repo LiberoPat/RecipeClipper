@@ -21,19 +21,26 @@ enum IngredientScaler {
         "⅜": 3 / 8.0, "⅝": 5 / 8.0, "⅞": 7 / 8.0,
     ]
 
-    // "1 1/2", "2 and 1/2", "1 and ½", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in that
-    // order. The "and" is the language's (amounts.json "mixedJoiners"). A fraction's slash may
-    // be the typographic U+2044 ("1⁄2", as BBC Good Food writes it), a symbol rather than a
-    // word, so it stays here. A comma followed by one or two digits is a decimal comma; one
-    // followed by three ("1,500") may be a thousands separator, so it is never read as part
-    // of a quantity, and `ambiguousComma` leaves the line. Where the language writes thousands
+    // "1-1/2", "1 1/2", "2 and 1/2", "1 and ½", "1½", "1/2", "1.5", "1,5", "½", "2" — tried in
+    // that order. A whole number, a dash and a fraction with no spaces ("1-1/2", "2–½", as Taste
+    // of Home writes them) are a mixed number, never a range down to the fraction (#125), and
+    // `parse` reads only a proper fraction there. Not after a slash or a decimal, so "1/2-3/4"
+    // and "0.17-1/3" stay ranges. The "and" is the language's (amounts.json "mixedJoiners").
+    // A fraction's slash may be the typographic U+2044 ("1⁄2", as BBC Good Food writes it), a
+    // symbol rather than a word, so it stays here. A comma followed by one or two digits is a
+    // decimal comma; one followed by three ("1,500") may be a thousands separator, so it is
+    // never read as part of a quantity, and `ambiguousComma` leaves the line. Where the language writes thousands
     // with a dot (amounts.json "thousandsDot"), "1.500" is 1500 (#76): only a dot before
     // exactly three digits, so "1.5" and "0.25" stay decimals.
     private static func qtyPattern(_ joiner: String, thousandsDot: Bool) -> String {
-        #"(?:\d+\s+(?:"# + joiner + #"\s+)?\d+[/⁄]\d+|\d+\s+"# + joiner + #"\s+["# + unicodeFractions + #"]|\d+\s*["# +
+        #"(?:(?<![\d.,])(?<!\d[/⁄])\d+[-–—](?:\d+[/⁄]\d+|["# + unicodeFractions + #"])|"# +
+            #"\d+\s+(?:"# + joiner + #"\s+)?\d+[/⁄]\d+|\d+\s+"# + joiner + #"\s+["# + unicodeFractions + #"]|\d+\s*["# +
             unicodeFractions + #"]|\d+[/⁄]\d+|"# + (thousandsDot ? #"\d{1,3}\.\d{3}(?![\d.,])|"# : "") +
             #"\d+(?:\.\d+|,\d{1,2}(?!\d))?|["# + unicodeFractions + #"])"#
     }
+
+    private static let celsiusAfter = JRegex(#"^\s*[Cc]\.?(?!\p{L})"#)
+    private static let temperatureNumber = JRegex(#"\d{2,3}"#)
 
     /// "1,5": the line writes decimals with a comma, so its output does too.
     static let decimalComma = JRegex(#"\d,\d{1,2}(?!\d)"#)
@@ -77,6 +84,15 @@ enum IngredientScaler {
 
         // A quantity followed by a unit. groups: 1 quantity, 2 space, 3 unit
         let qtyUnit: JRegex
+
+        /// "180 C water": a whole number TemperatureConverter would read as a bare Celsius
+        /// temperature, then a C, is no amount of cups (#135). `lead` is a `leading` match and
+        /// `rest` the text after it; the line stays as written, like a size after `notAnAmount`.
+        func temperature(_ lead: JMatch, _ rest: String) -> Bool {
+            IngredientScaler.celsiusAfter.containsMatch(in: rest) && [lead[2], lead[4]].filter { !$0.isEmpty }.allSatisfy {
+                IngredientScaler.temperatureNumber.matchEntire($0) != nil && TemperatureConverter.plausibleCelsius.contains(Int($0) ?? -1)
+            }
+        }
 
         // "1 cup (120 g) flour": a second measure of the same amount, right after a unit word.
         // A parenthesis straight after the number ("1 (14 oz) can") or after a container word
@@ -262,7 +278,7 @@ enum IngredientScaler {
             let text = line.u16Substring(from: start)
             guard let match = p.leading.find(text) else { return nil }
             let rest = text.u16Substring(from: match.end)
-            if p.notAnAmount.containsMatch(in: rest) { return nil }
+            if p.notAnAmount.containsMatch(in: rest) || p.temperature(match, rest) { return nil }
             let measure = p.unitAtStart.containsMatch(in: rest)
             // "or 2 small onions": an alternative needs a unit to be read as one (#61).
             if alternative && !measure { return nil }
@@ -509,15 +525,20 @@ enum IngredientScaler {
     // has already checked: "2 and 1/2" is "2 1/2" in any language.
     private static let joiner = JRegex(#"\s+\p{L}[\p{L}\s]*?\s+(?=[\d"# + unicodeFractions + #"])"#)
 
+    // "1-1/2" is "1 1/2", the one dash the quantity pattern lets through (#125).
+    private static let mixedDash = JRegex(#"(?<=\d)[-–—]"#)
+
     /// `thousandsDot`: the quantity comes from a language that writes "1.500" for 1500.
     static func parse(_ quantity: String, thousandsDot: Bool = false) -> Double? {
         // `qty` only lets a comma through as a decimal comma, never before three digits.
         // "2 and 1/2" is "2 1/2", and "1⁄2" (U+2044) is "1/2".
         let digits = thousandsDot ? thousandsDotSeparator.replace(quantity.kTrimmed, with: "") : quantity.kTrimmed
-        let q = joiner.replace(
+        let written = joiner.replace(
             digits.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "⁄", with: "/"),
             with: " "
         )
+        let dashed = mixedDash.containsMatch(in: written)
+        let q = mixedDash.replace(written, with: " ")
         guard let last = q.last else { return nil }
         if let fraction = unicodeValues[last] {
             let whole = String(q.dropLast()).kTrimmed
@@ -530,7 +551,8 @@ enum IngredientScaler {
             if part.contains("/") {
                 let pieces = part.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
                 guard pieces.count >= 2, let n = Double(pieces[0]), let d = Double(pieces[1]) else { return nil }
-                if d == 0.0 { return nil }
+                // "1-3/2" is neither a mixed number nor a range anyone writes.
+                if d == 0.0 || (dashed && n >= d) { return nil }
                 total += n / d
             } else {
                 guard let v = Double(part) else { return nil }

@@ -1,5 +1,8 @@
 package com.example.recipeclipper.data.model
 
+import com.example.recipeclipper.data.remote.CardHeadings
+import com.example.recipeclipper.data.remote.WprmIngredients
+import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -34,9 +37,18 @@ import java.io.File
  * `Trail("line")` rows (#99) pin [GroceryDecisions.split]: the line's core and the trailing text
  * the model may be asked about, or nil; write only the line (optionally `, lang: "fr"`).
  *
+ * `NameCut("line", "name")` rows (#99) pin [GroceryDecisions.nameQuestion] (whether the model is
+ * asked the line's name) and [GroceryDecisions.nameSplit] (the core and trailing text once it
+ * answers with that name, or nil); write only the line (optionally `, lang: "fr"`) and the name.
+ *
  * `Pick(.kind, "page", "picked")` rows (#103) pin [PageRecipeCheck.find]: the page's own text
  * for what the model picked, or nil; write only the kind (name, ingredient, step, other), the
  * page text and the pick.
+ *
+ * `Wprm("markup", [lines])` rows (#118) pin [WprmIngredients.refine]: JSON-LD's lines refined by
+ * a WP Recipe Maker card's markup; write only the markup (single-quoted attributes) and the lines.
+ * `Heads("markup", [lines])` rows (#119) pin [CardHeadings.refine] the same way, for a Tasty Recipes
+ * or Mediavine Create card.
  *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
@@ -72,8 +84,12 @@ class DifferentialCorpusTest {
     private val countRow = Regex("""^(\s*)Count\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A close-names row (#104): two ingredient names, optionally their language.
     private val closeRow = Regex("""^(\s*)Close\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A recipe-card row: a WP Recipe Maker (#118) or Tasty/Create (#119) card's markup, then JSON-LD's lines.
+    private val cardRow = Regex("""^(\s*)(Wprm|Heads)\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     // A trailing-text row (#99): a grocery line, optionally its language.
     private val trailRow = Regex("""^(\s*)Trail\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A name-cut row (#99): a grocery line, optionally its language, the model's name for it.
+    private val nameCutRow = Regex("""^(\s*)NameCut\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?, "((?:[^"\\]|\\.)*)"""")
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
@@ -109,12 +125,28 @@ class DifferentialCorpusTest {
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         countRow.find(line)?.let { m -> return countRow(m) }
+        cardRow.find(line)?.let { m ->
+            val (kind, html) = m.groupValues[2] to unescape(m.groupValues[3])
+            val lines = literal.findAll(m.groupValues[4]).map { unescape(it.groupValues[1]) }.toList()
+            val page = Jsoup.parse(html)
+            val refined = if (kind == "Wprm") WprmIngredients.refine(page, lines) else CardHeadings.refine(page, lines)
+            return m.groupValues[1] + "$kind(${q(html)}, ${list(lines)}, ${list(refined)}),"
+        }
         closeRow.find(line)?.let { m ->
             val (a, b) = unescape(m.groupValues[2]) to unescape(m.groupValues[3])
             val language = m.groupValues[4].ifEmpty { "en" }
             val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
             val close = DecisionCandidates.close(a, b, LanguageWords.forTag(language)!!)
             return m.groupValues[1] + "Close(${q(a)}, ${q(b)}$lang, $close),"
+        }
+        nameCutRow.find(line)?.let { m ->
+            val (text, name) = unescape(m.groupValues[2]) to unescape(m.groupValues[4])
+            val words = LanguageWords.forTag(m.groupValues[3].ifEmpty { "en" })!!
+            val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(m.groupValues[3])}"
+            val ask = GroceryDecisions.nameQuestion(text, words) != null
+            val split = GroceryDecisions.nameSplit(text, name, words)
+            val (core, trailing) = split?.let { q(it.core) to q(it.trailing) } ?: ("nil" to "nil")
+            return m.groupValues[1] + "NameCut(${q(text)}$lang, ${q(name)}, $ask, $core, $trailing),"
         }
         trailRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])

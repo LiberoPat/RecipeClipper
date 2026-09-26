@@ -53,22 +53,31 @@ internal enum class MeasureUnit(
     companion object {
         private val WHITESPACE = Regex("""\s+""")
 
-        // shared/tables/<language>/units.json "names": the first rule the text satisfies wins.
-        private class Name(val unit: MeasureUnit, val exact: List<String>, val prefixes: List<String>)
+        // shared/tables/<language>/units.json "names": the first rule the text satisfies wins. A
+        // caseSensitive rule reads the text as written: "T" is a tablespoon, "t" a teaspoon (#135).
+        private class Name(
+            val unit: MeasureUnit,
+            val exact: List<String>,
+            val prefixes: List<String>,
+            val caseSensitive: Boolean
+        )
 
         private class Names(words: LanguageWords) {
             val names: List<Name> = SharedTables.objects(words.table("units").getJSONArray("names")).map {
                 Name(
                     valueOf(it.getString("unit")),
                     SharedTables.strings(it.optJSONArray("exact")),
-                    SharedTables.strings(it.optJSONArray("prefixes"))
+                    SharedTables.strings(it.optJSONArray("prefixes")),
+                    it.optBoolean("caseSensitive", false)
                 )
             }
         }
 
         fun fromText(text: String, words: LanguageWords = LanguageWords.ENGLISH): MeasureUnit? {
-            val s = text.lowercase().replace(".", "").replace(WHITESPACE, " ")
+            val asWritten = text.replace(".", "").replace(WHITESPACE, " ")
+            val lower = asWritten.lowercase()
             return words.compiled(Names::class) { Names(it) }.names.firstOrNull { name ->
+                val s = if (name.caseSensitive) asWritten else lower
                 s in name.exact || name.prefixes.any { s.startsWith(it) }
             }?.unit
         }

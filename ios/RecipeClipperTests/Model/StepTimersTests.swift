@@ -9,6 +9,7 @@ final class StepTimersTests: XCTestCase {
         XCTAssertEqual(30, StepTimers.parse("Stir for 30 seconds."))
         XCTAssertEqual(7200, StepTimers.parse("Roast for 2 hours."))
         XCTAssertEqual(600, StepTimers.parse("Rest for 10 mins."))
+        XCTAssertEqual(300, StepTimers.parse("Add 1 c. heavy cream and simmer 5 minutes."))
     }
 
     func testARangeUsesItsLowerBound() {
@@ -34,6 +35,7 @@ final class StepTimersTests: XCTestCase {
         XCTAssertNil(StepTimers.parse("Whisk until smooth."))
         XCTAssertNil(StepTimers.parse("Heat the oven to 350°F."))
         XCTAssertNil(StepTimers.parse("Add 2 cups of flour and mix."))
+        XCTAssertNil(StepTimers.parse("Add 2 T. butter and 1 t salt."))
         XCTAssertNil(StepTimers.parse("Mince the garlic finely."))
         XCTAssertNil(StepTimers.parse(""))
     }

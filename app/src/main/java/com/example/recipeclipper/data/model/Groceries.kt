@@ -125,7 +125,11 @@ object GroceryCombiner {
      * rows before checked ones, each in the order its first line was added.
      */
     fun sections(items: List<GroceryItem>, decisions: Decisions = Decisions.NONE): List<Section> {
-        val sorted = items.sortedWith(compareBy({ it.sortOrder }, { it.id }))
+        // Text decided junk is hidden everywhere in Groceries (#99), never stored so.
+        val shown = items.map { item ->
+            GroceryDecisions.shownText(item, decisions).let { if (it == item.text) item else item.copy(text = it) }
+        }
+        val sorted = shown.sortedWith(compareBy({ it.sortOrder }, { it.id }))
         return Aisle.entries.mapNotNull { aisle ->
             val inAisle = sorted.filter { it.aisle == aisle }
             if (inAisle.isEmpty()) return@mapNotNull null
@@ -237,7 +241,7 @@ object GroceryCombiner {
         val lead = p.leading.find(line) ?: return null
         if (lead.groupValues[4].isNotEmpty()) return null // a range is no one figure
         val rest = line.substring(lead.range.last + 1)
-        if (p.notAnAmount.containsMatchIn(rest)) return null
+        if (p.notAnAmount.containsMatchIn(rest) || p.temperature(lead, rest)) return null
         val value = p.parse(lead.groupValues[2])?.takeIf { it > 0 } ?: return null
 
         val unitMatch = c.unitAtStart.find(rest)

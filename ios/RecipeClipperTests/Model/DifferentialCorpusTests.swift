@@ -28,6 +28,10 @@ import XCTest
 // Count-bracket rows (#104): a line, whether it asks the model (needsCountDecision), then the
 // line doubled when unsure, total and each. Write only `Count("4 Apfel (ca. 800g)", lang: "de"),`.
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
+// WP Recipe Maker rows (#118): a card's markup and JSON-LD's lines, then WprmIngredients.refine.
+// Write only `Wprm("<markup>", ["line"]),`, the markup's attributes single-quoted.
+// Tasty Recipes and Mediavine Create rows (#119): the same, then CardHeadings.refine. Write only
+// `Heads("<markup>", ["line"]),`.
 // Trailing-text rows (#99): a grocery line, then GroceryDecisions.split's core and trailing text,
 // or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
@@ -91,10 +95,27 @@ final class DifferentialCorpusTests: XCTestCase {
         }
     }
 
+    private struct Wprm {
+        let html: String; let lines: [String]; let refined: [String]
+        init(_ html: String, _ lines: [String], _ refined: [String]) {
+            self.html = html; self.lines = lines; self.refined = refined
+        }
+    }
+
+    private typealias Heads = Wprm
+
     private struct Trail {
         let line: String; let words: LanguageWords; let core: String?; let trailing: String?
         init(_ line: String, lang: String = "en", _ core: String?, _ trailing: String?) {
             self.line = line; self.words = LanguageWords.forTag(lang)!; self.core = core; self.trailing = trailing
+        }
+    }
+
+    private struct NameCut {
+        let line: String; let words: LanguageWords; let name: String; let ask: Bool; let core: String?; let trailing: String?
+        init(_ line: String, lang: String = "en", _ name: String, _ ask: Bool, _ core: String?, _ trailing: String?) {
+            self.line = line; self.words = LanguageWords.forTag(lang)!; self.name = name; self.ask = ask
+            self.core = core; self.trailing = trailing
         }
     }
 
@@ -186,6 +207,13 @@ final class DifferentialCorpusTests: XCTestCase {
         Ing("2-3 lbs chicken", ["1-1 1/2 lbs chicken", "3-4 1/2 lbs chicken", "4-6 lbs chicken", "2/3-1 lbs chicken"], ["2-3 lbs chicken", "2-3 lbs chicken", "0.91-1.36 kg chicken", "0.91-1.36 kg chicken"], "1.81-2.72 kg chicken", "1-1 1/2 lbs chicken", "chicken"),
         Ing("1/2-1 cup sugar", ["1/4-1/2 cup sugar", "3/4-1 1/2 cup sugar", "1-2 cup sugar", "0.17-1/3 cup sugar"], ["3 1/2-7 oz sugar", "3 1/2-7 oz sugar", "100-200 g sugar", "100-200 g sugar"], "200-400 g sugar", "1 3/4-3 1/2 oz sugar", "sugar"),
         Ing("1 to 1 1/2 cups milk", ["1/2 to 3/4 cups milk", "1 1/2 to 2 1/4 cups milk", "2 to 3 cups milk", "1/3 to 1/2 cups milk"], ["1 to 1 1/2 cups milk", "8 3/4 to 13 oz milk", "240 to 360 ml milk", "240 to 360 ml milk"], "480 to 720 ml milk", "4 1/4 to 6 1/2 oz milk", "milk"),
+        // A whole number, a dash and a proper fraction are a mixed number, not a range (#125).
+        Ing("1-1/2 cups sugar", ["3/4 cups sugar", "2 1/4 cups sugar", "3 cups sugar", "1/2 cups sugar"], ["10 1/2 oz sugar", "10 1/2 oz sugar", "300 g sugar", "300 g sugar"], "600 g sugar", "5 1/4 oz sugar", "sugar"),
+        Ing("1-3/4 cups all-purpose flour", ["7/8 cups all-purpose flour", "2 5/8 cups all-purpose flour", "3 1/2 cups all-purpose flour", "0.58 cups all-purpose flour"], ["7 1/2 oz all-purpose flour", "7 1/2 oz all-purpose flour", "210 g all-purpose flour", "210 g all-purpose flour"], "420 g all-purpose flour", "3 3/4 oz all-purpose flour", "all purpose flour"),
+        Ing("1–1/2 cups milk", ["3/4 cups milk", "2 1/4 cups milk", "3 cups milk", "1/2 cups milk"], ["1–1/2 cups milk", "13 oz milk", "360 ml milk", "360 ml milk"], "720 ml milk", "6 1/2 oz milk", "milk"),
+        Ing("2-½ tsp salt", ["1 1/4 tsp salt", "3 3/4 tsp salt", "5 tsp salt", "0.83 tsp salt"], ["2-½ tsp salt", "2-½ tsp salt", "12 ml salt", "12 ml salt"], "25 ml salt", "1 1/4 tsp salt", "salt"),
+        Ing("1-1/2 to 2 cups milk", ["3/4 to 1 cups milk", "2 1/4 to 3 cups milk", "3 to 4 cups milk", "1/2 to 2/3 cups milk"], ["1-1/2 to 2 cups milk", "13 to 17 1/4 oz milk", "360 to 480 ml milk", "360 to 480 ml milk"], "720 to 960 ml milk", "6 1/2 to 8 3/4 oz milk", "milk"),
+        Ing("1-3/2 cups sugar", ["1-3/2 cups sugar", "1-3/2 cups sugar", "1-3/2 cups sugar", "1-3/2 cups sugar"], ["1-3/2 cups sugar", "1-3/2 cups sugar", "1-3/2 cups sugar", "1-3/2 cups sugar"], "1-3/2 cups sugar", "1-3/2 cups sugar", "sugar"),
         Ing("salt to taste", ["salt to taste", "salt to taste", "salt to taste", "salt to taste"], ["salt to taste", "salt to taste", "salt to taste", "salt to taste"], "salt to taste", "salt to taste", "salt"),
         Ing("Pinch of salt", ["Pinch of salt", "Pinch of salt", "Pinch of salt", "Pinch of salt"], ["Pinch of salt", "Pinch of salt", "Pinch of salt", "Pinch of salt"], "Pinch of salt", "Pinch of salt", "salt"),
         Ing("a pinch of nutmeg", ["a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg"], ["a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg", "a pinch of nutmeg"], "a pinch of nutmeg", "a pinch of nutmeg", "nutmeg"),
@@ -298,8 +326,16 @@ final class DifferentialCorpusTests: XCTestCase {
         Ing("2 CUPS SUGAR", ["1 CUPS SUGAR", "3 CUPS SUGAR", "4 CUPS SUGAR", "2/3 CUPS SUGAR"], ["14 oz SUGAR", "14 oz SUGAR", "400 g SUGAR", "400 g SUGAR"], "800 g SUGAR", "7 oz SUGAR", "sugar"),
         Ing("1 TBSP OIL", ["1/2 TBSP OIL", "1 1/2 TBSP OIL", "2 TBSP OIL", "1/3 TBSP OIL"], ["1 TBSP OIL", "1/2 oz OIL", "15 ml OIL", "15 ml OIL"], "30 ml OIL", "1/4 oz OIL", "oil"),
         Ing("8 OZ. BUTTER", ["4 OZ. BUTTER", "12 OZ. BUTTER", "16 OZ. BUTTER", "2 2/3 OZ. BUTTER"], ["8 OZ. BUTTER", "8 OZ. BUTTER", "225 g BUTTER", "225 g BUTTER"], "455 g BUTTER", "4 OZ. BUTTER", "butter"),
-        Ing("1 c. flour", ["1/2 c. flour", "1 1/2 c. flour", "2 c. flour", "1/3 c. flour"], ["1 c. flour", "1 c. flour", "1 c. flour", "1 c. flour"], "2 c. flour", "1/2 c. flour", "flour"),
-        Ing("2 C flour", ["1 C flour", "3 C flour", "4 C flour", "2/3 C flour"], ["2 C flour", "2 C flour", "2 C flour", "2 C flour"], "4 C flour", "1 C flour", "flour"),
+        Ing("1 c. flour", ["1/2 c. flour", "1 1/2 c. flour", "2 c. flour", "1/3 c. flour"], ["4 1/4 oz flour", "4 1/4 oz flour", "120 g flour", "120 g flour"], "240 g flour", "2 1/8 oz flour", "flour"),
+        Ing("2 C flour", ["1 C flour", "3 C flour", "4 C flour", "2/3 C flour"], ["8 1/2 oz flour", "8 1/2 oz flour", "240 g flour", "240 g flour"], "480 g flour", "4 1/4 oz flour", "flour"),
+        // Old-style units (#135): "c." a cup, "T" a tablespoon, "t" a teaspoon; "180 C" and "T-bone" are not.
+        Ing("2 T. butter", ["1 T. butter", "3 T. butter", "4 T. butter", "2/3 T. butter"], ["1 oz butter", "1 oz butter", "28 g butter", "28 g butter"], "57 g butter", "1/2 oz butter", "butter"),
+        Ing("1 t. baking soda", ["1/2 t. baking soda", "1 1/2 t. baking soda", "2 t. baking soda", "1/3 t. baking soda"], ["1/4 oz baking soda", "1/4 oz baking soda", "6 g baking soda", "6 g baking soda"], "12 g baking soda", "1/2 t. baking soda", "baking soda"),
+        Ing("1 T salt", ["1/2 T salt", "1 1/2 T salt", "2 T salt", "1/3 T salt"], ["1 T salt", "1 T salt", "15 ml salt", "15 ml salt"], "30 ml salt", "1/2 T salt", "salt"),
+        Ing("1 t salt", ["1/2 t salt", "1 1/2 t salt", "2 t salt", "1/3 t salt"], ["1 t salt", "1 t salt", "5 ml salt", "5 ml salt"], "10 ml salt", "1/2 t salt", "salt"),
+        Ing("1/2 c. (1 stick) butter, melted", ["1/4 c. (1/2 stick) butter, melted", "3/4 c. (1 1/2 stick) butter, melted", "1 c. (2 stick) butter, melted", "0.17 c. (1/3 stick) butter, melted"], ["4 oz butter, melted", "4 oz butter, melted", "115 g butter, melted", "115 g butter, melted"], "225 g butter, melted", "2 oz butter, melted", "butter"),
+        Ing("2 T-bone steaks", ["1 T-bone steaks", "3 T-bone steaks", "4 T-bone steaks", "2/3 T-bone steaks"], ["2 T-bone steaks", "2 T-bone steaks", "2 T-bone steaks", "2 T-bone steaks"], "4 T-bone steaks", "1 T-bone steaks", "t bone steaks"),
+        Ing("180 C water", ["180 C water", "180 C water", "180 C water", "180 C water"], ["180 C water", "180 C water", "180 C water", "180 C water"], "180 C water", "180 C water", "water"),
         Ing("1 heaping cup flour", ["1/2 heaping cup flour", "1 1/2 heaping cup flour", "2 heaping cup flour", "1/3 heaping cup flour"], ["1 heaping cup flour", "1 heaping cup flour", "1 heaping cup flour", "1 heaping cup flour"], "2 heaping cup flour", "1/2 heaping cup flour", "flour"),
         Ing("1 cup plus 2 tbsp flour", ["1/2 cup plus 1 tbsp flour", "1 1/2 cup plus 3 tbsp flour", "2 cup plus 4 tbsp flour", "1/3 cup plus 2/3 tbsp flour"], ["4 3/4 oz flour", "4 3/4 oz flour", "135 g flour", "135 g flour"], "270 g flour", "2 3/8 oz flour", "flour"),
         Ing("1 cup + 2 tbsp flour", ["1/2 cup + 1 tbsp flour", "1 1/2 cup + 3 tbsp flour", "2 cup + 4 tbsp flour", "1/3 cup + 2/3 tbsp flour"], ["4 3/4 oz flour", "4 3/4 oz flour", "135 g flour", "135 g flour"], "270 g flour", "2 3/8 oz flour", "flour"),
@@ -441,11 +477,14 @@ final class DifferentialCorpusTests: XCTestCase {
         Ing("½ cup torn basil leaves", ["1/4 cup torn basil leaves", "3/4 cup torn basil leaves", "1 cup torn basil leaves", "0.17 cup torn basil leaves"], ["½ cup torn basil leaves", "½ cup torn basil leaves", "120 ml torn basil leaves", "120 ml torn basil leaves"], "240 ml torn basil leaves", "1/4 cup torn basil leaves", "torn basil leaves"),
         // delish.com
         Ing("3 tbsp. unsalted butter", ["1 1/2 tbsp. unsalted butter", "4 1/2 tbsp. unsalted butter", "6 tbsp. unsalted butter", "1 tbsp. unsalted butter"], ["1 1/2 oz unsalted butter", "1 1/2 oz unsalted butter", "43 g unsalted butter", "43 g unsalted butter"], "85 g unsalted butter", "3/4 oz unsalted butter", "unsalted butter"),
-        Ing("1 1/4 c. almond milk", ["5/8 c. almond milk", "1 7/8 c. almond milk", "2 1/2 c. almond milk", "0.42 c. almond milk"], ["1 1/4 c. almond milk", "1 1/4 c. almond milk", "1 1/4 c. almond milk", "1 1/4 c. almond milk"], "2 1/2 c. almond milk", "5/8 c. almond milk", "almond milk"),
+        Ing("1 1/4 c. almond milk", ["5/8 c. almond milk", "1 7/8 c. almond milk", "2 1/2 c. almond milk", "0.42 c. almond milk"], ["1 1/4 c. almond milk", "10 3/4 oz almond milk", "300 ml almond milk", "300 ml almond milk"], "600 ml almond milk", "5 1/2 oz almond milk", "almond milk"),
         Ing("1 1/2 lb. ground beef", ["3/4 lb. ground beef", "2 1/4 lb. ground beef", "3 lb. ground beef", "1/2 lb. ground beef"], ["1 1/2 lb. ground beef", "1 1/2 lb. ground beef", "680 g ground beef", "680 g ground beef"], "1.36 kg ground beef", "3/4 lb. ground beef", "ground beef"),
         Ing("1 (28-oz.) can crushed tomatoes", ["1/2 (28-oz.) can crushed tomatoes", "1 1/2 (28-oz.) can crushed tomatoes", "2 (28-oz.) can crushed tomatoes", "1/3 (28-oz.) can crushed tomatoes"], ["1 (28-oz.) can crushed tomatoes", "1 (28-oz.) can crushed tomatoes", "1 (28-oz.) can crushed tomatoes", "1 (28-oz.) can crushed tomatoes"], "2 (28-oz.) can crushed tomatoes", "1/2 (28-oz.) can crushed tomatoes", "crushed tomatoes"),
         Ing("1 (15-oz.) can kidney beans, drained", ["1/2 (15-oz.) can kidney beans, drained", "1 1/2 (15-oz.) can kidney beans, drained", "2 (15-oz.) can kidney beans, drained", "1/3 (15-oz.) can kidney beans, drained"], ["1 (15-oz.) can kidney beans, drained", "1 (15-oz.) can kidney beans, drained", "1 (15-oz.) can kidney beans, drained", "1 (15-oz.) can kidney beans, drained"], "2 (15-oz.) can kidney beans, drained", "1/2 (15-oz.) can kidney beans, drained", "kidney beans"),
-        Ing("1/4 c. extra-virgin olive oil", ["1/8 c. extra-virgin olive oil", "3/8 c. extra-virgin olive oil", "1/2 c. extra-virgin olive oil", "0.08 c. extra-virgin olive oil"], ["1/4 c. extra-virgin olive oil", "1/4 c. extra-virgin olive oil", "1/4 c. extra-virgin olive oil", "1/4 c. extra-virgin olive oil"], "1/2 c. extra-virgin olive oil", "1/8 c. extra-virgin olive oil", "extra virgin olive oil"),
+        Ing("1/4 c. extra-virgin olive oil", ["1/8 c. extra-virgin olive oil", "3/8 c. extra-virgin olive oil", "1/2 c. extra-virgin olive oil", "0.08 c. extra-virgin olive oil"], ["1/4 c. extra-virgin olive oil", "1 7/8 oz extra-virgin olive oil", "60 ml extra-virgin olive oil", "60 ml extra-virgin olive oil"], "120 ml extra-virgin olive oil", "1 oz extra-virgin olive oil", "extra virgin olive oil"),
+        Ing("1 1/2 c. cherry tomatoes", ["3/4 c. cherry tomatoes", "2 1/4 c. cherry tomatoes", "3 c. cherry tomatoes", "1/2 c. cherry tomatoes"], ["1 1/2 c. cherry tomatoes", "1 1/2 c. cherry tomatoes", "360 ml cherry tomatoes", "360 ml cherry tomatoes"], "720 ml cherry tomatoes", "3/4 c. cherry tomatoes", "cherry tomatoes"),
+        Ing("3 c. baby spinach", ["1 1/2 c. baby spinach", "4 1/2 c. baby spinach", "6 c. baby spinach", "1 c. baby spinach"], ["3 c. baby spinach", "3 c. baby spinach", "720 ml baby spinach", "720 ml baby spinach"], "1.44 L baby spinach", "1 1/2 c. baby spinach", "baby spinach"),
+        Ing("1/2 c. heavy cream", ["1/4 c. heavy cream", "3/4 c. heavy cream", "1 c. heavy cream", "0.17 c. heavy cream"], ["1/2 c. heavy cream", "4 1/4 oz heavy cream", "120 ml heavy cream", "120 ml heavy cream"], "240 ml heavy cream", "2 1/8 oz heavy cream", "heavy cream"),
         // bbcgoodfood.com
         Ing("1kg strong white bread flour preferably organic or stoneground, plus extra for dusting", ["1/2kg strong white bread flour preferably organic or stoneground, plus extra for dusting", "1 1/2kg strong white bread flour preferably organic or stoneground, plus extra for dusting", "2kg strong white bread flour preferably organic or stoneground, plus extra for dusting", "1/3kg strong white bread flour preferably organic or stoneground, plus extra for dusting"], ["2 lb 3 1/4 oz strong white bread flour preferably organic or stoneground, plus extra for dusting", "2 lb 3 1/4 oz strong white bread flour preferably organic or stoneground, plus extra for dusting", "1kg strong white bread flour preferably organic or stoneground, plus extra for dusting", "1kg strong white bread flour preferably organic or stoneground, plus extra for dusting"], "2kg strong white bread flour preferably organic or stoneground, plus extra for dusting", "1 lb 1 3/4 oz strong white bread flour preferably organic or stoneground, plus extra for dusting", nil),
         Ing("7g dried fast action yeast", ["3 1/2g dried fast action yeast", "10 1/2g dried fast action yeast", "14g dried fast action yeast", "2 1/3g dried fast action yeast"], ["1/4 oz dried fast action yeast", "1/4 oz dried fast action yeast", "7g dried fast action yeast", "7g dried fast action yeast"], "14g dried fast action yeast", "3 1/2g dried fast action yeast", "dried fast action yeast"),
@@ -908,6 +947,7 @@ final class DifferentialCorpusTests: XCTestCase {
         Ins("Cook for 1 hour 30 minutes.", "Cook for 1 hour 30 minutes.", "Cook for 1 hour 30 minutes.", 5400),
         Ins("Rest 2 minutes and 30 seconds.", "Rest 2 minutes and 30 seconds.", "Rest 2 minutes and 30 seconds.", 150),
         Ins("Let it rise for 1-2 hours.", "Let it rise for 1-2 hours.", "Let it rise for 1-2 hours.", 3600),
+        Ins("Bake for 1-1/2 hours.", "Bake for 1-1/2 hours.", "Bake for 1-1/2 hours.", 5400),
         Ins("Give it a 20-minute simmer.", "Give it a 20-minute simmer.", "Give it a 20-minute simmer.", 1200),
         Ins("Cook 1½ hours.", "Cook 1½ hours.", "Cook 1½ hours.", 5400),
         Ins("Microwave 30 secs.", "Microwave 30 secs.", "Microwave 30 secs.", 30),
@@ -1187,6 +1227,9 @@ final class DifferentialCorpusTests: XCTestCase {
         Groc(["1 cup milk", "2 tbsp milk"], "1 1/8 cup milk", ["dairy", "dairy"]),
         Groc(["2 tsp sugar", "1 tsp sugar"], "3 tsp sugar", ["baking", "baking"]),
         Groc(["1/3 cup sugar", "1/3 cup sugar"], "2/3 cup sugar", ["baking", "baking"]),
+        Groc(["1 c. heavy cream", "1 cup heavy cream"], "2 c. heavy cream", ["dairy", "dairy"]),
+        Groc(["1 t. salt", "1 T. salt"], "1 1/3 T. salt", ["spices", "spices"]),
+        Groc(["180 C water", "1 cup water"], nil, ["drinks", "drinks"]),
         Groc(["1 lb ground beef", "8 oz ground beef"], "1 1/2 lb ground beef", ["meat", "meat"]),
         Groc(["500 ml milk", "250 ml milk"], "750 ml milk", ["dairy", "dairy"]),
         Groc(["1 l water", "500 ml water"], "1.5 l water", ["drinks", "drinks"]),
@@ -1202,6 +1245,7 @@ final class DifferentialCorpusTests: XCTestCase {
         Groc(["8 oz milk", "1 cup milk"], nil, ["dairy", "dairy"]),
         Groc(["250 ml milk", "1 cup milk"], nil, ["dairy", "dairy"]),
         Groc(["2-3 cups flour", "1 cup flour"], nil, ["baking", "baking"]),
+        Groc(["1-1/2 cups sugar", "1/2 cup sugar"], "2 cups sugar", ["baking", "baking"]),
         Groc(["1 cup plus 2 tbsp flour", "1 cup flour"], nil, ["baking", "baking"]),
         Groc(["1 cup (120 g) flour", "1 cup flour"], nil, ["baking", "baking"]),
         Groc(["1 cup/120 g flour", "1 cup flour"], nil, ["baking", "baking"]),
@@ -1291,6 +1335,32 @@ final class DifferentialCorpusTests: XCTestCase {
         Close("バター", "無塩バター", lang: "ja", false),
     ]
 
+    private static let wprms: [Wprm] = [
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><h4 class='wprm-recipe-group-name wprm-recipe-ingredient-group-name'>Batter</h4><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'>garlic cloves</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>, minced</span></li><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1 lb / 500 g </span> <span class='wprm-recipe-ingredient-name'>zucchinis </span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>(courgettes)</span></li></ul></div></div>", ["2  garlic cloves (, minced)", "1 lb / 500 g   zucchinis  ((courgettes))"], ["Batter:", "2 garlic cloves, minced", "1 lb / 500 g zucchinis (courgettes)"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1/2</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>plain flour</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>(all-purpose flour), can sub gluten-free flour</span></li></ul></div><div class='wprm-recipe-ingredient-group'><h4 class='wprm-recipe-group-name wprm-recipe-ingredient-group-name'>Minted Yoghurt (optional)</h4><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>tbsp</span> <span class='wprm-recipe-ingredient-name'>fresh mint</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>, finely chopped</span></li></ul></div></div>", ["1/2 cup plain flour ((all-purpose flour), can sub gluten-free flour)", "1 tbsp fresh mint (, finely chopped)"], ["1/2 cup plain flour (all-purpose flour), can sub gluten-free flour", "Minted Yoghurt (optional):", "1 tbsp fresh mint, finely chopped"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><h4 class='wprm-recipe-group-name wprm-recipe-ingredient-group-name'>Sauce:</h4><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-name'>kosher salt</span>, <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>*see notes</span></li></ul></div></div>", ["kosher salt (*see notes)"], ["Sauce:", "kosher salt, *see notes"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><ul><li class=wprm-recipe-ingredient><span class=wprm-recipe-ingredient-amount>1½</span> <span class=wprm-recipe-ingredient-unit>cups</span> <span class=wprm-recipe-ingredient-name>cooked <a href=x>chickpeas</a></span>,&#32;<span class=wprm-recipe-ingredient-notes>drained &amp; rinsed</span></li></ul></div>", ["1½ cups cooked chickpeas (drained & rinsed)"], ["1½ cups cooked chickpeas, drained & rinsed"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'>eggs</span></li><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>milk</span></li></ul></div></div>", ["2 eggs"], ["2 eggs"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'>eggs</span></li><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>milk</span></li></ul></div></div>", ["2 eggs", "1 cup cream"], ["2 eggs", "1 cup cream"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>2</span> <span class='wprm-recipe-ingredient-name'></span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>(minced)</span></li></ul></div></div>", ["2 (minced)"], ["2 (minced)"]),
+        Wprm("<div class='wprm-recipe-ingredients-container'><div class='wprm-recipe-ingredient-group'><ul class='wprm-recipe-ingredients'><li class='wprm-recipe-ingredient'><span class='wprm-recipe-ingredient-amount'>1</span> <span class='wprm-recipe-ingredient-unit'>cup</span> <span class='wprm-recipe-ingredient-name'>rice</span> <span class='wprm-recipe-ingredient-notes wprm-recipe-ingredient-notes-faded'>rinsed</span></li></ul></div></div>", ["1 cup rice"], ["1 cup rice rinsed"]),
+        Wprm("<p>No card on this page.</p>", ["1 cup rice"], ["1 cup rice"]),
+    ]
+
+    private static let heads: [Heads] = [
+        Heads("<div class='tasty-recipes-ingredients'><div class='tasty-recipes-ingredients-header'><h3>Ingredients</h3></div><div class='tasty-recipes-ingredients-body'><ul><li>1 cup peanut butter</li></ul><p><strong>Oreo Crust</strong></p><ul><li>1 14&#8211;ounce package Oreos</li></ul><p>For the Topping:</p><ul><li>3 large eggs</li></ul></div></div>", ["1 cup peanut butter", "1 14-ounce package Oreos", "3 large eggs"], ["1 cup peanut butter", "Oreo Crust:", "1 14-ounce package Oreos", "For the Topping:", "3 large eggs"]),
+        Heads("<div class='tasty-recipes-ingredients'><div class='tasty-recipes-ingredients-header'><h3>Ingredients</h3></div><div class='tasty-recipes-ingredients-body'><ul><li>1 egg</li></ul><p>Use a <strong>big</strong> bowl</p><ul><li>1 cup milk</li></ul><h4>Topping</h4><ul><li>sugar</li></ul><p><strong>To serve:</strong></p></div></div>", ["1 egg", "1 cup milk", "sugar"], ["1 egg", "1 cup milk", "Topping:", "sugar"]),
+        Heads("<div class='tasty-recipes-ingredients'><p>Für den Teig:</p><ul><li>200 g Mehl &ndash; gesiebt</li><li>1 Ei</li></ul></div>", ["200 g Mehl - gesiebt", "1 Ei"], ["Für den Teig:", "200 g Mehl - gesiebt", "1 Ei"]),
+        Heads("<div class='mv-create-ingredients'><h3 class='mv-create-ingredients-title'>Ingredients</h3><div class='mv-create-ingredient-group'><div class='mv-create-ingredient-group-header'><h4>&nbsp;Brownie Cookies</h4></div><ul class='mv-create-ingredient-list'><li>1 batch brownie batter</li></ul></div><div class='mv-create-ingredient-group'><div class='mv-create-ingredient-group-header'><h4>CINNAMON &amp; SUGAR TOPPING</h4></div><ul class='mv-create-ingredient-list'><li>&frac34; cup light brown sugar, packed</li><li>3&frac12; cups confectioners&rsquo; sugar</li></ul></div></div>", ["1 batch brownie batter", "¾ cup light brown sugar, packed", "3½ cups confectioners’ sugar"], ["Brownie Cookies:", "1 batch brownie batter", "CINNAMON & SUGAR TOPPING:", "¾ cup light brown sugar, packed", "3½ cups confectioners’ sugar"]),
+        Heads("<div class='mv-create-ingredients'><h2 class='mv-create-ingredients-title'>Ingredients</h2><h3>Chicken Marinade:</h3><ul><li>1/3 cup olive oil</li></ul><h3>Vegetables:</h3><ul><li>2 red bell peppers</li></ul></div>", ["1/3 cup olive oil", "2 red bell peppers"], ["Chicken Marinade:", "1/3 cup olive oil", "Vegetables:", "2 red bell peppers"]),
+        Heads("<div class='mv-create-ingredients'><h2 class='mv-create-ingredients-title'>Ingredients</h2><h3>Chicken Marinade:</h3><ul><li>1/3 cup olive oil</li></ul><h3>Vegetables:</h3><ul><li>2 red bell peppers</li></ul></div>", ["1/3 cup olive oil"], ["1/3 cup olive oil"]),
+        Heads("<div class='mv-create-ingredients'><h2 class='mv-create-ingredients-title'>Ingredients</h2><h3>Chicken Marinade:</h3><ul><li>1/3 cup olive oil</li></ul><h3>Vegetables:</h3><ul><li>2 red bell peppers</li></ul></div>", ["1/3 cup olive oil", "2 green bell peppers"], ["1/3 cup olive oil", "2 green bell peppers"]),
+        Heads("<div class='mv-create-ingredients'><h3>Dough</h3><ul><li>2 cups flour</li></ul></div>", ["2 cups flour (sifted)"], ["Dough:", "2 cups flour (sifted)"]),
+        Heads("<div class='mv-create-ingredients'><h3>Sauce</h3><ul><li> </li></ul></div>", ["salt"], ["salt"]),
+        Heads("<div class='tasty-recipes-ingredients'><h4>Sauce</h4><ul><li>&mdash;</li></ul></div>", ["—"], ["—"]),
+        Heads("<p>No card on this page.</p>", ["1 egg"], ["1 egg"]),
+    ]
+
     private static let trails: [Trail] = [
         Trail("2 eggs (dfsafs -", "2 eggs", "(dfsafs -"),
         Trail("2 ears of corn, shucked", "2 ears of corn", ", shucked"),
@@ -1306,12 +1376,33 @@ final class DifferentialCorpusTests: XCTestCase {
         Trail("卵 2個（溶く）", lang: "ja", nil, nil),
     ]
 
+    // Name-cut rows (#99): a grocery line and the model's name for it, then whether the name is
+    // asked (GroceryDecisions.nameQuestion) and nameSplit's core and trailing text, or nil.
+    // Write only `NameCut("2 onions dfsafs", "onions"),`.
+    private static let nameCuts: [NameCut] = [
+        NameCut("2 onions dfsafs", "onions", true, "2 onions", "dfsafs"),
+        NameCut("2 onions dfsafs", "Onions", true, "2 onions", "dfsafs"),
+        NameCut("2 onions dfsafs", "onion", true, nil, nil),
+        NameCut("2 onions dfsafs", "2 onions", true, nil, nil),
+        NameCut("2 onions dfsafs", "onions dfsafs", true, nil, nil),
+        NameCut("2 onions dfsafs", "shallots", true, nil, nil),
+        NameCut("2 onions dfs 3", "onions", false, nil, nil),
+        NameCut("2 onions, dfsafs", "onions", false, "2 onions", ", dfsafs"),
+        NameCut("1 cup rice flour xx", "rice flour", true, "1 cup rice flour", "xx"),
+        NameCut("1 cup rice flour", "rice flour", false, nil, nil),
+        NameCut("200 g butter qwerty", "butter", true, "200 g butter", "qwerty"),
+        NameCut("3 tomates asdf", lang: "fr", "tomates", true, "3 tomates", "asdf"),
+        NameCut("玉ねぎ 2個 dfsafs", lang: "ja", "玉ねぎ", false, nil, nil),
+    ]
+
     private static let steps: [Step] = [
         Step("Add the carrots and cook 5 minutes.", ["2 carrots, peeled and diced", "1 onion, chopped"], "Add ⟦2⟧ carrots and cook 5 minutes.", "Add ⟦4⟧ carrots and cook 5 minutes."),
         Step("Stir in the flour.", ["1 cup all-purpose flour"], "Stir in ⟦1 cup⟧ flour.", "Stir in ⟦240 g⟧ flour."),
+        Step("Melt the butter, then whisk in the heavy cream.", ["2 T. butter", "1/2 c. heavy cream"], "Melt ⟦2 T.⟧ butter, then whisk in ⟦1/2 c.⟧ heavy cream.", "Melt ⟦57 g⟧ butter, then whisk in ⟦240 ml⟧ heavy cream."),
         Step("Cream the butter and sugar together until light and fluffy.", ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], "Cream ⟦1 cup (226g)⟧ butter and ⟦2 cups (400g)⟧ sugar together until light and fluffy.", "Cream ⟦452g⟧ butter and ⟦800g⟧ sugar together until light and fluffy."),
         Step("Beat in the eggs one at a time.", ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], "Beat in ⟦3⟧ eggs one at a time.", "Beat in ⟦6⟧ eggs one at a time."),
         Step("Whisk flour, baking powder and salt together.", ["2 cups flour", "1 tsp baking powder", "1/2 tsp salt"], "Whisk ⟦2 cups⟧ flour, ⟦1 tsp⟧ baking powder and ⟦1/2 tsp⟧ salt together.", "Whisk ⟦480 g⟧ flour, ⟦8 g⟧ baking powder and ⟦5 ml⟧ salt together."),
+        Step("Stir in the sugar.", ["1-1/2 cups sugar"], "Stir in ⟦1-1/2 cups⟧ sugar.", "Stir in ⟦600 g⟧ sugar."),
         Step("Add the sugar.", ["1 cup sugar", "For the frosting:", "1/2 cup sugar"], "Add the sugar.", "Add the sugar."),
         Step("Season with salt.", ["1 tsp salt", "salt and pepper"], "Season with salt.", "Season with salt."),
         Step("Add 1 cup of the flour, then half the butter and the remaining sugar.", ["2 cups flour", "115 g butter", "1 cup sugar"], "Add 1 cup of the flour, then half the butter and the remaining sugar.", "Add 1 cup of the flour, then half the butter and the remaining sugar."),
@@ -1513,9 +1604,30 @@ final class DifferentialCorpusTests: XCTestCase {
         }
     }
 
+    func testWprmIngredientsMatchKotlin() {
+        for row in Self.wprms {
+            XCTAssertEqual(WprmIngredients.refine(html: row.html, lines: row.lines), row.refined, row.lines.joined(separator: " | "))
+        }
+    }
+
+    func testCardHeadingsMatchKotlin() {
+        for row in Self.heads {
+            XCTAssertEqual(CardHeadings.refine(html: row.html, lines: row.lines), row.refined, row.lines.joined(separator: " | "))
+        }
+    }
+
     func testCloseNamesMatchKotlin() {
         for row in Self.closes {
             XCTAssertEqual(DecisionCandidates.close(row.a, row.b, words: row.words), row.close, "\(row.a) / \(row.b)")
+        }
+    }
+
+    func testNameCutsMatchKotlin() {
+        for row in Self.nameCuts {
+            XCTAssertEqual(GroceryDecisions.nameQuestion(row.line, words: row.words) != nil, row.ask, row.line)
+            let split = GroceryDecisions.nameSplit(row.line, name: row.name, words: row.words)
+            XCTAssertEqual(split?.core, row.core, "\(row.line) / \(row.name)")
+            XCTAssertEqual(split?.trailing, row.trailing, "\(row.line) / \(row.name)")
         }
     }
 

@@ -39,6 +39,36 @@ class IngredientScalerTest {
         assertEquals("2-4 tbsp oil", scale("1-2 tbsp oil", 2.0))
         assertEquals("2–4 tbsp oil", scale("1–2 tbsp oil", 2.0))
         assertEquals("2 to 4 tbsp oil", scale("1 to 2 tbsp oil", 2.0))
+        assertEquals("4-6 tbsp oil", scale("2-3 tbsp oil", 2.0))
+        assertEquals("1-1 1/2 cup milk", scale("1/2-3/4 cup milk", 2.0))
+        assertEquals("1-2 cup milk", scale("½-1 cup milk", 2.0))
+        assertEquals("2 - 4 cups water", scale("1 - 2 cups water", 2.0))
+        assertEquals("2-3 cups water", scale("1-1 1/2 cups water", 2.0))
+    }
+
+    // Taste of Home writes "1-1/2 cups": a whole number, a dash and a proper fraction, with no
+    // spaces, are a mixed number, never a range running down to the fraction (#125).
+    @Test fun `a hyphenated mixed number is one amount, not a range`() {
+        assertEquals("3 cups sugar", scale("1-1/2 cups sugar", 2.0))
+        assertEquals("3 1/2 cups all-purpose flour", scale("1-3/4 cups all-purpose flour", 2.0))
+        assertEquals("3 cups sugar", scale("1–1/2 cups sugar", 2.0))
+        assertEquals("5 tsp salt", scale("2-½ tsp salt", 2.0))
+        assertEquals("3 to 4 cups milk", scale("1-1/2 to 2 cups milk", 2.0))
+        assertEquals("3-4 cups milk", scale("1-1/2-2 cups milk", 2.0))
+        // Not a proper fraction: neither a mixed number nor a range anyone writes, so as written.
+        assertEquals("1-3/2 cups sugar", scale("1-3/2 cups sugar", 2.0))
+    }
+
+    @Test fun `every reader of the leading amount takes a hyphenated mixed number whole`() {
+        val en = LanguageWords.ENGLISH
+        assertEquals("300 g sugar", UnitConverter.convert("1-1/2 cups sugar", UnitSystem.METRIC, false))
+        assertEquals("2 cups sugar", GroceryCombiner.combine(listOf("1-1/2 cups sugar", "1/2 cup sugar"), en))
+        assertEquals("all purpose flour", IngredientName.of("1-3/4 cups all-purpose flour"))
+        assertEquals(
+            "Stir in ⟦1-1/2 cups⟧ sugar.",
+            StepAmounts.marked(StepAmounts.annotate(listOf("Stir in the sugar."), listOf("1-1/2 cups sugar"), en).single())
+        )
+        assertEquals(5400, StepTimers.parse("Bake for 1-1/2 hours."))
     }
 
     @Test fun `only the leading quantity is scaled`() {
@@ -57,6 +87,16 @@ class IngredientScalerTest {
     @Test fun `a period after the unit does not stop the alternate measure scaling`() {
         assertEquals("2 tsp. (8 g) x", IngredientScaler.scale("1 tsp. (4 g) x", 2.0))
         assertEquals("2 lb. (910 g) chicken", IngredientScaler.scale("1 lb. (455 g) chicken", 2.0))
+    }
+
+    @Test fun `old-style c, T and t are units, so their alternate measures scale too`() {
+        assertEquals("1 c. (2 stick) butter, melted", scale("1/2 c. (1 stick) butter, melted", 2.0))
+        assertEquals("2 T. (30 ml) olive oil", scale("1 T. (15 ml) olive oil", 2.0))
+        assertEquals("1 t (5 ml) vanilla", scale("1/2 t (2.5 ml) vanilla", 2.0))
+        assertEquals("3 c. cherry tomatoes", scale("1 1/2 c. cherry tomatoes", 2.0))
+        // A temperature is not an amount; a T in a word is no unit.
+        assertEquals("180 C water", scale("180 C water", 2.0))
+        assertEquals("4 T-bone steaks", scale("2 T-bone steaks", 2.0))
     }
 
     @Test fun `compound amounts scale both parts and the alternate measure`() {

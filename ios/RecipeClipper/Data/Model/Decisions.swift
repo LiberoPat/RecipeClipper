@@ -13,6 +13,10 @@ enum DecisionKind: String, CaseIterable {
     case sameGrocery
     /// The text after a grocery line's ingredient (#99): a note, maybe a second amount, or junk.
     case trailingText
+    /// The ingredient's name in a grocery line with no separator ("2 onions dfsafs" is "onions"),
+    /// answered as free text (no options). Used only when it is in the line as whole words
+    /// (`GroceryDecisions.nameSplit`); the rest of the line is then a trailing-text question.
+    case ingredientName
 
     static let unsure = "unsure"
 
@@ -23,8 +27,12 @@ enum DecisionKind: String, CaseIterable {
         case .aisle: return Aisle.allCases.map(\.rawValue)
         case .sameGrocery: return ["same", "different"]
         case .trailingText: return ["note", "second_amount", "junk"]
+        case .ingredientName: return []
         }
     }
+
+    /// True when the answer is free text, not a pick from `options`.
+    var freeText: Bool { options.isEmpty }
 }
 
 /// A definite answer about a count's bracket. Unsure is nil: the line stays as written.
@@ -63,6 +71,10 @@ struct DecisionQuestion: Hashable {
 
     static func trailingText(_ text: String, language: String) -> DecisionQuestion {
         DecisionQuestion(kind: .trailingText, input: normalize(text), language: language)
+    }
+
+    static func ingredientName(_ line: String, language: String) -> DecisionQuestion {
+        DecisionQuestion(kind: .ingredientName, input: normalize(line), language: language)
     }
 }
 
@@ -105,6 +117,19 @@ struct Decisions: Equatable {
         guard let language else { return false }
         let answer = answers[.trailingText(text, language: language)]
         return answer == "note" || answer == "junk"
+    }
+
+    /// True only when the text after a grocery line's ingredient is definitely junk: Groceries hides it.
+    func junkTrailing(_ text: String, language: String?) -> Bool {
+        guard let language else { return false }
+        return answers[.trailingText(text, language: language)] == "junk"
+    }
+
+    /// The model's agreed name for a grocery `line`, unchecked (`GroceryDecisions.nameSplit` checks it), or nil.
+    func ingredientName(_ line: String, language: String?) -> String? {
+        guard let language, let answer = answers[.ingredientName(line, language: language)],
+              answer != DecisionKind.unsure else { return nil }
+        return answer
     }
 
     func isAnswered(_ question: DecisionQuestion) -> Bool { answers[question] != nil }

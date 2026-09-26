@@ -81,7 +81,10 @@ class BlogRecipeSource(
         private fun parsePage(doc: Document, url: String): FetchedPage {
             val ldJsonScripts = doc.select("script[type=application/ld+json]").map { it.data() }
             // Microdata only when there is no JSON-LD recipe, so no working site changes.
+            // WP Recipe Maker's ingredient parts refine JSON-LD's lines when they line up (#118);
+            // Tasty Recipes' and Mediavine Create's cards add the group headings JSON-LD drops (#119).
             val recipe = JsonLdRecipeParser.parse(ldJsonScripts, url, JsonLdRecipeParser.pageLanguage(doc))
+                ?.let { it.copy(ingredients = CardHeadings.refine(doc, WprmIngredients.refine(doc, it.ingredients))) }
                 ?: MicrodataRecipeParser.parse(doc, url)
             return if (recipe != null) {
                 FetchedPage(ParseResult.Success(recipe))
