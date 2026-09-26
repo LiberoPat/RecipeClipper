@@ -6,7 +6,9 @@ import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.fake.FakeAppPreferences
+import com.example.recipeclipper.fake.FakeLibraryPolicy
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -54,6 +56,30 @@ class RecipesViewModelTest {
 
             assertEquals(listOf("abc"), repository.historyQueries)
         }
+
+    @Test fun `the free tier shows the count of every recipe against 20 (#107)`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { count.value = 12 }
+        val library = FakeLibraryPolicy(LibraryLimit.Free(20))
+        val vm = RecipesViewModel(repository, FakeAppPreferences(), library)
+        collectEagerly(vm.uiState)
+        advanceUntilIdle()
+        assertEquals(LibraryCount(12, 20), vm.uiState.value.count)
+
+        repository.count.value = 50 // a library from before the limit
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.count!!.over)
+
+        library.limit = LibraryLimit.Unlimited
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.count)
+    }
+
+    @Test fun `with the free tier off there is no count`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = RecipesViewModel(FakeRecipeRepository(), FakeAppPreferences())
+        collectEagerly(vm.uiState)
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.count)
+    }
 
     @Test fun `recipes stays null until the repository answers`() = runTest(mainDispatcherRule.dispatcher) {
         val repository = FakeRecipeRepository()

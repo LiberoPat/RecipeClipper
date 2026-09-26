@@ -19,6 +19,13 @@ struct RecipesScreen: View {
             Group {
                 VStack(alignment: .leading, spacing: 12) {
                     ScreenTitle(Strings.recipesTitle, style: Typography.headlineSmall)
+                    // Quietly, on the free tier only (#107).
+                    if let count = vm.count {
+                        Text(Strings.recipesCount(count.saved, of: count.max))
+                            .textStyle(Typography.bodySmall)
+                            .foregroundStyle(Palette.muted)
+                            .accessibilityIdentifier("recipes.count")
+                    }
                     SearchField(query: state.query, onQueryChange: vm.onQueryChange)
                 }
                 .padding(.bottom, 12)

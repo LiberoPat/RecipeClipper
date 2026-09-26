@@ -8,6 +8,8 @@ enum ClipMessage: Equatable {
     /// A session draft for this page was brought back; offers Discard.
     case draftRestored
     case saveFailed
+    /// The Unlock from the full-library prompt (#107) is pending or failed.
+    case unlock(PurchaseOutcome)
 }
 
 /// A `ClipMessage` to show once. `serial` tells two identical messages apart.
@@ -29,6 +31,8 @@ struct ClipUiState: Equatable {
     var saving = false
     var notice: ClipNotice? = nil
     var savedRecipeId: Int64? = nil
+    /// The clip couldn't be saved: the free library is full and all protected (#107).
+    var libraryFull = false
 }
 
 /// "Clip it yourself" (#37), Android's ClipViewModel. The page itself lives in the view layer;
@@ -42,13 +46,15 @@ final class ClipViewModel {
     @ObservationIgnored private let url: String
     @ObservationIgnored private let repository: RecipeRepository
     @ObservationIgnored private let drafts: ClipDraftStore
+    @ObservationIgnored private let entitlements: Entitlements
     // The page's selection as given, before splitting: a name joins it rather than splitting it.
     @ObservationIgnored private var selectionText = ""
     // The draft before the last assignment or clear, for the snackbar's Undo.
     @ObservationIgnored private var undoTo: ClipDraft?
     @ObservationIgnored private var serial = 0
 
-    init(url: String, repository: RecipeRepository, drafts: ClipDraftStore) {
+    init(url: String, repository: RecipeRepository, drafts: ClipDraftStore, entitlements: Entitlements = UnavailableEntitlements()) {
+        self.entitlements = entitlements
         let cleaned = UrlCleaner.clean(url)
         self.url = cleaned
         self.repository = repository
@@ -139,11 +145,29 @@ final class ClipViewModel {
             case .success(let saved):
                 drafts.remove(url)
                 uiState.savedRecipeId = saved.id
+            case .notKept:
+                uiState.libraryFull = true
             case .error:
                 uiState.notice = notice(.saveFailed)
             }
         }
     }
+
+    /// Unlock from the full-library prompt (#107), then save the clip as it stands.
+    func onUnlock() {
+        uiState.libraryFull = false
+        Task { [weak self, entitlements] in
+            let outcome = await entitlements.purchase()
+            guard let self else { return }
+            if outcome == .unlocked {
+                onSave()
+            } else if outcome.needsNotice {
+                uiState.notice = notice(.unlock(outcome))
+            }
+        }
+    }
+
+    func onLibraryFullDismiss() { uiState.libraryFull = false }
 
     // MARK: Internals
 

@@ -424,4 +424,24 @@
         <item quantity="many">Se añadieron %1$d de comidas de «%2$s»</item>
         <item quantity="other">Se añadieron %1$d comidas de «%2$s»</item>
     </plurals>
+    <!-- The free tier and the unlock (#107) -->
+    <string name="unlock">Desbloquear</string>
+    <string name="unlock_price">Desbloquear por %1$s</string>
+    <string name="unlimited_title">Recetas ilimitadas</string>
+    <string name="unlimited_body">La app gratuita guarda %1$d recetas. Con una compra única se guardan todas las que añadas.</string>
+    <string name="unlimited_restore">Restaurar compra</string>
+    <string name="unlimited_unlocked">Desbloqueado: se guardan todas las recetas.</string>
+    <string name="unlimited_pending">Compra pendiente: se desbloquea cuando se complete el pago.</string>
+    <string name="unlock_failed">No se pudo conectar con la tienda. Inténtalo más tarde.</string>
+    <string name="unlock_nothing">No hay ninguna compra que restaurar en esta cuenta.</string>
+    <string name="recipe_not_kept">No guardada: tus %1$d recetas están todas en listas o planes, o las escribiste tú.</string>
+    <string name="library_full_title">Tu biblioteca está llena</string>
+    <string name="library_full_body">La app gratuita guarda %1$d recetas, y todas las tuyas están en listas o planes, o las escribiste tú. Desbloquea recetas ilimitadas o borra una para hacer sitio.</string>
+    <string name="recipes_count">%1$d de %2$d recetas</string>
+    <string name="recipes_count_over">%1$d recetas, más de las %2$d gratuitas</string>
+    <plurals name="backup_skipped_free">
+        <item quantity="one">%1$d receta antigua sin lista no se añadió: la app gratuita guarda %2$d recetas.</item>
+        <item quantity="many">%1$d de recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$d recetas.</item>
+        <item quantity="other">%1$d recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$d recetas.</item>
+    </plurals>
 </resources>

@@ -146,7 +146,8 @@ object BackupMerger {
         existingPlanUids: Set<String> = emptySet(),
         today: Long? = null,
         existingMenuUids: Set<String> = emptySet(),
-        existingMenuEntryUids: Set<String> = emptySet()
+        existingMenuEntryUids: Set<String> = emptySet(),
+        countsEveryRecipe: Boolean = false
     ): ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         val existingByUrl = HashMap<String, ExistingRecipe>()
@@ -238,7 +239,13 @@ object BackupMerger {
         // So is a recipe typed in by hand (#102): it has no link to bring it back.
         newByUrl.values.filter { it.contentOrigin == "MANUAL" }.mapTo(listedTargets) { Target.New(it.id) }
         val unlistedHere = existingRecipes.count { !it.isListed && Target.Existing(it.id) !in listedTargets }
-        val freePlaces = (historyLimit - unlistedHere).coerceAtLeast(0)
+        // The free tier (#107) counts every recipe, here and coming in protected, not only history.
+        val taken = if (countsEveryRecipe) {
+            existingRecipes.size + newByUrl.values.count { Target.New(it.id) in listedTargets }
+        } else {
+            unlistedHere
+        }
+        val freePlaces = (historyLimit.toLong() - taken).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
         val unlistedNew = newByUrl.values.filter { Target.New(it.id) !in listedTargets }
         val kept = unlistedNew
             .withIndex()
@@ -333,7 +340,8 @@ object BackupMerger {
                 groceriesAdded = newGroceries.size,
                 mealsAdded = newPlanEntries.size,
                 mealTypesAdded = newTypesByName.size,
-                menusAdded = newMenus.size
+                menusAdded = newMenus.size,
+                freeLimit = historyLimit.takeIf { countsEveryRecipe && skipped > 0 }
             ),
             newPantry = newPantry,
             newGroceries = newGroceries,

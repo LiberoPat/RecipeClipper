@@ -67,6 +67,9 @@ class DatabaseErrorTest {
         override fun observeHistory(query: String): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override suspend fun cullHistory(keep: Int, today: Long) = throw throwable()
+        override suspend fun oldestCullable(today: Long): Long? = throw throwable()
+        override suspend fun count(): Int = throw throwable()
+        override fun observeCount(): Flow<Int> = flow { throw throwable() }
         override suspend fun planEntriesFor(recipeId: Long): List<MealPlanEntryEntity> = throw throwable()
         override suspend fun restorePlanEntry(
             id: Long, day: Long, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,

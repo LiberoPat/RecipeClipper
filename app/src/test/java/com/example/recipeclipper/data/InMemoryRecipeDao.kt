@@ -62,6 +62,11 @@ internal class InMemoryRecipeDao : RecipeDao() {
     override fun observeHistory(query: String): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override suspend fun cullHistory(keep: Int, today: Long) {}
+    override suspend fun oldestCullable(today: Long): Long? = rows.values
+        .filter { it.contentOrigin != "MANUAL" }
+        .minWithOrNull(compareBy<RecipeEntity>({ it.lastViewedAt }, { it.id }))?.id
+    override suspend fun count() = rows.size
+    override fun observeCount(): Flow<Int> = emptyFlow()
     override suspend fun planEntriesFor(recipeId: Long) = emptyList<MealPlanEntryEntity>()
     override suspend fun restorePlanEntry(
         id: Long, day: Long, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,

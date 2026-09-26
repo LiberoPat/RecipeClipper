@@ -37,7 +37,12 @@ final class ShareViewController: UIViewController {
         }
         do {
             let clock = SystemClock()
-            return DefaultRecipeRepository(db: try AppDatabase(path: path), source: BlogRecipeSource(), clock: clock)
+            // The limit (#107) the app mirrors into the App Group suite: this process never
+            // sees the flags or StoreKit.
+            let library = DefaultsLibraryLimit(defaults: UserDefaults(suiteName: AppGroup.identifier) ?? .standard)
+            return DefaultRecipeRepository(
+                db: try AppDatabase(path: path), source: BlogRecipeSource(), clock: clock, library: library
+            )
         } catch {
             shareLog.error("couldn't open the shared database: \(String(describing: error), privacy: .public)")
             return nil

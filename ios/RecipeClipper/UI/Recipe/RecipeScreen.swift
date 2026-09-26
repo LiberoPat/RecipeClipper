@@ -34,8 +34,9 @@ struct RecipeScreen: View {
         let state = vm.uiState
         let content = state.content.success
         let clipped = content?.recipe.origin == .clipped
-        // The id isn't known until the parse finishes on the import route.
-        let recipeId = content?.recipe.id
+        // The id isn't known until the parse finishes on the import route, and a recipe shown
+        // but not kept (#107) has none.
+        let recipeId = state.notKept ? nil : content?.recipe.id
 
         Group {
             switch state.content {
@@ -79,6 +80,19 @@ struct RecipeScreen: View {
                 }
             }
         }
+        // A full free library (#107): shown, not kept. Up until unlocked, above the content.
+        .safeAreaInset(edge: .bottom) {
+            if state.notKept && !state.cooking {
+                Snackbar(message: Strings.recipeNotKept, actionLabel: Strings.unlock, action: vm.onUnlock)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    .readableColumn()
+            }
+        }
+        .alert(
+            state.unlockNotice.map(Strings.unlockNotice) ?? "",
+            isPresented: Binding(get: { vm.uiState.unlockNotice != nil }, set: { if !$0 { vm.onUnlockNoticeShown() } })
+        ) {}
         .timerAlerts(state.cook.timers, onAlerted: vm.onTimerAlerted)
         .task(id: recipeId) {
             if let recipeId {
@@ -169,11 +183,15 @@ struct RecipeScreen: View {
     @ViewBuilder
     private func readingActions(_ content: RecipeSuccess) -> some View {
         let saved = saveVM.uiState.isSaved
-        Button { sheetOpen = true } label: {
-            Image(systemName: saved ? "bookmark.fill" : "bookmark")
+        // Lists and the overflow's actions need a saved recipe: not one shown but not kept (#107).
+        let kept = !vm.uiState.notKept
+        if kept {
+            Button { sheetOpen = true } label: {
+                Image(systemName: saved ? "bookmark.fill" : "bookmark")
+            }
+            .accessibilityLabel(saved ? Strings.inAList : Strings.saveToList)
+            .accessibilityIdentifier("recipe.bookmark")
         }
-        .accessibilityLabel(saved ? Strings.inAList : Strings.saveToList)
-        .accessibilityIdentifier("recipe.bookmark")
 
         if let text = vm.shareText(labels: Strings.shareTextLabels) {
             ShareLink(item: text, subject: Text(content.recipe.name), preview: SharePreview(content.recipe.name)) {
@@ -186,7 +204,7 @@ struct RecipeScreen: View {
             ProgressView().tint(Palette.primary)
         }
 
-        Menu {
+        if kept { Menu {
             if let makePlanVM {
                 Button {
                     let plan = planVM ?? makePlanVM()
@@ -225,7 +243,7 @@ struct RecipeScreen: View {
         } label: {
             Image(systemName: "ellipsis.circle")
         }
-        .accessibilityLabel(Strings.moreOptions)
+        .accessibilityLabel(Strings.moreOptions) }
     }
 }
 

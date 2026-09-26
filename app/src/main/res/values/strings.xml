@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">Recipe Clipper</string>
 
     <!-- Common actions -->
@@ -454,5 +454,25 @@
     <plurals name="menu_applied">
         <item quantity="one">Added %1$d meal from “%2$s”</item>
         <item quantity="other">Added %1$d meals from “%2$s”</item>
+    </plurals>
+    <!-- The free tier and the unlock (#107). "recipes" follows the free limit (20) or a count
+         over it, never 1, so these are strings, not plurals. -->
+    <string name="unlock">Unlock</string>
+    <string name="unlock_price">Unlock for %1$s</string>
+    <string name="unlimited_title">Unlimited recipes</string>
+    <string name="unlimited_body" tools:ignore="PluralsCandidate">The free app keeps %1$d recipes. A one-time purchase keeps every recipe you add.</string>
+    <string name="unlimited_restore">Restore purchase</string>
+    <string name="unlimited_unlocked">Unlocked: every recipe is kept.</string>
+    <string name="unlimited_pending">Purchase pending: it unlocks once the payment goes through.</string>
+    <string name="unlock_failed">Couldn\'t reach the store. Try again later.</string>
+    <string name="unlock_nothing">No purchase to restore on this account.</string>
+    <string name="recipe_not_kept" tools:ignore="PluralsCandidate">Not saved: your %1$d recipes are all in lists, plans or typed in.</string>
+    <string name="library_full_title">Your library is full</string>
+    <string name="library_full_body" tools:ignore="PluralsCandidate">The free app keeps %1$d recipes, and yours are all in lists, plans or typed in. Unlock unlimited recipes, or delete one to make room.</string>
+    <string name="recipes_count" tools:ignore="PluralsCandidate">%1$d of %2$d recipes</string>
+    <string name="recipes_count_over" tools:ignore="PluralsCandidate">%1$d recipes, more than the free %2$d</string>
+    <plurals name="backup_skipped_free">
+        <item quantity="one">%1$d older recipe in no list wasn\'t added: the free app keeps %2$d recipes.</item>
+        <item quantity="other">%1$d older recipes in no list weren\'t added: the free app keeps %2$d recipes.</item>
     </plurals>
 </resources>

@@ -9,6 +9,7 @@ import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.LibraryLimit
 import kotlinx.coroutines.flow.Flow
 
 /** One row of a list of recipes: everything except the ingredients and steps. */
@@ -216,11 +217,39 @@ abstract class RecipeDao {
     abstract suspend fun cullHistory(keep: Int, today: Long = NO_PLAN_PROTECTION)
 
     /**
+     * The free tier's one-for-one removal (#107): the oldest-viewed recipe [cullHistory] could
+     * delete (the same protections, keep this WHERE in step with it), or null if every recipe
+     * is protected.
+     */
+    @Query(
+        """
+        SELECT id FROM recipes
+        WHERE id NOT IN (SELECT recipeId FROM recipe_list_cross_ref)
+          AND id NOT IN (SELECT recipeId FROM meal_plan_entries
+                         WHERE recipeId IS NOT NULL AND day >= :today)
+          AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
+          AND contentOrigin != 'MANUAL'
+        ORDER BY lastViewedAt ASC, id ASC
+        LIMIT 1
+        """
+    )
+    abstract suspend fun oldestCullable(today: Long = NO_PLAN_PROTECTION): Long?
+
+    @Query("SELECT COUNT(*) FROM recipes")
+    abstract suspend fun count(): Int
+
+    @Query("SELECT COUNT(*) FROM recipes")
+    abstract fun observeCount(): Flow<Int>
+
+    /**
      * Saves a freshly parsed recipe and returns its id. A link that has been seen before is
      * updated in place, so it keeps its id, its uid, its list membership, its note, its chosen servings,
      * its ticked ingredients if the ingredients didn't change, and its cook progress if the
-     * steps didn't change (both hold indexes). The history cap is enforced in the same
-     * transaction, so the table is never left over the limit.
+     * steps didn't change (both hold indexes). The [limit] is applied in the same transaction
+     * (see [LibraryLimit]): a [LibraryLimit.History] cap is culled after the save; a
+     * [LibraryLimit.Free] one only when a new recipe is added to a library already at or over
+     * it, by removing the oldest unprotected recipe first, one for one. If there is none, nothing
+     * is written and [NOT_KEPT] is returned. Updating a recipe already here never removes one.
      *
      * A row that is the user's version (#29: edited, clipped or typed in, `contentOrigin` not
      * PARSED) keeps its content: the re-share only counts as a view. [replaceUsersVersion] is
@@ -229,12 +258,15 @@ abstract class RecipeDao {
     @Transaction
     open suspend fun upsert(
         fresh: RecipeEntity,
-        historyLimit: Int,
+        limit: LibraryLimit,
         replaceUsersVersion: Boolean = false,
         today: Long = NO_PLAN_PROTECTION
     ): Long {
         val existing = findByUrl(fresh.sourceUrl)
         val id = if (existing == null) {
+            if (limit is LibraryLimit.Free && count() >= limit.max) {
+                delete(oldestCullable(today) ?: return NOT_KEPT)
+            }
             insert(fresh)
         } else if (existing.contentOrigin != ORIGIN_PARSED && !replaceUsersVersion) {
             touch(existing.id, fresh.lastViewedAt)
@@ -243,9 +275,17 @@ abstract class RecipeDao {
             update(keepingUserState(existing, fresh))
             existing.id
         }
-        cullHistory(historyLimit, today)
+        if (limit is LibraryLimit.History) cullHistory(limit.keep, today)
         return id
     }
+
+    /** [upsert] under the old history cap: the app before #107, and most tests. */
+    suspend fun upsert(
+        fresh: RecipeEntity,
+        historyLimit: Int,
+        replaceUsersVersion: Boolean = false,
+        today: Long = NO_PLAN_PROTECTION
+    ): Long = upsert(fresh, LibraryLimit.History(historyLimit), replaceUsersVersion, today)
 
     /**
      * Saves the user's edit of recipe [id] (#29): [edited]'s content, with [origin] and
@@ -298,5 +338,8 @@ abstract class RecipeDao {
         /** The `today` that protects no planned recipe from the cull: no day is on or after
          *  it. The default for callers with no plan in mind; the repository passes today. */
         const val NO_PLAN_PROTECTION = Long.MAX_VALUE
+
+        /** [upsert]'s answer when a full free library had no room (#107): no row has id 0. */
+        const val NOT_KEPT = 0L
     }
 }

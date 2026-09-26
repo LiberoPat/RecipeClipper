@@ -194,6 +194,9 @@ enum ParseError: Equatable, Error {
 enum ParseResult: Equatable {
     case success(Recipe)
     case error(ParseError)
+    /// The free library is full and every recipe in it is protected (#107): the recipe is shown
+    /// but was not saved (its id is 0). Android's `Success(kept = false)`.
+    case notKept(Recipe)
 }
 
 /// One membership row (Android's RecipeListCrossRef).

@@ -239,6 +239,34 @@ class BackupMergerTest {
         assertEquals(3, plan.summary.recipesSkipped)
     }
 
+    @Test fun `on the free tier every recipe here counts, listed ones too (#107)`() {
+        // 15 here, 10 of them listed: only 5 places are free under 20, not 20 - 5.
+        val here = (1..15L).map { ExistingRecipe(it, "u$it", "https://h.example/$it", false, isListed = it <= 10) }
+        val incoming = (1..8).map { i ->
+            BackupRecipe("f$i", "https://f.example/$i", "BLOG", "F$i", null, emptyList(), emptyList(),
+                null, null, null, null, lastViewedAt = i * 10L, checkedIngredients = emptySet(), notes = null)
+        }
+        val plan = BackupMerger.plan(
+            Backup(0, incoming, emptyList(), emptyList()), here, emptyList(), 0, 20, uids(), countsEveryRecipe = true
+        )
+        assertEquals(listOf("f4", "f5", "f6", "f7", "f8"), plan.newRecipes.map { it.id }.sorted())
+        assertEquals(3, plan.summary.recipesSkipped)
+        assertEquals(20, plan.summary.freeLimit)
+    }
+
+    @Test fun `a library over the free limit takes no unlisted recipes, and loses none (#107)`() {
+        val here = (1..30L).map { ExistingRecipe(it, "u$it", "https://h.example/$it", false, isListed = false) }
+        val incoming = listOf(
+            BackupRecipe("f1", "https://f.example/1", "BLOG", "F1", null, emptyList(), emptyList(),
+                null, null, null, null, 0, emptySet(), null)
+        )
+        val plan = BackupMerger.plan(
+            Backup(0, incoming, emptyList(), emptyList()), here, emptyList(), 0, 20, uids(), countsEveryRecipe = true
+        )
+        assertTrue(plan.newRecipes.isEmpty())
+        assertEquals(1, plan.summary.recipesSkipped)
+    }
+
     @Test fun `recipes in a list always come in, even when history is full`() {
         val here = (1..50L).map { ExistingRecipe(it, "u$it", "https://h.example/$it", false, isListed = false) }
         val incoming = listOf(

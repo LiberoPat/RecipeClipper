@@ -188,6 +188,8 @@ struct ImportSummary: Equatable {
     var mealTypesAdded = 0
     /// New menus written (#52).
     var menusAdded = 0
+    /// The free library's size when that is what `recipesSkipped` ran into (#107), else nil.
+    var freeLimit: Int?
 }
 
 /// An export ready to hand to the share sheet.

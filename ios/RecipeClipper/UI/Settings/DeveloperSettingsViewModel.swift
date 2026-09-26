@@ -12,7 +12,9 @@ struct FlagRow: Equatable {
 
 struct DeveloperSettingsUiState: Equatable {
     var flags: [FlagRow] = []
-    var anyChanged: Bool { flags.contains { $0.changed } }
+    /// The unlock (#107) counted as bought, with no store.
+    var unlockedOverride = false
+    var anyChanged: Bool { unlockedOverride || flags.contains { $0.changed } }
 }
 
 /// The hidden Developer settings (#87): a switch per flag and a reset, over `FeatureFlags`.
@@ -32,13 +34,18 @@ final class DeveloperSettingsViewModel {
         refresh()
     }
 
+    func onUnlockedOverrideChange(_ on: Bool) {
+        flags.setUnlockedOverride(on)
+        refresh()
+    }
+
     func onReset() {
         flags.reset()
         refresh()
     }
 
     private func refresh() {
-        uiState = DeveloperSettingsUiState(flags: Flag.allCases.map { flag in
+        var next = DeveloperSettingsUiState(flags: Flag.allCases.map { flag in
             let definition = flags.definition(flag)
             return FlagRow(
                 flag: flag,
@@ -48,5 +55,7 @@ final class DeveloperSettingsViewModel {
                 changed: flags.isOverridden(flag)
             )
         })
+        next.unlockedOverride = flags.unlockedOverride
+        uiState = next
     }
 }

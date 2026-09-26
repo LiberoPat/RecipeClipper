@@ -147,7 +147,8 @@ enum BackupMerger {
         existingPlanUids: Set<String> = [],
         today: Int64? = nil,
         existingMenuUids: Set<String> = [],
-        existingMenuEntryUids: Set<String> = []
+        existingMenuEntryUids: Set<String> = [],
+        countsEveryRecipe: Bool = false
     ) -> ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         var existingByUrl: [String: ExistingRecipe] = [:]
@@ -259,8 +260,12 @@ enum BackupMerger {
         // So is a recipe typed in by hand (#102): it has no link to bring it back.
         for recipe in newByUrl.values where recipe.contentOrigin == "MANUAL" { listedTargets.insert(.new(recipe.id)) }
         let unlistedHere = existingRecipes.filter { !$0.isListed && !listedTargets.contains(.existing($0.id)) }.count
-        let freePlaces = max(0, historyLimit - unlistedHere)
         let newRecipesInOrder = newOrder.compactMap { newByUrl[$0] }
+        // The free tier (#107) counts every recipe, here and coming in protected, not only history.
+        let taken = countsEveryRecipe
+            ? existingRecipes.count + newRecipesInOrder.filter { listedTargets.contains(.new($0.id)) }.count
+            : unlistedHere
+        let freePlaces = max(0, historyLimit - taken)
         let unlistedNew = newRecipesInOrder.filter { !listedTargets.contains(.new($0.id)) }
         let kept = Set(
             unlistedNew.enumerated()
@@ -388,7 +393,8 @@ enum BackupMerger {
                 groceriesAdded: newGroceries.count,
                 mealsAdded: newPlanEntries.count,
                 mealTypesAdded: newTypeOrder.count,
-                menusAdded: newMenus.count
+                menusAdded: newMenus.count,
+                freeLimit: countsEveryRecipe && skipped > 0 ? historyLimit : nil
             ),
             newPantry: newPantry,
             newGroceries: newGroceries,

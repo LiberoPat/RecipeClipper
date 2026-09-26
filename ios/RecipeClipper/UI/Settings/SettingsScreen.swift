@@ -110,6 +110,38 @@ struct SettingsScreen: View {
                     }
                 }
 
+                // "Unlimited recipes" (#107), only with the `freeTier` flag. Actions, not choices,
+                // so plain rows; the unlocked state is a sentence, never a bare checkmark.
+                if let row = vm.unlockRow {
+                    Divided {
+                        SectionHeading(Strings.unlimitedTitle).padding(.bottom, 4)
+                        if row.unlocked {
+                            Text(Strings.unlimitedUnlocked)
+                                .textStyle(Typography.bodyLarge)
+                                .foregroundStyle(Palette.onBackground)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityIdentifier("settings.unlocked")
+                        } else {
+                            ActionRow(
+                                title: row.price.map(Strings.unlockPrice) ?? Strings.unlock,
+                                description: Strings.unlimitedBody,
+                                enabled: !row.busy
+                            ) { vm.onUnlock() }
+                            .accessibilityIdentifier("settings.unlock")
+                            ActionRow(title: Strings.unlimitedRestore, description: nil, enabled: !row.busy) { vm.onRestore() }
+                                .accessibilityIdentifier("settings.restore")
+                            if let status = row.pending ? Strings.unlimitedPending : state.unlockNotice.map(Strings.unlockNotice) {
+                                Text(status)
+                                    .textStyle(Typography.bodyMedium)
+                                    .foregroundStyle(Palette.onBackground)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .accessibilityIdentifier("settings.unlockStatus")
+                            }
+                        }
+                    }
+                }
+
                 // The version, quietly at the foot. Seven taps open Developer settings (#87).
                 Text(Strings.settingsVersion(state.appVersion))
                     .textStyle(Typography.bodySmall)
@@ -152,10 +184,10 @@ struct SettingsScreen: View {
     }
 }
 
-/// A row that does something when tapped: a title and a one-line description.
+/// A row that does something when tapped: a title and, usually, a one-line description.
 private struct ActionRow: View {
     let title: String
-    let description: String
+    let description: String?
     let enabled: Bool
     let action: () -> Void
 
@@ -280,11 +312,13 @@ private struct StackedWhenLargeToggleStyle: ToggleStyle {
 
 private struct TitleAndDescription: View {
     let title: String
-    let description: String
+    let description: String?
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title).textStyle(Typography.bodyLarge).foregroundStyle(Palette.onBackground)
-            Text(description).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
+            if let description {
+                Text(description).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

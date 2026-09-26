@@ -97,6 +97,12 @@ struct RecipeUiState: Equatable {
     /// `reportSiteUrl` is: only a page that loaded with no recipe data can be clipped.
     var clipUrl: String?
 
+    /// The free library is full and every recipe in it is protected (#107): this one is shown
+    /// but wasn't saved, so the screen offers Unlock and hides what needs a saved recipe.
+    var notKept = false
+    /// A purchase from the Unlock prompt that is pending or failed, until the view says so.
+    var unlockNotice: PurchaseOutcome?
+
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }
     /// The recipe screen goes onto ink only when cooking with "Dark while cooking" on.

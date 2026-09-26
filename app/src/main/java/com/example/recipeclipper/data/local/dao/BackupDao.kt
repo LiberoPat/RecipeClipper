@@ -22,6 +22,7 @@ import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.LibraryLimit
 
 /** Everything an export holds, read in one transaction so it is one consistent moment. */
 data class BackupSnapshot(
@@ -157,7 +158,13 @@ abstract class BackupDao {
     abstract suspend fun fillNote(id: Long, notes: String)
 
     @Transaction
-    open suspend fun importBackup(backup: Backup, historyLimit: Int, today: Long?, newUid: () -> String): ImportSummary {
+    open suspend fun importBackup(backup: Backup, limit: LibraryLimit, today: Long?, newUid: () -> String): ImportSummary {
+        // Unlimited (#107) leaves nothing out: every recipe comes in.
+        val historyLimit = when (limit) {
+            is LibraryLimit.History -> limit.keep
+            is LibraryLimit.Free -> limit.max
+            LibraryLimit.Unlimited -> Int.MAX_VALUE
+        }
         val plan = BackupMerger.plan(
             backup = backup,
             existingRecipes = existingRecipes(),
@@ -165,6 +172,7 @@ abstract class BackupDao {
             maxSortOrder = maxSortOrder(),
             historyLimit = historyLimit,
             newUid = newUid,
+            countsEveryRecipe = limit is LibraryLimit.Free,
             existingPantry = existingPantry(),
             existingGroceryUids = existingGroceryUids().toSet(),
             existingMealTypes = existingMealTypes(),

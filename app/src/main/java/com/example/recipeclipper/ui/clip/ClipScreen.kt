@@ -46,6 +46,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.common.LibraryFullDialog
+import com.example.recipeclipper.ui.common.noticeMessage
 import com.example.recipeclipper.data.model.ClipDraft
 import com.example.recipeclipper.data.model.ClipField
 import com.example.recipeclipper.data.model.SourceDomain
@@ -70,6 +72,9 @@ fun ClipScreen(
     LaunchedEffect(state.savedRecipeId) {
         state.savedRecipeId?.let(onSaved)
     }
+    if (state.libraryFull) {
+        LibraryFullDialog(onUnlock = viewModel::onUnlock, onDismiss = viewModel::onLibraryFullDismiss)
+    }
 
     BackHandler {
         if (state.reviewing) viewModel.onBackToPage() else onCancel()
@@ -84,7 +89,7 @@ fun ClipScreen(
         val action = when (notice.message) {
             is ClipMessage.Assigned, is ClipMessage.Cleared -> undoLabel
             ClipMessage.DraftRestored -> discardLabel
-            ClipMessage.SaveFailed -> null
+            ClipMessage.SaveFailed, is ClipMessage.Unlock -> null
         }
         val result = snackbar.showSnackbar(noticeText, actionLabel = action, withDismissAction = false)
         if (result == SnackbarResult.ActionPerformed) {
@@ -182,6 +187,7 @@ private fun noticeText(message: ClipMessage): String = when (message) {
     )
     ClipMessage.DraftRestored -> stringResource(R.string.clip_draft_restored)
     ClipMessage.SaveFailed -> stringResource(R.string.clip_save_failed)
+    is ClipMessage.Unlock -> stringResource(message.outcome.noticeMessage())
 }
 
 @Composable

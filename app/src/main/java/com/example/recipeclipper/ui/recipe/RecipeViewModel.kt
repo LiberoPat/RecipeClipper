@@ -42,6 +42,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.recipeclipper.data.Entitlements
+import com.example.recipeclipper.data.PurchaseOutcome
+import com.example.recipeclipper.data.needsNotice
 import javax.inject.Inject
 import kotlin.math.ceil
 
@@ -57,7 +60,8 @@ class RecipeViewModel @Inject constructor(
     private val clock: Clock,
     private val connectivity: Connectivity,
     private val appInfo: AppInfo,
-    private val alarms: TimerAlarmScheduler
+    private val alarms: TimerAlarmScheduler,
+    private val entitlements: Entitlements = Entitlements.Unavailable
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -114,6 +118,30 @@ class RecipeViewModel @Inject constructor(
 
     fun onRetry() = load()
 
+    /**
+     * The Unlock prompt on a recipe that wasn't kept (#107): buys the unlock, then saves the
+     * recipe on screen. A pending or failed purchase leaves it shown and unsaved, and says so.
+     */
+    fun onUnlock() {
+        viewModelScope.launch {
+            val outcome = entitlements.purchase()
+            if (outcome != PurchaseOutcome.UNLOCKED) {
+                if (outcome.needsNotice) _uiState.update { it.copy(unlockNotice = outcome) }
+                return@launch
+            }
+            val shown = (_uiState.value.content as? RecipeContent.Success)?.recipe ?: return@launch
+            val saved = repository.keep(shown)
+            if (saved is ParseResult.Success && saved.kept) {
+                _uiState.update { state ->
+                    val content = state.content as? RecipeContent.Success
+                    state.copy(notKept = false, content = content?.copy(recipe = saved.recipe) ?: state.content)
+                }
+            }
+        }
+    }
+
+    fun onUnlockNoticeShown() = _uiState.update { it.copy(unlockNotice = null) }
+
     private fun load() {
         loadJob?.cancel()
         reconnectJob?.cancel()
@@ -134,7 +162,8 @@ class RecipeViewModel @Inject constructor(
                             state.temperatureUnit, state.amountsInSteps
                         ),
                         checkedIngredients = result.recipe.checkedIngredients,
-                        notes = result.recipe.notes.orEmpty()
+                        notes = result.recipe.notes.orEmpty(),
+                        notKept = !result.kept
                     )
                     is ParseResult.Error -> state.copy(
                         content = RecipeContent.Error(result.error),

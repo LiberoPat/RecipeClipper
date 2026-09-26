@@ -23,6 +23,10 @@ final class AppContainer {
     private(set) var expiryReminders: ExpiryReminderCoordinator?
     /// The feature flags (#87), read by the root view and Developer settings.
     let featureFlags: FeatureFlags
+    /// The one-time unlock (#107): StoreKit in the live app, none in tests.
+    let entitlements: Entitlements
+    /// Which library limit applies (#107), mirrored for the repositories and the extension.
+    let libraryPolicy: LibraryPolicy
     /// Session drafts for "Clip it yourself" (#37): one store for the app's lifetime.
     let clipDrafts = ClipDraftStore()
     /// A fixed page "Clip it yourself" shows instead of the live one. UI tests only.
@@ -48,7 +52,9 @@ final class AppContainer {
         clipFixtureHTML: String? = nil,
         sharedDatabase: AppDatabase? = nil,
         featureFlags: FeatureFlags? = nil,
-        notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true)
+        notificationPermission: NotificationPermission = FixedNotificationPermission(granted: true),
+        entitlements: Entitlements? = nil,
+        libraryMirror: DefaultsLibraryLimit? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -68,6 +74,8 @@ final class AppContainer {
         self.sharedDatabase = sharedDatabase
         // Unless given a store, overrides last only for this run (unit tests).
         self.featureFlags = featureFlags ?? FeatureFlags(store: MemoryFeatureFlagStore())
+        self.entitlements = entitlements ?? UnavailableEntitlements()
+        libraryPolicy = LibraryPolicy(flags: self.featureFlags, entitlements: self.entitlements, mirror: libraryMirror)
     }
 
     /// Called when the app comes to the foreground. The share extension saves recipes into the
@@ -107,16 +115,19 @@ final class AppContainer {
             fatalError("Couldn't open the recipe database: \(error)")
         }
         let defaults = UserDefaults(suiteName: testing ? "RecipeClipperTestHost" : AppGroup.identifier) ?? .standard
+        // The limit (#107) as the share extension reads it too, from the App Group suite.
+        let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
+        let storeKit = testing ? nil : StoreKitEntitlements()
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
                 db: database, source: BlogRecipeSource(), clock: clock,
-                renderedPages: WebViewRenderedPageSource()
+                renderedPages: WebViewRenderedPageSource(), library: libraryLimit
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock, library: libraryLimit),
             preferences: UserDefaultsAppPreferences(defaults: defaults),
             clock: clock,
             connectivity: PathConnectivity(),
@@ -125,9 +136,13 @@ final class AppContainer {
             alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock),
             sharedDatabase: testing ? nil : database,
             featureFlags: testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore()),
-            notificationPermission: testing ? FixedNotificationPermission(granted: true) : SystemNotificationPermission()
+            notificationPermission: testing ? FixedNotificationPermission(granted: true) : SystemNotificationPermission(),
+            entitlements: storeKit,
+            libraryMirror: libraryLimit
         )
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
+        storeKit?.start()
+        container.libraryPolicy.startMirroring()
         return container
     }
 
@@ -136,7 +151,7 @@ final class AppContainer {
     }
 
     func makeRecipesViewModel() -> RecipesViewModel {
-        RecipesViewModel(repository: recipeRepository, preferences: preferences)
+        RecipesViewModel(repository: recipeRepository, preferences: preferences, library: libraryPolicy)
     }
 
     func makeRecipeViewModel(
@@ -145,7 +160,7 @@ final class AppContainer {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
-            openInCookMode: openInCookMode, plannedServings: plannedServings
+            openInCookMode: openInCookMode, plannedServings: plannedServings, entitlements: entitlements
         )
     }
 
@@ -180,11 +195,11 @@ final class AppContainer {
     }
 
     func makeClipViewModel(url: String) -> ClipViewModel {
-        ClipViewModel(url: url, repository: recipeRepository, drafts: clipDrafts)
+        ClipViewModel(url: url, repository: recipeRepository, drafts: clipDrafts, entitlements: entitlements)
     }
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {
-        EditRecipeViewModel(recipeId: recipeId, repository: recipeRepository)
+        EditRecipeViewModel(recipeId: recipeId, repository: recipeRepository, entitlements: entitlements)
     }
 
     func makeSaveToListViewModel() -> SaveToListViewModel {
@@ -194,7 +209,7 @@ final class AppContainer {
     func makeSettingsViewModel() -> SettingsViewModel {
         SettingsViewModel(
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
-            flags: featureFlags, notificationPermission: notificationPermission
+            flags: featureFlags, notificationPermission: notificationPermission, entitlements: entitlements
         )
     }
 

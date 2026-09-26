@@ -20,6 +20,7 @@ import com.example.recipeclipper.data.remote.RenderedPageSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -41,7 +42,8 @@ class DefaultRecipeRepository @Inject constructor(
     private val recipeDao: RecipeDao,
     private val clock: Clock,
     private val log: ErrorLog,
-    private val renderedPages: RenderedPageSource = RenderedPageSource.None
+    private val renderedPages: RenderedPageSource = RenderedPageSource.None,
+    private val library: LibraryPolicy = LibraryPolicy.HistoryOnly
 ) : RecipeRepository {
 
     override suspend fun importFromUrl(sharedUrl: String): ParseResult {
@@ -54,7 +56,7 @@ class DefaultRecipeRepository @Inject constructor(
         if (usersVersion != null) {
             val viewedAt = clock.now()
             return log.guard("open user's version", ParseResult.Error(ParseError.SaveFailed)) {
-                recipeDao.upsert(usersVersion.copy(lastViewedAt = viewedAt), HISTORY_LIMIT, today = today(viewedAt))
+                recipeDao.upsert(usersVersion.copy(lastViewedAt = viewedAt), library.limit, today = today(viewedAt))
                 ParseResult.Success(usersVersion.copy(lastViewedAt = viewedAt).toDomain())
             }
         }
@@ -62,9 +64,7 @@ class DefaultRecipeRepository @Inject constructor(
         val now = clock.now()
         return when (parsed) {
             is ParseResult.Success -> log.guard("import save", ParseResult.Error(ParseError.SaveFailed)) {
-                val id = recipeDao.upsert(parsed.recipe.toEntity(now), HISTORY_LIMIT, today = today(now))
-                recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
-                    ?: ParseResult.Error(ParseError.SaveFailed)
+                save(parsed.recipe, now)
             }
             is ParseResult.Error -> {
                 // Offline, blocked or anything else: a link opened once still opens.
@@ -86,7 +86,7 @@ class DefaultRecipeRepository @Inject constructor(
         // Filed under the saved link, whatever the parse reports, so it lands on this row.
         val fresh = parsed.recipe.copy(sourceUrl = existing.sourceUrl).toEntity(now)
         return log.guard("updateFromSource save", ParseResult.Error(ParseError.SaveFailed)) {
-            recipeDao.upsert(fresh, HISTORY_LIMIT, replaceUsersVersion = true, today = today(now))
+            recipeDao.upsert(fresh, library.limit, replaceUsersVersion = true, today = today(now))
             recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
                 ?: ParseResult.Error(ParseError.SaveFailed)
         }
@@ -115,8 +115,8 @@ class DefaultRecipeRepository @Inject constructor(
             )
         )
         return log.guard("addManual", null) {
-            val id = recipeDao.upsert(recipe.toEntity(now), HISTORY_LIMIT, today = today(now))
-            recipeDao.get(id)?.toDomain()
+            val id = recipeDao.upsert(recipe.toEntity(now), library.limit, today = today(now))
+            if (id == RecipeDao.NOT_KEPT) recipe else recipeDao.get(id)?.toDomain()
         }
     }
 
@@ -161,7 +161,23 @@ class DefaultRecipeRepository @Inject constructor(
                 origin = ContentOrigin.CLIPPED,
                 editedAt = null
             )
-            val id = recipeDao.upsert(clip.toEntity(clock.now()), HISTORY_LIMIT, replaceUsersVersion = true)
+            val now = clock.now()
+            val id = recipeDao.upsert(clip.toEntity(now), library.limit, replaceUsersVersion = true, today = today(now))
+            saved(id, clip)
+        }
+
+    override suspend fun keep(recipe: Recipe): ParseResult =
+        log.guard("keep", ParseResult.Error(ParseError.SaveFailed)) { save(recipe, clock.now()) }
+
+    /** Saves a parsed recipe as a view at [now], under the library's limit (#107). */
+    private suspend fun save(recipe: Recipe, now: Long): ParseResult =
+        saved(recipeDao.upsert(recipe.toEntity(now), library.limit, today = today(now)), recipe)
+
+    /** The row [id] as saved, or [shown] not kept when the full library had no room. */
+    private suspend fun saved(id: Long, shown: Recipe): ParseResult =
+        if (id == RecipeDao.NOT_KEPT) {
+            ParseResult.Success(shown.copy(id = 0), kept = false)
+        } else {
             recipeDao.get(id)?.let { ParseResult.Success(it.toDomain()) }
                 ?: ParseResult.Error(ParseError.SaveFailed)
         }
@@ -210,6 +226,11 @@ class DefaultRecipeRepository @Inject constructor(
 
     override fun observeRecent(limit: Int): Flow<List<RecipeSummary>> =
         recipeDao.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }.orEmptyOnError(log, "observeRecent")
+
+    override fun observeCount(): Flow<Int> = recipeDao.observeCount().catch { e ->
+        log.error("observeCount failed", e)
+        emit(0)
+    }
 
     /** Today on the user's calendar: a recipe planned for it or later is never culled (#49). */
     private fun today(now: Long): Long = PlanDays.today(now)

@@ -3,7 +3,10 @@ package com.example.recipeclipper.ui.edit
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.Entitlements
+import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.needsNotice
 import com.example.recipeclipper.data.model.RecipeDraft
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +30,11 @@ data class EditRecipeUiState(
     val saveFailed: Boolean = false,
     /** The recipe to edit is gone (deleted elsewhere). */
     val missing: Boolean = false,
-    val savedId: Long? = null
+    val savedId: Long? = null,
+    /** A new recipe couldn't be saved: the free library is full and all protected (#107). */
+    val libraryFull: Boolean = false,
+    /** A purchase from that prompt that is pending or failed; shown until the next edit. */
+    val unlockNotice: PurchaseOutcome? = null
 )
 
 /**
@@ -37,7 +44,8 @@ data class EditRecipeUiState(
 @HiltViewModel
 class EditRecipeViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repository: RecipeRepository
+    private val repository: RecipeRepository,
+    private val entitlements: Entitlements = Entitlements.Unavailable
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -58,7 +66,7 @@ class EditRecipeViewModel @Inject constructor(
     }
 
     fun onDraftChange(draft: RecipeDraft) =
-        _uiState.update { it.copy(draft = draft, saveFailed = false) }
+        _uiState.update { it.copy(draft = draft, saveFailed = false, unlockNotice = null) }
 
     fun onSave() {
         val state = _uiState.value
@@ -75,11 +83,26 @@ class EditRecipeViewModel @Inject constructor(
                 repository.saveEdit(recipeId, state.draft)
             }
             _uiState.update {
-                if (saved == null) it.copy(saving = false, saveFailed = true)
-                else it.copy(saving = false, savedId = saved.id)
+                when {
+                    saved == null -> it.copy(saving = false, saveFailed = true)
+                    saved.id == 0L -> it.copy(saving = false, libraryFull = true)
+                    else -> it.copy(saving = false, savedId = saved.id)
+                }
             }
         }
     }
+
+    /** Unlock from the full-library prompt (#107), then save the recipe as typed. */
+    fun onUnlock() {
+        _uiState.update { it.copy(libraryFull = false) }
+        viewModelScope.launch {
+            val outcome = entitlements.purchase()
+            if (outcome == PurchaseOutcome.UNLOCKED) onSave()
+            else if (outcome.needsNotice) _uiState.update { it.copy(unlockNotice = outcome) }
+        }
+    }
+
+    fun onLibraryFullDismiss() = _uiState.update { it.copy(libraryFull = false) }
 
     companion object {
         const val RECIPE_ID_ARG = "recipeId"
