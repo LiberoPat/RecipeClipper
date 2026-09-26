@@ -11,8 +11,8 @@ enum SourceType: String, Equatable {
 }
 
 /// Whose words a recipe's content is (#29, #37), stored by name in `contentOrigin`. Only
-/// `parsed` is the source's: every other value is the user's version, which a re-share never
-/// refreshes. "Update from source" is the one way back to `parsed`.
+/// `parsed` and `extracted` are the source's: every other value is the user's version, which a
+/// re-share never refreshes. "Update from source" is the one way back to the source's.
 enum ContentOrigin: String, Equatable, CaseIterable {
     /// As parsed from its link. Refreshed on every re-share.
     case parsed = "PARSED"
@@ -22,12 +22,20 @@ enum ContentOrigin: String, Equatable, CaseIterable {
     case clipped = "CLIPPED"
     /// Typed in by hand; its link is a synthetic `ManualRecipe` key, never fetched.
     case manual = "MANUAL"
+    /// Picked from the page's text by the on-device model (#103), every line checked to be on
+    /// the page. The source's, like `parsed`: refreshed on every re-share.
+    case extracted = "EXTRACTED"
 
     /// The user's version: a re-share opens it as it is, without fetching.
-    var isUsersVersion: Bool { self != .parsed }
+    var isUsersVersion: Bool { !Self.isSources(rawValue) }
 
-    /// The origin after the user saves an edit: a parsed recipe becomes EDITED; the rest keep theirs.
-    func afterEdit() -> ContentOrigin { self == .parsed ? .edited : self }
+    /// The origin after the user saves an edit: the source's becomes EDITED; the rest keep theirs.
+    func afterEdit() -> ContentOrigin { isUsersVersion ? self : .edited }
+
+    /// A stored `contentOrigin` that is the source's, so a re-share refreshes it.
+    static func isSources(_ name: String?) -> Bool {
+        name == ContentOrigin.parsed.rawValue || name == ContentOrigin.extracted.rawValue
+    }
 
     /// Stored by name; an unknown name (a newer app's) reads as the user's version, EDITED, so
     /// it is never overwritten by a re-share.

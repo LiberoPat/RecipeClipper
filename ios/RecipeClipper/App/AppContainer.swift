@@ -122,10 +122,13 @@ final class AppContainer {
         // The limit (#107) as the share extension reads it too, from the App Group suite.
         let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
         let storeKit = testing ? nil : StoreKitEntitlements()
+        let featureFlags = testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore())
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
                 db: database, source: BlogRecipeSource(), clock: clock,
-                renderedPages: WebViewRenderedPageSource(), library: libraryLimit
+                renderedPages: WebViewRenderedPageSource(), library: libraryLimit,
+                extractor: FoundationModelsPageRecipeExtractor(),
+                extractionOn: { featureFlags?.isOn(.llmExtraction) ?? false }
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
@@ -139,7 +142,7 @@ final class AppContainer {
             // prompt (UI-test seeding above takes the default, which is the same no-op).
             alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock),
             sharedDatabase: testing ? nil : database,
-            featureFlags: testing ? nil : FeatureFlags(store: UserDefaultsFeatureFlagStore()),
+            featureFlags: featureFlags,
             notificationPermission: testing ? FixedNotificationPermission(granted: true) : SystemNotificationPermission(),
             shortStepRepository: DefaultShortStepRepository(
                 db: database, shortener: FoundationModelsStepShortener(), clock: clock

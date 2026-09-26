@@ -14,6 +14,9 @@ final class DefaultRecipeRepository: RecipeRepository {
     private let renderedPages: RenderedPageSource
     private let renderTimeout: Duration
     private let library: LibraryLimitSource
+    private let extractor: PageRecipeExtractor
+    /// The `llmExtraction` flag (#103), read at each import; the share extension leaves it off.
+    private let extractionOn: () -> Bool
 
     /// How a failed fetch waits before its single retry. Injected so a test doesn't really wait;
     /// throws on cancellation, as `Task.sleep` does.
@@ -35,9 +38,13 @@ final class DefaultRecipeRepository: RecipeRepository {
         sleep: @escaping RetrySleep = { try await Task.sleep(for: $0) },
         renderedPages: RenderedPageSource = NoRenderedPageSource(),
         renderTimeout: Duration = DefaultRecipeRepository.renderTimeout,
-        library: LibraryLimitSource = FixedLibraryLimit()
+        library: LibraryLimitSource = FixedLibraryLimit(),
+        extractor: PageRecipeExtractor = NoPageRecipeExtractor(),
+        extractionOn: @escaping () -> Bool = { false }
     ) {
         self.library = library
+        self.extractor = extractor
+        self.extractionOn = extractionOn
         self.db = db
         self.source = source
         self.clock = clock
@@ -56,7 +63,7 @@ final class DefaultRecipeRepository: RecipeRepository {
             let limit = library.current()
             let usersVersion = try await db.write { conn -> RecipeRecord? in
                 let dao = RecipeDao(db: conn)
-                guard var row = try dao.findByUrl(url), row.contentOrigin != RecipeDao.originParsed
+                guard var row = try dao.findByUrl(url), !ContentOrigin.isSources(row.contentOrigin)
                 else { return nil }
                 row.lastViewedAt = viewedAt
                 _ = try dao.upsert(row, limit: limit, today: PlanDays.today(millis: viewedAt)) // a view, and the cull
@@ -112,29 +119,52 @@ final class DefaultRecipeRepository: RecipeRepository {
             if case .success = fromPage { return fromPage }
         }
 
-        var parsed = await source.fetch(url: url)
+        var fetched = await source.fetchPage(url: url)
 
         // A block or a network blip often clears on its own: wait, then fetch once more. Offline
         // fails straight away, a timeout isn't repeated (a dead Wi-Fi costs one timeout, not
         // two), and a page that loaded with no recipe is never retried.
-        if case .error(let error) = parsed, error.shouldAutoRetry, !Task.isCancelled {
+        if case .error(let error) = fetched.result, error.shouldAutoRetry, !Task.isCancelled {
             do {
                 try await sleep(Self.retryPause)
             } catch {
-                return parsed // cancelled during the pause: the caller writes nothing
+                return fetched.result // cancelled during the pause: the caller writes nothing
             }
-            if !Task.isCancelled { parsed = await source.fetch(url: url) }
+            if !Task.isCancelled { fetched = await source.fetchPage(url: url) }
         }
+        let parsed = fetched.result
 
         // Still blocked, or a page with no recipe data: load it once in an off-screen browser
         // and run what it renders through the same parsers. Never after offline or a timeout.
         // A rendered page with no recipe, or one that doesn't load, leaves the cause standing.
-        if case .error(let error) = parsed, error.triesRenderedPage, !Task.isCancelled,
-           let html = await renderCapped(url), !Task.isCancelled,
-           case .success(let recipe) = BlogRecipeSource.parse(html: html, url: url) {
-            parsed = .success(recipe)
+        guard case .error(let error) = parsed, error.triesRenderedPage, !Task.isCancelled else { return parsed }
+        var rendered: FetchedPage?
+        if let html = await renderCapped(url), !Task.isCancelled {
+            rendered = BlogRecipeSource.parsePage(html: html, url: url)
+            if let rendered, case .success = rendered.result { return rendered.result }
         }
-        return parsed
+        // Last, only for a page that loaded with no recipe data: the on-device model may pick
+        // one out of its text (the rendered page's if there is one; #103).
+        guard error == .noRecipeFound, !Task.isCancelled,
+              let page = rendered?.page ?? fetched.page ?? renderedPage.map({ PageTextReader.read(html: $0, url: url) })
+        else { return parsed }
+        return await extractFromPage(page, url: url) ?? parsed
+    }
+
+    /// A recipe the on-device model picked out of `page`'s text (#103), behind the
+    /// `llmExtraction` flag: the part most likely to hold it (`RecipeTextWindow`), then only what
+    /// `PageRecipe.recipe` finds on the page as written. Nil, and the page stays
+    /// `.noRecipeFound`, on a phone or in a language the model can't read, or when too little of
+    /// what it picked is on the page. Android's `extractFromPage`.
+    private func extractFromPage(_ page: PageText, url: String) async -> ParseResult? {
+        guard extractionOn() else { return nil }
+        let language = PageRecipe.language(page)
+        guard let chars = await extractor.windowChars(language: language),
+              let window = RecipeTextWindow.window(page, maxChars: chars),
+              let picked = await extractor.extract(window, language: language), !Task.isCancelled,
+              let recipe = PageRecipe.recipe(window: window, picked: picked, page: page, url: url)
+        else { return nil }
+        return .success(recipe)
     }
 
     func updateFromSource(id: Int64) async -> ParseResult {

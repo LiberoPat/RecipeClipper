@@ -5689,6 +5689,47 @@
         }
       }
     },
+    "extracted_from_page" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus dem Seitentext übernommen – mit der Quelle abgleichen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picked from the page text — check against the source"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomada del texto de la página: compárala con el original"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tirée du texte de la page : vérifiez-la sur la source"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presa dal testo della pagina: verificala con la fonte"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tirada do texto da página: confira com a fonte"
+          }
+        }
+      }
+    },
     "convert_liquids_description" : {
       "extractionState" : "manual",
       "localizations" : {

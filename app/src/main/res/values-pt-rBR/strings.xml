@@ -286,6 +286,7 @@
     <string name="update_from_source_clip_body">Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. Ela continua nas suas listas e no histórico.</string>
     <string name="clipped_by_you">Recortada por você</string>
     <string name="clipped_by_you_on">Recortada por você · %1$s</string>
+    <string name="extracted_from_page">Tirada do texto da página: confira com a fonte</string>
     <plurals name="clip_lines_selected">
         <item quantity="one">%1$d linha selecionada</item>
         <item quantity="many">%1$d de linhas selecionadas</item>

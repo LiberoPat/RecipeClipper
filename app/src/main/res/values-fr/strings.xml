@@ -286,6 +286,7 @@
     <string name="update_from_source_clip_body">La page est rechargée, et le nom, les ingrédients, les étapes et la photo que vous avez découpés sont remplacés par les données de recette du site. Elle reste dans vos listes et votre historique.</string>
     <string name="clipped_by_you">Découpée par vous</string>
     <string name="clipped_by_you_on">Découpée par vous · %1$s</string>
+    <string name="extracted_from_page">Tirée du texte de la page : vérifiez-la sur la source</string>
     <plurals name="clip_lines_selected">
         <item quantity="one">%1$d ligne sélectionnée</item>
         <item quantity="many">%1$d de lignes sélectionnées</item>
