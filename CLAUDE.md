@@ -389,6 +389,9 @@ Settled; don't reintroduce what they removed. The history behind each is in
   With `aiDecisions` (#99), a cached definite "same" joins close names in one
   row, and trailing text judged a note or junk (never one with a digit) is
   read past; the model writes no number and these rules still decide totals.
+  With no separator, a model's name found verbatim in the line cuts it first.
+  Junk is hidden in Groceries (rows, lines, share) at display time, never
+  stored or hidden in the recipe; notes still show.
 - **Pantry** (#51): an item is a `name` as typed, a `language` (as a typed
   grocery's), an optional `quantity` as written (never read as a number), an
   `aisle`, `inStock`, `alwaysHave` (a staple), and optional `purchasedDay`

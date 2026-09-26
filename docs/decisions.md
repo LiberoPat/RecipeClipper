@@ -2207,8 +2207,23 @@ exact rules still decide every total.
   (a figure is never ignored, whatever the model says), never Japanese or unspaced languages,
   never a package size before the name. Asked only when the line's core names what another
   line names and the two don't already add up. Note or junk: the line is grouped and added up
-  as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"), and it still shows as written under
-  the total. Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
+  as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"). A note still shows as written under
+  the total; **junk is hidden in Groceries** (the owner's option 1): the row, the lines under
+  a total or Together row and the shared text show the line without it ("2 eggs"). That is a
+  display-time transform from the cached answer (`GroceryDecisions.shownText`, applied in
+  `GroceryCombiner.sections`): the stored line is never rewritten, so turning `aiDecisions` off
+  shows it again, and the recipe's reading view always keeps the line as the site wrote it.
+  Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
+- **"What is the ingredient's name?"** (`ingredientName`, free text) catches junk with no
+  separator ("2 onions dfsafs"). Asked only for a line with no separator split whose name has
+  words the aisle table doesn't match after words it does ("onions dfsafs": "onions" is
+  produce, the whole isn't), once per line and language, never in unspaced languages. The
+  answer counts only when both asks agree with high confidence (`DecisionRule`: any agreed
+  non-empty text), it is in the line as whole words (`PageRecipeCheck.find`), the line up to it
+  still reads as an ingredient line whose name ends with it, and what follows is two
+  characters or more with no digit (`GroceryDecisions.nameSplit`). That rest then goes through
+  the trailing-text question above, asked without needing a partner line. Unsure or a failed
+  check: the line stays exactly as today. Pinned by the corpus's `NameCut` rows.
 - **Aisles.** Grouping stays per aisle. When a fresh answer lands, a line in Other moves
   beside its "same" partner, or to its core's aisle once its trailing text is note or junk
   (`GroceryDecisions.filing`, then `fileFromOther`), exactly like #104's aisle answers: only
@@ -2222,4 +2237,5 @@ exact rules still decide every total.
 
 **Needs a real phone:** whether the models say "same" for the owner's corn and garlic pairs and
 "different" for rice flour and whole milk with high confidence both times, whether they tell a
-note from junk from a second amount, and how long the questions take on a long list.
+note from junk from a second amount, whether they copy "onions" out of "2 onions dfsafs"
+verbatim and agree twice, and how long the questions take on a long list.
