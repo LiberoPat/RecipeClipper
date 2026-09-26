@@ -306,12 +306,15 @@
     <string name="add_to_groceries_title">Zum Einkauf hinzufügen</string>
     <string name="action_add_week_to_groceries">Zutaten dieser Woche hinzufügen</string>
     <string name="groceries_week_empty">Für diese Woche sind keine Rezepte geplant.</string>
-    <string name="action_clear_checked">Abgehakte entfernen</string>
     <string name="action_share_groceries">Liste teilen</string>
     <string name="action_move_to_aisle">In anderen Gang verschieben…</string>
     <string name="move_to_aisle_title">Gang</string>
     <string name="snackbar_grocery_deleted">Gelöscht: %1$s</string>
     <string name="snackbar_checked_cleared">Abgehakte Artikel entfernt</string>
+    <string name="snackbar_done_shopping">Vorrat aktualisiert, abgehakte Artikel entfernt</string>
+    <string name="action_done_shopping">Einkauf erledigt</string>
+    <string name="put_away_intro">Hake ab, was in den Vorrat kommt. Alles Abgehakte verschwindet von der Liste.</string>
+    <string name="action_put_away">Einräumen und entfernen</string>
     <string name="aisle_produce">Obst &amp; Gemüse</string>
     <string name="aisle_meat">Fleisch</string>
     <string name="aisle_seafood">Fisch &amp; Meeresfrüchte</string>
@@ -330,12 +333,14 @@
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Zum Vorrat hinzufügen</string>
     <string name="pantry_search_hint">Vorrat durchsuchen</string>
-    <string name="pantry_empty">Noch nichts im Vorrat. Tippe oben ein, was in deinen Schränken ist, oder füge Dinge hinzu, wenn du sie auf der Einkaufsliste abhakst.</string>
+    <string name="pantry_empty">Noch nichts im Vorrat. Tippe oben ein, was in deinen Schränken ist, oder räume Dinge ein, wenn du mit dem Einkauf fertig bist.</string>
     <string name="pantry_no_results">Nichts passt zu „%1$s“.</string>
     <string name="pantry_sort_aisle">Nach Gang sortieren</string>
     <string name="pantry_sort_expiry">Nach Ablaufdatum sortieren</string>
     <string name="pantry_in_stock">Vorrätig</string>
     <string name="pantry_out">Nicht vorrätig</string>
+    <string name="pantry_on_list">Auf der Liste</string>
+    <string name="pantry_take_off_list">Von der Einkaufsliste nehmen</string>
     <string name="pantry_always_have">Immer im Haus</string>
     <string name="pantry_always_have_detail">Grundvorräte stehen nie unter „Zu kaufen“.</string>
     <string name="pantry_expired">Abgelaufen</string>
@@ -348,8 +353,6 @@
     <string name="pantry_no_date">Kein Datum</string>
     <string name="action_set_date">Datum wählen</string>
     <string name="action_clear_date">Datum entfernen</string>
-    <string name="snackbar_pantry_out">%1$s ist aus</string>
-    <string name="snackbar_added_to_groceries">%1$s zum Einkauf hinzugefügt</string>
     <string name="snackbar_pantry_deleted">Gelöscht: %1$s</string>
     <string name="what_i_need_title">Was ich brauche</string>
     <string name="what_i_need_buy">Zu kaufen</string>
@@ -359,8 +362,6 @@
     <string name="what_i_need_you_have">Du hast %1$s</string>
     <string name="what_i_need_added">Zum Einkauf hinzugefügt</string>
     <string name="action_add_to_pantry">Zum Vorrat hinzufügen</string>
-    <string name="snackbar_offer_pantry">%1$s besorgt. Zum Vorrat hinzufügen?</string>
-    <string name="snackbar_pantry_restocked">%1$s ist wieder im Vorrat</string>
     <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
     <string name="settings_version">Version %1$s</string>
     <string name="developer_settings_title">Entwicklereinstellungen</string>

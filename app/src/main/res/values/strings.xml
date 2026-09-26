@@ -353,12 +353,15 @@
     <string name="add_to_groceries_title">Add to groceries</string>
     <string name="action_add_week_to_groceries">Add this week\'s ingredients</string>
     <string name="groceries_week_empty">No recipes are planned this week.</string>
-    <string name="action_clear_checked">Clear checked</string>
     <string name="action_share_groceries">Share list</string>
     <string name="action_move_to_aisle">Move to aisle…</string>
     <string name="move_to_aisle_title">Aisle</string>
     <string name="snackbar_grocery_deleted">Deleted %1$s</string>
     <string name="snackbar_checked_cleared">Checked items removed</string>
+    <string name="snackbar_done_shopping">Pantry updated, checked items removed</string>
+    <string name="action_done_shopping">Done shopping</string>
+    <string name="put_away_intro">Tick what goes in the pantry. Everything checked comes off the list.</string>
+    <string name="action_put_away">Put away and clear</string>
     <string name="aisle_produce">Fruit &amp; vegetables</string>
     <string name="aisle_meat">Meat</string>
     <string name="aisle_seafood">Fish &amp; seafood</string>
@@ -377,12 +380,14 @@
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Add to the pantry</string>
     <string name="pantry_search_hint">Search the pantry</string>
-    <string name="pantry_empty">Nothing in the pantry yet. Type what\'s in your cupboards above, or add things as you tick them off the grocery list.</string>
+    <string name="pantry_empty">Nothing in the pantry yet. Type what\'s in your cupboards above, or put things away when you\'re done shopping.</string>
     <string name="pantry_no_results">Nothing matches “%1$s”.</string>
     <string name="pantry_sort_aisle">Sort by aisle</string>
     <string name="pantry_sort_expiry">Sort by expiry</string>
     <string name="pantry_in_stock">In stock</string>
     <string name="pantry_out">Out</string>
+    <string name="pantry_on_list">On list</string>
+    <string name="pantry_take_off_list">Take off the grocery list</string>
     <string name="pantry_always_have">Always have</string>
     <string name="pantry_always_have_detail">Staples are never under “To buy”.</string>
     <string name="pantry_expired">Expired</string>
@@ -395,8 +400,6 @@
     <string name="pantry_no_date">No date</string>
     <string name="action_set_date">Set date</string>
     <string name="action_clear_date">Clear date</string>
-    <string name="snackbar_pantry_out">%1$s is out</string>
-    <string name="snackbar_added_to_groceries">Added %1$s to groceries</string>
     <string name="snackbar_pantry_deleted">Deleted %1$s</string>
     <string name="what_i_need_title">What I need</string>
     <string name="what_i_need_buy">To buy</string>
@@ -406,8 +409,6 @@
     <string name="what_i_need_you_have">You have %1$s</string>
     <string name="what_i_need_added">Added to groceries</string>
     <string name="action_add_to_pantry">Add to pantry</string>
-    <string name="snackbar_offer_pantry">Got %1$s. Add it to the pantry?</string>
-    <string name="snackbar_pantry_restocked">%1$s is back in stock in the pantry</string>
     <string name="what_i_need_line_source" translatable="false">%1$s · %2$s</string>
     <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
     <string name="settings_version">Version %1$s</string>

@@ -24,8 +24,11 @@ interface PantryRepository {
     /** Everything in the pantry now, for a one-off match (the grocery sheet's first ticks). */
     suspend fun items(): List<PantryItem>
 
-    /** Adds an item in stock, in its [NewPantryItem.aisle] or else the one its name belongs to. A blank name is ignored. */
-    suspend fun add(item: NewPantryItem)
+    /**
+     * Adds an item in stock, in its [NewPantryItem.aisle] or else the one its name belongs to.
+     * Returns its id, for an undo to [delete] it; null when the name was blank (ignored) or the write failed.
+     */
+    suspend fun add(item: NewPantryItem): Long?
 
     suspend fun setInStock(ids: List<Long>, inStock: Boolean)
 
@@ -65,9 +68,9 @@ class DefaultPantryRepository @Inject constructor(
     override suspend fun items(): List<PantryItem> =
         log.guard("pantryItems", emptyList()) { dao.items().map { it.toDomain() } }
 
-    override suspend fun add(item: NewPantryItem) {
-        val name = item.name.trim().takeIf { it.isNotEmpty() } ?: return
-        log.guard("addPantryItem", Unit) {
+    override suspend fun add(item: NewPantryItem): Long? {
+        val name = item.name.trim().takeIf { it.isNotEmpty() } ?: return null
+        return log.guard<Long?>("addPantryItem", null) {
             dao.insert(
                 PantryItemEntity(
                     name = name,

@@ -321,12 +321,15 @@
     <string name="add_to_groceries_title">Añadir a la compra</string>
     <string name="action_add_week_to_groceries">Añadir los ingredientes de esta semana</string>
     <string name="groceries_week_empty">No hay recetas planificadas esta semana.</string>
-    <string name="action_clear_checked">Quitar lo marcado</string>
     <string name="action_share_groceries">Compartir lista</string>
     <string name="action_move_to_aisle">Mover a otro pasillo…</string>
     <string name="move_to_aisle_title">Pasillo</string>
     <string name="snackbar_grocery_deleted">Eliminado: %1$s</string>
     <string name="snackbar_checked_cleared">Artículos marcados eliminados</string>
+    <string name="snackbar_done_shopping">Despensa actualizada, artículos marcados eliminados</string>
+    <string name="action_done_shopping">Compra terminada</string>
+    <string name="put_away_intro">Marca lo que va a la despensa. Todo lo marcado sale de la lista.</string>
+    <string name="action_put_away">Guardar y quitar de la lista</string>
     <string name="aisle_produce">Frutas y verduras</string>
     <string name="aisle_meat">Carne</string>
     <string name="aisle_seafood">Pescado y marisco</string>
@@ -345,12 +348,14 @@
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Añade a la despensa</string>
     <string name="pantry_search_hint">Busca en la despensa</string>
-    <string name="pantry_empty">Aún no hay nada en la despensa. Escribe arriba lo que tienes en los armarios, o añade cosas al marcarlas en la lista de la compra.</string>
+    <string name="pantry_empty">Aún no hay nada en la despensa. Escribe arriba lo que tienes en los armarios, o guarda las cosas al terminar la compra.</string>
     <string name="pantry_no_results">Nada coincide con «%1$s».</string>
     <string name="pantry_sort_aisle">Ordenar por pasillo</string>
     <string name="pantry_sort_expiry">Ordenar por caducidad</string>
     <string name="pantry_in_stock">Disponible</string>
     <string name="pantry_out">Agotado</string>
+    <string name="pantry_on_list">En la lista</string>
+    <string name="pantry_take_off_list">Quitar de la lista de la compra</string>
     <string name="pantry_always_have">Siempre en casa</string>
     <string name="pantry_always_have_detail">Los básicos nunca aparecen en «Por comprar».</string>
     <string name="pantry_expired">Caducado</string>
@@ -363,8 +368,6 @@
     <string name="pantry_no_date">Sin fecha</string>
     <string name="action_set_date">Elegir fecha</string>
     <string name="action_clear_date">Quitar fecha</string>
-    <string name="snackbar_pantry_out">Se acabó: %1$s</string>
-    <string name="snackbar_added_to_groceries">Añadido a la compra: %1$s</string>
     <string name="snackbar_pantry_deleted">Eliminado: %1$s</string>
     <string name="what_i_need_title">Lo que necesito</string>
     <string name="what_i_need_buy">Por comprar</string>
@@ -374,8 +377,6 @@
     <string name="what_i_need_you_have">Tienes %1$s</string>
     <string name="what_i_need_added">Añadido a la compra</string>
     <string name="action_add_to_pantry">Añadir a la despensa</string>
-    <string name="snackbar_offer_pantry">Ya tienes %1$s. ¿Añadirlo a la despensa?</string>
-    <string name="snackbar_pantry_restocked">%1$s vuelve a estar en la despensa</string>
     <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
     <string name="settings_version">Versión %1$s</string>
     <string name="developer_settings_title">Ajustes de desarrollador</string>
