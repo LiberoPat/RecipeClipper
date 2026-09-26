@@ -36,7 +36,7 @@ class RecipeChefModeTest {
 
     private val oven = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
     private val bake = "Bake for 25 to 30 minutes, until the top is golden and springy."
-    private val shortOven = "Oven to 350°F; butter a 9-inch tin."
+    private val shortOven = "Preheat oven to 350°F; butter a 9-inch tin."
     private val model = FakeStepShortener(written = mutableMapOf(oven to shortOven, bake to "Bake 25 min."))
     private val preferences = FakeAppPreferences(chefMode = true)
     private val flagStore = FakeFeatureFlagStore(mapOf("chefMode" to true))
@@ -83,7 +83,7 @@ class RecipeChefModeTest {
         preferences.temperatureUnit = TemperatureUnit.CELSIUS
         val vm = open()
         advanceUntilIdle()
-        assertEquals("Oven to 180°C; butter a 9-inch tin.", vm.content().shortInstructions[0])
+        assertEquals("Preheat oven to 180°C; butter a 9-inch tin.", vm.content().shortInstructions[0])
     }
 
     // Each case: the steps show as written and the model is never asked.
@@ -115,12 +115,12 @@ class RecipeChefModeTest {
     @Test fun `amounts in steps (#101) follow the step as shown, short or as written`() =
         runTest(mainDispatcherRule.dispatcher) {
             val carrots = "Add the carrots to the pot, stir well and let everything cook gently."
-            model.written[carrots] = "Add the carrots; stir."
+            model.written[carrots] = "Add the carrots to the pot; stir."
             preferences.amountsInSteps = true
             val vm = open(recipe().copy(ingredients = listOf("2 carrots, diced"), instructions = listOf(carrots)))
             advanceUntilIdle()
 
-            assertEquals("Add ⟦2⟧ carrots; stir.", StepAmounts.marked(vm.content().shownStepAmounts(0, emptySet())!!))
+            assertEquals("Add ⟦2⟧ carrots to the pot; stir.", StepAmounts.marked(vm.content().shownStepAmounts(0, emptySet())!!))
             vm.onStepAsWrittenToggle(0)
             assertEquals(
                 "Add ⟦2⟧ carrots to the pot, stir well and let everything cook gently.",

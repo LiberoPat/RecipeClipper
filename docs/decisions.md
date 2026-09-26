@@ -1875,6 +1875,31 @@ Part of #99: the model writes words, code owns every number.
   dropped. Dropping a time or an oven temperature fails too, beyond the issue's wording, since
   "Bake until golden" loses what the cook needs; the other half of "350°F (180°C)" may go.
   A step under 40 characters is never sent. Anything else shows as written.
+- **The gate also keeps the words (#129),** because the #105 evaluation found that about half of
+  the short steps it let through dropped or invented something without a number moving ("Press
+  tofu for an hour.", a dropped "grease two baking sheets"). `ShortStepCheck.keepsWords`, by
+  `shared/tables/<language>/chef.json`: every word of the step that is an **ingredient** (the
+  words of each of the recipe's lines' `IngredientName`, or of the line when it has none, less
+  sizes, modifiers and units), an **action** ("preheat", "grease", "fold"), a piece of
+  **equipment** ("bowl", "thermometer"), a **qualifier** ("not", "if", "until", "alternatively")
+  or a **time word** ("a few minutes") must still be in the short step, and the short step may
+  add only function words ("the", "then", "with"). An action word right after "the"/"a" is a
+  noun ("the rest of the flour") and may go. Words match through an ending ("stirring", "stir";
+  "baking", "bake"), an abbreviation ("temp") or the same unit ("mins", "minutes"); nothing
+  else, so a faithful synonym ("set oven" for "preheat") is rejected, by design. Japanese has no
+  word boundaries, so it compares characters: every kanji and katakana of the short step is in
+  the step, and each table entry (a stem, "混ぜ", "鍋") and ingredient name is in both or
+  neither. The repositories pass `recipe.ingredients`.
+  - **Measured** (the #105 harness, `run.sh chef`; qwen2.5:3b over the site-check pages, 103
+    steps, the 78 shorter replies read by hand into `tools/eval/gold/chef.jsonl`: 21 faithful,
+    57 not): shown 55 → 17, faithful among shown 38% → 76%, unfaithful shown 34 → 4, faithful
+    rejected 0 → 8 of 21. The trade: fewer short steps, far fewer wrong ones.
+  - **Still missed:** a dropped "re-cover" (the step's "cover" is still there), "according to
+    the packet instructions" turned into its example's 1 minute, a dropped "the tray on the
+    bottom might need a few extra minutes" tip, a dropped "place the other cardboard on top".
+    **Wrongly rejected:** "if" dropped from an aside (2), a dropped thermometer, bowl or "coat",
+    "set oven" for "preheat", an added "placing" or "adhesion".
+  - Chef mode stays off (flag unchanged) until a phone model is measured with this gate.
 - **Code still owns the numbers:** step timers come from the step as written, and a short step
   is rendered like the step (temperatures in the chosen unit), so the model never writes a
   number the cook sees that the step didn't state. Sharing a recipe sends the steps as written.

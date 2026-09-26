@@ -41,6 +41,10 @@ import java.io.File
  * asked the line's name) and [GroceryDecisions.nameSplit] (the core and trailing text once it
  * answers with that name, or nil); write only the line (optionally `, lang: "fr"`) and the name.
  *
+ * `Short("step", "short")` rows (#100) pin [ShortStepCheck.accept]: the short version, tidied, or
+ * nil; write only the step and the short version (optionally `, lines: [...]`, the recipe's
+ * ingredient lines (#129), and `, lang: "de"`).
+ *
  * `Pick(.kind, "page", "picked")` rows (#103) pin [PageRecipeCheck.find]: the page's own text
  * for what the model picked, or nil; write only the kind (name, ingredient, step, other), the
  * page text and the pick.
@@ -76,8 +80,9 @@ class DifferentialCorpusTest {
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
     private val icsRow = Regex("""^(\s*)Ics\("((?:[^"\\]|\\.)*)"""")
-    // A Chef mode row (#100): a step, a short version of it, optionally their language.
-    private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A Chef mode row (#100): a step, a short version of it, optionally the recipe's ingredient
+    // lines (#129) and their language.
+    private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lines: \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*])?(?:, lang: "([a-z]+)")?""")
     // A page-pick row (#103): the kind, the page's text, what the model picked from it.
     private val pickRow = Regex("""^(\s*)Pick\(\.(name|ingredient|step|other), "((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"""")
     // A count-bracket row (#104): an ingredient line, optionally its language.
@@ -163,11 +168,13 @@ class DifferentialCorpusTest {
         }
         shortRow.find(line)?.let { s ->
             val (step, short) = unescape(s.groupValues[2]) to unescape(s.groupValues[3])
-            val language = s.groupValues[4].ifEmpty { null }
+            val lines = literal.findAll(s.groupValues[4]).map { unescape(it.groupValues[1]) }.toList()
+            val language = s.groupValues[5].ifEmpty { null }
             val words = if (language == null) LanguageWords.ENGLISH else LanguageWords.forTag(language)!!
+            val given = if (lines.isEmpty()) "" else ", lines: ${list(lines)}"
             val lang = if (language == null) "" else ", lang: ${q(language)}"
-            val accepted = ShortStepCheck.accept(step, short, words)?.let { q(it) } ?: "nil"
-            return s.groupValues[1] + "Short(${q(step)}, ${q(short)}$lang, $accepted),"
+            val accepted = ShortStepCheck.accept(step, short, words, lines)?.let { q(it) } ?: "nil"
+            return s.groupValues[1] + "Short(${q(step)}, ${q(short)}$given$lang, $accepted),"
         }
         stepRow.find(line)?.let { m -> return stepRow(m) }
         icsRow.find(line)?.let { m ->
