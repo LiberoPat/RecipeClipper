@@ -46,7 +46,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     @Test
     fun test06_recipesScreen() {
         start()
-        tap("Recipes")
+        tapScrolling("Recipes")
         swipeUp()
         menu("Name")
         typeARecipe()
@@ -81,7 +81,8 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         tap("Sponge Cake")
         swipeUp()
         pause(1000)
-        tap(WalkthroughSeed.CHEF_SHORT, 2500)
+        tap(WalkthroughSeed.CHEF_SHORT, 2500) // as written…
+        tap(WalkthroughSeed.CHEF_STEP, 2000) // …and short again
         tap("Start cooking", 2000)
         tap("As written", 2500)
     }
@@ -89,7 +90,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     @Test
     fun test09_freeTier() {
         start("freeTier")
-        tap("Recipes")
+        tapScrolling("Recipes")
         waitFor(hasText("20 of 20 recipes"))
         pause(2000)
         typeARecipe()

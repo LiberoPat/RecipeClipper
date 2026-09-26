@@ -4,7 +4,9 @@ import android.Manifest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -13,6 +15,7 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -71,6 +74,7 @@ abstract class WalkthroughBase {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         waitFor(hasText("Recipe URL"))
         shell("screenrecord --bit-rate 6000000 $VIDEO")
+        Thread.sleep(1000) // screenrecord takes a moment to start
         pause(1500)
     }
 
@@ -111,7 +115,16 @@ abstract class WalkthroughBase {
         Thread.sleep(ms)
     }
 
-    fun waitFor(matcher: SemanticsMatcher) = compose.waitUntilAtLeastOneExists(matcher, 10_000)
+    /** Waits for [matcher]; on a miss, logs the tree (tag "Walkthrough") and a screenshot path. */
+    fun waitFor(matcher: SemanticsMatcher) {
+        try {
+            compose.waitUntilAtLeastOneExists(matcher, 10_000)
+        } catch (e: Throwable) {
+            shell("screencap -p /data/local/tmp/rc-walkthrough-miss.png")
+            compose.onAllNodes(isRoot()).printToLog("Walkthrough")
+            throw e
+        }
+    }
 
     fun tap(matcher: SemanticsMatcher, pauseMs: Long = 1500) {
         waitFor(matcher)
@@ -119,7 +132,7 @@ abstract class WalkthroughBase {
         pause(pauseMs)
     }
 
-    fun tap(text: String, pauseMs: Long = 1500) = tap(hasText(text), pauseMs)
+    fun tap(text: String, pauseMs: Long = 1500) = tap(hasText(text) and !hasSetTextAction(), pauseMs)
     fun tapDescription(description: String) = tap(hasContentDescription(description))
     fun tapTag(tag: String) = tap(hasTestTag(tag))
 
@@ -127,16 +140,36 @@ abstract class WalkthroughBase {
         waitFor(hasTestTag(tag))
         compose.onAllNodes(hasTestTag(tag))[0].performTextInput(text)
         if (submit) compose.onAllNodes(hasTestTag(tag))[0].performImeAction()
+        Espresso.closeSoftKeyboard()
         pause(800)
     }
 
+    /** Swipes up on the screen's last scrollable (the topmost: a sheet's list over the screen's). */
     fun swipeUp() {
-        compose.onAllNodes(isRoot())[0].performTouchInput { swipeUp() }
+        compose.waitForIdle()
+        val scrollables = compose.onAllNodes(hasScrollAction())
+        val count = scrollables.fetchSemanticsNodes().size
+        val target = if (count > 0) scrollables[count - 1] else compose.onAllNodes(isRoot())[0]
+        target.performTouchInput { swipeUp(startY = bottom * 0.8f, endY = bottom * 0.3f, durationMillis = 600) }
         pause(1000)
     }
 
+    /** Swipes up until [text] is on screen (a lazy list composes only what shows), then taps it. */
+    fun tapScrolling(text: String) {
+        val matcher = hasText(text) and !hasSetTextAction()
+        repeat(5) {
+            if (compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()) return@repeat
+            swipeUp()
+        }
+        tap(matcher)
+    }
+
+    /** The screen's own Back (text or icon), as a person would tap it; else the system back. */
     fun back() {
-        Espresso.pressBack()
+        compose.waitForIdle()
+        val button = hasText("Back") or hasContentDescription("Back")
+        val found = compose.onAllNodes(button).fetchSemanticsNodes().isNotEmpty()
+        if (found) compose.onAllNodes(button)[0].performClick() else Espresso.pressBack()
         pause()
     }
 

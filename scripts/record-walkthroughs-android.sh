@@ -30,7 +30,9 @@ for t in "${TESTS[@]}"; do
   adb shell rm -f /data/local/tmp/rc-walkthrough.mp4
   result=$(adb shell am instrument -w -e class "$P.$t" $PKG.test/$P.WalkthroughRunner)
   if ! echo "$result" | grep -q "OK (1 test)"; then
-    echo "FAILED: $t"; echo "$result" | grep -m3 -E "Exception|Error|at com.example" || true
+    echo "FAILED: $t (screen at the miss: /tmp/android-$slug-miss.png)"
+    echo "$result" | grep -m3 -E "Exception|Error|at com.example" || true
+    adb pull /data/local/tmp/rc-walkthrough-miss.png "/tmp/android-$slug-miss.png" >/dev/null 2>&1 || true
     continue
   fi
   adb pull /data/local/tmp/rc-walkthrough.mp4 "/tmp/android-$slug-raw.mp4" >/dev/null

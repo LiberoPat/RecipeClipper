@@ -1,5 +1,6 @@
 package com.example.recipeclipper.walkthrough
 
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import com.example.recipeclipper.data.StepShortener
 import com.example.recipeclipper.di.ChefModelModule
@@ -23,6 +24,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
     private fun planToday(title: String) {
         scrollTo("weekList", "addToDay-$today")
         tapTag("addToDay-$today")
+        type("addSearch", title.substringBefore(' '), submit = false)
         tap(title)
     }
 
@@ -32,7 +34,8 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
         tap("Chicken Adobo")
         menu("Add to plan")
         tapTag("planDay-$today")
-        tap(hasText("Add to ", substring = true))
+        // The sheet's "Add to Friday" button, not the menu's "Add to plan" as it fades.
+        tap(hasText("Add to ", substring = true) and hasClickAction() and !hasText("plan", substring = true))
         back()
         tap("Week")
         planToday("Weeknight Chili")
@@ -48,7 +51,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
     @Test
     fun test02_groceries() {
         start("mealPlan")
-        for (title in listOf("Chicken Adobo", "Weeknight Chili")) {
+        for (title in listOf("Chicken Adobo", "Weeknight Chili", "Chicken Adobo")) { // Adobo twice: "× 2"
             tap(title)
             menu("Add to groceries")
             tapTag("addToGroceriesButton")

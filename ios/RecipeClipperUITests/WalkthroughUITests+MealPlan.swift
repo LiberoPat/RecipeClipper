@@ -26,7 +26,7 @@ extension WalkthroughUITests {
 
     func test02_groceries() {
         start(flags: ["mealPlan"])
-        for title in ["Chicken Adobo", "Weeknight Chili"] {
+        for title in ["Chicken Adobo", "Weeknight Chili", "Chicken Adobo"] { // Adobo twice: "× 2"
             open(title)
             recipeMenu("Add to groceries")
             app.swipeUp()

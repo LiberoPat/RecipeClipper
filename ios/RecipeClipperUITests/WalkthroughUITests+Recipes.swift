@@ -1,7 +1,13 @@
 import XCTest
 
-/// Walkthroughs 06–10: the Recipes screen, amounts in steps, Chef mode (stub model), the free
-/// tier and a recipe picked from the page text (seeded as such: no model runs).
+// Walkthroughs 06–10: the Recipes screen, amounts in steps, Chef mode (stub model), the free
+// tier and a recipe picked from the page text (seeded as such: no model runs).
+
+/// The seeded step the stub model shortens (UITestSeeding.chefStep, in the app target).
+enum UITestWalkthroughStep {
+    static let chef = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
+}
+
 extension WalkthroughUITests {
 
     /// The editor's multi-line fields are text views; the name is a text field.
@@ -70,8 +76,11 @@ extension WalkthroughUITests {
         app.swipeUp()
         pause(2.5)
         let short = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Oven to 350°F; butter a 9-inch tin.")).firstMatch
-        require(short, "the short step").tap()
+        require(short, "the short step").tap() // as written…
         pause(2.5)
+        let written = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", UITestWalkthroughStep.chef)).firstMatch
+        require(written, "the step as written").tap() // …and short again
+        pause(2)
         require(app.buttons["Start cooking"]).tap()
         pause(2)
         require(app.buttons["As written"], "As written").tap()
