@@ -326,6 +326,19 @@
     <string name="action_paste_list">Coller une liste</string>
     <string name="receive_list_title">Ajouter cette liste</string>
     <string name="receive_list_empty">Le presse-papiers ne contient aucune liste. Copiez-en une d\'abord, puis collez-la ici.</string>
+    <!-- A file sent to someone else's Recipe Clipper (#149, phase 2) -->
+    <string name="action_send_file">Envoyer en fichier</string>
+    <string name="send_file_failed">Impossible de créer le fichier à envoyer.</string>
+    <string name="receive_file_title">Ajouter depuis ce fichier</string>
+    <string name="receive_file_empty">Ce fichier ne contient rien à ajouter.</string>
+    <string name="receive_file_to_pantry">Articles du garde-manger au garde-manger</string>
+    <string name="receive_file_to_groceries">Articles du garde-manger à la liste de courses</string>
+    <!-- %2$d is the free app's recipe limit. -->
+    <plurals name="receive_file_skipped_free">
+        <item quantity="one">%1$d recette n\'a pas été ajoutée : l\'app gratuite garde %2$d recettes.</item>
+        <item quantity="many">%1$d de recettes n\'ont pas été ajoutées : l\'app gratuite garde %2$d recettes.</item>
+        <item quantity="other">%1$d recettes n\'ont pas été ajoutées : l\'app gratuite garde %2$d recettes.</item>
+    </plurals>
     <string name="action_move_to_aisle">Changer de rayon…</string>
     <string name="move_to_aisle_title">Rayon</string>
     <string name="snackbar_grocery_deleted">Supprimé : %1$s</string>

@@ -142,6 +142,11 @@ class DefaultBackupRepositoryTest {
             cookedPhotos += photo.copy(id = id)
             return id
         }
+
+        // A shared file's reads and its "viewed now" (#149): not used by an export or import.
+        override suspend fun recipesByIds(ids: List<Long>) = recipes.filter { it.id in ids }
+        override suspend fun uncheckedGroceries() = groceries.filter { !it.checked }
+        override suspend fun touchByUrl(urls: List<String>, now: Long) = Unit
     }
 
     private class RecordingLog : ErrorLog {

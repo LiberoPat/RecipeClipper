@@ -64,9 +64,10 @@
         </activity>
 
         <!-- Shares an export file (Settings → Export recipes) with the app the user picks.
-             Only cache/exports/ is exposed, and only to the target of that one share. -->
+             Only cache/exports/ is exposed, and only to the target of that one share. A file sent
+             to someone else (#149) goes out as its own type, so their phone opens it in the app. -->
         <provider
-            android:name="androidx.core.content.FileProvider"
+            android:name=".ui.sharefile.ShareFileProvider"
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">

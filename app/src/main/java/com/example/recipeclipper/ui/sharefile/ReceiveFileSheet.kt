@@ -38,6 +38,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.PantryDestination
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
  * "Add from a shared file" (#149, phase 2), over whatever is on screen while
@@ -55,18 +56,21 @@ fun ReceiveFileHost(viewModel: ReceiveFileViewModel, onAdded: (ReceivedWhere) ->
         onAdded(added)
     }
     if (!state.open) return
-    ReceiveFileSheet(
-        state = state,
-        onToggle = viewModel::onToggle,
-        onPantryTo = viewModel::onPantryTo,
-        onAdd = viewModel::onAdd,
-        onDone = {
-            val added = state.added
-            viewModel.onDismiss()
-            if (added != null) onAdded(added)
-        },
-        onDismiss = viewModel::onDismiss
-    )
+    // It sits over any screen, outside each screen's own theme.
+    RecipeClipperTheme {
+        ReceiveFileSheet(
+            state = state,
+            onToggle = viewModel::onToggle,
+            onPantryTo = viewModel::onPantryTo,
+            onAdd = viewModel::onAdd,
+            onDone = {
+                val added = state.added
+                viewModel.onDismiss()
+                if (added != null) onAdded(added)
+            },
+            onDismiss = viewModel::onDismiss
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

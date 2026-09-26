@@ -160,7 +160,7 @@ class MainActivity : ComponentActivity() {
             else -> null
         } ?: return null
         val named = uri.lastPathSegment?.endsWith(".${ShareFile.EXTENSION}", ignoreCase = true) == true
-        return uri.toString().takeIf { intent.type == ShareFile.MIME_TYPE || named }
+        return uri.toString().takeIf { intent?.type == ShareFile.MIME_TYPE || named }
     }
 
     /** Browsers share a link, and messaging apps a message, as EXTRA_TEXT on ACTION_SEND text/plain. */

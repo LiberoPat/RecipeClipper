@@ -326,6 +326,19 @@
     <string name="action_paste_list">Colar uma lista</string>
     <string name="receive_list_title">Adicionar esta lista</string>
     <string name="receive_list_empty">Não há nenhuma lista na área de transferência. Copie uma primeiro e cole aqui.</string>
+    <!-- A file sent to someone else's Recipe Clipper (#149, phase 2) -->
+    <string name="action_send_file">Enviar como arquivo</string>
+    <string name="send_file_failed">Não foi possível criar o arquivo para enviar.</string>
+    <string name="receive_file_title">Adicionar deste arquivo</string>
+    <string name="receive_file_empty">Este arquivo não tem nada para adicionar.</string>
+    <string name="receive_file_to_pantry">Itens da despensa para a despensa</string>
+    <string name="receive_file_to_groceries">Itens da despensa para a lista de compras</string>
+    <!-- %2$d is the free app's recipe limit. -->
+    <plurals name="receive_file_skipped_free">
+        <item quantity="one">%1$d receita não foi adicionada: o app gratuito guarda %2$d receitas.</item>
+        <item quantity="many">%1$d de receitas não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
+        <item quantity="other">%1$d receitas não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
+    </plurals>
     <string name="action_move_to_aisle">Mover para outro corredor…</string>
     <string name="move_to_aisle_title">Corredor</string>
     <string name="snackbar_grocery_deleted">Excluído: %1$s</string>
