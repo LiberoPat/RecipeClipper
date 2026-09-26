@@ -90,6 +90,13 @@ class GroceriesViewModel @Inject constructor(
     private var restocked: PantryRepository.Snapshot? = null
     private var offers = 0L
 
+    // Declared before init: a list that is already there is collected during construction.
+    private var latestItems: List<GroceryItem> = emptyList()
+
+    // Grocery questions and items already asked about in this visit, so each is asked once.
+    private val askedGrocery = mutableSetOf<DecisionQuestion>()
+    private val askedAisles = mutableSetOf<Long>()
+
     init {
         viewModelScope.launch {
             pantry.observeItems().collect { pantryItems = it }
@@ -109,11 +116,6 @@ class GroceriesViewModel @Inject constructor(
             }
         }
     }
-
-    private var latestItems: List<GroceryItem> = emptyList()
-
-    // Grocery questions already asked in this visit, so each is asked once.
-    private val askedGrocery = mutableSetOf<DecisionQuestion>()
 
     /**
      * Asks the model about close names and trailing text (#99), in the background. The list
@@ -138,9 +140,6 @@ class GroceriesViewModel @Inject constructor(
             }
         }
     }
-
-    // Items already asked about in this visit, so each is asked once.
-    private val askedAisles = mutableSetOf<Long>()
 
     /**
      * Asks the model the aisle of each item in Other whose name the keyword table doesn't know
