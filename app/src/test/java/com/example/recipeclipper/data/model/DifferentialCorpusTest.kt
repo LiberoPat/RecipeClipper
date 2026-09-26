@@ -48,6 +48,9 @@ import java.io.File
  * `Verify("page", "name", [ingredients], [steps])` rows (#128) pin [PageRecipeCheck.verify]: the
  * ingredients and steps it keeps, one recipe's only (nil, nil: no recipe); write only those four.
  *
+ * `Lines("window", [(3, 5)], [(7, 9)])` rows (#128) pin [PageLines.selection]: the lines the
+ * model's runs of line numbers name, ingredients then steps; write only the window and the runs.
+ *
  * `Wprm("markup", [lines])` rows (#118) pin [WprmIngredients.refine]: JSON-LD's lines refined by
  * a WP Recipe Maker card's markup; write only the markup (single-quoted attributes) and the lines.
  * `Heads("markup", [lines])` rows (#119) pin [CardHeadings.refine] the same way, for a Tasty Recipes
@@ -86,6 +89,10 @@ class DifferentialCorpusTest {
     // A whole-pick row (#128): the page's text, then the picked name, ingredients and steps.
     private val verifyRow =
         Regex("""^(\s*)Verify\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A line-runs row (#128): the window's text, then the ingredient and step runs the model named.
+    private val linesRow =
+        Regex("""^(\s*)Lines\("((?:[^"\\]|\\.)*)", \[((?:\s*\(-?\d+, -?\d+\),?)*)\s*], \[((?:\s*\(-?\d+, -?\d+\),?)*)\s*]""")
+    private val runLiteral = Regex("""\((-?\d+), (-?\d+)\)""")
     // A count-bracket row (#104): an ingredient line, optionally its language.
     private val countRow = Regex("""^(\s*)Count\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A close-names row (#104): two ingredient names, optionally their language.
@@ -169,6 +176,16 @@ class DifferentialCorpusTest {
             val kept = PageRecipeCheck.verify(page, PageSelection(name, ingredients, steps))
             val result = kept?.let { "${list(it.ingredients)}, ${list(it.steps)}" } ?: "nil, nil"
             return v.groupValues[1] + "Verify(${q(page)}, ${q(name)}, ${list(ingredients)}, ${list(steps)}, $result),"
+        }
+        linesRow.find(line)?.let { m ->
+            val window = unescape(m.groupValues[2])
+            val (ingredients, steps) = listOf(m.groupValues[3], m.groupValues[4]).map { g ->
+                runLiteral.findAll(g).map { LineRun(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }.toList()
+            }
+            val picked = PageLines.selection(window, PagePick("", ingredients, steps))
+            fun runs(r: List<LineRun>) = r.joinToString(", ", "[", "]") { "(${it.first}, ${it.last})" }
+            return m.groupValues[1] +
+                "Lines(${q(window)}, ${runs(ingredients)}, ${runs(steps)}, ${list(picked.ingredients)}, ${list(picked.steps)}),"
         }
         pickRow.find(line)?.let { p ->
             val (kind, page, picked) = Triple(p.groupValues[2], unescape(p.groupValues[3]), unescape(p.groupValues[4]))

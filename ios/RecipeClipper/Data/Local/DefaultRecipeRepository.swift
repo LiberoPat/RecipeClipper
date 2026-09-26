@@ -155,19 +155,15 @@ final class DefaultRecipeRepository: RecipeRepository {
     /// `llmExtraction` flag: the part most likely to hold it (`RecipeTextWindow`), then only what
     /// `PageRecipe.recipe` finds on the page as written. Nil, and the page stays
     /// `.noRecipeFound`, on a phone or in a language the model can't read, or when too little of
-    /// what it picked is on the page. Asked in two parts (#128), the recipe and then its steps, so
-    /// a long recipe's reply fits; either failing is no recipe. Android's `extractFromPage`.
+    /// what it picked is on the page. Android's `extractFromPage`.
     private func extractFromPage(_ page: PageText, url: String) async -> ParseResult? {
         guard extractionOn() else { return nil }
         let language = PageRecipe.language(page)
         guard let chars = await extractor.windowChars(language: language),
               let window = RecipeTextWindow.window(page, maxChars: chars),
-              var picked = await extractor.extract(window, language: language), !Task.isCancelled,
-              let name = picked.name, !name.kTrimmed.isEmpty,
-              let steps = await extractor.extractSteps(window, language: language, name: name), !Task.isCancelled
+              let picked = await extractor.extract(window, language: language), !Task.isCancelled,
+              let recipe = PageRecipe.recipe(window: window, picked: picked, page: page, url: url)
         else { return nil }
-        picked.steps = steps
-        guard let recipe = PageRecipe.recipe(window: window, picked: picked, page: page, url: url) else { return nil }
         return .success(recipe)
     }
 

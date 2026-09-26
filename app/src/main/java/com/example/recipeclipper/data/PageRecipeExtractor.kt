@@ -17,22 +17,17 @@ interface PageRecipeExtractor {
     suspend fun windowChars(language: String): Int?
 
     /**
-     * What the model picked out of [text] as the recipe, all but its steps (asked apart, so a
-     * long recipe's reply fits: #128), or null when it found none or couldn't answer. Unchecked:
-     * [PageRecipeCheck][com.example.recipeclipper.data.model.PageRecipeCheck] keeps only what is
-     * on the page.
+     * What the model picked out of [text] as the recipe, or null when it found none or couldn't
+     * answer. Unchecked: [PageRecipeCheck][com.example.recipeclipper.data.model.PageRecipeCheck]
+     * keeps only what is on the page.
      */
     suspend fun extract(text: String, language: String): PageSelection?
-
-    /** The steps of the recipe called [name] that the model picked out of [text], or null when it couldn't answer. */
-    suspend fun extractSteps(text: String, language: String, name: String): List<String>?
 
     companion object {
         /** Reads nothing: the default for tests that aren't about extraction. */
         val None: PageRecipeExtractor = object : PageRecipeExtractor {
             override suspend fun windowChars(language: String): Int? = null
             override suspend fun extract(text: String, language: String): PageSelection? = null
-            override suspend fun extractSteps(text: String, language: String, name: String): List<String>? = null
         }
     }
 }

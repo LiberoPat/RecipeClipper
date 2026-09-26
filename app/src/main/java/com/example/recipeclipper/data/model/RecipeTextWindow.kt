@@ -100,6 +100,10 @@ object RecipeTextWindow {
 
     internal fun isStepsHeading(line: String) = isHeading(line, headings.second)
 
+    /** A line that is only an ingredients or steps heading ("Ingredients:", "INSTRUCTIONS"); [PageLines] drops it (#128). */
+    internal fun isBareHeading(line: String): Boolean =
+        line.lowercase().trim { !it.isLetterOrDigit() } in headings.first + headings.second
+
     /** "2 cups flour", "• ½ tsp salt", "Mehl 200 g", "砂糖 大さじ2": an amount first, or a short line with one. */
     internal fun looksLikeIngredient(line: String): Boolean {
         if (line.length > INGREDIENT_MAX) return false

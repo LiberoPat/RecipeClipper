@@ -87,6 +87,16 @@ enum RecipeTextWindow {
 
     static func isStepsHeading(_ line: String) -> Bool { isHeading(line, headings.steps) }
 
+    /// A line that is only an ingredients or steps heading ("Ingredients:", "INSTRUCTIONS"); `PageLines` drops it (#128).
+    static func isBareHeading(_ line: String) -> Bool {
+        let units = Array(line.lowercased().utf16)
+        var start = 0, end = units.count
+        while start < end, !PageRecipeCheck.isLetterOrDigit(units[start]) { start += 1 }
+        while end > start, !PageRecipeCheck.isLetterOrDigit(units[end - 1]) { end -= 1 }
+        let text = Array(units[start..<end])
+        return (headings.ingredients + headings.steps).contains { Array($0.utf16) == text }
+    }
+
     /// "2 cups flour", "• ½ tsp salt", "Mehl 200 g", "砂糖 大さじ2": an amount first, or a short line with one.
     static func looksLikeIngredient(_ line: String) -> Bool {
         if length(line) > ingredientMax { return false }

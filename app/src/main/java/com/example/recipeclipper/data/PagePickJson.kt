@@ -1,33 +1,35 @@
 package com.example.recipeclipper.data
 
-import com.example.recipeclipper.data.model.PageSelection
+import com.example.recipeclipper.data.model.LineRun
+import com.example.recipeclipper.data.model.PagePick
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
 
 /**
- * The Prompt API's reply as a [PageSelection] (#103), strictly: one JSON object, optionally in
- * one Markdown code fence, and nothing else around it; `name`, `yield` and the times a string
- * or null, `ingredients` and `steps` arrays of strings. Anything else (text around the object,
- * a number where a string belongs, a list of objects) is no answer at all, never a guess at
- * what the model meant. Keys it doesn't know are ignored. Pure.
+ * The Prompt API's reply as a [PagePick] (#103, line runs since #128), strictly: one JSON
+ * object, optionally in one Markdown code fence, and nothing else around it; `name`, `yield` and
+ * the times a string or null, `ingredients` and `steps` arrays of `{"first": n, "last": n}` with
+ * whole numbers. Anything else (text around the object, a number where a string belongs, a run
+ * as text or as a pair) is no answer at all, never a guess at what the model meant. Keys it
+ * doesn't know are ignored. Pure.
  */
-internal object PageSelectionJson {
+internal object PagePickJson {
 
     private val FENCE = Regex("^```(?:json)?\\s*\\n(.*)\\n\\s*```$", RegexOption.DOT_MATCHES_ALL)
 
-    fun parse(reply: String): PageSelection? {
+    fun parse(reply: String): PagePick? {
         val trimmed = reply.trim()
         val body = FENCE.find(trimmed)?.groupValues?.get(1)?.trim() ?: trimmed
         return try {
             val tokener = JSONTokener(body)
             val json = tokener.nextValue() as? JSONObject ?: return null
             if (tokener.nextClean() != 0.toChar()) return null
-            PageSelection(
+            PagePick(
                 name = string(json, "name"),
-                ingredients = strings(json, "ingredients") ?: return null,
-                steps = strings(json, "steps") ?: return null,
+                ingredients = runs(json, "ingredients") ?: return null,
+                steps = runs(json, "steps") ?: return null,
                 yield = string(json, "yield"),
                 prepTime = string(json, "prepTime"),
                 cookTime = string(json, "cookTime"),
@@ -48,10 +50,13 @@ internal object PageSelectionJson {
         else -> throw WrongType()
     }
 
-    /** The array's strings (absent or null is empty); null if it isn't an array of strings. */
-    private fun strings(json: JSONObject, key: String): List<String>? = when (val v = json.opt(key)) {
+    /** The array's runs (absent or null is none); null if it isn't an array of runs. */
+    private fun runs(json: JSONObject, key: String): List<LineRun>? = when (val v = json.opt(key)) {
         null, JSONObject.NULL -> emptyList()
-        is JSONArray -> List(v.length()) { v.opt(it) as? String ?: return null }.filter { it.isNotBlank() }
+        is JSONArray -> List(v.length()) { i ->
+            val run = v.opt(i) as? JSONObject ?: return null
+            LineRun(run.opt("first") as? Int ?: return null, run.opt("last") as? Int ?: return null)
+        }
         else -> null
     }
 }

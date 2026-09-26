@@ -45,6 +45,8 @@ import XCTest
 // Whole-pick rows (#128): a page's text, a picked name, ingredients and steps, then what
 // PageRecipeCheck.verify keeps of them (one recipe's lines only; nil, nil: no recipe). Write only
 // `Verify("Soup\nIngredients\n1 cup water", "Soup", ["1 cup water"], []),`.
+// Line-runs rows (#128): a window's text, the ingredient and step runs the model named by line
+// number, then the lines PageLines.selection takes. Write only `Lines("Soup\n1 cup water", [(2, 2)], []),`.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -1511,6 +1513,23 @@ final class DifferentialCorpusTests: XCTestCase {
         Verify("Soup\nIngredients\n1 cup water", "Stew", ["1 cup water"], [], nil, nil),
     ]
 
+    private struct Lines {
+        let window: String; let ingredients: [LineRun]; let steps: [LineRun]; let kept: [String]; let keptSteps: [String]
+        init(_ window: String, _ ingredients: [(Int, Int)], _ steps: [(Int, Int)], _ kept: [String], _ keptSteps: [String]) {
+            self.window = window
+            self.ingredients = ingredients.map { LineRun(first: $0.0, last: $0.1) }
+            self.steps = steps.map { LineRun(first: $0.0, last: $0.1) }
+            self.kept = kept; self.keptSteps = keptSteps
+        }
+    }
+
+    private static let lines: [Lines] = [
+        Lines("Banana Bread\nIngredients\n▢ 3 bananas\n▢ ⅓ cup butter\nInstructions\n1. Mash the bananas.\nBake 1 hour.", [(2, 4)], [(5, 7)], ["3 bananas", "⅓ cup butter"], ["1. Mash the bananas.", "Bake 1 hour."]),
+        Lines("Soup\nIngredients\n1 cup water\n1 onion\nMethod:\nBoil.\nServe.", [(3, 4), (9, 12), (4, 2)], [(4, 7), (0, 1)], ["1 cup water"], ["Boil.", "Serve."]),
+        Lines("Apfelkuchen\nZutaten\n• 200 g Mehl\nFür den Guss:\n- 2 Eier\nZubereitung\nDas Mehl sieben.", [(2, 5)], [(6, 7)], ["200 g Mehl", "Für den Guss:", "2 Eier"], ["Das Mehl sieben."]),
+        Lines("肉じゃが\n材料（2人分）\n砂糖 大さじ2\n作り方\n鍋で煮る。", [(3, 3)], [(4, 5)], ["砂糖 大さじ2"], ["鍋で煮る。"]),
+    ]
+
     private static let jsonLd: [(String, [String], Recipe?)] = [
         ("wprm_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Article\",\"@id\":\"https://x.com/#article\",\"headline\":\"Best Brownies\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"}},{\"@type\":\"WebPage\",\"@id\":\"https://x.com/\"},{\"@type\":\"Recipe\",\"name\":\"Fudgy Brownies &amp; Ice Cream\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"},\"image\":[\"https://x.com/a-1x1.jpg\",\"https://x.com/a-4x3.jpg\"],\"recipeYield\":[\"16\",\"16 brownies\"],\"prepTime\":\"PT15M\",\"cookTime\":\"PT25M\",\"totalTime\":\"PT40M\",\"recipeIngredient\":[\"1 cup (226g) butter\",\"2 cups (400g) sugar\",\"&frac12; cup cocoa\",\"<strong>3</strong> eggs\",\"\"],\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Batter\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Preheat oven to 350&deg;F.\",\"name\":\"Preheat oven to 350&deg;F.\",\"url\":\"https://x.com/#s1\"},{\"@type\":\"HowToStep\",\"text\":\"Melt butter &amp; sugar.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Bake\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"<p>Bake 25 minutes.</p>\"}]}]}]}"], Recipe(name: "Fudgy Brownies & Ice Cream", image: "https://x.com/a-1x1.jpg", ingredients: ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], instructions: ["Preheat oven to 350°F.", "Melt butter & sugar.", "Bake 25 minutes."], prepTime: "15m", cookTime: "25m", totalTime: "40m", yield: "16", sourceUrl: "https://src/wprm_graph")),
         ("yoast_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":[\"WebPage\",\"ItemPage\"],\"@id\":\"https://y.com/p/\"},{\"@type\":[\"Recipe\"],\"name\":\"Chicken Tikka Masala\",\"image\":[{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img1.jpg\",\"width\":1200},{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img2.jpg\"}],\"recipeYield\":\"4\",\"prepTime\":\"PT1H\",\"cookTime\":\"PT1H30M\",\"totalTime\":\"PT2H30M\",\"recipeIngredient\":[\"1 lb chicken\",\"1 cup yogurt\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Marinate.\",\"name\":\"Marinate\"},{\"@type\":\"HowToStep\",\"name\":\"Grill it\"},{\"@type\":\"HowToStep\",\"text\":\"   \"}]}]}"], Recipe(name: "Chicken Tikka Masala", image: "https://y.com/img1.jpg", ingredients: ["1 lb chicken", "1 cup yogurt"], instructions: ["Marinate.", "Grill it"], prepTime: "1h", cookTime: "1h 30m", totalTime: "2h 30m", yield: "4", sourceUrl: "https://src/yoast_graph")),
@@ -1587,6 +1606,11 @@ final class DifferentialCorpusTests: XCTestCase {
             let kept = PageRecipeCheck.verify(row.page, PageSelection(name: row.name, ingredients: row.ingredients, steps: row.steps))
             XCTAssertEqual(kept?.ingredients, row.kept, row.name)
             XCTAssertEqual(kept?.steps, row.keptSteps, row.name)
+        }
+        for row in Self.lines {
+            let picked = PageLines.selection(row.window, PagePick(name: "", ingredients: row.ingredients, steps: row.steps))
+            XCTAssertEqual(picked.ingredients, row.kept, row.window)
+            XCTAssertEqual(picked.steps, row.keptSteps, row.window)
         }
     }
 

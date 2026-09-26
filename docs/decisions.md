@@ -2085,30 +2085,44 @@ ones).
   `Generation.getClient()`, `checkStatus()`, `download()`, `generateContent(generateContentRequest(
   TextPart(…)) { temperature = 0f; topK = 1; maxOutputTokens = 4096 })`). Input under 4,000
   tokens; 4,096 output tokens is the most `GenerateContentRequest` accepts (it throws "must be
-  between 1 and 4096"; #128 raised it from 1,024, which cut off a 20-ingredient recipe). Rewriting, which Chef mode uses, takes under 256 tokens and only rewrites, so it can't
+  between 1 and 4096"; #128 raised it from 1,024, which cut off a 20-ingredient recipe copied
+  out; a reply of line runs needs a few dozen). Rewriting, which Chef mode uses, takes under 256
+  tokens and only rewrites, so it can't
   read a page; Summarization writes bullets. The Prompt API's structured output
   (`@Generable` data classes) is alpha and needs the `genai-schema-compiler` KSP processor, so
-  instead the reply is one JSON object parsed strictly (`PageSelectionJson`: optionally in one
-  code fence, nothing around it, every field the right type, else no answer at all). Offered for
+  instead the reply is one JSON object parsed strictly (`PagePickJson`: optionally in one
+  code fence, nothing around it, every field the right type, each run `{"first", "last"}` with
+  whole numbers, else no answer at all). Offered for
   en, de, es, fr, it and ja (the languages Google lists for Gemini Nano's text features; no
   Portuguese). A model still downloadable starts its download and the page stays
   `NoRecipeFound` meanwhile.
-- **iOS: Foundation Models with guided generation** (`@Generable struct PickedRecipe`, `@Guide`
+- **iOS: Foundation Models with guided generation** (`@Generable struct PickedLines`, with
+  `PickedRun` for a run, `@Guide`
   per field, `session.respond(to:generating:options:)`, a fresh session per page,
   `GenerationOptions(temperature: 0)`), iOS 26+ with Apple Intelligence on, for the recipe
   languages in `supportedLanguages`. No reply is parsed: the fields come back typed.
 - **How much text:** Android 3,000 tokens of page; iOS `contextSize` (4,096 on 26, 8,192 on 27)
-  minus 1,800 for instructions, schema and reply. Tokens become characters at 3 per token (1 in
-  Japanese), a deliberate underestimate. A page over the limit fails the call (nil), never
-  shows a partial recipe.
-- **Two parts** (#128): the model is asked for the recipe without its steps (name, yield,
-  times, ingredients), then, in a fresh call on the same window, for the steps of the recipe by
-  that name. Each reply is about half as long, so a long recipe fits: on iOS the reply shares
-  `contextSize` with the page, and #105's RecipeTin Eats recipe (20 ingredients, 14 steps)
-  overflowed 1,024 tokens in one reply. No name asks nothing more; either call failing is
-  `NoRecipeFound`, never a recipe without its steps. The cost is a second read of the window.
-- **Seam:** `PageRecipeExtractor` (`windowChars(language)`, `extract(text, language)`,
-  `extractSteps(text, language, name)`) beside
+  minus 1,800 for instructions, schema, the line numbers and the reply. Tokens become characters
+  at 3 per token (1 in Japanese), a deliberate underestimate. A page over the limit fails the
+  call (nil), never shows a partial recipe.
+- **Line numbers, not text** (#128, `PageLines`, pure, both platforms, pinned by the corpus's
+  `Lines` rows): the window goes to the model with each line numbered ("[12] 2 cups flour"); it
+  copies only the name, yield and times (short), and answers the ingredients and the steps as
+  runs of line numbers (`{"first": 12, "last": 25}`); the lines are then taken from the window
+  as written. Copying every line out made the reply as long as the recipe: #105's RecipeTin
+  Eats recipe (20 ingredients, 14 steps) overflowed 1,024 tokens, and on iOS the reply shares
+  `contextSize` with the page. A run reply is a few dozen tokens whatever the recipe's length,
+  can't alter a line, and can't blend an ingredient into a step. Strict, never a guess: a run
+  outside the window or backwards is ignored; a line in both an ingredient run and a step run is
+  in neither; runs overlapping or out of order give each line once, in page order; a leading
+  bullet or checkbox ("▢", "•", "-") is dropped, and so is a line that is only an ingredients
+  or steps heading ("Ingredients:"); a group heading inside a run ("For the topping:") stays,
+  as the parsers keep one. The kept lines still go through the verifier and the one-card rule
+  below. Tried first and dropped: asking in two parts (the recipe, then its steps, in two
+  calls), which on the #105 harness showed 13 of 17 recipes against 16 for one call, mixing
+  steps into the ingredients and still overflowing the reply on long methods.
+- **Seam:** `PageRecipeExtractor` (`windowChars(language)`, `extract(text, language)`, which
+  numbers the window and returns the lines its runs name) beside
   `StepShortener`; `MlKitPageRecipeExtractor` and `FoundationModelsPageRecipeExtractor` are the
   only files that import the model APIs; tests use `FakePageRecipeExtractor`. The share
   extension has no extractor (memory), so a shared link it imports behaves as before.
@@ -2155,9 +2169,10 @@ ones).
   An older app reads the unknown name as `EDITED`, the safe side. The reading view says, quietly
   under the source credit, "Picked from the page text — check against the source", with Open
   original as usual.
-- **Needs a real phone to judge:** whether the models copy text faithfully enough for the
-  verifier to keep most lines, how long a page takes (two calls since #128), and whether Gemini
-  Nano honours 4,096 output tokens. CI and the tests run the fake model only.
+- **Needs a real phone to judge:** whether the models name the right runs of lines (a
+  small model may be off by a line, or run a list on into a note), how long a page takes, and
+  whether Gemini Nano honours 4,096 output tokens. CI and the tests run the fake model only;
+  `tools/eval` measures a 3B stand-in (`docs/eval/llm-vs-regex.md`).
 
 ## Typed decisions on the device (#104)
 

@@ -159,17 +159,14 @@ class DefaultRecipeRepository @Inject constructor(
      * `llmExtraction` flag: the part of the page most likely to hold it ([RecipeTextWindow]),
      * then only what [PageRecipe.recipe] finds on the page as written. Null, and the page stays
      * [ParseError.NoRecipeFound] as before, on a phone or in a language the model can't read,
-     * or when too little of what it picked is on the page. Asked in two parts (#128), the
-     * recipe and then its steps, so a long recipe's reply fits; either failing is no recipe.
+     * or when too little of what it picked is on the page.
      */
     private suspend fun extractFromPage(page: PageText, url: String): ParseResult.Success? {
         if (flags?.isOn(Flag.LLM_EXTRACTION) != true) return null
         val language = withContext(Dispatchers.Default) { PageRecipe.language(page) }
         val chars = extractor.windowChars(language) ?: return null
         val window = withContext(Dispatchers.Default) { RecipeTextWindow.window(page, chars) } ?: return null
-        val head = extractor.extract(window, language) ?: return null
-        val name = head.name?.takeIf { it.isNotBlank() } ?: return null
-        val picked = head.copy(steps = extractor.extractSteps(window, language, name) ?: return null)
+        val picked = extractor.extract(window, language) ?: return null
         val recipe = withContext(Dispatchers.Default) { PageRecipe.recipe(window, picked, page, url) }
         return recipe?.let { ParseResult.Success(it) }
     }
