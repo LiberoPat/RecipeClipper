@@ -147,4 +147,16 @@ class GroceryDaoTest {
         assertEquals(listOf("1 onion"), planned[1].ingredients)
         assertTrue(planned.all { it.day == 20_001L })
     }
+
+    @Test
+    fun theRecipesItemsCameFromAreNamed() = runBlocking {
+        val soup = recipe("https://example.com/soup")
+        val bread = recipe("https://example.com/bread")
+        recipe("https://example.com/cake")
+        groceries.add(listOf(item("1 onion", soup), item("2 onions", soup), item("flour", bread), item("milk")))
+        assertEquals(
+            mapOf(soup to "Recipe https://example.com/soup", bread to "Recipe https://example.com/bread"),
+            groceries.observeRecipeTitles().first().associate { it.id to it.title }
+        )
+    }
 }

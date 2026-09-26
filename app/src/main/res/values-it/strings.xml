@@ -322,7 +322,10 @@
     <string name="action_add_week_to_groceries">Aggiungi gli ingredienti della settimana</string>
     <string name="groceries_week_empty">Nessuna ricetta in programma questa settimana.</string>
     <string name="action_clear_checked">Rimuovi le spunte</string>
-    <string name="action_share_groceries">Condividi la lista</string>
+    <string name="action_share_groceries">Invia la lista</string>
+    <string name="action_paste_list">Incolla una lista</string>
+    <string name="receive_list_title">Aggiungi questa lista</string>
+    <string name="receive_list_empty">Negli appunti non c\'è nessuna lista. Copiane prima una, poi incollala qui.</string>
     <string name="action_move_to_aisle">Sposta in un altro reparto…</string>
     <string name="move_to_aisle_title">Reparto</string>
     <string name="snackbar_grocery_deleted">Eliminato: %1$s</string>

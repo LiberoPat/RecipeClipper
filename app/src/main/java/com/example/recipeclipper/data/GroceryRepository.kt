@@ -16,6 +16,9 @@ interface GroceryRepository {
     /** Every item on the list, in the order added. */
     fun observeItems(): Flow<List<GroceryItem>>
 
+    /** The title of every recipe an item on the list came from, by recipe id (#149: "Send list" names them). */
+    fun observeRecipeTitles(): Flow<Map<Long, String>>
+
     /** Adds [lines] at the end of the list, each in the aisle its name belongs to. Blank lines are skipped. */
     suspend fun add(lines: List<NewGroceryLine>)
 

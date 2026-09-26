@@ -87,7 +87,8 @@ fun NavHostController.selectTab(tab: Tab) {
  * A route from an intent (a shared link's import, or a timer notification's cook-mode open,
  * MainActivity's queue) always lands in Recipes: switch to that tab if another is open, then
  * navigate on top of whatever the Recipes stack held. A tab's own route (an expiry reminder's
- * [Tab.PANTRY], #52) opens that tab instead, and does nothing while the tab bar is off.
+ * [Tab.PANTRY], #52; a list shared in, [Tab.GROCERIES], #149) opens that tab instead, and does
+ * nothing while the tab bar is off.
  */
 fun NavHostController.openRoute(route: String, tabsEnabled: Boolean) {
     Tab.entries.firstOrNull { it.route == route }?.let { tab ->
@@ -112,7 +113,7 @@ fun AppShell(
     tabsEnabled: Boolean,
     recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) },
     week: NavGraphBuilder.(NavHostController) -> Unit = { weekDestinations(it) },
-    groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations() },
+    groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations(it) },
     pantry: NavGraphBuilder.(NavHostController) -> Unit = { pantryDestinations() }
 ) {
     if (!tabsEnabled) {

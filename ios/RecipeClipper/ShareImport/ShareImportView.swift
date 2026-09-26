@@ -31,6 +31,17 @@ struct ShareImportView: View {
                 // The state changed or the card went away first.
             }
         }
+        // A list (#149) once added: written first, then the card dismisses itself like "Saved".
+        .task(id: vm.receiveList?.uiState.added) {
+            guard let list = vm.receiveList, list.uiState.added != nil else { return }
+            await list.currentWrite?.value
+            do {
+                try await Task.sleep(for: Self.savedDismissDelay)
+                onDone()
+            } catch {
+                // The card went away first.
+            }
+        }
     }
 
     private var card: some View {
@@ -92,6 +103,39 @@ struct ShareImportView: View {
         case .noLink:
             message(Strings.shareNoLink)
             buttons { Button(Strings.close, action: onCancel).buttonStyle(TextActionStyle()) }
+
+        case .list:
+            if let list = vm.receiveList {
+                listContent(list)
+            }
+        }
+    }
+
+    /// A list sent from another phone (#149): its lines to tick, then where they went.
+    @ViewBuilder
+    private func listContent(_ list: ReceiveListViewModel) -> some View {
+        if let added = list.uiState.added {
+            Text((added == .pantry ? Strings.receiveListAddedPantry : Strings.whatINeedAdded).uppercased())
+                .textStyle(Typography.labelMedium)
+                .foregroundStyle(Palette.accentText)
+            buttons {
+                Button(Strings.done) {
+                    // Never end the extension before the lines are written.
+                    Task {
+                        await list.currentWrite?.value
+                        onDone()
+                    }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+            }
+        } else {
+            // Short lists sit in the card; a long one scrolls inside it.
+            ViewThatFits(in: .vertical) {
+                ReceiveListView(vm: list)
+                ScrollView { ReceiveListView(vm: list) }
+            }
+            .frame(maxHeight: 480)
+            buttons { Button(Strings.cancel, action: onCancel).buttonStyle(TextActionStyle()) }
         }
     }
 
