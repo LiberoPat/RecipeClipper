@@ -24,6 +24,12 @@ interface GroceryRepository {
     /** Moves items to another aisle: the user's choice, kept from then on. */
     suspend fun setAisle(ids: List<Long>, aisle: Aisle)
 
+    /**
+     * Files items the keyword table left in Other into the model's [aisle] (#104), only while
+     * they are still in Other: a move the user made meanwhile stands.
+     */
+    suspend fun fileFromOther(ids: List<Long>, aisle: Aisle)
+
     /** What a delete removed, for [restore]. Opaque to callers. */
     data class DeletedItems(val entities: List<GroceryItemEntity>)
 

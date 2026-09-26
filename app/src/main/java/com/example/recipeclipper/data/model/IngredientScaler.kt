@@ -187,14 +187,35 @@ object IngredientScaler {
     )
     private const val TOLERANCE = 0.02
 
-    /** [words] null: a language the app has no words for, so the line stays as written. */
-    fun scale(line: String, factor: Double, words: LanguageWords? = LanguageWords.ENGLISH): String {
+    /**
+     * [words] null: a language the app has no words for, so the line stays as written.
+     * [bracket] is the model's definite answer about a count's bracket (#104), if any: null
+     * keeps such a line as written, as before.
+     */
+    fun scale(
+        line: String,
+        factor: Double,
+        words: LanguageWords? = LanguageWords.ENGLISH,
+        bracket: CountBracket? = null
+    ): String {
         if (factor == 1.0 || words == null) return line
         val p = patterns(words)
         if (p.amountAfterName) return TrailingAmount.scale(line, factor, words)
         if (p.unreadable(line)) return line
         val comma = DECIMAL_COMMA.containsMatchIn(line)
-        return walk(p, line, factor, comma)?.joinToString("") { it.text } ?: line
+        return walk(p, line, factor, comma, bracket)?.joinToString("") { it.text } ?: line
+    }
+
+    /**
+     * True when [line] stays as written only because of a count's bracket holding nothing but
+     * an amount ("4 Apfel (ca. 800g)", [BracketKind.COUNT]): the one question the model is
+     * asked about it (#104). Any other reason to leave the line alone means no question.
+     */
+    fun needsCountDecision(line: String, words: LanguageWords?): Boolean {
+        if (words == null) return false
+        val p = patterns(words)
+        if (p.amountAfterName || p.unreadable(line)) return false
+        return walk(p, line, 1.0, false, null) == null && walk(p, line, 1.0, false, CountBracket.EACH) != null
     }
 
     /**
@@ -213,7 +234,9 @@ object IngredientScaler {
         walk(p, line, 1.0, false)?.map { it.start until it.end }
 
     // Scales every amount of the line, or none: null leaves the whole line as written.
-    private fun walk(p: Patterns, line: String, factor: Double, comma: Boolean): List<Side>? {
+    private fun walk(
+        p: Patterns, line: String, factor: Double, comma: Boolean, bracket: CountBracket? = null
+    ): List<Side>? {
         val sides = mutableListOf<Side>()
         var start = 0
         var alternative = false
@@ -239,7 +262,8 @@ object IngredientScaler {
             val next = nextAmount(p, line, tailStart)
             val end = next?.range?.first ?: line.length
             val one = upperRaw.isEmpty() && low == 1.0
-            val tail = scaleBrackets(p, line.substring(tailStart, end), factor, comma, measure, one) ?: return null
+            val tail = scaleBrackets(p, line.substring(tailStart, end), factor, comma, measure, one, bracket)
+                ?: return null
             val joiner = if (next == null) "" else next.value
             sides += Side(start, end, match.groupValues[1] + scaled + region + tail + joiner)
             if (next == null) return sides
@@ -346,6 +370,12 @@ object IngredientScaler {
         /** The line's own amount written another way: "(8 ½ ounces)", "(about 1/4 cup)". Scales with it. */
         TOTAL,
 
+        /**
+         * A count's bracket holding nothing but an amount: "4 Apfel (ca. 800g)" (a total?) or
+         * "1 patate douce (300-400 g)" (each one's?). Unsure unless the model decided (#104).
+         */
+        COUNT,
+
         /** Anything else holding an amount: scaling beside it could contradict it. */
         UNSURE
     }
@@ -362,6 +392,7 @@ object IngredientScaler {
             (!measure && one && p.containerFirst.containsMatchIn(before)) ||
             p.perItem.containsMatchIn(content) -> BracketKind.PACKAGE
         measure && p.total.matches(unwrapped(content)) -> BracketKind.TOTAL
+        !measure && p.total.matches(unwrapped(content)) -> BracketKind.COUNT
         else -> BracketKind.UNSURE
     }
 
@@ -389,15 +420,23 @@ object IngredientScaler {
      * written. Null when a bracket is [BracketKind.UNSURE]: the line stays as written.
      */
     private fun scaleBrackets(
-        p: Patterns, tail: String, factor: Double, comma: Boolean, measure: Boolean, one: Boolean
+        p: Patterns, tail: String, factor: Double, comma: Boolean, measure: Boolean, one: Boolean,
+        bracket: CountBracket?
     ): String? {
         val out = StringBuilder()
         var cursor = 0
         for (b in brackets(tail)) {
             val content = tail.substring(b.contentStart, b.contentEnd)
-            when (kind(p, tail.substring(0, b.start), content, measure, one)) {
+            var kind = kind(p, tail.substring(0, b.start), content, measure, one)
+            // The model's answer (#104): a total scales; each item's size is left as written.
+            if (kind == BracketKind.COUNT) kind = when (bracket) {
+                CountBracket.TOTAL -> BracketKind.TOTAL
+                CountBracket.EACH -> BracketKind.PACKAGE
+                null -> BracketKind.UNSURE
+            }
+            when (kind) {
                 BracketKind.OTHER, BracketKind.PACKAGE -> continue
-                BracketKind.UNSURE -> return null
+                BracketKind.UNSURE, BracketKind.COUNT -> return null
                 BracketKind.TOTAL -> {
                     out.append(tail, cursor, b.contentStart).append(scaleTotal(p, content, factor, comma) ?: return null)
                     cursor = b.contentEnd

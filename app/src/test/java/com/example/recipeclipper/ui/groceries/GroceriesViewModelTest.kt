@@ -6,7 +6,9 @@ import com.example.recipeclipper.data.model.GroceryCombiner
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PlannedIngredients
 import com.example.recipeclipper.data.model.UnitSystem
+import com.example.recipeclipper.data.model.DecisionQuestion
 import com.example.recipeclipper.fake.FakeAppPreferences
+import com.example.recipeclipper.fake.FakeDecisionRepository
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
@@ -44,6 +46,29 @@ class GroceriesViewModelTest {
         assertEquals(listOf(Aisle.PRODUCE, Aisle.BAKING), sections.map { it.aisle })
         assertEquals("300 g flour", (sections[1].rows.single() as GroceryCombiner.Row.Combined).text)
     }
+
+    @Test
+    fun `an item in Other is filed where the model decided, once, and a user's move stands`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            add("2 tbsp furikake", "1 jar gochugaru flakes", "2 onions")
+            val furikake = DecisionQuestion.aisle("furikake", "en")
+            val decisions = FakeDecisionRepository(mapOf(furikake to "spices"))
+            val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), decisions)
+            advanceUntilIdle()
+
+            val aisles = repository.items.value.associate { it.text to it.aisle }
+            assertEquals(Aisle.SPICES, aisles["2 tbsp furikake"])
+            assertEquals(Aisle.OTHER, aisles["1 jar gochugaru flakes"]) // no answer: stays Other
+            assertEquals(Aisle.PRODUCE, aisles["2 onions"])
+            assertFalse(decisions.asked.any { it.input == "onions" })
+
+            // Moved back to Other by the user: the cached answer never files it again.
+            val id = repository.items.value.first { it.text == "2 tbsp furikake" }.id
+            repository.setAisle(listOf(id), Aisle.OTHER)
+            advanceUntilIdle()
+            assertEquals(Aisle.OTHER, repository.items.value.first { it.id == id }.aisle)
+            assertEquals(1, vm.uiState.value.sections!!.count { it.aisle == Aisle.OTHER })
+        }
 
     @Test
     fun `a typed item goes on the list and clears the field`() = runTest(mainDispatcherRule.dispatcher) {

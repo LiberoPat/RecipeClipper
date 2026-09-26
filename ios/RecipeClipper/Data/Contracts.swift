@@ -56,6 +56,26 @@ final class NoPageRecipeExtractor: PageRecipeExtractor {
     func extract(_ text: String, language: String) async -> PageSelection? { nil }
 }
 
+/// The on-device model making typed decisions (#104), Android's `DecisionModel`:
+/// `FoundationModelsDecisionModel` is the real one; tests use `FakeDecisionModel`.
+protocol DecisionModel: AnyObject {
+    /// True when it can answer now for a recipe in `language` ("en").
+    func supports(language: String) async -> Bool
+    /// One reply, unchecked (`DecisionRule` judges it), or nil when the model can't answer right
+    /// now: nothing is cached and it is asked again next time.
+    func ask(_ prompt: DecisionPrompt) async -> DecisionReply?
+}
+
+/// The on-device model's typed decisions (#104): asked lazily, judged, cached.
+protocol DecisionRepository: AnyObject {
+    /// Every cached answer, then every change. `.none` while the `aiDecisions` flag is off.
+    func observe() -> AnyPublisher<Decisions, Never>
+    func current() async -> Decisions
+    /// Asks the model each question not cached yet, `DecisionRule.asks` times, and caches the
+    /// judged answer. Nothing with the flag off or in a language the model can't do.
+    func decide(_ questions: [DecisionQuestion]) async
+}
+
 /// Loads a page in an off-screen browser, lets its JavaScript run, and returns the resulting
 /// HTML (Android's RenderedPageSource). The repository's last resort once the direct fetch and
 /// its retry end `.blocked` or `.noRecipeFound`. `WebViewRenderedPageSource` is the real one,
@@ -375,6 +395,9 @@ protocol GroceryRepository: AnyObject {
 
     /// Moves items to another aisle: the user's choice, kept from then on.
     func setAisle(_ ids: [Int64], aisle: Aisle) async
+    /// Files items the keyword table left in Other into the model's `aisle` (#104), only while
+    /// they are still in Other: a move the user made meanwhile stands.
+    func fileFromOther(_ ids: [Int64], aisle: Aisle) async
 
     /// Deletes items; nil when none were there.
     func delete(_ ids: [Int64]) async -> DeletedGroceries?

@@ -347,14 +347,20 @@ object GrocerySources {
      * The week's planned recipes, each rendered as the reading view would show it at its planned
      * servings (scaled from the recipe's yield, then converted to [system]). A recipe with no
      * usable yield, or no planned servings, shows as written. One with nothing to buy is left out.
+     * [decisions]: count brackets already decided (#104), as the reading view applies them.
      */
-    fun fromPlan(planned: List<PlannedIngredients>, system: UnitSystem, convertLiquids: Boolean): List<GrocerySource> =
+    fun fromPlan(
+        planned: List<PlannedIngredients>,
+        system: UnitSystem,
+        convertLiquids: Boolean,
+        decisions: Decisions = Decisions.NONE
+    ): List<GrocerySource> =
         planned.mapNotNull { p ->
             val tag = p.language ?: LanguageWords.resolve(null, null) { LanguageWords.detectionText(p.title, p.ingredients) }
             val words = LanguageWords.forTag(tag)
             val base = Servings.parse(p.yield, words)
             val factor = if (base != null && p.servings != null) p.servings.toDouble() / base else 1.0
-            val lines = IngredientRendering.render(p.ingredients, factor, system, convertLiquids, words).filter(::buyable)
+            val lines = IngredientRendering.render(p.ingredients, factor, system, convertLiquids, words, decisions).filter(::buyable)
             if (lines.isEmpty()) null
             else GrocerySource("plan-${p.entryId}", p.recipeId, p.title, p.day, words?.language, lines)
         }

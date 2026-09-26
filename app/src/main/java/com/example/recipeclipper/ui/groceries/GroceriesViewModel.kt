@@ -2,7 +2,9 @@ package com.example.recipeclipper.ui.groceries
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.GroceryRepository
+import com.example.recipeclipper.data.model.DecisionCandidates
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.model.Aisle
@@ -69,7 +71,9 @@ data class GroceriesUiState(
 class GroceriesViewModel @Inject constructor(
     private val repository: GroceryRepository,
     private val pantry: PantryRepository,
-    private val calendar: PlanCalendar
+    private val calendar: PlanCalendar,
+    // The model's aisles for what the keyword table puts in Other (#104); none without it.
+    private val decisions: DecisionRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GroceriesUiState())
@@ -93,6 +97,34 @@ class GroceriesViewModel @Inject constructor(
                     val moving = state.moving?.takeIf { row -> row.items.all { i -> items.any { it.id == i.id } } }
                     state.copy(sections = sections, moving = moving)
                 }
+                askAisles(items)
+            }
+        }
+    }
+
+    // Items already asked about in this visit, so each is asked once.
+    private val askedAisles = mutableSetOf<Long>()
+
+    /**
+     * Asks the model the aisle of each item in Other whose name the keyword table doesn't know
+     * (#104), in the background. Only an answer that lands now files the items, and only those
+     * still in Other: an item in Other whose aisle was already decided was put there by the user.
+     */
+    private fun askAisles(items: List<GroceryItem>) {
+        val repo = decisions ?: return
+        val fresh = items.filter { it.aisle == Aisle.OTHER && !it.checked && askedAisles.add(it.id) }
+        val byQuestion = fresh.mapNotNull { item -> DecisionCandidates.aisle(item.text, item.language)?.let { it to item.id } }
+            .groupBy({ it.first }, { it.second })
+        if (byQuestion.isEmpty()) return
+        viewModelScope.launch {
+            val before = repo.current()
+            val open = byQuestion.filterKeys { !before.isAnswered(it) }
+            if (open.isEmpty()) return@launch
+            repo.decide(open.keys)
+            val after = repo.current()
+            for ((question, ids) in open) {
+                val aisle = after.aisle(question.input, question.language) ?: continue
+                repository.fileFromOther(ids, aisle)
             }
         }
     }

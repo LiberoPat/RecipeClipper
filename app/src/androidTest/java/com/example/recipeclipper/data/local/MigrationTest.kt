@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.local.entity.AiDecisionEntity
 import com.example.recipeclipper.data.local.entity.ShortStepEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -564,12 +565,46 @@ class MigrationTest {
         }
     }
 
+    /**
+     * The on-device model's decisions (#104): one new table, so nothing existing changes. A
+     * version-12 recipe is kept, and a decision is cached once per question.
+     */
+    @Test
+    fun migration12To13AddsAiDecisionsAndKeepsEverythingElse() {
+        helper.createDatabase(name, 12).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[]', NULL,
+                   'recipe-uid', 'en', NULL, NULL, 'PARSED', NULL)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 13, true, RecipeDatabase.MIGRATION_12_13)
+
+        val db = openMigrated()
+        runBlocking {
+            assertEquals(listOf("Simmer."), db.recipeDao().get(7)?.instructions)
+            val row = AiDecisionEntity(kind = "aisle", input = "furikake", language = "en", answer = "spices", updatedAt = 1)
+            db.aiDecisionDao().insert(row)
+            db.aiDecisionDao().insert(row.copy(answer = "other", uid = "another"))
+            assertEquals("spices", db.aiDecisionDao().answer("aisle", "furikake", "en"))
+            assertEquals(1, db.aiDecisionDao().observe().first().size)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 12, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 13, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

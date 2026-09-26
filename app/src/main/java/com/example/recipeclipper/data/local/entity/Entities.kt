@@ -294,3 +294,26 @@ data class ShortStepEntity(
     val updatedAt: Long,
     val uid: String = newUid()
 )
+
+/**
+ * The on-device model's typed decisions (#104), one row per question: its [kind] key, its
+ * [input] normalised and its [language], and the [answer] after the confidence rule (an option
+ * or "unsure"), so each question is asked once. Derived data: never exported. [uid] and
+ * [updatedAt] follow the other tables (#53).
+ */
+@Entity(
+    tableName = "ai_decisions",
+    indices = [
+        Index(value = ["uid"], unique = true),
+        Index(value = ["kind", "input", "language"], unique = true)
+    ]
+)
+data class AiDecisionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val kind: String,
+    val input: String,
+    val language: String,
+    val answer: String,
+    val updatedAt: Long,
+    val uid: String = newUid()
+)

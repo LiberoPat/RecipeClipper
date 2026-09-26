@@ -5,7 +5,9 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.recipeclipper.data.local.dao.AiDecisionDao
 import com.example.recipeclipper.data.local.dao.BackupDao
+import com.example.recipeclipper.data.local.entity.AiDecisionEntity
 import com.example.recipeclipper.data.local.dao.GroceryDao
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.MenuDao
@@ -30,9 +32,10 @@ import com.example.recipeclipper.data.model.MealType
     entities = [
         RecipeEntity::class, ListEntity::class, RecipeListCrossRef::class,
         MealTypeEntity::class, MealPlanEntryEntity::class, GroceryItemEntity::class,
-        PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class
+        PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class,
+        AiDecisionEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -46,6 +49,7 @@ abstract class RecipeDatabase : RoomDatabase() {
     abstract fun pantryDao(): PantryDao
     abstract fun menuDao(): MenuDao
     abstract fun shortStepDao(): ShortStepDao
+    abstract fun aiDecisionDao(): AiDecisionDao
 
     companion object {
         const val NAME = "recipe_clipper.db"
@@ -326,10 +330,29 @@ abstract class RecipeDatabase : RoomDatabase() {
                 "ON `short_steps` (`recipeId`, `stepHash`, `language`)"
         )
 
+        /**
+         * The on-device model's typed decisions (#104): one new table of derived data, so
+         * nothing existing changes. The same SQL is iOS's `addAiDecisions`.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                AI_DECISIONS_SQL.forEach(db::execSQL)
+            }
+        }
+
+        private val AI_DECISIONS_SQL = listOf(
+            "CREATE TABLE IF NOT EXISTS `ai_decisions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`kind` TEXT NOT NULL, `input` TEXT NOT NULL, `language` TEXT NOT NULL, " +
+                "`answer` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_ai_decisions_uid` ON `ai_decisions` (`uid`)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_ai_decisions_kind_input_language` " +
+                "ON `ai_decisions` (`kind`, `input`, `language`)"
+        )
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12
+            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13
         )
     }
 }

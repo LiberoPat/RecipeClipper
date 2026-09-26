@@ -2104,3 +2104,66 @@ ones).
 - **Needs a real phone to judge:** whether the models copy text faithfully enough for the
   verifier to keep most lines, how long a page takes, and whether 1,024 output tokens hold a long
   recipe on Android. CI and the tests run the fake model only.
+
+## Typed decisions on the device (#104)
+
+Part of #99. The owner turned down a paid Jev API (2026-09-25), so these decisions are made by
+the same on-device models as Chef mode (#100) and page extraction (#103), behind the
+`aiDecisions` flag (off in both builds). Each is a pick from a fixed list that includes
+"unsure"; code acts only on a definite answer and otherwise keeps today's behaviour exactly.
+The model never supplies a number: code owns every figure.
+
+**The confidence rule (`DecisionRule`).** On-device models give no calibrated probabilities, so
+a model's self-reported confidence alone can't be trusted, and asking twice at temperature 0
+alone mostly repeats itself. The rule combines both: each question is asked **twice**, the
+options listed in the declared order and then reversed (against a bias for the first or last
+option; "unsure" always last), each reply giving an answer and a confidence (high, medium,
+low). A decision counts only if **both replies pick the same definite option and both say
+"high"**. A disagreement, "unsure", medium or low, an option not on the list, or an unreadable
+reply is unsure. Android asks through ML Kit's Prompt API for one JSON object
+(`{"answer", "confidence"}`, parsed strictly by `DecisionReplyJson`: anything else is unsure);
+iOS uses Foundation Models guided generation, with one `@Generable` enum per kind, so the
+model can only pick a listed option (the rule still checks it).
+
+**What each answer changes.**
+
+- **Count brackets** (#88's leftovers). A count's bracket that holds nothing but an amount
+  ("4 Apfel (ca. 800g)", "1 patate douce (300-400 g)", "3 large apples, … (about 3 cups)") is a
+  new `BracketKind.COUNT`. With no answer (or unsure) it is unsure, as before: scaling keeps the
+  whole line as written. TOTAL treats it like a measure's total: it scales with the count ("8
+  Apfel (ca. 1600g)" doubled). EACH treats it as a per-item size: the count scales, the figure
+  stays ("2 patate douce (300-400 g)"). Only a line that stays as written *only* because of such
+  a bracket is asked (`IngredientScaler.needsCountDecision`); prose in the bracket, a missing
+  unit after "or", package sizes and measure totals are never asked and never change.
+  Converting is unchanged: a count has no unit to convert, so the bracket keeps its units (it
+  is the site's figure, scaled). Asked when a recipe with a servings stepper opens; applied in
+  the reading view, and to the week's lines (grocery sheet, What I need) once cached.
+- **Pantry "same ingredient?"** Asked only for a line whose name no pantry item matches by
+  `IngredientName.matches`, against in-stock or staple items whose names are close
+  (`DecisionCandidates.close`: they share a word of 3+ letters, or one's last word ends with the
+  other's, as "Weizenmehl"/"Mehl"; never in a language without spaces). Only a definite "same"
+  counts, and only to turn Buy into Have (What I need, and the grocery sheet's unticking); it
+  never overrides a real match and never uses an item that is out. The owner's decisions stay:
+  "rice flour" is not "flour", "whole milk" is not "milk"; they are written into the question as
+  examples of "different". With the fake model the tests pin that only "same" changes anything;
+  whether the real models follow the examples is a device check. Ticking a grocery item off
+  still restocks by the strict match only.
+- **Aisles.** Asked for a grocery item the keyword table puts in Other and whose name is known
+  (`DecisionCandidates.aisle`); the options are the aisle keys (with "other"). When an item is
+  added, a cached aisle files it at once. Otherwise the Groceries screen asks in the background
+  and, when a definite answer lands, files the items it asked about only if they are still in
+  Other (`fileFromOther`); an item in Other whose aisle is already cached was put there by the
+  user, so it is never moved again. Pantry items keep the keyword table's aisle.
+
+**The cache.** `ai_decisions` (Room 13, iOS `user_version` 12): kind, the input normalised
+(trimmed, whitespace collapsed, lowercased; a pair's two names sorted), language, answer (an
+option or "unsure"), `uid` and `updatedAt`. Unique on kind + input + language, so each question
+is asked once; unsure is cached too. A model that can't answer now (busy, in the background, not
+downloaded, an error) caches nothing and is asked next time. Derived data: not in the export
+file. Questions are asked lazily off the main thread; screens show today's result until an
+answer lands. Unsupported phone or language (Android: en, de, es, fr, it, ja; iOS: the model's
+supported languages), or the flag off: nothing is asked and everything is exactly as today.
+
+**Needs a real phone to judge:** how often each model is definite and high-confidence (the rule
+may leave most questions unsure), whether its answers are right (especially the owner's
+"different" pairs), and the time per question (two asks each). CI and the tests use fakes only.

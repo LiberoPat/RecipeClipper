@@ -6,10 +6,12 @@ import Foundation
 final class DefaultGroceryRepository: GroceryRepository {
     private let db: AppDatabase
     private let clock: Clock
+    private let decisions: DecisionRepository?
 
-    init(db: AppDatabase, clock: Clock) {
+    init(db: AppDatabase, clock: Clock, decisions: DecisionRepository? = nil) {
         self.db = db
         self.clock = clock
+        self.decisions = decisions
     }
 
     func observeItems() -> AnyPublisher<[GroceryItem], Never> {
@@ -18,12 +20,19 @@ final class DefaultGroceryRepository: GroceryRepository {
 
     func add(_ lines: [NewGroceryLine]) async {
         let now = clock.now()
+        let decided = await decisions?.current() ?? .none
         let items: [GroceryItemRecord] = lines.compactMap { line in
             let text = line.text.kTrimmed
             guard !text.isEmpty else { return nil }
+            let words = LanguageWords.forTag(line.language)
+            // The keyword table first; for what it puts in Other, an aisle the model decided (#104).
+            var aisle = Aisles.of(text, words: words)
+            if aisle == .other, let words, let name = IngredientName.of(text, words: words) {
+                aisle = decided.aisle(name, language: words.language) ?? .other
+            }
             return GroceryItemRecord(
                 text: text, language: line.language,
-                aisle: Aisles.of(text, words: LanguageWords.forTag(line.language)).key,
+                aisle: aisle.key,
                 sortOrder: 0, // the DAO puts them last, in order
                 recipeId: line.recipeId, plannedDay: line.plannedDay, updatedAt: now
             )
@@ -40,6 +49,11 @@ final class DefaultGroceryRepository: GroceryRepository {
     func setAisle(_ ids: [Int64], aisle: Aisle) async {
         let now = clock.now()
         await perform("setGroceryAisle") { dao in try dao.setAisle(ids, aisle: aisle.key, now: now) }
+    }
+
+    func fileFromOther(_ ids: [Int64], aisle: Aisle) async {
+        let now = clock.now()
+        await perform("fileGroceryAisle") { dao in try dao.fileFromOther(ids, aisle: aisle.key, now: now) }
     }
 
     func delete(_ ids: [Int64]) async -> DeletedGroceries? {

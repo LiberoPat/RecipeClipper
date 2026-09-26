@@ -25,7 +25,10 @@ enum class Flag(val key: String) {
     FREE_TIER("freeTier"),
 
     /** A recipe picked from the page's text by the on-device model when the page has no recipe data (#103). */
-    LLM_EXTRACTION("llmExtraction");
+    LLM_EXTRACTION("llmExtraction"),
+
+    /** Typed decisions by the on-device model: count brackets, close pantry names, aisles (#104). */
+    AI_DECISIONS("aiDecisions");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

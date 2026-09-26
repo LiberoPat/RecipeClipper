@@ -16,6 +16,8 @@ enum Flag: String, CaseIterable {
     case freeTier
     /// A recipe picked from the page's text by the on-device model when the page has no recipe data (#103).
     case llmExtraction
+    /// Typed decisions by the on-device model: count brackets, close pantry names, aisles (#104).
+    case aiDecisions
 }
 
 /// One flag as `shared/flags.json` declares it.

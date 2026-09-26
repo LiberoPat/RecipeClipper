@@ -25,6 +25,9 @@ import XCTest
 // then Aisles.of each line. Regenerated the same way: write only `Groc(["2 eggs", "3 eggs"]),`.
 // Pantry rows (#51): a line, a pantry item's name, then PantryMatch.covered (the item in stock,
 // in the same language). Write only `Pant("2 cups flour", "flour"),`.
+// Count-bracket rows (#104): a line, whether it asks the model (needsCountDecision), then the
+// line doubled when unsure, total and each. Write only `Count("4 Apfel (ca. 800g)", lang: "de"),`.
+// Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
 // Chef mode rows (#100): a step, a short version of it, then ShortStepCheck.accept (nil: the
@@ -69,6 +72,20 @@ final class DifferentialCorpusTests: XCTestCase {
         let line: String; let name: String; let language: String; let covered: Bool
         init(_ line: String, _ name: String, lang: String = "en", _ covered: Bool) {
             self.line = line; self.name = name; self.language = lang; self.covered = covered
+        }
+    }
+
+    private struct Count {
+        let line: String; let words: LanguageWords; let asks: Bool; let doubled: [String]
+        init(_ line: String, lang: String = "en", _ asks: Bool, _ doubled: [String]) {
+            self.line = line; self.words = LanguageWords.forTag(lang)!; self.asks = asks; self.doubled = doubled
+        }
+    }
+
+    private struct Close {
+        let a: String; let b: String; let words: LanguageWords; let close: Bool
+        init(_ a: String, _ b: String, lang: String = "en", _ close: Bool) {
+            self.a = a; self.b = b; self.words = LanguageWords.forTag(lang)!; self.close = close
         }
     }
 
@@ -1225,6 +1242,31 @@ final class DifferentialCorpusTests: XCTestCase {
         Pant("無塩バター 20g", "バター", lang: "ja", true),
     ]
 
+    private static let counts: [Count] = [
+        Count("4 Apfel (ca. 800g)", lang: "de", true, ["4 Apfel (ca. 800g)", "8 Apfel (ca. 1600g)", "8 Apfel (ca. 800g)"]),
+        Count("1 patate douce (300-400 g)", lang: "fr", true, ["1 patate douce (300-400 g)", "2 patate douce (600-800 g)", "2 patate douce (300-400 g)"]),
+        Count("3 large apples, peeled and sliced (about 3 cups)", true, ["3 large apples, peeled and sliced (about 3 cups)", "6 large apples, peeled and sliced (about 6 cups)", "6 large apples, peeled and sliced (about 3 cups)"]),
+        Count("2 cenouras grandes (cerca 250 g)", lang: "pt", true, ["2 cenouras grandes (cerca 250 g)", "4 cenouras grandes (cerca 500 g)", "4 cenouras grandes (cerca 250 g)"]),
+        Count("4 Clarence Court eggs (200ml/7fl oz)", true, ["4 Clarence Court eggs (200ml/7fl oz)", "8 Clarence Court eggs (400ml/14fl oz)", "8 Clarence Court eggs (200ml/7fl oz)"]),
+        Count("½ a bunch of fresh thyme (15g)", true, ["½ a bunch of fresh thyme (15g)", "1 a bunch of fresh thyme (30g)", "1 a bunch of fresh thyme (15g)"]),
+        Count("1 large onion ((or 2 small onions), sliced)", false, ["1 large onion ((or 2 small onions), sliced)", "1 large onion ((or 2 small onions), sliced)", "1 large onion ((or 2 small onions), sliced)"]),
+        Count("1 can (14 oz) tomatoes", false, ["2 can (14 oz) tomatoes", "2 can (14 oz) tomatoes", "2 can (14 oz) tomatoes"]),
+        Count("1 ⅔ cups bread flour (8 ½ ounces)", false, ["3 1/3 cups bread flour (17 ounces)", "3 1/3 cups bread flour (17 ounces)", "3 1/3 cups bread flour (17 ounces)"]),
+        Count("2 (400 g) tins chickpeas", false, ["4 (400 g) tins chickpeas", "4 (400 g) tins chickpeas", "4 (400 g) tins chickpeas"]),
+        Count("2 chicken breasts (8 oz each)", false, ["4 chicken breasts (8 oz each)", "4 chicken breasts (8 oz each)", "4 chicken breasts (8 oz each)"]),
+    ]
+
+    private static let closes: [Close] = [
+        Close("rice flour", "flour", true),
+        Close("whole milk", "milk", true),
+        Close("unsalted butter", "butter", false),
+        Close("brown sugar", "caster sugar", true),
+        Close("carrots", "onions", false),
+        Close("Weizenmehl", "Mehl", lang: "de", true),
+        Close("farine de riz", "farine", lang: "fr", true),
+        Close("バター", "無塩バター", lang: "ja", false),
+    ]
+
     private static let steps: [Step] = [
         Step("Add the carrots and cook 5 minutes.", ["2 carrots, peeled and diced", "1 onion, chopped"], "Add ⟦2⟧ carrots and cook 5 minutes.", "Add ⟦4⟧ carrots and cook 5 minutes."),
         Step("Stir in the flour.", ["1 cup all-purpose flour"], "Stir in ⟦1 cup⟧ flour.", "Stir in ⟦240 g⟧ flour."),
@@ -1419,6 +1461,22 @@ final class DifferentialCorpusTests: XCTestCase {
                 alwaysHave: false, purchasedDay: nil, expiresDay: nil
             )
             XCTAssertEqual(PantryMatch.covered(row.line, language: row.language, pantry: [item]), row.covered, "\(row.line) / \(row.name)")
+        }
+    }
+
+    func testCountBracketDecisionsMatchKotlin() {
+        for row in Self.counts {
+            XCTAssertEqual(IngredientScaler.needsCountDecision(row.line, words: row.words), row.asks, row.line)
+            let doubled = [nil, CountBracket.total, CountBracket.each].map {
+                IngredientScaler.scale(row.line, factor: 2.0, words: row.words, bracket: $0)
+            }
+            XCTAssertEqual(doubled, row.doubled, row.line)
+        }
+    }
+
+    func testCloseNamesMatchKotlin() {
+        for row in Self.closes {
+            XCTAssertEqual(DecisionCandidates.close(row.a, row.b, words: row.words), row.close, "\(row.a) / \(row.b)")
         }
     }
 

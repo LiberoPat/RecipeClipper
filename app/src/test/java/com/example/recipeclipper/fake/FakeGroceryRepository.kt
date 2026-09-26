@@ -50,6 +50,10 @@ class FakeGroceryRepository : GroceryRepository {
         items.value = items.value.map { if (it.id in ids) it.copy(aisle = aisle) else it }
     }
 
+    override suspend fun fileFromOther(ids: List<Long>, aisle: Aisle) {
+        items.value = items.value.map { if (it.id in ids && it.aisle == Aisle.OTHER) it.copy(aisle = aisle) else it }
+    }
+
     override suspend fun delete(ids: List<Long>): GroceryRepository.DeletedItems? =
         remove { it.id in ids }
 

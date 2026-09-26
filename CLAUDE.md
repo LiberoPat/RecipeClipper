@@ -48,7 +48,9 @@ hand, with "Update from source" (#29); export and import of everything as one
 JSON file (Settings); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
 pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); a
-recipe picked from a page's text by the on-device model (behind its flag, #103); the
+recipe picked from a page's text by the on-device model (behind its flag, #103); typed
+decisions by that model where the rules give up (count brackets, close pantry names,
+aisles; `aiDecisions` flag, #104); the
 UI in English, Spanish, French, German, Italian and Brazilian Portuguese
 (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
@@ -330,11 +332,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 12** (iOS `user_version` 11):
+- Room database `recipe_clipper.db`, **version 13** (iOS `user_version` 12):
   `recipes` (with nullable `notes`, `language`, `cookState`,
   `servingsTarget` and `editedAt`, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading),
   `meal_types` and `meal_plan_entries` (#49), `grocery_items` (#50),
-  `pantry_items` (#51), `menus` and `menu_entries` (#52), `short_steps` (#100, derived: never exported). Recipes, lists, the
+  `pantry_items` (#51), `menus` and `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never exported). Recipes, lists, the
   plan, grocery, pantry and menu tables
   carry a unique, never-changing `uid`: what an export file calls them. Plan,
   grocery, pantry and menu rows also carry
@@ -391,6 +393,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   are never Buy; a line with no name is always Buy. Never "enough". Names
   match only if equal or differing by plain modifiers (`names.json`
   `matchModifiers`/`leadingWords`): "rice flour" is never "flour", either way.
+  With `aiDecisions` (#104), only a cached definite "same" from the model for
+  a close name can turn Buy into Have, never the reverse.
 - `isFavorites` is a column, never a name match: names change on rename and
   translation. Built-in lists are seeded in `onCreate`, so adding one later
   needs a migration (as `MIGRATION_1_2` did).
@@ -566,7 +570,9 @@ Each one exists to avoid showing a confident wrong number.
   sizes never scale: a bracket straight after the count or a container word,
   "1 lata … (397 g)", "each"/"per". Any other bracket holding an amount (a
   count's "4 Apfel (ca. 800g)", prose with numbers) keeps the whole line as
-  written when scaled.
+  written when scaled. With `aiDecisions` (#104), a count's bracket holding
+  only an amount follows the on-device model's cached answer: total scales it,
+  each keeps its figure, unsure stays as written (rule in `docs/decisions.md`).
 - **Joining, "about", per-item and container words are per language** in
   `amounts.json`; a language without them keeps the older, safer behaviour.
 - **A unit's trailing period ("tsp.", "oz.") belongs to the unit.** The

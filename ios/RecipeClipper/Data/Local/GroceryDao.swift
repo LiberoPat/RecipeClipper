@@ -68,6 +68,13 @@ struct GroceryDao {
         }
     }
 
+    /// The model's aisle (#104), only for items still in Other.
+    func fileFromOther(_ ids: [Int64], aisle: String, now: Int64) throws {
+        for id in ids {
+            try db.run("UPDATE grocery_items SET aisle = ?, updatedAt = ? WHERE id = ? AND aisle = 'other'", aisle, now, id)
+        }
+    }
+
     func setAisle(_ ids: [Int64], aisle: String, now: Int64) throws {
         for id in ids {
             try db.run("UPDATE grocery_items SET aisle = ?, updatedAt = ? WHERE id = ?", aisle, now, id)

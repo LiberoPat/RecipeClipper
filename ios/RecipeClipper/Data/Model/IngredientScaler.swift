@@ -211,14 +211,28 @@ enum IngredientScaler {
     private static let whitespace = JRegex(#"\s+"#)
 
     /// `words` nil: a language the app has no words for, so the line stays as written.
-    static func scale(_ line: String, factor: Double, words: LanguageWords? = .english) -> String {
+    /// `bracket` is the model's definite answer about a count's bracket (#104), if any: nil keeps
+    /// such a line as written, as before.
+    static func scale(
+        _ line: String, factor: Double, words: LanguageWords? = .english, bracket: CountBracket? = nil
+    ) -> String {
         guard factor != 1.0, let words else { return line }
         let p = patterns(words)
         if p.amountAfterName { return TrailingAmount.scale(line, factor: factor, words: words) }
         if p.unreadable(line) { return line }
         let comma = decimalComma.containsMatch(in: line)
-        guard let sides = walk(p, line, factor: factor, comma: comma) else { return line }
+        guard let sides = walk(p, line, factor: factor, comma: comma, bracket: bracket) else { return line }
         return sides.map(\.text).joined()
+    }
+
+    /// True when `line` stays as written only because of a count's bracket holding nothing but
+    /// an amount ("4 Apfel (ca. 800g)", `.count`): the one question the model is asked (#104).
+    static func needsCountDecision(_ line: String, words: LanguageWords?) -> Bool {
+        guard let words else { return false }
+        let p = patterns(words)
+        if p.amountAfterName || p.unreadable(line) { return false }
+        return walk(p, line, factor: 1.0, comma: false, bracket: nil) == nil
+            && walk(p, line, factor: 1.0, comma: false, bracket: .each) != nil
     }
 
     /// One amount of a line and the text it governs, up to the next amount's joining word:
@@ -238,7 +252,9 @@ enum IngredientScaler {
     }
 
     // Scales every amount of the line, or none: nil leaves the whole line as written.
-    private static func walk(_ p: Patterns, _ line: String, factor: Double, comma: Bool) -> [Side]? {
+    private static func walk(
+        _ p: Patterns, _ line: String, factor: Double, comma: Bool, bracket: CountBracket? = nil
+    ) -> [Side]? {
         var sides: [Side] = []
         var start = 0
         var alternative = false
@@ -266,7 +282,8 @@ enum IngredientScaler {
             let end = next?.start ?? line.u16Count
             let one = upperRaw.isEmpty && low == 1.0
             guard let tail = scaleBrackets(
-                p, line.u16Substring(tailStart, end), factor: factor, comma: comma, measure: measure, one: one
+                p, line.u16Substring(tailStart, end), factor: factor, comma: comma, measure: measure, one: one,
+                bracket: bracket
             ) else { return nil }
             sides.append(Side(start: start, end: end, text: match[1] + scaled + region + tail + (next?.value ?? "")))
             guard let next else { return sides }
@@ -377,6 +394,9 @@ enum IngredientScaler {
         case package
         /// The line's own amount written another way: "(8 ½ ounces)", "(about 1/4 cup)". Scales with it.
         case total
+        /// A count's bracket holding nothing but an amount: "4 Apfel (ca. 800g)" (a total?) or
+        /// "1 patate douce (300-400 g)" (each one's?). Unsure unless the model decided (#104).
+        case count
         /// Anything else holding an amount: scaling beside it could contradict it.
         case unsure
     }
@@ -390,7 +410,7 @@ enum IngredientScaler {
         if (!measure && before.kIsBlank) || p.afterContainer.containsMatch(in: before) ||
             (!measure && one && p.containerFirst.containsMatch(in: before)) ||
             p.perItem.containsMatch(in: content) { return .package }
-        if measure && p.total.matchEntire(unwrapped(content)) != nil { return .total }
+        if p.total.matchEntire(unwrapped(content)) != nil { return measure ? .total : .count }
         return .unsure
     }
 
@@ -419,15 +439,25 @@ enum IngredientScaler {
     /// Scales the totals in brackets after the name, leaving package sizes and other brackets as
     /// written. Nil when a bracket is `.unsure`: the line stays as written.
     private static func scaleBrackets(
-        _ p: Patterns, _ tail: String, factor: Double, comma: Bool, measure: Bool, one: Bool
+        _ p: Patterns, _ tail: String, factor: Double, comma: Bool, measure: Bool, one: Bool,
+        bracket: CountBracket?
     ) -> String? {
         var out = ""
         var cursor = 0
         for b in brackets(tail) {
             let content = tail.u16Substring(b.contentStart, b.contentEnd)
-            switch kind(p, before: tail.u16Substring(0, b.start), content: content, measure: measure, one: one) {
+            var found = kind(p, before: tail.u16Substring(0, b.start), content: content, measure: measure, one: one)
+            // The model's answer (#104): a total scales; each item's size is left as written.
+            if found == .count {
+                switch bracket {
+                case .total: found = .total
+                case .each: found = .package
+                case nil: found = .unsure
+                }
+            }
+            switch found {
             case .other, .package: continue
-            case .unsure: return nil
+            case .unsure, .count: return nil
             case .total:
                 guard let scaled = scaleTotal(p, content, factor: factor, comma: comma) else { return nil }
                 out += tail.u16Substring(cursor, b.contentStart) + scaled
