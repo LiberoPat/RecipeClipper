@@ -56,6 +56,34 @@ final class CookedPhotoTests: XCTestCase {
         XCTAssertEqual(edited?.updatedAt, clock.time)
     }
 
+    /// A user_version 12 file, built by the real migrations, gains `cooked_photos` (Android's
+    /// `MigrationTest.migration13To14…`), deleted with its recipe.
+    func testAVersion12DatabaseMigratesToVersion13() async throws {
+        let path = NSTemporaryDirectory() + "rc-\(UUID().uuidString).sqlite"
+        defer {
+            for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) }
+        }
+        do {
+            let old = try SQLiteConnection(path: path)
+            try AppDatabase.migrate(old, upTo: 12)
+            try RecipeDao(db: old).insert(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
+        }
+        let migrated = try AppDatabase(path: path)
+        let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
+        XCTAssertEqual(version, 13)
+        let recipeId = try await migrated.read { try XCTUnwrap(RecipeDao(db: $0).findByUrl("https://example.com/cake")).id }
+        try await migrated.write { conn in
+            try CookedPhotoDao(db: conn).insert(CookedPhotoRecord(
+                recipeId: recipeId, fileName: "a.jpg", day: 20_000, note: "Good", createdAt: 1, updatedAt: 1
+            ))
+        }
+        let notes = try await migrated.read { try CookedPhotoDao(db: $0).photosFor(recipeId).map(\.note) }
+        XCTAssertEqual(notes, ["Good"])
+        try await migrated.write { try RecipeDao(db: $0).delete(recipeId) }
+        let left = try await migrated.read { try CookedPhotoDao(db: $0).all() }
+        XCTAssertTrue(left.isEmpty)
+    }
+
     func testARecipeWithPhotosIsNeverCulledAndSortsAsCooked() async throws {
         let cooked = try await insert(1)
         _ = await photos.add(recipeId: cooked, pictures: [jpeg()])

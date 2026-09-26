@@ -76,7 +76,6 @@ final class DecisionRepositoryTests: XCTestCase {
         let db = try AppDatabase(path: path)
         let version = try await db.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
         XCTAssertEqual(version, AppDatabase.schemaVersion)
-        XCTAssertEqual(version, 12)
         try await db.write { try AiDecisionDao(db: $0).insert(self.question, answer: "total", now: 1) }
         let answer = try await db.read { try AiDecisionDao(db: $0).answer(self.question) }
         XCTAssertEqual(answer, "total")
