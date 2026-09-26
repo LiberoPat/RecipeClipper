@@ -27,7 +27,7 @@ enum PagesTask {
         var noWindow = 0, recovered = 0, nameRight = 0, modelFailed = 0
         var goldIng = 0, rightIng = 0, wrongIng = 0, pickedIng = 0, rejectedIng = 0
         var goldSteps = 0, rightSteps = 0, wrongSteps = 0, pickedSteps = 0, rejectedSteps = 0
-        var seconds: [Double] = [], log: [String] = []
+        var seconds: [Double] = [], log: [String] = [], coveredIng = 0, coveredSteps = 0
         for page in pages {
             goldIng += page.gold.ingredients.count
             goldSteps += page.gold.instructions.count
@@ -53,21 +53,24 @@ enum PagesTask {
             rejectedIng += picked.ingredients.count - recipe.ingredients.count
             rejectedSteps += picked.steps.count - recipe.instructions.count
             let ri = recipe.ingredients.filter { EvalPage.matches($0, page.gold.ingredients) }.count
-            let rs = recipe.instructions.filter { EvalPage.matches($0, page.gold.instructions) }.count
-            rightIng += ri; wrongIng += recipe.ingredients.count - ri
-            rightSteps += rs; wrongSteps += recipe.instructions.count - rs
-            log.append("\(page.url)\tkept \(recipe.ingredients.count)/\(picked.ingredients.count) ing (\(ri) right of \(page.gold.ingredients.count)), "
-                + "\(recipe.instructions.count)/\(picked.steps.count) steps (\(rs) right of \(page.gold.instructions.count)), \(Int(reply.seconds)) s")
-            for line in recipe.ingredients where !EvalPage.matches(line, page.gold.ingredients) { log.append("\t  not gold: \(line)") }
+            let rs = recipe.instructions.filter { EvalPage.matches($0, page.gold.instructions, step: true) }.count
+            let ci = page.gold.ingredients.filter { EvalPage.matches($0, recipe.ingredients) }.count
+            let cs = page.gold.instructions.filter { EvalPage.matches($0, recipe.instructions, step: true) }.count
+            rightIng += ri; wrongIng += recipe.ingredients.count - ri; coveredIng += ci
+            rightSteps += rs; wrongSteps += recipe.instructions.count - rs; coveredSteps += cs
+            log.append("\(page.url)\tkept \(recipe.ingredients.count)/\(picked.ingredients.count) ing (\(ri) right; \(ci) of \(page.gold.ingredients.count) gold found), "
+                + "\(recipe.instructions.count)/\(picked.steps.count) steps (\(rs) right; \(cs) of \(page.gold.instructions.count) gold found), \(Int(reply.seconds)) s")
+            for line in recipe.ingredients where !EvalPage.matches(line, page.gold.ingredients) { log.append("\t  not gold ingredient: \(line)") }
+            for line in recipe.instructions where !EvalPage.matches(line, page.gold.instructions, step: true) { log.append("\t  not gold step: \(line.prefix(120))") }
         }
         try? log.joined(separator: "\n").write(toFile: "results/pages.tsv", atomically: true, encoding: .utf8)
         let n = pages.count
         var out = "### Pages read as if they had no recipe data (n = \(n) pages)\n\n"
-        out += "| Approach | Recipes shown | Name right | Ingredient lines: right / gold | Wrong ingredient lines shown | Steps: right / gold | Wrong steps shown | No window (model not asked) | Median latency |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|\n"
-        out += "| Today (parsers only) | 0 | – | 0 / \(goldIng) | 0 | 0 / \(goldSteps) | 0 | – | – |\n"
+        out += "| Approach | Recipes shown | Name right | Gold ingredient lines found | Ingredient lines shown: right / wrong | Gold steps found | Steps shown: right / wrong | No window (model not asked) | Median latency |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|\n"
+        out += "| Today (parsers only) | 0 | – | 0 / \(goldIng) | 0 / 0 | 0 / \(goldSteps) | 0 / 0 | – | – |\n"
         if llm {
             let median = seconds.isEmpty ? "–" : String(format: "%.1f s", seconds.sorted()[seconds.count / 2])
-            out += "| #103: window + LLM + PageRecipeCheck | \(recovered) | \(nameRight) | \(rightIng) / \(goldIng) | \(wrongIng) | \(rightSteps) / \(goldSteps) | \(wrongSteps) | \(noWindow) | \(median) |\n"
+            out += "| #103: window + LLM + PageRecipeCheck | \(recovered) | \(nameRight) | \(coveredIng) / \(goldIng) | \(rightIng) / \(wrongIng) | \(coveredSteps) / \(goldSteps) | \(rightSteps) / \(wrongSteps) | \(noWindow) | \(median) |\n"
             out += "\nChecker: of \(pickedIng) ingredient and \(pickedSteps) step strings the model returned, it dropped "
                 + "\(rejectedIng) and \(rejectedSteps) as not on the page (pages it rejected whole not counted); \(modelFailed) unreadable replies.\n"
         }

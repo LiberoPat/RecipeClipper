@@ -45,21 +45,26 @@ struct EvalPage {
         return pages
     }
 
-    /// Folded for comparison: NFKC ("½" is "1⁄2"), the fraction slash as "/", then `Norm.text`.
+    /// Folded for comparison: NFKC ("½" is "1⁄2"), the fraction slash as "/", lowercase, and every
+    /// character but letters, digits, "/" and "." as a space (checkboxes, brackets, commas).
     static func fold(_ s: String) -> String {
-        Norm.text(s.precomposedStringWithCompatibilityMapping.replacingOccurrences(of: "⁄", with: "/")
-            .replacingOccurrences(of: "\u{a0}", with: " ")) ?? ""
+        let t = s.precomposedStringWithCompatibilityMapping.replacingOccurrences(of: "⁄", with: "/").lowercased()
+        let kept = t.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) || $0 == "/" || $0 == "." ? Character($0) : " " }
+        return String(kept).split(separator: " ").joined(separator: " ")
     }
 
-    /// A kept line is right when it is a gold line, or one holds the other and the shorter is at
-    /// least 60% of the longer (sites add or drop a trailing note between the card and JSON-LD).
-    static func matches(_ kept: String, _ gold: [String]) -> Bool {
+    /// A kept line is right when it is a gold line, or the start of one (the card or the JSON-LD
+    /// adds a note the other lacks) of at least three words; a step may also sit inside a longer
+    /// gold step, or hold a shorter one, of at least four words (sites split the method differently).
+    static func matches(_ kept: String, _ gold: [String], step: Bool = false) -> Bool {
         let k = fold(kept)
         return gold.contains { g in
             let f = fold(g)
             if f == k { return true }
             let (short, long) = f.count < k.count ? (f, k) : (k, f)
-            return !short.isEmpty && long.contains(short) && Double(short.count) >= 0.6 * Double(long.count)
+            let words = short.split(separator: " ").count
+            if step { return words >= 4 && long.contains(short) }
+            return words >= 3 && long.hasPrefix(short + " ")
         }
     }
 }

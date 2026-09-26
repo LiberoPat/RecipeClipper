@@ -5,7 +5,7 @@ import Foundation
 /// probabilities above a threshold. Gold "a|b" accepts either; gold "unsure" means no definite
 /// answer is right, so any definite answer counts as confident wrong.
 enum DecisionsTask {
-    static let thresholds = [0.8, 0.9, 0.95]
+    static let thresholds = [0, 0.7, 0.8, 0.9]
 
     static func outcome(_ answer: String?, _ gold: String) -> Outcome {
         guard let answer, answer != DecisionKind.unsure else { return .abstain }
@@ -17,7 +17,8 @@ enum DecisionsTask {
             .compactMap { try? JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String] }
         var out = ""
         for kind in DecisionKind.allCases {
-            var rules = Tally(), model = Tally(), jev = thresholds.map { _ in Tally() }
+            // [0]: every item; [1]: only the items the app would send to the model.
+            var rules = [Tally(), Tally()], model = [Tally(), Tally()], jev = [thresholds.map { _ in Tally() }, thresholds.map { _ in Tally() }]
             var asked = 0, log: [String] = []
             for row in rows where row[0] == kind.rawValue {
                 let lang = row[1], gold = row.last!, words = LanguageWords.forTag(lang) ?? .english
@@ -38,7 +39,8 @@ enum DecisionsTask {
                     appAsks = a == .other
                 }
                 if appAsks { asked += 1 }
-                rules.add(outcome(ruleAnswer, gold), seconds: 0)
+                let scopes = appAsks ? [0, 1] : [0]
+                for s in scopes { rules[s].add(outcome(ruleAnswer, gold), seconds: 0) }
                 guard llm else { continue }
                 var replies: [DecisionReply] = [], seconds = 0.0
                 for n in 0..<DecisionRule.asks {
@@ -54,27 +56,31 @@ enum DecisionsTask {
                     replies.append(DecisionReply(answer: o?["answer"] as? String ?? "", confidence: o?["confidence"] as? String ?? ""))
                 }
                 let judged = DecisionRule.judge(kind, replies)
-                model.add(outcome(judged, gold), seconds: seconds)
+                for s in scopes { model[s].add(outcome(judged, gold), seconds: seconds) }
                 let prompt = DecisionPrompts.prompt(question, 0)
                 let asking = prompt.instructions.components(separatedBy: "\nAnswer with one of").first ?? prompt.instructions
                 var jevLog = "-"
                 if let j = Llm.jev(state: prompt.text, question: asking, options: kind.options) {
                     let best = j.probs.indices.max { j.probs[$0] < j.probs[$1] }!
                     for (i, t) in thresholds.enumerated() {
-                        jev[i].add(outcome(j.probs[best] >= t ? kind.options[best] : nil, gold), seconds: j.seconds)
+                        for s in scopes { jev[s][i].add(outcome(j.probs[best] >= t ? kind.options[best] : nil, gold), seconds: j.seconds) }
                     }
                     jevLog = String(format: "%@ %.2f", kind.options[best], j.probs[best])
                 }
                 log.append("\(row.dropFirst(2).dropLast().joined(separator: " / "))\tgold=\(gold)\trules=\(ruleAnswer ?? "-")\tllm=\(judged) \(replies.map { "\($0.answer):\($0.confidence)" })\tjev=\(jevLog)\tapp asks=\(appAsks)")
             }
             try? log.joined(separator: "\n").write(toFile: "results/decisions-\(kind.rawValue).tsv", atomically: true, encoding: .utf8)
-            out += "### Decision: \(kind.rawValue) (n = \(rules.total); the app would ask the model about \(asked))\n\n\(Tally.header)\n"
-            out += rules.row("Rules (today)") + "\n"
-            if llm {
-                out += model.row("Generative LLM + DecisionRule") + "\n"
-                for (i, t) in thresholds.enumerated() { out += jev[i].row("JevK5-4B, p ≥ \(t)") + "\n" }
+            for (s, scope) in ["every labelled item", "only what the app would ask the model"].enumerated() {
+                out += "### Decision: \(kind.rawValue), \(scope) (n = \(rules[s].total))\n\n\(Tally.header)\n"
+                out += rules[s].row("Rules (today)") + "\n"
+                if llm {
+                    out += model[s].row("Generative LLM + DecisionRule") + "\n"
+                    for (i, t) in thresholds.enumerated() {
+                        out += jev[s][i].row(t == 0 ? "JevK5-4B, top option always" : "JevK5-4B, p ≥ \(t)") + "\n"
+                    }
+                }
+                out += "\n"
             }
-            out += "\n"
         }
         return out
     }
