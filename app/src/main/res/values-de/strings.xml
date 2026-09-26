@@ -311,6 +311,18 @@
     <string name="action_paste_list">Liste einfügen</string>
     <string name="receive_list_title">Diese Liste hinzufügen</string>
     <string name="receive_list_empty">In der Zwischenablage ist keine Liste. Kopiere zuerst eine und füge sie dann hier ein.</string>
+    <!-- A file sent to someone else's Recipe Clipper (#149, phase 2) -->
+    <string name="action_send_file">Als Datei senden</string>
+    <string name="send_file_failed">Die Datei zum Senden konnte nicht erstellt werden.</string>
+    <string name="receive_file_title">Aus dieser Datei hinzufügen</string>
+    <string name="receive_file_empty">In dieser Datei ist nichts zum Hinzufügen.</string>
+    <string name="receive_file_to_pantry">Vorratsartikel in den Vorrat</string>
+    <string name="receive_file_to_groceries">Vorratsartikel auf die Einkaufsliste</string>
+    <!-- %2$d is the free app's recipe limit. -->
+    <plurals name="receive_file_skipped_free">
+        <item quantity="one">%1$d Rezept wurde nicht hinzugefügt: Die kostenlose App behält %2$d Rezepte.</item>
+        <item quantity="other">%1$d Rezepte wurden nicht hinzugefügt: Die kostenlose App behält %2$d Rezepte.</item>
+    </plurals>
     <string name="action_move_to_aisle">In anderen Gang verschieben…</string>
     <string name="move_to_aisle_title">Gang</string>
     <string name="snackbar_grocery_deleted">Gelöscht: %1$s</string>

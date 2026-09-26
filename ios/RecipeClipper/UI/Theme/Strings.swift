@@ -505,6 +505,19 @@ enum Strings {
     static var receiveListEmpty: String { String(localized: "receive_list_empty") }
     /// The share card, once the lines are in the pantry (iOS only: Android opens the Pantry tab).
     static var receiveListAddedPantry: String { String(localized: "receive_list_added_pantry") }
+    // A file sent to someone else's Recipe Clipper (#149, phase 2).
+    static var sendFile: String { String(localized: "action_send_file") }
+    static var sendFileFailed: String { String(localized: "send_file_failed") }
+    static var receiveFileTitle: String { String(localized: "receive_file_title") }
+    static var receiveFileEmpty: String { String(localized: "receive_file_empty") }
+    static var receiveFileToPantry: String { String(localized: "receive_file_to_pantry") }
+    static var receiveFileToGroceries: String { String(localized: "receive_file_to_groceries") }
+    /// How many recipes the free library (#107) left out of a received file, and its size.
+    static func receiveFileSkippedFree(_ skipped: Int, limit: Int) -> String {
+        skipped == 1
+            ? String(localized: "receive_file_skipped_free_one \(limit)")
+            : String(localized: "receive_file_skipped_free_other \(skipped) \(limit)")
+    }
     static var moveToAisle: String { String(localized: "action_move_to_aisle") }
     static var moveToAisleTitle: String { String(localized: "move_to_aisle_title") }
     static func groceryDeleted(_ label: String) -> String { String(localized: "snackbar_grocery_deleted \(label)") }

@@ -1,6 +1,7 @@
 package com.example.recipeclipper
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -11,10 +12,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.core.content.IntentCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.example.recipeclipper.data.AutoBackup
 import com.example.recipeclipper.data.FirstRunTour
+import com.example.recipeclipper.data.backup.ShareFile
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.ReceivedList
@@ -26,6 +30,9 @@ import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
 import com.example.recipeclipper.ui.navigation.Tab
 import com.example.recipeclipper.ui.navigation.openRoute
+import com.example.recipeclipper.ui.sharefile.ReceiveFileHost
+import com.example.recipeclipper.ui.sharefile.ReceivedFileInbox
+import com.example.recipeclipper.ui.sharefile.ReceivedWhere
 import com.example.recipeclipper.ui.tour.LocalTips
 import com.example.recipeclipper.ui.tour.TipsHost
 import com.example.recipeclipper.ui.tour.TipsViewModel
@@ -47,6 +54,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var autoBackup: AutoBackup
+
+    @Inject
+    lateinit var receivedFiles: ReceivedFileInbox
 
     @Inject
     lateinit var firstRunTour: FirstRunTour
@@ -78,7 +88,7 @@ class MainActivity : ComponentActivity() {
         welcomeChecked = savedInstanceState?.getBoolean(STATE_WELCOME_CHECKED) ?: false
         // A launch that opens something (a shared link, a notification) isn't a plain one: the
         // welcome waits for the next plain launch, so a shared link still opens on the recipe.
-        val plainLaunch = routeFor(intent) == null
+        val plainLaunch = routeFor(intent) == null && sharedFile(intent) == null
 
         setContent {
             // The flags (#87) as they change in Developer settings. Turning the tab shell on or
@@ -111,10 +121,32 @@ class MainActivity : ComponentActivity() {
             val tipsHost = remember(tipsState) { TipsHost(tipsState.shown, tips::onDismiss) }
             CompositionLocalProvider(LocalFlagValues provides flags, LocalTips provides tipsHost) {
                 AppShell(navController, tabsEnabled)
+                // A shared file (#149) opens its sheet over whatever is on screen; once added,
+                // the app shows where the things went.
+                ReceiveFileHost(hiltViewModel()) { where ->
+                    navController.openRoute(
+                        when (where) {
+                            ReceivedWhere.GROCERIES -> Tab.GROCERIES.route
+                            ReceivedWhere.PANTRY -> Tab.PANTRY.route
+                            ReceivedWhere.RECIPES -> Routes.RECIPES
+                        },
+                        tabsEnabled
+                    )
+                }
             }
         }
 
-        if (!shareHandled) routeFor(intent)?.let { intentRoutes.trySend(it) }
+        if (!shareHandled) {
+            // A shared file (#149) opens its sheet where the user is; handled at once, so a
+            // rotation doesn't open it again.
+            val file = sharedFile(intent)
+            if (file != null) {
+                receivedFiles.offer(file)
+                shareHandled = true
+            } else {
+                routeFor(intent)?.let { intentRoutes.trySend(it) }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -122,6 +154,10 @@ class MainActivity : ComponentActivity() {
         // singleTask launch mode means a repeat share (or a notification tap) arrives here
         // instead of onCreate
         setIntent(intent)
+        sharedFile(intent)?.let {
+            receivedFiles.offer(it)
+            return
+        }
         val route = routeFor(intent) ?: return
         shareHandled = false
         intentRoutes.trySend(route)
@@ -155,6 +191,17 @@ class MainActivity : ComponentActivity() {
             return Tab.GROCERIES.route
         }
         return null
+    }
+
+    /** A Recipe Clipper file (#149): opened (VIEW) or shared in (SEND), by its type or its name. */
+    private fun sharedFile(intent: Intent?): String? {
+        val uri = when (intent?.action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+            else -> null
+        } ?: return null
+        val named = uri.lastPathSegment?.endsWith(".${ShareFile.EXTENSION}", ignoreCase = true) == true
+        return uri.toString().takeIf { intent?.type == ShareFile.MIME_TYPE || named }
     }
 
     /** Browsers share a link, and messaging apps a message, as EXTRA_TEXT on ACTION_SEND text/plain. */

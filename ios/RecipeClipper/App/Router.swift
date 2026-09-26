@@ -57,6 +57,13 @@ final class Router {
         push(route)
     }
 
+    /// A file sent from another phone was opened (#149): not a plain launch either, and its
+    /// sheet shows in place of a first welcome.
+    func openedFile() {
+        openedSomething = true
+        if welcome?.again == false { welcome = nil }
+    }
+
     /// Decides on the welcome once per run (#151): `decide` is `FirstRunTour.onLaunch`.
     func checkWelcome(_ decide: (_ plain: Bool) async -> Bool) async {
         guard !welcomeChecked else { return }

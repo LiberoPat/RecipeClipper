@@ -56,6 +56,13 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun backupRepository(impl: DefaultBackupRepository): BackupRepository
 
+    /** The shared file that carries recipes and items to someone else (#149). */
+    @Binds
+    @Singleton
+    abstract fun shareFileRepository(
+        impl: com.example.recipeclipper.data.DefaultShareFileRepository
+    ): com.example.recipeclipper.data.ShareFileRepository
+
     @Binds
     @Singleton
     abstract fun cookedPhotoRepository(

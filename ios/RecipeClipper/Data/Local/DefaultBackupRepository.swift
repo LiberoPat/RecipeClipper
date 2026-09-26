@@ -32,16 +32,7 @@ final class DefaultBackupRepository: BackupRepository {
         let now = clock.now()
         let backup = Backup(
             exportedAt: now,
-            recipes: snapshot.recipes.map { r in
-                BackupRecipe(
-                    id: r.uid, sourceUrl: r.sourceUrl, sourceType: r.sourceType, title: r.title,
-                    imageUrl: r.imageUrl, ingredients: r.ingredients, instructions: r.instructions,
-                    prepTime: r.prepTime, cookTime: r.cookTime, totalTime: r.totalTime,
-                    servings: r.servings, lastViewedAt: r.lastViewedAt,
-                    checkedIngredients: r.checkedIngredients, notes: r.notes, language: r.language,
-                    contentOrigin: r.contentOrigin, editedAt: r.editedAt
-                )
-            },
+            recipes: snapshot.recipes.map(\.backup),
             lists: snapshot.lists.map { l in
                 BackupList(
                     id: l.uid, name: l.name, isFavorites: l.isFavorites, isBuiltIn: l.isBuiltIn,

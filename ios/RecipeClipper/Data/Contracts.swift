@@ -332,6 +332,21 @@ extension BackupRepository {
     }
 }
 
+/// The file that carries picked recipes and items to someone else's Recipe Clipper (#149, phase
+/// 2; Android's ShareFileRepository; the rules are `ShareFile`). Nothing is sent anywhere from
+/// here: the screen hands the file to the user's own share sheet.
+protocol ShareFileRepository: AnyObject {
+    /// The file for recipe `recipeId`, complete; nil if it's gone or can't be read.
+    func recipeFile(recipeId: Int64) async -> String?
+
+    /// The file for every grocery item not ticked off, with the recipes they came from; nil
+    /// when none is left to buy.
+    func groceriesFile() async -> String?
+
+    /// Merges what the receiver chose from `file`; a failure writes nothing.
+    func receive(_ file: Backup, choice: ShareChoice) async -> Result<ImportSummary, BackupError>
+}
+
 /// Where an export file is written and a picked one is read (Android's BackupFiles), so the
 /// Settings ViewModel stays free of the file system and its test can use a fake.
 protocol BackupFiles: AnyObject {

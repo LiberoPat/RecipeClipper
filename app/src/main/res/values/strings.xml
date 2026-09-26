@@ -359,6 +359,18 @@
     <string name="action_paste_list">Paste a list</string>
     <string name="receive_list_title">Add this list</string>
     <string name="receive_list_empty">There\'s no list on the clipboard. Copy one first, then paste it here.</string>
+    <!-- A file sent to someone else's Recipe Clipper (#149, phase 2) -->
+    <string name="action_send_file">Send as file</string>
+    <string name="send_file_failed">Couldn\'t create the file to send.</string>
+    <string name="receive_file_title">Add from this file</string>
+    <string name="receive_file_empty">There\'s nothing in this file to add.</string>
+    <string name="receive_file_to_pantry">Pantry items to the pantry</string>
+    <string name="receive_file_to_groceries">Pantry items to groceries</string>
+    <!-- %2$d is the free app's recipe limit. -->
+    <plurals name="receive_file_skipped_free">
+        <item quantity="one">%1$d recipe wasn\'t added: the free app keeps %2$d recipes.</item>
+        <item quantity="other">%1$d recipes weren\'t added: the free app keeps %2$d recipes.</item>
+    </plurals>
     <string name="action_move_to_aisle">Move to aisle…</string>
     <string name="move_to_aisle_title">Aisle</string>
     <string name="snackbar_grocery_deleted">Deleted %1$s</string>

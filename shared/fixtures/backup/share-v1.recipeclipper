@@ -1,0 +1,82 @@
+{
+  "format": "recipe-clipper-backup",
+  "formatVersion": 1,
+  "kind": "share",
+  "exportedAt": 1789100000000,
+  "recipes": [
+    {
+      "id": "r-chicken",
+      "sourceUrl": "https://example.com/sheet-pan-chicken?utm_source=share",
+      "sourceType": "BLOG",
+      "title": "Sheet-pan chicken",
+      "imageUrl": "https://example.com/img/chicken.jpg",
+      "ingredients": ["2 lb chicken thighs", "1 lemon", "2 tbsp olive oil"],
+      "instructions": ["Heat the oven to 425°F.", "Roast everything for 35 minutes."],
+      "prepTime": "10m",
+      "cookTime": "35m",
+      "totalTime": "45m",
+      "servings": "4 servings",
+      "lastViewedAt": 1789100000000,
+      "checkedIngredients": [],
+      "language": "en",
+      "contentOrigin": "EDITED",
+      "editedAt": 1789000000000
+    },
+    {
+      "id": "r-cake",
+      "sourceUrl": "manual:5d1c2a4e-2f61-4a8e-9b1a-6e0f2c9d7a11",
+      "sourceType": "BLOG",
+      "title": "Grandma's lemon cake",
+      "ingredients": ["2 cups flour", "1 cup sugar", "3 eggs"],
+      "instructions": ["Mix.", "Bake at 350°F for 40 minutes."],
+      "servings": "8",
+      "lastViewedAt": 1789100000000,
+      "checkedIngredients": [],
+      "language": "en",
+      "contentOrigin": "MANUAL"
+    }
+  ],
+  "lists": [],
+  "memberships": [],
+  "groceries": [
+    {
+      "id": "g-thighs",
+      "text": "2 lb chicken thighs",
+      "language": "en",
+      "aisle": "meat",
+      "checked": false,
+      "recipeId": "r-chicken",
+      "updatedAt": 1789000000000
+    },
+    {
+      "id": "g-lemon",
+      "text": "1 lemon",
+      "language": "en",
+      "aisle": "produce",
+      "checked": false,
+      "recipeId": "r-chicken",
+      "updatedAt": 1789000000000
+    },
+    {
+      "id": "g-paper",
+      "text": "baking paper",
+      "language": "en",
+      "aisle": "other",
+      "checked": false,
+      "updatedAt": 1789000000000
+    }
+  ],
+  "pantry": [
+    {
+      "id": "p-rice",
+      "name": "Basmati rice",
+      "quantity": "2 bags",
+      "language": "en",
+      "aisle": "grains",
+      "inStock": true,
+      "alwaysHave": false,
+      "updatedAt": 1789000000000
+    }
+  ],
+  "futureSection": [{ "ignored": true }]
+}
