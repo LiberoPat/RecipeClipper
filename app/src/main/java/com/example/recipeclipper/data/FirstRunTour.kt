@@ -16,7 +16,7 @@ import javax.inject.Singleton
  *   notification): capture stays frictionless, so a first launch from a share shows the recipe
  *   and the welcome waits for the next plain launch.
  * - Someone who already has recipes when the tour first runs (an older version's user, or a
- *   restored backup) never gets the welcome, nor the recipe and cook mode tips.
+ *   restored backup) never gets the welcome, nor any tip.
  * - The sample recipe is added once, when the welcome first shows. Deleted, it stays deleted;
  *   "Try it" on a later showing of the tour adds it again only if it is gone.
  */
@@ -38,8 +38,7 @@ class FirstRunTour @Inject constructor(
         }
         if (recipes.observeCount().first() > 0) {
             preferences.welcome = WelcomeState.SEEN
-            preferences.setTipSeen(Tip.RECIPE, true)
-            preferences.setTipSeen(Tip.COOK_MODE, true)
+            Tip.entries.forEach { preferences.setTipSeen(it, true) }
             return false
         }
         preferences.welcome = WelcomeState.PENDING

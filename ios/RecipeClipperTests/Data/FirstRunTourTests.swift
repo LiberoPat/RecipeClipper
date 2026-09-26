@@ -41,13 +41,13 @@ final class FirstRunTourTests: XCTestCase {
         XCTAssertTrue(plain)
     }
 
-    func testSomeoneWhoAlreadyHasRecipesNeverGetsTheWelcomeNorTheRecipeAndCookTips() async {
+    func testSomeoneWhoAlreadyHasRecipesNeverGetsTheWelcomeNorAnyTip() async {
         recipes.history.send([summary(1), summary(2)])
 
         let shows = await tour.onLaunch(plain: true)
         XCTAssertFalse(shows)
         XCTAssertEqual(preferences.welcome, .seen)
-        XCTAssertEqual(preferences.seenTips, [.recipe, .cookMode])
+        XCTAssertEqual(preferences.seenTips, Set(Tip.allCases))
     }
 
     /// On iOS a share is saved by the extension without opening the app: a new user's first share

@@ -2738,9 +2738,10 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
   deep link) shows that and leaves the welcome pending for the next plain launch: capture
   stays frictionless. Someone who already has recipes the first time the tour runs (an older
   version's user, or a restored backup: Android's Auto Backup and iOS's device backup put the
-  database back before the first launch) never gets it, nor the recipe and cook mode tips;
-  the Week, Groceries and Pantry tips still show for them, as those tabs are new to them now
-  that the flags are on. iOS's share extension saves without opening the app, so it notes a
+  database back before the first launch) never gets it, nor any tip. At first the Week,
+  Groceries and Pantry tips still showed for them, as those tabs were new to them now that the
+  flags are on; the owner decided (2026-09-26) that existing users skip every tip. iOS's share
+  extension saves without opening the app, so it notes a
   new user's first share (`FirstRunTour.noteShare`: library empty, welcome undecided); the
   recipe it adds then doesn't make them look like an old user, and the welcome shows at the
   app's first opening.
