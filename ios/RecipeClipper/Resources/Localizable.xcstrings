@@ -3534,37 +3534,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schalte Apple Intelligence ein, um den Chefmodus zu nutzen."
+            "value" : "Schalte Apple Intelligence in den iPhone-Einstellungen ein, um den Chefmodus zu nutzen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Turn on Apple Intelligence to use Chef mode."
+            "value" : "Turn on Apple Intelligence in the iPhone's Settings to use Chef mode."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Activa Apple Intelligence para usar el modo chef."
+            "value" : "Activa Apple Intelligence en los Ajustes del iPhone para usar el modo chef."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Activez Apple Intelligence pour utiliser le mode chef."
+            "value" : "Activez Apple Intelligence dans les Réglages de l'iPhone pour utiliser le mode chef."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Attiva Apple Intelligence per usare la modalità chef."
+            "value" : "Attiva Apple Intelligence nelle Impostazioni dell'iPhone per usare la modalità chef."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ative a Apple Intelligence para usar o modo chef."
+            "value" : "Ative a Apple Intelligence nos Ajustes do iPhone para usar o modo chef."
           }
         }
       }
@@ -3657,37 +3657,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Telefon kann keine kurzen Schritte schreiben."
+            "value" : "Benötigt ein iPhone mit Apple Intelligence (iPhone 15 Pro oder neuer) und iOS 26 oder neuer."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This phone can't write short steps."
+            "value" : "Needs an iPhone with Apple Intelligence (iPhone 15 Pro or newer) and iOS 26 or later."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este teléfono no puede escribir pasos cortos."
+            "value" : "Necesita iOS 26 o posterior en un iPhone con Apple Intelligence (iPhone 15 Pro o posterior)."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce téléphone ne peut pas écrire d'étapes courtes."
+            "value" : "Nécessite un iPhone compatible avec Apple Intelligence (iPhone 15 Pro ou plus récent) et iOS 26 ou version ultérieure."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questo telefono non può scrivere passaggi brevi."
+            "value" : "Richiede un iPhone con Apple Intelligence (iPhone 15 Pro o successivo) e iOS 26 o successivo."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este celular não consegue escrever passos curtos."
+            "value" : "Requer um iPhone com Apple Intelligence (iPhone 15 Pro ou mais recente) e iOS 26 ou posterior."
           }
         }
       }
