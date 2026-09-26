@@ -77,7 +77,11 @@ final class GroceriesViewModelTests: XCTestCase {
         let vm = GroceriesViewModel(
             repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), decisions: decisions
         )
-        await settleMain { vm.uiState.sections.map { $0.flatMap(\.rows).count } == 1 }
+        // Wait for the last answer: once only the name is in, the two lines already share a row.
+        await settleMain {
+            if case .combined(_, let text, _) = self.rows(vm).first { return text == "5 onions" }
+            return false
+        }
 
         XCTAssertEqual(decisions.asked.filter { $0 == name || $0 == junk }, [name, junk])
         guard case .combined(_, let text, _) = rows(vm).first else { return XCTFail("not combined") }
