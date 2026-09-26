@@ -71,6 +71,32 @@ class GroceriesViewModelTest {
         }
 
     @Test
+    fun `the model's answers regroup the list once they land, and add up only exact amounts`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            add("2 ears of corn", "2 corn", "2 eggs, beaten", "3 eggs")
+            val corn = DecisionQuestion.sameGrocery("ears of corn", "corn", "en")
+            val beaten = DecisionQuestion.trailingText(", beaten", "en")
+            val decisions = FakeDecisionRepository(mapOf(corn to "same", beaten to "note"))
+            val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), decisions)
+            advanceUntilIdle()
+
+            assertTrue(decisions.asked.containsAll(listOf(corn, beaten)))
+            val rows = vm.uiState.value.sections!!.flatMap { it.rows }
+            // One row for the corn, each line as written: "ears of corn" and "corn" aren't one count word.
+            assertEquals(2, rows.first { it.items.any { i -> i.text == "2 corn" } }.items.size)
+            assertEquals("5 eggs", rows.filterIsInstance<GroceryCombiner.Row.Combined>().single().text)
+        }
+
+    @Test
+    fun `without answers the grocery list is exactly as today`() = runTest(mainDispatcherRule.dispatcher) {
+        add("2 ears of corn", "2 corn", "2 eggs, beaten", "3 eggs")
+        val decisions = FakeDecisionRepository()
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), decisions)
+        advanceUntilIdle()
+        assertEquals(GroceryCombiner.sections(repository.items.value), vm.uiState.value.sections)
+    }
+
+    @Test
     fun `a typed item goes on the list and clears the field`() = runTest(mainDispatcherRule.dispatcher) {
         val default = Locale.getDefault()
         Locale.setDefault(Locale.ENGLISH)

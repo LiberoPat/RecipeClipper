@@ -51,6 +51,34 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.sections?.filter { $0.aisle == .other }.count, 1)
     }
 
+    func testTheModelsAnswersRegroupTheListAndAddUpOnlyExactAmounts() async {
+        await add("2 ears of corn", "2 corn", "2 eggs, beaten", "3 eggs")
+        let corn = DecisionQuestion.sameGrocery("ears of corn", "corn", language: "en")
+        let beaten = DecisionQuestion.trailingText(", beaten", language: "en")
+        let decisions = FakeDecisionRepository([corn: "same", beaten: "note"])
+        let vm = GroceriesViewModel(
+            repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), decisions: decisions
+        )
+        await settleMain()
+        await settleMain()
+
+        XCTAssertTrue(decisions.asked.contains(corn) && decisions.asked.contains(beaten))
+        let all = rows(vm)
+        XCTAssertEqual(all.first { $0.items.contains { $0.text == "2 corn" } }?.items.count, 2)
+        let totals = all.compactMap { row -> String? in if case .combined(_, let text, _) = row { return text } else { return nil } }
+        XCTAssertEqual(totals, ["5 eggs"])
+    }
+
+    func testWithoutAnswersTheGroceryListIsExactlyAsToday() async {
+        await add("2 ears of corn", "2 corn", "2 eggs, beaten", "3 eggs")
+        let vm = GroceriesViewModel(
+            repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), decisions: FakeDecisionRepository([:])
+        )
+        await settleMain()
+        await settleMain()
+        XCTAssertEqual(vm.uiState.sections, GroceryCombiner.sections(repository.items.value))
+    }
+
     func testATypedItemGoesOnTheListInThePhonesLanguage() async {
         let vm = await viewModel(language: "de")
         vm.onDraftChange("  Milch ")
