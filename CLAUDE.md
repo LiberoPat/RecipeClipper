@@ -122,7 +122,7 @@ upsert with no list membership), and `edit?recipeId={recipeId}` (no id: a new
 recipe; saving replaces the edit screen, and the recipe screen under it, with
 `recipe/{id}`), and `clip?url={url}` (Clip it yourself; saving replaces it and
 the error screen under it with `recipe/{id}`). Behind the `mealPlan` feature
-flag (#47, default off, so the app is unchanged): a
+flag (#47, on by default): a
 bottom tab bar nests this same graph under a Recipes tab alongside `week`
 (with its own `week/recipe/{recipeId}?servings={servings}` and
 `week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry`
@@ -152,7 +152,9 @@ Recipes, whichever tab is open.
   through `Strings.swift`); a new string needs all six languages on both
   platforms. `RecipeShareText` takes its words as `Labels` from the screen;
   `SiteReportLink` is a report body, English by design.
-- **Features that ship dark are feature flags** (#87): one entry in
+- **Features sit behind feature flags** (#87), **on by default in debug and
+  release** (the owner's call: a flag goes off only for a known bug, which is
+  why `freeTier` and `aiCountBrackets` are off). One entry in
   `shared/flags.json` (key, description, default per build type, issue) plus
   the `Flag` enum on each platform; read `FeatureFlags.isOn(...)`, never a
   build constant. Overrides: hidden Developer settings (7 taps on the version
@@ -267,7 +269,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Recently viewed. Search is on Recipes only. Behind the tab-bar flag (#47)
   this is the Recipes tab, otherwise unchanged.
 - **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry, owner's order,
-  behind a flag default off. Each tab keeps its own back stack; Recipes is
+  behind a flag, on by default. Each tab keeps its own back stack; Recipes is
   Home's stack unchanged. The bar hides on the recipe reading view and in
   cook mode, so a recipe still opens on the recipe; a shared link always
   lands in Recipes, whichever tab is open, on top of whatever it held.

@@ -3,19 +3,19 @@
     {
       "key": "mealPlan",
       "description": "The meal plan: the bottom tabs (Recipes, Week, Groceries, Pantry) and the recipe screen's Add to plan and Add to groceries.",
-      "defaults": { "debug": false, "release": false },
+      "defaults": { "debug": true, "release": true },
       "issue": 47
     },
     {
       "key": "chefMode",
       "description": "Chef mode: the Settings switch (Steps section) for short steps written on the device, shown in the reading view and cook mode.",
-      "defaults": { "debug": false, "release": false },
+      "defaults": { "debug": true, "release": true },
       "issue": 100
     },
     {
       "key": "amountsInSteps",
       "description": "Ingredient amounts inside steps: Settings' Steps section and its 'Amounts in steps' switch (off by default), which puts each line's amount, as scaled and converted, where a step names the ingredient.",
-      "defaults": { "debug": false, "release": false },
+      "defaults": { "debug": true, "release": true },
       "issue": 101
     },
     {
@@ -27,13 +27,13 @@
     {
       "key": "llmExtraction",
       "description": "A recipe picked from the page's text by the on-device model when the page has no JSON-LD or microdata recipe: every line kept is checked to be on the page, and the reading view says so. Unsupported phones and languages behave as before.",
-      "defaults": { "debug": false, "release": false },
+      "defaults": { "debug": true, "release": true },
       "issue": 103
     },
     {
       "key": "aiDecisions",
       "description": "Typed decisions by the on-device model where the rules give up: whether a close pantry name is the same ingredient (Have/Buy), and the aisle of an item the keyword table puts in Other. Only a definite answer given twice with high confidence acts; unsupported phones and languages behave as before. Count brackets stay as written unless aiCountBrackets is on too.",
-      "defaults": { "debug": false, "release": false },
+      "defaults": { "debug": true, "release": true },
       "issue": 104
     },
     {

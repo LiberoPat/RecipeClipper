@@ -33,20 +33,21 @@ class DeveloperSettingsScreenTest {
     }
 
     @Test
-    fun aSwitchPerFlagTurnsItOnAndResetTurnsItBack() {
+    fun aSwitchPerFlagTurnsItOffAndResetTurnsItBack() {
         show()
+        // On by default, like every flag without a known bug.
         val mealPlan = compose.onNodeWithText("mealPlan")
-        mealPlan.assertIsDisplayed().assertIsOff()
+        mealPlan.assertIsDisplayed().assertIsOn()
 
         mealPlan.performClick()
 
-        mealPlan.assertIsOn()
-        assertTrue(flags.isOn(Flag.MEAL_PLAN))
+        mealPlan.assertIsOff()
+        assertFalse(flags.isOn(Flag.MEAL_PLAN))
         compose.onNode(hasText("Changed from the default", substring = true)).assertIsDisplayed()
 
         compose.onNodeWithText("Reset to defaults").performClick()
 
-        mealPlan.assertIsOff()
-        assertFalse(flags.isOn(Flag.MEAL_PLAN))
+        mealPlan.assertIsOn()
+        assertTrue(flags.isOn(Flag.MEAL_PLAN))
     }
 }
