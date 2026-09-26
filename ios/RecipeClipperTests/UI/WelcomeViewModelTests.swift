@@ -119,6 +119,7 @@ final class WelcomeViewModelTests: XCTestCase {
     }
 
     func testShowingTheTourAgainReachesATipsViewModelAlreadyOpen() async {
+        flags.set(.mealPlan, true)
         let tips = TipsViewModel(preferences: preferences, flags: flags)
         tips.onDismiss(.week)
         preferences.setTipSeen(.week, false)

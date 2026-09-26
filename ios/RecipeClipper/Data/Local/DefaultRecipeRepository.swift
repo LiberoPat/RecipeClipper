@@ -14,6 +14,7 @@ final class DefaultRecipeRepository: RecipeRepository {
     private let renderedPages: RenderedPageSource
     private let renderTimeout: Duration
     private let library: LibraryLimitSource
+    private let photos: PhotoStore?
     private let extractor: PageRecipeExtractor
     /// The `llmExtraction` flag (#103), read at each import; the share extension leaves it off.
     private let extractionOn: () -> Bool
@@ -40,8 +41,10 @@ final class DefaultRecipeRepository: RecipeRepository {
         renderTimeout: Duration = DefaultRecipeRepository.renderTimeout,
         library: LibraryLimitSource = FixedLibraryLimit(),
         extractor: PageRecipeExtractor = NoPageRecipeExtractor(),
-        extractionOn: @escaping () -> Bool = { false }
+        extractionOn: @escaping () -> Bool = { false },
+        photos: PhotoStore? = nil
     ) {
+        self.photos = photos
         self.library = library
         self.extractor = extractor
         self.extractionOn = extractionOn
@@ -356,10 +359,11 @@ final class DefaultRecipeRepository: RecipeRepository {
                 let memberships = try dao.crossRefsFor(id)
                 let planEntries = try dao.planEntriesFor(id)
                 let menuEntries = try dao.menuEntriesFor(id)
+                let cookedPhotos = try CookedPhotoDao(db: conn).photosFor(id)
                 try dao.delete(id)
                 return DeletedRecipe(
                     recipe: row.toDomain(), memberships: memberships, uid: row.uid, planEntries: planEntries,
-                    menuEntries: menuEntries
+                    menuEntries: menuEntries, cookedPhotos: cookedPhotos
                 )
             }
         } catch {
@@ -374,12 +378,18 @@ final class DefaultRecipeRepository: RecipeRepository {
             if let uid = deleted.uid { record.uid = uid }
             try await db.write { [record] conn in
                 try RecipeDao(db: conn).restore(record, crossRefs: deleted.memberships, planEntries: deleted.planEntries,
-                    menuEntries: deleted.menuEntries
+                    menuEntries: deleted.menuEntries, cookedPhotos: deleted.cookedPhotos
                 )
             }
         } catch {
             dataLog.error("restore failed: \(String(describing: error), privacy: .public)")
         }
+    }
+
+    // The photos belong to the recipe (#116): once its delete stands, their files go too.
+    func forget(_ deleted: DeletedRecipe) async {
+        guard let photos, !deleted.cookedPhotos.isEmpty else { return }
+        await photos.delete(deleted.cookedPhotos.map(\.fileName))
     }
 
     func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> {

@@ -394,7 +394,8 @@ private fun importSummaryText(resources: android.content.res.Resources, summary:
 private fun shareExport(context: Context, uriString: String, title: String) {
     val uri = uriString.toUri()
     val send = Intent(Intent.ACTION_SEND).apply {
-        type = "application/json"
+        // With photos (#116) the export is a zip.
+        type = if (uriString.endsWith(".zip")) "application/zip" else "application/json"
         putExtra(Intent.EXTRA_STREAM, uri)
         clipData = ClipData.newRawUri(null, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -407,7 +408,7 @@ private fun shareExport(context: Context, uriString: String, title: String) {
 }
 
 /** What the file picker offers. Some file managers label .json as a generic binary. */
-private val IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "application/octet-stream")
+private val IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "application/octet-stream", "application/zip")
 
 /** An independent toggle: a title, a one-line description, and a [Switch] — never a
  *  checkmark, which would read as an exclusive choice among its siblings. */

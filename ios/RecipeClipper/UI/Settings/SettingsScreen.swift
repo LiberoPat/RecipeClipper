@@ -195,7 +195,7 @@ struct SettingsScreen: View {
         }
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .plainText]) { result in
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .plainText, .zip]) { result in
             switch result {
             case .success(let url): vm.onImportPicked(url)
             case .failure: vm.onImportPickFailed()

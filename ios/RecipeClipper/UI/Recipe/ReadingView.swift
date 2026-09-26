@@ -6,6 +6,8 @@ struct ReadingView: View {
     let content: RecipeSuccess
     let state: RecipeUiState
     let vm: RecipeViewModel
+    /// "Your cooks" (#116); nil while its flag is off.
+    var photos: CookedPhotosViewModel? = nil
     /// The step-number column grows with the numbers in it (titleMedium follows .headline).
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -103,6 +105,10 @@ struct ReadingView: View {
                         focused: $editingNotes
                     )
                     .padding(.top, 24)
+                }
+                // "Your cooks" (#116): last, so the reading view still opens on the recipe.
+                if !state.notKept, let photos {
+                    CookedPhotosSection(vm: photos).padding(.top, 28)
                 }
             }
             .padding(.horizontal, 20)

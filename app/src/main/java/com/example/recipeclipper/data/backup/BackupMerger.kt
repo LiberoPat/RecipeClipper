@@ -61,6 +61,9 @@ data class NewPlanEntry(val entry: BackupPlanEntry, val mealType: Target, val re
 /** A menu meal to write (#52): like [NewPlanEntry], with its uid final. */
 data class NewMenuEntry(val entry: BackupMenuEntry, val mealType: Target, val recipe: Target?)
 
+/** A photo of the user's own cooking to write (#116), on a recipe here after the import. */
+data class NewCookedPhoto(val photo: BackupCookedPhoto, val recipe: Target)
+
 /** A menu to write (#52), with its meals. */
 data class NewMenu(val menu: BackupMenu, val entries: List<NewMenuEntry>)
 
@@ -81,7 +84,8 @@ data class ImportPlan(
     val newGroceries: List<NewGrocery> = emptyList(),
     val newMealTypes: List<NewMealType> = emptyList(),
     val newPlanEntries: List<NewPlanEntry> = emptyList(),
-    val newMenus: List<NewMenu> = emptyList()
+    val newMenus: List<NewMenu> = emptyList(),
+    val newCookedPhotos: List<NewCookedPhoto> = emptyList()
 )
 
 /**
@@ -130,6 +134,10 @@ data class ImportPlan(
  *   come in like listed ones, since the cull keeps them too. A menu left with no meals is dropped.
  * - **Typed-in recipes** (#102, origin MANUAL) come in like listed ones, and one here counts as
  *   listed: the cull never removes them.
+ * - **Photos of the user's own cooking** (#116) come in unless their uid is already here, and
+ *   only with their picture ([availablePhotoFiles]); a photo without one is left out. A recipe
+ *   with a photo coming in comes in like a listed one (the cull never removes it), and one here
+ *   with photos counts as listed.
  */
 object BackupMerger {
 
@@ -148,7 +156,10 @@ object BackupMerger {
         today: Long? = null,
         existingMenuUids: Set<String> = emptySet(),
         existingMenuEntryUids: Set<String> = emptySet(),
-        countsEveryRecipe: Boolean = false
+        countsEveryRecipe: Boolean = false,
+        existingCookedPhotoUids: Set<String> = emptySet(),
+        /** The pictures the package holds, by path in the zip; null takes every file as there. */
+        availablePhotoFiles: Set<String>? = null
     ): ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         val existingByUrl = HashMap<String, ExistingRecipe>()
@@ -239,6 +250,12 @@ object BackupMerger {
         incomingMenuEntries.mapNotNullTo(listedTargets) { it.recipeId?.let(recipeTargets::get) }
         // So is a recipe typed in by hand (#102): it has no link to bring it back.
         newByUrl.values.filter { it.contentOrigin == "MANUAL" }.mapTo(listedTargets) { Target.New(it.id) }
+        // And one with the user's own photos (#116): only the recipe can hold them.
+        val takenPhotoUids = existingCookedPhotoUids.toMutableSet()
+        val incomingPhotos = backup.cookedPhotos.filter { photo ->
+            (availablePhotoFiles == null || photo.file in availablePhotoFiles) && takenPhotoUids.add(photo.id)
+        }
+        incomingPhotos.mapNotNullTo(listedTargets) { recipeTargets[it.recipeId] }
         val unlistedHere = existingRecipes.count { !it.isListed && Target.Existing(it.id) !in listedTargets }
         // The free tier (#107) counts every recipe, here and coming in protected, not only history;
         // never the tour's sample (#151).
@@ -329,6 +346,13 @@ object BackupMerger {
             if (entries.isEmpty()) null else NewMenu(menu.copy(name = menu.name.trim()), entries)
         }
 
+        // --- Photos (#116): their recipe always comes in (it counts as listed above).
+        val newCookedPhotos = incomingPhotos.mapNotNull { photo ->
+            val recipe = recipeTargets[photo.recipeId]?.takeIf { it is Target.Existing || it in written }
+                ?: return@mapNotNull null
+            NewCookedPhoto(photo.copy(note = photo.note?.trim()?.takeIf { it.isNotEmpty() }), recipe)
+        }
+
         return ImportPlan(
             newRecipes = newRecipes,
             noteUpdates = noteUpdates,
@@ -344,13 +368,15 @@ object BackupMerger {
                 mealsAdded = newPlanEntries.size,
                 mealTypesAdded = newTypesByName.size,
                 menusAdded = newMenus.size,
+                photosAdded = newCookedPhotos.size,
                 freeLimit = historyLimit.takeIf { countsEveryRecipe && skipped > 0 }
             ),
             newPantry = newPantry,
             newGroceries = newGroceries,
             newMealTypes = newTypesByName.values.toList(),
             newPlanEntries = newPlanEntries,
-            newMenus = newMenus
+            newMenus = newMenus,
+            newCookedPhotos = newCookedPhotos
         )
     }
 

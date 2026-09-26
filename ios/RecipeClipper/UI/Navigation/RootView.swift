@@ -198,7 +198,8 @@ struct RootView: View {
             RecipeScreen(
                 vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
                 makePlanVM: makePlanVM, makeGroceriesVM: makeGroceriesVM, onClip: { push(.clip($0)) },
-                amountsInStepsEnabled: container.featureFlags.isOn(.amountsInSteps)
+                amountsInStepsEnabled: container.featureFlags.isOn(.amountsInSteps),
+                makePhotosVM: container.makeCookedPhotosViewModel
             )
         }
         // The reading view and cook mode are full screen, so a recipe still opens on the recipe.

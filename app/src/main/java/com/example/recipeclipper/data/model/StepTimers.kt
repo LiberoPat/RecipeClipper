@@ -92,6 +92,10 @@ object StepTimers {
 
     private val SPACES = Regex("""\s+""")
 
+    /** How long one [word] of a duration lasts ("minutes", "min": 60); null for any other word. */
+    internal fun unitSeconds(word: String, words: LanguageWords): Int? =
+        patterns(words).unitSeconds.firstOrNull { (unit, _) -> unit.matches(word) }?.second
+
     private fun toSeconds(p: Patterns, quantity: String, unit: String): Int? {
         val amount = p.scaler.parse(quantity) ?: return null
         return (amount * p.secondsOf(unit)).toInt()

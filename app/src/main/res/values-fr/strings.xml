@@ -453,6 +453,26 @@
         <item quantity="many">%1$d d\'anciennes recettes sans liste n\'ont pas été ajoutées : l\'app gratuite garde %2$d recettes.</item>
         <item quantity="other">%1$d anciennes recettes sans liste n\'ont pas été ajoutées : l\'app gratuite garde %2$d recettes.</item>
     </plurals>
+    <!-- "I made this" (#116) -->
+    <string name="sort_recently_cooked">Cuisinées récemment</string>
+    <string name="heading_your_cooks">Vos réalisations</string>
+    <string name="cooked_empty">Vous l\'avez faite ? Gardez une photo et une courte note.</string>
+    <string name="action_i_made_this">Je l\'ai fait</string>
+    <string name="action_add_photo">Ajouter une photo</string>
+    <string name="action_take_photo">Prendre une photo</string>
+    <string name="action_choose_photos">Choisir dans la galerie</string>
+    <string name="cd_cooked_photo">Votre photo, %1$s</string>
+    <string name="cooked_note_placeholder">Ajouter une courte note</string>
+    <string name="cd_change_cooked_date">Modifier la date, %1$s</string>
+    <string name="cd_share_photo">Partager la photo</string>
+    <string name="cd_delete_photo">Supprimer la photo</string>
+    <string name="cd_close_photo">Fermer</string>
+    <string name="cooked_photo_deleted">Photo supprimée</string>
+    <string name="cooked_add_failed">Impossible d\'ajouter cette photo.</string>
+    <string name="camera_unavailable">Aucune application d\'appareil photo disponible.</string>
+    <string name="cooked_photo_missing">Photo absente de ce téléphone</string>
+    <string name="delete_recipe_body_photo">La recette sera retirée de l\'historique et de toutes les listes où elle figure, avec votre photo. Cette action est irréversible.</string>
+    <string name="delete_recipe_body_photos">La recette sera retirée de l\'historique et de toutes les listes où elle figure, avec vos %1$d photos. Cette action est irréversible.</string>
 
     <!-- The first-run tour (#151): welcome cards, one-time tips, Settings' Show the tour again -->
     <string name="welcome_skip">Passer</string>

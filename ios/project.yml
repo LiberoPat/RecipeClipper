@@ -68,6 +68,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UIBackgroundModes: [audio]
+        # "I made this" (#116): asked the first time the camera is chosen, never before.
+        NSCameraUsageDescription: Take a photo of what you cooked, to keep with the recipe.
         # HTTPS only, which is exempt; saves answering the question on every upload.
         ITSAppUsesNonExemptEncryption: false
     settings:

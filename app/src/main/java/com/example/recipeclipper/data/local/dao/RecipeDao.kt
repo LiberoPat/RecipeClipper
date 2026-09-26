@@ -7,6 +7,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MenuEntryEntity
+import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.ContentOrigin
@@ -22,7 +23,9 @@ data class RecipeSummaryRow(
     val lastViewedAt: Long,
     val isSaved: Boolean,
     /** Picked from the page by hand (#37): History says so. */
-    val isClipped: Boolean = false
+    val isClipped: Boolean = false,
+    /** The latest day of the user's own photos (#116), or null for none. */
+    val lastCookedDay: Long? = null
 )
 
 /** A recipe's saved cook progress, with what a timer alert needs to name it. */
@@ -101,6 +104,12 @@ abstract class RecipeDao {
     )
 
     /** Read before [delete], like [planEntriesFor]: the recipe's meals in saved menus (#52). */
+    @Query("SELECT * FROM cooked_photos WHERE recipeId = :recipeId")
+    abstract suspend fun cookedPhotosFor(recipeId: Long): List<CookedPhotoEntity>
+
+    @Insert
+    protected abstract suspend fun insertCookedPhotos(photos: List<CookedPhotoEntity>)
+
     @Query("SELECT * FROM menu_entries WHERE recipeId = :recipeId")
     abstract suspend fun menuEntriesFor(recipeId: Long): List<MenuEntryEntity>
 
@@ -128,9 +137,11 @@ abstract class RecipeDao {
         recipe: RecipeEntity,
         crossRefs: List<RecipeListCrossRef>,
         planEntries: List<MealPlanEntryEntity> = emptyList(),
-        menuEntries: List<MenuEntryEntity> = emptyList()
+        menuEntries: List<MenuEntryEntity> = emptyList(),
+        cookedPhotos: List<CookedPhotoEntity> = emptyList()
     ) {
         insert(recipe)
+        if (cookedPhotos.isNotEmpty()) insertCookedPhotos(cookedPhotos)
         if (crossRefs.isNotEmpty()) insertCrossRefs(crossRefs)
         planEntries.forEach {
             restorePlanEntry(it.id, it.day, it.mealTypeId, it.recipeId, it.servings, it.note, it.sortOrder, it.updatedAt, it.uid)
@@ -148,7 +159,8 @@ abstract class RecipeDao {
         """
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
-               contentOrigin = 'CLIPPED' AS isClipped
+               contentOrigin = 'CLIPPED' AS isClipped,
+               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         """
@@ -168,7 +180,8 @@ abstract class RecipeDao {
         """
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
-               contentOrigin = 'CLIPPED' AS isClipped
+               contentOrigin = 'CLIPPED' AS isClipped,
+               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
         FROM recipes
         WHERE :query = ''
            OR instr(lower(title), lower(:query)) > 0
@@ -182,7 +195,8 @@ abstract class RecipeDao {
         """
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
-               contentOrigin = 'CLIPPED' AS isClipped
+               contentOrigin = 'CLIPPED' AS isClipped,
+               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         LIMIT :limit
@@ -196,7 +210,7 @@ abstract class RecipeDao {
      * planned for [today] or later (#49; an epoch day, see `PlanDays`): both are outside the
      * cap. A recipe planned only for past days is ordinary history again. Nor is one in a saved
      * menu (#52): the menu would lose it. Nor is one typed in by hand (#102, origin MANUAL): it
-     * has no link to bring it back.
+     * has no link to bring it back. Nor is one with the user's own photos (#116).
      *
      * The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL
      * is never true, which would silently stop the cull altogether.
@@ -210,6 +224,7 @@ abstract class RecipeDao {
                              WHERE recipeId IS NOT NULL AND day >= :today)
               AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
               AND contentOrigin != 'MANUAL'
+              AND id NOT IN (SELECT recipeId FROM cooked_photos)
             ORDER BY lastViewedAt DESC, id DESC
             LIMIT -1 OFFSET :keep
         )
@@ -230,6 +245,7 @@ abstract class RecipeDao {
                          WHERE recipeId IS NOT NULL AND day >= :today)
           AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
           AND contentOrigin != 'MANUAL'
+          AND id NOT IN (SELECT recipeId FROM cooked_photos)
         ORDER BY lastViewedAt ASC, id ASC
         LIMIT 1
         """

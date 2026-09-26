@@ -69,6 +69,12 @@ struct NewMenuEntry: Equatable {
     var recipe: MergeTarget?
 }
 
+/// A photo of the user's own cooking to write (#116), on a recipe here after the import.
+struct NewCookedPhoto: Equatable {
+    var photo: BackupCookedPhoto
+    var recipe: MergeTarget
+}
+
 /// A menu to write (#52), with its meals.
 struct NewMenu: Equatable {
     var menu: BackupMenu
@@ -108,6 +114,7 @@ struct ImportPlan: Equatable {
     var newMealTypes: [NewMealType] = []
     var newPlanEntries: [NewPlanEntry] = []
     var newMenus: [NewMenu] = []
+    var newCookedPhotos: [NewCookedPhoto] = []
 }
 
 /// How an export file merges into a phone that already has recipes (issue #26; the owner's
@@ -131,6 +138,9 @@ struct ImportPlan: Equatable {
 /// left as it is. Its meals follow the plan's rules, its recipes come in like listed ones (the
 /// cull keeps them too), and a menu left with no meals is dropped.
 /// Typed-in recipes (#102, origin MANUAL) come in like listed ones, and one here counts as listed.
+/// Photos of the user's own cooking (#116) come in unless their uid is already here, and only
+/// with their picture (`availablePhotoFiles`); a recipe with a photo coming in comes in like a
+/// listed one, and one here with photos counts as listed.
 enum BackupMerger {
 
     static func plan(
@@ -148,7 +158,10 @@ enum BackupMerger {
         today: Int64? = nil,
         existingMenuUids: Set<String> = [],
         existingMenuEntryUids: Set<String> = [],
-        countsEveryRecipe: Bool = false
+        countsEveryRecipe: Bool = false,
+        existingCookedPhotoUids: Set<String> = [],
+        /// The pictures the package holds, by path in the zip; nil takes every file as there.
+        availablePhotoFiles: Set<String>? = nil
     ) -> ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         var existingByUrl: [String: ExistingRecipe] = [:]
@@ -259,6 +272,14 @@ enum BackupMerger {
         }
         // So is a recipe typed in by hand (#102): it has no link to bring it back.
         for recipe in newByUrl.values where recipe.contentOrigin == "MANUAL" { listedTargets.insert(.new(recipe.id)) }
+        // And one with the user's own photos (#116): only the recipe can hold them.
+        var takenPhotoUids = existingCookedPhotoUids
+        let incomingPhotos = backup.cookedPhotos.filter { photo in
+            (availablePhotoFiles?.contains(photo.file) ?? true) && takenPhotoUids.insert(photo.id).inserted
+        }
+        for photo in incomingPhotos {
+            if let target = recipeTargets[photo.recipeId] { listedTargets.insert(target) }
+        }
         let unlistedHere = existingRecipes.filter { !$0.isListed && !listedTargets.contains(.existing($0.id)) }.count
         let newRecipesInOrder = newOrder.compactMap { newByUrl[$0] }
         // The free tier (#107) counts every recipe, here and coming in protected, not only history.
@@ -381,6 +402,16 @@ enum BackupMerger {
             return NewMenu(menu: trimmed, entries: entries)
         }
 
+        // --- Photos (#116): their recipe always comes in (it counts as listed above).
+        let newCookedPhotos = incomingPhotos.compactMap { photo -> NewCookedPhoto? in
+            guard let recipe = recipeTargets[photo.recipeId] else { return nil }
+            if case .new = recipe, !written.contains(recipe) { return nil }
+            var cleaned = photo
+            let note = photo.note?.trimmingCharacters(in: .whitespacesAndNewlines)
+            cleaned.note = note?.isEmpty == false ? note : nil
+            return NewCookedPhoto(photo: cleaned, recipe: recipe)
+        }
+
         return ImportPlan(
             newRecipes: newRecipes,
             noteUpdates: noteUpdates,
@@ -396,13 +427,15 @@ enum BackupMerger {
                 mealsAdded: newPlanEntries.count,
                 mealTypesAdded: newTypeOrder.count,
                 menusAdded: newMenus.count,
+                photosAdded: newCookedPhotos.count,
                 freeLimit: countsEveryRecipe && skipped > 0 ? historyLimit : nil
             ),
             newPantry: newPantry,
             newGroceries: newGroceries,
             newMealTypes: newTypeOrder.compactMap { newTypesByName[$0] },
             newPlanEntries: newPlanEntries,
-            newMenus: newMenus
+            newMenus: newMenus,
+            newCookedPhotos: newCookedPhotos
         )
     }
 

@@ -132,6 +132,16 @@ class DefaultBackupRepositoryTest {
             menuEntries += entry.copy(id = id)
             return id
         }
+
+        val cookedPhotos = mutableListOf<com.example.recipeclipper.data.local.entity.CookedPhotoEntity>()
+        override suspend fun allCookedPhotos() = cookedPhotos.toList()
+        override suspend fun existingCookedPhotoUids() = cookedPhotos.map { it.uid }
+        override suspend fun insertCookedPhoto(photo: com.example.recipeclipper.data.local.entity.CookedPhotoEntity): Long {
+            writes++
+            val id = nextId++
+            cookedPhotos += photo.copy(id = id)
+            return id
+        }
     }
 
     private class RecordingLog : ErrorLog {

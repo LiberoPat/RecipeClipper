@@ -89,6 +89,9 @@ struct RecipesScreen: View {
                     sortButton(.recentlyViewed, Strings.sortRecentlyViewed, current: state.sort)
                     sortButton(.name, Strings.sortName, current: state.sort)
                     sortButton(.dateAdded, Strings.sortDateAdded, current: state.sort)
+                    if vm.showsCookedSort {
+                        sortButton(.recentlyCooked, Strings.sortRecentlyCooked, current: state.sort)
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
