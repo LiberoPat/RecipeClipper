@@ -1,12 +1,14 @@
 package com.example.recipeclipper.data.local
 
+import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
+import kotlinx.coroutines.flow.Flow
 
 /**
  * The user's global defaults: set once, applied to every recipe, and kept between sessions.
  * Named for the app rather than for units because [darkWhileCooking] is a display choice,
- * not a measurement one, even though the menu that sets it is reached from the unit label.
+ * not a measurement one.
  *
  * An interface so a ViewModel test can hand it a fake: [SharedPrefsAppPreferences] is the
  * only class holding a `Context`, which a plain-JUnit test cannot construct.
@@ -27,4 +29,50 @@ interface AppPreferences {
      * always-dark behaviour the app shipped with.
      */
     var darkWhileCooking: Boolean
+
+    /**
+     * A morning notification when something in the pantry is about to expire (#52). Off by
+     * default; Settings turns it on only once notifications are allowed.
+     */
+    var expiryReminders: Boolean
+
+    /**
+     * Chef mode (#100): short steps written on the device, in the reading view and cook mode.
+     * Off by default, and only offered behind the `chefMode` flag on a phone that can do it.
+     */
+    var chefMode: Boolean
+
+    /**
+     * Ingredient amounts inside steps (#101): "Add the carrots" reads "Add 2 carrots". Off by
+     * default, and shown only with the `amountsInSteps` flag on.
+     */
+    var amountsInSteps: Boolean
+
+    /** The Recipes screen's sort (#102): a view preference, kept so it survives leaving the screen. */
+    var recipeSort: RecipeSort
+
+    /**
+     * The current values first, then every change, never repeating a value. A screen that
+     * collects this stays current when Settings changes a default while it is open (#24).
+     */
+    val settings: Flow<AppSettings>
+
+    /** The values as they are right now. */
+    val current: AppSettings
+        get() = AppSettings(
+            unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps,
+            recipeSort
+        )
 }
+
+/** One snapshot of [AppPreferences], as its [AppPreferences.settings] flow emits them. */
+data class AppSettings(
+    val unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
+    val convertLiquids: Boolean = false,
+    val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
+    val darkWhileCooking: Boolean = false,
+    val expiryReminders: Boolean = false,
+    val chefMode: Boolean = false,
+    val amountsInSteps: Boolean = false,
+    val recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED
+)

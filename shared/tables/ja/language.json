@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "Picks this language for a recipe that declares none (no JSON-LD inLanguage, no <html lang>). detect: case-insensitive regex fragments matched as whole words in the recipe's name and ingredient lines; the language with the most hits wins when it has at least 3 and more than twice the runner-up's. Words common in recipes and rare in other languages' recipes; never units or symbols shared with other languages. Japanese has no spaces, so these are words that stand next to a space, a digit or the end of a line ('砂糖 大さじ1', 'こしょう 少々', '卵 2個'). spaced: false for a language written without spaces between words (missing means true). Its unit words need no word boundary after them ('5分煮る'), and its full-width digits and letters ('１００ＣＣ') are read as half-width ones.",
+  "spaced": false,
+  "detect": ["大さじ", "小さじ", "大匙", "小匙", "少々", "適量", "お好みで", "ひとつまみ", "個", "本", "枚", "かけ", "カップ", "人分"]
+}

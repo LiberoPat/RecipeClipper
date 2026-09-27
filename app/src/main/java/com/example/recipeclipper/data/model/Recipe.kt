@@ -4,6 +4,54 @@ package com.example.recipeclipper.data.model
 enum class SourceType { BLOG, REDDIT }
 
 /**
+ * Whose words a recipe's content is (#29, #37), stored by name in `contentOrigin`.
+ * Only [PARSED] and [EXTRACTED] are the source's: every other value is the user's version,
+ * which a re-share never refreshes. "Update from source" is the one way back to the source's.
+ */
+enum class ContentOrigin {
+    /** As parsed from its link. Refreshed on every re-share. */
+    PARSED,
+    /** Parsed, then changed by the user. */
+    EDITED,
+    /** Picked from the page by hand (#37). Stays CLIPPED when edited. */
+    CLIPPED,
+    /** Typed in by hand; its link is a synthetic [ManualRecipe] key, never fetched. */
+    MANUAL,
+    /** Picked from the page's text by the on-device model (#103), every line checked to be on
+     *  the page. The source's, like [PARSED]: refreshed on every re-share. */
+    EXTRACTED;
+
+    /** The user's version: a re-share opens it as it is, without fetching. */
+    val isUsersVersion: Boolean get() = !isSources(name)
+
+    /** The origin after the user saves an edit: the source's becomes EDITED; the rest keep theirs. */
+    fun afterEdit(): ContentOrigin = if (isUsersVersion) this else EDITED
+
+    companion object {
+        /** Stored by name; an unknown name (a newer app's) reads as the user's version, EDITED,
+         *  so it is never overwritten by a re-share. */
+        fun fromName(name: String?): ContentOrigin =
+            if (name == null) PARSED else entries.firstOrNull { it.name == name } ?: EDITED
+
+        /** A stored `contentOrigin` that is the source's, so a re-share refreshes it. */
+        fun isSources(name: String?): Boolean = name == PARSED.name || name == EXTRACTED.name
+    }
+}
+
+/**
+ * A recipe typed in by hand has no link, but `sourceUrl` is the unique upsert key, so it gets
+ * a synthetic one: `manual:<uuid>`. It is never fetched or cleaned, and has no host, so no
+ * source credit, Open original or Report is shown for it.
+ */
+object ManualRecipe {
+    const val SCHEME = "manual:"
+
+    fun newSourceUrl(uuid: String): String = SCHEME + uuid
+
+    fun isManual(sourceUrl: String): Boolean = sourceUrl.startsWith(SCHEME)
+}
+
+/**
  * A recipe as the rest of the app sees it, distinct from the Room entity: the repository
  * maps between them. A freshly parsed recipe has no [id] yet (0); one that came out of the
  * database always does.
@@ -22,8 +70,28 @@ data class Recipe(
     val id: Long = 0,
     /** Indexes into [ingredients] the user has ticked off. Persisted so cooking can resume. */
     val checkedIngredients: Set<Int> = emptySet(),
-    val lastViewedAt: Long = 0
-)
+    val lastViewedAt: Long = 0,
+    /** The user's own free-text note, or null. Never parsed, so re-sharing keeps it. */
+    val notes: String? = null,
+    /**
+     * The recipe's language tag as the parser chose it ("en", "de-de"; see [LanguageWords]),
+     * which picks the words its lines are read with. Null for a recipe stored before #14,
+     * which is detected from its words when shown.
+     */
+    val language: String? = null,
+    /** Where the cook stands on this recipe: cook mode, steps done, step timers. */
+    val cook: CookProgress = CookProgress(),
+    /** The servings the user chose, or null for the recipe's own yield. */
+    val servingsTarget: Int? = null,
+    /** Whose words the content is; see [ContentOrigin]. */
+    val origin: ContentOrigin = ContentOrigin.PARSED,
+    /** When the user last saved an edit, or null if never. */
+    val editedAt: Long? = null
+) {
+    /** "Update from source" applies: the user's version of a recipe that has a real link. */
+    val canUpdateFromSource: Boolean
+        get() = origin.isUsersVersion && origin != ContentOrigin.MANUAL && !ManualRecipe.isManual(sourceUrl)
+}
 
 /** What a list row (history, home) needs, without loading every ingredient and step. */
 data class RecipeSummary(
@@ -33,8 +101,27 @@ data class RecipeSummary(
     val totalTime: String?,
     val lastViewedAt: Long,
     /** In at least one list. Derived from list membership, never stored. */
-    val isSaved: Boolean
+    val isSaved: Boolean,
+    /** Picked from the page by hand (#37, origin CLIPPED): the row says "Clipped by you". */
+    val isClipped: Boolean = false,
+    /** The latest day (epoch day) of the user's own photos of it (#116); null for none. */
+    val lastCookedDay: Long? = null
 )
+
+/**
+ * How the Recipes screen orders its rows (#102). Remembered in `AppPreferences` by name, so
+ * it survives leaving the screen; an unknown stored name reads as [RECENTLY_VIEWED].
+ */
+enum class RecipeSort {
+    RECENTLY_VIEWED, NAME, DATE_ADDED,
+
+    /** Recipes with the user's own photos first, most recently cooked first (#116). */
+    RECENTLY_COOKED;
+
+    companion object {
+        fun fromStoredName(name: String?): RecipeSort = entries.firstOrNull { it.name == name } ?: RECENTLY_VIEWED
+    }
+}
 
 /**
  * Why a [ParseResult] or a load failed, as a cause rather than a sentence: a parser or a
@@ -89,6 +176,14 @@ sealed class ParseError {
     val shouldAutoRetry: Boolean
         get() = this is Blocked || (this is FetchFailed && !timedOut)
 
+    /**
+     * Worth one load in an off-screen browser once the direct fetch (and its retry) has ended
+     * here: a block, which a real browser engine often gets past, or a page with no recipe
+     * data, which may be built by JavaScript. Never [Offline] or a [FetchFailed].
+     */
+    val triesRenderedPage: Boolean
+        get() = this is Blocked || this == NoRecipeFound
+
     /** The recipe screen reloads once when the connection comes back while showing these. */
     val reloadsOnReconnect: Boolean
         get() = this == Offline || this is FetchFailed
@@ -105,6 +200,10 @@ sealed class ParseError {
 }
 
 sealed class ParseResult {
-    data class Success(val recipe: Recipe) : ParseResult()
+    /**
+     * [kept] false (#107): the library is full and every recipe in it is protected, so
+     * [recipe] is shown but was not saved (its id is 0).
+     */
+    data class Success(val recipe: Recipe, val kept: Boolean = true) : ParseResult()
     data class Error(val error: ParseError) : ParseResult()
 }

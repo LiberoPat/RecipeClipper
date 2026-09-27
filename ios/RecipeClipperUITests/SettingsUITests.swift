@@ -2,7 +2,7 @@ import XCTest
 
 /// Settings end to end — untested on Android (docs/testing.md). Exclusive choices
 /// are radio rows (one selected at a time), independent toggles are switches, and "Also
-/// convert liquids" only exists for Grams and Ounces.
+/// convert liquids" only exists for Ounces.
 final class SettingsUITests: RecipeUITestCase {
 
     /// A radio row; its label is "Title, description".
@@ -44,6 +44,7 @@ final class SettingsUITests: RecipeUITestCase {
         assertSelected(option("Metric"), false, "Metric")
         assertSelected(temperatureAsWritten, true, "temperature As written")
         assertAbsent(liquids, "the liquids toggle")
+        assertAbsent(option("Grams"), "a Grams option (dropped in #17)")
         requireState(darkWhileCooking, "value == '0'", "Dark while cooking off by default")
     }
 
@@ -51,22 +52,18 @@ final class SettingsUITests: RecipeUITestCase {
         launch()
         openSettings()
 
-        option("Grams").tap()
+        option("Metric").tap()
 
-        assertSelected(option("Grams"), true, "Grams")
+        assertSelected(option("Metric"), true, "Metric")
         assertSelected(unitAsWritten, false, "As written")
         assertSelected(option("Ounces"), false, "Ounces")
-        assertSelected(option("Metric"), false, "Metric")
         // Temperature is independent of units.
         assertSelected(temperatureAsWritten, true, "temperature As written")
     }
 
-    func testTheLiquidsToggleAppearsOnlyForGramsAndOunces() {
+    func testTheLiquidsToggleAppearsOnlyForOunces() {
         launch()
         openSettings()
-
-        option("Grams").tap()
-        require(liquids, "liquids toggle for Grams")
 
         option("Ounces").tap()
         require(liquids, "liquids toggle for Ounces")
@@ -74,7 +71,7 @@ final class SettingsUITests: RecipeUITestCase {
         option("Metric").tap()
         requireGone(liquids, "liquids toggle for Metric")
 
-        option("Grams").tap()
+        option("Ounces").tap()
         require(liquids)
         unitAsWritten.tap()
         requireGone(liquids, "liquids toggle for As written")

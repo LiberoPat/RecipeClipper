@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "StepAmounts (#101): see en/steps.json. Japanese has no spaces, so no word boundaries to find a mention by: every step stays as written, and these lists stay empty.",
+  "articles": [],
+  "partWords": [],
+  "before": [],
+  "after": [],
+  "anyWordAfter": false,
+  "splitWords": [],
+  "plurals": []
+}

@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 @testable import RecipeClipper
 
@@ -53,6 +54,46 @@ final class UserDefaultsAppPreferencesTests: XCTestCase {
         let prefs = UserDefaultsAppPreferences(defaults: defaults)
         XCTAssertEqual(prefs.temperatureUnit, .asWritten)
         XCTAssertEqual(prefs.unitSystem, .asWritten)
+    }
+
+    func testRecipeSortDefaultsRoundTripsByNameAndFallsBack() {
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).recipeSort, .recentlyViewed)
+
+        UserDefaultsAppPreferences(defaults: defaults).recipeSort = .dateAdded
+        XCTAssertEqual(defaults.string(forKey: "recipe_sort"), "DATE_ADDED")
+        let reread = UserDefaultsAppPreferences(defaults: defaults)
+        XCTAssertEqual(reread.recipeSort, .dateAdded)
+        XCTAssertEqual(reread.current.recipeSort, .dateAdded)
+
+        defaults.set("RATING", forKey: "recipe_sort")
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).recipeSort, .recentlyViewed)
+    }
+
+    func testAStoredGramsReadsAsMetric() {
+        // GRAMS was a fourth option until #17. Its users wanted weights, not As written.
+        defaults.set("GRAMS", forKey: "unit_system")
+        let prefs = UserDefaultsAppPreferences(defaults: defaults)
+        XCTAssertEqual(prefs.unitSystem, .metric)
+        XCTAssertEqual(prefs.current.unitSystem, .metric)
+    }
+
+    func testSettingsPublishesTheCurrentValuesThenEachChangeWithoutRepeats() {
+        let prefs = UserDefaultsAppPreferences(defaults: defaults)
+        prefs.unitSystem = .ounces
+        var received: [AppSettings] = []
+        let subscription = prefs.settings.sink { received.append($0) }
+        defer { subscription.cancel() }
+
+        prefs.darkWhileCooking = true
+        prefs.darkWhileCooking = true // unchanged: no emission
+        // Written through another instance on the same suite, as a second screen might.
+        UserDefaultsAppPreferences(defaults: defaults).temperatureUnit = .celsius
+
+        XCTAssertEqual(received, [
+            AppSettings(unitSystem: .ounces),
+            AppSettings(unitSystem: .ounces, darkWhileCooking: true),
+            AppSettings(unitSystem: .ounces, temperatureUnit: .celsius, darkWhileCooking: true)
+        ])
     }
 }
 

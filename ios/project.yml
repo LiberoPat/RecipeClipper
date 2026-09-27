@@ -4,6 +4,8 @@ options:
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
+  # The UI's languages (#13) live in RecipeClipper/Resources/Localizable.xcstrings.
+  developmentLanguage: en
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -21,13 +23,52 @@ targets:
     platform: iOS
     sources:
       - path: RecipeClipper
+      # The word and density tables shared with Android (#9), bundled as a tables/ folder.
+      - path: ../shared/tables
+        type: folder
+        buildPhase: resources
+      # "Clip it yourself" (#37): clipper.js, the one script both apps inject.
+      - path: ../shared/web
+        type: folder
+        buildPhase: resources
+      # The feature-flag registry shared with Android (#87).
+      - path: ../shared/flags.json
+        buildPhase: resources
+      # The first-run tour's sample recipe (#151), in each UI language, as a sample/ folder.
+      - path: ../shared/sample
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: RecipeClipperShare
         embed: true
+    # The App Group holds the database and settings the share extension also uses. Keep the
+    # identifier in step with AppGroup.identifier and the extension's entitlements, and
+    # register it on both App IDs (docs/release.md).
+    # iCloud Documents (#150): the automatic backup copy goes to this container's Documents
+    # folder, which Files shows as "Recipe Clipper". Keep the identifier in step with
+    # ICloudBackupFolder.containerIdentifier, and register the container on the App ID
+    # (docs/release.md). Without it the app runs and says iCloud Drive isn't available.
+    entitlements:
+      path: RecipeClipper/RecipeClipper.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.liberopat.recipeclipper]
+        com.apple.developer.icloud-container-identifiers: [iCloud.com.liberopat.recipeclipper]
+        com.apple.developer.icloud-services: [CloudDocuments]
+        com.apple.developer.ubiquity-container-identifiers: [iCloud.com.liberopat.recipeclipper]
     info:
       path: RecipeClipper/Info.plist
       properties:
+        # The iCloud Drive folder's name in Files (#150). Files picks a change up only with a
+        # new CFBundleVersion.
+        NSUbiquitousContainers:
+          iCloud.com.liberopat.recipeclipper:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: Recipe Clipper
+            NSUbiquitousContainerSupportedFolderLevels: None
         CFBundleDisplayName: Recipe Clipper
+        CFBundleDevelopmentRegion: en
+        # The languages the String Catalog translates; keep in step with docs/translations.md.
+        CFBundleLocalizations: [en, es, fr, de, it, pt-BR]
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIAppFonts:
@@ -36,11 +77,29 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.liberopat.recipeclipper
             CFBundleURLSchemes: [recipeclipper]
+        # A file sent from another Recipe Clipper (#149): recipes and grocery or pantry items.
+        # The app declares the type and opens it (a copy, handed to onOpenURL); keep the
+        # identifier, extension and MIME type in step with ShareFile (both platforms).
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.liberopat.recipeclipper.share
+            UTTypeDescription: Recipe Clipper file
+            UTTypeConformsTo: [public.json]
+            UTTypeTagSpecification:
+              public.filename-extension: [recipeclipper]
+              public.mime-type: [application/vnd.recipeclipper+json]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Recipe Clipper file
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes: [com.liberopat.recipeclipper.share]
+        LSSupportsOpeningDocumentsInPlace: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UIBackgroundModes: [audio]
+        # "I made this" (#116): asked the first time the camera is chosen, never before.
+        NSCameraUsageDescription: Take a photo of what you cooked, to keep with the recipe.
         # HTTPS only, which is exempt; saves answering the question on every upload.
         ITSAppUsesNonExemptEncryption: false
     settings:
@@ -53,6 +112,31 @@ targets:
     platform: iOS
     sources:
       - path: RecipeClipperShare
+      # The import runs here, on the app's own code (dual target membership, not a copy):
+      # the data layer, the share card and the theme it is drawn with. UserDefaults stays out,
+      # so the extension uses no required-reason API and needs no privacy manifest. The
+      # off-screen WebView fallback stays out too (memory): the extension has no rendered fetch.
+      - path: RecipeClipper/Data
+        excludes:
+          - Local/UserDefaultsAppPreferences.swift
+          - Remote/WebViewRenderedPageSource.swift
+      - path: RecipeClipper/ShareImport
+      - path: RecipeClipper/UI/Theme
+      - path: RecipeClipper/UI/Common/Components.swift
+      # Strings.swift resolves String(localized:) against Bundle.main, which inside the
+      # extension is its own bundle, not the app's: the catalog must be compiled into both
+      # (#13, #19). Translate any new key in all of es, fr, de, it and pt-BR.
+      - path: RecipeClipper/Resources/Localizable.xcstrings
+      # SharedTables.read also resolves against Bundle.main (#9, #14): the fetch the extension
+      # runs (BlogRecipeSource → JsonLdRecipeParser → LanguageWords) needs the same tables/
+      # folder the app bundles, or it traps looking up a language's detector words.
+      - path: ../shared/tables
+        type: folder
+        buildPhase: resources
+    entitlements:
+      path: RecipeClipperShare/RecipeClipperShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.liberopat.recipeclipper]
     info:
       path: RecipeClipperShare/Info.plist
       properties:
@@ -61,8 +145,13 @@ targets:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
           NSExtensionAttributes:
+            # #35: run against the shared page in Safari (the only app that supports it) before
+            # the extension launches; SharedItems prefers its result (the rendered HTML plus the
+            # URL JavaScript resolved) over the plain URL/text attachments every other app sends.
+            NSExtensionJavaScriptPreprocessingFile: Preprocessing
             NSExtensionActivationRule:
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsWebPageWithMaxCount: 1
               NSExtensionActivationSupportsText: true
         ITSAppUsesNonExemptEncryption: false
     settings:
@@ -75,6 +164,14 @@ targets:
     platform: iOS
     sources:
       - path: RecipeClipperTests
+      # The fixtures the Android tests read too (shared/fixtures): copied in as a folder, so
+      # tests find them at fixtures/backup/<name>.json in the test bundle.
+      - path: ../shared/fixtures
+        type: folder
+        buildPhase: resources
+      # The StoreKit configuration (#107), for StoreKitEntitlementsTests' SKTestSession.
+      - path: RecipeClipper.storekit
+        buildPhase: resources
     dependencies:
       - target: RecipeClipper
     settings:
@@ -96,6 +193,9 @@ targets:
         TEST_TARGET_NAME: RecipeClipper
 schemes:
   RecipeClipper:
+    # Runs from Xcode buy and restore the unlock (#107) against this file, not the App Store.
+    run:
+      storeKitConfiguration: RecipeClipper.storekit
     build:
       targets:
         RecipeClipper: all

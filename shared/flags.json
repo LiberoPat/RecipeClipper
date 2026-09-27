@@ -1,0 +1,58 @@
+{
+  "flags": [
+    {
+      "key": "mealPlan",
+      "description": "The meal plan: the bottom tabs (Recipes, Week, Groceries, Pantry) and the recipe screen's Add to plan and Add to groceries.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 47
+    },
+    {
+      "key": "chefMode",
+      "description": "Chef mode: the Settings switch (Steps section) for short steps written on the device, shown in the reading view and cook mode.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 100
+    },
+    {
+      "key": "amountsInSteps",
+      "description": "Ingredient amounts inside steps: Settings' Steps section and its 'Amounts in steps' switch (off by default), which puts each line's amount, as scaled and converted, where a step names the ingredient.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 101
+    },
+    {
+      "key": "freeTier",
+      "description": "The free tier: 20 recipes, a one-time unlock for unlimited, the Settings row to buy or restore it and the Recipes count. Off until the store products exist.",
+      "defaults": { "debug": false, "release": false },
+      "issue": 107
+    },
+    {
+      "key": "llmExtraction",
+      "description": "A recipe picked from the page's text by the on-device model when the page has no JSON-LD or microdata recipe: every line kept is checked to be on the page, and the reading view says so. Needs ML Kit's Prompt API on Android (fewer phones than Chef mode: on Samsung only the S26, Z Fold7/8, Z Flip8 and TriFold) or Apple Intelligence on iOS; other phones and unsupported languages behave as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 103
+    },
+    {
+      "key": "aiDecisions",
+      "description": "Typed decisions by the on-device model where the rules give up: whether a close pantry name is the same ingredient (Have/Buy), and the aisle of an item the keyword table puts in Other. Only a definite answer given twice with high confidence acts. Needs the same model as llmExtraction (Prompt API or Apple Intelligence); other phones and unsupported languages behave as before. Count brackets stay as written unless aiCountBrackets is on too.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 104
+    },
+    {
+      "key": "aiCountBrackets",
+      "description": "With aiDecisions on, also asks the model whether a count's bracket is the total or each item's, and scales the line by its answer. Off, those lines scale as without the model. Kept to re-measure: the #105 evaluation found it confidently wrong on 4 of 22.",
+      "defaults": { "debug": false, "release": false },
+      "issue": 127
+    },
+    {
+      "key": "cookedPhotos",
+      "description": "\"I made this\": your own photos of a recipe, each with a date and a short note, in a \"Your cooks\" gallery under the recipe; the Recipes screen's Recently cooked sort. Recipes with photos are never removed automatically, and photos go into the export file either way.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 116
+    },
+    {
+      "key": "reddit",
+      "description": "Reddit posts: a reddit.com or redd.it link (a /s/ share link is followed first) is read from the post's .json listing: the post body, else a transcription in the comments, else the post's photo and title with a note that no recipe text was found. Off, Reddit links go through the blog parsers like any page.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 11
+    }
+  ]
+}

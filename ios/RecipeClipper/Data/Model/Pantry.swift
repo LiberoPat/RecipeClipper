@@ -1,0 +1,231 @@
+import Foundation
+
+/// One thing in the pantry (#51; Android's `PantryItem`). `name` is what the user typed (or the
+/// ingredient name of a grocery line they ticked off), read with `language`'s words (nil: none,
+/// so it never matches). `quantity` is free text as written, never read as a number.
+/// `alwaysHave` marks a staple: it is never on a Buy list. The days are epoch days (`PlanDays`).
+struct PantryItem: Equatable, Identifiable {
+    let id: Int64
+    var name: String
+    var quantity: String?
+    let language: String?
+    var aisle: Aisle
+    var inStock: Bool
+    var alwaysHave: Bool
+    var purchasedDay: Int64?
+    var expiresDay: Int64?
+}
+
+/// A new pantry item, before it has an id. It starts in stock, bought on `purchasedDay`.
+struct NewPantryItem: Equatable {
+    let name: String
+    let language: String?
+    var aisle: Aisle? = nil
+    var quantity: String? = nil
+    var purchasedDay: Int64? = nil
+}
+
+/// What the edit sheet can change.
+struct PantryEdit: Equatable {
+    let name: String
+    let quantity: String?
+    let alwaysHave: Bool
+    let expiresDay: Int64?
+}
+
+/// The expiry badge: no notifications, just a word on the row.
+enum ExpiryBadge: Equatable { case expired, soon }
+
+enum PantrySort: Equatable { case aisle, expiry }
+
+/// The pantry as shown: one section per aisle, or (by expiry) one section with no aisle.
+struct PantrySection: Equatable {
+    let aisle: Aisle?
+    let items: [PantryItem]
+}
+
+/// Sorting, searching and the expiry badge (Android's `PantryList`). Pure.
+enum PantryList {
+
+    /// "Soon" is today and the next `soonDays` days.
+    static let soonDays: Int64 = 3
+
+    static func badge(_ expiresDay: Int64?, today: Int64) -> ExpiryBadge? {
+        guard let day = expiresDay else { return nil }
+        if day < today { return .expired }
+        if day <= today + soonDays { return .soon }
+        return nil
+    }
+
+    /// `items` matching `query` (a case-insensitive part of the name; blank matches all),
+    /// sorted by aisle (aisles in `Aisle` order, names A–Z within), or by expiry (soonest first,
+    /// then undated, A–Z).
+    static func arrange(_ items: [PantryItem], query: String, sort: PantrySort) -> [PantrySection] {
+        let q = query.kTrimmed.lowercased()
+        let found = items.filter { q.isEmpty || $0.name.lowercased().contains(q) }
+        if found.isEmpty { return [] }
+        let byName: (PantryItem, PantryItem) -> Bool = { a, b in
+            let x = a.name.lowercased(), y = b.name.lowercased()
+            return x != y ? x < y : a.id < b.id
+        }
+        switch sort {
+        case .aisle:
+            let order = Aisle.allCases
+            return order.compactMap { aisle in
+                let inAisle = found.filter { $0.aisle == aisle }
+                return inAisle.isEmpty ? nil : PantrySection(aisle: aisle, items: inAisle.sorted(by: byName))
+            }
+        case .expiry:
+            return [PantrySection(aisle: nil, items: found.sorted { a, b in
+                switch (a.expiresDay, b.expiresDay) {
+                case let (x?, y?): return x != y ? x < y : byName(a, b)
+                case (.some, nil): return true
+                case (nil, .some): return false
+                case (nil, nil): return byName(a, b)
+                }
+            })]
+        }
+    }
+
+    /// The unticked grocery lines that are `item` itself: its name as the pantry puts it there
+    /// (trimmed, case-insensitive, in its language), which is what "On list" means (#146). A
+    /// recipe's "2 cups flour" isn't, so taking the item off the list never loses a recipe's line.
+    static func ownLines(_ item: PantryItem, _ groceries: [GroceryItem]) -> [GroceryItem] {
+        let name = item.name.kTrimmed.lowercased()
+        return groceries.filter { !$0.checked && $0.language == item.language && $0.text.kTrimmed.lowercased() == name }
+    }
+
+    /// The item already here with this name (trimmed, case-insensitive) in `language`, if any.
+    static func sameName(_ items: [PantryItem], name: String, language: String?) -> PantryItem? {
+        let key = name.kTrimmed.lowercased()
+        return items.first { $0.language == language && $0.name.kTrimmed.lowercased() == key }
+    }
+}
+
+/// The pantry as plain text for sending (#149; Android's PantryShareText): what's in stock, for
+/// someone at the shops to see what's at home. The title, then each section as the screen
+/// arranges it (an aisle's name, or no heading when sorted by expiry) and its in-stock items,
+/// one per line after "- ": the name, then the quantity as written in brackets ("- basmati rice
+/// (half a bag)"). Items that are out are left out: running out already put them on the grocery
+/// list (#146), which sends its own. `aisleName` and `title` are the screen's words.
+enum PantryShareText {
+
+    static func format(_ sections: [PantrySection], title: String, aisleName: (Aisle) -> String) -> String {
+        var lines = [title]
+        for section in sections {
+            let items = section.items.filter(\.inStock)
+            if items.isEmpty { continue }
+            lines.append("")
+            if let aisle = section.aisle { lines.append(aisleName(aisle)) }
+            for item in items {
+                let quantity = (item.quantity ?? "").kTrimmed
+                lines.append(quantity.isEmpty ? "- \(item.name.kTrimmed)" : "- \(item.name.kTrimmed) (\(quantity))")
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+}
+
+/// Have or Buy, for one ingredient of the week (#51).
+enum NeedStatus: Equatable {
+    /// An in-stock pantry item has this name. Presence only: "you have flour", never "enough".
+    case have
+    /// A staple ("always have"): never on the Buy list, in stock or not.
+    case staple
+    case buy
+}
+
+/// One planned recipe's line, as the reading view renders it at the planned servings.
+struct NeedLine: Equatable {
+    let text: String
+    let recipeId: Int64
+    let title: String
+    let day: Int64?
+    let language: String?
+}
+
+/// One ingredient of the week: every line naming it (exactly the same `IngredientName`, in the
+/// same language), and whether the pantry has it. `name` is nil for a line the app can't name:
+/// it stands alone and is always Buy. `pantryName` is the matched pantry item's name.
+struct NeedRow: Equatable {
+    let name: String?
+    let lines: [NeedLine]
+    let status: NeedStatus
+    let pantryName: String?
+}
+
+struct WeekNeeds: Equatable {
+    let buy: [NeedRow]
+    let have: [NeedRow]
+    var isEmpty: Bool { buy.isEmpty && have.isEmpty }
+}
+
+/// The pantry against a recipe's lines (#51; Android's `PantryMatch`). A line's name
+/// (`IngredientName.of`) matches a pantry item's by `IngredientName.matches` ("unsalted butter"
+/// is "butter"; "rice flour" is never "flour", either way), and only in the same language. It
+/// answers "is it there", never "is there enough".
+enum PantryMatch {
+
+    /// The pantry item tracking `name` in `language`, or nil: a matching staple first, else one
+    /// in stock, else one that's out.
+    /// Only when no name matches, a staple or in-stock item the model said is the same (#104,
+    /// `decisions`) counts: its "same" can only turn Buy into Have, never the other way.
+    static func find(_ name: String, language: String?, pantry: [PantryItem], decisions: Decisions = .none) -> PantryItem? {
+        guard let words = LanguageWords.forTag(language) else { return nil }
+        let sameLanguage = pantry.filter { $0.language == words.language }
+        let matching = sameLanguage.filter { IngredientName.matches(name, $0.name, words: words) }
+        if !matching.isEmpty {
+            return matching.first { $0.alwaysHave } ?? matching.first { $0.inStock } ?? matching.first
+        }
+        let same = sameLanguage.filter {
+            ($0.alwaysHave || $0.inStock) && decisions.sameIngredient(name, $0.name, language: words.language)
+        }
+        return same.first { $0.alwaysHave } ?? same.first
+    }
+
+    static func status(_ item: PantryItem?) -> NeedStatus {
+        guard let item else { return .buy }
+        if item.alwaysHave { return .staple }
+        return item.inStock ? .have : .buy
+    }
+
+    /// True when `line` needn't be bought: its ingredient is in stock, or a staple.
+    static func covered(_ line: String, language: String?, pantry: [PantryItem], decisions: Decisions = .none) -> Bool {
+        guard let words = LanguageWords.forTag(language), let name = IngredientName.of(line, words: words) else { return false }
+        return status(find(name, language: words.language, pantry: pantry, decisions: decisions)) != .buy
+    }
+
+    /// The week's "What I need": every planned recipe's lines (`sources`, already rendered),
+    /// grouped by ingredient in the order first met, split into Buy and Have. Staples are with
+    /// Have, never Buy.
+    static func weekNeeds(_ sources: [GrocerySource], pantry: [PantryItem], decisions: Decisions = .none) -> WeekNeeds {
+        var keys: [String] = []
+        var groups: [String: [NeedLine]] = [:]
+        var names: [String: String] = [:]
+        var unnamed = 0
+        for source in sources {
+            let words = LanguageWords.forTag(source.language)
+            for text in source.lines {
+                let line = NeedLine(text: text, recipeId: source.recipeId, title: source.title, day: source.day, language: source.language)
+                let name = words.flatMap { IngredientName.of(text, words: $0) }
+                let key: String
+                if let name {
+                    key = "n\u{1}\(source.language ?? "")\u{1}\(name)"
+                    names[key] = name
+                } else {
+                    key = "u\u{1}\(unnamed)"
+                    unnamed += 1
+                }
+                if groups[key] == nil { keys.append(key) }
+                groups[key, default: []].append(line)
+            }
+        }
+        let rows = keys.map { key -> NeedRow in
+            let lines = groups[key]!
+            let name = names[key]
+            let item = name.flatMap { find($0, language: lines[0].language, pantry: pantry, decisions: decisions) }
+            return NeedRow(name: name, lines: lines, status: status(item), pantryName: item?.name)
+        }
+        return WeekNeeds(buy: rows.filter { $0.status == .buy }, have: rows.filter { $0.status != .buy })
+    }
+}

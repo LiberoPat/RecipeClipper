@@ -27,17 +27,34 @@ object TemperatureConverter {
         val scale: Scale
     )
 
-    // groups: 1 low, 2 range separator, 3 high, 4 connector, 5 unit
-    private const val TEMP =
-        """(\d{2,3})(?:(\s*(?:[-–—]|to)\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+degrees?\s+|\s?)""" +
-                """((?i:fahrenheit|celsius|centigrade)|[FC])(?![A-Za-z])"""
+    // The scale, degree and range words are shared with iOS:
+    // shared/tables/<language>/temperature.json and ranges.json.
+    private class Patterns(words: LanguageWords) {
+        private val fahrenheitWords = words.strings("temperature", "fahrenheit")
+        private val scaleWords = (fahrenheitWords + words.strings("temperature", "celsius")).ifEmpty { listOf("(?!)") }
+        val fahrenheitWord = Regex(SharedTables.alternation(fahrenheitWords), RegexOption.IGNORE_CASE)
+        private val degrees = SharedTables.alternation(words.strings("temperature", "degrees"))
 
-    private val TEMP_ANYWHERE = Regex("""(?<![\d.,/])$TEMP""")
-    private val TEMP_AT_START = Regex("""^$TEMP""")
+        // groups: 1 low, 2 range separator, 3 high, 4 connector, 5 unit
+        private val temp =
+            """(\d{2,3})(?:(\s*(?:[-–—]|${words.rangeWords})\s*)(\d{2,3}))?(\s*[°º˚]\s*|\s+$degrees\s+|\s?)""" +
+                    """((?i:${scaleWords.joinToString("|")})|[FC])(?![A-Za-z])"""
+
+        val tempAnywhere = Regex("""(?<![\d.,/])$temp""")
+        val tempAtStart = Regex("""^$temp""")
+    }
+
+    /** A bare "180 C" or "350 F" is a temperature only in these ranges; the scaler reads them too (#135). */
+    internal val PLAUSIBLE_CELSIUS = 40..320
+    private val PLAUSIBLE_FAHRENHEIT = 100..600
+
     private val PAIR_JOINER = Regex("""^\s*([(/])\s*""")
     private val CLOSING_PAREN = Regex("""^\s*\)""")
 
-    fun convert(text: String, unit: TemperatureUnit): String {
+    /** [words] null: a language the app has no words for, so the text stays as written. */
+    fun convert(text: String, unit: TemperatureUnit, words: LanguageWords? = LanguageWords.ENGLISH): String {
+        if (words == null) return text
+        val p = words.compiled(Patterns::class) { Patterns(it) }
         val target = when (unit) {
             TemperatureUnit.AS_WRITTEN -> return text
             TemperatureUnit.CELSIUS -> Scale.C
@@ -47,8 +64,8 @@ object TemperatureConverter {
         val out = StringBuilder()
         var cursor = 0
         while (true) {
-            val match = TEMP_ANYWHERE.find(text, cursor) ?: break
-            val temp = parse(match)
+            val match = p.tempAnywhere.find(text, cursor) ?: break
+            val temp = parse(p, match)
             val end = match.range.last + 1
             if (temp == null) {
                 out.append(text, cursor, end)
@@ -57,7 +74,7 @@ object TemperatureConverter {
             }
 
             // "350°F (180°C)" or "180°C/350°F": keep the half that already matches.
-            val pair = findPair(text, end, temp)
+            val pair = findPair(p, text, end, temp)
             if (pair != null) {
                 out.append(text, cursor, match.range.first)
                 out.append(if (temp.scale == target) match.value else pair.value)
@@ -73,15 +90,39 @@ object TemperatureConverter {
         return out.toString()
     }
 
-    private class Pair(val value: String, val end: Int)
+    /**
+     * Every temperature [text] states, each as its keys ("350F", "180-200C"); "350°F (180°C)"
+     * is one temperature with two keys. What [ShortStepCheck] compares, so a short step can't
+     * change a scale or drop an oven setting. Empty for [words] null.
+     */
+    fun temperatures(text: String, words: LanguageWords?): List<List<String>> {
+        if (words == null) return emptyList()
+        val p = words.compiled(Patterns::class) { Patterns(it) }
+        val found = mutableListOf<List<String>>()
+        var cursor = 0
+        while (true) {
+            val match = p.tempAnywhere.find(text, cursor) ?: break
+            val temp = parse(p, match)
+            cursor = match.range.last + 1
+            if (temp == null) continue
+            val pair = findPair(p, text, cursor, temp)
+            found += listOfNotNull(key(temp), pair?.let { key(it.temp) })
+            if (pair != null) cursor = pair.end
+        }
+        return found
+    }
+
+    private fun key(t: Temp) = "${t.low}${t.high?.let { "-$it" } ?: ""}${t.scale.letter}"
+
+    private class Pair(val value: String, val end: Int, val temp: Temp)
 
     /** The other-scale temperature written straight after [first], if there is one. */
-    private fun findPair(text: String, firstEnd: Int, first: Temp): Pair? {
+    private fun findPair(p: Patterns, text: String, firstEnd: Int, first: Temp): Pair? {
         val rest = text.substring(firstEnd)
         val joiner = PAIR_JOINER.find(rest) ?: return null
         val afterJoiner = rest.substring(joiner.value.length)
-        val match = TEMP_AT_START.find(afterJoiner) ?: return null
-        val second = parse(match) ?: return null
+        val match = p.tempAtStart.find(afterJoiner) ?: return null
+        val second = parse(p, match) ?: return null
         if (second.scale == first.scale) return null
 
         var end = firstEnd + joiner.value.length + match.value.length
@@ -89,19 +130,19 @@ object TemperatureConverter {
             val close = CLOSING_PAREN.find(text.substring(end)) ?: return null
             end += close.value.length
         }
-        return Pair(match.value, end)
+        return Pair(match.value, end, second)
     }
 
-    private fun parse(match: MatchResult): Temp? {
+    private fun parse(p: Patterns, match: MatchResult): Temp? {
         val low = match.groupValues[1].toInt()
         val high = match.groupValues[3].takeIf { it.isNotEmpty() }?.toInt()
         val unit = match.groupValues[5]
-        val scale = if (unit.first().equals('F', ignoreCase = true)) Scale.F else Scale.C
+        val scale = if (unit == "F" || p.fahrenheitWord.matches(unit)) Scale.F else Scale.C
 
         val connector = match.groupValues[4]
         val explicit = unit.length > 1 || connector.any { it in "°º˚" } || connector.isNotBlank()
         if (!explicit) {
-            val range = if (scale == Scale.F) 100..600 else 40..320
+            val range = if (scale == Scale.F) PLAUSIBLE_FAHRENHEIT else PLAUSIBLE_CELSIUS
             if (low !in range || (high != null && high !in range)) return null
         }
         return Temp(low, match.groupValues[2], high, scale)

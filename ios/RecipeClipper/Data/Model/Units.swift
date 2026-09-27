@@ -1,26 +1,41 @@
 import Foundation
 
 /// How ingredient amounts are shown. `asWritten` leaves the recipe's own units untouched.
-/// `grams` and `ounces` express everything as weight. `metric` is EU-style: weights in g/kg,
-/// volumes (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
-enum UnitSystem: String, CaseIterable, Equatable { case asWritten = "AS_WRITTEN", grams = "GRAMS", ounces = "OUNCES", metric = "METRIC" }
+/// `ounces` expresses everything as weight. `metric` is EU-style: weights in g/kg, volumes
+/// (spoons, cups, liquids) in ml/L, and dry goods with a known density in g.
+enum UnitSystem: String, CaseIterable, Equatable {
+    case asWritten = "AS_WRITTEN", metric = "METRIC", ounces = "OUNCES"
+
+    /// The system a stored enum name stands for. GRAMS was a fourth option until #17; the
+    /// people who chose it wanted weights, so it reads as `metric` rather than falling back
+    /// to `asWritten`. Anything unknown (or nothing stored) is `asWritten`.
+    init(storedName: String?) {
+        if storedName == "GRAMS" { self = .metric; return }
+        self = storedName.flatMap(UnitSystem.init(rawValue:)) ?? .asWritten
+    }
+}
 
 /// How oven temperatures in instruction text are shown. Independent of `UnitSystem`: a user
-/// can be a Grams person and still want an oven temperature left exactly as the recipe wrote
+/// can be a Metric person and still want an oven temperature left exactly as the recipe wrote
 /// it (or vice versa), so this is its own setting rather than implied by the unit choice.
 /// `asWritten` (the default) leaves the text alone.
 enum TemperatureUnit: String, CaseIterable, Equatable { case asWritten = "AS_WRITTEN", celsius = "CELSIUS", fahrenheit = "FAHRENHEIT" }
 
-enum MeasureKind { case volume, weight }
+/// `none`: a unit whose size varies from cook to cook (`MeasureUnit.varies`).
+enum MeasureKind { case volume, weight, none }
 
-/// `base` is millilitres for volume units and grams for weight units.
+/// `base` is millilitres for volume units and grams for weight units. `varies` is a unit word
+/// whose size differs between cooks and countries (a French "tasse", a German "Tasse", an Italian
+/// "tazza", a Portuguese "colher (café)"): its amount scales, so "250 ml (1 tasse)" doubles as a
+/// whole, but it is never converted.
 enum MeasureUnit: CaseIterable {
-    case tsp, tbsp, cup, flOz, stick, ml, l, g, kg, oz, lb
+    case tsp, tbsp, cup, cup200, riceCup, flOz, stick, ml, l, cl, dl, g, kg, oz, lb, varies
 
     var kind: MeasureKind {
         switch self {
-        case .tsp, .tbsp, .cup, .flOz, .stick, .ml, .l: return .volume
+        case .tsp, .tbsp, .cup, .cup200, .riceCup, .flOz, .stick, .ml, .l, .cl, .dl: return .volume
         case .g, .kg, .oz, .lb: return .weight
+        case .varies: return .none
         }
     }
 
@@ -29,59 +44,86 @@ enum MeasureUnit: CaseIterable {
         case .tsp: return 4.92892
         case .tbsp: return 14.7868
         case .cup: return 236.588
+        case .cup200: return 200.0 // a Japanese cup, カップ (#16)
+        case .riceCup: return 180.0 // a Japanese rice cup, 合
         case .flOz: return 29.5735
         case .stick: return 118.294 // US butter stick = 8 tbsp
         case .ml: return 1.0
         case .l: return 1000.0
+        case .cl: return 10.0
+        case .dl: return 100.0
         case .g: return 1.0
         case .kg: return 1000.0
         case .oz: return 28.3495
         case .lb: return 453.592
+        case .varies: return 0.0
         }
     }
 
     var metric: Bool {
         switch self {
-        case .ml, .l, .g, .kg: return true
+        case .ml, .l, .cl, .dl, .g, .kg: return true
         default: return false
         }
     }
 
     private static let whitespace = JRegex(#"\s+"#)
 
-    static func fromText(_ text: String) -> MeasureUnit? {
-        let s = whitespace.replace(text.lowercased().replacingOccurrences(of: ".", with: ""), with: " ")
-        if s.hasPrefix("fl") { return .flOz }
-        if s.hasPrefix("tsp") || s.hasPrefix("teaspoon") { return .tsp }
-        if s.hasPrefix("tbs") || s.hasPrefix("tablespoon") { return .tbsp }
-        if s.hasPrefix("cup") { return .cup }
-        if s == "ml" || s.hasPrefix("millil") { return .ml }
-        if s == "kg" || s.hasPrefix("kilo") { return .kg }
-        if s == "g" || s.hasPrefix("gram") { return .g }
-        if s == "l" || s.hasPrefix("lit") { return .l }
-        if s.hasPrefix("stick") { return .stick }
-        if s == "oz" || s.hasPrefix("ounce") { return .oz }
-        if s == "lb" || s == "lbs" || s.hasPrefix("pound") { return .lb }
-        return nil
+    /// The name Kotlin gives the unit, which the shared tables use.
+    static let byTableName: [String: MeasureUnit] = [
+        "TSP": .tsp, "TBSP": .tbsp, "CUP": .cup, "CUP_200": .cup200, "RICE_CUP": .riceCup, "FL_OZ": .flOz, "STICK": .stick, "ML": .ml,
+        "L": .l, "CL": .cl, "DL": .dl, "G": .g, "KG": .kg, "OZ": .oz, "LB": .lb, "VARIES": .varies,
+    ]
+
+    // shared/tables/<language>/units.json "names": the first rule the text satisfies wins. A
+    // caseSensitive rule reads the text as written: "T" is a tablespoon, "t" a teaspoon (#135).
+    private final class Names {
+        let names: [(unit: MeasureUnit, exact: [String], prefixes: [String], caseSensitive: Bool)]
+        init(_ words: LanguageWords) {
+            names = SharedTables.objects(words.table("units"), "names").map {
+                (
+                    byTableName[$0["unit"] as? String ?? ""]!, SharedTables.strings($0, "exact"),
+                    SharedTables.strings($0, "prefixes"), $0["caseSensitive"] as? Bool ?? false
+                )
+            }
+        }
+    }
+
+    static func fromText(_ text: String, words: LanguageWords = .english) -> MeasureUnit? {
+        let asWritten = whitespace.replace(text.replacingOccurrences(of: ".", with: ""), with: " ")
+        let lower = asWritten.lowercased()
+        return words.compiled(Names.self, Names.init).names.first { name in
+            let s = name.caseSensitive ? asWritten : lower
+            return name.exact.contains(s) || name.prefixes.contains { s.hasPrefix($0) }
+        }?.unit
     }
 }
 
 /// Regex fragments matching a unit word. The trailing lookahead makes them match whole
-/// words only, so "g" doesn't match the start of "garlic" or "l" the start of "large".
-enum UnitPatterns {
-    private static let alternatives =
-        #"fl\.?\s*oz|fluid\s+ounces?|tsps?|teaspoons?|tbsps?|tbs|tablespoons?|cups?|"# +
-        #"millilit(?:er|re)s?|ml|kilograms?|kilos?|kg|grams?|g|lit(?:er|re)s?|l|"# +
-        #"sticks?|ounces?|oz|lbs?|pounds?"#
-
-    // The alternation is wrapped in its own group so the optional trailing period applies to
-    // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
-
+/// words only, so "g" doesn't match the start of "garlic" or "l" the start of "large". It
+/// looks for any letter, not just A-Z, so "g" isn't read in "gélatine" either (#15).
+final class UnitPatterns {
     /// One capturing group holding the unit text.
-    static let captured = "((?:\(alternatives))\\.?)(?![A-Za-z])"
+    let captured: String
 
     /// Same match, no capturing group.
-    static let plain = "(?:(?:\(alternatives))\\.?)(?![A-Za-z])"
+    let plain: String
+
+    private init(_ words: LanguageWords) {
+        // The unit words are shared with Android: shared/tables/<language>/units.json "patterns",
+        // in order. (No units at all never matches, rather than matching an empty unit.)
+        let patterns = words.strings("units", "patterns")
+        let alternatives = (patterns.isEmpty ? ["(?!)"] : patterns).joined(separator: "|")
+
+        // The alternation is wrapped in its own group so the optional trailing period applies to
+        // every unit ("tsp.", "Tbsp.", "oz.", "lb."), not just the last alternative.
+        captured = "((?:\(alternatives))\\.?)(?!\\p{L})"
+        plain = "(?:(?:\(alternatives))\\.?)(?!\\p{L})"
+    }
+
+    static func of(_ words: LanguageWords = .english) -> UnitPatterns {
+        words.compiled(UnitPatterns.self, UnitPatterns.init)
+    }
 }
 
 // MARK: - Java-compatible regex

@@ -8,19 +8,38 @@ import XCTest
 @MainActor
 final class ThemeTests: XCTestCase {
 
+    /// On a slow first run, `ImageRenderer.cgImage` can hand back an image before the render
+    /// pipeline has actually composited anything into it — every pixel reads black regardless
+    /// of the fill colour, for ~10–14 s while the pipeline warms up (#77). None of the tokens
+    /// this file checks against are pure black (the closest, ink, is 0x1C1917), so a still-black
+    /// sample is never a real answer: retry until a real frame lands, or give up after a bound
+    /// generous enough to cover that warm-up on a slow machine. This replaces a fixed delay with
+    /// waiting for the actual condition, and never masks a genuine black-pixel regression, since
+    /// `assertColor` still runs — and can still fail — on whatever `pixel` last saw.
     private func pixel(_ color: Color, scheme: ColorScheme) throws -> (r: Int, g: Int, b: Int) {
-        let renderer = ImageRenderer(content: Rectangle().fill(color).frame(width: 4, height: 4)
-            .environment(\.colorScheme, scheme))
-        renderer.scale = 1
-        let image = try XCTUnwrap(renderer.cgImage)
-        var bytes = [UInt8](repeating: 0, count: 4)
-        let context = try XCTUnwrap(CGContext(
-            data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-            space: CGColorSpace(name: CGColorSpace.sRGB)!,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ))
-        context.draw(image, in: CGRect(x: -1, y: -1, width: 4, height: 4))
-        return (Int(bytes[0]), Int(bytes[1]), Int(bytes[2]))
+        let deadline = Date().addingTimeInterval(30)
+        var last = (r: 0, g: 0, b: 0)
+        repeat {
+            let renderer = ImageRenderer(content: Rectangle().fill(color).frame(width: 4, height: 4)
+                .environment(\.colorScheme, scheme))
+            renderer.scale = 1
+            if let image = renderer.cgImage {
+                var bytes = [UInt8](repeating: 0, count: 4)
+                if let context = CGContext(
+                    data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                    space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                ) {
+                    context.draw(image, in: CGRect(x: -1, y: -1, width: 4, height: 4))
+                    last = (Int(bytes[0]), Int(bytes[1]), Int(bytes[2]))
+                    if last != (0, 0, 0) { return last }
+                }
+            }
+            // Pump the run loop rather than sleeping the thread, so any pending render
+            // completion has a chance to actually finish before the next attempt.
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        } while Date() < deadline
+        return last
     }
 
     private func assertColor(_ actual: (r: Int, g: Int, b: Int), _ hex: Int, file: StaticString = #filePath, line: UInt = #line) {

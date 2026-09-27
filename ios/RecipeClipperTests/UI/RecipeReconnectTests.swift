@@ -35,15 +35,26 @@ final class ReconnectFakeConnectivity: Connectivity {
 final class ReconnectCountingRepository: RecipeRepository {
     var importResult: ParseResult
     private(set) var importCalls = 0
+    /// Every `renderedPage` an import was called with, in order (#35).
+    private(set) var importedRenderedPages: [String?] = []
 
     init(_ result: ParseResult) { importResult = result }
 
-    func importFromUrl(_ sharedUrl: String) async -> ParseResult {
+    func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult {
         importCalls += 1
+        importedRenderedPages.append(renderedPage)
         return importResult
     }
+    func updateFromSource(id: Int64) async -> ParseResult { .error(.nothingToShow) }
+    func saveEdit(id: Int64, draft: RecipeDraft) async -> Recipe? { nil }
+    func addManual(draft: RecipeDraft) async -> Recipe? { nil }
+    func saveClip(_ recipe: Recipe) async -> ParseResult { .error(.saveFailed) }
+    func keep(_ recipe: Recipe) async -> ParseResult { .error(.saveFailed) }
     func open(id: Int64) async -> Recipe? { nil }
     func setChecked(id: Int64, checked: Set<Int>) async {}
+    func setNotes(id: Int64, notes: String) async {}
+    func setCookProgress(id: Int64, progress: CookProgress) async {}
+    func setServingsTarget(id: Int64, target: Int?) async {}
     func delete(id: Int64) async -> DeletedRecipe? { nil }
     func restore(_ deleted: DeletedRecipe) async {}
     nonisolated func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> {

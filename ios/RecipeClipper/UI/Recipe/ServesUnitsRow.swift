@@ -6,6 +6,8 @@ import SwiftUI
 struct ServesUnitsRow: View {
     let servings: ServingsScale?
     let yieldText: String?
+    /// The recipe's words (#14), for whether the yield counts servings or things made.
+    let words: LanguageWords?
     let unitSystem: UnitSystem
     let onServingsChange: (Int) -> Void
     let onUnitSystemChange: (UnitSystem) -> Void
@@ -46,7 +48,7 @@ struct ServesUnitsRow: View {
     @ViewBuilder
     private func serves(labelAbove: Bool) -> some View {
         if let servings {
-            ServesStepper(servings: servings, kind: Servings.kind(yieldText), labelAbove: labelAbove, onChange: onServingsChange)
+            ServesStepper(servings: servings, kind: Servings.kind(yieldText, words: words), labelAbove: labelAbove, onChange: onServingsChange)
         } else {
             // No number in the yield to scale from: show what the recipe says, if anything.
             Text(yieldText ?? "")
@@ -130,7 +132,7 @@ private struct StepButton: View {
     }
 }
 
-/// The current unit choice as tappable accent text; tapping opens the four exclusive options.
+/// The current unit choice as tappable accent text; tapping opens the three exclusive options.
 private struct UnitsMenu: View {
     let system: UnitSystem
     let onChange: (UnitSystem) -> Void

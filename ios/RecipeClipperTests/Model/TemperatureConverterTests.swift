@@ -56,6 +56,9 @@ final class TemperatureConverterTests: XCTestCase {
 
     func testABareLetterWithAPlausibleTemperatureConverts() {
         XCTAssertEqual("Bake at 180°C", celsius("Bake at 350 F"))
+        XCTAssertEqual("Bake at 350°F", fahrenheit("Bake at 180 C"))
+        // A cup written "c." (#135) is never a temperature.
+        XCTAssertEqual("Stir in 1/2 c. heavy cream", fahrenheit("Stir in 1/2 c. heavy cream"))
     }
 
     func testThingsThatAreNotTemperaturesAreLeftAlone() {

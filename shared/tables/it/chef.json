@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "language": "it",
+  "about": "ShortStepCheck's words (#129); see en/chef.json for what each key does. Verbs in the infinitive, one word each; endings let 'preriscaldate', 'preriscaldare' and 'preriscaldato' match. An elided article ('l'olio') also matches the word after it.",
+  "actions": [
+    "preriscaldare", "imburrare", "ungere", "foderare", "rivestire", "coprire", "avvolgere", "pressare", "premere",
+    "scolare", "sciacquare", "ammollare", "setacciare", "sbattere", "montare", "incorporare", "impastare",
+    "stendere", "arrotolare", "mescolare", "amalgamare", "frullare", "schiacciare", "tritare", "tagliare",
+    "affettare", "grattugiare", "sbucciare", "pelare", "condire", "salare", "marinare", "spolverizzare",
+    "cospargere", "irrorare", "spennellare", "versare", "spremere", "bollire", "sobbollire", "lessare",
+    "friggere", "rosolare", "soffriggere", "arrostire", "infornare", "grigliare", "tostare", "sciogliere",
+    "raffreddare", "refrigerare", "congelare", "riposare", "lievitare", "schiumare", "sfumare"
+  ],
+  "equipment": [
+    "forno", "padella", "pentola", "casseruola", "tegame", "ciotola", "terrina", "teglia", "stampo", "placca",
+    "griglia", "colino", "scolapasta", "frullatore", "mixer", "robot", "frusta", "carta", "alluminio",
+    "pellicola", "coperchio", "microonde", "termometro", "wok"
+  ],
+  "qualifiers": ["non", "mai", "senza", "se", "facoltativo", "facoltativa", "alternativa", "alternativamente", "invece", "finché", "fino"],
+  "notAfter": ["il", "lo", "la", "un", "uno", "una", "l'"],
+  "functionWords": [
+    "il", "lo", "la", "i", "gli", "le", "un", "uno", "una", "e", "ed", "o", "poi", "quindi", "in", "nel",
+    "nella", "nei", "nelle", "con", "a", "al", "alla", "ai", "di", "del", "della", "dei", "da", "dal", "per",
+    "su", "sul", "sulla", "si", "è", "sono", "circa", "fino", "finché", "che", "gradi"
+  ],
+  "abbreviations": [["temp", "temperatura"]],
+  "endings": [
+    ["are", ""], ["ere", ""], ["ire", ""], ["ate", ""], ["ete", ""], ["ite", ""], ["ato", ""], ["ata", ""],
+    ["ati", ""], ["ando", ""], ["endo", ""], ["a", ""], ["e", ""], ["i", ""], ["o", ""]
+  ]
+}

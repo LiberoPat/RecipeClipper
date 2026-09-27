@@ -32,7 +32,7 @@ class BlogRecipeSourceStatusTest {
                 val socket = try { server.accept() } catch (e: Exception) { break }
                 socket.use {
                     val reader = it.getInputStream().bufferedReader()
-                    while (reader.readLine()?.isNotEmpty() == true) Unit // skip the request
+                    while (reader.readLine()?.isNotEmpty() == true) { } // skip the request
                     val bytes = body.toByteArray()
                     val head = "HTTP/1.1 $status Status\r\n" +
                         "Content-Type: text/html; charset=utf-8\r\n" +

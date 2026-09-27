@@ -1,12 +1,22 @@
 import SwiftUI
+import UserNotifications
 import UIKit
 
 @main
 struct RecipeClipperApp: App {
     @State private var container = AppContainer.live()
-    @State private var router = Router()
+    @State private var router: Router
+
+    // The notification center holds its delegate weakly, so the app keeps it.
+    private static let notificationRouter = NotificationRouter()
 
     init() {
+        // Set before launch finishes, so a tap on a timer notification that cold-starts the
+        // app is still delivered (Apple's rule for the delegate).
+        let router = Router()
+        _router = State(initialValue: router)
+        Self.notificationRouter.router = router
+        UNUserNotificationCenter.current().delegate = Self.notificationRouter
         // Recipe photos go through a disk-backed cache (50 MB memory, 200 MB disk), so a photo
         // seen once still shows offline. See ImageLoader.
         ImageLoader.configure()

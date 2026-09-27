@@ -59,7 +59,7 @@ Exists today:
   `temperatureUnit` and `darkWhileCooking`; `SharedPrefsAppPreferences` stores
   each enum by name under its own key (`temperature_unit` for the newest one),
   same pattern as `unitSystem`.
-- Room (`data/local/`): database `recipe_clipper.db`, **version 2**, with the
+- Room (`data/local/`): database `recipe_clipper.db`, **version 6**, with the
   three tables from the schema section (named `recipes`, `lists`,
   `recipe_list_cross_ref`). The schema is exported to `app/schemas/`; commit
   it, it is what future migrations are written against, and never use
@@ -126,8 +126,9 @@ Exists today:
   seen once shows offline, as Coil's do on Android.
 - `di/` — `DatabaseModule` (Room and the DAOs) and `SourceModule` (remote
   sources; the Reddit one joins in phase 4).
-- Cook mode is in memory only: progress and timers survive rotation and leaving
-  cook mode but not the app being closed. Ticked ingredients do persist.
+- Cook progress, timers and the chosen servings are saved as they change and
+  survive the app being closed or killed (#10; see "Background timers and
+  saved cook progress").
   `data/model/StepTimers` finds the duration a step states (lower bound of a
   range, null if none); the ViewModel runs the countdowns against wall-clock
   deadlines, several at once, and `TimerAlerts` plays three beeps on the alarm
@@ -179,7 +180,7 @@ Exists today:
   there is one code path, not two queries picked in Kotlin. It matches
   against the ingredients column as stored (parsed, not scaled or
   unit-converted) — a search for "grams" won't find a recipe that merely
-  displays in grams; that's correct, not a bug. `HistoryViewModel` keeps the
+  displays in grams; that's correct, not a bug. `RecipesViewModel` keeps the
   query in a `MutableStateFlow` (survives rotation), debounces it ~250ms,
   and `flatMapLatest`s onto `repository.observeHistory(query)`. "History is
   empty" and "no results" are different UI states. Search is on History
@@ -200,7 +201,7 @@ Exists today:
   cross-refs. `RecipeRepository.delete` returns the captured
   entity+cross-refs pair (`RecipeRepository.DeletedRecipe`, opaque to
   callers) or null; `restore` takes it back. The captures live in
-  `HistoryViewModel` as a plain field, not in the repository — the
+  `RecipesViewModel` as a plain field, not in the repository — the
   repository stays stateless everywhere else, the same reason
   `RecipeViewModel` keeps its timer deadlines in a plain field rather than
   in `StateFlow`. That field is a `LinkedHashMap` keyed by recipe id, not a
@@ -218,7 +219,11 @@ Exists today:
   Re-sharing a deleted link after the fact creates a new row with a new id;
   correct, since the old one was actually deleted.
 - Unit conversion (also not in the original build order): `UnitSystem` is
-  AS_WRITTEN (default), GRAMS, OUNCES or METRIC. `data/model/UnitConverter`
+  AS_WRITTEN (default), OUNCES or METRIC. It was four options until #17
+  dropped GRAMS, which differed from METRIC only in leaving liquids, spoons
+  and cups of liquids as written; a stored GRAMS reads as METRIC
+  (`UnitSystem.fromStoredName`, iOS `UnitSystem(storedName:)`), since its
+  users wanted weights. `data/model/UnitConverter`
   does the work, `IngredientDensities` holds the weights, and `Units.kt` holds
   the unit table and regex fragments. The ViewModel renders each ingredient as
   scale first, then convert, so amounts always match the chosen servings.
@@ -230,9 +235,8 @@ Exists today:
   `SettingsScreen` + `SettingsViewModel` (`@HiltViewModel`, injects
   `AppPreferences` directly rather than through the repository, since these
   are app-wide defaults, not any one recipe's). Three sections, each behind a
-  `SectionHeading`: Units (the four `UnitSystem` options as `RadioButton`
-  rows, then "Also convert liquids" as a `Switch`, shown only for Grams and
-  Ounces), Oven temperature (`TemperatureUnit`'s three options as
+  `SectionHeading`: Units (the three `UnitSystem` options as `RadioButton`
+  rows, then "Also convert liquids" as a `Switch`, shown only for Ounces), Oven temperature (`TemperatureUnit`'s three options as
   `RadioButton` rows), Appearance ("Dark while cooking" as a `Switch`).
   Exclusive choices are always `RadioButton`s and independent toggles are
   always `Switch`es — never a bare ✓ for either, which is the reason this
@@ -242,10 +246,9 @@ Exists today:
   (`ui/recipe/ServesUnitsRow.kt`'s `UnitsMenu`) is exclusive-choice only now
   — just the four `UnitSystem` rows; "Also convert liquids" and "Dark while
   cooking" moved out to Settings. `RecipeViewModel.onConvertLiquidsChange` and
-  `onDarkWhileCookingChange` stay on `RecipeViewModel` (existing tests cover
-  them directly) but nothing in the recipe screen calls them anymore — a
-  fresh `RecipeViewModel` picks up whatever Settings last wrote the next time
-  a recipe is opened.
+  `onDarkWhileCookingChange` stayed on `RecipeViewModel` for a while with no
+  callers; #24 removed them on both platforms, since the recipe screen now
+  picks up those values from `AppPreferences.settings`.
   **Oven temperature is now independent of the ingredient unit system**,
   defaulting to AS_WRITTEN: choosing Metric no longer converts a recipe's
   350°F to 180°C unless Oven temperature is separately set to Celsius. This
@@ -264,6 +267,11 @@ Exists today:
   would leave that screen's `RecipeViewModel` alive underneath and showing
   stale settings on return — fixing that would need `AppPreferences` to
   expose Flows instead of plain `var`s, which it deliberately doesn't yet.
+  **Superseded by #24:** `AppPreferences.settings` is now a Flow (iOS: a
+  Combine publisher) that `RecipeViewModel` and `SettingsViewModel` collect,
+  so a recipe left underneath Settings follows a change as it is made. The
+  Home gear is still the only entry point; whether the recipe screen gets one
+  is a product decision, no longer a technical constraint.
 
 ## Layering cleanup and the first ViewModel tests
 
@@ -308,7 +316,7 @@ Exists today:
   `FakeConnectivity`. Hand-written, not mocks — CLAUDE.md's
   now-satisfied condition for this was "when ViewModel unit tests are actually
   being written".
-- `RecipeViewModelTest`, `HistoryViewModelTest` and `HomeViewModelTest` are the
+- `RecipeViewModelTest`, `RecipesViewModelTest` and `HomeViewModelTest` are the
   first ViewModel test suites (`app/src/test/.../ui/...`). `MainDispatcherRule`
   (`app/src/test/.../MainDispatcherRule.kt`) installs a `StandardTestDispatcher` as
   `Dispatchers.Main`; tests run via `runTest(mainDispatcherRule.dispatcher) { }` so
@@ -316,7 +324,7 @@ Exists today:
   needed for the timer tests, which back `Clock` with `testScheduler.currentTime`.
   `collectEagerly` (`app/src/test/.../CollectUiState.kt`) starts a background
   collector on a `stateIn(WhileSubscribed(...))` flow before `advanceUntilIdle()`,
-  since `HomeViewModel.uiState` and `HistoryViewModel.uiState` emit nothing without
+  since `HomeViewModel.uiState` and `RecipesViewModel.uiState` emit nothing without
   one.
 
 ## Lists
@@ -576,7 +584,7 @@ home
 recipe/{recipeId}            from history, lists, or home
 recipe/import?url={url}      share-target entry: parse, then persist
 history
-settings                     Home only — see "Settings screen" above for why
+settings                     from Home's gear — see "Settings screen" above
 lists
 lists/{listId}
 ```
@@ -632,8 +640,26 @@ Unit conversion rules (each one exists to avoid showing a confident wrong number
   unit: the `UnitPatterns` alternation is wrapped so `\.?` applies to every
   alternative, not just the last. Bon Appétit, Epicurious, Delish and Budget
   Bytes all write units this way.
-- GRAMS and OUNCES leave pourable liquids as written unless `convertLiquids` is
-  on. METRIC ignores that flag: liquids, spoons and cups become ml (a volume
+- Old-style abbreviations (#135): "c", "c.", "C" and "C." after an amount are a
+  cup (Delish: "1 1/2 c. cherry tomatoes", "1/2 c. heavy cream"), and "T"/"T."
+  a tablespoon and "t"/"t." a teaspoon, as old recipe cards write them. T and t
+  differ only by case, so `units.json` holds them as `(?-i:[Tt])` in `patterns`
+  (every caller matches case-insensitively otherwise) and as `caseSensitive`
+  `names` rules that run first; `MeasureUnit.fromText` lowercases for every
+  other rule. "Tbs" was already a tablespoon in any case. A one-letter unit
+  refuses a hyphen or apostrophe after it, so "2 T-bone steaks" stays a count.
+  "C" is also Celsius: a whole 2–3 digit number in `TemperatureConverter`'s
+  plausible Celsius range (40–320) followed by a C is no amount at all
+  (`IngredientScaler.Patterns.temperature`), so "180 C water" stays as written
+  in scaling, conversion and grocery totals, like a size ("1-inch"). "2 C
+  flour" is cups, as the temperature rule already said, and instructions are
+  still read only by `TemperatureConverter`. Because the scaler, converter,
+  `GroceryCombiner`, `IngredientName` and amounts in steps all read units
+  through `UnitPatterns` and `fromText`, they agree: "1 c. heavy cream" and
+  "1 cup heavy cream" add up to "2 c. heavy cream" (the total keeps a unit as a
+  line wrote it, as "3 cup milk" always has). "c" left `names.json`
+  `leadingWords`, which lists only unit words the converter doesn't read.
+- OUNCES leaves pourable liquids as written unless `convertLiquids` is on. METRIC ignores that flag: liquids, spoons and cups become ml (a volume
   to volume conversion, exact and density-free), and known solids become g.
   METRIC treats 1 cup as 240 ml, 1 tbsp as 15 ml and 1 tsp as 5 ml.
   Exception: in METRIC a spooned or cupped amount of anything that is not a
@@ -690,7 +716,7 @@ com.example.recipeclipper/
 │   ├── RepositoryModule.kt         @Binds the repositories and AppPreferences
 │   ├── SourceModule.kt             remote sources
 │   ├── ClockModule.kt              the real Clock
-│   └── PlatformModule.kt           Connectivity and ErrorLog
+│   └── PlatformModule.kt           Connectivity, ErrorLog, TimerAlarmScheduler
 ├── data/
 │   ├── Connectivity.kt             online state; AndroidConnectivity is the real one
 │   ├── ErrorLog.kt                 where swallowed database errors are logged
@@ -713,7 +739,7 @@ com.example.recipeclipper/
     ├── recipe/                     RecipeScreen + RecipeViewModel
     ├── settings/                   SettingsScreen + SettingsViewModel (Home-only entry)
     ├── savetolist/                 SaveToListBottomSheet + ViewModel
-    ├── history/                    HistoryScreen + HistoryViewModel
+    ├── recipes/                    RecipesScreen + RecipesViewModel (was history/, #102)
     ├── lists/                      ListsScreen + ViewModel
     └── listdetail/                 ListDetailScreen + ViewModel
 ```
@@ -771,7 +797,7 @@ markup, which an earlier note here had missed.
 
 ## Build order (history)
 
-The remaining work in phases 3 and 4 is tracked as issues #10 and #11.
+The remaining work in phase 4 is tracked as issue #11.
 
 1. **MVVM refactor, no new features.** Move current logic into ViewModel +
    repository. Done when: share flow behaves identically AND rotating
@@ -783,8 +809,8 @@ The remaining work in phases 3 and 4 is tracked as issues #10 and #11.
    mode lands here too — it's a state on the recipe screen, and both it and
    list membership depend on the same persisted recipe. (An in-memory version
    already exists; see Current state. What phase 3 adds is persisting it.)
-   **Still to do in this phase:** persisted cook-mode progress, persisted
-   servings, and background timers.
+   Persisted cook-mode progress, persisted servings and background timers
+   are done too (#10).
    **Background timers land here too, deliberately**, not before. An alarm
    that fires after the process has been killed would otherwise notify about
    a timer the app has no record of, so a background alert needs running
@@ -817,30 +843,2041 @@ has been run on an emulator and passes.
   offline, and database errors" in Current state). Don't chase a
   user-agent that "works" — there isn't one.
 
-## Background timers: what works and what doesn't
+## Rendered fallback: an off-screen browser after the retry (#36)
 
-The fix is issue #10.
+When the direct fetch and its one retry still end `Blocked`, or the page
+loaded with `NoRecipeFound`, the repository loads the page once in an
+off-screen browser (Android `WebView`, iOS `WKWebView`), takes
+`document.documentElement.outerHTML`, and runs it through the same pure
+parsers (JSON-LD, then microdata).
 
-- **Cook-mode timers in the background.** Less is broken here than it looks,
-  so be precise before "fixing" it. Deadlines are wall-clock
-  (`clock.now() + ms`) and the tick loop recomputes remaining time from
-  `clock.now()` rather than decrementing, so elapsed time is already correct
-  across a pause — freeze the app for three minutes and it shows the right
-  number on return. Cook mode also holds `FLAG_KEEP_SCREEN_ON`, so the case
-  this app is built around (phone propped on the counter, app in front)
-  works today. What is unreliable is the *alert*: the tick job runs in
-  `viewModelScope`, so while the app is merely stopped the process often
-  survives and the beep fires, but under Doze or a low-memory kill it
-  doesn't — unreliable rather than cleanly broken, which is worse, because
-  you can't learn whether to trust it. And when it does fire there is no
-  notification, so it's three beeps from nowhere with nothing to tap.
-  The intended fix (phase 3) is `AlarmManager.setAlarmClock()` plus a
-  notification, **not** `setExactAndAllowWhileIdle`: `setAlarmClock` is
-  Doze-exempt and needs no special permission, which sidesteps the
-  `SCHEDULE_EXACT_ALARM` / Play-policy question entirely, at the cost of an
-  alarm icon in the status bar — honest, since there really is a pending
-  alarm. It still needs `POST_NOTIFICATIONS` on API 33+, which would be the
-  app's first runtime permission prompt. A foreground service with a live
-  countdown notification was the considered alternative; rejected for now as
-  a permanent notification plus a `FOREGROUND_SERVICE_*` type declaration
-  that Play reviews.
+- **Why.** Bot protection targets plain HTTP clients, and a real browser
+  engine running the site's JavaScript passes many of its checks. Pages that
+  build their recipe data in JavaScript have none in the fetched HTML. This
+  is not the user-agent chase warned against above: the web view keeps its
+  engine's own user agent. Paprika extracts from pages loaded in its own
+  browser the same way.
+- **Why after the retry, and only for those two causes.** The direct fetch
+  is cheap and usually works; the web view costs seconds and memory. `Offline`
+  would fail the same way, a timeout means the network is dead (the rule that
+  a dead Wi-Fi costs one timeout still holds), and other `FetchFailed` causes
+  (DNS, TLS) aren't what a browser fixes.
+- **Why a rendered page with no recipe keeps the original cause.** A block
+  that the browser also can't pass is still a block, and its copy ("try
+  again in a minute") is the right advice. Showing `NoRecipeFound` instead
+  would hide it.
+- **Shape.** `RenderedPageSource` returns HTML, nothing more, so the
+  repository stays `Context`-free and testable with a fake, and parsing stays
+  pure. The implementations need the main thread (and on Android a
+  `Context`), so they sit beside `AndroidConnectivity` / `PathConnectivity`,
+  bound in Hilt and `AppContainer`. The repository caps the whole render at
+  20 s (`RENDER_TIMEOUT_MS` / `renderTimeout`); the implementation waits a
+  1.5 s settle after the last page load (a navigation restarts it) before
+  reading the HTML, runs JavaScript with DOM storage, skips images, and
+  destroys the web view on every way out, cancellation included. Nothing is
+  shown to the user: capture stays frictionless, just slower.
+- **On Android, load errors aren't handled early:** a failed page still ends
+  in `onPageFinished` on the WebView's error page, which parses as no recipe,
+  and finishing on `onReceivedError` would also end a load whose first
+  navigation a script redirect aborted. iOS has no such page, so
+  `didFail`/`didFailProvisionalNavigation` finish at once, except for the
+  cancelled navigation a redirect causes. A crashed renderer
+  (`onRenderProcessGone`, `webViewWebContentProcessDidTerminate`) ends the
+  render without taking the app down.
+- **Limits.** Not a guarantee: some checks detect web views or need a click
+  (a CAPTCHA), and still end `Blocked`; a later step could show the page to
+  the user. The web view has the app's cookies, not the user's browser
+  logins, so paywalls still fail. Not inside the iOS share extension, for
+  memory (#19); Safari shares could use Safari's own page instead (#35).
+- **Checked only by tests so far.** The repository rules are pinned by fakes
+  on both platforms; the web views themselves need a device check on a page
+  whose recipe data appears only after JavaScript runs, and on one that
+  blocks the plain fetch.
+
+## Background timers and saved cook progress (#10)
+
+Built on both platforms. Before this, cook progress, timers and the chosen
+servings were in memory only, and a timer's alert depended on the process
+surviving: under Doze or a low-memory kill the beep never came, and when it
+did there was nothing to tap.
+
+- **What is saved.** Two nullable columns on `recipes` (Room version 6, iOS
+  `user_version` 5): `cookState`, a JSON `CookProgress` (cook mode on, current
+  step, done steps, and each timer's total, remaining seconds and, while it
+  runs, its wall-clock deadline `endsAt`), and `servingsTarget` (null = the
+  recipe's own yield). One column rather than a timers table, so undo-delete
+  and the re-share upsert carry it with the row. `ingredientsExpanded` and
+  `alerted` are screen state and aren't saved.
+- **Every cook action writes, in order.** Start, exit, select, done, and
+  timer start, pause, resume and reset each save the whole `CookProgress`
+  through one queue (Android: a queue drained by one job, each write
+  `NonCancellable`, drained again in `onCleared`; iOS: a chain of tasks that
+  hold the repository, not the ViewModel), so rapid taps can't land out of
+  order and a tap just before leaving still lands. A running timer is saved
+  by its deadline, so ticks never write. A `Channel` was tried first: it
+  drops an element handed to a receiver that is cancelled before running,
+  which is exactly the last tap before leaving.
+- **Re-share.** Cook progress is kept only if the steps are unchanged (its
+  indexes point into them, like ticked ingredients); the chosen servings are
+  always kept.
+- **Restoring.** On opening, a timer whose deadline is still ahead resumes
+  from it (it kept counting while closed) and its alarm is rescheduled,
+  which also recovers one lost to a force-stop. One whose deadline passed
+  shows finished and already alerted: the background alert announced it, so
+  no stale beep on reopening. Indexes past the last step are dropped.
+- **Android alert.** One `AlarmManager` alarm per running timer
+  (`timers/AndroidTimerAlarmScheduler`), to `TimerAlarmReceiver`, which posts
+  a notification (channel "Cook timers", category alarm; a tap opens the
+  recipe in cook mode through `recipe/{id}?cook=true`) only if the database
+  still has that timer running with that deadline, so a reset timer, a
+  deleted recipe or a re-share that changed the steps never rings, and only
+  if that recipe isn't on screen, where the in-app beep sounds instead. A
+  timer that reaches zero in the app keeps its alarm, since cancelling would
+  only race it. `TimerBootReceiver` reschedules after a reboot or an app
+  update.
+- **Exact alarms: `setAlarmClock()` when allowed, else
+  `setAndAllowWhileIdle()`. No Settings prompt (owner's decision).** Issue #10
+  assumed `setAlarmClock()` needs no permission. It does: apps targeting API
+  31+ need `SCHEDULE_EXACT_ALARM`, and for apps targeting 33+ Android 14
+  denies it by default until the user allows "Alarms & reminders". So the
+  alert is exact on Android 7–13, and on 14+ only if the user has allowed it
+  (also the status-bar alarm icon then). Otherwise it is inexact, still fires
+  in Doze, and can be minutes late. `USE_EXACT_ALARM` is Play-restricted to
+  alarm and calendar apps and isn't used. A foreground service with a live
+  countdown was the alternative; rejected as a permanent notification plus a
+  `FOREGROUND_SERVICE_*` type that Play reviews.
+- **Notification permission.** `POST_NOTIFICATIONS` (API 33+) is asked the
+  first time a timer starts, once (remembered in its own preferences file,
+  `permission_prompts`). Refused, the timer still runs and the in-app beep
+  still sounds while the recipe is open. On iOS, notification authorisation
+  is asked on the first timer start in the same way.
+- **iOS alert.** A local notification per running timer at its deadline
+  (`NotificationTimerScheduler`). With no receiver to re-check the database,
+  opening a recipe replaces all its pending alerts with its running timers',
+  and pause, reset and delete remove them. `NotificationRouter` opens cook
+  mode on a tap and suppresses the banner while that recipe is on screen.
+  Known gap: deleting a recipe from History with a timer running leaves its
+  pending notification.
+
+## iOS: importing inside the share extension (#19)
+
+The extension used to find the link and open the app with
+`recipeclipper://import?url=…`, reaching `UIApplication` through the
+responder chain. That was an App Review risk (guideline 2.5.1), and iOS 18
+had already broken it once. Now the extension does the import itself.
+
+- **Same code, not a copy.** The extension compiles the app's `Data/` (minus
+  `UserDefaultsAppPreferences`), `ShareImport/`, the theme and the button
+  styles through dual target membership in `project.yml`. A framework target
+  was the alternative. It would have meant `public` on most of the data layer
+  for no gain at this size.
+- **One database, two processes.** The SQLite file and the settings suite
+  moved to the App Group container. Nothing was migrated: #40's new bundle
+  IDs had already started everyone on an empty container. WAL plus
+  `busy_timeout` let both processes write. Migrations re-check
+  `user_version` under the write lock. The app re-queries on becoming active,
+  because its observers only hear its own writes. A Darwin notification
+  would also cover the iPad side-by-side case, but that wasn't worth it yet.
+- **The card, not the recipe.** After saving, the extension shows a compact
+  "Saved" card that dismisses itself after 2.5 s. Errors keep the app's
+  causes and copy, with Try again, and reload on reconnect. Showing the whole
+  recipe in the extension was the other option the issue named. It would
+  have meant the reading view, scaling and conversion inside the extension's
+  memory budget. The app doesn't jump to the recipe on its next launch
+  either, since that would surprise someone who opens it hours later.
+  "Continue cooking" already puts it one tap away.
+- **What only a device shows.** The memory ceiling (about 120 MB, which the
+  simulator doesn't enforce). And iOS kills a suspended process that holds a
+  file lock in a shared container (`0xdead10cc`). Writes are short
+  transactions, so this shouldn't bite, but it has to be watched for on a
+  device.
+
+## iOS: reading the shared page from Safari instead of fetching it (#35)
+
+Needed #19 (the extension importing itself) first: a rendered page (about
+250 KB for a Smitten Kitchen recipe) is too big for the
+`recipeclipper://import?url=…` deep link, so parsing it has to happen where
+it's saved.
+
+- **Safari's JavaScript preprocessing file**, not a second fetch. `Preprocessing.js`
+  defines `ExtensionPreprocessingJS.run`, which hands `completionFunction`
+  `{url: document.URL, html: document.documentElement.outerHTML}`; Safari runs
+  it against the page it's sharing, before the extension launches. Info.plist
+  (via `project.yml`) names it (`NSExtensionJavaScriptPreprocessingFile`) and
+  adds `NSExtensionActivationSupportsWebPageWithMaxCount` to the activation
+  rule alongside the existing URL and text rules; only Safari acts on it, so
+  Chrome and other apps keep sharing just the URL.
+- **The page never leaves the device.** It's parsed in the extension's own
+  process with the same pure parsers the fetch uses
+  (`BlogRecipeSource.parse(html:url:)`); nothing is sent anywhere for this.
+- **Bypasses the fetch, not just the block-and-retry.** `SharedItems` prefers
+  the preprocessing result (it carries both the rendered HTML and the URL
+  JavaScript actually resolved) over the plain URL/text attachments every
+  other app sends. `RecipeRepository.importFromUrl` grew a `renderedPage`
+  parameter: given one, it parses it directly and skips the fetch, its retry
+  and the off-screen-browser fallback (#36) entirely; only when that page
+  holds no recipe does the ordinary fetch run, exactly as if nothing had been
+  given. A default-argument extension method keeps every other caller
+  (`RecipeViewModel`, the tests) at the one-argument call they already had.
+- **Android has no equivalent.** Chrome's share sheet gives apps only the
+  URL, never the rendered page; the off-screen-browser fallback (#36) is
+  Android's route to a page that needs JavaScript to reveal its recipe data.
+- **Checked so far:** the plumbing (SharedItems reading a real property-list
+  item provider shaped exactly as Apple delivers preprocessing results; the
+  repository using the page's HTML and cleaned URL without fetching; a page
+  with no recipe falling back to fetch; the view model passing the page
+  through). Safari end to end on a device, against a site that blocks the
+  plain fetch, is still owed.
+
+## Export and import (#26)
+
+The owner's decision: import **merges, never replaces**, and deletes nothing.
+
+- **One file, versioned.** `format: "recipe-clipper-backup"`, `formatVersion: 1`,
+  then `recipes`, `lists` and `memberships`. The canonical example is
+  `shared/fixtures/backup/backup-v1.json`; both platforms' tests decode it and
+  plan the same merge from it. Readers ignore keys they don't know, so a later
+  feature (the meal plan, #46; sync, #53) adds a section or a field without a
+  version bump. Bump only when an older app would *misread* a newer file; an
+  older app refuses a newer version (`NewerVersion`) rather than half-import it.
+- **Stable ids.** Recipes and lists got a `uid` column (Room 4 / iOS
+  `user_version` 3, backfilled with random UUIDs), and the file names records by
+  it; memberships refer to uids, never row ids. A re-share keeps a recipe's uid
+  and a rename keeps a list's, so a list renamed on one phone still finds itself
+  on the other, and sync can build on the same identity.
+- **What's left out:** cached photos (only `imageUrl`), and cook progress
+  (current step, timers, chosen servings), which is a moment in one kitchen
+  rather than part of the recipe, even once #10 persists it.
+- **Merge rules** (`BackupMerger`, pure, the same on both platforms):
+  recipes match by the cleaned `sourceUrl`; a recipe already here keeps its
+  content, ticks and last view, gains the imported memberships, and gains the
+  imported note only if it has none. Favorites maps to Favorites by
+  `isFavorites`, never by name, and a user list called "Favorites" stays a user
+  list. Other lists join the same uid, else the same trimmed, case-insensitive
+  name, else they're created after the existing lists. Memberships are
+  insert-or-ignore, so an existing `addedAt` stands.
+- **History cap: free slots, not a cull.** The issue suggested running the
+  normal cull after import, but that could delete the user's own older history,
+  which "never delete" forbids. So listed recipes always come in, and unlisted
+  ones fill only the places free under 50 (most recently viewed first); the rest
+  are skipped and counted in the summary.
+- **One transaction.** Any failure (a bad file, a database error) writes
+  nothing, and the Settings screen shows the cause.
+
+## Shared tables, native logic (#9)
+
+Every feature was built twice and kept at parity by hand, and the language
+work (#12–#16) would have added a word table per language, written twice. The
+owner's decision on #9: stay native on both platforms (no Kotlin
+Multiplatform, which would cost iOS its no-dependency property and need
+multiplatform replacements for Jsoup and org.json), and move the data, not the
+code. The tables are JSON under `shared/tables/`: `url.json` (tracking
+parameters) and, per language, `en/densities.json`, `units.json`,
+`timers.json`, `temperature.json`, `yield.json`, `ranges.json`,
+`sections.json` and (since #48) `names.json`. Each has a `schemaVersion` and an `about` saying how the code
+reads it.
+
+- Android adds `shared/` as a `main` Java resource directory, so the pure model
+  code reads the tables with `getResourceAsStream`: no `Context`, and the JVM
+  tests read exactly what the APK ships. iOS bundles the folder as a folder
+  reference (`project.yml`) and reads it from `Bundle.main`.
+- Word lists are regex fragments where the code builds a regex from them, so
+  the patterns come out character for character as before; symbols (dashes,
+  degree signs, the F and C letters) stay in the code, being no language's.
+- A missing or malformed table is a build mistake, so both loaders fail loudly.
+  `SharedTablesTest(s)` load every table and check each on-disk file is
+  covered; `DifferentialCorpusTest(s)` passed unchanged across the move.
+- Left in code as English by #9, then moved to the tables by #14:
+  `IngredientScaler`'s "plus"/"and" continuation and the words the app writes
+  out (`StepTimers.label`'s "hr" and "min", the "h"/"m" of times).
+
+## The recipe's language picks the words (#14)
+
+Every piece of text understanding was English, and merging languages into one
+set of words would collide ("C" is a cup in English and Celsius elsewhere). So
+each language has its own folder, `shared/tables/<language>/`, and a recipe is
+read with its own language's tables only.
+
+- **The language is the recipe's, never the phone's:** JSON-LD `inLanguage`
+  (a tag, or a schema.org Language's `alternateName`), else the page's
+  `<html lang>`, else English. Detection from the recipe's name and ingredient
+  lines (`language.json`'s `detect` words: a language needs at least 3 hits and
+  more than twice the runner-up's) fills in when nothing is declared, and **the
+  owner's decision on #14: when the words clearly say another language, they
+  beat the declared one; ambiguous words keep it.** #15's survey found
+  `inLanguage` on 1 site in 25 and `<html lang>` on nearly all, but wrong on
+  one (mulherportuguesa.com says `en` on Portuguese pages).
+- **Detection knows more languages than the app reads.** de, es, fr, it and pt
+  have a `language.json` only (`LanguageWords.DETECTED` vs `SHIPPED`), so a
+  German page labelled `en` is recognised as German and shown as written,
+  rather than read with English rules. The words avoid ones the languages
+  share ("de", "sal", "sopa"), and German's `EL`/`TL` are case-sensitive
+  (Spanish "el").
+- **A language with no tables leaves everything as written:** no scaling,
+  conversion, temperature rewrite, timer or servings stepper, no phrase times
+  (ISO times still read), no condensed-section skipping. English rules on a
+  German line would scale "2 bis 3 Eier" to "4 bis 3 Eier".
+- **Stored:** `recipes.language`, the normalised tag ("en-us"), because the
+  declared language can't be rebuilt from what was stored (Room version 5, iOS
+  `user_version` 4, after #26's uids took 4 / 3). Recipes stored before are NULL and are detected from their
+  words when shown; a re-share fills it in. Lookup is by primary subtag, so a
+  regional table (fr-CA's 250 ml `tasse`) can come later without a migration.
+- **API:** `LanguageWords` (both platforms) loads a language's tables and
+  caches each parser's compiled patterns per language. Every parser takes a
+  `words` argument defaulting to English, so the differential corpus and every
+  English caller are byte-for-byte unchanged; nil means "no words".
+  `IngredientName` and `IngredientRendering` (#48) take the recipe's words too,
+  and `names.json` is a per-language table; no words means no name, so a line
+  is never matched to the pantry by another language's rules.
+- New tables: `amounts.json` (mixed-number joiners, "2 and 1/2", which make
+  the quantity pattern itself per language; compound joiners; size words),
+  `durations.json`
+  (phrase times and the "h"/"m" written back), `language.json` (detection
+  words); `timers.json` gained each unit's button label. Symbols (dashes,
+  degree signs, `%`, `cm`/`mm`, `+`, the fraction slash `⁄`) stay in the code.
+  `IngredientScaler.parse` holds no words: it drops whatever word the language's
+  quantity pattern already allowed between the whole number and the fraction.
+- An empty word list never matches (`SharedTables.alternation` gives `(?!)`),
+  so a language that lacks, say, range words can't turn an empty alternative
+  into a match everywhere.
+
+## Ingredient names and shared rendering (#48)
+
+The first building blocks of the meal plan, pantry and groceries (#46), pure
+and on both platforms.
+
+- `IngredientName.of(line)` gives the ingredient's name in a line
+  ("2 large eggs, beaten" is "eggs"), or null when it can't tell. It reuses
+  the parsing that already reads amounts: `IngredientScaler.LEADING` and
+  `NOT_AN_AMOUNT`, the converter's unit, continuation ("plus 2 tbsp") and
+  slash-measure regexes, and the density table's `stripParentheses` and
+  `headPhrase`, made `internal` with no change in behaviour. Its own English
+  words (sizes and containers dropped from the front, preparation words from
+  the end, the phrases a name ends before, and the conjunctions) are in
+  `shared/tables/en/names.json`.
+- It answers "which ingredient", never "how much", and prefers no name to a
+  wrong one: a heading, a leftover digit ("juice of 1 lemon") or two
+  ingredients ("salt and pepper", "butter or margarine") give null, unless the
+  conjunction is inside a density-table alias ("half and half"). There's no
+  singulariser: "eggs" and "egg" are different names.
+- `IngredientName.matches(a, b)` is the density table's end-of-name rule
+  (`IngredientDensities.endsWithName`, now shared with `find`): "unsalted
+  butter" matches "butter", "butter beans" doesn't. Both sides go through
+  `headPhrase`, so a typed "Butter" works.
+- `IngredientRendering.render(lines, factor, system, convertLiquids)` is
+  `RecipeViewModel`'s old private `render`, moved unchanged (scale, then
+  convert with the original line's decimal separator), so the week's
+  shopping view (#46) shows lines exactly as the reading view does.
+- The differential corpus pins both: every `Ing` row now ends with the
+  Kotlin's `IngredientName.of`, and its rendered columns are computed through
+  `IngredientRendering`.
+
+## Reading recipes in de, es, fr, it and pt (#15)
+
+The five languages #14 could only detect now ship every table, filled from
+real lines on 25 sites (September 2026). Each rule below is pinned by real
+lines in the differential corpus, with a `lang:` argument.
+
+- **Dot thousands** (#76) are an `amounts.json` flag, on for de, es, it and
+  pt and off for fr (which writes a space) and en. Only a dot before exactly
+  three digits is a separator, so generator output like "0.5 TL" stays a
+  decimal; a number that fits neither ("1.500,5") leaves the line alone.
+- **Mixed numbers** (#75): each language's "and" is in `mixedJoiners`
+  ("2 e 1/2 xícaras"). A half in words ("1 taza y media", "2 e meia") can't
+  be read by the pattern, so `spelledHalves` keeps those lines as written.
+- **Units without one size** are `MeasureUnit.VARIES`: French "tasse" (a
+  Québec cup, a vague French one), German "Tasse", Italian "tazza",
+  Portuguese "colher (café)" and bare "colheres". They scale, so Ricardo's
+  "250 ml (1 tasse)" doubles as a whole, but never convert. Spanish "taza"
+  and Brazilian "xícara (chá)" are the 240 ml cup their sites mean. `cl` and
+  `dl` are metric units (French and Italian write them constantly); Metric
+  leaves them as written.
+- **Compounds and head-first names.** The density table still matches whole
+  trailing words. German compounds are listed whole where safe
+  ("weizenmehl", "puderzucker"); anything else ("Mandelmehl") stays as
+  written rather than matching "mehl". In the Romance languages the head
+  noun comes first, so "farine de riz" ends in "riz" and matches nothing,
+  which is the safe side. Elided articles ("d'huile d'olive") aren't
+  undone, so those lines keep their units in Ounces.
+- **Spanish "o"** is a range word: "1 o 2 minutos" and "160 o 165 °C" are
+  alternatives read like a range (both ends scale and convert), which
+  fixed "160 o 325°F".
+- **Whole words by letters**, not `\b`: unit words end with `(?!\p{L})` and
+  yield words use letter lookarounds, because the JDK, Android's ICU and
+  NSRegularExpression disagree on `\b` beside accented letters.
+- **Timers.** A number after a colon is a clock time ("1:30 Stunden" gave
+  a 30-hour timer), so it gets none. Bare degrees ("180 Grad", "165°") stay
+  as written: German turns trays "um 180 Grad", French writes alcohol
+  strength in degrees.
+- **Left as written, on purpose:** GialloZafferano's trailing amounts
+  ("Burro 100 g"), which can't be read without a guess.
+- **Not handled yet:** French space thousands ("1 500 g", not seen on a site
+  yet, would scale as "1"). Totals in parentheses after the name ("¾ de taza
+  de queso crema (180 g.)") were fixed by #63, below.
+
+## Editing a recipe, and typing one in (#29)
+
+- **Owner's decision:** an edited recipe is never auto-refreshed. Re-sharing
+  its link opens the user's version; an explicit "Update from source" in the
+  overflow menu fetches the site's, after a warning that the edits will be
+  lost. The same rule covers #37's hand-clipped recipes.
+- **One schema step shared with #37** (Room 6 → 7, iOS `user_version` 5 → 6):
+  `contentOrigin` (`PARSED` | `EDITED` | `CLIPPED` | `MANUAL`, stored by name,
+  default `PARSED`) plus a nullable `editedAt`. `EDITED` is its own value, as
+  the owner chose on #37, so "is this the user's version" is one column
+  (`contentOrigin != PARSED`); `editedAt` records when, and an edited clip
+  stays `CLIPPED`. An unknown name, from a newer app, reads as `EDITED` so it
+  is never overwritten.
+- **The re-share check comes before the fetch,** not only in the upsert: the
+  user's version is opened with no network at all, so it opens offline and
+  never costs a timeout. The DAO's upsert also refuses to overwrite it unless
+  told to (`replaceUsersVersion`), so a race can't lose an edit.
+- **Manual recipes keep `sourceUrl` as the key** with a synthetic
+  `manual:<uuid>`, rather than a nullable column and a second unique index.
+  `UrlCleaner` leaves anything without `://` alone, `SourceDomain` finds no
+  host, so the credit, Open original and Report hide themselves, and the
+  export and import merge them by that key like any other recipe.
+- **Saving an edit reopens the recipe** (the edit screen and the recipe screen
+  under it are replaced by `recipe/{id}`), rather than the recipe screen
+  reloading itself, so it can't show the copy it loaded before.
+
+## Reading recipes in Japanese (#16)
+
+Probed in September 2026: 6 of 7 big sites (Cookpad, Delish Kitchen, Rakuten
+Recipe, Nadia, Orange Page, Ajinomoto Park) expose a schema.org Recipe in
+JSON-LD to a plain fetch; Kurashiru is a client-rendered shell (only the
+rendered fetch, #36, could see it). `ja` ships every table, and the real lines
+and steps from those six sites are in the corpus with `lang: "ja"`.
+
+- **Name first, amount last.** Every site writes "鶏もも肉 2枚（約700g）":
+  the name, one space (Orange Page: an ideographic space and a space), the
+  amount. `amounts.json` `amountAfterName` sends a language's lines to
+  `TrailingAmount` instead of the leading-number scaler. The amount is the
+  text after the last space, read only when it is: an optional `beforeNumber`
+  word (各, 約, 大, 中, 小), an optional unit, a number or range, an optional
+  unit, then text with no digit in it, which may hold one measure in brackets.
+  Anything else stays as written. A name ending in a digit ("大さじ2 1/2")
+  may have lost part of its amount to the space, so it stays too.
+- **Units either side of the number:** 大さじ2 and 2カップ, and cookbooks'
+  カップ1/2. 大さじ/小さじ are the 15/5 ml spoons; カップ is `CUP_200`
+  (200 ml) and 合 `RICE_CUP` (180 ml), new `MeasureUnit`s, never the US cup.
+- **A measure in brackets scales with the amount:** "1/2缶（200g）",
+  "2個（240g）", "1/4個分(50g)". Unlike English "1 can (14 oz)", Japanese
+  sites write the weight of the amount itself, so a package reading would
+  halve it wrongly. Converting still needs a unit: a counter (個, 本, 枚, 缶)
+  never converts, even with a weight beside it.
+- **Cookpad's 大3 / 小1/2** (大さじ, 小さじ) scale but never convert: 大 and 小
+  also mean "large" and "small" ("大1/6個"), and scaling the number is right
+  either way.
+- **Left as written:** 少々, 適量, お好みで and other amounts with no digit;
+  kanji numerals ("一丁"); a half in words straight after the number ("1半丁",
+  `spelledHalves`); sizes ("ねぎ 10cm"); headings ("肉だね", "A（混ぜる）").
+- **No spaces between words** (`language.json` `spaced: false`). Timer units
+  need no word boundary ("5分煮る"); 分 before の, 半, 目 or 割 ("2分の1",
+  "1分半", "8分目", "5分割") and 時間 before 半 are not times. The density
+  table matches the end of a name by character ("有塩バター" is バター), so
+  compounds that would match wrongly are skip entries (ポン酢, 黒砂糖), and
+  there is no bare 油 (醤油) or 粉 (片栗粉, パン粉). `IngredientName` takes the
+  text before the amount, dropping group markers (☆ ★ A 【A】, glued to the
+  name), asides in brackets and quote marks; a name with ・ 、 or "or" is two
+  ingredients.
+- **Full-width digits and letters** ("１００ＣＣ", "２０分", yields "４",
+  "５〜６") are read as half-width. The mapping is one UTF-16 unit for one, so
+  offsets found in the read text splice back into the line as written: the
+  scaled number is half-width, the rest keeps its width. Temperatures read
+  half-width digits only.
+- **℃** is a Celsius word in `temperature.json`. A bare "180度" names no
+  scale, so it stays as written, as bare degrees do in de, fr and it.
+- **Yields:** "2人分", "2〜3人分" (the wave dash is a range word), and
+  Ajinomoto Park's "2(servings)", which would otherwise read as "Makes".
+- **Not handled:** "1時間半" gives no timer rather than a guess; a scaled
+  amount converted in Metric is written "30 ml" with a space, as in other
+  languages.
+
+## Bottom tab shell (#47)
+
+The navigation shell for #46 (weekly meal plan, groceries, pantry), landing
+dark behind a flag so the shipped app is unchanged until the Week tab (#49)
+has something in it.
+
+- **One flag.** Now `mealPlan` in the feature-flag system (#87, below),
+  default off in both build types. Android's `AppShellTest` calls `AppShell`
+  directly with `tabsEnabled = true`; the iOS UI tests turn it on through the
+  flag store.
+- **Where the bar shows is an allow-list, not a deny-list**
+  (`tabBarRoutes` on Android; `.toolbar(.hidden, for: .tabBar)` set only on
+  the recipe destination on iOS). A new screen is bar-less by default, so
+  forgetting to update the list fails safe (no bar) rather than leaking the
+  bar onto the recipe reading view or cook mode.
+- **Each tab is its own nested graph** (Android: `navigation(route =
+  tab.route, ...)` under one `NavHost`, with `popUpTo`/`saveState`/
+  `restoreState` on tab switch; iOS: one `NavigationStack` per `TabView`
+  case). Recipes' graph is shared, byte-for-byte, between the flag-off
+  `RecipeNavHost` and the flag-on shell's Recipes tab, so there are not two
+  copies of the Home stack to keep in sync.
+- **A share always lands in Recipes,** even mid-import from another tab:
+  the router/nav controller switches tabs first, then pushes the import
+  route on top of whatever the Recipes stack already held — so a share
+  during, say, browsing Pantry doesn't lose the user's place there.
+- **Choosing the open Recipes tab again goes back to Home**, matching both
+  platforms' tab-bar convention, rather than a no-op.
+- **Groceries/Pantry are `ComingSoonScreen` placeholders** (Week was one
+  until #49, Groceries until #50), not simply absent tabs: they show the tab's name and one line on what it will hold,
+  so the shape of the eventual app is visible to whoever flips the flag on,
+  without implying anything is broken.
+
+## Week meal plan (#49)
+
+The first real tab of #46, still behind the #47 flag.
+
+- **A day is a local epoch day** (`PlanDays`, both platforms, the same
+  arithmetic): whole days since 1970-01-01 on the phone's calendar, stored in
+  `meal_plan_entries.day`. A week is seven consecutive integers, "today or
+  later" is one comparison in SQL, and a plan doesn't drift when the clock or
+  zone moves. No `java.time` (API 26+; minSdk is 24): the arithmetic is plain
+  integers, and labels are formatted at midnight UTC with a UTC formatter so
+  the local zone can't show the day before.
+- **The week starts on the locale's first day** (owner's call):
+  `Calendar.getInstance().firstDayOfWeek` (the same answer as
+  `WeekFields.of(Locale)` without java.time) and iOS
+  `Calendar.current.firstWeekday`. Both number Sunday as 1. Both sit behind a
+  `PlanCalendar` seam, so ViewModel tests pin today and the first day.
+- **Meal types are a table** (`meal_types`, owner's call): Breakfast, Lunch,
+  Dinner and Snack are seeded with a `builtInKey` that survives a rename, as
+  `isFavorites` does for lists. Any type can be renamed and reordered; only
+  the user's own (`builtInKey IS NULL`, a guard in the SQL) can be deleted.
+  Deleting one moves its meals to Dinner in the same transaction, never
+  deleting them. Entries reference a type by id. Dinner is the default for a
+  new meal.
+- **Stable ids for #53:** both new tables carry a unique `uid` (#26's
+  convention) and an `updatedAt`, set on every write. The integer `id` stays
+  the key that the foreign keys use.
+- **A recipe's meals cascade with it.** Deleting a recipe removes its planned
+  meals, and undo restores them (with its lists). A planned meal whose meal
+  type went meanwhile is skipped rather than failing the whole restore.
+- **The cull rule** (product rule change): a recipe planned for today or
+  later is never culled and doesn't count toward the 50, like a recipe in a
+  list. One planned only for past days is ordinary history again. "Saved"
+  still means "in a list". In the SQL the plan subquery filters out NULL
+  recipe ids (notes), because `NOT IN` a set holding a NULL is never true and
+  would silently stop the cull. `today` is passed in by the repository; other
+  callers default to protecting nothing.
+- **Moving is long-press → Move** on both platforms: the same day strip (the
+  shown week and the next) and meal types as "Add to plan". Drag and drop
+  across day sections was left out, because it needs experimental Compose
+  APIs and gives no parity with iOS for the same result.
+- **Opening a planned recipe uses the planned servings for that visit only.**
+  It isn't saved as the recipe's chosen servings unless the cook changes
+  them there. A planned recipe opens on the Week's own stack
+  (`week/recipe/{id}?servings=`), so Back returns to the week.
+- **"Add to plan"** is in the recipe menu (first, above Edit) only while the
+  flag is on. It's a deliberate act with a button, unlike save-to-list's
+  instant ticks: a day and a meal type have to be chosen first.
+- **"+ Add" on a day** is one sheet: a meal type, then a recipe from history
+  (searchable, the same query as History) or, once something is typed, that
+  text as a note. Planned servings start as the recipe's own yield.
+- **In the export file** (#26) since the plan joined it after groceries and the
+  pantry, with no `formatVersion` bump: see the Pantry section's Export note.
+
+## Groceries (#50)
+
+The third tab of #46, still behind the #47 flag.
+
+- **One table, room for more lists.** `grocery_items` (Room 9, iOS
+  `user_version` 8, a new table so nothing existing changes) holds the text as
+  written, a `language` tag, an `aisle` key, `checked`, `sortOrder`, and an
+  optional `recipeId` and `plannedDay`, plus #26's `uid` and #53's
+  `updatedAt`. `listId` is 1 for now: several lists would add a
+  `grocery_lists` table keyed by it, without touching the items. A recipe's
+  items outlive it (`ON DELETE SET NULL`): what's on the list is what to buy,
+  whatever happened to the recipe. Undo after the recipe went restores the
+  items without a source rather than failing on the foreign key.
+- **The text is stored as shown, not re-rendered.** A line goes on the list as
+  the reading view showed it (scaled, converted), and the week's at each
+  meal's planned servings, through `IngredientRendering`. Changing units later
+  doesn't rewrite a shopping list someone is already holding.
+- **Aisles are a per-language table** (`shared/tables/<lang>/aisles.json`,
+  every shipped language, the Japanese one smaller), matched on the end of
+  `IngredientName.of`, longest alias first, exactly like the density table:
+  "peanut butter" beats "butter", "butter beans" isn't butter. There's no
+  singulariser, so plurals are listed. The aisle is chosen once when the item
+  is added and stored; "Move to aisle…" overwrites it, and nothing reassigns it
+  after that. A line with no name (a heading, "salt and pepper") or no words is
+  Other. The aisle keys and their order are fixed in code (`Aisle`), since
+  their names are UI strings.
+- **The item's language.** A recipe's line keeps the recipe's language (#14's
+  words read it). A typed item has no recipe, so it takes the phone's language
+  when the app ships words for it, else English: the one place the phone's
+  language picks the words, because the person typing is the only source.
+- **Combining is the "never a confident wrong number" rule** (`GroceryCombiner`,
+  pure, both platforms, pinned by the differential corpus's `Groc` rows). Lines
+  group by exact `IngredientName` and language (and checked state, so a ticked
+  line never hides in an unticked total). A group adds up into one row only if
+  every line is one exact amount (no range, no "plus", no second measure in
+  brackets or after a slash, no package size) and all are in one family whose
+  units convert by exact ratios: g/kg, oz/lb, ml/cl/dl/l (with the 200 ml and
+  180 ml Japanese cups), tsp/tbsp/fl oz/cup (3, 6 and 48 teaspoons), sticks,
+  or counts whose words after the number are identical ("2 eggs" + "3 eggs",
+  not "2 large eggs" + "3 eggs"). Grams never meet ounces, cups never meet
+  grams, and a bare "oz" is a weight even for milk. The total is written in a
+  unit the lines already used, the largest that shows it exactly under the
+  scaler's own formatting ("1 cup" + "2 tbsp" is "1 1/8 cup"; 1.25 kg shows as
+  "1250 g" because "1.3 kg" would round), followed by the shortest wording any
+  line used ("300 g butter" from "200 g butter, softened" and "100 g
+  butter"). If no unit shows it exactly, nothing is combined. Otherwise the
+  lines sit together under the name, each as written. Japanese lines (amount
+  after the name) are never combined. The combined row shows its lines under
+  it, so the sum can always be checked.
+- **Adding the same recipe again** (the owner's "2 corn, 2 corn, 2 corn"):
+  - A note after the amount doesn't stop a total. What follows a bracket or
+    slash counts as a note only with no digit, fraction or unit word in it, so
+    "(, minced)" (WP Recipe Maker's notes) or an unclosed "(see note" add up,
+    while "(about 1 lb)", "(or 2 teaspoon dried)" or "(about a pound)" never
+    do: the figure beside the total would be wrong.
+  - The same line added more than once that can't be summed is one row,
+    "1 lb / 500 g zucchinis × 3": exact, whatever the line says. That holds
+    for a line with no name ("salt and pepper") or no language, which groups
+    only with the very same line.
+  - Lines that sit together are still one row with one tick (the name, its
+    lines listed under it without ticks), and a line added more than once is
+    listed once, "× 3". Before, each line had its own box, so a repeated
+    recipe looked like separate items.
+- **Checked and shared.** Ticking a row ticks all its lines; checked
+  rows sort after unchecked ones in each aisle and are struck through. Share ("Send list" since #149)
+  sends the unchecked rows as plain text by aisle. Delete and clearing the
+  checked rows are undoable from one snackbar (one undo at a time, as on the
+  Week). "Clear checked" became "Done shopping" (#146, below).
+- **Adding.** "Add to groceries" in the recipe menu and "Add this week's
+  ingredients" in the Week menu open the same sheet (Paprika's basket): every
+  line ticked, headings (a line ending in ":") and blanks left out, one
+  button. It's a deliberate act, like "Add to plan", since the point is to
+  untick what's in the cupboard first. "Checking off offers Add to pantry"
+  waits for the pantry (#51).
+- **In the export file** (#26) with the pantry and the plan: see the Pantry
+  section's Export note.
+
+## Pantry (#51)
+
+The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
+
+- **One table** (`pantry_items`, Room 10, iOS `user_version` 9, new, so nothing
+  existing changes): `name` as typed, `language`, optional `quantity` as written,
+  an `aisle` key (from the aisle table when added, like a grocery's), `inStock`,
+  `alwaysHave`, and optional `purchasedDay` and `expiresDay`, plus #26's `uid` and
+  #53's `updatedAt`. The dates are **epoch days** (named `…Day`, like
+  `plannedDay`), not the `…At` millis the brief suggested: a use-by date is a
+  calendar day, and the plan already counts days that way.
+- **The quantity is never read.** It's a note for the cook ("half a bag"). Matching
+  is by name only, so Have means "you have flour", never "you have enough flour":
+  the screen says so under "In your pantry". This keeps the pantry inside "never a
+  confident wrong number".
+- **Have/Buy** (`PantryMatch`, pure, both platforms, pinned by the corpus's `Pant`
+  rows): a line's `IngredientName.of` against the item's name by
+  `IngredientName.matches`, and only in the same language. "What I need" shows
+  which pantry item it matched ("You have butter"), so the cook can check. A staple (`alwaysHave`)
+  is never on Buy, in stock or not. A line the app can't name ("salt and pepper",
+  a heading) stands alone and is always Buy: nothing is guessed. Lines group by
+  exact name and language, each shown as written with its recipe and day; nothing
+  is added up here (the grocery list does that, when it's exact).
+- **"What I need"** is its own screen on the Week's stack (`week/need/{weekStart}`),
+  from the Week menu, for the week shown. Its lines come from the same
+  `GrocerySources.fromPlan` as "Add this week's ingredients", so both show the
+  same text at the same servings. It follows the pantry live. "Add to groceries"
+  puts every Buy line on the list through #50's add path, once.
+- **The grocery sheet starts with what the pantry covers unticked** (in stock or a
+  staple), so "untick what's in the cupboard" is done for the cook, who still
+  sees and can re-tick every line.
+- **Ticking a grocery off fed the pantry** at first (a restock with Undo, or an
+  "Add to pantry" offer, in a snackbar per tick). #146 replaced that with "Done
+  shopping": see its section below. What stays: an untracked item goes in only
+  when the cook ticks it, since the pantry holds what the cook chose to track.
+- **A pantry item never matches a different ingredient** (owner's decision,
+  after #51 shipped a pantry "rice flour" as Have for a recipe's "flour").
+  `matches` was the density table's end-of-name rule in both directions, which
+  let a compound name meet its head noun ("rice flour"/"flour", "peanut
+  butter"/"butter", "coconut milk"/"milk", French "farine de riz"/"riz"). Now two
+  names match only when they are equal, or when the longer ends with the shorter
+  and **every word before it is a plain modifier**: `matchModifiers` or
+  `leadingWords` in `names.json`. Any other word makes it a different ingredient,
+  in either direction, and the line is Buy.
+  - **Why a list of modifiers, not the density table's `skip` entries.** Skip
+    entries only cover compounds someone thought to list ("rice flour" is there,
+    "coconut milk" isn't), so an unlisted compound would still read as Have: a
+    confident wrong answer. A short list of words known to leave the ingredient
+    the same fails the other way: an unknown word is Buy, which the cook can
+    re-tick. That's the "never a confident wrong number" side to fail on.
+  - **What counts as a plain modifier (English):** salted/unsalted, fresh,
+    organic, free range, all purpose, plain, extra virgin, and states of the same
+    thing (softened, melted, cold, chilled, sifted), plus the sizes, containers
+    and cuts already dropped from a line's name (`leadingWords`: large, can,
+    cloves…). So "unsalted butter"/"butter", "all-purpose flour"/"flour", "extra
+    virgin olive oil"/"olive oil" and "large eggs"/"eggs" still match.
+  - **Deliberately not modifiers:** anything that names a different product on
+    the shelf: fat levels ("whole milk" is not "milk", nor "heavy cream"
+    "cream"), colours and varieties ("brown sugar", "red onion"), and processing
+    that makes a different product ("ground", "dried", "crushed", "minced",
+    "smoked"). "salted butter" and "unsalted butter" don't match each other
+    either (neither ends with the other). These are conservative calls: widen
+    the list only when a real pantry shows a miss.
+  - **Other languages:** German gets its leading adjectives (ungesalzene, frische,
+    bio…), Japanese its prefixes (無塩, 有塩), since both put the modifier first.
+    French, Spanish, Italian and Portuguese put modifiers after the noun
+    ("beurre doux"), which the end-of-name rule never matched anyway, so their
+    lists are empty: there only equal names, or a size or container word
+    before the name, match.
+  - `IngredientName.matches` has one caller, `PantryMatch.find`. Grocery
+    combining and aisles use `IngredientName.of` by exact name or the aisle
+    table, so they're unchanged.
+- **Running out puts it on the list** (#146; it was a snackbar offer before):
+  switching an item out adds its name as a typed item, silently, and the row
+  shows "On list". Typing a name already in the pantry puts it back in stock
+  rather than adding a twin.
+- **Expiry**: a badge only (#52 later added an opt-in morning reminder) (Expired before today; the date in paprika from today
+  to 3 days ahead), no notifications, as the epic says. Sort by aisle (the
+  default) or by expiry (soonest first, undated last), from the menu as radio
+  choices.
+- **Export (#26)**: `pantry` and `groceries` are new top-level sections, with no
+  `formatVersion` bump: older readers ignore them. Pantry items merge by uid, then
+  by trimmed case-insensitive name in the same language; what's already here
+  keeps its stock, dates and quantity. Grocery items merge by uid only (two "2
+  eggs" can be two recipes' eggs), after the list's own items, and keep their
+  recipe only if it is on the phone after the import.
+- **The meal plan in the export file (#26, #49)**: two more top-level sections,
+  `mealTypes` and `mealPlan`, still `formatVersion` 1 (older readers ignore
+  them). The plan needs its meal types, so they travel with it.
+  - **Meal types:** a seeded one maps to the phone's type with the same
+    `builtInKey`, never by name, like Favorites: the file's "Dinner" finds this
+    phone's Dinner even if it was renamed "Supper". A user's own type joins one
+    here with its uid, else a *user* type here with the same trimmed,
+    case-insensitive name, else one earlier in the file, else it's created after
+    the types here. A user type called "Dinner" never joins the seeded one.
+  - **Entries merge by uid** and go at the end of their day and meal type. A
+    note always comes in. A recipe's meal comes in only if its recipe is on the
+    phone after the import (matched by link, or written), exactly as a grocery
+    keeps its recipe; otherwise the meal is **dropped**, because a meal is a
+    recipe or a note, a recipe-less, note-less row would be an empty line on the
+    Week, and deleting a recipe already removes its meals. An entry whose meal
+    type the file doesn't name goes to Dinner.
+  - **A recipe the file plans for today or later comes in like a listed one**,
+    the cull's own rule, so a full history can't make the import drop next
+    week's dinner. A recipe planned only in the past is ordinary history: it
+    takes a free place or is skipped, and its meal is dropped with it.
+
+## Clip it yourself (#37)
+
+A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or
+FetchFailed) offers **Clip it yourself**: the page opens live in a web view, the user selects
+the name, ingredients and steps and taps where each goes, then reviews and saves. The design was
+approved as a mock-up (six frames); the owner's nine decisions are in the issue's comments.
+
+- **Error screen:** Try again stays first, outlined; under a hairline, one line of explanation,
+  then Clip it yourself (the one filled button), then Report this site (#30) as a text button.
+- **Assigning replaces** what a field held, for every field. The toolbar count shows the
+  replacement ("Ingredients 4", never "8 + 4").
+- **Undo, both ways:** a snackbar Undo after each assignment or clear, and tapping a field's tag
+  on the page clears that field (with Undo).
+- **Nothing is guessed.** No field is suggested for a selection. A selection splits one item per
+  line (`getSelection().toString()` breaks between blocks); a name joins its lines. Serves and
+  Total time are typed in Review, optional, never read from the page.
+- **Photo:** a Photo button, then the next tapped image. No long-press. Lazy-loading
+  placeholders (`data:` URIs) are skipped for the image's real `http(s)` address.
+- **Session draft per URL:** Cancel keeps the draft in memory (`ClipDraftStore`, keyed by the
+  cleaned URL; Android also mirrors it into `SavedStateHandle`); reopening restores it with a
+  "Draft restored" snackbar offering Discard. Save or Discard drops it. Never on disk.
+- **One script, `shared/web/clipper.js`,** injected by both apps (Android as a Java resource, iOS
+  from the bundled `web/` folder). The page only reports (selection, tag tapped, image tapped);
+  native code pushes the draft's marks back with one declarative `RC.sync(...)`, so replace,
+  undo and clear all redraw from state. Mark ids come from the draft, so an undo can show a mark
+  again. Marks don't survive a page reload (rotation on Android, a restored draft); the draft does.
+- **Links to other pages are blocked** in the clip view (redirects and fragment jumps load), so
+  a clip is always saved under the page it came from.
+- **Save** upserts on the cleaned URL like an import (same id, note and list membership) with
+  `contentOrigin` CLIPPED (#29's column; no schema change), replacing whatever the row held,
+  then the recipe replaces both the clip and the error screen in the back stack.
+- **A clip is the user's version** (#29's rule): a re-share opens it without a fetch. "Clipped
+  by you · host" replaces the domain under the title (Open original stays), and History rows
+  say "Clipped by you" (a derived `isClipped` in the summary queries). Update from source is
+  always offered for a clip, warning "Replace your clip?"; on failure the clip is kept and the
+  snackbar says why. On success it becomes PARSED and the line goes.
+- **UI tests** use a fixed local page, never the network: Android's `ClipScreenTest` makes the
+  selection by script in a real WebView; iOS's `ClipUITests` taps buttons on the fixture page
+  (`UITestSeeding.clipFixtureHTML`) that select by script, since XCUITest can't drag a web
+  selection reliably. Either way the app hears it through the page's `selectionchange`.
+
+## Alternatives, second parts and totals after the name (#61, #62, #63)
+
+The #33 collection of real lines found three shapes where the leading amount
+scaled and a second amount on the same line didn't, so the line showed two
+figures that disagreed. Each is now scaled with the line, or the whole line is
+left as written; never half.
+
+- **Sides.** `IngredientScaler` reads a line as sides: the leading amount, then
+  any amount after a joining word (`amounts.json` `alternatives`, `additions`,
+  `subtractions`, plus the "+" symbol). A joining word counts only outside
+  brackets or right after one opens, so "(or 1/2 cup oil)" is an alternative
+  and the "or" in "1 can (14 oz or 400 g)" is not. Every side scales, or the
+  line stays as written.
+- **Alternatives (#61).** The amount after "or" must have a unit: "or 1 tsp
+  vanilla extract" scales, "or 2 small onions" and German "(alternativ: 1
+  Pck. …)" keep the line as written, since a bare count after "or" is as often
+  a size as an amount. "use" is deliberately not an alternative word; King
+  Arthur's "(use 1/2 teaspoon salt if you use salted butter)" stays as written
+  through the bracket rule below instead. The converter converts each side or
+  none; a side with no unit or already in the target units is fine as it is,
+  and each side finds its density in its own name, so "melted butter or 1/4
+  cup (50g) vegetable oil" is weighed as butter and measured as oil.
+- **Second parts (#62).** A part later in the line ("2 large eggs plus 3 large
+  egg yolks", "+ 1 cucchiaio") scales, counts included. "minus" straight after
+  the unit is a compound whose second part is subtracted when converting; a
+  negative or unconvertible result leaves the line as written.
+- **Totals after the name (#63).** A bracket after the name is a total only
+  when the side is a measure (it has a unit) and the bracket holds nothing but
+  an amount: an optional "about" word (`approximately`; "~" and "≈" in code),
+  a quantity or range and unit, optionally "/" and a second one, optionally a
+  trailing period ("(180 g.)"). A total scales, and when converting it is the
+  site's figure, dropped from the line once it has become the amount.
+  A count's bracket ("4 Apfel (ca. 800g)", "1 patate douce (300-400 g)") may
+  be each item's weight, so it is never a total. Package sizes never scale:
+  a bracket straight after the count ("2 (15-ounce) cans") or a container word
+  ("1 can (14 oz)"), a count of 1 that starts with a container ("1 lata leite
+  condensado (397 g)"), or a per-item word ("each", "per"). Any other bracket
+  holding an amount with a unit is unsure, and the whole line stays as written
+  when scaled; brackets with no unit ("(Note 2)", "(2 medium)") are ignored as
+  before.
+- **Words are per language and only where confident:** en or/plus/minus;
+  de oder, alternativ; es o, más; fr ou; it o, oppure; pt ou; each language's
+  "about", per-item and container words. A missing word only costs scaling:
+  the bracket it would have explained leaves the line as written. Spanish
+  `unitPrefixes` ("de") makes "¾ de taza" a measure for the bracket rule only;
+  the converter still leaves "de taza" lines as written.
+- **Corpus rows that changed:** only "100 gr di yogurt greco … + 1 cucchiaio"
+  (it): the "+ 1 cucchiaio" now scales with the grams, and in Metric becomes
+  "+ 15 ml"; Ounces, which can't weigh a nameless spoonful, now leaves the
+  line as written instead of converting only the grams.
+
+## Feature flags (#87)
+
+Features sit behind local flags, with no server (remote flags need
+accounts and a backend the app deliberately doesn't have; revisit only if #53
+brings one).
+
+- **On by default, in debug and release (the owner's call, September 2026).**
+  Features used to ship dark and be switched on one by one; now every flag
+  defaults on, and one is switched off only when its feature has a known bug
+  or can't work yet. `freeTier` stays off until the store product
+  `unlimited_recipes` exists (on without it, users would hit the 20-recipe
+  limit with an Unlock that can't complete), and `aiCountBrackets` stays off
+  because the #105 evaluation found it confidently wrong on 4 of 22 lines.
+  The flags stay as kill switches rather than being retired.
+- **Tests don't lean on the defaults.** A unit test that needs a flag on or
+  off sets it through the fake store. iOS UI tests start with every flag off
+  and turn on only the ones `launch(flags:)` names (`UITestSeeding`).
+
+- **One registry, `shared/flags.json`:** key, a one-line description, the
+  default per build type (`debug`, `release`) and the issue. Both apps read
+  it (Android as a Java resource, iOS as a bundled file), so the list can't
+  drift. Each platform also has a typed `Flag` enum with the same keys, and a
+  unit test (`FeatureFlagsTest` / `FeatureFlagsTests`) fails if the enum and
+  the file differ, or if a flag is no longer referenced by the app's code.
+- **Typed access over an injectable store:** `FeatureFlags.isOn(Flag.MEAL_PLAN)`
+  / `isOn(.mealPlan)`. `FeatureFlagStore` holds only overrides; choosing a
+  flag's default removes its override, so a later change of default still
+  reaches everyone. ViewModels see `FeatureFlags`, never prefs; tests use
+  `FakeFeatureFlagStore` / `MemoryFeatureFlagStore`.
+- **Overrides live apart from the user's settings:** the SharedPreferences
+  file `feature_flags` and the UserDefaults suite `RecipeClipperFeatureFlags`
+  (not the App Group: the share extension never reads flags). Never
+  `unit_preferences`, so a reset can't touch a user's choices. Neither is in
+  the backup include list, deliberately.
+- **Developer settings is hidden, in release builds too** (the owner's call:
+  handy on the owner's own phone, harmless when hidden). Seven taps on the
+  version at the foot of Settings; the count is the ViewModel's, so a
+  rotation mid-way keeps it. A switch per flag (key, description, issue,
+  "Changed from the default"), then "Reset to defaults". The descriptions
+  come from flags.json and stay English: developer text, not UI. The
+  screen's own words are translated.
+- **Changes apply without a restart.** Android: MainActivity collects
+  `FeatureFlags.values` and provides them as `LocalFlagValues`; the tab shell
+  and the recipe screen read them. Turning the tab shell on or off swaps the
+  navigation graph, so the NavController is keyed by the flag and the app
+  reopens on Home (the screen says so). iOS: `FeatureFlags` is `@Observable`
+  and `RootView` reads it, so the root switches in place and the stack stays.
+- **UI tests set flags through the store,** not a special launch argument:
+  `launch(flags: ["mealPlan"])` passes `-uiTestFlags`, which the UI-test
+  container writes as overrides into its own throwaway suite.
+- **Retiring a flag:** a flag stays while it's useful as a kill switch. When
+  one is no longer wanted, delete it from flags.json and the enums, with its
+  branches, in one PR. flags.json keeps no history.
+
+## Pantry expiry reminders (#52)
+
+Owner-approved extra of #52: a morning notification when something in the
+pantry is about to be used up by its date. #51's badge stays; this adds the
+nudge for a cook who isn't looking at the pantry.
+
+- **Opt-in, in Settings.** A Pantry section with one switch, "Expiry
+  reminders", off by default, shown only while the `mealPlan` flag is on (the
+  pantry is behind it). With the flag off nothing is scheduled even if the
+  setting is on. Stored as `expiry_reminders` in `unit_preferences` /
+  UserDefaults, like the other settings.
+- **The permission is asked when the switch goes on, never at launch.**
+  Android: `POST_NOTIFICATIONS` from the Settings screen (it holds the
+  Activity), no prompt below API 33; a refusal, or notifications switched off
+  for the app, leaves the switch off with a line saying to allow them in the
+  system settings. iOS: `requestAuthorization` through a `NotificationPermission`
+  seam on the ViewModel (the system asks once; afterwards it answers at once).
+  This doesn't touch #10's "asked once" flag for timers: turning the switch on
+  is an explicit request, so it always asks.
+- **One notification per morning, 9:00 local, never one per item.** It lists
+  what expires that day and the next ("Milk and yogurt expire tomorrow.",
+  both sentences when both apply), A–Z, each name as typed. So an item is
+  mentioned twice: the morning before and the morning of. Only items in
+  stock, not "Always have", and with a date count; an item already past its
+  date gets nothing (the badge says Expired). Turned on after 9:00, today's is
+  skipped. Sentences come from one/many strings rather than plurals (the six
+  languages only need the two), names joined with commas and a translated
+  "and".
+- **Pure planning** (`ExpiryReminders`, both platforms): items + today +
+  minute of day → the reminders to come, each (day, today's names, tomorrow's
+  names), capped at 30 (iOS keeps 64 pending notifications, which timers
+  share). The coordinator (`ExpiryReminderCoordinator`) replans on every
+  change to the pantry, the setting or the flag, and on app start.
+- **Android: one inexact `AlarmManager` alarm** (`setAndAllowWhileIdle`, #10's
+  plumbing, no exact-alarm permission: a morning note may come a few minutes
+  late) for the first planned morning. The receiver re-reads the pantry, posts
+  that morning's reminder as it is now (nothing if it was all used up, the
+  setting went off, or the alarm is a day late), then arms the next morning.
+  `TimerBootReceiver` re-arms it after a reboot or update; the app process
+  starting replans too. Channel "Pantry reminders" (default importance); a tap
+  opens the Pantry tab through MainActivity's route queue.
+- **iOS: pending `UNCalendarNotificationTrigger` requests, replaced
+  wholesale** (`expiry.<day>`), each carrying its text as planned, since
+  nothing runs when it fires. Any pantry change replans, and so does coming
+  back to the foreground, so the list starts from today. It never asks for
+  permission itself. A tap selects the Pantry tab (`NotificationRouter`).
+  Known gap: an item changed from another device (#53) or by the share
+  extension is only seen at the next foreground.
+
+## Meal plan extras (#52)
+
+The optional extras of #46, one PR each, still behind the `mealPlan` flag.
+
+### Month view
+
+- **A switch, not a destination.** "Month" beside the Week title swaps the week for a month
+  grid in place ("Week" swaps back), so the tab keeps one stack and Back never has to learn
+  about it. It's ViewModel state, so it survives rotation; it isn't remembered across launches
+  (the Week tab opens on this week, as #49 decided). No new schema: the grid reads the same
+  `observeDays` range query as the week, over the grid's first to last day.
+- **The grid is whole weeks from the locale's first day** (`PlanDays.monthGrid`, both
+  platforms), four to six rows, the days before and after the month muted but tappable. The
+  month arithmetic is plain integers (Hinnant's civil-from-days), like the rest of `PlanDays`:
+  no `java.time` on minSdk 24.
+- **A day with meals shows a paprika dot, not a count or titles.** The month answers "which
+  days are planned"; the week answers "what". Screen readers hear "…, meals planned".
+- **Tapping a day opens its week, scrolled to that day.** Which month opens: today's for this
+  week, otherwise the month holding most of the shown week (its fourth day), so Sep 28 – Oct 4
+  opens October.
+- The week's own menu actions (What I need, Add this week's ingredients) act on the week shown,
+  so they're hidden while the month shows; Meal types stays.
+
+### Calendar file (.ics)
+
+- **"Share as calendar file"** in the Week menu (week view only, disabled for an empty week)
+  shares the shown week as `meal-plan-YYYY-MM-DD.ics` (the week's first day) through the
+  platform share sheet, so any calendar app, mail or Files can take it. Nothing is subscribed
+  or synced: it's a snapshot, and sharing again is how it's updated.
+- **All-day events, not timed ones.** Meal types have no times (and the user's own types can
+  be anything), so giving Dinner 19:00 would invent a fact. Each meal is one all-day event on
+  its day (`DTSTART;VALUE=DATE`, `DTEND` the next day), `TRANSP:TRANSPARENT` so the day doesn't
+  show as busy.
+- **Summary: the meal type, then the recipe title or the note** ("Dinner · Chicken Adobo",
+  "Lunch · Leftovers"): note entries are events like recipes. The middle dot avoids a locale's
+  colon spacing. No servings, photo or link: the event says what's planned, the app holds the
+  recipe.
+- **The UID is the entry's stable `uid`** (`<uid>@recipe-clipper`), so a calendar that honours
+  UIDs updates an event on re-import instead of adding a twin. PlannedMeal now carries it.
+- **Pure generator, view-layer share.** `MealPlanIcs` (both platforms) turns meals into RFC 5545
+  text: CRLF lines, TEXT escaping (backslash, `;`, `,`, newline), folding at 75 UTF-8 octets
+  without splitting a code point, ASCII digits whatever the locale. The corpus's `Ics` rows pin
+  the escaping and folding to the Kotlin. The ViewModel makes the text (`PlanCalendar.now()`
+  stamps it); the screen writes it (Android: `cacheDir/exports/` through the existing
+  FileProvider, `text/calendar`; iOS: the temporary directory) and opens the share sheet.
+
+### Reusable weekly menus
+
+- **A menu is a named copy of a week, not a template the plan follows** (Paprika's Menus).
+  "Save week as menu…" (Week menu, week view only, disabled for an empty week) copies the
+  shown week's meals into a new menu: each keeps its weekday (`dayOffset` 0–6 from the week's
+  first day), meal type, recipe with planned servings, or note. Nothing links a planned meal
+  to a menu afterwards, so editing the plan never changes a menu, and vice versa.
+- **Applying only adds.** "Apply a menu…" opens the menus sheet (name, meal count); tapping one
+  copies its meals into the week shown on the same weekdays, each at the end of its day and
+  meal type. What is planned stays, so applying twice doubles up (visibly, and each meal
+  can be removed) rather than silently replacing a week the user built. The snackbar says how many
+  meals came in. A week starting on another weekday (a locale change) keeps offsets from the
+  week's first day, not weekday names.
+- **Names are free text,** trimmed; blank does nothing. Duplicate names are allowed; the sheet sorts
+  by name, case-insensitively.
+  Rename and Delete sit on each row's menu in the sheet (iOS: their alerts show over the
+  sheet). Deleting a menu removes it and its meals only, never the plan or a recipe.
+- **Schema:** `menus` (name, `uid`, `updatedAt`) and `menu_entries` (shaped like
+  `meal_plan_entries` with `menuId` and `dayOffset` in place of `day`), Room 11 / iOS
+  `user_version` 10. Entries cascade with their menu and with their recipe; a recipe's menu
+  meals come back with it when a delete is undone. Meal types don't cascade: deleting one
+  moves its menu meals to Dinner, as it does planned meals.
+- **A recipe in a menu is never culled** and doesn't count toward the 50, like a listed one:
+  otherwise a menu saved months ago would quietly lose its recipes to history's cap.
+- **Backup:** menus travel in the export file (`menus`, `menuEntries`). A menu comes in whole
+  unless its uid is already here (then it's left as it is, never merged or renamed); its meals
+  follow the plan's rules (a recipe meal needs its recipe, a note always comes in, no meal type
+  means Dinner), its recipes come in like listed ones, and a menu left with no meals is dropped.
+
+## Chef mode: short steps written on the device (#100)
+
+Part of #99: the model writes words, code owns every number.
+
+**The on-device APIs, as checked on 2026-09-25** (official docs, and the iOS 27 SDK's
+`FoundationModels.swiftinterface`):
+
+- **iOS: Apple's Foundation Models framework** (`import FoundationModels`, iOS 26+, Apple
+  Intelligence devices). `SystemLanguageModel.default.availability` is `.available` or
+  `.unavailable(reason)`, the reason one of `.deviceNotEligible`, `.appleIntelligenceNotEnabled`
+  and `.modelNotReady` (still downloading). `supportedLanguages` (a `Set<Locale.Language>`) and
+  `supportsLocale(_:)` say which languages it writes. `contextSize` is 4,096 tokens on 26.0 and
+  8,192 on 27.0 (newer devices). A `LanguageModelSession(instructions:)` is stateful, so each
+  step gets a fresh one; `respond(to:options:)` returns `Response<String>.content`;
+  `GenerationOptions(temperature:)`. It throws on guardrail violations and unsupported
+  languages. The app targets iOS 17, so everything sits behind `#available(iOS 26, *)` and
+  `#if canImport(FoundationModels)`; on an older phone Chef mode is unsupported.
+- **Android: ML Kit GenAI on Gemini Nano, through AICore.** Three candidates:
+  - *Rewriting* (`com.google.mlkit:genai-rewriting:1.0.0-beta1`): `Rewriting.getClient(
+    RewriterOptions.builder(context).setOutputType(SHORTEN).setLanguage(…))`. Input under
+    256 tokens (a step is well under). Languages: English, Japanese, French, German, Italian,
+    Spanish, Korean; **no Portuguese**. Returns suggestions sorted by confidence.
+  - *Summarization* (`genai-summarization:1.0.0-beta1`): bulleted summaries of articles and
+    chats; the wrong shape for one step.
+  - *Prompt API* (`genai-prompt:1.0.0-beta4`): free prompts to Gemini Nano, under 4,000 tokens,
+    on fewer phones (nano-v2 to v4 lists).
+  All three: `checkFeatureStatus()` (Prompt: `checkStatus()`) returns `UNAVAILABLE`,
+  `DOWNLOADABLE`, `DOWNLOADING` or `AVAILABLE`; `downloadFeature(callback)` fetches the model;
+  minSdk 26 (the app's is 24, so the manifest overrides the library's and code checks the
+  API level); not on unlocked bootloaders; inference only while the app is the top foreground
+  app (`BACKGROUND_USE_BLOCKED`), with short-term (`BUSY`) and daily battery quotas
+  (`PER_APP_BATTERY_USE_QUOTA_EXCEEDED`). Supported phones: Pixel 9 and later, Galaxy
+  S25/S26, OnePlus 13–15 and others on Google's list.
+  **Chosen: Rewriting with `SHORTEN`**, the API built for exactly this, on the most phones.
+- **iOS: Foundation Models, `LanguageModelSession(instructions:)`**, a fresh session per step
+  and `GenerationOptions(temperature: 0)`. The instructions ask for the step shortened in its own
+  language with every number, time, temperature and unit kept as written. The languages offered
+  are `supportedLanguages` that the app also reads recipes in.
+
+**Design.**
+
+- **The seam:** `StepShortener` (`support()`, `shorten(step, language)`), implemented once per
+  platform (`MlKitStepShortener`, `FoundationModelsStepShortener`) and faked in tests; nothing
+  else imports ML Kit or FoundationModels. `ShortStepRepository` sits on top: it caches, checks
+  and prunes, and is what the ViewModels see.
+- **The gate, `ShortStepCheck`** (pure, both platforms, pinned by the corpus's `Short` rows): a
+  short version shows only if it is shorter than the step, every number in it appears in the
+  step as written ("1,5", "1 1/2", "½", each end of a range; "1.5" for "1,5" fails), and it
+  states exactly the step's durations (amount and unit length, via `StepTimers.durations`) and
+  temperatures (value and scale, via `TemperatureConverter.temperatures`): none changed, added or
+  dropped. Dropping a time or an oven temperature fails too, beyond the issue's wording, since
+  "Bake until golden" loses what the cook needs; the other half of "350°F (180°C)" may go.
+  A step under 40 characters is never sent. Anything else shows as written.
+- **The gate also keeps the words (#129),** because the #105 evaluation found that about half of
+  the short steps it let through dropped or invented something without a number moving ("Press
+  tofu for an hour.", a dropped "grease two baking sheets"). `ShortStepCheck.keepsWords`, by
+  `shared/tables/<language>/chef.json`: every word of the step that is an **ingredient** (the
+  words of each of the recipe's lines' `IngredientName`, or of the line when it has none, less
+  sizes, modifiers and units), an **action** ("preheat", "grease", "fold"), a piece of
+  **equipment** ("bowl", "thermometer"), a **qualifier** ("not", "if", "until", "alternatively")
+  or a **time word** ("a few minutes") must still be in the short step, and the short step may
+  add only function words ("the", "then", "with"). An action word right after "the"/"a" is a
+  noun ("the rest of the flour") and may go. Words match through an ending ("stirring", "stir";
+  "baking", "bake"), an abbreviation ("temp") or the same unit ("mins", "minutes"); nothing
+  else, so a faithful synonym ("set oven" for "preheat") is rejected, by design. Japanese has no
+  word boundaries, so it compares characters: every kanji and katakana of the short step is in
+  the step, and each table entry (a stem, "混ぜ", "鍋") and ingredient name is in both or
+  neither. The repositories pass `recipe.ingredients`.
+  - **Measured** (the #105 harness, `run.sh chef`; qwen2.5:3b over the site-check pages, 103
+    steps, the 78 shorter replies read by hand into `tools/eval/gold/chef.jsonl`: 21 faithful,
+    57 not): shown 55 → 17, faithful among shown 38% → 76%, unfaithful shown 34 → 4, faithful
+    rejected 0 → 8 of 21. The trade: fewer short steps, far fewer wrong ones.
+  - **Still missed:** a dropped "re-cover" (the step's "cover" is still there), "according to
+    the packet instructions" turned into its example's 1 minute, a dropped "the tray on the
+    bottom might need a few extra minutes" tip, a dropped "place the other cardboard on top".
+    **Wrongly rejected:** "if" dropped from an aside (2), a dropped thermometer, bowl or "coat",
+    "set oven" for "preheat", an added "placing" or "adhesion".
+  - Chef mode stays off (flag unchanged) until a phone model is measured with this gate.
+- **Code still owns the numbers:** step timers come from the step as written, and a short step
+  is rendered like the step (temperatures in the chosen unit), so the model never writes a
+  number the cook sees that the step didn't state. Sharing a recipe sends the steps as written.
+- **Cache:** `short_steps` (Room 12, iOS `user_version` 11), one row per recipe, step text
+  (SHA-256 of it as stored) and language, with `uid` and `updatedAt` like the other tables. A
+  changed step has no row and is written again; rows for steps the recipe no longer has, or in
+  another language, are pruned when it opens. A version that failed the check is saved as
+  failed (null) so it isn't asked for again; a model that couldn't answer ("not now": busy, in
+  the background, downloading) saves nothing and is asked next time. Derived data: not in the
+  export file, and it cascades with its recipe. A recipe the free tier didn't keep (#107) has no
+  row to cache against, so it shows as written; Unlock keeps it and its short steps follow.
+- **Settings → Steps → "Chef mode"** (a switch; the section only with the `chefMode` flag, off in
+  both builds). Where the phone can't, the switch is disabled with one line saying why (an
+  unsupported phone, Apple Intelligence off, model not ready); where it can, a line names the
+  recipe languages it writes. The unsupported line names what the phone lacks (#144: "can't
+  write short steps" read like a bug on a Galaxy S23): Google's on-device AI with examples
+  (Pixel 9 or newer, Galaxy S25 or newer), or Apple Intelligence (iPhone 15 Pro or newer, iOS
+  26 or later); Apple Intelligence off says where to turn it on (the iPhone's Settings).
+  A recipe in another language keeps its steps as written, silently. Android offers
+  Chef mode while the model is still downloadable: the first recipe starts the download and
+  shows its steps as written meanwhile.
+- **On screen:** while short steps are written, the steps show as written (no spinner). In the
+  reading view a tap on a step with a short version shows it as written, and again short. In
+  cook mode a tap already makes a step current, so the current step's card has a small
+  "As written" / "Short version" button beside "STEP n" instead.
+- **minSdk 26 (Android 8.0), was 24: the owner's decision (2026-09-25).** ML Kit GenAI's minSdk
+  is 26. Keeping 24 needs `<uses-sdk tools:overrideLibrary>` in a manifest, and lint then reads
+  the app's targetSdk from that element as 1 (lint 32.4 `Project.readManifest`): it flagged
+  every "many" plural (`UnusedQuantity`), and it would quietly skip every check that depends on
+  targetSdk. AGP 9 refuses SDK attributes on that element, so there is no clean override.
+  Android 7.x (API 24–25) phones can no longer install the app; it was unreleased. The
+  alternative, keeping 24 with Android's Chef mode unsupported, was turned down.
+- **With "Amounts in steps" (#101):** a short step gets its amounts the same way, from its own
+  text (`StepAmounts.annotate` over the short versions), so amounts follow whichever version is
+  on screen. Both switches share the Settings Steps section; each row shows with its own flag.
+- **Needs a real phone to judge:** the model's output quality, how often the gate rejects it,
+  speed per step, and battery. CI and the tests run the fake model only.
+
+## Ingredient amounts inside steps (#101)
+
+Part of #99. "Add the carrots" reads "Add **2** carrots": a Settings switch, "Amounts in steps"
+(Settings → Steps, off by default, key `amounts_in_steps`), behind the `amountsInSteps` flag.
+Deterministic, no AI: `StepAmounts.annotate(steps, lines, words)`, pure, both platforms, pinned
+by the differential corpus's `Step` rows. The lines are the ingredient lines **as the reading
+view renders them** (scaled, then converted), so the amount follows the servings stepper and the
+unit menu. It applies to the reading view and cook mode; sharing out keeps steps as written.
+
+A mention gets an amount only when every rule holds; otherwise it stays exactly as written:
+
+- **One line, strictly.** A run of words ending in a line name's last word (singular or plural,
+  per `steps.json` `plurals`) names that line when `IngredientName.matches` says so: the
+  pantry's strict rule (#51), so "rice flour" never takes "flour"'s amount and "the onion" never
+  takes "1 red onion"'s. The longest run wins ("brown sugar" is the brown sugar line, not
+  "sugar"). Two lines matching the mention ("unsalted butter" and "butter, for greasing"; sugar
+  for the cake and for the frosting), or a line with no name that uses the word ("salt and
+  pepper", "juice of 1 lemon"), make it ambiguous. Jev may later resolve those (#99).
+- **First mention only**, once per line per step; later mentions stay as written, whatever
+  became of the first. Each step is read on its own.
+- **The line lends its amount only if the scaler reads it** (scaling it changes it), so a line
+  that stays as written when scaled ("2 onions (about 300 g)") never lends a number. The amount
+  is the rendered line's text before the name ("250 g", "2 large", "3 cloves", "200 g de",
+  "1 cup (120 g)"), never with a comma in it. A line used in parts ("2 cups flour, divided",
+  "1 tsp salt, plus more to taste": `splitWords` after the name) lends nothing.
+- **The step doesn't already say how much.** A number, or a `partWords` word ("half", "the
+  remaining", "rest", "of", "a", "some", "du"), right before the mention or before its article
+  keeps it: "half the butter", "1 cup of the flour", "2 tablespoons butter", "a carrot".
+- **The mention is the whole name.** After it: the step's end, punctuation, or a word in
+  `after` ("and", "into", "until"…); anything else ("the flour mixture", "the lemon juice",
+  "le beurre fondu") may be a longer name, so it stays. German writes compounds as one word,
+  so any word may follow (`anyWordAfter`). Before it: its article (which the amount replaces),
+  a list comma, a word in `before` (a preposition, a conjunction, a common verb: "Stir in flour",
+  "Whisk flour"), or a sentence's first word (the imperative verb). Anything else ("Dust with
+  rice flour" when only flour is listed) stays. Describing words between the article and the
+  name stay after the amount: "the melted butter" → "115 g melted butter".
+- **Japanese is a no-op** (no spaces, so no word boundaries), and so is a language without words.
+
+Where it shows: the inserted amount is a separate run of the text, in the paprika text accent
+and a heavier weight (Android SemiBold, iOS strongly emphasised); in a done cook-mode step it
+keeps only the weight, so the dimmed row stays dim. The screen checks the flag; the ViewModel
+computes the parts only while the switch is on, and again on every servings or units change.
+
+Known limits, left as written on purpose: head-noun mentions of compound lines ("the milk" for
+"whole milk", "the chocolate chips" for "semisweet chocolate chips", "the vanilla" for "vanilla
+extract"); French names with an elided "d'" ("l'huile d'olive" against "3 c. à s. d'huile
+d'olive"), because `IngredientName` keeps the elision in the name; and an ingredient also used
+for greasing or dusting when the list has only one line for it ("grease the pan with butter"
+then gets the batter's butter, since the step's words can't tell the two uses apart).
+
+## The Recipes screen (#102)
+
+- **Owner's decision:** a Paprika-style Recipes screen *replaces* History
+  rather than sitting beside it: two lists of the same recipes, one searchable
+  and one not, would only ask "which one is it in?". It keeps everything
+  History did (newest viewed first, `instr(lower(…))` search, swipe to delete
+  with one undo per burst), and the route is `recipes` (was `history`; only
+  Home navigated to it, so no alias). Home's row says "Recipes"; the rest of
+  Home is unchanged, "+ New recipe" included.
+- **The + opens a two-item menu,** not a screen: "Type a recipe" is the #29
+  editor as it already was; "Paste a link" is a small dialog whose Go is
+  enabled only for what Home's link field would accept (`UrlInput`), then the
+  usual import route. No clipboard is read unasked: Android shows a toast and
+  iOS a permission prompt on every read.
+- **A typed-in recipe is never culled,** like a listed one, and doesn't count
+  toward the 50: a parsed recipe that falls out of history can come back by
+  sharing its link again, a typed one can't. The rule is the column
+  (`contentOrigin = 'MANUAL'` in the cull's SQL), not the `manual:` link; an
+  import treats typed-in recipes as listed. No schema change: #29 already
+  stored them with a synthetic `manual:<uuid>` `sourceUrl`. #107's free-tier
+  limit will replace the 50 cap later; this rule is one more protected kind
+  for it to count or exempt.
+- **Sort** (Recently viewed, Name, Date added) is done in the
+  ViewModel over what the query returns. Name uses
+  the phone's collation; Date added is newest id first, which works because
+  `recipes.id` is AUTOINCREMENT on both platforms (never reused), so no
+  `createdAt` column or migration was needed.
+- **The sort is remembered** (owner's decision, after #109 held it in
+  memory and reset it on every visit): `recipe_sort` in `AppPreferences`,
+  by name, default Recently viewed, an unknown name read as the default.
+  It is a view preference, so it is not in the export file and not in
+  Settings.
+
+## The free tier and the unlock (#107)
+
+Owner's decision (2026-09-25, rules approved as proposed): the free app keeps
+20 recipes; a one-time purchase unlocks unlimited ones. Behind the `freeTier`
+flag, off in debug and release until the store products exist; with it off
+the app is exactly as before (the history cap of 50 unprotected recipes).
+
+- **Every recipe counts toward 20:** shared, typed in, clipped, in a list,
+  planned. What changes is only which one may be removed to make room.
+- **Capture stays frictionless.** Sharing always opens the recipe. When a new
+  recipe arrives and the library already holds 20 or more, the oldest-viewed
+  recipe that is in no list, not planned for today or later, in no saved menu
+  and not typed in is deleted first, in the upsert's transaction (the same
+  protections as the old cull; menus were kept because a menu would lose the
+  recipe). Re-sharing or opening a recipe already here removes nothing.
+- **All protected: shown, not kept.** A shared recipe opens with a quiet
+  "Not saved" snackbar (Android) or bar (iOS) offering Unlock; lists, notes,
+  Edit, Delete and the plan actions are hidden, since there is no row. A
+  successful unlock then saves it (`RecipeRepository.keep`). A typed-in
+  recipe or a clip isn't shown unsaved, which would throw the typing away: the
+  editor or clip stays open behind a "Your library is full" dialog with
+  Unlock; after unlocking, Save runs again. On iOS the share extension, which
+  can't sell anything, says so on its card and points to the app.
+- **Grandfathering: the library never shrinks because of the limit.** The
+  free tier removes at most one recipe per recipe added, and only when the
+  count is already at or over 20, so a phone that holds 50 when the flag
+  turns on keeps 50: each new one replaces its oldest unprotected recipe, and
+  the count only falls below 50 when the user deletes. No "grandfathered"
+  column was needed, and nothing is removed at the moment the limit arrives.
+  The Recipes screen says "50 recipes, more than the free 20" rather than
+  "50 of 20".
+- **Unlocked means nothing is ever removed automatically**, not even the old
+  history clean-up: the owner said "unlimited recipes", and quietly deleting
+  unlisted ones would contradict that. Deleting stays the user's act.
+- **Backup import** follows the same rules: unlocked, everything comes in; on
+  the free tier, protected recipes (listed, planned, in a menu, typed in)
+  always come in and the rest only fill free places under 20, counting every
+  recipe already here. The summary says the free app keeps 20.
+- **The unlock:** one non-consumable product, `unlimited_recipes`, on both
+  stores (the owner creates it: App Store Connect in #18, Play Console in
+  #22; price is the owner's call, the StoreKit file's 2.99 is a placeholder).
+  Restorable: Settings' "Restore purchase" (iOS `AppStore.sync()`, Android a
+  fresh `queryPurchasesAsync`); both also re-check at every launch, which
+  picks up refunds and purchases made on another device.
+  - Android: Google Play Billing Library 9.1.0 (`billing-ktx`, the one new
+    dependency), in `PlayBillingEntitlements`. Purchases are acknowledged
+    (Play refunds unacknowledged ones after three days); pending purchases
+    (cash, slow cards) show as pending. Play's sheet needs the resumed
+    Activity, tracked from the Application's lifecycle callbacks so no
+    ViewModel holds one.
+  - iOS: StoreKit 2 in `StoreKitEntitlements`, listening to
+    `Transaction.updates` (Ask to Buy approvals, refunds). Locally the scheme
+    runs against `ios/RecipeClipper.storekit`.
+  - Both cache the last answer (Android its own `entitlements` prefs file,
+    not in the backup include list; iOS `UserDefaults`), so a share that
+    cold-starts the app isn't judged "locked" while the store is still being
+    asked.
+- **Seams:** `Entitlements` (data layer; fakes in tests) and the limit as a
+  value, `LibraryLimit` (`History(50)`, `Free(20)`, `Unlimited`), chosen by
+  `LibraryPolicy` from the flag, the store and Developer settings' "Unlocked"
+  override (stored beside the flag overrides as `override.unlocked`, so Reset
+  clears it). ViewModels never import Billing or StoreKit. On iOS the
+  repositories read the limit from the App Group suite (`library_limit`),
+  which `LibraryPolicy` keeps current, because the share extension saves in
+  its own process and sees neither the flags nor StoreKit.
+- **What can't be tested here:** a real purchase needs the store products
+  and accounts (#18, #22). Android's Billing code is only compiled and
+  exercised through the fake; iOS runs `StoreKitEntitlementsTests` against the
+  StoreKit file (`SKTestSession`: the price, an owned purchase found and
+  cached, then lost), and the purchase sheet is tried by hand in the simulator. Play's own
+  test tracks and license testers are the next step once the Play Console
+  product exists.
+
+## A recipe picked from the page's text (#103)
+
+Part of #99. When a page loads but JSON-LD and microdata find no recipe (`NoRecipeFound`,
+after the rendered fetch too), the on-device model may pick one out of the page's text. The
+parsers stay first and unchanged; this runs only after them, behind the `llmExtraction` flag
+(off in both builds).
+
+**"Never guess a recipe from prose" becomes "never invent one": the model may only pick text
+that's on the page** (the owner's direction on #99). What it returns is checked line by line,
+and what shows is the page's own characters for each line found, never the model's. A line the
+page doesn't have is dropped; a number is never cut into; code still owns every number
+(scaling, conversion, timers and temperatures read the kept lines exactly as they read parsed
+ones).
+
+**The APIs, as checked on 2026-09-25:**
+
+- **Android: ML Kit GenAI's Prompt API** (`com.google.mlkit:genai-prompt:1.0.0-beta4`,
+  `Generation.getClient()`, `checkStatus()`, `download()`, `generateContent(generateContentRequest(
+  TextPart(…)) { temperature = 0f; topK = 1; maxOutputTokens = 1024 })`). Input under 4,000
+  tokens. Rewriting, which Chef mode uses, takes under 256 tokens and only rewrites, so it can't
+  read a page; Summarization writes bullets. The Prompt API's structured output
+  (`@Generable` data classes) is alpha and needs the `genai-schema-compiler` KSP processor, so
+  instead the reply is one JSON object parsed strictly (`PageSelectionJson`: optionally in one
+  code fence, nothing around it, every field the right type, else no answer at all). Offered for
+  en, de, es, fr, it and ja (the languages Google lists for Gemini Nano's text features; no
+  Portuguese). A model still downloadable starts its download and the page stays
+  `NoRecipeFound` meanwhile.
+- **iOS: Foundation Models with guided generation** (`@Generable struct PickedRecipe`, `@Guide`
+  per field, `session.respond(to:generating:options:)`, a fresh session per page,
+  `GenerationOptions(temperature: 0)`), iOS 26+ with Apple Intelligence on, for the recipe
+  languages in `supportedLanguages`. No reply is parsed: the fields come back typed.
+- **How much text:** Android 3,000 tokens of page; iOS `contextSize` (4,096 on 26, 8,192 on 27)
+  minus 1,800 for instructions, schema and reply. Tokens become characters at 3 per token (1 in
+  Japanese), a deliberate underestimate. A page over the limit fails the call (nil), never
+  shows a partial recipe.
+- **Seam:** `PageRecipeExtractor` (`windowChars(language)`, `extract(text, language)`) beside
+  `StepShortener`; `MlKitPageRecipeExtractor` and `FoundationModelsPageRecipeExtractor` are the
+  only files that import the model APIs; tests use `FakePageRecipeExtractor`. The share
+  extension has no extractor (memory), so a shared link it imports behaves as before.
+
+**Design.**
+
+- **The source hands over the page's text** with `NoRecipeFound` (`RecipeSource.fetchPage`,
+  `FetchedPage`); the repository prefers the rendered page's text when there is one. Only a page
+  that loaded is read: never after a block, offline or a failed fetch.
+- **Page text** (`PageTextReader`, pure, Jsoup / the iOS `HtmlTree`): one line per block, each
+  as Jsoup's `text()` gives it; scripts, styles, `nav`, `footer`, buttons and the like left out.
+  The title is the first `<h1>`, else `og:title`, else `<title>`; the photo is `og:image`.
+- **The window** (`RecipeTextWindow`, pure, both platforms): the ingredients heading
+  (`headings.json`, every shipped language at once) followed, before the next heading, by the
+  most ingredient-looking lines (an amount first, or a short line holding a number), with a
+  bonus when the steps heading follows; else the densest run of such lines (three in ten); else
+  nothing, and the model isn't asked (a login page or an article costs no model call). Up to 12
+  lines before the anchor (a fifth of the budget: the card's title, times and servings), then as
+  many as fit, with the page title first if the window doesn't already hold it.
+- **The verifier** (`PageRecipeCheck`, pure, both platforms, pinned by the corpus's `Pick`
+  rows): each picked string is looked for in the window's text, both folded the same way (NFKC,
+  so "½" is "1/2"; typographic quotes, dashes, "⁄" and "×" as ASCII; lowercase; whitespace runs,
+  line breaks included, as one space). A match must not start or end inside a word, nor inside a
+  number ("2 cups" in "12 cups", "25 minutes" in "20-25 minutes", "5 hours" in "1.5 hours"); an
+  ingredient must start its line, after nothing but a bullet or checkbox, so "2 tbsp" can't be
+  lifted out of "1 cup plus 2 tbsp"; a name, ingredient or step must hold a letter. The name is
+  required; the recipe still needs ingredients or steps (the parsers' rule), otherwise it's
+  `NoRecipeFound` as before. Times go through the parsers' `formatDuration`.
+- **Provenance:** `contentOrigin` `EXTRACTED` (no schema change: the column is text). It is the
+  source's, like `PARSED`: a re-share fetches and refreshes it, and an edit makes it `EDITED`.
+  An older app reads the unknown name as `EDITED`, the safe side. The reading view says, quietly
+  under the source credit, "Picked from the page text — check against the source", with Open
+  original as usual.
+- **Needs a real phone to judge:** whether the models copy text faithfully enough for the
+  verifier to keep most lines, how long a page takes, and whether 1,024 output tokens hold a long
+  recipe on Android. CI and the tests run the fake model only.
+
+## Typed decisions on the device (#104)
+
+Part of #99. The owner turned down a paid Jev API (2026-09-25), so these decisions are made by
+the same on-device models as Chef mode (#100) and page extraction (#103), behind the
+`aiDecisions` flag (off in both builds). Each is a pick from a fixed list that includes
+"unsure"; code acts only on a definite answer and otherwise keeps today's behaviour exactly.
+The model never supplies a number: code owns every figure.
+
+**The confidence rule (`DecisionRule`).** On-device models give no calibrated probabilities, so
+a model's self-reported confidence alone can't be trusted, and asking twice at temperature 0
+alone mostly repeats itself. The rule combines both: each question is asked **twice**, the
+options listed in the declared order and then reversed (against a bias for the first or last
+option; "unsure" always last), each reply giving an answer and a confidence (high, medium,
+low). A decision counts only if **both replies pick the same definite option and both say
+"high"**. A disagreement, "unsure", medium or low, an option not on the list, or an unreadable
+reply is unsure. Android asks through ML Kit's Prompt API for one JSON object
+(`{"answer", "confidence"}`, parsed strictly by `DecisionReplyJson`: anything else is unsure);
+iOS uses Foundation Models guided generation, with one `@Generable` enum per kind, so the
+model can only pick a listed option (the rule still checks it).
+
+**What each answer changes.**
+
+- **Count brackets** (#88's leftovers). A count's bracket that holds nothing but an amount
+  ("4 Apfel (ca. 800g)", "1 patate douce (300-400 g)", "3 large apples, … (about 3 cups)") is a
+  new `BracketKind.COUNT`. With no answer (or unsure) it is unsure, as before: scaling keeps the
+  whole line as written. TOTAL treats it like a measure's total: it scales with the count ("8
+  Apfel (ca. 1600g)" doubled). EACH treats it as a per-item size: the count scales, the figure
+  stays ("2 patate douce (300-400 g)"). Only a line that stays as written *only* because of such
+  a bracket is asked (`IngredientScaler.needsCountDecision`); prose in the bracket, a missing
+  unit after "or", package sizes and measure totals are never asked and never change.
+  Converting is unchanged: a count has no unit to convert, so the bracket keeps its units (it
+  is the site's figure, scaled). Asked when a recipe with a servings stepper opens; applied in
+  the reading view, and to the week's lines (grocery sheet, What I need) once cached.
+  **Off since #127, behind a second flag, `aiCountBrackets`** (off in both builds; it acts only
+  with `aiDecisions` on too). The #105 evaluation (`docs/eval/llm-vs-regex.md`) found a 3B
+  model confidently wrong on 4 of 22 count brackets even through `DecisionRule` ("6 garlic
+  cloves (30 g)" as each, so doubled it would read "12 garlic cloves (30 g)"), and every wrong
+  answer is a wrong figure on screen. So under `aiDecisions` alone nothing is asked, and the
+  repository leaves any cached count-bracket answer out of what it emits: these lines scale
+  exactly as without the model. The prompt, the candidates and the scaling stay, so the
+  decision can be re-measured on the phone models and re-enabled by the flag.
+- **Pantry "same ingredient?"** Asked only for a line whose name no pantry item matches by
+  `IngredientName.matches`, against in-stock or staple items whose names are close
+  (`DecisionCandidates.close`: they share a word of 3+ letters, or one's last word ends with the
+  other's, as "Weizenmehl"/"Mehl"; never in a language without spaces). Only a definite "same"
+  counts, and only to turn Buy into Have (What I need, and the grocery sheet's unticking); it
+  never overrides a real match and never uses an item that is out. The owner's decisions stay:
+  "rice flour" is not "flour", "whole milk" is not "milk"; they are written into the question as
+  examples of "different". With the fake model the tests pin that only "same" changes anything;
+  whether the real models follow the examples is a device check. Ticking a grocery item off
+  still restocks by the strict match only.
+- **Aisles.** Asked for a grocery item the keyword table puts in Other and whose name is known
+  (`DecisionCandidates.aisle`); the options are the aisle keys (with "other"). When an item is
+  added, a cached aisle files it at once. Otherwise the Groceries screen asks in the background
+  and, when a definite answer lands, files the items it asked about only if they are still in
+  Other (`fileFromOther`); an item in Other whose aisle is already cached was put there by the
+  user, so it is never moved again. Pantry items keep the keyword table's aisle.
+
+**The cache.** `ai_decisions` (Room 13, iOS `user_version` 12): kind, the input normalised
+(trimmed, whitespace collapsed, lowercased; a pair's two names sorted), language, answer (an
+option or "unsure"), `uid` and `updatedAt`. Unique on kind + input + language, so each question
+is asked once; unsure is cached too. A model that can't answer now (busy, in the background, not
+downloaded, an error) caches nothing and is asked next time. Derived data: not in the export
+file. Questions are asked lazily off the main thread; screens show today's result until an
+answer lands. Unsupported phone or language (Android: en, de, es, fr, it, ja; iOS: the model's
+supported languages), or the flag off: nothing is asked and everything is exactly as today.
+
+**Needs a real phone to judge:** how often each model is definite and high-confidence (the rule
+may leave most questions unsure), whether its answers are right (especially the owner's
+"different" pairs), and the time per question (two asks each). CI and the tests use fakes only.
+
+## WP Recipe Maker's ingredient parts (#118)
+
+Most food blogs build their recipe card with a WordPress plugin, and WP Recipe Maker (RecipeTin
+Eats, Minimalist Baker, Skinnytaste, Love and Lemons) marks each ingredient's parts in the HTML:
+`wprm-recipe-ingredient-amount`, `-unit`, `-name` and `-notes`, inside named groups. Its JSON-LD
+lines wrap the notes in brackets, whatever the notes already hold: "2 garlic cloves (, minced)",
+"1 lb / 500 g zucchinis ((courgettes))". Love and Lemons' JSON-LD even drops a note ("for
+garnish") that the card shows.
+
+- **JSON-LD stays first.** The parts only refine its `recipeIngredient` lines, and only when a
+  card's ingredients line up one-to-one: the same count, and each part's name found in its
+  JSON-LD line (case and spacing ignored). Otherwise the JSON-LD lines stay as they were. A page
+  can hold several cards; the first that lines up is used. Microdata recipes aren't refined.
+- **Notes stay on the line, after the name, as the card shows them.** A recipe's ingredients are
+  plain lines with no notes field; adding one would mean a schema change and teaching scaling,
+  conversion, groceries, editing and export about it. The scaler reads the leading amount, and
+  a bracket or second amount after the name follows the existing rules (#61, #63), so a note
+  never changes what scales. The line is amount, unit and name joined by spaces; notes that
+  start with a comma follow directly ("2 garlic cloves, minced"); otherwise a comma when the
+  page puts one between name and notes ("kosher salt, *see notes"), else a space ("zucchinis
+  (courgettes)").
+- **Groups become heading lines** ("Batter:", "Minted Yoghurt (optional):"), the colon form the
+  rest of the app already reads as a heading (groceries, ingredient names, step amounts). An
+  unnamed group adds none. Headings change the ingredient list, so ticked ingredients reset once
+  on the first re-share after this change, as for any changed list.
+- **The owner's "2 corn (dfsafs -"** (#121) isn't on the Greek zucchini tots page; the page's
+  real lines of that shape, "2 garlic cloves (, minced)", now read "2 garlic cloves, minced".
+- Tests: trimmed real pages in `shared/fixtures/pages/wprm-*.html` on both platforms, and `Wprm`
+  rows in the differential corpus. The weekly site check fetches the zucchini tots page.
+
+## Tasty Recipes' and Mediavine Create's ingredient headings (#119)
+
+The other two common WordPress recipe cards, read after WP Recipe Maker's (#118). **Neither
+marks an ingredient's parts.** Tasty Recipes (Pinch of Yum, Joy the Baker, The Kitchen
+Whisperer) prints each ingredient as a whole `<li>`; only the amount is wrapped, for its own
+scaling (`data-amount`), and any bold name is the author's formatting. Mediavine Create
+(TidyMom, Key to My Lime) prints each ingredient's `original_text` in an `<li>`. On every page
+checked, those lines are JSON-LD's `recipeIngredient` lines word for word; the card's own only
+differ in WordPress's curled dashes and quotes ("3–4 cups", "confectioners’"). So there are no
+notes or parts to read, and **JSON-LD's lines stay exactly as they are**.
+
+**What JSON-LD drops is the group headings**, and those are added (`CardHeadings`):
+"For the chocolate cake:", "Oreo Crust:", "FOR APPLE FILLING:", "Chicken Marinade:".
+
+- **Where headings come from.** Create names its groups: an `h3`/`h4` in
+  `.mv-create-ingredient-group-header`, or, in its older markup, an `h3` straight before each
+  list. Tasty's ingredients are free text around the lists, so a heading is what Tasty's own
+  code leaves out of its JSON-LD as one: a heading element, or a paragraph that ends in a colon
+  or is wholly bold. Any other paragraph is not a heading ("Use a big bowl"). The list's own
+  title ("Ingredients", in `.tasty-recipes-ingredients-header` or
+  `.mv-create-ingredients-title`) is never one, nor is a paragraph inside an item. A heading
+  after the last ingredient heads nothing and is dropped.
+- **Only when the card lines up one-to-one** with `recipeIngredient`: the same count, and each
+  item's letters and digits (lowercased) found in its JSON-LD line, so curled punctuation and
+  spacing don't count. Otherwise nothing changes. A Tasty card with no list items (plain
+  paragraphs) already puts its headings in JSON-LD, so it's left alone.
+- **One shared helper** (`CardIngredients`) now holds what the three adapters have in common:
+  groups of items, the line-up check and the "Name:" heading lines. WP Recipe Maker keeps its
+  own check (case and spacing ignored) and its refined lines; its behaviour is unchanged.
+  Site-specific rules as data are #120.
+- Tests: trimmed real pages in `shared/fixtures/pages/tasty-*.html` and `mv-create-*.html` on
+  both platforms, and `Heads` rows in the differential corpus. The weekly site check fetches
+  Pinch of Yum's blackout chocolate cake and TidyMom's apple pie bars.
+
+## Site-specific parsing rules as data (#120)
+
+The big sites were fetched with the app's user agent (2026-09-26). Every one that answered
+already parsed from JSON-LD; what they lost was the same thing #119 found on plugin cards: **the
+ingredient group headings** ("FOR THE FROSTING", "For the filling", "Cream cheese frosting and
+assembly"). NYT Cooking, BBC Good Food, Bon Appétit, Epicurious and Delish drop them; Taste of
+Home already puts them in JSON-LD, and King Arthur had none to lose. Bon Appétit and Epicurious
+also end the last step with "Editor’s note: this recipe was first printed in … Head this way for
+more … →". Serious Eats, AllRecipes, Simply Recipes and Food & Wine answer the direct fetch with
+a bot check, so there is nothing there to write a rule for.
+
+- **One table, `shared/tables/site-rules.json`, read by both apps** (`SiteRules`). Data only:
+  CSS selectors and phrases, never code. `cards` are the plugin cards any site may have (Tasty
+  Recipes and Mediavine Create, moved here from `CardHeadings`' hard-coded list); `sites` are
+  keyed by host without "www." (`SourceDomain`), and a site's own cards are tried before the
+  plugins'. A card is `list`, `item`, `heading` and optional `title` and `amount` selectors.
+  Everything `CardHeadings` already required still holds: a heading must be a heading element,
+  end in a colon or be wholly bold, and a card is used only when its items line up one-to-one
+  with `recipeIngredient` (same count, each item's letters and digits in its line). A rule can
+  only add headings or drop known noise; it can't change a line.
+- **The selector subset is matched by hand** (`CardSelector`, both platforms): a tag, `.class`,
+  `#id`, `[attr]`, `[attr=v]`, `[attr^=v]`, `[attr*=v]`, compounded, in comma lists, no
+  combinators (a card's parts are only looked for inside its list). Jsoup's `select` on Android
+  and the iOS `HtmlTree` would otherwise disagree at the edges. Anything else in the table is a
+  mistake and fails loudly (Android throws, iOS traps). The hashed class names (NYT's
+  `ingredientgroup_name__xNtpC`, Condé Nast's `SubHed-icPlCN`) are matched by their stable
+  prefix with `*=`.
+- **WP Recipe Maker stays code** (`WprmIngredients`): it rewrites lines from their parts, puts
+  the notes' comma back and matches ignoring only case and spacing. None of that is a selector.
+- **`amount`: parts of an item left out when matching it.** Delish's card writes "3 cups" and
+  "6 Tbsp." where its JSON-LD writes "3 c." and "6 tbsp.", so its `<strong>` amount is removed
+  before the line-up check. JSON-LD's line is still what shows. On iOS the removal cuts those
+  elements' source out of the item's, then reads the text as any element's. An amount in the
+  middle of a line ("4 (6- to **8-oz.**) chicken breasts") leaves a key that is no longer one
+  run of the JSON-LD line, so that card doesn't line up and its page gets no headings: a safe
+  miss, left as is.
+- **`stepNoise`: phrases that start noise at the end of the last step.** The last step is cut
+  where a phrase starts it or follows a space; a last step that was all noise goes, unless it
+  was the only step. Only the last step, only on that site: an editor's note in the middle of a
+  method is left alone.
+- **`version`, raised on every edit**, beside `schemaVersion` (the format). A copy fetched later
+  without an app release (the issue's "later, optionally") would be used only if newer than the
+  bundled one; nothing fetches one yet.
+- **The weekly site check flags a rule that stops matching.** Its report adds a "Site rules"
+  section, judged per site over the site's pages in the run: Matched when a site's card lines up
+  or its noise is found on at least one of them, else **Stopped matching**, and the workflow
+  warns on that. Not per page, because a rule need not fit every page: not every Epicurious
+  recipe has an editor's note, and a Delish card with an amount mid-line never lines up. The
+  JSON keeps each page's result. It runs when the table changes too.
+- Tests: trimmed real pages in `shared/fixtures/pages/site-*.html` (`SiteRulesTest` /
+  `SiteRulesTests`), and `Site` rows in the differential corpus. The site check fetches one
+  page per site with rules.
+
+## Grocery lines merged with the model's help (#99)
+
+Part of #99, on #104's typed decisions (same `DecisionRule`, `ai_decisions` cache and
+`aiDecisions` flag). The owner asked for help with differently worded lines that are one
+thing to buy ("2 ears of corn" + "2 corn", "corn on the cob" + "corn", "3 garlic cloves" + "2
+cloves garlic") and with text after the ingredient ("(dfsafs -", ", shucked"). **The model never
+does arithmetic or writes a number**: it answers two typed questions, and `GroceryCombiner`'s
+exact rules still decide every total.
+
+- **"Same thing to buy?"** (`sameGrocery`: same / different / unsure). Asked for two unchecked
+  lines in one language whose names differ, are `DecisionCandidates.close` (the pantry's
+  closeness test), and whose aisles could meet (the same aisle, or one in Other). Its own kind,
+  not the pantry's, because the question differs (two list lines, not a recipe and a pantry
+  item); the owner's "different" pairs are written into it, with "corn flour" is not "corn".
+  A definite "same" puts the two groups in one row under the first group's name. **Adding up
+  is unchanged:** only exact amounts in one unit family, and counts only with identical words
+  after the number. So "200 g sweetcorn" + "100 g corn" is "300 g corn", but "2 ears of corn"
+  + "2 corn" and "3 garlic cloves" + "2 cloves garlic" sit together in one row, each as written:
+  whether an ear is one "corn" is exactly the kind of guess that makes a confident wrong number.
+- **"What is this trailing text?"** (`trailingText`: note / second_amount / junk / unsure).
+  `GroceryDecisions.split` cuts a line at the first comma, semicolon, bracket or spaced dash
+  whose left side has an ingredient name ("2 eggs" | "(dfsafs -"); never text holding a digit
+  (a figure is never ignored, whatever the model says), never Japanese or unspaced languages,
+  never a package size before the name. Asked for every grocery line with trailing text, a
+  lone line too (the owner's option 2), so a lone "2 eggs (dfsafs -" shows "2 eggs" once
+  decided junk; once per text and language (the cache), in the background, once per visit.
+  Only grocery lines: the reading view never asks it. Note or junk: the line is grouped and added up
+  as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"). A note still shows as written under
+  the total; **junk is hidden in Groceries** (the owner's option 1): the row, the lines under
+  a total or Together row and the shared text show the line without it ("2 eggs"). That is a
+  display-time transform from the cached answer (`GroceryDecisions.shownText`, applied in
+  `GroceryCombiner.sections`): the stored line is never rewritten, so turning `aiDecisions` off
+  shows it again, and the recipe's reading view always keeps the line as the site wrote it.
+  Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
+- **"What is the ingredient's name?"** (`ingredientName`, free text) catches junk with no
+  separator ("2 onions dfsafs"). Asked only for a line with no separator split whose name has
+  words the aisle table doesn't match after words it does ("onions dfsafs": "onions" is
+  produce, the whole isn't), once per line and language, never in unspaced languages. The
+  answer counts only when both asks agree with high confidence (`DecisionRule`: any agreed
+  non-empty text), it is in the line as whole words (`PageRecipeCheck.find`), the line up to it
+  still reads as an ingredient line whose name ends with it, and what follows is two
+  characters or more with no digit (`GroceryDecisions.nameSplit`). That rest then goes through
+  the trailing-text question above. Unsure or a failed
+  check: the line stays exactly as today. Pinned by the corpus's `NameCut` rows.
+- **Aisles.** Grouping stays per aisle. When a fresh answer lands, a line in Other moves
+  beside its "same" partner, or to its core's aisle once its trailing text is note or junk
+  (`GroceryDecisions.filing`, then `fileFromOther`), exactly like #104's aisle answers: only
+  lines still in Other, only on an answer that just landed, so an aisle the user chose stands.
+  The core's aisle (`cutAisle`) follows whichever of its answers lands last, the name or the
+  trailing text (#158: the junk answer is often cached already, from another line), and a
+  line added once both are cached takes it at once, as it takes a cached aisle answer.
+- **Lazily, in the background.** The Groceries screen asks after each change of the list,
+  each question once per visit and once ever per text/pair and language (the cache); it
+  shows today's grouping until an answer lands, then regroups from the decisions flow. Flag
+  off, an unsupported phone or language: no question, and the list is exactly today's (a test
+  on each platform compares it with `sections(items)`). Deleting, ticking and moving rows are
+  as before. Sharing sends what the screen shows.
+
+**Needs a real phone:** whether the models say "same" for the owner's corn and garlic pairs and
+"different" for rice flour and whole milk with high confidence both times, whether they tell a
+note from junk from a second amount, whether they copy "onions" out of "2 onions dfsafs"
+verbatim and agree twice, and how long the questions take on a long list.
+
+## A hyphenated mixed number is not a range (#125)
+
+Taste of Home writes "1-1/2 cups sugar". The range reading ("1" to "1/2") scaled each end
+and showed "2-1 cups" for ×2. Now a whole number, a dash (hyphen, en or em dash, the ones the
+range code reads) and a fraction with no spaces ("1-1/2", "1-3/4", "2-½") is one quantity,
+the first alternative of the shared quantity pattern, so every reader of the leading amount
+agrees: the scaler, the unit converter, `GroceryCombiner`, `IngredientName`, amounts in
+steps (#101), step timers ("Bake 1-1/2 hours" is 1 h 30) and the trailing-amount reader.
+- Only a proper fraction: "1-3/2" is neither a mixed number nor a range anyone writes, so the
+  line stays as written.
+- Not after a slash or a decimal (lookbehinds), so "1/2-3/4" and "0.17-1/3" stay ranges.
+- Spaces make a range: "1 - 2", "1-1 1/2" and "1-1/2 to 2" (a range from 1 1/2) are
+  unchanged.
+Pinned by the scaler tests on both platforms and the corpus's #125 rows.
+
+## "I made this": your photos on a recipe (#116)
+
+Owner's request: a private cooking journal on the phone, with no server and no accounts. It is
+the groundwork for the backlog social feed (#117). Behind `cookedPhotos`, off by default. With
+the flag off nothing shows, but the rules below (protection, deleting, backup) apply to any
+photo that exists.
+
+- **One photo per entry.** Each photo has its own `day` (an epoch day, like the plan's, so the
+  date never slips across time zones) and an optional note of up to 280 characters. Picking
+  several photos makes several entries. Adding is frictionless: a photo is saved at once,
+  cooked today, and the first new one opens full screen so its note and date are right there.
+  There is no "add" form to fill in first.
+- **Where it shows.** "Your cooks" is the reading view's last section, after the steps and the
+  note, so the reading view still opens on the recipe. Cook mode doesn't show it.
+- **Storage.** Table `cooked_photos` (Room 14 / iOS `user_version` 13): `recipeId` CASCADE,
+  `fileName`, `day`, `note`, `createdAt`, `updatedAt`, `uid`. The picture is a JPEG in the
+  app's own storage, named by the store and never by the user:
+  - Android: `filesDir/cooked_photos`.
+  - iOS: `CookedPhotos/` beside the database in the App Group container.
+
+  Each picture is downscaled so its long edge is at most 2048 px, turned upright from its EXIF
+  orientation, and saved at JPEG quality 85: a few hundred KB, sharp on any phone.
+  - Android decodes with `BitmapFactory` (`inSampleSize`, then a `Matrix`) and reads EXIF with
+    androidx `ExifInterface`. That library already came in through Coil and is now declared,
+    because lint flags the framework copy.
+  - iOS uses ImageIO's thumbnail API (`kCGImageSourceCreateThumbnailWithTransform`), which
+    needs neither UIKit nor the main thread.
+- **Files outlive rows until a delete stands.** Deleting a photo, or a recipe with photos,
+  removes the rows at once and keeps the files, so Undo can restore them.
+  - A delete stands when the snackbar goes away (Recipes swipe, a photo's own Delete), or at
+    once for the recipe screen's confirmed delete. Then `RecipeRepository.forget` /
+    `CookedPhotoRepository.forget` removes the files.
+  - A launch sweep removes any file no row names and older than 10 minutes. That catches an
+    app killed while its snackbar was up, and an import's unused copies. The grace period
+    covers an add or an import still writing.
+- **Protection.** A recipe with photos is never culled and never removed by the free tier's
+  one-for-one, like a listed one: the photos would go with it. On import, a recipe with photos
+  coming in comes in like a listed one.
+- **Deleting a recipe deletes its photos.** The issue suggested asking whether to keep them;
+  the owner decided the photos belong to the recipe. The confirmation says "with your 2 photos
+  of it".
+- **Recipes: "Recently cooked"** is a fourth sort (behind the flag): recipes with photos come
+  first, ordered by their latest photo's day, and the rest follow in recency order. It is a
+  sort, not a filter, so nothing disappears from the library. A stored Recently cooked reads
+  as Recently viewed while the flag is off.
+- **Sharing a photo** sends the JPEG through the share sheet with the recipe's name as plain
+  text (Android `EXTRA_TEXT` through the FileProvider's new `cooked_photos` path; iOS
+  `ShareLink` with a message).
+- **Camera and library, and permissions.**
+  - Android: the Photo Picker needs no permission. The camera is the camera app through
+    `ACTION_IMAGE_CAPTURE`, writing to one reused file in the cache. The app doesn't declare
+    `CAMERA`, so no permission is needed or asked for.
+  - iOS: `PhotosPicker` needs none. The camera is `UIImagePickerController`; iOS asks for
+    access the first time the camera is chosen, with `NSCameraUsageDescription`, translated
+    through `InfoPlist.xcstrings`. On a device without a camera (the simulator), choosing it
+    says so.
+- **Backup** (#26):
+  - **Format.** An export with photos is a `.zip` holding `backup.json` (the same JSON, with a
+    new `cookedPhotos` section: id, recipeId, day, note, createdAt, updatedAt, file) and each
+    picture at `photos/<name>.jpg`. An export without photos is the same `.json` file as before,
+    byte for byte, so with the flag off nothing changes. A file that doesn't start with a zip
+    signature is read as JSON, so every older backup imports.
+  - **Why a zip, not base64 in the JSON.** Base64 would mean a single string of tens of MB
+    (+33%), held in memory while parsing. A zip keeps the JSON small and the pictures as files.
+  - **How the zip is written.** Entries are STORED (JPEGs don't compress). iOS has no zip API,
+    so `BackupArchive` writes and reads the format by hand: it reads through the central
+    directory, and also takes DEFLATE entries (Compression's raw deflate), so a zip re-packed
+    by another tool still imports. Android uses `java.util.zip`.
+  - **Safety.** A picture's path must be `photos/` plus one plain name, and anything else in the
+    zip is ignored. The JSON is capped at 20 MB, as before, and each picture at 30 MB.
+  - **Merge.** Photos come in by uid, only with their picture, and only onto a recipe that is
+    here after the import. `backup-v1-photos.zip` (written by Python's `zipfile`, a third
+    writer) is read by both platforms' tests.
+- **Android's cloud backup leaves the photos out.** The include list (database and settings)
+  stays as it is: Auto Backup's 25 MB per-app quota would stop the whole app's backup, recipes
+  included, once there are enough photos. A phone restored that way has the entries but not
+  the pictures. Each entry keeps its day and note, shows "Photo not on this phone" in place of
+  the picture, and offers no Share (`CookedPhoto.hasPicture`). The launch sweep only ever
+  deletes files no row names, never a row whose file is missing. On Android, photos move to a
+  new phone through the export `.zip`. On iOS, iCloud Backup carries them: `CookedPhotos/`
+  sits beside the database in the App Group container, which nothing excludes from backup.
+  Pinned by `CookedPhotoDaoTest` and `RecipeCookedPhotosScreenTest` (Android) and
+  `CookedPhotoTests` (iOS).
+
+**Needs a real phone:** the camera itself (the Android emulator's virtual scene and the iOS
+simulator's missing camera prove only the wiring), EXIF orientation from a real portrait shot,
+HEIC pictures from the iOS library, and an export with many photos shared and imported on the
+other platform.
+
+## The automatic backup copy (#150)
+
+The owner's question: if someone loses their phone, how do they get everything back? The phone's
+own backup (Google's Auto Backup, iCloud Backup) covers only a restore onto the same platform,
+only if the user has it on, and on Android without photos. Export (#26) works across platforms
+but is only as fresh as the last time the user remembered. So the app now keeps an export
+itself, in a cloud folder that belongs to the user. There is no server, no account, and nothing
+is sent anywhere the user didn't choose.
+
+Owner's decisions: **on by default, and photos included.**
+
+- **What is written.** The export exactly as Settings' Export makes it (`BackupRepository.export`),
+  always in the `.zip` form of #116 (`backup.json` plus `photos/`, STORED), even with no photos,
+  so every copy has the same kind of name. Import reads it like any export, on either platform.
+- **Where.**
+  - **iOS:** the `Documents` folder of the app's iCloud container
+    (`iCloud.com.liberopat.recipeclipper`). With `NSUbiquitousContainers` set to public, it
+    shows in Files as iCloud Drive → Recipe Clipper, with nothing for the user to set up. It
+    needs the iCloud Documents capability and the container on the App ID, which only the owner
+    can register (`docs/release.md`). Without them, or signed out, or with iCloud Drive off, the
+    container is nil: Settings says quietly that iCloud Drive isn't available, and nothing
+    crashes or retries loudly.
+  - **Android:** a folder the user picks once with the system's folder picker
+    (`ACTION_OPEN_DOCUMENT_TREE`), usually Google Drive, kept through a persisted URI permission
+    (`AndroidBackupFolder`, over `DocumentsContract`, with no extra library). "On by default"
+    can't mean silently on here, since nothing can be written until a folder is chosen. So the
+    switch starts on, and the app asks for the folder at two moments, never at launch and never
+    in the way of a share:
+    - Settings → Your recipes has a "Backup folder" row.
+    - Home shows a one-time "Keep a backup copy?" card once the library has a recipe and there
+      is no folder yet. "Choose a folder" or "Not now" both put it away for good
+      (`folderPromptDone`); Settings still has the row.
+- **Three copies, not one.** Each copy is a new file,
+  `recipe-clipper-backup-YYYY-MM-DD-HHmm.zip`, and the app's own copies beyond the newest three
+  are deleted only after the new one is written. A write that fails halfway (a full Drive, the
+  app killed) then never leaves the user with nothing. A single rolling file couldn't promise
+  that on Android, where a document can't be replaced atomically. Only names the app wrote
+  are ever deleted; nothing else in the folder is touched.
+- **When.** The platform only asks for a look; `AutoBackupPolicy.isDue` decides whether to
+  write. It writes when there is no copy yet, when the last copy is gone from the folder, when
+  the library changed and the last copy is at least an hour old, or when the last copy is a
+  week old (so the date stays true). "Changed" is a SHA-256 of the export with its `exportedAt`
+  blanked, plus the photos' names. So an unchanged library is never written again, and opening
+  a recipe (which moves it up the history) counts as a change.
+  - **Android:** WorkManager (plain `CoroutineWorker` reaching Hilt through an entry point, so
+    WorkManager's default initialisation stands). Three looks: a daily one (battery not low), a
+    minute after the app is left (`MainActivity.onStop`; kept, so quick returns share one), and
+    one at once when a folder is chosen.
+  - **iOS:** when the app goes to the background, inside a `beginBackgroundTask`. The write is
+    atomic, so an expired background task leaves the old copies. There is no BGTaskScheduler
+    job: a library changes only while the app or its share extension runs, and the next time
+    the app is left catches both.
+- **"Last backed up".** Settings → Your recipes shows the switch, the folder (Android), "Last
+  backed up <date>" or "Not backed up yet", "Back up now" (works even with the switch off,
+  whenever there is somewhere to write), and in the error colour: a folder whose permission
+  went ("Choose it again"), a copy that couldn't be written, iCloud Drive unavailable, and the
+  nudge. **The nudge** shows when the last copy is more than 30 days old and no automatic copy
+  is working (off, or nowhere to write). It doesn't show before the first copy: then "Not
+  backed up yet" and, on Android, the folder card are the prompt. A manual Export doesn't count
+  as a backup, because the app can't know where the share sheet put it.
+- **Where the record lives.** Android: its own SharedPreferences file `auto_backup`, deliberately
+  *not* on the Auto Backup include list. A folder permission belongs to one phone, so a phone
+  restored from Google's backup asks for its folder again instead of showing one it can't
+  reach. iOS: the settings' App Group `UserDefaults` suite (`auto_backup_*` keys), which iCloud
+  Backup restores. That is right there, because the folder belongs to the iCloud account.
+- **Restore on a fresh install.** Home, with an empty library, offers "Restore from a backup
+  file" under the empty hint. It is Settings' Import (the same picker, the same
+  `importFile`/`BackupMerger` merge, the same outcome line), so it merges and never replaces.
+  On iOS the picker opens on iCloud Drive, where the copies are.
+- **Not a flag.** It ships on, and the switch turns it off. It needs no kill switch beyond that,
+  since without iCloud or a folder it simply does nothing.
+- **Pure and tested.** `AutoBackupPolicy` (Kotlin and Swift) holds the rules: due, nudge, the
+  folder card, names, which copies go, the fingerprint. `AutoBackup` runs them against fakes in
+  `AutoBackupTest` and `AutoBackupTests`; the Settings and Home rows are covered by
+  `SettingsAutoBackupTest` and `HomeBackupTest` (Robolectric) and by `SettingsAutoBackupTests`
+  (iOS).
+
+**Needs a real phone:** Google Drive (and another provider) through the folder picker, a copy
+written there by WorkManager while the app is closed, a revoked permission showing in Settings,
+and a restore from the Drive copy on a second phone. On iOS: a device with the iCloud container
+registered, the copy appearing in Files → Recipe Clipper, and the same copy restored on a new
+iPhone and imported on Android.
+
+## Sending a grocery list, and receiving one (#149, phase 1)
+
+Two people shop for one household; one may not have the app. Phase 1 is plain text, which
+works either way.
+
+- **Owner's decisions:** "Send list" sends every unticked item (no picker); each item names
+  the recipe it's for; no live shared list (phase 3, sync, is dropped). Phase 2 (a small
+  export file for recipes and items) is its own PR.
+- **The text** (`GroceryShareText`): the title, then each aisle's name and its unticked rows,
+  "- " before each, as the screen shows them (a combined row is its total; lines kept
+  together are each listed, a repeat as "× 3"). A line ends with its recipes in brackets,
+  "- 2 lb chicken thighs (Sheet-pan chicken)": every recipe the row's lines came from, each
+  once, in the order added. The titles come from the recipes table through `recipeId`
+  (`observeRecipeTitles`), so a typed item, or one whose recipe was deleted (`SET NULL`),
+  names none. No link and no Markdown: it reads as a message.
+- **Reading a list back** (`ReceivedList`, pure, both platforms): when any line starts with a
+  bullet ("- ", "• ", "* ", en or em dash…), only bulleted lines are items, so a sent list's
+  title and aisle headings drop out; text with no bullets offers every line. Blank lines,
+  headings (a line ending in ":") and lines with no letter or digit are never items. "-5" is
+  not a bullet. Nothing else is read: "× 3" and "(Recipe)" stay in the line as written, since
+  guessing what a stranger's text means is how a confident wrong list happens.
+- **"Add this list"**: the lines with checkboxes, all ticked, then **Add to groceries** or
+  **Add to pantry**, one tap, no second confirm. Lines are added as written and read like a
+  typed item: the phone's language, unless the lines' words clearly say another the app
+  has. On the grocery list they combine as any lines do (`GroceryCombiner`). In the pantry
+  each line becomes its `IngredientName` (the whole line when there's none), once per name;
+  a name the pantry already tracks is put back in stock instead of added twice (a staple is
+  left alone), as ticking a grocery line off did before #146. Adding to the pantry shows the Pantry.
+- **Where a list comes in.** "Paste a list" in the Groceries menu reads the clipboard when
+  tapped (an empty one shows the sheet with a sentence saying so). On Android, shared text
+  with a link still imports the link, exactly as before; text with no link but with lines
+  opens the Groceries tab on the sheet (through `ReceivedListInbox`, in memory), only with
+  the `mealPlan` flag. The iOS share extension can't open the app (#19), so it shows the same
+  sheet in its card and writes to the App Group database itself; the app catches up when it
+  becomes active, like a shared recipe. The extension never sees the flags, so the app
+  mirrors `mealPlan` into the App Group suite as `groceries_on` (as #107's limit is); off, a
+  list shared in is "no link", as before.
+- **The Pantry's "Send list" sends what's in stock** (owner's decision, 2026-09-26): what's at
+  home, so someone at the shops can check before buying twice. Items switched to out are not
+  sent: running out already put them on the grocery list (#146), so Groceries' "Send list"
+  carries them, and sending them twice would read as two lists. Staples are sent when in stock,
+  like any item. The text (`PantryShareText`, pure, both platforms) mirrors Groceries': the
+  title ("Pantry", the tab's name), then each section as the screen's sort arranges it (aisles
+  by default; sorted by expiry it is one list with no heading) and its in-stock items, "- "
+  before each, the name and then the quantity as written in brackets ("- basmati rice (half a
+  bag)"). No use-by dates: it answers "is it there", like the pantry itself. A search on screen
+  doesn't narrow it: the menu sends the pantry, not the search. It is disabled (Android) or
+  hidden (iOS) while nothing is in stock, as Groceries' is with nothing to buy. The receiver
+  needs nothing new: `ReceivedList` reads the bullets, and "Add to pantry" keeps each line's
+  `IngredientName`, so the bracketed quantity drops and "basmati rice" arrives as itself.
+- **Tests:** the iOS UI test can't drive the system share sheet or read another app's copy
+  without the paste prompt, so the launch seeds the pasteboard (`-uiTestPasteboard`, debug
+  only); the sent text itself is pinned by unit tests on both platforms. The Pantry's text,
+  and its round trip back through `ReceivedList` and `IngredientName`, is in
+  `SendListTextTest(s)` and `PantryViewModelTest(s)`; `PantrySendTest` (Robolectric) checks
+  the menu hands the share sheet that text.
+
+## Sending recipes and groceries as a file (#149, phase 2)
+
+Plain text (phase 1) works for anyone, but a recipe sent as text arrives as words, and a list
+as lines to re-read. When both people have the app, a small file can carry the recipe whole
+(no fetch, so a site that blocks the fetch doesn't matter) and the grocery items as the app
+stores them. No server, no account: the file goes through the user's own share sheet.
+
+- **The format is #26's export, partial and marked.** `ShareFile` (pure, both platforms) makes
+  a `Backup` with `"kind": "share"` at the top and only what was picked: no lists,
+  memberships, plan, menus or photos. `formatVersion` stays 1. An older app never offers
+  itself for the file (it has no intent filter or document type for it), and if someone picks
+  it through an older app's Settings → Import anyway, that app ignores `kind` as an unknown key
+  and merges it like any export, which only ever adds: nothing is replaced or lost, so no bump
+  is needed. A backup never has `kind`, so every backup file is byte for byte as before.
+  Settings' Import in this app also takes a share file, merged whole. The canonical example is
+  `shared/fixtures/backup/share-v1.recipeclipper`, read by `ShareFileTest(s)` on both.
+- **Its own type, so the other phone opens it in the app.** `<title>.recipeclipper` (the title
+  made safe as a file name, 60 characters at most), MIME `application/vnd.recipeclipper+json`.
+  Android: an intent filter for VIEW and SEND by that type, and VIEW by the name for apps that
+  hand files over as `*/*`; the app's FileProvider (`ShareFileProvider`) reports the type, since
+  a plain FileProvider calls an unknown extension `application/octet-stream` and a messaging
+  app passes that on. iOS: an exported UTType, `com.liberopat.recipeclipper.share` (conforms to
+  `public.json`), and a document type the app owns, opened as a copy through `onOpenURL`.
+- **What is sent.** "Send as file" is in the recipe screen's overflow menu (the share icon
+  stays one tap for text) and in the Groceries menu after "Send list", which stays the first
+  and default. A recipe goes complete, as saved: not scaled or converted (the receiver scales
+  it), with its origin (an edit stays the user's version on the other phone too), but without
+  what is the sender's own: ticks, the note, the last view (it is set to the time sent).
+  Groceries send every unticked item, as stored, with the recipes they came from, so each
+  still names its recipe on the other side; no planned day (a day on someone else's plan).
+  The Pantry's menu has "Send as file" after its "Send list", sending the same in-stock items
+  (`ShareFile.pantry`, pure, both platforms), as stored: quantity, staple and dates included,
+  since the receiver's "Add from this file" already takes them to the Pantry or, as their
+  names, to Groceries. This one is a default for parity with Groceries, not the owner's
+  decision: it is its own menu entry and `ShareFileRepository.pantryFile`, so it comes out
+  cleanly if the owner says no.
+- **What the receiver chooses.** "Add from this file" opens over whatever is on screen: the
+  recipes, the grocery items (each with its recipe beneath) and the pantry items, every row
+  ticked, then two radio rows for the pantry items (the Pantry, or Groceries as their names),
+  then one Add. Groceries and Pantry rows show only with the `mealPlan` flag, like their tabs.
+  Once added, the app shows where things went: Groceries, else the Pantry, else Recipes. A
+  file that can't be read says why (the export's errors), with nothing to add.
+- **How it merges: `BackupMerger`, with two differences from an import.** Recipes match by the
+  cleaned `sourceUrl`; one already here keeps its content, ticks and note (never replaced).
+  Unlike an import, every ticked recipe comes in, as the newest viewed, and one already here
+  counts as viewed now, and then the history cap runs, as for a shared link: sending someone a
+  recipe is sharing it into their app. The free tier (#107) keeps the import's rule (only free
+  places; the sheet stays up to say how many were left out). Grocery items come in by uid, so
+  the same file opened twice adds each once; one keeps its recipe only if that recipe was
+  ticked too (or matched one here). Pantry items follow the import: an item already here by
+  uid, or by name and language, stands as it is. Sent to Groceries instead, a pantry item
+  becomes a grocery line of its name, keeping its uid for the same reason.
+- **Tests.** Pure: `ShareFileTest` / `ShareFileTests` (the fixture, the round trip, what is
+  sent, what is chosen, the file name). Against SQLite: `ShareFileRepositoryTest` (Robolectric)
+  and `ShareFileRepositoryTests`. ViewModels over fakes: `ShareFileViewModelsTest(s)`. Screens:
+  `SendReceiveFileScreenTest` (Robolectric: both menus hand the share sheet the file, only
+  readable by the picked app; the sheet adds what is ticked), and `PantrySendTest` for the
+  Pantry's menu (the text, the file, both disabled with nothing in stock). iOS UI: `ShareFileUITests`, where
+  `-uiTestReceiveFile` (debug only) opens a canned file at launch, because a UI test can't open
+  a file from Messages.
+
+**Needs a real phone:** sending the file through Messages, WhatsApp, Mail and AirDrop, and
+opening it from each on the other phone (Android: which apps pass the type or the name, so the
+app is offered; iOS: "Open in Recipe Clipper" from Files and Messages), in both directions
+between Android and iOS.
+
+## The first-run tour (#151)
+
+Owner's decision (2026-09-26): welcome cards, a bundled sample recipe and one-time tips in
+place; the sample is saved like a real recipe; every flow, daily and weekly, is covered.
+
+- **Welcome cards,** full screen with no tab bar, skippable: what the app does; how to clip
+  (Share, paste, "+ New recipe"; iOS says the extension saves it to Home); every day
+  (servings and units, the bookmark, cook mode, and Chef mode with its flag); every week
+  (Week, What I need, Groceries, Pantry), only with `mealPlan` on. So three or four cards;
+  the last offers "Try it with a sample recipe" (opens it) or "Start". Skip, Start, Try it,
+  and Android's Back from the first card all mark it seen. No pager: one card at a time with
+  Back and Next, which reads well with TalkBack and VoiceOver ("Card 2 of 4") and scrolls at
+  the largest text sizes.
+- **When it shows** (`FirstRunTour`, the same rules on both platforms): once per app start,
+  only on a plain launch. A launch that opens something (a shared link, a notification, a
+  deep link) shows that and leaves the welcome pending for the next plain launch: capture
+  stays frictionless. Someone who already has recipes the first time the tour runs (an older
+  version's user, or a restored backup: Android's Auto Backup and iOS's device backup put the
+  database back before the first launch) never gets it, nor any tip. At first the Week,
+  Groceries and Pantry tips still showed for them, as those tabs were new to them now that the
+  flags are on; the owner decided (2026-09-26) that existing users skip every tip. iOS's share
+  extension saves without opening the app, so it notes a
+  new user's first share (`FirstRunTour.noteShare`: library empty, welcome undecided); the
+  recipe it adds then doesn't make them look like an old user, and the welcome shows at the
+  app's first opening.
+- **State** lives in `unit_preferences` / the settings suite, backed up with the settings,
+  under the same keys on both platforms: `tour_welcome` (`UNDECIDED` | `PENDING` | `SEEN` by
+  name; unknown reads as undecided), `tour_sample_added`, and `tour_tip_recipe`,
+  `tour_tip_cook_mode`, `tour_tip_week`, `tour_tip_groceries`, `tour_tip_pantry` (true once
+  dismissed).
+- **The sample recipe** is written for the app (a tomato and white bean soup; no photo, so
+  nothing to license), in each UI language, once, in `shared/sample/recipe.json`: the UI's
+  language picks it, else English, and it is saved in that language so its lines scale and
+  convert with that language's tables. It shows the features off: Serves 4, US measures in
+  English (so Metric and Ounces change it), timers in steps, an oven temperature, and a
+  "Meanwhile" step that overlaps the simmer. It is saved like a typed-in recipe: MANUAL
+  under the fixed link `manual:sample`, so it is never fetched, has no Update from source or
+  source credit, and is never culled. It is added once, when the welcome first shows;
+  deleted, it stays deleted. "Try it" after "Show the tour again" opens it if it's there, and
+  adds it again only if it's gone.
+- **It never counts toward the free tier (#107):** the library's count (`RecipeDao.count`:
+  the Recipes screen's "12 of 20", the free tier's one-for-one) and an import's free places
+  leave out `manual:sample`, and adding it applies no limit, so it never removes a recipe.
+  Home treats a library holding only the sample as empty (#150): "Restore from a backup
+  file" still shows, which matters most on a new phone, and the "Keep a backup copy?" card
+  waits for a recipe of the user's own.
+- **Tips:** one small callout in the screen's flow (never over it, so it never blocks),
+  dismissed by a tap anywhere on it (one button for TalkBack and VoiceOver, "Dismiss tip"):
+  under the Serves and units row on the first recipe opened (the row and the bookmark), at
+  the top of the first cook mode (outside the steps' list), and under the title of the first
+  Week, Groceries and Pantry visits. Those three hide with `mealPlan` off. One app-wide
+  `TipsViewModel` is handed to every screen (Android `LocalTips`, iOS the environment), so a
+  screen only names its tip; with none provided nothing shows, so screen tests are as before.
+- **"Show the tour again"** is an action row in Settings' Help section: the welcome again,
+  and every tip once more. The reading view is otherwise unchanged: the tip is the only
+  addition, and only until it is tapped.
+
+## Done shopping: putting things away in one step (#146)
+
+The owner found the per-tick snackbars annoying and easy to miss: tick one more item and the
+offer for the first was replaced and gone. Owner's decisions:
+
+- **A tick only ticks.** No snackbar, no pantry change, nothing offered.
+- **One "Done shopping" button replaces "Clear checked"** (one button rather than "Put away…"
+  beside "Clear checked"). It shows at the bottom of Groceries while anything is ticked, and
+  opens a sheet of the ticked items with checkboxes: one row per pantry item or ingredient
+  name (two butters the pantry tracks as "Butter" are one row), in the list's order. What the
+  pantry tracks starts ticked; the rest starts unticked, since the pantry holds what the cook
+  chose to track. One confirm restocks the ticked tracked items and adds the ticked new ones
+  (the ingredient's name, the grocery's aisle, bought today), then clears **every** ticked
+  line, listed or not. A line the app can't name ("salt and pepper") isn't listed but is
+  cleared; with nothing to list, the button clears at once.
+- **Pantry-tracked items restock only at put-away,** never on the tick.
+- **One undo for all of it.** The snackbar ("Pantry updated, checked items removed", or
+  "Checked items removed" when nothing went in the pantry) puts back the cleared lines, the
+  restocked items as they were (a snapshot) and deletes the added ones.
+  `PantryRepository.add` returns the new id for that.
+- **Snackbars only for undo:** a delete, or Done shopping. The rest of the app already used
+  them that way.
+- **Pantry to groceries shows a state, not a message.** Switching an item out adds its name to
+  the list silently (unless its line is there already), and the row shows a small "On list"
+  tag; tapping the tag takes it off the list, with no snackbar. "On list" means an unticked
+  grocery line that is the item's own name (trimmed, case-insensitive, same language): what
+  switching it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
+  deletes a recipe's line, which is why no undo is needed. No schema change: the link is the
+  name.
+
+## Using up the pantry at the end of cooking (#147)
+
+The owner's idea: cook with 1 lb of the pantry's 2 lb of chicken and the pantry says 1 lb.
+Owner's decisions: subtract **once, at the end of cooking, through one sheet**, never on a tick
+(people tick to gather, untick by mistake, and change servings mid-recipe); and a line that
+can't be worked out **asks each time** (keep, running low or out), never guessed.
+
+- **The trigger is cook mode's "Done — finish"** (the last step's button, which ends cook mode),
+  with at least one ingredient ticked. Chosen over the issue's two candidates:
+  - "I made this" (#116) is a photo action (camera or library) at the foot of the reading view.
+    Each photo is its own "cooked today" entry, so one dinner photographed twice would subtract
+    twice, and a cook who never takes photos would never use anything up.
+  - Leaving cook mode by Exit is a pause, not the end: cook mode keeps its place "so it is never
+    lost by a stray tap on Exit", and cooks leave to check something and come back.
+  - A finished run finishes again only after starting fresh (all steps done restarts cook mode
+    from step 1), so a recipe cooked once opens the sheet once, and nothing changes without its
+    confirm. What it misses: recipes with no steps, and cooks who never use cook mode. Adding
+    "I made this" as a second way in would need a "used up for this cook already" record; the
+    owner can ask for it.
+- **The sheet lists the ticked lines' pantry items**, the lines as the recipe showed them
+  (scaled to the servings used and converted to the chosen units). A line is matched as Have/Buy
+  matches it (`PantryMatch.find`, and the model's cached definite "same" when there is one; no
+  new question is asked here). Staples are left out (a staple is never Buy, so it never runs out
+  onto the list), and so are items already out (nothing to subtract). Lines with no name and
+  lines matching nothing aren't listed. Several lines using one item are one row, added up.
+- **No schema change.** The pantry's free-text `quantity` is read at subtract time by the same
+  reader as the lines (the scaler's amount patterns, the unit words, a second measure in
+  brackets) and written back in its own style: the amount and unit are replaced and the rest
+  kept ("2 lb pack" → "1 lb pack", "6" → "4", "2,5 kg" → "1,5 kg"). Structured columns would
+  need this same parser to fill them, plus a migration and an edit form on both platforms, and
+  would buy no case the text can't do: a quantity the parser can't read ("half a bag") asks,
+  which is exactly what the owner wants for it. The text the user typed stays the one truth.
+- **What subtracts** (`PantryUseUp`, pinned for iOS by the corpus's `UseUp` rows): the
+  quantity and every line are one exact amount each (no range, "plus", alternative, second
+  amount after the name, package or piece); the same kind (weight, volume, or a count); volume and
+  weight only through the density table or the line's own second measure ("1 cup (125 g)
+  flour"). A count counts the ingredient itself only when nothing but a size stands between the
+  number and the name ("2 large eggs", the names tables' new `countSizes`); "2 cloves garlic" or
+  "1 can tomatoes" against "3" asks. Within one family (g/kg, oz/lb, the ml family, US spoons
+  and cups, sticks, counts) the result is exact, in the quantity's own unit when that shows it
+  exactly ("1 1/2 lb"), else a unit a line used, else g or ml ("880 g" rather than "0.9 kg").
+  Across families it's rounded as the converter rounds its results (g/kg or ml/L, oz/lb), with
+  Metric's 240 ml cup, so the pantry agrees with the recipe's Metric view; an imperial volume
+  that isn't exact asks, since the converter never writes cups.
+- **Used up** (zero or below, or too little to show): out of stock, the quantity cleared (none
+  is left to know, and a restock shouldn't bring back an old amount as a confident number), and
+  the name onto the grocery list unless it's there already, so the row shows #146's "On list".
+- **"Running low" has no state of its own**: the item's name goes on the grocery list and it
+  stays in stock, so the Pantry row shows "On list" with its switch on. "Out" is the switch
+  turned off plus the list, as the switch does it (the quantity stays as written). No schema
+  change for either.
+- **One confirm, one Undo.** Worked-out rows start ticked and can be unticked; asked rows start
+  on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
+  off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
+  so a killed app loses it with nothing changed. Behind `mealPlan`, like every pantry feature.

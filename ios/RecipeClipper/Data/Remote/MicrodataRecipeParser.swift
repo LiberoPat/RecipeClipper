@@ -48,6 +48,12 @@ enum MicrodataRecipeParser {
         }
         if ingredients.isEmpty && instructions.isEmpty { return nil }
 
+        let language = LanguageWords.resolve(
+            declared: reader.props(root, "inLanguage").map(reader.value).first(where: { !$0.isEmpty }),
+            page: JsonLdRecipeParser.pageLanguage(html: html)
+        ) { LanguageWords.detectionText(name: name, ingredients: ingredients) }
+        let words = LanguageWords.forTag(language)
+
         let ogImage = tree.elements.first {
             $0.name == "meta" && $0.attributes["property"] == "og:image"
         }.flatMap { reader.absolute($0.attributes["content"] ?? "") }
@@ -57,11 +63,12 @@ enum MicrodataRecipeParser {
             image: reader.props(root, "image").map(reader.value).first(where: { !$0.isEmpty }) ?? ogImage,
             ingredients: ingredients,
             instructions: instructions,
-            prepTime: reader.duration(root, "prepTime"),
-            cookTime: reader.duration(root, "cookTime"),
-            totalTime: reader.duration(root, "totalTime"),
-            yield: Servings.pickYield(reader.props(root, "recipeYield").map(reader.value).filter { !$0.isEmpty }),
-            sourceUrl: sourceUrl
+            prepTime: reader.duration(root, "prepTime", words),
+            cookTime: reader.duration(root, "cookTime", words),
+            totalTime: reader.duration(root, "totalTime", words),
+            yield: Servings.pickYield(reader.props(root, "recipeYield").map(reader.value).filter { !$0.isEmpty }, words: words),
+            sourceUrl: sourceUrl,
+            language: language
         )
     }
 
@@ -124,8 +131,8 @@ enum MicrodataRecipeParser {
             return url.absoluteString
         }
 
-        func duration(_ root: Int, _ name: String) -> String? {
-            props(root, name).first.flatMap { JsonLdRecipeParser.formatDuration(value($0)) }
+        func duration(_ root: Int, _ name: String, _ words: LanguageWords?) -> String? {
+            props(root, name).first.flatMap { JsonLdRecipeParser.formatDuration(value($0), words: words) }
         }
 
         /// The steps in one instructions element. A nested HowToStep or HowToSection item gives

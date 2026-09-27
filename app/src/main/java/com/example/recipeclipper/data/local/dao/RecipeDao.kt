@@ -5,8 +5,13 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
+import com.example.recipeclipper.data.local.entity.MenuEntryEntity
+import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.ContentOrigin
+import com.example.recipeclipper.data.model.LibraryLimit
 import kotlinx.coroutines.flow.Flow
 
 /** One row of a list of recipes: everything except the ingredients and steps. */
@@ -16,7 +21,18 @@ data class RecipeSummaryRow(
     val imageUrl: String?,
     val totalTime: String?,
     val lastViewedAt: Long,
-    val isSaved: Boolean
+    val isSaved: Boolean,
+    /** Picked from the page by hand (#37): History says so. */
+    val isClipped: Boolean = false,
+    /** The latest day of the user's own photos (#116), or null for none. */
+    val lastCookedDay: Long? = null
+)
+
+/** A recipe's saved cook progress, with what a timer alert needs to name it. */
+data class CookStateRow(
+    val id: Long,
+    val title: String,
+    val cookState: String
 )
 
 @Dao
@@ -40,6 +56,23 @@ abstract class RecipeDao {
     @Query("UPDATE recipes SET checkedIngredients = :checked WHERE id = :id")
     abstract suspend fun setChecked(id: Long, checked: Set<Int>)
 
+    /** The user's note; null clears it. */
+    @Query("UPDATE recipes SET notes = :notes WHERE id = :id")
+    abstract suspend fun setNotes(id: Long, notes: String?)
+
+    /** Cook progress as [com.example.recipeclipper.data.local.CookStateJson]; null clears it. */
+    @Query("UPDATE recipes SET cookState = :cookState WHERE id = :id")
+    abstract suspend fun setCookState(id: Long, cookState: String?)
+
+    /** The chosen servings; null means the recipe's own yield. */
+    @Query("UPDATE recipes SET servingsTarget = :target WHERE id = :id")
+    abstract suspend fun setServingsTarget(id: Long, target: Int?)
+
+    /** Every recipe with saved cook progress, for finding its running timers. Small: a
+     *  handful of rows at most, since a cook rarely has more than one recipe on the go. */
+    @Query("SELECT id, title, cookState FROM recipes WHERE cookState IS NOT NULL")
+    abstract suspend fun cookStates(): List<CookStateRow>
+
     @Query("DELETE FROM recipes WHERE id = :id")
     abstract suspend fun delete(id: Long)
 
@@ -50,22 +83,84 @@ abstract class RecipeDao {
     @Insert
     protected abstract suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>)
 
+    /** Read before [delete], like [crossRefsFor]: the recipe's planned meals cascade with it. */
+    @Query("SELECT * FROM meal_plan_entries WHERE recipeId = :recipeId")
+    abstract suspend fun planEntriesFor(recipeId: Long): List<MealPlanEntryEntity>
+
+    /**
+     * One planned meal back, unless its meal type was deleted meanwhile: that would fail the
+     * foreign key and roll back the whole restore, losing the recipe over a meal type.
+     */
+    @Query(
+        """
+        INSERT INTO meal_plan_entries (id, day, mealTypeId, recipeId, servings, note, sortOrder, updatedAt, uid)
+        SELECT :id, :day, :mealTypeId, :recipeId, :servings, :note, :sortOrder, :updatedAt, :uid
+        WHERE EXISTS (SELECT 1 FROM meal_types WHERE id = :mealTypeId)
+        """
+    )
+    protected abstract suspend fun restorePlanEntry(
+        id: Long, day: Long, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
+        sortOrder: Int, updatedAt: Long, uid: String
+    )
+
+    /** Read before [delete], like [planEntriesFor]: the recipe's meals in saved menus (#52). */
+    @Query("SELECT * FROM cooked_photos WHERE recipeId = :recipeId")
+    abstract suspend fun cookedPhotosFor(recipeId: Long): List<CookedPhotoEntity>
+
+    @Insert
+    protected abstract suspend fun insertCookedPhotos(photos: List<CookedPhotoEntity>)
+
+    @Query("SELECT * FROM menu_entries WHERE recipeId = :recipeId")
+    abstract suspend fun menuEntriesFor(recipeId: Long): List<MenuEntryEntity>
+
+    /** One menu meal back, unless its menu or meal type was deleted meanwhile (see [restorePlanEntry]). */
+    @Query(
+        """
+        INSERT INTO menu_entries (id, menuId, dayOffset, mealTypeId, recipeId, servings, note, sortOrder, updatedAt, uid)
+        SELECT :id, :menuId, :dayOffset, :mealTypeId, :recipeId, :servings, :note, :sortOrder, :updatedAt, :uid
+        WHERE EXISTS (SELECT 1 FROM meal_types WHERE id = :mealTypeId)
+          AND EXISTS (SELECT 1 FROM menus WHERE id = :menuId)
+        """
+    )
+    protected abstract suspend fun restoreMenuEntry(
+        id: Long, menuId: Long, dayOffset: Int, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
+        sortOrder: Int, updatedAt: Long, uid: String
+    )
+
     /**
      * Undoes [delete]: re-inserts [recipe] with its original id — `@Insert` honours a
-     * non-zero primary key — then its [crossRefs], so restored list membership still points
-     * at the right row.
+     * non-zero primary key — then its [crossRefs], [planEntries] and [menuEntries], so restored
+     * list membership, planned meals and menu meals still point at the right row.
      */
     @Transaction
-    open suspend fun restore(recipe: RecipeEntity, crossRefs: List<RecipeListCrossRef>) {
+    open suspend fun restore(
+        recipe: RecipeEntity,
+        crossRefs: List<RecipeListCrossRef>,
+        planEntries: List<MealPlanEntryEntity> = emptyList(),
+        menuEntries: List<MenuEntryEntity> = emptyList(),
+        cookedPhotos: List<CookedPhotoEntity> = emptyList()
+    ) {
         insert(recipe)
+        if (cookedPhotos.isNotEmpty()) insertCookedPhotos(cookedPhotos)
         if (crossRefs.isNotEmpty()) insertCrossRefs(crossRefs)
+        planEntries.forEach {
+            restorePlanEntry(it.id, it.day, it.mealTypeId, it.recipeId, it.servings, it.note, it.sortOrder, it.updatedAt, it.uid)
+        }
+        menuEntries.forEach {
+            restoreMenuEntry(
+                it.id, it.menuId, it.dayOffset, it.mealTypeId, it.recipeId, it.servings, it.note, it.sortOrder,
+                it.updatedAt, it.uid
+            )
+        }
     }
 
     // "Saved" is derived: a recipe is saved when at least one list contains it.
     @Query(
         """
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
-               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved
+               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
+               contentOrigin = 'CLIPPED' AS isClipped,
+               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         """
@@ -84,7 +179,9 @@ abstract class RecipeDao {
     @Query(
         """
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
-               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved
+               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
+               contentOrigin = 'CLIPPED' AS isClipped,
+               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
         FROM recipes
         WHERE :query = ''
            OR instr(lower(title), lower(:query)) > 0
@@ -97,7 +194,9 @@ abstract class RecipeDao {
     @Query(
         """
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
-               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved
+               EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
+               contentOrigin = 'CLIPPED' AS isClipped,
+               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         LIMIT :limit
@@ -107,41 +206,158 @@ abstract class RecipeDao {
 
     /**
      * Deletes recipes that are in no list, oldest view first, keeping the [keep] most
-     * recently viewed of them. A recipe in any list is never touched.
+     * recently viewed of them. A recipe in any list is never touched, and neither is one
+     * planned for [today] or later (#49; an epoch day, see `PlanDays`): both are outside the
+     * cap. A recipe planned only for past days is ordinary history again. Nor is one in a saved
+     * menu (#52): the menu would lose it. Nor is one typed in by hand (#102, origin MANUAL): it
+     * has no link to bring it back. Nor is one with the user's own photos (#116).
+     *
+     * The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL
+     * is never true, which would silently stop the cull altogether.
      */
     @Query(
         """
         DELETE FROM recipes WHERE id IN (
             SELECT id FROM recipes
             WHERE id NOT IN (SELECT recipeId FROM recipe_list_cross_ref)
+              AND id NOT IN (SELECT recipeId FROM meal_plan_entries
+                             WHERE recipeId IS NOT NULL AND day >= :today)
+              AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
+              AND contentOrigin != 'MANUAL'
+              AND id NOT IN (SELECT recipeId FROM cooked_photos)
             ORDER BY lastViewedAt DESC, id DESC
             LIMIT -1 OFFSET :keep
         )
         """
     )
-    abstract suspend fun cullHistory(keep: Int)
+    abstract suspend fun cullHistory(keep: Int, today: Long = NO_PLAN_PROTECTION)
+
+    /**
+     * The free tier's one-for-one removal (#107): the oldest-viewed recipe [cullHistory] could
+     * delete (the same protections, keep this WHERE in step with it), or null if every recipe
+     * is protected.
+     */
+    @Query(
+        """
+        SELECT id FROM recipes
+        WHERE id NOT IN (SELECT recipeId FROM recipe_list_cross_ref)
+          AND id NOT IN (SELECT recipeId FROM meal_plan_entries
+                         WHERE recipeId IS NOT NULL AND day >= :today)
+          AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
+          AND contentOrigin != 'MANUAL'
+          AND id NOT IN (SELECT recipeId FROM cooked_photos)
+        ORDER BY lastViewedAt ASC, id ASC
+        LIMIT 1
+        """
+    )
+    abstract suspend fun oldestCullable(today: Long = NO_PLAN_PROTECTION): Long?
+
+    /**
+     * Every recipe but the tour's sample (#151, `SampleRecipe.SOURCE_URL`, spelled out here
+     * because a query is a constant): it never takes a free-tier place (#107).
+     */
+    @Query("SELECT COUNT(*) FROM recipes WHERE sourceUrl != 'manual:sample'")
+    abstract suspend fun count(): Int
+
+    @Query("SELECT COUNT(*) FROM recipes WHERE sourceUrl != 'manual:sample'")
+    abstract fun observeCount(): Flow<Int>
 
     /**
      * Saves a freshly parsed recipe and returns its id. A link that has been seen before is
-     * updated in place, so it keeps its id, its list membership and, if the ingredients
-     * didn't change, its ticked ingredients. The history cap is enforced in the same
-     * transaction, so the table is never left over the limit.
+     * updated in place, so it keeps its id, its uid, its list membership, its note, its chosen servings,
+     * its ticked ingredients if the ingredients didn't change, and its cook progress if the
+     * steps didn't change (both hold indexes). The [limit] is applied in the same transaction
+     * (see [LibraryLimit]): a [LibraryLimit.History] cap is culled after the save; a
+     * [LibraryLimit.Free] one only when a new recipe is added to a library already at or over
+     * it, by removing the oldest unprotected recipe first, one for one. If there is none, nothing
+     * is written and [NOT_KEPT] is returned. Updating a recipe already here never removes one.
+     *
+     * A row that is the user's version (#29: edited, clipped or typed in, `contentOrigin` neither
+     * PARSED nor EXTRACTED) keeps its content: the re-share only counts as a view. [replaceUsersVersion] is
+     * "Update from source", which does replace it, and makes it PARSED again ([fresh] is).
      */
     @Transaction
-    open suspend fun upsert(fresh: RecipeEntity, historyLimit: Int): Long {
+    open suspend fun upsert(
+        fresh: RecipeEntity,
+        limit: LibraryLimit,
+        replaceUsersVersion: Boolean = false,
+        today: Long = NO_PLAN_PROTECTION
+    ): Long {
         val existing = findByUrl(fresh.sourceUrl)
         val id = if (existing == null) {
-            insert(fresh)
-        } else {
-            val ticked = if (existing.ingredients == fresh.ingredients) {
-                existing.checkedIngredients
-            } else {
-                emptySet() // the indexes no longer mean the same ingredients
+            if (limit is LibraryLimit.Free && count() >= limit.max) {
+                delete(oldestCullable(today) ?: return NOT_KEPT)
             }
-            update(fresh.copy(id = existing.id, checkedIngredients = ticked))
+            insert(fresh)
+        } else if (!ContentOrigin.isSources(existing.contentOrigin) && !replaceUsersVersion) {
+            touch(existing.id, fresh.lastViewedAt)
+            existing.id
+        } else {
+            update(keepingUserState(existing, fresh))
             existing.id
         }
-        cullHistory(historyLimit)
+        if (limit is LibraryLimit.History) cullHistory(limit.keep, today)
         return id
+    }
+
+    /** [upsert] under the old history cap: the app before #107, and most tests. */
+    suspend fun upsert(
+        fresh: RecipeEntity,
+        historyLimit: Int,
+        replaceUsersVersion: Boolean = false,
+        today: Long = NO_PLAN_PROTECTION
+    ): Long = upsert(fresh, LibraryLimit.History(historyLimit), replaceUsersVersion, today)
+
+    /**
+     * Saves the user's edit of recipe [id] (#29): [edited]'s content, with [origin] and
+     * [editedAt] as given. Everything that is the user's rather than the content (id, uid,
+     * link, note, servings, list membership, last view) stays, and ticks and cook progress
+     * follow the same rule as a re-share. False if the recipe is gone.
+     */
+    @Transaction
+    open suspend fun saveEdit(id: Long, edited: RecipeEntity, origin: String, editedAt: Long): Boolean {
+        val existing = get(id) ?: return false
+        update(
+            keepingUserState(existing, edited).copy(
+                sourceUrl = existing.sourceUrl,
+                sourceType = existing.sourceType,
+                language = existing.language,
+                lastViewedAt = existing.lastViewedAt,
+                contentOrigin = origin,
+                editedAt = editedAt
+            )
+        )
+        return true
+    }
+
+    /** [fresh]'s content under [existing]'s identity and user state. */
+    private fun keepingUserState(existing: RecipeEntity, fresh: RecipeEntity): RecipeEntity {
+        val ticked = if (existing.ingredients == fresh.ingredients) {
+            existing.checkedIngredients
+        } else {
+            emptySet() // the indexes no longer mean the same ingredients
+        }
+        // Step indexes, like ticks, only mean the same steps if the steps are unchanged.
+        val cook = if (existing.instructions == fresh.instructions) existing.cookState else null
+        // The uid is the recipe's identity in exports: a re-share never changes it.
+        // The note and the servings are the user's, not the source's: a fresh parse never
+        // carries them, and neither depends on the exact wording of the steps.
+        return fresh.copy(
+            id = existing.id,
+            uid = existing.uid,
+            checkedIngredients = ticked,
+            notes = existing.notes,
+            cookState = cook,
+            servingsTarget = existing.servingsTarget
+        )
+    }
+
+    companion object {
+        /** The `today` that protects no planned recipe from the cull: no day is on or after
+         *  it. The default for callers with no plan in mind; the repository passes today. */
+        const val NO_PLAN_PROTECTION = Long.MAX_VALUE
+
+        /** [upsert]'s answer when a full free library had no room (#107): no row has id 0. */
+        const val NOT_KEPT = 0L
     }
 }

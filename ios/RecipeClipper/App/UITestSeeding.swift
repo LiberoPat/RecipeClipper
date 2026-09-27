@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import UIKit
 
 /// Debug builds only: `-uiTestSeed <scenario>` makes the app build its container for the
 /// XCUITest suite (RecipeClipperUITests) instead of the real one. Nothing touches the disk or
@@ -7,16 +8,69 @@ import Foundation
 ///   - an in-memory database, seeded per scenario before the first screen draws;
 ///   - a stub RecipeSource, so any import resolves offline to one canned recipe;
 ///   - a throwaway UserDefaults suite, wiped at launch unless `-uiTestKeepPrefs` is also passed
-///     (which is how a test proves a setting survives a relaunch).
+///     (which is how a test proves a setting survives a relaunch);
+///   - feature flags (#87) in their own throwaway suite, wiped likewise and set off whatever the
+///     build's defaults, then turned on through the store for each key in `-uiTestFlags key1,key2`
+///     (`UITestSupport.launch(flags:)`);
+///   - `-uiTestPasteboard <text>` puts `text` on the pasteboard as the app's own copy, so "Paste
+///     a list" (#149) reads it without the paste prompt, which a UI test can't rely on. A launch
+///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline;
+///   - `-uiTestReceiveFile` opens a canned shared file (#149) at launch (`receivedFileURL`);
+///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on;
+///   - the first-run tour (#151) done, unless `-uiTestTour` asks for a fresh install's.
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
 ///   many      "Recipe 1" (newest) … "Recipe 10" (oldest), in no list
 ///   standard  four recipes, some in lists — see `seedStandard`
+///   cook      one recipe with timed steps, for cook mode — see `seedCook`
+///   chef      one recipe with a long step, for Chef mode (#100); every launch gets a stub model
+///   walkthrough  twenty realistic recipes for the walkthrough videos (#106) — see UITestWalkthroughSeed
 enum UITestSeeding {
     static let flag = "-uiTestSeed"
     static let keepPrefsFlag = "-uiTestKeepPrefs"
     static let defaultsSuite = "RecipeClipperUITests"
+    static let flagsFlag = "-uiTestFlags"
+    static let flagsSuite = "RecipeClipperUITestsFlags"
+    static let pasteboardFlag = "-uiTestPasteboard"
+    static let receiveFileFlag = "-uiTestReceiveFile"
+
+    /// With `-uiTestReceiveFile`, a shared file (#149) as another phone would send it, opened
+    /// once at launch as if from Messages (a UI test can't drive another app's "Open in"):
+    /// "Shared Lemon Cake", two grocery items (one naming the cake) and a pantry item.
+    @MainActor private static var receivedFileOpened = false
+    @MainActor
+    static func receivedFileURL() -> URL? {
+        guard arguments.contains(receiveFileFlag), !receivedFileOpened else { return nil }
+        receivedFileOpened = true
+        let cake = BackupRecipe(
+            id: "ui-cake", sourceUrl: "https://example.com/shared-lemon-cake", sourceType: "BLOG",
+            title: "Shared Lemon Cake", imageUrl: nil, ingredients: ["2 lemons", "1 cup sugar"],
+            instructions: ["Mix.", "Bake."], prepTime: nil, cookTime: nil, totalTime: nil, servings: "8",
+            lastViewedAt: 1, checkedIngredients: [], notes: nil
+        )
+        let file = ShareFile.make(
+            now: 1,
+            recipes: [cake],
+            groceries: [
+                BackupGroceryItem(id: "ui-lemons", text: "2 lemons", language: "en", aisle: "produce", checked: false,
+                                  recipeId: "ui-cake", plannedDay: nil, updatedAt: 1),
+                BackupGroceryItem(id: "ui-paper", text: "baking paper", language: "en", aisle: "other", checked: false,
+                                  recipeId: nil, plannedDay: nil, updatedAt: 1),
+            ],
+            pantry: [
+                BackupPantryItem(id: "ui-rice", name: "Basmati rice", quantity: nil, language: "en", aisle: "grains",
+                                 inStock: true, alwaysHave: false, purchasedDay: nil, expiresDay: nil, updatedAt: 1),
+            ]
+        )
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(ShareFile.fileName("Shared Lemon Cake"))
+        try? Data(BackupJson.encode(file).utf8).write(to: url, options: .atomic)
+        return url
+    }
+
+    /// The first-run tour (#151) as a fresh install has it. Without it the tour is done, so no
+    /// welcome or tip gets in the way of the other suites.
+    static let tourFlag = "-uiTestTour"
 
     /// The title every import resolves to under test.
     static let stubRecipeTitle = "Stub Chicken Soup"
@@ -45,13 +99,78 @@ enum UITestSeeding {
         if !arguments.contains(keepPrefsFlag) {
             defaults.removePersistentDomain(forName: defaultsSuite)
         }
-        return AppContainer(
-            recipeRepository: DefaultRecipeRepository(db: database, source: StubRecipeSource(), clock: clock),
-            listRepository: DefaultListRepository(db: database, clock: clock),
-            preferences: UserDefaultsAppPreferences(defaults: defaults),
-            clock: clock
+        let preferences = UserDefaultsAppPreferences(defaults: defaults)
+        if !arguments.contains(tourFlag) {
+            preferences.welcome = .seen
+            preferences.sampleAdded = true
+            for tip in Tip.allCases { preferences.setTipSeen(tip, true) }
+        }
+        let flagStore = UserDefaultsFeatureFlagStore(suiteName: flagsSuite)
+        let flags = FeatureFlags(store: flagStore)
+        if !arguments.contains(keepPrefsFlag) {
+            // Every flag off first, whatever the build's defaults: a test turns on only what it names.
+            flagStore.clear()
+            for flag in Flag.allCases { flags.set(flag, false) }
+        }
+        if let index = arguments.firstIndex(of: flagsFlag), index + 1 < arguments.count {
+            for key in arguments[index + 1].split(separator: ",") {
+                if let flag = Flag(rawValue: String(key)) { flags.set(flag, true) }
+            }
+        }
+        if let index = arguments.firstIndex(of: pasteboardFlag), index + 1 < arguments.count {
+            UIPasteboard.general.string = arguments[index + 1].replacingOccurrences(of: "\\n", with: "\n")
+        }
+        let decisions = DefaultDecisionRepository(
+            db: database, model: UITestDecisionModel(), clock: clock, isOn: { flags.isOn(.aiDecisions) }
         )
+        // The free tier's limit (#107) as the app mirrors it, in the throwaway suite.
+        let libraryLimit = DefaultsLibraryLimit(defaults: defaults)
+        // "I made this" (#116): photos in a throwaway folder, emptied at every launch.
+        let photoDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestPhotos")
+        try? FileManager.default.removeItem(at: photoDirectory)
+        let photoStore = FilePhotoStore(directory: photoDirectory)
+        let container = AppContainer(
+            recipeRepository: DefaultRecipeRepository(
+                db: database, source: StubRecipeSource(), clock: clock, library: libraryLimit, photos: photoStore
+            ),
+            listRepository: DefaultListRepository(db: database, clock: clock),
+            mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
+            groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
+            pantryRepository: DefaultPantryRepository(db: database, clock: clock),
+            backupRepository: DefaultBackupRepository(db: database, clock: clock, photos: photoStore),
+            preferences: preferences,
+            clock: clock,
+            clipFixtureHTML: clipFixtureHTML,
+            featureFlags: flags,
+            shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
+            decisionRepository: decisions,
+            libraryMirror: libraryLimit,
+            cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock),
+            shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
+            tourPreferences: preferences
+        )
+        container.libraryPolicy.startMirroring()
+        return container
     }
+
+    /// The page "Clip it yourself" shows under test, in place of the live one. XCUITest can't
+    /// drag a selection in a web view reliably, so the page carries buttons that select a block
+    /// by script, as a finger would; the app hears it through the page's `selectionchange`, the
+    /// same path a person's selection takes. Android's ClipScreenTest uses the same page.
+    static let clipFixtureHTML = """
+    <!doctype html><html><head><meta name="viewport" content="width=device-width">
+    <style>body{font:16px -apple-system,sans-serif;margin:16px}button{font-size:14px;margin:2px}</style>
+    <script>function sel(id){var r=document.createRange();r.selectNodeContents(document.getElementById(id));
+    var s=getSelection();s.removeAllRanges();s.addRange(r);}</script></head><body>
+    <p><button onclick="sel('title')">Select title</button><button onclick="sel('ingredients')">Select ingredients</button><button onclick="sel('steps')">Select steps</button><button onclick="sel('step2')">Select last step</button></p>
+    <h1 id="title">Brown Butter Oat Cookies</h1>
+    <img id="photo" src="/img/cookies.jpg" width="200" height="120" alt="Cookies photo" style="background:#c98b4e">
+    <h2>Ingredients</h2>
+    <ul id="ingredients"><li>1 cup (226 g) unsalted butter</li><li>1 cup packed brown sugar</li><li>3 cups rolled oats</li></ul>
+    <h2>Method</h2>
+    <ol id="steps"><li id="step1">Brown the butter until it smells nutty.</li><li id="step2">Bake at 350°F for 11 to 13 minutes.</li></ol>
+    </body></html>
+    """
 
     /// Seeds synchronously so the first frame already shows the scenario: the write runs on
     /// the database's own queue while launch waits for it.
@@ -63,6 +182,9 @@ enum UITestSeeding {
                     switch scenario {
                     case "empty": break
                     case "many": try seedMany(conn, now: now)
+                    case "cook": try seedCook(conn, now: now)
+                    case "chef": try seedChef(conn, now: now)
+                    case "walkthrough": try UITestWalkthroughSeed.seed(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
                 }
@@ -91,6 +213,38 @@ enum UITestSeeding {
             try dao.insert(recipe("Recipe \(n)", slug: "recipe-\(n)", viewedAt: now - Int64(n) * minute,
                                   ingredients: ["1 cup water"]))
         }
+    }
+
+    /// One recipe for cook mode, "Weeknight Chili", in no list. Four steps: two state a time
+    /// ("20 minutes" for a timer to start, pause and reset; "3 seconds" for one to finish
+    /// while the test waits, since XCUITest can't move the app's clock) and two don't.
+    private static func seedCook(_ conn: SQLiteConnection, now: Int64) throws {
+        try RecipeDao(db: conn).insert(RecipeRecord(
+            sourceUrl: "https://example.com/chili", title: "Weeknight Chili", imageUrl: nil,
+            ingredients: ["2 cups flour", "1 cup milk", "1 lb beef"],
+            instructions: [
+                "Brown the beef in a large pot.",
+                "Simmer for 20 minutes.",
+                "Rest off the heat for 3 seconds.",
+                "Serve with rice."
+            ],
+            prepTime: "10m", cookTime: "20m", totalTime: "30m", servings: "4 servings",
+            sourceType: SourceType.blog.rawValue, lastViewedAt: now - minute
+        ))
+    }
+
+    /// The step `UITestStepShortener` writes a short version of (#100).
+    static let chefStep = "Preheat the oven to 350°F and butter a 9-inch round cake tin."
+    static let chefShortStep = "Preheat oven to 350°F; butter a 9-inch tin."
+
+    private static func seedChef(_ conn: SQLiteConnection, now: Int64) throws {
+        try RecipeDao(db: conn).insert(RecipeRecord(
+            sourceUrl: "https://example.com/sponge", title: "Sponge Cake", imageUrl: nil,
+            ingredients: ["4 eggs", "1 cup sugar"],
+            instructions: [chefStep, "Serve."],
+            prepTime: nil, cookTime: nil, totalTime: nil, servings: "8",
+            sourceType: SourceType.blog.rawValue, lastViewedAt: now - minute
+        ))
     }
 
     /// Viewed newest first: Chicken Adobo, Spaghetti Carbonara, Banana Bread, Miso Soup.
@@ -139,6 +293,20 @@ private struct StubRecipeSource: RecipeSource {
             yield: "4",
             sourceUrl: url
         ))
+    }
+}
+
+/// Chef mode's model under UI test (#100): English only, one canned short step, so the tests
+/// never depend on Apple Intelligence being on the simulator.
+private final class UITestStepShortener: StepShortener {
+    func support() async -> ChefSupport { .available(["en"]) }
+
+    func shorten(_ step: String, language: String) async -> String? {
+        switch step {
+        case UITestSeeding.chefStep: UITestSeeding.chefShortStep
+        case UITestWalkthroughSeed.whisk: UITestWalkthroughSeed.whiskShort
+        default: nil
+        }
     }
 }
 #endif

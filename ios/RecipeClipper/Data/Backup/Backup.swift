@@ -1,0 +1,234 @@
+import Foundation
+
+// One export file: every recipe, list and membership, as plain data. Ported from Android's
+// data/backup/Backup.kt; both platforms test against the same fixture files in
+// shared/fixtures/backup/, which is what makes an export from one readable on the other.
+//
+// Every record carries a stable `id`: the row's `uid`, which never changes on the phone that
+// made it (a rename or a re-share keeps it). Memberships refer to those ids, never to database
+// row ids.
+//
+// Deliberately not in the file: cached photos (only `imageUrl`) and cook progress (timers, the
+// current step, the chosen servings), which live in memory today and, if #10 persists them,
+// are still a moment in one kitchen rather than part of the recipe.
+
+struct Backup: Equatable {
+    /// The `format` marker: tells an export apart from any other JSON file.
+    static let format = "recipe-clipper-backup"
+
+    /// Bumped only when an older app would misread a newer file. Adding a field or a whole new
+    /// top-level section (a meal plan, say) doesn't need a bump: readers ignore keys they don't
+    /// know, and import only ever adds.
+    static let formatVersion = 1
+
+    /// The `kind` of a shared file (#149). An older app ignores the key and would merge the file
+    /// like any export, which only ever adds, so it needs no version bump.
+    static let kindShare = "share"
+
+    var exportedAt: Int64
+    var recipes: [BackupRecipe]
+    var lists: [BackupList]
+    var memberships: [BackupMembership]
+    /// The pantry (#51). Absent in older files, which read as empty.
+    var pantry: [BackupPantryItem] = []
+    /// The grocery list (#50), in list order. Absent in older files, which read as empty.
+    var groceries: [BackupGroceryItem] = []
+    /// The meal types (#49), in their order. Absent in older files, which read as empty.
+    var mealTypes: [BackupMealType] = []
+    /// The meal plan (#49). Absent in older files, which read as empty.
+    var mealPlan: [BackupPlanEntry] = []
+    /// Saved weekly menus (#52). Absent in older files, which read as empty.
+    var menus: [BackupMenu] = []
+    /// The meals of `menus` (#52). Absent in older files, which read as empty.
+    var menuEntries: [BackupMenuEntry] = []
+    /// The user's own photos (#116). Absent in older files, which read as empty. Their pictures
+    /// travel beside this JSON in a zip (`BackupArchive`), each at `BackupCookedPhoto.file`.
+    var cookedPhotos: [BackupCookedPhoto] = []
+    /// A shared file (#149, `"kind": "share"`), not a backup: a few recipes and items picked to
+    /// send to someone else (`ShareFile`). Absent in every backup, which is a whole library.
+    var isShare = false
+}
+
+/// One "I made this" entry (#116). `file` is the picture's path inside the export zip
+/// (`photos/<name>.jpg`); an entry whose picture isn't in the package is left out on import.
+struct BackupCookedPhoto: Equatable {
+    var id: String
+    var recipeId: String
+    var day: Int64
+    var note: String?
+    var createdAt: Int64
+    var updatedAt: Int64
+    var file: String
+}
+
+/// What an export or an import carries (#116): the JSON, and the pictures by their path in the
+/// zip mapped to a local file. A plain `.json` backup (every export without photos, and every
+/// older one) has none.
+struct BackupPackage: Equatable {
+    var json: String
+    var photos: [String: URL] = [:]
+}
+
+struct BackupRecipe: Equatable {
+    var id: String
+    var sourceUrl: String
+    /// "BLOG" or "REDDIT"; anything else is read as BLOG when imported.
+    var sourceType: String
+    var title: String
+    var imageUrl: String?
+    var ingredients: [String]
+    var instructions: [String]
+    var prepTime: String?
+    var cookTime: String?
+    var totalTime: String?
+    var servings: String?
+    var lastViewedAt: Int64
+    var checkedIngredients: Set<Int>
+    var notes: String?
+    /// The recipe's language tag (#14), so an import reads it with the same words.
+    var language: String? = nil
+    /// Whose words the content is (#29): "PARSED" (absent in older files), "EDITED", "CLIPPED"
+    /// or "MANUAL". Kept so an imported edit is still never refreshed by a re-share.
+    var contentOrigin: String = "PARSED"
+    /// When the user last saved an edit, or nil.
+    var editedAt: Int64? = nil
+}
+
+struct BackupList: Equatable {
+    var id: String
+    var name: String
+    var isFavorites: Bool
+    var isBuiltIn: Bool
+    var sortOrder: Int
+    var createdAt: Int64
+}
+
+struct BackupMembership: Equatable {
+    var recipeId: String
+    var listId: String
+    var addedAt: Int64
+}
+
+/// A pantry item (#51). The days are epoch days; `aisle` an `Aisle` key.
+struct BackupPantryItem: Equatable {
+    var id: String
+    var name: String
+    var quantity: String?
+    var language: String?
+    var aisle: String
+    var inStock: Bool
+    var alwaysHave: Bool
+    var purchasedDay: Int64?
+    var expiresDay: Int64?
+    var updatedAt: Int64
+}
+
+/// A grocery item (#50). `recipeId` is the file id of the recipe it came from, or nil (typed,
+/// or its recipe is gone); `plannedDay` the planned day it came from, if any.
+struct BackupGroceryItem: Equatable {
+    var id: String
+    var text: String
+    var language: String?
+    var aisle: String
+    var checked: Bool
+    var recipeId: String?
+    var plannedDay: Int64?
+    var updatedAt: Int64
+}
+
+/// A meal type (#49). `builtInKey` names a seeded one ("dinner") whatever it is called; nil for the user's own.
+struct BackupMealType: Equatable {
+    var id: String
+    var name: String
+    var builtInKey: String?
+    var sortOrder: Int
+    var updatedAt: Int64
+}
+
+/// A planned meal (#49) on `day` (an epoch day): a recipe (its file id) at `servings` (nil: the
+/// recipe's own yield), or a `note`. `mealTypeId` is a file meal type id, or nil when the file
+/// names none, which imports as Dinner. A `recipeId` naming no recipe in the file reads as nil.
+struct BackupPlanEntry: Equatable {
+    var id: String
+    var day: Int64
+    var mealTypeId: String?
+    var recipeId: String?
+    var servings: Int?
+    var note: String?
+    var sortOrder: Int
+    var updatedAt: Int64
+}
+
+/// A saved weekly menu (#52). Its meals are the `BackupMenuEntry`s naming it.
+struct BackupMenu: Equatable {
+    var id: String
+    var name: String
+    var updatedAt: Int64
+}
+
+/// One meal of a menu (#52), `dayOffset` days (0 to 6) after the week's first day, shaped like
+/// `BackupPlanEntry`: `menuId` is a file menu id; `mealTypeId` nil imports as Dinner; a
+/// `recipeId` naming no recipe in the file reads as nil.
+struct BackupMenuEntry: Equatable {
+    var id: String
+    var menuId: String
+    var dayOffset: Int
+    var mealTypeId: String?
+    var recipeId: String?
+    var servings: Int?
+    var note: String?
+    var sortOrder: Int
+    var updatedAt: Int64
+}
+
+/// Why an export or an import failed, as a cause: the Settings screen picks the words. An import
+/// that fails for any of these has written nothing.
+enum BackupError: Error, Equatable {
+    /// Not JSON, not an object, no `format` marker, or far too big to be an export.
+    case notABackup
+    /// Made by a newer app whose format this one can't read.
+    case newerVersion(found: Int)
+    /// An export, but damaged: the detail names the first bad field (diagnostic, not copy).
+    case malformed(String)
+    /// The picked file couldn't be opened or read.
+    case readFailed
+    /// The database refused the import. It ran in one transaction, so nothing was written.
+    case saveFailed
+    /// The recipes couldn't be read out, or the file couldn't be written.
+    case exportFailed
+}
+
+/// What an import did, for the one-line summary.
+struct ImportSummary: Equatable {
+    /// New recipes written.
+    var recipesAdded: Int
+    /// New lists created (lists that combined with one already here don't count).
+    var listsAdded: Int
+    /// Recipes in the file that were already on this phone (same cleaned link).
+    var recipesAlreadyHere: Int
+    /// Recipes in no list left out because history was full (see BackupMerger).
+    var recipesSkipped: Int
+    /// New pantry items written (#51).
+    var pantryAdded = 0
+    /// New grocery items written (#50).
+    var groceriesAdded = 0
+    /// New planned meals written (#49).
+    var mealsAdded = 0
+    /// New meal types created (types that joined one already here don't count).
+    var mealTypesAdded = 0
+    /// New menus written (#52).
+    var menusAdded = 0
+    /// New photos of the user's own cooking written (#116).
+    var photosAdded = 0
+    /// The free library's size when that is what `recipesSkipped` ran into (#107), else nil.
+    var freeLimit: Int?
+}
+
+/// An export ready to hand to the share sheet.
+struct ExportedBackup: Equatable {
+    var json: String
+    var exportedAt: Int64
+    var recipeCount: Int
+    /// The pictures to zip beside `json` (#116): path in the zip to the stored file.
+    var photos: [String: URL] = [:]
+}

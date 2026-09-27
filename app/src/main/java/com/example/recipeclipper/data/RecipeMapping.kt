@@ -1,8 +1,10 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.local.CookStateJson
 import com.example.recipeclipper.data.local.dao.ListRow
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
 import com.example.recipeclipper.data.local.entity.RecipeEntity
+import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -24,7 +26,13 @@ internal fun Recipe.toEntity(viewedAt: Long) = RecipeEntity(
     servings = yield,
     sourceType = sourceType.name,
     lastViewedAt = viewedAt,
-    checkedIngredients = checkedIngredients
+    checkedIngredients = checkedIngredients,
+    notes = notes,
+    language = language,
+    cookState = CookStateJson.encode(cook),
+    servingsTarget = servingsTarget,
+    contentOrigin = origin.name,
+    editedAt = editedAt
 )
 
 internal fun RecipeEntity.toDomain() = Recipe(
@@ -40,7 +48,13 @@ internal fun RecipeEntity.toDomain() = Recipe(
     sourceType = SourceType.values().firstOrNull { it.name == sourceType } ?: SourceType.BLOG,
     id = id,
     checkedIngredients = checkedIngredients,
-    lastViewedAt = lastViewedAt
+    lastViewedAt = lastViewedAt,
+    notes = notes,
+    language = language,
+    cook = CookStateJson.decode(cookState),
+    servingsTarget = servingsTarget,
+    origin = ContentOrigin.fromName(contentOrigin),
+    editedAt = editedAt
 )
 
 internal fun ListRow.toDomain() = RecipeList(
@@ -58,5 +72,7 @@ internal fun RecipeSummaryRow.toDomain() = RecipeSummary(
     imageUrl = imageUrl,
     totalTime = totalTime,
     lastViewedAt = lastViewedAt,
-    isSaved = isSaved
+    isSaved = isSaved,
+    isClipped = isClipped,
+    lastCookedDay = lastCookedDay
 )

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "language": "it",
+  "about": "Unit words (UnitPatterns and MeasureUnit.fromText). patterns: regex fragments, tried in this order as one alternation; each must stay a whole word (the code adds an optional trailing period and a no-letter lookahead). names: how matched text maps to a unit, first rule wins; the text is lowercased, its periods removed and its whitespace collapsed, then it names the unit when it equals one of exact or starts with one of prefixes. unit is the code's MeasureUnit name.",
+  "patterns": ["cucchiain[oi]", "cucchiai[o]?", "tazz[ae]", "millilitri?", "ml", "cl", "dl", "chilogramm[oi]", "chili", "kg", "grammi", "grammo", "gr", "g", "litri?", "lt", "l"],
+  "names": [
+    {"unit": "TSP", "prefixes": ["cucchiain"]},
+    {"unit": "TBSP", "prefixes": ["cucchiai"]},
+    {"unit": "VARIES", "prefixes": ["tazz"]},
+    {"unit": "ML", "exact": ["ml"], "prefixes": ["millil"]},
+    {"unit": "CL", "exact": ["cl"]},
+    {"unit": "DL", "exact": ["dl"]},
+    {"unit": "KG", "exact": ["kg"], "prefixes": ["chil"]},
+    {"unit": "G", "exact": ["g", "gr"], "prefixes": ["gramm"]},
+    {"unit": "L", "exact": ["l", "lt"], "prefixes": ["litr"]}
+  ]
+}

@@ -3,8 +3,6 @@
     <!-- Only the window chrome; everything inside is Compose (see ui/theme/Theme.kt). -->
     <style name="Theme.RecipeClipper" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/ground</item>
-        <item name="android:statusBarColor">@color/ground</item>
-        <item name="android:navigationBarColor">@color/ground</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

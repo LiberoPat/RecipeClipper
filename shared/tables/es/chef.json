@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "language": "es",
+  "about": "ShortStepCheck's words (#129); see en/chef.json for what each key does. Verbs in the infinitive, plus the imperative of those whose stem changes ('precalienta'), one word each; endings let 'mezcla', 'mezclar' and 'mezclado' match.",
+  "actions": [
+    "precalentar", "precalienta", "engrasar", "untar", "forrar", "cubrir", "tapar", "envolver", "prensar",
+    "presionar", "escurrir", "enjuagar", "remojar", "colar", "cuela", "tamizar", "batir", "incorporar", "amasar",
+    "estirar", "enrollar", "remover", "remueve", "mezclar", "licuar", "triturar", "machacar", "picar", "cortar",
+    "rallar", "pelar", "sazonar", "salpimentar", "marinar", "espolvorear", "rociar", "pincelar", "verter",
+    "vierte", "exprimir", "hervir", "hierve", "hornear", "freír", "fríe", "sofreír", "saltear", "dorar", "asar",
+    "gratinar", "tostar", "derretir", "fundir", "enfriar", "enfría", "refrigerar", "congelar", "reposar",
+    "fermentar", "voltear", "desespumar"
+  ],
+  "equipment": [
+    "horno", "sartén", "cazo", "olla", "cacerola", "cazuela", "bol", "cuenco", "fuente", "bandeja", "molde",
+    "rejilla", "colador", "batidora", "licuadora", "robot", "varillas", "papel", "aluminio", "tapa", "microondas",
+    "termómetro", "wok"
+  ],
+  "qualifiers": ["no", "nunca", "sin", "si", "opcional", "opcionalmente", "alternativa", "alternativamente", "hasta"],
+  "notAfter": ["el", "la", "los", "las", "un", "una"],
+  "functionWords": [
+    "el", "la", "los", "las", "un", "una", "unos", "unas", "y", "e", "o", "u", "luego", "después", "en", "con",
+    "a", "al", "del", "de", "por", "para", "sobre", "se", "lo", "le", "les", "es", "son", "hasta", "durante",
+    "aproximadamente", "unos", "que", "grados"
+  ],
+  "abbreviations": [["temp", "temperatura"], ["aprox", "aproximadamente"]],
+  "endings": [
+    ["ar", ""], ["er", ""], ["ir", ""], ["a", ""], ["e", ""], ["as", ""], ["es", ""], ["o", ""], ["os", ""],
+    ["ado", ""], ["ada", ""], ["ados", ""], ["adas", ""], ["ido", ""], ["ida", ""], ["ando", ""], ["iendo", ""],
+    ["s", ""]
+  ]
+}

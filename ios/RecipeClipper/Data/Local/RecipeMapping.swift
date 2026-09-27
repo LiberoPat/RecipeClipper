@@ -18,7 +18,13 @@ extension Recipe {
             servings: yield,
             sourceType: sourceType.rawValue,
             lastViewedAt: viewedAt,
-            checkedIngredients: checkedIngredients
+            checkedIngredients: checkedIngredients,
+            notes: notes,
+            language: language,
+            cookState: CookStateJSON.encode(cook),
+            servingsTarget: servingsTarget,
+            contentOrigin: origin.rawValue,
+            editedAt: editedAt
         )
     }
 }
@@ -38,7 +44,13 @@ extension RecipeRecord {
             sourceType: SourceType(rawValue: sourceType) ?? .blog,
             id: id,
             checkedIngredients: checkedIngredients,
-            lastViewedAt: lastViewedAt
+            lastViewedAt: lastViewedAt,
+            notes: notes,
+            language: language,
+            cook: CookStateJSON.decode(cookState),
+            servingsTarget: servingsTarget,
+            origin: ContentOrigin.from(name: contentOrigin),
+            editedAt: editedAt
         )
     }
 }
@@ -64,7 +76,9 @@ extension RecipeSummaryRecord {
             imageUrl: imageUrl,
             totalTime: totalTime,
             lastViewedAt: lastViewedAt,
-            isSaved: isSaved
+            isSaved: isSaved,
+            isClipped: isClipped,
+            lastCookedDay: lastCookedDay
         )
     }
 }

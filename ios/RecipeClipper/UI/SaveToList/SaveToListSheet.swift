@@ -26,6 +26,7 @@ struct SaveToListSheet: View {
                 .padding(.top, 8)
             }
             .padding(.horizontal, 20)
+            .readableColumn()
             .padding(.top, 24)
             .padding(.bottom, 24)
         }

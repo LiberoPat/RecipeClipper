@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "The prep, cook and total time a site writes as a phrase instead of ISO 8601 ('1時間30分'), read whole-string only. hours and minutes: case-insensitive regex fragments, tried in order (longest first). joiners: regex fragments that may stand between the hours and the minutes. hourSymbol and minuteSymbol: how the app writes a time back ('1時間 30分'), for ISO times too.",
+  "hours": ["時間"],
+  "minutes": ["分"],
+  "joiners": [],
+  "hourSymbol": "時間",
+  "minuteSymbol": "分"
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "IngredientDensities. An ingredient matches by the END of its name, longest alias first (ties keep file order); Japanese has no spaces, so the end is by character ('有塩バター' is 'バター'), and a compound that would wrongly match a shorter alias needs a skip entry. gramsPerCup is per US cup (236.6 ml); null is a skip entry: recognised, never converted, and it wins over a shorter alias by being longer. liquid: pourable (the 'Also convert liquids' option). stickable: allows the 'stick' unit. Only ingredients that weigh about the same every time belong here. trailingModifiers are dropped from the end of the name before matching. No bare 油 (it would match 醤油) and no bare 粉 (片栗粉, パン粉).",
+  "trailingModifiers": [],
+  "entries": [
+    {"note": "Flours, as the English table (King Arthur): 薄力粉 is cake flour.", "gramsPerCup": 120.0, "aliases": ["小麦粉", "強力粉", "中力粉"]},
+    {"gramsPerCup": 114.0, "aliases": ["薄力粉"]},
+    {"gramsPerCup": 113.0, "aliases": ["全粒粉"]},
+    {"gramsPerCup": 112.0, "aliases": ["コーンスターチ"]},
+    {"note": "Sugars", "gramsPerCup": 200.0, "aliases": ["砂糖", "上白糖", "グラニュー糖"]},
+    {"gramsPerCup": 113.0, "aliases": ["粉砂糖"]},
+    {"gramsPerCup": null, "aliases": ["黒砂糖", "きび砂糖"]},
+    {"note": "Baking staples", "gramsPerCup": 84.0, "aliases": ["ココア", "ココアパウダー"]},
+    {"gramsPerCup": 192.0, "aliases": ["ベーキングパウダー"]},
+    {"gramsPerCup": 288.0, "aliases": ["重曹"]},
+    {"note": "Fats and dairy that isn't pourable", "gramsPerCup": 227.0, "aliases": ["バター", "マーガリン"]},
+    {"gramsPerCup": 260.0, "aliases": ["ピーナッツバター"]},
+    {"gramsPerCup": 230.0, "aliases": ["サワークリーム"]},
+    {"gramsPerCup": 245.0, "aliases": ["ヨーグルト"]},
+    {"note": "Pourable", "gramsPerCup": 237.0, "liquid": true, "aliases": ["水"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["牛乳"]},
+    {"gramsPerCup": 238.0, "liquid": true, "aliases": ["生クリーム"]},
+    {"gramsPerCup": 218.0, "liquid": true, "aliases": ["サラダ油", "ごま油", "オリーブオイル", "米油", "菜種油", "植物油"]},
+    {"gramsPerCup": 340.0, "liquid": true, "aliases": ["はちみつ", "ハチミツ", "蜂蜜"]},
+    {"gramsPerCup": 315.0, "liquid": true, "aliases": ["メープルシロップ"]},
+    {"gramsPerCup": 239.0, "liquid": true, "aliases": ["酢", "米酢", "穀物酢"]},
+    {"gramsPerCup": null, "aliases": ["ポン酢", "すし酢", "ポン酢しょうゆ", "ポン酢醤油"]},
+    {"gramsPerCup": 236.0, "liquid": true, "aliases": ["酒", "料理酒", "日本酒", "白ワイン", "赤ワイン"]}
+  ]
+}

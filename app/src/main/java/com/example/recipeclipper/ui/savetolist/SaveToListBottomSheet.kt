@@ -61,10 +61,12 @@ fun SaveToListBottomSheet(viewModel: SaveToListViewModel, onDismiss: () -> Unit)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // "+ New list" opens a keyboard right at the bottom of the sheet. Material3
+                // 1.4's default sheet insets (safeDrawing, top and bottom) already clear it
+                // and the navigation bar, and consume them, so these two add nothing there;
+                // they are kept so the field stays visible if those defaults change again
+                // (older releases covered the navigation bar but not the keyboard).
                 .navigationBarsPadding()
-                // The sheet's default insets cover the navigation bar but not the keyboard,
-                // and "+ New list" opens one right at the bottom of the sheet — without this
-                // the field you are typing into is behind it.
                 .imePadding()
                 // Enough lists will outgrow the sheet, and ModalBottomSheet does not scroll
                 // arbitrary content for you.

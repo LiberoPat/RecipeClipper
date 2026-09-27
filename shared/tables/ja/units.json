@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "Unit words (TrailingAmount and MeasureUnit.fromText). patterns: regex fragments, tried in this order as one alternation, read on the half-width text ('ＣＣ' is 'cc'), before or after the number ('大さじ2', '2カップ', 'カップ1/2'). names: how matched text maps to a unit, first rule wins; the text is lowercased, its periods removed and its whitespace collapsed, then it names the unit when it equals one of exact or starts with one of prefixes. unit is the code's MeasureUnit name. A Japanese cup (カップ) is 200 ml (CUP_200) and a rice cup (合) 180 ml (RICE_CUP), never the US 240 ml. 大さじ and 小さじ are 15 ml and 5 ml.",
+  "patterns": ["大さじ", "大匙", "小さじ", "小匙", "カップ", "合", "ミリリットル", "ml", "cc", "リットル", "l", "キログラム", "kg", "グラム", "g"],
+  "names": [
+    {"unit": "TBSP", "exact": ["大さじ", "大匙"]},
+    {"unit": "TSP", "exact": ["小さじ", "小匙"]},
+    {"unit": "CUP_200", "exact": ["カップ"]},
+    {"unit": "RICE_CUP", "exact": ["合"]},
+    {"unit": "ML", "exact": ["ml", "cc", "ミリリットル"]},
+    {"unit": "L", "exact": ["l", "リットル"]},
+    {"unit": "KG", "exact": ["kg", "キログラム"]},
+    {"unit": "G", "exact": ["g", "グラム"]}
+  ]
+}

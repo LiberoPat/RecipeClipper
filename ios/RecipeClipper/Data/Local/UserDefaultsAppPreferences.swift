@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 /// The real, UserDefaults-backed AppPreferences (Android's SharedPrefsAppPreferences).
@@ -9,6 +10,10 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let convertLiquids = "convert_liquids"
         static let temperatureUnit = "temperature_unit"
         static let darkWhileCooking = "dark_while_cooking"
+        static let expiryReminders = "expiry_reminders"
+        static let chefMode = "chef_mode"
+        static let amountsInSteps = "amounts_in_steps"
+        static let recipeSort = "recipe_sort"
     }
 
     private let defaults: UserDefaults
@@ -18,7 +23,8 @@ final class UserDefaultsAppPreferences: AppPreferences {
     }
 
     var unitSystem: UnitSystem {
-        get { defaults.string(forKey: Key.unitSystem).flatMap(UnitSystem.init(rawValue:)) ?? .asWritten }
+        // A stored GRAMS (the option #17 removed) reads as metric.
+        get { UnitSystem(storedName: defaults.string(forKey: Key.unitSystem)) }
         set { defaults.set(newValue.rawValue, forKey: Key.unitSystem) }
     }
 
@@ -35,5 +41,68 @@ final class UserDefaultsAppPreferences: AppPreferences {
     var darkWhileCooking: Bool {
         get { defaults.bool(forKey: Key.darkWhileCooking) }
         set { defaults.set(newValue, forKey: Key.darkWhileCooking) }
+    }
+
+    var expiryReminders: Bool {
+        get { defaults.bool(forKey: Key.expiryReminders) }
+        set { defaults.set(newValue, forKey: Key.expiryReminders) }
+    }
+
+    var chefMode: Bool {
+        get { defaults.bool(forKey: Key.chefMode) }
+        set { defaults.set(newValue, forKey: Key.chefMode) }
+    }
+
+    var amountsInSteps: Bool {
+        get { defaults.bool(forKey: Key.amountsInSteps) }
+        set { defaults.set(newValue, forKey: Key.amountsInSteps) }
+    }
+
+    var recipeSort: RecipeSort {
+        get { RecipeSort(storedName: defaults.string(forKey: Key.recipeSort)) }
+        set { defaults.set(newValue.rawValue, forKey: Key.recipeSort) }
+    }
+
+    /// Over `UserDefaults.didChangeNotification` (Android: the SharedPreferences change
+    /// listener). The notification says only that something changed, and is also posted for
+    /// other suites, so each one re-reads every value and repeats are dropped: the
+    /// publisher always carries a whole, consistent snapshot. Not filtered by `object`, so a
+    /// write through another UserDefaults instance on the same suite is seen too.
+    var settings: AnyPublisher<AppSettings, Never> {
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .map { [weak self] _ in self?.current }
+            .compactMap { $0 }
+            .prepend(current)
+            .removeDuplicates()
+            .eraseToAnyPublisher()
+    }
+}
+
+/// The first-run tour's bookkeeping (#151), in the same suite as the settings.
+extension UserDefaultsAppPreferences: TourPreferences {
+    var welcome: WelcomeState {
+        get { WelcomeState(storedName: defaults.string(forKey: TourKeys.welcome)) }
+        set { defaults.set(newValue.rawValue, forKey: TourKeys.welcome) }
+    }
+
+    var sampleAdded: Bool {
+        get { defaults.bool(forKey: TourKeys.sampleAdded) }
+        set { defaults.set(newValue, forKey: TourKeys.sampleAdded) }
+    }
+
+    var seenTips: Set<Tip> { Set(Tip.allCases.filter { defaults.bool(forKey: $0.key) }) }
+
+    /// Over the same notification as `settings`.
+    var seenTipsChanges: AnyPublisher<Set<Tip>, Never> {
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .map { [weak self] _ in self?.seenTips }
+            .compactMap { $0 }
+            .prepend(seenTips)
+            .removeDuplicates()
+            .eraseToAnyPublisher()
+    }
+
+    func setTipSeen(_ tip: Tip, _ seen: Bool) {
+        defaults.set(seen, forKey: tip.key)
     }
 }

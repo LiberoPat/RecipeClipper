@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "language": "it",
+  "about": "StepAmounts (#101): see en/steps.json for what each list does. A qualifier follows the noun ('farina di riso', 'zucchero a velo'), so only the words in after may follow a mention. Plurals change the last vowel ('carota', 'carote').",
+  "articles": ["il", "lo", "la", "i", "gli", "le", "l'"],
+  "partWords": [
+    "un", "uno", "una", "un'", "di", "del", "dello", "della", "dei", "degli", "delle", "dell'", "resto",
+    "restante", "restanti", "metà", "poco", "altro", "altra", "altri", "altre", "tutto", "tutta", "tutti",
+    "tutte", "ogni", "entrambi", "entrambe", "due", "tre", "quattro"
+  ],
+  "before": ["e", "ed", "o", "con"],
+  "after": ["e", "ed", "o", "con", "in", "a", "al", "alla", "nel", "nella", "fino", "poco", "sopra", "per"],
+  "anyWordAfter": false,
+  "splitWords": ["più"],
+  "plurals": [["o", "i"], ["a", "e"], ["e", "i"]]
+}

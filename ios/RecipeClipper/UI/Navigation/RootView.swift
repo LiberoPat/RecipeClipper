@@ -1,59 +1,264 @@
 import SwiftUI
+import UIKit
 
-/// The single NavigationStack. Every destination gets its ViewModel from the container, once
-/// per stack entry (ScreenHost), and takes it as a parameter so a screen never builds its own.
+/// The app's root. With the `mealPlan` flag off (#87, until the meal plan ships) it is the single
+/// Recipes NavigationStack, exactly as before the tab shell. On, that same stack is the first of
+/// four tabs, each with its own NavigationStack, so each keeps its own place.
+/// Every destination gets its ViewModel from the container, once per stack entry (ScreenHost),
+/// and takes it as a parameter so a screen never builds its own.
 struct RootView: View {
     let container: AppContainer
     @Bindable var router: Router
+    /// The `mealPlan` flag, read through the container's observable flags, so turning it on or
+    /// off in Developer settings swaps the root at once.
+    private var tabsEnabled: Bool { container.featureFlags.isOn(.mealPlan) }
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
+        root
+            // The one-time tips (#151): every screen's TipCallout reads them from here.
+            .environment(container.tips)
+            // A file sent from another Recipe Clipper (#149) opens its sheet over whatever is on
+            // screen; a `recipeclipper://` link imports as before.
+            .onOpenURL { url in
+                if url.isFileURL, let receive = container.receiveFileViewModel {
+                    router.openedFile()
+                    receive.open(url)
+                } else {
+                    router.handle(url)
+                }
+            }
+            .modifier(ReceiveFileSheet(vm: container.receiveFileViewModel) { added in
+                switch added {
+                case .groceries: router.select(.groceries)
+                case .pantry: router.select(.pantry)
+                case .recipes: router.openInRecipes(.recipes)
+                }
+            })
+            // The first-run welcome (#151), over whichever tab is open.
+            .fullScreenCover(item: $router.welcome) { request in
+                ScreenHost({ container.makeWelcomeViewModel(again: request.again) }) { vm in
+                    WelcomeScreen(vm: vm, onExit: router.closeWelcome)
+                }
+            }
+            .task { await router.checkWelcome(container.firstRunTour.onLaunch) }
+            // The share extension saves from its own process; catch up on coming back.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { container.refreshAfterExternalChanges() }
+                // The automatic backup copy (#150): leaving the app is when a changed library is
+                // copied, with a little background time asked for so the write can finish.
+                if phase == .background, let autoBackup = container.autoBackup { backUp(autoBackup) }
+            }
+            #if DEBUG
+            .task {
+                if router.path.isEmpty { router.path = DebugLaunch.initialPath }
+                // A UI test's stand-in for a file opened from Messages (#149).
+                if let file = UITestSeeding.receivedFileURL() {
+                    router.openedFile()
+                    container.receiveFileViewModel?.open(file)
+                }
+            }
+            #endif
+    }
+
+    /// A platform effect, so here: the background time the copy runs in.
+    private func backUp(_ autoBackup: AutoBackup) {
+        let app = UIApplication.shared
+        var task = UIBackgroundTaskIdentifier.invalid
+        task = app.beginBackgroundTask(withName: "auto-backup") {
+            app.endBackgroundTask(task)
+            task = .invalid
+        }
+        Task {
+            await autoBackup.run()
+            if task != .invalid { app.endBackgroundTask(task) }
+        }
+    }
+
+    @ViewBuilder
+    private var root: some View {
+        if tabsEnabled {
+            tabs
+        } else {
+            recipesStack
+        }
+    }
+
+    private var recipesStack: some View {
         NavigationStack(path: $router.path) {
             ScreenHost(container.makeHomeViewModel) { vm in
                 HomeScreen(
                     vm: vm,
                     onOpenUrl: { router.push(.importUrl($0)) },
                     onOpenRecipe: { router.push(.recipe(id: $0)) },
-                    onOpenHistory: { router.push(.history) },
+                    onOpenRecipes: { router.push(.recipes) },
                     onOpenLists: { router.push(.lists) },
-                    onOpenSettings: { router.push(.settings) }
+                    onOpenSettings: { router.push(.settings) },
+                    onNewRecipe: { router.push(.editRecipe(id: nil)) }
                 )
             }
-            .navigationDestination(for: Route.self, destination: destination)
+            .navigationDestination(for: Route.self) { route in
+                destination(route, push: router.push, replace: { router.replace(last: $0, with: $1) })
+            }
         }
         .tint(Palette.accentText)
-        .onOpenURL { router.handle($0) }
-        #if DEBUG
-        .task { if router.path.isEmpty { router.path = DebugLaunch.initialPath } }
-        #endif
     }
 
+    /// Recipes · Week · Groceries · Pantry, the owner's order (#47). The selection goes through
+    /// the router, so a share can switch to Recipes and choosing Recipes again returns to Home.
+    private var tabs: some View {
+        let _ = TabBarStyle.apply
+        return TabView(selection: Binding(get: { router.selectedTab }, set: { router.select($0) })) {
+            recipesStack
+                .tabItem { Label(Strings.tabRecipes, systemImage: "book.closed") }
+                .tag(AppTab.recipes)
+            weekStack
+                .tabItem { Label(Strings.tabWeek, systemImage: "calendar") }
+                .tag(AppTab.week)
+            groceriesStack
+                .tabItem { Label(Strings.tabGroceries, systemImage: "basket") }
+                .tag(AppTab.groceries)
+            pantryStack
+                .tabItem { Label(Strings.tabPantry, systemImage: "cabinet") }
+                .tag(AppTab.pantry)
+        }
+        .tint(Palette.accentText)
+    }
+
+    /// The Week tab (#49), with its own stack: a planned recipe opens here, so Back returns to
+    /// the week.
+    private var weekStack: some View {
+        NavigationStack(path: $router.weekPath) {
+            ScreenHost(container.makeWeekViewModel) { vm in
+                WeekScreen(
+                    vm: vm,
+                    onOpenRecipe: { router.weekPath.append(.weekRecipe(id: $0, servings: $1)) },
+                    onOpenMealTypes: { router.weekPath.append(.mealTypes) },
+                    onOpenWhatINeed: { router.weekPath.append(.whatINeed(weekStart: $0)) },
+                    makeGroceriesVM: container.makeAddToGroceriesViewModel
+                )
+            }
+            .navigationDestination(for: Route.self) { route in
+                destination(route, push: { router.weekPath.append($0) }, replace: { count, route in
+                    router.weekPath.removeLast(min(count, router.weekPath.count))
+                    router.weekPath.append(route)
+                })
+            }
+        }
+        .tint(Palette.accentText)
+    }
+
+    /// The Groceries tab (#50): the list alone, for now. A pasted list (#149) that goes in the
+    /// pantry opens the Pantry tab.
+    private var groceriesStack: some View {
+        NavigationStack {
+            ScreenHost2(makeA: container.makeGroceriesViewModel, makeB: container.makeReceiveListViewModel) { vm, receiveVM in
+                GroceriesScreen(
+                    vm: vm, receiveVM: receiveVM, onOpenPantry: { router.select(.pantry) },
+                    makeSendFileVM: container.makeSendFileViewModel
+                )
+            }
+        }
+        .tint(Palette.accentText)
+    }
+
+    /// The Pantry tab (#51): the pantry alone.
+    private var pantryStack: some View {
+        NavigationStack {
+            ScreenHost(container.makePantryViewModel) { vm in
+                PantryScreen(vm: vm, makeSendFileVM: container.makeSendFileViewModel)
+            }
+        }
+        .tint(Palette.accentText)
+    }
+
+    /// Every destination above a tab's first screen. `push` and `replace` act on the stack the
+    /// route was opened in (Recipes, or the Week's own, #49), so Back stays in that tab.
     @ViewBuilder
-    private func destination(_ route: Route) -> some View {
+    private func destination(
+        _ route: Route,
+        push: @escaping (Route) -> Void,
+        replace: @escaping (Int, Route) -> Void
+    ) -> some View {
         switch route {
         case .recipe(let id):
-            recipe { container.makeRecipeViewModel(recipeId: id, url: nil) }
+            recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil) }
+        case .cookRecipe(let id):
+            recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil, openInCookMode: true) }
         case .importUrl(let url):
-            recipe { container.makeRecipeViewModel(recipeId: nil, url: url) }
-        case .history:
-            ScreenHost(container.makeHistoryViewModel) { vm in
-                HistoryScreen(vm: vm, onOpenRecipe: { router.push(.recipe(id: $0)) })
+            recipe(push: push) { container.makeRecipeViewModel(recipeId: nil, url: url) }
+        case .weekRecipe(let id, let servings):
+            recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil, plannedServings: servings) }
+        case .mealTypes:
+            ScreenHost(container.makeMealTypesViewModel) { vm in MealTypesScreen(vm: vm) }
+        case .whatINeed(let weekStart):
+            ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in WhatINeedScreen(vm: vm) }
+        case .recipes:
+            ScreenHost(container.makeRecipesViewModel) { vm in
+                // The + menu: "Type a recipe" is Home's "+ New recipe"; "Paste a link" is Home's field.
+                RecipesScreen(
+                    vm: vm,
+                    onOpenRecipe: { push(.recipe(id: $0)) },
+                    onNewRecipe: { push(.editRecipe(id: nil)) },
+                    onOpenUrl: { push(.importUrl($0)) }
+                )
             }
         case .settings:
-            ScreenHost(container.makeSettingsViewModel) { vm in SettingsScreen(vm: vm) }
+            ScreenHost(container.makeSettingsViewModel) { vm in
+                SettingsScreen(
+                    vm: vm,
+                    onOpenDeveloperSettings: { push(.developerSettings) },
+                    onShowTour: { router.welcome = WelcomeRequest(again: true) }
+                )
+            }
+        case .developerSettings:
+            ScreenHost(container.makeDeveloperSettingsViewModel) { vm in DeveloperSettingsScreen(vm: vm) }
         case .lists:
             ScreenHost(container.makeListsViewModel) { vm in
-                ListsScreen(vm: vm, onOpenList: { router.push(.listDetail(id: $0)) })
+                ListsScreen(vm: vm, onOpenList: { push(.listDetail(id: $0)) })
             }
+        case .editRecipe(let id):
+            // Saving replaces the edit screen and, when editing, the recipe screen under it.
+            ScreenHost({ container.makeEditRecipeViewModel(recipeId: id) }) { vm in
+                EditRecipeScreen(vm: vm, onSaved: { saved in
+                    replace(id == nil ? 1 : 2, .recipe(id: saved))
+                })
+            }
+            // Full screen, like the recipe and cook mode, so editing isn't a tab of its own.
+            .toolbar(.hidden, for: .tabBar)
         case .listDetail(let id):
             ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
-                ListDetailScreen(vm: vm, onOpenRecipe: { router.push(.recipe(id: $0)) })
+                ListDetailScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
+            }
+        case .clip(let url):
+            ScreenHost({ container.makeClipViewModel(url: url) }) { vm in
+                ClipScreen(vm: vm, fixtureHTML: container.clipFixtureHTML, onSaved: router.openSavedClip)
             }
         }
     }
 
-    private func recipe(_ make: @escaping () -> RecipeViewModel) -> some View {
-        ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
-            RecipeScreen(vm: vm, saveVM: saveVM)
+    private func recipe(push: @escaping (Route) -> Void, _ make: @escaping () -> RecipeViewModel) -> some View {
+        // "Add to plan" (#49) only behind the tab flag, like the Week tab itself.
+        let container = container
+        let makePlanVM: (() -> AddToPlanViewModel)? = tabsEnabled ? { container.makeAddToPlanViewModel() } : nil
+        let makeGroceriesVM: (() -> AddToGroceriesViewModel)? =
+            tabsEnabled ? { container.makeAddToGroceriesViewModel() } : nil
+        // Using up the pantry at the end of cooking (#147): the pantry is behind the tab flag.
+        let makeUseUpVM: (() -> PantryUseUpViewModel)? = tabsEnabled ? { container.makePantryUseUpViewModel() } : nil
+        // "Send as file" (#149), whatever the flags.
+        let makeSendFileVM = container.makeSendFileViewModel
+        return ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
+            RecipeScreen(
+                vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
+                makePlanVM: makePlanVM, makeGroceriesVM: makeGroceriesVM, onClip: { push(.clip($0)) },
+                amountsInStepsEnabled: container.featureFlags.isOn(.amountsInSteps),
+                makePhotosVM: container.makeCookedPhotosViewModel,
+                makeSendFileVM: makeSendFileVM,
+                makeUseUpVM: makeUseUpVM
+            )
         }
+        // The reading view and cook mode are full screen, so a recipe still opens on the recipe.
+        // A no-op while the tab bar is off.
+        .toolbar(.hidden, for: .tabBar)
     }
 }

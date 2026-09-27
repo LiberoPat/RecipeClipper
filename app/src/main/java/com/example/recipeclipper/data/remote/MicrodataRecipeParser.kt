@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.Servings
 import org.jsoup.Jsoup
@@ -46,17 +47,24 @@ internal object MicrodataRecipeParser {
         }
         if (ingredients.isEmpty() && instructions.isEmpty()) return null
 
+        val language = LanguageWords.resolve(
+            props(root, "inLanguage").map(::value).firstOrNull { it.isNotBlank() },
+            JsonLdRecipeParser.pageLanguage(doc)
+        ) { LanguageWords.detectionText(name, ingredients) }
+        val words = LanguageWords.forTag(language)
+
         return Recipe(
             name = name,
             image = props(root, "image").map(::value).firstOrNull { it.isNotBlank() }
                 ?: doc.selectFirst("meta[property=og:image]")?.absUrl("content")?.ifBlank { null },
             ingredients = ingredients,
             instructions = instructions,
-            prepTime = duration(root, "prepTime"),
-            cookTime = duration(root, "cookTime"),
-            totalTime = duration(root, "totalTime"),
-            yield = Servings.pickYield(props(root, "recipeYield").map(::value).filter { it.isNotBlank() }),
-            sourceUrl = sourceUrl
+            prepTime = duration(root, "prepTime", words),
+            cookTime = duration(root, "cookTime", words),
+            totalTime = duration(root, "totalTime", words),
+            yield = Servings.pickYield(props(root, "recipeYield").map(::value).filter { it.isNotBlank() }, words),
+            sourceUrl = sourceUrl,
+            language = language
         )
     }
 
@@ -94,8 +102,8 @@ internal object MicrodataRecipeParser {
         else -> el.text()
     }.trim()
 
-    private fun duration(root: Element, name: String): String? =
-        props(root, name).firstOrNull()?.let { JsonLdRecipeParser.formatDuration(value(it)) }
+    private fun duration(root: Element, name: String, words: LanguageWords?): String? =
+        props(root, name).firstOrNull()?.let { JsonLdRecipeParser.formatDuration(value(it), words) }
 
     /**
      * The steps in one instructions element. A nested HowToStep or HowToSection item gives its

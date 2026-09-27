@@ -26,15 +26,29 @@ enum JsonLdRecipeParser {
     private static let maxJsonNesting = 512
 
     /// Pure: raw text of each <script type="application/ld+json"> block in, Recipe out.
-    static func parse(_ jsonLdBlocks: [String], sourceUrl: String) -> Recipe? {
+    /// `pageLanguage` is the page's `<html lang>`, the fallback for a recipe without `inLanguage`.
+    static func parse(_ jsonLdBlocks: [String], sourceUrl: String, pageLanguage: String? = nil) -> Recipe? {
         for block in jsonLdBlocks {
             // A block that doesn't parse (bad JSON, absurd nesting) is skipped, not fatal:
             // the next <script> tag may hold the recipe.
             guard let value = parseJson(block),
                   let recipeJson = findRecipeNode(value, depth: 0) else { continue }
-            if let recipe = parseRecipeJson(recipeJson, sourceUrl: sourceUrl) { return recipe }
+            if let recipe = parseRecipeJson(recipeJson, sourceUrl: sourceUrl, pageLanguage: pageLanguage) { return recipe }
         }
         return nil
+    }
+
+    private static let htmlLang = JRegex(
+        #"<html\b(?:[^>"']|"[^"]*"|'[^']*')*?(?<![\w:-])lang\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))"#,
+        ignoreCase: true
+    )
+
+    /// The page's declared language, `<html lang>` (Jsoup's `selectFirst("html").attr("lang")`),
+    /// which a recipe without `inLanguage` takes.
+    static func pageLanguage(html: String) -> String? {
+        guard let m = htmlLang.find(html) else { return nil }
+        let value = [m[1], m[2], m[3]].first { !$0.isEmpty } ?? ""
+        return value.kIsBlank ? nil : value
     }
 
     // MARK: - Finding the blocks in a page (Jsoup's `select("script[type=application/ld+json]")`)
@@ -213,11 +227,17 @@ enum JsonLdRecipeParser {
 
     // MARK: - Turning the matched Recipe JSON object into our model
 
-    private static func parseRecipeJson(_ json: [String: Any], sourceUrl: String) -> Recipe? {
+    private static func parseRecipeJson(_ json: [String: Any], sourceUrl: String, pageLanguage: String?) -> Recipe? {
         let name = stripHtml(optString(json, "name"))
         if name.kIsBlank { return nil }
         let ingredients = extractStringList(opt(json, "recipeIngredient") ?? opt(json, "ingredients"))
-        let instructions = extractInstructions(opt(json, "recipeInstructions"))
+        // The ingredient lines are read the same in any language; the steps, times and yield
+        // need the language's words (condensed-section names, duration and range words).
+        let language = LanguageWords.resolve(declared: declaredLanguage(opt(json, "inLanguage")), page: pageLanguage) {
+            LanguageWords.detectionText(name: name, ingredients: ingredients)
+        }
+        let words = LanguageWords.forTag(language)
+        let instructions = extractInstructions(opt(json, "recipeInstructions"), words: words)
         if ingredients.isEmpty && instructions.isEmpty { return nil }
 
         return Recipe(
@@ -225,12 +245,24 @@ enum JsonLdRecipeParser {
             image: extractImage(opt(json, "image")),
             ingredients: ingredients,
             instructions: instructions,
-            prepTime: formatDuration(optString(json, "prepTime")),
-            cookTime: formatDuration(optString(json, "cookTime")),
-            totalTime: formatDuration(optString(json, "totalTime")),
-            yield: extractYield(opt(json, "recipeYield")),
-            sourceUrl: sourceUrl
+            prepTime: formatDuration(optString(json, "prepTime"), words: words),
+            cookTime: formatDuration(optString(json, "cookTime"), words: words),
+            totalTime: formatDuration(optString(json, "totalTime"), words: words),
+            yield: extractYield(opt(json, "recipeYield"), words: words),
+            sourceUrl: sourceUrl,
+            language: language
         )
+    }
+
+    /// `inLanguage` as a tag ("en-US"), or a schema.org Language with one in `alternateName`.
+    private static func declaredLanguage(_ node: Any?) -> String? {
+        if let s = node as? String { return s }
+        if let object = node as? [String: Any] {
+            let name = optString(object, "alternateName")
+            return name.kIsBlank ? nil : name
+        }
+        if let array = node as? [Any], let first = array.first { return declaredLanguage(first) }
+        return nil
     }
 
     /// org.json's `opt`, except JSON `null` reads as absent. (On Android `opt` returns
@@ -299,29 +331,30 @@ enum JsonLdRecipeParser {
     /// out of the summary) followed by the same steps again in full. Compared after
     /// `stripHtml`, trimmed and lowercased; exact matches only, never a substring, so a real
     /// section that merely mentions "summary" is untouched. Add a name only once a real site
-    /// is seen publishing it. Same set as Android's `CONDENSED_SECTION_NAMES`.
-    private static let condensedSectionNames: Set<String> = [
-        "abbreviated recipe",
-        "quick version",
-        "short version",
-        "summary",
-        "recipe summary",
-        "tl;dr",
-        "at a glance",
-    ]
+    /// is seen publishing it. Shared with Android: shared/tables/<language>/sections.json.
+    private final class CondensedSections {
+        let names: Set<String>
+        init(_ words: LanguageWords) { names = Set(words.strings("sections", "condensed")) }
+    }
+
+    private static func condensedSectionNames(_ words: LanguageWords?) -> Set<String> {
+        words.map { $0.compiled(CondensedSections.self, CondensedSections.init).names } ?? []
+    }
 
     private static func isHowToSection(_ item: Any) -> Bool {
         guard let object = item as? [String: Any] else { return false }
         return optString(object, "@type").caseInsensitiveCompare("HowToSection") == .orderedSame
     }
 
-    private static func isCondensedSection(_ item: Any) -> Bool {
+    private static func isCondensedSection(_ item: Any, _ names: Set<String>) -> Bool {
         guard isHowToSection(item), let object = item as? [String: Any] else { return false }
-        return condensedSectionNames.contains(stripHtml(optString(object, "name")).kTrimmed.lowercased())
+        return names.contains(stripHtml(optString(object, "name")).kTrimmed.lowercased())
     }
 
-    private static func extractInstructions(_ node: Any?) -> [String] {
+    private static func extractInstructions(_ node: Any?, words: LanguageWords?) -> [String] {
         var steps: [String] = []
+        let condensedNames = condensedSectionNames(words)
+        func condensed(_ item: Any) -> Bool { isCondensedSection(item, condensedNames) }
 
         // HowToSection names ("For the sauce") are not emitted: sections are flattened into
         // one list of steps, so cook mode's step numbering stays simple. Showing them as
@@ -350,8 +383,8 @@ enum JsonLdRecipeParser {
             // With two or more sections, drop a condensed duplicate of the recipe (see
             // condensedSectionNames) - but only when what's left still has steps, so a
             // recipe is never emptied by this. A lone section is never skipped.
-            if array.filter(isHowToSection).count >= 2 && array.contains(where: isCondensedSection) {
-                for element in array where !isCondensedSection(element) { addStep(element) }
+            if array.filter(isHowToSection).count >= 2 && array.contains(where: condensed) {
+                for element in array where !condensed(element) { addStep(element) }
                 if steps.isEmpty { for element in array { addStep(element) } }
             } else {
                 for element in array { addStep(element) }
@@ -365,14 +398,14 @@ enum JsonLdRecipeParser {
         return steps
     }
 
-    private static func extractYield(_ node: Any?) -> String? {
+    private static func extractYield(_ node: Any?, words: LanguageWords?) -> String? {
         guard let node else { return nil }
         if let s = node as? String {
             let text = stripHtml(s)
             return text.kIsBlank ? nil : text
         }
         if let array = node as? [Any] {
-            return Servings.pickYield(array.compactMap { $0 is NSNull ? nil : extractYield($0) })
+            return Servings.pickYield(array.compactMap { $0 is NSNull ? nil : extractYield($0, words: words) }, words: words)
         }
         if let object = node as? [String: Any] {
             let text = stripHtml(optString(object, "value"))
@@ -388,25 +421,43 @@ enum JsonLdRecipeParser {
         ignoreCase: true
     )
 
-    /// An English duration phrase, as Condé Nast sites (Bon Appétit, Epicurious) publish
-    /// instead of ISO: "20 minutes", "1 hour", "1 hour 30 minutes", "1 hr, 5 mins",
+    /// A duration phrase in the recipe's words, as Condé Nast sites (Bon Appétit, Epicurious)
+    /// publish instead of ISO: "20 minutes", "1 hour", "1 hour 30 minutes", "1 hr, 5 mins",
     /// "1 hour and 30 minutes". Whole-string only (used with matchEntire): whole numbers, an
     /// hours part and/or a minutes part, nothing else. A range ("1-2 hours", "20 to 25
     /// minutes"), a fraction or a word ("Overnight") does not match and is shown as written.
-    private static let phraseDuration = JRegex(
-        #"\s*(?:(\d+)\s*(?:hours|hour|hrs|hr|h)"#
-            + #"(?:\s*,?\s*(?:\band\s+)?(\d+)\s*(?:minutes|minute|mins|min|m))?"#
-            + #"|(\d+)\s*(?:minutes|minute|mins|min|m))\s*"#,
-        ignoreCase: true
-    )
+    /// Shared with Android: shared/tables/<language>/durations.json.
+    private final class Durations {
+        let phrase: JRegex
+        let hourSymbol: String
+        let minuteSymbol: String
+
+        init(_ words: LanguageWords) {
+            let hours = SharedTables.alternation(words.strings("durations", "hours"))
+            let minutes = SharedTables.alternation(words.strings("durations", "minutes"))
+            let joiners = SharedTables.alternation(words.strings("durations", "joiners"))
+            phrase = JRegex(
+                #"\s*(?:(\d+)\s*"# + hours
+                    + #"(?:\s*,?\s*(?:\b"# + joiners + #"\s+)?(\d+)\s*"# + minutes + ")?"
+                    + #"|(\d+)\s*"# + minutes + #")\s*"#,
+                ignoreCase: true
+            )
+            let table = words.table("durations")
+            hourSymbol = table["hourSymbol"] as? String ?? ""
+            minuteSymbol = table["minuteSymbol"] as? String ?? ""
+        }
+    }
 
     /// Turns an ISO-8601 duration like "PT1H30M", or a plain English phrase like
     /// "1 hour 30 minutes", into "1h 30m". Either one totalling zero ("PT0S", "P0D",
     /// "0 minutes") is nil, so the label is hidden rather than showing "PT0S". Anything else
     /// is returned as written (trimmed): never guess at "Overnight" or "20 to 25 minutes".
-    static func formatDuration(_ raw: String) -> String? {
+    /// With `words` nil (a language the app has no words for) only ISO is read, and written
+    /// back with English's symbols.
+    static func formatDuration(_ raw: String, words: LanguageWords? = .english) -> String? {
         let text = raw.kTrimmed
         if text.kIsBlank { return nil }
+        let d = (words ?? .english).compiled(Durations.self, Durations.init)
 
         if let match = isoDuration.find(text), (1...4).contains(where: { !match[$0].kIsBlank }) {
             // Int32 with wrapping arithmetic, as Kotlin's Int: an overflowing figure reads as 0
@@ -417,10 +468,11 @@ enum JsonLdRecipeParser {
             let seconds = Double(match[4]) ?? 0.0
 
             let secondMinutes = kotlinRoundToInt(seconds / 60.0)
-            return renderMinutes(days &* 24 &* 60 &+ hours &* 60 &+ minutes &+ secondMinutes, asWritten: text)
+            return renderMinutes(days &* 24 &* 60 &+ hours &* 60 &+ minutes &+ secondMinutes, asWritten: text, d)
         }
 
-        if let match = phraseDuration.matchEntire(text) {
+        if words == nil { return text }
+        if let match = d.phrase.matchEntire(text) {
             // A figure too large for an Int is not a real time: show it as written.
             var hours: Int32 = 0
             if !match[1].isEmpty {
@@ -433,7 +485,7 @@ enum JsonLdRecipeParser {
                 guard let m = Int32(minutesText) else { return text }
                 minutes = m
             }
-            return renderMinutes(hours &* 60 &+ minutes, asWritten: text)
+            return renderMinutes(hours &* 60 &+ minutes, asWritten: text, d)
         }
 
         return text
@@ -441,13 +493,13 @@ enum JsonLdRecipeParser {
 
     /// "1h 30m", "1h" or "20m"; nil for a zero total; `asWritten` for a total that
     /// overflowed to a negative number.
-    private static func renderMinutes(_ totalMinutes: Int32, asWritten: String) -> String? {
+    private static func renderMinutes(_ totalMinutes: Int32, asWritten: String, _ d: Durations) -> String? {
         if totalMinutes == 0 { return nil }
         let h = totalMinutes / 60
         let m = totalMinutes % 60
-        if h > 0 && m > 0 { return "\(h)h \(m)m" }
-        if h > 0 { return "\(h)h" }
-        if m > 0 { return "\(m)m" }
+        if h > 0 && m > 0 { return "\(h)\(d.hourSymbol) \(m)\(d.minuteSymbol)" }
+        if h > 0 { return "\(h)\(d.hourSymbol)" }
+        if m > 0 { return "\(m)\(d.minuteSymbol)" }
         return asWritten
     }
 

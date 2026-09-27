@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "language": "es",
+  "about": "Servings' yield words, case-insensitive regex fragments matched as whole words. serving: the yield counts people ('Serves 4', '4 servings'), and wins wherever it appears. makes: the yield counts things made ('Makes 16'), as does a number followed by any other word.",
+  "serving": ["porciones", "porción", "personas?", "raciones", "ración", "comensales"],
+  "makes": ["rinde"]
+}

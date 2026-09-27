@@ -1,0 +1,38 @@
+{
+  "identifier" : "5E0F1D2C",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "6739100107",
+      "localizations" : [
+        {
+          "description" : "Keep every recipe you add, with no limit.",
+          "displayName" : "Unlimited recipes",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "unlimited_recipes",
+      "referenceName" : "Unlimited recipes",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

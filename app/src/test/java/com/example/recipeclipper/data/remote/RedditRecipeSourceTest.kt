@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.PageText
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.SourceType
@@ -7,6 +8,7 @@ import com.example.recipeclipper.fake.FakeConnectivity
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -111,13 +113,21 @@ class RedditRecipeSourceTest {
 
     // --- Routing ---
 
-    private class RecordingSource(private val result: ParseResult) : RecipeSource {
+    private class RecordingSource(
+        private val result: ParseResult,
+        private val page: PageText? = null,
+        private val readsPages: Boolean = true
+    ) : RecipeSource {
         val fetched = mutableListOf<String>()
         override suspend fun fetch(url: String): ParseResult {
             fetched.add(url)
             return result
         }
+        override suspend fun fetchPage(url: String) = FetchedPage(fetch(url), page)
+        override fun readsRenderedPage(url: String) = readsPages
     }
+
+    private val redditPost = "https://www.reddit.com/r/recipes/comments/abc/x/"
 
     @Test fun `routing sends reddit hosts to the reddit source and everything else to the blog one`() = runBlocking {
         val blog = RecordingSource(ParseResult.Error(ParseError.NoRecipeFound))
@@ -135,5 +145,34 @@ class RedditRecipeSourceTest {
             listOf("https://www.seriouseats.com/reddit-inspired-pasta", "https://www.notreddit.com/r/x/comments/abc/"),
             blog.fetched
         )
+    }
+
+    @Test fun `with the reddit flag off, a reddit link goes to the blog source as before`() = runBlocking {
+        val blog = RecordingSource(ParseResult.Error(ParseError.NoRecipeFound))
+        val reddit = RecordingSource(ParseResult.Error(ParseError.Offline), readsPages = false)
+        val router = RoutingRecipeSource(blog, reddit, redditOn = { false })
+
+        router.fetch(redditPost)
+
+        assertEquals(listOf(redditPost), blog.fetched)
+        assertTrue(reddit.fetched.isEmpty())
+        assertTrue(router.readsRenderedPage(redditPost))
+    }
+
+    @Test fun `routing passes fetchPage through, so a blog page's text still reaches the model`() = runBlocking {
+        val text = PageText(title = "Soup", lines = listOf("A story about soup."))
+        val blog = RecordingSource(ParseResult.Error(ParseError.NoRecipeFound), page = text)
+        val router = RoutingRecipeSource(blog, RecordingSource(ParseResult.Error(ParseError.Offline)))
+
+        assertEquals(text, router.fetchPage("https://example.com/soup").page)
+    }
+
+    @Test fun `a reddit post never goes to the rendered page, a blog page does`() {
+        val router = RoutingRecipeSource(
+            RecordingSource(ParseResult.Error(ParseError.NoRecipeFound)),
+            RedditRecipeSource(FakeConnectivity())
+        )
+        assertFalse(router.readsRenderedPage(redditPost))
+        assertTrue(router.readsRenderedPage("https://example.com/soup"))
     }
 }

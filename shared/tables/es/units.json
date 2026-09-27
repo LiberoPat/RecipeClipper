@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "language": "es",
+  "about": "Unit words (UnitPatterns and MeasureUnit.fromText). patterns: regex fragments, tried in this order as one alternation; each must stay a whole word (the code adds an optional trailing period and a no-letter lookahead). names: how matched text maps to a unit, first rule wins; the text is lowercased, its periods removed and its whitespace collapsed, then it names the unit when it equals one of exact or starts with one of prefixes. unit is the code's MeasureUnit name.",
+  "patterns": ["cucharadas?\\s+soperas?", "cucharaditas?", "cucharadas?", "tazas?", "mililitros?", "ml", "cl", "dl", "kilogramos?", "kilos?", "kg", "gramos?", "gr", "g", "litros?", "l"],
+  "names": [
+    {"unit": "TSP", "prefixes": ["cucharadita"]},
+    {"unit": "TBSP", "prefixes": ["cucharada"]},
+    {"unit": "CUP", "prefixes": ["taza"]},
+    {"unit": "ML", "exact": ["ml"], "prefixes": ["millil"]},
+    {"unit": "CL", "exact": ["cl"]},
+    {"unit": "DL", "exact": ["dl"]},
+    {"unit": "KG", "exact": ["kg"], "prefixes": ["kilo"]},
+    {"unit": "G", "exact": ["g", "gr"], "prefixes": ["gramo"]},
+    {"unit": "L", "exact": ["l"], "prefixes": ["litro"]}
+  ]
+}

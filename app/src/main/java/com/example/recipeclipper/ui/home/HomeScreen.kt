@@ -1,6 +1,9 @@
 package com.example.recipeclipper.ui.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -33,31 +37,43 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.common.RecipeRow
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.settings.BackupStatus
+import com.example.recipeclipper.ui.settings.BackupStatusText
+import com.example.recipeclipper.ui.settings.IMPORT_MIME_TYPES
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
  * Home: the link field (kept so the app can be tried without the share sheet), then
  * whatever there is to pick up again. Sections with nothing in them don't appear, but the
- * History / Lists block at the bottom always does. Settings is the gear beside the title.
+ * Recipes / Lists block at the bottom always does. Settings is the gear beside the title.
  */
 @Composable
 fun HomeScreen(
     onOpenUrl: (String) -> Unit,
     onOpenRecipe: (Long) -> Unit,
-    onOpenHistory: () -> Unit,
+    onOpenRecipes: () -> Unit,
     onOpenLists: () -> Unit,
     onOpenSettings: () -> Unit,
+    onNewRecipe: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val now = remember { System.currentTimeMillis() }
+    // Restore from a backup file (#150): the same file picker as Settings' Import.
+    val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { viewModel.onRestorePicked(it.toString()) }
+    }
+    // The one-time folder card (#150): the system's folder picker.
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        viewModel.onBackupFolderPicked(uri?.toString())
+    }
     // Computed here, not inside the LazyColumn content lambda: that lambda isn't itself a
     // composable context (only the item {} blocks nested in it are), so stringResource can't
     // be called directly from it.
@@ -68,6 +84,9 @@ fun HomeScreen(
             LazyColumn(
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 32.dp),
                 modifier = Modifier.fillMaxSize()
+                    // Edge-to-edge: the background fills behind the bars, the rows stay clear
+                    // of them, the display cutout and the keyboard.
+                    .safeDrawingPadding()
             ) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -76,11 +95,10 @@ fun HomeScreen(
                             style = MaterialTheme.typography.headlineMedium,
                             modifier = Modifier.weight(1f)
                         )
-                        // Settings is still reachable from Home only — see the note by the
-                        // nav block below for why the recipe screen must not offer it. The
-                        // gear moved up here because it is a destination you visit rarely and
-                        // on purpose, unlike History and Lists, which are part of the daily
-                        // path and stay as named rows.
+                        // Settings' only entry point today (see the note by the nav block
+                        // below). The gear sits up here because it is a destination you visit
+                        // rarely and on purpose, unlike Recipes and Lists, which are part of
+                        // the daily path and stay as named rows.
                         IconButton(
                             onClick = onOpenSettings,
                             modifier = Modifier.offset(x = 8.dp) // optical edge, past the icon's padding
@@ -119,6 +137,14 @@ fun HomeScreen(
                             modifier = Modifier.padding(top = 6.dp)
                         ) { Text(stringResource(R.string.action_go)) }
                     }
+                    // Typing a recipe in by hand (#29): a small way in, not a section.
+                    TextButton(onClick = onNewRecipe, modifier = Modifier.offset(x = (-12).dp)) {
+                        Text(
+                            stringResource(R.string.action_new_recipe),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
                 }
 
                 state.continueCooking?.let { latest ->
@@ -142,24 +168,83 @@ fun HomeScreen(
                     }
                 }
 
-                // Both entries are unconditional. History used to appear only once there was a
+                // A fresh install with an empty library (#150): bring a backup back in.
+                if (state.showsRestore && viewModel.canRestore) {
+                    item {
+                        TextButton(
+                            onClick = { restorePicker.launch(IMPORT_MIME_TYPES) },
+                            enabled = state.restore != BackupStatus.Importing,
+                            modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp)
+                        ) {
+                            Text(
+                                stringResource(R.string.home_restore_backup),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                        BackupStatusText(state.restore)
+                    }
+                }
+
+                if (state.offersBackupFolder) {
+                    item {
+                        BackupFolderCard(
+                            onChoose = { folderPicker.launch(null) },
+                            onDismiss = viewModel::onBackupPromptDismissed
+                        )
+                    }
+                }
+
+                // Both entries are unconditional. The first (then History) used to appear only once there was a
                 // "continue cooking" recipe, so the block changed shape depending on what was
                 // in the database; a fixed block is easier to aim at than one that moves.
                 //
-                // Settings is not here — it's the gear beside the title. It is also reachable
-                // from Home ONLY, deliberately not from the recipe screen: RecipeViewModel
-                // reads preferences once in its initializer, and reaching Settings from Home
-                // means any Recipe destination has already been popped, so the next recipe
-                // opened builds a fresh ViewModel that reads current preferences. A Settings
-                // entry on the recipe screen would leave that ViewModel alive underneath and
-                // showing stale settings, which would need AppPreferences to expose Flows
-                // instead of vars.
+                // Settings is not here — it's the gear beside the title, and today that gear
+                // is its only entry point. It could open from elsewhere too: RecipeViewModel
+                // collects AppPreferences.settings, so a recipe left underneath Settings
+                // follows a change as it is made (#24). Whether the recipe screen offers it
+                // is a product call, not a technical constraint.
                 item {
                     Spacer(Modifier.height(20.dp))
                     Hairline()
-                    NavRow(stringResource(R.string.nav_history), onOpenHistory)
+                    NavRow(stringResource(R.string.recipes_title), onOpenRecipes)
                     NavRow(stringResource(R.string.nav_lists), onOpenLists)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * "Keep a backup copy?" (#150): asked once, after the first recipe, never at launch and never in
+ * the way of a share. Either answer puts it away for good; Settings keeps the folder row.
+ */
+@Composable
+private fun BackupFolderCard(onChoose: () -> Unit, onDismiss: () -> Unit) {
+    Column(Modifier.padding(top = 24.dp)) {
+        Hairline()
+        Spacer(Modifier.height(16.dp))
+        Text(stringResource(R.string.backup_prompt_title), style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.backup_prompt_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(Modifier.offset(x = (-12).dp)) {
+            TextButton(onClick = onChoose) {
+                Text(
+                    stringResource(R.string.backup_prompt_choose),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+            TextButton(onClick = onDismiss) {
+                Text(
+                    stringResource(R.string.backup_prompt_not_now),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

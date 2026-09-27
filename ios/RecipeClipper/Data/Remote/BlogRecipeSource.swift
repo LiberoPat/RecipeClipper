@@ -24,13 +24,15 @@ final class BlogRecipeSource: RecipeSource {
         self.session = session
     }
 
-    func fetch(url: String) async -> ParseResult {
+    func fetch(url: String) async -> ParseResult { await fetchPage(url: url).result }
+
+    func fetchPage(url: String) async -> FetchedPage {
         // http(s) only, as Jsoup enforces on Android. URLSession would otherwise happily read a
         // file: URL out of the app's own sandbox.
         guard let target = URL(string: url),
               let scheme = target.scheme?.lowercased(), scheme == "http" || scheme == "https"
         else {
-            return .error(.fetchFailed(URLError(.badURL).localizedDescription))
+            return FetchedPage(result: .error(.fetchFailed(URLError(.badURL).localizedDescription)))
         }
         var request = URLRequest(url: target, timeoutInterval: Self.timeout)
         request.httpMethod = "GET"
@@ -45,19 +47,19 @@ final class BlogRecipeSource: RecipeSource {
             // (DefaultRecipeRepository) checks Task.isCancelled and discards this, writing
             // nothing; the detail is left nil so no platform "cancelled" text is ever shown.
             if error is CancellationError || (error as? URLError)?.code == .cancelled {
-                return .error(.fetchFailed(nil))
+                return FetchedPage(result: .error(.fetchFailed(nil)))
             }
-            return .error(Self.cause(of: error))
+            return FetchedPage(result: .error(Self.cause(of: error)))
         }
 
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             // 403/404/429/5xx are usually a bot block that lifts on its own (see
             // ParseError.blocked); anything else stays a plain fetch failure naming the status.
-            return .error(ParseError.forHttpStatus(http.statusCode))
+            return FetchedPage(result: .error(ParseError.forHttpStatus(http.statusCode)))
         }
 
         let html = Self.decode(data, textEncodingName: response.textEncodingName)
-        return Self.parse(html: html, url: url)
+        return Self.parsePage(html: html, url: url)
     }
 
     /// The URLError codes that mean there is no connection at all, as opposed to a connection
@@ -122,10 +124,29 @@ final class BlogRecipeSource: RecipeSource {
     static func parse(html: String, url: String) -> ParseResult {
         let blocks = JsonLdRecipeParser.extractJsonLdBlocks(fromHtml: html)
         // Microdata only when there is no JSON-LD recipe, so no working site changes.
-        guard let recipe = JsonLdRecipeParser.parse(blocks, sourceUrl: url)
-                ?? MicrodataRecipeParser.parse(html: html, sourceUrl: url) else {
+        // JSON-LD's recipe is refined by the page: WP Recipe Maker's ingredient parts when they
+        // line up (#118), then the group headings JSON-LD drops from a plugin's card (#119) or the
+        // site's own (#120), and the site's known noise dropped from the last step (#120).
+        let jsonLd = JsonLdRecipeParser.parse(blocks, sourceUrl: url, pageLanguage: JsonLdRecipeParser.pageLanguage(html: html))
+            .map { recipe -> Recipe in
+                var refined = recipe
+                let wprm = WprmIngredients.refine(html: html, lines: recipe.ingredients)
+                refined.ingredients = SiteRules.ingredients(html: html, url: url, lines: wprm)
+                refined.instructions = SiteRules.steps(url: url, steps: recipe.instructions)
+                return refined
+            }
+        guard let recipe = jsonLd ?? MicrodataRecipeParser.parse(html: html, sourceUrl: url) else {
             return .error(.noRecipeFound)
         }
         return .success(recipe)
+    }
+
+    /// `parse`, plus the page's text when it holds no recipe data (#103).
+    static func parsePage(html: String, url: String) -> FetchedPage {
+        let result = parse(html: html, url: url)
+        if case .error(.noRecipeFound) = result {
+            return FetchedPage(result: result, page: PageTextReader.read(html: html, url: url))
+        }
+        return FetchedPage(result: result)
     }
 }

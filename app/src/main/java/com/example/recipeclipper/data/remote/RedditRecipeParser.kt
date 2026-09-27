@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
@@ -69,7 +70,11 @@ object RedditRecipeParser {
                 totalTime = split.totalTime,
                 yield = split.yield,
                 sourceUrl = sourceUrl,
-                sourceType = SourceType.REDDIT
+                sourceType = SourceType.REDDIT,
+                // Reddit declares no language: the words decide, else English (#14's rule).
+                language = LanguageWords.resolve(null, null) {
+                    LanguageWords.detectionText(title, split.ingredients)
+                }
             )
         )
     }

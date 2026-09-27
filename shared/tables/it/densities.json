@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "language": "it",
+  "about": "IngredientDensities. An ingredient matches by the END of its name, longest alias first (ties keep file order). gramsPerCup is per US cup (236.6 ml); null is a skip entry: recognised, never converted, and it wins over a shorter alias by being longer. liquid: pourable (the 'Also convert liquids' option). stickable: allows the 'stick' unit. Only ingredients that weigh about the same every time belong here. trailingModifiers are dropped from the end of the name before matching.",
+  "trailingModifiers": ["setacciata", "setacciato", "fuso", "fusa", "morbido", "ammorbidito", "freddo", "fredda", "a", "temperatura", "ambiente"],
+  "entries": [
+    {"note": "Flours. The head noun comes first in Italian, so 'farina di riso' ends in 'riso' and matches nothing.", "gramsPerCup": 120.0, "aliases": ["farina", "farina 00", "farina tipo 00", "farina 0", "farina tipo 0", "farina di grano tenero"]},
+    {"note": "Sugars. Italian cane sugar isn't packed like US brown sugar, so it is skipped.", "gramsPerCup": 200.0, "aliases": ["zucchero", "zucchero semolato", "zucchero bianco"]},
+    {"gramsPerCup": null, "aliases": ["zucchero di canna"]},
+    {"gramsPerCup": 113.0, "aliases": ["zucchero a velo"]},
+    {"note": "Baking staples", "gramsPerCup": 84.0, "aliases": ["cacao", "cacao amaro", "cacao in polvere", "cacao amaro in polvere"]},
+    {"gramsPerCup": 192.0, "aliases": ["lievito per dolci", "lievito chimico"]},
+    {"gramsPerCup": 288.0, "aliases": ["bicarbonato", "bicarbonato di sodio"]},
+    {"note": "Fats and dairy that isn't pourable", "gramsPerCup": 227.0, "aliases": ["burro", "margarina"]},
+    {"gramsPerCup": 245.0, "aliases": ["yogurt", "yogurt bianco", "yogurt greco"]},
+    {"note": "Pourable", "gramsPerCup": 237.0, "liquid": true, "aliases": ["acqua"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["latte", "latte intero", "latte parzialmente scremato", "latte scremato"]},
+    {"gramsPerCup": 238.0, "liquid": true, "aliases": ["panna", "panna fresca", "panna liquida", "panna fresca liquida", "panna da montare"]},
+    {"gramsPerCup": 218.0, "liquid": true, "aliases": ["olio", "olio extravergine", "olio extravergine doliva", "olio di oliva", "olio doliva", "olio evo", "olio di semi", "olio di girasole", "olio di semi di girasole"]},
+    {"gramsPerCup": 340.0, "liquid": true, "aliases": ["miele"]},
+    {"gramsPerCup": 240.0, "liquid": true, "aliases": ["brodo", "brodo vegetale", "brodo di carne", "brodo di pollo"]},
+    {"gramsPerCup": 239.0, "liquid": true, "aliases": ["aceto", "aceto di vino", "aceto balsamico", "aceto di mele"]},
+    {"gramsPerCup": 236.0, "liquid": true, "aliases": ["vino", "vino bianco", "vino rosso"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["succo", "succo di limone", "succo darancia"]}
+  ]
+}

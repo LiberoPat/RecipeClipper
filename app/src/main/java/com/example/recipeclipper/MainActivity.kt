@@ -1,68 +1,217 @@
 package com.example.recipeclipper
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.core.content.IntentCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
-import com.example.recipeclipper.ui.navigation.RecipeNavHost
+import com.example.recipeclipper.data.AutoBackup
+import com.example.recipeclipper.data.FirstRunTour
+import com.example.recipeclipper.data.backup.ShareFile
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.ReceivedList
+import com.example.recipeclipper.reminders.ExpiryNotifications
+import com.example.recipeclipper.timers.TimerNotifications
+import com.example.recipeclipper.ui.common.LocalFlagValues
+import com.example.recipeclipper.ui.groceries.ReceivedListInbox
+import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
+import com.example.recipeclipper.ui.navigation.Tab
+import com.example.recipeclipper.ui.navigation.openRoute
+import com.example.recipeclipper.ui.sharefile.ReceiveFileHost
+import com.example.recipeclipper.ui.sharefile.ReceivedFileInbox
+import com.example.recipeclipper.ui.sharefile.ReceivedWhere
+import com.example.recipeclipper.ui.tour.LocalTips
+import com.example.recipeclipper.ui.tour.TipsHost
+import com.example.recipeclipper.ui.tour.TipsViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    // Shared links wait here until the NavHost is composed and can navigate to them.
-    private val sharedUrls = Channel<String>(Channel.BUFFERED)
+    @Inject
+    lateinit var featureFlags: FeatureFlags
 
-    // Whether the link in the current intent has actually been navigated to. It is saved
-    // across recreation, so a rotation *after* navigation doesn't open the link a second
-    // time (the back stack is restored instead), while a rotation *before* it, when the
-    // queued link would otherwise die with the old activity, re-delivers it.
+    @Inject
+    lateinit var receivedLists: ReceivedListInbox
+
+    @Inject
+    lateinit var autoBackup: AutoBackup
+
+    @Inject
+    lateinit var receivedFiles: ReceivedFileInbox
+
+    @Inject
+    lateinit var firstRunTour: FirstRunTour
+
+    // The one-time tips (#151), provided to every screen through LocalTips.
+    private val tips: TipsViewModel by viewModels()
+
+    // Routes from intents (a shared link, a tapped timer notification) wait here until the
+    // NavHost is composed and can navigate to them.
+    private val intentRoutes = Channel<String>(Channel.BUFFERED)
+
+    // Whether the route in the current intent has actually been navigated to. It is saved
+    // across recreation, so a rotation *after* navigation doesn't open it a second time (the
+    // back stack is restored instead), while a rotation *before* it, when the queued route
+    // would otherwise die with the old activity, re-delivers it.
     private var shareHandled = false
+
+    // Whether this start has decided on the welcome (#151). Saved like shareHandled, so a
+    // rotation doesn't open it twice, and a flag change that swaps the NavController doesn't either.
+    private var welcomeChecked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Edge-to-edge is enforced from targetSdk 35 and can't be opted out of from 36, so
+        // turn it on everywhere: transparent bars on every API level, and each screen pads
+        // its content with the safe-drawing insets. Icon contrast is set by the theme.
+        enableEdgeToEdge()
         shareHandled = savedInstanceState?.getBoolean(STATE_SHARE_HANDLED) ?: false
+        welcomeChecked = savedInstanceState?.getBoolean(STATE_WELCOME_CHECKED) ?: false
+        // A launch that opens something (a shared link, a notification) isn't a plain one: the
+        // welcome waits for the next plain launch, so a shared link still opens on the recipe.
+        val plainLaunch = routeFor(intent) == null && sharedFile(intent) == null
 
         setContent {
-            val navController = rememberNavController()
+            // The flags (#87) as they change in Developer settings. Turning the tab shell on or
+            // off swaps the whole navigation graph, so it gets a fresh NavController (and opens
+            // on Home) rather than restoring a back stack from the other graph.
+            val flags by featureFlags.values.collectAsStateWithLifecycle(featureFlags.current)
+            val tabsEnabled = flags.isOn(Flag.MEAL_PLAN)
+            val navController = key(tabsEnabled) { rememberNavController() }
             LaunchedEffect(navController) {
-                for (url in sharedUrls) {
-                    navController.navigate(Routes.import(url))
-                    shareHandled = true
+                // The first back-stack entry exists once the NavHost has set its graph. With the
+                // tab bar on, the NavHost sits inside a Scaffold, which composes it later than
+                // this effect may start.
+                navController.currentBackStackEntryFlow.first()
+                // Decided once per start (#151), before any intent's route opens, so the library
+                // it counts is the one this launch found.
+                val showWelcome = !welcomeChecked && firstRunTour.onLaunch(plainLaunch)
+                welcomeChecked = true
+                // Back on the main thread, which navigation needs, whichever thread the database
+                // answered on: an effect's dispatcher isn't always the main one (tests).
+                withContext(Dispatchers.Main.immediate) {
+                    if (showWelcome) navController.navigate(Routes.welcome(again = false))
+                    for (route in intentRoutes) {
+                        // Into the Recipes tab, whichever tab is open (a tab's own route opens that tab).
+                        navController.openRoute(route, tabsEnabled)
+                        shareHandled = true
+                    }
                 }
             }
-            RecipeNavHost(navController)
+            val tipsState by tips.uiState.collectAsStateWithLifecycle()
+            val tipsHost = remember(tipsState) { TipsHost(tipsState.shown, tips::onDismiss) }
+            CompositionLocalProvider(LocalFlagValues provides flags, LocalTips provides tipsHost) {
+                AppShell(navController, tabsEnabled)
+                // A shared file (#149) opens its sheet over whatever is on screen; once added,
+                // the app shows where the things went.
+                ReceiveFileHost(hiltViewModel()) { where ->
+                    navController.openRoute(
+                        when (where) {
+                            ReceivedWhere.GROCERIES -> Tab.GROCERIES.route
+                            ReceivedWhere.PANTRY -> Tab.PANTRY.route
+                            ReceivedWhere.RECIPES -> Routes.RECIPES
+                        },
+                        tabsEnabled
+                    )
+                }
+            }
         }
 
-        if (!shareHandled) extractUrl(intent)?.let { sharedUrls.trySend(it) }
+        if (!shareHandled) {
+            // A shared file (#149) opens its sheet where the user is; handled at once, so a
+            // rotation doesn't open it again.
+            val file = sharedFile(intent)
+            if (file != null) {
+                receivedFiles.offer(file)
+                shareHandled = true
+            } else {
+                routeFor(intent)?.let { intentRoutes.trySend(it) }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // singleTask launch mode means a repeat share arrives here instead of onCreate
+        // singleTask launch mode means a repeat share (or a notification tap) arrives here
+        // instead of onCreate
         setIntent(intent)
-        val url = extractUrl(intent) ?: return
+        sharedFile(intent)?.let {
+            receivedFiles.offer(it)
+            return
+        }
+        val route = routeFor(intent) ?: return
         shareHandled = false
-        sharedUrls.trySend(url)
+        intentRoutes.trySend(route)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // The automatic backup copy (#150): leaving the app is when a changed library is copied.
+        if (!isChangingConfigurations) autoBackup.onAppLeft()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(STATE_SHARE_HANDLED, shareHandled)
+        outState.putBoolean(STATE_WELCOME_CHECKED, welcomeChecked)
     }
 
-    /** Browsers share a link as EXTRA_TEXT on an ACTION_SEND text/plain intent. */
-    private fun extractUrl(intent: Intent?): String? {
+    /** Where an intent leads: a shared link imports, a timer notification opens cook mode, an
+     *  expiry reminder (#52) opens the Pantry tab, and shared text with no link but with lines
+     *  (#149) opens Groceries on the "Add this list" sheet (only with the tabs, #47). */
+    private fun routeFor(intent: Intent?): String? {
+        if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) return Tab.PANTRY.route
+        if (intent?.action == TimerNotifications.ACTION_OPEN_COOK) {
+            val id = intent.getLongExtra(TimerNotifications.EXTRA_RECIPE_ID, -1)
+            return if (id > 0) Routes.cookRecipe(id) else null
+        }
+        val text = sharedText(intent) ?: return null
+        Regex("https?://\\S+").find(text)?.let { return Routes.import(it.value) }
+        if (featureFlags.current.isOn(Flag.MEAL_PLAN) && ReceivedList.lines(text).isNotEmpty()) {
+            receivedLists.offer(text)
+            return Tab.GROCERIES.route
+        }
+        return null
+    }
+
+    /** A Recipe Clipper file (#149): opened (VIEW) or shared in (SEND), by its type or its name. */
+    private fun sharedFile(intent: Intent?): String? {
+        val uri = when (intent?.action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+            else -> null
+        } ?: return null
+        val named = uri.lastPathSegment?.endsWith(".${ShareFile.EXTENSION}", ignoreCase = true) == true
+        return uri.toString().takeIf { intent?.type == ShareFile.MIME_TYPE || named }
+    }
+
+    /** Browsers share a link, and messaging apps a message, as EXTRA_TEXT on ACTION_SEND text/plain. */
+    private fun sharedText(intent: Intent?): String? {
         if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return null
-        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return null
-        return Regex("https?://\\S+").find(text)?.value
+        return intent.getStringExtra(Intent.EXTRA_TEXT)
     }
 
     private companion object {
         const val STATE_SHARE_HANDLED = "share_handled"
+        const val STATE_WELCOME_CHECKED = "welcome_checked"
     }
 }

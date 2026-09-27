@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "The prep, cook and total time a site writes as a phrase instead of ISO 8601 ('1 hour 30 minutes', '1 hr, 5 mins'), read whole-string only. hours and minutes: case-insensitive regex fragments, tried in order (longest first). joiners: regex fragments that may stand between the hours and the minutes ('and'). hourSymbol and minuteSymbol: how the app writes a time back ('1h 30m'), for ISO times too.",
+  "hours": ["hours", "hour", "hrs", "hr", "h"],
+  "minutes": ["minutes", "minute", "mins", "min", "m"],
+  "joiners": ["and"],
+  "hourSymbol": "h",
+  "minuteSymbol": "m"
+}

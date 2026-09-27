@@ -1,18 +1,35 @@
 import Foundation
 
 /// Every destination above Home. Mirrors Android's nav graph: `recipe/{recipeId}`,
-/// `recipe/import?url={url}` (the share target), `history`, `settings` (Home only), `lists`,
-/// `lists/{listId}`.
+/// `recipe/import?url={url}` (Home's link field and the deep link), `recipes`, `settings` (from Home's gear), `lists`,
+/// `lists/{listId}`, `clip?url={url}`.
 enum Route: Hashable {
     case recipe(id: Int64)
+    /// From a timer notification: the recipe, opened in cook mode (Android's `recipe/{id}?cook=true`).
+    case cookRecipe(id: Int64)
     case importUrl(String)
-    case history
+    /// The library of every recipe (#102); it replaced History (`history`).
+    case recipes
     case settings
+    /// Hidden: seven taps on the version in Settings (#87; Android's `settings/developer`).
+    case developerSettings
     case lists
     case listDetail(id: Int64)
+    /// Edit a recipe (#29), or with no id type a new one in (Android's `edit?recipeId=`).
+    case editRecipe(id: Int64?)
+    /// The Week tab's stack (#49): a planned recipe at its planned servings (Android's
+    /// `week/recipe/{id}?servings=`), and the meal types screen (`week/meal-types`).
+    case weekRecipe(id: Int64, servings: Int?)
+    case mealTypes
+    /// The week's "What I need" (#51; Android's `week/need/{weekStart}`).
+    case whatINeed(weekStart: Int64)
+    /// "Clip it yourself" (#37) on a page with no recipe data.
+    case clip(String)
 }
 
-/// The share extension opens the app with `recipeclipper://import?url=<percent-encoded>`.
+/// `recipeclipper://import?url=<percent-encoded>` opens the import screen. The share extension
+/// used to open the app this way; it now imports on its own (issue #19), so the scheme is
+/// only an entry point for Shortcuts and links.
 enum DeepLink {
     static let scheme = "recipeclipper"
     static let importHost = "import"

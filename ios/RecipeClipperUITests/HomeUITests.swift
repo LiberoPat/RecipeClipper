@@ -72,10 +72,10 @@ final class HomeUITests: RecipeUITestCase {
         openSettings()
     }
 
-    func testHistoryAndListsRowsOpenTheirScreens() {
+    func testRecipesAndListsRowsOpenTheirScreens() {
         launch(.standard)
 
-        openHistory()
+        openRecipes()
         back()
         openLists()
     }
@@ -84,7 +84,7 @@ final class HomeUITests: RecipeUITestCase {
     func testTheNavEntriesAreThereWithAnEmptyDatabase() {
         launch(.empty)
 
-        require(app.buttons["home.nav.history"])
+        require(app.buttons["home.nav.recipes"])
         require(app.buttons["home.nav.lists"])
         require(app.buttons["Settings"])
     }

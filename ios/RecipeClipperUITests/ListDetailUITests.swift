@@ -157,7 +157,7 @@ final class ListDetailUITests: RecipeUITestCase {
         require(app.buttons["+ New list"], "popped back to the Lists screen")
         requireGone(row("Weeknights"))
         back()
-        openHistory()
+        openRecipes()
         require(row("Spaghetti Carbonara"), "its recipes stay in history")
         require(row("Chicken Adobo"))
     }

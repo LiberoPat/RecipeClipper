@@ -43,7 +43,7 @@ struct RecipeRow: View {
     }
 
     private var details: String {
-        [recipe.totalTime, Strings.elapsed(TimeAgo.since(recipe.lastViewedAt, now: now))]
+        [recipe.isClipped ? Strings.clippedByYou : nil, recipe.totalTime, Strings.elapsed(TimeAgo.since(recipe.lastViewedAt, now: now))]
             .compactMap { $0 }
             .joined(separator: "  ·  ")
     }

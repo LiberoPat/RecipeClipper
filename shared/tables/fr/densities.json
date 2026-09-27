@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "language": "fr",
+  "about": "IngredientDensities. An ingredient matches by the END of its name, longest alias first (ties keep file order). gramsPerCup is per US cup (236.6 ml); null is a skip entry: recognised, never converted, and it wins over a shorter alias by being longer. liquid: pourable (the 'Also convert liquids' option). stickable: allows the 'stick' unit. Only ingredients that weigh about the same every time belong here. trailingModifiers are dropped from the end of the name before matching.",
+  "trailingModifiers": ["tamisée", "tamisé", "fondu", "fondue", "mou", "ramolli", "pommade", "froid", "froide", "tiède", "à", "température", "ambiante"],
+  "entries": [
+    {"note": "Flours. The head noun comes first in French, so 'farine de riz' ends in 'riz' and matches nothing.", "gramsPerCup": 120.0, "aliases": ["farine", "farine de blé", "farine t45", "farine t55", "farine type 45", "farine type 55"]},
+    {"note": "Sugars. French brown sugars (roux, cassonade, vergeoise) aren't packed like US brown sugar, so they are skipped.", "gramsPerCup": 200.0, "aliases": ["sucre", "sucre blanc", "sucre en poudre", "sucre semoule", "sucre cristal"]},
+    {"gramsPerCup": null, "aliases": ["sucre roux", "cassonade", "vergeoise"]},
+    {"gramsPerCup": 113.0, "aliases": ["sucre glace"]},
+    {"note": "Baking staples", "gramsPerCup": 84.0, "aliases": ["cacao", "cacao en poudre", "cacao non sucré"]},
+    {"gramsPerCup": 192.0, "aliases": ["levure chimique"]},
+    {"gramsPerCup": 288.0, "aliases": ["bicarbonate", "bicarbonate de soude", "bicarbonate alimentaire"]},
+    {"note": "Fats and dairy that isn't pourable", "gramsPerCup": 227.0, "aliases": ["beurre", "beurre doux", "beurre demi sel", "beurre salé", "margarine"]},
+    {"gramsPerCup": 230.0, "aliases": ["crème fraîche", "crème fraîche épaisse", "crème épaisse"]},
+    {"note": "Bare 'crème' is either thick or pourable", "gramsPerCup": null, "aliases": ["crème"]},
+    {"gramsPerCup": 245.0, "aliases": ["yaourt", "yaourt nature", "yaourt grec"]},
+    {"note": "Pourable", "gramsPerCup": 237.0, "liquid": true, "aliases": ["eau"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["lait", "lait entier", "lait demi écrémé", "lait écrémé"]},
+    {"gramsPerCup": 238.0, "liquid": true, "aliases": ["crème liquide", "crème fleurette", "crème entière liquide", "crème fraîche liquide"]},
+    {"gramsPerCup": 218.0, "liquid": true, "aliases": ["huile", "huile dolive", "huile de tournesol", "huile végétale", "huile neutre", "huile de colza"]},
+    {"gramsPerCup": 340.0, "liquid": true, "aliases": ["miel"]},
+    {"gramsPerCup": 240.0, "liquid": true, "aliases": ["bouillon", "bouillon de volaille", "bouillon de légumes", "bouillon de poulet", "fond de volaille", "fond de veau"]},
+    {"gramsPerCup": 239.0, "liquid": true, "aliases": ["vinaigre", "vinaigre de vin", "vinaigre balsamique", "vinaigre de cidre"]},
+    {"gramsPerCup": 236.0, "liquid": true, "aliases": ["vin", "vin blanc", "vin rouge"]},
+    {"gramsPerCup": 245.0, "liquid": true, "aliases": ["jus", "jus de citron", "jus de citron vert", "jus dorange"]}
+  ]
+}

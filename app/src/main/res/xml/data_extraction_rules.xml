@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What Android 12+ (API 31+) backs up and moves to a new phone. API 23-30 read
+    backup_rules.xml instead; keep the two in step (issue #25).
+
+    An include list, so nothing else goes: in particular Coil's image cache, which
+    lives in cacheDir (never backed up anyway) and refills from the network.
+
+    - The Room database, with its -wal and -shm. Room writes to the -wal first and
+      the main file can lag far behind it, so the .db alone would lose recent views.
+    - The unit_preferences SharedPreferences file: unitSystem, convertLiquids,
+      temperatureUnit, darkWhileCooking. Never rename it (CLAUDE.md, Data rules).
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="recipe_clipper.db" />
+        <include domain="database" path="recipe_clipper.db-wal" />
+        <include domain="database" path="recipe_clipper.db-shm" />
+        <include domain="sharedpref" path="unit_preferences.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="recipe_clipper.db" />
+        <include domain="database" path="recipe_clipper.db-wal" />
+        <include domain="database" path="recipe_clipper.db-shm" />
+        <include domain="sharedpref" path="unit_preferences.xml" />
+    </device-transfer>
+</data-extraction-rules>

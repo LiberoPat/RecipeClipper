@@ -14,12 +14,15 @@ final class RecipeViewModelTests: XCTestCase {
             "Bake for 10 minutes.",
             "Cool completely."
         ],
-        checkedIngredients: Set<Int> = []
+        checkedIngredients: Set<Int> = [],
+        notes: String? = nil,
+        language: String? = nil
     ) -> Recipe {
         Recipe(
             name: "Test Recipe", image: nil, ingredients: ingredients, instructions: instructions,
             prepTime: "10m", cookTime: "20m", totalTime: "30m", yield: yield,
-            sourceUrl: "https://example.com/recipe", id: id, checkedIngredients: checkedIngredients
+            sourceUrl: "https://example.com/recipe", id: id, checkedIngredients: checkedIngredients,
+            notes: notes, language: language
         )
     }
 
@@ -81,6 +84,21 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertNotNil(vm.uiState.content.success)
     }
 
+    func testTheSourceDomainIsCreditedFromTheSourceLink() async {
+        var recipe = testRecipe()
+        recipe.sourceUrl = "https://www.smittenkitchen.com/2024/01/soup/"
+        let (vm, _) = await loaded(recipe)
+        XCTAssertEqual(success(vm)?.sourceDomain, "smittenkitchen.com")
+    }
+
+    func testASourceLinkWithNoHostCreditsNoDomain() async {
+        var recipe = testRecipe()
+        recipe.sourceUrl = "not a link"
+        let (vm, _) = await loaded(recipe)
+        XCTAssertNotNil(success(vm))
+        XCTAssertNil(success(vm)?.sourceDomain)
+    }
+
     func testAnImportFailureShowsItsCause() async {
         let repository = FakeRecipeRepository()
         repository.importResult = .error(.fetchFailed("HTTP 403"))
@@ -138,6 +156,86 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.checkedIngredients, [])
     }
 
+    // MARK: Notes
+
+    func testTheNoteIsSeededFromTheLoadedRecipe() async {
+        let (vm, _) = await loaded(testRecipe(notes: "Half the sugar"))
+        XCTAssertEqual(vm.uiState.notes, "Half the sugar")
+    }
+
+    func testARecipeWithoutANoteShowsAnEmptyOne() async {
+        let (vm, _) = await loaded(testRecipe(notes: nil))
+        XCTAssertEqual(vm.uiState.notes, "")
+    }
+
+    func testTypingShowsAtOnceAndSavesOnceAfterThePause() async {
+        let clock = TestClock()
+        let (vm, repository) = await loaded(testRecipe(id: 5), clock: clock)
+
+        vm.onNotesChange("N")
+        vm.onNotesChange("Ne")
+        await clock.advance(by: 499)
+        vm.onNotesChange("Needs 10 more minutes")
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.notes, "Needs 10 more minutes")
+        XCTAssertTrue(repository.setNotesCalls.isEmpty)
+
+        await clock.advance(by: 501)
+        XCTAssertEqual(repository.setNotesCalls.map(\.id), [5])
+        XCTAssertEqual(repository.setNotesCalls.map(\.notes), ["Needs 10 more minutes"])
+    }
+
+    func testClearingTheNoteSavesTheEmptyText() async {
+        let clock = TestClock()
+        let (vm, repository) = await loaded(testRecipe(id: 5, notes: "Old"), clock: clock)
+
+        vm.onNotesChange("")
+        await clock.runUntilIdle()
+
+        XCTAssertEqual(vm.uiState.notes, "")
+        XCTAssertEqual(repository.setNotesCalls.map(\.notes), [""])
+    }
+
+    func testLeavingTheScreenMidPauseStillSavesTheNote() async {
+        let repository = repository(testRecipe(id: 5))
+        var vm: RecipeViewModel? = makeViewModel(id: 5, repository: repository)
+        weak var weakVm = vm
+        await settleMain()
+
+        vm?.onNotesChange("Less salt")
+        vm = nil // the screen is popped mid-pause
+        await settleMain()
+
+        XCTAssertNil(weakVm, "a pending note must not keep the ViewModel alive")
+        XCTAssertEqual(repository.setNotesCalls.map(\.notes), ["Less salt"])
+    }
+
+    func testANoteSavedByThePauseIsNotWrittenAgainOnLeaving() async {
+        let clock = TestClock()
+        let repository = repository(testRecipe(id: 5))
+        var vm: RecipeViewModel? = makeViewModel(id: 5, repository: repository, clock: clock)
+        await settleMain()
+
+        vm?.onNotesChange("Less salt")
+        await clock.runUntilIdle()
+        vm = nil
+        await settleMain()
+
+        XCTAssertEqual(repository.setNotesCalls.map(\.notes), ["Less salt"])
+    }
+
+    func testNoNoteIsWrittenBeforeTheRecipeHasLoaded() async {
+        let clock = TestClock()
+        let repository = repository(testRecipe(id: 5))
+        let vm = makeViewModel(id: 5, repository: repository, clock: clock)
+
+        vm.onNotesChange("Too early")
+        await clock.runUntilIdle()
+
+        XCTAssertTrue(repository.setNotesCalls.isEmpty)
+    }
+
     // MARK: Servings
 
     func testChangingServingsRescalesTheIngredientList() async {
@@ -178,10 +276,10 @@ final class RecipeViewModelTests: XCTestCase {
         let preferences = FakeAppPreferences()
         let (vm, _) = await loaded(preferences: preferences)
 
-        vm.onUnitSystemChange(.grams)
+        vm.onUnitSystemChange(.metric)
 
         let expectedIngredients = testRecipe().ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .grams, includeLiquids: false)
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .metric, includeLiquids: false)
         }
         // Oven temperature is decoupled from the unit system (defaults to as written), so
         // changing UnitSystem alone must leave instructions untouched.
@@ -190,25 +288,11 @@ final class RecipeViewModelTests: XCTestCase {
         }
         XCTAssertEqual(success(vm)?.ingredients, expectedIngredients)
         XCTAssertEqual(success(vm)?.instructions, expectedInstructions)
-        XCTAssertEqual(preferences.unitSystem, .grams)
-        XCTAssertEqual(vm.uiState.unitSystem, .grams)
+        XCTAssertEqual(preferences.unitSystem, .metric)
+        XCTAssertEqual(vm.uiState.unitSystem, .metric)
     }
 
-    func testTogglingConvertLiquidsReRendersIngredientsAndWritesThroughPreferences() async {
-        let preferences = FakeAppPreferences()
-        let (vm, _) = await loaded(preferences: preferences)
-        vm.onUnitSystemChange(.grams)
-
-        vm.onConvertLiquidsChange(true)
-
-        let expected = testRecipe().ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .grams, includeLiquids: true)
-        }
-        XCTAssertEqual(success(vm)?.ingredients, expected)
-        XCTAssertTrue(preferences.convertLiquids)
-    }
-
-    func testUnitPreferencesAreReadOnceAtInit() async {
+    func testUnitPreferencesAreSeededAtInit() async {
         let preferences = FakeAppPreferences(unitSystem: .metric, convertLiquids: true)
         let (vm, _) = await loaded(preferences: preferences)
 
@@ -220,40 +304,146 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertEqual(success(vm)?.ingredients, expected)
     }
 
-    func testDarkWhileCookingIsOffByDefaultAndWritesThroughWhenTurnedOn() async {
-        let preferences = FakeAppPreferences()
-        let (vm, _) = await loaded(preferences: preferences)
+    func testDarkWhileCookingIsOffByDefault() async {
+        let (vm, _) = await loaded()
 
         // Off by default: cook mode follows the system theme like every other screen.
         XCTAssertFalse(vm.uiState.darkWhileCooking)
-
-        vm.onDarkWhileCookingChange(true)
-
-        XCTAssertTrue(vm.uiState.darkWhileCooking)
-        XCTAssertTrue(preferences.darkWhileCooking)
     }
 
-    func testDarkWhileCookingIsSeededFromPreferencesAndLeavesTheRecipeTextAlone() async {
-        let preferences = FakeAppPreferences(darkWhileCooking: true)
-        let (vm, _) = await loaded(preferences: preferences)
+    func testDarkWhileCookingIsSeededFromPreferences() async {
+        let (vm, _) = await loaded(preferences: FakeAppPreferences(darkWhileCooking: true))
+
         XCTAssertTrue(vm.uiState.darkWhileCooking)
-
-        let before = success(vm)?.ingredients
-        vm.onDarkWhileCookingChange(false)
-
-        // A display choice, so nothing about the rendered recipe may change.
-        XCTAssertEqual(success(vm)?.ingredients, before)
     }
 
     func testTheScreenIsForcedDarkOnlyWhenCookingWithDarkWhileCookingOn() async {
-        let (vm, _) = await loaded(preferences: FakeAppPreferences(darkWhileCooking: true))
+        let preferences = FakeAppPreferences(darkWhileCooking: true)
+        let (vm, _) = await loaded(preferences: preferences)
         XCTAssertFalse(vm.uiState.forceDark) // reading
 
         vm.onCookStart()
         XCTAssertTrue(vm.uiState.forceDark)
 
-        vm.onDarkWhileCookingChange(false)
+        preferences.darkWhileCooking = false // turned off in Settings mid-cook
+        await settleMain()
         XCTAssertFalse(vm.uiState.forceDark)
+    }
+
+    // MARK: A settings change arriving while the recipe is open (#24)
+    //
+    // Writing to the fake directly is Settings changing a default while this screen sits
+    // underneath it: the fake re-emits on `settings`, as the UserDefaults notification does.
+
+    func testAUnitSystemChangeMadeInSettingsReRendersTheOpenRecipe() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(preferences: preferences)
+
+        preferences.unitSystem = .metric
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.unitSystem, .metric)
+        let expected = testRecipe().ingredients.map {
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .metric, includeLiquids: false)
+        }
+        XCTAssertEqual(success(vm)?.ingredients, expected)
+    }
+
+    func testTurningOnConvertLiquidsInSettingsReRendersTheOpenRecipe() async {
+        let preferences = FakeAppPreferences(unitSystem: .ounces)
+        let (vm, _) = await loaded(preferences: preferences)
+
+        preferences.convertLiquids = true
+        await settleMain()
+
+        XCTAssertTrue(vm.uiState.convertLiquids)
+        let expected = testRecipe().ingredients.map {
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .ounces, includeLiquids: true)
+        }
+        XCTAssertEqual(success(vm)?.ingredients, expected)
+    }
+
+    func testAnOvenTemperatureChangeMadeInSettingsConvertsTheOpenRecipesSteps() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(testRecipe(instructions: ["Bake at 350°F"]), preferences: preferences)
+
+        preferences.temperatureUnit = .celsius
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.temperatureUnit, .celsius)
+        XCTAssertEqual(success(vm)?.instructions, ["Bake at 180°C"])
+    }
+
+    func testDarkWhileCookingChangedInSettingsReachesTheScreenAndLeavesTheTextAlone() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(preferences: preferences)
+        let before = vm.uiState.content
+
+        preferences.darkWhileCooking = true
+        await settleMain()
+
+        XCTAssertTrue(vm.uiState.darkWhileCooking)
+        // A display choice, so nothing about the rendered recipe may change.
+        XCTAssertEqual(vm.uiState.content, before)
+    }
+
+    func testASettingsChangeKeepsTheChosenServingsTheTicksAndCookProgress() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(preferences: preferences)
+        vm.onServingsChange(8) // base 4 -> 8, factor 2
+        vm.onIngredientChecked(0, true)
+        vm.onCookStart()
+        vm.onStepDone()
+        let cookBefore = vm.uiState.cook
+
+        preferences.unitSystem = .metric
+        await settleMain()
+
+        XCTAssertEqual(success(vm)?.servings?.target, 8)
+        let expected = testRecipe().ingredients.map {
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 2.0), system: .metric, includeLiquids: false)
+        }
+        XCTAssertEqual(success(vm)?.ingredients, expected)
+        XCTAssertEqual(vm.uiState.checkedIngredients, [0])
+        XCTAssertEqual(vm.uiState.cook, cookBefore)
+    }
+
+    func testADecimalCommaLineKeepsItsCommaWhenAUnitsChangeArrivesWhileItIsScaled() async {
+        // Doubled, "2,5 lb" is "5 lb", which no longer shows a comma: the re-render must take
+        // the separator from the unscaled line, as the first render does (#42).
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(testRecipe(ingredients: ["2,5 lb potatoes"]), preferences: preferences)
+        vm.onServingsChange(8) // base 4 -> 8, factor 2
+
+        preferences.unitSystem = .metric
+        await settleMain()
+
+        XCTAssertEqual(success(vm)?.ingredients, ["2,27 kg potatoes"])
+    }
+
+    func testASettingsChangeMadeWhileTheRecipeIsStillLoadingIsUsedWhenItArrives() async {
+        let preferences = FakeAppPreferences()
+        let vm = makeViewModel(id: 1, repository: repository(testRecipe()), preferences: preferences)
+
+        preferences.unitSystem = .metric
+        await settleMain()
+
+        let expected = testRecipe().ingredients.map {
+            UnitConverter.convert(IngredientScaler.scale($0, factor: 1.0), system: .metric, includeLiquids: false)
+        }
+        XCTAssertEqual(success(vm)?.ingredients, expected)
+    }
+
+    func testTheUnitsDropdownsWriteComesBackThroughSettingsWithoutChangingAnything() async {
+        let preferences = FakeAppPreferences()
+        let (vm, _) = await loaded(preferences: preferences)
+
+        vm.onUnitSystemChange(.ounces)
+        let immediately = vm.uiState // before the echo is delivered
+        await settleMain()
+
+        XCTAssertEqual(immediately.unitSystem, .ounces)
+        XCTAssertEqual(vm.uiState, immediately)
     }
 
     func testTemperatureUnitIsSeededFromPreferencesAndConvertsInstructions() async {
@@ -514,6 +704,33 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.shareText(), expected)
     }
 
+    /// The exact text Share hands the share sheet, pinned rather than rebuilt from the state:
+    /// plain text, as shown on screen (scaled and converted), with no source link. Android's
+    /// RecipeScreenTest pins the same shape.
+    func testShareTextIsThePlainTextOfTheScaledConvertedRecipe() async {
+        let (vm, _) = await loaded()
+
+        vm.onServingsChange(8)
+        vm.onUnitSystemChange(.metric)
+
+        XCTAssertEqual(vm.shareText(), """
+            Test Recipe
+
+            Serves 8 (originally 4)
+            Prep 10m · Cook 20m · Total 30m
+
+            INGREDIENTS
+            480 g flour
+            480 ml milk
+
+            INSTRUCTIONS
+            1. Preheat the oven to 350°F.
+            2. Mix for 5 minutes.
+            3. Bake for 10 minutes.
+            4. Cool completely.
+            """)
+    }
+
     func testShareTextIsNilUntilARecipeIsLoaded() {
         let vm = makeViewModel(id: 1, repository: repository(testRecipe()))
         XCTAssertNil(vm.shareText())
@@ -527,5 +744,29 @@ final class RecipeViewModelTests: XCTestCase {
 
         XCTAssertEqual(repository.deleteCalls, [9])
         XCTAssertTrue(vm.uiState.deleted)
+    }
+
+    // MARK: The recipe's language (#14)
+
+    func testARecipeInALanguageWithNoWordsIsShownAsWritten() async {
+        let preferences = FakeAppPreferences(unitSystem: .metric, convertLiquids: true, temperatureUnit: .celsius)
+        let (vm, _) = await loaded(testRecipe(language: "nl-nl"), preferences: preferences)
+        guard let content = success(vm) else { return }
+        XCTAssertNil(content.words)
+        XCTAssertNil(content.servings) // no stepper: its lines couldn't be scaled
+        XCTAssertEqual(content.ingredients, ["2 cups flour", "1 cup milk"])
+        XCTAssertEqual(content.instructions, testRecipe().instructions)
+        XCTAssertTrue(content.stepTimerSeconds.allSatisfy { $0 == nil })
+    }
+
+    func testAnEnglishRecipeDeclaredOrDetectedIsReadWithEnglishWords() async {
+        for language in ["en-gb", nil] {
+            let (vm, _) = await loaded(testRecipe(language: language), preferences: FakeAppPreferences(unitSystem: .metric))
+            guard let content = success(vm) else { return }
+            XCTAssertEqual(content.words, LanguageWords.english)
+            XCTAssertEqual(content.servings?.base, 4)
+            XCTAssertEqual(content.ingredients, ["240 g flour", "240 ml milk"])
+            XCTAssertEqual(content.stepTimerSeconds, [nil, 300, 600, nil])
+        }
     }
 }

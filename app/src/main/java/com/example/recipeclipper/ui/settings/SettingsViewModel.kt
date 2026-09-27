@@ -1,14 +1,37 @@
 package com.example.recipeclipper.ui.settings
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.AppInfo
+import com.example.recipeclipper.data.AutoBackup
+import com.example.recipeclipper.data.AutoBackupState
+import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.importFile
+import com.example.recipeclipper.data.backup.AutoBackupPolicy
+import com.example.recipeclipper.data.backup.BackupDestination
+import com.example.recipeclipper.data.BackupFiles
+import com.example.recipeclipper.data.BackupRepository
+import com.example.recipeclipper.data.ChefSupport
+import com.example.recipeclipper.data.Entitlements
+import com.example.recipeclipper.data.PurchaseOutcome
+import com.example.recipeclipper.data.ShortStepRepository
+import com.example.recipeclipper.data.needsNotice
+import com.example.recipeclipper.data.backup.BackupError
+import com.example.recipeclipper.data.backup.BackupResult
+import com.example.recipeclipper.data.backup.ImportSummary
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -21,30 +44,245 @@ data class SettingsUiState(
     val unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
     val convertLiquids: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
-    val darkWhileCooking: Boolean = false
+    val darkWhileCooking: Boolean = false,
+    val backup: BackupStatus = BackupStatus.Idle,
+    /** The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind it. */
+    val showsPantry: Boolean = false,
+    /** The Steps section's "Amounts in steps" (#101): only with the `amountsInSteps` flag on. */
+    val showsSteps: Boolean = false,
+    /** Ingredient amounts inside steps. */
+    val amountsInSteps: Boolean = false,
+    /** A morning notification when pantry items are about to expire. */
+    val expiryReminders: Boolean = false,
+    /** Turning reminders on was refused (notifications not allowed): the switch stays off and
+     *  says why, until it is turned on successfully. */
+    val expiryRemindersDenied: Boolean = false,
+    /** e.g. "1.0 (1)", shown at the foot; tapping it [SettingsViewModel.DEVELOPER_TAPS] times
+     *  opens Developer settings (#87). */
+    val appVersion: String = "",
+    /** The Steps section's "Chef mode" (#100): only with the `chefMode` flag on. */
+    val showsChefMode: Boolean = false,
+    /** Chef mode as saved: short steps written on the device. */
+    val chefMode: Boolean = false,
+    /** What this phone can do, once asked; null until then. The switch works only when Available. */
+    val chefSupport: ChefSupport? = null,
+    /** The "Unlimited recipes" row (#107); null while the `freeTier` flag is off. */
+    val unlock: UnlockRow? = null,
+    /** A purchase or restore that didn't simply unlock; shown until the next one starts. */
+    val unlockNotice: PurchaseOutcome? = null,
+    /** The automatic backup copy's rows (#150); null without one (tests that don't care). */
+    val autoBackup: AutoBackupRow? = null
+) {
+    val chefModeAvailable: Boolean get() = chefSupport is ChefSupport.Available
+}
+
+/**
+ * [unlocked] counts Developer settings' override too, so testing sees the unlocked row.
+ * [busy] while the store's sheet or a restore is under way, so the buttons can't be doubled.
+ */
+data class UnlockRow(
+    val unlocked: Boolean,
+    val pending: Boolean = false,
+    val price: String? = null,
+    val busy: Boolean = false
 )
 
 /**
- * The Settings screen's ViewModel. Unlike [com.example.recipeclipper.ui.recipe.RecipeViewModel]
- * this injects [AppPreferences] directly rather than going through the repository — these are
- * app-wide defaults, not per-recipe state. [AppPreferences] is plain `var`s, so [uiState] is a
- * `MutableStateFlow` seeded from it in [init] and updated in each setter alongside the write,
- * rather than derived from a Flow the preferences don't expose.
+ * The automatic backup copy's rows in Your recipes (#150): the switch, the folder (Android),
+ * "Last backed up", "Back up now", and a nudge when the last copy is over 30 days old and nothing
+ * is copying. [lastBackupAt] is null before the first copy.
+ */
+data class AutoBackupRow(
+    val enabled: Boolean,
+    val destination: BackupDestination,
+    val folderName: String?,
+    val lastBackupAt: Long?,
+    val lastFailed: Boolean,
+    val nudge: Boolean,
+    val running: Boolean = false,
+    /** The picked folder's permission couldn't be kept; shown until the next pick. */
+    val folderRefused: Boolean = false
+) {
+    /** "Back up now" needs somewhere to write. */
+    val canBackUpNow: Boolean get() = destination == BackupDestination.READY && !running
+
+    companion object {
+        fun of(state: AutoBackupState, now: Long, previous: AutoBackupRow?, running: Boolean) = AutoBackupRow(
+            enabled = state.record.enabled,
+            destination = state.destination,
+            folderName = state.record.folderName,
+            lastBackupAt = state.record.lastBackupAt,
+            lastFailed = state.record.lastFailed,
+            nudge = AutoBackupPolicy.needsNudge(state.record, state.destination, now),
+            running = running,
+            folderRefused = previous?.folderRefused ?: false
+        )
+    }
+}
+
+/**
+ * The "Your recipes" section: export and import (#26). One at a time; the screen shows the
+ * last outcome under the two rows until the next action.
+ */
+sealed class BackupStatus {
+    object Idle : BackupStatus()
+    object Exporting : BackupStatus()
+    object Importing : BackupStatus()
+
+    /** The file is written: the screen opens the share sheet on [uri], then calls
+     *  [SettingsViewModel.onExportShared]. */
+    data class ReadyToShare(val uri: String) : BackupStatus()
+    data class Imported(val summary: ImportSummary) : BackupStatus()
+    data class Failed(val error: BackupError) : BackupStatus()
+
+    val isBusy: Boolean get() = this == Exporting || this == Importing || this is ReadyToShare
+}
+
+/**
+ * The Settings screen's ViewModel. It injects [AppPreferences] directly rather than going
+ * through a repository: these are app-wide defaults, not per-recipe state.
+ *
+ * [uiState] is a plain `MutableStateFlow`, seeded synchronously from the preferences so the
+ * first frame is right, then kept in step with [AppPreferences.settings], which this collects
+ * itself (so it holds its value with no subscriber). Each setter also updates the state at
+ * once, alongside the write, rather than waiting for the flow to echo it back.
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val preferences: AppPreferences
+    private val preferences: AppPreferences,
+    private val backups: BackupRepository,
+    private val files: BackupFiles,
+    private val appInfo: AppInfo,
+    // Last and optional, so a test that doesn't care builds the screen without it (no Pantry section).
+    private val featureFlags: FeatureFlags? = null,
+    // Chef mode (#100); without it the Steps section says the phone can't.
+    private val shortSteps: ShortStepRepository? = null,
+    // The free tier's store (#107); pass it by name.
+    private val entitlements: Entitlements = Entitlements.Unavailable,
+    // The automatic backup copy (#150); without it the section keeps only Export and Import.
+    private val autoBackup: AutoBackup? = null,
+    private val clock: Clock = Clock { System.currentTimeMillis() }
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(
-        SettingsUiState(
-            unitSystem = preferences.unitSystem,
-            convertLiquids = preferences.convertLiquids,
-            temperatureUnit = preferences.temperatureUnit,
-            darkWhileCooking = preferences.darkWhileCooking
-        )
-    )
+    private val _uiState = MutableStateFlow(preferences.current.toUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    // Chef mode's support is asked once, and only with the flag on, so the model is never woken otherwise.
+    private var askedChefSupport = false
+
+    init {
+        viewModelScope.launch {
+            preferences.settings.collect { settings ->
+                _uiState.update { settings.toUiState(it) }
+            }
+        }
+        autoBackup?.let { backup ->
+            // The folder's permission may have gone while the app was closed.
+            backup.recheckDestination()
+            viewModelScope.launch {
+                backup.state.collect { state ->
+                    _uiState.update {
+                        it.copy(autoBackup = AutoBackupRow.of(state, clock.now(), it.autoBackup, backupRunning))
+                    }
+                }
+            }
+        }
+        featureFlags?.let { flags ->
+            viewModelScope.launch {
+                flags.values.collect { values ->
+                    _uiState.update {
+                        it.copy(
+                            showsPantry = values.isOn(Flag.MEAL_PLAN),
+                            showsSteps = values.isOn(Flag.AMOUNTS_IN_STEPS),
+                            showsChefMode = values.isOn(Flag.CHEF_MODE)
+                        )
+                    }
+                    if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
+                }
+            }
+            viewModelScope.launch {
+                combine(flags.values, flags.unlockedOverrides, entitlements.state) { values, override, store ->
+                    if (!values.isOn(Flag.FREE_TIER)) null
+                    else UnlockRow(store.unlocked || override, store.pending, store.price)
+                }.collect { row ->
+                    _uiState.update { it.copy(unlock = row?.copy(busy = unlockBusy)) }
+                }
+            }
+        }
+    }
+
+    private fun askChefSupport() {
+        if (askedChefSupport) return
+        askedChefSupport = true
+        viewModelScope.launch {
+            val support = shortSteps?.support() ?: ChefSupport.Unsupported
+            _uiState.update { it.copy(chefSupport = support) }
+        }
+    }
+
+    /** The Chef mode switch: only turns on where the phone can write short steps. */
+    fun onChefModeChange(enabled: Boolean) {
+        if (enabled && !_uiState.value.chefModeAvailable) return
+        preferences.chefMode = enabled
+        _uiState.update { it.copy(chefMode = enabled) }
+    }
+
+    // A purchase or restore is under way; kept apart so a store update can't clear it.
+    private var unlockBusy = false
+
+    /** "Unlock" (#107): the store's purchase sheet. */
+    fun onUnlock() = runUnlock { entitlements.purchase() }
+
+    /** "Restore purchase" (#107): asks the store for this account's purchase again. */
+    fun onRestore() = runUnlock { entitlements.restore() }
+
+    private fun runUnlock(action: suspend () -> PurchaseOutcome) {
+        if (unlockBusy) return
+        _uiState.update { it.copy(unlockNotice = null) }
+        setUnlockBusy(true)
+        viewModelScope.launch {
+            val outcome = action()
+            setUnlockBusy(false)
+            if (outcome.needsNotice) _uiState.update { it.copy(unlockNotice = outcome) }
+        }
+    }
+
+    private fun setUnlockBusy(busy: Boolean) {
+        unlockBusy = busy
+        _uiState.update { it.copy(unlock = it.unlock?.copy(busy = busy)) }
+    }
+
+    /** The preferences' part of the state; the rest is this screen's own and carries over. */
+    private fun AppSettings.toUiState(previous: SettingsUiState? = null) = SettingsUiState(
+        unitSystem, convertLiquids, temperatureUnit, darkWhileCooking,
+        backup = previous?.backup ?: BackupStatus.Idle,
+        showsPantry = previous?.showsPantry ?: (featureFlags?.isOn(Flag.MEAL_PLAN) ?: false),
+        showsSteps = previous?.showsSteps ?: (featureFlags?.isOn(Flag.AMOUNTS_IN_STEPS) ?: false),
+        amountsInSteps = amountsInSteps,
+        expiryReminders = expiryReminders,
+        expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,
+        appVersion = appInfo.appVersion,
+        showsChefMode = previous?.showsChefMode ?: (featureFlags?.isOn(Flag.CHEF_MODE) ?: false),
+        chefMode = chefMode,
+        chefSupport = previous?.chefSupport,
+        unlock = previous?.unlock,
+        unlockNotice = previous?.unlockNotice,
+        autoBackup = previous?.autoBackup
+    )
+
+    // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.
+    private var versionTaps = 0
+
+    /**
+     * The hidden way into Developer settings (#87), in release builds too (the owner's call):
+     * true on the [DEVELOPER_TAPS]th tap, when the screen opens it, and the count starts over.
+     */
+    fun onVersionTapped(): Boolean {
+        versionTaps++
+        if (versionTaps < DEVELOPER_TAPS) return false
+        versionTaps = 0
+        return true
+    }
 
     fun onUnitSystemChange(system: UnitSystem) {
         preferences.unitSystem = system
@@ -65,4 +303,97 @@ class SettingsViewModel @Inject constructor(
         preferences.darkWhileCooking = enabled
         _uiState.update { it.copy(darkWhileCooking = enabled) }
     }
+
+    fun onAmountsInStepsChange(enabled: Boolean) {
+        preferences.amountsInSteps = enabled
+        _uiState.update { it.copy(amountsInSteps = enabled) }
+    }
+
+    /**
+     * The expiry reminders switch (#52). Turning it on is the screen's job first: it asks for
+     * notification permission (never on launch) and calls [onExpiryRemindersPermission] with the
+     * answer. Off needs no asking.
+     */
+    fun onExpiryRemindersOff() {
+        preferences.expiryReminders = false
+        _uiState.update { it.copy(expiryReminders = false) }
+    }
+
+    /** Notifications are allowed (reminders go on) or refused (they stay off, and the row says why). */
+    fun onExpiryRemindersPermission(granted: Boolean) {
+        preferences.expiryReminders = granted
+        _uiState.update { it.copy(expiryReminders = granted, expiryRemindersDenied = !granted) }
+    }
+
+    /** Export: read everything out, write the file, then hand it to the screen to share. */
+    fun onExport() {
+        if (_uiState.value.backup.isBusy) return
+        _uiState.update { it.copy(backup = BackupStatus.Exporting) }
+        viewModelScope.launch {
+            val status = when (val exported = backups.export()) {
+                is BackupResult.Failure -> BackupStatus.Failed(exported.error)
+                is BackupResult.Success ->
+                    files.writeExport(exported.value.json, exported.value.exportedAt, exported.value.photos)
+                        ?.let { BackupStatus.ReadyToShare(it) }
+                        ?: BackupStatus.Failed(BackupError.ExportFailed)
+            }
+            _uiState.update { it.copy(backup = status) }
+        }
+    }
+
+    /** The share sheet has been opened (or couldn't be): the export is done. */
+    fun onExportShared() {
+        if (_uiState.value.backup is BackupStatus.ReadyToShare) {
+            _uiState.update { it.copy(backup = BackupStatus.Idle) }
+        }
+    }
+
+    /** Import from the file the user picked in the system file picker. */
+    fun onImportPicked(uri: String) {
+        if (_uiState.value.backup.isBusy) return
+        _uiState.update { it.copy(backup = BackupStatus.Importing) }
+        viewModelScope.launch {
+            _uiState.update { it.copy(backup = backups.importFile(files, uri).toStatus()) }
+        }
+    }
+
+    /** The automatic copy's switch (#150). On again, it looks for a copy to write at once. */
+    fun onAutoBackupChange(enabled: Boolean) {
+        autoBackup?.setEnabled(enabled)
+    }
+
+    /** A folder picked in the system's folder picker (#150); null when the picker was cancelled. */
+    fun onBackupFolderPicked(uri: String?) {
+        val chosen = uri != null && autoBackup?.chooseFolder(uri) == true
+        _uiState.update { it.copy(autoBackup = it.autoBackup?.copy(folderRefused = uri != null && !chosen)) }
+    }
+
+    /** "Back up now" (#150): a copy at once, even with the automatic copy off. */
+    fun onBackUpNow() {
+        val backup = autoBackup ?: return
+        if (backupRunning) return
+        setBackupRunning(true)
+        viewModelScope.launch {
+            backup.run(force = true)
+            setBackupRunning(false)
+        }
+    }
+
+    // "Back up now" is under way; kept apart so a record update can't clear it.
+    private var backupRunning = false
+
+    private fun setBackupRunning(running: Boolean) {
+        backupRunning = running
+        _uiState.update { it.copy(autoBackup = it.autoBackup?.copy(running = running)) }
+    }
+
+    companion object {
+        const val DEVELOPER_TAPS = 7
+    }
+}
+
+/** An import's outcome as the status line shows it (Settings' Import, Home's Restore). */
+fun BackupResult<ImportSummary>.toStatus(): BackupStatus = when (this) {
+    is BackupResult.Success -> BackupStatus.Imported(value)
+    is BackupResult.Failure -> BackupStatus.Failed(error)
 }

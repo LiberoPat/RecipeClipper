@@ -1,12 +1,22 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.ListRow
+import com.example.recipeclipper.data.local.dao.MealPlanDao
+import com.example.recipeclipper.data.local.dao.MenuDao
+import com.example.recipeclipper.data.local.dao.MenuRow
+import com.example.recipeclipper.data.local.entity.MenuEntity
+import com.example.recipeclipper.data.local.entity.MenuEntryEntity
+import com.example.recipeclipper.data.local.dao.PlannedMealRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
 import com.example.recipeclipper.data.local.entity.ListEntity
+import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
+import com.example.recipeclipper.data.local.entity.MealTypeEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
@@ -46,13 +56,34 @@ class DatabaseErrorTest {
         override suspend fun update(recipe: RecipeEntity) = throw throwable()
         override suspend fun touch(id: Long, now: Long) = throw throwable()
         override suspend fun setChecked(id: Long, checked: Set<Int>) = throw throwable()
+        override suspend fun setNotes(id: Long, notes: String?) = throw throwable()
+        override suspend fun setCookState(id: Long, cookState: String?) = throw throwable()
+        override suspend fun setServingsTarget(id: Long, target: Int?) = throw throwable()
+        override suspend fun cookStates(): List<CookStateRow> = throw throwable()
         override suspend fun delete(id: Long) = throw throwable()
         override suspend fun crossRefsFor(recipeId: Long): List<RecipeListCrossRef> = throw throwable()
         override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) = throw throwable()
         override fun observeHistory(): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override fun observeHistory(query: String): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
-        override suspend fun cullHistory(keep: Int) = throw throwable()
+        override suspend fun cullHistory(keep: Int, today: Long) = throw throwable()
+        override suspend fun oldestCullable(today: Long): Long? = throw throwable()
+        override suspend fun count(): Int = throw throwable()
+        override fun observeCount(): Flow<Int> = flow { throw throwable() }
+        override suspend fun planEntriesFor(recipeId: Long): List<MealPlanEntryEntity> = throw throwable()
+        override suspend fun restorePlanEntry(
+            id: Long, day: Long, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
+            sortOrder: Int, updatedAt: Long, uid: String
+        ) = throw throwable()
+        override suspend fun menuEntriesFor(recipeId: Long): List<MenuEntryEntity> = throw throwable()
+        override suspend fun cookedPhotosFor(recipeId: Long): List<com.example.recipeclipper.data.local.entity.CookedPhotoEntity> =
+            throw throwable()
+        override suspend fun insertCookedPhotos(photos: List<com.example.recipeclipper.data.local.entity.CookedPhotoEntity>) =
+            throw throwable()
+        override suspend fun restoreMenuEntry(
+            id: Long, menuId: Long, dayOffset: Int, mealTypeId: Long, recipeId: Long?, servings: Int?, note: String?,
+            sortOrder: Int, updatedAt: Long, uid: String
+        ) = throw throwable()
     }
 
     private class ThrowingListDao : ListDao() {
@@ -89,17 +120,18 @@ class DatabaseErrorTest {
         val log = RecordingLog()
         val result = recipes(ParseResult.Success(recipe), log).importFromUrl(url)
         assertEquals(ParseResult.Error(ParseError.SaveFailed), result)
-        assertEquals(listOf("import save failed"), log.messages)
+        // The lookup for a user's version (#29) fails first; the fetch goes ahead regardless.
+        assertEquals(listOf("find user's version failed", "import save failed"), log.messages)
     }
 
     @Test fun `a failed fetch whose fallback lookup throws still returns the fetch's cause`() = runTest {
         val log = RecordingLog()
         val result = recipes(ParseResult.Error(ParseError.NoRecipeFound), log).importFromUrl(url)
         assertEquals(ParseResult.Error(ParseError.NoRecipeFound), result)
-        assertEquals(1, log.messages.size)
+        assertEquals(2, log.messages.size) // the user's-version lookup (#29), then the fallback
     }
 
-    @Test fun `open, delete, restore and setChecked degrade instead of throwing`() = runTest {
+    @Test fun `open, delete, restore and the per-recipe writes degrade instead of throwing`() = runTest {
         val log = RecordingLog()
         val repository = recipes(ParseResult.Error(ParseError.NoRecipeFound), log)
 
@@ -107,9 +139,16 @@ class DatabaseErrorTest {
         assertNull(repository.delete(1))
         repository.restore(RecipeRepository.DeletedRecipe(entity, emptyList()))
         repository.setChecked(1, setOf(0))
+        repository.setNotes(1, "Half the sugar")
+        repository.setCookProgress(1, CookProgress(active = true))
+        repository.setServingsTarget(1, 4)
+        assertEquals(emptyList<Any>(), repository.runningTimers())
 
         assertEquals(
-            listOf("open failed", "delete failed", "restore failed", "setChecked failed"),
+            listOf(
+                "open failed", "delete failed", "restore failed", "setChecked failed", "setNotes failed",
+                "setCookProgress failed", "setServingsTarget failed", "runningTimers failed"
+            ),
             log.messages
         )
     }
@@ -152,6 +191,70 @@ class DatabaseErrorTest {
                 "setMembership failed", "setMembership failed", "createList failed",
                 "rename failed", "deleteList failed",
                 "observeLists failed", "observeListsFor failed", "observeRecipesIn failed"
+            ),
+            log.messages
+        )
+    }
+
+    private class ThrowingMenuDao : MenuDao() {
+        override fun observeMenus(): Flow<List<MenuRow>> = flow { throw Boom() }
+        override suspend fun entries(menuId: Long): List<MenuEntryEntity> = throw Boom()
+        override suspend fun planEntries(start: Long, end: Long): List<MealPlanEntryEntity> = throw Boom()
+        override suspend fun insertMenu(menu: MenuEntity): Long = throw Boom()
+        override suspend fun insertEntries(entries: List<MenuEntryEntity>) = throw Boom()
+        override suspend fun nextPlanOrder(day: Long, mealTypeId: Long): Int = throw Boom()
+        override suspend fun insertPlanEntry(entry: MealPlanEntryEntity): Long = throw Boom()
+        override suspend fun saveWeek(name: String, weekStart: Long, now: Long): Long? = throw Boom()
+        override suspend fun apply(menuId: Long, weekStart: Long, now: Long): Int = throw Boom()
+        override suspend fun rename(id: Long, name: String, now: Long) = throw Boom()
+        override suspend fun delete(id: Long) = throw Boom()
+    }
+
+    private class ThrowingMealPlanDao : MealPlanDao() {
+        override fun observeMealTypes(): Flow<List<MealTypeEntity>> = flow { throw Boom() }
+        override fun observeDays(start: Long, end: Long): Flow<List<PlannedMealRow>> = flow { throw Boom() }
+        override suspend fun entry(id: Long): MealPlanEntryEntity? = throw Boom()
+        override suspend fun nextEntryOrder(day: Long, mealTypeId: Long): Int = throw Boom()
+        override suspend fun insertEntry(entry: MealPlanEntryEntity): Long = throw Boom()
+        override suspend fun restore(entry: MealPlanEntryEntity) = throw Boom()
+        override suspend fun setSlot(id: Long, day: Long, mealTypeId: Long, sortOrder: Int, now: Long) = throw Boom()
+        override suspend fun deleteEntry(id: Long) = throw Boom()
+        override suspend fun nextTypeOrder(): Int = throw Boom()
+        override suspend fun insertType(type: MealTypeEntity): Long = throw Boom()
+        override suspend fun renameType(id: Long, name: String, now: Long) = throw Boom()
+        override suspend fun setTypeOrder(id: Long, sortOrder: Int, now: Long) = throw Boom()
+        override suspend fun moveEntriesToDinner(id: Long, now: Long) = throw Boom()
+        override suspend fun moveMenuEntriesToDinner(id: Long, now: Long) = throw Boom()
+        override suspend fun deleteUserType(id: Long) = throw Boom()
+    }
+
+    @Test fun `meal plan writes are no-ops, a delete gives null, flows go empty`() = runTest {
+        val log = RecordingLog()
+        val plan = DefaultMealPlanRepository(ThrowingMealPlanDao(), ThrowingMenuDao(), Clock { 1_000L }, log)
+
+        plan.addRecipe(recipeId = 1, day = 20_000, mealTypeId = 3, servings = 4)
+        plan.addNote("Eat out", day = 20_000, mealTypeId = 3)
+        plan.move(entryId = 5, day = 20_001, mealTypeId = 2)
+        assertNull(plan.delete(5))
+        plan.addMealType("Brunch")
+        plan.renameMealType(5, "Supper")
+        plan.reorderMealTypes(listOf(2, 1))
+        plan.deleteMealType(5)
+        assertEquals(listOf(emptyList<Any>()), plan.observeMealTypes().toList())
+        assertEquals(listOf(emptyList<Any>()), plan.observeDays(20_000, 20_006).toList())
+        assertEquals(false, plan.saveWeekAsMenu("Usual", 20_000))
+        assertEquals(0, plan.applyMenu(1, 20_007))
+        plan.renameMenu(1, "Winter")
+        plan.deleteMenu(1)
+        assertEquals(listOf(emptyList<Any>()), plan.observeMenus().toList())
+
+        assertEquals(
+            listOf(
+                "addRecipe failed", "addNote failed", "move failed", "deleteMeal failed",
+                "addMealType failed", "renameMealType failed", "reorderMealTypes failed",
+                "deleteMealType failed", "observeMealTypes failed", "observeDays failed",
+                "saveWeekAsMenu failed", "applyMenu failed", "renameMenu failed", "deleteMenu failed",
+                "observeMenus failed"
             ),
             log.messages
         )

@@ -21,7 +21,7 @@ No accounts, API keys or backend. Everything happens on the device.
 - **Works offline.** Anything you've opened once opens again without a connection, photos
   included.
 - **Scale servings.** A `Serves − 6 +` stepper rescales every ingredient amount.
-- **Convert units.** Show amounts as written, in grams, in ounces, or in metric, and oven
+- **Convert units.** Show amounts as written, in metric or in ounces, and oven
   temperatures as written, in °C or in °F. The unit choice is set once and applies to every
   recipe. Only conversions that are reliable are made: an ingredient whose weight varies too
   much (salt, chopped vegetables, nuts) stays as written rather than showing a confident

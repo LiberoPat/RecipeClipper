@@ -1,6 +1,7 @@
 package com.example.recipeclipper.ui.lists
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.recipe.BackButton
@@ -54,6 +55,9 @@ fun ListsScreen(
             LazyColumn(
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
                 modifier = Modifier.fillMaxSize()
+                    // Edge-to-edge: the background fills behind the bars, the rows stay clear
+                    // of them, the display cutout and the keyboard.
+                    .safeDrawingPadding()
             ) {
                 item {
                     BackButton(onBack)

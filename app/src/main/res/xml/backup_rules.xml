@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Auto Backup on API 23-30. API 31+ reads data_extraction_rules.xml instead; keep
+    the two in step. See that file for why each entry is here (issue #25).
+-->
+<full-backup-content>
+    <include domain="database" path="recipe_clipper.db" />
+    <include domain="database" path="recipe_clipper.db-wal" />
+    <include domain="database" path="recipe_clipper.db-shm" />
+    <include domain="sharedpref" path="unit_preferences.xml" />
+</full-backup-content>

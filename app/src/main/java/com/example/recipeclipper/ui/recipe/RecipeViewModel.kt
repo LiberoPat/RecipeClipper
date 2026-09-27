@@ -3,24 +3,43 @@ package com.example.recipeclipper.ui.recipe
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.AppInfo
+import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.ShortStepRepository
+import com.example.recipeclipper.data.TimerAlarmScheduler
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
-import com.example.recipeclipper.data.model.IngredientScaler
+import com.example.recipeclipper.data.local.AppSettings
+import com.example.recipeclipper.data.model.CookProgress
+import com.example.recipeclipper.data.DecisionRepository
+import com.example.recipeclipper.data.model.DecisionCandidates
+import com.example.recipeclipper.data.model.Decisions
+import com.example.recipeclipper.data.model.IngredientRendering
+import com.example.recipeclipper.data.model.StepAmounts
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.SiteReportLink
+import com.example.recipeclipper.data.model.SavedTimer
 import com.example.recipeclipper.data.model.ServingsScale
+import com.example.recipeclipper.data.model.SourceDomain
+import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.TemperatureConverter
 import com.example.recipeclipper.data.model.TemperatureUnit
-import com.example.recipeclipper.data.model.UnitConverter
 import com.example.recipeclipper.data.model.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +48,10 @@ import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.example.recipeclipper.data.Entitlements
+import com.example.recipeclipper.data.PurchaseOutcome
+import com.example.recipeclipper.data.needsNotice
 import javax.inject.Inject
 import kotlin.math.ceil
 
@@ -42,30 +65,95 @@ class RecipeViewModel @Inject constructor(
     private val repository: RecipeRepository,
     private val unitPreferences: AppPreferences,
     private val clock: Clock,
-    private val connectivity: Connectivity
+    private val connectivity: Connectivity,
+    private val appInfo: AppInfo,
+    private val alarms: TimerAlarmScheduler,
+    // Chef mode (#100) and the free tier (#107). Optional, so a test that doesn't care leaves
+    // them out (chef mode off, nothing to unlock); pass them by name.
+    private val shortSteps: ShortStepRepository? = null,
+    private val featureFlags: FeatureFlags? = null,
+    private val entitlements: Entitlements = Entitlements.Unavailable,
+    // The on-device model's count-bracket decisions (#104); none without it.
+    private val decisionRepository: DecisionRepository? = null
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
     private val shareUrl: String? = savedStateHandle.get<String>(URL_ARG)?.takeIf { it.isNotBlank() }
 
-    private val _uiState = MutableStateFlow(
-        RecipeUiState(
-            unitSystem = unitPreferences.unitSystem,
-            convertLiquids = unitPreferences.convertLiquids,
-            temperatureUnit = unitPreferences.temperatureUnit,
-            darkWhileCooking = unitPreferences.darkWhileCooking
+    // Opened from a timer notification: start cook mode once the recipe has loaded.
+    private var openInCookMode: Boolean = savedStateHandle.get<Boolean>(COOK_ARG) == true
+
+    // Opened from the Week (#49): show the planned servings rather than the saved choice. For
+    // this visit only; it isn't saved unless the cook changes the servings here.
+    private var plannedServings: Int? = savedStateHandle.get<Int>(SERVINGS_ARG)?.takeIf { it > 0 }
+
+    // Seeded synchronously so the first render already uses the user's units; kept current
+    // afterwards by collecting [AppPreferences.settings] in [init].
+    private val _uiState = unitPreferences.current.let {
+        MutableStateFlow(
+            RecipeUiState(
+                unitSystem = it.unitSystem,
+                convertLiquids = it.convertLiquids,
+                temperatureUnit = it.temperatureUnit,
+                darkWhileCooking = it.darkWhileCooking,
+                amountsInSteps = it.amountsInSteps
+            )
         )
-    )
+    }
     val uiState: StateFlow<RecipeUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
     private var reconnectJob: Job? = null
 
+    // The note as typed but not yet written, and the debounced write that will save it.
+    private var pendingNotes: String? = null
+    private var notesJob: Job? = null
+
     // Step index -> wall-clock time its timer ends. Only running timers are in here.
     private val deadlines = mutableMapOf<Int, Long>()
     private var tickJob: Job? = null
 
+    // Cook progress and servings writes, run one at a time in the order they were made, so two
+    // quick taps can never land out of order and leave the older state saved. A plain queue
+    // rather than a Channel: a Channel drops an element handed to a receiver that is cancelled
+    // before it runs, which is exactly the tap made just before leaving the screen.
+    private val pendingWrites = ArrayDeque<suspend () -> Unit>()
+    private var writer: Job? = null
+
+    // Chef mode (#100): on when both its flag and its setting are. Declared before init, which
+    // starts the collectors that set them.
+    private var chefFlag = false
+    private var chefSetting = false
+    private var chefOn = false
+    private var chefJob: Job? = null
+    // The loaded recipe's short steps as saved, before rendering; empty while Chef mode is off.
+    private var rawShortSteps: List<String?> = emptyList()
+
+    // The model's decided count brackets (#104); NONE (today's rendering) until one lands.
+    private var decisions: Decisions = Decisions.NONE
+
     init {
+        decisionRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.observe().collect {
+                    if (it != decisions) {
+                        decisions = it
+                        _uiState.update(::rerender)
+                    }
+                }
+            }
+        }
+        // Settings can change a default while this screen is alive underneath it; this keeps
+        // the open recipe in step instead of showing the units it was opened with (#24).
+        viewModelScope.launch { unitPreferences.settings.collect(::applySettings) }
+        featureFlags?.let { flags ->
+            viewModelScope.launch {
+                flags.values.collect {
+                    chefFlag = it.isOn(Flag.CHEF_MODE)
+                    onChefChanged()
+                }
+            }
+        }
         load()
     }
 
@@ -73,10 +161,37 @@ class RecipeViewModel @Inject constructor(
 
     fun onRetry() = load()
 
+    /**
+     * The Unlock prompt on a recipe that wasn't kept (#107): buys the unlock, then saves the
+     * recipe on screen. A pending or failed purchase leaves it shown and unsaved, and says so.
+     */
+    fun onUnlock() {
+        viewModelScope.launch {
+            val outcome = entitlements.purchase()
+            if (outcome != PurchaseOutcome.UNLOCKED) {
+                if (outcome.needsNotice) _uiState.update { it.copy(unlockNotice = outcome) }
+                return@launch
+            }
+            val shown = (_uiState.value.content as? RecipeContent.Success)?.recipe ?: return@launch
+            val saved = repository.keep(shown)
+            if (saved is ParseResult.Success && saved.kept) {
+                _uiState.update { state ->
+                    val content = state.content as? RecipeContent.Success
+                    state.copy(notKept = false, content = content?.copy(recipe = saved.recipe) ?: state.content)
+                }
+                startChef() // now it has a row to keep short steps against
+            }
+        }
+    }
+
+    fun onUnlockNoticeShown() = _uiState.update { it.copy(unlockNotice = null) }
+
     private fun load() {
         loadJob?.cancel()
         reconnectJob?.cancel()
-        _uiState.update { it.copy(content = RecipeContent.Loading) }
+        _uiState.update {
+            it.copy(content = RecipeContent.Loading, reportSiteUrl = null, clipUrl = null, asWrittenSteps = emptySet())
+        }
         loadJob = viewModelScope.launch {
             val result = when {
                 recipeId != null -> repository.open(recipeId)
@@ -89,15 +204,79 @@ class RecipeViewModel @Inject constructor(
                 when (result) {
                     is ParseResult.Success -> state.copy(
                         content = successContent(
-                            result.recipe, state.unitSystem, state.convertLiquids, state.temperatureUnit
+                            result.recipe.withPlannedServings(), state.unitSystem, state.convertLiquids,
+                            state.temperatureUnit, state.amountsInSteps
                         ),
-                        checkedIngredients = result.recipe.checkedIngredients
+                        checkedIngredients = result.recipe.checkedIngredients,
+                        notes = result.recipe.notes.orEmpty(),
+                        notKept = !result.kept
                     )
-                    is ParseResult.Error -> state.copy(content = RecipeContent.Error(result.error))
+                    is ParseResult.Error -> state.copy(
+                        content = RecipeContent.Error(result.error),
+                        reportSiteUrl = reportSiteUrl(result.error),
+                        clipUrl = shareUrl.takeIf { result.error == ParseError.NoRecipeFound }
+                    )
+                }
+            }
+            if (result is ParseResult.Success) {
+                restoreCook(result.recipe)
+                startChef()
+                askCountBrackets()
+                if (openInCookMode) {
+                    openInCookMode = false
+                    onCookStart()
                 }
             }
             if (result is ParseResult.Error && result.error.reloadsOnReconnect) reloadOnReconnect()
         }
+    }
+
+    /**
+     * Picks up where the cook left off, even if the app was closed or killed meanwhile. A timer
+     * that was running resumes from its saved deadline, so it kept counting while closed; one
+     * whose deadline passed shows as finished and already alerted (the background alert has
+     * announced it, so no stale beep on reopening). Its alarm is rescheduled too, which is
+     * idempotent and recovers one lost to a force-stop. Indexes past the last step are dropped.
+     */
+    private fun restoreCook(recipe: Recipe) {
+        deadlines.clear()
+        val saved = recipe.cook
+        val count = recipe.instructions.size
+        val now = clock.now()
+        val timers = mutableMapOf<Int, StepTimer>()
+        for ((step, timer) in saved.timers) {
+            if (step !in 0 until count) continue
+            val endsAt = timer.endsAt
+            timers[step] = when {
+                endsAt != null && endsAt > now -> {
+                    deadlines[step] = endsAt
+                    alarms.schedule(StepAlarm(recipe.id, recipe.name, step, endsAt))
+                    StepTimer(timer.totalSeconds, secondsUntil(endsAt, now), running = true)
+                }
+                endsAt != null || timer.remainingSeconds == 0 ->
+                    StepTimer(timer.totalSeconds, 0, running = false, alerted = true)
+                else -> StepTimer(timer.totalSeconds, timer.remainingSeconds, running = false)
+            }
+        }
+        val cook = CookState(
+            active = saved.active && count > 0,
+            currentStep = if (count > 0) saved.currentStep.coerceIn(0, count - 1) else 0,
+            doneSteps = saved.doneSteps.filterTo(mutableSetOf()) { it in 0 until count },
+            timers = timers
+        )
+        _uiState.update { it.copy(cook = cook) }
+        if (deadlines.isNotEmpty()) ensureTicking()
+    }
+
+    /**
+     * Only a shared link that loaded but held no recipe is worth reporting: a block, being
+     * offline or a failed fetch usually lifts on its own, and a saved recipe has no page to
+     * report.
+     */
+    private fun reportSiteUrl(error: ParseError): String? {
+        if (error != ParseError.NoRecipeFound) return null
+        val link = shareUrl ?: return null
+        return SiteReportLink.issueUrl(link, appInfo.platform, appInfo.appVersion)
     }
 
     /**
@@ -124,17 +303,42 @@ class RecipeViewModel @Inject constructor(
     }
 
     /**
+     * The user's note, edited in place. The screen shows every keystroke at once; the write
+     * waits until typing pauses for [NOTES_SAVE_DELAY_MS], so a sentence is one write rather
+     * than one per letter. Leaving the screen before then still saves it (see [onCleared]).
+     */
+    fun onNotesChange(text: String) {
+        _uiState.update { it.copy(notes = text) }
+        val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id ?: return
+        pendingNotes = text
+        notesJob?.cancel()
+        notesJob = viewModelScope.launch {
+            delay(NOTES_SAVE_DELAY_MS)
+            flushNotes(id)
+        }
+    }
+
+    private suspend fun flushNotes(id: Long) {
+        val text = pendingNotes ?: return
+        pendingNotes = null
+        // Once taken off pendingNotes it must land: leaving the screen mid-write can't drop it.
+        withContext(NonCancellable) { repository.setNotes(id, text) }
+    }
+
+    /**
      * The recipe as currently on screen — scaled servings, converted units — formatted for
      * sharing outside the app. Null when there's nothing loaded yet. Building and firing the
-     * share Intent is the screen's job: this only returns text.
+     * share Intent is the screen's job: this only returns text. The screen passes [labels]
+     * read from its resources, so the words around the recipe follow the phone's language.
      */
-    fun shareText(): String? {
+    fun shareText(labels: RecipeShareText.Labels = RecipeShareText.Labels.ENGLISH): String? {
         val content = _uiState.value.content as? RecipeContent.Success ?: return null
         return RecipeShareText.format(
             recipe = content.recipe,
             servings = content.servings,
             ingredients = content.ingredients,
-            instructions = content.instructions
+            instructions = content.instructions,
+            labels = labels
         )
     }
 
@@ -145,11 +349,54 @@ class RecipeViewModel @Inject constructor(
      */
     fun onDelete() {
         val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id ?: return
+        // A deleted recipe's running timers must not ring later.
+        deadlines.keys.forEach { alarms.cancel(id, it) }
+        deadlines.clear()
         viewModelScope.launch {
-            repository.delete(id)
+            // No undo here: the confirmation said the photos go with it (#116).
+            repository.delete(id)?.let { repository.forget(it) }
             _uiState.update { it.copy(deleted = true) }
         }
     }
+
+    /**
+     * "Update from source" (#29), confirmed on screen first: replaces the user's version with
+     * the site's. The recipe stays on screen meanwhile; on success it is shown afresh, on
+     * failure it is kept as it was and [RecipeUiState.updateError] says why.
+     */
+    fun onUpdateFromSource() {
+        val recipe = (_uiState.value.content as? RecipeContent.Success)?.recipe ?: return
+        if (!recipe.canUpdateFromSource || _uiState.value.updatingFromSource) return
+        _uiState.update { it.copy(updatingFromSource = true, updateError = null) }
+        viewModelScope.launch {
+            val result = repository.updateFromSource(recipe.id)
+            if (result is ParseResult.Success) {
+                // Steps may have changed: drop this screen's alarms; restoreCook reschedules
+                // whatever the saved progress still holds.
+                deadlines.keys.forEach { alarms.cancel(recipe.id, it) }
+                _uiState.update { state ->
+                    state.copy(
+                        content = successContent(
+                            result.recipe, state.unitSystem, state.convertLiquids, state.temperatureUnit,
+                            state.amountsInSteps
+                        ),
+                        checkedIngredients = result.recipe.checkedIngredients,
+                        updatingFromSource = false,
+                        asWrittenSteps = emptySet()
+                    )
+                }
+                restoreCook(result.recipe)
+                startChef()
+                askCountBrackets()
+            } else {
+                val error = (result as ParseResult.Error).error
+                _uiState.update { it.copy(updatingFromSource = false, updateError = error) }
+            }
+        }
+    }
+
+    /** The screen has shown [RecipeUiState.updateError]. */
+    fun onUpdateErrorShown() = _uiState.update { it.copy(updateError = null) }
 
     fun onServingsChange(target: Int) {
         _uiState.update { state ->
@@ -159,50 +406,150 @@ class RecipeViewModel @Inject constructor(
             state.copy(
                 content = content.copy(
                     servings = scale,
-                    ingredients = render(content.recipe, scale, state.unitSystem, state.convertLiquids)
-                )
+                    ingredients = render(content.recipe, content.words, scale, state.unitSystem, state.convertLiquids)
+                ).withStepAmounts(state.amountsInSteps)
             )
         }
+        val content = _uiState.value.content as? RecipeContent.Success ?: return
+        val scale = content.servings ?: return
+        // The recipe's own yield is saved as no choice at all.
+        val saved = scale.target.takeIf { it != scale.base }
+        save { repository.setServingsTarget(content.recipe.id, saved) }
     }
 
+    /**
+     * The units dropdown on this screen. It is a global default, so it writes through; the
+     * state updates at once too, rather than waiting for [AppPreferences.settings] to echo it.
+     * The other preferences are set only in Settings and reach this screen through
+     * [applySettings].
+     */
     fun onUnitSystemChange(system: UnitSystem) {
         unitPreferences.unitSystem = system
         updateUnits { it.copy(unitSystem = system) }
     }
 
-    fun onConvertLiquidsChange(enabled: Boolean) {
-        unitPreferences.convertLiquids = enabled
-        updateUnits { it.copy(convertLiquids = enabled) }
-    }
-
     /**
-     * A display choice, not a unit one, so it changes nothing about the rendered text and
-     * does not go through [updateUnits]. It rides in the units menu only because that is
-     * the app's one settings surface today.
+     * A change to the global defaults, from Settings or from this screen's own dropdown,
+     * arriving while the recipe is open. Only a change that affects the text re-renders it:
+     * [RecipeUiState.darkWhileCooking] is a display choice and leaves the recipe alone, and
+     * scaled servings, ticks and cook progress are kept either way.
      */
-    fun onDarkWhileCookingChange(enabled: Boolean) {
-        unitPreferences.darkWhileCooking = enabled
-        _uiState.update { it.copy(darkWhileCooking = enabled) }
+    private fun applySettings(settings: AppSettings) {
+        chefSetting = settings.chefMode
+        onChefChanged()
+        _uiState.update { state ->
+            val next = state.copy(
+                unitSystem = settings.unitSystem,
+                convertLiquids = settings.convertLiquids,
+                temperatureUnit = settings.temperatureUnit,
+                darkWhileCooking = settings.darkWhileCooking,
+                amountsInSteps = settings.amountsInSteps
+            )
+            val rendersDifferently = next.unitSystem != state.unitSystem ||
+                next.convertLiquids != state.convertLiquids ||
+                next.temperatureUnit != state.temperatureUnit ||
+                next.amountsInSteps != state.amountsInSteps
+            if (rendersDifferently) rerender(next) else next
+        }
     }
 
     private fun updateUnits(change: (RecipeUiState) -> RecipeUiState) {
-        _uiState.update { old ->
-            val state = change(old)
-            val content = state.content as? RecipeContent.Success ?: return@update state
+        _uiState.update { rerender(change(it)) }
+    }
+
+    // Re-renders the loaded recipe under [state]'s units, keeping its chosen servings.
+    private fun rerender(state: RecipeUiState): RecipeUiState {
+        val content = state.content as? RecipeContent.Success ?: return state
+        return withShortSteps(
             state.copy(
                 content = content.copy(
                     ingredients = render(
-                        content.recipe, content.servings, state.unitSystem, state.convertLiquids
+                        content.recipe, content.words, content.servings, state.unitSystem, state.convertLiquids
                     ),
-                    instructions = renderInstructions(content.recipe, state.temperatureUnit)
-                )
+                    instructions = renderInstructions(content.recipe, content.words, state.temperatureUnit)
+                ).withStepAmounts(state.amountsInSteps)
             )
+        )
+    }
+
+    /**
+     * Asks the model about the loaded recipe's count brackets (#104), in the background: lines
+     * show as today until an answer lands. Only a recipe with a servings stepper can scale, and
+     * only with `aiCountBrackets` on (#127).
+     */
+    private fun askCountBrackets() {
+        if (featureFlags?.isOn(Flag.AI_COUNT_BRACKETS) != true) return
+        val repo = decisionRepository ?: return
+        val content = _uiState.value.content as? RecipeContent.Success ?: return
+        if (content.servings == null) return
+        val questions = DecisionCandidates.countBrackets(content.recipe.ingredients, content.words)
+        if (questions.isNotEmpty()) viewModelScope.launch { repo.decide(questions) }
+    }
+
+    // --- Chef mode (#100): short steps written on the device ---
+
+    private fun onChefChanged() {
+        val on = chefFlag && chefSetting
+        if (on == chefOn) return
+        chefOn = on
+        startChef()
+    }
+
+    /**
+     * (Re)starts the loaded recipe's short steps: the saved ones show at once, and the missing
+     * ones are written one by one, the steps showing as written meanwhile. Nothing happens on a
+     * phone or recipe language the model can't do; Chef mode off clears them.
+     */
+    private fun startChef() {
+        chefJob?.cancel()
+        chefJob = null
+        rawShortSteps = emptyList()
+        _uiState.update(::withShortSteps)
+        val recipe = (_uiState.value.content as? RecipeContent.Success)?.recipe ?: return
+        if (_uiState.value.notKept) return // not saved (#107): short steps are cached per saved recipe
+        val repository = shortSteps ?: return
+        if (!chefOn) return
+        chefJob = viewModelScope.launch {
+            val support = repository.support()
+            if (support !is ChefSupport.Available || !support.covers(LanguageWords.forRecipe(recipe)?.language)) {
+                return@launch
+            }
+            launch { repository.fill(recipe) }
+            repository.observe(recipe).collect { shorts ->
+                rawShortSteps = shorts
+                _uiState.update(::withShortSteps)
+            }
+        }
+    }
+
+    // The saved short steps, rendered like the steps they stand for.
+    private fun withShortSteps(state: RecipeUiState): RecipeUiState {
+        val content = state.content as? RecipeContent.Success ?: return state
+        val shorts = rawShortSteps.takeIf { it.size == content.recipe.instructions.size }.orEmpty()
+        val rendered = shorts.map { short -> short?.let { renderStep(it, content.words, state.temperatureUnit) } }
+        return state.copy(
+            content = content.copy(shortInstructions = rendered).withStepAmounts(state.amountsInSteps)
+        )
+    }
+
+    /** Chef mode: shows step [index] as written, or short again. */
+    fun onStepAsWrittenToggle(index: Int) {
+        _uiState.update { state ->
+            val shown = state.asWrittenSteps
+            state.copy(asWrittenSteps = if (index in shown) shown - index else shown + index)
         }
     }
 
     // --- Cook mode ---
 
     fun onCookStart() {
+        val current = _uiState.value
+        val loaded = current.content as? RecipeContent.Success ?: return
+        if (current.cook.doneSteps.size >= loaded.instructions.size) {
+            // A finished run starts fresh below, and its timers go with it, so their alarms must too.
+            deadlines.keys.forEach { alarms.cancel(loaded.recipe.id, it) }
+            deadlines.clear()
+        }
         _uiState.update { state ->
             val content = state.content as? RecipeContent.Success ?: return@update state
             val count = content.instructions.size
@@ -211,14 +558,21 @@ class RecipeViewModel @Inject constructor(
             val cook = if (state.cook.doneSteps.size >= count) CookState() else state.cook
             state.copy(cook = cook.copy(active = true, currentStep = cook.currentStep.coerceIn(0, count - 1)))
         }
+        saveCook()
     }
 
-    fun onCookExit() = updateCook { it.copy(active = false) }
+    fun onCookExit() {
+        updateCook { it.copy(active = false) }
+        saveCook()
+    }
 
     fun onIngredientsToggle() = updateCook { it.copy(ingredientsExpanded = !it.ingredientsExpanded) }
 
     /** Tapping a step makes it current. Only [onStepDone] ever advances or marks progress. */
-    fun onStepSelected(index: Int) = updateCook { it.copy(currentStep = index) }
+    fun onStepSelected(index: Int) {
+        updateCook { it.copy(currentStep = index) }
+        saveCook()
+    }
 
     fun onStepDone() {
         _uiState.update { state ->
@@ -229,18 +583,61 @@ class RecipeViewModel @Inject constructor(
             // Next unfinished step after this one, else the earliest one skipped, else finished.
             val next = (cook.currentStep + 1 until count).firstOrNull { it !in done }
                 ?: (0 until count).firstOrNull { it !in done }
-            state.copy(
-                cook = if (next != null) {
-                    cook.copy(doneSteps = done, currentStep = next)
-                } else {
-                    cook.copy(doneSteps = done, active = false)
-                }
-            )
+            if (next != null) {
+                state.copy(cook = cook.copy(doneSteps = done, currentStep = next))
+            } else {
+                // The end of cooking (#147): what was ticked goes to the pantry's use-up sheet.
+                // A finished run finishes again only after starting fresh, so once per cook.
+                state.copy(cook = cook.copy(doneSteps = done, active = false), cookFinished = finished(content, state.checkedIngredients))
+            }
         }
+        saveCook()
     }
+
+    /** The ticked lines as shown, for using up the pantry (#147); null when nothing is ticked. */
+    private fun finished(content: RecipeContent.Success, ticked: Set<Int>): FinishedCook? {
+        val lines = ticked.sorted().mapNotNull { content.ingredients.getOrNull(it) }
+        return if (lines.isEmpty()) null else FinishedCook(content.words?.language, lines)
+    }
+
+    /** The screen has handed [RecipeUiState.cookFinished] on. */
+    fun onCookFinishedHandled() = _uiState.update { it.copy(cookFinished = null) }
 
     private fun updateCook(change: (CookState) -> CookState) {
         _uiState.update { it.copy(cook = change(it.cook)) }
+    }
+
+    /**
+     * Saves the cook's place as it now stands. A running timer is saved by its deadline, not
+     * its remaining seconds, so the tick loop never needs to write and a closed app's timer
+     * keeps counting. `ingredientsExpanded` and `alerted` are screen state and aren't saved.
+     */
+    private fun saveCook() {
+        val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id ?: return
+        val cook = _uiState.value.cook
+        val progress = CookProgress(
+            active = cook.active,
+            currentStep = cook.currentStep,
+            doneSteps = cook.doneSteps,
+            timers = cook.timers.mapValues { (step, timer) ->
+                SavedTimer(timer.totalSeconds, timer.remainingSeconds, deadlines[step])
+            }
+        )
+        save { repository.setCookProgress(id, progress) }
+    }
+
+    private fun save(write: suspend () -> Unit) {
+        pendingWrites.addLast(write)
+        if (writer?.isActive != true) writer = viewModelScope.launch { drainWrites() }
+    }
+
+    // Main thread only. Each write runs NonCancellable, and nothing between them suspends
+    // cancellably, so once started this empties the queue even if the screen is left.
+    private suspend fun drainWrites() {
+        while (pendingWrites.isNotEmpty()) {
+            val write = pendingWrites.removeFirst()
+            withContext(NonCancellable) { write() }
+        }
     }
 
     // --- Step timers. Several can run at once, since steps overlap. ---
@@ -248,27 +645,39 @@ class RecipeViewModel @Inject constructor(
     fun onTimerStart(step: Int) {
         val content = _uiState.value.content as? RecipeContent.Success ?: return
         val total = content.stepTimerSeconds.getOrNull(step) ?: return
-        deadlines[step] = clock.now() + total * 1000L
+        val endsAt = clock.now() + total * 1000L
+        deadlines[step] = endsAt
         setTimer(step, StepTimer(total, total, running = true))
+        alarms.schedule(StepAlarm(content.recipe.id, content.recipe.name, step, endsAt))
         ensureTicking()
+        saveCook()
     }
 
     fun onTimerToggle(step: Int) {
         val timer = _uiState.value.cook.timers[step] ?: return
+        val recipe = (_uiState.value.content as? RecipeContent.Success)?.recipe ?: return
         if (timer.running) {
             deadlines.remove(step)
             setTimer(step, timer.copy(running = false))
+            alarms.cancel(recipe.id, step)
         } else if (timer.remainingSeconds > 0) {
-            deadlines[step] = clock.now() + timer.remainingSeconds * 1000L
+            val endsAt = clock.now() + timer.remainingSeconds * 1000L
+            deadlines[step] = endsAt
             setTimer(step, timer.copy(running = true))
+            alarms.schedule(StepAlarm(recipe.id, recipe.name, step, endsAt))
             ensureTicking()
+        } else {
+            return
         }
+        saveCook()
     }
 
     fun onTimerReset(step: Int) {
         val timer = _uiState.value.cook.timers[step] ?: return
         deadlines.remove(step)
         setTimer(step, StepTimer(timer.totalSeconds, timer.totalSeconds, running = false))
+        (_uiState.value.content as? RecipeContent.Success)?.recipe?.id?.let { alarms.cancel(it, step) }
+        saveCook()
     }
 
     fun onTimerAlerted(step: Int) {
@@ -286,9 +695,7 @@ class RecipeViewModel @Inject constructor(
             while (deadlines.isNotEmpty()) {
                 delay(250)
                 val now = clock.now()
-                val remaining = deadlines.mapValues { (_, end) ->
-                    ceil((end - now) / 1000.0).toInt().coerceAtLeast(0)
-                }
+                val remaining = deadlines.mapValues { (_, end) -> secondsUntil(end, now) }
                 remaining.filterValues { it == 0 }.keys.forEach { deadlines.remove(it) }
                 _uiState.update { state ->
                     val timers = state.cook.timers.toMutableMap()
@@ -306,50 +713,109 @@ class RecipeViewModel @Inject constructor(
         }
     }
 
+    // A timer that reaches zero here keeps its alarm: the deadline has passed, so the alarm has
+    // fired or is firing, and cancelling it would only race it. The alarm stays quiet on its own
+    // while this recipe is on screen, where the in-app beep sounds instead.
+
+    private fun secondsUntil(endsAt: Long, now: Long): Int =
+        ceil((endsAt - now) / 1000.0).toInt().coerceAtLeast(0)
+
     override fun onCleared() {
         deadlines.clear()
         tickJob?.cancel()
+        // viewModelScope is cancelled by now. A writer that had started finishes the queue
+        // itself; one that never got to run is replaced here, after it, so order is kept.
+        if (pendingWrites.isNotEmpty()) {
+            val previous = writer
+            CoroutineScope(Dispatchers.Unconfined).launch {
+                previous?.join()
+                drainWrites()
+            }
+        }
+        // viewModelScope is already cancelled here, so a note typed just before leaving is
+        // written on a scope of its own. One short write that nothing needs to wait for.
+        val id = (_uiState.value.content as? RecipeContent.Success)?.recipe?.id
+        if (id != null && pendingNotes != null) {
+            CoroutineScope(Dispatchers.Unconfined).launch { flushNotes(id) }
+        }
     }
 
     // --- Turning a recipe into what the screen shows ---
+
+    /** The planned servings in place of the saved ones, the first time the recipe loads. */
+    private fun Recipe.withPlannedServings(): Recipe {
+        val planned = plannedServings ?: return this
+        plannedServings = null
+        return copy(servingsTarget = planned)
+    }
 
     private fun successContent(
         recipe: Recipe,
         system: UnitSystem,
         convertLiquids: Boolean,
-        temperatureUnit: TemperatureUnit
+        temperatureUnit: TemperatureUnit,
+        amountsInSteps: Boolean
     ): RecipeContent.Success {
-        val base = Servings.parse(recipe.yield)
-        val servings = base?.let { ServingsScale(base = it, target = it) }
+        // The recipe's language picks the words, never the phone's (#14).
+        val words = LanguageWords.forRecipe(recipe)
+        val base = Servings.parse(recipe.yield, words)
+        val servings = base?.let {
+            ServingsScale(base = it, target = recipe.servingsTarget?.coerceIn(1, Servings.MAX) ?: it)
+        }
         return RecipeContent.Success(
             recipe = recipe,
             servings = servings,
-            ingredients = render(recipe, servings, system, convertLiquids),
-            instructions = renderInstructions(recipe, temperatureUnit),
-            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it) }
-        )
+            ingredients = render(recipe, words, servings, system, convertLiquids),
+            instructions = renderInstructions(recipe, words, temperatureUnit),
+            stepTimerSeconds = recipe.instructions.map { StepTimers.parse(it, words) },
+            sourceDomain = SourceDomain.of(recipe.sourceUrl),
+            words = words
+        ).withStepAmounts(amountsInSteps)
     }
+
+    // Amounts inside steps (#101), from the lines as rendered, so they follow servings and units;
+    // Chef mode's short steps (#100) get theirs the same way.
+    private fun RecipeContent.Success.withStepAmounts(on: Boolean): RecipeContent.Success = copy(
+        stepAmounts = if (on) StepAmounts.annotate(instructions, ingredients, words) else null,
+        shortStepAmounts = if (on && shortInstructions.any { it != null }) {
+            StepAmounts.annotate(shortInstructions.map { it.orEmpty() }, ingredients, words)
+        } else {
+            null
+        }
+    )
 
     // Scale first, then convert, so a converted amount always matches the chosen servings.
     private fun render(
         recipe: Recipe,
+        words: LanguageWords?,
         servings: ServingsScale?,
         system: UnitSystem,
         convertLiquids: Boolean
     ): List<String> {
         val factor = servings?.let { it.target.toDouble() / it.base } ?: 1.0
-        return recipe.ingredients.map {
-            UnitConverter.convert(IngredientScaler.scale(it, factor), system, convertLiquids, separatorFrom = it)
-        }
+        return IngredientRendering.render(recipe.ingredients, factor, system, convertLiquids, words, decisions)
     }
 
     // Instructions aren't scaled (a step can mention any number), but oven temperatures
     // follow the chosen temperature unit — independent of the ingredient unit system.
-    private fun renderInstructions(recipe: Recipe, temperatureUnit: TemperatureUnit): List<String> =
-        recipe.instructions.map { TemperatureConverter.convert(it, temperatureUnit) }
+    private fun renderInstructions(recipe: Recipe, words: LanguageWords?, temperatureUnit: TemperatureUnit): List<String> =
+        recipe.instructions.map { renderStep(it, words, temperatureUnit) }
+
+    // One step as shown, as written or Chef mode's short version (#100): the same rendering.
+    private fun renderStep(step: String, words: LanguageWords?, temperatureUnit: TemperatureUnit): String =
+        TemperatureConverter.convert(step, temperatureUnit, words)
 
     companion object {
         const val RECIPE_ID_ARG = "recipeId"
         const val URL_ARG = "url"
+
+        /** True when opened from a timer notification: the recipe opens in cook mode. */
+        const val COOK_ARG = "cook"
+
+        /** Opened from the Week (#49): the planned servings, 0 for none. */
+        const val SERVINGS_ARG = "servings"
+
+        /** How long typing must pause before the note is written. */
+        const val NOTES_SAVE_DELAY_MS = 500L
     }
 }

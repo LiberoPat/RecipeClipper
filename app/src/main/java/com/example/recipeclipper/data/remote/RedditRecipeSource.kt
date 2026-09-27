@@ -65,6 +65,10 @@ class RedditRecipeSource(
         }
     }
 
+    /** Reddit's rendered pages hold no recipe data the blog parsers read, and their text is a
+     *  whole thread: a block stays a block, and no page text goes to the on-device model. */
+    override fun readsRenderedPage(url: String): Boolean = false
+
     private fun connect(url: String): Connection = Jsoup.connect(url)
         .userAgent(USER_AGENT)
         .timeout(timeoutMs)
@@ -82,12 +86,20 @@ class RedditRecipeSource(
 
 /**
  * The [RecipeSource] the repository sees: Reddit links go to [reddit], everything else to
- * [blog]. Chosen by host alone ([RedditUrls.isReddit]).
+ * [blog]. Chosen by host alone ([RedditUrls.isReddit]), and only while [redditOn] (the
+ * `reddit` flag, #11): off, a Reddit link is read like any page, as before.
  */
 class RoutingRecipeSource(
     private val blog: RecipeSource,
-    private val reddit: RecipeSource
+    private val reddit: RecipeSource,
+    private val redditOn: () -> Boolean = { true }
 ) : RecipeSource {
-    override suspend fun fetch(url: String): ParseResult =
-        if (RedditUrls.isReddit(url)) reddit.fetch(url) else blog.fetch(url)
+    private fun sourceFor(url: String): RecipeSource =
+        if (redditOn() && RedditUrls.isReddit(url)) reddit else blog
+
+    override suspend fun fetch(url: String): ParseResult = sourceFor(url).fetch(url)
+
+    override suspend fun fetchPage(url: String): FetchedPage = sourceFor(url).fetchPage(url)
+
+    override fun readsRenderedPage(url: String): Boolean = sourceFor(url).readsRenderedPage(url)
 }

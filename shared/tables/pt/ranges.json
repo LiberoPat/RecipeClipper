@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "language": "pt",
+  "about": "Words that join the two ends of a range ('4 to 6 servings', 'bake 25 to 30 minutes', '350 to 375°F'), besides the dashes, which are in the code. Regex fragments; each use keeps its own case rule (temperatures are case-sensitive, timers and yields are not).",
+  "words": ["a"]
+}

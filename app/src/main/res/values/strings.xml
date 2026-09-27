@@ -1,10 +1,11 @@
-<resources>
-    <string name="app_name">Recipe Clipper</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name" translatable="false">Recipe Clipper</string>
 
     <!-- Common actions -->
     <string name="action_back">‹  Back</string>
     <string name="action_exit">✕  Exit</string>
     <string name="action_try_again">Try again</string>
+    <string name="action_report_site">Report this site</string>
     <string name="action_start_cooking">Start cooking</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
@@ -24,6 +25,75 @@
     <string name="label_total">Total</string>
     <string name="heading_ingredients">Ingredients</string>
     <string name="heading_instructions">Instructions</string>
+    <string name="heading_notes">Notes</string>
+    <string name="notes_placeholder">Add a note</string>
+    <string name="action_open_original">Open original</string>
+    <string name="cd_open_original">Open the original recipe on %1$s</string>
+
+    <!-- Clip it yourself (#37) -->
+    <string name="clip_offer">Open the page, select the name, ingredients and steps, and tap where each one goes.</string>
+    <string name="action_clip_it_yourself">Clip it yourself</string>
+    <string name="action_done">Done</string>
+    <string name="action_discard">Discard</string>
+    <string name="action_remove">Remove</string>
+    <string name="clip_field_name">Name</string>
+    <string name="clip_field_ingredients">Ingredients</string>
+    <string name="clip_field_steps">Steps</string>
+    <string name="clip_field_photo">Photo</string>
+    <string name="clip_hint">Select text on the page, then tap where it goes. For the photo, tap Photo, then the picture.</string>
+    <string name="clip_picking_photo">Tap the picture to use as the photo.</string>
+    <string name="clip_lines_selected_hint">each line becomes one item</string>
+    <string name="clip_summary_name">Name ✓</string>
+    <string name="clip_summary_no_name">No name</string>
+    <string name="clip_summary_photo">photo</string>
+    <string name="clip_summary_no_photo">no photo</string>
+    <string name="clip_review">Review</string>
+    <string name="clip_added_name">Name added</string>
+    <string name="clip_added_photo">Photo added</string>
+    <string name="clip_cleared_name">Name cleared</string>
+    <string name="clip_cleared_ingredients">Ingredients cleared</string>
+    <string name="clip_cleared_steps">Steps cleared</string>
+    <string name="clip_cleared_photo">Photo cleared</string>
+    <string name="clip_draft_restored">Draft restored</string>
+    <string name="clip_save_failed">Couldn\'t save the clip. Try again.</string>
+    <string name="clip_back_to_page">‹  Back to page</string>
+    <string name="clip_photo_from_page">Photo from the page</string>
+    <string name="clip_no_photo">No photo. Tap Photo on the page, then the picture.</string>
+    <string name="clip_optional">optional</string>
+    <string name="clip_ingredients_heading">Ingredients · %1$d</string>
+    <string name="clip_steps_heading">Steps · %1$d</string>
+    <string name="clip_add_line">+ Add a line</string>
+    <string name="clip_add_step">+ Add a step</string>
+    <string name="cd_clip_remove_line">Remove line %1$d</string>
+    <string name="clip_save">Save recipe</string>
+    <string name="update_from_source_clip_title">Replace your clip?</string>
+    <string name="update_from_source_clip_body">This loads the page again and replaces the name, ingredients, steps and photo you clipped with the site\'s own recipe data. It stays in your lists and history.</string>
+    <string name="clipped_by_you">Clipped by you</string>
+    <string name="clipped_by_you_on">Clipped by you · %1$s</string>
+    <string name="extracted_from_page">Picked from the page text — check against the source</string>
+    <plurals name="clip_lines_selected">
+        <item quantity="one">%1$d line selected</item>
+        <item quantity="other">%1$d lines selected</item>
+    </plurals>
+    <plurals name="clip_summary_ingredients">
+        <item quantity="one">%1$d ingredient</item>
+        <item quantity="other">%1$d ingredients</item>
+    </plurals>
+    <plurals name="clip_summary_steps">
+        <item quantity="one">%1$d step</item>
+        <item quantity="other">%1$d steps</item>
+    </plurals>
+    <plurals name="clip_added_ingredients">
+        <item quantity="one">%1$d ingredient added</item>
+        <item quantity="other">%1$d ingredients added</item>
+    </plurals>
+    <plurals name="clip_added_steps">
+        <item quantity="one">%1$d step added</item>
+        <item quantity="other">%1$d steps added</item>
+    </plurals>
+    <string name="clip_tag_count" translatable="false">%1$s · %2$d</string>
+    <string name="clip_summary_separator" translatable="false">" · "</string>
+    <string name="clip_remove_line" translatable="false">✕</string>
 
     <!-- Errors -->
     <string name="error_no_recipe_found">Couldn\'t find recipe data on this page. Some sites don\'t tag their recipes in a way this app can read yet.</string>
@@ -48,11 +118,9 @@
     <string name="cd_change_units">Change units</string>
     <string name="units_menu_header">Units  ·   every recipe</string>
     <string name="unit_as_written">As written</string>
-    <string name="unit_grams">Grams</string>
     <string name="unit_ounces">Ounces</string>
     <string name="unit_metric">Metric</string>
     <string name="unit_as_written_description">Exactly the units the recipe uses</string>
-    <string name="unit_grams_description">Cups and spoons in grams</string>
     <string name="unit_ounces_description">Cups and spoons in ounces and pounds</string>
     <string name="unit_metric_description">Grams and millilitres</string>
     <string name="convert_liquids_title">Also convert liquids</string>
@@ -68,28 +136,33 @@
     <string name="cook_position">Step %1$d of %2$d</string>
     <string name="cook_done_next">Done — next step</string>
     <string name="cook_done_finish">Done — finish</string>
-    <string name="cook_ingredients_count">  ·  %1$d</string>
+    <string name="cook_ingredients_count" translatable="false">  ·  %1$d</string>
     <string name="cd_hide_ingredients">Hide ingredients</string>
     <string name="cd_show_ingredients">Show ingredients</string>
     <string name="cd_go_to_step">Go to step %1$d</string>
     <string name="timer_start">⏱  Start %1$s timer</string>
-    <string name="timer_running">⏱  %1$s</string>
+    <string name="timer_running" translatable="false">⏱  %1$s</string>
     <string name="timers_up">Time\'s up</string>
 
     <!-- Home screen -->
-    <string name="home_title">Recipe Clipper</string>
+    <string name="home_title" translatable="false">Recipe Clipper</string>
     <string name="home_subtitle">Share a recipe link to this app from your browser, or paste one here.</string>
     <string name="label_recipe_url">Recipe URL</string>
     <string name="section_continue_cooking">Continue cooking</string>
     <string name="section_recently_viewed">Recently viewed</string>
     <string name="home_empty_hint">Recipes you open will show up here.</string>
-    <string name="nav_history">History</string>
 
     <!-- History screen -->
-    <string name="history_title">History</string>
-    <string name="history_empty">Nothing yet. Recipes you open are kept here automatically.</string>
-    <string name="history_no_results">No recipes match \"%1$s\".</string>
-    <string name="label_search_history">Search titles and ingredients</string>
+    <string name="recipes_title">Recipes</string>
+    <string name="recipes_empty">Nothing yet. Recipes you open are kept here, and + adds one by hand or from a link.</string>
+    <string name="recipes_no_results">No recipes match \"%1$s\".</string>
+    <string name="label_search_recipes">Search titles and ingredients</string>
+    <string name="cd_add_recipe">Add a recipe</string>
+    <string name="action_type_recipe">Type a recipe</string>
+    <string name="action_paste_link">Paste a link</string>
+    <string name="sort_recently_viewed">Recently viewed</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_date_added">Date added</string>
     <string name="cd_clear_search">Clear search</string>
     <string name="snackbar_deleted_one">Deleted \"%1$s\"</string>
     <!-- English only ever uses "other" here (the one-item case is snackbar_deleted_one, which
@@ -123,6 +196,9 @@
 
     <string name="dark_while_cooking_title">Dark while cooking</string>
     <string name="dark_while_cooking_description">Keep cook mode on an ink screen in light mode</string>
+    <string name="settings_section_steps">Steps</string>
+    <string name="amounts_in_steps_title">Amounts in steps</string>
+    <string name="amounts_in_steps_description">Show each ingredient\'s amount where a step names it</string>
 
     <!-- Settings screen -->
     <string name="nav_settings">Settings</string>
@@ -130,6 +206,43 @@
     <string name="settings_section_units">Units</string>
     <string name="settings_section_oven_temperature">Oven temperature</string>
     <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_your_recipes">Your recipes</string>
+
+    <!-- Settings → Your recipes: export and import (#26) -->
+    <string name="backup_export_title">Export recipes</string>
+    <string name="backup_export_description">Save every recipe and list to one file, to keep or to move to another phone</string>
+    <string name="backup_import_title">Import recipes</string>
+    <string name="backup_import_description">Add the recipes and lists from an export file. Nothing here is replaced or deleted.</string>
+    <string name="backup_share_title">Export recipes</string>
+    <string name="backup_exporting">Preparing the file…</string>
+    <string name="backup_importing">Importing…</string>
+    <plurals name="backup_recipes">
+        <item quantity="one">%d recipe</item>
+        <item quantity="other">%d recipes</item>
+    </plurals>
+    <plurals name="backup_lists">
+        <item quantity="one">%d list</item>
+        <item quantity="other">%d lists</item>
+    </plurals>
+    <!-- %1$s and %2$s are backup_recipes and backup_lists. -->
+    <string name="backup_imported">Imported %1$s and %2$s.</string>
+    <string name="backup_imported_recipes">Imported %1$s.</string>
+    <string name="backup_imported_nothing">Nothing new: everything in that file is already here.</string>
+    <plurals name="backup_already_here">
+        <item quantity="one">%d recipe was already here.</item>
+        <item quantity="other">%d recipes were already here.</item>
+    </plurals>
+    <!-- %2$d is the history limit (50). -->
+    <plurals name="backup_skipped">
+        <item quantity="one">%1$d older recipe in no list wasn\'t added: history keeps the %2$d most recent.</item>
+        <item quantity="other">%1$d older recipes in no list weren\'t added: history keeps the %2$d most recent.</item>
+    </plurals>
+    <string name="backup_error_not_a_backup">That file isn\'t a Recipe Clipper export.</string>
+    <string name="backup_error_newer_version">That file was made by a newer version of Recipe Clipper (format %1$d). Update the app to import it.</string>
+    <string name="backup_error_malformed">That export file is damaged (%1$s). Nothing was imported.</string>
+    <string name="backup_error_read_failed">Couldn\'t open that file.</string>
+    <string name="backup_error_save_failed">Couldn\'t save the imported recipes. Nothing was changed.</string>
+    <string name="backup_error_export_failed">Couldn\'t create the export file.</string>
     <string name="temperature_as_written">As written</string>
     <string name="temperature_as_written_description">Exactly the temperature the recipe uses</string>
     <string name="temperature_celsius">Celsius (°C)</string>
@@ -166,4 +279,314 @@
          and that is the thing someone would hesitate over. -->
     <string name="delete_list_body">The list is removed. The recipes in it stay in your history.</string>
     <string name="action_delete_list">Delete list</string>
+
+    <!-- Bottom tabs (#47), behind the mealPlan flag (#87) -->
+    <string name="tab_recipes">Recipes</string>
+    <string name="tab_week">Week</string>
+    <string name="tab_groceries">Groceries</string>
+    <string name="tab_pantry">Pantry</string>
+
+    <!-- The shared message body (RecipeShareText): the words around the recipe, in the phone's
+         language. "Prep", "Cook" and "Total" reuse the label_* strings above. -->
+    <string name="share_serves">Serves %1$d</string>
+    <string name="share_makes">Makes %1$d</string>
+    <string name="share_scaled">%1$s (originally %2$d)</string>
+    <string name="share_heading_ingredients">INGREDIENTS</string>
+    <string name="share_heading_instructions">INSTRUCTIONS</string>
+
+    <!-- Step timer notifications (#10) -->
+    <string name="timer_channel_name">Cook timers</string>
+    <string name="timer_channel_description">When a step timer ends while the app is closed or in the background</string>
+    <string name="timer_notification_title">Time\'s up: step %1$d</string>
+
+    <!-- Editing a recipe, or typing one in (#29) -->
+    <string name="action_edit">Edit</string>
+    <string name="action_update_from_source">Update from source</string>
+    <string name="action_update">Update</string>
+    <string name="action_new_recipe">+ New recipe</string>
+    <string name="update_from_source_title">Replace your version?</string>
+    <string name="update_from_source_body">This fetches the recipe from its site again and replaces your version. Your changes to it will be lost; your note and lists stay.</string>
+    <string name="update_from_source_failed">Couldn\'t update from source. %1$s</string>
+    <string name="edit_title_new">New recipe</string>
+    <string name="edit_title_edit">Edit recipe</string>
+    <string name="edit_label_name">Name</string>
+    <string name="edit_label_yield">Serves or makes</string>
+    <string name="edit_label_prep">Prep time</string>
+    <string name="edit_label_cook">Cook time</string>
+    <string name="edit_label_total">Total time</string>
+    <string name="edit_label_ingredients">Ingredients, one per line</string>
+    <string name="edit_label_steps">Steps, one per line</string>
+    <string name="edit_label_photo">Photo link (optional)</string>
+    <string name="edit_error_invalid">A recipe needs a name, and ingredients or steps.</string>
+    <string name="edit_error_save_failed">Couldn\'t save the recipe. Try again.</string>
+
+    <!-- Week meal plan (#49) -->
+    <string name="action_add_to_plan">Add to plan</string>
+    <string name="action_add_to_day">Add to %1$s</string>
+    <string name="label_meal">Meal</string>
+    <string name="snackbar_removed_from_plan">Removed %1$s from the plan</string>
+    <string name="cd_previous_week">Previous week</string>
+    <string name="cd_next_week">Next week</string>
+    <string name="action_this_week">This week</string>
+    <string name="meal_types_title">Meal types</string>
+    <string name="label_today">Today</string>
+    <string name="action_add_meal">+ Add</string>
+    <string name="action_move">Move…</string>
+    <string name="action_remove_from_plan">Remove from plan</string>
+    <string name="add_to_day_title">Add to %1$s</string>
+    <string name="label_search_or_note">Search your recipes, or type a note</string>
+    <string name="action_add_as_note">Add “%1$s” as a note</string>
+    <string name="move_meal_title">Move %1$s</string>
+    <string name="action_move_to_day">Move to %1$s</string>
+    <string name="action_new_meal_type">+ New meal type</string>
+    <string name="rename_meal_type_title">Rename meal type</string>
+    <string name="delete_meal_type_title">Delete “%1$s”?</string>
+    <string name="delete_meal_type_body">Meals planned as this move to Dinner. They are not deleted.</string>
+    <string name="action_move_up">Move up</string>
+    <string name="action_move_down">Move down</string>
+    <string name="label_meal_type_name">Meal type name</string>
+
+    <!-- Groceries (#50) -->
+    <string name="action_add">Add</string>
+    <string name="groceries_add_hint">Add an item</string>
+    <string name="groceries_empty">Your list is empty. Type an item above, or add ingredients from a recipe\'s menu or from the Week.</string>
+    <string name="action_add_to_groceries">Add to groceries</string>
+    <string name="add_to_groceries_title">Add to groceries</string>
+    <string name="action_add_week_to_groceries">Add this week\'s ingredients</string>
+    <string name="groceries_week_empty">No recipes are planned this week.</string>
+    <string name="action_share_groceries">Send list</string>
+    <!-- A list sent from another phone, shared in or pasted (#149) -->
+    <string name="action_paste_list">Paste a list</string>
+    <string name="receive_list_title">Add this list</string>
+    <string name="receive_list_empty">There\'s no list on the clipboard. Copy one first, then paste it here.</string>
+    <!-- A file sent to someone else's Recipe Clipper (#149, phase 2) -->
+    <string name="action_send_file">Send as file</string>
+    <string name="send_file_failed">Couldn\'t create the file to send.</string>
+    <string name="receive_file_title">Add from this file</string>
+    <string name="receive_file_empty">There\'s nothing in this file to add.</string>
+    <string name="receive_file_to_pantry">Pantry items to the pantry</string>
+    <string name="receive_file_to_groceries">Pantry items to groceries</string>
+    <!-- %2$d is the free app's recipe limit. -->
+    <plurals name="receive_file_skipped_free">
+        <item quantity="one">%1$d recipe wasn\'t added: the free app keeps %2$d recipes.</item>
+        <item quantity="other">%1$d recipes weren\'t added: the free app keeps %2$d recipes.</item>
+    </plurals>
+    <string name="action_move_to_aisle">Move to aisle…</string>
+    <string name="move_to_aisle_title">Aisle</string>
+    <string name="snackbar_grocery_deleted">Deleted %1$s</string>
+    <string name="snackbar_checked_cleared">Checked items removed</string>
+    <string name="snackbar_done_shopping">Pantry updated, checked items removed</string>
+    <string name="action_done_shopping">Done shopping</string>
+    <string name="put_away_intro">Tick what goes in the pantry. Everything checked comes off the list.</string>
+    <string name="action_put_away">Put away and clear</string>
+    <!-- Using up the pantry when cook mode is finished (#147). -->
+    <string name="use_up_title">Update the pantry</string>
+    <string name="use_up_intro">What this cook used, from the ingredients you ticked. Untick anything that isn\'t right.</string>
+    <string name="use_up_change">%1$s → %2$s</string>
+    <string name="use_up_used_up">%1$s → used up, onto the grocery list</string>
+    <string name="use_up_cant_work_out">Can\'t work out how much was used</string>
+    <string name="use_up_keep">Keep</string>
+    <string name="use_up_low">Running low</string>
+    <string name="use_up_out">Out</string>
+    <string name="action_use_up">Update pantry</string>
+    <string name="snackbar_pantry_used_up">Pantry updated</string>
+    <string name="cd_use_up_change">%1$s, from %2$s to %3$s</string>
+    <string name="cd_use_up_used_up">%1$s, from %2$s to used up; it goes on the grocery list</string>
+    <string name="cd_use_up_choice">%1$s: %2$s</string>
+    <string name="aisle_produce">Fruit &amp; vegetables</string>
+    <string name="aisle_meat">Meat</string>
+    <string name="aisle_seafood">Fish &amp; seafood</string>
+    <string name="aisle_dairy">Dairy &amp; eggs</string>
+    <string name="aisle_bakery">Bakery</string>
+    <string name="aisle_baking">Baking</string>
+    <string name="aisle_grains">Pasta, rice &amp; grains</string>
+    <string name="aisle_canned">Cans &amp; jars</string>
+    <string name="aisle_condiments">Oils, sauces &amp; condiments</string>
+    <string name="aisle_spices">Herbs &amp; spices</string>
+    <string name="aisle_frozen">Frozen</string>
+    <string name="aisle_snacks">Nuts &amp; dried fruit</string>
+    <string name="aisle_drinks">Drinks</string>
+    <string name="aisle_other">Other</string>
+
+    <!-- Pantry, What I need and grocery check-off (#51) -->
+    <string name="pantry_add_hint">Add to the pantry</string>
+    <string name="pantry_search_hint">Search the pantry</string>
+    <string name="pantry_empty">Nothing in the pantry yet. Type what\'s in your cupboards above, or put things away when you\'re done shopping.</string>
+    <string name="pantry_no_results">Nothing matches “%1$s”.</string>
+    <string name="pantry_sort_aisle">Sort by aisle</string>
+    <string name="pantry_sort_expiry">Sort by expiry</string>
+    <string name="pantry_in_stock">In stock</string>
+    <string name="pantry_out">Out</string>
+    <string name="pantry_on_list">On list</string>
+    <string name="pantry_take_off_list">Take off the grocery list</string>
+    <string name="pantry_always_have">Always have</string>
+    <string name="pantry_always_have_detail">Staples are never under “To buy”.</string>
+    <string name="pantry_expired">Expired</string>
+    <string name="pantry_use_by">Use by %1$s</string>
+    <string name="pantry_bought">Bought %1$s</string>
+    <string name="pantry_edit_title">Edit item</string>
+    <string name="pantry_label_name">Name</string>
+    <string name="pantry_label_quantity">Quantity (optional)</string>
+    <string name="pantry_label_expiry">Use-by date</string>
+    <string name="pantry_no_date">No date</string>
+    <string name="action_set_date">Set date</string>
+    <string name="action_clear_date">Clear date</string>
+    <string name="snackbar_pantry_deleted">Deleted %1$s</string>
+    <string name="what_i_need_title">What I need</string>
+    <string name="what_i_need_buy">To buy</string>
+    <string name="what_i_need_have">In your pantry</string>
+    <string name="what_i_need_note">“In your pantry” means you have some, not that there\'s enough.</string>
+    <string name="what_i_need_nothing_to_buy">Nothing to buy: every ingredient is in your pantry.</string>
+    <string name="what_i_need_you_have">You have %1$s</string>
+    <string name="what_i_need_added">Added to groceries</string>
+    <string name="action_add_to_pantry">Add to pantry</string>
+    <string name="what_i_need_line_source" translatable="false">%1$s · %2$s</string>
+    <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
+    <string name="settings_version">Version %1$s</string>
+    <string name="developer_settings_title">Developer settings</string>
+    <string name="developer_settings_intro">Features still being built. Changes apply at once; one that changes the app\'s navigation takes you back to Home.</string>
+    <string name="developer_flag_issue">Issue #%1$d</string>
+    <string name="developer_flag_changed">Changed from the default</string>
+    <string name="developer_reset">Reset to defaults</string>
+
+    <!-- Pantry expiry reminders (#52) -->
+    <string name="settings_section_pantry">Pantry</string>
+    <string name="expiry_reminders_title">Expiry reminders</string>
+    <string name="expiry_reminders_description">A notification at 9 in the morning when something in stock expires today or tomorrow</string>
+    <string name="expiry_reminders_denied">Notifications are off for Recipe Clipper. Allow them in the system settings to get reminders.</string>
+    <!-- Chef mode (#100) -->
+    <string name="chef_mode_title">Chef mode</string>
+    <string name="chef_mode_description">Short steps, written on this phone. Tap one to see it as written.</string>
+    <string name="chef_mode_languages">For recipes in %1$s.</string>
+    <string name="chef_mode_unsupported">Needs a phone with Google\'s on-device AI, such as a Pixel 9 or newer or a Galaxy S25 or newer.</string>
+    <string name="chef_mode_not_ready">The on-device model isn\'t ready yet. Try again later.</string>
+    <string name="step_show_as_written">As written</string>
+    <string name="step_show_short">Short version</string>
+    <string name="expiry_channel_name">Pantry reminders</string>
+    <string name="expiry_channel_description">A morning note when something in the pantry is about to expire</string>
+    <string name="expiry_notification_title">Use it soon</string>
+    <string name="expiry_one_today">%1$s expires today.</string>
+    <string name="expiry_many_today">%1$s expire today.</string>
+    <string name="expiry_one_tomorrow">%1$s expires tomorrow.</string>
+    <string name="expiry_many_tomorrow">%1$s expire tomorrow.</string>
+    <string name="expiry_names_and">%1$s and %2$s</string>
+    <string name="action_month_view">Month</string>
+    <string name="action_week_view">Week</string>
+    <string name="action_this_month">This month</string>
+    <string name="cd_previous_month">Previous month</string>
+    <string name="cd_next_month">Next month</string>
+    <string name="cd_month_day_planned">%1$s, meals planned</string>
+    <string name="action_share_calendar">Share as calendar file</string>
+    <string name="action_save_week_as_menu">Save week as menu…</string>
+    <string name="action_apply_menu">Apply a menu…</string>
+    <string name="save_menu_title">Save week as menu</string>
+    <string name="rename_menu_title">Rename menu</string>
+    <string name="menu_name_hint">Menu name</string>
+    <string name="apply_menu_title">Add a menu to this week</string>
+    <string name="menus_empty">No menus yet. Plan a week, then choose “Save week as menu…”.</string>
+    <string name="delete_menu_title">Delete “%1$s”?</string>
+    <string name="delete_menu_body">The menu goes. Your meal plan and recipes stay as they are.</string>
+    <string name="menu_saved">Saved “%1$s”</string>
+    <string name="menu_save_failed">Couldn’t save the menu</string>
+    <plurals name="menu_meal_count">
+        <item quantity="one">%1$d meal</item>
+        <item quantity="other">%1$d meals</item>
+    </plurals>
+    <plurals name="menu_applied">
+        <item quantity="one">Added %1$d meal from “%2$s”</item>
+        <item quantity="other">Added %1$d meals from “%2$s”</item>
+    </plurals>
+    <!-- The free tier and the unlock (#107). "recipes" follows the free limit (20) or a count
+         over it, never 1, so these are strings, not plurals. -->
+    <string name="unlock">Unlock</string>
+    <string name="unlock_price">Unlock for %1$s</string>
+    <string name="unlimited_title">Unlimited recipes</string>
+    <string name="unlimited_body" tools:ignore="PluralsCandidate">The free app keeps %1$d recipes. A one-time purchase keeps every recipe you add.</string>
+    <string name="unlimited_restore">Restore purchase</string>
+    <string name="unlimited_unlocked">Unlocked: every recipe is kept.</string>
+    <string name="unlimited_pending">Purchase pending: it unlocks once the payment goes through.</string>
+    <string name="unlock_failed">Couldn\'t reach the store. Try again later.</string>
+    <string name="unlock_nothing">No purchase to restore on this account.</string>
+    <string name="recipe_not_kept" tools:ignore="PluralsCandidate">Not saved: your %1$d recipes are all in lists, plans or typed in.</string>
+    <string name="library_full_title">Your library is full</string>
+    <string name="library_full_body" tools:ignore="PluralsCandidate">The free app keeps %1$d recipes, and yours are all in lists, plans or typed in. Unlock unlimited recipes, or delete one to make room.</string>
+    <string name="recipes_count" tools:ignore="PluralsCandidate">%1$d of %2$d recipes</string>
+    <string name="recipes_count_over" tools:ignore="PluralsCandidate">%1$d recipes, more than the free %2$d</string>
+    <plurals name="backup_skipped_free">
+        <item quantity="one">%1$d older recipe in no list wasn\'t added: the free app keeps %2$d recipes.</item>
+        <item quantity="other">%1$d older recipes in no list weren\'t added: the free app keeps %2$d recipes.</item>
+    </plurals>
+    <!-- "I made this" (#116) -->
+    <string name="sort_recently_cooked">Recently cooked</string>
+    <string name="heading_your_cooks">Your cooks</string>
+    <string name="cooked_empty">Made it? Keep a photo and a short note.</string>
+    <string name="action_i_made_this">I made this</string>
+    <string name="action_add_photo">Add a photo</string>
+    <string name="action_take_photo">Take a photo</string>
+    <string name="action_choose_photos">Choose from library</string>
+    <string name="cd_cooked_photo">Your photo, %1$s</string>
+    <string name="cooked_note_placeholder">Add a short note</string>
+    <string name="cd_change_cooked_date">Change the date, %1$s</string>
+    <string name="cd_share_photo">Share photo</string>
+    <string name="cd_delete_photo">Delete photo</string>
+    <string name="cd_close_photo">Close</string>
+    <string name="cooked_photo_deleted">Photo deleted</string>
+    <string name="cooked_add_failed">That photo couldn\'t be added.</string>
+    <string name="camera_unavailable">No camera app is available.</string>
+    <string name="cooked_photo_missing">Photo not on this phone</string>
+    <string name="delete_recipe_body_photo">This removes it from history and any lists it\'s in, with your photo of it. This can\'t be undone.</string>
+    <!-- Two or more (one has its own string): every shipped language says "N photos" alike. -->
+    <string name="delete_recipe_body_photos" tools:ignore="PluralsCandidate">This removes it from history and any lists it\'s in, with your %1$d photos of it. This can\'t be undone.</string>
+    <!-- The automatic backup copy (#150). -->
+    <string name="auto_backup_title">Automatic backup copy</string>
+    <string name="auto_backup_description">Keeps a copy of everything, photos included, in a folder you choose, and refreshes it after changes</string>
+    <string name="auto_backup_folder_title">Backup folder</string>
+    <string name="auto_backup_folder_not_chosen">Not chosen yet. Tap to choose one, such as Google Drive.</string>
+    <string name="auto_backup_folder_lost">Recipe Clipper can no longer reach this folder. Tap to choose it again.</string>
+    <string name="auto_backup_folder_refused">That folder can\'t be used for backups. Choose another.</string>
+    <string name="auto_backup_last">Last backed up %1$s</string>
+    <string name="auto_backup_never">Not backed up yet</string>
+    <string name="auto_backup_failed">The last copy couldn\'t be written. Try Back up now.</string>
+    <string name="auto_backup_nudge">Your last backup is more than 30 days old, and no copy is being kept automatically.</string>
+    <string name="auto_backup_now">Back up now</string>
+    <string name="auto_backup_running">Backing up…</string>
+    <string name="backup_prompt_title">Keep a backup copy?</string>
+    <string name="backup_prompt_body">Choose a folder, such as Google Drive, and Recipe Clipper keeps a copy of your recipes and photos there.</string>
+    <string name="backup_prompt_choose">Choose a folder</string>
+    <string name="backup_prompt_not_now">Not now</string>
+    <string name="home_restore_backup">Restore from a backup file</string>
+
+    <!-- The first-run tour (#151): welcome cards, one-time tips, Settings' Show the tour again -->
+    <string name="welcome_skip">Skip</string>
+    <string name="welcome_next">Next</string>
+    <string name="welcome_back">Back</string>
+    <string name="welcome_page">Card %1$d of %2$d</string>
+    <string name="welcome_try_sample">Try it with a sample recipe</string>
+    <string name="welcome_start">Start</string>
+    <string name="welcome_app_title">Just the recipe</string>
+    <string name="welcome_app_body">Recipe Clipper keeps a recipe\'s ingredients, steps, times and servings, and leaves out the life story, the ads and the pop-ups.</string>
+    <string name="welcome_app_offline">Every recipe you open is kept on your phone, so it opens offline too.</string>
+    <string name="welcome_clip_title">Clip a recipe</string>
+    <string name="welcome_clip_share">In your browser or any app, tap Share, then Recipe Clipper: the recipe opens here.</string>
+    <string name="welcome_clip_paste">Or copy the link and paste it on the first screen.</string>
+    <string name="welcome_clip_type">Or type a recipe in yourself with + New recipe.</string>
+    <string name="welcome_daily_title">Every day</string>
+    <string name="welcome_daily_servings">Change the servings with − and +, and the units with the menu beside them.</string>
+    <string name="welcome_daily_lists">Tap the bookmark to save a recipe to a list.</string>
+    <string name="welcome_daily_cook">Cook mode highlights one step at a time, runs its timers and keeps the screen on.</string>
+    <string name="welcome_daily_chef">Chef mode, in Settings, shortens long steps on phones that can.</string>
+    <string name="welcome_weekly_title">Every week</string>
+    <string name="welcome_weekly_plan">Plan your meals in Week: Add to plan from a recipe\'s menu, or + Add on a day.</string>
+    <string name="welcome_weekly_need">What I need, in the Week menu, lists the week\'s ingredients and what your pantry already has.</string>
+    <string name="welcome_weekly_groceries">Add them to Groceries, and tick them off as you shop.</string>
+    <string name="welcome_weekly_pantry">What you tick off can go into your Pantry, so the next week knows what you have.</string>
+    <string name="tip_recipe">Change the servings with − and +, and the units with the menu beside them. The bookmark saves this recipe to a list.</string>
+    <string name="tip_cook_mode">Tap a step to make it current, and “Done — next step” to move on. A step with a time has a timer, and the screen stays on.</string>
+    <string name="tip_week">Plan the week with + Add on a day, or Add to plan from a recipe\'s menu. What I need is in the menu here.</string>
+    <string name="tip_groceries">Tick things off as you shop: what you tick can go into your pantry. Touch and hold an item to move it to another aisle.</string>
+    <string name="tip_pantry">What you have at home. Switch an item off when it runs out, and What I need lists it to buy.</string>
+    <string name="cd_dismiss_tip">Dismiss tip</string>
+    <string name="settings_section_help">Help</string>
+    <string name="settings_show_tour">Show the tour again</string>
+    <string name="settings_show_tour_description">The welcome cards, and a tip on each screen once more.</string>
 </resources>

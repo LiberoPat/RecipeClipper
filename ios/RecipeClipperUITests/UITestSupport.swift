@@ -20,6 +20,14 @@ class RecipeUITestCase: XCTestCase {
         /// Chicken Adobo (Favorites, Dinner, Weeknights), Spaghetti Carbonara (Weeknights,
         /// added after Adobo), Banana Bread, Miso Soup — viewed in that order, newest first.
         case standard
+        /// "Weeknight Chili" alone: steps "Brown the beef in a large pot.", "Simmer for 20
+        /// minutes.", "Rest off the heat for 3 seconds.", "Serve with rice."; its lines include
+        /// "1 lb beef" (amounts inside steps, #101).
+        case cook
+        /// "Sponge Cake" alone: a long step the stub model shortens (Chef mode, #100), then "Serve."
+        case chef
+        /// Twenty realistic recipes, each in a list, for the walkthrough videos (#106).
+        case walkthrough
     }
 
     override func setUp() {
@@ -28,10 +36,16 @@ class RecipeUITestCase: XCTestCase {
     }
 
     @discardableResult
-    func launch(_ scenario: Scenario = .standard, keepPrefs: Bool = false) -> XCUIApplication {
+    /// [flags] are feature-flag keys from shared/flags.json (#87) to turn on, through the app's
+    /// flag store (UITestSeeding), as Developer settings would.
+    func launch(
+        _ scenario: Scenario = .standard, keepPrefs: Bool = false, flags: [String] = [], extraArguments: [String] = []
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestSeed", scenario.rawValue]
         if keepPrefs { app.launchArguments.append("-uiTestKeepPrefs") }
+        if !flags.isEmpty { app.launchArguments += ["-uiTestFlags", flags.joined(separator: ",")] }
+        app.launchArguments += extraArguments
         app.launch()
         self.app = app
         require(app.textFields["Recipe URL"], "Home to appear")
@@ -62,9 +76,9 @@ class RecipeUITestCase: XCTestCase {
 
     // MARK: - Navigation
 
-    func openHistory() {
-        require(app.buttons["home.nav.history"]).tap()
-        require(app.textFields["Search titles and ingredients"], "History")
+    func openRecipes() {
+        require(app.buttons["home.nav.recipes"]).tap()
+        require(app.textFields["Search titles and ingredients"], "Recipes")
     }
 
     func openLists() {
@@ -90,19 +104,23 @@ class RecipeUITestCase: XCTestCase {
     // MARK: - Waiting
 
     /// Waits for `element`, or fails with the whole tree printed so the miss can be diagnosed.
+    /// `within` overrides `timeout` (web content, which is slow to reach the tree, needs longer).
     @discardableResult
-    func require(_ element: XCUIElement, _ what: String = "", file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
-        if !element.waitForExistence(timeout: timeout) {
+    func require(
+        _ element: XCUIElement, _ what: String = "", within: TimeInterval? = nil,
+        file: StaticString = #filePath, line: UInt = #line
+    ) -> XCUIElement {
+        if !element.waitForExistence(timeout: within ?? timeout) {
             print(app.debugDescription)
             XCTFail("Not found: \(what.isEmpty ? element.description : what)", file: file, line: line)
         }
         return element
     }
 
-    /// Waits for `element` to go away.
+    /// Waits for `element` to go away. `waitForNonExistence` rather than an NSPredicate
+    /// expectation, which only re-checks about once a second.
     func requireGone(_ element: XCUIElement, _ what: String = "", file: StaticString = #filePath, line: UInt = #line) {
-        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
-        if XCTWaiter.wait(for: [gone], timeout: timeout) != .completed {
+        if !element.waitForNonExistence(timeout: timeout) {
             print(app.debugDescription)
             XCTFail("Still present: \(what.isEmpty ? element.description : what)", file: file, line: line)
         }

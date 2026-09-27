@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "language": "pt",
+  "about": "StepAmounts (#101): see en/steps.json for what each list does. A qualifier follows the noun ('farinha de trigo', 'açúcar mascavo'), so only the words in after may follow a mention.",
+  "articles": ["o", "a", "os", "as"],
+  "partWords": [
+    "um", "uma", "uns", "umas", "de", "do", "da", "dos", "das", "resto", "restante", "restantes", "metade",
+    "mais", "pouco", "todo", "toda", "todos", "todas", "outro", "outra", "outros", "outras", "cada", "ambos",
+    "ambas", "dois", "duas", "três"
+  ],
+  "before": ["e", "ou", "com"],
+  "after": ["e", "ou", "com", "em", "no", "na", "nos", "nas", "ao", "aos", "à", "até", "sobre", "por", "pouco"],
+  "anyWordAfter": false,
+  "splitWords": ["mais"],
+  "plurals": [["", "s"], ["ão", "ões"]]
+}

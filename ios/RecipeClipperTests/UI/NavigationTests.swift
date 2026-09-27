@@ -32,11 +32,11 @@ final class NavigationTests: XCTestCase {
 
     func testAnUnrelatedUrlLeavesTheStackAlone() throws {
         let router = Router()
-        router.push(.history)
+        router.push(.recipes)
 
         router.handle(try XCTUnwrap(URL(string: "recipeclipper://settings")))
 
-        XCTAssertEqual(router.path, [.history])
+        XCTAssertEqual(router.path, [.recipes])
     }
 
     /// Any app or page can open `recipeclipper://`, so only a web link is accepted, as Android
@@ -75,5 +75,55 @@ final class NavigationTests: XCTestCase {
         router.push(.recipe(id: 3))
         router.handle(try XCTUnwrap(DeepLink.importUrl(for: "https://example.com/soup")))
         XCTAssertEqual(router.path, [.recipe(id: 3), .importUrl("https://example.com/soup")])
+    }
+
+    // MARK: - Tabs (#47, behind the mealPlan flag)
+
+    /// A share lands in Recipes whichever tab is open, on top of the Recipes stack as it was.
+    func testAShareFromAnotherTabSwitchesToRecipes() throws {
+        let router = Router()
+        router.push(.recipes)
+        router.select(.pantry)
+
+        router.handle(try XCTUnwrap(DeepLink.importUrl(for: "https://example.com/soup")))
+
+        XCTAssertEqual(router.selectedTab, .recipes)
+        XCTAssertEqual(router.path, [.recipes, .importUrl("https://example.com/soup")])
+    }
+
+    func testAnUnrelatedUrlLeavesTheTabAlone() throws {
+        let router = Router()
+        router.select(.week)
+        router.handle(try XCTUnwrap(URL(string: "recipeclipper://settings")))
+        XCTAssertEqual(router.selectedTab, .week)
+    }
+
+    /// Leaving Recipes and coming back keeps its stack.
+    func testSwitchingTabsKeepsTheRecipesStack() {
+        let router = Router()
+        router.push(.lists)
+        router.push(.listDetail(id: 4))
+
+        router.select(.week)
+        router.select(.recipes)
+
+        XCTAssertEqual(router.selectedTab, .recipes)
+        XCTAssertEqual(router.path, [.lists, .listDetail(id: 4)])
+    }
+
+    /// Choosing Recipes while it is open goes back to Home.
+    func testChoosingTheOpenRecipesTabAgainGoesHome() {
+        let router = Router()
+        router.push(.recipes)
+
+        router.select(.recipes)
+
+        XCTAssertEqual(router.path, [])
+    }
+
+    func testTheTabsAreInTheOwnersOrderAndTheBarShipsOn() {
+        XCTAssertEqual(AppTab.allCases, [.recipes, .week, .groceries, .pantry])
+        XCTAssertEqual(FlagRegistry.definitions.first { $0.key == Flag.mealPlan.rawValue }?.defaults,
+                       FlagDefinition.Defaults(debug: true, release: true))
     }
 }

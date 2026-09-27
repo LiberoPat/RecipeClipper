@@ -15,9 +15,32 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.example.recipeclipper.data.model.StepAmounts
+
+/**
+ * A step's text with the amounts inserted from its ingredient lines (#101) set apart, in
+ * [accent] (none keeps the text's colour) and a heavier weight, so an insertion never reads as
+ * the site's own words. [parts] null: the step as written.
+ */
+internal fun stepText(text: String, parts: List<StepAmounts.Part>?, accent: Color?): AnnotatedString =
+    if (parts == null) AnnotatedString(text) else buildAnnotatedString {
+        for (part in parts) {
+            if (part.amount) {
+                withStyle(SpanStyle(color = accent ?: Color.Unspecified, fontWeight = FontWeight.SemiBold)) { append(part.text) }
+            } else {
+                append(part.text)
+            }
+        }
+    }
 
 @Composable
 internal fun Hairline(modifier: Modifier = Modifier) {

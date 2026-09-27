@@ -20,7 +20,15 @@ xcodebuild ... test -only-testing:RecipeClipperUITests    # end-to-end, offline,
 ```
 
 Targets: `RecipeClipper` (app), `RecipeClipperShare` (share extension, embedded in the app),
-`RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest).
+`RecipeClipperTests` (hosted unit tests), `RecipeClipperUITests` (XCUITest). The extension
+compiles the app's `Data/`, `ShareImport/`, `UI/Theme/` and `UI/Common/Components.swift`
+itself (dual target membership in `project.yml`), so a file added there must build in an
+extension: no `UIApplication.shared`. `Resources/Localizable.xcstrings` and `../shared/tables`
+are in both targets' sources too: `Strings.swift`'s `String(localized:)` and
+`SharedTables.read` both resolve against `Bundle.main`, which inside the extension is its own
+bundle, so the catalog and the word tables have to be compiled into both, not just the app's.
+`RecipeClipperTests` bundles `../shared/fixtures` (the export files the Android tests read
+too), found at `fixtures/backup/<name>.json` in the test bundle.
 
 **Never run two test sessions on one simulator.** The unit tests are hosted in the app, and
 a run that finishes (or starts) closes that app on its simulator, killing whatever the other
@@ -36,7 +44,7 @@ Debug builds accept launch arguments for driving the app without touch (see
 
 ```
 xcrun simctl launch booted com.liberopat.recipeclipper -debugOpen "<recipe url>" [-debugCook]
-xcrun simctl launch booted com.liberopat.recipeclipper -debugRoute history|lists|settings|list:<id>
+xcrun simctl launch booted com.liberopat.recipeclipper -debugRoute recipes|lists|settings|list:<id>
 ```
 
 The bundle ID was `com.example.recipeclipper` until September 2026. A simulator that had
@@ -46,7 +54,10 @@ The Team ID and the other release steps are in `../docs/release.md`.
 
 `-uiTestSeed` (`App/UITestSeeding.swift`) swaps in an in-memory database with seeded recipes
 and an offline recipe source; the UI tests use it. Under XCTest the app always uses an
-in-memory database and a throwaway defaults suite, so tests never touch real data.
+in-memory database and a throwaway defaults suite, so tests never touch real data. The
+first-run tour (#151) is marked done in both, so no welcome or tip gets in a test's way;
+`-uiTestTour` (`WelcomeUITests`) launches as a fresh install instead. `-uiTestReceiveFile`
+(`ShareFileUITests`) opens a canned `.recipeclipper` file at launch, as if from Messages (#149).
 
 ## Architecture — how it maps to Android
 
@@ -59,9 +70,9 @@ in-memory database and a throwaway defaults suite, so tests never touch real dat
 | Room (`RecipeDao`, `ListDao`, migrations) | SQLite via the system `SQLite3` module (`Data/Local/`), `PRAGMA user_version` migrations |
 | SharedPreferences (`unit_preferences`) | `UserDefaults`, same key names and enum spellings |
 | Jsoup fetch + `JsonLdRecipeParser` | `URLSession` (`BlogRecipeSource`) + the same parser, with a hand-written Jsoup-compatible `stripHtml` |
-| `ACTION_SEND` share target | `RecipeClipperShare` extension → `recipeclipper://import?url=…` → `.onOpenURL` |
+| `ACTION_SEND` share target | `RecipeClipperShare` extension, which imports and saves itself (`ShareImport/`) |
 | Navigation Compose routes | `NavigationStack` + `Route` enum (`UI/Navigation`) |
-| `strings.xml` | `UI/Theme/Strings.swift` |
+| `strings.xml` + `values-xx/` | `Resources/Localizable.xcstrings` (keys are the Android names), read through `UI/Theme/Strings.swift` |
 | `Theme.kt` | `UI/Theme/Theme.swift` (same tokens; Fraunces/Karla bundled) |
 
 ViewModels import only Foundation, Combine and Observation — no SwiftUI, no UIKit — so they
@@ -77,16 +88,53 @@ tests (in-memory SQLite in the simulator), not device tests.
 
 ## Platform differences worth knowing
 
-- **Share extension → app.** iOS has no supported way for a share extension to open its
-  host app; the extension walks the responder chain to `UIApplication.open` (iOS 18+) or
-  `openURL:` (iOS 17). If Apple closes that path, the fallback is an App Group plus doing
-  the import inside the extension. It is also an App Review risk. The plan to replace it
-  before the App Store is issue #19.
+- **The unlock (#107) is StoreKit 2** (`App/StoreKitEntitlements.swift`), product
+  `unlimited_recipes`. The scheme's StoreKit configuration is `RecipeClipper.storekit` (set in
+  `project.yml`), so Unlock and Restore work in the simulator without App Store Connect.
+  The share extension never sees StoreKit or the flags: the app mirrors the library limit
+  into the App Group suite (`library_limit`, kept by `LibraryPolicy`) and the extension's
+  repository reads it there. A recipe it can't keep says so on the card.
+
+- **The share extension imports by itself.** iOS has no supported way for a share extension
+  to open its app (the responder-chain `openURL` trick this replaced was an App Review risk
+  and already broke once, in iOS 18). So the extension runs the same
+  `DefaultRecipeRepository.importFromUrl` as the app, with the same cleaning, upsert, cull,
+  retry and "a cancelled import writes nothing" rules. `ShareImportViewModel` drives a small
+  card: Getting the recipe…, then Saved with the title (it dismisses itself after 2.5 s),
+  or the error with Try again. That's one tap more than Android, where sharing opens the
+  recipe. The user opens the app and the recipe is at the top of "Continue cooking".
+  - **App Group `group.com.liberopat.recipeclipper`** holds the database
+    (`recipe_clipper.sqlite`) and the settings suite. Its identifier is in
+    `Data/Local/AppGroup.swift` and in both targets' `entitlements` in `project.yml`, which
+    must agree. Simulator builds get the container without a development team (the
+    entitlements are embedded in the simulator binary, and `SharedDatabaseTests` checks
+    this). A device build needs the group registered on both App IDs (docs/release.md). If
+    the container is missing, the app falls back to its own Application Support and the
+    extension shows "Couldn't save that recipe."
+  - **Two processes, one file.** WAL plus `busy_timeout` let both write. Migrations re-read
+    `user_version` inside their `BEGIN IMMEDIATE`, so two opens of a new file don't both
+    create it. The app's publishers re-query only on its own writes, so `RootView` calls
+    `AppContainer.refreshAfterExternalChanges()` whenever the scene becomes active.
+  - **Memory.** Extensions get far less than apps (about 120 MB for a share extension,
+    undocumented). Debug builds log the footprint and its peak (Console.app, subsystem
+    `com.liberopat.recipeclipper`, category `share`). Measurements are in docs/testing.md.
+  - The `recipeclipper://import?url=…` scheme and `.onOpenURL` stay, as an entry point for
+    Shortcuts and links.
+  - **Safari shares its own copy of the page (#35),** past whatever blocked a plain fetch and
+    with the site's JavaScript already run. `Preprocessing.js`
+    (`NSExtensionJavaScriptPreprocessingFile`) runs in Safari against the shared page and hands
+    back `{url, html}`; `SharedItems` prefers that over the plain URL/text every other app
+    sends. `RecipeRepository.importFromUrl(_:renderedPage:)` parses it directly with the same
+    pure parsers and skips the fetch; only a rendered page with no recipe falls back to
+    fetching, same as if nothing had been given. The page never leaves the device. Chrome and
+    other apps still share just the URL, so this only ever fires from Safari.
 - **Timer alarm** plays through the silent switch (`.playback` audio session, ducking other
-  audio), matching Android's alarm stream and the Clock app. Background alerts are still
-  to do (issue #10); on iOS the natural fix is a local notification scheduled
-  at the deadline.
-- **History delete** uses the native row swipe action rather than Android's swipe-away row;
+  audio), matching Android's alarm stream and the Clock app. The background alert is a local
+  notification at each running timer's deadline (`NotificationTimerScheduler`; issue #10):
+  authorisation is asked on the first timer start, and `NotificationRouter` (the center's
+  delegate, set in `RecipeClipperApp.init`) opens cook mode on a tap. Under XCTest and
+  UI-test seeding the container uses `NoOpTimerAlarmScheduler`, so tests never prompt.
+- **Recipes delete** (was History) uses the native row swipe action rather than Android's swipe-away row;
   undo is the same batched, all-or-nothing snackbar.
 - **Forced-dark cook mode** also sets `preferredColorScheme(.dark)` so the status bar stays
   legible; it reverts when cook mode ends.
@@ -98,7 +146,7 @@ tests (in-memory SQLite in the simulator), not device tests.
   earlier ones pixel for pixel. Layouts that can't fit at the
   accessibility sizes stack instead, using `ViewThatFits` or `isAccessibilitySize`. Examples:
   the times row, the Home link field, and the cook-mode top bar and timer controls. The one
-  cap is the History search field's magnifier and clear icons (`...xxxLarge`); reading
+  cap is the Recipes search field's magnifier and clear icons (`...xxxLarge`); reading
   content is never capped.
 - **Photos offline.** `AsyncImage` keeps photos only in a small cache that follows each
   server's headers, so photos went missing offline. `CachedAsyncImage` loads through
@@ -106,3 +154,11 @@ tests (in-memory SQLite in the simulator), not device tests.
   CLAUDE.md, "Failure handling").
 - `JsonLdRecipeParser` treats JSON `null` as absent (Android's org.json yields the text
   "null"), and walks object keys sorted rather than in document order.
+- **iPad (issue #20).** `TARGETED_DEVICE_FAMILY` stays `"1,2"`; every screen calls
+  `readableColumn()` (`UI/Common/Components.swift`) to cap its content at a centred ~680pt
+  column on wide screens, so text never runs edge to edge on an iPad or an iPhone in
+  landscape. `Recipes`, a `List`, can't take a frame, so it measures its own width and sets
+  row insets instead. iPhone portrait is unchanged: every cap is wider than an iPhone in
+  portrait, so both frames resolve to the same width there. `ShareLink`'s popover anchors
+  correctly on iPad (confirmed on a simulator; `ShareUITests` asserts it), and the save-to-list
+  sheet, alerts and menus all present normally at the regular width.

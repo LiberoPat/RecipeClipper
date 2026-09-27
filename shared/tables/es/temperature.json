@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "language": "es",
+  "about": "TemperatureConverter's words. fahrenheit and celsius: case-insensitive regex fragments naming the scale in full (the letters F and C and the degree signs are in the code). degrees: regex fragments for the word between a number and its scale ('180 degrees C'), case-sensitive.",
+  "fahrenheit": ["fahrenheit"],
+  "celsius": ["celsius", "centígrados?"],
+  "degrees": ["grados?"]
+}

@@ -43,6 +43,10 @@ final class RedditRecipeSource: RecipeSource {
         }
     }
 
+    /// Reddit's rendered pages hold no recipe data the blog parsers read, and their text is a
+    /// whole thread: a block stays a block, and no page text goes to the on-device model.
+    func readsRenderedPage(url: String) -> Bool { false }
+
     /// One GET, following redirects: the body, the address it finally came from, and the
     /// status. A transport failure is already a cause.
     private func get(_ address: String) async -> Result<(Data, String, Int), ParseError> {
@@ -67,12 +71,20 @@ final class RedditRecipeSource: RecipeSource {
 }
 
 /// The `RecipeSource` the repository sees: Reddit links go to `reddit`, everything else to
-/// `blog`. Chosen by host alone (`RedditUrls.isReddit`).
+/// `blog`. Chosen by host alone (`RedditUrls.isReddit`), and only while `redditOn` (the
+/// `reddit` flag, #11): off, a Reddit link is read like any page, as before.
 struct RoutingRecipeSource: RecipeSource {
     let blog: RecipeSource
     let reddit: RecipeSource
+    var redditOn: () -> Bool = { true }
 
-    func fetch(url: String) async -> ParseResult {
-        RedditUrls.isReddit(url) ? await reddit.fetch(url: url) : await blog.fetch(url: url)
+    private func source(for url: String) -> RecipeSource {
+        redditOn() && RedditUrls.isReddit(url) ? reddit : blog
     }
+
+    func fetch(url: String) async -> ParseResult { await source(for: url).fetch(url: url) }
+
+    func fetchPage(url: String) async -> FetchedPage { await source(for: url).fetchPage(url: url) }
+
+    func readsRenderedPage(url: String) -> Bool { source(for: url).readsRenderedPage(url: url) }
 }

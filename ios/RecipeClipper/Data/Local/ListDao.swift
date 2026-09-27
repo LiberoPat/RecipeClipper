@@ -31,7 +31,8 @@ struct ListDao {
     func recipesIn(listId: Int64) throws -> [RecipeSummaryRecord] {
         try db.query(
             """
-            SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved
+            SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
+                   r.contentOrigin = 'CLIPPED' AS isClipped, NULL AS lastCookedDay
             FROM recipes r
             JOIN recipe_list_cross_ref c ON c.recipeId = r.id
             WHERE c.listId = ?
@@ -62,10 +63,10 @@ struct ListDao {
     func create(name: String, recipeId: Int64, now: Int64) throws -> Int64 {
         try db.run(
             """
-            INSERT INTO lists (name, isBuiltIn, isFavorites, sortOrder, createdAt)
-            VALUES (?, 0, 0, (SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM lists), ?)
+            INSERT INTO lists (name, isBuiltIn, isFavorites, sortOrder, createdAt, uid)
+            VALUES (?, 0, 0, (SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM lists), ?, ?)
             """,
-            name, now
+            name, now, newUid()
         )
         let id = db.lastInsertRowId
         if recipeId != Self.noRecipe {

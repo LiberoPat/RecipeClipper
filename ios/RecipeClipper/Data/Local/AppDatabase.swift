@@ -30,20 +30,51 @@ final class AppDatabase: @unchecked Sendable {
         // happen. Must be set outside a transaction, hence before migrating.
         try connection.execute("PRAGMA foreign_keys = ON")
         if path != nil {
-            _ = try connection.query("PRAGMA journal_mode = WAL") { $0.optionalString(0) }
+            // The share extension opens this file from its own process, so wait out the other
+            // side's lock (set first: switching to WAL takes a lock too) rather than failing.
             try connection.execute("PRAGMA busy_timeout = 5000")
+            // Switching to WAL needs an exclusive lock, and SQLite reports that as busy at
+            // once, without the busy handler, when the other process is opening the file too.
+            // So retry it (up to ~5 s, like the timeout); once the file is WAL it's a no-op.
+            var attempt = 0
+            while true {
+                do {
+                    _ = try connection.query("PRAGMA journal_mode = WAL") { $0.optionalString(0) }
+                    break
+                } catch let error as SQLiteError where (error.code & 0xFF) == SQLITE_BUSY && attempt < 100 {
+                    attempt += 1
+                    Thread.sleep(forTimeInterval: 0.05)
+                }
+            }
         }
         try Self.migrate(connection)
     }
 
-    /// Application Support/recipe_clipper.sqlite, creating the directory if needed.
+    /// `recipe_clipper.sqlite` in the App Group container, which the share extension writes to
+    /// as well; nil when the group container isn't available to this build.
+    static func sharedPath() -> String? {
+        AppGroup.containerURL?.appendingPathComponent("recipe_clipper.sqlite").path
+    }
+
+    /// Where the app keeps its database: the shared container or, if this build isn't
+    /// entitled to the App Group, Application Support, so the app still works on its own (only
+    /// the share extension's saves go missing, and that is logged).
     static func defaultPath() -> String {
+        if let shared = sharedPath() { return shared }
+        dataLog.error("App Group container unavailable; using the app's own database")
         let fm = FileManager.default
         let base = (try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                 appropriateFor: nil, create: true))
             ?? fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? fm.createDirectory(at: base, withIntermediateDirectories: true)
         return base.appendingPathComponent("recipe_clipper.sqlite").path
+    }
+
+    /// Re-runs every `observe` query. The app calls it when it comes to the foreground: the
+    /// share extension writes the same file from its own process, and those writes never fire
+    /// this process's `didChange`.
+    func refreshObservers() {
+        queue.async { self.didChange.send(()) }
     }
 
     // MARK: - Access
@@ -105,9 +136,23 @@ final class AppDatabase: @unchecked Sendable {
     // with the version bump, so a crash mid-migration leaves the previous version intact.
     private static let migrations: [(SQLiteConnection) throws -> Void] = [
         createVersion1,
+        addNotes,
+        addUids,
+        addLanguage,
+        addCookState,
+        addContentOrigin,
+        addMealPlan,
+        addGroceries,
+        addPantry,
+        addMenus,
+        addShortSteps,
+        addAiDecisions,
+        addCookedPhotos,
     ]
 
-    private static func migrate(_ db: SQLiteConnection) throws {
+    /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
+    /// build an old database the way an old build would have and then migrate it for real).
+    static func migrate(_ db: SQLiteConnection, upTo target: Int = migrations.count) throws {
         let current = try db.queryOne("PRAGMA user_version") { $0.int(0) } ?? 0
         guard current <= migrations.count else {
             // A newer build wrote this file. Refuse rather than guess (and never wipe it).
@@ -116,8 +161,12 @@ final class AppDatabase: @unchecked Sendable {
                 message: "database is at schema version \(current); this build knows \(migrations.count)"
             )
         }
-        for version in current..<migrations.count {
+        for version in current..<max(current, target) {
             try db.transaction {
+                // Re-read under the write lock (BEGIN IMMEDIATE): the app and the share
+                // extension can open a new file at the same moment, and the second must not
+                // rerun a migration the first has just committed.
+                guard try db.queryOne("PRAGMA user_version", map: { $0.int(0) }) == version else { return }
                 try migrations[version](db)
                 try db.execute("PRAGMA user_version = \(version + 1)")
             }
@@ -167,6 +216,246 @@ final class AppDatabase: @unchecked Sendable {
             """)
         try seedBuiltInLists(db)
     }
+
+    /// Version 2 (Android's Room version 3, `MIGRATION_2_3`): the user's personal note on a
+    /// recipe. Nullable with no default, so every existing recipe simply has no note yet.
+    private static func addNotes(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN notes TEXT")
+    }
+
+    /// Version 3 (Android's Room version 4, `MIGRATION_3_4`): a stable `uid` on every recipe and
+    /// list (#26), what an export file calls them, so a list keeps its identity through a rename
+    /// and a later import or sync (#53) can recognise it. Existing rows (the lists seeded by
+    /// version 1 included) are backfilled with random version-4 UUIDs; the `''` default exists
+    /// only so the column can be added NOT NULL. The same SQL as Android.
+    private static func addUids(_ db: SQLiteConnection) throws {
+        for table in ["recipes", "lists"] {
+            try db.execute("ALTER TABLE \(table) ADD COLUMN uid TEXT NOT NULL DEFAULT ''")
+            try db.execute("UPDATE \(table) SET uid = \(randomUuidSql)")
+            try db.execute("CREATE UNIQUE INDEX IF NOT EXISTS index_\(table)_uid ON \(table) (uid)")
+        }
+    }
+
+    /// A random version-4 UUID, lowercase, evaluated afresh for every row.
+    private static let randomUuidSql = """
+        lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || \
+        substr(lower(hex(randomblob(2))), 2) || '-' || \
+        substr('89ab', 1 + (abs(random()) % 4), 1) || substr(lower(hex(randomblob(2))), 2) || '-' || \
+        lower(hex(randomblob(6)))
+        """
+
+    /// Version 4 (Android's Room version 5, `MIGRATION_4_5`): the recipe's language tag (#14).
+    /// Nullable with no default: a recipe stored before has none and is detected from its own
+    /// words when shown. A re-share fills it in.
+    private static func addLanguage(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN language TEXT")
+    }
+
+    /// Version 5 (Android's Room version 6, `MIGRATION_5_6`): saved cook progress and the chosen
+    /// servings (#10). Both nullable with no default: an existing recipe has no cook in
+    /// progress and uses its own yield.
+    private static func addCookState(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN cookState TEXT")
+        try db.execute("ALTER TABLE recipes ADD COLUMN servingsTarget INTEGER")
+    }
+
+    /// Version 6 (Android's Room version 7, `MIGRATION_6_7`): whose words a recipe is (#29),
+    /// `contentOrigin` (PARSED, EDITED, CLIPPED or MANUAL, by name) and `editedAt`. Everything
+    /// stored before was parsed from its link and never edited: PARSED and null.
+    private static func addContentOrigin(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN contentOrigin TEXT NOT NULL DEFAULT 'PARSED'")
+        try db.execute("ALTER TABLE recipes ADD COLUMN editedAt INTEGER")
+    }
+
+    /// Version 7 (Android's Room version 8, `MIGRATION_7_8`): the week meal plan (#49).
+    /// `meal_types`, seeded with Breakfast, Lunch, Dinner and Snack (each with a `builtInKey`
+    /// that survives a rename), and `meal_plan_entries`. Both new, so nothing existing changes.
+    /// Every row has a stable `uid` and an `updatedAt`, for export and a later sync (#53). The
+    /// same tables as Android's.
+    private static func addMealPlan(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE meal_types (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                builtInKey TEXT,
+                sortOrder INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX index_meal_types_uid ON meal_types (uid);
+
+            CREATE TABLE meal_plan_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                day INTEGER NOT NULL,
+                mealTypeId INTEGER NOT NULL,
+                recipeId INTEGER,
+                servings INTEGER,
+                note TEXT,
+                sortOrder INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (mealTypeId) REFERENCES meal_types (id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX index_meal_plan_entries_uid ON meal_plan_entries (uid);
+            CREATE INDEX index_meal_plan_entries_day ON meal_plan_entries (day);
+            CREATE INDEX index_meal_plan_entries_mealTypeId ON meal_plan_entries (mealTypeId);
+            CREATE INDEX index_meal_plan_entries_recipeId ON meal_plan_entries (recipeId);
+            """)
+        let now = SystemClock().now()
+        for (index, (key, name)) in builtInMealTypes.enumerated() {
+            try db.run(
+                "INSERT INTO meal_types (name, builtInKey, sortOrder, updatedAt, uid) VALUES (?, ?, ?, ?, ?)",
+                name, key, index, now, newUid()
+            )
+        }
+    }
+
+    /// Version 8 (Android's Room version 9, `MIGRATION_8_9`): the grocery list (#50).
+    /// `grocery_items`, new, so nothing existing changes. One list for now (`listId` 1); a
+    /// recipe's items outlive it (SET NULL). Every row has a stable `uid` and an `updatedAt`,
+    /// for export and a later sync (#53). The same table as Android's.
+    private static func addGroceries(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE grocery_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                listId INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                language TEXT,
+                aisle TEXT NOT NULL,
+                checked INTEGER NOT NULL,
+                sortOrder INTEGER NOT NULL,
+                recipeId INTEGER,
+                plannedDay INTEGER,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE SET NULL
+            );
+            CREATE UNIQUE INDEX index_grocery_items_uid ON grocery_items (uid);
+            CREATE INDEX index_grocery_items_listId ON grocery_items (listId);
+            CREATE INDEX index_grocery_items_recipeId ON grocery_items (recipeId);
+            """)
+    }
+
+    /// Version 9 (Android's Room version 10, `MIGRATION_9_10`): the pantry (#51). `pantry_items`,
+    /// new, so nothing existing changes. Every row has a stable `uid` and an `updatedAt`, for
+    /// export and a later sync (#53). The same table as Android's.
+    private static func addPantry(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE pantry_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                quantity TEXT,
+                language TEXT,
+                aisle TEXT NOT NULL,
+                inStock INTEGER NOT NULL,
+                alwaysHave INTEGER NOT NULL,
+                purchasedDay INTEGER,
+                expiresDay INTEGER,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX index_pantry_items_uid ON pantry_items (uid);
+            """)
+    }
+
+    /// Version 10 (Android's Room version 11, `MIGRATION_10_11`): reusable weekly menus (#52).
+    /// `menus` and `menu_entries`, new, so nothing existing changes. Every row has a stable `uid`
+    /// and an `updatedAt`, for export and a later sync (#53). The same tables as Android's.
+    /// Version 11 (Android's Room version 12, `MIGRATION_11_12`): Chef mode's short steps (#100),
+    /// derived data keyed by recipe, the step's text (SHA-256) and language. Never exported.
+    private static func addShortSteps(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE short_steps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                recipeId INTEGER NOT NULL,
+                stepHash TEXT NOT NULL,
+                language TEXT NOT NULL,
+                shortText TEXT,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX index_short_steps_uid ON short_steps (uid);
+            CREATE UNIQUE INDEX index_short_steps_recipeId_stepHash_language ON short_steps (recipeId, stepHash, language);
+            """)
+    }
+
+    /// Version 12 (Android's Room version 13, `MIGRATION_12_13`): the on-device model's typed
+    /// decisions (#104), one row per question (kind, normalised input, language). Never exported.
+    private static func addAiDecisions(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE ai_decisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                kind TEXT NOT NULL,
+                input TEXT NOT NULL,
+                language TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX index_ai_decisions_uid ON ai_decisions (uid);
+            CREATE UNIQUE INDEX index_ai_decisions_kind_input_language ON ai_decisions (kind, input, language);
+            """)
+    }
+
+    /// Version 13 (Android's Room version 14, `MIGRATION_13_14`): "I made this" (#116), the
+    /// user's own photos of a recipe, deleted with it. `fileName` names a JPEG in the photo store.
+    private static func addCookedPhotos(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE cooked_photos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                recipeId INTEGER NOT NULL,
+                fileName TEXT NOT NULL,
+                day INTEGER NOT NULL,
+                note TEXT,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
+            );
+            CREATE INDEX index_cooked_photos_recipeId ON cooked_photos (recipeId);
+            CREATE UNIQUE INDEX index_cooked_photos_uid ON cooked_photos (uid);
+            """)
+    }
+
+    private static func addMenus(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE menus (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX index_menus_uid ON menus (uid);
+
+            CREATE TABLE menu_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                menuId INTEGER NOT NULL,
+                dayOffset INTEGER NOT NULL,
+                mealTypeId INTEGER NOT NULL,
+                recipeId INTEGER,
+                servings INTEGER,
+                note TEXT,
+                sortOrder INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (menuId) REFERENCES menus (id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY (mealTypeId) REFERENCES meal_types (id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX index_menu_entries_uid ON menu_entries (uid);
+            CREATE INDEX index_menu_entries_menuId ON menu_entries (menuId);
+            CREATE INDEX index_menu_entries_mealTypeId ON menu_entries (mealTypeId);
+            CREATE INDEX index_menu_entries_recipeId ON menu_entries (recipeId);
+            """)
+    }
+
+    /// The seeded meal types (#49), in the Week's order. Dinner is where new meals default and
+    /// where a deleted type's meals go.
+    static let builtInMealTypes: [(String, String)] = [
+        ("breakfast", "Breakfast"), ("lunch", "Lunch"), (MealType.dinner, "Dinner"), ("snack", "Snack"),
+    ]
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its
     /// `isFavorites` column, never its name or position — all six can be renamed. The rest are

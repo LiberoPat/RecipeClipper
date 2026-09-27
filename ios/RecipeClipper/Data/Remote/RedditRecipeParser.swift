@@ -47,7 +47,11 @@ enum RedditRecipeParser {
             totalTime: split.totalTime,
             yield: split.yield,
             sourceUrl: sourceUrl,
-            sourceType: .reddit
+            sourceType: .reddit,
+            // Reddit declares no language: the words decide, else English (#14's rule).
+            language: LanguageWords.resolve(declared: nil, page: nil) {
+                LanguageWords.detectionText(name: title, ingredients: split.ingredients)
+            }
         ))
     }
 

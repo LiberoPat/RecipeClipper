@@ -1,0 +1,73 @@
+package com.example.recipeclipper.data.model
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/** The confidence rule (#104): two asks, options in two orders, the same definite pick, both "high". */
+class DecisionRuleTest {
+
+    private fun reply(answer: String, confidence: String = "high") = DecisionReply(answer, confidence)
+
+    @Test fun `the same definite answer twice with high confidence is accepted`() {
+        assertEquals("total", DecisionRule.judge(DecisionKind.COUNT_BRACKET, listOf(reply("total"), reply(" Total "))))
+        assertEquals("dairy", DecisionRule.judge(DecisionKind.AISLE, listOf(reply("dairy"), reply("dairy"))))
+        val trailing = DecisionKind.TRAILING_TEXT
+        assertEquals("second_amount", DecisionRule.judge(trailing, listOf(reply("second_amount"), reply("second_amount"))))
+        assertEquals("unsure", DecisionRule.judge(trailing, listOf(reply("note"), reply("junk"))))
+    }
+
+    @Test fun `the grocery questions carry their pair or text`() {
+        val same = DecisionPrompts.prompt(DecisionQuestion.sameGrocery("Corn", "ears of corn", "en"), 1)
+        assertEquals("Shopping list items (English): \"corn\" and \"ears of corn\"", same.text)
+        assertEquals(listOf("different", "same", "unsure"), same.options)
+        val trailing = DecisionPrompts.prompt(DecisionQuestion.trailingText(", Shucked", "en"), 0)
+        assertEquals("Text after the ingredient (English): , shucked", trailing.text)
+        assertEquals(listOf("note", "second_amount", "junk", "unsure"), trailing.options)
+    }
+
+    @Test fun `a name is free text, agreed twice with high confidence`() {
+        val kind = DecisionKind.INGREDIENT_NAME
+        assertEquals("red onions", DecisionRule.judge(kind, listOf(reply("Red  onions"), reply("red onions "))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("onions"), reply("red onions"))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("onions"), reply("onions", "medium"))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply(" "), reply(" "))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("unsure"), reply("unsure"))))
+        val prompt = DecisionPrompts.prompt(DecisionQuestion.ingredientName("2 Onions  dfsafs", "en"), 1)
+        assertEquals("Shopping list line (English): 2 onions dfsafs", prompt.text)
+        assertEquals(listOf("unsure"), prompt.options)
+    }
+
+    @Test fun `anything less is unsure`() {
+        val kind = DecisionKind.SAME_INGREDIENT
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("same"), reply("different"))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("same"), reply("same", "medium"))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("same", "low"), reply("same"))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("unsure"), reply("unsure"))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("yes"), reply("yes"))))
+        assertEquals("unsure", DecisionRule.judge(kind, listOf(reply("same"))))
+        assertEquals("unsure", DecisionRule.judge(DecisionKind.AISLE, listOf(reply("pharmacy"), reply("pharmacy"))))
+    }
+
+    @Test fun `the two asks list the options in different orders, unsure last`() {
+        assertEquals(listOf("total", "each", "unsure"), DecisionRule.options(DecisionKind.COUNT_BRACKET, 0))
+        assertEquals(listOf("each", "total", "unsure"), DecisionRule.options(DecisionKind.COUNT_BRACKET, 1))
+        assertTrue("unsure" in DecisionRule.options(DecisionKind.AISLE, 0))
+    }
+
+    @Test fun `the pantry question names the owner's different pairs`() {
+        val prompt = DecisionPrompts.prompt(DecisionQuestion.sameIngredient("Flour", "rice  flour", "en"), 0)
+        assertTrue("\"rice flour\" is not \"flour\"" in prompt.instructions)
+        assertTrue("\"whole milk\" is not \"milk\"" in prompt.instructions)
+        assertTrue("\"flour\" and \"rice flour\"" in prompt.text)
+        assertEquals(listOf("same", "different", "unsure"), prompt.options)
+    }
+
+    @Test fun `a question is the same whatever the case, spacing or order`() {
+        assertEquals(
+            DecisionQuestion.sameIngredient("Rice Flour", "flour", "en"),
+            DecisionQuestion.sameIngredient(" flour", "rice   flour", "en")
+        )
+        assertEquals(DecisionQuestion.countBracket("4 Apfel  (ca. 800g)", "de"), DecisionQuestion.countBracket("4 apfel (ca. 800g)", "de"))
+    }
+}
