@@ -2893,6 +2893,17 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
   source credit, and is never culled. It is added once, when the welcome first shows;
   deleted, it stays deleted. "Try it" after "Show the tour again" opens it if it's there, and
   adds it again only if it's gone.
+- **Its times read like a parsed recipe's (#179).** The file keeps ISO durations, so one value
+  serves every language, and `SampleRecipe.forLanguage` passes each through the parsers' own
+  `formatDuration` in the sample's language: "10m · 25m · 35m" in English, "10min" in the
+  others, as a parsed recipe in that language shows. At first it copied them as written and
+  showed "PT10M". A sample saved then is fixed in the database rather than at display, because
+  the times are shown in several places (the reading view, Recipes' rows, shared text, the
+  edit screen, backups): `FirstRunTour.onLaunch` calls `RecipeRepository.formatSampleTimes`,
+  which formats the stored sample's three times the same way and writes only if they change.
+  Formatting a formatted time changes nothing, so after the first launch it is one read by
+  link and no write, with no flag to store; it also tidies a sample restored from an old
+  backup. A sample the user has edited (`editedAt` set) is left alone: its times are theirs.
 - **It never counts toward the free tier (#107):** the library's count (`RecipeDao.count`:
   the Recipes screen's "12 of 20", the free tier's one-for-one) and an import's free places
   leave out `manual:sample`, and adding it applies no limit, so it never removes a recipe.

@@ -37,6 +37,20 @@ final class SampleRecipeTests: XCTestCase {
         }
     }
 
+    /// #179: the file's ISO times ("PT10M") read like a parsed recipe's, in its language's words.
+    func testItsTimesAreFormattedLikeAParsedRecipesInEveryLanguage() {
+        let sample = SampleRecipe.forLanguage("en")
+        XCTAssertEqual([sample.prepTime, sample.cookTime, sample.totalTime], ["10m", "25m", "35m"])
+        for language in SampleRecipe.languages {
+            let recipe = SampleRecipe.forLanguage(language)
+            let times = [recipe.prepTime, recipe.cookTime, recipe.totalTime]
+            let symbol = language == "en" ? "m" : "min"
+            XCTAssertEqual(times, ["10\(symbol)", "25\(symbol)", "35\(symbol)"], language)
+            // What lets a sample saved before #179 be fixed at every launch.
+            XCTAssertEqual(times.map { SampleRecipe.formatTime($0, language: language) }, times, "\(language): formatting again changes nothing")
+        }
+    }
+
     func testTheEnglishSampleConvertsToMetric() {
         let sample = SampleRecipe.forLanguage("en")
         let metric = IngredientRendering.render(sample.ingredients, factor: 1, system: .metric, convertLiquids: false)

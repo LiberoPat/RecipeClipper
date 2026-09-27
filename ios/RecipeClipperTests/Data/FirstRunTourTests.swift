@@ -111,6 +111,13 @@ final class FirstRunTourTests: XCTestCase {
         XCTAssertEqual(recipes.addSampleCalls.map(\.language), ["fr"])
     }
 
+    func testEveryLaunchFormatsTheTimesOfASampleSavedBefore179WhateverTheWelcomesState() async {
+        _ = await tour.onLaunch(plain: true)
+        tour.finishWelcome()
+        _ = await tour.onLaunch(plain: false)
+        XCTAssertEqual(recipes.formatSampleTimesCalls, 2)
+    }
+
     func testShowingTheTourAgainBringsEveryTipBack() {
         for tip in Tip.allCases { preferences.setTipSeen(tip, true) }
         tour.replay()

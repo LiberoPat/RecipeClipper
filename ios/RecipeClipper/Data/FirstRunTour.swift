@@ -45,6 +45,7 @@ final class FirstRunTour {
     /// that opens something. The library is counted without the sample, so an interrupted
     /// welcome still shows again.
     func onLaunch(plain: Bool) async -> Bool {
+        await recipes.formatSampleTimes() // #179: a sample saved with raw ISO times; a no-op after
         switch preferences.welcome {
         case .seen: return false
         case .pending: return plain
