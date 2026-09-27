@@ -139,10 +139,11 @@ folder, WorkManager with the app closed, and iCloud Drive need a device (`docs/d
 Reddit has five suites on each platform with the same cases:
 `RecipeTextSplitterTest`, `RedditCommentScorerTest`, `RedditUrlsTest`,
 `RedditRecipeParserTest` and `RedditRecipeSourceTest` (a local socket on
-Android, a URLProtocol stub on iOS; also the host routing and the `reddit` flag). Their fixtures
-(`RedditFixtures`, identical text on both sides) are synthetic, in Reddit's
-real listing shape: reddit.com answered 403 when they were written, so no
-live response was captured.
+Android, a URLProtocol stub on iOS; also the host routing and the `reddit` flag). Their
+listings are JSON files in `shared/fixtures/reddit`, read by both suites (`RedditFixtures`):
+made-up posts in Reddit's real `raw_json=1` shape, which was checked against recorded
+responses because reddit.com answers 403 to the development machine (`docs/decisions.md`,
+"Reddit posts (#11)", has where they came from).
 `DefaultRecipeRepositoryRetryTest` (iOS `DataRepositoryTests`) checks that a blocked
 Reddit post never goes to the rendered page.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of

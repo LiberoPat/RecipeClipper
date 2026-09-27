@@ -3064,8 +3064,40 @@ app main had become:
   post still gives.
 - **The recipe's language** comes from its words, as for any page with none declared (#14).
   The splitter's headers are English, so in practice these are English recipes.
-- **Fixtures are synthetic.** reddit.com answers 403 to the development machine, so the live
-  `.json` endpoint and the `/s/` share-link redirect are unverified until tried on a phone.
+- **Detection was widened after the first phone test.** On the owner's S23, posts that had a
+  recipe (shared from the Reddit app, so `/s/` links) showed "No recipe text found": the
+  fetch and the share link worked, the splitter missed. reddit.com answers 403 to the
+  development machine, so real text came from recorded responses instead: PRAW's test
+  cassettes (the `/s/` 301 and its `?share_id=…&utm_…` target, comment trees with
+  `is_submitter`, `more` stubs and a stickied AutoModerator, crossposts, galleries) and 54
+  archived r/recipes `.json` listings on GitHub. The first splitter read 21 of their recipes;
+  this one reads 30, and the requests, questions and link-only posts still read none. What
+  real posts needed:
+  - Headers set apart as headers (bold, a Markdown heading, a trailing colon, capitals) may
+    have up to three words before the keyword ("Dry ingredients", "Cooking steps",
+    "Ingredient amounts:"), a typo two letters off ("Ingredeints:", "Intructions"), an emoji
+    or a bracket. A word that names a group ("Dry", "Sauce") stays as the group's heading; a
+    line that starts like a step ("**Mix the dry ingredients**") is never a header.
+  - Ingredients with no header: the lines just above the steps, read upwards while each reads
+    like an ingredient (an amount, a list item or a short line), with at least two amounts.
+    The note or story above them ends the block.
+  - Steps with no header: a numbered list starting at 1, or "Step 1", after the ingredients.
+  - Reddit's editor escapes a typed "1." as "1\."; glyph bullets ("•", "・", a copied card's
+    "▢"); a bold line inside a section is a group heading ("Sauce:", the app's convention);
+    a line with a bare link ("More on my blog: https://…") is left out.
+  - **The poster's own comment first** (`is_submitter`): r/recipes asks for the recipe in a
+    comment by the poster of a photo, and another reader's recipe can come first.
+    **AutoModerator's comments are skipped** (a subreddit's "post it like this" template can
+    split), but not the replies under them: r/Old_Recipes asks for transcriptions as replies
+    to the bot.
+  - **A crosspost's comments are on the original's thread**, so a crosspost with no recipe
+    of its own costs one more fetch, of the original (`crosspost_parent`); any failure there
+    keeps the crosspost's own outcome.
+
+  Still never prose: steps written as paragraphs with no header and no numbers aren't steps,
+  so a real post whose method is "Preheat oven to 375" and three paragraphs stays
+  `NoTranscription`, as does chatter with a number or a list in it. The fixtures are JSON
+  files in `shared/fixtures/reddit`, made-up posts in the real `raw_json=1` shape.
 
 ## The recipe screen's ViewModel, split into collaborators (#169)
 

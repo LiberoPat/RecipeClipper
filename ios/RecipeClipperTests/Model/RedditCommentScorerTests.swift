@@ -6,6 +6,8 @@ final class RedditCommentScorerTests: XCTestCase {
 
     private func score(_ text: String) -> Int { RedditCommentScorer.score(text) }
 
+    private func pick(_ texts: [String]) -> String? { RedditCommentScorer.pick(texts.map { RedditComment(body: $0) }) }
+
     private let transcription = """
         Transcription:
 
@@ -53,23 +55,34 @@ final class RedditCommentScorerTests: XCTestCase {
 
     func testPickTakesTheBestCommentThatSplits() {
         let partial = "Ingredients:\n1 cup dates\n1 cup water\nwalnuts"
-        XCTAssertEqual(RedditCommentScorer.pick(["Lovely!", partial, recipeNoMention, transcription]), transcription)
+        XCTAssertEqual(pick(["Lovely!", partial, recipeNoMention, transcription]), transcription)
     }
 
     func testTiesGoToTheEarlierComment() {
         let other = "Ingredients\n2 cups dates\n2 cups flour\nDirections\nMix well.\nBake."
-        XCTAssertEqual(RedditCommentScorer.pick([recipeNoMention, other]), recipeNoMention)
-        XCTAssertEqual(RedditCommentScorer.pick([other, recipeNoMention]), other)
+        XCTAssertEqual(pick([recipeNoMention, other]), recipeNoMention)
+        XCTAssertEqual(pick([other, recipeNoMention]), other)
+    }
+
+    func testThePostersOwnRecipeComesBeforeAnyoneElsesHoweverTheyScore() {
+        let byPoster = "Ingredients\n2 cups dates\n2 cups flour\nDirections\nMix well.\nBake."
+        let comments = [RedditComment(body: transcription), RedditComment(body: byPoster, bySubmitter: true)]
+        XCTAssertEqual(RedditCommentScorer.pick(comments), byPoster)
+        // A poster's remark that isn't a recipe doesn't block the others.
+        XCTAssertEqual(
+            RedditCommentScorer.pick([RedditComment(body: "Thanks all!", bySubmitter: true), RedditComment(body: transcription)]),
+            transcription
+        )
     }
 
     func testAHighScoreWithoutACleanSplitIsPassedOverNeverGuessedAt() {
         let noSteps = "Transcription:\nIngredients\n1 cup dates\n1 cup flour\nMix and bake at 350."
-        XCTAssertEqual(RedditCommentScorer.pick([noSteps, recipeNoMention]), recipeNoMention)
-        XCTAssertNil(RedditCommentScorer.pick([noSteps]))
+        XCTAssertEqual(pick([noSteps, recipeNoMention]), recipeNoMention)
+        XCTAssertNil(pick([noSteps]))
     }
 
     func testNoCommentsOrNoneThatAreRecipesPicksNothing() {
-        XCTAssertNil(RedditCommentScorer.pick([]))
-        XCTAssertNil(RedditCommentScorer.pick(["Recipe?", "[deleted]", "Could someone transcribe this?"]))
+        XCTAssertNil(pick([]))
+        XCTAssertNil(pick(["Recipe?", "[deleted]", "Could someone transcribe this?"]))
     }
 }

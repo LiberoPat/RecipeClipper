@@ -27,6 +27,15 @@ final class RedditUrlsTests: XCTestCase {
         XCTAssertEqual(RedditUrls.jsonUrl("https://old.reddit.com/r/recipes/comments/1abc01/lemon_orzo/?share_id=x#top"), expected)
         XCTAssertEqual(RedditUrls.jsonUrl("https://reddit.com/r/recipes/comments/1abc01/lemon_orzo"), expected)
         XCTAssertEqual(RedditUrls.jsonUrl("https://www.reddit.com/r/recipes/comments/1abc01/lemon_orzo.json"), expected)
+        XCTAssertEqual(RedditUrls.jsonUrl("https://m.reddit.com/r/recipes/comments/1abc01/lemon_orzo/"), expected)
+        // Where a share link lands: the post, with the share's tracking query.
+        XCTAssertEqual(
+            RedditUrls.jsonUrl(
+                "https://www.reddit.com/r/recipes/comments/1abc01/lemon_orzo/?share_id=oqqXWtvgcCuonkcpck8yD"
+                    + "&utm_content=1&utm_medium=android_app&utm_name=androidcss&utm_source=share&utm_term=1"
+            ),
+            expected
+        )
     }
 
     func testShortAndSluglessForms() {
@@ -41,6 +50,11 @@ final class RedditUrlsTests: XCTestCase {
     func testALinkToOneCommentKeepsThatCommentsThread() {
         XCTAssertEqual(
             RedditUrls.jsonUrl("https://www.reddit.com/r/Old_Recipes/comments/1abc02/card/k3xyz/"),
+            "https://www.reddit.com/r/Old_Recipes/comments/1abc02/card/k3xyz.json?raw_json=1&limit=200"
+        )
+        // A shared comment lands with "?context=3" and the share's query.
+        XCTAssertEqual(
+            RedditUrls.jsonUrl("https://www.reddit.com/r/Old_Recipes/comments/1abc02/card/k3xyz/?context=3&share_id=vi8D&utm_source=share"),
             "https://www.reddit.com/r/Old_Recipes/comments/1abc02/card/k3xyz.json?raw_json=1&limit=200"
         )
     }
@@ -61,6 +75,8 @@ final class RedditUrlsTests: XCTestCase {
     func testShareLinksAreMarkedForARedirect() {
         XCTAssertTrue(RedditUrls.isShareLink("https://www.reddit.com/r/recipes/s/AbCd123"))
         XCTAssertTrue(RedditUrls.isShareLink("https://reddit.com/r/Old_Recipes/s/AbCd123/"))
+        XCTAssertTrue(RedditUrls.isShareLink("https://www.reddit.com/r/recipes/s/AbCd123?utm_source=share"))
+        XCTAssertTrue(RedditUrls.isShareLink("https://www.reddit.com/u/some_cook/s/AbCd123"))
         XCTAssertFalse(RedditUrls.isShareLink("https://www.reddit.com/r/recipes/comments/abc/x/"))
         XCTAssertFalse(RedditUrls.isShareLink("https://redd.it/abc"))
     }

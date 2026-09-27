@@ -4,11 +4,14 @@ import Foundation
 /// The response is a two-element array, the post (a `t3`) then its comment tree (`t1`s with
 /// their `replies`). In order:
 ///  1. **The post body**, if `selftext` splits cleanly (`RecipeTextSplitter`).
-///  2. **A transcription in the comments**: the best comment that splits (`RedditCommentScorer`).
+///  2. **The comments**: the poster's own (`is_submitter`), then the rest by score; the first
+///     that splits (`RedditCommentScorer`). AutoModerator's comments are skipped, not the
+///     replies under them.
 ///  3. **Nothing found**: `.noTranscription`, with the post's title and photo. A legitimate
 ///     outcome, not a failure: never guess a recipe from prose.
 /// The name is the post title, the photo the post's image; a crosspost with no body or photo
-/// of its own borrows the original's. Anything that isn't a post listing is `.noRecipeFound`.
+/// of its own borrows the original's, and `read` names the original for the source, whose
+/// comments may hold the recipe. Anything that isn't a post listing is `.noRecipeFound`.
 ///
 /// Pure: JSON text in, a `ParseResult` out.
 enum RedditRecipeParser {
@@ -16,28 +19,41 @@ enum RedditRecipeParser {
     /// How deep the comment walk goes. Reddit itself stops nesting long before this.
     private static let maxDepth = 50
 
-    static func parse(_ json: String, sourceUrl: String) -> ParseResult {
+    /// What `read` made of a listing: the result and, for a crosspost, the id of the post it
+    /// shares (`crosspost_parent` "t3_abc123" is "abc123").
+    struct Reading {
+        let result: ParseResult
+        var crosspostOf: String?
+    }
+
+    static func parse(_ json: String, sourceUrl: String) -> ParseResult { read(json, sourceUrl: sourceUrl).result }
+
+    static func read(_ json: String, sourceUrl: String) -> Reading {
+        let noRecipe = Reading(result: .error(.noRecipeFound))
         // The JSON-LD parser's reader: it refuses absurd nesting before JSONSerialization runs.
         guard let listings = JsonLdRecipeParser.parseJson(json) as? [Any],
               let first = listings.first as? [String: Any],
               let child = ((first["data"] as? [String: Any])?["children"] as? [Any])?.first as? [String: Any],
               str(child, "kind") == "t3",
               let post = child["data"] as? [String: Any]
-        else { return .error(.noRecipeFound) }
+        else { return noRecipe }
 
         let title = JsonLdRecipeParser.stripHtml(str(post, "title"))
-        if title.kIsBlank { return .error(.noRecipeFound) }
+        if title.kIsBlank { return noRecipe }
         let original = (post["crosspost_parent_list"] as? [Any])?.first as? [String: Any]
         let image = imageOf(post) ?? original.flatMap(imageOf)
+        let parent = str(post, "crosspost_parent")
+        let parentId = parent.hasPrefix("t3_") ? String(parent.dropFirst(3)) : parent
+        let crosspostOf = parentId.isEmpty ? nil : parentId
 
         var body = bodyOf(post)
         if body.kIsBlank { body = original.map(bodyOf) ?? "" }
         let commentListing = listings.count > 1 ? listings[1] as? [String: Any] : nil
         guard let split = RecipeTextSplitter.split(body)
                 ?? RedditCommentScorer.pick(comments(commentListing)).flatMap(RecipeTextSplitter.split)
-        else { return .error(.noTranscription(title: title, imageUrl: image)) }
+        else { return Reading(result: .error(.noTranscription(title: title, imageUrl: image)), crosspostOf: crosspostOf) }
 
-        return .success(Recipe(
+        return Reading(result: .success(Recipe(
             name: title,
             image: image,
             ingredients: split.ingredients,
@@ -52,7 +68,7 @@ enum RedditRecipeParser {
             language: LanguageWords.resolve(declared: nil, page: nil) {
                 LanguageWords.detectionText(name: title, ingredients: split.ingredients)
             }
-        ))
+        )))
     }
 
     /// A string field, or "" when it's absent, null or not a string.
@@ -66,16 +82,18 @@ enum RedditRecipeParser {
         return trimmed == "[removed]" || trimmed == "[deleted]" ? "" : text
     }
 
-    /// Every comment body in the tree, depth first, in the order Reddit sent them.
-    static func comments(_ listing: [String: Any]?) -> [String] {
-        var out: [String] = []
+    /// Every comment in the tree but AutoModerator's, depth first, in the order Reddit sent them.
+    static func comments(_ listing: [String: Any]?) -> [RedditComment] {
+        var out: [RedditComment] = []
         func walk(_ node: [String: Any]?, _ depth: Int) {
             guard let node, depth <= maxDepth,
                   let children = (node["data"] as? [String: Any])?["children"] as? [Any] else { return }
             for case let child as [String: Any] in children {
                 guard str(child, "kind") == "t1", let data = child["data"] as? [String: Any] else { continue }
                 let body = str(data, "body")
-                if !body.kIsBlank { out.append(body) }
+                if !body.kIsBlank && str(data, "author") != "AutoModerator" {
+                    out.append(RedditComment(body: body, bySubmitter: data["is_submitter"] as? Bool ?? false))
+                }
                 walk(data["replies"] as? [String: Any], depth + 1) // "" when there are none
             }
         }

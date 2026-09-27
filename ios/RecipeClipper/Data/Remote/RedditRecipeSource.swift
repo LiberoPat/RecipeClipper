@@ -2,8 +2,8 @@ import Foundation
 
 /// A Reddit post: one fetch of its public `.json` listing (the post and its comment tree
 /// together), handed to `RedditRecipeParser`. A share link (`/r/<sub>/s/<code>`) is followed to
-/// the post first, since only the post's own address has a listing. Android's
-/// `RedditRecipeSource`.
+/// the post first, since only the post's own address has a listing. A crosspost with no recipe
+/// of its own costs one more fetch, of the original's listing. Android's `RedditRecipeSource`.
 ///
 /// The endpoint is public and unauthenticated, so heavy use can meet HTTP 429: that is
 /// `.blocked`, like any other refusal. Failures map to causes exactly as in `BlogRecipeSource`.
@@ -34,12 +34,32 @@ final class RedditRecipeSource: RecipeSource {
             }
         }
         guard let jsonUrl = RedditUrls.jsonUrl(postUrl, base: base) else { return .error(.noRecipeFound) }
+        let reading: RedditRecipeParser.Reading
+        switch await listing(jsonUrl) {
+        case .failure(let error): return .error(error)
+        case .success(let json): reading = RedditRecipeParser.read(json, sourceUrl: url)
+        }
+        guard case .error(.noTranscription) = reading.result,
+              let id = reading.crosspostOf,
+              let original = RedditUrls.jsonUrl("https://redd.it/\(id)", base: base)
+        else { return reading.result }
+        // A crosspost's comments are on the original's thread: the recipe may be there. Any
+        // failure keeps the crosspost's own outcome.
+        if case .success(let json) = await listing(original),
+           case .success(let recipe) = RedditRecipeParser.parse(json, sourceUrl: url) {
+            return .success(recipe)
+        }
+        return reading.result
+    }
+
+    /// A listing's JSON text, or the cause it couldn't be had.
+    private func listing(_ jsonUrl: String) async -> Result<String, ParseError> {
         switch await get(jsonUrl) {
         case .failure(let error):
-            return .error(error)
+            return .failure(error)
         case .success(let (data, _, status)):
-            guard (200..<300).contains(status) else { return .error(ParseError.forHttpStatus(status)) }
-            return RedditRecipeParser.parse(String(decoding: data, as: UTF8.self), sourceUrl: url)
+            guard (200..<300).contains(status) else { return .failure(ParseError.forHttpStatus(status)) }
+            return .success(String(decoding: data, as: UTF8.self))
         }
     }
 

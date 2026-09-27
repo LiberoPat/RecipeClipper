@@ -3,7 +3,9 @@ import Foundation
 /// Which links are Reddit's, and the `.json` address of a post. Pure string work, ported from
 /// Android's `RedditUrls`: a post is a `/comments/<id>` path on reddit.com or a subdomain, or
 /// the `redd.it/<id>` and `reddit.com/gallery/<id>` short forms. The Reddit app's
-/// `/r/<sub>/s/<code>` share links only redirect to a post; `isShareLink` marks them.
+/// `/r/<sub>/s/<code>` share links (`/u/<name>/s/<code>` for a profile post) only redirect to
+/// the post, with `?share_id=…&utm_…` added; `isShareLink` marks them and `jsonUrl` drops that
+/// query.
 enum RedditUrls {
 
     static let defaultBase = "https://www.reddit.com"

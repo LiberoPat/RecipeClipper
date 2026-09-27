@@ -1,17 +1,25 @@
 import XCTest
 @testable import RecipeClipper
 
-/// Stands in for Reddit: a share link (`/s/`) redirects to the post, a `.json` path answers
-/// with `jsonStatus` and `jsonBody`, anything else with an empty page. Records every path.
+/// Stands in for Reddit: a share link (`/s/`) redirects to the post as Reddit does (with the
+/// share's tracking query), a `.json` path answers from `listings` by path, else with
+/// `jsonStatus` and `jsonBody`, anything else with an empty page. Records every path.
 final class RedditStubURLProtocol: URLProtocol {
     static var jsonStatus = 200
     static var jsonBody = RedditFixtures.selfPost
+    static var listings: [String: String] = [:]
+    static var listingStatus: [String: Int] = [:]
     static var offline = false
     static var requests: [String] = []
+
+    static let shareTarget = "/r/recipes/comments/1f4b2cd/weeknight_lemon_chicken_orzo/?share_id=oqqXWtvgcCuonkcpck8yD"
+        + "&utm_content=1&utm_medium=android_app&utm_name=androidcss&utm_source=share&utm_term=1"
 
     static func reset() {
         jsonStatus = 200
         jsonBody = RedditFixtures.selfPost
+        listings = [:]
+        listingStatus = [:]
         offline = false
         requests = []
     }
@@ -27,7 +35,7 @@ final class RedditStubURLProtocol: URLProtocol {
             return
         }
         if url.path.contains("/s/") {
-            let target = URL(string: "/r/recipes/comments/1abc01/lemon_orzo/?share_id=x", relativeTo: url)!.absoluteURL
+            let target = URL(string: Self.shareTarget, relativeTo: url)!.absoluteURL
             let response = HTTPURLResponse(url: url, statusCode: 301, httpVersion: "HTTP/1.1",
                                            headerFields: ["Location": target.absoluteString])!
             // The session follows it with a fresh request to this protocol.
@@ -35,10 +43,11 @@ final class RedditStubURLProtocol: URLProtocol {
             return
         }
         let isJson = url.path.hasSuffix(".json")
-        let response = HTTPURLResponse(url: url, statusCode: isJson ? Self.jsonStatus : 200,
-                                       httpVersion: "HTTP/1.1", headerFields: nil)!
+        let status = isJson ? Self.listingStatus[url.path] ?? Self.jsonStatus : 200
+        let body = isJson ? Self.listings[url.path] ?? Self.jsonBody : "<html></html>"
+        let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data((isJson ? Self.jsonBody : "<html></html>").utf8))
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
         client?.urlProtocolDidFinishLoading(self)
     }
 
@@ -72,19 +81,48 @@ final class RedditRecipeSourceTests: XCTestCase {
         XCTAssertEqual(RedditStubURLProtocol.requests, ["/r/recipes/comments/1abc01/lemon_orzo.json?raw_json=1&limit=200"])
     }
 
-    func testAShareLinkIsFollowedToThePostFirst() async {
+    func testAShareLinkIsFollowedToThePostFirstAndTheSharesQueryIsLeftOffTheListing() async {
         let share = "\(base)/r/recipes/s/AbCd123"
         let result = await source.fetch(url: share)
         guard case .success(let recipe) = result else { return XCTFail("\(result)") }
         XCTAssertEqual(recipe.sourceUrl, share)
-        XCTAssertEqual(RedditStubURLProtocol.requests.first, "/r/recipes/s/AbCd123")
-        XCTAssertEqual(RedditStubURLProtocol.requests.last, "/r/recipes/comments/1abc01/lemon_orzo.json?raw_json=1&limit=200")
+        XCTAssertEqual(RedditStubURLProtocol.requests, [
+            "/r/recipes/s/AbCd123",
+            RedditStubURLProtocol.shareTarget,
+            "/r/recipes/comments/1f4b2cd/weeknight_lemon_chicken_orzo.json?raw_json=1&limit=200",
+        ])
     }
 
     func testAPostWithNoRecipeTextIsNoTranscription() async {
         RedditStubURLProtocol.jsonBody = RedditFixtures.photoOnly
         let result = await source.fetch(url: postUrl)
         guard case .error(.noTranscription) = result else { return XCTFail("\(result)") }
+        XCTAssertEqual(RedditStubURLProtocol.requests.count, 1)
+    }
+
+    func testACrosspostWithNoRecipeOfItsOwnReadsTheOriginalsComments() async {
+        RedditStubURLProtocol.jsonBody = RedditFixtures.crosspost
+        RedditStubURLProtocol.listings = ["/comments/1f3k9xq.json": RedditFixtures.imageWithOpRecipe]
+        let result = await source.fetch(url: postUrl)
+        guard case .success(let recipe) = result else { return XCTFail("\(result)") }
+        XCTAssertEqual(recipe.name, "Sticky Honey Garlic Chicken Thighs")
+        XCTAssertEqual(recipe.ingredients[4], "1/3 cup honey")
+        XCTAssertEqual(recipe.sourceUrl, postUrl)
+        XCTAssertEqual(RedditStubURLProtocol.requests.last, "/comments/1f3k9xq.json?raw_json=1&limit=200")
+    }
+
+    func testWhenTheOriginalHasNoRecipeOrWontLoadTheCrosspostsOwnOutcomeStands() async {
+        RedditStubURLProtocol.jsonBody = RedditFixtures.crosspost
+        RedditStubURLProtocol.listings = ["/comments/1f3k9xq.json": RedditFixtures.photoOnly]
+        let expected = ParseResult.error(.noTranscription(
+            title: "Saw this on r/recipes and had to share",
+            imageUrl: "https://preview.redd.it/k2m8x7vq1abd1.jpeg?auto=webp&s=5c1e0f1a2b3c4d5e6f"
+        ))
+        let noRecipe = await source.fetch(url: postUrl)
+        XCTAssertEqual(noRecipe, expected)
+        RedditStubURLProtocol.listingStatus = ["/comments/1f3k9xq.json": 429]
+        let blocked = await source.fetch(url: postUrl)
+        XCTAssertEqual(blocked, expected)
     }
 
     func test429FromThePublicEndpointIsBlocked() async {

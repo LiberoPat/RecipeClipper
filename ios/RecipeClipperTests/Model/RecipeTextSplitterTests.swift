@@ -79,6 +79,115 @@ final class RecipeTextSplitterTests: XCTestCase {
         XCTAssertEqual(clean("---"), "")
         XCTAssertEqual(clean("&#x200B;"), "")
         XCTAssertEqual(clean("  2 eggs  "), "2 eggs")
+        // Reddit's editor escapes what would otherwise be Markdown.
+        XCTAssertEqual(clean("1\\. Mix."), "Mix.")
+        XCTAssertEqual(clean("\\- 2 cups flour"), "2 cups flour")
+        XCTAssertEqual(clean("▢ 2 cups flour"), "2 cups flour")
+        XCTAssertEqual(clean("・1 pound of pork belly"), "1 pound of pork belly")
+        XCTAssertEqual(clean("**Glaze** *(to be used during grilling)*"), "Glaze (to be used during grilling)")
+        XCTAssertEqual(clean("Bake 20 minutes.\\"), "Bake 20 minutes.")
+        XCTAssertEqual(clean("-5°C freezer"), "-5°C freezer")
+        XCTAssertEqual(clean("==="), "")
+    }
+
+    func testAcceptsTheHeaderStylesPeopleTypeOnReddit() {
+        let ingredientHeaders = [
+            "**Ingredients**", "**Ingredients:**", "**Ingredients**:", "Ingredients:", "## Ingredients", "INGREDIENTS",
+            "__Ingredients__", "*Ingredients*", "Ingredients 🛒", "What you’ll need:", "**Things You'll Need**",
+            "**Ingredients** (serves 4)", "**Ingredients [for 3~4 people]**",
+        ]
+        let stepHeaders = [
+            "**Instructions**", "**Directions:**", "**Method**:", "Steps:", "## Preparation", "DIRECTIONS",
+            "__Method__", "*Instructions*", "Directions 👇", "Procedure:", "**Cooking steps (for the sauce):**",
+            "**Instructions/Method**", "How to make it:",
+        ]
+        for (i, s) in zip(ingredientHeaders, stepHeaders) {
+            let result = split("A story first.\n\n\(i)\n\n* 2 cups flour\n* 1 tsp salt\n\n\(s)\n\n1. Mix.\n2. Bake.")
+            XCTAssertEqual(result?.ingredients, ["2 cups flour", "1 tsp salt"], "\(i) / \(s)")
+            XCTAssertEqual(result?.instructions, ["Mix.", "Bake."], "\(i) / \(s)")
+        }
+    }
+
+    func testAHeaderSetApartAsOneMayHaveAFewWordsBeforeItsKeyword() {
+        func header(_ raw: String) -> RecipeTextSplitter.Header? { RecipeTextSplitter.header(RecipeTextSplitter.line(raw)) }
+        XCTAssertEqual(header("**Ingredient amounts**:")?.section, .ingredients)
+        XCTAssertNil(header("**Ingredient amounts**:")?.label)
+        XCTAssertEqual(header("**Cooking instructions**")?.section, .instructions)
+        XCTAssertNil(header("**Cooking instructions**")?.label)
+        // A word that names a group keeps it as the group's heading.
+        XCTAssertEqual(header("**Dry ingredients**")?.section, .ingredients)
+        XCTAssertEqual(header("**Dry ingredients**")?.label, "Dry ingredients:")
+        XCTAssertEqual(header("SAUCE INGREDIENTS")?.label, "SAUCE INGREDIENTS:")
+        XCTAssertEqual(header("**Chef's notes**")?.section, .end)
+        // Not set apart, or a step: an ordinary line.
+        XCTAssertNil(header("Dry ingredients"))
+        XCTAssertNil(header("**Mix the dry ingredients**"))
+        XCTAssertNil(header("**Stir in the wet ingredients**"))
+        XCTAssertNil(header("1. **Instructions**"))
+    }
+
+    func testAMisspeltHeaderSetApartAsOneIsStillAHeader() {
+        XCTAssertEqual(RecipeTextSplitter.section("Ingredeints:"), .ingredients)
+        XCTAssertEqual(RecipeTextSplitter.section("**Ingrediants**"), .ingredients)
+        XCTAssertEqual(RecipeTextSplitter.section("** Intructions**"), .instructions)
+        XCTAssertEqual(RecipeTextSplitter.section("DIRECTONS"), .instructions)
+        XCTAssertNil(RecipeTextSplitter.section("Ingredeints"))
+        XCTAssertNil(RecipeTextSplitter.section("**Introductions**"))
+    }
+
+    func testStepsWithNoHeaderAreANumberedListStartingAt1() throws {
+        let result = try XCTUnwrap(split("**Ingredients**\n\n- 2 cups flour\n- 1 egg\n\n1. Mix.\n2. Bake at 350°F.\n\nEnjoy"))
+        XCTAssertEqual(result.ingredients, ["2 cups flour", "1 egg"])
+        XCTAssertEqual(result.instructions, ["Mix.", "Bake at 350°F.", "Enjoy"])
+        // Numbered ingredients, then steps numbered again from 1.
+        let numbered = try XCTUnwrap(split("Ingredients:\n1. 2 cups flour\n2. 1 egg\n1. Mix.\n2. Bake."))
+        XCTAssertEqual(numbered.ingredients, ["2 cups flour", "1 egg"])
+        XCTAssertEqual(numbered.instructions, ["Mix.", "Bake."])
+        // "Step 1" labels, bare or with a title.
+        let labelled = try XCTUnwrap(split("INGREDIENTS\n2 cups flour\n\n**Step 1**\nMix the flour.\n\n**Step 2: Bake**\nBake 20 minutes."))
+        XCTAssertEqual(labelled.instructions, ["Mix the flour.", "Bake:", "Bake 20 minutes."])
+    }
+
+    func testIngredientsWithNoHeaderAreTheAmountLinesJustAboveTheSteps() throws {
+        let result = try XCTUnwrap(split("""
+            I scaled one down for you. It makes about two servings.
+            2.5 oz. frozen spinach
+            Sour cream – 1/8 cup
+            Salt to taste
+
+            Directions:
+            Stir together and chill.
+            """))
+        XCTAssertEqual(result.ingredients, ["2.5 oz. frozen spinach", "Sour cream – 1/8 cup", "Salt to taste"])
+        XCTAssertEqual(result.instructions, ["Stir together and chill."])
+        // A label above the list isn't an ingredient; neither list needs a header.
+        let bare = try XCTUnwrap(split("Recipe:\n\n* 1 cup dates\n* 1/4 cup honey\n* oats\n\n1. Blend the dates.\n2. Press into a pan."))
+        XCTAssertEqual(bare.ingredients, ["1 cup dates", "1/4 cup honey", "oats"])
+        XCTAssertEqual(bare.instructions, ["Blend the dates.", "Press into a pan."])
+    }
+
+    func testChatterNeverSplitsEvenWithANumberOrAListInIt() {
+        XCTAssertNil(split("I used 2 cups of flour and it was fine.\nDirections:\nMix."))
+        XCTAssertNil(split("My mum's way:\n1. lots of cheese\n2. a slow sauce\n3. patience"))
+        XCTAssertNil(split("Honestly just wing it lol\n\nSteps:\n1. Buy it.\n2. Eat it."))
+        XCTAssertNil(split("**Ingredients**\nwhatever is in the fridge\n\nThen bake it until it's done."))
+    }
+
+    func testABoldLineInsideASectionNamesAGroup() throws {
+        let result = try XCTUnwrap(split("**Ingredients**\n**Cake**\n- 2 cups flour\n## Frosting\n- 1 cup sugar\n**Method**\n1. Bake.\n**Make the frosting**\n2. Whip."))
+        XCTAssertEqual(result.ingredients, ["Cake:", "2 cups flour", "Frosting:", "1 cup sugar"])
+        XCTAssertEqual(result.instructions, ["Bake.", "Make the frosting:", "Whip."])
+        // A bold amount stays as written; headings alone aren't a recipe.
+        XCTAssertEqual(split("Ingredients\n**2 cups flour**\nMethod\nBake.")?.ingredients, ["2 cups flour"])
+        XCTAssertNil(split("Ingredients\n**Cake**\nMethod\nBake."))
+    }
+
+    func testALineWithABareLinkIsLeftOutAYieldOrTimeAmongTheIngredientsIsRead() throws {
+        let result = try XCTUnwrap(split("Ingredients\nServes 2\nPrep time: 5 min\n1 egg\nMethod\nBoil.\nMore on my blog: https://example.com/eggs"))
+        XCTAssertEqual(result.ingredients, ["1 egg"])
+        XCTAssertEqual(result.instructions, ["Boil."])
+        XCTAssertEqual(result.yield, "Serves 2")
+        XCTAssertEqual(result.prepTime, "5m")
     }
 
     func testTheStoryIsDroppedButALabelledYieldAndTimesAreKept() throws {
