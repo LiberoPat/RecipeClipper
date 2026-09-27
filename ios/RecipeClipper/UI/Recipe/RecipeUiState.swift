@@ -15,6 +15,13 @@ struct StepTimer: Equatable {
 /// are struck off. Tapping a step moves `currentStep` without touching `doneSteps`.
 /// Screen state, not domain. Saved as it changes (`CookProgress`), so a closed or killed app
 /// picks up at the same step, with its timers still counting.
+/// A cook just finished (#147): the ticked ingredient `lines` as the screen showed them (scaled
+/// and converted), read with `language`'s words.
+struct FinishedCook: Equatable {
+    let language: String?
+    let lines: [String]
+}
+
 struct CookState: Equatable {
     var active = false
     var currentStep = 0
@@ -128,6 +135,9 @@ struct RecipeUiState: Equatable {
     var notKept = false
     /// A purchase from the Unlock prompt that is pending or failed, until the view says so.
     var unlockNotice: PurchaseOutcome?
+    /// Cook mode was just finished with ingredients ticked (#147), until the view has handed
+    /// them on to use up the pantry.
+    var cookFinished: FinishedCook?
 
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }

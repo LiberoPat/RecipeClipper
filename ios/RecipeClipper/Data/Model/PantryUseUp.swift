@@ -19,6 +19,11 @@ enum UseUpChange: Equatable {
     case ask
 }
 
+/// An asked row's answer (#147; Android's `UseUpChoice`): leave the item as it is, mark it
+/// running low (onto the grocery list, still in stock), or mark it out (out of stock and onto
+/// the list).
+enum UseUpChoice: CaseIterable, Equatable { case keep, low, out }
+
 /// Using up the pantry when a recipe is cooked (#147; Android's `PantryUseUp`, the rules there).
 /// Pure: the ticked lines and the pantry in, the changes out; nothing is written here, and
 /// nothing is guessed.

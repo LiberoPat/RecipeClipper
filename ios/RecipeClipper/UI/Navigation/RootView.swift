@@ -241,6 +241,8 @@ struct RootView: View {
         let makePlanVM: (() -> AddToPlanViewModel)? = tabsEnabled ? { container.makeAddToPlanViewModel() } : nil
         let makeGroceriesVM: (() -> AddToGroceriesViewModel)? =
             tabsEnabled ? { container.makeAddToGroceriesViewModel() } : nil
+        // Using up the pantry at the end of cooking (#147): the pantry is behind the tab flag.
+        let makeUseUpVM: (() -> PantryUseUpViewModel)? = tabsEnabled ? { container.makePantryUseUpViewModel() } : nil
         // "Send as file" (#149), whatever the flags.
         let makeSendFileVM = container.makeSendFileViewModel
         return ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
@@ -249,7 +251,8 @@ struct RootView: View {
                 makePlanVM: makePlanVM, makeGroceriesVM: makeGroceriesVM, onClip: { push(.clip($0)) },
                 amountsInStepsEnabled: container.featureFlags.isOn(.amountsInSteps),
                 makePhotosVM: container.makeCookedPhotosViewModel,
-                makeSendFileVM: makeSendFileVM
+                makeSendFileVM: makeSendFileVM,
+                makeUseUpVM: makeUseUpVM
             )
         }
         // The reading view and cook mode are full screen, so a recipe still opens on the recipe.

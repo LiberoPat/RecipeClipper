@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.UseUpChange
+import com.example.recipeclipper.data.model.UseUpChoice
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi

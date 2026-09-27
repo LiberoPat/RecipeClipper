@@ -526,6 +526,27 @@ enum Strings {
     static var doneShopping: String { String(localized: "action_done_shopping") }
     static var putAwayIntro: String { String(localized: "put_away_intro") }
     static var putAway: String { String(localized: "action_put_away") }
+    // Using up the pantry when cook mode is finished (#147)
+    static var useUpTitle: String { String(localized: "use_up_title") }
+    static var useUpIntro: String { String(localized: "use_up_intro") }
+    static func useUpChange(_ before: String, _ after: String) -> String { String(localized: "use_up_change \(before) \(after)") }
+    static func useUpUsedUp(_ before: String) -> String { String(localized: "use_up_used_up \(before)") }
+    static var useUpCantWorkOut: String { String(localized: "use_up_cant_work_out") }
+    static func useUpChoice(_ choice: UseUpChoice) -> String {
+        switch choice {
+        case .keep: return String(localized: "use_up_keep")
+        case .low: return String(localized: "use_up_low")
+        case .out: return String(localized: "use_up_out")
+        }
+    }
+    static var useUpConfirm: String { String(localized: "action_use_up") }
+    static var pantryUsedUp: String { String(localized: "snackbar_pantry_used_up") }
+    /// VoiceOver hears "from 2 lb to 1 lb" rather than an arrow.
+    static func cdUseUpChange(_ name: String, _ before: String, _ after: String) -> String {
+        String(localized: "cd_use_up_change \(name) \(before) \(after)")
+    }
+    static func cdUseUpUsedUp(_ name: String, _ before: String) -> String { String(localized: "cd_use_up_used_up \(name) \(before)") }
+    static func cdUseUpChoice(_ name: String, _ choice: String) -> String { String(localized: "cd_use_up_choice \(name) \(choice)") }
 
     static func aisle(_ aisle: Aisle) -> String {
         switch aisle {

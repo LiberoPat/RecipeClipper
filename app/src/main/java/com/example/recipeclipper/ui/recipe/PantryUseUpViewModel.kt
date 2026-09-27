@@ -12,6 +12,7 @@ import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryList
 import com.example.recipeclipper.data.model.PantryUseUp
 import com.example.recipeclipper.data.model.UseUpChange
+import com.example.recipeclipper.data.model.UseUpChoice
 import com.example.recipeclipper.data.model.UseUpRow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.NonCancellable
@@ -23,12 +24,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
-
-/**
- * An asked row's answer (#147): leave the item as it is, mark it running low (onto the grocery
- * list, still in stock), or mark it out (out of stock and onto the list).
- */
-enum class UseUpChoice { KEEP, LOW, OUT }
 
 /**
  * The end-of-cooking sheet (#147): [rows] as [PantryUseUp] worked them out; [ticked] the

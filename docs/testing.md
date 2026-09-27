@@ -228,6 +228,15 @@ first ticks, put-away, one undo for the list and the pantry), `GroceriesScreenTe
 `PantryViewModelTest` and `PantryScreenTest`; iOS mirrors them in `PantryViewModelTests`,
 `GroceriesUITests` (Done shopping, Undo) and `PantryUITests` (the tag).
 
+Using up the pantry at the end of cooking (#147): `PantryUseUpTest` (JVM) and
+`PantryUseUpTests` (iOS) run the subtraction and every refusal (other kinds, no density,
+unreadable text, a different name, parts and packages), and the corpus's `UseUp` rows pin the
+Swift to the Kotlin (write only `UseUp("2 lb", "chicken", ["1 lb chicken"]),`). The sheet's
+ViewModel over fakes: `PantryUseUpViewModelTest` / `PantryUseUpViewModelTests` (what it lists
+and preselects, one confirm, one Undo); the hand-over at "Done — finish":
+`RecipeCookFinishedTest` (iOS: in `PantryUseUpViewModelTests`); the sheet on screen:
+`PantryUseUpScreenTest` (Robolectric).
+
 Amounts inside steps (#101): `StepAmountsTest` (JVM) and `StepAmountsTests` (iOS) run
 the rules on steps modelled on real pages, and the corpus's `Step` rows pin the Swift to the
 Kotlin (each step against its lines as given and doubled in Metric; write only

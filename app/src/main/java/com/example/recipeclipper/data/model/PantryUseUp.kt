@@ -22,6 +22,12 @@ sealed class UseUpChange {
 }
 
 /**
+ * An asked row's answer (#147): leave the item as it is, mark it running low (onto the grocery
+ * list, still in stock), or mark it out (out of stock and onto the list).
+ */
+enum class UseUpChoice { KEEP, LOW, OUT }
+
+/**
  * Using up the pantry when a recipe is cooked (#147). Pure: the ticked lines and the pantry in,
  * the changes out; nothing is written here, and nothing is guessed.
  *

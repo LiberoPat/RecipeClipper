@@ -49,7 +49,8 @@ JSON file (Settings), an automatic copy of it in the user's own cloud folder, an
 "Restore from a backup file" on an empty Home (#150); a recipe, or the grocery list's
 unticked items, sent as a small file that another Recipe Clipper opens (#149); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
-pantry with the week's Have/Buy, behind the tab flag (#49–#51); Chef mode (short steps written on the device, behind its flag, #100); a
+pantry with the week's Have/Buy, behind the tab flag (#49–#51), used up when cook mode is
+finished (#147); Chef mode (short steps written on the device, behind its flag, #100); a
 recipe picked from a page's text by the on-device model (behind its flag, #103); typed
 decisions by that model where the rules give up (close pantry names, aisles;
 `aiDecisions` flag, #104; count brackets only with `aiCountBrackets` too, #127);
@@ -115,7 +116,8 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                ClipSelection, ClipDraft, PageText, RecipeTextWindow, PageRecipeCheck (#103),
                PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal), LibraryLimit (#107),
                Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
-               Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy)
+               Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy),
+               PantryUseUp (what a finished cook takes from the pantry, #147)
 ui/            navigation, home, recipes (the library), recipe, clip, edit, savetolist, lists, listdetail,
                settings, week (with What I need), plan (Add to plan sheet), mealtypes,
                groceries (the tab and the Add to groceries sheet), pantry, sharefile (Send as file,
@@ -327,6 +329,11 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Settings → Pantry). Switching an item out puts its name on the grocery
   list silently; the row then shows "On list", and tapping that takes it off
   (no snackbar) (#146).
+  **Using up** (#147): cook mode's "Done — finish" with ingredients ticked opens
+  "Update the pantry" (never on a tick, never on Exit): per matched item, the
+  worked-out change ("2 lb → 1 lb", ticked; used up goes out and onto the list)
+  or, when it can't be worked out, the lines as written with Keep / Running low
+  (onto the list, still in stock) / Out, Keep chosen. One confirm, one Undo.
   "What I need" (Week menu): the shown week's lines at planned servings,
   grouped by ingredient, "To buy" then "In your pantry", with a note that
   having some isn't having enough; "Add to groceries" adds the To buy lines.
@@ -431,7 +438,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Junk is hidden in Groceries (rows, lines, share) at display time, never
   stored or hidden in the recipe; notes still show.
 - **Pantry** (#51): an item is a `name` as typed, a `language` (as a typed
-  grocery's), an optional `quantity` as written (never read as a number), an
+  grocery's), an optional `quantity` as written (read as a number only by
+  `PantryUseUp`, #147: exact amounts of one kind, else it asks), an
   `aisle`, `inStock`, `alwaysHave` (a staple), and optional `purchasedDay`
   and `expiresDay` (epoch days). **Have/Buy is presence only**
   (`PantryMatch`): a line is Have when `IngredientName.of(line)` matches an

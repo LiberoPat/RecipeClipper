@@ -275,6 +275,10 @@ final class AppContainer {
         )
     }
 
+    func makePantryUseUpViewModel() -> PantryUseUpViewModel {
+        PantryUseUpViewModel(pantry: pantryRepository, groceries: groceryRepository, decisions: decisionRepository)
+    }
+
     func makePantryViewModel() -> PantryViewModel {
         PantryViewModel(pantry: pantryRepository, groceries: groceryRepository, calendar: planCalendar)
     }

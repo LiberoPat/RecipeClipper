@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.UseUpChange
+import com.example.recipeclipper.data.model.UseUpChoice
 import com.example.recipeclipper.data.model.UseUpRow
 
 /**
