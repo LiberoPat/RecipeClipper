@@ -136,4 +136,40 @@ class CookedPhotosViewModelTest {
         advanceUntilIdle()
         assertEquals(false, vm.uiState.value.madeThis)
     }
+
+    // "Mark as cooked" (#173): the same entry with no photo, the same signal.
+
+    @Test fun `marking as cooked opens a dated entry with no photo, and closing it says the recipe was cooked`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val vm = viewModel()
+            vm.onMarkCooked()
+            advanceUntilIdle()
+
+            val open = vm.uiState.value.open!!
+            assertEquals(false, open.hasPhoto)
+            assertEquals(photos.today, open.day)
+            assertEquals(listOf(open), vm.uiState.value.photos)
+            assertEquals(false, vm.uiState.value.madeThis)
+
+            vm.onNoteChange("Doubled the garlic")
+            vm.onClose()
+            advanceUntilIdle()
+            assertEquals("Doubled the garlic", photos.photos.value.single().note)
+            assertTrue(vm.uiState.value.madeThis)
+        }
+
+    @Test fun `a mark deleted at once says nothing, and its Undo brings it back`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        vm.onMarkCooked()
+        advanceUntilIdle()
+        vm.onDelete()
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.madeThis)
+        assertEquals(false, vm.uiState.value.deleted?.hasPhoto)
+
+        vm.onUndoDelete()
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.photos.size)
+        assertTrue(photos.forgotten.isEmpty())
+    }
 }

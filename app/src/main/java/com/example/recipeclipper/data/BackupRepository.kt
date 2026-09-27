@@ -103,13 +103,15 @@ class DefaultBackupRepository @Inject constructor(
                 )
             }
         )
-        // The pictures travel beside the JSON (#116), each named after its row.
+        // The pictures travel beside the JSON (#116), each named after its row. A cooking marked
+        // with no photo (#173) has none.
         val pictures = LinkedHashMap<String, String>()
         val withPhotos = backup.copy(
             cookedPhotos = snapshot.cookedPhotos.mapNotNull { photo ->
                 val recipe = recipeUids[photo.recipeId] ?: return@mapNotNull null
-                val file = "photos/photo-${photo.id}.jpg"
-                pictures[file] = photos.path(photo.fileName)
+                val file = photo.fileName?.let { name ->
+                    "photos/photo-${photo.id}.jpg".also { pictures[it] = photos.path(name) }
+                }
                 BackupCookedPhoto(photo.uid, recipe, photo.day, photo.note, photo.createdAt, photo.updatedAt, file)
             }
         )
@@ -124,7 +126,7 @@ class DefaultBackupRepository @Inject constructor(
         // Copy in the pictures the file's photos name first; a photo whose picture didn't come
         // stays out. Copies the import didn't use are swept later (PhotoStore's grace period).
         val stored = HashMap<String, String>()
-        for (file in decoded.cookedPhotos.mapTo(LinkedHashSet()) { it.file }) {
+        for (file in decoded.cookedPhotos.mapNotNullTo(LinkedHashSet()) { it.file }) {
             val local = backup.photos[file] ?: continue
             photos.adopt(local)?.let { stored[file] = it }
         }

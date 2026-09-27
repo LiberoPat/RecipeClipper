@@ -7,7 +7,7 @@ import androidx.room.Query
 import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import kotlinx.coroutines.flow.Flow
 
-/** "I made this" (#116): a recipe's own photos, newest cook first. */
+/** "I made this" (#116): a recipe's own photos, and cookings marked with none (#173), newest cook first. */
 @Dao
 abstract class CookedPhotoDao {
 
@@ -20,8 +20,8 @@ abstract class CookedPhotoDao {
     @Query("SELECT * FROM cooked_photos WHERE id = :id")
     abstract suspend fun get(id: Long): CookedPhotoEntity?
 
-    /** Every file a row still names: what the orphan sweep must leave alone. */
-    @Query("SELECT fileName FROM cooked_photos")
+    /** Every file a row still names: what the orphan sweep must leave alone. A cooking marked with no photo (#173) names none. */
+    @Query("SELECT fileName FROM cooked_photos WHERE fileName IS NOT NULL")
     abstract suspend fun fileNames(): List<String>
 
     @Insert

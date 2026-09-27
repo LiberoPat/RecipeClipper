@@ -1076,7 +1076,8 @@ The owner's decision: import **merges, never replaces**, and deletes nothing.
   `builtInKey`, else uid, else user-type name; planned meals by uid, a recipe's
   only if its recipe is here after the import; menus by uid, whole, their meals
   by the plan's rules; photos by uid, only with their picture, their recipe
-  coming in like a listed one. Rules in `BackupMerger`.
+  coming in like a listed one (a cooking marked with no photo, #173, the same,
+  needing no picture). Rules in `BackupMerger`.
 
 ## Shared tables, native logic (#9)
 
@@ -1634,8 +1635,9 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   then shows "On list", and tapping that takes it off (no snackbar). The menu's
   "Send list" and "Send as file" send what's in stock, never what's out (that
   is on the grocery list already). **Using up:** cook mode's "Done — finish"
-  with ingredients ticked, or a photo added with "I made this" once its viewer
-  closes (the ticked lines, else all), opens "Update the pantry" (never on a
+  with ingredients ticked, or a photo added with "I made this" (or "Mark as
+  cooked", #173) once its viewer closes (the ticked lines, else all), opens
+  "Update the pantry" (never on a
   tick, never on Exit; a recipe's is offered again only 12 h after it was
   confirmed or dismissed, `pantry_use_up`): per matched item, the worked-out
   change ("2 lb → 1 lb", ticked; used up goes out and onto the list) or, when
@@ -2563,7 +2565,8 @@ photo that exists.
 - **Where it shows.** "Your cooks" is the reading view's last section, after the steps and the
   note, so the reading view still opens on the recipe. Cook mode doesn't show it.
 - **Storage.** Table `cooked_photos` (Room 14 / iOS `user_version` 13): `recipeId` CASCADE,
-  `fileName`, `day`, `note`, `createdAt`, `updatedAt`, `uid`. The picture is a JPEG in the
+  `fileName` (nullable since Room 15 / iOS 14, for "Mark as cooked", #173), `day`, `note`,
+  `createdAt`, `updatedAt`, `uid`. The picture is a JPEG in the
   app's own storage, named by the store and never by the user:
   - Android: `filesDir/cooked_photos`.
   - iOS: `CookedPhotos/` beside the database in the App Group container.
@@ -2633,7 +2636,8 @@ photo that exists.
   `CookedPhotoTests` (iOS).
 - **The screen in short** (CLAUDE.md's summary until September 2026): "Your
   cooks" is the reading view's last section (after the note), a row of dated
-  thumbnails and "I made this" (camera or library). Each photo is an entry
+  thumbnails and "I made this" (camera, library, or "Mark as cooked" with no
+  photo, #173, below). Each photo is an entry
   cooked today; the new one opens full screen for its note (short, saved as
   typing pauses) and date; Share sends the photo plus the recipe name; Delete
   has an undo snackbar.
@@ -2955,6 +2959,8 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
     can't present a sheet while its cover is still leaving. A photo deleted straight away (the
     wrong picture) offers nothing. The lines: the ticked ones if any are ticked (what cook mode
     hands over), else every line, since the cook says they made the recipe.
+  - "Mark as cooked" (#173) is this same trigger with no photo: the same `madeThis` signal once
+    its entry's view closes, so the same lines and the same 12-hour guard. It adds no third rule.
 - **One cooking is offered once.** Each photo is its own "cooked today" entry, and a cook who
   finishes cook mode may add a photo too, so both triggers check when that recipe's sheet was
   last **confirmed or dismissed**, and offer it only if that was **12 hours ago or more**: a
@@ -3044,6 +3050,57 @@ change, and every existing ViewModel, screen and UI test passes unchanged.
 - **Not done:** a use-case layer across the app (most screens would get thin pass-throughs);
   the AI recommendation pipeline (#164–#166) is where one would earn its place.
 
+## "Mark as cooked", without a photo (#173)
+
+The owner's idea: "I made this" (#116) recorded a cooking only with a photo, so a cook who
+neither finishes cook mode nor takes photos never recorded it, and was never offered the
+pantry update (#147). "Mark as cooked" records today's cooking with no photo. Behind
+`cookedPhotos`, like #116; the sheet it offers behind `mealPlan`, like #147.
+
+- **Where.** A third item in "I made this"'s menu, after Take a photo and Choose from library,
+  from both the empty section's button and the row's +. One tap writes the entry (cooked today,
+  no note) and opens it as a new photo opens, so the optional note and the date are right there:
+  "Cooked" with a tick in place of the picture, and no Share. In the row it is a dated tile
+  with a tick and "Cooked"; TalkBack/VoiceOver read "Cooked, no photo, <date>". Its Delete is
+  "Remove from your cooks", with the same Undo snackbar ("Removed from your cooks").
+- **The same entry, not a new kind.** A row in `cooked_photos` with no `fileName` (and so no
+  path and no picture; `CookedPhoto.hasPhoto` false). Everything that reads cooked entries
+  already treats it as one: the recipe's list and full-screen view, the Recipes screen's
+  Recently cooked (`MAX(day)`), the protection from the cull and the free tier's one-for-one,
+  deleting with the recipe, the export and the merge. The alternatives were worse: an empty
+  file name as a sentinel is a magic value every reader must remember, and a separate table
+  would have duplicated the sort, the protection, the cascade, the backup section and the
+  delete. The table keeps its name; renaming it would touch every query for no behaviour.
+- **Migration.** Room 14→15 (`MIGRATION_14_15`) and iOS `user_version` 13→14
+  (`allowCookedWithoutPhoto`): SQLite can't relax NOT NULL in place, so the table is rebuilt
+  (create `_new_cooked_photos`, copy every row with its id, drop, rename, recreate both
+  indices). The AUTOINCREMENT counter is carried over in `sqlite_sequence`, so an entry
+  deleted before the upgrade never has its id handed out again. Pinned by
+  `MigrationTest.migration14To15…` (device) and `CookedPhotoTests.testAVersion13…` (iOS).
+- **What counts as a photo.** The recipe's delete confirmation names the photos that go with
+  it ("with your 2 photos of it"): it counts only entries with a photo, since a cooking marked
+  without one isn't a photo (it still goes with the recipe, like its note). The import
+  summary's `photosAdded` counts photos only too. A marked cooking protects its recipe from
+  the cull like a photo does: it is the user's own record, and it goes if the recipe goes.
+- **The pantry.** Closing the new entry sends the same `madeThis` signal as a photo, so
+  `PantryUseUpViewModel.onMadeThis` offers the same sheet with the same lines (ticked, else
+  all) and the same 12-hour `pantry_use_up` guard: marking a dinner as cooked and then adding
+  a photo of it offers the sheet once. Deleted straight away, it offers nothing, as a photo.
+- **Export and import: `formatVersion` stays 1.** An entry with no photo goes in its own
+  top-level section, `cookedWithoutPhotos` (`id`, `recipeId`, `day`, `note`, `createdAt`,
+  `updatedAt`; no `file`), written only when there is one, not in `cookedPhotos` with no
+  `file`. The reason is the older app: its reader requires a valid `file` on every
+  `cookedPhotos` entry and would refuse the whole file as malformed, while it ignores a
+  section it doesn't know and imports everything else. So an older app loses only the marked
+  cookings, and a version bump (which an older app refuses outright) isn't needed. Ids are
+  unique across both sections. An export with marked cookings but no photos is the plain
+  `.json`, as there are no pictures to zip. The merge takes a marked cooking by uid like a
+  photo, needing no picture; its recipe comes in like a listed one. Pinned by the shared
+  fixture `backup-v1-cooked.json`, read by both platforms' `BackupJson` tests (including the
+  file with that section removed, which is what an older app reads).
+- **The file sent to someone else** (#149) still carries no cooked entries of either kind, and
+  `ShareFile.chosen` drops any a file holds.
+
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 
 `CLAUDE.md` had grown back to about 750 lines, and it is loaded into every session,
@@ -3107,12 +3164,12 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 14** (iOS `user_version` 13): `recipes`
+Room database `recipe_clipper.db`, **version 15** (iOS `user_version` 14): `recipes`
 (with nullable `notes`, `language`, `cookState`, `servingsTarget` and `editedAt`, and
 `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
 `meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51), `menus` and
 `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never
-exported), `cooked_photos` (#116, cascading). Recipes, lists, the plan, grocery,
+exported), `cooked_photos` (#116, cascading; no `fileName` for "Mark as cooked", #173). Recipes, lists, the plan, grocery,
 pantry, menu and photo tables carry a unique, never-changing `uid`: what an export
 file calls them. Plan, grocery, pantry, menu and photo rows also carry `updatedAt`
 (for #53). iOS keeps the database in the App Group container that the share

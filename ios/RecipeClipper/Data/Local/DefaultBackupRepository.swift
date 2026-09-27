@@ -69,14 +69,18 @@ final class DefaultBackupRepository: BackupRepository {
                 )
             }
         )
-        // The pictures travel beside the JSON (#116), each named after its row.
+        // The pictures travel beside the JSON (#116), each named after its row. A cooking marked
+        // with no photo (#173) has none.
         var withPhotos = backup
         var pictures: [String: URL] = [:]
         if let photos {
             withPhotos.cookedPhotos = snapshot.cookedPhotos.compactMap { p in
                 guard let recipe = recipeUids[p.recipeId] else { return nil }
-                let file = "photos/photo-\(p.id).jpg"
-                pictures[file] = URL(fileURLWithPath: photos.path(p.fileName))
+                let file = p.fileName.map { name in
+                    let file = "photos/photo-\(p.id).jpg"
+                    pictures[file] = URL(fileURLWithPath: photos.path(name))
+                    return file
+                }
                 return BackupCookedPhoto(
                     id: p.uid, recipeId: recipe, day: p.day, note: p.note, createdAt: p.createdAt,
                     updatedAt: p.updatedAt, file: file
@@ -98,7 +102,7 @@ final class DefaultBackupRepository: BackupRepository {
         // stays out. Copies the import didn't use are swept later (the store's grace period).
         var stored: [String: String] = [:]
         if let photos {
-            for file in Set(backup.cookedPhotos.map(\.file)) {
+            for file in Set(backup.cookedPhotos.compactMap(\.file)) {
                 guard let local = package.photos[file], let name = await photos.adopt(local) else { continue }
                 stored[file] = name
             }

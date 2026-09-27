@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -59,7 +60,7 @@ class CookedPhotoDaoTest {
         val second = photos.add(id, listOf("two", "bad")).single()
         assertEquals(PlanDays.today(now), first.day)
         assertEquals(listOf(second.id, first.id), photos.observe(id).first().map { it.id })
-        assertEquals("one", store.bytes(first.fileName))
+        assertEquals("one", store.bytes(first.fileName!!))
 
         photos.edit(first.id, first.day + 1, "  Less sugar  ")
         val edited = photos.observe(id).first().first()
@@ -110,11 +111,45 @@ class CookedPhotoDaoTest {
         val kept = photos.add(id, listOf("kept")).single()
         val orphan = store.importPicture("orphan")!!
         val young = store.importPicture("young")!!
-        store.modified(kept.fileName, now - PhotoStore.SWEEP_GRACE_MILLIS * 2)
+        store.modified(kept.fileName!!, now - PhotoStore.SWEEP_GRACE_MILLIS * 2)
         store.modified(orphan, now - PhotoStore.SWEEP_GRACE_MILLIS * 2)
         store.modified(young, now)
         photos.sweep()
         assertEquals(setOf(kept.fileName, young), store.files().keys)
+    }
+
+    /**
+     * "Mark as cooked" (#173): an entry with no file, dated today and noted like a photo; it
+     * counts as cooked for the Recipes sort, keeps its recipe from the cull, goes and comes back
+     * with its recipe, and leaves no file to sweep or forget.
+     */
+    @Test fun aCookingMarkedWithNoPhotoIsAnEntryWithoutAFile() = runBlocking {
+        val id = insert(1)
+        val mark = photos.markCooked(id)!!
+        assertNull(mark.fileName)
+        assertNull(mark.path)
+        assertFalse(mark.hasPhoto)
+        assertFalse(mark.hasPicture)
+        assertEquals(PlanDays.today(now), mark.day)
+        photos.edit(mark.id, mark.day - 1, "Quick weeknight")
+        assertEquals("Quick weeknight", photos.observe(id).first().single().note)
+
+        insert(2)
+        db.recipeDao().cullHistory(keep = 0)
+        assertEquals(PlanDays.today(now) - 1, db.recipeDao().observeHistory("").first().single().lastCookedDay)
+
+        val orphan = store.importPicture("orphan")!!
+        store.modified(orphan, now - PhotoStore.SWEEP_GRACE_MILLIS * 2)
+        photos.sweep()
+        assertTrue(store.files().isEmpty())
+
+        val deleted = recipes.delete(id)!!
+        assertTrue(photos.observe(id).first().isEmpty())
+        recipes.restore(deleted)
+        assertEquals(listOf(mark.uid), photos.observe(id).first().map { it.uid })
+        recipes.forget(recipes.delete(id)!!)
+        photos.forget(listOf(mark))
+        assertTrue(store.files().isEmpty())
     }
 
     /** Android's backup restores the database but not the files (#116): the entry stays. */
@@ -123,7 +158,7 @@ class CookedPhotoDaoTest {
         val photo = photos.add(id, listOf("pic")).single()
         assertTrue(photo.hasPicture)
         photos.edit(photo.id, 19_000L, "Less salt")
-        store.delete(listOf(photo.fileName))
+        store.delete(listOf(photo.fileName!!))
         now += PhotoStore.SWEEP_GRACE_MILLIS * 2
 
         photos.sweep()

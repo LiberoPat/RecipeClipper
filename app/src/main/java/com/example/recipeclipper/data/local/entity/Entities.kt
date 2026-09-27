@@ -122,8 +122,9 @@ data class PantryItemEntity(
 /**
  * One "I made this" entry (#116): a photo of what the user cooked from a recipe, with the
  * [day] it was cooked (an epoch day, like the plan's) and an optional short [note]. [fileName]
- * is the downscaled JPEG in the app's photo store (`PhotoStore`), never a path. Deleting the
- * recipe deletes its entries (CASCADE); their files go once the delete stands.
+ * is the downscaled JPEG in the app's photo store (`PhotoStore`), never a path, or null for a
+ * cooking marked with no photo ("Mark as cooked", #173). Deleting the recipe deletes its
+ * entries (CASCADE); their files go once the delete stands.
  */
 @Entity(
     tableName = "cooked_photos",
@@ -140,7 +141,7 @@ data class PantryItemEntity(
 data class CookedPhotoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val recipeId: Long,
-    val fileName: String,
+    val fileName: String?,
     val day: Long,
     val note: String?,
     val createdAt: Long,

@@ -388,8 +388,9 @@ final class DefaultRecipeRepository: RecipeRepository {
 
     // The photos belong to the recipe (#116): once its delete stands, their files go too.
     func forget(_ deleted: DeletedRecipe) async {
-        guard let photos, !deleted.cookedPhotos.isEmpty else { return }
-        await photos.delete(deleted.cookedPhotos.map(\.fileName))
+        let files = deleted.cookedPhotos.compactMap(\.fileName)
+        guard let photos, !files.isEmpty else { return }
+        await photos.delete(files)
     }
 
     func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> {

@@ -2,7 +2,8 @@ import SwiftUI
 
 /// One photo, full screen (#116; Android's CookedPhotoViewer): the picture, its date (tap for a
 /// date picker) and its note, edited in place; Share (the photo and the recipe's name as plain
-/// text) and Delete, which the recipe screen offers to undo.
+/// text) and Delete, which the recipe screen offers to undo. A cooking marked with no photo
+/// (#173) shows "Cooked" in place of the picture, and no Share.
 struct CookedPhotoViewer: View {
     let vm: CookedPhotosViewModel
     let photo: CookedPhoto
@@ -15,14 +16,14 @@ struct CookedPhotoViewer: View {
                 Button { vm.onClose() } label: { Image(systemName: "xmark") }
                     .accessibilityLabel(Strings.closePhoto)
                 Spacer()
-                if photo.hasPicture {
-                    ShareLink(item: URL(fileURLWithPath: photo.path), message: Text(recipeName)) {
+                if photo.hasPicture, let path = photo.path {
+                    ShareLink(item: URL(fileURLWithPath: path), message: Text(recipeName)) {
                         Image(systemName: "square.and.arrow.up")
                     }
                     .accessibilityLabel(Strings.sharePhoto)
                 }
                 Button { vm.onDelete() } label: { Image(systemName: "trash") }
-                    .accessibilityLabel(Strings.deletePhoto)
+                    .accessibilityLabel(photo.hasPhoto ? Strings.deletePhoto : Strings.deleteCookedMark)
                     .accessibilityIdentifier("cooked.delete")
                     .padding(.leading, 20)
             }
@@ -31,7 +32,7 @@ struct CookedPhotoViewer: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
 
-            LocalPhoto(path: photo.path, maxPixels: photoMaxEdge)
+            CookedPicture(photo: photo, maxPixels: photoMaxEdge)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             VStack(alignment: .leading, spacing: 8) {

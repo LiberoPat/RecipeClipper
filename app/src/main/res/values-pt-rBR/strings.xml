@@ -502,6 +502,11 @@
     <string name="cooked_add_failed">Não foi possível adicionar a foto.</string>
     <string name="camera_unavailable">Nenhum app de câmera disponível.</string>
     <string name="cooked_photo_missing">Foto não está neste celular</string>
+    <string name="action_mark_cooked">Marcar como feita</string>
+    <string name="cooked_mark">Feita</string>
+    <string name="cd_cooked_mark">Feita, sem foto, %1$s</string>
+    <string name="cd_delete_cooked_mark">Excluir registro</string>
+    <string name="cooked_mark_deleted">Registro excluído</string>
     <string name="delete_recipe_body_photo">A receita será removida do histórico e de todas as listas em que estiver, com a sua foto. Isso não pode ser desfeito.</string>
     <string name="delete_recipe_body_photos">A receita será removida do histórico e de todas as listas em que estiver, com as suas %1$d fotos. Isso não pode ser desfeito.</string>
     <!-- The automatic backup copy (#150). -->

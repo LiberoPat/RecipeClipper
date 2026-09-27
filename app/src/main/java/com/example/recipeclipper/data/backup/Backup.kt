@@ -36,7 +36,8 @@ data class Backup(
     val menuEntries: List<BackupMenuEntry> = emptyList(),
     /**
      * The user's own photos (#116). Absent in older files, which read as empty. Their pictures
-     * travel beside this JSON in a zip ([BackupPackage]), each at [BackupCookedPhoto.file].
+     * travel beside this JSON in a zip ([BackupPackage]), each at [BackupCookedPhoto.file]. With
+     * the cookings marked with no photo (#173), which have no file.
      */
     val cookedPhotos: List<BackupCookedPhoto> = emptyList(),
     /**
@@ -185,6 +186,9 @@ data class BackupMenuEntry(
 /**
  * One "I made this" entry (#116). [file] is the picture's path inside the export zip
  * (`photos/<id>.jpg`); an entry whose picture isn't in the package is left out on import.
+ * A cooking marked with no photo (#173) has no [file]: the JSON keeps it in its own section,
+ * `cookedWithoutPhotos` ([BackupJson]), so an older app, which requires a `file` on every
+ * `cookedPhotos` entry, skips it rather than refusing the whole file.
  */
 data class BackupCookedPhoto(
     val id: String,
@@ -193,7 +197,7 @@ data class BackupCookedPhoto(
     val note: String?,
     val createdAt: Long,
     val updatedAt: Long,
-    val file: String
+    val file: String?
 )
 
 /**
@@ -252,7 +256,7 @@ data class ImportSummary(
     val mealTypesAdded: Int = 0,
     /** New menus written (#52). */
     val menusAdded: Int = 0,
-    /** New photos of the user's own cooking written (#116). */
+    /** New photos of the user's own cooking written (#116); cookings marked with no photo (#173) aren't counted. */
     val photosAdded: Int = 0,
     /** The free library's size when that is what [recipesSkipped] ran into (#107), else null. */
     val freeLimit: Int? = null

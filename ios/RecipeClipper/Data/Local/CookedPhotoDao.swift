@@ -2,11 +2,12 @@ import Foundation
 
 /// One "I made this" row (#116; Android's CookedPhotoEntity): the user's photo of a recipe they
 /// cooked, the `day` (an epoch day) and an optional short note. `fileName` names the JPEG in the
-/// photo store, never a path. Deleted with its recipe (CASCADE); its file goes once that stands.
+/// photo store, never a path, or is nil for a cooking marked with no photo (#173). Deleted with
+/// its recipe (CASCADE); its file goes once that stands.
 struct CookedPhotoRecord: Equatable {
     var id: Int64 = 0
     var recipeId: Int64
-    var fileName: String
+    var fileName: String?
     var day: Int64
     var note: String?
     var createdAt: Int64
@@ -16,7 +17,7 @@ struct CookedPhotoRecord: Equatable {
     static let columns = "id, recipeId, fileName, day, note, createdAt, updatedAt, uid"
 
     init(
-        id: Int64 = 0, recipeId: Int64, fileName: String, day: Int64, note: String?, createdAt: Int64,
+        id: Int64 = 0, recipeId: Int64, fileName: String?, day: Int64, note: String?, createdAt: Int64,
         updatedAt: Int64, uid: String = newUid()
     ) {
         self.id = id
@@ -32,7 +33,7 @@ struct CookedPhotoRecord: Equatable {
     init(row: SQLiteRow) {
         id = row.int64(0)
         recipeId = row.int64(1)
-        fileName = row.string(2)
+        fileName = row.optionalString(2)
         day = row.int64(3)
         note = row.optionalString(4)
         createdAt = row.int64(5)
@@ -67,9 +68,10 @@ struct CookedPhotoDao {
         )
     }
 
-    /// Every file a row still names: what the orphan sweep must leave alone.
+    /// Every file a row still names: what the orphan sweep must leave alone. A cooking marked with
+    /// no photo (#173) names none.
     func fileNames() throws -> Set<String> {
-        Set(try db.query("SELECT fileName FROM cooked_photos") { $0.string(0) })
+        Set(try db.query("SELECT fileName FROM cooked_photos WHERE fileName IS NOT NULL") { $0.string(0) })
     }
 
     /// An `id` of 0 lets SQLite assign one; a non-zero id is honoured (what undo relies on).

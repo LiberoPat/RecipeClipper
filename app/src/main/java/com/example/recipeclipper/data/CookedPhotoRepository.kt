@@ -10,7 +10,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * "I made this" (#116): the user's own photos of a recipe, each with a day and a short note.
+ * "I made this" (#116): the user's own photos of a recipe, each with a day and a short note, and
+ * cookings marked with no photo (#173).
  * A photo's file outlives its row until the delete stands (so Undo can bring it back); [sweep]
  * removes files no row names.
  */
@@ -24,6 +25,9 @@ interface CookedPhotoRepository {
      * cooked today with no note. The new entries, in order; one that couldn't be read is left out.
      */
     suspend fun add(recipeId: Long, sources: List<String>): List<CookedPhoto>
+
+    /** "Mark as cooked" (#173): an entry cooked today with no photo and no note; null if it couldn't be written. */
+    suspend fun markCooked(recipeId: Long): CookedPhoto?
 
     suspend fun edit(id: Long, day: Long, note: String?)
 
@@ -68,6 +72,15 @@ class DefaultCookedPhotoRepository @Inject constructor(
         }
     }
 
+    override suspend fun markCooked(recipeId: Long): CookedPhoto? {
+        val now = clock.now()
+        val entity = CookedPhotoEntity(
+            recipeId = recipeId, fileName = null, day = PlanDays.today(now), note = null, createdAt = now, updatedAt = now
+        )
+        val id = log.guard("markCooked", null) { dao.insert(entity) } ?: return null
+        return entity.copy(id = id).toDomain()
+    }
+
     override suspend fun edit(id: Long, day: Long, note: String?) =
         log.guard("editCookedPhoto", Unit) { dao.edit(id, day, CookedPhoto.cleanNote(note), clock.now()) }
 
@@ -81,7 +94,8 @@ class DefaultCookedPhotoRepository @Inject constructor(
         log.guard("restoreCookedPhoto", Unit) { dao.put(listOf(photo.toEntity())) }
 
     override suspend fun forget(photos: List<CookedPhoto>) {
-        if (photos.isNotEmpty()) store.delete(photos.map { it.fileName })
+        val files = photos.mapNotNull { it.fileName }
+        if (files.isNotEmpty()) store.delete(files)
     }
 
     override suspend fun sweep() {
@@ -92,7 +106,10 @@ class DefaultCookedPhotoRepository @Inject constructor(
     }
 
     private fun CookedPhotoEntity.toDomain() =
-        CookedPhoto(id, recipeId, fileName, store.path(fileName), day, note, createdAt, updatedAt, uid, store.exists(fileName))
+        CookedPhoto(
+            id, recipeId, fileName, fileName?.let(store::path), day, note, createdAt, updatedAt, uid,
+            fileName != null && store.exists(fileName)
+        )
 }
 
 internal fun CookedPhoto.toEntity() =

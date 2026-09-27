@@ -92,6 +92,7 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Google's on-device AI (Chef mode on an unsupported phone, #144) | la IA en el dispositivo de Google | l'IA embarquée de Google | Googles On-Device-KI | l'IA sul dispositivo di Google | a IA no dispositivo do Google |
 | Your cooks (heading, #116) | Lo que has cocinado | Vos réalisations | Selbst gekocht | I tuoi piatti | O que você fez |
 | I made this (#116) | Lo he hecho | Je l'ai fait | Hab ich gekocht | L'ho fatto | Eu fiz |
+| Mark as cooked / Cooked (no photo, #173) | Marcar como cocinada / Cocinada | Marquer comme cuisinée / Cuisinée | Als gekocht markieren / Gekocht | Segna come cucinata / Cucinata | Marcar como feita / Feita |
 
 Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and Italian
 (Annulla), as the platforms themselves have it; "Delete" is *Excluir* in Portuguese

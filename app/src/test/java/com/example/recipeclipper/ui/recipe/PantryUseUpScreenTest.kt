@@ -25,7 +25,7 @@ import org.junit.runner.RunWith
  * Finishing cook mode with ingredients ticked (#147) opens "Update the pantry" over the reading
  * view: the worked-out change ticked and read aloud without the arrow, the one that can't be
  * worked out as keep / running low / out, one button, one Undo. Adding a photo with "I made
- * this" (#116) opens it too, once per cooking.
+ * this" (#116), or marking it as cooked with none (#173), opens it too, once per cooking.
  */
 @RunWith(AndroidJUnit4::class)
 class PantryUseUpScreenTest {
@@ -137,6 +137,30 @@ class PantryUseUpScreenTest {
         compose.waitForIdle()
 
         addAPhoto(cooked)
+        compose.onNodeWithText("Update the pantry").assertDoesNotExist()
+        assertEquals(listOf("3 cups", null), pantry.items.value.map { it.quantity })
+    }
+
+    /**
+     * "Mark as cooked" (#173) is the same trigger with no photo: closing its entry offers the
+     * sheet, and a photo of the same dinner afterwards isn't offered it again (the 12-hour guard).
+     */
+    @Test
+    fun markingAsCookedOffersTheSheetAndAPhotoAfterwardsIsNotOfferedItAgain() {
+        val marked = RecipeScreenFixture(groceries = groceries, pantry = pantry, photos = FakeCookedPhotoRepository())
+        marked.show(compose)
+        compose.runOnIdle { marked.photosViewModel!!.onMarkCooked() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Close").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Update the pantry").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Update the pantry").assertIsDisplayed()
+        compose.onNodeWithTag("useUpButton").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("3 cups", null), pantry.items.value.map { it.quantity })
+
+        addAPhoto(marked)
         compose.onNodeWithText("Update the pantry").assertDoesNotExist()
         assertEquals(listOf("3 cups", null), pantry.items.value.map { it.quantity })
     }

@@ -6,7 +6,7 @@ import XCTest
 /// preview and never captures, so the test only checks that the camera (or, on a simulator
 /// without one, the no-camera alert) opens and closes without adding a photo. The note, the
 /// date and Delete with Undo are covered by CookedPhotosViewModelTests and tried by hand, with
-/// PhotosPicker (docs/testing.md).
+/// PhotosPicker (docs/testing.md). "Mark as cooked" (#173) needs no camera, so it is tried end to end.
 final class CookedPhotosUITests: RecipeUITestCase {
 
     private var iMadeThis: XCUIElement { app.buttons["cooked.iMadeThis"] }
@@ -55,5 +55,27 @@ final class CookedPhotosUITests: RecipeUITestCase {
 
         XCTAssertTrue(require(iMadeThis, "back on the recipe").isHittable)
         assertAbsent(thumbnail, "a photo after closing the camera")
+    }
+
+    /// "Mark as cooked" (#173): one tap records today's cooking with no photo. It opens like a
+    /// new photo, "Cooked" in place of the picture and no Share, for its note; then the row shows
+    /// it as a dated entry VoiceOver reads as cooked with no photo.
+    func testMarkAsCookedAddsADatedEntryWithoutAPicture() {
+        launch(flags: ["cookedPhotos"])
+        openRecipe("Miso Soup")
+        scrollToTheEnd()
+        require(iMadeThis, "I made this").tap()
+        require(app.buttons["Mark as cooked"], "the Mark as cooked choice").tap()
+
+        require(text("Cooked"), "Cooked in place of a picture")
+        assertAbsent(app.buttons["Share photo"], "Share for a cooking with no photo")
+        let note = require(app.descendants(matching: .any).matching(identifier: "cooked.note").firstMatch, "the note field")
+        note.tap()
+        note.typeText("Doubled the garlic")
+        require(app.buttons["Close"], "Close").tap()
+
+        let entry = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Cooked, no photo, ")).firstMatch
+        require(entry, "the dated entry in Your cooks")
+        assertAbsent(thumbnail, "a photo")
     }
 }

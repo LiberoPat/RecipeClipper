@@ -180,6 +180,59 @@ final class BackupJsonTests: XCTestCase {
         XCTAssertFalse(text.contains("\\/"), "slashes are written plainly")
     }
 
+    /// "Mark as cooked" (#173): the shared fixture, read the same way by Android's `BackupJsonTest`.
+    func testACookingWithNoPhotoReadsFromItsOwnSectionWithNoFile() throws {
+        let backup = try decodeOrFail(backupFixture("backup-v1-cooked"))
+        // The one naming no recipe in the file is left out, as a photo would be.
+        XCTAssertEqual(backup.cookedPhotos.map(\.id), ["p-photo", "c-weeknight"])
+        XCTAssertEqual(backup.cookedPhotos[1], BackupCookedPhoto(
+            id: "c-weeknight", recipeId: "r-soup", day: 20_007, note: "Doubled the garlic",
+            createdAt: 1789000000900, updatedAt: 1789000000950, file: nil
+        ))
+
+        // A plain JSON file brings no pictures: the photo stays out, the cooking with none comes
+        // in, and its recipe with it, past a full history.
+        let plan = BackupMerger.plan(
+            backup, existingRecipes: [], existingLists: [], maxSortOrder: 0, historyLimit: 0, newUid: { "fresh" },
+            availablePhotoFiles: []
+        )
+        XCTAssertEqual(plan.newRecipes.map(\.id), ["r-soup"])
+        XCTAssertEqual(plan.newCookedPhotos.map(\.photo.id), ["c-weeknight"])
+        XCTAssertEqual(plan.summary.photosAdded, 0)
+    }
+
+    /// An older app requires a `file` on every `cookedPhotos` entry and ignores sections it
+    /// doesn't know (#173): so a cooking with no photo is written apart, and the file without that
+    /// section, which is what an older app reads, still decodes, with the photos.
+    func testACookingWithNoPhotoIsWrittenInItsOwnSectionSoAnOlderReaderSkipsIt() throws {
+        let backup = try decodeOrFail(backupFixture("backup-v1-cooked"))
+        var root = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(BackupJson.encode(backup).utf8)) as? [String: Any])
+        XCTAssertEqual(root["formatVersion"] as? Int, 1)
+        let photos = try XCTUnwrap(root["cookedPhotos"] as? [[String: Any]])
+        XCTAssertEqual(photos.count, 1)
+        XCTAssertEqual(photos[0]["file"] as? String, "photos/p-photo.jpg")
+        let without = try XCTUnwrap(root["cookedWithoutPhotos"] as? [[String: Any]])
+        XCTAssertEqual(without[0]["id"] as? String, "c-weeknight")
+        XCTAssertNil(without[0]["file"])
+        XCTAssertEqual(try decodeOrFail(BackupJson.encode(backup)), backup)
+
+        root["cookedWithoutPhotos"] = nil
+        let older = String(decoding: try JSONSerialization.data(withJSONObject: root), as: UTF8.self)
+        XCTAssertEqual(try decodeOrFail(older).cookedPhotos.map(\.id), ["p-photo"])
+
+        // Ids are one set across both sections.
+        let head = #"{"format":"recipe-clipper-backup","formatVersion":1,"recipes":[{"id":"a","sourceUrl":"https://a.b/c","title":"T"}],"#
+        XCTAssertEqual(
+            error(head + #""cookedPhotos":[{"id":"x","recipeId":"a","day":1,"file":"photos/x.jpg"}],"#
+                + #""cookedWithoutPhotos":[{"id":"x","recipeId":"a","day":1}]}"#),
+            .malformed("cookedWithoutPhotos[0].id")
+        )
+        XCTAssertEqual(
+            error(head + #""cookedWithoutPhotos":[{"id":"y","recipeId":"a"}]}"#),
+            .malformed("cookedWithoutPhotos[0].day")
+        )
+    }
+
     func testAnEmptyExportIsValid() throws {
         let backup = try decodeOrFail(#"{"format":"recipe-clipper-backup","formatVersion":1}"#)
         XCTAssertEqual(backup, Backup(exportedAt: 0, recipes: [], lists: [], memberships: []))
