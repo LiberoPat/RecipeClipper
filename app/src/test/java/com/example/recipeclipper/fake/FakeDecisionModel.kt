@@ -45,4 +45,10 @@ class FakeDecisionRepository(val answers: Map<DecisionQuestion, String> = emptyM
         cached.value = cached.value + questions.mapNotNull { q -> answers[q]?.let { q to it } }
         decisions.value = Decisions(cached.value)
     }
+
+    /** Answers that land later, as from another screen or a model that answers only now. */
+    fun answer(vararg landed: Pair<DecisionQuestion, String>) {
+        cached.value = cached.value + landed
+        decisions.value = Decisions(cached.value)
+    }
 }

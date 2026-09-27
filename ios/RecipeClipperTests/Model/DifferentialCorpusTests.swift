@@ -48,8 +48,9 @@ import XCTest
 // the lines as given and against them doubled in Metric. Write only `Step("Add the eggs.", ["2 eggs"]),`.
 // Page-pick rows (#103): a kind, a page's text, what the model picked, then PageRecipeCheck.find
 // (the page's own text for it, or nil). Write only `Pick(.ingredient, "1 cup flour", "1 cup flour"),`.
-// Rendering rows (#169): a recipe's yield, chosen servings, lines and steps, then what
-// RecipeRenderer.content shows of it (details beside `Render`). Write only the inputs.
+// Rendering rows (#169): a recipe's yield, chosen servings, lines and steps, optionally the model's
+// answers about junk (#174), then what RecipeRenderer.content shows of it (details beside
+// `Render`). Write only the inputs.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -1611,15 +1612,18 @@ final class DifferentialCorpusTests: XCTestCase {
     // steps, optionally Chef mode's saved short steps, then RecipeRenderer.content in Metric and
     // Celsius with amounts in steps on: the servings stepper as [base, target] (nil: none), the
     // ingredients, steps and timers as shown, each step's amounts marked with ⟦ ⟧, the short steps
-    // as shown and their amounts (nil: none). Write only
-    // `Render("4 servings", 6, ["2 cups flour"], ["Bake at 350°F."], shorts: [nil], lang: "en"),`.
+    // as shown and their amounts (nil: none). The model's answers (#174), optionally: `trailing:`
+    // about trailing texts, `names:` about lines' names. Write only
+    // `Render("4 servings", 6, ["2 cups flour"], ["Bake at 350°F."], shorts: [nil], lang: "en"),` or
+    // `Render("4", nil, ["2 onions dfsafs"], [], trailing: ["dfsafs": "junk"], names: ["2 onions dfsafs": "onions"]),`.
     private struct Render {
-        let recipe: Recipe; let shorts: [String?]
+        let recipe: Recipe; let shorts: [String?]; let decisions: Decisions
         let servings: [Int]?; let ingredients: [String]; let instructions: [String]; let timers: [Int?]
         let amounts: [String]?; let shortSteps: [String?]; let shortAmounts: [String]?
         init(
             _ yield: String?, _ target: Int?, _ lines: [String], _ steps: [String], shorts: [String?] = [],
-            lang: String = "en", _ servings: [Int]?, _ ingredients: [String], _ instructions: [String],
+            lang: String = "en", trailing: [String: String] = [:], names: [String: String] = [:],
+            _ servings: [Int]?, _ ingredients: [String], _ instructions: [String],
             _ timers: [Int?], _ amounts: [String]?, _ shortSteps: [String?], _ shortAmounts: [String]?
         ) {
             var recipe = Recipe(
@@ -1628,7 +1632,10 @@ final class DifferentialCorpusTests: XCTestCase {
             )
             recipe.language = lang
             recipe.servingsTarget = target
-            self.recipe = recipe; self.shorts = shorts
+            var answers: [DecisionQuestion: String] = [:]
+            for (text, answer) in trailing { answers[.trailingText(text, language: lang)] = answer }
+            for (line, name) in names { answers[.ingredientName(line, language: lang)] = name }
+            self.recipe = recipe; self.shorts = shorts; self.decisions = Decisions(answers: answers)
             self.servings = servings; self.ingredients = ingredients; self.instructions = instructions
             self.timers = timers; self.amounts = amounts; self.shortSteps = shortSteps; self.shortAmounts = shortAmounts
         }
@@ -1646,6 +1653,10 @@ final class DifferentialCorpusTests: XCTestCase {
         Render("4 personnes", 2, ["200 g de farine", "3 œufs"], ["Ajoutez la farine et les œufs, puis faites cuire 20 minutes à 350 °F."], lang: "fr", [4, 2], ["100 g de farine", "1 1/2 œufs"], ["Ajoutez la farine et les œufs, puis faites cuire 20 minutes à 180°C."], [1200], ["Ajoutez ⟦100 g de⟧ farine et ⟦1 1/2⟧ œufs, puis faites cuire 20 minutes à 180°C."], [], nil),
         Render("2人分", 4, ["醤油 大さじ1", "砂糖 小さじ2"], ["醤油と砂糖を加えて5分煮る。"], lang: "ja", [2, 4], ["醤油 30 ml", "砂糖 17 g"], ["醤油と砂糖を加えて5分煮る。"], [300], ["醤油と砂糖を加えて5分煮る。"], [], nil),
         Render("4 servings", 8, ["2 cups flour"], ["Bake at 350°F for 20 minutes."], lang: "zz", nil, ["2 cups flour"], ["Bake at 350°F for 20 minutes."], [nil], ["Bake at 350°F for 20 minutes."], [], nil),
+        Render("4 servings", 8, ["1 cup flour (dfsafs -", "2 onions dfsafs", "2 eggs, beaten", "For the sauce (dfsafs -:", "3 eggs (dfsafs 2 -"], ["Whisk the flour and the eggs.", "Add the onions."], trailing: ["(dfsafs -": "junk", "dfsafs": "junk", ", beaten": "note", "(dfsafs -:": "junk", "(dfsafs 2 -": "junk"], names: ["2 onions dfsafs": "onions"], [4, 8], ["240 g flour", "4 onions", "4 eggs, beaten", "For the sauce (dfsafs -:", "6 eggs (dfsafs 2 -"], ["Whisk the flour and the eggs.", "Add the onions."], [nil, nil], ["Whisk ⟦240 g⟧ flour and the eggs.", "Add ⟦4⟧ onions."], [], nil),
+        Render("4 servings", nil, ["2 eggs (dfsafs -", "1 onion -- sdf"], ["Beat the eggs."], trailing: ["(dfsafs -": "unsure", "-- sdf": "second_amount"], [4, 4], ["2 eggs (dfsafs -", "1 onion -- sdf"], ["Beat the eggs."], [nil], ["Beat the eggs."], [], nil),
+        Render("4 personnes", 2, ["200 g de farine (dfsafs -", "3 œufs, battus"], ["Ajoutez la farine."], lang: "fr", trailing: ["(dfsafs -": "junk", ", battus": "note"], [4, 2], ["100 g de farine", "1 1/2 œufs, battus"], ["Ajoutez la farine."], [nil], ["Ajoutez ⟦100 g de⟧ farine."], [], nil),
+        Render("2人分", 4, ["砂糖 小さじ2 (dfsafs -"], ["煮る。"], lang: "ja", trailing: ["(dfsafs -": "junk"], [2, 4], ["砂糖 小さじ2 (dfsafs -"], ["煮る。"], [nil], ["煮る。"], [], nil),
     ]
 
     private static let jsonLd: [(String, [String], Recipe?)] = [
@@ -1737,8 +1748,10 @@ final class DifferentialCorpusTests: XCTestCase {
     }
 
     func testRecipeRendererMatchesKotlin() {
-        let settings = RecipeRenderer.Settings(unitSystem: .metric, temperatureUnit: .celsius, amountsInSteps: true)
         for row in Self.renders {
+            let settings = RecipeRenderer.Settings(
+                unitSystem: .metric, temperatureUnit: .celsius, amountsInSteps: true, decisions: row.decisions
+            )
             let shown = RecipeRenderer.content(row.recipe, settings: settings, shortSteps: row.shorts)
             let label = row.recipe.ingredients.joined(separator: " | ")
             XCTAssertEqual(shown.servings.map { [$0.base, $0.target] }, row.servings, label)

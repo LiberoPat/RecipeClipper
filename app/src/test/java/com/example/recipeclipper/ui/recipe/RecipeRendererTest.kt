@@ -119,4 +119,55 @@ class RecipeRendererTest {
         assertNotEquals(asToday.ingredients, decided.ingredients)
         assertEquals(listOf("6 large apples, peeled and sliced (about 6 cups)"), decided.ingredients)
     }
+
+    // Junk after an ingredient (#174), decided as Groceries decides it.
+    private val junk = Decisions(
+        mapOf(
+            DecisionQuestion.trailingText("(dfsafs -", "en") to "junk",
+            DecisionQuestion.ingredientName("2 onions dfsafs", "en") to "onions",
+            DecisionQuestion.trailingText("dfsafs", "en") to "junk",
+            DecisionQuestion.trailingText(", beaten", "en") to "note"
+        )
+    )
+
+    @Test fun `junk the model decided is hidden, at a separator or after its name, and a note stays`() {
+        val lines = listOf("2 eggs (dfsafs -", "2 onions dfsafs", "2 eggs, beaten", "1 cup sugar")
+        val shown = RecipeRenderer.content(recipe(ingredients = lines), RecipeRenderer.Settings(decisions = junk))
+
+        assertEquals(listOf("2 eggs", "2 onions", "2 eggs, beaten", "1 cup sugar"), shown.ingredients)
+        assertEquals("the stored lines are never rewritten", lines, shown.recipe.ingredients)
+    }
+
+    @Test fun `the rest of a line with junk hidden still scales and converts`() {
+        val lines = listOf("1 cup flour (dfsafs -", "2 onions dfsafs")
+        val shown = RecipeRenderer.content(recipe(target = 8, ingredients = lines), metric.copy(decisions = junk))
+
+        assertEquals(listOf("240 g flour", "4 onions"), shown.ingredients)
+        assertEquals(listOf("480 g flour", "8 onions"), RecipeRenderer.withServings(shown, 16, metric.copy(decisions = junk))!!.ingredients)
+    }
+
+    @Test fun `text holding a digit, a heading, unsure or no decisions show as written`() {
+        val lines = listOf("2 eggs (dfsafs 2 -", "For the eggs (dfsafs -:", "3 eggs (dfsafs -")
+        val unsure = Decisions(mapOf(DecisionQuestion.trailingText("(dfsafs -", "en") to "unsure"))
+        val all = listOf("(dfsafs 2 -", "(dfsafs -:", "(dfsafs -").map { DecisionQuestion.trailingText(it, "en") to "junk" }
+
+        for (decisions in listOf(Decisions.NONE, unsure)) {
+            val shown = RecipeRenderer.content(recipe(ingredients = lines), RecipeRenderer.Settings(decisions = decisions))
+            assertEquals(lines, shown.ingredients)
+        }
+        assertEquals(
+            "only the ingredient line whose junk holds no digit loses it",
+            listOf("2 eggs (dfsafs 2 -", "For the eggs (dfsafs -:", "3 eggs"),
+            RecipeRenderer.content(recipe(ingredients = lines), RecipeRenderer.Settings(decisions = Decisions(all.toMap()))).ingredients
+        )
+    }
+
+    @Test fun `junk is never cut in a language written without spaces or with no words`() {
+        val ja = recipe(ingredients = listOf("卵 2個 (dfsafs -")).copy(language = "ja")
+        val decided = Decisions(mapOf(DecisionQuestion.trailingText("(dfsafs -", "ja") to "junk"))
+        assertEquals(ja.ingredients, RecipeRenderer.content(ja, RecipeRenderer.Settings(decisions = decided)).ingredients)
+
+        val zz = recipe(ingredients = listOf("2 eggs (dfsafs -")).copy(language = "zz")
+        assertEquals(zz.ingredients, RecipeRenderer.content(zz, RecipeRenderer.Settings(decisions = junk)).ingredients)
+    }
 }

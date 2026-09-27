@@ -53,7 +53,9 @@ class RecipeScreenFixture(
     /** Set to show "Send as file" (#149), as the navigation does. */
     val sendFile: com.example.recipeclipper.ui.sharefile.SendFileViewModel? = null,
     /** Set to use up this pantry when cook mode is finished (#147), as behind the tab flag. */
-    val pantry: FakePantryRepository? = null
+    val pantry: FakePantryRepository? = null,
+    /** Set to give the screen the on-device model's decisions (#104, #174). */
+    val decisions: com.example.recipeclipper.fake.FakeDecisionRepository? = null
 ) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
@@ -93,7 +95,8 @@ class RecipeScreenFixture(
             chef?.let {
                 preferences.chefMode = true
                 FeatureFlags(FakeFeatureFlagStore(mapOf("chefMode" to true)), FlagRegistry.definitions, isDebug = false)
-            }
+            },
+            decisionRepository = decisions
         )
         val saveViewModel = SaveToListViewModel(lists)
         // Behind the flag both menu items show, so both sheets need a ViewModel (not Hilt's).
