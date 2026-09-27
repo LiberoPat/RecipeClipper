@@ -164,46 +164,46 @@ final class JsonLdRecipeParserTests: XCTestCase {
     // MARK: - Durations
 
     func testDurationFormatting() {
-        XCTAssertEqual("1h 30m", JsonLdRecipeParser.formatDuration("PT1H30M"))
-        XCTAssertEqual("45m", JsonLdRecipeParser.formatDuration("PT45M"))
-        XCTAssertEqual("2h", JsonLdRecipeParser.formatDuration("pt2h"))
-        XCTAssertEqual("2m", JsonLdRecipeParser.formatDuration("PT90S"))   // 1.5 min rounds half up
-        XCTAssertEqual("25h", JsonLdRecipeParser.formatDuration("P1DT1H"))
-        XCTAssertEqual("P", JsonLdRecipeParser.formatDuration("P"))        // no fields at all
-        XCTAssertNil(JsonLdRecipeParser.formatDuration("   "))
+        XCTAssertEqual("1h 30m", Durations.format("PT1H30M"))
+        XCTAssertEqual("45m", Durations.format("PT45M"))
+        XCTAssertEqual("2h", Durations.format("pt2h"))
+        XCTAssertEqual("2m", Durations.format("PT90S"))   // 1.5 min rounds half up
+        XCTAssertEqual("25h", Durations.format("P1DT1H"))
+        XCTAssertEqual("P", Durations.format("P"))        // no fields at all
+        XCTAssertNil(Durations.format("   "))
     }
 
     func testAnIsoDurationTotallingZeroIsNilSoTheLabelIsHidden() {
         // Delish publishes "cookTime": "PT0S"; it used to show as "COOK PT0S".
-        XCTAssertNil(JsonLdRecipeParser.formatDuration("PT0S"))
-        XCTAssertNil(JsonLdRecipeParser.formatDuration("P0D"))
-        XCTAssertNil(JsonLdRecipeParser.formatDuration("PT0M"))
-        XCTAssertNil(JsonLdRecipeParser.formatDuration("PT0H0M"))
+        XCTAssertNil(Durations.format("PT0S"))
+        XCTAssertNil(Durations.format("P0D"))
+        XCTAssertNil(Durations.format("PT0M"))
+        XCTAssertNil(Durations.format("PT0H0M"))
     }
 
     func testEnglishDurationPhrasesAreRenderedLikeIsoOnes() {
         // Condé Nast sites (Bon Appétit, Epicurious) publish these instead of ISO.
-        XCTAssertEqual("20m", JsonLdRecipeParser.formatDuration("20 minutes"))
-        XCTAssertEqual("1h", JsonLdRecipeParser.formatDuration("1 hour"))
-        XCTAssertEqual("1h 30m", JsonLdRecipeParser.formatDuration("1 hour 30 minutes"))
-        XCTAssertEqual("1h 5m", JsonLdRecipeParser.formatDuration("1 hr 5 mins"))
-        XCTAssertEqual("2h 15m", JsonLdRecipeParser.formatDuration("2 Hours and 15 Minutes"))
-        XCTAssertEqual("1h 30m", JsonLdRecipeParser.formatDuration("1 hour, 30 minutes"))
-        XCTAssertEqual("1h 30m", JsonLdRecipeParser.formatDuration("90 min"))
-        XCTAssertEqual("1h 30m", JsonLdRecipeParser.formatDuration("1h30m"))
-        XCTAssertEqual("20m", JsonLdRecipeParser.formatDuration("  20 mins  "))
-        XCTAssertNil(JsonLdRecipeParser.formatDuration("0 minutes"))
+        XCTAssertEqual("20m", Durations.format("20 minutes"))
+        XCTAssertEqual("1h", Durations.format("1 hour"))
+        XCTAssertEqual("1h 30m", Durations.format("1 hour 30 minutes"))
+        XCTAssertEqual("1h 5m", Durations.format("1 hr 5 mins"))
+        XCTAssertEqual("2h 15m", Durations.format("2 Hours and 15 Minutes"))
+        XCTAssertEqual("1h 30m", Durations.format("1 hour, 30 minutes"))
+        XCTAssertEqual("1h 30m", Durations.format("90 min"))
+        XCTAssertEqual("1h 30m", Durations.format("1h30m"))
+        XCTAssertEqual("20m", Durations.format("  20 mins  "))
+        XCTAssertNil(Durations.format("0 minutes"))
     }
 
     func testAnythingThatIsNotAPlainDurationPhraseStaysExactlyAsWritten() {
-        XCTAssertEqual("Overnight", JsonLdRecipeParser.formatDuration("Overnight"))
-        XCTAssertEqual("20 to 25 minutes", JsonLdRecipeParser.formatDuration("20 to 25 minutes"))
-        XCTAssertEqual("1-2 hours", JsonLdRecipeParser.formatDuration("1-2 hours"))
-        XCTAssertEqual("1.5 hours", JsonLdRecipeParser.formatDuration("1.5 hours"))
-        XCTAssertEqual("about 20 minutes", JsonLdRecipeParser.formatDuration("about 20 minutes"))
-        XCTAssertEqual("1 hour and", JsonLdRecipeParser.formatDuration("1 hour and"))
-        XCTAssertEqual("30 minutes 1 hour", JsonLdRecipeParser.formatDuration("30 minutes 1 hour"))
-        XCTAssertEqual("garbage", JsonLdRecipeParser.formatDuration("garbage"))
+        XCTAssertEqual("Overnight", Durations.format("Overnight"))
+        XCTAssertEqual("20 to 25 minutes", Durations.format("20 to 25 minutes"))
+        XCTAssertEqual("1-2 hours", Durations.format("1-2 hours"))
+        XCTAssertEqual("1.5 hours", Durations.format("1.5 hours"))
+        XCTAssertEqual("about 20 minutes", Durations.format("about 20 minutes"))
+        XCTAssertEqual("1 hour and", Durations.format("1 hour and"))
+        XCTAssertEqual("30 minutes 1 hour", Durations.format("30 minutes 1 hour"))
+        XCTAssertEqual("garbage", Durations.format("garbage"))
     }
 
     func testTimesInARecipeBlockGoThroughTheSameFormatting() throws {

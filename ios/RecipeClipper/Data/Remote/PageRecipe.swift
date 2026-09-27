@@ -24,7 +24,7 @@ enum PageRecipe {
             LanguageWords.detectionText(name: name, ingredients: kept.ingredients)
         }
         let words = LanguageWords.forTag(language)
-        func time(_ text: String?) -> String? { text.flatMap { JsonLdRecipeParser.formatDuration($0, words: words) } }
+        func time(_ text: String?) -> String? { text.flatMap { Durations.format($0, words: words) } }
         var recipe = Recipe(
             name: name,
             image: page.image,

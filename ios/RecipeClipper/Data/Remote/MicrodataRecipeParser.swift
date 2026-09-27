@@ -132,7 +132,7 @@ enum MicrodataRecipeParser {
         }
 
         func duration(_ root: Int, _ name: String, _ words: LanguageWords?) -> String? {
-            props(root, name).first.flatMap { JsonLdRecipeParser.formatDuration(value($0), words: words) }
+            props(root, name).first.flatMap { Durations.format(value($0), words: words) }
         }
 
         /// The steps in one instructions element. A nested HowToStep or HowToSection item gives

@@ -49,6 +49,20 @@ class SampleRecipeTest {
         }
     }
 
+    /** #179: the file's ISO times ("PT10M") read like a parsed recipe's, in its language's words. */
+    @Test
+    fun `its times are formatted like a parsed recipe's, in every language`() {
+        val sample = SampleRecipe.forLanguage("en")
+        assertEquals(listOf("10m", "25m", "35m"), listOf(sample.prepTime, sample.cookTime, sample.totalTime))
+        for (language in SampleRecipe.languages) {
+            val times = SampleRecipe.forLanguage(language).let { listOf(it.prepTime, it.cookTime, it.totalTime) }
+            val symbol = if (language == "en") "m" else "min"
+            assertEquals(language, listOf("10$symbol", "25$symbol", "35$symbol"), times)
+            // What lets a sample saved before #179 be fixed at every launch.
+            assertEquals("$language: formatting again changes nothing", times, times.map { SampleRecipe.formatTime(it, language) })
+        }
+    }
+
     @Test
     fun `the English sample converts to metric`() {
         val sample = SampleRecipe.forLanguage("en")

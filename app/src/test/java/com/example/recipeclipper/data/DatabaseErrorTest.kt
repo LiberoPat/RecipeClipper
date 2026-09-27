@@ -59,6 +59,7 @@ class DatabaseErrorTest {
         override suspend fun setNotes(id: Long, notes: String?) = throw throwable()
         override suspend fun setCookState(id: Long, cookState: String?) = throw throwable()
         override suspend fun setServingsTarget(id: Long, target: Int?) = throw throwable()
+        override suspend fun setTimes(id: Long, prep: String?, cook: String?, total: String?) = throw throwable()
         override suspend fun cookStates(): List<CookStateRow> = throw throwable()
         override suspend fun delete(id: Long) = throw throwable()
         override suspend fun crossRefsFor(recipeId: Long): List<RecipeListCrossRef> = throw throwable()
@@ -143,11 +144,13 @@ class DatabaseErrorTest {
         repository.setCookProgress(1, CookProgress(active = true))
         repository.setServingsTarget(1, 4)
         assertEquals(emptyList<Any>(), repository.runningTimers())
+        repository.formatSampleTimes()
 
         assertEquals(
             listOf(
                 "open failed", "delete failed", "restore failed", "setChecked failed", "setNotes failed",
-                "setCookProgress failed", "setServingsTarget failed", "runningTimers failed"
+                "setCookProgress failed", "setServingsTarget failed", "runningTimers failed",
+                "formatSampleTimes failed"
             ),
             log.messages
         )

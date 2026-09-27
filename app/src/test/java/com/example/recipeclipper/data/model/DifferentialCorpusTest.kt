@@ -36,6 +36,10 @@ import java.io.File
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
  *
+ * `Dur("time")` rows (#179) pin [Durations.format]: a prep, cook or total time
+ * as a site (or the tour's sample) writes it, as the app shows it, or nil (hidden); write only
+ * the time (optionally `, lang: "de"`; a language with no tables reads ISO alone).
+ *
  * `Step("step", [lines])` rows (#101) pin [StepAmounts.annotate]: the step with each amount in
  * ⟦ ⟧, once against the lines as given and once against them doubled in Metric; write only the
  * step and the lines (optionally `, lang: "fr"`).
@@ -104,6 +108,8 @@ class DifferentialCorpusTest {
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
     private val icsRow = Regex("""^(\s*)Ics\("((?:[^"\\]|\\.)*)"""")
+    // A duration row (#179): a prep, cook or total time, optionally its language.
+    private val durationRow = Regex("""^(\s*)Dur\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A Chef mode row (#100): a step, a short version of it, optionally the recipe's ingredient
     // lines (#129) and their language.
     private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lines: \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*])?(?:, lang: "([a-z]+)")?""")
@@ -230,6 +236,13 @@ class DifferentialCorpusTest {
             return s.groupValues[1] + "Short(${q(step)}, ${q(short)}$given$lang, $accepted),"
         }
         stepRow.find(line)?.let { m -> return stepRow(m) }
+        durationRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            val language = m.groupValues[3].ifEmpty { "en" }
+            val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+            val shown = Durations.format(text, LanguageWords.forTag(language))?.let { q(it) } ?: "nil"
+            return m.groupValues[1] + "Dur(${q(text)}$lang, $shown),"
+        }
         icsRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
             return m.groupValues[1] + "Ics(${q(text)}, ${q(MealPlanIcs.contentLine("SUMMARY", text))}),"

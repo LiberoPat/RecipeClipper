@@ -231,6 +231,13 @@ class DefaultRecipeRepository @Inject constructor(
         recipeDao.upsert(sample.toEntity(now), LibraryLimit.Unlimited).takeIf { it != RecipeDao.NOT_KEPT }
     }
 
+    override suspend fun formatSampleTimes() = log.guard("formatSampleTimes", Unit) {
+        val sample = recipeDao.findByUrl(SampleRecipe.SOURCE_URL)?.takeIf { it.editedAt == null } ?: return@guard
+        val times = listOf(sample.prepTime, sample.cookTime, sample.totalTime)
+        val formatted = times.map { SampleRecipe.formatTime(it, sample.language) }
+        if (formatted != times) recipeDao.setTimes(sample.id, formatted[0], formatted[1], formatted[2])
+    }
+
     override suspend fun open(id: Long): Recipe? = log.guard("open", null) {
         val entity = recipeDao.get(id) ?: return@guard null
         val now = clock.now()

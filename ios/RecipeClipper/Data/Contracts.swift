@@ -229,6 +229,11 @@ protocol RecipeRepository: AnyObject {
     /// it never removes a recipe. The sample already here keeps its id and content, and counts
     /// as a view. Nil if the save failed.
     func addSample(_ recipe: Recipe) async -> Int64?
+
+    /// A sample saved before #179 kept the file's ISO times ("PT10M"): formats them as
+    /// `SampleRecipe.forLanguage` now does ("10m"). Run at every launch; a no-op once they are
+    /// formatted, when the sample is gone, or when the user has edited it (its times are theirs).
+    func formatSampleTimes() async
 }
 
 extension RecipeRepository {
@@ -241,6 +246,7 @@ extension RecipeRepository {
     // Test doubles that have nothing to do with the tour (#151) needn't implement these.
     func sampleId() async -> Int64? { nil }
     func addSample(_ recipe: Recipe) async -> Int64? { nil }
+    func formatSampleTimes() async {}
 }
 
 /// Schedules the background "time's up" alert for a running step timer, so it still sounds

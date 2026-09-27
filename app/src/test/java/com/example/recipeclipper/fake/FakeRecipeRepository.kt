@@ -107,6 +107,14 @@ class FakeRecipeRepository : RecipeRepository {
         return (sample ?: addSampleResult)?.also { sample = it }
     }
 
+    /** How many times [formatSampleTimes] ran (#179). */
+    var formatSampleTimesCalls = 0
+        private set
+
+    override suspend fun formatSampleTimes() {
+        formatSampleTimesCalls++
+    }
+
     override suspend fun updateFromSource(id: Long): ParseResult {
         updateFromSourceCalls += id
         return updateFromSourceResult
