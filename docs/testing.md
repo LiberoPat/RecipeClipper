@@ -389,7 +389,11 @@ or the calls will fail as "not mocked".
 - **iOS StoreKit:** `StoreKitEntitlementsTests` runs `StoreKitEntitlements`
   against `ios/RecipeClipper.storekit` with `SKTestSession` (no dialogs): the
   price, a purchase made by the session (`buyProduct`) found and cached, and
-  locked again once it's gone. `Product.purchase()` itself waits forever in a
+  locked again once it's gone. `buyProduct` returns before the app's own
+  `Transaction.currentEntitlements` has the purchase (it lands up to ~300 ms
+  later on a just-booted simulator, which made the test flaky), so the test
+  waits for StoreKit to list it, and to drop it after `clearTransactions()`,
+  before calling `refresh()`. `Product.purchase()` itself waits forever in a
   hosted unit test (no window scene for its sheet), so the sheet is checked by
   hand: running the app from Xcode uses the same file (the scheme's StoreKit
   configuration), so Unlock, Ask to Buy and Restore work in the simulator;
