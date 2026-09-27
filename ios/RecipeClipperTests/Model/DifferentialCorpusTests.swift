@@ -41,6 +41,8 @@ import XCTest
 // or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
+// Duration rows (#179): a prep, cook or total time, then JsonLdRecipeParser.formatDuration of it
+// (nil: hidden). Write only `Dur("PT1H30M"),` or `Dur("1 Std. 30 Min.", lang: "de"),`.
 // Chef mode rows (#100): a step, a short version of it, optionally the recipe's ingredient lines
 // (#129), then ShortStepCheck.accept (nil: the step shows as written). Write only
 // `Short("Bake for 20 minutes.", "Bake 20 min."),` or `Short("…", "…", lines: ["2 eggs"]),`.
@@ -161,6 +163,13 @@ final class DifferentialCorpusTests: XCTestCase {
     private struct Ics {
         let text: String; let line: String
         init(_ text: String, _ line: String) { self.text = text; self.line = line }
+    }
+
+    private struct Dur {
+        let time: String; let words: LanguageWords?; let shown: String?
+        init(_ time: String, lang: String = "en", _ shown: String?) {
+            self.time = time; self.words = LanguageWords.forTag(lang); self.shown = shown
+        }
     }
 
     private struct Short {
@@ -1537,6 +1546,30 @@ final class DifferentialCorpusTests: XCTestCase {
         Ics("  ", "SUMMARY:  "),
     ]
 
+    private static let durations: [Dur] = [
+        Dur("PT10M", "10m"),
+        Dur("PT25M", lang: "es", "25min"),
+        Dur("PT35M", lang: "fr", "35min"),
+        Dur("PT1H30M", lang: "de", "1h 30min"),
+        Dur("PT45M", lang: "it", "45min"),
+        Dur("PT2H", lang: "pt", "2h"),
+        Dur("PT1H30M", lang: "ja", "1時間 30分"),
+        Dur("PT0S", nil),
+        Dur("P1DT1H", "25h"),
+        Dur("PT90S", "2m"),
+        Dur("10m", "10m"),
+        Dur("10min", lang: "fr", "10min"),
+        Dur("1 hour 30 minutes", "1h 30m"),
+        Dur("2 horas y 15 minutos", lang: "es", "2h 15min"),
+        Dur("1 Std. 30 Min.", lang: "de", "1h 30min"),
+        Dur("1時間30分", lang: "ja", "1時間 30分"),
+        Dur("20 to 25 minutes", "20 to 25 minutes"),
+        Dur("Overnight", "Overnight"),
+        Dur("PT20M", lang: "xx", "20m"),
+        Dur("20 minutes", lang: "xx", "20 minutes"),
+        Dur("  ", nil),
+    ]
+
     private static let shortSteps: [Short] = [
         Short("Preheat the oven to 350°F (180°C) and grease a 9x13-inch baking pan.", "Oven to 350°F (180°C); grease a 9x13-inch pan.", nil),
         Short("Bake for 25 to 30 minutes, until the top is golden.", "Bake 25–30 min until golden.", "Bake 25–30 min until golden."),
@@ -1767,6 +1800,12 @@ final class DifferentialCorpusTests: XCTestCase {
     func testCalendarLinesMatchKotlin() {
         for row in Self.ics {
             XCTAssertEqual(MealPlanIcs.contentLine("SUMMARY", row.text), row.line, row.text)
+        }
+    }
+
+    func testDurationsMatchKotlin() {
+        for row in Self.durations {
+            XCTAssertEqual(JsonLdRecipeParser.formatDuration(row.time, words: row.words), row.shown, row.time)
         }
     }
 

@@ -87,6 +87,13 @@ interface RecipeRepository {
      */
     suspend fun addSample(recipe: Recipe): Long?
 
+    /**
+     * A sample saved before #179 kept the file's ISO times ("PT10M"): formats them as
+     * `SampleRecipe.forLanguage` now does ("10m"). Run at every launch; a no-op once they are
+     * formatted, when the sample is gone, or when the user has edited it (its times are theirs).
+     */
+    suspend fun formatSampleTimes()
+
     suspend fun setChecked(id: Long, checked: Set<Int>)
 
     /** Saves the user's note on a recipe. A blank note is stored as no note. */
