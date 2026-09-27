@@ -19,7 +19,8 @@ import UIKit
 ///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on;
 ///   - the first-run tour (#151) done, unless `-uiTestTour` asks for a fresh install's;
 ///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`;
-///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder.
+///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder;
+///   - with `-uiTestCookedPhoto`, one photo in Miso Soup's "Your cooks" (#116, #180).
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -83,6 +84,11 @@ enum UITestSeeding {
     /// container keeps no copy and Settings shows no backup rows.
     static let backupFolderFlag = "-uiTestBackupFolder"
 
+    /// One photo in Miso Soup's "Your cooks" (#116; the standard scenario), a plain square
+    /// picture dated today, so a test opens the viewer on a picture without the system's photo
+    /// picker (#180).
+    static let cookedPhotoFlag = "-uiTestCookedPhoto"
+
     /// The title every import resolves to under test.
     static let stubRecipeTitle = "Stub Chicken Soup"
 
@@ -140,6 +146,7 @@ enum UITestSeeding {
         let photoDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestPhotos")
         try? FileManager.default.removeItem(at: photoDirectory)
         let photoStore = FilePhotoStore(directory: photoDirectory)
+        if arguments.contains(cookedPhotoFlag) { seedCookedPhoto(database, directory: photoDirectory, now: clock.now()) }
         let backupRepository = DefaultBackupRepository(db: database, clock: clock, photos: photoStore)
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
@@ -208,6 +215,40 @@ enum UITestSeeding {
                 }
             } catch {
                 fatalError("UI test seed: \(error)")
+            }
+            done.signal()
+        }
+        done.wait()
+    }
+
+    /// `-uiTestCookedPhoto`: a square picture in the photo folder, and its entry on Miso Soup.
+    private static func seedCookedPhoto(_ database: AppDatabase, directory: URL, now: Int64) {
+        let name = "ui-test-photo.jpg"
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let side = CGFloat(1024)
+        let picture = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
+            .jpegData(withCompressionQuality: 0.8) { context in
+                UIColor(red: 0.75, green: 0.29, blue: 0.17, alpha: 1).setFill()
+                context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+            }
+        do {
+            try picture.write(to: directory.appendingPathComponent(name))
+        } catch {
+            fatalError("UI test photo: \(error)")
+        }
+        let done = DispatchSemaphore(value: 0)
+        Task.detached {
+            do {
+                try await database.write { conn in
+                    guard let miso = try RecipeDao(db: conn).findByUrl("https://example.com/miso-soup") else { return }
+                    _ = try CookedPhotoDao(db: conn).insert(CookedPhotoRecord(
+                        recipeId: miso.id, fileName: name, day: PlanDays.today(millis: now), note: nil,
+                        createdAt: now, updatedAt: now
+                    ))
+                }
+            } catch {
+                fatalError("UI test photo seed: \(error)")
             }
             done.signal()
         }

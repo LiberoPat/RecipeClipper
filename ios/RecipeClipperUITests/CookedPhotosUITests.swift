@@ -78,4 +78,34 @@ final class CookedPhotosUITests: RecipeUITestCase {
         require(entry, "the dated entry in Your cooks")
         assertAbsent(thumbnail, "a photo")
     }
+
+    /// The viewer on a picture (#180; the photo is seeded, so no picker is needed): with the
+    /// software keyboard up for the note, the note field shows above it, and × stays in reach
+    /// and closes the viewer.
+    func testANoteTypedOverAPictureStaysInViewAndCloseCloses() {
+        launch(flags: ["cookedPhotos"], extraArguments: ["-uiTestCookedPhoto"])
+        openRecipe("Miso Soup")
+        scrollToTheEnd()
+        require(thumbnail, "the seeded photo").tap()
+        let close = require(app.buttons["Close"], "Close")
+        let note = require(app.descendants(matching: .any).matching(identifier: "cooked.note").firstMatch, "the note field")
+        shot("opened")
+        XCTAssertTrue(close.isHittable, "× before the keyboard")
+        note.tap()
+        require(app.keyboards.firstMatch, "the software keyboard (a simulator with a hardware keyboard shows none)")
+        note.typeText("Less salt next time")
+        shot("typed")
+        XCTAssertTrue(note.isHittable, "the note field above the keyboard")
+        XCTAssertTrue(close.isHittable, "× with the keyboard up")
+        close.tap()
+        requireGone(note, "the viewer")
+        require(thumbnail, "the photo, back in Your cooks")
+    }
+
+    private func shot(_ name: String) {
+        let a = XCTAttachment(screenshot: app.screenshot())
+        a.name = name
+        a.lifetime = .keepAlways
+        add(a)
+    }
 }
