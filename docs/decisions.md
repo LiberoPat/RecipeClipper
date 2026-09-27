@@ -2603,7 +2603,7 @@ photo that exists.
   - Android: the Photo Picker needs no permission. The camera is the camera app through
     `ACTION_IMAGE_CAPTURE`, writing to one reused file in the cache. The app doesn't declare
     `CAMERA`, so no permission is needed or asked for.
-  - iOS: `PhotosPicker` needs none. The camera is `UIImagePickerController`; iOS asks for
+  - iOS: the system picker (`PHPickerViewController`, out of process) needs none. The camera is `UIImagePickerController`; iOS asks for
     access the first time the camera is chosen, with `NSCameraUsageDescription`, translated
     through `InfoPlist.xcstrings`. On a device without a camera (the simulator), choosing it
     says so.
@@ -2641,6 +2641,22 @@ photo that exists.
   cooked today; the new one opens full screen for its note (short, saved as
   typing pauses) and date; Share sends the photo plus the recipe name; Delete
   has an undo snackbar.
+- **The viewer while its note is typed (#180).** The picture gives up its height to the keyboard,
+  so the date and the note stay above it and × stays below the status bar, on both platforms.
+  - iOS: a full-screen cover presented while the photo picker (or the camera) is still being
+    dismissed came up with no safe area at all: × under the status bar, where no tap reaches
+    it, and the note behind the keyboard, since keyboard avoidance is a safe-area inset too.
+    It depended on timing (a photo opened later from its thumbnail was fine), so it was
+    intermittent. The picked pictures are now handed to the ViewModel only from the picker's
+    `onDismiss`, once it has gone. That is why the library is a `PHPickerViewController` in a
+    `.sheet` rather than SwiftUI's `.photosPicker`, which says nothing when it has gone.
+  - iOS: the note takes a return as a new line and nothing on the screen scrolls, so "Done"
+    above the keyboard puts it away. The keyboard toolbar needs a navigation stack to show in,
+    so the viewer sits in one whose bar is hidden.
+  - Android: the dialog was `decorFitsSystemWindows = true`, so its window panned for the
+    keyboard and `safeDrawingPadding()` then lifted the column by the keyboard's height again,
+    pushing × off the top with a gap above the keyboard. It is now edge to edge
+    (`decorFitsSystemWindows = false`), so the padding alone does it. Back puts the keyboard away.
 
 **Needs a real phone:** the camera itself (the Android emulator's virtual scene and the iOS
 simulator's missing camera prove only the wiring), EXIF orientation from a real portrait shot,

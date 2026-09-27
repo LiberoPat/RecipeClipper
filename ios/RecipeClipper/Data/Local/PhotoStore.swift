@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 /// Where "I made this" photos (#116) live (Android's PhotoStore): JPEGs named by the store,
 /// never by the user. Behind a protocol so repositories stay free of files and tests use a fake.
 protocol PhotoStore: AnyObject {
-    /// Turns the picture (PhotosPicker or camera data) upright, downscales it to
+    /// Turns the picture (library or camera data) upright, downscales it to
     /// `photoMaxEdge` on its long edge and writes it as a JPEG; its new file name, or nil.
     func importPicture(_ data: Data) async -> String?
     /// Copies a file that is already a stored photo (one from a backup) in; its new name, or nil.
