@@ -112,7 +112,10 @@ abstract class WalkthroughBase {
         }
         scenario = ActivityScenario.launch(MainActivity::class.java)
         waitFor(hasText(if (firstRun) "Next" else "Recipe URL"))
-        shell("screenrecord --bit-rate 6000000 $VIDEO")
+        // Two-thirds size: the script scales every clip to 1280 high anyway, and a smaller frame
+        // keeps the emulator's encoder up with the screen on a busy machine (at full size it fell
+        // behind and lost the ends of clips).
+        shell("screenrecord --bit-rate 6000000 --size 720x1616 $VIDEO")
         Thread.sleep(1000) // screenrecord takes a moment to start
         pause(1500)
     }
@@ -120,9 +123,9 @@ abstract class WalkthroughBase {
     @After
     fun finish() {
         if (scenario == null) return
-        pause(1500)
+        pause(2500)
         shell("pkill -INT screenrecord")
-        Thread.sleep(1500) // screenrecord finishes the file
+        Thread.sleep(2500) // screenrecord finishes the file
         scenario?.close()
     }
 
@@ -203,9 +206,10 @@ abstract class WalkthroughBase {
         pause(pauseMs)
     }
 
-    /** Waits for [text] (a part of it) and scrolls it into view, in a form that scrolls. */
+    /** Scrolls [text] (a part of it) into view, in a lazy list or a form that scrolls. */
     fun show(text: String, pauseMs: Long = 1500) {
         val matcher = hasText(text, substring = true)
+        reveal(matcher)
         waitFor(matcher)
         runCatching { compose.onAllNodes(matcher)[0].performScrollTo() }
         pause(pauseMs)
@@ -234,13 +238,19 @@ abstract class WalkthroughBase {
     }
 
     /** Swipes up until [text] is on screen (a lazy list composes only what shows), then taps it. */
-    fun tapScrolling(text: String) {
-        val matcher = hasText(text) and !hasSetTextAction()
-        repeat(5) {
-            if (compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()) return@repeat
+    fun tapScrolling(text: String) = tapScrolling(hasText(text) and !hasSetTextAction())
+
+    fun tapScrolling(matcher: SemanticsMatcher) {
+        reveal(matcher)
+        tap(matcher)
+    }
+
+    /** Swipes up until [matcher] is composed (a lazy list composes only what shows). */
+    fun reveal(matcher: SemanticsMatcher, swipes: Int = 8) {
+        for (i in 0 until swipes) {
+            if (compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()) break
             swipeUp()
         }
-        tap(matcher)
     }
 
     /** The screen's own Back (text or icon), as a person would tap it; else the system back. */

@@ -12,9 +12,17 @@ DD=${DERIVED_DATA:-/tmp/rc-walkthrough-dd}
 TESTS=("$@")
 [ ${#TESTS[@]} -eq 0 ] && TESTS=(test01_tabsAndWeek test02_groceries test03_pantryAndWhatINeed test04_weeklyMenus
   test05_expiryReminders test06_recipesScreen test07_amountsInSteps test08_chefModeStubModel test09_freeTier
-  test10_pageExtractionLine test11_groceriesAiMergingSimulated test12_groceriesJunkHidden)
+  test10_pageExtractionLine test11_groceriesAiMergingSimulated test12_groceriesJunkHidden test13_iMadeThis
+  test14_automaticBackup test15_sendAndPasteAList test16_sendAndReceiveAFile test17_firstRunTour
+  test18_doneShoppingAndOnList test19_pantrySendList test20_pantryUseUpAfterCooking test21_chefModeUnsupportedSimulated)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
+# The photo "I made this" picks from the library (#116): a macOS sample picture, added once.
+if [[ " ${TESTS[*]} " == *" test13_iMadeThis "* ]]; then
+  photo=$(mktemp -d)/photo.jpg
+  sips -s format jpeg "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo" >/dev/null 2>&1 &&
+    xcrun simctl addmedia "$SIM" "$photo"
+fi
 (cd ios && xcodebuild -project RecipeClipper.xcodeproj -scheme RecipeClipper -destination "id=$SIM" \
   -derivedDataPath "$DD" build-for-testing -quiet)
 
