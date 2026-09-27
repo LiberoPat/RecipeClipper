@@ -14,7 +14,8 @@ TESTS=("$@")
   test05_expiryReminders test06_recipesScreen test07_amountsInSteps test08_chefModeStubModel test09_freeTier
   test10_pageExtractionLine test11_groceriesAiMergingSimulated test12_groceriesJunkHidden test13_iMadeThis
   test14_automaticBackup test15_sendAndPasteAList test16_sendAndReceiveAFile test17_firstRunTour
-  test18_doneShoppingAndOnList test19_pantrySendList test20_pantryUseUpAfterCooking test21_chefModeUnsupportedSimulated)
+  test18_doneShoppingAndOnList test19_pantrySendList test20_pantryUseUpAfterCooking test21_chefModeUnsupportedSimulated
+  test22_recipeJunkHidden)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
 # The photo "I made this" picks from the library (#116): a macOS sample picture, added once.

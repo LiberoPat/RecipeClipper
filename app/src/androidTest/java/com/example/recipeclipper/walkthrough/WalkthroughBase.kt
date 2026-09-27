@@ -126,7 +126,8 @@ abstract class WalkthroughBase {
         pause(2500)
         shell("pkill -INT screenrecord")
         Thread.sleep(2500) // screenrecord finishes the file
-        scenario?.close()
+        // The recording is done: a slow teardown on a busy emulator mustn't fail the clip.
+        runCatching { scenario?.close() }
     }
 
     private suspend fun seed() {
@@ -170,6 +171,21 @@ abstract class WalkthroughBase {
     fun startFromApp(intent: Intent) {
         scenario!!.onActivity { it.startActivity(intent.setClass(it, MainActivity::class.java)) }
         pause()
+    }
+
+    /**
+     * Waits for a system screen (the share sheet, a picker) to take over from the app, which is
+     * slow on a busy emulator, then lets it show for [showMs].
+     */
+    fun waitForSystemScreen(showMs: Long = 3000) {
+        val app = instrumentation.targetContext.packageName
+        val deadline = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < deadline) {
+            val active = instrumentation.uiAutomation.rootInActiveWindow?.packageName?.toString()
+            if (active != null && active != app) break
+            Thread.sleep(250)
+        }
+        Thread.sleep(showMs)
     }
 
     /** The system Back, for a screen that isn't the app's (the share sheet, a system picker). */

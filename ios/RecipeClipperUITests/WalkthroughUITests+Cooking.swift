@@ -20,6 +20,7 @@ extension WalkthroughUITests {
         require(app.buttons["Choose from library"], "the library choice").tap()
         pause(2.5)
         // The system's photo picker, newest first: the recording script's photo.
+        print("PICKER-TREE-BEGIN"); print(app.debugDescription); print("PICKER-TREE-END")
         let photo = app.scrollViews.images.firstMatch
         require(photo, "a photo in the picker").tap()
         pause()
@@ -72,7 +73,7 @@ extension WalkthroughUITests {
         pause(2.5)
         tab("Pantry")
         require(app.switches["In stock: onions"], "the onions' switch").tap() // run out: onto the list
-        require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'onList-'")).firstMatch, "the On list tag")
+        require(app.buttons["On list"], "the On list tag")
         pause(2.5)
         tab("Groceries")
         pause(2)
@@ -109,6 +110,7 @@ extension WalkthroughUITests {
         require(app.buttons["Settings"]).tap()
         pause()
         scrollTo(app.descendants(matching: .any)["settings.chefModeNote"], "the Chef mode note")
-        pause(3.5)
+        app.swipeUp() // clear of the foot of the screen
+        pause(4)
     }
 }

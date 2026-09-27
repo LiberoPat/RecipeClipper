@@ -11,8 +11,10 @@ enum UITestWalkthroughList {
 
 extension WalkthroughUITests {
 
+    /// The copy goes to a local folder standing in for iCloud Drive (`-uiTestBackupFolder`): a
+    /// simulator has none.
     func test14_automaticBackup() {
-        start(flags: ["mealPlan"], scenario: .empty)
+        start(flags: ["mealPlan"], scenario: .empty, extraArguments: ["-uiTestBackupFolder"])
         let restore = require(app.buttons["home.restore"], "Restore from a backup file")
         pause()
         restore.tap()
@@ -23,7 +25,10 @@ extension WalkthroughUITests {
         require(app.buttons["Settings"]).tap()
         pause()
         scrollTo(app.buttons["settings.backUpNow"], "Back up now")
-        pause(3.5)
+        pause(2.5)
+        app.buttons["settings.backUpNow"].tap()
+        require(textContaining("Last backed up"), "Last backed up")
+        pause(3)
     }
 
     func test15_sendAndPasteAList() {

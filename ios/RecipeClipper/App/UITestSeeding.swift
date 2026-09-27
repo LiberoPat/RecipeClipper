@@ -18,7 +18,8 @@ import UIKit
 ///   - `-uiTestReceiveFile` opens a canned shared file (#149) at launch (`receivedFileURL`);
 ///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on;
 ///   - the first-run tour (#151) done, unless `-uiTestTour` asks for a fresh install's;
-///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`.
+///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`;
+///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder.
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -77,6 +78,11 @@ enum UITestSeeding {
     /// Chef mode's model as a phone that can't run it answers (#144), for the walkthrough video.
     static let chefUnsupportedFlag = "-uiTestChefUnsupported"
 
+    /// The automatic backup copy (#150) with a throwaway local folder standing in for iCloud
+    /// Drive, which a simulator doesn't have, for the walkthrough video. Without it the UI-test
+    /// container keeps no copy and Settings shows no backup rows.
+    static let backupFolderFlag = "-uiTestBackupFolder"
+
     /// The title every import resolves to under test.
     static let stubRecipeTitle = "Stub Chicken Soup"
 
@@ -134,6 +140,7 @@ enum UITestSeeding {
         let photoDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestPhotos")
         try? FileManager.default.removeItem(at: photoDirectory)
         let photoStore = FilePhotoStore(directory: photoDirectory)
+        let backupRepository = DefaultBackupRepository(db: database, clock: clock, photos: photoStore)
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
                 db: database, source: StubRecipeSource(), clock: clock, library: libraryLimit, photos: photoStore
@@ -142,7 +149,7 @@ enum UITestSeeding {
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock, photos: photoStore),
+            backupRepository: backupRepository,
             preferences: preferences,
             clock: clock,
             clipFixtureHTML: clipFixtureHTML,
@@ -151,6 +158,9 @@ enum UITestSeeding {
             decisionRepository: decisions,
             libraryMirror: libraryLimit,
             cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock),
+            autoBackup: arguments.contains(backupFolderFlag)
+                ? AutoBackup(backups: backupRepository, folder: UITestBackupFolder(), store: MemoryAutoBackupStore(), clock: clock)
+                : nil,
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             tourPreferences: preferences
         )
@@ -301,6 +311,35 @@ private struct StubRecipeSource: RecipeSource {
             yield: "4",
             sourceUrl: url
         ))
+    }
+}
+
+/// The automatic copy's folder under `-uiTestBackupFolder` (#150): a throwaway local folder,
+/// emptied at launch, in place of the iCloud Drive folder a simulator doesn't have.
+private final class UITestBackupFolder: BackupFolder, @unchecked Sendable {
+    private let directory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestBackups", isDirectory: true)
+
+    init() {
+        try? FileManager.default.removeItem(at: directory)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    func destination() async -> BackupDestination { .ready }
+
+    func list() async -> [String]? { try? FileManager.default.contentsOfDirectory(atPath: directory.path) }
+
+    func write(name: String, json: String, photos: [String: URL]) async -> String? {
+        let data = BackupArchive.write(json: json, photos: photos.sorted { $0.key < $1.key }.map { (path: $0.key, file: $0.value) })
+        do {
+            try data.write(to: directory.appendingPathComponent(name), options: .atomic)
+            return name
+        } catch {
+            return nil
+        }
+    }
+
+    func delete(name: String) async {
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
     }
 }
 

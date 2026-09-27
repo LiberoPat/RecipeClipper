@@ -58,11 +58,13 @@ class SharingWalkthroughTest : WalkthroughBase() {
         start(seeded = false)
         waitFor(hasText("Restore from a backup file"))
         pause(1500)
-        tap("Restore from a backup file", 3000) // the system's file picker
+        tap("Restore from a backup file", 0)
+        waitForSystemScreen() // the system's file picker
         systemBack()
         tapDescription("Settings")
         show("Back up now", 3000)
-        tap("Backup folder", 3000) // the system's folder picker
+        tap("Backup folder", 0)
+        waitForSystemScreen() // the system's folder picker
         systemBack(2000)
     }
 
@@ -72,7 +74,7 @@ class SharingWalkthroughTest : WalkthroughBase() {
         start("mealPlan", kitchen = true)
         tap("Groceries", 2000)
         menu("Send list")
-        pause(3000) // the share sheet
+        waitForSystemScreen() // the share sheet
         systemBack()
         copy(FRIENDS_LIST)
         menu("Paste a list")
@@ -89,7 +91,7 @@ class SharingWalkthroughTest : WalkthroughBase() {
         start("mealPlan")
         tap("Chicken Adobo")
         menu("Send as file")
-        pause(3000) // the share sheet, with "Chicken Adobo.recipeclipper"
+        waitForSystemScreen() // the share sheet, with "Chicken Adobo.recipeclipper"
         systemBack()
         back()
         receive(deviceFile(SHARE_FIXTURE), "Sheet-pan chicken.recipeclipper")
@@ -106,10 +108,10 @@ class SharingWalkthroughTest : WalkthroughBase() {
         start("mealPlan", kitchen = true)
         tap("Pantry", 2000)
         menu("Send list")
-        pause(3000) // the share sheet: what's in stock, by aisle
+        waitForSystemScreen() // the share sheet: what's in stock, by aisle
         systemBack()
         menu("Send as file")
-        pause(3000) // the share sheet, with "Pantry.recipeclipper"
+        waitForSystemScreen() // the share sheet, with "Pantry.recipeclipper"
         systemBack()
     }
 

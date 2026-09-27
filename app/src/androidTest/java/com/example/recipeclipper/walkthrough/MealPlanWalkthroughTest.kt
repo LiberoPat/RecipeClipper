@@ -13,8 +13,8 @@ import org.junit.Test
 import java.time.LocalDate
 
 /**
- * Walkthroughs 01–05, 11 and 12 (#106): the tab bar, Week, Groceries, Pantry, menus, expiry
- * reminders, and Groceries with the model's (simulated) help.
+ * Walkthroughs 01–05, 11, 12 and 22 (#106): the tab bar, Week, Groceries, Pantry, menus, expiry
+ * reminders, and Groceries and a recipe with the model's (simulated) help.
  */
 @HiltAndroidTest
 @UninstallModules(OnDeviceModelModule::class)
@@ -141,5 +141,25 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
         tap("Groceries")
         waitFor(hasText("2 eggs"))
         pause(3000)
+    }
+
+    /**
+     * Junk hidden in the recipe itself (#174), judged by the model (simulated, as above): the
+     * Banana Bread's "2 eggs dfsafs" reads "2 eggs" in the reading view and in cook mode's
+     * ingredients, while the editor still holds the line as stored.
+     */
+    @Test
+    fun test22_recipeJunkHidden() {
+        start("mealPlan", "aiDecisions")
+        tapScrolling("Banana Bread") // below the fold on Home (a lazy list)
+        // The answers land in the background; then the line shows without its junk.
+        waitFor(hasText("2 eggs"))
+        pause(3000)
+        menu("Edit")
+        waitFor(hasText(WalkthroughSeed.JUNK_LINE, substring = true))
+        pause(3000)
+        back()
+        tap("Start cooking", 2000)
+        tap(hasText("Ingredients") and hasClickAction(), 3500) // the bar, expanded
     }
 }

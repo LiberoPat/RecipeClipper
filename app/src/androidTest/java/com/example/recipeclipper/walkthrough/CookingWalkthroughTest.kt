@@ -110,8 +110,9 @@ class CookingWalkthroughTest : WalkthroughBase() {
             instrumentation.removeMonitor(picker)
         }
         // The photo just added opens for its note.
-        waitFor(hasText("Add a short note"))
-        compose.onAllNodes(hasSetTextAction())[0].performTextInput("Cut the dough into gingerbread men for the kids.")
+        val note = hasSetTextAction() and hasText("Add a short note")
+        waitFor(note)
+        compose.onAllNodes(note)[0].performTextInput("Cut the dough into gingerbread men for the kids.")
         pause(2000)
         tapDescription("Close")
         pause(2000)
