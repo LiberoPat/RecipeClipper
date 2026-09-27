@@ -1556,6 +1556,9 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   `GrocerySources.fromPlan` as "Add this week's ingredients", so both show the
   same text at the same servings. It follows the pantry live. "Add to groceries"
   puts every Buy line on the list through #50's add path, once.
+- **iOS rows are keyed `buy-0`, `have-0`, as Android's** (#185): a lazy stack pools every
+  `ForEach`'s ids, so bare offsets left the first pantry rows blank (and, the same way, the
+  week sheet's later recipes and the month grid's first row).
 - **The grocery sheet starts with what the pantry covers unticked** (in stock or a
   staple), so "untick what's in the cupboard" is done for the cook, who still
   sees and can re-tick every line.

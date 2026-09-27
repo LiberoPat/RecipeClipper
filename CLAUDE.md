@@ -372,7 +372,8 @@ Each one exists to avoid showing a confident wrong number. Other languages
   method that crashes on older Android.
 - **LazyColumn keys must be unique across the whole list,** not per section.
   Home prefixes each key with its section; a duplicate key once crashed the
-  app.
+  app. So must every `ForEach` id in a SwiftUI lazy stack or grid, nested or
+  not: a repeat draws a blank row (#185).
 - **Espresso 3.6.x is broken on API 36+.** Every Compose test dies in
   `Espresso.onIdle()`, so `espresso-core` is pinned to 3.7.0.
 - **Unquoted string resources collapse runs of spaces:** `+  New list` renders
