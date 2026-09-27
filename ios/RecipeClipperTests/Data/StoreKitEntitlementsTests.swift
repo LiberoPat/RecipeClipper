@@ -30,22 +30,39 @@ final class StoreKitEntitlementsTests: XCTestCase {
         StoreKitEntitlements(defaults: UserDefaults(suiteName: suite)!)
     }
 
+    private func isListed(_ id: UInt64) async -> Bool {
+        for await result in Transaction.currentEntitlements where result.unsafePayloadValue.id == id {
+            return true
+        }
+        return false
+    }
+
     /// `buyProduct` returns before this app's `Transaction.currentEntitlements` has the purchase
     /// (it arrives as if from another device, up to ~300 ms later on a fresh simulator), so wait
-    /// for StoreKit to list it, or drop it, before asking the store. The deadline is only for a hang.
-    private func waitForCurrentEntitlements(
-        toList id: UInt64, _ listed: Bool, file: StaticString = #filePath, line: UInt = #line
-    ) async throws {
+    /// for StoreKit to list it before asking the store. The deadline is only for a hang.
+    private func waitUntilListed(_ id: UInt64, file: StaticString = #filePath, line: UInt = #line) async throws {
         let deadline = Date().addingTimeInterval(30)
         while Date() < deadline {
-            var found = false
-            for await result in Transaction.currentEntitlements where result.unsafePayloadValue.id == id {
-                found = true
-            }
-            if found == listed { return }
+            if await isListed(id) { return }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
-        XCTFail("StoreKit never \(listed ? "listed" : "dropped") transaction \(id)", file: file, line: line)
+        XCTFail("StoreKit never listed transaction \(id)", file: file, line: line)
+    }
+
+    /// Now and then `clearTransactions()` doesn't take: the purchase stays listed for seconds or
+    /// for good (a few runs in a hundred), while a second clear drops it at once. So clear until
+    /// StoreKit drops it. The deadline is only for a hang.
+    private func clearUntilDropped(_ id: UInt64, file: StaticString = #filePath, line: UInt = #line) async throws {
+        let deadline = Date().addingTimeInterval(30)
+        while Date() < deadline {
+            session.clearTransactions()
+            let retry = Date().addingTimeInterval(1)
+            while Date() < retry {
+                if !(await isListed(id)) { return }
+                try await Task.sleep(nanoseconds: 20_000_000)
+            }
+        }
+        XCTFail("StoreKit never dropped transaction \(id)", file: file, line: line)
     }
 
     func testTheProductHasAPriceAndNothingIsOwnedAtFirst() async {
@@ -57,7 +74,7 @@ final class StoreKitEntitlementsTests: XCTestCase {
 
     func testAPurchaseIsFoundAndCachedAndLosingItLocksAgain() async throws {
         let purchase = try await session.buyProduct(identifier: unlimitedRecipesProductId)
-        try await waitForCurrentEntitlements(toList: purchase.id, true)
+        try await waitUntilListed(purchase.id)
         let store = entitlements()
         await store.refresh()
         XCTAssertTrue(store.state.unlocked, "found in Transaction.currentEntitlements")
@@ -67,8 +84,7 @@ final class StoreKitEntitlementsTests: XCTestCase {
         XCTAssertTrue(entitlements().state.unlocked)
 
         // Gone from the account (deleted in StoreKit's transaction manager): the cache follows.
-        session.clearTransactions()
-        try await waitForCurrentEntitlements(toList: purchase.id, false)
+        try await clearUntilDropped(purchase.id)
         await store.refresh()
         XCTAssertFalse(store.state.unlocked, "a purchase no longer owned no longer unlocks")
         XCTAssertFalse(UserDefaults(suiteName: suite)!.bool(forKey: StoreKitEntitlements.cacheKey))
