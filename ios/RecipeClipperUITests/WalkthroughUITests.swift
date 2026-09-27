@@ -35,6 +35,13 @@ final class WalkthroughUITests: RecipeUITestCase {
         pause()
     }
 
+    /// Clips 01–11: the app as a fresh install has it, the build's flag defaults on (#152), as
+    /// Android's walkthroughs have them, and `flags` too. (A UI-test launch otherwise turns every
+    /// flag off but the ones it names.)
+    func startAsShipped(flags: [String]) {
+        start(flags: flags, extraArguments: ["-uiTestDefaultFlags"])
+    }
+
     /// A fresh install's first launch (#151): no recipes, the welcome over Home (which `launch`
     /// waits for, so it can't be used).
     func startFirstRun(flags: [String]) {
@@ -104,6 +111,13 @@ final class WalkthroughUITests: RecipeUITestCase {
     func flipSwitch(_ prefix: String) {
         let toggle = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
         for _ in 0..<4 where !(toggle.exists && toggle.isHittable) { app.swipeUp(); pause(0.6) }
+        // Clear of the tab bar (on by default, #152), or the tap at the trailing edge lands on
+        // a tab: a short drag, not a swipe, which could fling it off the top.
+        for _ in 0..<4 where tabBar.exists && toggle.frame.maxY > tabBar.frame.minY {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+            pause(0.6)
+        }
         pause()
         require(toggle, prefix).coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
         requireState(toggle, "value == '1'", "\(prefix) on")

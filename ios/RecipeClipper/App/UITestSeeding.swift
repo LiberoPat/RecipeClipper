@@ -10,8 +10,8 @@ import UIKit
 ///   - a throwaway UserDefaults suite, wiped at launch unless `-uiTestKeepPrefs` is also passed
 ///     (which is how a test proves a setting survives a relaunch);
 ///   - feature flags (#87) in their own throwaway suite, wiped likewise and set off whatever the
-///     build's defaults, then turned on through the store for each key in `-uiTestFlags key1,key2`
-///     (`UITestSupport.launch(flags:)`);
+///     build's defaults (unless `-uiTestDefaultFlags`), then turned on through the store for each
+///     key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`);
 ///   - `-uiTestPasteboard <text>` puts `text` on the pasteboard as the app's own copy, so "Paste
 ///     a list" (#149) reads it without the paste prompt, which a UI test can't rely on. A launch
 ///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline;
@@ -78,6 +78,10 @@ enum UITestSeeding {
     /// Chef mode's model as a phone that can't run it answers (#144), for the walkthrough video.
     static let chefUnsupportedFlag = "-uiTestChefUnsupported"
 
+    /// The build's flag defaults (#152) in place of every flag off, so a walkthrough video shows
+    /// the app as a fresh install has it, as Android's does; `-uiTestFlags` still turns more on.
+    static let defaultFlagsFlag = "-uiTestDefaultFlags"
+
     /// The automatic backup copy (#150) with a throwaway local folder standing in for iCloud
     /// Drive, which a simulator doesn't have, for the walkthrough video. Without it the UI-test
     /// container keeps no copy and Settings shows no backup rows.
@@ -119,9 +123,12 @@ enum UITestSeeding {
         let flagStore = UserDefaultsFeatureFlagStore(suiteName: flagsSuite)
         let flags = FeatureFlags(store: flagStore)
         if !arguments.contains(keepPrefsFlag) {
-            // Every flag off first, whatever the build's defaults: a test turns on only what it names.
+            // Every flag off first, whatever the build's defaults: a test turns on only what it
+            // names (with `-uiTestDefaultFlags`, on top of the defaults).
             flagStore.clear()
-            for flag in Flag.allCases { flags.set(flag, false) }
+            if !arguments.contains(defaultFlagsFlag) {
+                for flag in Flag.allCases { flags.set(flag, false) }
+            }
         }
         if let index = arguments.firstIndex(of: flagsFlag), index + 1 < arguments.count {
             for key in arguments[index + 1].split(separator: ",") {

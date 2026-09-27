@@ -5,7 +5,7 @@ import XCTest
 extension WalkthroughUITests {
 
     func test01_tabsAndWeek() {
-        start(flags: ["mealPlan"])
+        startAsShipped(flags: ["mealPlan"])
         open("Chicken Adobo")
         recipeMenu("Add to plan")
         require(app.buttons["plan.confirm"], "the sheet's button").tap()
@@ -26,7 +26,7 @@ extension WalkthroughUITests {
     }
 
     func test02_groceries() {
-        start(flags: ["mealPlan"])
+        startAsShipped(flags: ["mealPlan"])
         for title in ["Chicken Adobo", "Weeknight Chili", "Chicken Adobo"] { // Adobo twice: "× 2"
             open(title)
             recipeMenu("Add to groceries")
@@ -40,12 +40,23 @@ extension WalkthroughUITests {
             require(line(item), item).tap()
             pause(1.5)
         }
-        app.swipeUp()
+        // Done shopping (#159): the pantry is empty, so nothing starts ticked; both go in.
+        require(app.buttons["doneShopping"], "Done shopping").tap()
+        pause()
+        for item in ["chicken thighs", "soy sauce"] {
+            let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'putAway-' AND label CONTAINS %@", item))
+            require(row.firstMatch, "\(item) in the sheet").tap()
+            pause(1)
+        }
+        require(app.buttons["putAwayButton"], "Put away and clear").tap()
+        require(app.buttons["Undo"], "the snackbar")
+        pause(2.5)
+        tab("Pantry")
         pause(2)
     }
 
     func test03_pantryAndWhatINeed() {
-        start(flags: ["mealPlan"])
+        startAsShipped(flags: ["mealPlan"])
         tab("Pantry")
         for item in ["soy sauce", "garlic", "bay leaves", "white vinegar"] {
             type("\(item)\n", into: app.textFields["Add to the pantry"])
@@ -62,7 +73,7 @@ extension WalkthroughUITests {
     }
 
     func test04_weeklyMenus() {
-        start(flags: ["mealPlan"])
+        startAsShipped(flags: ["mealPlan"])
         tab("Week")
         planToday("Chicken Adobo")
         planToday("Spaghetti Carbonara")
@@ -81,7 +92,7 @@ extension WalkthroughUITests {
     }
 
     func test05_expiryReminders() {
-        start(flags: ["mealPlan"])
+        startAsShipped(flags: ["mealPlan"])
         require(app.buttons["Settings"]).tap()
         pause()
         // To the foot of Settings, so the switch sits clear of the tab bar.
@@ -93,7 +104,7 @@ extension WalkthroughUITests {
     /// Grocery lines merged with the model's help (#99), its answers simulated by the UI-test
     /// stub (`UITestDecisionModel`): close names become one row, trailing notes are ignored.
     func test11_groceriesAiMergingSimulated() {
-        start(flags: ["mealPlan", "aiDecisions"])
+        startAsShipped(flags: ["mealPlan", "aiDecisions"])
         tab("Groceries")
         let field = app.textFields["Add an item"]
         for pair in [["200 g sweetcorn", "100 g corn"], ["2 eggs, beaten", "3 eggs"]] {

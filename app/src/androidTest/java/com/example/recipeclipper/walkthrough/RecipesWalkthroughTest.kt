@@ -6,7 +6,11 @@ import androidx.compose.ui.test.performTextInput
 import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.DecisionModel
 import com.example.recipeclipper.data.StepShortener
+import com.example.recipeclipper.data.model.ParseResult
+import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.remote.RecipeSource
 import com.example.recipeclipper.di.OnDeviceModelModule
+import com.example.recipeclipper.di.SourceModule
 import com.example.recipeclipper.fake.FakeStepShortener
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -16,11 +20,22 @@ import org.junit.Test
 /**
  * Walkthroughs 06–10 (#106): the Recipes screen, amounts in steps, Chef mode with a stub model
  * (an emulator has none), the free tier, and a recipe picked from the page text (seeded as
- * such: no model runs).
+ * such: no model runs). A pasted link opens a canned recipe, as iOS's UI-test source does, so
+ * no clip depends on the network.
  */
 @HiltAndroidTest
-@UninstallModules(OnDeviceModelModule::class)
+@UninstallModules(OnDeviceModelModule::class, SourceModule::class)
 class RecipesWalkthroughTest : WalkthroughBase() {
+
+    @BindValue @JvmField
+    val source: RecipeSource = object : RecipeSource {
+        override suspend fun fetch(url: String): ParseResult = ParseResult.Success(Recipe(
+            name = "Stub Chicken Soup", image = null,
+            ingredients = listOf("1 whole chicken", "2 carrots", "8 cups water"),
+            instructions = listOf("Simmer everything for 1 hour.", "Season and serve."),
+            prepTime = null, cookTime = null, totalTime = null, yield = "4", sourceUrl = url
+        ))
+    }
 
     @BindValue @JvmField
     val decisionModel: DecisionModel = WalkthroughSeed.decisionModel()
@@ -36,6 +51,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
 
     private fun field(label: String) = hasSetTextAction() and hasText(label, substring = true)
 
+    /** Home's "Recipes ›" row, below the fold: not the Recipes tab, which is Home itself (#152). */
+    private fun openRecipes() = tapScrolling(hasText("Recipes") and hasText("›"))
+
     private fun typeARecipe() {
         tapDescription("Add a recipe")
         tap("Type a recipe")
@@ -50,13 +68,15 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     @Test
     fun test06_recipesScreen() {
         start()
-        tapScrolling("Recipes")
+        openRecipes()
         menu("Name")
         typeARecipe()
         back()
         tapDescription("Add a recipe")
         tap("Paste a link")
-        compose.onAllNodes(hasSetTextAction())[0].performTextInput("https://example.com/chicken-soup")
+        // The dialog's field, not the Recipes search field behind it.
+        waitFor(field("Recipe URL"))
+        compose.onAllNodes(field("Recipe URL"))[0].performTextInput("https://example.com/chicken-soup")
         pause(800)
         tap("Go", 3000)
     }
@@ -93,7 +113,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     @Test
     fun test09_freeTier() {
         start("freeTier")
-        tapScrolling("Recipes")
+        openRecipes()
         waitFor(hasText("20 of 20 recipes"))
         pause(2000)
         typeARecipe()

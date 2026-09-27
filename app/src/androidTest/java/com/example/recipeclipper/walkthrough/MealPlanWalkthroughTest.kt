@@ -67,8 +67,16 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
         tap("Groceries")
         type("groceryDraft", "milk")
         tap(hasText("chicken thighs", substring = true), 2000)
-        tap(hasText("soy sauce", substring = true), 2000)
-        swipeUp()
+        tapScrolling(hasText("soy sauce", substring = true)) // below the fold (a lazy list)
+        pause(500)
+        // Done shopping (#159): the pantry is empty, so nothing starts ticked; both go in.
+        tapTag("doneShopping")
+        tap("chicken thighs", 1000)
+        tap("soy sauce", 1000)
+        tapTag("putAwayButton")
+        waitFor(hasText("Undo"))
+        pause(2500)
+        tap("Pantry", 2500)
     }
 
     @Test

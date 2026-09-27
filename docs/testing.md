@@ -520,7 +520,9 @@ page-extraction recipe is stored as `EXTRACTED`, so no model runs for it.
   `app/src/androidTest/.../walkthrough`, run only under `-Pwalkthrough`, which swaps in
   `WalkthroughRunner` (Hilt's test Application, so `@UninstallModules(OnDeviceModelModule)`
   can bind the stubs); under the plain runner they skip. Each test records itself with
-  `screenrecord`. `scripts/record-walkthroughs-android.sh <serial> [out-dir] [Class#test …]`
+  `screenrecord`, which writes a frame only when the screen changes, so a still ending would
+  have no length: `WalkthroughBase.finish()` redraws the last screen before stopping it.
+  `scripts/record-walkthroughs-android.sh <serial> [out-dir] [Class#test …]`
   installs both APKs, clears the app before each test (`pm clear`), pulls and re-encodes the
   video. It wipes the app's data: use the agents' emulator (emulator-5580, under the lock),
   never a device someone uses.

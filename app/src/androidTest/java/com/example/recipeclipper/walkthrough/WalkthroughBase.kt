@@ -124,6 +124,11 @@ abstract class WalkthroughBase {
     fun finish() {
         if (scenario == null) return
         pause(2500)
+        // screenrecord writes a frame only when the screen changes, so a still ending had no
+        // length and the clip stopped on its last action: the same picture drawn once more gives
+        // the final screen its time.
+        runCatching { scenario?.onActivity { it.window.decorView.invalidate() } }
+        Thread.sleep(500)
         shell("pkill -INT screenrecord")
         Thread.sleep(2500) // screenrecord finishes the file
         // The recording is done: a slow teardown on a busy emulator mustn't fail the clip.
