@@ -106,19 +106,19 @@ final class ClipUITests: RecipeUITestCase {
     }
 
     /// The owner's "stuck in the photo section": a tap while picking that found no readable
-    /// picture (here a lazy-loading placeholder with no real address) left picking on, every tap
-    /// on the page swallowed and the other fields waiting. Now that tap ends the step and says
-    /// so, the page answers again, and Skip leaves the step without touching the page.
-    /// Mirrors Android's ClipScreenTest.
-    func testAPictureThatCantBeReadLeavesThePhotoStepForTheOtherFields() {
+    /// picture left picking on, every tap on the page swallowed and the other fields waiting.
+    /// Now one tap on anything that isn't a readable picture (here a heading) ends the step and
+    /// says so, and Skip leaves the step without touching the page; either way the next field
+    /// takes its selection. Mirrors Android's ClipScreenTest.
+    func testTheOtherFieldsGoOnAfterATapOnSomethingElseOrSkip() {
         launch(.empty)
         importLink("example.com/no-recipe")
         require(app.buttons["Clip it yourself"], "Clip it yourself").tap()
 
         fieldButton("PHOTO").tap()
         require(text("Tap the picture to use as the photo."), "photo picking")
-        onPage(page.images["Placeholder picture"], "the picture with no address").tap()
-        requireSnackbar("Couldn't read a picture there. The photo is optional.", "the unreadable-picture snackbar")
+        onPage(page.staticTexts["Method"], "a heading on the page").tap()
+        requireSnackbar("Couldn't read a picture there. The photo is optional.", "the no-picture snackbar")
         require(text("No name · 0 ingredients · 0 steps · no photo"), "the summary, picking over")
 
         selectOnPage("Select title")
@@ -129,5 +129,10 @@ final class ClipUITests: RecipeUITestCase {
         fieldButton("PHOTO").tap()
         require(app.buttons["Skip"], "Skip").tap()
         require(text("Name ✓ · 0 ingredients · 0 steps · no photo"), "the summary after Skip")
+
+        selectOnPage("Select ingredients")
+        require(app.buttons["Ingredients 3"], "the Ingredients count").tap()
+        requireSnackbar("3 ingredients added", "the Ingredients snackbar")
+        require(text("Name ✓ · 3 ingredients · 0 steps · no photo"), "the summary")
     }
 }

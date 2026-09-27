@@ -101,8 +101,11 @@ struct ClipScreen: View {
                 vm.onDiscardDraft()
                 vm.onNoticeShown(notice.serial)
             }
-        case .saveFailed, .photoUnreadable, .unlock:
+        case .saveFailed, .unlock:
             Snackbar(message: text, actionLabel: Strings.cancel) { vm.onNoticeShown(notice.serial) }
+        case .photoUnreadable:
+            // Nothing to act on: the page answers taps again, and the photo is optional.
+            Snackbar(message: text, actionLabel: nil)
         }
     }
 

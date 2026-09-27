@@ -156,7 +156,8 @@ class ClipScreenTest {
      * The owner's "stuck in the photo section": a tap while picking that found no readable
      * picture (here a lazy-loading placeholder with no real address) left picking on, every tap
      * on the page swallowed and the other fields waiting. Now that tap ends the step and says
-     * so, the page answers again, and Skip leaves the step without touching the page.
+     * so, the page answers again, and Skip leaves the step without touching the page; either
+     * way the next field takes its selection. iOS's ClipUITests taps a heading instead.
      */
     @Test
     fun aPictureThatCantBeReadLeavesThePhotoStepForTheOtherFields() {
@@ -182,6 +183,12 @@ class ClipScreenTest {
         compose.onNodeWithText("Skip").performClick()
         waitForText("Name ✓ · 0 ingredients · 0 steps · no photo")
         waitForPage(picking, "false")
+
+        select("ingredients")
+        waitForText("3 lines selected · each line becomes one item")
+        compose.onNodeWithText("Ingredients 3").performClick()
+        waitForText("3 ingredients added")
+        waitForText("Name ✓ · 3 ingredients · 0 steps · no photo")
     }
 
     @Test
