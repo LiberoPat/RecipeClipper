@@ -1663,15 +1663,25 @@ approved as a mock-up (six frames); the owner's nine decisions are in the issue'
 - **Nothing is guessed.** No field is suggested for a selection. A selection splits one item per
   line (`getSelection().toString()` breaks between blocks); a name joins its lines. Serves and
   Total time are typed in Review, optional, never read from the page.
-- **Photo:** a Photo button, then the next tapped image. No long-press. Lazy-loading
-  placeholders (`data:` URIs) are skipped for the image's real `http(s)` address.
+- **Photo:** a Photo button, then **one tap** on the page. An image with a readable `http(s)`
+  address becomes the photo: lazy-loading placeholders (`data:` URIs) are skipped for the real
+  address (`data-src`, a `srcset`, the `<picture>`'s sources, inside open shadow roots too).
+  Anything else ends the step and says "Couldn't read a picture there. The photo is optional."
+  Selecting new text, tapping a tag, or **Skip** (beside "Tap the picture…") ends it too. No
+  long-press. Picking used to last until a readable image was tapped: on a Reddit post the
+  owner found every other tap swallowed, and the fields disabled again after each assignment
+  ("stuck in the photo section"), so now neither the page nor the ViewModel keeps it past one
+  tap. A tag is kept inside the page's width (Reddit's backdrop image, drawn wider than the
+  page, put its tag outside and pushed the page's own controls off the screen). Android's clip
+  snackbars are `Long`, not the Indefinite an action gets by default: "Photo added" that never
+  went read as the clip being stuck there.
 - **Session draft per URL:** Cancel keeps the draft in memory (`ClipDraftStore`, keyed by the
   cleaned URL; Android also mirrors it into `SavedStateHandle`); reopening restores it with a
   "Draft restored" snackbar offering Discard. Save or Discard drops it. Never on disk.
 - **One script, `shared/web/clipper.js`,** injected by both apps (Android as a Java resource, iOS
-  from the bundled `web/` folder). The page only reports (selection, tag tapped, image tapped);
-  native code pushes the draft's marks back with one declarative `RC.sync(...)`, so replace,
-  undo and clear all redraw from state. Mark ids come from the draft, so an undo can show a mark
+  from the bundled `web/` folder). The page only reports (selection, tag tapped, image tapped,
+  no readable image); native code pushes the draft's marks back with one declarative
+  `RC.sync(...)`, so replace, undo and clear all redraw from state. Mark ids come from the draft, so an undo can show a mark
   again. Marks don't survive a page reload (rotation on Android, a restored draft); the draft does.
 - **Links to other pages are blocked** in the clip view (redirects and fragment jumps load), so
   a clip is always saved under the page it came from.

@@ -259,6 +259,8 @@
     <string name="clip_field_photo">Foto</string>
     <string name="clip_hint">Selecciona texto en la página y toca dónde va. Para la foto, toca Foto y luego la imagen.</string>
     <string name="clip_picking_photo">Toca la imagen que quieras usar como foto.</string>
+    <string name="clip_skip_photo">Omitir</string>
+    <string name="clip_photo_unreadable">No se pudo leer ninguna imagen ahí. La foto es opcional.</string>
     <string name="clip_lines_selected_hint">cada línea es un elemento</string>
     <string name="clip_summary_name">Nombre ✓</string>
     <string name="clip_summary_no_name">Sin nombre</string>

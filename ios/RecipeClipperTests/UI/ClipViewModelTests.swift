@@ -121,6 +121,79 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertFalse(vm.uiState.pickingPhoto)
     }
 
+    // The owner's "stuck in the photo section": a tap on a picture the page can't give an
+    // address for left picking on, every later tap swallowed and the other fields waiting.
+
+    func testATapWithNoReadablePictureEndsPickingSaysSoAndTheOtherFieldsGoOn() {
+        let vm = viewModel()
+        vm.onPhotoButton()
+        vm.onNoImageTapped()
+
+        XCTAssertFalse(vm.uiState.pickingPhoto)
+        XCTAssertNil(vm.uiState.draft.photo)
+        XCTAssertEqual(vm.uiState.notice?.message, .photoUnreadable)
+
+        select(vm, "Brown Butter Oat Cookies", .name)
+        XCTAssertEqual(vm.uiState.draft.name, "Brown Butter Oat Cookies")
+        XCTAssertEqual(vm.uiState.notice?.message, .assigned(.name, count: 1))
+    }
+
+    func testATapWithNoReadablePictureKeepsThePhotoThereWas() {
+        let vm = viewModel()
+        vm.onPhotoButton()
+        vm.onImageTapped("https://img.example/cookies.jpg")
+        vm.onPhotoButton()
+        vm.onNoImageTapped()
+        XCTAssertEqual(vm.uiState.draft.photo, "https://img.example/cookies.jpg")
+        XCTAssertFalse(vm.uiState.pickingPhoto)
+    }
+
+    func testANoImageTapWhenNotPickingSaysNothing() {
+        let vm = viewModel()
+        vm.onNoImageTapped()
+        XCTAssertNil(vm.uiState.notice)
+    }
+
+    func testSkipLeavesThePhotoStepWithoutAPhoto() {
+        let vm = viewModel()
+        vm.onPhotoButton()
+        vm.onSkipPhoto()
+        XCTAssertFalse(vm.uiState.pickingPhoto)
+        XCTAssertNil(vm.uiState.draft.photo)
+        XCTAssertNil(vm.uiState.notice)
+    }
+
+    func testSelectingTextWhilePickingMovesOnFromThePhoto() {
+        let vm = viewModel()
+        vm.onPhotoButton()
+        vm.onSelectionChanged("1 cup flour\n2 eggs")
+        XCTAssertFalse(vm.uiState.pickingPhoto)
+
+        vm.onAssign(.ingredients)
+        XCTAssertEqual(vm.uiState.draft.ingredients, ["1 cup flour", "2 eggs"])
+        // Nothing sends the toolbar back to "Tap the picture" once the selection is used.
+        XCTAssertFalse(vm.uiState.pickingPhoto)
+    }
+
+    func testTheSameSelectionReportedAgainOrClearedLeavesPickingOn() {
+        let vm = viewModel()
+        vm.onSelectionChanged("Brown Butter")
+        vm.onPhotoButton()
+        vm.onSelectionChanged("Brown Butter")
+        XCTAssertTrue(vm.uiState.pickingPhoto)
+        vm.onSelectionChanged("")
+        XCTAssertTrue(vm.uiState.pickingPhoto)
+    }
+
+    func testTappingATagWhilePickingEndsPicking() {
+        let vm = viewModel()
+        select(vm, "Brown Butter", .name)
+        vm.onPhotoButton()
+        vm.onTagTapped(.name)
+        XCTAssertFalse(vm.uiState.pickingPhoto)
+        XCTAssertEqual(vm.uiState.notice?.message, .cleared(.name))
+    }
+
     func testReviewOpensOnlyOnceThereIsANamePlusIngredientsOrSteps() {
         let vm = viewModel()
         select(vm, "Cookies", .name)

@@ -70,6 +70,7 @@ enum Strings {
     static var remove: String { String(localized: "action_remove") }
     static var clipHint: String { String(localized: "clip_hint") }
     static var clipPickingPhoto: String { String(localized: "clip_picking_photo") }
+    static var clipSkipPhoto: String { String(localized: "clip_skip_photo") }
     static var clipReview: String { String(localized: "clip_review") }
     static var clipBackToPage: String { String(localized: "clip_back_to_page") }
     static var clipPhotoFromPage: String { String(localized: "clip_photo_from_page") }

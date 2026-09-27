@@ -180,6 +180,7 @@ enum UITestSeeding {
     <p><button onclick="sel('title')">Select title</button><button onclick="sel('ingredients')">Select ingredients</button><button onclick="sel('steps')">Select steps</button><button onclick="sel('step2')">Select last step</button></p>
     <h1 id="title">Brown Butter Oat Cookies</h1>
     <img id="photo" src="/img/cookies.jpg" width="200" height="120" alt="Cookies photo" style="background:#c98b4e">
+    <img id="placeholder" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" width="200" height="60" alt="Placeholder picture" style="background:#ddd">
     <h2>Ingredients</h2>
     <ul id="ingredients"><li>1 cup (226 g) unsalted butter</li><li>1 cup packed brown sugar</li><li>3 cups rolled oats</li></ul>
     <h2>Method</h2>

@@ -137,6 +137,79 @@ class ClipViewModelTest {
         assertFalse(vm.uiState.value.pickingPhoto)
     }
 
+    // The owner's "stuck in the photo section": a tap on a picture the page can't give an
+    // address for left picking on, every later tap swallowed and the other fields waiting.
+
+    @Test fun `a tap with no readable picture ends picking, says so, and the other fields go on`() {
+        val vm = viewModel()
+        vm.onPhotoButton()
+        vm.onNoImageTapped()
+
+        assertFalse(vm.uiState.value.pickingPhoto)
+        assertNull(vm.draft.photo)
+        assertEquals(ClipMessage.PhotoUnreadable, vm.message)
+
+        vm.select("Brown Butter Oat Cookies", ClipField.NAME)
+        assertEquals("Brown Butter Oat Cookies", vm.draft.name)
+        assertEquals(ClipMessage.Assigned(ClipField.NAME, 1), vm.message)
+    }
+
+    @Test fun `a tap with no readable picture keeps the photo there was`() {
+        val vm = viewModel()
+        vm.onPhotoButton()
+        vm.onImageTapped("https://img.example/cookies.jpg")
+        vm.onPhotoButton()
+        vm.onNoImageTapped()
+        assertEquals("https://img.example/cookies.jpg", vm.draft.photo)
+        assertFalse(vm.uiState.value.pickingPhoto)
+    }
+
+    @Test fun `a no-image tap when not picking says nothing`() {
+        val vm = viewModel()
+        vm.onNoImageTapped()
+        assertNull(vm.uiState.value.notice)
+    }
+
+    @Test fun `Skip leaves the photo step without a photo`() {
+        val vm = viewModel()
+        vm.onPhotoButton()
+        vm.onSkipPhoto()
+        assertFalse(vm.uiState.value.pickingPhoto)
+        assertNull(vm.draft.photo)
+        assertNull(vm.uiState.value.notice)
+    }
+
+    @Test fun `selecting text while picking moves on from the photo`() {
+        val vm = viewModel()
+        vm.onPhotoButton()
+        vm.onSelectionChanged("1 cup flour\n2 eggs")
+        assertFalse(vm.uiState.value.pickingPhoto)
+
+        vm.onAssign(ClipField.INGREDIENTS)
+        assertEquals(listOf("1 cup flour", "2 eggs"), vm.draft.ingredients)
+        // Nothing sends the toolbar back to "Tap the picture" once the selection is used.
+        assertFalse(vm.uiState.value.pickingPhoto)
+    }
+
+    @Test fun `the same selection reported again, or cleared, leaves picking on`() {
+        val vm = viewModel()
+        vm.onSelectionChanged("Brown Butter")
+        vm.onPhotoButton()
+        vm.onSelectionChanged("Brown Butter")
+        assertTrue(vm.uiState.value.pickingPhoto)
+        vm.onSelectionChanged("")
+        assertTrue(vm.uiState.value.pickingPhoto)
+    }
+
+    @Test fun `tapping a tag while picking ends picking`() {
+        val vm = viewModel()
+        vm.select("Brown Butter", ClipField.NAME)
+        vm.onPhotoButton()
+        vm.onTagTapped(ClipField.NAME)
+        assertFalse(vm.uiState.value.pickingPhoto)
+        assertEquals(ClipMessage.Cleared(ClipField.NAME), vm.message)
+    }
+
     @Test fun `review opens only once there is a name plus ingredients or steps`() {
         val vm = viewModel()
         vm.select("Cookies", ClipField.NAME)
