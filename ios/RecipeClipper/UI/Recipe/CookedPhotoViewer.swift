@@ -3,11 +3,14 @@ import SwiftUI
 /// One photo, full screen (#116; Android's CookedPhotoViewer): the picture, its date (tap for a
 /// date picker) and its note, edited in place; Share (the photo and the recipe's name as plain
 /// text) and Delete, which the recipe screen offers to undo. A cooking marked with no photo
-/// (#173) shows "Cooked" in place of the picture, and no Share.
+/// (#173) shows "Cooked" in place of the picture, and no Share. While the note is typed the
+/// picture gives up its height to the keyboard, and "Done" on the keyboard puts it away (#180):
+/// the note takes a return as a new line, and nothing here scrolls it away.
 struct CookedPhotoViewer: View {
     let vm: CookedPhotosViewModel
     let photo: CookedPhoto
     let recipeName: String
+    @FocusState private var typingNote: Bool
 
     var body: some View {
         let date = PlanDayFormat.fullDate(photo.day)
@@ -59,6 +62,7 @@ struct CookedPhotoViewer: View {
                 .textStyle(Typography.bodyLarge)
                 .padding(10)
                 .background(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.outline, lineWidth: 1))
+                .focused($typingNote)
                 .accessibilityIdentifier("cooked.note")
             }
             .padding(.horizontal, 20)
@@ -66,5 +70,13 @@ struct CookedPhotoViewer: View {
             .readableColumn()
         }
         .screenBackground()
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(Strings.done) { typingNote = false }
+                    .tint(Palette.primary)
+                    .accessibilityIdentifier("cooked.noteDone")
+            }
+        }
     }
 }
