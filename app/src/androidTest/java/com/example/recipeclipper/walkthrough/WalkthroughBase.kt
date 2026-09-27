@@ -1,6 +1,10 @@
 package com.example.recipeclipper.walkthrough
 
 import android.Manifest
+import android.accessibilityservice.AccessibilityService
+import android.app.Instrumentation
+import android.content.Intent
+import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
@@ -23,12 +27,16 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.recipeclipper.MainActivity
+import com.example.recipeclipper.data.GroceryRepository
+import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.flags.FeatureFlagStore
 import com.example.recipeclipper.data.local.TourPreferences
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.NewGroceryLine
+import com.example.recipeclipper.data.model.NewPantryItem
 import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.data.model.WelcomeState
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -64,23 +72,46 @@ abstract class WalkthroughBase {
     @Inject lateinit var listDao: ListDao
     @Inject lateinit var flagStore: FeatureFlagStore
     @Inject lateinit var tour: TourPreferences
+    @Inject lateinit var pantryRepository: PantryRepository
+    @Inject lateinit var groceryRepository: GroceryRepository
 
-    private var scenario: ActivityScenario<MainActivity>? = null
+    var scenario: ActivityScenario<MainActivity>? = null
+        private set
 
-    fun start(vararg flags: String) {
+    /** The seeded recipes' ids, by title, and the pantry's, by name. */
+    val recipeIds = mutableMapOf<String, Long>()
+    val pantryIds = mutableMapOf<String, Long>()
+
+    val instrumentation: Instrumentation get() = InstrumentationRegistry.getInstrumentation()
+
+    /**
+     * Seeds, turns [flags] on and opens Home, recording from there. [seeded] false: an empty
+     * library. [firstRun]: the first-run tour (#151) as a fresh install has it, opening on the
+     * welcome; otherwise it is done, so no welcome or tip appears. [kitchen]: the Pantry and
+     * the grocery list of [WalkthroughSeed.pantry] and [WalkthroughSeed.groceries] too.
+     */
+    fun start(
+        vararg flags: String,
+        seeded: Boolean = true,
+        firstRun: Boolean = false,
+        kitchen: Boolean = false
+    ) {
         hilt!!.inject()
         // Expiry reminders ask for notifications; granted up front so no system dialog shows.
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.uiAutomation.grantRuntimePermission(
             instrumentation.targetContext.packageName, Manifest.permission.POST_NOTIFICATIONS
         )
-        runBlocking { seed() }
+        runBlocking {
+            if (seeded) seed()
+            if (kitchen) stockTheKitchen()
+        }
         flags.forEach { flagStore.setOverride(it, true) }
-        // The first-run tour (#151) done, so no welcome or tip appears in a video.
-        tour.welcome = WelcomeState.SEEN
-        Tip.entries.forEach { tour.setTipSeen(it, true) }
+        if (!firstRun) {
+            tour.welcome = WelcomeState.SEEN
+            Tip.entries.forEach { tour.setTipSeen(it, true) }
+        }
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        waitFor(hasText("Recipe URL"))
+        waitFor(hasText(if (firstRun) "Next" else "Recipe URL"))
         shell("screenrecord --bit-rate 6000000 $VIDEO")
         Thread.sleep(1000) // screenrecord takes a moment to start
         pause(1500)
@@ -107,13 +138,42 @@ abstract class WalkthroughBase {
                 servings = r.servings, sourceType = "BLOG", lastViewedAt = now - (i + 1) * minute,
                 contentOrigin = r.origin
             ), historyLimit = 50)
+            recipeIds[r.title] = id
             val names = listOfNotNull("Favorites".takeIf { r.title == "Chicken Adobo" }, WalkthroughSeed.listFor(r.title))
             names.forEach { listDao.addToList(RecipeListCrossRef(id, lists.getValue(it), now - 30 * minute)) }
         }
     }
 
+    private suspend fun stockTheKitchen() {
+        WalkthroughSeed.pantry.forEach { (name, quantity, inStock) ->
+            val id = pantryRepository.add(NewPantryItem(name, "en", quantity = quantity)) ?: return@forEach
+            pantryIds[name] = id
+            if (!inStock) pantryRepository.setInStock(listOf(id), false)
+        }
+        val adobo = recipeIds.getValue("Chicken Adobo")
+        groceryRepository.add(WalkthroughSeed.groceries.map { NewGroceryLine(it, "en", recipeId = adobo) })
+    }
+
     private fun shell(command: String) {
-        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command).close()
+        instrumentation.uiAutomation.executeShellCommand(command).close()
+    }
+
+    /** A file the recording script pushed to the device, read as the shell (the app can't reach it). */
+    fun deviceFile(path: String): ByteArray =
+        ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("cat $path"))
+            .use { it.readBytes() }
+
+    /** Starts [intent] from the app, as another app opening something in it would. */
+    fun startFromApp(intent: Intent) {
+        scenario!!.onActivity { it.startActivity(intent.setClass(it, MainActivity::class.java)) }
+        pause()
+    }
+
+    /** The system Back, for a screen that isn't the app's (the share sheet, a system picker). */
+    fun systemBack(pauseMs: Long = 1500) {
+        instrumentation.uiAutomation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+        Thread.sleep(1000)
+        pause(pauseMs)
     }
 
     // --- Pacing and helpers ---
@@ -140,6 +200,14 @@ abstract class WalkthroughBase {
         val node = compose.onAllNodes(matcher)[0]
         runCatching { node.performScrollTo() } // off screen in a scrolling form; no-op elsewhere
         node.performClick()
+        pause(pauseMs)
+    }
+
+    /** Waits for [text] (a part of it) and scrolls it into view, in a form that scrolls. */
+    fun show(text: String, pauseMs: Long = 1500) {
+        val matcher = hasText(text, substring = true)
+        waitFor(matcher)
+        runCatching { compose.onAllNodes(matcher)[0].performScrollTo() }
         pause(pauseMs)
     }
 
