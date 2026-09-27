@@ -108,6 +108,29 @@ class ShareFileRepositoryTest {
     }
 
     @Test
+    fun thePantryFileHoldsWhatIsInStockAsItIs() = runBlocking {
+        fun item(name: String, inStock: Boolean, quantity: String? = null) = PantryItemEntity(
+            name = name, quantity = quantity, language = "en", aisle = "grains", inStock = inStock,
+            alwaysHave = false, purchasedDay = 20_000, expiresDay = 20_100, updatedAt = 1
+        )
+        val rice = db.pantryDao().insert(item("basmati rice", inStock = true, quantity = "half a bag"))
+        db.pantryDao().insert(item("oats", inStock = false))
+
+        val file = decodeOrFail(repo().pantryFile()!!)
+
+        assertTrue(file.isShare)
+        val sent = file.pantry.single()
+        assertEquals("basmati rice", sent.name)
+        assertEquals("half a bag", sent.quantity)
+        assertEquals(20_100L, sent.expiresDay)
+        assertEquals(db.pantryDao().item(rice)!!.uid, sent.id)
+        assertTrue(file.recipes.isEmpty() && file.groceries.isEmpty())
+
+        db.pantryDao().setInStock(listOf(rice), false, 2)
+        assertNull(repo().pantryFile())
+    }
+
+    @Test
     fun aReceivedFileMergesWithoutReplacingAndOnlyOnce() = runBlocking {
         // The chicken is here already, under a link with a tracking parameter the file's lacks.
         val here = db.recipeDao().upsert(recipe("https://example.com/sheet-pan-chicken", "My chicken", viewed = 3), 50)

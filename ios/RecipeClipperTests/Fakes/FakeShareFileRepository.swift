@@ -7,6 +7,8 @@ final class FakeShareFileRepository: ShareFileRepository {
     var recipeFiles: [Int64: String] = [:]
     /// The grocery list's file; nil when nothing is left to buy.
     var groceriesFileText: String?
+    /// The pantry's file; nil when nothing is in stock.
+    var pantryFileText: String?
     var receiveResult: Result<ImportSummary, BackupError> =
         .success(ImportSummary(recipesAdded: 0, listsAdded: 0, recipesAlreadyHere: 0, recipesSkipped: 0))
     /// Every `receive` call's choice.
@@ -15,6 +17,8 @@ final class FakeShareFileRepository: ShareFileRepository {
     func recipeFile(recipeId: Int64) async -> String? { recipeFiles[recipeId] }
 
     func groceriesFile() async -> String? { groceriesFileText }
+
+    func pantryFile() async -> String? { pantryFileText }
 
     func receive(_ file: Backup, choice: ShareChoice) async -> Result<ImportSummary, BackupError> {
         received.append(choice)

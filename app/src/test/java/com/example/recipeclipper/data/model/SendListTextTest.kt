@@ -55,6 +55,53 @@ class SendListTextTest {
         assertEquals("Groceries\n\nproduce\n- 2 onions", send(item("2 onions", recipeId = 9)))
     }
 
+    // --- The Pantry's "Send list": what's in stock
+
+    private fun stock(
+        name: String,
+        quantity: String? = null,
+        inStock: Boolean = true,
+        aisle: Aisle = Aisles.of(name, LanguageWords.ENGLISH),
+        expires: Long? = null
+    ) = PantryItem(nextId++, name, quantity, "en", aisle, inStock, alwaysHave = false, purchasedDay = null, expiresDay = expires)
+
+    private fun sendPantry(sort: PantrySort, vararg items: PantryItem) =
+        PantryShareText.format(PantryList.arrange(items.toList(), "", sort), "Pantry") { it.key }
+
+    @Test fun thePantrySendsWhatIsInStockByAisleWithQuantitiesAsWritten() {
+        assertEquals(
+            "Pantry\n\nproduce\n- onions\n\ngrains\n- basmati rice (half a bag)\n- oats",
+            sendPantry(
+                PantrySort.AISLE,
+                stock("basmati rice", quantity = " half a bag "), stock("onions"), stock("oats", quantity = " ", aisle = Aisle.GRAINS),
+                stock("milk", inStock = false)
+            )
+        )
+    }
+
+    @Test fun anAisleWithNothingInStockIsLeftOut() {
+        assertEquals("Pantry\n\nproduce\n- onions", sendPantry(PantrySort.AISLE, stock("onions"), stock("milk", inStock = false)))
+    }
+
+    @Test fun sortedByExpiryThePantrySendsOneListWithNoHeading() {
+        assertEquals(
+            "Pantry\n\n- milk (1 l)\n- onions\n- rice",
+            sendPantry(PantrySort.EXPIRY, stock("rice"), stock("onions", expires = 20_730), stock("milk", "1 l", expires = 20_725))
+        )
+    }
+
+    @Test fun aPantryWithNothingInStockSendsOnlyItsTitle() {
+        assertEquals("Pantry", sendPantry(PantrySort.AISLE, stock("milk", inStock = false)))
+    }
+
+    // What the Pantry sends reads back as its items, and adds to another pantry as their names.
+    @Test fun thePantrysListReadsBackAsItsItems() {
+        val sent = sendPantry(PantrySort.AISLE, stock("basmati rice", quantity = "half a bag"), stock("onions"), stock("2 lemons"))
+        val lines = ReceivedList.lines(sent)
+        assertEquals(listOf("2 lemons", "onions", "basmati rice (half a bag)"), lines)
+        assertEquals(listOf("lemons", "onions", "basmati rice"), lines.map { IngredientName.of(it, LanguageWords.ENGLISH) })
+    }
+
     // --- Receiving
 
     @Test fun aSentListIsReadByItsBulletsLeavingTheTitleAndAislesOut() {

@@ -49,6 +49,17 @@ final class DefaultShareFileRepository: ShareFileRepository {
         }
     }
 
+    func pantryFile() async -> String? {
+        let now = clock.now()
+        do {
+            let items = try await db.read { conn in try PantryDao(db: conn).items() }
+            return ShareFile.pantry(now: now, items: items.map(\.backup)).map(BackupJson.encode)
+        } catch {
+            dataLog.error("pantryFile failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
     func receive(_ file: Backup, choice: ShareChoice) async -> Result<ImportSummary, BackupError> {
         let now = clock.now()
         let limit = library.current()
@@ -62,6 +73,17 @@ final class DefaultShareFileRepository: ShareFileRepository {
             dataLog.error("receiveShare failed: \(String(describing: error), privacy: .public)")
             return .failure(.saveFailed)
         }
+    }
+}
+
+extension PantryItemRecord {
+    /// The pantry item as an export file holds it (#26), and as the Pantry's shared file sends it (#149).
+    var backup: BackupPantryItem {
+        BackupPantryItem(
+            id: uid, name: name, quantity: quantity, language: language, aisle: aisle,
+            inStock: inStock, alwaysHave: alwaysHave, purchasedDay: purchasedDay,
+            expiresDay: expiresDay, updatedAt: updatedAt
+        )
     }
 }
 

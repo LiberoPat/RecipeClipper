@@ -343,6 +343,9 @@ protocol ShareFileRepository: AnyObject {
     /// when none is left to buy.
     func groceriesFile() async -> String?
 
+    /// The file for every pantry item in stock; nil when none is.
+    func pantryFile() async -> String?
+
     /// Merges what the receiver chose from `file`; a failure writes nothing.
     func receive(_ file: Backup, choice: ShareChoice) async -> Result<ImportSummary, BackupError>
 }

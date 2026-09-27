@@ -29,6 +29,9 @@ interface ShareFileRepository {
      *  when none is left to buy. */
     suspend fun groceriesFile(): String?
 
+    /** The file for every pantry item in stock; null when none is. */
+    suspend fun pantryFile(): String?
+
     /** Merges what the receiver chose from [file]; a failure writes nothing. */
     suspend fun receive(file: Backup, choice: ShareChoice): BackupResult<ImportSummary>
 }
@@ -55,6 +58,10 @@ class DefaultShareFileRepository @Inject constructor(
         val recipes = db.backupDao().recipesByIds(items.mapNotNull { it.recipeId }.distinct())
         val uids = recipes.associate { it.id to it.uid }
         BackupJson.encode(ShareFile.make(clock.now(), recipes.map { it.toBackup() }, items.map { it.toBackup(uids) }))
+    }
+
+    override suspend fun pantryFile(): String? = log.guard("pantryFile", null) {
+        ShareFile.pantry(clock.now(), db.backupDao().allPantry().map { it.toBackup() })?.let(BackupJson::encode)
     }
 
     override suspend fun receive(file: Backup, choice: ShareChoice): BackupResult<ImportSummary> {

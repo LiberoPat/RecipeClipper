@@ -88,6 +88,32 @@ object PantryList {
     }
 }
 
+/**
+ * The pantry as plain text for sending (#149): what's in stock, for someone at the shops to see
+ * what's at home. The title, then each section as the screen arranges it (an aisle's name, or
+ * no heading when sorted by expiry) and its in-stock items, one per line after "- ": the name,
+ * then the quantity as written in brackets ("- basmati rice (half a bag)"). Items that are out
+ * are left out: running out already put them on the grocery list (#146), which sends its own.
+ * [aisleName] and [title] are the screen's words.
+ */
+object PantryShareText {
+
+    fun format(sections: List<PantrySection>, title: String, aisleName: (Aisle) -> String): String {
+        val lines = mutableListOf(title)
+        for (section in sections) {
+            val items = section.items.filter { it.inStock }
+            if (items.isEmpty()) continue
+            lines += ""
+            section.aisle?.let { lines += aisleName(it) }
+            for (item in items) {
+                val quantity = item.quantity?.trim().orEmpty()
+                lines += if (quantity.isEmpty()) "- ${item.name.trim()}" else "- ${item.name.trim()} ($quantity)"
+            }
+        }
+        return lines.joinToString("\n")
+    }
+}
+
 /** Have or Buy, for one ingredient of the week (#51). */
 enum class NeedStatus {
     /** An in-stock pantry item has this name. Presence only: "you have flour", never "enough". */

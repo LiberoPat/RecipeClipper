@@ -165,7 +165,9 @@ struct RootView: View {
     /// The Pantry tab (#51): the pantry alone.
     private var pantryStack: some View {
         NavigationStack {
-            ScreenHost(container.makePantryViewModel) { vm in PantryScreen(vm: vm) }
+            ScreenHost(container.makePantryViewModel) { vm in
+                PantryScreen(vm: vm, makeSendFileVM: container.makeSendFileViewModel)
+            }
         }
         .tint(Palette.accentText)
     }

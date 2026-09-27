@@ -228,6 +228,14 @@ first ticks, put-away, one undo for the list and the pantry), `GroceriesScreenTe
 `PantryViewModelTest` and `PantryScreenTest`; iOS mirrors them in `PantryViewModelTests`,
 `GroceriesUITests` (Done shopping, Undo) and `PantryUITests` (the tag).
 
+The Pantry's "Send list" and "Send as file" (#149, what's in stock): `SendListTextTest` (the
+text, and its round trip through "Add this list"), `ShareFileTest` and
+`ShareFileRepositoryTest` (the file), `PantryViewModelTest`, `ShareFileViewModelsTest`, and
+`PantrySendTest` (Robolectric: the menu hands the share sheet the text or the file, both
+disabled with nothing in stock). iOS mirrors them in `SendListTextTests`, `ShareFileTests`,
+`ShareFileRepositoryTests`, `PantryViewModelTests` and `ShareFileViewModelsTests`; the system
+share sheet isn't reachable from a UI test.
+
 Amounts inside steps (#101): `StepAmountsTest` (JVM) and `StepAmountsTests` (iOS) run
 the rules on steps modelled on real pages, and the corpus's `Step` rows pin the Swift to the
 Kotlin (each step against its lines as given and doubled in Metric; write only

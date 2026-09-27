@@ -52,6 +52,19 @@ final class ShareFileViewModelsTests: XCTestCase {
         XCTAssertNil(vm.uiState.file)
     }
 
+    func testThePantryIsMadeAsAFileNamedForTheTab() async {
+        let vm = SendFileViewModel(share: share)
+        vm.sendPantry(title: "Pantry")
+        await vm.currentWork?.value
+        XCTAssertTrue(vm.uiState.failed)
+        vm.onFailureShown()
+
+        share.pantryFileText = "{pantry}"
+        vm.sendPantry(title: "Pantry")
+        await vm.currentWork?.value
+        XCTAssertEqual(vm.uiState.file, SentFile(text: "{pantry}", name: "Pantry.recipeclipper"))
+    }
+
     // MARK: Receiving
 
     func testAFileOpenedWithTheAppShowsWhatsInsideEveryRowTicked() async throws {
