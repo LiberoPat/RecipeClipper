@@ -3,6 +3,7 @@ package com.example.recipeclipper.data.model
 import com.example.recipeclipper.data.remote.CardHeadings
 import com.example.recipeclipper.data.remote.SiteRules
 import com.example.recipeclipper.data.remote.WprmIngredients
+import com.example.recipeclipper.ui.recipe.RecipeRenderer
 import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
@@ -65,6 +66,12 @@ import java.io.File
  * refined by the host's rules in `site-rules.json` (then any site's cards) on that markup; write
  * only the host (no "www."), the markup (single-quoted attributes), the lines and the steps.
  *
+ * `Render("yield", target, [lines], [steps])` rows (#169) pin [RecipeRenderer.content]: a recipe
+ * with that yield (or nil), chosen servings (or nil), ingredients and steps, rendered in Metric
+ * and Celsius with amounts in steps on, as the servings, ingredients, steps, timers, amounts,
+ * short steps and their amounts; write only those (optionally `, shorts: [nil, "short"]`, Chef
+ * mode's saved short steps, and `, lang: "de"`).
+ *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
@@ -114,7 +121,14 @@ class DifferentialCorpusTest {
     private val trailRow = Regex("""^(\s*)Trail\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A name-cut row (#99): a grocery line, optionally its language, the model's name for it.
     private val nameCutRow = Regex("""^(\s*)NameCut\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?, "((?:[^"\\]|\\.)*)"""")
+    // A rendering row (#169): a yield or nil, chosen servings or nil, the lines, the steps,
+    // optionally Chef mode's short steps (a string or nil each) and their language.
+    private val renderRow = Regex(
+        """^(\s*)Render\((nil|"(?:[^"\\]|\\.)*"), (nil|\d+), \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], """ +
+            """\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, shorts: \[((?:\s*(?:nil|"(?:[^"\\]|\\.)*"),?)*)\s*])?(?:, lang: "([a-z]+)")?"""
+    )
     private val literal = Regex(""""((?:[^"\\]|\\.)*)"""")
+    private val optionalLiteral = Regex("""nil|"((?:[^"\\]|\\.)*)"""")
 
     // The header comment's "// [ounces, ounces+liquids, ...], then".
     private val systemsComment = Regex("""^// \[[a-z+, ]*], then$""")
@@ -146,6 +160,7 @@ class DifferentialCorpusTest {
                 "(.${swiftCase(system)}, $liquids),"
             }
         }
+        renderRow.find(line)?.let { m -> return renderRow(m) }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         useUpRow.find(line)?.let { m -> return useUpRow(m) }
@@ -302,6 +317,39 @@ class DifferentialCorpusTest {
         val metric = StepAmounts.marked(StepAmounts.annotate(listOf(step), doubled, words).single())
         return m.groupValues[1] + "Step(${q(step)}, ${list(lines)}$lang, ${q(asGiven)}, ${q(metric)}),"
     }
+
+    /**
+     * `Render(yield, target, [lines], [steps], shorts:, lang:, [base, target] or nil, [ingredients],
+     * [steps], [timers], [amounts], [short steps], [short amounts] or nil)`: [RecipeRenderer.content]
+     * in Metric and Celsius with amounts in steps on, each step's amounts marked with ⟦ ⟧.
+     */
+    private fun renderRow(m: MatchResult): String {
+        val yield = m.groupValues[2].takeIf { it != "nil" }?.let { unescape(it.substring(1, it.length - 1)) }
+        val target = m.groupValues[3].toIntOrNull()
+        val (lines, steps) = listOf(4, 5).map { g -> literal.findAll(m.groupValues[g]).map { unescape(it.groupValues[1]) }.toList() }
+        val shorts = optionalLiteral.findAll(m.groupValues[6])
+            .map { if (it.value == "nil") null else unescape(it.groupValues[1]) }.toList()
+        val language = m.groupValues[7].ifEmpty { "en" }
+        val recipe = Recipe(
+            name = "Render", image = null, ingredients = lines, instructions = steps, prepTime = null, cookTime = null,
+            totalTime = null, yield = yield, sourceUrl = "https://example.com/r", language = language, servingsTarget = target
+        )
+        val settings = RecipeRenderer.Settings(
+            unitSystem = UnitSystem.METRIC, temperatureUnit = TemperatureUnit.CELSIUS, amountsInSteps = true
+        )
+        val shown = RecipeRenderer.content(recipe, settings, shorts)
+        val given = (if (shorts.isEmpty()) "" else ", shorts: ${optionalList(shorts)}") +
+            (if (m.groupValues[7].isEmpty()) "" else ", lang: ${q(language)}")
+        val servings = shown.servings?.let { "[${it.base}, ${it.target}]" } ?: "nil"
+        val timers = shown.stepTimerSeconds.joinToString(", ", "[", "]") { it?.toString() ?: "nil" }
+        val amounts = shown.stepAmounts?.let { a -> list(a.map(StepAmounts::marked)) } ?: "nil"
+        val shortAmounts = shown.shortStepAmounts?.let { a -> list(a.map(StepAmounts::marked)) } ?: "nil"
+        return m.groupValues[1] + "Render(${yield?.let(::q) ?: "nil"}, ${target ?: "nil"}, ${list(lines)}, ${list(steps)}$given, " +
+            "$servings, ${list(shown.ingredients)}, ${list(shown.instructions)}, $timers, $amounts, " +
+            "${optionalList(shown.shortInstructions)}, $shortAmounts),"
+    }
+
+    private fun optionalList(items: List<String?>) = items.joinToString(", ", "[", "]") { it?.let(::q) ?: "nil" }
 
     private fun instructionRow(line: String, words: LanguageWords, lang: String): String {
         val celsius = TemperatureConverter.convert(line, TemperatureUnit.CELSIUS, words)
