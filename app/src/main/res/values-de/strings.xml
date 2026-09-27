@@ -330,6 +330,20 @@
     <string name="action_done_shopping">Einkauf erledigt</string>
     <string name="put_away_intro">Hake ab, was in den Vorrat kommt. Alles Abgehakte verschwindet von der Liste.</string>
     <string name="action_put_away">Einräumen und entfernen</string>
+    <!-- Using up the pantry when cook mode is finished (#147). -->
+    <string name="use_up_title">Vorrat aktualisieren</string>
+    <string name="use_up_intro">Was du verbraucht hast, nach den abgehakten Zutaten. Entferne den Haken bei allem, was nicht stimmt.</string>
+    <string name="use_up_change">%1$s → %2$s</string>
+    <string name="use_up_used_up">%1$s → aufgebraucht, auf die Einkaufsliste</string>
+    <string name="use_up_cant_work_out">Verbrauchte Menge nicht berechenbar</string>
+    <string name="use_up_keep">Behalten</string>
+    <string name="use_up_low">Wird knapp</string>
+    <string name="use_up_out">Leer</string>
+    <string name="action_use_up">Vorrat aktualisieren</string>
+    <string name="snackbar_pantry_used_up">Vorrat aktualisiert</string>
+    <string name="cd_use_up_change">%1$s, von %2$s auf %3$s</string>
+    <string name="cd_use_up_used_up">%1$s, von %2$s auf aufgebraucht; kommt auf die Einkaufsliste</string>
+    <string name="cd_use_up_choice">%1$s: %2$s</string>
     <string name="aisle_produce">Obst &amp; Gemüse</string>
     <string name="aisle_meat">Fleisch</string>
     <string name="aisle_seafood">Fisch &amp; Meeresfrüchte</string>

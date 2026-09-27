@@ -81,6 +81,16 @@ object PantryList {
         }
     }
 
+    /**
+     * The unticked grocery lines that are [item] itself: its name as the pantry puts it there
+     * (trimmed, case-insensitive, in its language), which is what "On list" means (#146). A
+     * recipe's "2 cups flour" isn't, so taking the item off the list never loses a recipe's line.
+     */
+    fun ownLines(item: PantryItem, groceries: List<GroceryItem>): List<GroceryItem> {
+        val name = item.name.trim().lowercase(Locale.ROOT)
+        return groceries.filter { !it.checked && it.language == item.language && it.text.trim().lowercase(Locale.ROOT) == name }
+    }
+
     /** The item already here with this name (trimmed, case-insensitive) in [language], if any. */
     fun sameName(items: List<PantryItem>, name: String, language: String?): PantryItem? {
         val key = name.trim().lowercase(Locale.ROOT)

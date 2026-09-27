@@ -140,7 +140,9 @@ fun RecipeScreen(
     // "I made this" (#116), only behind its flag, like the plan's sheets above.
     photosViewModel: CookedPhotosViewModel? = if (cookedPhotosEnabled) hiltViewModel() else null,
     // "Send as file" (#149): the navigation passes one; null (screen tests) leaves it out.
-    sendFileViewModel: SendFileViewModel? = null
+    sendFileViewModel: SendFileViewModel? = null,
+    // Using up the pantry when cook mode is finished (#147): the pantry is behind the tab flag.
+    useUpViewModel: PantryUseUpViewModel? = if (mealPlanEnabled) hiltViewModel() else null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
@@ -283,6 +285,15 @@ fun RecipeScreen(
     }
     val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState)
 
+    // Cook mode just finished with ingredients ticked (#147): they go to the pantry's use-up sheet.
+    val finished = state.cookFinished
+    LaunchedEffect(finished) {
+        if (finished != null) {
+            useUpViewModel?.onCookFinished(finished.language, finished.lines)
+            viewModel.onCookFinishedHandled()
+        }
+    }
+
     // A full free library (#107): shown, not kept. Stays up until dismissed or unlocked, and
     // comes back after a pending or failed purchase has been explained.
     val notKeptMessage = stringResource(R.string.recipe_not_kept, LibraryLimit.FREE_RECIPES)
@@ -395,6 +406,7 @@ fun RecipeScreen(
             if (groceriesSheetOpen && recipeId != null && groceriesViewModel != null) {
                 AddToGroceriesSheet(groceriesViewModel, onDismiss = { groceriesSheetOpen = false })
             }
+            if (useUpViewModel != null) PantryUseUpUi(useUpViewModel, snackbarHostState)
         }
     }
 }

@@ -583,16 +583,25 @@ class RecipeViewModel @Inject constructor(
             // Next unfinished step after this one, else the earliest one skipped, else finished.
             val next = (cook.currentStep + 1 until count).firstOrNull { it !in done }
                 ?: (0 until count).firstOrNull { it !in done }
-            state.copy(
-                cook = if (next != null) {
-                    cook.copy(doneSteps = done, currentStep = next)
-                } else {
-                    cook.copy(doneSteps = done, active = false)
-                }
-            )
+            if (next != null) {
+                state.copy(cook = cook.copy(doneSteps = done, currentStep = next))
+            } else {
+                // The end of cooking (#147): what was ticked goes to the pantry's use-up sheet.
+                // A finished run finishes again only after starting fresh, so once per cook.
+                state.copy(cook = cook.copy(doneSteps = done, active = false), cookFinished = finished(content, state.checkedIngredients))
+            }
         }
         saveCook()
     }
+
+    /** The ticked lines as shown, for using up the pantry (#147); null when nothing is ticked. */
+    private fun finished(content: RecipeContent.Success, ticked: Set<Int>): FinishedCook? {
+        val lines = ticked.sorted().mapNotNull { content.ingredients.getOrNull(it) }
+        return if (lines.isEmpty()) null else FinishedCook(content.words?.language, lines)
+    }
+
+    /** The screen has handed [RecipeUiState.cookFinished] on. */
+    fun onCookFinishedHandled() = _uiState.update { it.copy(cookFinished = null) }
 
     private fun updateCook(change: (CookState) -> CookState) {
         _uiState.update { it.copy(cook = change(it.cook)) }

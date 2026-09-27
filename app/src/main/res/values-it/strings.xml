@@ -346,6 +346,20 @@
     <string name="action_done_shopping">Spesa fatta</string>
     <string name="put_away_intro">Spunta cosa va in dispensa. Tutto ciò che è spuntato esce dalla lista.</string>
     <string name="action_put_away">Metti via e rimuovi</string>
+    <!-- Using up the pantry when cook mode is finished (#147). -->
+    <string name="use_up_title">Aggiorna la dispensa</string>
+    <string name="use_up_intro">Cosa hai usato, dagli ingredienti spuntati. Togli la spunta a ciò che non va.</string>
+    <string name="use_up_change">%1$s → %2$s</string>
+    <string name="use_up_used_up">%1$s → finito, nella lista della spesa</string>
+    <string name="use_up_cant_work_out">Impossibile calcolare quanto è stato usato</string>
+    <string name="use_up_keep">Lascia</string>
+    <string name="use_up_low">Sta finendo</string>
+    <string name="use_up_out">Finito</string>
+    <string name="action_use_up">Aggiorna dispensa</string>
+    <string name="snackbar_pantry_used_up">Dispensa aggiornata</string>
+    <string name="cd_use_up_change">%1$s, da %2$s a %3$s</string>
+    <string name="cd_use_up_used_up">%1$s, da %2$s a finito; va nella lista della spesa</string>
+    <string name="cd_use_up_choice">%1$s: %2$s</string>
     <string name="aisle_produce">Frutta e verdura</string>
     <string name="aisle_meat">Carne</string>
     <string name="aisle_seafood">Pesce</string>

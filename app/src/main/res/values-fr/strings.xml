@@ -346,6 +346,20 @@
     <string name="action_done_shopping">Courses terminées</string>
     <string name="put_away_intro">Cochez ce qui va au garde-manger. Tous les articles cochés quittent la liste.</string>
     <string name="action_put_away">Ranger et retirer</string>
+    <!-- Using up the pantry when cook mode is finished (#147). -->
+    <string name="use_up_title">Mettre à jour le garde-manger</string>
+    <string name="use_up_intro">Ce que vous avez utilisé, d\'après les ingrédients cochés. Décochez ce qui ne va pas.</string>
+    <string name="use_up_change">%1$s → %2$s</string>
+    <string name="use_up_used_up">%1$s → épuisé, ajouté à la liste de courses</string>
+    <string name="use_up_cant_work_out">Impossible de calculer la quantité utilisée</string>
+    <string name="use_up_keep">Garder</string>
+    <string name="use_up_low">Presque fini</string>
+    <string name="use_up_out">Épuisé</string>
+    <string name="action_use_up">Mettre à jour</string>
+    <string name="snackbar_pantry_used_up">Garde-manger mis à jour</string>
+    <string name="cd_use_up_change">%1$s, de %2$s à %3$s</string>
+    <string name="cd_use_up_used_up">%1$s, de %2$s à épuisé ; ajouté à la liste de courses</string>
+    <string name="cd_use_up_choice">%1$s : %2$s</string>
     <string name="aisle_produce">Fruits et légumes</string>
     <string name="aisle_meat">Viande</string>
     <string name="aisle_seafood">Poisson et fruits de mer</string>

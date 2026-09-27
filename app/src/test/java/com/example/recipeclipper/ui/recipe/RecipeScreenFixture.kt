@@ -50,7 +50,9 @@ class RecipeScreenFixture(
     /** Set to turn "I made this" (#116) on, with these as the photos. */
     val photos: com.example.recipeclipper.fake.FakeCookedPhotoRepository? = null,
     /** Set to show "Send as file" (#149), as the navigation does. */
-    val sendFile: com.example.recipeclipper.ui.sharefile.SendFileViewModel? = null
+    val sendFile: com.example.recipeclipper.ui.sharefile.SendFileViewModel? = null,
+    /** Set to use up this pantry when cook mode is finished (#147), as behind the tab flag. */
+    val pantry: FakePantryRepository? = null
 ) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
@@ -91,11 +93,13 @@ class RecipeScreenFixture(
         )
         val saveViewModel = SaveToListViewModel(lists)
         // Behind the flag both menu items show, so both sheets need a ViewModel (not Hilt's).
-        val flagOn = plan != null || groceries != null
+        val flagOn = plan != null || groceries != null || pantry != null
         val planViewModel = if (flagOn) AddToPlanViewModel(plan ?: FakeMealPlanRepository(), FakePlanCalendar()) else null
         val groceriesViewModel =
             if (flagOn) AddToGroceriesViewModel(groceries ?: FakeGroceryRepository(), preferences, FakePantryRepository()) else null
         photosViewModel = photos?.let { CookedPhotosViewModel(it) }
+        val useUpViewModel =
+            if (flagOn) PantryUseUpViewModel(pantry ?: FakePantryRepository(), groceries ?: FakeGroceryRepository()) else null
         compose.setContent {
             RecipeScreen(
                 onBack = { backs++ },
@@ -107,7 +111,8 @@ class RecipeScreenFixture(
                 groceriesViewModel = groceriesViewModel,
                 cookedPhotosEnabled = photosViewModel != null,
                 photosViewModel = photosViewModel,
-                sendFileViewModel = sendFile
+                sendFileViewModel = sendFile,
+                useUpViewModel = useUpViewModel
             )
         }
         compose.waitForIdle()
