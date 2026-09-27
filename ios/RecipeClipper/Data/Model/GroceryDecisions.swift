@@ -90,9 +90,32 @@ enum GroceryDecisions {
     /// The text Groceries shows for `item`: its core once its trailing text is definitely junk,
     /// else as written (a note still shows). Display only: the stored line is never rewritten.
     static func shownText(_ item: GroceryItem, decisions: Decisions) -> String {
-        guard let words = LanguageWords.forTag(item.language),
-              let split = split(item.text, words: words, decisions: decisions) else { return item.text }
-        return decisions.junkTrailing(split.trailing, language: words.language) ? split.core : item.text
+        withoutJunk(item.text, words: LanguageWords.forTag(item.language), decisions: decisions)
+    }
+
+    /// A recipe's ingredient `line` as shown (#174), exactly as Groceries shows a line
+    /// (`shownText`): its core once its trailing text is definitely junk, else as written. A
+    /// heading ("For the sauce:") is never cut. Display only: the stored line is never rewritten.
+    static func shownLine(_ line: String, words: LanguageWords?, decisions: Decisions) -> String {
+        GrocerySources.buyable(line) ? withoutJunk(line, words: words, decisions: decisions) : line
+    }
+
+    private static func withoutJunk(_ text: String, words: LanguageWords?, decisions: Decisions) -> String {
+        guard let words, let split = split(text, words: words, decisions: decisions) else { return text }
+        return decisions.junkTrailing(split.trailing, language: words.language) ? split.core : text
+    }
+
+    /// The questions that can hide junk in a recipe's ingredient `lines` (#174), the ones Groceries
+    /// asks about its own (`nameQuestion`, then the trailing text), headings left out. Empty for a
+    /// language with no words.
+    static func junkQuestions(_ lines: [String], words: LanguageWords?, decisions: Decisions) -> [DecisionQuestion] {
+        guard let words else { return [] }
+        let buyable = lines.filter(GrocerySources.buyable)
+        var out: [DecisionQuestion] = []
+        let asked = buyable.compactMap { nameQuestion($0, words: words) }
+            + buyable.compactMap { trailingQuestion($0, words: words, decisions: decisions) }
+        for q in asked where !out.contains(q) { out.append(q) }
+        return out
     }
 
     /// The name questions worth asking (`nameQuestion`) for `items`.
@@ -136,11 +159,15 @@ enum GroceryDecisions {
         var out: [DecisionQuestion] = []
         for item in items {
             guard let words = LanguageWords.forTag(item.language),
-                  let split = split(item.text, words: words, decisions: decisions) else { continue }
-            let q = DecisionQuestion.trailingText(split.trailing, language: words.language)
+                  let q = trailingQuestion(item.text, words: words, decisions: decisions) else { continue }
             if !out.contains(q) { out.append(q) }
         }
         return out
+    }
+
+    /// The trailing-text question for `line`, if it has trailing text (`split`).
+    private static func trailingQuestion(_ line: String, words: LanguageWords, decisions: Decisions) -> DecisionQuestion? {
+        split(line, words: words, decisions: decisions).map { .trailingText($0.trailing, language: words.language) }
     }
 
     /// Where the table puts `line`'s core once the model's answers cut it and judge the trailing

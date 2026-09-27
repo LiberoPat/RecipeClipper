@@ -53,4 +53,9 @@ final class FakeDecisionRepository: DecisionRepository {
             subject.send(Decisions(answers: cached))
         }
     }
+
+    /// Answers that land later, as from another screen or a model that answers only now.
+    func answer(_ landed: [DecisionQuestion: String]) {
+        lock.withLock { subject.send(Decisions(answers: subject.value.answers.merging(landed) { $1 })) }
+    }
 }

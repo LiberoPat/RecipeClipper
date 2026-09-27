@@ -125,6 +125,36 @@ final class GroceryDecisionsTests: XCTestCase {
         XCTAssertEqual(GroceryDecisions.trailingTexts(list, decisions: named), [trailing("dfsafs")])
     }
 
+    // A recipe's lines (#174): the same questions, and the same text shown.
+
+    func testARecipesLinesAreAskedAboutAsGroceriesAsksHeadingsLeftOut() {
+        let lines = ["2 eggs (dfsafs -", "2 onions dfsafs", "For the sauce (dfsafs -:", "2 eggs (about 100 g)", "1 cup milk"]
+        XCTAssertEqual(
+            GroceryDecisions.junkQuestions(lines, words: .english, decisions: .none), [name("2 onions dfsafs"), trailing("(dfsafs -")]
+        )
+        let named = Decisions(answers: [name("2 onions dfsafs"): "onions"])
+        XCTAssertEqual(
+            GroceryDecisions.junkQuestions(lines, words: .english, decisions: named),
+            [name("2 onions dfsafs"), trailing("(dfsafs -"), trailing("dfsafs")]
+        )
+        XCTAssertTrue(GroceryDecisions.junkQuestions(lines, words: nil, decisions: .none).isEmpty)
+        XCTAssertTrue(GroceryDecisions.junkQuestions(["卵 2個 (dfsafs -"], words: LanguageWords.forTag("ja"), decisions: .none).isEmpty)
+    }
+
+    func testARecipeLineShowsAsTheSameGroceryLineDoes() {
+        let d = Decisions(answers: [trailing("(dfsafs -"): "junk", trailing(", beaten"): "note", trailing("(dfsafs -:"): "junk"])
+        for line in ["2 eggs (dfsafs -", "2 eggs, beaten", "2 eggs"] {
+            let item = GroceryItem(id: 1, text: line, language: "en", aisle: .dairy, checked: false, sortOrder: 0)
+            XCTAssertEqual(GroceryDecisions.shownLine(line, words: .english, decisions: d), GroceryDecisions.shownText(item, decisions: d))
+        }
+        XCTAssertEqual(GroceryDecisions.shownLine("2 eggs (dfsafs -", words: .english, decisions: d), "2 eggs")
+        XCTAssertEqual(
+            GroceryDecisions.shownLine("For the eggs (dfsafs -:", words: .english, decisions: d), "For the eggs (dfsafs -:",
+            "a heading is never cut"
+        )
+        XCTAssertEqual(GroceryDecisions.shownLine("2 eggs (dfsafs -", words: nil, decisions: d), "2 eggs (dfsafs -")
+    }
+
     func testANamedJunkLineIsFiledByItsIngredientWhicheverAnswerLandsLast() {
         let list = items(("2 onions dfsafs", .other))
         let d = Decisions(answers: [name("2 onions dfsafs"): "onions", trailing("dfsafs"): "junk"])
