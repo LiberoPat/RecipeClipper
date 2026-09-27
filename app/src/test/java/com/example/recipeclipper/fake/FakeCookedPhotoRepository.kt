@@ -31,6 +31,15 @@ class FakeCookedPhotoRepository(var today: Long = 20_000L) : CookedPhotoReposito
     override suspend fun add(recipeId: Long, sources: List<String>): List<CookedPhoto> =
         sources.filterNot { it.startsWith("bad") }.map { photo(recipeId) }
 
+    /** A cooking marked with no photo (#173): no file, no path, no picture. */
+    fun mark(recipeId: Long, day: Long = today, note: String? = null): CookedPhoto {
+        val id = nextId++
+        return CookedPhoto(id, recipeId, null, null, day, note, id, id, "uid-$id", hasPicture = false)
+            .also { photos.value = photos.value + it }
+    }
+
+    override suspend fun markCooked(recipeId: Long): CookedPhoto = mark(recipeId)
+
     override suspend fun edit(id: Long, day: Long, note: String?) {
         edits += Triple(id, day, note)
         photos.value = photos.value.map { if (it.id == id) it.copy(day = day, note = CookedPhoto.cleanNote(note)) else it }
@@ -47,7 +56,7 @@ class FakeCookedPhotoRepository(var today: Long = 20_000L) : CookedPhotoReposito
     }
 
     override suspend fun forget(photos: List<CookedPhoto>) {
-        forgotten += photos.map { it.fileName }
+        forgotten += photos.mapNotNull { it.fileName }
     }
 
     override suspend fun sweep() {

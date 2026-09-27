@@ -137,7 +137,8 @@ data class ImportPlan(
  * - **Photos of the user's own cooking** (#116) come in unless their uid is already here, and
  *   only with their picture ([availablePhotoFiles]); a photo without one is left out. A recipe
  *   with a photo coming in comes in like a listed one (the cull never removes it), and one here
- *   with photos counts as listed.
+ *   with photos counts as listed. A cooking marked with no photo (#173) is the same, needing no
+ *   picture.
  */
 object BackupMerger {
 
@@ -252,8 +253,10 @@ object BackupMerger {
         newByUrl.values.filter { it.contentOrigin == "MANUAL" }.mapTo(listedTargets) { Target.New(it.id) }
         // And one with the user's own photos (#116): only the recipe can hold them.
         val takenPhotoUids = existingCookedPhotoUids.toMutableSet()
+        // A cooking marked with no photo (#173) needs no picture.
         val incomingPhotos = backup.cookedPhotos.filter { photo ->
-            (availablePhotoFiles == null || photo.file in availablePhotoFiles) && takenPhotoUids.add(photo.id)
+            (photo.file == null || availablePhotoFiles == null || photo.file in availablePhotoFiles) &&
+                takenPhotoUids.add(photo.id)
         }
         incomingPhotos.mapNotNullTo(listedTargets) { recipeTargets[it.recipeId] }
         val unlistedHere = existingRecipes.count { !it.isListed && Target.Existing(it.id) !in listedTargets }
@@ -368,7 +371,7 @@ object BackupMerger {
                 mealsAdded = newPlanEntries.size,
                 mealTypesAdded = newTypesByName.size,
                 menusAdded = newMenus.size,
-                photosAdded = newCookedPhotos.size,
+                photosAdded = newCookedPhotos.count { it.photo.file != null },
                 freeLimit = historyLimit.takeIf { countsEveryRecipe && skipped > 0 }
             ),
             newPantry = newPantry,

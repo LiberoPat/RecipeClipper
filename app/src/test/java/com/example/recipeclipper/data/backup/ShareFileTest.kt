@@ -85,6 +85,22 @@ class ShareFileTest {
         assertTrue(file.lists.isEmpty() && file.memberships.isEmpty() && file.cookedPhotos.isEmpty())
     }
 
+    /** A shared file carries no cooked entries (#116, #173); any a file holds, with a photo or without, never merge. */
+    @Test
+    fun `cooked entries in a shared file are never merged, with a photo or without`() {
+        val file = ShareFile.make(9, listOf(recipe("a"))).copy(
+            cookedPhotos = listOf(
+                BackupCookedPhoto("p", "a", 20_000, null, 1, 1, "photos/p.jpg"),
+                BackupCookedPhoto("c", "a", 20_001, "Mine", 1, 1, null)
+            )
+        )
+        val received = decodeOrFail(BackupJson.encode(file))
+        assertEquals(2, received.cookedPhotos.size)
+
+        val chosen = ShareFile.chosen(received, ShareChoice(recipeIds = setOf("a"), groceryIds = emptySet()), now = 50)
+        assertTrue(chosen.cookedPhotos.isEmpty())
+    }
+
     @Test
     fun `only what was ticked is merged, each new to this phone`() {
         val file = ShareFile.make(9, listOf(recipe("a"), recipe("b")), listOf(grocery("g1", "a"), grocery("g2", "b")))

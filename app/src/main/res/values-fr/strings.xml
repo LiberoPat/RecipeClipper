@@ -502,6 +502,11 @@
     <string name="cooked_add_failed">Impossible d\'ajouter cette photo.</string>
     <string name="camera_unavailable">Aucune application d\'appareil photo disponible.</string>
     <string name="cooked_photo_missing">Photo absente de ce téléphone</string>
+    <string name="action_mark_cooked">Marquer comme cuisinée</string>
+    <string name="cooked_mark">Cuisinée</string>
+    <string name="cd_cooked_mark">Cuisinée, sans photo, %1$s</string>
+    <string name="cd_delete_cooked_mark">Retirer de vos réalisations</string>
+    <string name="cooked_mark_deleted">Retiré de vos réalisations</string>
     <string name="delete_recipe_body_photo">La recette sera retirée de l\'historique et de toutes les listes où elle figure, avec votre photo. Cette action est irréversible.</string>
     <string name="delete_recipe_body_photos">La recette sera retirée de l\'historique et de toutes les listes où elle figure, avec vos %1$d photos. Cette action est irréversible.</string>
     <!-- The automatic backup copy (#150). -->
