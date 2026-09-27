@@ -418,10 +418,12 @@ or the calls will fail as "not mocked".
     `RecipeCookedPhotosScreenTest` (Robolectric). `MigrationTest.migration13To14…` on the
     device.
   - iOS: `CookedPhotoTests` (real SQLite, ImageIO downscaling, the zip round trip),
-    `BackupArchiveTests` and `CookedPhotosViewModelTests`, and one UI test,
-    `CookedPhotosUITests` (the section behind its flag, camera or library; the camera, or
-    the no-camera alert, opens and closes without adding a photo). The simulator's virtual
-    camera never captures, so no iOS UI test reaches the full-screen viewer with a photo.
+    `BackupArchiveTests` and `CookedPhotosViewModelTests`, and `CookedPhotosUITests` (the
+    section behind its flag; the camera, or the no-camera alert, opens and closes without
+    adding a photo, since the simulator's virtual camera never captures). A photo from the
+    library, one of the simulator's own samples picked in the real picker, opens full screen;
+    with the software keyboard up for its note, the note and × are hittable and × closes it
+    (#180). The software keyboard shows unless Simulator connects a hardware one (I/O menu).
   - "Mark as cooked" (#173): a cooking with no photo in `CookedPhotoDaoTest` / `CookedPhotoTests`
     (no file, the sort, the cull, the cascade, the sweep; the plain-JSON round trip in
     `CookedPhotoBackupTest` / `CookedPhotoTests`), `CookedPhotosViewModelTest(s)` (it opens,
@@ -430,10 +432,11 @@ or the calls will fail as "not mocked".
     `RecipeCookedPhotosScreenTest` (the menu item, the entry, its labels and delete, the recipe
     delete counting photos only) and `PantryUseUpScreenTest` (the sheet once, then a photo not
     offered it again). `MigrationTest.migration14To15…` on the device. iOS's
-    `CookedPhotosUITests` marks one and reaches the full-screen entry, since no camera is needed.
+    `CookedPhotosUITests` marks one, types its note and puts the keyboard away with Done.
 - **By hand, on a phone:**
   - Take a photo in portrait and landscape; it should stay upright in the gallery and full
-    screen.
+    screen. On iOS the new photo's viewer opens only once the camera has gone, with × below
+    the status bar (#180; the simulator can't try the camera path).
   - Pick several photos from the library, including a HEIC on iOS.
   - On iOS, in the full-screen viewer: write a note, change the date, close and reopen (both
     kept), then Delete and Undo.
@@ -534,8 +537,7 @@ in `+MealPlan.swift`). What they need from outside the app:
   Man.heic`), which each script converts: Android pushes it to `/data/local/tmp` and the test hands
   it back as the Photo Picker's answer (an `ActivityMonitor`; the picker itself can't be driven);
   iOS adds it to the simulator's Photos (`simctl addmedia`, through BMP so it has no capture date
-  and sorts first) and the test picks it in the real picker. The iOS clip ends on the photo's
-  viewer: its × sits under the status bar and doesn't close it (#180).
+  and sorts first) and the test picks it in the real picker.
 - **The received file** is `shared/fixtures/backup/share-v1.recipeclipper`, pushed to
   `/data/local/tmp` and opened with a VIEW intent through the app's FileProvider; iOS opens its
   canned file with `-uiTestReceiveFile`. A pasted list is put on the clipboard by the test

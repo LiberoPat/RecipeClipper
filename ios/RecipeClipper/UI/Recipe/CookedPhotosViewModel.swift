@@ -57,7 +57,7 @@ final class CookedPhotosViewModel: Identifiable {
             }
     }
 
-    /// Pictures from PhotosPicker or the camera: each becomes an entry, cooked today.
+    /// Pictures from the library or the camera: each becomes an entry, cooked today.
     func onAdd(_ pictures: [Data]) {
         guard let recipeId, !pictures.isEmpty else { return }
         uiState.adding = true
