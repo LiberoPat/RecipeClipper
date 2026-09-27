@@ -13,8 +13,24 @@ struct CookedPhotoViewer: View {
     @FocusState private var typingNote: Bool
 
     var body: some View {
+        // A stack only so the keyboard's toolbar has somewhere to live; its bar stays hidden.
+        NavigationStack {
+            content
+                .toolbar(.hidden, for: .navigationBar)
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button(Strings.done) { typingNote = false }
+                            .tint(Palette.primary)
+                            .accessibilityIdentifier("cooked.noteDone")
+                    }
+                }
+        }
+    }
+
+    private var content: some View {
         let date = PlanDayFormat.fullDate(photo.day)
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             HStack {
                 Button { vm.onClose() } label: { Image(systemName: "xmark") }
                     .accessibilityLabel(Strings.closePhoto)
@@ -70,13 +86,5 @@ struct CookedPhotoViewer: View {
             .readableColumn()
         }
         .screenBackground()
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(Strings.done) { typingNote = false }
-                    .tint(Palette.primary)
-                    .accessibilityIdentifier("cooked.noteDone")
-            }
-        }
     }
 }
