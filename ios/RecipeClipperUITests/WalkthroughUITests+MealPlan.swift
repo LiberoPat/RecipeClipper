@@ -104,12 +104,14 @@ extension WalkthroughUITests {
         pause(2.5)
     }
 
-    /// Junk after a grocery line's ingredient (#132), judged by the model (simulated, as above):
-    /// the recipe keeps "2 eggs dfsafs" as written; Groceries shows "2 eggs".
+    /// Junk after an ingredient (#132, #174), judged by the model (simulated, as above): the
+    /// recipe and Groceries both show "2 eggs dfsafs" as "2 eggs"; the stored line is unchanged.
     func test12_groceriesJunkHidden() {
         start(flags: ["mealPlan", "aiDecisions"])
         open("Banana Bread")
-        require(textContaining("2 eggs dfsafs"), "the line as written")
+        // The answers land in the background; then the line shows without its junk.
+        requireGone(textContaining("2 eggs dfsafs"), "the junk")
+        require(textContaining("2 eggs"), "the line without its junk")
         pause(2.5)
         recipeMenu("Add to groceries")
         pause(1.5)
