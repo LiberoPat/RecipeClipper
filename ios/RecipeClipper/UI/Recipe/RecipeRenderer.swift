@@ -1,15 +1,16 @@
 import Foundation
 
 /// Turns a recipe into what the reading view and cook mode show (#169; Android's
-/// `RecipeRenderer`): the ingredients scaled and converted, the steps with their oven
-/// temperatures converted, each step's timer, the amounts inside steps (#101) and Chef mode's
-/// short steps (#100). Pure: the same inputs always render the same, with no state or tasks, so
+/// `RecipeRenderer`): the ingredients without the junk the model decided (#174), scaled and
+/// converted, the steps with their oven temperatures converted, each step's timer, the amounts
+/// inside steps (#101) and Chef mode's short steps (#100). Pure: the same inputs always render the same, with no state or tasks, so
 /// the ViewModel only decides when to render. Pinned to the Kotlin by the `Render` rows of
 /// `DifferentialCorpusTests`.
 enum RecipeRenderer {
 
     /// What a recipe renders under: the user's global defaults (see `RecipeUiState`) and the
-    /// on-device model's decided count brackets (#104), `.none` until one lands.
+    /// on-device model's decisions (#104: count brackets, and junk after an ingredient, #174),
+    /// `.none` until one lands.
     struct Settings: Equatable {
         var unitSystem: UnitSystem = .asWritten
         var convertLiquids = false
@@ -72,7 +73,8 @@ enum RecipeRenderer {
         return withStepAmounts(content, on: settings.amountsInSteps)
     }
 
-    // Scale first, then convert, so a converted amount always matches the chosen servings.
+    // Junk hidden first (#174), then scaled, then converted, so a converted amount always matches
+    // the chosen servings. Every line stays at its index, so ticks never shift.
     static func ingredients(
         _ recipe: Recipe, words: LanguageWords?, servings: ServingsScale?, settings: Settings
     ) -> [String] {

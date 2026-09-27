@@ -101,4 +101,56 @@ final class RecipeRendererTests: XCTestCase {
         XCTAssertNotEqual(asToday.ingredients, decided.ingredients)
         XCTAssertEqual(decided.ingredients, ["6 large apples, peeled and sliced (about 6 cups)"])
     }
+
+    // Junk after an ingredient (#174), decided as Groceries decides it.
+    private let junk = Decisions(answers: [
+        .trailingText("(dfsafs -", language: "en"): "junk",
+        .ingredientName("2 onions dfsafs", language: "en"): "onions",
+        .trailingText("dfsafs", language: "en"): "junk",
+        .trailingText(", beaten", language: "en"): "note",
+    ])
+
+    func testJunkTheModelDecidedIsHiddenAtASeparatorOrAfterItsNameAndANoteStays() {
+        let lines = ["2 eggs (dfsafs -", "2 onions dfsafs", "2 eggs, beaten", "1 cup sugar"]
+        let shown = RecipeRenderer.content(recipe(ingredients: lines), settings: RecipeRenderer.Settings(decisions: junk))
+
+        XCTAssertEqual(shown.ingredients, ["2 eggs", "2 onions", "2 eggs, beaten", "1 cup sugar"])
+        XCTAssertEqual(shown.recipe.ingredients, lines, "the stored lines are never rewritten")
+    }
+
+    func testTheRestOfALineWithJunkHiddenStillScalesAndConverts() throws {
+        var settings = metric
+        settings.decisions = junk
+        let shown = RecipeRenderer.content(recipe(target: 8, ingredients: ["1 cup flour (dfsafs -", "2 onions dfsafs"]), settings: settings)
+
+        XCTAssertEqual(shown.ingredients, ["240 g flour", "4 onions"])
+        XCTAssertEqual(try XCTUnwrap(RecipeRenderer.withServings(shown, target: 16, settings: settings)).ingredients, ["480 g flour", "8 onions"])
+    }
+
+    func testTextHoldingADigitAHeadingUnsureOrNoDecisionsShowAsWritten() {
+        let lines = ["2 eggs (dfsafs 2 -", "For the eggs (dfsafs -:", "3 eggs (dfsafs -"]
+        let unsure = Decisions(answers: [.trailingText("(dfsafs -", language: "en"): "unsure"])
+        var all: [DecisionQuestion: String] = [:]
+        for text in ["(dfsafs 2 -", "(dfsafs -:", "(dfsafs -"] { all[.trailingText(text, language: "en")] = "junk" }
+
+        for decisions in [Decisions.none, unsure] {
+            XCTAssertEqual(RecipeRenderer.content(recipe(ingredients: lines), settings: RecipeRenderer.Settings(decisions: decisions)).ingredients, lines)
+        }
+        XCTAssertEqual(
+            RecipeRenderer.content(recipe(ingredients: lines), settings: RecipeRenderer.Settings(decisions: Decisions(answers: all))).ingredients,
+            ["2 eggs (dfsafs 2 -", "For the eggs (dfsafs -:", "3 eggs"],
+            "only the ingredient line whose junk holds no digit loses it"
+        )
+    }
+
+    func testJunkIsNeverCutInALanguageWrittenWithoutSpacesOrWithNoWords() {
+        var ja = recipe(ingredients: ["卵 2個 (dfsafs -"])
+        ja.language = "ja"
+        let decided = Decisions(answers: [.trailingText("(dfsafs -", language: "ja"): "junk"])
+        XCTAssertEqual(RecipeRenderer.content(ja, settings: RecipeRenderer.Settings(decisions: decided)).ingredients, ja.ingredients)
+
+        var zz = recipe(ingredients: ["2 eggs (dfsafs -"])
+        zz.language = "zz"
+        XCTAssertEqual(RecipeRenderer.content(zz, settings: RecipeRenderer.Settings(decisions: junk)).ingredients, zz.ingredients)
+    }
 }
