@@ -17,12 +17,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** The real, `SharedPreferences`-backed [AppPreferences] and [TourPreferences]. The ViewModel
- *  only ever sees an interface, never the `Context` inside this. */
+/** The real, `SharedPreferences`-backed [AppPreferences], [TourPreferences] and [UseUpLog]. The
+ *  ViewModel only ever sees an interface, never the `Context` inside this. */
 @Singleton
 class SharedPrefsAppPreferences @Inject constructor(
     @ApplicationContext context: Context
-) : AppPreferences, TourPreferences {
+) : AppPreferences, TourPreferences, UseUpLog {
 
     // The file keeps its original name: renaming it would strand every existing user's
     // saved unit choice for no gain.
@@ -119,7 +119,14 @@ class SharedPrefsAppPreferences @Inject constructor(
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }.conflate().distinctUntilChanged()
 
+    override var useUps: Map<Long, Long>
+        get() = UseUpLog.decode(prefs.getString(KEY_USE_UP, null))
+        set(value) {
+            prefs.edit { if (value.isEmpty()) remove(KEY_USE_UP) else putString(KEY_USE_UP, UseUpLog.encode(value)) }
+        }
+
     private companion object {
+        const val KEY_USE_UP = "pantry_use_up"
         const val KEY_WELCOME = "tour_welcome"
         const val KEY_SAMPLE_ADDED = "tour_sample_added"
         const val KEY_SYSTEM = "unit_system"

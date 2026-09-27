@@ -20,13 +20,15 @@ internal class CookedPhotosUi(val count: Int, val section: @Composable () -> Uni
 /**
  * The recipe screen's side of "I made this" (#116): the section, the full-screen photo, and the
  * snackbars (a picture that couldn't be added, no camera app, Undo for a deleted photo). Null
- * while the flag is off (no ViewModel) or before the recipe has loaded.
+ * while the flag is off (no ViewModel) or before the recipe has loaded. [onMadeThis] runs once
+ * a photo just added has been closed: the recipe was cooked (#147).
  */
 @Composable
 internal fun cookedPhotosUi(
     viewModel: CookedPhotosViewModel?,
     content: RecipeContent,
-    snackbarHostState: SnackbarHostState
+    snackbarHostState: SnackbarHostState,
+    onMadeThis: () -> Unit = {}
 ): CookedPhotosUi? {
     if (viewModel == null || content !is RecipeContent.Success) return null
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -43,6 +45,12 @@ internal fun cookedPhotosUi(
         if (state.addFailed) {
             viewModel.onAddFailedShown()
             snackbarHostState.showSnackbar(addFailed)
+        }
+    }
+    LaunchedEffect(state.madeThis) {
+        if (state.madeThis) {
+            onMadeThis()
+            viewModel.onMadeThisHandled()
         }
     }
     val deletedMessage = stringResource(R.string.cooked_photo_deleted)

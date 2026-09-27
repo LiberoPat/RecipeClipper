@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.PantryItem
+import com.example.recipeclipper.fake.FakeCookedPhotoRepository
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import org.junit.Assert.assertEquals
@@ -22,7 +24,8 @@ import org.junit.runner.RunWith
 /**
  * Finishing cook mode with ingredients ticked (#147) opens "Update the pantry" over the reading
  * view: the worked-out change ticked and read aloud without the arrow, the one that can't be
- * worked out as keep / running low / out, one button, one Undo.
+ * worked out as keep / running low / out, one button, one Undo. Adding a photo with "I made
+ * this" (#116) opens it too, once per cooking.
  */
 @RunWith(AndroidJUnit4::class)
 class PantryUseUpScreenTest {
@@ -87,5 +90,54 @@ class PantryUseUpScreenTest {
 
         assertEquals(listOf(milk, flour), pantry.items.value)
         compose.onNodeWithText("Pantry updated").assertDoesNotExist()
+    }
+
+    /** "I made this" (#116): the photo just added opens for its note; closing it offers the sheet. */
+    private fun addAPhoto(fixture: RecipeScreenFixture) {
+        compose.runOnIdle { fixture.photosViewModel!!.onAdd(listOf("content://dinner")) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Close").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Update the pantry").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun addingAPhotoWithNothingTickedOffersEveryLine() {
+        val photos = RecipeScreenFixture(groceries = groceries, pantry = pantry, photos = FakeCookedPhotoRepository())
+        photos.show(compose)
+        addAPhoto(photos)
+
+        compose.onNodeWithText("Update the pantry").assertIsDisplayed()
+        compose.onNodeWithContentDescription("milk, from 4 cups to 3 cups").assertIsOn()
+        compose.onNodeWithContentDescription("flour: Keep").assertIsSelected()
+        compose.onNodeWithTag("useUpButton").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("3 cups", null), pantry.items.value.map { it.quantity })
+
+        // A second photo of the same dinner isn't offered it again.
+        addAPhoto(photos)
+        compose.onNodeWithText("Update the pantry").assertDoesNotExist()
+        assertEquals(listOf("3 cups", null), pantry.items.value.map { it.quantity })
+    }
+
+    @Test
+    fun aPhotoAfterFinishingCookModeIsNotOfferedTheSheetAgain() {
+        val cooked = RecipeScreenFixture(
+            recipe = RecipeScreenFixture.testRecipe().copy(checkedIngredients = setOf(0, 1)),
+            groceries = groceries,
+            pantry = pantry,
+            photos = FakeCookedPhotoRepository()
+        )
+        cooked.show(compose)
+        compose.onNodeWithText("Start cooking").performClick()
+        repeat(3) { compose.onNodeWithText("Done — next step").performClick() }
+        compose.onNodeWithText("Done — finish").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("useUpButton").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        addAPhoto(cooked)
+        compose.onNodeWithText("Update the pantry").assertDoesNotExist()
+        assertEquals(listOf("3 cups", null), pantry.items.value.map { it.quantity })
     }
 }

@@ -26,6 +26,7 @@ import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
+import com.example.recipeclipper.fake.FakeUseUpLog
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.AddToPlanViewModel
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
@@ -64,6 +65,9 @@ class RecipeScreenFixture(
     }
     val preferences = FakeAppPreferences()
 
+    /** When the pantry's use-up sheet was last settled, per recipe (#147). */
+    val useUpLog = FakeUseUpLog()
+
     /** Wall-clock milliseconds as the ViewModel sees them. Written by the test thread, read on main. */
     val now = AtomicLong(1_000_000L)
 
@@ -99,7 +103,13 @@ class RecipeScreenFixture(
             if (flagOn) AddToGroceriesViewModel(groceries ?: FakeGroceryRepository(), preferences, FakePantryRepository()) else null
         photosViewModel = photos?.let { CookedPhotosViewModel(it) }
         val useUpViewModel =
-            if (flagOn) PantryUseUpViewModel(pantry ?: FakePantryRepository(), groceries ?: FakeGroceryRepository()) else null
+            if (flagOn) {
+                PantryUseUpViewModel(
+                    pantry ?: FakePantryRepository(), groceries ?: FakeGroceryRepository(), useUpLog, Clock { now.get() }
+                )
+            } else {
+                null
+            }
         compose.setContent {
             RecipeScreen(
                 onBack = { backs++ },
