@@ -35,14 +35,14 @@ struct WhatINeedScreen: View {
                             }
                         }
                         .padding(.top, 18)
-                        ForEach(Array(needs.buy.enumerated()), id: \.offset) { _, row in NeedRowView(row: row) }
+                        ForEach(keyed(needs.buy, "buy"), id: \.id) { NeedRowView(row: $0.row) }
                         if !needs.have.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
                                 SectionHeading(Strings.whatINeedHave).accessibilityAddTraits(.isHeader)
                                 muted(Strings.whatINeedNote)
                             }
                             .padding(.top, 24)
-                            ForEach(Array(needs.have.enumerated()), id: \.offset) { _, row in NeedRowView(row: row) }
+                            ForEach(keyed(needs.have, "have"), id: \.id) { NeedRowView(row: $0.row) }
                         }
                     }
                 } else {
@@ -59,6 +59,12 @@ struct WhatINeedScreen: View {
 
     private func muted(_ text: String) -> some View {
         Text(text).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
+    }
+
+    /// Ids unique across the whole stack, as Android keys them ("buy-0", "have-0"): a lazy stack
+    /// pools every ForEach's ids, so bare offsets in both sections hid the first pantry rows (#185).
+    private func keyed(_ rows: [NeedRow], _ section: String) -> [(id: String, row: NeedRow)] {
+        rows.enumerated().map { ("\(section)-\($0.offset)", $0.element) }
     }
 }
 

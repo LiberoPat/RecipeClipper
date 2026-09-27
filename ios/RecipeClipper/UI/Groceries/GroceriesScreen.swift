@@ -336,8 +336,11 @@ struct AddToGroceriesSheet: View {
                                 .padding(.top, 12)
                                 .padding(.bottom, 2)
                             }
-                            ForEach(Array(source.lines.enumerated()), id: \.offset) { index, line in
-                                let id = SourceLine(source: source.key, index: index)
+                            // Keyed by source too (#185): the stack pools every ForEach's ids, so
+                            // bare offsets hid each recipe's lines after the first recipe's.
+                            ForEach(source.lines.indices.map { SourceLine(source: source.key, index: $0) }, id: \.self) { id in
+                                let index = id.index
+                                let line = source.lines[index]
                                 let ticked = !state.unticked.contains(id)
                                 Button { vm.onToggle(id) } label: {
                                     HStack(spacing: 12) {
