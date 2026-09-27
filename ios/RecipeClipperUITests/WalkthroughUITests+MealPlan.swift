@@ -1,7 +1,7 @@
 import XCTest
 
-/// Walkthroughs 01–05, 11 and 12: the tab bar, Week, Groceries, Pantry, menus, expiry reminders,
-/// and Groceries with the model's (simulated) help.
+/// Walkthroughs 01–05, 11, 12 and 22: the tab bar, Week, Groceries, Pantry, menus, expiry reminders,
+/// and Groceries and a recipe with the model's (simulated) help.
 extension WalkthroughUITests {
 
     func test01_tabsAndWeek() {
@@ -121,5 +121,28 @@ extension WalkthroughUITests {
         tab("Groceries")
         require(line("2 eggs"), "the grocery line")
         pause(3)
+    }
+
+    /// Junk hidden in the recipe itself (#174), judged by the model (simulated, as above): the
+    /// Banana Bread's "2 eggs dfsafs" reads "2 eggs" in the reading view and in cook mode's
+    /// ingredients, while the editor still holds the line as stored.
+    func test22_recipeJunkHidden() {
+        start(flags: ["mealPlan", "aiDecisions"])
+        open("Banana Bread")
+        // The answers land in the background; then the line shows without its junk.
+        requireGone(textContaining("2 eggs dfsafs"), "the junk")
+        require(textContaining("2 eggs"), "the line without its junk")
+        pause(3)
+        recipeMenu("Edit")
+        let stored = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@", "2 eggs dfsafs")).firstMatch
+        require(stored, "the line as stored, in the editor")
+        pause(3)
+        back()
+        require(bookmark, "the recipe")
+        pause()
+        require(app.buttons["Start cooking"]).tap()
+        pause(2)
+        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Ingredients")).firstMatch, "the ingredients bar").tap()
+        pause(3.5)
     }
 }

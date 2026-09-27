@@ -28,6 +28,8 @@ class RecipeUITestCase: XCTestCase {
         case chef
         /// Twenty realistic recipes, each in a list, for the walkthrough videos (#106).
         case walkthrough
+        /// The same, with a stocked pantry and the Adobo's lines on the grocery list.
+        case walkthroughPantry
     }
 
     override func setUp() {

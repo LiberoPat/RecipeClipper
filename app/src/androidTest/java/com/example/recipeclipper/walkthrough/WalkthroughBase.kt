@@ -1,6 +1,10 @@
 package com.example.recipeclipper.walkthrough
 
 import android.Manifest
+import android.accessibilityservice.AccessibilityService
+import android.app.Instrumentation
+import android.content.Intent
+import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
@@ -23,12 +27,16 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.recipeclipper.MainActivity
+import com.example.recipeclipper.data.GroceryRepository
+import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.flags.FeatureFlagStore
 import com.example.recipeclipper.data.local.TourPreferences
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.NewGroceryLine
+import com.example.recipeclipper.data.model.NewPantryItem
 import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.data.model.WelcomeState
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -64,24 +72,50 @@ abstract class WalkthroughBase {
     @Inject lateinit var listDao: ListDao
     @Inject lateinit var flagStore: FeatureFlagStore
     @Inject lateinit var tour: TourPreferences
+    @Inject lateinit var pantryRepository: PantryRepository
+    @Inject lateinit var groceryRepository: GroceryRepository
 
-    private var scenario: ActivityScenario<MainActivity>? = null
+    var scenario: ActivityScenario<MainActivity>? = null
+        private set
 
-    fun start(vararg flags: String) {
+    /** The seeded recipes' ids, by title, and the pantry's, by name. */
+    val recipeIds = mutableMapOf<String, Long>()
+    val pantryIds = mutableMapOf<String, Long>()
+
+    val instrumentation: Instrumentation get() = InstrumentationRegistry.getInstrumentation()
+
+    /**
+     * Seeds, turns [flags] on and opens Home, recording from there. [seeded] false: an empty
+     * library. [firstRun]: the first-run tour (#151) as a fresh install has it, opening on the
+     * welcome; otherwise it is done, so no welcome or tip appears. [kitchen]: the Pantry and
+     * the grocery list of [WalkthroughSeed.pantry] and [WalkthroughSeed.groceries] too.
+     */
+    fun start(
+        vararg flags: String,
+        seeded: Boolean = true,
+        firstRun: Boolean = false,
+        kitchen: Boolean = false
+    ) {
         hilt!!.inject()
         // Expiry reminders ask for notifications; granted up front so no system dialog shows.
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.uiAutomation.grantRuntimePermission(
             instrumentation.targetContext.packageName, Manifest.permission.POST_NOTIFICATIONS
         )
-        runBlocking { seed() }
+        runBlocking {
+            if (seeded) seed()
+            if (kitchen) stockTheKitchen()
+        }
         flags.forEach { flagStore.setOverride(it, true) }
-        // The first-run tour (#151) done, so no welcome or tip appears in a video.
-        tour.welcome = WelcomeState.SEEN
-        Tip.entries.forEach { tour.setTipSeen(it, true) }
+        if (!firstRun) {
+            tour.welcome = WelcomeState.SEEN
+            Tip.entries.forEach { tour.setTipSeen(it, true) }
+        }
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        waitFor(hasText("Recipe URL"))
-        shell("screenrecord --bit-rate 6000000 $VIDEO")
+        waitFor(hasText(if (firstRun) "Next" else "Recipe URL"))
+        // Two-thirds size: the script scales every clip to 1280 high anyway, and a smaller frame
+        // keeps the emulator's encoder up with the screen on a busy machine (at full size it fell
+        // behind and lost the ends of clips).
+        shell("screenrecord --bit-rate 6000000 --size 720x1616 $VIDEO")
         Thread.sleep(1000) // screenrecord takes a moment to start
         pause(1500)
     }
@@ -89,10 +123,11 @@ abstract class WalkthroughBase {
     @After
     fun finish() {
         if (scenario == null) return
-        pause(1500)
+        pause(2500)
         shell("pkill -INT screenrecord")
-        Thread.sleep(1500) // screenrecord finishes the file
-        scenario?.close()
+        Thread.sleep(2500) // screenrecord finishes the file
+        // The recording is done: a slow teardown on a busy emulator mustn't fail the clip.
+        runCatching { scenario?.close() }
     }
 
     private suspend fun seed() {
@@ -107,13 +142,57 @@ abstract class WalkthroughBase {
                 servings = r.servings, sourceType = "BLOG", lastViewedAt = now - (i + 1) * minute,
                 contentOrigin = r.origin
             ), historyLimit = 50)
+            recipeIds[r.title] = id
             val names = listOfNotNull("Favorites".takeIf { r.title == "Chicken Adobo" }, WalkthroughSeed.listFor(r.title))
             names.forEach { listDao.addToList(RecipeListCrossRef(id, lists.getValue(it), now - 30 * minute)) }
         }
     }
 
+    private suspend fun stockTheKitchen() {
+        WalkthroughSeed.pantry.forEach { (name, quantity, inStock) ->
+            val id = pantryRepository.add(NewPantryItem(name, "en", quantity = quantity)) ?: return@forEach
+            pantryIds[name] = id
+            if (!inStock) pantryRepository.setInStock(listOf(id), false)
+        }
+        val adobo = recipeIds.getValue("Chicken Adobo")
+        groceryRepository.add(WalkthroughSeed.groceries.map { NewGroceryLine(it, "en", recipeId = adobo) })
+    }
+
     private fun shell(command: String) {
-        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command).close()
+        instrumentation.uiAutomation.executeShellCommand(command).close()
+    }
+
+    /** A file the recording script pushed to the device, read as the shell (the app can't reach it). */
+    fun deviceFile(path: String): ByteArray =
+        ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("cat $path"))
+            .use { it.readBytes() }
+
+    /** Starts [intent] from the app, as another app opening something in it would. */
+    fun startFromApp(intent: Intent) {
+        scenario!!.onActivity { it.startActivity(intent.setClass(it, MainActivity::class.java)) }
+        pause()
+    }
+
+    /**
+     * Waits for a system screen (the share sheet, a picker) to take over from the app, which is
+     * slow on a busy emulator, then lets it show for [showMs].
+     */
+    fun waitForSystemScreen(showMs: Long = 3000) {
+        val app = instrumentation.targetContext.packageName
+        val deadline = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < deadline) {
+            val active = instrumentation.uiAutomation.rootInActiveWindow?.packageName?.toString()
+            if (active != null && active != app) break
+            Thread.sleep(250)
+        }
+        Thread.sleep(showMs)
+    }
+
+    /** The system Back, for a screen that isn't the app's (the share sheet, a system picker). */
+    fun systemBack(pauseMs: Long = 1500) {
+        instrumentation.uiAutomation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+        Thread.sleep(1000)
+        pause(pauseMs)
     }
 
     // --- Pacing and helpers ---
@@ -143,6 +222,15 @@ abstract class WalkthroughBase {
         pause(pauseMs)
     }
 
+    /** Scrolls [text] (a part of it) into view, in a lazy list or a form that scrolls. */
+    fun show(text: String, pauseMs: Long = 1500) {
+        val matcher = hasText(text, substring = true)
+        reveal(matcher)
+        waitFor(matcher)
+        runCatching { compose.onAllNodes(matcher)[0].performScrollTo() }
+        pause(pauseMs)
+    }
+
     fun tap(text: String, pauseMs: Long = 1500) = tap(hasText(text) and !hasSetTextAction(), pauseMs)
     fun tapDescription(description: String) = tap(hasContentDescription(description))
     fun tapTag(tag: String) = tap(hasTestTag(tag))
@@ -166,13 +254,19 @@ abstract class WalkthroughBase {
     }
 
     /** Swipes up until [text] is on screen (a lazy list composes only what shows), then taps it. */
-    fun tapScrolling(text: String) {
-        val matcher = hasText(text) and !hasSetTextAction()
-        repeat(5) {
-            if (compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()) return@repeat
+    fun tapScrolling(text: String) = tapScrolling(hasText(text) and !hasSetTextAction())
+
+    fun tapScrolling(matcher: SemanticsMatcher) {
+        reveal(matcher)
+        tap(matcher)
+    }
+
+    /** Swipes up until [matcher] is composed (a lazy list composes only what shows). */
+    fun reveal(matcher: SemanticsMatcher, swipes: Int = 8) {
+        for (i in 0 until swipes) {
+            if (compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()) break
             swipeUp()
         }
-        tap(matcher)
     }
 
     /** The screen's own Back (text or icon), as a person would tap it; else the system back. */

@@ -514,8 +514,45 @@ page-extraction recipe is stored as `EXTRACTED`, so no model runs for it.
   video. It wipes the app's data: use the agents' emulator (emulator-5580, under the lock),
   never a device someone uses.
 - Output defaults to `~/Downloads/RecipeClipper-walkthroughs/` (`ios-NN-name.mp4`,
-  `android-NN-name.mp4`), never the repo. On a miss, the Android script saves the screen at
-  `/tmp/android-NN-name-miss.png`; the iOS log is under `$DERIVED_DATA/raw/`.
+  `android-NN-name.mp4`), never the repo, with an `index.md` of what each shows. On a miss, the
+  Android script saves the screen at `/tmp/android-NN-name-miss.png`; the iOS log is under
+  `$DERIVED_DATA/raw/`.
+
+The clips, the same number on both platforms: 01 tabs and Week, 02 Groceries, 03 Pantry and
+What I need, 04 weekly menus, 05 expiry reminders, 06 the Recipes screen, 07 amounts in steps,
+08 Chef mode (stub model), 09 the free tier, 10 the page-extraction line, 11 grocery merging (AI
+answers simulated), 12 junk hidden in Groceries (simulated); 13 "I made this", 14 the automatic
+backup copy and "Restore from a backup file", 15 Send list and Paste a list, 16 Send as file and
+a received file, 17 the first-run tour, 18 Done shopping and the On list tag, 19 the Pantry's
+Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported phone
+(simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked". Android's
+13–21 and 23 are in `CookingWalkthroughTest` and `SharingWalkthroughTest` (22 beside 12, in
+`MealPlanWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (22
+in `+MealPlan.swift`). What they need from outside the app:
+
+- **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
+  Man.heic`), which each script converts: Android pushes it to `/data/local/tmp` and the test hands
+  it back as the Photo Picker's answer (an `ActivityMonitor`; the picker itself can't be driven);
+  iOS adds it to the simulator's Photos (`simctl addmedia`, through BMP so it has no capture date
+  and sorts first) and the test picks it in the real picker. The iOS clip ends on the photo's
+  viewer: its × sits under the status bar and doesn't close it (#180).
+- **The received file** is `shared/fixtures/backup/share-v1.recipeclipper`, pushed to
+  `/data/local/tmp` and opened with a VIEW intent through the app's FileProvider; iOS opens its
+  canned file with `-uiTestReceiveFile`. A pasted list is put on the clipboard by the test
+  (iOS: `-uiTestPasteboard`).
+- **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20 and 23:
+  `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
+- **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the
+  sheet, the picker's Cancel); Android waits for them to take the screen first
+  (`waitForSystemScreen`), which is slow on a busy emulator. Android's backup folder can only be
+  picked there, so its rows read "Not chosen yet" and "Not backed up yet"; a simulator has no
+  iCloud Drive, so iOS's copy goes to a throwaway local folder (`-uiTestBackupFolder`) and
+  "Back up now" shows "Last backed up".
+- **Android records at 720×1616**, two-thirds size (the clips end up 1280 high anyway): at full
+  size the emulator's encoder fell behind on a busy machine and lost the ends of clips.
+- **Chef mode unsupported** is the stub model's answer: Android's classes bind
+  `ChefSupport.Unsupported` (and a decision model that supports nothing, so no AI answer shows);
+  iOS passes `-uiTestChefUnsupported`.
 
 ## CI
 

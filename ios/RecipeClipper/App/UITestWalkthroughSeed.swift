@@ -132,6 +132,34 @@ enum UITestWalkthroughSeed {
         }
     }
 
+    /// The `walkthroughPantry` scenario's kitchen, for the Done shopping, Pantry Send list and
+    /// use-up clips (#146, #149, #147); Android's `WalkthroughSeed.pantry`. Each item is a name,
+    /// a quantity as typed, and whether it is in stock.
+    static let pantry: [(name: String, quantity: String?, inStock: Bool)] = [
+        ("chicken thighs", "3 lb", true), ("white vinegar", "2 cups", true), ("soy sauce", nil, true),
+        ("garlic", nil, false), ("basmati rice", "half a bag", true), ("olive oil", nil, true),
+        ("onions", "3", true), ("milk", nil, false),
+    ]
+
+    /// On the grocery list, from the Chicken Adobo (Android's `WalkthroughSeed.groceries`).
+    static let groceries = ["2 lb chicken thighs", "1/2 cup soy sauce", "6 cloves garlic, crushed", "3 bay leaves"]
+
+    static func seedPantry(_ conn: SQLiteConnection, now: Int64) throws {
+        guard let words = LanguageWords.forTag("en") else { fatalError("UI test seed: no English tables") }
+        let pantryDao = PantryDao(db: conn)
+        for item in pantry {
+            _ = try pantryDao.insert(PantryItemRecord(
+                name: item.name, quantity: item.quantity, language: "en", aisle: Aisles.ofName(item.name, words: words).key,
+                inStock: item.inStock, alwaysHave: false, purchasedDay: nil, expiresDay: nil, updatedAt: now
+            ))
+        }
+        let adobo = try RecipeDao(db: conn).findByUrl("https://example.com/chicken-adobo")?.id
+        try GroceryDao(db: conn).add(groceries.map { line in
+            GroceryItemRecord(text: line, language: "en", aisle: Aisles.of(line, words: words).key, sortOrder: 0,
+                              recipeId: adobo, plannedDay: nil, updatedAt: now)
+        })
+    }
+
     static func listFor(_ title: String) -> String {
         switch title {
         case "Banana Bread", "Buttermilk Pancakes", "French Toast": "Breakfast"
