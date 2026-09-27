@@ -19,13 +19,10 @@ extension WalkthroughUITests {
         pause(0.8)
         require(app.buttons["Choose from library"], "the library choice").tap()
         pause(2.5)
-        // The system's photo picker, newest first: the recording script's photo.
-        print("PICKER-TREE-BEGIN"); print(app.debugDescription); print("PICKER-TREE-END")
-        let photo = app.scrollViews.images.firstMatch
-        require(photo, "a photo in the picker").tap()
+        // The system's photo picker, newest first: the recording script's photo, added today.
+        require(app.images.matching(identifier: "PXGGridLayout-Info").firstMatch, "the newest photo in the picker").tap()
         pause()
-        let add = app.buttons["Add"]
-        if add.waitForExistence(timeout: 3) { add.tap() }
+        require(app.navigationBars["Photos"].buttons["Done"], "the picker's Done").tap()
         // The photo just added opens for its note.
         let note = require(app.textFields["cooked.note"], "the note")
         note.tap()

@@ -18,10 +18,11 @@ TESTS=("$@")
   test22_recipeJunkHidden)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
-# The photo "I made this" picks from the library (#116): a macOS sample picture, added once.
+# The photo "I made this" picks from the library (#116): a macOS sample picture, as a PNG so it
+# carries no capture date and Photos files it under today, first in the picker.
 if [[ " ${TESTS[*]} " == *" test13_iMadeThis "* ]]; then
-  photo=$(mktemp -d)/photo.jpg
-  sips -s format jpeg "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo" >/dev/null 2>&1 &&
+  photo=$(mktemp -d)/photo.png
+  sips -s format png "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo" >/dev/null 2>&1 &&
     xcrun simctl addmedia "$SIM" "$photo"
 fi
 (cd ios && xcodebuild -project RecipeClipper.xcodeproj -scheme RecipeClipper -destination "id=$SIM" \
