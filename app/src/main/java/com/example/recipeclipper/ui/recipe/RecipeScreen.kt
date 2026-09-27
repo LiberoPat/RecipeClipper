@@ -284,16 +284,6 @@ fun RecipeScreen(
     if (sendFileViewModel != null) {
         SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
     }
-    // A photo added with "I made this" (#116), or "Mark as cooked" (#173), once closed: the recipe was cooked, so the
-    // pantry's use-up sheet (#147) gets the lines as shown now, ticked or all.
-    val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState, onMadeThis = {
-        val current = viewModel.uiState.value
-        (current.content as? RecipeContent.Success)?.let { loaded ->
-            useUpViewModel?.onMadeThis(
-                loaded.recipe.id, loaded.words?.language, loaded.ingredients, current.checkedIngredients
-            )
-        }
-    })
 
     // Cook mode just finished with ingredients ticked (#147): they go to the pantry's use-up sheet.
     val finished = state.cookFinished
@@ -331,6 +321,17 @@ fun RecipeScreen(
     // Cook mode follows the system theme like every other screen unless the user has asked
     // for it to stay dark.
     RecipeClipperTheme(forceDark = cooking && state.darkWhileCooking) {
+        // A photo added with "I made this" (#116), or "Mark as cooked" (#173), once closed: the recipe was cooked, so the
+        // pantry's use-up sheet (#147) gets the lines as shown now, ticked or all. Called inside the theme (#186):
+        // it shows the full-screen photo, a dialog, which outside it was Material purple.
+        val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState, onMadeThis = {
+            val current = viewModel.uiState.value
+            (current.content as? RecipeContent.Success)?.let { loaded ->
+                useUpViewModel?.onMadeThis(
+                    loaded.recipe.id, loaded.words?.language, loaded.ingredients, current.checkedIngredients
+                )
+            }
+        })
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background

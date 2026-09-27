@@ -115,34 +115,35 @@ fun ListDetailScreen(
                 }
             }
         }
-    }
 
-    if (state.renaming) {
-        AlertDialog(
-            onDismissRequest = viewModel::onCancelRenaming,
-            title = { Text(stringResource(R.string.rename_list_title)) },
-            text = {
-                OutlinedTextField(
-                    value = state.renameValue,
-                    onValueChange = viewModel::onRenameValueChange,
-                    label = { Text(stringResource(R.string.label_list_name)) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = viewModel::onRenameConfirm,
-                    enabled = state.renameValue.isNotBlank()
-                ) { Text(stringResource(R.string.action_save)) }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::onCancelRenaming) {
-                    Text(stringResource(R.string.action_cancel))
+        // Inside the theme (#186): outside it, the dialog was Material purple.
+        if (state.renaming) {
+            AlertDialog(
+                onDismissRequest = viewModel::onCancelRenaming,
+                title = { Text(stringResource(R.string.rename_list_title)) },
+                text = {
+                    OutlinedTextField(
+                        value = state.renameValue,
+                        onValueChange = viewModel::onRenameValueChange,
+                        label = { Text(stringResource(R.string.label_list_name)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = viewModel::onRenameConfirm,
+                        enabled = state.renameValue.isNotBlank()
+                    ) { Text(stringResource(R.string.action_save)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::onCancelRenaming) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 }
 

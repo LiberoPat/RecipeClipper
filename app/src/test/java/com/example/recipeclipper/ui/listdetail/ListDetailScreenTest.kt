@@ -14,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.fake.FakeListRepository
+import com.example.recipeclipper.ui.assertInAppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -181,6 +182,17 @@ class ListDetailScreenTest {
 
         compose.onNodeWithText("Rename list").assertIsDisplayed()
         compose.onNode(hasSetTextAction()).assertTextContains("Weeknights")
+    }
+
+    /** #186: it was composed after the screen's theme block closed, so it came up Material purple. */
+    @Test
+    fun theRenameDialogIsInTheAppsTheme() {
+        show(weeknights.id)
+
+        openMenu()
+        compose.onNodeWithText("Rename").performClick()
+
+        compose.onNodeWithText("Cancel", useUnmergedTree = true).assertInAppTheme()
     }
 
     @Test

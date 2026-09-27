@@ -22,6 +22,7 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.passTheSearchDebounce
+import com.example.recipeclipper.ui.assertInAppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -169,6 +170,17 @@ class RecipesScreenTest {
 
         assertEquals("https://seriouseats.com/adobo", openedUrl)
         compose.onNodeWithText("Paste a link").assertDoesNotExist()
+    }
+
+    /** #186: it was composed outside the screen's theme, so it came up Material purple. */
+    @Test
+    fun thePasteALinkDialogIsInTheAppsTheme() {
+        show(adobo)
+
+        compose.onNodeWithContentDescription("Add a recipe").performClick()
+        compose.onNodeWithText("Paste a link").performClick()
+
+        compose.onNodeWithText("Cancel", useUnmergedTree = true).assertInAppTheme()
     }
 
     // --- Sort ---
