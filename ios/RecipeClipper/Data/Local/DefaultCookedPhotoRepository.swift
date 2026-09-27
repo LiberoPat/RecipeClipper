@@ -2,13 +2,16 @@ import Combine
 import Foundation
 
 /// "I made this" (#116; Android's CookedPhotoRepository): the user's own photos of a recipe,
-/// each with a day and a short note. A photo's file outlives its row until the delete stands
+/// each with a day and a short note, and cookings marked with no photo (#173). A photo's file outlives its row until the delete stands
 /// (so Undo can bring it back); `sweep` removes files no row names.
 protocol CookedPhotoRepository: AnyObject {
     func observe(recipeId: Int64) -> AnyPublisher<[CookedPhoto], Never>
     /// Stores each picture downscaled, one entry each, cooked today with no note. The new
     /// entries, in order; one that couldn't be read is left out.
     func add(recipeId: Int64, pictures: [Data]) async -> [CookedPhoto]
+    /// "Mark as cooked" (#173): an entry cooked today with no photo and no note; nil if it
+    /// couldn't be written.
+    func markCooked(recipeId: Int64) async -> CookedPhoto?
     func edit(id: Int64, day: Int64, note: String?) async
     /// Deletes the entry; its file stays until `forget` or `sweep`, so `restore` can undo it.
     func delete(id: Int64) async -> CookedPhoto?
@@ -55,6 +58,20 @@ final class DefaultCookedPhotoRepository: CookedPhotoRepository {
         return added
     }
 
+    func markCooked(recipeId: Int64) async -> CookedPhoto? {
+        let now = clock.now()
+        var record = CookedPhotoRecord(
+            recipeId: recipeId, fileName: nil, day: PlanDays.today(millis: now), note: nil, createdAt: now, updatedAt: now
+        )
+        do {
+            record.id = try await db.write { conn in try CookedPhotoDao(db: conn).insert(record) }
+            return record.domain(store)
+        } catch {
+            dataLog.error("markCooked failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
     func edit(id: Int64, day: Int64, note: String?) async {
         let now = clock.now()
         let clean = CookedPhoto.cleanNote(note)
@@ -82,7 +99,8 @@ final class DefaultCookedPhotoRepository: CookedPhotoRepository {
     }
 
     func forget(_ photos: [CookedPhoto]) async {
-        if !photos.isEmpty { await store.delete(photos.map(\.fileName)) }
+        let files = photos.compactMap(\.fileName)
+        if !files.isEmpty { await store.delete(files) }
     }
 
     func sweep() async {
@@ -104,8 +122,8 @@ final class DefaultCookedPhotoRepository: CookedPhotoRepository {
 extension CookedPhotoRecord {
     func domain(_ store: PhotoStore) -> CookedPhoto {
         CookedPhoto(
-            id: id, recipeId: recipeId, fileName: fileName, path: store.path(fileName), day: day, note: note,
-            createdAt: createdAt, updatedAt: updatedAt, uid: uid, hasPicture: store.exists(fileName)
+            id: id, recipeId: recipeId, fileName: fileName, path: fileName.map(store.path), day: day, note: note,
+            createdAt: createdAt, updatedAt: updatedAt, uid: uid, hasPicture: fileName.map(store.exists) ?? false
         )
     }
 

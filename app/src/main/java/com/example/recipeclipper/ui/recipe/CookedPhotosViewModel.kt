@@ -25,8 +25,9 @@ import javax.inject.Inject
  * "Your cooks" (#116) under a recipe: [photos] newest cook first; [open] the one shown full
  * screen, with [noteDraft] its note as typed; [deleted] the one just deleted, until its Undo
  * snackbar is settled. [addFailed] is set when a picked picture couldn't be stored, until shown.
- * [madeThis]: a photo was just added and its full-screen view has closed, so the recipe was
- * cooked; the screen offers the pantry's use-up sheet (#147), then calls [CookedPhotosViewModel.onMadeThisHandled].
+ * [madeThis]: a photo was just added, or the recipe marked as cooked with none (#173), and its
+ * full-screen view has closed, so the recipe was cooked; the screen offers the pantry's use-up
+ * sheet (#147), then calls [CookedPhotosViewModel.onMadeThisHandled].
  */
 data class CookedPhotosUiState(
     val photos: List<CookedPhoto> = emptyList(),
@@ -79,6 +80,20 @@ class CookedPhotosViewModel @Inject constructor(
         }
     }
 
+    /**
+     * "Mark as cooked" (#173): today's cooking with no photo. It opens like a new photo, so its
+     * note and date are right there, and closing it says the recipe was cooked, as a photo does.
+     */
+    fun onMarkCooked() {
+        val id = recipeId.value ?: return
+        local.update { it.copy(adding = true) }
+        viewModelScope.launch {
+            val marked = repository.markCooked(id)
+            if (marked != null) madeThisPending = true
+            local.update { s -> (if (marked != null) s.copy(open = marked, noteDraft = "") else s).copy(adding = false) }
+        }
+    }
+
     fun onAddFailedShown() = local.update { it.copy(addFailed = false) }
 
     fun onOpen(photo: CookedPhoto) {
@@ -113,7 +128,7 @@ class CookedPhotosViewModel @Inject constructor(
     /** Deletes the open photo at once; [onUndoDelete] brings it back until [onDeleteSettled]. */
     fun onDelete() {
         noteSave?.cancel()
-        // The photo just added, deleted at once, was the wrong picture: no cooking to offer.
+        // The photo (or mark, #173) just added, deleted at once, was a mistake: no cooking to offer.
         madeThisPending = false
         val open = local.value.open ?: return
         local.update { it.copy(open = null, noteDraft = "") }

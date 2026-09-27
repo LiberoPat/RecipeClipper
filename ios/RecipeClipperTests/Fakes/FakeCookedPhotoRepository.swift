@@ -32,6 +32,21 @@ final class FakeCookedPhotoRepository: CookedPhotoRepository {
         pictures.filter { !$0.isEmpty }.map { _ in photo(recipeId: recipeId) }
     }
 
+    /// A cooking marked with no photo (#173): no file, no path, no picture.
+    @discardableResult
+    func mark(recipeId: Int64, day: Int64? = nil, note: String? = nil) -> CookedPhoto {
+        let id = nextId
+        nextId += 1
+        let mark = CookedPhoto(
+            id: id, recipeId: recipeId, fileName: nil, path: nil, day: day ?? today,
+            note: note, createdAt: id, updatedAt: id, uid: "uid-\(id)", hasPicture: false
+        )
+        photos.value.append(mark)
+        return mark
+    }
+
+    func markCooked(recipeId: Int64) async -> CookedPhoto? { mark(recipeId: recipeId) }
+
     func edit(id: Int64, day: Int64, note: String?) async {
         edits.append((id, day, note))
         photos.value = photos.value.map { p in
@@ -51,7 +66,7 @@ final class FakeCookedPhotoRepository: CookedPhotoRepository {
 
     func restore(_ photo: CookedPhoto) async { photos.value.append(photo) }
 
-    func forget(_ photos: [CookedPhoto]) async { forgotten += photos.map(\.fileName) }
+    func forget(_ photos: [CookedPhoto]) async { forgotten += photos.compactMap(\.fileName) }
 
     func sweep() async {}
 }

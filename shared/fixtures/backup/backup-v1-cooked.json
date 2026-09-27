@@ -1,0 +1,58 @@
+{
+  "format": "recipe-clipper-backup",
+  "formatVersion": 1,
+  "exportedAt": 1790000000000,
+  "recipes": [
+    {
+      "id": "r-soup",
+      "sourceUrl": "https://example.com/soup",
+      "sourceType": "BLOG",
+      "title": "Tomato Soup",
+      "imageUrl": null,
+      "ingredients": [
+        "2 lb tomatoes"
+      ],
+      "instructions": [
+        "Roast."
+      ],
+      "prepTime": null,
+      "cookTime": null,
+      "totalTime": null,
+      "servings": "4",
+      "lastViewedAt": 1789000000500,
+      "checkedIngredients": [],
+      "notes": null
+    }
+  ],
+  "lists": [],
+  "memberships": [],
+  "cookedPhotos": [
+    {
+      "id": "p-photo",
+      "recipeId": "r-soup",
+      "day": 20000,
+      "note": null,
+      "createdAt": 1789000000600,
+      "updatedAt": 1789000000600,
+      "file": "photos/p-photo.jpg"
+    }
+  ],
+  "cookedWithoutPhotos": [
+    {
+      "id": "c-weeknight",
+      "recipeId": "r-soup",
+      "day": 20007,
+      "note": "Doubled the garlic",
+      "createdAt": 1789000000900,
+      "updatedAt": 1789000000950
+    },
+    {
+      "id": "c-orphan",
+      "recipeId": "r-missing",
+      "day": 20001,
+      "note": "no such recipe: left out",
+      "createdAt": 1,
+      "updatedAt": 1
+    }
+  ]
+}

@@ -284,7 +284,7 @@ fun RecipeScreen(
     if (sendFileViewModel != null) {
         SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
     }
-    // A photo added with "I made this" (#116), once closed: the recipe was cooked, so the
+    // A photo added with "I made this" (#116), or "Mark as cooked" (#173), once closed: the recipe was cooked, so the
     // pantry's use-up sheet (#147) gets the lines as shown now, ticked or all.
     val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState, onMadeThis = {
         val current = viewModel.uiState.value

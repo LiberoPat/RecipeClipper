@@ -42,7 +42,8 @@ struct Backup: Equatable {
     /// The meals of `menus` (#52). Absent in older files, which read as empty.
     var menuEntries: [BackupMenuEntry] = []
     /// The user's own photos (#116). Absent in older files, which read as empty. Their pictures
-    /// travel beside this JSON in a zip (`BackupArchive`), each at `BackupCookedPhoto.file`.
+    /// travel beside this JSON in a zip (`BackupArchive`), each at `BackupCookedPhoto.file`. With
+    /// the cookings marked with no photo (#173), which have no file.
     var cookedPhotos: [BackupCookedPhoto] = []
     /// A shared file (#149, `"kind": "share"`), not a backup: a few recipes and items picked to
     /// send to someone else (`ShareFile`). Absent in every backup, which is a whole library.
@@ -51,6 +52,9 @@ struct Backup: Equatable {
 
 /// One "I made this" entry (#116). `file` is the picture's path inside the export zip
 /// (`photos/<name>.jpg`); an entry whose picture isn't in the package is left out on import.
+/// A cooking marked with no photo (#173) has no `file`: the JSON keeps it in its own section,
+/// `cookedWithoutPhotos` (`BackupJson`), so an older app, which requires a `file` on every
+/// `cookedPhotos` entry, skips it rather than refusing the whole file.
 struct BackupCookedPhoto: Equatable {
     var id: String
     var recipeId: String
@@ -58,7 +62,7 @@ struct BackupCookedPhoto: Equatable {
     var note: String?
     var createdAt: Int64
     var updatedAt: Int64
-    var file: String
+    var file: String?
 }
 
 /// What an export or an import carries (#116): the JSON, and the pictures by their path in the
@@ -218,7 +222,7 @@ struct ImportSummary: Equatable {
     var mealTypesAdded = 0
     /// New menus written (#52).
     var menusAdded = 0
-    /// New photos of the user's own cooking written (#116).
+    /// New photos of the user's own cooking written (#116); cookings marked with no photo (#173) aren't counted.
     var photosAdded = 0
     /// The free library's size when that is what `recipesSkipped` ran into (#107), else nil.
     var freeLimit: Int?

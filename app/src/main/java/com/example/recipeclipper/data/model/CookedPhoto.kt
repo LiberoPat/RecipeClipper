@@ -7,12 +7,15 @@ package com.example.recipeclipper.data.model
  * storage, downscaled, and belongs to the recipe (deleting the recipe deletes it).
  * [hasPicture] is false when the file isn't here (a phone restored from Android's backup, which
  * leaves photos out): the entry keeps its day and note, and says the photo isn't on this phone.
+ *
+ * A cooking marked with no photo ("Mark as cooked", #173) is the same entry with no [fileName]
+ * and no [path] ([hasPhoto] false, and so no [hasPicture]): a dated entry with its note.
  */
 data class CookedPhoto(
     val id: Long,
     val recipeId: Long,
-    val fileName: String,
-    val path: String,
+    val fileName: String?,
+    val path: String?,
     val day: Long,
     val note: String?,
     val createdAt: Long,
@@ -20,6 +23,9 @@ data class CookedPhoto(
     val uid: String,
     val hasPicture: Boolean = true
 ) {
+    /** Taken with a photo, whether or not its file is on this phone; false for "Mark as cooked" (#173). */
+    val hasPhoto: Boolean get() = fileName != null
+
     companion object {
         /** The longest note kept: "short", a line or two under a photo. */
         const val MAX_NOTE = 280

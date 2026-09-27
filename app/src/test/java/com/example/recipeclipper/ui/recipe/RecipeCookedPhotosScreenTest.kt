@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.fake.FakeCookedPhotoRepository
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -57,6 +58,45 @@ class RecipeCookedPhotosScreenTest {
         compose.onNodeWithText("I made this").tap()
         compose.onNodeWithText("Take a photo").assertExists()
         compose.onNodeWithText("Choose from library").assertExists()
+        compose.onNodeWithText("Mark as cooked").assertExists()
+    }
+
+    /**
+     * "Mark as cooked" (#173): one tap records today's cooking with no photo. It opens like a new
+     * photo, "Cooked" in place of the picture, for its note; it has no Share; it then shows in the
+     * row as a dated entry TalkBack reads as cooked with no photo; and its delete says so.
+     */
+    @Test
+    fun markingAsCookedAddsADatedEntryWithoutAPicture() {
+        RecipeScreenFixture(photos = photos).show(compose)
+        scrollTo("I made this")
+        compose.onNodeWithText("I made this").tap()
+        compose.onNodeWithText("Mark as cooked").performClick()
+        compose.waitUntil(5_000) { photos.photos.value.isNotEmpty() }
+        assertEquals(null, photos.photos.value.single().fileName)
+
+        assertTrue(compose.onAllNodesWithText("Cooked").fetchSemanticsNodes().isNotEmpty())
+        compose.onNodeWithContentDescription("Share photo").assertDoesNotExist()
+        compose.onNodeWithText("Add a short note").performTextInput("Doubled the garlic")
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.waitUntil(5_000) { photos.edits.isNotEmpty() }
+        assertEquals("Doubled the garlic", photos.photos.value.single().note)
+
+        scrollTo("Your cooks")
+        compose.onAllNodesWithContentDescription("Cooked, no photo", substring = true).onFirst().tap()
+        compose.onNodeWithContentDescription("Remove from your cooks").performClick()
+        compose.waitUntil(5_000) { photos.photos.value.isEmpty() }
+        compose.onNodeWithText("Removed from your cooks").assertIsDisplayed()
+    }
+
+    @Test
+    fun deletingTheRecipeCountsOnlyItsPhotos() {
+        photos.photo(RecipeScreenFixture.RECIPE_ID)
+        photos.mark(RecipeScreenFixture.RECIPE_ID)
+        RecipeScreenFixture(photos = photos).show(compose)
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Delete").performClick()
+        compose.onNodeWithText("with your photo of it", substring = true).assertIsDisplayed()
     }
 
     @Test

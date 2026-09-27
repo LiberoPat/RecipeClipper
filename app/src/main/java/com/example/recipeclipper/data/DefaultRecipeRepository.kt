@@ -273,7 +273,8 @@ class DefaultRecipeRepository @Inject constructor(
 
     // The photos belong to the recipe (#116): once its delete stands, their files go too.
     override suspend fun forget(deleted: RecipeRepository.DeletedRecipe) {
-        if (deleted.cookedPhotos.isNotEmpty()) photos.delete(deleted.cookedPhotos.map { it.fileName })
+        val files = deleted.cookedPhotos.mapNotNull { it.fileName }
+        if (files.isNotEmpty()) photos.delete(files)
     }
 
     override fun observeHistory(query: String): Flow<List<RecipeSummary>> =

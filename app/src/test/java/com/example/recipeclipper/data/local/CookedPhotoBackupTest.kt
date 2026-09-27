@@ -85,10 +85,45 @@ class CookedPhotoBackupTest {
         assertEquals(photo.uid, imported.uid)
         assertEquals(20_000L, imported.day)
         assertEquals("Less sugar", imported.note)
-        assertEquals("JPEG BYTES", toStore.bytes(imported.fileName))
+        assertEquals("JPEG BYTES", toStore.bytes(imported.fileName!!))
 
         // Again: the photo is already here.
         assertEquals(0, (into.import(pkg) as BackupResult.Success).value.photosAdded)
+    }
+
+    /**
+     * "Mark as cooked" (#173): a cooking with no photo needs no zip. It travels in the plain JSON,
+     * in its own section with no file, and comes back with its day and note, its recipe coming in
+     * past a full history as a photo's does; importing again adds nothing.
+     */
+    @Test fun aCookingWithNoPhotoRoundTripsInThePlainJsonPastAFullHistory() = runBlocking {
+        val id = from.recipeDao().upsert(recipe("https://example.com/a"), LibraryLimit.Unlimited)
+        val repository = DefaultCookedPhotoRepository(from.cookedPhotoDao(), fromStore, Clock { 5 }, log)
+        val mark = repository.markCooked(id)!!
+        repository.edit(mark.id, 20_000, "Weeknight")
+
+        val exported = (DefaultBackupRepository(from.backupDao(), { 9 }, log, photos = fromStore).export()
+            as BackupResult.Success).value
+        assertTrue(exported.photos.isEmpty())
+        val root = org.json.JSONObject(exported.json)
+        assertFalse(root.has("cookedPhotos"))
+        assertFalse(root.getJSONArray("cookedWithoutPhotos").getJSONObject(0).has("file"))
+
+        val into = DefaultBackupRepository(to.backupDao(), { 9 }, log, FakeLibraryPolicy(LibraryLimit.History(0)), toStore)
+        val summary = (into.import(BackupPackage(exported.json)) as BackupResult.Success).value
+        assertEquals(1, summary.recipesAdded)
+        assertEquals(0, summary.photosAdded)
+
+        val copy = to.recipeDao().findByUrl("https://example.com/a")!!
+        val imported = to.cookedPhotoDao().observeFor(copy.id).first().single()
+        assertEquals(mark.uid, imported.uid)
+        assertEquals(null, imported.fileName)
+        assertEquals(20_000L, imported.day)
+        assertEquals("Weeknight", imported.note)
+        assertTrue(toStore.files().isEmpty())
+
+        into.import(BackupPackage(exported.json))
+        assertEquals(1, to.cookedPhotoDao().photosFor(copy.id).size)
     }
 
     @Test fun anExportWithoutPhotosIsThePlainJsonAndAPhotoWithoutItsPictureStaysOut() = runBlocking {

@@ -631,12 +631,58 @@ class MigrationTest {
         }
     }
 
+    /**
+     * "Mark as cooked" (#173): `fileName` becomes nullable by rebuilding the table. Every photo
+     * comes across as it was, a cooking with no photo can then be written, the cascade still
+     * holds, and the AUTOINCREMENT counter carries over, so a deleted entry's id isn't reused.
+     */
+    @Test
+    fun migration14To15KeepsEveryPhotoAndAllowsOneWithout() {
+        helper.createDatabase(name, 14).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[]', NULL,
+                   'recipe-uid', 'en', NULL, NULL, 'PARSED', NULL)
+                """.trimIndent()
+            )
+            db.execSQL(
+                "INSERT INTO cooked_photos (id, recipeId, fileName, day, note, createdAt, updatedAt, uid) " +
+                    "VALUES (3, 7, 'a.jpg', 20000, 'Good', 1, 2, 'photo-uid'), (4, 7, 'b.jpg', 20001, NULL, 3, 3, 'gone-uid')"
+            )
+            db.execSQL("DELETE FROM cooked_photos WHERE id = 4")
+        }
+
+        helper.runMigrationsAndValidate(name, 15, true, RecipeDatabase.MIGRATION_14_15)
+
+        val db = openMigrated()
+        runBlocking {
+            assertEquals(
+                CookedPhotoEntity(3, 7, "a.jpg", 20_000, "Good", 1, 2, "photo-uid"),
+                db.cookedPhotoDao().photosFor(7).single()
+            )
+            val marked = db.cookedPhotoDao().insert(
+                CookedPhotoEntity(recipeId = 7, fileName = null, day = 20_002, note = null, createdAt = 4, updatedAt = 4)
+            )
+            assertEquals(5L, marked)
+            assertEquals(listOf(null, "a.jpg"), db.cookedPhotoDao().photosFor(7).map { it.fileName })
+            assertEquals(listOf("a.jpg"), db.cookedPhotoDao().fileNames())
+            db.recipeDao().delete(7)
+            assertTrue(db.cookedPhotoDao().photosFor(7).isEmpty())
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 14, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 15, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }
