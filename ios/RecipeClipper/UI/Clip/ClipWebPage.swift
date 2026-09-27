@@ -6,6 +6,8 @@ enum ClipPageEvent: Equatable {
     case selection(String)
     case tagTapped(ClipField)
     case imageTapped(String)
+    /// While picking a photo, the tap found no image with an address the app can read.
+    case noImage
 
     static func decode(_ json: String) -> ClipPageEvent? {
         guard let data = json.data(using: .utf8),
@@ -16,6 +18,7 @@ enum ClipPageEvent: Equatable {
         case "selection": return .selection(message["text"] as? String ?? "")
         case "tag": return (message["field"] as? String).flatMap(ClipField.init(rawValue:)).map { .tagTapped($0) }
         case "image": return (message["src"] as? String).flatMap { $0.isEmpty ? nil : .imageTapped($0) }
+        case "noImage": return .noImage
         default: return nil
         }
     }

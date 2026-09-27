@@ -8,6 +8,8 @@ enum ClipMessage: Equatable {
     /// A session draft for this page was brought back; offers Discard.
     case draftRestored
     case saveFailed
+    /// The tap while picking a photo found no picture the app can read; the photo is optional.
+    case photoUnreadable
     /// The Unlock from the full-library prompt (#107) is pending or failed.
     case unlock(PurchaseOutcome)
 }
@@ -67,15 +69,19 @@ final class ClipViewModel {
     // MARK: Events from the page
 
     func onSelectionChanged(_ text: String) {
+        // Selecting new text moves on from the photo: the other fields never wait on it.
+        let selectedAnew = text != selectionText
         selectionText = text
         let lines = ClipSelection.lines(text)
         uiState.selection = lines
         // A new selection is never the one the last assignment was taken from.
         if !lines.isEmpty { uiState.newMarkId = nil }
+        if !lines.isEmpty && selectedAnew { uiState.pickingPhoto = false }
     }
 
     /// Tapping a field's tag on the page clears that field, with Undo.
     func onTagTapped(_ field: ClipField) {
+        uiState.pickingPhoto = false
         let draft = uiState.draft
         guard draft.count(field) > 0 else { return }
         undoTo = draft
@@ -89,15 +95,30 @@ final class ClipViewModel {
         assign(.photo, src)
     }
 
+    /// While picking a photo, the tap found no picture with an address the app can read (not an
+    /// image, or one drawn some other way). Picking ends and the screen says so: no photo is
+    /// better than a guessed one, and the photo is optional.
+    func onNoImageTapped() {
+        guard uiState.pickingPhoto else { return }
+        var state = uiState
+        state.pickingPhoto = false
+        state.notice = notice(.photoUnreadable)
+        uiState = state
+    }
+
     // MARK: Events from the toolbar
 
     /// Puts the current selection into `field`, replacing what it held.
     func onAssign(_ field: ClipField) {
         guard field != .photo else { return }
+        uiState.pickingPhoto = false
         assign(field, selectionText)
     }
 
     func onPhotoButton() { uiState.pickingPhoto.toggle() }
+
+    /// Leaves the photo step without a (new) photo: it's optional.
+    func onSkipPhoto() { uiState.pickingPhoto = false }
 
     func onUndo() {
         guard let previous = undoTo else { return }

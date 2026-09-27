@@ -24,6 +24,7 @@ struct ClipScreen: View {
                         case .selection(let text): vm.onSelectionChanged(text)
                         case .tagTapped(let field): vm.onTagTapped(field)
                         case .imageTapped(let src): vm.onImageTapped(src)
+                        case .noImage: vm.onNoImageTapped()
                         }
                     }
                 )
@@ -102,6 +103,9 @@ struct ClipScreen: View {
             }
         case .saveFailed, .unlock:
             Snackbar(message: text, actionLabel: Strings.cancel) { vm.onNoticeShown(notice.serial) }
+        case .photoUnreadable:
+            // Nothing to act on: the page answers taps again, and the photo is optional.
+            Snackbar(message: text, actionLabel: nil)
         }
     }
 
@@ -144,9 +148,15 @@ private struct ClipToolbar: View {
                         Text(line).textStyle(Typography.bodyMedium).lineLimit(1)
                     }
                 } else if state.pickingPhoto {
-                    Text(Strings.clipPickingPhoto)
-                        .textStyle(Typography.bodyMedium)
-                        .foregroundStyle(Palette.accentText)
+                    // The photo is optional: Skip leaves this step without tapping the page.
+                    HStack {
+                        Text(Strings.clipPickingPhoto)
+                            .textStyle(Typography.bodyMedium)
+                            .foregroundStyle(Palette.accentText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Button(Strings.clipSkipPhoto, action: vm.onSkipPhoto)
+                            .buttonStyle(TextActionStyle())
+                    }
                 } else {
                     HStack {
                         Text(Strings.clipSummary(draft))

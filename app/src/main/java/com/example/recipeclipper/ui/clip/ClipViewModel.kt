@@ -30,6 +30,9 @@ sealed class ClipMessage {
     object DraftRestored : ClipMessage()
     object SaveFailed : ClipMessage()
 
+    /** The tap while picking a photo found no picture the app can read; the photo is optional. */
+    object PhotoUnreadable : ClipMessage()
+
     /** The Unlock from the full-library prompt (#107) is pending or failed. */
     data class Unlock(val outcome: PurchaseOutcome) : ClipMessage()
 }
@@ -100,16 +103,23 @@ class ClipViewModel @Inject constructor(
     // --- Events from the page ---
 
     fun onSelectionChanged(text: String) {
+        // Selecting new text moves on from the photo: the other fields never wait on it.
+        val selectedAnew = text != selectionText
         selectionText = text
         val lines = ClipSelection.lines(text)
         _uiState.update {
-            // A new selection is never the one the last assignment was taken from.
-            it.copy(selection = lines, newMarkId = if (lines.isEmpty()) it.newMarkId else null)
+            it.copy(
+                selection = lines,
+                // A new selection is never the one the last assignment was taken from.
+                newMarkId = if (lines.isEmpty()) it.newMarkId else null,
+                pickingPhoto = it.pickingPhoto && (lines.isEmpty() || !selectedAnew)
+            )
         }
     }
 
     /** Tapping a field's tag on the page clears that field, with Undo. */
     fun onTagTapped(field: ClipField) {
+        stopPicking()
         val draft = _uiState.value.draft
         if (draft.count(field) == 0) return
         undoTo = draft
@@ -119,8 +129,18 @@ class ClipViewModel @Inject constructor(
     /** While picking a photo, the next image tapped on the page becomes the photo. */
     fun onImageTapped(src: String) {
         if (!_uiState.value.pickingPhoto) return
-        _uiState.update { it.copy(pickingPhoto = false) }
+        stopPicking()
         assign(ClipField.PHOTO, src)
+    }
+
+    /**
+     * While picking a photo, the tap found no picture with an address the app can read (not an
+     * image, or one drawn some other way). Picking ends and the screen says so: no photo is
+     * better than a guessed one, and the photo is optional.
+     */
+    fun onNoImageTapped() {
+        if (!_uiState.value.pickingPhoto) return
+        _uiState.update { it.copy(pickingPhoto = false, notice = notice(ClipMessage.PhotoUnreadable)) }
     }
 
     // --- Events from the toolbar ---
@@ -128,12 +148,16 @@ class ClipViewModel @Inject constructor(
     /** Puts the current selection into [field], replacing what it held. */
     fun onAssign(field: ClipField) {
         if (field == ClipField.PHOTO) return
+        stopPicking()
         assign(field, selectionText)
     }
 
     fun onPhotoButton() {
         _uiState.update { it.copy(pickingPhoto = !it.pickingPhoto) }
     }
+
+    /** Leaves the photo step without a (new) photo: it's optional. */
+    fun onSkipPhoto() = stopPicking()
 
     fun onUndo() {
         val previous = undoTo ?: return
@@ -202,6 +226,8 @@ class ClipViewModel @Inject constructor(
     fun onLibraryFullDismiss() = _uiState.update { it.copy(libraryFull = false) }
 
     // --- Internals ---
+
+    private fun stopPicking() = _uiState.update { it.copy(pickingPhoto = false) }
 
     private fun assign(field: ClipField, text: String) {
         val draft = _uiState.value.draft

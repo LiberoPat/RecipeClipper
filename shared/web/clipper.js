@@ -2,14 +2,17 @@
 // (Android loads it as a Java resource, iOS from the bundled web/ folder). One copy only.
 //
 // The page reports what happens on it; native code decides everything. Messages to native are
-// JSON strings: {type:"selection", text}, {type:"tag", field}, {type:"image", src}.
+// JSON strings: {type:"selection", text}, {type:"tag", field}, {type:"image", src},
+// {type:"noImage"}.
 // Native calls:
 //   RC.sync({marks:[{id, field, label}], newId, photo:{src, label} | null})
 //     Shows exactly these marks and hides every other. `newId`, if it names a mark not seen
 //     yet, is recorded from the last selection first (then the selection is cleared). So
 //     replace, undo and clear are all one declarative call from the draft's state.
 //   RC.pickImage(on)
-//     While on, the next tapped image is posted and every tap is swallowed.
+//     While on, the next tap on the page is swallowed and ends picking: it posts the tapped
+//     image's address, or noImage when there is no image there with one to read. A tap on a
+//     tag goes to the tag. Picking never outlasts one tap, so the page can't be left inert.
 (function () {
   if (window.RC) return;
 
@@ -112,7 +115,12 @@
     tag.setAttribute('data-rc-field', field);
     tag.setAttribute('role', 'button');
     tag.style.top = Math.max(0, rect.top - origin.top + 4) + 'px';
-    tag.style.left = (rect.right - origin.left - 4) + 'px';
+    // Right-aligned to the block, but never past the page's width: an image drawn wider than
+    // the page (Reddit's blurred backdrop is scaled 1.2) would put the tag outside, widen the
+    // page, and push the page's own right-hand controls off the screen.
+    var width = document.documentElement.clientWidth;
+    var right = width ? Math.min(rect.right, width - window.scrollX) : rect.right;
+    tag.style.left = (right - origin.left - 4) + 'px';
     tag.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -149,10 +157,25 @@
     try { return new URL(url, document.baseURI).href; } catch (e) { return null; }
   }
 
-  // The image's real address: lazy loaders often leave a data: placeholder in src.
+  // The first address in a srcset ("a.jpg 640w, b.jpg 1080w"): every entry is the same picture.
+  function firstInSrcset(srcset) {
+    var first = srcset && srcset.trim().split(/\s*,\s+/)[0];
+    return first ? first.split(/\s+/)[0] : null;
+  }
+
+  // The image's real address: lazy loaders often leave a data: placeholder in src, with the
+  // address in a data- attribute or a srcset (on the image or its <picture>'s sources).
   function imageSource(img) {
     var candidates = [img.currentSrc, img.src, img.getAttribute('data-src'),
-      img.getAttribute('data-lazy-src'), img.getAttribute('data-original')];
+      img.getAttribute('data-lazy-src'), img.getAttribute('data-original'),
+      firstInSrcset(img.getAttribute('srcset')), firstInSrcset(img.getAttribute('data-srcset')),
+      firstInSrcset(img.getAttribute('data-lazy-srcset'))];
+    var picture = img.parentElement && img.parentElement.tagName === 'PICTURE' ? img.parentElement : null;
+    if (picture) {
+      Array.prototype.forEach.call(picture.querySelectorAll('source'), function (source) {
+        candidates.push(firstInSrcset(source.getAttribute('srcset')), firstInSrcset(source.getAttribute('data-srcset')));
+      });
+    }
     for (var i = 0; i < candidates.length; i++) {
       var url = candidates[i] && absolute(candidates[i]);
       if (url && /^https?:/i.test(url)) return url;
@@ -162,23 +185,40 @@
 
   var picking = false;
 
+  function setPicking(on) {
+    picking = !!on;
+    document.documentElement.classList.toggle('rc-picking', picking);
+  }
+
+  // The image tapped: the target itself, even inside a web component's shadow root (the event
+  // path reaches into open ones), else one under the finger, beneath an overlay or a link.
   function imageAt(e) {
+    var path = e.composedPath ? e.composedPath() : [];
+    for (var i = 0; i < path.length; i++) {
+      if (path[i].tagName === 'IMG') return path[i];
+      if (path[i] === document) break;
+    }
     var img = e.target && e.target.closest ? e.target.closest('img') : null;
     if (img) return img;
     if (document.elementsFromPoint) {
       var under = document.elementsFromPoint(e.clientX, e.clientY);
-      for (var i = 0; i < under.length; i++) if (under[i].tagName === 'IMG') return under[i];
+      for (var j = 0; j < under.length; j++) if (under[j].tagName === 'IMG') return under[j];
     }
     return null;
   }
 
+  // One tap, whatever it lands on, ends picking: an image the app can read becomes the photo;
+  // anything else is reported, so native can say so and the page answers taps again.
   document.addEventListener('click', function (e) {
     if (!picking) return;
+    setPicking(false);
+    var onTag = e.target && e.target.closest && e.target.closest('.rc-tag');
+    if (onTag) return; // the tag's own handler clears its field
     e.preventDefault();
     e.stopPropagation();
     var img = imageAt(e);
     var src = img && imageSource(img);
-    if (src) post({ type: 'image', src: src });
+    post(src ? { type: 'image', src: src } : { type: 'noImage' });
   }, true);
 
   // --- API ---
@@ -194,10 +234,7 @@
       current = { marks: state.marks || [], photo: state.photo || null };
       render();
     },
-    pickImage: function (on) {
-      picking = !!on;
-      document.documentElement.classList.toggle('rc-picking', picking);
-    }
+    pickImage: setPicking
   };
 
   // Layout moves as images and fonts load: keep the tags beside their blocks.
