@@ -250,6 +250,14 @@ the hand-over at "Done — finish": `RecipeCookFinishedTest` (iOS: in
 added, once: `PantryUseUpScreenTest` (Robolectric). iOS has no UI test for it: a UI test can't
 add a photo (see "I made this" photos, #116, below).
 
+The recipe screen's collaborators (#169), each without a ViewModel: `RecipeRendererTest` /
+`RecipeRendererTests` (servings, units, temperatures, short steps, amounts, decisions), with the
+corpus's `Render` rows pinning the Swift to the Kotlin (write only
+`Render("4 servings", 6, ["2 cups flour"], ["Bake at 350°F."]),`); `CookSessionTest` /
+`CookSessionTests` (restore, start, done, the end of cooking, timers over a clock the test
+moves, what is saved); `ChefModeTest` / `ChefModeTests` (the flag and setting, a recipe not
+kept, an unsupported language, count brackets). The ViewModel suites still cover them together.
+
 Amounts inside steps (#101): `StepAmountsTest` (JVM) and `StepAmountsTests` (iOS) run
 the rules on steps modelled on real pages, and the corpus's `Step` rows pin the Swift to the
 Kotlin (each step against its lines as given and doubled in Metric; write only

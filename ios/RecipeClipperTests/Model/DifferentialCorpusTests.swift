@@ -48,6 +48,8 @@ import XCTest
 // the lines as given and against them doubled in Metric. Write only `Step("Add the eggs.", ["2 eggs"]),`.
 // Page-pick rows (#103): a kind, a page's text, what the model picked, then PageRecipeCheck.find
 // (the page's own text for it, or nil). Write only `Pick(.ingredient, "1 cup flour", "1 cup flour"),`.
+// Rendering rows (#169): a recipe's yield, chosen servings, lines and steps, then what
+// RecipeRenderer.content shows of it (details beside `Render`). Write only the inputs.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -1605,6 +1607,47 @@ final class DifferentialCorpusTests: XCTestCase {
         Pick(.step, "Add 9×13-inch pan.", "Add 9x13-inch pan.", "Add 9×13-inch pan."),
     ]
 
+    // Rendering rows (#169): a recipe's yield (or nil), chosen servings (or nil), ingredients and
+    // steps, optionally Chef mode's saved short steps, then RecipeRenderer.content in Metric and
+    // Celsius with amounts in steps on: the servings stepper as [base, target] (nil: none), the
+    // ingredients, steps and timers as shown, each step's amounts marked with ⟦ ⟧, the short steps
+    // as shown and their amounts (nil: none). Write only
+    // `Render("4 servings", 6, ["2 cups flour"], ["Bake at 350°F."], shorts: [nil], lang: "en"),`.
+    private struct Render {
+        let recipe: Recipe; let shorts: [String?]
+        let servings: [Int]?; let ingredients: [String]; let instructions: [String]; let timers: [Int?]
+        let amounts: [String]?; let shortSteps: [String?]; let shortAmounts: [String]?
+        init(
+            _ yield: String?, _ target: Int?, _ lines: [String], _ steps: [String], shorts: [String?] = [],
+            lang: String = "en", _ servings: [Int]?, _ ingredients: [String], _ instructions: [String],
+            _ timers: [Int?], _ amounts: [String]?, _ shortSteps: [String?], _ shortAmounts: [String]?
+        ) {
+            var recipe = Recipe(
+                name: "Render", image: nil, ingredients: lines, instructions: steps, prepTime: nil, cookTime: nil,
+                totalTime: nil, yield: yield, sourceUrl: "https://example.com/r"
+            )
+            recipe.language = lang
+            recipe.servingsTarget = target
+            self.recipe = recipe; self.shorts = shorts
+            self.servings = servings; self.ingredients = ingredients; self.instructions = instructions
+            self.timers = timers; self.amounts = amounts; self.shortSteps = shortSteps; self.shortAmounts = shortAmounts
+        }
+    }
+
+    private static let renders: [Render] = [
+        Render("8 servings", 12, ["2 cups all-purpose flour", "1 cup whole milk", "2 large eggs", "1 tsp salt"], ["Preheat the oven to 350°F.", "Whisk the flour and salt together.", "Beat in the eggs and milk, then bake for 25 to 30 minutes."], shorts: [nil, "Whisk flour and salt.", "Beat in eggs and milk; bake 25–30 min at 350°F."], [8, 12], ["360 g all-purpose flour", "360 ml whole milk", "3 large eggs", "7.5 ml salt"], ["Preheat the oven to 180°C.", "Whisk the flour and salt together.", "Beat in the eggs and milk, then bake for 25 to 30 minutes."], [nil, nil, 1500], ["Preheat the oven to 180°C.", "Whisk ⟦360 g⟧ flour and ⟦7.5 ml⟧ salt together.", "Beat in ⟦3 large⟧ eggs and milk, then bake for 25 to 30 minutes."], [nil, "Whisk flour and salt.", "Beat in eggs and milk; bake 25–30 min at 180°C."], ["", "Whisk ⟦360 g⟧ flour and ⟦7.5 ml⟧ salt.", "Beat in ⟦3 large⟧ eggs and milk; bake 25–30 min at 180°C."]),
+        Render("4 servings", 2, ["1 lb chicken thighs", "2 tbsp olive oil", "3 cloves garlic, minced"], ["Heat the olive oil and brown the chicken for 8 minutes.", "Add the garlic and cook 1 minute."], [4, 2], ["225 g chicken thighs", "15 ml olive oil", "1 1/2 cloves garlic, minced"], ["Heat the olive oil and brown the chicken for 8 minutes.", "Add the garlic and cook 1 minute."], [480, 60], ["Heat ⟦15 ml⟧ olive oil and brown the chicken for 8 minutes.", "Add ⟦1 1/2 cloves⟧ garlic and cook 1 minute."], [], nil),
+        Render("4 servings", 0, ["2 cups sugar"], ["Stir in the sugar."], [4, 1], ["100 g sugar"], ["Stir in the sugar."], [nil], ["Stir in ⟦100 g⟧ sugar."], [], nil),
+        Render("4 servings", 1000, ["2 cups sugar"], ["Stir in the sugar."], [4, 99], ["9.9 kg sugar"], ["Stir in the sugar."], [nil], ["Stir in ⟦9.9 kg⟧ sugar."], [], nil),
+        Render("Makes plenty", nil, ["1 cup sugar", "2 eggs"], ["Bake at 180°C for 1 hour."], nil, ["200 g sugar", "2 eggs"], ["Bake at 180°C for 1 hour."], [3600], ["Bake at 180°C for 1 hour."], [], nil),
+        Render(nil, 6, ["1 cup sugar"], ["Bake at 400F for 45 min."], shorts: [nil, "Bake."], nil, ["200 g sugar"], ["Bake at 200°C for 45 min."], [2700], ["Bake at 200°C for 45 min."], [], nil),
+        Render("6", nil, ["1 1/2 cups (190 g) flour", "1 can (14 oz) coconut milk"], ["Whisk the flour into the coconut milk.", "Simmer for 20 minutes."], shorts: [nil, nil], [6, 6], ["190 g flour", "1 can (14 oz) coconut milk"], ["Whisk the flour into the coconut milk.", "Simmer for 20 minutes."], [nil, 1200], ["Whisk ⟦190 g⟧ flour into ⟦1 can (14 oz)⟧ coconut milk.", "Simmer for 20 minutes."], [nil, nil], nil),
+        Render("4 Portionen", 8, ["500 g Mehl", "2 EL Zucker", "250 ml Milch"], ["Den Ofen auf 180 °C vorheizen.", "Das Mehl und den Zucker mit der Milch 10 Minuten rühren."], lang: "de", [4, 8], ["1000 g Mehl", "50 g Zucker", "500 ml Milch"], ["Den Ofen auf 180 °C vorheizen.", "Das Mehl und den Zucker mit der Milch 10 Minuten rühren."], [nil, 600], ["Den Ofen auf 180 °C vorheizen.", "⟦1000 g⟧ Mehl und ⟦50 g⟧ Zucker mit ⟦500 ml⟧ Milch 10 Minuten rühren."], [], nil),
+        Render("4 personnes", 2, ["200 g de farine", "3 œufs"], ["Ajoutez la farine et les œufs, puis faites cuire 20 minutes à 350 °F."], lang: "fr", [4, 2], ["100 g de farine", "1 1/2 œufs"], ["Ajoutez la farine et les œufs, puis faites cuire 20 minutes à 180°C."], [1200], ["Ajoutez ⟦100 g de⟧ farine et ⟦1 1/2⟧ œufs, puis faites cuire 20 minutes à 180°C."], [], nil),
+        Render("2人分", 4, ["醤油 大さじ1", "砂糖 小さじ2"], ["醤油と砂糖を加えて5分煮る。"], lang: "ja", [2, 4], ["醤油 30 ml", "砂糖 17 g"], ["醤油と砂糖を加えて5分煮る。"], [300], ["醤油と砂糖を加えて5分煮る。"], [], nil),
+        Render("4 servings", 8, ["2 cups flour"], ["Bake at 350°F for 20 minutes."], lang: "zz", nil, ["2 cups flour"], ["Bake at 350°F for 20 minutes."], [nil], ["Bake at 350°F for 20 minutes."], [], nil),
+    ]
+
     private static let jsonLd: [(String, [String], Recipe?)] = [
         ("wprm_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Article\",\"@id\":\"https://x.com/#article\",\"headline\":\"Best Brownies\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"}},{\"@type\":\"WebPage\",\"@id\":\"https://x.com/\"},{\"@type\":\"Recipe\",\"name\":\"Fudgy Brownies &amp; Ice Cream\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"},\"image\":[\"https://x.com/a-1x1.jpg\",\"https://x.com/a-4x3.jpg\"],\"recipeYield\":[\"16\",\"16 brownies\"],\"prepTime\":\"PT15M\",\"cookTime\":\"PT25M\",\"totalTime\":\"PT40M\",\"recipeIngredient\":[\"1 cup (226g) butter\",\"2 cups (400g) sugar\",\"&frac12; cup cocoa\",\"<strong>3</strong> eggs\",\"\"],\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Batter\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Preheat oven to 350&deg;F.\",\"name\":\"Preheat oven to 350&deg;F.\",\"url\":\"https://x.com/#s1\"},{\"@type\":\"HowToStep\",\"text\":\"Melt butter &amp; sugar.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Bake\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"<p>Bake 25 minutes.</p>\"}]}]}]}"], Recipe(name: "Fudgy Brownies & Ice Cream", image: "https://x.com/a-1x1.jpg", ingredients: ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], instructions: ["Preheat oven to 350°F.", "Melt butter & sugar.", "Bake 25 minutes."], prepTime: "15m", cookTime: "25m", totalTime: "40m", yield: "16", sourceUrl: "https://src/wprm_graph")),
         ("yoast_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":[\"WebPage\",\"ItemPage\"],\"@id\":\"https://y.com/p/\"},{\"@type\":[\"Recipe\"],\"name\":\"Chicken Tikka Masala\",\"image\":[{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img1.jpg\",\"width\":1200},{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img2.jpg\"}],\"recipeYield\":\"4\",\"prepTime\":\"PT1H\",\"cookTime\":\"PT1H30M\",\"totalTime\":\"PT2H30M\",\"recipeIngredient\":[\"1 lb chicken\",\"1 cup yogurt\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Marinate.\",\"name\":\"Marinate\"},{\"@type\":\"HowToStep\",\"name\":\"Grill it\"},{\"@type\":\"HowToStep\",\"text\":\"   \"}]}]}"], Recipe(name: "Chicken Tikka Masala", image: "https://y.com/img1.jpg", ingredients: ["1 lb chicken", "1 cup yogurt"], instructions: ["Marinate.", "Grill it"], prepTime: "1h", cookTime: "1h 30m", totalTime: "2h 30m", yield: "4", sourceUrl: "https://src/yoast_graph")),
@@ -1690,6 +1733,21 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(StepAmounts.marked(StepAmounts.annotate([row.step], lines: row.lines, words: row.words)[0]), row.asGiven, row.step)
             let doubled = IngredientRendering.render(row.lines, factor: 2.0, system: .metric, convertLiquids: false, words: row.words)
             XCTAssertEqual(StepAmounts.marked(StepAmounts.annotate([row.step], lines: doubled, words: row.words)[0]), row.metric, row.step)
+        }
+    }
+
+    func testRecipeRendererMatchesKotlin() {
+        let settings = RecipeRenderer.Settings(unitSystem: .metric, temperatureUnit: .celsius, amountsInSteps: true)
+        for row in Self.renders {
+            let shown = RecipeRenderer.content(row.recipe, settings: settings, shortSteps: row.shorts)
+            let label = row.recipe.ingredients.joined(separator: " | ")
+            XCTAssertEqual(shown.servings.map { [$0.base, $0.target] }, row.servings, label)
+            XCTAssertEqual(shown.ingredients, row.ingredients, label)
+            XCTAssertEqual(shown.instructions, row.instructions, label)
+            XCTAssertEqual(shown.stepTimerSeconds, row.timers, label)
+            XCTAssertEqual(shown.stepAmounts?.map(StepAmounts.marked), row.amounts, label)
+            XCTAssertEqual(shown.shortInstructions, row.shortSteps, label)
+            XCTAssertEqual(shown.shortStepAmounts?.map(StepAmounts.marked), row.shortAmounts, label)
         }
     }
 
