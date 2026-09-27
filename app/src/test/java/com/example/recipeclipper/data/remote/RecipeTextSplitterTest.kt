@@ -65,6 +65,108 @@ class RecipeTextSplitterTest {
         assertNull(RecipeTextSplitter.section("2 cups flour"))
     }
 
+    @Test fun `accepts the header styles people type on Reddit`() {
+        val ingredientHeaders = listOf(
+            "**Ingredients**", "**Ingredients:**", "**Ingredients**:", "Ingredients:", "## Ingredients", "INGREDIENTS",
+            "__Ingredients__", "*Ingredients*", "Ingredients 🛒", "What you’ll need:", "**Things You'll Need**",
+            "**Ingredients** (serves 4)", "**Ingredients [for 3~4 people]**"
+        )
+        val stepHeaders = listOf(
+            "**Instructions**", "**Directions:**", "**Method**:", "Steps:", "## Preparation", "DIRECTIONS",
+            "__Method__", "*Instructions*", "Directions 👇", "Procedure:", "**Cooking steps (for the sauce):**",
+            "**Instructions/Method**", "How to make it:"
+        )
+        ingredientHeaders.zip(stepHeaders).forEach { (i, s) ->
+            val result = split("A story first.\n\n$i\n\n* 2 cups flour\n* 1 tsp salt\n\n$s\n\n1. Mix.\n2. Bake.")
+            assertEquals("$i / $s", listOf("2 cups flour", "1 tsp salt"), result?.ingredients)
+            assertEquals("$i / $s", listOf("Mix.", "Bake."), result?.instructions)
+        }
+    }
+
+    @Test fun `a header set apart as one may have a few words before its keyword`() {
+        fun header(raw: String) = RecipeTextSplitter.header(RecipeTextSplitter.line(raw))
+        assertEquals(Section.INGREDIENTS, header("**Ingredient amounts**:")?.section)
+        assertNull(header("**Ingredient amounts**:")?.label)
+        assertEquals(Section.INSTRUCTIONS, header("**Cooking instructions**")?.section)
+        assertNull(header("**Cooking instructions**")?.label)
+        // A word that names a group keeps it as the group's heading.
+        assertEquals(Section.INGREDIENTS, header("**Dry ingredients**")?.section)
+        assertEquals("Dry ingredients:", header("**Dry ingredients**")?.label)
+        assertEquals("SAUCE INGREDIENTS:", header("SAUCE INGREDIENTS")?.label)
+        assertEquals(Section.END, header("**Chef's notes**")?.section)
+        // Not set apart, or a step: an ordinary line.
+        assertNull(header("Dry ingredients"))
+        assertNull(header("**Mix the dry ingredients**"))
+        assertNull(header("**Stir in the wet ingredients**"))
+        assertNull(header("1. **Instructions**"))
+    }
+
+    @Test fun `a misspelt header set apart as one is still a header`() {
+        assertEquals(Section.INGREDIENTS, RecipeTextSplitter.section("Ingredeints:"))
+        assertEquals(Section.INGREDIENTS, RecipeTextSplitter.section("**Ingrediants**"))
+        assertEquals(Section.INSTRUCTIONS, RecipeTextSplitter.section("** Intructions**"))
+        assertEquals(Section.INSTRUCTIONS, RecipeTextSplitter.section("DIRECTONS"))
+        assertNull(RecipeTextSplitter.section("Ingredeints"))
+        assertNull(RecipeTextSplitter.section("**Introductions**"))
+    }
+
+    @Test fun `steps with no header are a numbered list starting at 1`() {
+        val result = split("**Ingredients**\n\n- 2 cups flour\n- 1 egg\n\n1. Mix.\n2. Bake at 350°F.\n\nEnjoy")!!
+        assertEquals(listOf("2 cups flour", "1 egg"), result.ingredients)
+        assertEquals(listOf("Mix.", "Bake at 350°F.", "Enjoy"), result.instructions)
+        // Numbered ingredients, then steps numbered again from 1.
+        val numbered = split("Ingredients:\n1. 2 cups flour\n2. 1 egg\n1. Mix.\n2. Bake.")!!
+        assertEquals(listOf("2 cups flour", "1 egg"), numbered.ingredients)
+        assertEquals(listOf("Mix.", "Bake."), numbered.instructions)
+        // "Step 1" labels, bare or with a title.
+        val labelled = split("INGREDIENTS\n2 cups flour\n\n**Step 1**\nMix the flour.\n\n**Step 2: Bake**\nBake 20 minutes.")!!
+        assertEquals(listOf("Mix the flour.", "Bake:", "Bake 20 minutes."), labelled.instructions)
+    }
+
+    @Test fun `ingredients with no header are the amount lines just above the steps`() {
+        val result = split(
+            """
+            I scaled one down for you. It makes about two servings.
+            2.5 oz. frozen spinach
+            Sour cream – 1/8 cup
+            Salt to taste
+
+            Directions:
+            Stir together and chill.
+            """.trimIndent()
+        )!!
+        assertEquals(listOf("2.5 oz. frozen spinach", "Sour cream – 1/8 cup", "Salt to taste"), result.ingredients)
+        assertEquals(listOf("Stir together and chill."), result.instructions)
+        // A label above the list isn't an ingredient; neither list needs a header.
+        val bare = split("Recipe:\n\n* 1 cup dates\n* 1/4 cup honey\n* oats\n\n1. Blend the dates.\n2. Press into a pan.")!!
+        assertEquals(listOf("1 cup dates", "1/4 cup honey", "oats"), bare.ingredients)
+        assertEquals(listOf("Blend the dates.", "Press into a pan."), bare.instructions)
+    }
+
+    @Test fun `chatter never splits, even with a number or a list in it`() {
+        assertNull(split("I used 2 cups of flour and it was fine.\nDirections:\nMix."))
+        assertNull(split("My mum's way:\n1. lots of cheese\n2. a slow sauce\n3. patience"))
+        assertNull(split("Honestly just wing it lol\n\nSteps:\n1. Buy it.\n2. Eat it."))
+        assertNull(split("**Ingredients**\nwhatever is in the fridge\n\nThen bake it until it's done."))
+    }
+
+    @Test fun `a bold line inside a section names a group`() {
+        val result = split("**Ingredients**\n**Cake**\n- 2 cups flour\n## Frosting\n- 1 cup sugar\n**Method**\n1. Bake.\n**Make the frosting**\n2. Whip.")!!
+        assertEquals(listOf("Cake:", "2 cups flour", "Frosting:", "1 cup sugar"), result.ingredients)
+        assertEquals(listOf("Bake.", "Make the frosting:", "Whip."), result.instructions)
+        // A bold amount stays as written; headings alone aren't a recipe.
+        assertEquals(listOf("2 cups flour"), split("Ingredients\n**2 cups flour**\nMethod\nBake.")!!.ingredients)
+        assertNull(split("Ingredients\n**Cake**\nMethod\nBake."))
+    }
+
+    @Test fun `a line with a bare link is left out, a yield or time among the ingredients is read`() {
+        val result = split("Ingredients\nServes 2\nPrep time: 5 min\n1 egg\nMethod\nBoil.\nMore on my blog: https://example.com/eggs")!!
+        assertEquals(listOf("1 egg"), result.ingredients)
+        assertEquals(listOf("Boil."), result.instructions)
+        assertEquals("Serves 2", result.yield)
+        assertEquals("5m", result.prepTime)
+    }
+
     @Test fun `cleans Markdown off each line`() {
         val clean = RecipeTextSplitter::cleanLine
         assertEquals("2 cups flour", clean("* 2 cups flour"))
@@ -85,6 +187,15 @@ class RecipeTextSplitterTest {
         assertEquals("", clean("---"))
         assertEquals("", clean("&#x200B;"))
         assertEquals("2 eggs", clean("  2 eggs  "))
+        // Reddit's editor escapes what would otherwise be Markdown.
+        assertEquals("Mix.", clean("1\\. Mix."))
+        assertEquals("2 cups flour", clean("\\- 2 cups flour"))
+        assertEquals("2 cups flour", clean("▢ 2 cups flour"))
+        assertEquals("1 pound of pork belly", clean("・1 pound of pork belly"))
+        assertEquals("Glaze (to be used during grilling)", clean("**Glaze** *(to be used during grilling)*"))
+        assertEquals("Bake 20 minutes.", clean("Bake 20 minutes.\\"))
+        assertEquals("-5°C freezer", clean("-5°C freezer"))
+        assertEquals("", clean("==="))
     }
 
     @Test fun `the story before the first header is dropped, but a labelled yield and times are kept`() {

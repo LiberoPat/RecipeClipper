@@ -1,0 +1,87 @@
+[
+  {
+    "kind": "Listing",
+    "data": {
+      "after": null, "dist": 1, "modhash": "", "geo_filter": "", "before": null,
+      "children": [
+        {
+          "kind": "t3",
+          "data": {
+            "subreddit": "recipes", "subreddit_name_prefixed": "r/recipes",
+            "id": "1f3k9xq", "name": "t3_1f3k9xq", "author": "pantry_raider",
+            "title": "Sticky Honey Garlic Chicken Thighs",
+            "selftext": "", "selftext_html": null,
+            "is_self": false, "is_video": false, "post_hint": "image", "domain": "i.redd.it",
+            "url": "https://i.redd.it/k2m8x7vq1abd1.jpeg",
+            "url_overridden_by_dest": "https://i.redd.it/k2m8x7vq1abd1.jpeg",
+            "permalink": "/r/recipes/comments/1f3k9xq/sticky_honey_garlic_chicken_thighs/",
+            "preview": {
+              "images": [
+                {
+                  "source": {"url": "https://preview.redd.it/k2m8x7vq1abd1.jpeg?auto=webp&s=5c1e0f1a2b3c4d5e6f", "width": 3024, "height": 4032},
+                  "resolutions": [{"url": "https://preview.redd.it/k2m8x7vq1abd1.jpeg?width=108&crop=smart&auto=webp&s=9a8b7c", "width": 108, "height": 144}],
+                  "variants": {}, "id": "Xq1vZ0pQ9aYk"
+                }
+              ],
+              "enabled": true
+            },
+            "stickied": false, "num_comments": 7, "created_utc": 1724950000.0
+          }
+        }
+      ]
+    }
+  },
+  {
+    "kind": "Listing",
+    "data": {
+      "after": null, "dist": null, "modhash": "", "geo_filter": "", "before": null,
+      "children": [
+        {
+          "kind": "t1",
+          "data": {
+            "id": "lkq0a01", "name": "t1_lkq0a01", "parent_id": "t3_1f3k9xq", "link_id": "t3_1f3k9xq",
+            "author": "AutoModerator", "is_submitter": false, "stickied": true, "distinguished": "moderator", "depth": 0,
+            "body": "Recipe posts must include the recipe in a comment by OP, written out in full:\n\n**Ingredients**\n\n* every ingredient, with amounts\n\n**Instructions**\n\n1. every step, in order\n\n*I am a bot, and this action was performed automatically. Please [contact the moderators of this subreddit](/message/compose/?to=/r/recipes) if you have any questions or concerns.*",
+            "replies": ""
+          }
+        },
+        {
+          "kind": "t1",
+          "data": {
+            "id": "lkq0b02", "name": "t1_lkq0b02", "parent_id": "t3_1f3k9xq", "link_id": "t3_1f3k9xq",
+            "author": "weeknight_wok", "is_submitter": false, "stickied": false, "distinguished": null, "depth": 0,
+            "body": "Looks great. I make a lazier version:\n\n**Ingredients**\n\n* 2 lb chicken thighs\n* 1/2 cup bottled teriyaki\n\n**Directions**\n\n1. Bake at 400F for 30 minutes, basting once.",
+            "replies": {
+              "kind": "Listing",
+              "data": {
+                "after": null, "dist": null, "modhash": "", "geo_filter": "", "before": null,
+                "children": [
+                  {
+                    "kind": "t1",
+                    "data": {
+                      "id": "lkq0c03", "name": "t1_lkq0c03", "parent_id": "t1_lkq0b02", "link_id": "t3_1f3k9xq",
+                      "author": "pantry_raider", "is_submitter": true, "stickied": false, "distinguished": null, "depth": 1,
+                      "body": "Ha, that works too on a busy night!",
+                      "replies": ""
+                    }
+                  },
+                  {"kind": "more", "data": {"count": 2, "name": "t1_lkq0d04", "id": "lkq0d04", "parent_id": "t1_lkq0b02", "depth": 1, "children": ["lkq0d04", "lkq0e05"]}}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "kind": "t1",
+          "data": {
+            "id": "lkq0f06", "name": "t1_lkq0f06", "parent_id": "t3_1f3k9xq", "link_id": "t3_1f3k9xq",
+            "author": "pantry_raider", "is_submitter": true, "stickied": false, "distinguished": null, "depth": 0,
+            "body": "Thanks for looking! This is the one my kids ask for every week.\n\nServes 4\n\n&#x200B;\n\n**Ingredients:**\n\n* 2 lb (900 g) boneless chicken thighs\n* 1 tsp salt\n* 1 tbsp oil\n\n**For the sauce:**\n\n* 1/3 cup honey\n* 1/4 cup soy sauce\n* 6 cloves garlic, minced\n\n**Instructions:**\n\n1. Pat the chicken dry and season with the salt.\n2. Sear in the oil over medium-high heat, 5 minutes a side.\n3. Whisk the sauce, pour it in and simmer until sticky, about 8 minutes.\n\nEnjoy! More photos on my blog: https://example.com/honey-garlic-chicken",
+            "replies": ""
+          }
+        },
+        {"kind": "more", "data": {"count": 3, "name": "t1_lkq0g07", "id": "lkq0g07", "parent_id": "t3_1f3k9xq", "depth": 0, "children": ["lkq0g07", "lkq0h08", "lkq0i09"]}}
+      ]
+    }
+  }
+]

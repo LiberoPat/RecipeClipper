@@ -16,13 +16,16 @@ import org.jsoup.Jsoup
  * (a `t3`), then its comment tree (`t1`s, each with its `replies`). In order:
  *
  *  1. **The post body.** If `selftext` splits cleanly ([RecipeTextSplitter]), that's the recipe.
- *  2. **A transcription in the comments.** Otherwise every comment in the tree is scored and the
- *     best one that splits wins ([RedditCommentScorer]).
+ *  2. **The comments.** Otherwise the poster's own comments (`is_submitter`), then every other
+ *     comment in the tree by score; the first that splits wins ([RedditCommentScorer]).
+ *     AutoModerator's comments are skipped (a subreddit's rules can read like a recipe
+ *     template), but not the replies under them.
  *  3. **Nothing found:** [ParseError.NoTranscription], with the post's title and photo. A
  *     legitimate outcome, not a failure: never guess a recipe from prose.
  *
  * The recipe's name is the post title; its photo is the post's image. A crosspost with no body
- * or photo of its own borrows the original's. Text that isn't a post listing at all is
+ * or photo of its own borrows the original's; its comments are on the original's thread, so
+ * [read] names that post for the source to fetch. Text that isn't a post listing at all is
  * [ParseError.NoRecipeFound].
  *
  * Pure: JSON text in, a [ParseResult] out.
@@ -32,7 +35,13 @@ object RedditRecipeParser {
     /** How deep the comment walk goes. Reddit itself stops nesting long before this. */
     private const val MAX_DEPTH = 50
 
-    fun parse(json: String, sourceUrl: String): ParseResult {
+    /** What [read] made of a listing: the [result] and, for a crosspost, the id of the post it
+     *  shares ([crosspostOf]: `crosspost_parent` "t3_abc123" is "abc123"). */
+    class Reading(val result: ParseResult, val crosspostOf: String? = null)
+
+    fun parse(json: String, sourceUrl: String): ParseResult = read(json, sourceUrl).result
+
+    fun read(json: String, sourceUrl: String): Reading {
         val root = try {
             JSONTokener(json).nextValue()
         } catch (e: JSONException) {
@@ -42,24 +51,24 @@ object RedditRecipeParser {
             // ours runs. Narrower than JsonLdRecipeParser's Throwable, with the same reasoning.
             null
         }
-        val listings = root as? JSONArray ?: return ParseResult.Error(ParseError.NoRecipeFound)
+        val noRecipe = Reading(ParseResult.Error(ParseError.NoRecipeFound))
+        val listings = root as? JSONArray ?: return noRecipe
         val post = listings.optJSONObject(0)
             ?.optJSONObject("data")?.optJSONArray("children")?.optJSONObject(0)
             ?.takeIf { it.optString("kind") == "t3" }?.optJSONObject("data")
-            ?: return ParseResult.Error(ParseError.NoRecipeFound)
+            ?: return noRecipe
 
-        val title = stripHtml(post.optString("title")).ifBlank {
-            return ParseResult.Error(ParseError.NoRecipeFound)
-        }
+        val title = stripHtml(post.optString("title")).ifBlank { return noRecipe }
         val original = post.optJSONArray("crosspost_parent_list")?.optJSONObject(0)
         val image = imageOf(post) ?: original?.let(::imageOf)
+        val crosspostOf = post.optString("crosspost_parent").removePrefix("t3_").ifEmpty { null }
 
         val body = bodyOf(post).ifBlank { original?.let(::bodyOf).orEmpty() }
         val split = RecipeTextSplitter.split(body)
             ?: RedditCommentScorer.pick(comments(listings.optJSONObject(1)))?.let(RecipeTextSplitter::split)
-            ?: return ParseResult.Error(ParseError.NoTranscription(title, image))
+            ?: return Reading(ParseResult.Error(ParseError.NoTranscription(title, image)), crosspostOf)
 
-        return ParseResult.Success(
+        return Reading(ParseResult.Success(
             Recipe(
                 name = title,
                 image = image,
@@ -76,7 +85,7 @@ object RedditRecipeParser {
                     LanguageWords.detectionText(title, split.ingredients)
                 }
             )
-        )
+        ))
     }
 
     private fun stripHtml(raw: String): String = Jsoup.parse(raw).text()
@@ -84,9 +93,10 @@ object RedditRecipeParser {
     private fun bodyOf(post: JSONObject): String =
         post.optString("selftext").takeUnless { it.trim() == "[removed]" || it.trim() == "[deleted]" }.orEmpty()
 
-    /** Every comment body in the tree, depth first, in the order Reddit sent them. */
-    internal fun comments(listing: JSONObject?): List<String> {
-        val out = mutableListOf<String>()
+    /** Every comment in the tree but AutoModerator's, depth first, in the order Reddit sent
+     *  them. */
+    internal fun comments(listing: JSONObject?): List<RedditComment> {
+        val out = mutableListOf<RedditComment>()
         fun walk(node: JSONObject?, depth: Int) {
             if (node == null || depth > MAX_DEPTH) return
             val children = node.optJSONObject("data")?.optJSONArray("children") ?: return
@@ -95,7 +105,9 @@ object RedditRecipeParser {
                 if (child.optString("kind") != "t1") continue // "more" stubs have no text
                 val data = child.optJSONObject("data") ?: continue
                 val body = data.optString("body")
-                if (body.isNotBlank()) out.add(body)
+                if (body.isNotBlank() && data.optString("author") != "AutoModerator") {
+                    out.add(RedditComment(body, data.optBoolean("is_submitter")))
+                }
                 walk(data.optJSONObject("replies"), depth + 1) // "" when there are none
             }
         }

@@ -32,6 +32,15 @@ class RedditUrlsTest {
         assertEquals(expected, RedditUrls.jsonUrl("https://old.reddit.com/r/recipes/comments/1abc01/lemon_orzo/?share_id=x#top"))
         assertEquals(expected, RedditUrls.jsonUrl("https://reddit.com/r/recipes/comments/1abc01/lemon_orzo"))
         assertEquals(expected, RedditUrls.jsonUrl("https://www.reddit.com/r/recipes/comments/1abc01/lemon_orzo.json"))
+        assertEquals(expected, RedditUrls.jsonUrl("https://m.reddit.com/r/recipes/comments/1abc01/lemon_orzo/"))
+        // Where a share link lands: the post, with the share's tracking query.
+        assertEquals(
+            expected,
+            RedditUrls.jsonUrl(
+                "https://www.reddit.com/r/recipes/comments/1abc01/lemon_orzo/?share_id=oqqXWtvgcCuonkcpck8yD" +
+                    "&utm_content=1&utm_medium=android_app&utm_name=androidcss&utm_source=share&utm_term=1"
+            )
+        )
     }
 
     @Test fun `short and slugless forms`() {
@@ -54,6 +63,11 @@ class RedditUrlsTest {
             "https://www.reddit.com/r/Old_Recipes/comments/1abc02/card/k3xyz.json?raw_json=1&limit=200",
             RedditUrls.jsonUrl("https://www.reddit.com/r/Old_Recipes/comments/1abc02/card/k3xyz/")
         )
+        // A shared comment lands with "?context=3" and the share's query.
+        assertEquals(
+            "https://www.reddit.com/r/Old_Recipes/comments/1abc02/card/k3xyz.json?raw_json=1&limit=200",
+            RedditUrls.jsonUrl("https://www.reddit.com/r/Old_Recipes/comments/1abc02/card/k3xyz/?context=3&share_id=vi8D&utm_source=share")
+        )
     }
 
     @Test fun `the base is swappable for tests`() {
@@ -74,6 +88,8 @@ class RedditUrlsTest {
     @Test fun `share links are marked for a redirect`() {
         assertTrue(RedditUrls.isShareLink("https://www.reddit.com/r/recipes/s/AbCd123"))
         assertTrue(RedditUrls.isShareLink("https://reddit.com/r/Old_Recipes/s/AbCd123/"))
+        assertTrue(RedditUrls.isShareLink("https://www.reddit.com/r/recipes/s/AbCd123?utm_source=share"))
+        assertTrue(RedditUrls.isShareLink("https://www.reddit.com/u/some_cook/s/AbCd123"))
         assertFalse(RedditUrls.isShareLink("https://www.reddit.com/r/recipes/comments/abc/x/"))
         assertFalse(RedditUrls.isShareLink("https://redd.it/abc"))
     }

@@ -12,7 +12,7 @@ enum RedditUrls {
     /// the comment tree for a very busy thread.
     private static let query = "?raw_json=1&limit=200"
 
-    private static let sharePath = JRegex(#"^/r/[^/]+/s/[^/]+/?$"#)
+    private static let sharePath = JRegex(#"^/(?:r|u|user)/[^/]+/s/[^/]+/?$"#)
     private static let commentsPath = JRegex(#"^(.*?/comments/[A-Za-z0-9]+)(/.*)?$"#)
     private static let id = JRegex(#"^[A-Za-z0-9]+$"#)
 

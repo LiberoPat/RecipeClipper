@@ -7,8 +7,9 @@ import java.net.URI
  *
  * A post link is anything with a `/comments/<id>` path on reddit.com or a subdomain of it
  * (www, old, new, m, np), plus the `redd.it/<id>` and `reddit.com/gallery/<id>` short forms.
- * The Reddit app shares `reddit.com/r/<sub>/s/<code>` links instead, which only redirect to a
- * post: [isShareLink] marks those, and the source follows the redirect first.
+ * The Reddit app shares `reddit.com/r/<sub>/s/<code>` links instead (`/u/<name>/s/<code>` for a
+ * profile post), which redirect to the post with `?share_id=…&utm_…` added: the source
+ * follows the redirect first ([isShareLink]), and [jsonUrl] drops that query.
  */
 object RedditUrls {
 
@@ -18,7 +19,7 @@ object RedditUrls {
      *  the comment tree for a very busy thread. */
     private const val QUERY = "?raw_json=1&limit=200"
 
-    private val SHARE_PATH = Regex("^/r/[^/]+/s/[^/]+/?$")
+    private val SHARE_PATH = Regex("^/(?:r|u|user)/[^/]+/s/[^/]+/?$")
     private val COMMENTS_PATH = Regex("^(.*?/comments/[A-Za-z0-9]+)(/.*)?$")
     private val ID = Regex("^[A-Za-z0-9]+$")
 

@@ -1,0 +1,57 @@
+[
+  {
+    "kind": "Listing",
+    "data": {
+      "after": null, "dist": 1, "modhash": "", "geo_filter": "", "before": null,
+      "children": [
+        {
+          "kind": "t3",
+          "data": {
+            "subreddit": "recipes", "subreddit_name_prefixed": "r/recipes",
+            "id": "1f8f6gh", "name": "t3_1f8f6gh", "author": "dip_for_two",
+            "title": "[Request] Spinach dip for two people",
+            "selftext": "Every recipe I find serves ten. Does anyone have a small batch? Thanks!",
+            "selftext_html": "<!-- SC_OFF --><div class=\"md\"><p>Every recipe I find serves ten.</p></div><!-- SC_ON -->",
+            "is_self": true, "is_video": false, "domain": "self.recipes",
+            "url": "https://www.reddit.com/r/recipes/comments/1f8f6gh/request_spinach_dip_for_two_people/",
+            "permalink": "/r/recipes/comments/1f8f6gh/request_spinach_dip_for_two_people/",
+            "stickied": false, "num_comments": 3, "created_utc": 1725400000.0
+          }
+        }
+      ]
+    }
+  },
+  {
+    "kind": "Listing",
+    "data": {
+      "after": null, "dist": null, "modhash": "", "geo_filter": "", "before": null,
+      "children": [
+        {
+          "kind": "t1",
+          "data": {
+            "id": "lkv5a01", "name": "t1_lkv5a01", "parent_id": "t3_1f8f6gh", "link_id": "t3_1f8f6gh",
+            "author": "small_batch_sam", "is_submitter": false, "stickied": false, "distinguished": null, "depth": 0,
+            "body": "I scaled one down for you. It makes about two servings, a couple of tablespoons each.  \n2.5 oz. frozen spinach, thawed and squeezed dry  \n1/4 cup minced onion  \n1/2 teaspoon minced garlic  \n1/8 cup sour cream  \n1/8 cup mayonnaise  \nSalt – 1/8 tsp\n\nDirections:  \nStir everything together in a small bowl and chill for an hour before serving.",
+            "replies": {
+              "kind": "Listing",
+              "data": {
+                "after": null, "dist": null, "modhash": "", "geo_filter": "", "before": null,
+                "children": [
+                  {
+                    "kind": "t1",
+                    "data": {
+                      "id": "lkv5b02", "name": "t1_lkv5b02", "parent_id": "t1_lkv5a01", "link_id": "t3_1f8f6gh",
+                      "author": "dip_for_two", "is_submitter": true, "stickied": false, "distinguished": null, "depth": 1,
+                      "body": "Perfect, thank you!",
+                      "replies": ""
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+]

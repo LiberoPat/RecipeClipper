@@ -9,6 +9,8 @@ class RedditCommentScorerTest {
 
     private val score = RedditCommentScorer::score
 
+    private fun pick(vararg texts: String) = RedditCommentScorer.pick(texts.map { RedditComment(it) })
+
     private val transcription = """
         Transcription:
 
@@ -58,25 +60,33 @@ class RedditCommentScorerTest {
         val partial = "Ingredients:\n1 cup dates\n1 cup water\nwalnuts"
         assertEquals(
             transcription,
-            RedditCommentScorer.pick(listOf("Lovely!", partial, recipeNoMention, transcription))
+            pick("Lovely!", partial, recipeNoMention, transcription)
         )
     }
 
     @Test fun `ties go to the earlier comment`() {
         val other = "Ingredients\n2 cups dates\n2 cups flour\nDirections\nMix well.\nBake."
-        assertEquals(recipeNoMention, RedditCommentScorer.pick(listOf(recipeNoMention, other)))
-        assertEquals(other, RedditCommentScorer.pick(listOf(other, recipeNoMention)))
+        assertEquals(recipeNoMention, pick(recipeNoMention, other))
+        assertEquals(other, pick(other, recipeNoMention))
+    }
+
+    @Test fun `the poster's own recipe comes before anyone else's, however they score`() {
+        val byPoster = "Ingredients\n2 cups dates\n2 cups flour\nDirections\nMix well.\nBake."
+        val comments = listOf(RedditComment(transcription), RedditComment(byPoster, bySubmitter = true))
+        assertEquals(byPoster, RedditCommentScorer.pick(comments))
+        // A poster's remark that isn't a recipe doesn't block the others.
+        assertEquals(transcription, RedditCommentScorer.pick(listOf(RedditComment("Thanks all!", true), RedditComment(transcription))))
     }
 
     @Test fun `a high score without a clean split is passed over, never guessed at`() {
         // Mentions a transcription and lists ingredients, but has no steps section.
         val noSteps = "Transcription:\nIngredients\n1 cup dates\n1 cup flour\nMix and bake at 350."
-        assertEquals(recipeNoMention, RedditCommentScorer.pick(listOf(noSteps, recipeNoMention)))
-        assertNull(RedditCommentScorer.pick(listOf(noSteps)))
+        assertEquals(recipeNoMention, pick(noSteps, recipeNoMention))
+        assertNull(pick(noSteps))
     }
 
     @Test fun `no comments, or none that are recipes, picks nothing`() {
-        assertNull(RedditCommentScorer.pick(emptyList()))
-        assertNull(RedditCommentScorer.pick(listOf("Recipe?", "[deleted]", "Could someone transcribe this?")))
+        assertNull(pick())
+        assertNull(pick("Recipe?", "[deleted]", "Could someone transcribe this?"))
     }
 }

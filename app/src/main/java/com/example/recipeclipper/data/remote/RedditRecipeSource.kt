@@ -15,7 +15,9 @@ import java.net.SocketTimeoutException
 /**
  * A Reddit post: one fetch of its public `.json` listing (the post and its comment tree
  * together), handed to [RedditRecipeParser]. A share link (`/r/<sub>/s/<code>`) is followed to
- * the post first, since only the post's own address has a listing.
+ * the post first, since only the post's own address has a listing. A crosspost with no recipe
+ * of its own costs one more fetch, of the original's listing, whose comments may hold it; any
+ * failure there keeps the crosspost's own outcome.
  *
  * The endpoint is public and unauthenticated, so heavy use can meet HTTP 429: that is
  * [ParseError.Blocked], like any other refusal. Failures map to causes exactly as in
@@ -46,8 +48,20 @@ class RedditRecipeSource(
             }
             val jsonUrl = RedditUrls.jsonUrl(postUrl, base)
                 ?: return@withContext ParseResult.Error(ParseError.NoRecipeFound)
-            val body = connect(jsonUrl).ignoreContentType(true).execute().body()
-            RedditRecipeParser.parse(body, url)
+            val reading = RedditRecipeParser.read(listing(jsonUrl), url)
+            val original = reading.crosspostOf?.let { RedditUrls.jsonUrl("https://redd.it/$it", base) }
+            if (original == null || (reading.result as? ParseResult.Error)?.error !is ParseError.NoTranscription) {
+                return@withContext reading.result
+            }
+            // A crosspost's comments are on the original's thread: the recipe may be there.
+            val fromOriginal = try {
+                RedditRecipeParser.parse(listing(original), url)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            fromOriginal as? ParseResult.Success ?: reading.result
         } catch (e: HttpStatusException) {
             ParseResult.Error(ParseError.forHttpStatus(e.statusCode))
         } catch (e: CancellationException) {
@@ -68,6 +82,8 @@ class RedditRecipeSource(
     /** Reddit's rendered pages hold no recipe data the blog parsers read, and their text is a
      *  whole thread: a block stays a block, and no page text goes to the on-device model. */
     override fun readsRenderedPage(url: String): Boolean = false
+
+    private fun listing(jsonUrl: String): String = connect(jsonUrl).ignoreContentType(true).execute().body()
 
     private fun connect(url: String): Connection = Jsoup.connect(url)
         .userAgent(USER_AGENT)

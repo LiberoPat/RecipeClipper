@@ -1,0 +1,50 @@
+[
+  {
+    "kind": "Listing",
+    "data": {
+      "after": null, "dist": 1, "modhash": "", "geo_filter": "", "before": null,
+      "children": [
+        {
+          "kind": "t3",
+          "data": {
+            "subreddit": "recipes", "subreddit_name_prefixed": "r/recipes",
+            "id": "1f4b2cd", "name": "t3_1f4b2cd", "author": "icing_on_the_stew",
+            "title": "Weeknight Lemon Chicken Orzo",
+            "selftext": "**My go-to when there's no plan. One pan, and the orzo cooks in the broth so it soaks up all the lemon.**  \n  \nPrep time: 10 min  \nCook time: 25 minutes  \n  \n**Ingredients:**  \n•\t1 lb chicken thighs  \n•\t1 cup orzo  \n•\t2 1/2 cups chicken broth  \n•\t1 lemon, zested and juiced  \n  \n**Instructions:**  \n1.\tBrown the chicken in a deep pan, 6 minutes a side.  \n2.\tAdd the orzo and broth and simmer for 12 minutes.  \n3.\tStir in the lemon & serve.  \n  \n**Notes**  \nThighs stay juicier than breasts.\n\nEdit: thanks for the award!",
+            "selftext_html": "<!-- SC_OFF --><div class=\"md\"><p><strong>My go-to when there's no plan.</strong></p></div><!-- SC_ON -->",
+            "is_self": true, "is_video": false, "domain": "self.recipes",
+            "url": "https://www.reddit.com/r/recipes/comments/1f4b2cd/weeknight_lemon_chicken_orzo/",
+            "permalink": "/r/recipes/comments/1f4b2cd/weeknight_lemon_chicken_orzo/",
+            "preview": {
+              "images": [
+                {
+                  "source": {"url": "https://preview.redd.it/orzo7kq2.jpeg?width=1080&format=pjpg&auto=webp&s=1a2b3c", "width": 1080, "height": 1350},
+                  "resolutions": [], "variants": {}, "id": "OrZo0kQ2pL"
+                }
+              ],
+              "enabled": false
+            },
+            "stickied": false, "num_comments": 1, "created_utc": 1725000000.0
+          }
+        }
+      ]
+    }
+  },
+  {
+    "kind": "Listing",
+    "data": {
+      "after": null, "dist": null, "modhash": "", "geo_filter": "", "before": null,
+      "children": [
+        {
+          "kind": "t1",
+          "data": {
+            "id": "lkr1a01", "name": "t1_lkr1a01", "parent_id": "t3_1f4b2cd", "link_id": "t3_1f4b2cd",
+            "author": "orzo_fan", "is_submitter": false, "stickied": false, "distinguished": null, "depth": 0,
+            "body": "Made this tonight, so good. I added spinach at the end.",
+            "replies": ""
+          }
+        }
+      ]
+    }
+  }
+]

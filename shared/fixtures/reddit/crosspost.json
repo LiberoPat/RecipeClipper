@@ -1,0 +1,61 @@
+[
+  {
+    "kind": "Listing",
+    "data": {
+      "after": null, "dist": 1, "modhash": "", "geo_filter": "", "before": null,
+      "children": [
+        {
+          "kind": "t3",
+          "data": {
+            "subreddit": "Cooking", "subreddit_name_prefixed": "r/Cooking",
+            "id": "1f7e5fg", "name": "t3_1f7e5fg", "author": "passing_it_on",
+            "title": "Saw this on r/recipes and had to share",
+            "selftext": "", "selftext_html": null,
+            "is_self": false, "is_video": false, "domain": "reddit.com",
+            "url": "https://www.reddit.com/r/recipes/comments/1f3k9xq/sticky_honey_garlic_chicken_thighs/",
+            "url_overridden_by_dest": "https://www.reddit.com/r/recipes/comments/1f3k9xq/sticky_honey_garlic_chicken_thighs/",
+            "permalink": "/r/Cooking/comments/1f7e5fg/saw_this_on_rrecipes_and_had_to_share/",
+            "crosspost_parent": "t3_1f3k9xq",
+            "crosspost_parent_list": [
+              {
+                "subreddit": "recipes", "id": "1f3k9xq", "name": "t3_1f3k9xq", "author": "pantry_raider",
+                "title": "Sticky Honey Garlic Chicken Thighs",
+                "selftext": "", "is_self": false, "post_hint": "image",
+                "url": "https://i.redd.it/k2m8x7vq1abd1.jpeg",
+                "url_overridden_by_dest": "https://i.redd.it/k2m8x7vq1abd1.jpeg",
+                "permalink": "/r/recipes/comments/1f3k9xq/sticky_honey_garlic_chicken_thighs/",
+                "preview": {
+                  "images": [
+                    {
+                      "source": {"url": "https://preview.redd.it/k2m8x7vq1abd1.jpeg?auto=webp&s=5c1e0f1a2b3c4d5e6f", "width": 3024, "height": 4032},
+                      "resolutions": [], "variants": {}, "id": "Xq1vZ0pQ9aYk"
+                    }
+                  ],
+                  "enabled": true
+                }
+              }
+            ],
+            "stickied": false, "num_comments": 2, "created_utc": 1725300000.0
+          }
+        }
+      ]
+    }
+  },
+  {
+    "kind": "Listing",
+    "data": {
+      "after": null, "dist": null, "modhash": "", "geo_filter": "", "before": null,
+      "children": [
+        {
+          "kind": "t1",
+          "data": {
+            "id": "lku4a01", "name": "t1_lku4a01", "parent_id": "t3_1f7e5fg", "link_id": "t3_1f7e5fg",
+            "author": "thigh_guy", "is_submitter": false, "stickied": false, "distinguished": null, "depth": 0,
+            "body": "The recipe is in OP's comment on the original post.",
+            "replies": ""
+          }
+        }
+      ]
+    }
+  }
+]
