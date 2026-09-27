@@ -14,17 +14,19 @@ import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 
 /**
- * Turns a recipe into what the reading view and cook mode show (#169): the ingredients scaled
- * and converted, the steps with their oven temperatures converted, each step's timer, the
- * amounts inside steps (#101) and Chef mode's short steps (#100). Pure: the same inputs always
- * render the same, with no state or coroutines, so the ViewModel only decides when to render.
+ * Turns a recipe into what the reading view and cook mode show (#169): the ingredients without
+ * the junk the model decided (#174), scaled and converted, the steps with their oven
+ * temperatures converted, each step's timer, the amounts inside steps (#101) and Chef mode's
+ * short steps (#100). Pure: the same inputs always render the same, with no state or
+ * coroutines, so the ViewModel only decides when to render.
  * iOS's `RecipeRenderer` is pinned to it by the `Render` rows of the differential corpus.
  */
 object RecipeRenderer {
 
     /**
      * What a recipe renders under: the user's global defaults (see [RecipeUiState]) and the
-     * on-device model's decided count brackets (#104), [Decisions.NONE] until one lands.
+     * on-device model's decisions (#104: count brackets, and junk after an ingredient, #174),
+     * [Decisions.NONE] until one lands.
      */
     data class Settings(
         val unitSystem: UnitSystem = UnitSystem.AS_WRITTEN,
@@ -94,7 +96,8 @@ object RecipeRenderer {
         return withStepAmounts(content.copy(shortInstructions = rendered), settings.amountsInSteps)
     }
 
-    // Scale first, then convert, so a converted amount always matches the chosen servings.
+    // Junk hidden first (#174), then scaled, then converted, so a converted amount always matches
+    // the chosen servings. Every line stays at its index, so ticks never shift.
     fun ingredients(recipe: Recipe, words: LanguageWords?, servings: ServingsScale?, settings: Settings): List<String> {
         val factor = servings?.let { it.target.toDouble() / it.base } ?: 1.0
         return IngredientRendering.render(
