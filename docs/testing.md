@@ -351,7 +351,11 @@ including "Report this site", has `RecipeErrorScreenTest`), `CookModeTest`
 forward, so a 20-minute timer finishes as soon as the test says so; the
 ViewModel's 250 ms tick is real time, so wait with `compose.waitUntil`, not a
 bare assert. Done steps are only drawn struck through, not exposed to
-semantics, so `isStruckThrough()` reads the text's layout style. Share itself
+semantics, so `isStruckThrough()` reads the text's layout style. Colour isn't
+either, so `assertInAppTheme()` (`ui/ThemeAssertions.kt`) reads a TextButton
+label's colour the same way and fails on Material's baseline purple; each
+dialog once composed outside its screen's theme (#142, #186) has a test that
+calls it. Share itself
 opens the system chooser, so the tests stop at `RecipeViewModel.shareText()`.
 
 Still without Android UI tests: the Settings screen. The iOS UI tests
