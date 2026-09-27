@@ -2168,7 +2168,11 @@ the app is exactly as before (the history cap of 50 unprotected recipes).
     ViewModel holds one.
   - iOS: StoreKit 2 in `StoreKitEntitlements`, listening to
     `Transaction.updates` (Ask to Buy approvals, refunds). Locally the scheme
-    runs against `ios/RecipeClipper.storekit`.
+    runs against `ios/RecipeClipper.storekit`. `refresh()` after an update
+    reads `currentEntitlements` without waiting: checked in #172, an update
+    arrives only once `currentEntitlements` lists it (58 of 58 on just-booted
+    simulators), and `purchase()` trusts the transaction it gets back. Only
+    the tests' `SKTestSession.buyProduct` returns early.
   - Both cache the last answer (Android its own `entitlements` prefs file,
     not in the backup include list; iOS `UserDefaults`), so a share that
     cold-starts the app isn't judged "locked" while the store is still being
@@ -2476,14 +2480,13 @@ exact rules still decide every total.
   never a package size before the name. Asked for every grocery line with trailing text, a
   lone line too (the owner's option 2), so a lone "2 eggs (dfsafs -" shows "2 eggs" once
   decided junk; once per text and language (the cache), in the background, once per visit.
-  Only grocery lines: the reading view never asks it. Note or junk: the line is grouped and added up
-  as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"). A note still shows as written under
+  The recipe asks it too, about its own lines (#174, below). Note or junk: the line is grouped
+  and added up as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"). A note still shows as written under
   the total; **junk is hidden in Groceries** (the owner's option 1): the row, the lines under
   a total or Together row and the shared text show the line without it ("2 eggs"). That is a
   display-time transform from the cached answer (`GroceryDecisions.shownText`, applied in
   `GroceryCombiner.sections`): the stored line is never rewritten, so turning `aiDecisions` off
-  shows it again, and the recipe's reading view always keeps the line as the site wrote it.
-  Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
+  shows it again. Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
 - **"What is the ingredient's name?"** (`ingredientName`, free text) catches junk with no
   separator ("2 onions dfsafs"). Asked only for a line with no separator split whose name has
   words the aisle table doesn't match after words it does ("onions dfsafs": "onions" is
@@ -2507,11 +2510,30 @@ exact rules still decide every total.
   off, an unsupported phone or language: no question, and the list is exactly today's (a test
   on each platform compares it with `sections(items)`). Deleting, ticking and moving rows are
   as before. Sharing sends what the screen shows.
+- **Junk is hidden in the recipe too** (#174). The owner's decision (2026-09-26): "Hide the
+  junk, period, including in recipes." Until then the reading view never asked the model and
+  always kept a line as the site wrote it; that is reversed. When a recipe opens (and after
+  "Update from source"), `ChefMode` asks the same two questions about its ingredient lines
+  (`GroceryDecisions.junkQuestions`: headings left out; a name that lands opens its
+  trailing-text question), in the background, each once per visit and once ever through the
+  same cache, so a line already decided in Groceries costs nothing. `IngredientRendering`
+  shows a line decided junk as Groceries would (`GroceryDecisions.shownLine`, the same cut as
+  `shownText`), then scales and converts the rest ("1 cup flour (dfsafs -" at double servings
+  in Metric is "240 g flour"). The same safeguards, since it is the same code: never text
+  holding a digit, never unspaced languages, never a package size before the name,
+  `DecisionRule`. So the reading view, cook mode's ingredients bar, the shared text, "Add to
+  groceries" and the pantry's use-up sheet all show "2 eggs"; the Week's "Add this week's
+  ingredients" and "What I need", which render through `IngredientRendering` and ask nothing,
+  do too once an answer is cached. A note, a second amount or unsure: as written. Display only:
+  the editor shows the stored line, ticks stay at their index, and `aiDecisions` off or an
+  unsupported phone or language shows every line as written. Pinned by the corpus's `Render`
+  rows with `trailing:` and `names:` answers.
 
 **Needs a real phone:** whether the models say "same" for the owner's corn and garlic pairs and
 "different" for rice flour and whole milk with high confidence both times, whether they tell a
 note from junk from a second amount, whether they copy "onions" out of "2 onions dfsafs"
-verbatim and agree twice, and how long the questions take on a long list.
+verbatim and agree twice, how long the questions take on a long list, and how soon an opened
+recipe's lines lose their junk (#174).
 
 ## A hyphenated mixed number is not a range (#125)
 

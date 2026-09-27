@@ -6,7 +6,9 @@ import com.example.recipeclipper.data.ShortStepRepository
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.DecisionCandidates
+import com.example.recipeclipper.data.model.DecisionQuestion
 import com.example.recipeclipper.data.model.Decisions
+import com.example.recipeclipper.data.model.GroceryDecisions
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.Recipe
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +17,8 @@ import kotlinx.coroutines.launch
 
 /**
  * The on-device model's part of one recipe screen (#169): Chef mode's short steps (#100) and the
- * decided count brackets (#104), two of [RecipeRenderer]'s inputs. It owns their repositories
+ * model's decisions (#104: count brackets, and junk after an ingredient, #174), two of
+ * [RecipeRenderer]'s inputs. It owns their repositories
  * and flags, and says when either input changed; the ViewModel then renders again. Every
  * repository is optional, so a screen (or a test) without the model shows the recipe as today.
  *
@@ -37,7 +40,7 @@ class ChefMode(
     var shortSteps: List<String?> = emptyList()
         private set
 
-    /** The model's decided count brackets (#104); NONE (today's rendering) until one lands. */
+    /** The model's decisions (#104, #174); NONE (today's rendering) until one lands. */
     var decisions: Decisions = Decisions.NONE
         private set
 
@@ -47,6 +50,11 @@ class ChefMode(
     private var on = false
     private var job: Job? = null
 
+    // The loaded recipe's lines and words, whose junk questions (#174) are asked as answers land,
+    // and the questions already asked in this visit, so each is asked once.
+    private var junkLines: Pair<List<String>, LanguageWords?>? = null
+    private val askedJunk = mutableSetOf<DecisionQuestion>()
+
     /** Follows the model's decisions for as long as [scope] lives. */
     fun observeDecisions() {
         val repository = decisionRepository ?: return
@@ -55,6 +63,7 @@ class ChefMode(
                 if (it != decisions) {
                     decisions = it
                     onDecisions()
+                    askJunk() // a name that landed can open its trailing-text question
                 }
             }
         }
@@ -121,5 +130,25 @@ class ChefMode(
         if (content.servings == null) return
         val questions = DecisionCandidates.countBrackets(content.recipe.ingredients, content.words)
         if (questions.isNotEmpty()) scope.launch { repository.decide(questions) }
+    }
+
+    /**
+     * Asks the model about junk after [content]'s ingredients (#174), in the background, the
+     * questions Groceries asks about its lines ([GroceryDecisions.junkQuestions]): each once per
+     * visit, and once ever per text and language (the cache, shared with Groceries, so a line
+     * already decided there costs nothing). The lines show as written until an answer lands.
+     * Nothing with `aiDecisions` off, or on a phone or language the model can't do (the repository).
+     */
+    fun askJunk(content: RecipeContent.Success) {
+        junkLines = content.recipe.ingredients to content.words
+        askJunk()
+    }
+
+    private fun askJunk() {
+        val repository = decisionRepository ?: return
+        val (lines, words) = junkLines ?: return
+        val open = GroceryDecisions.junkQuestions(lines, words, decisions)
+            .filter { !decisions.isAnswered(it) && askedJunk.add(it) }
+        if (open.isNotEmpty()) scope.launch { repository.decide(open) }
     }
 }
