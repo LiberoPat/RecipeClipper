@@ -67,6 +67,14 @@ enum ShareFile {
         )
     }
 
+    /// The Pantry's file (#149): its in-stock items, as they are, and nothing else; nil when none
+    /// is in stock. Items that are out are left out, as in the Pantry's "Send list": running out
+    /// put them on the grocery list (#146), which Groceries sends.
+    static func pantry(now: Int64, items: [BackupPantryItem]) -> Backup? {
+        let inStock = items.filter(\.inStock)
+        return inStock.isEmpty ? nil : make(now: now, recipes: [], pantry: inStock)
+    }
+
     /// What to merge once the receiver has chosen: only the ticked parts of `file`, each new to
     /// this phone as of `now`. A pantry item sent onto the grocery list keeps its uid, so the
     /// same file opened twice adds it once, as every other item.

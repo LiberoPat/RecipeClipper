@@ -15,6 +15,9 @@ class FakeShareFileRepository : ShareFileRepository {
     /** The grocery list's file; null when nothing is left to buy. */
     var groceriesFile: String? = null
 
+    /** The pantry's file; null when nothing is in stock. */
+    var pantryFile: String? = null
+
     var receiveResult: BackupResult<ImportSummary> = BackupResult.Success(ImportSummary(0, 0, 0, 0))
 
     /** Every [receive] call's choice. */
@@ -23,6 +26,8 @@ class FakeShareFileRepository : ShareFileRepository {
     override suspend fun recipeFile(recipeId: Long): String? = recipeFiles[recipeId]
 
     override suspend fun groceriesFile(): String? = groceriesFile
+
+    override suspend fun pantryFile(): String? = pantryFile
 
     override suspend fun receive(file: Backup, choice: ShareChoice): BackupResult<ImportSummary> {
         received += choice

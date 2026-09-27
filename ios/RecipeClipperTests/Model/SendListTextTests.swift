@@ -55,6 +55,57 @@ final class SendListTextTests: XCTestCase {
         XCTAssertEqual(send(item("2 onions", recipeId: 9)), "Groceries\n\nproduce\n- 2 onions")
     }
 
+    // MARK: - The Pantry's "Send list": what's in stock
+
+    private func stock(
+        _ name: String, quantity: String? = nil, inStock: Bool = true, aisle: Aisle? = nil, expires: Int64? = nil
+    ) -> PantryItem {
+        defer { nextId += 1 }
+        return PantryItem(
+            id: nextId, name: name, quantity: quantity, language: "en",
+            aisle: aisle ?? Aisles.of(name, words: LanguageWords.english), inStock: inStock, alwaysHave: false,
+            purchasedDay: nil, expiresDay: expires
+        )
+    }
+
+    private func sendPantry(_ sort: PantrySort, _ items: PantryItem...) -> String {
+        PantryShareText.format(PantryList.arrange(items, query: "", sort: sort), title: "Pantry", aisleName: \.key)
+    }
+
+    func testThePantrySendsWhatIsInStockByAisleWithQuantitiesAsWritten() {
+        XCTAssertEqual(
+            sendPantry(
+                .aisle,
+                stock("basmati rice", quantity: " half a bag "), stock("onions"), stock("oats", quantity: " ", aisle: .grains),
+                stock("milk", inStock: false)
+            ),
+            "Pantry\n\nproduce\n- onions\n\ngrains\n- basmati rice (half a bag)\n- oats"
+        )
+    }
+
+    func testAnAisleWithNothingInStockIsLeftOut() {
+        XCTAssertEqual(sendPantry(.aisle, stock("onions"), stock("milk", inStock: false)), "Pantry\n\nproduce\n- onions")
+    }
+
+    func testSortedByExpiryThePantrySendsOneListWithNoHeading() {
+        XCTAssertEqual(
+            sendPantry(.expiry, stock("rice"), stock("onions", expires: 20_730), stock("milk", quantity: "1 l", expires: 20_725)),
+            "Pantry\n\n- milk (1 l)\n- onions\n- rice"
+        )
+    }
+
+    func testAPantryWithNothingInStockSendsOnlyItsTitle() {
+        XCTAssertEqual(sendPantry(.aisle, stock("milk", inStock: false)), "Pantry")
+    }
+
+    /// What the Pantry sends reads back as its items, and adds to another pantry as their names.
+    func testThePantrysListReadsBackAsItsItems() {
+        let sent = sendPantry(.aisle, stock("basmati rice", quantity: "half a bag"), stock("onions"), stock("2 lemons"))
+        let lines = ReceivedList.lines(sent)
+        XCTAssertEqual(lines, ["2 lemons", "onions", "basmati rice (half a bag)"])
+        XCTAssertEqual(lines.map { IngredientName.of($0, words: .english) }, ["lemons", "onions", "basmati rice"])
+    }
+
     // MARK: - Receiving
 
     func testASentListIsReadByItsBulletsLeavingTheTitleAndAislesOut() {

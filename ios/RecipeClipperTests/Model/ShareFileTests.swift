@@ -118,6 +118,17 @@ final class ShareFileTests: XCTestCase {
         XCTAssertTrue(toGroceries.groceries.allSatisfy { !$0.checked && $0.recipeId == nil })
     }
 
+    func testThePantrysFileCarriesOnlyWhatsInStockAsItIs() throws {
+        var out = pantry("p2", "Oats")
+        out.inStock = false
+        let file = try XCTUnwrap(ShareFile.pantry(now: 9, items: [pantry("p1", "Basmati rice"), out]))
+        XCTAssertTrue(file.isShare)
+        XCTAssertEqual(file.pantry, [pantry("p1", "Basmati rice")])
+        XCTAssertTrue(file.recipes.isEmpty && file.groceries.isEmpty && file.lists.isEmpty)
+        XCTAssertEqual(try decodeOrFail(BackupJson.encode(file)), file)
+        XCTAssertNil(ShareFile.pantry(now: 9, items: [out]))
+    }
+
     func testTheFileIsNamedForItsTitleSafely() {
         XCTAssertEqual(ShareFile.fileName("Sheet-pan chicken"), "Sheet-pan chicken.recipeclipper")
         XCTAssertEqual(ShareFile.fileName("Mac/and\\cheese: 1*2?"), "Mac and cheese 1 2.recipeclipper")

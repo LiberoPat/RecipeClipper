@@ -19,6 +19,7 @@ import com.example.recipeclipper.data.backup.ExportedBackup
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.local.dao.BackupDao
 import com.example.recipeclipper.data.local.entity.GroceryItemEntity
+import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.model.PlanDays
 import java.util.UUID
@@ -85,12 +86,7 @@ class DefaultBackupRepository @Inject constructor(
                 val list = listUids[ref.listId] ?: return@mapNotNull null
                 BackupMembership(recipe, list, ref.addedAt)
             },
-            pantry = snapshot.pantry.map {
-                BackupPantryItem(
-                    it.uid, it.name, it.quantity, it.language, it.aisle, it.inStock, it.alwaysHave,
-                    it.purchasedDay, it.expiresDay, it.updatedAt
-                )
-            },
+            pantry = snapshot.pantry.map { it.toBackup() },
             groceries = snapshot.groceries.map { it.toBackup(recipeUids) },
             mealTypes = snapshot.mealTypes.map { BackupMealType(it.uid, it.name, it.builtInKey, it.sortOrder, it.updatedAt) },
             mealPlan = snapshot.mealPlan.map {
@@ -163,6 +159,11 @@ internal fun RecipeEntity.toBackup() = BackupRecipe(
     language = language,
     contentOrigin = contentOrigin,
     editedAt = editedAt
+)
+
+/** A pantry item as the export file holds it, and as the Pantry's shared file sends it (#149). */
+internal fun PantryItemEntity.toBackup() = BackupPantryItem(
+    uid, name, quantity, language, aisle, inStock, alwaysHave, purchasedDay, expiresDay, updatedAt
 )
 
 /** A grocery item as the export file holds it; [recipeUids] maps recipe row ids to uids. */

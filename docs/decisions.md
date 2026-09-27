@@ -2653,11 +2653,25 @@ works either way.
   becomes active, like a shared recipe. The extension never sees the flags, so the app
   mirrors `mealPlan` into the App Group suite as `groceries_on` (as #107's limit is); off, a
   list shared in is "no link", as before.
-- **Not built:** a "Send list" in the Pantry (the issue's sketch) waits for the owner to say
-  what a pantry sends (in stock, out of stock, or chosen items).
+- **The Pantry's "Send list" sends what's in stock** (owner's decision, 2026-09-26): what's at
+  home, so someone at the shops can check before buying twice. Items switched to out are not
+  sent: running out already put them on the grocery list (#146), so Groceries' "Send list"
+  carries them, and sending them twice would read as two lists. Staples are sent when in stock,
+  like any item. The text (`PantryShareText`, pure, both platforms) mirrors Groceries': the
+  title ("Pantry", the tab's name), then each section as the screen's sort arranges it (aisles
+  by default; sorted by expiry it is one list with no heading) and its in-stock items, "- "
+  before each, the name and then the quantity as written in brackets ("- basmati rice (half a
+  bag)"). No use-by dates: it answers "is it there", like the pantry itself. A search on screen
+  doesn't narrow it: the menu sends the pantry, not the search. It is disabled (Android) or
+  hidden (iOS) while nothing is in stock, as Groceries' is with nothing to buy. The receiver
+  needs nothing new: `ReceivedList` reads the bullets, and "Add to pantry" keeps each line's
+  `IngredientName`, so the bracketed quantity drops and "basmati rice" arrives as itself.
 - **Tests:** the iOS UI test can't drive the system share sheet or read another app's copy
   without the paste prompt, so the launch seeds the pasteboard (`-uiTestPasteboard`, debug
-  only); the sent text itself is pinned by unit tests on both platforms.
+  only); the sent text itself is pinned by unit tests on both platforms. The Pantry's text,
+  and its round trip back through `ReceivedList` and `IngredientName`, is in
+  `SendListTextTest(s)` and `PantryViewModelTest(s)`; `PantrySendTest` (Robolectric) checks
+  the menu hands the share sheet that text.
 
 ## Sending recipes and groceries as a file (#149, phase 2)
 
@@ -2689,8 +2703,12 @@ stores them. No server, no account: the file goes through the user's own share s
   what is the sender's own: ticks, the note, the last view (it is set to the time sent).
   Groceries send every unticked item, as stored, with the recipes they came from, so each
   still names its recipe on the other side; no planned day (a day on someone else's plan).
-  The Pantry sends nothing yet: phase 1 left open what a pantry would send. The receiver
-  already reads pantry items, which the format carries.
+  The Pantry's menu has "Send as file" after its "Send list", sending the same in-stock items
+  (`ShareFile.pantry`, pure, both platforms), as stored: quantity, staple and dates included,
+  since the receiver's "Add from this file" already takes them to the Pantry or, as their
+  names, to Groceries. This one is a default for parity with Groceries, not the owner's
+  decision: it is its own menu entry and `ShareFileRepository.pantryFile`, so it comes out
+  cleanly if the owner says no.
 - **What the receiver chooses.** "Add from this file" opens over whatever is on screen: the
   recipes, the grocery items (each with its recipe beneath) and the pantry items, every row
   ticked, then two radio rows for the pantry items (the Pantry, or Groceries as their names),
@@ -2711,7 +2729,8 @@ stores them. No server, no account: the file goes through the user's own share s
   sent, what is chosen, the file name). Against SQLite: `ShareFileRepositoryTest` (Robolectric)
   and `ShareFileRepositoryTests`. ViewModels over fakes: `ShareFileViewModelsTest(s)`. Screens:
   `SendReceiveFileScreenTest` (Robolectric: both menus hand the share sheet the file, only
-  readable by the picked app; the sheet adds what is ticked). iOS UI: `ShareFileUITests`, where
+  readable by the picked app; the sheet adds what is ticked), and `PantrySendTest` for the
+  Pantry's menu (the text, the file, both disabled with nothing in stock). iOS UI: `ShareFileUITests`, where
   `-uiTestReceiveFile` (debug only) opens a canned file at launch, because a UI test can't open
   a file from Messages.
 
@@ -2738,9 +2757,10 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
   deep link) shows that and leaves the welcome pending for the next plain launch: capture
   stays frictionless. Someone who already has recipes the first time the tour runs (an older
   version's user, or a restored backup: Android's Auto Backup and iOS's device backup put the
-  database back before the first launch) never gets it, nor the recipe and cook mode tips;
-  the Week, Groceries and Pantry tips still show for them, as those tabs are new to them now
-  that the flags are on. iOS's share extension saves without opening the app, so it notes a
+  database back before the first launch) never gets it, nor any tip. At first the Week,
+  Groceries and Pantry tips still showed for them, as those tabs were new to them now that the
+  flags are on; the owner decided (2026-09-26) that existing users skip every tip. iOS's share
+  extension saves without opening the app, so it notes a
   new user's first share (`FirstRunTour.noteShare`: library empty, welcome undecided); the
   recipe it adds then doesn't make them look like an old user, and the welcome shows at the
   app's first opening.

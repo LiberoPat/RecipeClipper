@@ -43,13 +43,7 @@ final class DefaultBackupRepository: BackupRepository {
                 guard let recipe = recipeUids[m.recipeId], let list = listUids[m.listId] else { return nil }
                 return BackupMembership(recipeId: recipe, listId: list, addedAt: m.addedAt)
             },
-            pantry: snapshot.pantry.map { p in
-                BackupPantryItem(
-                    id: p.uid, name: p.name, quantity: p.quantity, language: p.language, aisle: p.aisle,
-                    inStock: p.inStock, alwaysHave: p.alwaysHave, purchasedDay: p.purchasedDay,
-                    expiresDay: p.expiresDay, updatedAt: p.updatedAt
-                )
-            },
+            pantry: snapshot.pantry.map(\.backup),
             groceries: snapshot.groceries.map { g in
                 BackupGroceryItem(
                     id: g.uid, text: g.text, language: g.language, aisle: g.aisle, checked: g.checked,

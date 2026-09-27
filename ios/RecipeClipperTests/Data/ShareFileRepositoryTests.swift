@@ -87,6 +87,35 @@ final class ShareFileRepositoryTests: XCTestCase {
         XCTAssertNil(none)
     }
 
+    func testThePantryFileHoldsWhatIsInStockAsItIs() async throws {
+        func item(_ name: String, inStock: Bool, quantity: String? = nil) -> PantryItemRecord {
+            PantryItemRecord(
+                name: name, quantity: quantity, language: "en", aisle: "grains", inStock: inStock,
+                alwaysHave: false, purchasedDay: 20_000, expiresDay: 20_100, updatedAt: 1
+            )
+        }
+        let rice = item("basmati rice", inStock: true, quantity: "half a bag")
+        let riceId = try await db.write { conn in
+            let dao = PantryDao(db: conn)
+            _ = try dao.insert(item("oats", inStock: false))
+            return try dao.insert(rice)
+        }
+
+        let made = await repo().pantryFile()
+        let file = try decodeOrFail(try XCTUnwrap(made))
+
+        XCTAssertTrue(file.isShare)
+        XCTAssertEqual(file.pantry.map(\.name), ["basmati rice"])
+        XCTAssertEqual(file.pantry.first?.quantity, "half a bag")
+        XCTAssertEqual(file.pantry.first?.expiresDay, 20_100)
+        XCTAssertEqual(file.pantry.first?.id, rice.uid)
+        XCTAssertTrue(file.recipes.isEmpty && file.groceries.isEmpty)
+
+        try await db.write { try PantryDao(db: $0).setInStock([riceId], inStock: false, now: 2) }
+        let none = await repo().pantryFile()
+        XCTAssertNil(none)
+    }
+
     func testAReceivedFileMergesWithoutReplacingAndOnlyOnce() async throws {
         // The chicken is here already, under a link with a tracking parameter the file's lacks.
         let here = try await insert("https://example.com/sheet-pan-chicken", title: "My chicken", viewedAt: 3)

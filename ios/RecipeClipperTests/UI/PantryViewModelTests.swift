@@ -47,6 +47,33 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertEqual(pantry.items.value.first?.inStock, true)
     }
 
+    /// #149: "Send list" sends what's in stock, as the sort arranges it, whatever the search.
+    func testSendListIsWhatsInStockByTheScreensSortWhateverTheSearch() async {
+        let pantry = FakePantryRepository([
+            item(1, "milk", aisle: .dairy, expires: 20_730), item(2, "apples", aisle: .produce),
+            item(3, "rice", aisle: .grains, expires: 20_725), item(4, "oats", inStock: false, aisle: .grains),
+        ])
+        let vm = await viewModel(pantry)
+        XCTAssertTrue(vm.uiState.hasInStock)
+
+        vm.onQueryChange("milk")
+        XCTAssertEqual(vm.shareText(title: "Pantry", aisleName: \.key), "Pantry\n\nproduce\n- apples\n\ndairy\n- milk\n\ngrains\n- rice")
+        vm.onSortChange(.expiry)
+        XCTAssertEqual(vm.shareText(title: "Pantry", aisleName: \.key), "Pantry\n\n- rice\n- milk\n- apples")
+    }
+
+    func testWithNothingInStockTheresNothingToSend() async {
+        let pantry = FakePantryRepository([item(1, "milk", inStock: false)])
+        let vm = await viewModel(pantry)
+        XCTAssertFalse(vm.uiState.hasInStock)
+        XCTAssertNil(vm.shareText(title: "Pantry", aisleName: \.key))
+
+        vm.onToggleStock(pantry.items.value[0])
+        await settleMain()
+        XCTAssertTrue(vm.uiState.hasInStock)
+        XCTAssertEqual(vm.shareText(title: "Pantry", aisleName: \.key), "Pantry\n\nother\n- milk")
+    }
+
     func testSearchAndSortRearrangeWhatsShown() async {
         let pantry = FakePantryRepository([
             item(1, "milk", aisle: .dairy, expires: 20_725), item(2, "apples", aisle: .produce, expires: 20_730), item(3, "rice", aisle: .grains),

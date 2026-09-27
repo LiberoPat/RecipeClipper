@@ -102,6 +102,30 @@ enum PantryList {
     }
 }
 
+/// The pantry as plain text for sending (#149; Android's PantryShareText): what's in stock, for
+/// someone at the shops to see what's at home. The title, then each section as the screen
+/// arranges it (an aisle's name, or no heading when sorted by expiry) and its in-stock items,
+/// one per line after "- ": the name, then the quantity as written in brackets ("- basmati rice
+/// (half a bag)"). Items that are out are left out: running out already put them on the grocery
+/// list (#146), which sends its own. `aisleName` and `title` are the screen's words.
+enum PantryShareText {
+
+    static func format(_ sections: [PantrySection], title: String, aisleName: (Aisle) -> String) -> String {
+        var lines = [title]
+        for section in sections {
+            let items = section.items.filter(\.inStock)
+            if items.isEmpty { continue }
+            lines.append("")
+            if let aisle = section.aisle { lines.append(aisleName(aisle)) }
+            for item in items {
+                let quantity = (item.quantity ?? "").kTrimmed
+                lines.append(quantity.isEmpty ? "- \(item.name.kTrimmed)" : "- \(item.name.kTrimmed) (\(quantity))")
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+}
+
 /// Have or Buy, for one ingredient of the week (#51).
 enum NeedStatus: Equatable {
     /// An in-stock pantry item has this name. Presence only: "you have flour", never "enough".

@@ -46,8 +46,8 @@ sharing a recipe out as text; failure handling and offline; the microdata
 fallback; a personal note per recipe; editing a recipe and typing one in by
 hand, with "Update from source" (#29); export and import of everything as one
 JSON file (Settings), an automatic copy of it in the user's own cloud folder, and
-"Restore from a backup file" on an empty Home (#150); a recipe, or the grocery list's
-unticked items, sent as a small file that another Recipe Clipper opens (#149); "Clip it yourself" (select a recipe by hand on a page
+"Restore from a backup file" on an empty Home (#150); a recipe, the grocery list's
+unticked items or the pantry's in-stock ones, sent as a small file that another Recipe Clipper opens (#149); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
 pantry with the week's Have/Buy, behind the tab flag (#49–#51), used up when cook mode is
 finished (#147); Chef mode (short steps written on the device, behind its flag, #100); a
@@ -328,7 +328,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   opt-in 9:00 notification lists what expires today or tomorrow (#52,
   Settings → Pantry). Switching an item out puts its name on the grocery
   list silently; the row then shows "On list", and tapping that takes it off
-  (no snackbar) (#146).
+  (no snackbar) (#146). The menu's "Send list" and "Send as file" send what's
+  in stock, never what's out (that is on the grocery list already) (#149).
   **Using up** (#147): cook mode's "Done — finish" with ingredients ticked opens
   "Update the pantry" (never on a tick, never on Exit): per matched item, the
   worked-out change ("2 lb → 1 lb", ticked; used up goes out and onto the list)
@@ -365,7 +366,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
 - **Sharing a recipe out** sends plain text (no Markdown), as shown on
   screen, scaled and converted, without the source link. The share icon sits
   beside Back in the reading view, not in cook mode. "Send as file" (overflow
-  menu; Groceries' menu for the unticked items) is the second way (#149).
+  menu; Groceries' menu for the unticked items, the Pantry's for the in-stock ones) is the second way (#149).
 - **First-run tour** (#151, `FirstRunTour`; rules in `docs/decisions.md`): 3–4
   skippable welcome cards on the first plain launch only (never over a shared
   link; never for a library that already has recipes), the last offering the
@@ -495,7 +496,7 @@ Settled; don't reintroduce what they removed. The history behind each is in
   Rules in `BackupMerger`, rationale in `docs/decisions.md`.
 - **The file sent to someone else** (#149, `ShareFile`): the same JSON, with
   `"kind": "share"` and only what was picked (recipes complete but without
-  ticks or note; unticked grocery items; no lists, plan or photos), as
+  ticks or note; unticked grocery items; in-stock pantry items; no lists, plan or photos), as
   `<title>.recipeclipper` (`application/vnd.recipeclipper+json`, UTType
   `com.liberopat.recipeclipper.share`; formatVersion stays 1). Opening one
   shows "Add from this file": every part ticked, pantry items to the Pantry or

@@ -116,6 +116,17 @@ class ShareFileTest {
     }
 
     @Test
+    fun `the pantry's file carries only what's in stock, as it is`() {
+        val out = pantry("p2", "Oats").copy(inStock = false)
+        val file = ShareFile.pantry(9, listOf(pantry("p1", "Basmati rice"), out))!!
+        assertTrue(file.isShare)
+        assertEquals(listOf(pantry("p1", "Basmati rice")), file.pantry)
+        assertTrue(file.recipes.isEmpty() && file.groceries.isEmpty() && file.lists.isEmpty())
+        assertEquals(file, decodeOrFail(BackupJson.encode(file)))
+        assertNull(ShareFile.pantry(9, listOf(out)))
+    }
+
+    @Test
     fun `the file is named for its title, safely`() {
         assertEquals("Sheet-pan chicken.recipeclipper", ShareFile.fileName("Sheet-pan chicken"))
         assertEquals("Mac and cheese 1 2.recipeclipper", ShareFile.fileName("Mac/and\\cheese: 1*2?"))

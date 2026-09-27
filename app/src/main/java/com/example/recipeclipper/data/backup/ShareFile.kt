@@ -59,6 +59,16 @@ object ShareFile {
     }
 
     /**
+     * The Pantry's file (#149): its in-stock items, as they are, and nothing else; null when
+     * none is in stock. Items that are out are left out, as in the Pantry's "Send list": running
+     * out put them on the grocery list (#146), which Groceries sends.
+     */
+    fun pantry(now: Long, items: List<BackupPantryItem>): Backup? {
+        val inStock = items.filter { it.inStock }
+        return if (inStock.isEmpty()) null else make(now, emptyList(), pantry = inStock)
+    }
+
+    /**
      * What to merge once the receiver has chosen: only the ticked parts of [file], each new to
      * this phone as of [now]. A pantry item sent onto the grocery list keeps its uid, so the same
      * file opened twice adds it once, as every other item.

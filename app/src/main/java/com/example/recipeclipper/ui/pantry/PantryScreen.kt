@@ -30,6 +30,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +57,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -63,6 +66,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ShareCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
@@ -76,18 +80,27 @@ import com.example.recipeclipper.ui.groceries.label
 import com.example.recipeclipper.ui.plan.shortDate
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.sharefile.SendFileEffect
+import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TipCallout
 
 /**
  * The Pantry tab (#51): "Add to the pantry", a search field, then everything by aisle (or by
  * expiry, from the menu). Each row's switch says whether it's in stock; tapping the row opens
- * its edit sheet (quantity, staple, use-by date, delete).
+ * its edit sheet (quantity, staple, use-by date, delete). The menu sends what's in stock, as
+ * plain text or as a file (#149).
  */
 @Composable
-fun PantryScreen(viewModel: PantryViewModel = hiltViewModel()) {
+fun PantryScreen(
+    viewModel: PantryViewModel = hiltViewModel(),
+    // "Send as file" (#149, phase 2); null (screen tests) leaves it out.
+    sendFileViewModel: SendFileViewModel? = null
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val resources = LocalResources.current
 
     // Snackbars only for undo (#146).
     val message = state.message
@@ -100,6 +113,11 @@ fun PantryScreen(viewModel: PantryViewModel = hiltViewModel()) {
         if (message == null || text == null) return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(text, actionLabel = undoLabel, withDismissAction = false)
         if (result == SnackbarResult.ActionPerformed) viewModel.onUndoDelete() else viewModel.onMessageDismissed()
+    }
+
+    val sendFailedMessage = stringResource(R.string.send_file_failed)
+    if (sendFileViewModel != null) {
+        SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
     }
 
     RecipeClipperTheme {
@@ -119,7 +137,25 @@ fun PantryScreen(viewModel: PantryViewModel = hiltViewModel()) {
                             style = MaterialTheme.typography.headlineMedium,
                             modifier = Modifier.weight(1f)
                         )
-                        SortMenu(state.sort, viewModel::onSortChange)
+                        PantryMenu(
+                            sort = state.sort,
+                            onSort = viewModel::onSortChange,
+                            canSend = state.hasInStock,
+                            onShare = {
+                                val title = resources.getString(R.string.tab_pantry)
+                                viewModel.shareText(title) { resources.getString(it.label()) }?.let { text ->
+                                    ShareCompat.IntentBuilder(context)
+                                        .setType("text/plain")
+                                        .setSubject(title)
+                                        .setText(text)
+                                        .setChooserTitle(title)
+                                        .startChooser()
+                                }
+                            },
+                            onSendFile = sendFileViewModel?.let { vm ->
+                                { vm.sendPantry(resources.getString(R.string.tab_pantry)) }
+                            }
+                        )
                     }
                     // The first Pantry visit (#151).
                     TipCallout(Tip.PANTRY, Modifier.padding(top = 4.dp, bottom = 4.dp))
@@ -191,14 +227,43 @@ fun PantryScreen(viewModel: PantryViewModel = hiltViewModel()) {
     }
 }
 
+/**
+ * "Send list" (the in-stock items as text) and "Send as file" (#149), disabled while nothing is
+ * in stock, then the sort.
+ */
 @Composable
-private fun SortMenu(sort: PantrySort, onSort: (PantrySort) -> Unit) {
+private fun PantryMenu(
+    sort: PantrySort,
+    onSort: (PantrySort) -> Unit,
+    canSend: Boolean,
+    onShare: () -> Unit,
+    onSendFile: (() -> Unit)?
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_share_groceries)) },
+                enabled = canSend,
+                onClick = {
+                    expanded = false
+                    onShare()
+                }
+            )
+            if (onSendFile != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_send_file)) },
+                    enabled = canSend,
+                    onClick = {
+                        expanded = false
+                        onSendFile()
+                    }
+                )
+            }
+            HorizontalDivider()
             // An exclusive choice, so radio rows.
             listOf(PantrySort.AISLE to R.string.pantry_sort_aisle, PantrySort.EXPIRY to R.string.pantry_sort_expiry)
                 .forEach { (option, label) ->

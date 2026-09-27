@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
+import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryItem
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.NewPantryItem
@@ -12,6 +13,7 @@ import com.example.recipeclipper.data.model.PantryEdit
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryList
 import com.example.recipeclipper.data.model.PantrySection
+import com.example.recipeclipper.data.model.PantryShareText
 import com.example.recipeclipper.data.model.PantrySort
 import com.example.recipeclipper.ui.groceries.typedLanguage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,12 +44,14 @@ sealed class PantryMessage {
 
 /**
  * [sections] is null until the pantry has loaded; [hasItems] says whether it holds anything at
- * all (a search can find nothing in a full pantry). [onList] holds the items whose name is on
- * the grocery list, unticked: their rows show "On list" (#146).
+ * all (a search can find nothing in a full pantry), and [hasInStock] whether anything is in
+ * stock, which is what "Send list" and "Send as file" send (#149). [onList] holds the items
+ * whose name is on the grocery list, unticked: their rows show "On list" (#146).
  */
 data class PantryUiState(
     val sections: List<PantrySection>? = null,
     val hasItems: Boolean = false,
+    val hasInStock: Boolean = false,
     val query: String = "",
     val sort: PantrySort = PantrySort.AISLE,
     val draft: String = "",
@@ -81,7 +85,9 @@ class PantryViewModel @Inject constructor(
         viewModelScope.launch {
             pantry.observeItems().collect { all ->
                 items = all
-                _uiState.update { it.copy(hasItems = all.isNotEmpty(), onList = onList()).arranged() }
+                _uiState.update {
+                    it.copy(hasItems = all.isNotEmpty(), hasInStock = all.any { item -> item.inStock }, onList = onList()).arranged()
+                }
             }
         }
         viewModelScope.launch {
@@ -190,5 +196,15 @@ class PantryViewModel @Inject constructor(
     fun onMessageDismissed() {
         if (_uiState.value.message is PantryMessage.Deleted) deleted = null
         _uiState.update { it.copy(message = null) }
+    }
+
+    /**
+     * "Send list" (#149): every in-stock item as plain text for the share sheet, arranged as the
+     * screen's sort arranges them, whatever the search; null when nothing is in stock.
+     */
+    fun shareText(title: String, aisleName: (Aisle) -> String): String? {
+        val inStock = items.filter { it.inStock }
+        if (inStock.isEmpty()) return null
+        return PantryShareText.format(PantryList.arrange(inStock, "", _uiState.value.sort), title, aisleName)
     }
 }

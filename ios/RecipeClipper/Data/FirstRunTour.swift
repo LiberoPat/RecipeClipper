@@ -29,7 +29,7 @@ enum TourKeys {
 ///   app, so the extension notes a new user's first share (`noteShare`), and the welcome shows
 ///   at the first time the app itself is opened.
 /// - Someone who already has recipes when the tour first runs (an older version's user, or a
-///   restored backup) never gets the welcome, nor the recipe and cook mode tips.
+///   restored backup) never gets the welcome, nor any tip.
 /// - The sample recipe is added once, when the welcome first shows. Deleted, it stays deleted;
 ///   "Try it" on a later showing of the tour adds it again only if it is gone.
 final class FirstRunTour {
@@ -52,8 +52,7 @@ final class FirstRunTour {
         }
         if await Self.libraryCount(recipes) > 0 {
             preferences.welcome = .seen
-            preferences.setTipSeen(.recipe, true)
-            preferences.setTipSeen(.cookMode, true)
+            for tip in Tip.allCases { preferences.setTipSeen(tip, true) }
             return false
         }
         preferences.welcome = .pending

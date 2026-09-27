@@ -19,11 +19,13 @@ enum PantryMessage: Equatable {
 }
 
 /// `sections` is nil until the pantry has loaded; `hasItems` says whether it holds anything at
-/// all (a search can find nothing in a full pantry). `onList` holds the items whose name is on
-/// the grocery list, unticked: their rows show "On list" (#146).
+/// all (a search can find nothing in a full pantry), and `hasInStock` whether anything is in
+/// stock, which is what "Send list" and "Send as file" send (#149). `onList` holds the items
+/// whose name is on the grocery list, unticked: their rows show "On list" (#146).
 struct PantryUiState: Equatable {
     var sections: [PantrySection]?
     var hasItems = false
+    var hasInStock = false
     var query = ""
     var sort: PantrySort = .aisle
     var draft = ""
@@ -68,6 +70,7 @@ final class PantryViewModel {
                 guard let self else { return }
                 self.items = all
                 self.uiState.hasItems = !all.isEmpty
+                self.uiState.hasInStock = all.contains(where: \.inStock)
                 self.uiState.onList = self.onList()
                 self.arrange()
             }
@@ -190,5 +193,13 @@ final class PantryViewModel {
     func onMessageDismissed() {
         if case .deleted = uiState.message { deleted = nil }
         uiState.message = nil
+    }
+
+    /// "Send list" (#149): every in-stock item as plain text for the share sheet, arranged as the
+    /// screen's sort arranges them, whatever the search; nil when nothing is in stock.
+    func shareText(title: String, aisleName: (Aisle) -> String) -> String? {
+        let inStock = items.filter(\.inStock)
+        guard !inStock.isEmpty else { return nil }
+        return PantryShareText.format(PantryList.arrange(inStock, query: "", sort: uiState.sort), title: title, aisleName: aisleName)
     }
 }
