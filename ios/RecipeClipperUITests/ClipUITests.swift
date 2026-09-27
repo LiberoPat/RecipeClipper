@@ -104,4 +104,30 @@ final class ClipUITests: RecipeUITestCase {
             "the History row saying it was clipped"
         )
     }
+
+    /// The owner's "stuck in the photo section": a tap while picking that found no readable
+    /// picture (here a lazy-loading placeholder with no real address) left picking on, every tap
+    /// on the page swallowed and the other fields waiting. Now that tap ends the step and says
+    /// so, the page answers again, and Skip leaves the step without touching the page.
+    /// Mirrors Android's ClipScreenTest.
+    func testAPictureThatCantBeReadLeavesThePhotoStepForTheOtherFields() {
+        launch(.empty)
+        importLink("example.com/no-recipe")
+        require(app.buttons["Clip it yourself"], "Clip it yourself").tap()
+
+        fieldButton("PHOTO").tap()
+        require(text("Tap the picture to use as the photo."), "photo picking")
+        onPage(page.images["Placeholder picture"], "the picture with no address").tap()
+        requireSnackbar("Couldn't read a picture there. The photo is optional.", "the unreadable-picture snackbar")
+        require(text("No name · 0 ingredients · 0 steps · no photo"), "the summary, picking over")
+
+        selectOnPage("Select title")
+        require(text("1 line selected · each line becomes one item"), "the selection preview")
+        fieldButton("NAME").tap()
+        requireSnackbar("Name added", "the Name snackbar")
+
+        fieldButton("PHOTO").tap()
+        require(app.buttons["Skip"], "Skip").tap()
+        require(text("Name ✓ · 0 ingredients · 0 steps · no photo"), "the summary after Skip")
+    }
 }

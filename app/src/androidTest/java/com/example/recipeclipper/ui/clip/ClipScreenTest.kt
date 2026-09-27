@@ -152,6 +152,38 @@ class ClipScreenTest {
         assertEquals(url, recipe.sourceUrl)
     }
 
+    /**
+     * The owner's "stuck in the photo section": a tap while picking that found no readable
+     * picture (here a lazy-loading placeholder with no real address) left picking on, every tap
+     * on the page swallowed and the other fields waiting. Now that tap ends the step and says
+     * so, the page answers again, and Skip leaves the step without touching the page.
+     */
+    @Test
+    fun aPictureThatCantBeReadLeavesThePhotoStepForTheOtherFields() {
+        show()
+        val picking = "document.documentElement.classList.contains('rc-picking')"
+
+        compose.onNodeWithText("Photo").performClick()
+        waitForText("Tap the picture to use as the photo.")
+        waitForPage(picking, "true")
+        js("document.getElementById('placeholder').click()")
+        waitForText("Couldn't read a picture there. The photo is optional.")
+        waitForText("No name · 0 ingredients · 0 steps · no photo")
+        waitForPage(picking, "false")
+
+        select("title")
+        waitForText("1 line selected · each line becomes one item")
+        compose.onNodeWithText("Name").performClick()
+        waitForText("Name added")
+        waitForText("Name ✓ · 0 ingredients · 0 steps · no photo")
+
+        compose.onNodeWithText("Photo").performClick()
+        waitForPage(picking, "true")
+        compose.onNodeWithText("Skip").performClick()
+        waitForText("Name ✓ · 0 ingredients · 0 steps · no photo")
+        waitForPage(picking, "false")
+    }
+
     @Test
     fun linksToOtherPagesDoNotLoad() {
         show()
@@ -177,6 +209,7 @@ class ClipScreenTest {
 <h1 id="title">Brown Butter Oat Cookies</h1>
 <p>The first cold morning of the year always sends me straight to the oven.</p>
 <img id="photo" src="/img/cookies.jpg" width="200" height="120" alt="">
+<img id="placeholder" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" width="200" height="60" alt="">
 <h2>Ingredients</h2>
 <ul id="ingredients"><li>1 cup (226 g) unsalted butter</li><li>1 cup packed brown sugar</li><li>3 cups rolled oats</li></ul>
 <h2>Method</h2>

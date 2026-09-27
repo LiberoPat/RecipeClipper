@@ -49,6 +49,7 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.common.LibraryFullDialog
 import com.example.recipeclipper.ui.common.noticeMessage
+import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.data.model.ClipDraft
 import com.example.recipeclipper.data.model.ClipField
 import com.example.recipeclipper.data.model.SourceDomain
@@ -73,10 +74,6 @@ fun ClipScreen(
     LaunchedEffect(state.savedRecipeId) {
         state.savedRecipeId?.let(onSaved)
     }
-    if (state.libraryFull) {
-        LibraryFullDialog(onUnlock = viewModel::onUnlock, onDismiss = viewModel::onLibraryFullDismiss)
-    }
-
     BackHandler {
         if (state.reviewing) viewModel.onBackToPage() else onCancel()
     }
@@ -115,41 +112,47 @@ fun ClipScreen(
         }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                TopBar(
-                    host = SourceDomain.of(state.url).orEmpty(),
-                    canFinish = state.draft.canFinish,
-                    onCancel = onCancel,
-                    onDone = viewModel::onReview
-                )
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    ClipWebPage(
-                        url = state.url,
-                        syncState = syncState,
-                        pickingPhoto = state.pickingPhoto,
-                        onEvent = { event ->
-                            when (event) {
-                                is ClipPageEvent.Selection -> viewModel.onSelectionChanged(event.text)
-                                is ClipPageEvent.TagTapped -> viewModel.onTagTapped(event.field)
-                                is ClipPageEvent.ImageTapped -> viewModel.onImageTapped(event.src)
-                                ClipPageEvent.NoImage -> viewModel.onNoImageTapped()
-                            }
-                        },
-                        loadPage = loadPage,
-                        modifier = Modifier.fillMaxSize()
+    // Its own theme, like every screen: without it the clip showed Material purple.
+    RecipeClipperTheme {
+        if (state.libraryFull) {
+            LibraryFullDialog(onUnlock = viewModel::onUnlock, onDismiss = viewModel::onLibraryFullDismiss)
+        }
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Box(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                    TopBar(
+                        host = SourceDomain.of(state.url).orEmpty(),
+                        canFinish = state.draft.canFinish,
+                        onCancel = onCancel,
+                        onDone = viewModel::onReview
                     )
-                    if (state.reviewing) {
-                        ReviewPane(state, viewModel, Modifier.fillMaxSize())
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        ClipWebPage(
+                            url = state.url,
+                            syncState = syncState,
+                            pickingPhoto = state.pickingPhoto,
+                            onEvent = { event ->
+                                when (event) {
+                                    is ClipPageEvent.Selection -> viewModel.onSelectionChanged(event.text)
+                                    is ClipPageEvent.TagTapped -> viewModel.onTagTapped(event.field)
+                                    is ClipPageEvent.ImageTapped -> viewModel.onImageTapped(event.src)
+                                    ClipPageEvent.NoImage -> viewModel.onNoImageTapped()
+                                }
+                            },
+                            loadPage = loadPage,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        if (state.reviewing) {
+                            ReviewPane(state, viewModel, Modifier.fillMaxSize())
+                        }
                     }
+                    if (!state.reviewing) ClipToolbar(state, viewModel)
                 }
-                if (!state.reviewing) ClipToolbar(state, viewModel)
+                SnackbarHost(
+                    snackbar,
+                    modifier = Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 140.dp)
+                )
             }
-            SnackbarHost(
-                snackbar,
-                modifier = Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 140.dp)
-            )
         }
     }
 }

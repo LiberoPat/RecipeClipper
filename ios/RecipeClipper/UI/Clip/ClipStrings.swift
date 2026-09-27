@@ -37,6 +37,7 @@ extension Strings {
         case .cleared(.photo): return String(localized: "clip_cleared_photo")
         case .draftRestored: return String(localized: "clip_draft_restored")
         case .saveFailed: return String(localized: "clip_save_failed")
+        case .photoUnreadable: return String(localized: "clip_photo_unreadable")
         case .unlock(let outcome): return unlockNotice(outcome)
         }
     }
