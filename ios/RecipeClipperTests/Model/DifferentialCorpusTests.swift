@@ -41,7 +41,7 @@ import XCTest
 // or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
-// Duration rows (#179): a prep, cook or total time, then JsonLdRecipeParser.formatDuration of it
+// Duration rows (#179): a prep, cook or total time, then Durations.format of it
 // (nil: hidden). Write only `Dur("PT1H30M"),` or `Dur("1 Std. 30 Min.", lang: "de"),`.
 // Chef mode rows (#100): a step, a short version of it, optionally the recipe's ingredient lines
 // (#129), then ShortStepCheck.accept (nil: the step shows as written). Write only
@@ -1805,7 +1805,7 @@ final class DifferentialCorpusTests: XCTestCase {
 
     func testDurationsMatchKotlin() {
         for row in Self.durations {
-            XCTAssertEqual(JsonLdRecipeParser.formatDuration(row.time, words: row.words), row.shown, row.time)
+            XCTAssertEqual(Durations.format(row.time, words: row.words), row.shown, row.time)
         }
     }
 

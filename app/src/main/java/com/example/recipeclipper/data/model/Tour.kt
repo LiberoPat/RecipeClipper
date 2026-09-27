@@ -1,6 +1,5 @@
 package com.example.recipeclipper.data.model
 
-import com.example.recipeclipper.data.remote.JsonLdRecipeParser
 import org.json.JSONObject
 
 /**
@@ -86,5 +85,5 @@ object SampleRecipe {
      * every launch (`RecipeRepository.formatSampleTimes`).
      */
     fun formatTime(time: String?, language: String?): String? =
-        time?.let { JsonLdRecipeParser.formatDuration(it, LanguageWords.forTag(language)) }
+        time?.let { Durations.format(it, LanguageWords.forTag(language)) }
 }

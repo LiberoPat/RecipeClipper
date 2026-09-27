@@ -143,7 +143,7 @@ stale, and writes the regenerated file to
 (`app/build.gradle.kts` declares the Swift file as a test input, so editing
 it alone reruns the tests). A row read with another language's words names it
 after the input (`Ing("2 EL Zucker", lang: "de"),`); a row without one is
-English. Its `Dur` rows (#179) pin `formatDuration`, the prep, cook and total
+English. Its `Dur` rows (#179) pin `Durations.format`, the prep, cook and total
 times, per language; `SampleRecipeTest` / `SampleRecipeTests` check the tour's
 sample shows its times formatted, and `DefaultRecipeRepositorySampleTest` /
 `DataRepositoryTests` the launch-time fix for a sample saved with "PT10M".

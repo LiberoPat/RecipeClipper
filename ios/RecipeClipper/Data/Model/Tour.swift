@@ -96,6 +96,6 @@ enum SampleRecipe {
     /// formatted changes nothing, which is what lets a sample saved before #179 be fixed at every
     /// launch (`RecipeRepository.formatSampleTimes`).
     static func formatTime(_ time: String?, language: String?) -> String? {
-        time.flatMap { JsonLdRecipeParser.formatDuration($0, words: LanguageWords.forTag(language)) }
+        time.flatMap { Durations.format($0, words: LanguageWords.forTag(language)) }
     }
 }

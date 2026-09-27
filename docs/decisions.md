@@ -2256,7 +2256,7 @@ ones).
   ingredient must start its line, after nothing but a bullet or checkbox, so "2 tbsp" can't be
   lifted out of "1 cup plus 2 tbsp"; a name, ingredient or step must hold a letter. The name is
   required; the recipe still needs ingredients or steps (the parsers' rule), otherwise it's
-  `NoRecipeFound` as before. Times go through the parsers' `formatDuration`.
+  `NoRecipeFound` as before. Times go through `Durations.format`, as the parsers' do.
 - **Provenance:** `contentOrigin` `EXTRACTED` (no schema change: the column is text). It is the
   source's, like `PARSED`: a re-share fetches and refreshes it, and an edit makes it `EDITED`.
   An older app reads the unknown name as `EDITED`, the safe side. The reading view says, quietly
@@ -2894,9 +2894,10 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
   deleted, it stays deleted. "Try it" after "Show the tour again" opens it if it's there, and
   adds it again only if it's gone.
 - **Its times read like a parsed recipe's (#179).** The file keeps ISO durations, so one value
-  serves every language, and `SampleRecipe.forLanguage` passes each through the parsers' own
-  `formatDuration` in the sample's language: "10m · 25m · 35m" in English, "10min" in the
-  others, as a parsed recipe in that language shows. At first it copied them as written and
+  serves every language, and `SampleRecipe.forLanguage` passes each through `Durations.format`,
+  the parsers' own formatting, in the sample's language: "10m · 25m · 35m" in English, "10min"
+  in the others, as a parsed recipe in that language shows. `Durations` lives in `data/model`
+  (it was `JsonLdRecipeParser.formatDuration`), so the model never imports the parsers. At first it copied them as written and
   showed "PT10M". A sample saved then is fixed in the database rather than at display, because
   the times are shown in several places (the reading view, Recipes' rows, shared text, the
   edit screen, backups): `FirstRunTour.onLaunch` calls `RecipeRepository.formatSampleTimes`,
@@ -3138,7 +3139,8 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
   remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, SiteRules, CardHeadings, CardSelector, CardIngredients),
                MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
-               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
+               Units, IngredientDensities, TemperatureConverter, StepTimers, Durations (times),
+               RecipeShareText,
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
                LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),

@@ -1,7 +1,6 @@
 package com.example.recipeclipper.data.model
 
 import com.example.recipeclipper.data.remote.CardHeadings
-import com.example.recipeclipper.data.remote.JsonLdRecipeParser
 import com.example.recipeclipper.data.remote.SiteRules
 import com.example.recipeclipper.data.remote.WprmIngredients
 import com.example.recipeclipper.ui.recipe.RecipeRenderer
@@ -37,7 +36,7 @@ import java.io.File
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
  *
- * `Dur("time")` rows (#179) pin [JsonLdRecipeParser.formatDuration]: a prep, cook or total time
+ * `Dur("time")` rows (#179) pin [Durations.format]: a prep, cook or total time
  * as a site (or the tour's sample) writes it, as the app shows it, or nil (hidden); write only
  * the time (optionally `, lang: "de"`; a language with no tables reads ISO alone).
  *
@@ -241,7 +240,7 @@ class DifferentialCorpusTest {
             val text = unescape(m.groupValues[2])
             val language = m.groupValues[3].ifEmpty { "en" }
             val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
-            val shown = JsonLdRecipeParser.formatDuration(text, LanguageWords.forTag(language))?.let { q(it) } ?: "nil"
+            val shown = Durations.format(text, LanguageWords.forTag(language))?.let { q(it) } ?: "nil"
             return m.groupValues[1] + "Dur(${q(text)}$lang, $shown),"
         }
         icsRow.find(line)?.let { m ->
