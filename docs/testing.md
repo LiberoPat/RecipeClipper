@@ -534,7 +534,8 @@ in `+MealPlan.swift`). What they need from outside the app:
   Man.heic`), which each script converts: Android pushes it to `/data/local/tmp` and the test hands
   it back as the Photo Picker's answer (an `ActivityMonitor`; the picker itself can't be driven);
   iOS adds it to the simulator's Photos (`simctl addmedia`, through BMP so it has no capture date
-  and sorts first) and the test picks it in the real picker.
+  and sorts first) and the test picks it in the real picker. The iOS clip ends on the photo's
+  viewer: its × sits under the status bar and doesn't close it (#180).
 - **The received file** is `shared/fixtures/backup/share-v1.recipeclipper`, pushed to
   `/data/local/tmp` and opened with a VIEW intent through the app's FileProvider; iOS opens its
   canned file with `-uiTestReceiveFile`. A pasted list is put on the clipboard by the test

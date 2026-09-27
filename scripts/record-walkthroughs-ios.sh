@@ -19,12 +19,10 @@ TESTS=("$@")
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
 # The photo "I made this" picks from the library (#116): a macOS sample picture, through BMP so
-# it loses its capture date and Photos files it under today, first in the picker. Padded to
-# landscape: a square one pushes the viewer's close button under the status bar while the
-# keyboard is up.
+# it loses its capture date and Photos files it under today, first in the picker.
 if [[ " ${TESTS[*]} " == *" test13_iMadeThis "* ]]; then
   photo=$(mktemp -d)/photo
-  sips -s format bmp -p 512 820 --padColor FFFFFF "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo.bmp" >/dev/null 2>&1 &&
+  sips -s format bmp "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo.bmp" >/dev/null 2>&1 &&
     sips -s format png "$photo.bmp" --out "$photo.png" >/dev/null 2>&1 &&
     xcrun simctl addmedia "$SIM" "$photo.png"
 fi

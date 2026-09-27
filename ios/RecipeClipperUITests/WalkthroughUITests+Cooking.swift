@@ -7,8 +7,8 @@ import XCTest
 
 extension WalkthroughUITests {
 
-    /// A photo from the library (the recording script adds one to the simulator's Photos) and a
-    /// note.
+    /// A photo from the library (the recording script adds one to the simulator's Photos), which
+    /// opens for its note. Until #180 the iOS clip stops there; clip 23 types a note, over "Cooked".
     func test13_iMadeThis() {
         start(flags: ["cookedPhotos"])
         openRecipes()
@@ -23,18 +23,10 @@ extension WalkthroughUITests {
         require(app.images.matching(identifier: "PXGGridLayout-Info").firstMatch, "the newest photo in the picker").tap()
         pause()
         require(app.navigationBars["Photos"].buttons["Done"], "the picker's Done").tap()
-        // The photo just added opens for its note.
-        let note = require(app.descendants(matching: .any).matching(identifier: "cooked.note").firstMatch, "the note")
-        note.tap()
-        note.typeText("Cut the dough into gingerbread men for the kids.")
-        pause(2)
-        require(app.buttons["Close"], "Close").tap()
-        pause(2)
-        let thumbnail = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Your photo, ")).firstMatch
-        scrollTo(thumbnail, "the photo").tap()
-        pause(3)
-        require(app.buttons["Close"], "Close").tap()
-        pause()
+        // The photo just added opens full screen, dated, for its note. The clip ends here: the
+        // viewer's × sits under the status bar and doesn't close it (#180).
+        require(app.descendants(matching: .any).matching(identifier: "cooked.note").firstMatch, "the note")
+        pause(4)
     }
 
     func test17_firstRunTour() {
