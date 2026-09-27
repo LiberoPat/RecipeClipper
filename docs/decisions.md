@@ -1063,6 +1063,20 @@ The owner's decision: import **merges, never replaces**, and deletes nothing.
   are skipped and counted in the summary.
 - **One transaction.** Any failure (a bad file, a database error) writes
   nothing, and the Settings screen shows the cause.
+- **Every merge key, in one place** (CLAUDE.md's summary until September 2026,
+  covering the sections added by later issues): one versioned JSON file
+  (`shared/fixtures/backup/backup-v1.json`; unknown keys ignored); with photos
+  (#116) a `.zip` of that JSON (`backup.json`) and `photos/*.jpg`, STORED
+  (`BackupArchive`, `backup-v1-photos.zip`). Either imports. Import merges,
+  never replaces or deletes: recipes by cleaned `sourceUrl`, Favorites by
+  `isFavorites`, other lists by uid then trimmed case-insensitive name;
+  unlisted recipes only fill free history slots (free tier: places under 20,
+  counting every recipe; unlocked: all come in); pantry items by uid then name
+  and language (what's here stands); grocery items by uid; meal types by
+  `builtInKey`, else uid, else user-type name; planned meals by uid, a recipe's
+  only if its recipe is here after the import; menus by uid, whole, their meals
+  by the plan's rules; photos by uid, only with their picture, their recipe
+  coming in like a listed one. Rules in `BackupMerger`.
 
 ## Shared tables, native logic (#9)
 
@@ -1240,6 +1254,22 @@ lines in the differential corpus, with a `lang:` argument.
 - **Saving an edit reopens the recipe** (the edit screen and the recipe screen
   under it are replaced by `recipe/{id}`), rather than the recipe screen
   reloading itself, so it can't show the copy it loaded before.
+- **In short** (CLAUDE.md's summary until September 2026, #103's `EXTRACTED`
+  included): Editing is its own screen, from the recipe overflow menu (Edit,
+  then "Update from source" for an edited or clipped recipe with a link,
+  behind a warning, then Delete): name, yield, three times, ingredients and
+  steps one per line, a photo link. Saving needs a name plus ingredients or
+  steps (the parsers' rule); nothing typed is converted or guessed.
+  `contentOrigin` (`PARSED` | `EDITED` | `CLIPPED` | `MANUAL` | `EXTRACTED`, by
+  name; an unknown name reads as `EDITED`) and `editedAt` (the last saved edit).
+  Anything but `PARSED` or `EXTRACTED` (#103) is the user's: a re-share opens it
+  without fetching and only counts as a view. "Update from source" is the one
+  way back: it fetches, replaces the content, keeps the id, note and lists, and
+  sets `PARSED` and no `editedAt`; a failure changes nothing. An edit makes
+  `PARSED` into `EDITED`; the other values stay. A typed-in recipe is `MANUAL`
+  with a synthetic `sourceUrl` of `manual:<uuid>`: never fetched or cleaned, and
+  with no host there is no source credit, Open original or Report. Both fields
+  go into the export file.
 
 ## Reading recipes in Japanese (#16)
 
@@ -1378,6 +1408,21 @@ The first real tab of #46, still behind the #47 flag.
   text as a note. Planned servings start as the recipe's own yield.
 - **In the export file** (#26) since the plan joined it after groceries and the
   pantry, with no `formatVersion` bump: see the Pantry section's Export note.
+- **The screen in short** (CLAUDE.md's summary until September 2026, #52's
+  extras included): ‹ week › and "This week", seven day sections from the
+  locale's first day, meal rows (type, thumbnail, title, servings, or a note),
+  "+ Add" per day (a meal type, then a recipe from history or the typed text as
+  a note). Long-press: Move (the day strip and meal types) or Remove (undo
+  snackbar). A tapped recipe opens at its planned servings, for that visit
+  only. "Month" beside the title swaps in a month grid (locale weeks, a dot on
+  planned days; a tapped day opens its week). "Save week as menu…" / "Apply a
+  menu…" (Week menu): a named copy of the week; applying adds its meals on the
+  same weekdays, never replacing what's planned; rename and delete in the menus
+  sheet. "Share as calendar file" (Week menu): the shown week as an .ics of
+  all-day events, never invented times. "Meal types" from the Week menu: add,
+  rename, reorder any, delete the user's own. "Add to plan" (recipe menu, first
+  item, flag on only): this week's and next week's days, a meal type (Dinner
+  first), servings (the yield first), one button.
 
 ## Groceries (#50)
 
@@ -1455,6 +1500,23 @@ The third tab of #46, still behind the #47 flag.
   waits for the pantry (#51).
 - **In the export file** (#26) with the pantry and the plan: see the Pantry
   section's Export note.
+- **The screen in short** (CLAUDE.md's summary until September 2026, with
+  #146 and #149): "Add an item", then the list by aisle (unchecked first); tap
+  ticks, and a tick only ticks (#146); long-press offers "Move to aisle…" and
+  Delete (undo snackbar); the menu sends the list ("Send list": every unticked
+  item as plain text, each naming its recipes in brackets; "Send as file": the
+  same items and their recipes as a file) and pastes one. "Paste a list", or
+  text with no link shared into the app (Android: the Groceries tab; iOS: the
+  share extension's card), opens "Add this list": its lines, all ticked, then
+  Add to groceries or Add to pantry, as written. "Add to groceries" (recipe
+  menu, after Add to plan) and "Add this week's ingredients" (Week menu) open
+  one sheet: the lines as the reading view renders them (the week's at each
+  meal's planned servings), headings left out, all ticked except what the
+  pantry has (#51), one button. **"Done shopping"** (#146, shown while anything
+  is ticked; there is no "Clear checked"): a sheet of the ticked items with
+  checkboxes, pantry-tracked ones ticked, the rest not; one confirm restocks or
+  adds the ticked ones (only here, never on the tick) and clears every ticked
+  line, with one Undo for both. Snackbars only for undo.
 
 ## Pantry (#51)
 
@@ -1562,6 +1624,26 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     the cull's own rule, so a full history can't make the import drop next
     week's dinner. A recipe planned only in the past is ordinary history: it
     takes a free place or is skipped, and its meal is dropped with it.
+- **The screen in short** (CLAUDE.md's summary until September 2026, with
+  #52, #146, #147 and #149): "Add to the pantry", search, then items by aisle
+  (menu: by expiry, radio glyphs); a switch per row for in stock; tap for the
+  edit sheet (quantity as written, "Always have", a use-by date, Delete with
+  undo). Expired or within 3 days shows a paprika badge; an opt-in 9:00
+  notification lists what expires today or tomorrow (Settings → Pantry).
+  Switching an item out puts its name on the grocery list silently; the row
+  then shows "On list", and tapping that takes it off (no snackbar). The menu's
+  "Send list" and "Send as file" send what's in stock, never what's out (that
+  is on the grocery list already). **Using up:** cook mode's "Done — finish"
+  with ingredients ticked, or a photo added with "I made this" once its viewer
+  closes (the ticked lines, else all), opens "Update the pantry" (never on a
+  tick, never on Exit; a recipe's is offered again only 12 h after it was
+  confirmed or dismissed, `pantry_use_up`): per matched item, the worked-out
+  change ("2 lb → 1 lb", ticked; used up goes out and onto the list) or, when
+  it can't be worked out, the lines as written with Keep / Running low (onto
+  the list, still in stock) / Out, Keep chosen. One confirm, one Undo. "What I
+  need" (Week menu): the shown week's lines at planned servings, grouped by
+  ingredient, "To buy" then "In your pantry", with a note that having some
+  isn't having enough; "Add to groceries" adds the To buy lines.
 
 ## Clip it yourself (#37)
 
@@ -2084,7 +2166,11 @@ the app is exactly as before (the history cap of 50 unprotected recipes).
     ViewModel holds one.
   - iOS: StoreKit 2 in `StoreKitEntitlements`, listening to
     `Transaction.updates` (Ask to Buy approvals, refunds). Locally the scheme
-    runs against `ios/RecipeClipper.storekit`.
+    runs against `ios/RecipeClipper.storekit`. `refresh()` after an update
+    reads `currentEntitlements` without waiting: checked in #172, an update
+    arrives only once `currentEntitlements` lists it (58 of 58 on just-booted
+    simulators), and `purchase()` trusts the transaction it gets back. Only
+    the tests' `SKTestSession.buyProduct` returns early.
   - Both cache the last answer (Android its own `entitlements` prefs file,
     not in the backup include list; iOS `UserDefaults`), so a share that
     cold-starts the app isn't judged "locked" while the store is still being
@@ -2392,14 +2478,13 @@ exact rules still decide every total.
   never a package size before the name. Asked for every grocery line with trailing text, a
   lone line too (the owner's option 2), so a lone "2 eggs (dfsafs -" shows "2 eggs" once
   decided junk; once per text and language (the cache), in the background, once per visit.
-  Only grocery lines: the reading view never asks it. Note or junk: the line is grouped and added up
-  as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"). A note still shows as written under
+  The recipe asks it too, about its own lines (#174, below). Note or junk: the line is grouped
+  and added up as its core ("2 eggs, beaten" + "3 eggs" is "5 eggs"). A note still shows as written under
   the total; **junk is hidden in Groceries** (the owner's option 1): the row, the lines under
   a total or Together row and the shared text show the line without it ("2 eggs"). That is a
   display-time transform from the cached answer (`GroceryDecisions.shownText`, applied in
   `GroceryCombiner.sections`): the stored line is never rewritten, so turning `aiDecisions` off
-  shows it again, and the recipe's reading view always keeps the line as the site wrote it.
-  Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
+  shows it again. Second amount or unsure: nothing changes. Pinned by the corpus's `Trail` rows.
 - **"What is the ingredient's name?"** (`ingredientName`, free text) catches junk with no
   separator ("2 onions dfsafs"). Asked only for a line with no separator split whose name has
   words the aisle table doesn't match after words it does ("onions dfsafs": "onions" is
@@ -2423,11 +2508,30 @@ exact rules still decide every total.
   off, an unsupported phone or language: no question, and the list is exactly today's (a test
   on each platform compares it with `sections(items)`). Deleting, ticking and moving rows are
   as before. Sharing sends what the screen shows.
+- **Junk is hidden in the recipe too** (#174). The owner's decision (2026-09-26): "Hide the
+  junk, period, including in recipes." Until then the reading view never asked the model and
+  always kept a line as the site wrote it; that is reversed. When a recipe opens (and after
+  "Update from source"), `ChefMode` asks the same two questions about its ingredient lines
+  (`GroceryDecisions.junkQuestions`: headings left out; a name that lands opens its
+  trailing-text question), in the background, each once per visit and once ever through the
+  same cache, so a line already decided in Groceries costs nothing. `IngredientRendering`
+  shows a line decided junk as Groceries would (`GroceryDecisions.shownLine`, the same cut as
+  `shownText`), then scales and converts the rest ("1 cup flour (dfsafs -" at double servings
+  in Metric is "240 g flour"). The same safeguards, since it is the same code: never text
+  holding a digit, never unspaced languages, never a package size before the name,
+  `DecisionRule`. So the reading view, cook mode's ingredients bar, the shared text, "Add to
+  groceries" and the pantry's use-up sheet all show "2 eggs"; the Week's "Add this week's
+  ingredients" and "What I need", which render through `IngredientRendering` and ask nothing,
+  do too once an answer is cached. A note, a second amount or unsure: as written. Display only:
+  the editor shows the stored line, ticks stay at their index, and `aiDecisions` off or an
+  unsupported phone or language shows every line as written. Pinned by the corpus's `Render`
+  rows with `trailing:` and `names:` answers.
 
 **Needs a real phone:** whether the models say "same" for the owner's corn and garlic pairs and
 "different" for rice flour and whole milk with high confidence both times, whether they tell a
 note from junk from a second amount, whether they copy "onions" out of "2 onions dfsafs"
-verbatim and agree twice, and how long the questions take on a long list.
+verbatim and agree twice, how long the questions take on a long list, and how soon an opened
+recipe's lines lose their junk (#174).
 
 ## A hyphenated mixed number is not a range (#125)
 
@@ -2527,6 +2631,12 @@ photo that exists.
   sits beside the database in the App Group container, which nothing excludes from backup.
   Pinned by `CookedPhotoDaoTest` and `RecipeCookedPhotosScreenTest` (Android) and
   `CookedPhotoTests` (iOS).
+- **The screen in short** (CLAUDE.md's summary until September 2026): "Your
+  cooks" is the reading view's last section (after the note), a row of dated
+  thumbnails and "I made this" (camera or library). Each photo is an entry
+  cooked today; the new one opens full screen for its note (short, saved as
+  typing pauses) and date; Share sends the photo plus the recipe name; Delete
+  has an undo snackbar.
 
 **Needs a real phone:** the camera itself (the Android emulator's virtual scene and the iOS
 simulator's missing camera prove only the wiring), EXIF orientation from a real portrait shot,
@@ -2933,3 +3043,142 @@ change, and every existing ViewModel, screen and UI test passes unchanged.
   cook; aligning them would be a behaviour change, so it's left for its own issue if wanted.
 - **Not done:** a use-case layer across the app (most screens would get thin pass-throughs);
   the AI recommendation pipeline (#164–#166) is where one would earn its place.
+
+## Code map and routes, and details moved out of CLAUDE.md (September 2026)
+
+`CLAUDE.md` had grown back to about 750 lines, and it is loaded into every session,
+so it was cut to the rules an agent needs almost every time (the rules themselves
+stay there, condensed). Whatever it said that no section above already said is kept
+here, nearly word for word, except where a feature's own section was the better home: Editing (#29), Week (#49), Groceries (#50), Pantry (#51),
+"I made this" (#116) and the export's merge keys (#26) each gained an "in short"
+bullet.
+
+### Code map (Android)
+
+```
+MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists;
+               a received .recipeclipper file → ReceivedFileInbox → its sheet over any screen (#149)
+di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule,
+               OnDeviceModelModule (Chef mode and decision models, swappable for the walkthroughs)
+data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepository, PantryRepository
+               (interfaces; Default* are the Room-backed ones), Connectivity, ErrorLog, Clock, PlanCalendar (seams for tests),
+               Entitlements (the unlock: PlayBillingEntitlements; iOS StoreKitEntitlements), LibraryPolicy (#107)
+               CookedPhotoRepository + PhotoStore ("I made this" photos, #116)
+               AutoBackup + BackupFolder (the automatic backup copy, WorkManager, #150)
+               ShareFileRepository (the file sent to someone else, #149; rules in backup/ShareFile)
+  local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
+  remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, SiteRules, CardHeadings, CardSelector, CardIngredients),
+               MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
+  model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
+               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
+               SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
+               LanguageWords (one language's tables, chosen per recipe)
+               IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
+               TrailingAmount (name-first lines: Japanese), StepAmounts (amounts inside steps, #101),
+               ClipSelection, ClipDraft, PageText, RecipeTextWindow, PageRecipeCheck (#103),
+               PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal), LibraryLimit (#107),
+               Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
+               Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy),
+               PantryUseUp (what a finished cook takes from the pantry, #147)
+ui/            navigation, home, recipes (the library), recipe, clip, edit, savetolist, lists, listdetail,
+               settings, week (with What I need), plan (Add to plan sheet), mealtypes,
+               groceries (the tab and the Add to groceries sheet), pantry, sharefile (Send as file,
+               the received file's sheet, #149), theme, common
+timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
+reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receiver, the notification (#52)
+```
+
+### Routes
+
+`home`, `recipes` (the library; was `history`), `settings` (and the hidden
+`settings/developer`), `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`
+(`cook=true` from a timer notification opens cook mode), `recipe/import?url={url}` (the
+share target: parse, then upsert with no list membership), and
+`edit?recipeId={recipeId}` (no id: a new recipe; saving replaces the edit screen, and
+the recipe screen under it, with `recipe/{id}`), and `clip?url={url}` (Clip it
+yourself; saving replaces it and the error screen under it with `recipe/{id}`), and
+`welcome?again={again}` (the first-run tour, #151). Behind the `mealPlan` feature flag
+(#47, on by default): a bottom tab bar nests this same graph under a Recipes tab
+alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and
+`week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry` (#51)
+(`AppShell`/iOS `RootView`'s `tabs`). Hidden on the recipe reading view and in cook
+mode; any route from an intent (a shared link, a tapped timer notification) always
+lands in Recipes, whichever tab is open.
+
+### The database, in one paragraph
+
+Room database `recipe_clipper.db`, **version 14** (iOS `user_version` 13): `recipes`
+(with nullable `notes`, `language`, `cookState`, `servingsTarget` and `editedAt`, and
+`contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
+`meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51), `menus` and
+`menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never
+exported), `cooked_photos` (#116, cascading). Recipes, lists, the plan, grocery,
+pantry, menu and photo tables carry a unique, never-changing `uid`: what an export
+file calls them. Plan, grocery, pantry, menu and photo rows also carry `updatedAt`
+(for #53). iOS keeps the database in the App Group container that the share
+extension writes to as well.
+
+### Settings: the sections and the keys
+
+**Sections:** Units (with "Also convert liquids" for Ounces only), Oven temperature
+(independent of units, default As written), Appearance ("Dark while cooking"), Steps
+("Amounts in steps", off, behind the `amountsInSteps` flag, #101; "Chef mode", behind
+the `chefMode` flag, #100; each row shows with its own flag), Pantry ("Expiry
+reminders", only with the `mealPlan` flag; asks for notifications when turned on,
+never at launch), Unlimited recipes (only with `freeTier`: "Unlock for <store price>"
+and "Restore purchase", or the sentence "Unlocked: every recipe is kept."; Developer
+settings has an "Unlocked" override), Help ("Show the tour again", #151), and Your
+recipes (export, import and the automatic copy, #150). Reached from the gear beside
+the Home title, on every tab of the shell. It could now open from elsewhere too (the
+recipe screen follows `AppPreferences.settings`), but adding an entry point is the
+owner's call.
+
+**Keys** (the SharedPreferences file `unit_preferences`, and `UserDefaults` on iOS,
+the same on both): `unit_system`, `convert_liquids`, `temperature_unit`,
+`dark_while_cooking`, `expiry_reminders`, `chef_mode`, `amounts_in_steps`,
+`recipe_sort` (the Recipes screen's sort), the tour's `tour_welcome`,
+`tour_sample_added`, `tour_tip_*` (#151), and `pantry_use_up` (#147: recipe id to when
+its sheet was settled, pruned to 12 h on each write), each enum stored by name, an
+unknown one read as the default. `AppPreferences.settings` (a Flow over the change
+listener; iOS a publisher over `UserDefaults.didChangeNotification`) emits them;
+ViewModels that show a preference collect it rather than reading once.
+
+### Smaller rules
+
+- **Edge-to-edge** (targetSdk 36 enforces it): a screen's root surface fills behind the
+  system bars and pads its content with `safeDrawingPadding()` (Recipes: its
+  Scaffold's `contentWindowInsets = WindowInsets.safeDrawing`). Never set bar colours;
+  the theme only flips the bar icons.
+- **Strings:** every UI string lives in `res/values/strings.xml` plus
+  `values-{es,fr,de,it,pt-rBR}` (iOS: `Localizable.xcstrings`, read through
+  `Strings.swift`); a new string needs all six languages on both platforms.
+  `RecipeShareText` takes its words as `Labels` from the screen; `SiteReportLink` is a
+  report body, English by design.
+- **The toolchain bump list:** Gradle, AGP, Kotlin (the Compose compiler plugin's
+  version sets it), KSP, Hilt, Room, and the Compose BOM with `navigation-compose`.
+  AGP 9 compiles Kotlin itself: there's no `kotlin-android` plugin and no legacy AGP
+  flags.
+- **The reading view's source credit:** under the title, quietly, the source's domain
+  and "Open original" (reading view only, not cook mode).
+- **Backup is an include list** (`res/xml/data_extraction_rules.xml` and
+  `backup_rules.xml`): the database with its `-wal`/`-shm`, and `unit_preferences.xml`.
+  Anything else, a new file or a renamed one, is not backed up until it's added to
+  both. That excludes the export/import temp file, which lives in `cacheDir`, never
+  backed up anyway. The user's photos (`filesDir/cooked_photos`) are left out on
+  purpose (the 25 MB quota); the export file carries them. So is `auto_backup.xml`
+  (#150): a folder's permission belongs to one phone. iOS keeps the database, and
+  `CookedPhotos/` beside it, in the App Group container, which backups include.
+- **Notes and ticks:** ticked ingredients are written as they change; the note once
+  typing pauses (500 ms), or on leaving the screen. Recipes search ignores notes.
+- **"Report this site"** is offered for `NoRecipeFound` from a shared link (never
+  `Blocked`, `Offline` or `FetchFailed`): a prefilled GitHub issue (`SiteReportLink`,
+  label `site-report`) opened in the browser. Nothing is sent unless the user submits
+  it.
+- **Decimal commas** (in scaling, conversion and step timers): a comma between digits
+  followed by 1–2 digits is a decimal ("1,5 kg"), and the line's output keeps the
+  comma, as decimals rather than fractions ("1,5 kg" ×1.5 is "2,25 kg"). Followed by 3
+  digits ("1,500 g") it may be a thousands separator, so the whole line stays as
+  written.
+- **Deliberately deferred: on-device OCR** (ML Kit) as a fourth Reddit step. It adds a
+  dependency, and OCR is weakest on handwriting, the case that motivates it. Revisit
+  once Reddit (#11) shows how often the comment fallback hits.

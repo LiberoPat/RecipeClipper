@@ -124,14 +124,15 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
     }
 
     /**
-     * Junk after a grocery line's ingredient (#132), judged by the model (simulated, as above):
-     * the recipe keeps "2 eggs dfsafs" as written; Groceries shows "2 eggs".
+     * Junk after an ingredient (#132, #174), judged by the model (simulated, as above): the
+     * recipe and Groceries both show "2 eggs dfsafs" as "2 eggs"; the stored line is unchanged.
      */
     @Test
     fun test12_groceriesJunkHidden() {
         start("mealPlan", "aiDecisions")
         tapScrolling("Banana Bread") // below the fold on Home (a lazy list)
-        waitFor(hasText(WalkthroughSeed.JUNK_LINE, substring = true))
+        // The answers land in the background; then the line shows without its junk.
+        waitFor(hasText("2 eggs"))
         pause(2500)
         menu("Add to groceries")
         pause(1500)

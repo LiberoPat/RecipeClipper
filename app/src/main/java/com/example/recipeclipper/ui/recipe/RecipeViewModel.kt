@@ -63,7 +63,8 @@ class RecipeViewModel @Inject constructor(
     shortSteps: ShortStepRepository? = null,
     featureFlags: FeatureFlags? = null,
     private val entitlements: Entitlements = Entitlements.Unavailable,
-    // The on-device model's count-bracket decisions (#104); none without it.
+    // The on-device model's decisions (#104: count brackets; junk after an ingredient, #174);
+    // none without it.
     decisionRepository: DecisionRepository? = null
 ) : ViewModel() {
 
@@ -110,7 +111,7 @@ class RecipeViewModel @Inject constructor(
     private val pendingWrites = ArrayDeque<suspend () -> Unit>()
     private var writer: Job? = null
 
-    // Chef mode (#100) and the model's count brackets (#104), two of the renderer's inputs.
+    // Chef mode (#100) and the model's decisions (#104, #174), two of the renderer's inputs.
     // Declared before init, which starts the collectors that feed it.
     private val chef = ChefMode(
         scope = viewModelScope,
@@ -192,7 +193,7 @@ class RecipeViewModel @Inject constructor(
             if (result is ParseResult.Success) {
                 restoreCook(result.recipe)
                 chef.start()
-                askCountBrackets()
+                askModel()
                 if (openInCookMode) {
                     openInCookMode = false
                     onCookStart()
@@ -325,7 +326,7 @@ class RecipeViewModel @Inject constructor(
                 }
                 restoreCook(result.recipe)
                 chef.start()
-                askCountBrackets()
+                askModel()
             } else {
                 val error = (result as ParseResult.Error).error
                 _uiState.update { it.copy(updatingFromSource = false, updateError = error) }
@@ -404,8 +405,11 @@ class RecipeViewModel @Inject constructor(
         decisions = chef.decisions
     )
 
-    private fun askCountBrackets() {
-        (_uiState.value.content as? RecipeContent.Success)?.let(chef::askCountBrackets)
+    // The model's questions about the loaded recipe: count brackets (#104) and junk (#174).
+    private fun askModel() {
+        val content = _uiState.value.content as? RecipeContent.Success ?: return
+        chef.askCountBrackets(content)
+        chef.askJunk(content)
     }
 
     /** Chef mode: shows step [index] as written, or short again. */

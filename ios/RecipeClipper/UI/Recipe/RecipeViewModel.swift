@@ -166,7 +166,7 @@ final class RecipeViewModel {
                 uiState.notes = recipe.notes ?? ""
                 restoreCook(recipe)
                 chef.start()
-                askCountBrackets()
+                askModel()
                 if openInCookMode {
                     openInCookMode = false
                     onCookStart()
@@ -291,7 +291,7 @@ final class RecipeViewModel {
                 uiState.asWrittenSteps = []
                 restoreCook(fresh)
                 chef.start()
-                askCountBrackets()
+                askModel()
             case .error(let error):
                 uiState.updateError = error
             case .notKept: break // an update never adds a recipe
@@ -392,8 +392,11 @@ final class RecipeViewModel {
         )
     }
 
-    private func askCountBrackets() {
-        if let content = uiState.content.success { chef.askCountBrackets(content) }
+    // The model's questions about the loaded recipe: count brackets (#104) and junk (#174).
+    private func askModel() {
+        guard let content = uiState.content.success else { return }
+        chef.askCountBrackets(content)
+        chef.askJunk(content)
     }
 
     /// Chef mode: shows step `index` as written, or short again.
