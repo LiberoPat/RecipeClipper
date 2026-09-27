@@ -33,7 +33,8 @@ class RedditRecipeParserTest {
                 totalTime = null,
                 yield = "Serves 4",
                 sourceUrl = url,
-                sourceType = SourceType.REDDIT
+                sourceType = SourceType.REDDIT,
+                language = "en"
             ),
             recipe(RedditFixtures.SELF_POST)
         )

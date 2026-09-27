@@ -29,7 +29,8 @@ final class RedditRecipeParserTests: XCTestCase {
             totalTime: nil,
             yield: "Serves 4",
             sourceUrl: url,
-            sourceType: .reddit
+            sourceType: .reddit,
+            language: "en"
         ))
     }
 

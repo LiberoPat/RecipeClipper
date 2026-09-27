@@ -2881,3 +2881,29 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
   on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
   off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
   so a killed app loses it with nothing changed. Behind `mealPlan`, like every pantry feature.
+
+## Reddit posts (#11)
+
+The design is the issue's: one `.json` fetch, the post body if it splits, else the best comment
+that splits, else `NoTranscription` with the post's photo. What was decided when it met the
+app main had become:
+
+- **Behind a `reddit` flag, on in debug and release** (the owner's rule for flags). Off, a
+  Reddit link goes to the blog source, as before #11. The iOS share extension never sees the
+  flags, so the app mirrors this one into the App Group suite (`reddit_on`, on until written),
+  as it does `mealPlan` for "Add this list".
+- **No rendered page and no page text for a Reddit post** (`RecipeSource.readsRenderedPage`).
+  The blog parsers can't read Reddit's rendered HTML (there's no recipe markup in it), so a
+  WebView load after a 429 would only add up to 20 s before the same Blocked; and its text is a
+  whole thread, which the on-device model (#103) shouldn't pick a recipe out of when the
+  splitter, by design, declined. On iOS a page Safari already rendered (#35) is ignored for the
+  same reason. `RoutingRecipeSource` forwards `fetchPage` too, so blog pages keep their text for
+  the model.
+- **`NoTranscription` offers Try again only**: no "Report this site" (Reddit isn't a site whose
+  markup the app could learn) and no "Clip it yourself" (the recipe, when there is one, is
+  usually in the photo). Both stay tied to `NoRecipeFound`, which a Reddit link that isn't a
+  post still gives.
+- **The recipe's language** comes from its words, as for any page with none declared (#14).
+  The splitter's headers are English, so in practice these are English recipes.
+- **Fixtures are synthetic.** reddit.com answers 403 to the development machine, so the live
+  `.json` endpoint and the `/s/` share-link redirect are unverified until tried on a phone.

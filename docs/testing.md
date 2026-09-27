@@ -143,8 +143,8 @@ Android, a URLProtocol stub on iOS; also the host routing and the `reddit` flag)
 (`RedditFixtures`, identical text on both sides) are synthetic, in Reddit's
 real listing shape: reddit.com answered 403 when they were written, so no
 live response was captured.
-`DefaultRecipeRepositoryTest` (and the iOS `RecipeRepositoryTests`) checks that a
-blocked Reddit post never goes to the rendered page.
+`DefaultRecipeRepositoryRetryTest` (iOS `DataRepositoryTests`) checks that a blocked
+Reddit post never goes to the rendered page.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to

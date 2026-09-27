@@ -118,13 +118,23 @@ final class RedditRecipeSourceTests: XCTestCase {
 
     private final class RecordingSource: RecipeSource {
         let result: ParseResult
+        let page: PageText?
+        let readsPages: Bool
         var fetched: [String] = []
-        init(_ result: ParseResult) { self.result = result }
+        init(_ result: ParseResult, page: PageText? = nil, readsPages: Bool = true) {
+            self.result = result
+            self.page = page
+            self.readsPages = readsPages
+        }
         func fetch(url: String) async -> ParseResult {
             fetched.append(url)
             return result
         }
+        func fetchPage(url: String) async -> FetchedPage { FetchedPage(result: await fetch(url: url), page: page) }
+        func readsRenderedPage(url: String) -> Bool { readsPages }
     }
+
+    private let redditPost = "https://www.reddit.com/r/recipes/comments/abc/x/"
 
     func testRoutingSendsRedditHostsToTheRedditSourceAndEverythingElseToTheBlogOne() async {
         let blog = RecordingSource(.error(.noRecipeFound))
@@ -139,5 +149,32 @@ final class RedditRecipeSourceTests: XCTestCase {
 
         XCTAssertEqual(reddit.fetched.count, 3)
         XCTAssertEqual(blog.fetched, ["https://www.seriouseats.com/reddit-inspired-pasta", "https://www.notreddit.com/r/x/comments/abc/"])
+    }
+
+    func testWithTheRedditFlagOffARedditLinkGoesToTheBlogSourceAsBefore() async {
+        let blog = RecordingSource(.error(.noRecipeFound))
+        let reddit = RecordingSource(.error(.offline), readsPages: false)
+        let router = RoutingRecipeSource(blog: blog, reddit: reddit, redditOn: { false })
+
+        _ = await router.fetch(url: redditPost)
+
+        XCTAssertEqual(blog.fetched, [redditPost])
+        XCTAssertTrue(reddit.fetched.isEmpty)
+        XCTAssertTrue(router.readsRenderedPage(url: redditPost))
+    }
+
+    func testRoutingPassesFetchPageThroughSoABlogPagesTextStillReachesTheModel() async {
+        let text = PageText(title: "Soup", lines: ["A story about soup."])
+        let blog = RecordingSource(.error(.noRecipeFound), page: text)
+        let router = RoutingRecipeSource(blog: blog, reddit: RecordingSource(.error(.offline)))
+
+        let fetched = await router.fetchPage(url: "https://example.com/soup")
+        XCTAssertEqual(fetched.page, text)
+    }
+
+    func testARedditPostNeverGoesToTheRenderedPageABlogPageDoes() {
+        let router = RoutingRecipeSource(blog: RecordingSource(.error(.noRecipeFound)), reddit: RedditRecipeSource())
+        XCTAssertFalse(router.readsRenderedPage(url: redditPost))
+        XCTAssertTrue(router.readsRenderedPage(url: "https://example.com/soup"))
     }
 }

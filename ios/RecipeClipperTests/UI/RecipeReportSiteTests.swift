@@ -61,6 +61,15 @@ final class RecipeReportSiteTests: XCTestCase {
         }
     }
 
+    func testARedditPostWithNoTranscriptionOffersNeitherAReportNorAClip() async {
+        // #11: an outcome, not an unsupported page; the screen shows the post with Try again only.
+        let reddit = "https://www.reddit.com/r/Old_Recipes/comments/1abc02/grandmas_pie/"
+        let vm = viewModel(url: reddit, repository: repository(.error(.noTranscription(title: "Pie", imageUrl: nil))))
+        await settleMain()
+        XCTAssertNil(vm.uiState.reportSiteUrl)
+        XCTAssertNil(vm.uiState.clipUrl)
+    }
+
     func testASavedRecipeThatCantBeOpenedHasNoPageToReport() async {
         let repository = FakeRecipeRepository()
         repository.openResult = nil

@@ -359,6 +359,36 @@ final class DataRepositoryTests: XCTestCase {
         }
     }
 
+    /// Reddit's shape (#11): a source whose pages are never rendered or read for text.
+    private final class ListingOnlySource: RecipeSource {
+        private let result: ParseResult
+        private(set) var fetches = 0
+        init(_ result: ParseResult) { self.result = result }
+        func fetch(url: String) async -> ParseResult {
+            fetches += 1
+            return result
+        }
+        func readsRenderedPage(url: String) -> Bool { false }
+    }
+
+    func testASourceThatReadsNoRenderedPageRedditsIsNeverRendered() async {
+        let blocked = ParseResult.error(.blocked(httpStatus: 429))
+        let reddit = ListingOnlySource(blocked)
+        let rendered = FakeRenderedPageSource { [unowned self] _ in self.renderedRecipePage }
+        let repository = DefaultRecipeRepository(
+            db: db, source: reddit, clock: clock, sleep: pauses.sleep, renderedPages: rendered
+        )
+
+        // Not even a page Safari already rendered (#35) is read.
+        let result = await repository.importFromUrl(
+            "https://www.reddit.com/r/recipes/comments/abc/x/", renderedPage: renderedRecipePage
+        )
+
+        XCTAssertEqual(result, blocked)
+        XCTAssertEqual(reddit.fetches, 2) // the one retry still applies
+        XCTAssertEqual(rendered.requests, [])
+    }
+
     func testARenderedPageWithNoRecipeKeepsTheDirectFetchsCause() async throws {
         let rendered = FakeRenderedPageSource { [unowned self] _ in self.renderedStoryPage }
         let (repository, _) = rendering(rendered, .error(.blocked(httpStatus: 403)), .error(.blocked(httpStatus: 429)))
