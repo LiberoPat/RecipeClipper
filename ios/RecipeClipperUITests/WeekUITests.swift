@@ -56,12 +56,62 @@ final class WeekUITests: RecipeUITestCase {
         XCTAssertTrue(meal.label.contains("Chicken Adobo"))
     }
 
-    /// The month view (#52): Week ↔ Month, and a tapped day opens its week.
+    /// What I need (#51) draws every row of both sections (#185). The walkthrough pantry has
+    /// chicken thighs, soy sauce and white vinegar in stock and garlic out, so a planned Adobo
+    /// has at least three rows to buy and three in the pantry. Both sections sit in one
+    /// LazyVStack; with ids repeated across them, the first pantry rows left a blank gap.
+    func testWhatINeedDrawsEveryRowOfBothSections() {
+        launch(.walkthroughPantry, flags: ["mealPlan"])
+        require(tabBar.buttons["Week"], "the Week tab").tap()
+        planToday("Chicken Adobo")
+        require(app.buttons["More options"], "the Week menu").tap()
+        require(app.buttons["What I need"], "What I need").tap()
+        require(app.staticTexts["garlic"], "the first row to buy")
+
+        // Top to bottom: To buy, then In your pantry.
+        for name in ["garlic", "bay leaves", "black peppercorns", "chicken thighs", "soy sauce", "white vinegar"] {
+            let row = app.staticTexts[name]
+            for _ in 0 ..< 4 where !(row.exists && row.isHittable) { app.swipeUp() }
+            require(row, name)
+            XCTAssertTrue(row.isHittable, "\(name) is drawn")
+        }
+    }
+
+    /// "Add this week's ingredients" (#50) lists every planned recipe's lines, not only the
+    /// first recipe's (#185: each recipe's lines were keyed by offset alone).
+    func testTheWeeksGrocerySheetListsEveryRecipesLines() {
+        openWeek()
+        planToday("Chicken Adobo")
+        planToday("Spaghetti Carbonara")
+        require(app.buttons["More options"], "the Week menu").tap()
+        require(app.buttons["Add this week's ingredients"], "Add this week's ingredients").tap()
+
+        for text in ["2 lb chicken thighs", "1/2 cup soy sauce", "400 g spaghetti", "4 egg yolks"] {
+            let line = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'sheetLine-' AND label CONTAINS %@", text)).firstMatch
+            for _ in 0 ..< 3 where !(line.exists && line.isHittable) { app.swipeUp() }
+            require(line, text)
+            XCTAssertTrue(line.isHittable, "\(text) is drawn")
+        }
+    }
+
+    /// "+ Add" on today, then `title` from the sheet's history, and waits for it on the Week.
+    private func planToday(_ title: String) {
+        let add = app.buttons["addToDay-\(today)"]
+        for _ in 0 ..< 5 where !add.isHittable { app.swipeUp() }
+        require(add, "+ Add on today").tap()
+        require(app.buttons[title], "\(title) in the sheet").tap()
+        require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-' AND label CONTAINS %@", title)).firstMatch, "\(title) planned")
+    }
+
+    /// The month view (#52): Week ↔ Month, and a tapped day opens its week. The grid's first
+    /// row draws (#185: it shared its ids with the weekday headings); the 1st is always in it.
     func testTheMonthViewOpensTheWeekOfATappedDay() {
         openWeek()
 
         require(app.buttons["toggleMonth"], "the Month switch").tap()
         require(app.staticTexts["monthTitle"], "the month")
+        let first = today - Int64(Calendar.current.component(.day, from: Date()) - 1)
+        require(app.buttons["monthDay-\(first)"], "the 1st, in the first row")
         require(app.buttons["monthDay-\(today)"], "today in the grid").tap()
         require(app.staticTexts["weekRange"], "the week again")
         XCTAssertEqual(app.buttons["toggleMonth"].label, "Month")

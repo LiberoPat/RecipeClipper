@@ -258,8 +258,10 @@ private struct MonthGrid: View {
     var body: some View {
         if !month.days.isEmpty {
             LazyVGrid(columns: columns, spacing: 0) {
-                ForEach(month.days.prefix(7).map { $0.day }, id: \.self) { day in
-                    Text(PlanDayFormat.shortWeekday(day))
+                // Not the days' own ids (#185): the grid pools every ForEach's ids, and the
+                // first row of cells, sharing them, didn't draw.
+                ForEach(month.days.prefix(7).map { (id: "weekday-\($0.day)", day: $0.day) }, id: \.id) { heading in
+                    Text(PlanDayFormat.shortWeekday(heading.day))
                         .textStyle(Typography.labelMedium)
                         .foregroundStyle(Palette.muted)
                         .padding(.bottom, 4)
