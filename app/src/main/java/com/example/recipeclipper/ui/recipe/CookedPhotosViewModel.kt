@@ -25,6 +25,8 @@ import javax.inject.Inject
  * "Your cooks" (#116) under a recipe: [photos] newest cook first; [open] the one shown full
  * screen, with [noteDraft] its note as typed; [deleted] the one just deleted, until its Undo
  * snackbar is settled. [addFailed] is set when a picked picture couldn't be stored, until shown.
+ * [madeThis]: a photo was just added and its full-screen view has closed, so the recipe was
+ * cooked; the screen offers the pantry's use-up sheet (#147), then calls [CookedPhotosViewModel.onMadeThisHandled].
  */
 data class CookedPhotosUiState(
     val photos: List<CookedPhoto> = emptyList(),
@@ -32,7 +34,8 @@ data class CookedPhotosUiState(
     val noteDraft: String = "",
     val adding: Boolean = false,
     val deleted: CookedPhoto? = null,
-    val addFailed: Boolean = false
+    val addFailed: Boolean = false,
+    val madeThis: Boolean = false
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -44,6 +47,9 @@ class CookedPhotosViewModel @Inject constructor(
     private val recipeId = MutableStateFlow<Long?>(null)
     private val local = MutableStateFlow(CookedPhotosUiState())
     private var noteSave: Job? = null
+
+    /** A photo was just added: [CookedPhotosUiState.madeThis] follows once it closes. */
+    private var madeThisPending = false
 
     private val photos = recipeId.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observe(id) }
 
@@ -64,6 +70,7 @@ class CookedPhotosViewModel @Inject constructor(
         local.update { it.copy(adding = true) }
         viewModelScope.launch {
             val added = repository.add(id, sources)
+            if (added.isNotEmpty()) madeThisPending = true
             // The first new one opens, so its note and date are right there to fill in.
             local.update {
                 it.copy(adding = false, addFailed = added.size < sources.size)
@@ -79,10 +86,14 @@ class CookedPhotosViewModel @Inject constructor(
         local.update { it.copy(open = photo, noteDraft = photo.note.orEmpty()) }
     }
 
+    /** Closing the photo just added offers the pantry's use-up sheet, after its note, not over it. */
     fun onClose() {
         saveNote()
-        local.update { it.copy(open = null, noteDraft = "") }
+        local.update { it.copy(open = null, noteDraft = "", madeThis = it.madeThis || madeThisPending) }
+        madeThisPending = false
     }
+
+    fun onMadeThisHandled() = local.update { it.copy(madeThis = false) }
 
     /** The note is written once typing pauses, or when the photo closes. */
     fun onNoteChange(text: String) {
@@ -102,6 +113,8 @@ class CookedPhotosViewModel @Inject constructor(
     /** Deletes the open photo at once; [onUndoDelete] brings it back until [onDeleteSettled]. */
     fun onDelete() {
         noteSave?.cancel()
+        // The photo just added, deleted at once, was the wrong picture: no cooking to offer.
+        madeThisPending = false
         val open = local.value.open ?: return
         local.update { it.copy(open = null, noteDraft = "") }
         viewModelScope.launch {
