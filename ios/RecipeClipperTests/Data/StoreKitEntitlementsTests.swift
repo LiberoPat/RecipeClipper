@@ -30,6 +30,24 @@ final class StoreKitEntitlementsTests: XCTestCase {
         StoreKitEntitlements(defaults: UserDefaults(suiteName: suite)!)
     }
 
+    /// `buyProduct` returns before this app's `Transaction.currentEntitlements` has the purchase
+    /// (it arrives as if from another device, up to ~300 ms later on a fresh simulator), so wait
+    /// for StoreKit to list it, or drop it, before asking the store. The deadline is only for a hang.
+    private func waitForCurrentEntitlements(
+        toList id: UInt64, _ listed: Bool, file: StaticString = #filePath, line: UInt = #line
+    ) async throws {
+        let deadline = Date().addingTimeInterval(30)
+        while Date() < deadline {
+            var found = false
+            for await result in Transaction.currentEntitlements where result.unsafePayloadValue.id == id {
+                found = true
+            }
+            if found == listed { return }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTFail("StoreKit never \(listed ? "listed" : "dropped") transaction \(id)", file: file, line: line)
+    }
+
     func testTheProductHasAPriceAndNothingIsOwnedAtFirst() async {
         let store = entitlements()
         await store.refresh()
@@ -38,7 +56,8 @@ final class StoreKitEntitlementsTests: XCTestCase {
     }
 
     func testAPurchaseIsFoundAndCachedAndLosingItLocksAgain() async throws {
-        try await session.buyProduct(identifier: unlimitedRecipesProductId)
+        let purchase = try await session.buyProduct(identifier: unlimitedRecipesProductId)
+        try await waitForCurrentEntitlements(toList: purchase.id, true)
         let store = entitlements()
         await store.refresh()
         XCTAssertTrue(store.state.unlocked, "found in Transaction.currentEntitlements")
@@ -49,6 +68,7 @@ final class StoreKitEntitlementsTests: XCTestCase {
 
         // Gone from the account (deleted in StoreKit's transaction manager): the cache follows.
         session.clearTransactions()
+        try await waitForCurrentEntitlements(toList: purchase.id, false)
         await store.refresh()
         XCTAssertFalse(store.state.unlocked, "a purchase no longer owned no longer unlocks")
         XCTAssertFalse(UserDefaults(suiteName: suite)!.bool(forKey: StoreKitEntitlements.cacheKey))
