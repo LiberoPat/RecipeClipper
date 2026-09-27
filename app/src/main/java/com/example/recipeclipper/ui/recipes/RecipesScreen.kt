@@ -69,15 +69,6 @@ fun RecipesScreen(
     cookedPhotosEnabled: Boolean = LocalFlagValues.current.isOn(Flag.COOKED_PHOTOS)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    state.linkInput?.let { link ->
-        PasteLinkDialog(
-            value = link,
-            canOpen = state.canOpenLink,
-            onValueChange = viewModel::onLinkChange,
-            onOpen = { viewModel.onOpenLink()?.let(onOpenUrl) },
-            onDismiss = viewModel::onLinkDismiss
-        )
-    }
     val now = remember { System.currentTimeMillis() }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -108,6 +99,16 @@ fun RecipesScreen(
     }
 
     RecipeClipperTheme {
+        // Inside the theme, like every dialog (#186): outside it, Material's purple applies.
+        state.linkInput?.let { link ->
+            PasteLinkDialog(
+                value = link,
+                canOpen = state.canOpenLink,
+                onValueChange = viewModel::onLinkChange,
+                onOpen = { viewModel.onOpenLink()?.let(onOpenUrl) },
+                onDismiss = viewModel::onLinkDismiss
+            )
+        }
         Scaffold(
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->

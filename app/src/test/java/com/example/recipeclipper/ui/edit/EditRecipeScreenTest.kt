@@ -10,6 +10,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.ui.assertInAppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -60,5 +61,23 @@ class EditRecipeScreenTest {
 
         compose.onNodeWithText("A recipe needs a name, and ingredients or steps.").assertIsDisplayed()
         assertNull(saved)
+    }
+
+    /** #142, #186: a full library's prompt (#107) is in the app's theme, not Material purple. */
+    @Test
+    fun theLibraryFullDialogIsInTheAppsTheme() {
+        // An id of 0 is the repository saying the free library is full.
+        repository.addManualResult = Recipe(
+            name = "Toast", image = null, ingredients = listOf("Bread"), instructions = emptyList(),
+            prepTime = null, cookTime = null, totalTime = null, yield = null, sourceUrl = "manual:x", id = 0L
+        )
+        showNew {}
+
+        compose.onNodeWithText("Name").performTextInput("Toast")
+        compose.onNodeWithText("Ingredients, one per line").performScrollTo().performTextInput("Bread")
+        compose.onNodeWithText("Save").performScrollTo().performClick()
+
+        compose.onNodeWithText("Your library is full").assertIsDisplayed()
+        compose.onNodeWithText("Cancel", useUnmergedTree = true).assertInAppTheme()
     }
 }

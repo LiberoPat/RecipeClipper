@@ -509,6 +509,15 @@ spec's own muted and paprika are too dim to read there. No manual light/dark
 toggle for the app as a whole: the system setting decides. Avoid the default
 Material purple.
 
+**Android: every dialog, sheet and menu is composed inside its screen's
+`RecipeClipperTheme` block** (#142, #186). The theme is per screen, so one
+called before or after the block gets Material's baseline purple; only hosts
+over any screen (the tab bar, the received-file sheet) carry their own. The
+#186 sweep moved Recipes' Paste a link, List detail's Rename, the full-screen
+cooked photo with its date picker, and Edit's library-full prompt inside
+(`LibraryFullDialog` no longer wraps itself); a Robolectric test on each checks
+its button is paprika.
+
 *Revised.* Cook mode used to invert to ink unconditionally, on the reasoning
 that a screen propped up across a kitchen reads better dark. In practice a
 bright room made that the wrong call as often as the right one, so cook mode
