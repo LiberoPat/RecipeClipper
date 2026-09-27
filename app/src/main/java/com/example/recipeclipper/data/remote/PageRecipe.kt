@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.remote
 
 import com.example.recipeclipper.data.model.ContentOrigin
+import com.example.recipeclipper.data.model.Durations
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.PageRecipeCheck
 import com.example.recipeclipper.data.model.PageSelection
@@ -33,7 +34,7 @@ internal object PageRecipe {
             LanguageWords.detectionText(name, kept.ingredients)
         }
         val words = LanguageWords.forTag(language)
-        fun time(text: String?) = text?.let { JsonLdRecipeParser.formatDuration(it, words) }
+        fun time(text: String?) = text?.let { Durations.format(it, words) }
         return Recipe(
             name = name,
             image = page.image,

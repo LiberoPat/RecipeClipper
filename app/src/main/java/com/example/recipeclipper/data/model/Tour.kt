@@ -62,18 +62,28 @@ object SampleRecipe {
         val code = language?.substringBefore('-')?.substringBefore('_')?.lowercase()
         val chosen = if (code != null && entries.has(code)) code else "en"
         val json = entries.getJSONObject(chosen)
+        fun time(key: String) = formatTime(json.optString(key).ifEmpty { null }, chosen)
         return Recipe(
             name = json.getString("name"),
             image = null,
             ingredients = SharedTables.strings(json.getJSONArray("ingredients")),
             instructions = SharedTables.strings(json.getJSONArray("instructions")),
-            prepTime = json.optString("prepTime").ifEmpty { null },
-            cookTime = json.optString("cookTime").ifEmpty { null },
-            totalTime = json.optString("totalTime").ifEmpty { null },
+            prepTime = time("prepTime"),
+            cookTime = time("cookTime"),
+            totalTime = time("totalTime"),
             yield = json.optString("yield").ifEmpty { null },
             sourceUrl = SOURCE_URL,
             language = chosen,
             origin = ContentOrigin.MANUAL
         )
     }
+
+    /**
+     * A time as the sample shows it (#179): the file's ISO duration ("PT10M") formatted the way
+     * a parsed recipe's is, in [language]'s words ("10m", "10min"). Formatting one already
+     * formatted changes nothing, which is what lets a sample saved before #179 be fixed at
+     * every launch (`RecipeRepository.formatSampleTimes`).
+     */
+    fun formatTime(time: String?, language: String?): String? =
+        time?.let { Durations.format(it, LanguageWords.forTag(language)) }
 }

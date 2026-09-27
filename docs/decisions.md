@@ -2256,7 +2256,7 @@ ones).
   ingredient must start its line, after nothing but a bullet or checkbox, so "2 tbsp" can't be
   lifted out of "1 cup plus 2 tbsp"; a name, ingredient or step must hold a letter. The name is
   required; the recipe still needs ingredients or steps (the parsers' rule), otherwise it's
-  `NoRecipeFound` as before. Times go through the parsers' `formatDuration`.
+  `NoRecipeFound` as before. Times go through `Durations.format`, as the parsers' do.
 - **Provenance:** `contentOrigin` `EXTRACTED` (no schema change: the column is text). It is the
   source's, like `PARSED`: a re-share fetches and refreshes it, and an edit makes it `EDITED`.
   An older app reads the unknown name as `EDITED`, the safe side. The reading view says, quietly
@@ -2893,6 +2893,18 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
   source credit, and is never culled. It is added once, when the welcome first shows;
   deleted, it stays deleted. "Try it" after "Show the tour again" opens it if it's there, and
   adds it again only if it's gone.
+- **Its times read like a parsed recipe's (#179).** The file keeps ISO durations, so one value
+  serves every language, and `SampleRecipe.forLanguage` passes each through `Durations.format`,
+  the parsers' own formatting, in the sample's language: "10m · 25m · 35m" in English, "10min"
+  in the others, as a parsed recipe in that language shows. `Durations` lives in `data/model`
+  (it was `JsonLdRecipeParser.formatDuration`), so the model never imports the parsers. At first it copied them as written and
+  showed "PT10M". A sample saved then is fixed in the database rather than at display, because
+  the times are shown in several places (the reading view, Recipes' rows, shared text, the
+  edit screen, backups): `FirstRunTour.onLaunch` calls `RecipeRepository.formatSampleTimes`,
+  which formats the stored sample's three times the same way and writes only if they change.
+  Formatting a formatted time changes nothing, so after the first launch it is one read by
+  link and no write, with no flag to store; it also tidies a sample restored from an old
+  backup. A sample the user has edited (`editedAt` set) is left alone: its times are theirs.
 - **It never counts toward the free tier (#107):** the library's count (`RecipeDao.count`:
   the Recipes screen's "12 of 20", the free tier's one-for-one) and an import's free places
   leave out `manual:sample`, and adding it applies no limit, so it never removes a recipe.
@@ -3127,7 +3139,8 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
   remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, SiteRules, CardHeadings, CardSelector, CardIngredients),
                MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
-               Units, IngredientDensities, TemperatureConverter, StepTimers, RecipeShareText,
+               Units, IngredientDensities, TemperatureConverter, StepTimers, Durations (times),
+               RecipeShareText,
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
                LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),

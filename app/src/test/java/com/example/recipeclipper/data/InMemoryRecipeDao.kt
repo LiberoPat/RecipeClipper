@@ -45,6 +45,10 @@ internal class InMemoryRecipeDao : RecipeDao() {
         writes++
         rows[id]?.let { rows[id] = it.copy(cookState = cookState) }
     }
+    override suspend fun setTimes(id: Long, prep: String?, cook: String?, total: String?) {
+        writes++
+        rows[id]?.let { rows[id] = it.copy(prepTime = prep, cookTime = cook, totalTime = total) }
+    }
     override suspend fun setServingsTarget(id: Long, target: Int?) {
         writes++
         rows[id]?.let { rows[id] = it.copy(servingsTarget = target) }

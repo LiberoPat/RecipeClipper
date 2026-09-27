@@ -68,6 +68,10 @@ abstract class RecipeDao {
     @Query("UPDATE recipes SET servingsTarget = :target WHERE id = :id")
     abstract suspend fun setServingsTarget(id: Long, target: Int?)
 
+    /** The three times alone (#179: the tour's sample, saved before they were formatted). */
+    @Query("UPDATE recipes SET prepTime = :prep, cookTime = :cook, totalTime = :total WHERE id = :id")
+    abstract suspend fun setTimes(id: Long, prep: String?, cook: String?, total: String?)
+
     /** Every recipe with saved cook progress, for finding its running timers. Small: a
      *  handful of rows at most, since a cook rarely has more than one recipe on the go. */
     @Query("SELECT id, title, cookState FROM recipes WHERE cookState IS NOT NULL")

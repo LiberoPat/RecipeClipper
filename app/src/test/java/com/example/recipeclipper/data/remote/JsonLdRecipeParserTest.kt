@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.Durations
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -64,48 +65,48 @@ class JsonLdRecipeParserTest {
     @Test
     fun `an ISO duration totalling zero is null so the label is hidden`() {
         // Delish publishes "cookTime": "PT0S"; it used to show as "COOK PT0S".
-        assertNull(JsonLdRecipeParser.formatDuration("PT0S"))
-        assertNull(JsonLdRecipeParser.formatDuration("P0D"))
-        assertNull(JsonLdRecipeParser.formatDuration("PT0M"))
-        assertNull(JsonLdRecipeParser.formatDuration("PT0H0M"))
+        assertNull(Durations.format("PT0S"))
+        assertNull(Durations.format("P0D"))
+        assertNull(Durations.format("PT0M"))
+        assertNull(Durations.format("PT0H0M"))
     }
 
     @Test
     fun `ISO durations still format as before`() {
-        assertEquals("1h 30m", JsonLdRecipeParser.formatDuration("PT1H30M"))
-        assertEquals("45m", JsonLdRecipeParser.formatDuration("PT45M"))
-        assertEquals("2h", JsonLdRecipeParser.formatDuration("pt2h"))
-        assertEquals("2m", JsonLdRecipeParser.formatDuration("PT90S"))
-        assertEquals("25h", JsonLdRecipeParser.formatDuration("P1DT1H"))
-        assertEquals("P", JsonLdRecipeParser.formatDuration("P"))
-        assertNull(JsonLdRecipeParser.formatDuration("   "))
+        assertEquals("1h 30m", Durations.format("PT1H30M"))
+        assertEquals("45m", Durations.format("PT45M"))
+        assertEquals("2h", Durations.format("pt2h"))
+        assertEquals("2m", Durations.format("PT90S"))
+        assertEquals("25h", Durations.format("P1DT1H"))
+        assertEquals("P", Durations.format("P"))
+        assertNull(Durations.format("   "))
     }
 
     @Test
     fun `English duration phrases are rendered like ISO ones`() {
         // Condé Nast sites (Bon Appétit, Epicurious) publish these instead of ISO.
-        assertEquals("20m", JsonLdRecipeParser.formatDuration("20 minutes"))
-        assertEquals("1h", JsonLdRecipeParser.formatDuration("1 hour"))
-        assertEquals("1h 30m", JsonLdRecipeParser.formatDuration("1 hour 30 minutes"))
-        assertEquals("1h 5m", JsonLdRecipeParser.formatDuration("1 hr 5 mins"))
-        assertEquals("2h 15m", JsonLdRecipeParser.formatDuration("2 Hours and 15 Minutes"))
-        assertEquals("1h 30m", JsonLdRecipeParser.formatDuration("1 hour, 30 minutes"))
-        assertEquals("1h 30m", JsonLdRecipeParser.formatDuration("90 min"))
-        assertEquals("1h 30m", JsonLdRecipeParser.formatDuration("1h30m"))
-        assertEquals("20m", JsonLdRecipeParser.formatDuration("  20 mins  "))
-        assertNull(JsonLdRecipeParser.formatDuration("0 minutes"))
+        assertEquals("20m", Durations.format("20 minutes"))
+        assertEquals("1h", Durations.format("1 hour"))
+        assertEquals("1h 30m", Durations.format("1 hour 30 minutes"))
+        assertEquals("1h 5m", Durations.format("1 hr 5 mins"))
+        assertEquals("2h 15m", Durations.format("2 Hours and 15 Minutes"))
+        assertEquals("1h 30m", Durations.format("1 hour, 30 minutes"))
+        assertEquals("1h 30m", Durations.format("90 min"))
+        assertEquals("1h 30m", Durations.format("1h30m"))
+        assertEquals("20m", Durations.format("  20 mins  "))
+        assertNull(Durations.format("0 minutes"))
     }
 
     @Test
     fun `anything that is not a plain duration phrase stays exactly as written`() {
-        assertEquals("Overnight", JsonLdRecipeParser.formatDuration("Overnight"))
-        assertEquals("20 to 25 minutes", JsonLdRecipeParser.formatDuration("20 to 25 minutes"))
-        assertEquals("1-2 hours", JsonLdRecipeParser.formatDuration("1-2 hours"))
-        assertEquals("1.5 hours", JsonLdRecipeParser.formatDuration("1.5 hours"))
-        assertEquals("about 20 minutes", JsonLdRecipeParser.formatDuration("about 20 minutes"))
-        assertEquals("1 hour and", JsonLdRecipeParser.formatDuration("1 hour and"))
-        assertEquals("30 minutes 1 hour", JsonLdRecipeParser.formatDuration("30 minutes 1 hour"))
-        assertEquals("garbage", JsonLdRecipeParser.formatDuration("garbage"))
+        assertEquals("Overnight", Durations.format("Overnight"))
+        assertEquals("20 to 25 minutes", Durations.format("20 to 25 minutes"))
+        assertEquals("1-2 hours", Durations.format("1-2 hours"))
+        assertEquals("1.5 hours", Durations.format("1.5 hours"))
+        assertEquals("about 20 minutes", Durations.format("about 20 minutes"))
+        assertEquals("1 hour and", Durations.format("1 hour and"))
+        assertEquals("30 minutes 1 hour", Durations.format("30 minutes 1 hour"))
+        assertEquals("garbage", Durations.format("garbage"))
     }
 
     @Test
