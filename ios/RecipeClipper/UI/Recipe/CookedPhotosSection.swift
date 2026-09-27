@@ -4,7 +4,8 @@ import SwiftUI
 
 /// "Your cooks" (#116; Android's CookedPhotosSection): at the foot of the reading view, after
 /// the steps and the note, so the recipe still opens on the recipe. Empty, one quiet line and
-/// "I made this"; with photos, a row of thumbnails (newest cook first, each dated) and a +.
+/// "I made this"; with photos, a row of thumbnails (newest cook first, each dated) and a +. Both
+/// open the camera, the library, or "Mark as cooked" (#173), whose entry is a dated tile.
 struct CookedPhotosSection: View {
     let vm: CookedPhotosViewModel
     @State private var pickerItems: [PhotosPickerItem] = []
@@ -32,7 +33,7 @@ struct CookedPhotosSection: View {
                         ForEach(photos) { photo in
                             Button { vm.onOpen(photo) } label: {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    LocalPhoto(path: photo.path, maxPixels: 300, fill: true)
+                                    CookedPicture(photo: photo, maxPixels: 300, fill: true)
                                         .frame(width: 96, height: 96)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                     Text(PlanDayFormat.shortDate(photo.day))
@@ -42,7 +43,11 @@ struct CookedPhotosSection: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(Strings.cookedPhoto(PlanDayFormat.fullDate(photo.day)))
+                            .accessibilityLabel(
+                                photo.hasPhoto
+                                    ? Strings.cookedPhoto(PlanDayFormat.fullDate(photo.day))
+                                    : Strings.cookedMark(PlanDayFormat.fullDate(photo.day))
+                            )
                             .accessibilityAddTraits(.isButton)
                         }
                         addMenu {
@@ -77,15 +82,39 @@ struct CookedPhotosSection: View {
         )) {}
     }
 
-    /// Camera or library, from whatever `label` draws.
+    /// Camera, library or "Mark as cooked" (#173), from whatever `label` draws.
     private func addMenu<Label: View>(@ViewBuilder label: () -> Label) -> some View {
         Menu {
             Button(Strings.takePhoto) {
                 if UIImagePickerController.isSourceTypeAvailable(.camera) { takingPhoto = true } else { noCamera = true }
             }
             Button(Strings.choosePhotos) { pickingLibrary = true }
+            Button(Strings.markCooked) { vm.onMarkCooked() }
         } label: {
             label()
+        }
+    }
+}
+
+/// An entry's picture: the stored photo, or for a cooking marked with no photo (#173) a tick and
+/// "Cooked" in its place.
+struct CookedPicture: View {
+    let photo: CookedPhoto
+    let maxPixels: Int
+    var fill = false
+
+    var body: some View {
+        if let path = photo.path {
+            LocalPhoto(path: path, maxPixels: maxPixels, fill: fill)
+        } else {
+            VStack(spacing: 4) {
+                Image(systemName: "checkmark").foregroundStyle(Palette.accentText)
+                Text(Strings.cookedMarkLabel)
+                    .textStyle(Typography.labelMedium)
+                    .foregroundStyle(Palette.muted)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Palette.surfaceContainer)
         }
     }
 }

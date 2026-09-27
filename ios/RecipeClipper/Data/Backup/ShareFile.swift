@@ -17,7 +17,8 @@ struct ShareChoice: Equatable {
 
 /// A small file that carries picked recipes and grocery or pantry items to someone else's Recipe
 /// Clipper (#149, phase 2; Android's ShareFile). It is the export format (#26, `BackupJson`)
-/// with `"kind": "share"` and only what was picked: no lists, plan, menus or photos. Pure, like
+/// with `"kind": "share"` and only what was picked: no lists, plan, menus or cooked entries
+/// (photos, or cookings marked without one, #173); `chosen` drops any a file carries. Pure, like
 /// `BackupMerger`; both platforms read `shared/fixtures/backup/share-v1.recipeclipper`.
 ///
 /// - **Sent:** each recipe complete, as saved (not scaled or converted), without what is the

@@ -140,7 +140,8 @@ struct ImportPlan: Equatable {
 /// Typed-in recipes (#102, origin MANUAL) come in like listed ones, and one here counts as listed.
 /// Photos of the user's own cooking (#116) come in unless their uid is already here, and only
 /// with their picture (`availablePhotoFiles`); a recipe with a photo coming in comes in like a
-/// listed one, and one here with photos counts as listed.
+/// listed one, and one here with photos counts as listed. A cooking marked with no photo (#173)
+/// is the same, needing no picture.
 enum BackupMerger {
 
     static func plan(
@@ -274,8 +275,10 @@ enum BackupMerger {
         for recipe in newByUrl.values where recipe.contentOrigin == "MANUAL" { listedTargets.insert(.new(recipe.id)) }
         // And one with the user's own photos (#116): only the recipe can hold them.
         var takenPhotoUids = existingCookedPhotoUids
+        // A cooking marked with no photo (#173) needs no picture.
         let incomingPhotos = backup.cookedPhotos.filter { photo in
-            (availablePhotoFiles?.contains(photo.file) ?? true) && takenPhotoUids.insert(photo.id).inserted
+            let pictureHere = photo.file.map { file in availablePhotoFiles?.contains(file) ?? true } ?? true
+            return pictureHere && takenPhotoUids.insert(photo.id).inserted
         }
         for photo in incomingPhotos {
             if let target = recipeTargets[photo.recipeId] { listedTargets.insert(target) }
@@ -427,7 +430,7 @@ enum BackupMerger {
                 mealsAdded: newPlanEntries.count,
                 mealTypesAdded: newTypeOrder.count,
                 menusAdded: newMenus.count,
-                photosAdded: newCookedPhotos.count,
+                photosAdded: newCookedPhotos.filter { $0.photo.file != nil }.count,
                 freeLimit: countsEveryRecipe && skipped > 0 ? historyLimit : nil
             ),
             newPantry: newPantry,

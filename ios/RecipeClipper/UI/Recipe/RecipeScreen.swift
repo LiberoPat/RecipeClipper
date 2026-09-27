@@ -148,8 +148,9 @@ struct RecipeScreen: View {
             Button(Strings.delete, role: .destructive, action: vm.onDelete)
             Button(Strings.cancel, role: .cancel) {}
         } message: {
-            // The user's photos go with the recipe (#116), and the dialog says so.
-            Text(Strings.deleteRecipeBody(photos: photosVM?.uiState.photos.count ?? 0))
+            // The user's photos go with the recipe (#116), and the dialog says so; a cooking
+            // marked without one (#173) isn't a photo.
+            Text(Strings.deleteRecipeBody(photos: photosVM?.uiState.photos.filter(\.hasPhoto).count ?? 0))
         }
         .fullScreenCover(item: Binding(
             get: { photosVM?.uiState.open }, set: { if $0 == nil { photosVM?.onClose() } }
@@ -157,8 +158,11 @@ struct RecipeScreen: View {
             if let photosVM { CookedPhotoViewer(vm: photosVM, photo: photo, recipeName: content?.recipe.name ?? "") }
         }
         .overlay(alignment: .bottom) {
-            if let photosVM, photosVM.uiState.deleted != nil {
-                Snackbar(message: Strings.cookedPhotoDeleted, actionLabel: Strings.undo, action: photosVM.onUndoDelete)
+            if let photosVM, let deleted = photosVM.uiState.deleted {
+                Snackbar(
+                    message: deleted.hasPhoto ? Strings.cookedPhotoDeleted : Strings.cookedMarkDeleted,
+                    actionLabel: Strings.undo, action: photosVM.onUndoDelete
+                )
                     .frame(maxWidth: ReadableWidth.column)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 80)
@@ -214,7 +218,7 @@ struct RecipeScreen: View {
         }
     }
 
-    /// A photo just added with "I made this" (#116) has closed: the recipe was cooked, so the
+    /// A photo just added with "I made this" (#116), or "Mark as cooked" (#173), has closed: the recipe was cooked, so the
     /// pantry's use-up sheet (#147) gets the lines as shown now, ticked or all. Run from the
     /// photo's cover once it has gone, since a view can't present the sheet while it leaves.
     private func offerUseUpAfterMadeThis() {

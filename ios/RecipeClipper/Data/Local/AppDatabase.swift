@@ -148,6 +148,7 @@ final class AppDatabase: @unchecked Sendable {
         addShortSteps,
         addAiDecisions,
         addCookedPhotos,
+        allowCookedWithoutPhoto,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -414,6 +415,35 @@ final class AppDatabase: @unchecked Sendable {
                 uid TEXT NOT NULL,
                 FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
             );
+            CREATE INDEX index_cooked_photos_recipeId ON cooked_photos (recipeId);
+            CREATE UNIQUE INDEX index_cooked_photos_uid ON cooked_photos (uid);
+            """)
+    }
+
+    /// Version 14 (Android's Room version 15, `MIGRATION_14_15`): "Mark as cooked" (#173), a
+    /// cooked entry with no photo, so `cooked_photos.fileName` becomes nullable. SQLite can't
+    /// relax NOT NULL in place, so the table is rebuilt: every row copied as it is, its indices
+    /// recreated, and its AUTOINCREMENT counter carried over so no deleted entry's id comes back.
+    private static func allowCookedWithoutPhoto(_ db: SQLiteConnection) throws {
+        try db.execute("""
+            CREATE TABLE _new_cooked_photos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                recipeId INTEGER NOT NULL,
+                fileName TEXT,
+                day INTEGER NOT NULL,
+                note TEXT,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                uid TEXT NOT NULL,
+                FOREIGN KEY (recipeId) REFERENCES recipes (id) ON UPDATE NO ACTION ON DELETE CASCADE
+            );
+            INSERT INTO _new_cooked_photos (id, recipeId, fileName, day, note, createdAt, updatedAt, uid)
+                SELECT id, recipeId, fileName, day, note, createdAt, updatedAt, uid FROM cooked_photos;
+            DELETE FROM sqlite_sequence WHERE name = '_new_cooked_photos';
+            INSERT INTO sqlite_sequence (name, seq)
+                SELECT '_new_cooked_photos', seq FROM sqlite_sequence WHERE name = 'cooked_photos';
+            DROP TABLE cooked_photos;
+            ALTER TABLE _new_cooked_photos RENAME TO cooked_photos;
             CREATE INDEX index_cooked_photos_recipeId ON cooked_photos (recipeId);
             CREATE UNIQUE INDEX index_cooked_photos_uid ON cooked_photos (uid);
             """)

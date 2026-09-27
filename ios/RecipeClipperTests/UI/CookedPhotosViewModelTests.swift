@@ -86,7 +86,7 @@ final class CookedPhotosViewModelTests: XCTestCase {
         await vm.settleWrites()
         vm.onDeleteSettled()
         await vm.settleWrites()
-        XCTAssertEqual(photos.forgotten, [photo.fileName])
+        XCTAssertEqual(photos.forgotten, [photo.fileName!])
     }
 
     // The pantry's use-up sheet (#147) follows a photo just added, once its note is done.
@@ -122,6 +122,46 @@ final class CookedPhotosViewModelTests: XCTestCase {
         vm.onDelete()
         await vm.settleWrites()
         XCTAssertFalse(vm.uiState.madeThis)
+    }
+
+    // "Mark as cooked" (#173): the same entry with no photo, the same signal.
+
+    func testMarkingAsCookedOpensADatedEntryWithNoPhotoAndClosingItSaysTheRecipeWasCooked() async {
+        let vm = await viewModel()
+        vm.onMarkCooked()
+        await vm.settleWrites()
+        await settleMain()
+
+        let open = vm.uiState.open
+        XCTAssertNotNil(open)
+        XCTAssertEqual(open?.hasPhoto, false)
+        XCTAssertEqual(open?.day, photos.today)
+        XCTAssertEqual(vm.uiState.photos.map(\.id), open.map { [$0.id] })
+        XCTAssertFalse(vm.uiState.madeThis)
+
+        vm.onNoteChange("Doubled the garlic")
+        vm.onClose()
+        await vm.settleWrites()
+        XCTAssertEqual(photos.photos.value.first?.note, "Doubled the garlic")
+        XCTAssertTrue(vm.uiState.madeThis)
+    }
+
+    func testAMarkDeletedAtOnceSaysNothingAndItsUndoBringsItBack() async {
+        let vm = await viewModel()
+        vm.onMarkCooked()
+        await vm.settleWrites()
+        await settleMain()
+        vm.onDelete()
+        await vm.settleWrites()
+        await settleMain()
+        XCTAssertFalse(vm.uiState.madeThis)
+        XCTAssertEqual(vm.uiState.deleted?.hasPhoto, false)
+
+        vm.onUndoDelete()
+        await vm.settleWrites()
+        await settleMain()
+        XCTAssertEqual(vm.uiState.photos.count, 1)
+        XCTAssertTrue(photos.forgotten.isEmpty)
     }
 
     func testRecentlyCookedPutsCookedRecipesFirstOnlyWithItsFlag() async {
