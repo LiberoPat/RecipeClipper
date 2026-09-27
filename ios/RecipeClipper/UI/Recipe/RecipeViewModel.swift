@@ -5,6 +5,12 @@ import Observation
 /// One recipe screen, opened either by id (history, home, a list) or by URL (the share
 /// target). It follows `AppPreferences.settings`, so a default changed in Settings while the
 /// recipe is open re-renders it in place.
+///
+/// The single owner of `uiState` (#169): it loads, then hands each job to a collaborator and
+/// writes what comes back. `RecipeRenderer` turns the recipe into what the screen shows,
+/// `CookSession` runs cook mode and its timers, and `ChefMode` brings the on-device model's
+/// short steps and decisions. This keeps the tick loop, the alert calls and the serialized
+/// writes (ticks, notes, cook progress, servings).
 @MainActor
 @Observable
 final class RecipeViewModel {
@@ -18,7 +24,6 @@ final class RecipeViewModel {
     @ObservationIgnored private let shareUrl: String?
     @ObservationIgnored private let repository: RecipeRepository
     @ObservationIgnored private let preferences: AppPreferences
-    @ObservationIgnored private let clock: Clock
     @ObservationIgnored private let sleep: Sleep
     @ObservationIgnored private let connectivity: Connectivity
     @ObservationIgnored private let appInfo: AppInfo
@@ -37,27 +42,16 @@ final class RecipeViewModel {
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     // Waits for offline -> online while an offline / fetch-failed error is showing.
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
-    // Step index -> wall-clock time (ms) its timer ends. Only running timers are in here.
-    @ObservationIgnored private var deadlines: [Int: Int64] = [:]
+    // Cook mode's steps and timers; this keeps only the tick loop and the alert calls.
+    @ObservationIgnored private var cookSession: CookSession
     @ObservationIgnored private var tickTask: Task<Void, Never>?
     // The note as typed but not yet written (with its recipe), and the debounced write.
     @ObservationIgnored private var pendingNotes: (id: Int64, text: String)?
     @ObservationIgnored private var notesTask: Task<Void, Never>?
     @ObservationIgnored private var settingsSubscription: AnyCancellable?
 
-    // Chef mode (#100): on when both its flag and its setting are.
-    @ObservationIgnored private let shortSteps: ShortStepRepository?
-    @ObservationIgnored private let flags: FeatureFlags?
-    @ObservationIgnored private var chefOn = false
-    @ObservationIgnored private var chefTask: Task<Void, Never>?
-    @ObservationIgnored private var chefSubscription: AnyCancellable?
-    /// The loaded recipe's short steps as saved, before rendering; empty while Chef mode is off.
-    @ObservationIgnored private var rawShortSteps: [String?] = []
-
-    // The model's decided count brackets (#104); `.none` (today's rendering) until one lands.
-    @ObservationIgnored private let decisionRepository: DecisionRepository?
-    @ObservationIgnored private var decisions = Decisions.none
-    @ObservationIgnored private var decisionSubscription: AnyCancellable?
+    // Chef mode (#100) and the model's count brackets (#104), two of the renderer's inputs.
+    @ObservationIgnored private let chef: ChefMode
 
     init(
         recipeId: Int64?,
@@ -76,15 +70,12 @@ final class RecipeViewModel {
         entitlements: Entitlements = UnavailableEntitlements(),
         decisions: DecisionRepository? = nil
     ) {
-        self.shortSteps = shortSteps
-        self.decisionRepository = decisions
-        self.flags = flags
         self.entitlements = entitlements
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
         self.repository = repository
         self.preferences = preferences
-        self.clock = clock
+        self.cookSession = CookSession(clock: clock)
         self.sleep = sleep
         self.connectivity = connectivity
         self.appInfo = appInfo
@@ -100,14 +91,14 @@ final class RecipeViewModel {
             darkWhileCooking: settings.darkWhileCooking,
             amountsInSteps: settings.amountsInSteps
         )
-        chefOn = (flags?.isOn(.chefMode) ?? false) && settings.chefMode
-        decisionSubscription = decisions?.observe()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] answers in
-                guard let self, answers != self.decisions else { return }
-                self.decisions = answers
-                self.rerender()
-            }
+        chef = ChefMode(shortSteps: shortSteps, flags: flags, decisions: decisions, setting: settings.chefMode)
+        chef.keptRecipe = { [weak self] in
+            guard let self, !self.uiState.notKept else { return nil }
+            return self.uiState.content.success?.recipe
+        }
+        chef.onShortSteps = { [weak self] in self?.applyShortSteps() }
+        chef.onDecisions = { [weak self] in self?.rerender() }
+        chef.observeDecisions()
         // Settings can change a default while this screen is alive underneath it; this keeps
         // the open recipe in step instead of showing the units it was opened with (#24).
         settingsSubscription = preferences.settings
@@ -116,14 +107,14 @@ final class RecipeViewModel {
         load()
     }
 
-    /// Android's onCleared: a popped screen stops its import and its tick loop. Neither task
-    /// holds the ViewModel strongly, so popping the screen really does let it go.
+    /// Android's onCleared: a popped screen stops its import and its tick loop (and `ChefMode`,
+    /// going with it, its writing). No task holds the ViewModel strongly, so popping the screen
+    /// really does let it go.
     deinit {
         loadTask?.cancel()
         tickTask?.cancel()
         reconnectTask?.cancel()
         notesTask?.cancel()
-        chefTask?.cancel()
         // A note typed just before leaving is still written: one short write, owned by no one.
         if let pending = pendingNotes {
             Task { [repository] in await repository.setNotes(id: pending.id, notes: pending.text) }
@@ -170,11 +161,11 @@ final class RecipeViewModel {
                     plannedServings = nil
                     recipe.servingsTarget = planned
                 }
-                uiState.content = .success(successContent(recipe))
+                uiState.content = .success(RecipeRenderer.content(recipe, settings: renderSettings))
                 uiState.checkedIngredients = recipe.checkedIngredients
                 uiState.notes = recipe.notes ?? ""
                 restoreCook(recipe)
-                startChef()
+                chef.start()
                 askCountBrackets()
                 if openInCookMode {
                     openInCookMode = false
@@ -197,39 +188,14 @@ final class RecipeViewModel {
         return SiteReportLink.issueUrl(link: shareUrl, platform: appInfo.platform, appVersion: appInfo.appVersion)
     }
 
-    /// Picks up where the cook left off, even if the app was closed or killed meanwhile (Android's
-    /// `restoreCook`). A timer that was running resumes from its saved deadline; one whose
-    /// deadline passed shows as finished and already alerted (its notification announced it).
-    /// The recipe's pending alerts are replaced by its running timers', which also clears any
-    /// left over from a re-share that changed the steps. Indexes past the last step are dropped.
+    /// Picks up where the cook left off (`CookSession.restore`; Android's `restoreCook`). The
+    /// recipe's pending alerts are replaced by its running timers', which also clears any left
+    /// over from a re-share that changed the steps.
     private func restoreCook(_ recipe: Recipe) {
-        deadlines = [:]
-        let saved = recipe.cook
-        let count = recipe.instructions.count
-        let now = clock.now()
-        var timers: [Int: StepTimer] = [:]
-        var running: [StepAlarm] = []
-        for (step, timer) in saved.timers where step >= 0 && step < count {
-            if let endsAt = timer.endsAt, endsAt > now {
-                deadlines[step] = endsAt
-                running.append(StepAlarm(recipeId: recipe.id, recipeTitle: recipe.name, step: step, endsAt: endsAt))
-                timers[step] = StepTimer(
-                    totalSeconds: timer.totalSeconds, remainingSeconds: Self.secondsUntil(endsAt, now), running: true
-                )
-            } else if timer.endsAt != nil || timer.remainingSeconds == 0 {
-                timers[step] = StepTimer(totalSeconds: timer.totalSeconds, remainingSeconds: 0, running: false, alerted: true)
-            } else {
-                timers[step] = StepTimer(totalSeconds: timer.totalSeconds, remainingSeconds: timer.remainingSeconds, running: false)
-            }
-        }
-        alarms.replaceAll(recipeId: recipe.id, with: running.sorted { $0.step < $1.step })
-        uiState.cook = CookState(
-            active: saved.active && count > 0,
-            currentStep: count > 0 ? min(max(saved.currentStep, 0), count - 1) : 0,
-            doneSteps: saved.doneSteps.filter { $0 >= 0 && $0 < count },
-            timers: timers
-        )
-        if !deadlines.isEmpty { ensureTicking() }
+        let restored = cookSession.restore(recipe)
+        alarms.replaceAll(recipeId: recipe.id, with: restored.alarms)
+        uiState.cook = restored.cook
+        if cookSession.hasRunningTimers { ensureTicking() }
     }
 
     /// While an offline or fetch-failed error is on screen, waits for the connection to go from
@@ -295,8 +261,7 @@ final class RecipeViewModel {
     func onDelete() {
         guard let id = uiState.content.success?.recipe.id else { return }
         // A deleted recipe's running timers must not ring later.
-        for step in deadlines.keys { alarms.cancel(recipeId: id, step: step) }
-        deadlines = [:]
+        for step in cookSession.stopTimers() { alarms.cancel(recipeId: id, step: step) }
         Task {
             // No undo here: the confirmation said the photos go with it (#116).
             if let deleted = await repository.delete(id: id) { await repository.forget(deleted) }
@@ -320,12 +285,12 @@ final class RecipeViewModel {
             case .success(let fresh):
                 // Steps may have changed: drop this screen's alarms; restoreCook reschedules
                 // whatever the saved progress still holds.
-                for step in deadlines.keys { alarms.cancel(recipeId: recipe.id, step: step) }
-                uiState.content = .success(successContent(fresh))
+                for step in cookSession.stopTimers() { alarms.cancel(recipeId: recipe.id, step: step) }
+                uiState.content = .success(RecipeRenderer.content(fresh, settings: renderSettings))
                 uiState.checkedIngredients = fresh.checkedIngredients
                 uiState.asWrittenSteps = []
                 restoreCook(fresh)
-                startChef()
+                chef.start()
                 askCountBrackets()
             case .error(let error):
                 uiState.updateError = error
@@ -349,7 +314,7 @@ final class RecipeViewModel {
                 content.recipe = saved
                 uiState.content = .success(content)
                 uiState.notKept = false
-                startChef() // now it has a row to keep short steps against
+                chef.start() // now it has a row to keep short steps against
             }
         }
     }
@@ -361,11 +326,9 @@ final class RecipeViewModel {
     func onUpdateErrorShown() { uiState.updateError = nil }
 
     func onServingsChange(_ target: Int) {
-        guard var content = uiState.content.success, let servings = content.servings else { return }
-        let scale = ServingsScale(base: servings.base, target: min(max(target, 1), Servings.max))
-        content.servings = scale
-        content.ingredients = render(content.recipe, content.words, scale, uiState.unitSystem, uiState.convertLiquids)
-        applyStepAmounts(&content)
+        guard let shown = uiState.content.success,
+              let content = RecipeRenderer.withServings(shown, target: target, settings: renderSettings),
+              let scale = content.servings else { return }
         uiState.content = .success(content)
         // The recipe's own yield is saved as no choice at all.
         let id = content.recipe.id
@@ -388,11 +351,7 @@ final class RecipeViewModel {
     /// darkWhileCooking is a display choice and leaves the recipe alone, and scaled servings,
     /// ticks and cook progress are kept either way.
     private func applySettings(_ settings: AppSettings) {
-        let chef = (flags?.isOn(.chefMode) ?? false) && settings.chefMode
-        if chef != chefOn {
-            chefOn = chef
-            startChef()
-        }
+        chef.onSetting(settings.chefMode)
         let rendersDifferently = settings.unitSystem != uiState.unitSystem
             || settings.convertLiquids != uiState.convertLiquids
             || settings.temperatureUnit != uiState.temperatureUnit
@@ -409,63 +368,32 @@ final class RecipeViewModel {
         if rendersDifferently { rerender() }
     }
 
+    // Re-renders the loaded recipe under the current settings, keeping its chosen servings.
     private func rerender() {
-        guard var content = uiState.content.success else { return }
-        content.ingredients = render(content.recipe, content.words, content.servings, uiState.unitSystem, uiState.convertLiquids)
-        content.instructions = renderInstructions(content.recipe, content.words, uiState.temperatureUnit)
-        applyStepAmounts(&content)
-        uiState.content = .success(content)
-        applyShortSteps()
+        guard let content = uiState.content.success else { return }
+        uiState.content = .success(RecipeRenderer.rerender(content, settings: renderSettings, shortSteps: chef.shortSteps))
     }
 
-    /// Asks the model about the loaded recipe's count brackets (#104), in the background: lines
-    /// show as today until an answer lands. Only a recipe with a servings stepper can scale, and
-    /// only with `aiCountBrackets` on (#127).
-    private func askCountBrackets() {
-        guard flags?.isOn(.aiCountBrackets) == true else { return }
-        guard let decisionRepository, let content = uiState.content.success, content.servings != nil else { return }
-        let questions = DecisionCandidates.countBrackets(content.recipe.ingredients, words: content.words)
-        if !questions.isEmpty { Task { await decisionRepository.decide(questions) } }
-    }
-
-    // MARK: Chef mode (#100): short steps written on the device
-
-    /// (Re)starts the loaded recipe's short steps: the saved ones show at once, and the missing
-    /// ones are written one by one, the steps showing as written meanwhile. Nothing happens on a
-    /// phone or recipe language the model can't do; Chef mode off clears them.
-    private func startChef() {
-        chefTask?.cancel()
-        chefTask = nil
-        chefSubscription = nil
-        rawShortSteps = []
-        applyShortSteps()
-        // A recipe that wasn't kept (#107) has no row: short steps are cached per saved recipe.
-        guard chefOn, !uiState.notKept, let shortSteps, let recipe = uiState.content.success?.recipe else { return }
-        let language = LanguageWords.forRecipe(recipe)?.language
-        // Weak, and self is never held across the writing, so a popped screen goes at once.
-        chefTask = Task { [weak self] in
-            let support = await shortSteps.support()
-            guard !Task.isCancelled, support.covers(language) else { return }
-            self?.chefSubscription = shortSteps.observe(recipe)
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] shorts in
-                    self?.rawShortSteps = shorts
-                    self?.applyShortSteps()
-                }
-            await shortSteps.fill(recipe)
-        }
-    }
-
-    /// The saved short steps, rendered like the steps they stand for.
+    // Chef mode's short steps as they now stand, rendered like the steps they stand for.
     private func applyShortSteps() {
-        guard var content = uiState.content.success else { return }
-        let shorts = rawShortSteps.count == content.recipe.instructions.count ? rawShortSteps : []
-        let unit = uiState.temperatureUnit
-        let rendered = shorts.map { $0.map { renderStep($0, content.words, unit) } }
-        guard rendered != content.shortInstructions else { return }
-        content.shortInstructions = rendered
-        applyStepAmounts(&content)
-        uiState.content = .success(content)
+        guard let content = uiState.content.success else { return }
+        let shown = RecipeRenderer.withShortSteps(content, chef.shortSteps, settings: renderSettings)
+        guard shown.shortInstructions != content.shortInstructions else { return }
+        uiState.content = .success(shown)
+    }
+
+    private var renderSettings: RecipeRenderer.Settings {
+        RecipeRenderer.Settings(
+            unitSystem: uiState.unitSystem,
+            convertLiquids: uiState.convertLiquids,
+            temperatureUnit: uiState.temperatureUnit,
+            amountsInSteps: uiState.amountsInSteps,
+            decisions: chef.decisions
+        )
+    }
+
+    private func askCountBrackets() {
+        if let content = uiState.content.success { chef.askCountBrackets(content) }
     }
 
     /// Chef mode: shows step `index` as written, or short again.
@@ -483,73 +411,45 @@ final class RecipeViewModel {
         guard let content = uiState.content.success else { return }
         let count = content.instructions.count
         guard count > 0 else { return }
-        // A finished run starts fresh; anything else resumes where it was left.
-        var cook = uiState.cook
-        if cook.doneSteps.count >= count {
-            // Its timers go with it, so their alerts must too.
-            for step in deadlines.keys { alarms.cancel(recipeId: content.recipe.id, step: step) }
-            deadlines = [:]
-            cook = CookState()
-        }
-        cook.active = true
-        cook.currentStep = min(max(cook.currentStep, 0), count - 1)
-        uiState.cook = cook
+        let start = cookSession.start(uiState.cook, stepCount: count)
+        // A finished run starts fresh, and its timers go with it, so their alerts must too.
+        for step in start.stopped { alarms.cancel(recipeId: content.recipe.id, step: step) }
+        if let cook = start.cook { uiState.cook = cook }
         saveCook()
     }
 
     func onCookExit() {
-        uiState.cook.active = false
+        uiState.cook = cookSession.exit(uiState.cook)
         saveCook()
     }
 
-    func onIngredientsToggle() { uiState.cook.ingredientsExpanded.toggle() }
+    func onIngredientsToggle() { uiState.cook = cookSession.toggleIngredients(uiState.cook) }
 
     /// Tapping a step makes it current. Only `onStepDone` ever advances or marks progress.
     func onStepSelected(_ index: Int) {
-        uiState.cook.currentStep = index
+        uiState.cook = cookSession.select(uiState.cook, step: index)
         saveCook()
     }
 
     func onStepDone() {
         guard let content = uiState.content.success else { return }
-        var cook = uiState.cook
-        let count = content.instructions.count
-        cook.doneSteps.insert(cook.currentStep)
-        // Next unfinished step after this one, else the earliest one skipped, else finished.
-        let done = cook.doneSteps
-        let next = (cook.currentStep + 1 ..< max(count, cook.currentStep + 1)).first { !done.contains($0) }
-            ?? (0 ..< count).first { !done.contains($0) }
-        if let next {
-            cook.currentStep = next
-        } else {
-            cook.active = false
-            // The end of cooking (#147): what was ticked goes to the pantry's use-up sheet. A
-            // finished run finishes again only after starting fresh, so once per cook.
-            let lines = uiState.checkedIngredients.sorted().compactMap { content.ingredients.indices.contains($0) ? content.ingredients[$0] : nil }
-            if !lines.isEmpty { uiState.cookFinished = FinishedCook(language: content.words?.language, lines: lines) }
+        let done = cookSession.done(uiState.cook, stepCount: content.instructions.count)
+        // The end of cooking (#147): what was ticked goes to the pantry's use-up sheet. A
+        // finished run finishes again only after starting fresh, so once per cook.
+        if done.finished, let finished = cookSession.finishedCook(content, ticked: uiState.checkedIngredients) {
+            uiState.cookFinished = finished
         }
-        uiState.cook = cook
+        uiState.cook = done.cook
         saveCook()
     }
 
     /// The view has handed `cookFinished` on.
     func onCookFinishedHandled() { uiState.cookFinished = nil }
 
-    /// Saves the cook's place as it now stands (Android's `saveCook`). A running timer is saved
-    /// by its deadline, so ticks never write and a closed app's timer keeps counting.
-    /// `ingredientsExpanded` and `alerted` are screen state and aren't saved.
+    /// Saves the cook's place as it now stands (`CookSession.progress`; Android's `saveCook`).
     private func saveCook() {
         guard let id = uiState.content.success?.recipe.id else { return }
-        let cook = uiState.cook
-        var timers: [Int: SavedTimer] = [:]
-        for (step, timer) in cook.timers {
-            timers[step] = SavedTimer(
-                totalSeconds: timer.totalSeconds, remainingSeconds: timer.remainingSeconds, endsAt: deadlines[step]
-            )
-        }
-        let progress = CookProgress(
-            active: cook.active, currentStep: cook.currentStep, doneSteps: cook.doneSteps, timers: timers
-        )
+        let progress = cookSession.progress(uiState.cook)
         save { await $0.setCookProgress(id: id, progress: progress) }
     }
 
@@ -570,56 +470,46 @@ final class RecipeViewModel {
         guard let content = uiState.content.success,
               step >= 0, step < content.stepTimerSeconds.count,
               let total = content.stepTimerSeconds[step] else { return }
-        let endsAt = clock.now() + Int64(total) * 1000
-        deadlines[step] = endsAt
-        uiState.cook.timers[step] = StepTimer(totalSeconds: total, remainingSeconds: total, running: true)
-        alarms.schedule(StepAlarm(recipeId: content.recipe.id, recipeTitle: content.recipe.name, step: step, endsAt: endsAt))
-        ensureTicking()
-        saveCook()
+        applyTimer(cookSession.startTimer(uiState.cook, step: step, totalSeconds: total), content.recipe, step)
     }
 
     func onTimerToggle(_ step: Int) {
-        guard var timer = uiState.cook.timers[step], let recipe = uiState.content.success?.recipe else { return }
-        if timer.running {
-            deadlines[step] = nil
-            timer.running = false
-            uiState.cook.timers[step] = timer
-            alarms.cancel(recipeId: recipe.id, step: step)
-        } else if timer.remainingSeconds > 0 {
-            let endsAt = clock.now() + Int64(timer.remainingSeconds) * 1000
-            deadlines[step] = endsAt
-            timer.running = true
-            uiState.cook.timers[step] = timer
+        guard let recipe = uiState.content.success?.recipe,
+              let change = cookSession.toggleTimer(uiState.cook, step: step) else { return }
+        applyTimer(change, recipe, step)
+    }
+
+    // Shows a timer's change, schedules or cancels its alert, and saves.
+    private func applyTimer(_ change: CookSession.TimerChange, _ recipe: Recipe, _ step: Int) {
+        uiState.cook = change.cook
+        if let endsAt = change.endsAt {
             alarms.schedule(StepAlarm(recipeId: recipe.id, recipeTitle: recipe.name, step: step, endsAt: endsAt))
             ensureTicking()
         } else {
-            return
+            alarms.cancel(recipeId: recipe.id, step: step)
         }
         saveCook()
     }
 
     func onTimerReset(_ step: Int) {
-        guard let timer = uiState.cook.timers[step] else { return }
-        deadlines[step] = nil
-        uiState.cook.timers[step] = StepTimer(
-            totalSeconds: timer.totalSeconds, remainingSeconds: timer.totalSeconds, running: false
-        )
+        guard let cook = cookSession.resetTimer(uiState.cook, step: step) else { return }
+        uiState.cook = cook
         if let id = uiState.content.success?.recipe.id { alarms.cancel(recipeId: id, step: step) }
         saveCook()
     }
 
     func onTimerAlerted(_ step: Int) {
-        uiState.cook.timers[step]?.alerted = true
+        if let cook = cookSession.alerted(uiState.cook, step: step) { uiState.cook = cook }
     }
 
     /// One tick loop for every running timer. Remaining time is recomputed from the wall
-    /// clock each tick rather than decremented, so a pause in delivery never drifts it. The
-    /// loop ends by itself once no timer is running, and `deinit` cancels it.
+    /// clock each tick (`CookSession.tick`) rather than decremented, so a pause in delivery never
+    /// drifts it. The loop ends by itself once no timer is running, and `deinit` cancels it.
     private func ensureTicking() {
         guard tickTask == nil else { return }
         // Weak across the sleep, so a screen popped with a timer running lets its ViewModel go.
         tickTask = Task { [weak self, sleep] in
-            while self?.hasRunningTimers == true {
+            while self?.cookSession.hasRunningTimers == true {
                 do { try await sleep(Self.tick) } catch { break }
                 self?.tickOnce()
             }
@@ -630,86 +520,7 @@ final class RecipeViewModel {
     /// Whether the tick loop is alive. For tests: it must not outlive the last running timer.
     var isTicking: Bool { tickTask != nil }
 
-    private var hasRunningTimers: Bool { !deadlines.isEmpty }
-
-    // A timer that reaches zero here keeps its alert: its deadline has passed, so the alert has
-    // been delivered or is being delivered, and removing it would only race it. While this
-    // recipe is on screen the notification is suppressed (NotificationRouter) and the in-app
-    // beep sounds instead.
-
-    private static func secondsUntil(_ end: Int64, _ now: Int64) -> Int {
-        max(0, Int((Double(end - now) / 1000).rounded(.up)))
-    }
-
     private func tickOnce() {
-        let now = clock.now()
-        var timers = uiState.cook.timers
-        var changed = false
-        for (step, end) in deadlines {
-            let seconds = Self.secondsUntil(end, now)
-            if seconds == 0 { deadlines[step] = nil }
-            guard var timer = timers[step], timer.remainingSeconds != seconds else { continue }
-            timer.remainingSeconds = seconds
-            timer.running = seconds > 0
-            timers[step] = timer
-            changed = true
-        }
-        if changed { uiState.cook.timers = timers }
-    }
-
-    // MARK: Turning a recipe into what the screen shows
-
-    private func successContent(_ recipe: Recipe) -> RecipeSuccess {
-        // The recipe's language picks the words, never the phone's (#14).
-        let words = LanguageWords.forRecipe(recipe)
-        let servings = Servings.parse(recipe.yield, words: words).map { base in
-            ServingsScale(base: base, target: recipe.servingsTarget.map { min(max($0, 1), Servings.max) } ?? base)
-        }
-        var success = RecipeSuccess(
-            recipe: recipe,
-            servings: servings,
-            ingredients: render(recipe, words, servings, uiState.unitSystem, uiState.convertLiquids),
-            instructions: renderInstructions(recipe, words, uiState.temperatureUnit),
-            stepTimerSeconds: recipe.instructions.map { StepTimers.parse($0, words: words) },
-            sourceDomain: SourceDomain.of(recipe.sourceUrl),
-            words: words
-        )
-        applyStepAmounts(&success)
-        return success
-    }
-
-    // Amounts inside steps (#101), from the lines as rendered, so they follow servings and units.
-    // Chef mode's short steps (#100) get theirs the same way.
-    private func applyStepAmounts(_ content: inout RecipeSuccess) {
-        content.stepAmounts = stepAmounts(content)
-        content.shortStepAmounts = uiState.amountsInSteps && content.shortInstructions.contains { $0 != nil }
-            ? StepAmounts.annotate(content.shortInstructions.map { $0 ?? "" }, lines: content.ingredients, words: content.words)
-            : nil
-    }
-
-    private func stepAmounts(_ content: RecipeSuccess) -> [[StepAmounts.Part]]? {
-        uiState.amountsInSteps ? StepAmounts.annotate(content.instructions, lines: content.ingredients, words: content.words) : nil
-    }
-
-    // Scale first, then convert, so a converted amount always matches the chosen servings.
-    private func render(
-        _ recipe: Recipe, _ words: LanguageWords?, _ servings: ServingsScale?, _ system: UnitSystem, _ convertLiquids: Bool
-    ) -> [String] {
-        let factor = servings.map { Double($0.target) / Double($0.base) } ?? 1.0
-        return IngredientRendering.render(
-            recipe.ingredients, factor: factor, system: system, convertLiquids: convertLiquids, words: words,
-            decisions: decisions
-        )
-    }
-
-    // Instructions aren't scaled, but oven temperatures follow the chosen temperature unit —
-    // independent of the ingredient unit system.
-    private func renderInstructions(_ recipe: Recipe, _ words: LanguageWords?, _ unit: TemperatureUnit) -> [String] {
-        recipe.instructions.map { renderStep($0, words, unit) }
-    }
-
-    // One step as shown, as written or Chef mode's short version (#100): the same rendering.
-    private func renderStep(_ step: String, _ words: LanguageWords?, _ unit: TemperatureUnit) -> String {
-        TemperatureConverter.convert(step, unit: unit, words: words)
+        if let cook = cookSession.tick(uiState.cook) { uiState.cook = cook }
     }
 }

@@ -2881,3 +2881,40 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
   on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
   off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
   so a killed app loses it with nothing changed. Behind `mealPlan`, like every pantry feature.
+
+## The recipe screen's ViewModel, split into collaborators (#169)
+
+`RecipeViewModel` had grown to 821 lines on Android and 715 on iOS, ten constructor
+dependencies on Android, and five jobs in one file, so every reading-view feature (Chef mode,
+amounts in steps, planned servings, photos, #147's end of cooking) landed there and collided
+with parallel work. An audit found MVVM otherwise followed cleanly, so the fix is inside the
+screen, not a new layer. A behaviour-preserving refactor: no UI, string, state or behaviour
+change, and every existing ViewModel, screen and UI test passes unchanged.
+
+- **`RecipeRenderer`** (pure; `ui/recipe`, iOS `UI/Recipe`): the recipe, its servings, the
+  settings (units, liquids, oven unit, amounts in steps), the model's decisions and Chef mode's
+  short steps in, `RecipeContent.Success` out. It composes logic the corpus already pinned
+  (scaling, conversion, timers, amounts in steps); its own rules (the servings clamp, the factor,
+  short steps shown only one per step) are pinned by the corpus's `Render` rows, generated from
+  the Kotlin like every other row.
+- **`CookSession`** (pure over `Clock`): cook mode's state machine (start and resume, select,
+  done, the ingredients bar, the end of cooking #147 hooks into) and the timers as wall-clock
+  deadlines, the one thing it keeps. It never touches alarms: each transition returns what to
+  schedule or cancel, and the ViewModel keeps the tick loop (a coroutine, a `Task`) and the
+  `TimerAlarmScheduler` calls. That's where #10-style progress rules now change, in one place
+  tested without a ViewModel.
+- **`ChefMode`**: the on-device model's two inputs to the renderer, short steps (#100) and
+  count-bracket decisions (#104), with their repositories and flags. Not pure (it runs the model
+  and follows the repositories on the screen's scope), so it says when an input changed and the
+  ViewModel renders again, synchronously, as before. On iOS it goes with its screen and cancels
+  its writing then, as the ViewModel's `deinit` used to.
+- **The ViewModel stays the single owner of `uiState`** (one `StateFlow`, one `private(set) var`)
+  and keeps loading and recovery, the serialized writes (ticks, notes, cook progress and
+  servings, in order) and `shareText`. Screens don't change. The constructors are unchanged, so
+  Hilt, the navigation code and every test build it as before.
+- **Where the platforms already differed, they still do,** since each side kept its own
+  behaviour: iOS doesn't follow the `chefMode` flag live (it reads it when the setting changes),
+  and iOS's cook mode on a recipe with no steps doesn't write progress. Neither is visible to a
+  cook; aligning them would be a behaviour change, so it's left for its own issue if wanted.
+- **Not done:** a use-case layer across the app (most screens would get thin pass-throughs);
+  the AI recommendation pipeline (#164–#166) is where one would earn its place.
