@@ -15,15 +15,18 @@ TESTS=("$@")
   test10_pageExtractionLine test11_groceriesAiMergingSimulated test12_groceriesJunkHidden test13_iMadeThis
   test14_automaticBackup test15_sendAndPasteAList test16_sendAndReceiveAFile test17_firstRunTour
   test18_doneShoppingAndOnList test19_pantrySendList test20_pantryUseUpAfterCooking test21_chefModeUnsupportedSimulated
-  test22_recipeJunkHidden)
+  test22_recipeJunkHidden test23_markAsCooked)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
-# The photo "I made this" picks from the library (#116): a macOS sample picture, as a PNG so it
-# carries no capture date and Photos files it under today, first in the picker.
+# The photo "I made this" picks from the library (#116): a macOS sample picture, through BMP so
+# it loses its capture date and Photos files it under today, first in the picker. Padded to
+# landscape: a square one pushes the viewer's close button under the status bar while the
+# keyboard is up.
 if [[ " ${TESTS[*]} " == *" test13_iMadeThis "* ]]; then
-  photo=$(mktemp -d)/photo.png
-  sips -s format png "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo" >/dev/null 2>&1 &&
-    xcrun simctl addmedia "$SIM" "$photo"
+  photo=$(mktemp -d)/photo
+  sips -s format bmp -p 512 820 --padColor FFFFFF "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo.bmp" >/dev/null 2>&1 &&
+    sips -s format png "$photo.bmp" --out "$photo.png" >/dev/null 2>&1 &&
+    xcrun simctl addmedia "$SIM" "$photo.png"
 fi
 (cd ios && xcodebuild -project RecipeClipper.xcodeproj -scheme RecipeClipper -destination "id=$SIM" \
   -derivedDataPath "$DD" build-for-testing -quiet)

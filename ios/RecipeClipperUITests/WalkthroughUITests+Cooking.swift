@@ -1,9 +1,9 @@
 import XCTest
 
-// Walkthroughs 13, 17, 18, 20 and 21: "I made this" (#116), the first-run tour (#151), Done
-// shopping and the On list tag (#146), using up the pantry after cooking (#147), and what
-// Settings says about Chef mode on a phone that can't run it (#144, the model's answer simulated
-// with `-uiTestChefUnsupported`).
+// Walkthroughs 13, 17, 18, 20, 21 and 23: "I made this" (#116), the first-run tour (#151), Done
+// shopping and the On list tag (#146), using up the pantry after cooking (#147), what Settings
+// says about Chef mode on a phone that can't run it (#144, the model's answer simulated with
+// `-uiTestChefUnsupported`), and "Mark as cooked" (#173).
 
 extension WalkthroughUITests {
 
@@ -24,7 +24,7 @@ extension WalkthroughUITests {
         pause()
         require(app.navigationBars["Photos"].buttons["Done"], "the picker's Done").tap()
         // The photo just added opens for its note.
-        let note = require(app.textFields["cooked.note"], "the note")
+        let note = require(app.descendants(matching: .any).matching(identifier: "cooked.note").firstMatch, "the note")
         note.tap()
         note.typeText("Cut the dough into gingerbread men for the kids.")
         pause(2)
@@ -100,6 +100,28 @@ extension WalkthroughUITests {
         pause(2)
         undo.tap()
         pause(2)
+    }
+
+    /// "Mark as cooked" (#173): a cooking with no photo, "Cooked" in its place, and a note;
+    /// closing it offers the pantry's use-up sheet (#147) for every line.
+    func test23_markAsCooked() {
+        start(flags: ["mealPlan", "cookedPhotos"], scenario: .walkthroughPantry)
+        open("Chicken Adobo")
+        scrollTo(app.buttons["cooked.iMadeThis"], "I made this").tap()
+        pause(0.8)
+        require(app.buttons["Mark as cooked"], "Mark as cooked").tap()
+        require(text("Cooked"), "Cooked in place of a picture")
+        pause(2)
+        let note = require(app.descendants(matching: .any).matching(identifier: "cooked.note").firstMatch, "the note")
+        note.tap()
+        note.typeText("Doubled the garlic.")
+        pause(2)
+        require(app.buttons["Close"], "Close").tap()
+        require(text("Update the pantry"), "the use-up sheet")
+        pause(3.5)
+        require(app.buttons["useUpButton"], "the sheet's button").tap()
+        require(app.buttons["Undo"], "the snackbar")
+        pause(3)
     }
 
     func test21_chefModeUnsupportedSimulated() {

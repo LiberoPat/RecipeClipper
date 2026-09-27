@@ -34,9 +34,9 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
- * Walkthroughs 13, 17, 18, 20 and 21 (#106): "I made this" (#116), the first-run tour (#151),
- * Done shopping and the On list tag (#146), using up the pantry after cooking (#147), and what
- * Settings says about Chef mode on a phone that can't run it (#144). The model supports nothing
+ * Walkthroughs 13, 17, 18, 20, 21 and 23 (#106): "I made this" (#116), the first-run tour (#151),
+ * Done shopping and the On list tag (#146), using up the pantry after cooking (#147), what
+ * Settings says about Chef mode on a phone that can't run it (#144), and "Mark as cooked" (#173). The model supports nothing
  * here: the typed decisions stay out of these clips, and Chef mode's model is "unsupported"
  * (simulated, as an emulator has none).
  */
@@ -179,6 +179,29 @@ class CookingWalkthroughTest : WalkthroughBase() {
         waitFor(hasText("Undo"))
         pause(2000)
         tap("Undo", 2000)
+    }
+
+    /**
+     * "Mark as cooked" (#173): a cooking with no photo, "Cooked" in its place, and a note; closing
+     * it offers the pantry's use-up sheet (#147) for every line ([WalkthroughSeed.pantry]).
+     */
+    @Test
+    fun test23_markAsCooked() {
+        start("mealPlan", "cookedPhotos", kitchen = true)
+        tap("Chicken Adobo")
+        repeat(3) { swipeUp() }
+        press(hasText("I made this"))
+        tap("Mark as cooked", 2500)
+        val note = hasSetTextAction() and hasText("Add a short note")
+        waitFor(note)
+        compose.onAllNodes(note)[0].performTextInput("Doubled the garlic.")
+        pause(2000)
+        tapDescription("Close")
+        waitFor(hasText("Update the pantry"))
+        pause(3500)
+        tapTag("useUpButton")
+        waitFor(hasText("Undo"))
+        pause(3000)
     }
 
     /** Chef mode on a phone that can't run the model (#144), the model's answer simulated. */

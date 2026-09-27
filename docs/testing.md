@@ -525,21 +525,21 @@ answers simulated), 12 junk hidden in Groceries (simulated); 13 "I made this", 1
 backup copy and "Restore from a backup file", 15 Send list and Paste a list, 16 Send as file and
 a received file, 17 the first-run tour, 18 Done shopping and the On list tag, 19 the Pantry's
 Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported phone
-(simulated), 22 junk hidden in a recipe's own lines (simulated). Android's 13–21 are in
-`CookingWalkthroughTest` and `SharingWalkthroughTest` (22 beside 12, in
+(simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked". Android's
+13–21 and 23 are in `CookingWalkthroughTest` and `SharingWalkthroughTest` (22 beside 12, in
 `MealPlanWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (22
 in `+MealPlan.swift`). What they need from outside the app:
 
 - **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
   Man.heic`), which each script converts: Android pushes it to `/data/local/tmp` and the test hands
   it back as the Photo Picker's answer (an `ActivityMonitor`; the picker itself can't be driven);
-  iOS adds it to the simulator's Photos (`simctl addmedia`, as a PNG so it has no capture date
+  iOS adds it to the simulator's Photos (`simctl addmedia`, through BMP so it has no capture date
   and sorts first) and the test picks it in the real picker.
 - **The received file** is `shared/fixtures/backup/share-v1.recipeclipper`, pushed to
   `/data/local/tmp` and opened with a VIEW intent through the app's FileProvider; iOS opens its
   canned file with `-uiTestReceiveFile`. A pasted list is put on the clipboard by the test
   (iOS: `-uiTestPasteboard`).
-- **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15 and 18–20:
+- **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20 and 23:
   `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
 - **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the
   sheet, the picker's Cancel); Android waits for them to take the screen first
