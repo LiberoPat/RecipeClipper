@@ -414,7 +414,16 @@ or the calls will fail as "not mocked".
     `BackupArchiveTests` and `CookedPhotosViewModelTests`, and one UI test,
     `CookedPhotosUITests` (the section behind its flag, camera or library; the camera, or
     the no-camera alert, opens and closes without adding a photo). The simulator's virtual
-    camera never captures, so no iOS UI test reaches the full-screen viewer.
+    camera never captures, so no iOS UI test reaches the full-screen viewer with a photo.
+  - "Mark as cooked" (#173): a cooking with no photo in `CookedPhotoDaoTest` / `CookedPhotoTests`
+    (no file, the sort, the cull, the cascade, the sweep; the plain-JSON round trip in
+    `CookedPhotoBackupTest` / `CookedPhotoTests`), `CookedPhotosViewModelTest(s)` (it opens,
+    its note, the `madeThis` signal, a delete at once), the shared `backup-v1-cooked.json` in
+    `BackupJsonTest(s)` (its own section, and the file an older app reads), `ShareFileTest(s)`,
+    `RecipeCookedPhotosScreenTest` (the menu item, the entry, its labels and delete, the recipe
+    delete counting photos only) and `PantryUseUpScreenTest` (the sheet once, then a photo not
+    offered it again). `MigrationTest.migration14To15…` on the device. iOS's
+    `CookedPhotosUITests` marks one and reaches the full-screen entry, since no camera is needed.
 - **By hand, on a phone:**
   - Take a photo in portrait and landscape; it should stay upright in the gallery and full
     screen.
@@ -425,6 +434,10 @@ or the calls will fail as "not mocked".
   - Export with photos (a `.zip`), then import it on the other platform.
   - On Android, the first camera use asks nothing (the app declares no `CAMERA`). On iOS it
     asks once, in the phone's language.
+  - "Mark as cooked" (#173), on a phone upgraded from a build with photos (the migration): the
+    old photos are all there; mark a recipe with some pantry lines as cooked, write a note,
+    close: "Update the pantry" opens once; add a photo of it straight after: nothing more. Then
+    export and import on the other platform: the marked cooking comes across with its note.
 
 ## iOS share extension: end to end and memory
 

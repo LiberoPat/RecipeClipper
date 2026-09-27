@@ -41,7 +41,7 @@ out as text or a file (#149); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
 backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147); Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
-by the on-device model; "I made this" photos (#116); the first-run tour
+by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
@@ -206,7 +206,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 14** (iOS `user_version` 13),
+- Room database `recipe_clipper.db`, **version 15** (iOS `user_version` 14),
   schema exported to `app/schemas/`: commit it. **Never use destructive
   migration**, and give every migration a `MigrationTest`. iOS mirrors the
   schema in SQLite, with `PRAGMA user_version` migrations, in the App Group
