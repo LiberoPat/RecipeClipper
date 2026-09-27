@@ -21,6 +21,9 @@ internal sealed class ClipPageEvent {
     data class Selection(val text: String) : ClipPageEvent()
     data class TagTapped(val field: ClipField) : ClipPageEvent()
     data class ImageTapped(val src: String) : ClipPageEvent()
+
+    /** While picking a photo, the tap found no image with an address the app can read. */
+    object NoImage : ClipPageEvent()
 }
 
 /** How the page is loaded: the live URL, or a fixed local page in a UI test. */
@@ -132,6 +135,7 @@ private fun decode(json: String): ClipPageEvent? = try {
         "tag" -> ClipField.entries.firstOrNull { it.name == message.optString("field") }
             ?.let { ClipPageEvent.TagTapped(it) }
         "image" -> message.optString("src").takeIf { it.isNotEmpty() }?.let { ClipPageEvent.ImageTapped(it) }
+        "noImage" -> ClipPageEvent.NoImage
         else -> null
     }
 } catch (e: org.json.JSONException) {

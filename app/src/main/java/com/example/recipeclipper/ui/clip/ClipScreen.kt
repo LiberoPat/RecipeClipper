@@ -23,6 +23,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -89,9 +90,16 @@ fun ClipScreen(
         val action = when (notice.message) {
             is ClipMessage.Assigned, is ClipMessage.Cleared -> undoLabel
             ClipMessage.DraftRestored -> discardLabel
-            ClipMessage.SaveFailed, is ClipMessage.Unlock -> null
+            ClipMessage.SaveFailed, ClipMessage.PhotoUnreadable, is ClipMessage.Unlock -> null
         }
-        val result = snackbar.showSnackbar(noticeText, actionLabel = action, withDismissAction = false)
+        // Long, not the Indefinite an action would get by default: a notice that never went
+        // ("Photo added" long after the photo) read as the clip being stuck on that step.
+        val result = snackbar.showSnackbar(
+            noticeText,
+            actionLabel = action,
+            withDismissAction = false,
+            duration = SnackbarDuration.Long
+        )
         if (result == SnackbarResult.ActionPerformed) {
             if (notice.message == ClipMessage.DraftRestored) viewModel.onDiscardDraft() else viewModel.onUndo()
         }
@@ -126,6 +134,7 @@ fun ClipScreen(
                                 is ClipPageEvent.Selection -> viewModel.onSelectionChanged(event.text)
                                 is ClipPageEvent.TagTapped -> viewModel.onTagTapped(event.field)
                                 is ClipPageEvent.ImageTapped -> viewModel.onImageTapped(event.src)
+                                ClipPageEvent.NoImage -> viewModel.onNoImageTapped()
                             }
                         },
                         loadPage = loadPage,
@@ -187,6 +196,7 @@ private fun noticeText(message: ClipMessage): String = when (message) {
     )
     ClipMessage.DraftRestored -> stringResource(R.string.clip_draft_restored)
     ClipMessage.SaveFailed -> stringResource(R.string.clip_save_failed)
+    ClipMessage.PhotoUnreadable -> stringResource(R.string.clip_photo_unreadable)
     is ClipMessage.Unlock -> stringResource(message.outcome.noticeMessage())
 }
 
@@ -229,11 +239,16 @@ private fun ClipToolbar(state: ClipUiState, viewModel: ClipViewModel) {
                     Text(line, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            state.pickingPhoto -> Text(
-                stringResource(R.string.clip_picking_photo),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+            // The photo is optional: Skip leaves this step without tapping the page.
+            state.pickingPhoto -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.clip_picking_photo),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                TextButton(onClick = viewModel::onSkipPhoto) { Text(stringResource(R.string.clip_skip_photo)) }
+            }
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
