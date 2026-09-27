@@ -152,7 +152,11 @@ stale, and writes the regenerated file to
 (`app/build.gradle.kts` declares the Swift file as a test input, so editing
 it alone reruns the tests). A row read with another language's words names it
 after the input (`Ing("2 EL Zucker", lang: "de"),`); a row without one is
-English. `SiteReportTest` covers the weekly site check's
+English. Its `Dur` rows (#179) pin `Durations.format`, the prep, cook and total
+times, per language; `SampleRecipeTest` / `SampleRecipeTests` check the tour's
+sample shows its times formatted, and `DefaultRecipeRepositorySampleTest` /
+`DataRepositoryTests` the launch-time fix for a sample saved with "PT10M".
+`SiteReportTest` covers the weekly site check's
 report and URL list offline (see CI below). `SiteReportLinkTest` pins the
 "Report this site" issue link byte for byte (percent-encoding, the cleaned
 link), and `RecipeViewModelTest` offers it only for `NoRecipeFound` on a
@@ -250,9 +254,22 @@ Using up the pantry at the end of cooking (#147): `PantryUseUpTest` (JVM) and
 unreadable text, a different name, parts and packages), and the corpus's `UseUp` rows pin the
 Swift to the Kotlin (write only `UseUp("2 lb", "chicken", ["1 lb chicken"]),`). The sheet's
 ViewModel over fakes: `PantryUseUpViewModelTest` / `PantryUseUpViewModelTests` (what it lists
-and preselects, one confirm, one Undo); the hand-over at "Done — finish":
-`RecipeCookFinishedTest` (iOS: in `PantryUseUpViewModelTests`); the sheet on screen:
-`PantryUseUpScreenTest` (Robolectric).
+and preselects, one confirm, one Undo; "I made this" with ticked lines or none; the 12-hour
+guard in both orders, cook mode then a photo and a photo then a photo, and after the window);
+the hand-over at "Done — finish": `RecipeCookFinishedTest` (iOS: in
+`PantryUseUpViewModelTests`); a photo just added saying the recipe was cooked once it closes:
+`CookedPhotosViewModelTest(s)`; the `pantry_use_up` key: `SharedPrefsAppPreferencesTest` /
+`UserDefaultsAppPreferencesTests`; the sheet on screen, from "Done — finish" and from a photo
+added, once: `PantryUseUpScreenTest` (Robolectric). iOS has no UI test for it: a UI test can't
+add a photo (see "I made this" photos, #116, below).
+
+The recipe screen's collaborators (#169), each without a ViewModel: `RecipeRendererTest` /
+`RecipeRendererTests` (servings, units, temperatures, short steps, amounts, decisions), with the
+corpus's `Render` rows pinning the Swift to the Kotlin (write only
+`Render("4 servings", 6, ["2 cups flour"], ["Bake at 350°F."]),`); `CookSessionTest` /
+`CookSessionTests` (restore, start, done, the end of cooking, timers over a clock the test
+moves, what is saved); `ChefModeTest` / `ChefModeTests` (the flag and setting, a recipe not
+kept, an unsupported language, count brackets). The ViewModel suites still cover them together.
 
 Amounts inside steps (#101): `StepAmountsTest` (JVM) and `StepAmountsTests` (iOS) run
 the rules on steps modelled on real pages, and the corpus's `Step` rows pin the Swift to the
@@ -385,8 +402,15 @@ or the calls will fail as "not mocked".
 - **iOS StoreKit:** `StoreKitEntitlementsTests` runs `StoreKitEntitlements`
   against `ios/RecipeClipper.storekit` with `SKTestSession` (no dialogs): the
   price, a purchase made by the session (`buyProduct`) found and cached, and
-  locked again once it's gone. `Product.purchase()` itself waits forever in a
-  hosted unit test (no window scene for its sheet), so the sheet is checked by
+  locked again once it's gone. `buyProduct` returns before the app's own
+  `Transaction.currentEntitlements` has the purchase (it lands up to ~300 ms
+  later on a just-booted simulator, which made the test flaky), so the test
+  waits for StoreKit to list it before calling `refresh()`. A
+  `clearTransactions()` now and then doesn't take (the purchase stayed listed
+  15 s, or for good, in a few runs in a hundred), so the test clears until
+  StoreKit drops it; a second clear always has. `Product.purchase()` itself
+  waits forever in a hosted unit test (no window scene for its sheet), so the
+  sheet is checked by
   hand: running the app from Xcode uses the same file (the scheme's StoreKit
   configuration), so Unlock, Ask to Buy and Restore work in the simulator;
   Debug → StoreKit → Manage Transactions refunds or deletes the purchase.
@@ -407,13 +431,25 @@ or the calls will fail as "not mocked".
     `RecipeCookedPhotosScreenTest` (Robolectric). `MigrationTest.migration13To14…` on the
     device.
   - iOS: `CookedPhotoTests` (real SQLite, ImageIO downscaling, the zip round trip),
-    `BackupArchiveTests` and `CookedPhotosViewModelTests`, and one UI test,
-    `CookedPhotosUITests` (the section behind its flag, camera or library; the camera, or
-    the no-camera alert, opens and closes without adding a photo). The simulator's virtual
-    camera never captures, so no iOS UI test reaches the full-screen viewer.
+    `BackupArchiveTests` and `CookedPhotosViewModelTests`, and `CookedPhotosUITests` (the
+    section behind its flag; the camera, or the no-camera alert, opens and closes without
+    adding a photo, since the simulator's virtual camera never captures). A photo from the
+    library, one of the simulator's own samples picked in the real picker, opens full screen;
+    with the software keyboard up for its note, the note and × are hittable and × closes it
+    (#180). The software keyboard shows unless Simulator connects a hardware one (I/O menu).
+  - "Mark as cooked" (#173): a cooking with no photo in `CookedPhotoDaoTest` / `CookedPhotoTests`
+    (no file, the sort, the cull, the cascade, the sweep; the plain-JSON round trip in
+    `CookedPhotoBackupTest` / `CookedPhotoTests`), `CookedPhotosViewModelTest(s)` (it opens,
+    its note, the `madeThis` signal, a delete at once), the shared `backup-v1-cooked.json` in
+    `BackupJsonTest(s)` (its own section, and the file an older app reads), `ShareFileTest(s)`,
+    `RecipeCookedPhotosScreenTest` (the menu item, the entry, its labels and delete, the recipe
+    delete counting photos only) and `PantryUseUpScreenTest` (the sheet once, then a photo not
+    offered it again). `MigrationTest.migration14To15…` on the device. iOS's
+    `CookedPhotosUITests` marks one, types its note and puts the keyboard away with Done.
 - **By hand, on a phone:**
   - Take a photo in portrait and landscape; it should stay upright in the gallery and full
-    screen.
+    screen. On iOS the new photo's viewer opens only once the camera has gone, with × below
+    the status bar (#180; the simulator can't try the camera path).
   - Pick several photos from the library, including a HEIC on iOS.
   - On iOS, in the full-screen viewer: write a note, change the date, close and reopen (both
     kept), then Delete and Undo.
@@ -421,6 +457,10 @@ or the calls will fail as "not mocked".
   - Export with photos (a `.zip`), then import it on the other platform.
   - On Android, the first camera use asks nothing (the app declares no `CAMERA`). On iOS it
     asks once, in the phone's language.
+  - "Mark as cooked" (#173), on a phone upgraded from a build with photos (the migration): the
+    old photos are all there; mark a recipe with some pantry lines as cooked, write a note,
+    close: "Update the pantry" opens once; add a photo of it straight after: nothing more. Then
+    export and import on the other platform: the marked cooking comes across with its note.
 
 ## iOS share extension: end to end and memory
 
@@ -490,8 +530,44 @@ page-extraction recipe is stored as `EXTRACTED`, so no model runs for it.
   video. It wipes the app's data: use the agents' emulator (emulator-5580, under the lock),
   never a device someone uses.
 - Output defaults to `~/Downloads/RecipeClipper-walkthroughs/` (`ios-NN-name.mp4`,
-  `android-NN-name.mp4`), never the repo. On a miss, the Android script saves the screen at
-  `/tmp/android-NN-name-miss.png`; the iOS log is under `$DERIVED_DATA/raw/`.
+  `android-NN-name.mp4`), never the repo, with an `index.md` of what each shows. On a miss, the
+  Android script saves the screen at `/tmp/android-NN-name-miss.png`; the iOS log is under
+  `$DERIVED_DATA/raw/`.
+
+The clips, the same number on both platforms: 01 tabs and Week, 02 Groceries, 03 Pantry and
+What I need, 04 weekly menus, 05 expiry reminders, 06 the Recipes screen, 07 amounts in steps,
+08 Chef mode (stub model), 09 the free tier, 10 the page-extraction line, 11 grocery merging (AI
+answers simulated), 12 junk hidden in Groceries (simulated); 13 "I made this", 14 the automatic
+backup copy and "Restore from a backup file", 15 Send list and Paste a list, 16 Send as file and
+a received file, 17 the first-run tour, 18 Done shopping and the On list tag, 19 the Pantry's
+Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported phone
+(simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked". Android's
+13–21 and 23 are in `CookingWalkthroughTest` and `SharingWalkthroughTest` (22 beside 12, in
+`MealPlanWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (22
+in `+MealPlan.swift`). What they need from outside the app:
+
+- **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
+  Man.heic`), which each script converts: Android pushes it to `/data/local/tmp` and the test hands
+  it back as the Photo Picker's answer (an `ActivityMonitor`; the picker itself can't be driven);
+  iOS adds it to the simulator's Photos (`simctl addmedia`, through BMP so it has no capture date
+  and sorts first) and the test picks it in the real picker.
+- **The received file** is `shared/fixtures/backup/share-v1.recipeclipper`, pushed to
+  `/data/local/tmp` and opened with a VIEW intent through the app's FileProvider; iOS opens its
+  canned file with `-uiTestReceiveFile`. A pasted list is put on the clipboard by the test
+  (iOS: `-uiTestPasteboard`).
+- **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20 and 23:
+  `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
+- **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the
+  sheet, the picker's Cancel); Android waits for them to take the screen first
+  (`waitForSystemScreen`), which is slow on a busy emulator. Android's backup folder can only be
+  picked there, so its rows read "Not chosen yet" and "Not backed up yet"; a simulator has no
+  iCloud Drive, so iOS's copy goes to a throwaway local folder (`-uiTestBackupFolder`) and
+  "Back up now" shows "Last backed up".
+- **Android records at 720×1616**, two-thirds size (the clips end up 1280 high anyway): at full
+  size the emulator's encoder fell behind on a busy machine and lost the ends of clips.
+- **Chef mode unsupported** is the stub model's answer: Android's classes bind
+  `ChefSupport.Unsupported` (and a decision model that supports nothing, so no AI answer shows);
+  iOS passes `-uiTestChefUnsupported`.
 
 ## CI
 

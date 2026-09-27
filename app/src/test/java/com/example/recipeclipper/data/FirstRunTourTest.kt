@@ -90,6 +90,14 @@ class FirstRunTourTest {
     }
 
     @Test
+    fun `every launch formats the times of a sample saved before #179, whatever the welcome's state`() = runBlocking {
+        tour.onLaunch(plain = true)
+        tour.finishWelcome()
+        tour.onLaunch(plain = false)
+        assertEquals(2, recipes.formatSampleTimesCalls)
+    }
+
+    @Test
     fun `showing the tour again brings every tip back`() = runBlocking {
         Tip.entries.forEach { preferences.setTipSeen(it, true) }
         tour.replay()

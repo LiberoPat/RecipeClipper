@@ -18,11 +18,24 @@ TESTS=("$@")
   MealPlanWalkthroughTest#test05_expiryReminders RecipesWalkthroughTest#test06_recipesScreen
   RecipesWalkthroughTest#test07_amountsInSteps RecipesWalkthroughTest#test08_chefModeStubModel
   RecipesWalkthroughTest#test09_freeTier RecipesWalkthroughTest#test10_pageExtractionLine
-  MealPlanWalkthroughTest#test11_groceriesAiMergingSimulated MealPlanWalkthroughTest#test12_groceriesJunkHidden)
+  MealPlanWalkthroughTest#test11_groceriesAiMergingSimulated MealPlanWalkthroughTest#test12_groceriesJunkHidden
+  CookingWalkthroughTest#test13_iMadeThis SharingWalkthroughTest#test14_automaticBackup
+  SharingWalkthroughTest#test15_sendAndPasteAList SharingWalkthroughTest#test16_sendAndReceiveAFile
+  CookingWalkthroughTest#test17_firstRunTour CookingWalkthroughTest#test18_doneShoppingAndOnList
+  SharingWalkthroughTest#test19_pantrySendList CookingWalkthroughTest#test20_pantryUseUpAfterCooking
+  CookingWalkthroughTest#test21_chefModeUnsupportedSimulated MealPlanWalkthroughTest#test22_recipeJunkHidden
+  CookingWalkthroughTest#test23_markAsCooked)
 mkdir -p "$OUT"
 export ANDROID_SERIAL=$SERIAL
 adb shell cmd uimode night no >/dev/null
 ./gradlew -q -Pwalkthrough installDebug installDebugAndroidTest
+# What the tests read from the device (the app itself can't reach /data/local/tmp): the file a
+# friend sends (#149), and the photo "I made this" adds (#116), a macOS sample picture.
+adb push shared/fixtures/backup/share-v1.recipeclipper /data/local/tmp/ >/dev/null
+photo=$(mktemp -d)/photo.jpg
+if sips -s format jpeg "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo" >/dev/null 2>&1; then
+  adb push "$photo" /data/local/tmp/rc-walkthrough-photo.jpg >/dev/null
+fi
 
 for t in "${TESTS[@]}"; do
   name=${t#*#}

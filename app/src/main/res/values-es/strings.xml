@@ -503,6 +503,11 @@
     <string name="cooked_add_failed">No se pudo añadir la foto.</string>
     <string name="camera_unavailable">No hay ninguna app de cámara.</string>
     <string name="cooked_photo_missing">La foto no está en este teléfono</string>
+    <string name="action_mark_cooked">Marcar como cocinada</string>
+    <string name="cooked_mark">Cocinada</string>
+    <string name="cd_cooked_mark">Cocinada, sin foto, %1$s</string>
+    <string name="cd_delete_cooked_mark">Quitar de lo que has cocinado</string>
+    <string name="cooked_mark_deleted">Quitado de lo que has cocinado</string>
     <string name="delete_recipe_body_photo">La receta se eliminará del historial y de todas las listas en las que esté, junto con tu foto. No se puede deshacer.</string>
     <string name="delete_recipe_body_photos">La receta se eliminará del historial y de todas las listas en las que esté, junto con tus %1$d fotos. No se puede deshacer.</string>
     <!-- The automatic backup copy (#150). -->

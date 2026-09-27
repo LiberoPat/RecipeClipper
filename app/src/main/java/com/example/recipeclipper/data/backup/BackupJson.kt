@@ -27,7 +27,8 @@ import org.json.JSONTokener
  *   "menus":       [{ "id", "name", "updatedAt" }],
  *   "menuEntries": [{ "id", "menuId", "dayOffset", "mealTypeId", "recipeId", "servings", "note",
  *                     "sortOrder", "updatedAt" }],
- *   "cookedPhotos": [{ "id", "recipeId", "day", "note", "createdAt", "updatedAt", "file" }] }
+ *   "cookedPhotos": [{ "id", "recipeId", "day", "note", "createdAt", "updatedAt", "file" }],
+ *   "cookedWithoutPhotos": [{ "id", "recipeId", "day", "note", "createdAt", "updatedAt" }] }
  * ```
  *
  * A shared file (#149, [ShareFile]) is the same format with a top-level `"kind": "share"`,
@@ -37,6 +38,12 @@ import org.json.JSONTokener
  * same file as before; their pictures sit beside the JSON in a zip (`BackupArchive`), at `file`
  * (`photos/<name>.jpg`, nothing else). A photo whose `recipeId` names no recipe in the file is
  * left out: a photo belongs to its recipe.
+ *
+ * `cookedWithoutPhotos` (#173) holds the cookings marked with no photo, the same fields without
+ * `file`, and is also written only when there are some. It is its own section, not a
+ * `cookedPhotos` entry with no `file`, because an older app requires that `file` and would
+ * refuse the whole file as malformed; an unknown section it simply ignores, importing the rest.
+ * So the format version stays 1. Ids are unique across both sections.
  *
  * `pantry` (#51), `groceries` (#50), `mealTypes` and `mealPlan` (#49) came later without a
  * version bump: an older reader ignores them. A grocery's `recipeId` naming no recipe in the
@@ -68,8 +75,12 @@ object BackupJson {
         root.put("mealPlan", JSONArray().apply { backup.mealPlan.forEach { put(it.toJson()) } })
         root.put("menus", JSONArray().apply { backup.menus.forEach { put(it.toJson()) } })
         root.put("menuEntries", JSONArray().apply { backup.menuEntries.forEach { put(it.toJson()) } })
-        if (backup.cookedPhotos.isNotEmpty()) {
-            root.put("cookedPhotos", JSONArray().apply { backup.cookedPhotos.forEach { put(it.toJson()) } })
+        val (withPhoto, withoutPhoto) = backup.cookedPhotos.partition { it.file != null }
+        if (withPhoto.isNotEmpty()) {
+            root.put("cookedPhotos", JSONArray().apply { withPhoto.forEach { put(it.toJson()) } })
+        }
+        if (withoutPhoto.isNotEmpty()) {
+            root.put("cookedWithoutPhotos", JSONArray().apply { withoutPhoto.forEach { put(it.toJson()) } })
         }
         return root.toString(2)
     }
@@ -245,35 +256,51 @@ object BackupJson {
         }
         requireUniqueIds(menuEntries.map { it.id }, "menuEntries")
 
-        val cookedPhotos = top.objects(root, "cookedPhotos").mapNotNull { (path, o) ->
-            val r = Reader(path)
-            val id = r.requiredId(o, "id")
-            val file = r.string(o, "file")?.takeIf { PHOTO_FILE.matches(it) } ?: throw MalformedException("$path.file")
-            val day = r.long(o, "day") ?: throw MalformedException("$path.day")
-            val recipeId = r.string(o, "recipeId")?.takeIf { it in recipeIds } ?: return@mapNotNull null
-            BackupCookedPhoto(
-                id = id,
-                recipeId = recipeId,
-                day = day,
-                note = r.string(o, "note")?.takeIf { it.isNotBlank() },
-                createdAt = r.long(o, "createdAt") ?: 0L,
-                updatedAt = r.long(o, "updatedAt") ?: 0L,
-                file = file
-            )
-        }
-        requireUniqueIds(cookedPhotos.map { it.id }, "cookedPhotos")
+        val cookedPhotos = readCooked(top, root, "cookedPhotos", recipeIds, withPhoto = true)
+        val cookedWithoutPhotos = readCooked(top, root, "cookedWithoutPhotos", recipeIds, withPhoto = false)
+        val cookedIds = HashSet<String>()
+        requireUniqueIds(cookedPhotos.map { it.id }, "cookedPhotos", cookedIds)
+        requireUniqueIds(cookedWithoutPhotos.map { it.id }, "cookedWithoutPhotos", cookedIds)
 
         return Backup(
-            exportedAt, recipes, lists, memberships, pantry, groceries, mealTypes, mealPlan, menus, menuEntries, cookedPhotos,
+            exportedAt, recipes, lists, memberships, pantry, groceries, mealTypes, mealPlan, menus, menuEntries,
+            cookedPhotos + cookedWithoutPhotos,
             isShare = root.opt("kind") == Backup.KIND_SHARE
+        )
+    }
+
+    /**
+     * One section of cooked entries: `cookedPhotos` (#116), each with its picture's `file`, or
+     * `cookedWithoutPhotos` (#173), whose `file` is ignored. An entry whose recipe isn't in the
+     * file is left out.
+     */
+    private fun readCooked(
+        top: Reader, root: JSONObject, section: String, recipeIds: Set<String>, withPhoto: Boolean
+    ): List<BackupCookedPhoto> = top.objects(root, section).mapNotNull { (path, o) ->
+        val r = Reader(path)
+        val id = r.requiredId(o, "id")
+        val file = if (withPhoto) {
+            r.string(o, "file")?.takeIf { PHOTO_FILE.matches(it) } ?: throw MalformedException("$path.file")
+        } else {
+            null
+        }
+        val day = r.long(o, "day") ?: throw MalformedException("$path.day")
+        val recipeId = r.string(o, "recipeId")?.takeIf { it in recipeIds } ?: return@mapNotNull null
+        BackupCookedPhoto(
+            id = id,
+            recipeId = recipeId,
+            day = day,
+            note = r.string(o, "note")?.takeIf { it.isNotBlank() },
+            createdAt = r.long(o, "createdAt") ?: 0L,
+            updatedAt = r.long(o, "updatedAt") ?: 0L,
+            file = file
         )
     }
 
     /** A picture's path in the zip: under `photos/`, one plain name, never `..` or a folder. */
     val PHOTO_FILE = Regex("photos/[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}")
 
-    private fun requireUniqueIds(ids: List<String>, section: String) {
-        val seen = HashSet<String>()
+    private fun requireUniqueIds(ids: List<String>, section: String, seen: MutableSet<String> = HashSet()) {
         ids.forEachIndexed { i, id -> if (!seen.add(id)) throw MalformedException("$section[$i].id") }
     }
 
@@ -458,7 +485,8 @@ object BackupJson {
         put("note", note.orNull())
         put("createdAt", createdAt)
         put("updatedAt", updatedAt)
-        put("file", file)
+        // A cooking marked with no photo (#173) has no file, and no key for one.
+        file?.let { put("file", it) }
     }
 
     /** `put(key, null)` removes the key in org.json; an explicit JSON null keeps the shape. */

@@ -19,6 +19,7 @@ import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.SharedPrefsAppPreferences
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.TourPreferences
+import com.example.recipeclipper.data.local.UseUpLog
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -87,4 +88,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun tourPreferences(impl: SharedPrefsAppPreferences): TourPreferences
+
+    /** When each recipe's pantry use-up sheet was last settled (#147), in the same file. */
+    @Binds
+    @Singleton
+    abstract fun useUpLog(impl: SharedPrefsAppPreferences): UseUpLog
 }

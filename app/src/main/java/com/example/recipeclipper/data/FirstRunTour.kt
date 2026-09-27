@@ -31,6 +31,7 @@ class FirstRunTour @Inject constructor(
      * without the sample, so an interrupted welcome still shows again.
      */
     suspend fun onLaunch(plain: Boolean): Boolean {
+        recipes.formatSampleTimes() // #179: a sample saved with raw ISO times; a no-op after
         when (preferences.welcome) {
             WelcomeState.SEEN -> return false
             WelcomeState.PENDING -> return plain

@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -46,13 +47,15 @@ import java.io.File
 /**
  * "Your cooks" (#116): at the foot of the reading view, after the steps and the note, so the
  * recipe still opens on the recipe. Empty, it is one quiet line and "I made this"; with photos,
- * a row of thumbnails (newest cook first, each with its date) and a + at the end.
+ * a row of thumbnails (newest cook first, each with its date) and a + at the end. Both open the
+ * camera, the library, or "Mark as cooked" (#173), whose entry shows as a dated tile, no picture.
  */
 @Composable
 internal fun CookedPhotosSection(
     photos: List<CookedPhoto>,
     sources: PhotoSources,
     onOpen: (CookedPhoto) -> Unit,
+    onMarkCooked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier.fillMaxWidth()) {
@@ -65,7 +68,7 @@ internal fun CookedPhotosSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(10.dp))
-            AddPhotoMenu(sources) { open ->
+            AddPhotoMenu(sources, onMarkCooked) { open ->
                 OutlinedButton(onClick = open, shape = RoundedCornerShape(12.dp)) {
                     Text(stringResource(R.string.action_i_made_this))
                 }
@@ -73,7 +76,10 @@ internal fun CookedPhotosSection(
         } else {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(photos, key = { "cooked-${it.id}" }) { photo ->
-                    val label = stringResource(R.string.cd_cooked_photo, fullDate(photo.day))
+                    val label = stringResource(
+                        if (photo.hasPhoto) R.string.cd_cooked_photo else R.string.cd_cooked_mark,
+                        fullDate(photo.day)
+                    )
                     Column(
                         Modifier.width(THUMB).clickable { onOpen(photo) }.semantics { contentDescription = label }
                     ) {
@@ -87,7 +93,7 @@ internal fun CookedPhotosSection(
                     }
                 }
                 item(key = "cooked-add") {
-                    AddPhotoMenu(sources) { open ->
+                    AddPhotoMenu(sources, onMarkCooked) { open ->
                         Box(
                             Modifier.size(THUMB).clip(RoundedCornerShape(10.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = open),
@@ -102,9 +108,9 @@ internal fun CookedPhotosSection(
     }
 }
 
-/** Camera or library, from whatever [anchor] draws; the menu opens under it. */
+/** Camera, library or "Mark as cooked" (#173), from whatever [anchor] draws; the menu opens under it. */
 @Composable
-private fun AddPhotoMenu(sources: PhotoSources, anchor: @Composable (open: () -> Unit) -> Unit) {
+private fun AddPhotoMenu(sources: PhotoSources, onMarkCooked: () -> Unit, anchor: @Composable (open: () -> Unit) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         anchor { expanded = true }
@@ -117,22 +123,32 @@ private fun AddPhotoMenu(sources: PhotoSources, anchor: @Composable (open: () ->
                 text = { Text(stringResource(R.string.action_choose_photos)) },
                 onClick = { expanded = false; sources.pickFromLibrary() }
             )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_mark_cooked)) },
+                onClick = { expanded = false; onMarkCooked() }
+            )
         }
     }
 }
 
 /**
  * A stored photo; one whose file isn't here (a phone restored from Android's backup, which leaves
- * photos out) or can't be read says so instead.
+ * photos out) or can't be read says so instead, and a cooking marked with no photo (#173) says
+ * "Cooked".
  */
 @Composable
 internal fun CookedImage(photo: CookedPhoto, modifier: Modifier, scale: ContentScale) {
+    val path = photo.path
+    if (!photo.hasPhoto || path == null) {
+        CookedWithoutPhoto(modifier)
+        return
+    }
     if (!photo.hasPicture) {
         PhotoMissing(modifier)
         return
     }
     SubcomposeAsyncImage(
-        model = File(photo.path),
+        model = File(path),
         contentDescription = null,
         contentScale = scale,
         modifier = modifier,
@@ -149,6 +165,22 @@ private fun PhotoMissing(modifier: Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(6.dp)
         )
+    }
+}
+
+/** In place of a picture, for a cooking marked with no photo (#173): a tick and "Cooked". */
+@Composable
+private fun CookedWithoutPhoto(modifier: Modifier) {
+    Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+            Text(
+                stringResource(R.string.cooked_mark),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }
 

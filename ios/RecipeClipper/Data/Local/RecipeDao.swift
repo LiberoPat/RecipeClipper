@@ -81,6 +81,11 @@ struct RecipeDao {
         try db.run("UPDATE recipes SET servingsTarget = ? WHERE id = ?", target, id)
     }
 
+    /// The three times alone (#179: the tour's sample, saved before they were formatted).
+    func setTimes(_ id: Int64, prep: String?, cook: String?, total: String?) throws {
+        try db.run("UPDATE recipes SET prepTime = ?, cookTime = ?, totalTime = ? WHERE id = ?", prep, cook, total, id)
+    }
+
     /// Every recipe with saved cook progress, for finding its running timers.
     func cookStates() throws -> [CookStateRecord] {
         try db.query("SELECT id, title, cookState FROM recipes WHERE cookState IS NOT NULL") {

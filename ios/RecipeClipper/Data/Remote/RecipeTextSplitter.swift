@@ -135,7 +135,7 @@ enum RecipeTextSplitter {
                 }
                 if let m = timeLine.matchEntire(line) {
                     let label = m[1].lowercased()
-                    let value = JsonLdRecipeParser.formatDuration(m[2])
+                    let value = Durations.format(m[2])
                     if label.hasPrefix("prep") {
                         if prep == nil { prep = value }
                     } else if label.hasPrefix("total") {

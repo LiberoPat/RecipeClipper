@@ -104,6 +104,19 @@ object WalkthroughSeed {
         }
     })
 
+    /**
+     * The kitchen for the Done shopping, Pantry Send list and use-up clips (#146, #149, #147);
+     * iOS's `UITestWalkthroughSeed.pantry`: a name, a quantity as typed, and whether it is in stock.
+     */
+    val pantry: List<Triple<String, String?, Boolean>> = listOf(
+        Triple("chicken thighs", "3 lb", true), Triple("white vinegar", "2 cups", true), Triple("soy sauce", null, true),
+        Triple("garlic", null, false), Triple("basmati rice", "half a bag", true), Triple("olive oil", null, true),
+        Triple("onions", "3", true), Triple("milk", null, false)
+    )
+
+    /** On the grocery list, from the Chicken Adobo. */
+    val groceries = listOf("2 lb chicken thighs", "1/2 cup soy sauce", "6 cloves garlic, crushed", "3 bay leaves")
+
     fun listFor(title: String): String = when (title) {
         "Banana Bread", "Buttermilk Pancakes", "French Toast" -> "Breakfast"
         "Sponge Cake", "Chocolate Chip Cookies" -> "Desserts"

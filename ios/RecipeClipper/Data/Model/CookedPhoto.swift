@@ -5,17 +5,23 @@ import Foundation
 /// `path` is the stored JPEG, for showing and sharing it; it belongs to the recipe.
 /// `hasPicture` is false when the file isn't here (a restore that brought the database without
 /// it): the entry keeps its day and note, and says the photo isn't on this phone.
+///
+/// A cooking marked with no photo ("Mark as cooked", #173) is the same entry with no `fileName`
+/// and no `path` (`hasPhoto` false, and so no `hasPicture`): a dated entry with its note.
 struct CookedPhoto: Equatable, Identifiable {
     let id: Int64
     let recipeId: Int64
-    let fileName: String
-    let path: String
+    let fileName: String?
+    let path: String?
     var day: Int64
     var note: String?
     let createdAt: Int64
     let updatedAt: Int64
     let uid: String
     var hasPicture = true
+
+    /// Taken with a photo, whether or not its file is on this phone; false for "Mark as cooked" (#173).
+    var hasPhoto: Bool { fileName != nil }
 
     /// The longest note kept: "short", a line or two under a photo.
     static let maxNote = 280

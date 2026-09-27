@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.Durations
 import org.jsoup.Jsoup
 
 /** What [RecipeTextSplitter] found in a block of text. The name comes from elsewhere
@@ -153,7 +154,7 @@ object RecipeTextSplitter {
                     }
                     TIME.matchEntire(line)?.let { m ->
                         val label = m.groupValues[1].lowercase()
-                        val value = JsonLdRecipeParser.formatDuration(m.groupValues[2])
+                        val value = Durations.format(m.groupValues[2])
                         when {
                             label.startsWith("prep") -> if (prep == null) prep = value
                             label.startsWith("total") -> if (total == null) total = value

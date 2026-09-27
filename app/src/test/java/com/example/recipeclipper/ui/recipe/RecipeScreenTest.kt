@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.model.SampleRecipe
 import com.example.recipeclipper.data.model.UnitSystem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -51,6 +52,17 @@ class RecipeScreenTest {
         compose.onNodeWithText("2 cups flour").assertIsDisplayed()
         compose.onNodeWithText("1 cup milk").assertIsDisplayed()
         compose.onNodeWithText("Start cooking").assertIsDisplayed()
+    }
+
+    /** #179: the tour's sample showed its file's times as written, "PT10M". */
+    @Test
+    fun theSampleRecipeShowsItsTimesLikeAParsedRecipe() {
+        RecipeScreenFixture(SampleRecipe.forLanguage("en").copy(id = RecipeScreenFixture.RECIPE_ID)).show(compose)
+
+        compose.onNodeWithText("PREP").assertIsDisplayed()
+        compose.onNodeWithText("10m").assertIsDisplayed()
+        compose.onNodeWithText("25m").assertIsDisplayed()
+        compose.onNodeWithText("35m").assertIsDisplayed()
     }
 
     @Test

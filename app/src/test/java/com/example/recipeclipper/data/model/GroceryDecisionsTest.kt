@@ -162,6 +162,31 @@ class GroceryDecisionsTest {
         assertEquals(listOf(trailing("dfsafs")), GroceryDecisions.trailingTexts(list, named))
     }
 
+    // --- A recipe's lines (#174): the same questions, and the same text shown
+
+    @Test fun aRecipesLinesAreAskedAboutAsGroceriesAsksHeadingsLeftOut() {
+        val lines = listOf("2 eggs (dfsafs -", "2 onions dfsafs", "For the sauce (dfsafs -:", "2 eggs (about 100 g)", "1 cup milk")
+        assertEquals(listOf(name("2 onions dfsafs"), trailing("(dfsafs -")), GroceryDecisions.junkQuestions(lines, en, Decisions.NONE))
+        val named = decided(name("2 onions dfsafs") to "onions")
+        assertEquals(
+            listOf(name("2 onions dfsafs"), trailing("(dfsafs -"), trailing("dfsafs")),
+            GroceryDecisions.junkQuestions(lines, en, named)
+        )
+        assertTrue(GroceryDecisions.junkQuestions(lines, null, Decisions.NONE).isEmpty())
+        assertTrue(GroceryDecisions.junkQuestions(listOf("卵 2個 (dfsafs -"), LanguageWords.forTag("ja"), Decisions.NONE).isEmpty())
+    }
+
+    @Test fun aRecipeLineShowsAsTheSameGroceryLineDoes() {
+        val d = decided(trailing("(dfsafs -") to "junk", trailing(", beaten") to "note", trailing("(dfsafs -:") to "junk")
+        for (line in listOf("2 eggs (dfsafs -", "2 eggs, beaten", "2 eggs")) {
+            val item = GroceryItem(1, line, "en", Aisle.DAIRY, false, 0)
+            assertEquals(GroceryDecisions.shownText(item, d), GroceryDecisions.shownLine(line, en, d))
+        }
+        assertEquals("2 eggs", GroceryDecisions.shownLine("2 eggs (dfsafs -", en, d))
+        assertEquals("a heading is never cut", "For the eggs (dfsafs -:", GroceryDecisions.shownLine("For the eggs (dfsafs -:", en, d))
+        assertEquals("no words, as written", "2 eggs (dfsafs -", GroceryDecisions.shownLine("2 eggs (dfsafs -", null, d))
+    }
+
     @Test fun aNamedJunkLineIsFiledByItsIngredientWhicheverAnswerLandsLast() {
         val list = items("2 onions dfsafs" to Aisle.OTHER)
         val d = decided(name("2 onions dfsafs") to "onions", trailing("dfsafs") to "junk")

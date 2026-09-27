@@ -1,6 +1,7 @@
 package com.example.recipeclipper.ui.recipe
 
 import com.example.recipeclipper.MainDispatcherRule
+import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryItem
@@ -8,6 +9,7 @@ import com.example.recipeclipper.data.model.UseUpChange
 import com.example.recipeclipper.data.model.UseUpChoice
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
+import com.example.recipeclipper.fake.FakeUseUpLog
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -19,8 +21,8 @@ import org.junit.Test
 
 /**
  * The end-of-cooking sheet (#147) over fakes: what it lists and preselects, what one confirm
- * writes to the pantry and the grocery list, and the one Undo. The iOS
- * `PantryUseUpViewModelTests` mirror these.
+ * writes to the pantry and the grocery list, and the one Undo; "I made this" as a second way in,
+ * and the guard that offers one cooking once. The iOS `PantryUseUpViewModelTests` mirror these.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PantryUseUpViewModelTest {
@@ -38,12 +40,16 @@ class PantryUseUpViewModelTest {
     private val flour = item(3, "flour", "half a bag")
     private val milk = item(4, "milk", "1 cup")
 
-    private fun viewModel(vararg items: PantryItem) = FakePantryRepository(items.toList()).let { it to PantryUseUpViewModel(it, groceries) }
+    private val log = FakeUseUpLog()
+    private var now = 1_000_000_000L
+
+    private fun viewModel(vararg items: PantryItem) =
+        FakePantryRepository(items.toList()).let { it to PantryUseUpViewModel(it, groceries, log, Clock { now }) }
 
     @Test
     fun `finishing opens the sheet - worked-out rows ticked, the rest keep`() = runTest(mainDispatcherRule.dispatcher) {
         val (_, vm) = viewModel(chicken, eggs, flour)
-        vm.onCookFinished("en", listOf("1 lb chicken", "2 large eggs", "2 cups flour", "1 tsp salt"))
+        vm.onCookFinished(RECIPE, "en", listOf("1 lb chicken", "2 large eggs", "2 cups flour", "1 tsp salt"))
         advanceUntilIdle()
 
         val sheet = vm.uiState.value.sheet!!
@@ -58,7 +64,7 @@ class PantryUseUpViewModelTest {
     @Test
     fun `nothing in the pantry used, no sheet`() = runTest(mainDispatcherRule.dispatcher) {
         val (_, vm) = viewModel(chicken)
-        vm.onCookFinished("en", listOf("2 cups rice"))
+        vm.onCookFinished(RECIPE, "en", listOf("2 cups rice"))
         advanceUntilIdle()
         assertNull(vm.uiState.value.sheet)
     }
@@ -66,7 +72,7 @@ class PantryUseUpViewModelTest {
     @Test
     fun `confirm writes the new quantities, and only the ticked ones`() = runTest(mainDispatcherRule.dispatcher) {
         val (pantry, vm) = viewModel(chicken, eggs)
-        vm.onCookFinished("en", listOf("1 lb chicken", "2 eggs"))
+        vm.onCookFinished(RECIPE, "en", listOf("1 lb chicken", "2 eggs"))
         advanceUntilIdle()
         vm.onToggle(2) // the eggs weren't from the pantry after all
         vm.onConfirm()
@@ -82,7 +88,7 @@ class PantryUseUpViewModelTest {
     @Test
     fun `used up goes out of stock with no quantity, onto the grocery list`() = runTest(mainDispatcherRule.dispatcher) {
         val (pantry, vm) = viewModel(milk)
-        vm.onCookFinished("en", listOf("1 cup milk"))
+        vm.onCookFinished(RECIPE, "en", listOf("1 cup milk"))
         advanceUntilIdle()
         assertEquals(UseUpChange.Subtract("1 cup", null), vm.uiState.value.sheet!!.rows.single().change)
         vm.onConfirm()
@@ -99,7 +105,7 @@ class PantryUseUpViewModelTest {
         runTest(mainDispatcherRule.dispatcher) {
             val sugar = item(5, "sugar", null)
             val (pantry, vm) = viewModel(flour, sugar)
-            vm.onCookFinished("en", listOf("2 cups flour", "1 cup sugar"))
+            vm.onCookFinished(RECIPE, "en", listOf("2 cups flour", "1 cup sugar"))
             advanceUntilIdle()
             vm.onChoice(3, UseUpChoice.LOW)
             vm.onChoice(5, UseUpChoice.OUT)
@@ -115,7 +121,7 @@ class PantryUseUpViewModelTest {
     @Test
     fun `keep changes nothing, and a confirm with nothing to do raises no snackbar`() = runTest(mainDispatcherRule.dispatcher) {
         val (pantry, vm) = viewModel(flour)
-        vm.onCookFinished("en", listOf("2 cups flour"))
+        vm.onCookFinished(RECIPE, "en", listOf("2 cups flour"))
         advanceUntilIdle()
         vm.onConfirm()
         advanceUntilIdle()
@@ -127,7 +133,7 @@ class PantryUseUpViewModelTest {
     fun `an item already on the list isn't added twice`() = runTest(mainDispatcherRule.dispatcher) {
         groceries.add(listOf(NewGroceryLine("Milk", "en")))
         val (_, vm) = viewModel(milk)
-        vm.onCookFinished("en", listOf("1 cup milk"))
+        vm.onCookFinished(RECIPE, "en", listOf("1 cup milk"))
         advanceUntilIdle()
         vm.onConfirm()
         advanceUntilIdle()
@@ -138,7 +144,7 @@ class PantryUseUpViewModelTest {
     fun `one Undo puts the pantry back and takes the added lines off the list`() = runTest(mainDispatcherRule.dispatcher) {
         groceries.add(listOf(NewGroceryLine("2 lemons", "en")))
         val (pantry, vm) = viewModel(chicken, milk)
-        vm.onCookFinished("en", listOf("1 lb chicken", "1 cup milk"))
+        vm.onCookFinished(RECIPE, "en", listOf("1 lb chicken", "1 cup milk"))
         advanceUntilIdle()
         vm.onConfirm()
         advanceUntilIdle()
@@ -154,11 +160,107 @@ class PantryUseUpViewModelTest {
     @Test
     fun `dismissing changes nothing`() = runTest(mainDispatcherRule.dispatcher) {
         val (pantry, vm) = viewModel(chicken)
-        vm.onCookFinished("en", listOf("1 lb chicken"))
+        vm.onCookFinished(RECIPE, "en", listOf("1 lb chicken"))
         advanceUntilIdle()
         vm.onDismissed()
         advanceUntilIdle()
         assertNull(vm.uiState.value.sheet)
         assertEquals(listOf(chicken), pantry.items.value)
+    }
+
+    // "I made this" (#116) as a second way in, and one cooking offered once.
+
+    private val ingredients = listOf("For the stew:", "1 lb chicken", "2 large eggs", "1 cup milk")
+
+    @Test
+    fun `a photo with lines ticked offers the ticked lines`() = runTest(mainDispatcherRule.dispatcher) {
+        val (_, vm) = viewModel(chicken, eggs, milk)
+        vm.onMadeThis(RECIPE, "en", ingredients, ticked = setOf(3, 1))
+        advanceUntilIdle()
+        assertEquals(listOf("chicken", "milk"), vm.uiState.value.sheet!!.rows.map { it.item.name })
+    }
+
+    @Test
+    fun `a photo with nothing ticked offers every line`() = runTest(mainDispatcherRule.dispatcher) {
+        val (_, vm) = viewModel(chicken, eggs, milk)
+        vm.onMadeThis(RECIPE, "en", ingredients, ticked = emptySet())
+        advanceUntilIdle()
+        val sheet = vm.uiState.value.sheet!!
+        assertEquals(listOf("chicken", "eggs", "milk"), sheet.rows.map { it.item.name })
+        assertEquals(setOf(1L, 2L, 4L), sheet.ticked)
+    }
+
+    @Test
+    fun `finishing cook mode then adding a photo offers the sheet once`() = runTest(mainDispatcherRule.dispatcher) {
+        val (pantry, vm) = viewModel(chicken)
+        vm.onCookFinished(RECIPE, "en", listOf("1 lb chicken"))
+        advanceUntilIdle()
+        vm.onConfirm()
+        advanceUntilIdle()
+
+        now += 2 * HOUR
+        vm.onMadeThis(RECIPE, "en", listOf("1 lb chicken"), ticked = setOf(0))
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.sheet)
+        assertEquals("1 lb", pantry.items.value.single().quantity)
+    }
+
+    @Test
+    fun `a second photo of one dinner isn't offered it again, even after a dismiss`() = runTest(mainDispatcherRule.dispatcher) {
+        val (_, vm) = viewModel(chicken)
+        vm.onMadeThis(RECIPE, "en", listOf("1 lb chicken"), ticked = emptySet())
+        advanceUntilIdle()
+        vm.onDismissed()
+
+        now += HOUR
+        vm.onMadeThis(RECIPE, "en", listOf("1 lb chicken"), ticked = emptySet())
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.sheet)
+        // Nor by finishing cook mode on the same dinner.
+        vm.onCookFinished(RECIPE, "en", listOf("1 lb chicken"))
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.sheet)
+    }
+
+    @Test
+    fun `after the window, or for another recipe, the sheet is offered again`() = runTest(mainDispatcherRule.dispatcher) {
+        val (_, vm) = viewModel(chicken)
+        vm.onMadeThis(RECIPE, "en", listOf("1 lb chicken"), ticked = emptySet())
+        advanceUntilIdle()
+        vm.onConfirm()
+        advanceUntilIdle()
+
+        vm.onMadeThis(RECIPE + 1, "en", listOf("1 lb chicken"), ticked = emptySet())
+        advanceUntilIdle()
+        assertEquals(RECIPE + 1, vm.uiState.value.sheet?.recipeId)
+        vm.onDismissed()
+
+        now += PantryUseUpViewModel.OFFER_AGAIN_AFTER_MILLIS
+        vm.onMadeThis(RECIPE, "en", listOf("1 lb chicken"), ticked = emptySet())
+        advanceUntilIdle()
+        assertEquals(RECIPE, vm.uiState.value.sheet?.recipeId)
+    }
+
+    @Test
+    fun `the log keeps only the window, and Undo lets the cooking be offered again`() = runTest(mainDispatcherRule.dispatcher) {
+        log.useUps = mapOf(99L to now - PantryUseUpViewModel.OFFER_AGAIN_AFTER_MILLIS)
+        val (_, vm) = viewModel(chicken)
+        vm.onCookFinished(RECIPE, "en", listOf("1 lb chicken"))
+        advanceUntilIdle()
+        vm.onConfirm()
+        advanceUntilIdle()
+        assertEquals(mapOf(RECIPE to now), log.useUps)
+
+        vm.onUndo()
+        advanceUntilIdle()
+        assertEquals(emptyMap<Long, Long>(), log.useUps)
+        vm.onMadeThis(RECIPE, "en", listOf("1 lb chicken"), ticked = emptySet())
+        advanceUntilIdle()
+        assertNotNull(vm.uiState.value.sheet)
+    }
+
+    private companion object {
+        const val RECIPE = 7L
+        const val HOUR = 60 * 60 * 1000L
     }
 }

@@ -82,11 +82,20 @@ enum SampleRecipe {
         let entry = entries[chosen]!
         var recipe = Recipe(
             name: entry.name, image: nil, ingredients: entry.ingredients, instructions: entry.instructions,
-            prepTime: entry.prepTime, cookTime: entry.cookTime, totalTime: entry.totalTime, yield: entry.yield,
+            prepTime: formatTime(entry.prepTime, language: chosen), cookTime: formatTime(entry.cookTime, language: chosen),
+            totalTime: formatTime(entry.totalTime, language: chosen), yield: entry.yield,
             sourceUrl: sourceUrl
         )
         recipe.language = chosen
         recipe.origin = .manual
         return recipe
+    }
+
+    /// A time as the sample shows it (#179): the file's ISO duration ("PT10M") formatted the way
+    /// a parsed recipe's is, in `language`'s words ("10m", "10min"). Formatting one already
+    /// formatted changes nothing, which is what lets a sample saved before #179 be fixed at every
+    /// launch (`RecipeRepository.formatSampleTimes`).
+    static func formatTime(_ time: String?, language: String?) -> String? {
+        time.flatMap { Durations.format($0, words: LanguageWords.forTag(language)) }
     }
 }

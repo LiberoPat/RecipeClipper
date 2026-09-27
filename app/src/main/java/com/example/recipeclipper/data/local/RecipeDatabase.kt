@@ -37,7 +37,7 @@ import com.example.recipeclipper.data.model.MealType
         PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class,
         AiDecisionEntity::class, CookedPhotoEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -368,11 +368,40 @@ abstract class RecipeDatabase : RoomDatabase() {
             "CREATE UNIQUE INDEX IF NOT EXISTS `index_cooked_photos_uid` ON `cooked_photos` (`uid`)"
         )
 
+        /**
+         * "Mark as cooked" (#173): a cooked entry with no photo, so `cooked_photos.fileName`
+         * becomes nullable. SQLite can't relax NOT NULL in place, so the table is rebuilt:
+         * every row copied as it is (ids, uids, days and notes), its indices recreated, and its
+         * AUTOINCREMENT counter carried over so no deleted entry's id is handed out again. The
+         * same steps are iOS's `allowCookedWithoutPhoto`.
+         */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                COOKED_WITHOUT_PHOTO_SQL.forEach(db::execSQL)
+            }
+        }
+
+        private val COOKED_WITHOUT_PHOTO_SQL = listOf(
+            "CREATE TABLE `_new_cooked_photos` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`recipeId` INTEGER NOT NULL, `fileName` TEXT, `day` INTEGER NOT NULL, `note` TEXT, " +
+                "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `uid` TEXT NOT NULL, " +
+                "FOREIGN KEY(`recipeId`) REFERENCES `recipes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "INSERT INTO `_new_cooked_photos` (`id`, `recipeId`, `fileName`, `day`, `note`, `createdAt`, `updatedAt`, `uid`) " +
+                "SELECT `id`, `recipeId`, `fileName`, `day`, `note`, `createdAt`, `updatedAt`, `uid` FROM `cooked_photos`",
+            "DELETE FROM sqlite_sequence WHERE name = '_new_cooked_photos'",
+            "INSERT INTO sqlite_sequence (name, seq) SELECT '_new_cooked_photos', seq FROM sqlite_sequence " +
+                "WHERE name = 'cooked_photos'",
+            "DROP TABLE `cooked_photos`",
+            "ALTER TABLE `_new_cooked_photos` RENAME TO `cooked_photos`",
+            "CREATE INDEX IF NOT EXISTS `index_cooked_photos_recipeId` ON `cooked_photos` (`recipeId`)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_cooked_photos_uid` ON `cooked_photos` (`uid`)"
+        )
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-            MIGRATION_13_14
+            MIGRATION_13_14, MIGRATION_14_15
         )
     }
 }

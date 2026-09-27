@@ -484,6 +484,11 @@
     <string name="cooked_add_failed">Das Foto konnte nicht hinzugefügt werden.</string>
     <string name="camera_unavailable">Keine Kamera-App verfügbar.</string>
     <string name="cooked_photo_missing">Foto nicht auf diesem Gerät</string>
+    <string name="action_mark_cooked">Als gekocht markieren</string>
+    <string name="cooked_mark">Gekocht</string>
+    <string name="cd_cooked_mark">Gekocht, ohne Foto, %1$s</string>
+    <string name="cd_delete_cooked_mark">Eintrag löschen</string>
+    <string name="cooked_mark_deleted">Eintrag gelöscht</string>
     <string name="delete_recipe_body_photo">Das Rezept wird aus dem Verlauf und allen Listen entfernt, mit deinem Foto davon. Das lässt sich nicht rückgängig machen.</string>
     <string name="delete_recipe_body_photos">Das Rezept wird aus dem Verlauf und allen Listen entfernt, mit deinen %1$d Fotos davon. Das lässt sich nicht rückgängig machen.</string>
     <!-- The automatic backup copy (#150). -->

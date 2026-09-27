@@ -620,6 +620,12 @@ enum Strings {
     static var cookedAddFailed: String { String(localized: "cooked_add_failed") }
     static var cameraUnavailable: String { String(localized: "camera_unavailable") }
     static var cookedPhotoMissing: String { String(localized: "cooked_photo_missing") }
+    // "Mark as cooked" (#173): a cooked entry with no photo.
+    static var markCooked: String { String(localized: "action_mark_cooked") }
+    static var cookedMarkLabel: String { String(localized: "cooked_mark") }
+    static func cookedMark(_ date: String) -> String { String(localized: "cd_cooked_mark \(date)") }
+    static var deleteCookedMark: String { String(localized: "cd_delete_cooked_mark") }
+    static var cookedMarkDeleted: String { String(localized: "cooked_mark_deleted") }
     /// The recipe's delete confirmation when it has photos: they go with it.
     static func deleteRecipeBody(photos: Int) -> String {
         switch photos {

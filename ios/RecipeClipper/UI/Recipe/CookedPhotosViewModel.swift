@@ -4,7 +4,10 @@ import Observation
 
 /// "Your cooks" (#116; Android's CookedPhotosUiState): `photos` newest cook first; `open` the
 /// one shown full screen, with `noteDraft` its note as typed; `deleted` the one just deleted,
-/// until its Undo snackbar is settled; `addFailed` until the view has said so.
+/// until its Undo snackbar is settled; `addFailed` until the view has said so. `madeThis`: a
+/// photo was just added, or the recipe marked as cooked with none (#173), and its full-screen
+/// view has closed, so the recipe was cooked; the view offers the pantry's use-up sheet (#147),
+/// then calls `onMadeThisHandled`.
 struct CookedPhotosUiState: Equatable {
     var photos: [CookedPhoto] = []
     var open: CookedPhoto?
@@ -12,6 +15,7 @@ struct CookedPhotosUiState: Equatable {
     var adding = false
     var deleted: CookedPhoto?
     var addFailed = false
+    var madeThis = false
 }
 
 /// Android's CookedPhotosViewModel. The recipe id arrives through `setRecipe`, as with the
@@ -26,6 +30,8 @@ final class CookedPhotosViewModel: Identifiable {
     @ObservationIgnored private var recipeId: Int64?
     @ObservationIgnored private var subscription: AnyCancellable?
     @ObservationIgnored private var noteSave: Task<Void, Never>?
+    /// A photo was just added: `madeThis` follows once it closes.
+    @ObservationIgnored private var madeThisPending = false
     /// The last write, so a test can wait for it.
     @ObservationIgnored private var lastWrite: Task<Void, Never>?
 
@@ -51,12 +57,13 @@ final class CookedPhotosViewModel: Identifiable {
             }
     }
 
-    /// Pictures from PhotosPicker or the camera: each becomes an entry, cooked today.
+    /// Pictures from the library or the camera: each becomes an entry, cooked today.
     func onAdd(_ pictures: [Data]) {
         guard let recipeId, !pictures.isEmpty else { return }
         uiState.adding = true
         write {
             let added = await self.repository.add(recipeId: recipeId, pictures: pictures)
+            if !added.isEmpty { self.madeThisPending = true }
             self.uiState.adding = false
             self.uiState.addFailed = added.count < pictures.count
             // The first new one opens, so its note and date are right there to fill in.
@@ -64,6 +71,21 @@ final class CookedPhotosViewModel: Identifiable {
                 self.uiState.open = first
                 self.uiState.noteDraft = ""
             }
+        }
+    }
+
+    /// "Mark as cooked" (#173): today's cooking with no photo. It opens like a new photo, so its
+    /// note and date are right there, and closing it says the recipe was cooked, as a photo does.
+    func onMarkCooked() {
+        guard let recipeId else { return }
+        uiState.adding = true
+        write {
+            let marked = await self.repository.markCooked(recipeId: recipeId)
+            self.uiState.adding = false
+            guard let marked else { return }
+            self.madeThisPending = true
+            self.uiState.open = marked
+            self.uiState.noteDraft = ""
         }
     }
 
@@ -75,11 +97,16 @@ final class CookedPhotosViewModel: Identifiable {
         uiState.noteDraft = photo.note ?? ""
     }
 
+    /// Closing the photo just added offers the pantry's use-up sheet, after its note, not over it.
     func onClose() {
         saveNote()
         uiState.open = nil
         uiState.noteDraft = ""
+        if madeThisPending { uiState.madeThis = true }
+        madeThisPending = false
     }
+
+    func onMadeThisHandled() { uiState.madeThis = false }
 
     /// The note is written once typing pauses, or when the photo closes.
     func onNoteChange(_ text: String) {
@@ -101,6 +128,8 @@ final class CookedPhotosViewModel: Identifiable {
     /// Deletes the open photo at once; `onUndoDelete` brings it back until `onDeleteSettled`.
     func onDelete() {
         noteSave?.cancel()
+        // The photo (or mark, #173) just added, deleted at once, was a mistake: no cooking to offer.
+        madeThisPending = false
         guard let open = uiState.open else { return }
         uiState.open = nil
         uiState.noteDraft = ""

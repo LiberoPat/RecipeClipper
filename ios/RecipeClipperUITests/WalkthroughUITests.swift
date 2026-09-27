@@ -29,9 +29,42 @@ final class WalkthroughUITests: RecipeUITestCase {
         Thread.sleep(forTimeInterval: seconds)
     }
 
-    func start(flags: [String]) {
-        launch(.walkthrough, flags: flags)
+    func start(flags: [String], scenario: Scenario = .walkthrough, extraArguments: [String] = []) {
+        launch(scenario, flags: flags, extraArguments: extraArguments)
         mark("START")
+        pause()
+    }
+
+    /// A fresh install's first launch (#151): no recipes, the welcome over Home (which `launch`
+    /// waits for, so it can't be used).
+    func startFirstRun(flags: [String]) {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestSeed", Scenario.empty.rawValue, "-uiTestTour", "-uiTestFlags", flags.joined(separator: ",")]
+        app.launch()
+        self.app = app
+        require(app.buttons["welcome.next"], "the welcome")
+        mark("START")
+        pause()
+    }
+
+    /// Swipes up until `element` can be tapped.
+    @discardableResult
+    func scrollTo(_ element: XCUIElement, _ what: String = "") -> XCUIElement {
+        for _ in 0..<6 where !(element.exists && element.isHittable) { app.swipeUp(); pause(0.6) }
+        return require(element, what)
+    }
+
+    /// Lets the share sheet show (its targets come from the share service), then closes it by
+    /// tapping outside it, as ShareUITests does: a UI test can't use its buttons.
+    func dismissShareSheet() {
+        let sheet = require(app.otherElements["ActivityListView"], "the share sheet")
+        require(sheet.cells.firstMatch, "the share sheet's targets")
+        pause(2.5)
+        let screen = app.frame
+        let box = sheet.frame
+        let y = screen.maxY - box.maxY > box.minY ? (box.maxY + screen.maxY) / 2 : box.minY / 2
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: screen.midX, dy: y)).tap()
+        requireGone(sheet, "the share sheet")
         pause()
     }
 

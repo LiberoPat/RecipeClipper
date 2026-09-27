@@ -20,13 +20,15 @@ internal class CookedPhotosUi(val count: Int, val section: @Composable () -> Uni
 /**
  * The recipe screen's side of "I made this" (#116): the section, the full-screen photo, and the
  * snackbars (a picture that couldn't be added, no camera app, Undo for a deleted photo). Null
- * while the flag is off (no ViewModel) or before the recipe has loaded.
+ * while the flag is off (no ViewModel) or before the recipe has loaded. [onMadeThis] runs once
+ * a photo just added, or a "Mark as cooked" entry (#173), has been closed: the recipe was cooked (#147).
  */
 @Composable
 internal fun cookedPhotosUi(
     viewModel: CookedPhotosViewModel?,
     content: RecipeContent,
-    snackbarHostState: SnackbarHostState
+    snackbarHostState: SnackbarHostState,
+    onMadeThis: () -> Unit = {}
 ): CookedPhotosUi? {
     if (viewModel == null || content !is RecipeContent.Success) return null
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -45,12 +47,20 @@ internal fun cookedPhotosUi(
             snackbarHostState.showSnackbar(addFailed)
         }
     }
-    val deletedMessage = stringResource(R.string.cooked_photo_deleted)
+    LaunchedEffect(state.madeThis) {
+        if (state.madeThis) {
+            onMadeThis()
+            viewModel.onMadeThisHandled()
+        }
+    }
+    val photoDeleted = stringResource(R.string.cooked_photo_deleted)
+    val markDeleted = stringResource(R.string.cooked_mark_deleted)
     val undo = stringResource(R.string.action_undo)
     val deleted = state.deleted
     LaunchedEffect(deleted?.id) {
         if (deleted != null) {
-            val result = snackbarHostState.showSnackbar(deletedMessage, undo, duration = SnackbarDuration.Short)
+            val message = if (deleted.hasPhoto) photoDeleted else markDeleted
+            val result = snackbarHostState.showSnackbar(message, undo, duration = SnackbarDuration.Short)
             if (result == SnackbarResult.ActionPerformed) viewModel.onUndoDelete() else viewModel.onDeleteSettled()
         }
     }
@@ -62,12 +72,13 @@ internal fun cookedPhotosUi(
             onNoteChange = viewModel::onNoteChange,
             onDayChange = viewModel::onDayChange,
             onDelete = viewModel::onDelete,
-            onShare = { photo -> sharePhoto(context, photo.path, content.recipe.name, shareTitle) }
+            onShare = { photo -> photo.path?.let { sharePhoto(context, it, content.recipe.name, shareTitle) } }
         )
     }
     state.open?.let { CookedPhotoViewer(it, state.noteDraft, actions) }
 
-    return CookedPhotosUi(state.photos.size) {
-        CookedPhotosSection(state.photos, sources, viewModel::onOpen)
+    // The recipe's delete confirmation counts photos; a cooking marked without one (#173) isn't a photo.
+    return CookedPhotosUi(state.photos.count { it.hasPhoto }) {
+        CookedPhotosSection(state.photos, sources, viewModel::onOpen, viewModel::onMarkCooked)
     }
 }

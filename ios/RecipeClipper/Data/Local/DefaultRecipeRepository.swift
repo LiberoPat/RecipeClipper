@@ -391,8 +391,9 @@ final class DefaultRecipeRepository: RecipeRepository {
 
     // The photos belong to the recipe (#116): once its delete stands, their files go too.
     func forget(_ deleted: DeletedRecipe) async {
-        guard let photos, !deleted.cookedPhotos.isEmpty else { return }
-        await photos.delete(deleted.cookedPhotos.map(\.fileName))
+        let files = deleted.cookedPhotos.compactMap(\.fileName)
+        guard let photos, !files.isEmpty else { return }
+        await photos.delete(files)
     }
 
     func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> {
@@ -429,6 +430,21 @@ final class DefaultRecipeRepository: RecipeRepository {
         } catch {
             dataLog.error("addSample failed: \(String(describing: error), privacy: .public)")
             return nil
+        }
+    }
+
+    func formatSampleTimes() async {
+        do {
+            let found = try await db.read { conn in try RecipeDao(db: conn).findByUrl(SampleRecipe.sourceUrl) }
+            guard let sample = found, sample.editedAt == nil else { return }
+            let times = [sample.prepTime, sample.cookTime, sample.totalTime]
+            let formatted = times.map { SampleRecipe.formatTime($0, language: sample.language) }
+            guard formatted != times else { return }
+            try await db.write { conn in
+                try RecipeDao(db: conn).setTimes(sample.id, prep: formatted[0], cook: formatted[1], total: formatted[2])
+            }
+        } catch {
+            dataLog.error("formatSampleTimes failed: \(String(describing: error), privacy: .public)")
         }
     }
 }

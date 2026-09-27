@@ -234,6 +234,11 @@ protocol RecipeRepository: AnyObject {
     /// it never removes a recipe. The sample already here keeps its id and content, and counts
     /// as a view. Nil if the save failed.
     func addSample(_ recipe: Recipe) async -> Int64?
+
+    /// A sample saved before #179 kept the file's ISO times ("PT10M"): formats them as
+    /// `SampleRecipe.forLanguage` now does ("10m"). Run at every launch; a no-op once they are
+    /// formatted, when the sample is gone, or when the user has edited it (its times are theirs).
+    func formatSampleTimes() async
 }
 
 extension RecipeRepository {
@@ -246,6 +251,7 @@ extension RecipeRepository {
     // Test doubles that have nothing to do with the tour (#151) needn't implement these.
     func sampleId() async -> Int64? { nil }
     func addSample(_ recipe: Recipe) async -> Int64? { nil }
+    func formatSampleTimes() async {}
 }
 
 /// Schedules the background "time's up" alert for a running step timer, so it still sounds
@@ -575,6 +581,47 @@ extension AppPreferences {
             amountsInSteps: amountsInSteps,
             recipeSort: recipeSort
         )
+    }
+}
+
+/// When each recipe's "Update the pantry" sheet (#147) was last confirmed or dismissed, so one
+/// cooking is never offered twice: finishing cook mode and then adding a photo, or two photos of
+/// one dinner (Android's `UseUpLog`). Recipe id to epoch milliseconds, in the settings' suite
+/// under `pantry_use_up`, as Android's `unit_preferences`; `UserDefaultsAppPreferences` implements
+/// it. Nothing is cleaned up when a recipe is deleted, because nothing needs to be: the ViewModel
+/// keeps only the entries still inside the window each time it writes, and recipe ids are never
+/// reused (AUTOINCREMENT), so a deleted recipe's entry can't hold back another recipe.
+protocol UseUpLog: AnyObject {
+    var useUps: [Int64: Int64] { get set }
+}
+
+enum UseUpLogFormat {
+    static let key = "pantry_use_up"
+
+    /// `id:millis` pairs, comma-separated; anything unreadable is skipped.
+    static func decode(_ text: String?) -> [Int64: Int64] {
+        var useUps: [Int64: Int64] = [:]
+        for pair in (text ?? "").split(separator: ",") {
+            let parts = pair.split(separator: ":", omittingEmptySubsequences: false)
+            guard parts.count == 2,
+                  let id = Int64(parts[0].trimmingCharacters(in: .whitespaces)),
+                  let at = Int64(parts[1].trimmingCharacters(in: .whitespaces)) else { continue }
+            useUps[id] = at
+        }
+        return useUps
+    }
+
+    static func encode(_ useUps: [Int64: Int64]) -> String {
+        useUps.sorted { $0.key < $1.key }.map { "\($0.key):\($0.value)" }.joined(separator: ",")
+    }
+}
+
+/// The use-up log in memory: what a container built for unit tests uses.
+final class MemoryUseUpLog: UseUpLog {
+    var useUps: [Int64: Int64]
+
+    init(_ useUps: [Int64: Int64] = [:]) {
+        self.useUps = useUps
     }
 }
 

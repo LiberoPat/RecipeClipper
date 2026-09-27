@@ -376,7 +376,8 @@ abstract class BackupDao {
                 CookedPhotoEntity(
                     uid = p.photo.id,
                     recipeId = p.recipe.rowId(newRecipeIds),
-                    fileName = storedPhotos.getValue(p.photo.file),
+                    // A cooking marked with no photo (#173) has no file.
+                    fileName = p.photo.file?.let(storedPhotos::getValue),
                     day = p.photo.day,
                     note = p.photo.note,
                     createdAt = p.photo.createdAt.takeIf { it > 0 } ?: now,

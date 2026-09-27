@@ -15,7 +15,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The Recipes screen's sort, as stored in `unit_preferences` (iOS: PreferencesAndSourceTests). */
+/** The Recipes screen's sort, the tour and the pantry use-up log, as stored in `unit_preferences` (iOS: PreferencesAndSourceTests). */
 @RunWith(AndroidJUnit4::class)
 class SharedPrefsAppPreferencesTest {
 
@@ -65,5 +65,17 @@ class SharedPrefsAppPreferencesTest {
     @Test fun `an unknown welcome state reads as undecided`() {
         file.edit().putString("tour_welcome", "LATER").commit()
         assertEquals(WelcomeState.UNDECIDED, SharedPrefsAppPreferences(context).welcome)
+    }
+
+    @Test fun `the pantry use-up log round-trips under pantry_use_up, skipping what it can't read`() {
+        SharedPrefsAppPreferences(context).useUps = mapOf(7L to 1_000L, 12L to 2_000L)
+        assertEquals("7:1000,12:2000", file.getString("pantry_use_up", null))
+        assertEquals(mapOf(7L to 1_000L, 12L to 2_000L), SharedPrefsAppPreferences(context).useUps)
+
+        file.edit().putString("pantry_use_up", "7:1000,x:5,9,:3,12:2000").commit()
+        assertEquals(mapOf(7L to 1_000L, 12L to 2_000L), SharedPrefsAppPreferences(context).useUps)
+
+        SharedPrefsAppPreferences(context).useUps = emptyMap()
+        assertFalse(file.contains("pantry_use_up"))
     }
 }

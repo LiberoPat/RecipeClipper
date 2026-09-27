@@ -17,7 +17,8 @@ data class ShareChoice(
 /**
  * A small file that carries picked recipes and grocery or pantry items to someone else's Recipe
  * Clipper (#149, phase 2). It is the export format (#26, [BackupJson]) with `"kind": "share"`
- * and only what was picked: no lists, plan, menus or photos. Pure, like [BackupMerger]; the iOS
+ * and only what was picked: no lists, plan, menus or cooked entries (photos, or cookings marked
+ * without one, #173); [chosen] drops any a file carries. Pure, like [BackupMerger]; the iOS
  * app has the same rules (`Data/Backup/ShareFile.swift`) and both read
  * `shared/fixtures/backup/share-v1.recipeclipper`.
  *

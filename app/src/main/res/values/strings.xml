@@ -534,6 +534,12 @@
     <string name="cooked_add_failed">That photo couldn\'t be added.</string>
     <string name="camera_unavailable">No camera app is available.</string>
     <string name="cooked_photo_missing">Photo not on this phone</string>
+    <!-- "Mark as cooked" (#173): a cooked entry with no photo. -->
+    <string name="action_mark_cooked">Mark as cooked</string>
+    <string name="cooked_mark">Cooked</string>
+    <string name="cd_cooked_mark">Cooked, no photo, %1$s</string>
+    <string name="cd_delete_cooked_mark">Remove from your cooks</string>
+    <string name="cooked_mark_deleted">Removed from your cooks</string>
     <string name="delete_recipe_body_photo">This removes it from history and any lists it\'s in, with your photo of it. This can\'t be undone.</string>
     <!-- Two or more (one has its own string): every shipped language says "N photos" alike. -->
     <string name="delete_recipe_body_photos" tools:ignore="PluralsCandidate">This removes it from history and any lists it\'s in, with your %1$d photos of it. This can\'t be undone.</string>

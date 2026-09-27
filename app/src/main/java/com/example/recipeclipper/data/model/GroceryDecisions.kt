@@ -86,10 +86,33 @@ object GroceryDecisions {
      * The text Groceries shows for [item]: its core once its trailing text is definitely junk,
      * else as written (a note still shows). Display only: the stored line is never rewritten.
      */
-    fun shownText(item: GroceryItem, decisions: Decisions): String {
-        val words = LanguageWords.forTag(item.language) ?: return item.text
-        val split = split(item.text, words, decisions) ?: return item.text
-        return if (decisions.junkTrailing(split.trailing, words.language)) split.core else item.text
+    fun shownText(item: GroceryItem, decisions: Decisions): String =
+        withoutJunk(item.text, LanguageWords.forTag(item.language), decisions)
+
+    /**
+     * A recipe's ingredient [line] as shown (#174), exactly as Groceries shows a line
+     * ([shownText]): its core once its trailing text is definitely junk, else as written. A
+     * heading ("For the sauce:") is never cut. Display only: the stored line is never rewritten.
+     */
+    fun shownLine(line: String, words: LanguageWords?, decisions: Decisions): String =
+        if (GrocerySources.buyable(line)) withoutJunk(line, words, decisions) else line
+
+    private fun withoutJunk(text: String, words: LanguageWords?, decisions: Decisions): String {
+        if (words == null) return text
+        val split = split(text, words, decisions) ?: return text
+        return if (decisions.junkTrailing(split.trailing, words.language)) split.core else text
+    }
+
+    /**
+     * The questions that can hide junk in a recipe's ingredient [lines] (#174), the ones
+     * Groceries asks about its own ([nameQuestion], then the trailing text), headings left out.
+     * Empty for a language with no words.
+     */
+    fun junkQuestions(lines: List<String>, words: LanguageWords?, decisions: Decisions): List<DecisionQuestion> {
+        if (words == null) return emptyList()
+        val buyable = lines.filter(GrocerySources::buyable)
+        return (buyable.mapNotNull { nameQuestion(it, words) } + buyable.mapNotNull { trailingQuestion(it, words, decisions) })
+            .distinct()
     }
 
     /** The name questions worth asking ([nameQuestion]) for [items]. */
@@ -127,10 +150,12 @@ object GroceryDecisions {
      * once per text and language (the cache), so a lone "2 eggs (dfsafs -" can show "2 eggs".
      */
     fun trailingTexts(items: List<GroceryItem>, decisions: Decisions): List<DecisionQuestion> =
-        items.mapNotNull { item ->
-            val words = LanguageWords.forTag(item.language) ?: return@mapNotNull null
-            split(item.text, words, decisions)?.let { DecisionQuestion.trailingText(it.trailing, words.language) }
-        }.distinct()
+        items.mapNotNull { item -> LanguageWords.forTag(item.language)?.let { trailingQuestion(item.text, it, decisions) } }
+            .distinct()
+
+    /** The trailing-text question for [line], if it has trailing text ([split]). */
+    private fun trailingQuestion(line: String, words: LanguageWords, decisions: Decisions): DecisionQuestion? =
+        split(line, words, decisions)?.let { DecisionQuestion.trailingText(it.trailing, words.language) }
 
     /**
      * Where the table puts [line]'s core once the model's answers cut it (at a separator, or

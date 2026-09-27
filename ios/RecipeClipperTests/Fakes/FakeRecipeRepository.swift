@@ -132,4 +132,9 @@ final class FakeRecipeRepository: RecipeRepository {
         if sample == nil { sample = addSampleResult }
         return sample
     }
+
+    /// How many times `formatSampleTimes` ran (#179).
+    private(set) var formatSampleTimesCalls = 0
+
+    @MainActor func formatSampleTimes() async { formatSampleTimesCalls += 1 }
 }

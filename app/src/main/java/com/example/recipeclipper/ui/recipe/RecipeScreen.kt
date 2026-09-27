@@ -141,7 +141,8 @@ fun RecipeScreen(
     photosViewModel: CookedPhotosViewModel? = if (cookedPhotosEnabled) hiltViewModel() else null,
     // "Send as file" (#149): the navigation passes one; null (screen tests) leaves it out.
     sendFileViewModel: SendFileViewModel? = null,
-    // Using up the pantry when cook mode is finished (#147): the pantry is behind the tab flag.
+    // Using up the pantry when cook mode is finished or "I made this" adds a photo (#147): the
+    // pantry is behind the tab flag.
     useUpViewModel: PantryUseUpViewModel? = if (mealPlanEnabled) hiltViewModel() else null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -283,13 +284,24 @@ fun RecipeScreen(
     if (sendFileViewModel != null) {
         SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
     }
-    val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState)
+    // A photo added with "I made this" (#116), or "Mark as cooked" (#173), once closed: the recipe was cooked, so the
+    // pantry's use-up sheet (#147) gets the lines as shown now, ticked or all.
+    val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState, onMadeThis = {
+        val current = viewModel.uiState.value
+        (current.content as? RecipeContent.Success)?.let { loaded ->
+            useUpViewModel?.onMadeThis(
+                loaded.recipe.id, loaded.words?.language, loaded.ingredients, current.checkedIngredients
+            )
+        }
+    })
 
     // Cook mode just finished with ingredients ticked (#147): they go to the pantry's use-up sheet.
     val finished = state.cookFinished
     LaunchedEffect(finished) {
         if (finished != null) {
-            useUpViewModel?.onCookFinished(finished.language, finished.lines)
+            (content as? RecipeContent.Success)?.let { loaded ->
+                useUpViewModel?.onCookFinished(loaded.recipe.id, finished.language, finished.lines)
+            }
             viewModel.onCookFinishedHandled()
         }
     }

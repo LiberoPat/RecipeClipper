@@ -37,6 +37,51 @@ final class DataRepositoryTests: XCTestCase {
         return recipe
     }
 
+    // MARK: - The tour's sample (#151, #179)
+
+    /// The sample as the app saved it before #179: the file's times as written.
+    private func savedBefore179(_ language: String, editedAt: Int64? = nil) async throws -> Int64 {
+        var sample = SampleRecipe.forLanguage(language)
+        sample.prepTime = "PT10M"; sample.cookTime = "PT25M"; sample.totalTime = "PT35M"
+        sample.editedAt = editedAt
+        let id = await recipes.addSample(sample)
+        return try XCTUnwrap(id)
+    }
+
+    private func times(_ id: Int64) async throws -> [String?] {
+        let row = try await db.get(id)
+        return [row?.prepTime, row?.cookTime, row?.totalTime]
+    }
+
+    func testTheSampleIsSavedWithItsTimesFormatted() async throws {
+        let added = await recipes.addSample(SampleRecipe.forLanguage("en"))
+        let saved = try await times(try XCTUnwrap(added))
+        XCTAssertEqual(saved, ["10m", "25m", "35m"])
+    }
+
+    func testASampleSavedWithIsoTimesIsFormattedInItsLanguageAndNothingElseChanges() async throws {
+        let id = try await savedBefore179("fr")
+        var expected = try await db.get(id)
+        expected?.prepTime = "10min"; expected?.cookTime = "25min"; expected?.totalTime = "35min"
+
+        await recipes.formatSampleTimes()
+
+        let row = try await db.get(id)
+        XCTAssertEqual(row, expected)
+        await recipes.formatSampleTimes()
+        let again = try await db.get(id)
+        XCTAssertEqual(again, expected, "once formatted, a launch changes nothing")
+    }
+
+    func testAnEditedSampleKeepsTheTimesTheUserSaved() async throws {
+        let id = try await savedBefore179("en", editedAt: 800)
+
+        await recipes.formatSampleTimes()
+
+        let kept = try await times(id)
+        XCTAssertEqual(kept, ["PT10M", "PT25M", "PT35M"])
+    }
+
     // MARK: - importFromUrl
 
     func testImportSavesAndReturnsThePersistedRecipe() async throws {

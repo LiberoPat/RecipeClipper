@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.Durations
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.Servings
@@ -103,7 +104,7 @@ internal object MicrodataRecipeParser {
     }.trim()
 
     private fun duration(root: Element, name: String, words: LanguageWords?): String? =
-        props(root, name).firstOrNull()?.let { JsonLdRecipeParser.formatDuration(value(it), words) }
+        props(root, name).firstOrNull()?.let { Durations.format(value(it), words) }
 
     /**
      * The steps in one instructions element. A nested HowToStep or HowToSection item gives its

@@ -1,16 +1,19 @@
 import ImageIO
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// "Your cooks" (#116; Android's CookedPhotosSection): at the foot of the reading view, after
 /// the steps and the note, so the recipe still opens on the recipe. Empty, one quiet line and
-/// "I made this"; with photos, a row of thumbnails (newest cook first, each dated) and a +.
+/// "I made this"; with photos, a row of thumbnails (newest cook first, each dated) and a +. Both
+/// open the camera, the library, or "Mark as cooked" (#173), whose entry is a dated tile.
 struct CookedPhotosSection: View {
     let vm: CookedPhotosViewModel
-    @State private var pickerItems: [PhotosPickerItem] = []
     @State private var pickingLibrary = false
     @State private var takingPhoto = false
     @State private var noCamera = false
+    /// What the library or the camera handed back, added once its screen has gone.
+    @State private var picked: Task<[Data], Never>?
 
     var body: some View {
         let photos = vm.uiState.photos
@@ -32,7 +35,7 @@ struct CookedPhotosSection: View {
                         ForEach(photos) { photo in
                             Button { vm.onOpen(photo) } label: {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    LocalPhoto(path: photo.path, maxPixels: 300, fill: true)
+                                    CookedPicture(photo: photo, maxPixels: 300, fill: true)
                                         .frame(width: 96, height: 96)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                     Text(PlanDayFormat.shortDate(photo.day))
@@ -42,7 +45,11 @@ struct CookedPhotosSection: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(Strings.cookedPhoto(PlanDayFormat.fullDate(photo.day)))
+                            .accessibilityLabel(
+                                photo.hasPhoto
+                                    ? Strings.cookedPhoto(PlanDayFormat.fullDate(photo.day))
+                                    : Strings.cookedMark(PlanDayFormat.fullDate(photo.day))
+                            )
                             .accessibilityAddTraits(.isButton)
                         }
                         addMenu {
@@ -55,21 +62,17 @@ struct CookedPhotosSection: View {
                 }
             }
         }
-        .photosPicker(isPresented: $pickingLibrary, selection: $pickerItems, maxSelectionCount: 10, matching: .images)
-        .onChange(of: pickerItems) { _, items in
-            guard !items.isEmpty else { return }
-            pickerItems = []
-            // Loading the picked items is the picker's own platform work; the data goes to the VM.
-            Task {
-                var pictures: [Data] = []
-                for item in items {
-                    if let data = try? await item.loadTransferable(type: Data.self) { pictures.append(data) }
-                }
-                vm.onAdd(pictures)
-            }
+        // The first new photo opens full screen, so it is added only once the picker has gone
+        // (each presentation's onDismiss): a cover presented while the picker is still leaving
+        // gets no safe area, its × under the status bar and out of reach (#180). Hence the
+        // library as a PHPicker in a sheet rather than `.photosPicker`, which says nothing when
+        // it has gone.
+        .sheet(isPresented: $pickingLibrary, onDismiss: addPicked) {
+            LibraryPicker { results in picked = Task { await LibraryPicker.pictures(results) } }
+                .ignoresSafeArea()
         }
-        .fullScreenCover(isPresented: $takingPhoto) {
-            CameraPicker { data in vm.onAdd([data]) }.ignoresSafeArea()
+        .fullScreenCover(isPresented: $takingPhoto, onDismiss: addPicked) {
+            CameraPicker { data in picked = Task { [data] } }.ignoresSafeArea()
         }
         .alert(Strings.cameraUnavailable, isPresented: $noCamera) {}
         .alert(Strings.cookedAddFailed, isPresented: Binding(
@@ -77,15 +80,46 @@ struct CookedPhotosSection: View {
         )) {}
     }
 
-    /// Camera or library, from whatever `label` draws.
+    /// Hands the picked pictures to the VM, once the picker's dismissal has finished.
+    private func addPicked() {
+        guard let picked else { return }
+        self.picked = nil
+        Task { vm.onAdd(await picked.value) }
+    }
+
+    /// Camera, library or "Mark as cooked" (#173), from whatever `label` draws.
     private func addMenu<Label: View>(@ViewBuilder label: () -> Label) -> some View {
         Menu {
             Button(Strings.takePhoto) {
                 if UIImagePickerController.isSourceTypeAvailable(.camera) { takingPhoto = true } else { noCamera = true }
             }
             Button(Strings.choosePhotos) { pickingLibrary = true }
+            Button(Strings.markCooked) { vm.onMarkCooked() }
         } label: {
             label()
+        }
+    }
+}
+
+/// An entry's picture: the stored photo, or for a cooking marked with no photo (#173) a tick and
+/// "Cooked" in its place.
+struct CookedPicture: View {
+    let photo: CookedPhoto
+    let maxPixels: Int
+    var fill = false
+
+    var body: some View {
+        if let path = photo.path {
+            LocalPhoto(path: path, maxPixels: maxPixels, fill: fill)
+        } else {
+            VStack(spacing: 4) {
+                Image(systemName: "checkmark").foregroundStyle(Palette.accentText)
+                Text(Strings.cookedMarkLabel)
+                    .textStyle(Typography.labelMedium)
+                    .foregroundStyle(Palette.muted)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Palette.surfaceContainer)
         }
     }
 }
@@ -128,6 +162,50 @@ struct LocalPhoto: View {
             kCGImageSourceThumbnailMaxPixelSize: max,
         ]
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
+}
+
+/// The system photo library (PHPicker, out of process: no library access asked for), up to ten
+/// pictures, handed back as picked; the store reads each one's data.
+struct LibraryPicker: UIViewControllerRepresentable {
+    let onPick: ([PHPickerResult]) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var configuration = PHPickerConfiguration()
+        configuration.filter = .images
+        configuration.selectionLimit = 10
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let parent: LibraryPicker
+        init(_ parent: LibraryPicker) { self.parent = parent }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            if !results.isEmpty { parent.onPick(results) }
+            parent.dismiss()
+        }
+    }
+
+    /// Each picture's data, in the order picked; one that can't be read is left out.
+    static func pictures(_ results: [PHPickerResult]) async -> [Data] {
+        var pictures: [Data] = []
+        for result in results {
+            let data: Data? = await withCheckedContinuation { continuation in
+                result.itemProvider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in
+                    continuation.resume(returning: data)
+                }
+            }
+            if let data { pictures.append(data) }
+        }
+        return pictures
     }
 }
 

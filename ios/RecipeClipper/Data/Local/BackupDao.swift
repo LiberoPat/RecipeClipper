@@ -268,7 +268,12 @@ struct BackupDao {
         }
         let photos = CookedPhotoDao(db: db)
         for p in plan.newCookedPhotos {
-            guard let fileName = storedPhotos[p.photo.file] else { continue }
+            // A cooking marked with no photo (#173) has no file; a photo comes in only with its picture.
+            var fileName: String?
+            if let file = p.photo.file {
+                guard let stored = storedPhotos[file] else { continue }
+                fileName = stored
+            }
             try photos.insert(CookedPhotoRecord(
                 recipeId: rowId(p.recipe, newRecipeIds), fileName: fileName, day: p.photo.day, note: p.photo.note,
                 createdAt: p.photo.createdAt > 0 ? p.photo.createdAt : now,

@@ -53,13 +53,23 @@ internal class CookedPhotoActions(
     val onShare: (CookedPhoto) -> Unit
 )
 
-/** One photo, full screen: the picture, its date (tap to change) and its note, edited in place. */
+/**
+ * One photo, full screen: the picture, its date (tap to change) and its note, edited in place.
+ * A cooking marked with no photo (#173) shows "Cooked" in place of the picture, and no Share.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CookedPhotoViewer(photo: CookedPhoto, noteDraft: String, actions: CookedPhotoActions) {
     var picking by rememberSaveable { mutableStateOf(false) }
     val date = fullDate(photo.day)
-    Dialog(onDismissRequest = actions.onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    // Edge to edge (#180): the window neither pans nor resizes for the keyboard, and the column's
+    // safeDrawingPadding takes the bars and the IME, so the picture gives up its height and Close
+    // and the note both stay on screen while typing. With the default the window panned and the
+    // IME padding lifted the column again, pushing Close off the top.
+    Dialog(
+        onDismissRequest = actions.onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -73,7 +83,12 @@ internal fun CookedPhotoViewer(photo: CookedPhoto, noteDraft: String, actions: C
                         }
                     }
                     IconButton(onClick = actions.onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete_photo))
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(
+                                if (photo.hasPhoto) R.string.cd_delete_photo else R.string.cd_delete_cooked_mark
+                            )
+                        )
                     }
                 }
                 CookedImage(photo, Modifier.fillMaxWidth().weight(1f), ContentScale.Fit)

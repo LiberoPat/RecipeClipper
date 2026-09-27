@@ -195,6 +195,62 @@ class BackupJsonTest {
         assertTrue(root.getJSONArray("recipes").getJSONObject(1).isNull("imageUrl"))
     }
 
+    /** "Mark as cooked" (#173): the shared fixture, read the same way by iOS's `BackupJsonTests`. */
+    @Test fun `a cooking with no photo reads from its own section, with no file`() {
+        val backup = decodeOrFail(fixture("backup-v1-cooked.json"))
+        // The one naming no recipe in the file is left out, as a photo would be.
+        assertEquals(listOf("p-photo", "c-weeknight"), backup.cookedPhotos.map { it.id })
+        assertEquals(
+            BackupCookedPhoto("c-weeknight", "r-soup", 20_007, "Doubled the garlic", 1789000000900, 1789000000950, null),
+            backup.cookedPhotos[1]
+        )
+
+        // A plain JSON file brings no pictures: the photo stays out, the cooking with none comes in,
+        // and its recipe with it, past a full history.
+        val plan = BackupMerger.plan(
+            backup = backup, existingRecipes = emptyList(), existingLists = emptyList(), maxSortOrder = 0,
+            historyLimit = 0, newUid = { "fresh" }, availablePhotoFiles = emptySet()
+        )
+        assertEquals(listOf("r-soup"), plan.newRecipes.map { it.id })
+        assertEquals(listOf("c-weeknight"), plan.newCookedPhotos.map { it.photo.id })
+        assertEquals(0, plan.summary.photosAdded)
+    }
+
+    /**
+     * An older app requires a `file` on every `cookedPhotos` entry and ignores sections it doesn't
+     * know (#173): so a cooking with no photo is written apart, and the file without that section,
+     * which is what an older app reads, still decodes, with the photos.
+     */
+    @Test fun `a cooking with no photo is written in its own section, so an older reader skips it`() {
+        val backup = decodeOrFail(fixture("backup-v1-cooked.json"))
+        val root = org.json.JSONObject(BackupJson.encode(backup))
+        assertEquals(1, root.getInt("formatVersion"))
+        val photos = root.getJSONArray("cookedPhotos")
+        assertEquals(1, photos.length())
+        assertEquals("photos/p-photo.jpg", photos.getJSONObject(0).getString("file"))
+        val without = root.getJSONArray("cookedWithoutPhotos").getJSONObject(0)
+        assertEquals("c-weeknight", without.getString("id"))
+        assertTrue(!without.has("file"))
+        assertEquals(backup, decodeOrFail(root.toString()))
+
+        root.remove("cookedWithoutPhotos")
+        assertEquals(listOf("p-photo"), decodeOrFail(root.toString()).cookedPhotos.map { it.id })
+
+        // Ids are one set across both sections.
+        val head = """{"format":"recipe-clipper-backup","formatVersion":1,"recipes":[{"id":"a","sourceUrl":"https://a.b/c","title":"T"}],"""
+        assertEquals(
+            BackupError.Malformed("cookedWithoutPhotos[0].id"),
+            error(
+                head + """"cookedPhotos":[{"id":"x","recipeId":"a","day":1,"file":"photos/x.jpg"}],""" +
+                    """"cookedWithoutPhotos":[{"id":"x","recipeId":"a","day":1}]}"""
+            )
+        )
+        assertEquals(
+            BackupError.Malformed("cookedWithoutPhotos[0].day"),
+            error(head + """"cookedWithoutPhotos":[{"id":"y","recipeId":"a"}]}""")
+        )
+    }
+
     @Test fun `an empty export is valid`() {
         val backup = decodeOrFail("""{"format":"recipe-clipper-backup","formatVersion":1}""")
         assertEquals(Backup(0, emptyList(), emptyList(), emptyList()), backup)

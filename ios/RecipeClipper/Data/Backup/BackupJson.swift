@@ -19,8 +19,16 @@ import Foundation
 ///                     "updatedAt" }],
 ///   "menus":       [{ "id", "name", "updatedAt" }],
 ///   "menuEntries": [{ "id", "menuId", "dayOffset", "mealTypeId", "recipeId", "servings", "note",
-///                     "sortOrder", "updatedAt" }] }
+///                     "sortOrder", "updatedAt" }],
+///   "cookedPhotos": [{ "id", "recipeId", "day", "note", "createdAt", "updatedAt", "file" }],
+///   "cookedWithoutPhotos": [{ "id", "recipeId", "day", "note", "createdAt", "updatedAt" }] }
 /// ```
+///
+/// `cookedWithoutPhotos` (#173) holds the cookings marked with no photo, the same fields as a
+/// photo's without `file`, written only when there are some. It is its own section, not a
+/// `cookedPhotos` entry with no `file`, because an older app requires that `file` and would
+/// refuse the whole file as malformed; an unknown section it simply ignores, importing the rest.
+/// So the format version stays 1. Ids are unique across both sections.
 ///
 /// A shared file (#149, `ShareFile`) is the same format with a top-level `"kind": "share"`,
 /// holding only what was picked; a backup has no `kind`.
@@ -60,7 +68,11 @@ enum BackupJson {
         ]
         // Only when there are some (#116): an export without photos is the same file as before.
         var withPhotos = root
-        if !backup.cookedPhotos.isEmpty { withPhotos["cookedPhotos"] = backup.cookedPhotos.map(json) }
+        let withPhoto = backup.cookedPhotos.filter { $0.file != nil }
+        let withoutPhoto = backup.cookedPhotos.filter { $0.file == nil }
+        if !withPhoto.isEmpty { withPhotos["cookedPhotos"] = withPhoto.map(json) }
+        // A cooking marked with no photo (#173): its own section, which an older app ignores.
+        if !withoutPhoto.isEmpty { withPhotos["cookedWithoutPhotos"] = withoutPhoto.map(json) }
         // Only on a shared file (#149), so a backup is the same file as before.
         if backup.isShare { withPhotos["kind"] = Backup.kindShare }
         guard let data = try? JSONSerialization.data(
@@ -250,11 +262,34 @@ enum BackupJson {
         }
         try requireUniqueIds(menuEntries.map(\.id), "menuEntries")
 
-        // #116: a photo naming no recipe in the file is left out (it belongs to its recipe).
-        let cookedPhotos = try top.objects(root, "cookedPhotos").compactMap { path, o -> BackupCookedPhoto? in
+        let cookedPhotos = try readCooked(top, root, "cookedPhotos", recipeIds: recipeIds, withPhoto: true)
+        let cookedWithoutPhotos = try readCooked(top, root, "cookedWithoutPhotos", recipeIds: recipeIds, withPhoto: false)
+        var cookedIds = Set<String>()
+        try requireUniqueIds(cookedPhotos.map(\.id), "cookedPhotos", seen: &cookedIds)
+        try requireUniqueIds(cookedWithoutPhotos.map(\.id), "cookedWithoutPhotos", seen: &cookedIds)
+
+        return Backup(
+            exportedAt: exportedAt, recipes: recipes, lists: lists, memberships: memberships,
+            pantry: pantry, groceries: groceries, mealTypes: mealTypes, mealPlan: mealPlan,
+            menus: menus, menuEntries: menuEntries, cookedPhotos: cookedPhotos + cookedWithoutPhotos,
+            isShare: root["kind"] as? String == Backup.kindShare
+        )
+    }
+
+    /// One section of cooked entries: `cookedPhotos` (#116), each with its picture's `file`, or
+    /// `cookedWithoutPhotos` (#173), whose `file` is ignored. An entry naming no recipe in the
+    /// file is left out (it belongs to its recipe).
+    private static func readCooked(
+        _ top: Reader, _ root: [String: Any], _ section: String, recipeIds: Set<String>, withPhoto: Bool
+    ) throws -> [BackupCookedPhoto] {
+        try top.objects(root, section).compactMap { path, o -> BackupCookedPhoto? in
             let r = Reader(path: path)
             let id = try r.requiredId(o, "id")
-            guard let file = try r.string(o, "file"), isPhotoFile(file) else { throw Malformed(path: "\(path).file") }
+            var file: String?
+            if withPhoto {
+                guard let found = try r.string(o, "file"), isPhotoFile(found) else { throw Malformed(path: "\(path).file") }
+                file = found
+            }
             guard let day = try r.int64(o, "day") else { throw Malformed(path: "\(path).day") }
             guard let recipeId = try r.string(o, "recipeId"), recipeIds.contains(recipeId) else { return nil }
             return BackupCookedPhoto(
@@ -263,14 +298,6 @@ enum BackupJson {
                 createdAt: try r.int64(o, "createdAt") ?? 0, updatedAt: try r.int64(o, "updatedAt") ?? 0, file: file
             )
         }
-        try requireUniqueIds(cookedPhotos.map(\.id), "cookedPhotos")
-
-        return Backup(
-            exportedAt: exportedAt, recipes: recipes, lists: lists, memberships: memberships,
-            pantry: pantry, groceries: groceries, mealTypes: mealTypes, mealPlan: mealPlan,
-            menus: menus, menuEntries: menuEntries, cookedPhotos: cookedPhotos,
-            isShare: root["kind"] as? String == Backup.kindShare
-        )
     }
 
     /// A picture's path in the zip (#116): under `photos/`, one plain name, never `..` or a folder.
@@ -280,6 +307,11 @@ enum BackupJson {
 
     private static func requireUniqueIds(_ ids: [String], _ section: String) throws {
         var seen = Set<String>()
+        try requireUniqueIds(ids, section, seen: &seen)
+    }
+
+    /// Unique within `section` and against the ids in `seen` (another section's, #173).
+    private static func requireUniqueIds(_ ids: [String], _ section: String, seen: inout Set<String>) throws {
         for (i, id) in ids.enumerated() where !seen.insert(id).inserted {
             throw Malformed(path: "\(section)[\(i)].id")
         }
@@ -470,15 +502,17 @@ enum BackupJson {
     }
 
     private static func json(_ p: BackupCookedPhoto) -> [String: Any] {
-        [
+        var entry: [String: Any] = [
             "id": p.id,
             "recipeId": p.recipeId,
             "day": NSNumber(value: p.day),
             "note": p.note ?? NSNull(),
             "createdAt": NSNumber(value: p.createdAt),
             "updatedAt": NSNumber(value: p.updatedAt),
-            "file": p.file,
         ]
+        // A cooking marked with no photo (#173) has no file, and no key for one.
+        if let file = p.file { entry["file"] = file }
+        return entry
     }
 
     private static func json(_ l: BackupList) -> [String: Any] {

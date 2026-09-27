@@ -17,7 +17,9 @@ import UIKit
 ///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline;
 ///   - `-uiTestReceiveFile` opens a canned shared file (#149) at launch (`receivedFileURL`);
 ///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on;
-///   - the first-run tour (#151) done, unless `-uiTestTour` asks for a fresh install's.
+///   - the first-run tour (#151) done, unless `-uiTestTour` asks for a fresh install's;
+///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`;
+///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder.
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -26,6 +28,7 @@ import UIKit
 ///   cook      one recipe with timed steps, for cook mode — see `seedCook`
 ///   chef      one recipe with a long step, for Chef mode (#100); every launch gets a stub model
 ///   walkthrough  twenty realistic recipes for the walkthrough videos (#106) — see UITestWalkthroughSeed
+///   walkthroughPantry  the same, with a stocked pantry and the Adobo on the grocery list
 enum UITestSeeding {
     static let flag = "-uiTestSeed"
     static let keepPrefsFlag = "-uiTestKeepPrefs"
@@ -71,6 +74,14 @@ enum UITestSeeding {
     /// The first-run tour (#151) as a fresh install has it. Without it the tour is done, so no
     /// welcome or tip gets in the way of the other suites.
     static let tourFlag = "-uiTestTour"
+
+    /// Chef mode's model as a phone that can't run it answers (#144), for the walkthrough video.
+    static let chefUnsupportedFlag = "-uiTestChefUnsupported"
+
+    /// The automatic backup copy (#150) with a throwaway local folder standing in for iCloud
+    /// Drive, which a simulator doesn't have, for the walkthrough video. Without it the UI-test
+    /// container keeps no copy and Settings shows no backup rows.
+    static let backupFolderFlag = "-uiTestBackupFolder"
 
     /// The title every import resolves to under test.
     static let stubRecipeTitle = "Stub Chicken Soup"
@@ -129,6 +140,7 @@ enum UITestSeeding {
         let photoDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestPhotos")
         try? FileManager.default.removeItem(at: photoDirectory)
         let photoStore = FilePhotoStore(directory: photoDirectory)
+        let backupRepository = DefaultBackupRepository(db: database, clock: clock, photos: photoStore)
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
                 db: database, source: StubRecipeSource(), clock: clock, library: libraryLimit, photos: photoStore
@@ -137,7 +149,7 @@ enum UITestSeeding {
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
-            backupRepository: DefaultBackupRepository(db: database, clock: clock, photos: photoStore),
+            backupRepository: backupRepository,
             preferences: preferences,
             clock: clock,
             clipFixtureHTML: clipFixtureHTML,
@@ -146,6 +158,9 @@ enum UITestSeeding {
             decisionRepository: decisions,
             libraryMirror: libraryLimit,
             cookedPhotoRepository: DefaultCookedPhotoRepository(db: database, store: photoStore, clock: clock),
+            autoBackup: arguments.contains(backupFolderFlag)
+                ? AutoBackup(backups: backupRepository, folder: UITestBackupFolder(), store: MemoryAutoBackupStore(), clock: clock)
+                : nil,
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             tourPreferences: preferences
         )
@@ -185,6 +200,9 @@ enum UITestSeeding {
                     case "cook": try seedCook(conn, now: now)
                     case "chef": try seedChef(conn, now: now)
                     case "walkthrough": try UITestWalkthroughSeed.seed(conn, now: now)
+                    case "walkthroughPantry":
+                        try UITestWalkthroughSeed.seed(conn, now: now)
+                        try UITestWalkthroughSeed.seedPantry(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
                 }
@@ -296,10 +314,41 @@ private struct StubRecipeSource: RecipeSource {
     }
 }
 
+/// The automatic copy's folder under `-uiTestBackupFolder` (#150): a throwaway local folder,
+/// emptied at launch, in place of the iCloud Drive folder a simulator doesn't have.
+private final class UITestBackupFolder: BackupFolder, @unchecked Sendable {
+    private let directory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestBackups", isDirectory: true)
+
+    init() {
+        try? FileManager.default.removeItem(at: directory)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    func destination() async -> BackupDestination { .ready }
+
+    func list() async -> [String]? { try? FileManager.default.contentsOfDirectory(atPath: directory.path) }
+
+    func write(name: String, json: String, photos: [String: URL]) async -> String? {
+        let data = BackupArchive.write(json: json, photos: photos.sorted { $0.key < $1.key }.map { (path: $0.key, file: $0.value) })
+        do {
+            try data.write(to: directory.appendingPathComponent(name), options: .atomic)
+            return name
+        } catch {
+            return nil
+        }
+    }
+
+    func delete(name: String) async {
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+    }
+}
+
 /// Chef mode's model under UI test (#100): English only, one canned short step, so the tests
 /// never depend on Apple Intelligence being on the simulator.
 private final class UITestStepShortener: StepShortener {
-    func support() async -> ChefSupport { .available(["en"]) }
+    func support() async -> ChefSupport {
+        ProcessInfo.processInfo.arguments.contains(UITestSeeding.chefUnsupportedFlag) ? .unsupported : .available(["en"])
+    }
 
     func shorten(_ step: String, language: String) async -> String? {
         switch step {

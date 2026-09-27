@@ -90,6 +90,21 @@ final class ShareFileTests: XCTestCase {
         XCTAssertTrue(file.lists.isEmpty && file.memberships.isEmpty && file.cookedPhotos.isEmpty)
     }
 
+    /// A shared file carries no cooked entries (#116, #173); any a file holds, with a photo or
+    /// without, never merge.
+    func testCookedEntriesInASharedFileAreNeverMergedWithAPhotoOrWithout() throws {
+        var file = ShareFile.make(now: 9, recipes: [recipe("a")])
+        file.cookedPhotos = [
+            BackupCookedPhoto(id: "p", recipeId: "a", day: 20_000, note: nil, createdAt: 1, updatedAt: 1, file: "photos/p.jpg"),
+            BackupCookedPhoto(id: "c", recipeId: "a", day: 20_001, note: "Mine", createdAt: 1, updatedAt: 1, file: nil),
+        ]
+        let received = try decodeOrFail(BackupJson.encode(file))
+        XCTAssertEqual(received.cookedPhotos.count, 2)
+
+        let chosen = ShareFile.chosen(received, ShareChoice(recipeIds: ["a"], groceryIds: []), now: 50)
+        XCTAssertTrue(chosen.cookedPhotos.isEmpty)
+    }
+
     func testOnlyWhatWasTickedIsMergedEachNewToThisPhone() throws {
         let file = ShareFile.make(now: 9, recipes: [recipe("a"), recipe("b")], groceries: [grocery("g1", "a"), grocery("g2", "b")])
         let chosen = ShareFile.chosen(file, ShareChoice(recipeIds: ["b"], groceryIds: ["g1", "g2"]), now: 50)
