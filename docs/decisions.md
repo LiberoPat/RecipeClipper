@@ -2166,7 +2166,11 @@ the app is exactly as before (the history cap of 50 unprotected recipes).
     ViewModel holds one.
   - iOS: StoreKit 2 in `StoreKitEntitlements`, listening to
     `Transaction.updates` (Ask to Buy approvals, refunds). Locally the scheme
-    runs against `ios/RecipeClipper.storekit`.
+    runs against `ios/RecipeClipper.storekit`. `refresh()` after an update
+    reads `currentEntitlements` without waiting: checked in #172, an update
+    arrives only once `currentEntitlements` lists it (58 of 58 on just-booted
+    simulators), and `purchase()` trusts the transaction it gets back. Only
+    the tests' `SKTestSession.buyProduct` returns early.
   - Both cache the last answer (Android its own `entitlements` prefs file,
     not in the backup include list; iOS `UserDefaults`), so a share that
     cold-starts the app isn't judged "locked" while the store is still being
