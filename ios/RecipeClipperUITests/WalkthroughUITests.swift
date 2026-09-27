@@ -35,6 +35,13 @@ final class WalkthroughUITests: RecipeUITestCase {
         pause()
     }
 
+    /// Clips 01–11: the app as a fresh install has it, the build's flag defaults on (#152), as
+    /// Android's walkthroughs have them, and `flags` too. (A UI-test launch otherwise turns every
+    /// flag off but the ones it names.)
+    func startAsShipped(flags: [String]) {
+        start(flags: flags, extraArguments: ["-uiTestDefaultFlags"])
+    }
+
     /// A fresh install's first launch (#151): no recipes, the welcome over Home (which `launch`
     /// waits for, so it can't be used).
     func startFirstRun(flags: [String]) {

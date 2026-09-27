@@ -32,7 +32,7 @@ extension WalkthroughUITests {
     }
 
     func test06_recipesScreen() {
-        start(flags: [])
+        startAsShipped(flags: [])
         openRecipes()
         pause()
         app.swipeUp()
@@ -56,7 +56,7 @@ extension WalkthroughUITests {
     }
 
     func test07_amountsInSteps() {
-        start(flags: ["amountsInSteps"])
+        startAsShipped(flags: ["amountsInSteps"])
         require(app.buttons["Settings"]).tap()
         pause()
         flipSwitch("Amounts in steps")
@@ -69,7 +69,7 @@ extension WalkthroughUITests {
     }
 
     func test08_chefModeStubModel() {
-        start(flags: ["chefMode"])
+        startAsShipped(flags: ["chefMode"])
         require(app.buttons["Settings"]).tap()
         pause()
         flipSwitch("Chef mode")
@@ -90,7 +90,7 @@ extension WalkthroughUITests {
     }
 
     func test09_freeTier() {
-        start(flags: ["freeTier"])
+        startAsShipped(flags: ["freeTier"])
         openRecipes()
         require(app.staticTexts["recipes.count"], "the count")
         pause(2)
@@ -102,7 +102,7 @@ extension WalkthroughUITests {
     }
 
     func test10_pageExtractionLine() {
-        start(flags: ["llmExtraction"])
+        startAsShipped(flags: ["llmExtraction"])
         open("Grandma's Lentil Soup")
         require(textContaining("Picked from the page text"), "the provenance line")
         pause(3)
