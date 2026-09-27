@@ -69,6 +69,18 @@ final class UserDefaultsAppPreferencesTests: XCTestCase {
         XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).recipeSort, .recentlyViewed)
     }
 
+    func testThePantryUseUpLogRoundTripsUnderPantryUseUpSkippingWhatItCantRead() {
+        UserDefaultsAppPreferences(defaults: defaults).useUps = [12: 2_000, 7: 1_000]
+        XCTAssertEqual(defaults.string(forKey: "pantry_use_up"), "7:1000,12:2000")
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).useUps, [7: 1_000, 12: 2_000])
+
+        defaults.set("7:1000,x:5,9,:3,12:2000", forKey: "pantry_use_up")
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).useUps, [7: 1_000, 12: 2_000])
+
+        UserDefaultsAppPreferences(defaults: defaults).useUps = [:]
+        XCTAssertNil(defaults.object(forKey: "pantry_use_up"))
+    }
+
     func testAStoredGramsReadsAsMetric() {
         // GRAMS was a fourth option until #17. Its users wanted weights, not As written.
         defaults.set("GRAMS", forKey: "unit_system")

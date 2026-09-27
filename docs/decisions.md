@@ -2833,19 +2833,34 @@ Owner's decisions: subtract **once, at the end of cooking, through one sheet**, 
 (people tick to gather, untick by mistake, and change servings mid-recipe); and a line that
 can't be worked out **asks each time** (keep, running low or out), never guessed.
 
-- **The trigger is cook mode's "Done — finish"** (the last step's button, which ends cook mode),
-  with at least one ingredient ticked. Chosen over the issue's two candidates:
-  - "I made this" (#116) is a photo action (camera or library) at the foot of the reading view.
-    Each photo is its own "cooked today" entry, so one dinner photographed twice would subtract
-    twice, and a cook who never takes photos would never use anything up.
+- **Two triggers: cook mode's "Done — finish"** (the last step's button, which ends cook mode),
+  with at least one ingredient ticked, **and a photo added with "I made this"** (#116; the owner's
+  decision of 2026-09-26, because some cooks don't use cook mode, and it also covers recipes with
+  no steps).
   - Leaving cook mode by Exit is a pause, not the end: cook mode keeps its place "so it is never
-    lost by a stray tap on Exit", and cooks leave to check something and come back.
-  - A finished run finishes again only after starting fresh (all steps done restarts cook mode
-    from step 1), so a recipe cooked once opens the sheet once, and nothing changes without its
-    confirm. What it misses: recipes with no steps, and cooks who never use cook mode. Adding
-    "I made this" as a second way in would need a "used up for this cook already" record; the
-    owner can ask for it.
-- **The sheet lists the ticked lines' pantry items**, the lines as the recipe showed them
+    lost by a stray tap on Exit", and cooks leave to check something and come back. It never
+    triggers.
+  - "I made this" offers the sheet once the new photo's full-screen view (its note and date) is
+    closed, so the sheet never covers the note; on iOS from the cover's dismissal, since one view
+    can't present a sheet while its cover is still leaving. A photo deleted straight away (the
+    wrong picture) offers nothing. The lines: the ticked ones if any are ticked (what cook mode
+    hands over), else every line, since the cook says they made the recipe.
+- **One cooking is offered once.** Each photo is its own "cooked today" entry, and a cook who
+  finishes cook mode may add a photo too, so both triggers check when that recipe's sheet was
+  last **confirmed or dismissed**, and offer it only if that was **12 hours ago or more**: a
+  dinner, its leftovers photographed later and a second photo all fit inside it, while cooking
+  the same recipe twice within 12 hours is rare (and the Pantry can be edited by hand). Undo puts
+  the time back as it was, since nothing was used up after all. A sheet left open by a killed
+  app records nothing, as nothing changed.
+  - **Stored as one preferences key, not a column.** `pantry_use_up` in `unit_preferences`
+    (iOS: the settings' UserDefaults suite), `id:millis` pairs. A `recipes` column would have
+    cost migration 14→15, its `MigrationTest`, the iOS `user_version` step and a device run, for
+    a value that means nothing after 12 hours. Each write keeps only the entries still inside
+    the window, and recipe ids are never reused (AUTOINCREMENT on both platforms), so a deleted
+    recipe's entry can't hold back another and none needs cleaning on delete; the key holds
+    only the recipes settled in the 12 hours before its last write. It is backed up with the settings (and restored
+    with the database they match); the export file doesn't carry it, as it carries no settings.
+- **The sheet lists the handed-over lines' pantry items**, the lines as the recipe showed them
   (scaled to the servings used and converted to the chosen units). A line is matched as Have/Buy
   matches it (`PantryMatch.find`, and the model's cached definite "same" when there is one; no
   new question is asked here). Staples are left out (a staple is never Buy, so it never runs out
@@ -2881,3 +2896,40 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
   on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
   off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
   so a killed app loses it with nothing changed. Behind `mealPlan`, like every pantry feature.
+
+## The recipe screen's ViewModel, split into collaborators (#169)
+
+`RecipeViewModel` had grown to 821 lines on Android and 715 on iOS, ten constructor
+dependencies on Android, and five jobs in one file, so every reading-view feature (Chef mode,
+amounts in steps, planned servings, photos, #147's end of cooking) landed there and collided
+with parallel work. An audit found MVVM otherwise followed cleanly, so the fix is inside the
+screen, not a new layer. A behaviour-preserving refactor: no UI, string, state or behaviour
+change, and every existing ViewModel, screen and UI test passes unchanged.
+
+- **`RecipeRenderer`** (pure; `ui/recipe`, iOS `UI/Recipe`): the recipe, its servings, the
+  settings (units, liquids, oven unit, amounts in steps), the model's decisions and Chef mode's
+  short steps in, `RecipeContent.Success` out. It composes logic the corpus already pinned
+  (scaling, conversion, timers, amounts in steps); its own rules (the servings clamp, the factor,
+  short steps shown only one per step) are pinned by the corpus's `Render` rows, generated from
+  the Kotlin like every other row.
+- **`CookSession`** (pure over `Clock`): cook mode's state machine (start and resume, select,
+  done, the ingredients bar, the end of cooking #147 hooks into) and the timers as wall-clock
+  deadlines, the one thing it keeps. It never touches alarms: each transition returns what to
+  schedule or cancel, and the ViewModel keeps the tick loop (a coroutine, a `Task`) and the
+  `TimerAlarmScheduler` calls. That's where #10-style progress rules now change, in one place
+  tested without a ViewModel.
+- **`ChefMode`**: the on-device model's two inputs to the renderer, short steps (#100) and
+  count-bracket decisions (#104), with their repositories and flags. Not pure (it runs the model
+  and follows the repositories on the screen's scope), so it says when an input changed and the
+  ViewModel renders again, synchronously, as before. On iOS it goes with its screen and cancels
+  its writing then, as the ViewModel's `deinit` used to.
+- **The ViewModel stays the single owner of `uiState`** (one `StateFlow`, one `private(set) var`)
+  and keeps loading and recovery, the serialized writes (ticks, notes, cook progress and
+  servings, in order) and `shareText`. Screens don't change. The constructors are unchanged, so
+  Hilt, the navigation code and every test build it as before.
+- **Where the platforms already differed, they still do,** since each side kept its own
+  behaviour: iOS doesn't follow the `chefMode` flag live (it reads it when the setting changes),
+  and iOS's cook mode on a recipe with no steps doesn't write progress. Neither is visible to a
+  cook; aligning them would be a behaviour change, so it's left for its own issue if wanted.
+- **Not done:** a use-case layer across the app (most screens would get thin pass-throughs);
+  the AI recommendation pipeline (#164–#166) is where one would earn its place.

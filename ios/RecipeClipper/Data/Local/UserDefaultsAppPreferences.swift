@@ -78,6 +78,20 @@ final class UserDefaultsAppPreferences: AppPreferences {
     }
 }
 
+/// When each recipe's pantry use-up sheet was last settled (#147), in the same suite as the settings.
+extension UserDefaultsAppPreferences: UseUpLog {
+    var useUps: [Int64: Int64] {
+        get { UseUpLogFormat.decode(defaults.string(forKey: UseUpLogFormat.key)) }
+        set {
+            if newValue.isEmpty {
+                defaults.removeObject(forKey: UseUpLogFormat.key)
+            } else {
+                defaults.set(UseUpLogFormat.encode(newValue), forKey: UseUpLogFormat.key)
+            }
+        }
+    }
+}
+
 /// The first-run tour's bookkeeping (#151), in the same suite as the settings.
 extension UserDefaultsAppPreferences: TourPreferences {
     var welcome: WelcomeState {

@@ -49,6 +49,8 @@ final class AppContainer {
     /// The first-run tour (#151): its rules, and the tips every screen reads from the environment.
     let firstRunTour: FirstRunTour
     let tips: TipsViewModel
+    /// When each recipe's pantry use-up sheet was last settled (#147).
+    let useUpLog: UseUpLog
 
     init(
         recipeRepository: RecipeRepository,
@@ -76,8 +78,10 @@ final class AppContainer {
         autoBackup: AutoBackup? = nil,
         shareFileRepository: ShareFileRepository? = nil,
         // Unless given, the tour is done: a unit test sees no welcome or tip it didn't ask for.
-        tourPreferences: TourPreferences = MemoryTourPreferences()
+        tourPreferences: TourPreferences = MemoryTourPreferences(),
+        useUpLog: UseUpLog = MemoryUseUpLog()
     ) {
+        self.useUpLog = useUpLog
         self.shareFileRepository = shareFileRepository
         self.autoBackup = autoBackup
         self.cookedPhotoRepository = cookedPhotoRepository
@@ -195,7 +199,8 @@ final class AppContainer {
             ),
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             // Under XCTest (the unit tests' host) the tour stays done, as for any test container.
-            tourPreferences: testing ? MemoryTourPreferences() : preferences
+            tourPreferences: testing ? MemoryTourPreferences() : preferences,
+            useUpLog: testing ? MemoryUseUpLog() : preferences
         )
         // Files no photo names any more (a delete whose Undo never came, an import's unused
         // copies) go once the process is past them.
@@ -276,7 +281,9 @@ final class AppContainer {
     }
 
     func makePantryUseUpViewModel() -> PantryUseUpViewModel {
-        PantryUseUpViewModel(pantry: pantryRepository, groceries: groceryRepository, decisions: decisionRepository)
+        PantryUseUpViewModel(
+            pantry: pantryRepository, groceries: groceryRepository, log: useUpLog, clock: clock, decisions: decisionRepository
+        )
     }
 
     func makePantryViewModel() -> PantryViewModel {

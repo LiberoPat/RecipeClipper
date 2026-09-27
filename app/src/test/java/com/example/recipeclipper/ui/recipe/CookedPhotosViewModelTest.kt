@@ -99,4 +99,41 @@ class CookedPhotosViewModelTest {
             advanceUntilIdle()
             assertEquals(listOf(photo.fileName), photos.forgotten)
         }
+
+    // The pantry's use-up sheet (#147) follows a photo just added, once its note is done.
+
+    @Test fun `a photo just added says the recipe was cooked once it closes`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        vm.onAdd(listOf("content://a"))
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.madeThis)
+
+        vm.onClose()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.madeThis)
+        vm.onMadeThisHandled()
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.madeThis)
+
+        // An older photo opened and closed says nothing.
+        vm.onOpen(vm.uiState.value.photos.single())
+        vm.onClose()
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.madeThis)
+    }
+
+    @Test fun `a picture that couldn't be added, or one deleted at once, says nothing`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        vm.onAdd(listOf("bad://a"))
+        advanceUntilIdle()
+        vm.onClose()
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.madeThis)
+
+        vm.onAdd(listOf("content://b"))
+        advanceUntilIdle()
+        vm.onDelete()
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.madeThis)
+    }
 }
