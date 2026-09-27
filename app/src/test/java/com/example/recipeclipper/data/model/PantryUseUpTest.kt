@@ -79,6 +79,10 @@ class PantryUseUpTest {
         assertEquals("545 g", after(item("chicken", "1 kg"), "1 lb chicken"))
     }
 
+    @Test fun `a cup from millilitres is Metric's 240 ml, as the recipe's Metric view shows it`() {
+        assertEquals("760 ml", after(item("milk", "1 l"), "1 cup milk"))
+    }
+
     @Test fun `the lines are the recipe's as shown, so scaled amounts subtract as scaled`() {
         assertEquals("4 1/2", after(item("eggs", "6"), "1 1/2 eggs"))
     }

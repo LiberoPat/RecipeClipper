@@ -47,6 +47,9 @@ enum UnitConverter {
         .dl: 100.0,
     ]
 
+    /// A volume unit in millilitres as Metric shows it (a cup is 240 ml); nil for none (sticks).
+    static func kitchenMlOf(_ unit: MeasureUnit) -> Double? { kitchenMl[unit] }
+
     private static let parenAtStart = JRegex(#"^\s*\(([^)]*)\)"#)
 
     /// The patterns that read one language's unit and amount words (IngredientName reads them too).
@@ -433,7 +436,7 @@ enum UnitConverter {
     // MARK: - Formatting
 
     /// Grams as g/kg, or millilitres as ml/L: one decimal under 10, whole numbers up to 100, then 5s.
-    private static func metricText(_ low: Double, _ high: Double?, _ separator: String, small: String, large: String) -> String? {
+    static func metricText(_ low: Double, _ high: Double?, _ separator: String, small: String, large: String) -> String? {
         let top = Swift.max(low, high ?? low)
         if top < 0.5 { return nil }
         let useLarge = top >= 1000
@@ -459,7 +462,7 @@ enum UnitConverter {
         plainDecimal(v / 1000, scale: 2)
     }
 
-    private static func ounceText(_ gramsLow: Double, _ gramsHigh: Double?, _ separator: String) -> String? {
+    static func ounceText(_ gramsLow: Double, _ gramsHigh: Double?, _ separator: String) -> String? {
         let low = gramsLow / gramsPerOunce
         let high = gramsHigh.map { $0 / gramsPerOunce }
         if Swift.max(low, high ?? low) < 0.125 { return nil } // a pinch in ounces means nothing

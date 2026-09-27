@@ -28,6 +28,10 @@ import java.io.File
  * `Pant("line", "pantry name")` rows (#51) pin [PantryMatch.covered]: the line against one in-stock
  * pantry item of that name, in the same language; write only those two strings.
  *
+ * `UseUp("quantity", "name", [lines])` rows (#147) pin [PantryUseUp.rows]: the ticked lines against
+ * one in-stock pantry item with that quantity and name, as not listed, asked, used up or the new
+ * quantity; write only those (optionally `, lang: "de"`).
+ *
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
  *
@@ -83,6 +87,10 @@ class DifferentialCorpusTest {
     private val groceryRow = Regex("""^(\s*)Groc\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
     // A pantry row (#51): a recipe line, a pantry item's name, optionally their language.
     private val pantryRow = Regex("""^(\s*)Pant\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A use-up row (#147): a pantry item's quantity and name, the ticked lines, optionally their language.
+    private val useUpRow = Regex(
+        """^(\s*)UseUp\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
+    )
     // A calendar-file row (#52): one summary's text.
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
@@ -140,6 +148,7 @@ class DifferentialCorpusTest {
         }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
+        useUpRow.find(line)?.let { m -> return useUpRow(m) }
         countRow.find(line)?.let { m -> return countRow(m) }
         cardRow.find(line)?.let { m ->
             val (kind, html) = m.groupValues[2] to unescape(m.groupValues[3])
@@ -260,6 +269,25 @@ class DifferentialCorpusTest {
         val item = PantryItem(1, name, null, language, Aisle.OTHER, inStock = true, alwaysHave = false, purchasedDay = null, expiresDay = null)
         val covered = PantryMatch.covered(line, language, listOf(item))
         return m.groupValues[1] + "Pant(${q(line)}, ${q(name)}$lang, $covered),"
+    }
+
+    /**
+     * `UseUp(quantity, name, [lines], lang:, result)`: [PantryUseUp.rows] against one in-stock
+     * item: `.none` (not listed), `.ask`, `.usedUp` or `.subtract("new quantity")`.
+     */
+    private fun useUpRow(m: MatchResult): String {
+        val quantity = unescape(m.groupValues[2])
+        val name = unescape(m.groupValues[3])
+        val lines = literal.findAll(m.groupValues[4]).map { unescape(it.groupValues[1]) }.toList()
+        val language = m.groupValues[5].ifEmpty { "en" }
+        val lang = if (m.groupValues[5].isEmpty()) "" else ", lang: ${q(language)}"
+        val item = PantryItem(1, name, quantity, language, Aisle.OTHER, inStock = true, alwaysHave = false, purchasedDay = null, expiresDay = null)
+        val result = when (val change = PantryUseUp.rows(lines, language, listOf(item)).singleOrNull()?.change) {
+            null -> ".none"
+            UseUpChange.Ask -> ".ask"
+            is UseUpChange.Subtract -> change.after?.let { ".subtract(${q(it)})" } ?: ".usedUp"
+        }
+        return m.groupValues[1] + "UseUp(${q(quantity)}, ${q(name)}, ${list(lines)}$lang, $result),"
     }
 
     /** `Step(step, [lines], lang:, as given, doubled in Metric)`: [StepAmounts.annotate], marked. */

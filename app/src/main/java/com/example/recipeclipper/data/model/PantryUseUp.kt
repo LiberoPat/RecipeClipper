@@ -268,10 +268,16 @@ object PantryUseUp {
         return UseUpChange.Subtract(quantity, replace(quantity, stock, IngredientScaler.withSeparator(text, stock.comma)))
     }
 
-    /** One line's amount in grams ([MeasureKind.WEIGHT]) or millilitres, or null if it can't be. */
+    /**
+     * One line's amount in grams ([MeasureKind.WEIGHT]) or millilitres, or null if it can't be. A
+     * volume is in millilitres as Metric shows it (a cup is 240 ml), so the pantry agrees with
+     * the recipe's Metric view.
+     */
     private fun base(use: Amount, kind: MeasureKind, fallback: Density?): Double? {
         val unit = use.unit!!
-        if (unit.kind == kind) return use.value * unit.base
+        if (unit.kind == kind) {
+            return use.value * if (kind == MeasureKind.VOLUME) UnitConverter.kitchenMlOf(unit) ?: return null else unit.base
+        }
         // The line's own second measure first: "1 cup (120 g) flour" is 120 g.
         use.site?.let { (siteUnit, quantity) ->
             val effective = if (siteUnit == MeasureUnit.OZ && use.density?.liquid == true) MeasureUnit.FL_OZ else siteUnit

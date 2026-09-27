@@ -87,6 +87,14 @@ enum PantryList {
         }
     }
 
+    /// The unticked grocery lines that are `item` itself: its name as the pantry puts it there
+    /// (trimmed, case-insensitive, in its language), which is what "On list" means (#146). A
+    /// recipe's "2 cups flour" isn't, so taking the item off the list never loses a recipe's line.
+    static func ownLines(_ item: PantryItem, _ groceries: [GroceryItem]) -> [GroceryItem] {
+        let name = item.name.kTrimmed.lowercased()
+        return groceries.filter { !$0.checked && $0.language == item.language && $0.text.kTrimmed.lowercased() == name }
+    }
+
     /// The item already here with this name (trimmed, case-insensitive) in `language`, if any.
     static func sameName(_ items: [PantryItem], name: String, language: String?) -> PantryItem? {
         let key = name.kTrimmed.lowercased()

@@ -54,6 +54,9 @@ object UnitConverter {
         MeasureUnit.DL to 100.0
     )
 
+    /** A volume unit in millilitres as Metric shows it (a cup is 240 ml); null for none (sticks). */
+    internal fun kitchenMlOf(unit: MeasureUnit): Double? = KITCHEN_ML[unit]
+
     private val PAREN_AT_START = Regex("""^\s*\(([^)]*)\)""")
 
     /** The patterns that read one language's unit and amount words (IngredientName reads them too). */

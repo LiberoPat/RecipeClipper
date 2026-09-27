@@ -173,10 +173,10 @@ enum GroceryCombiner {
     // MARK: - Adding up
 
     /// Units that convert exactly into each other.
-    private enum Family { case metricWeight, imperialWeight, metricVolume, usVolume, stick, count }
+    enum Family { case metricWeight, imperialWeight, metricVolume, usVolume, stick, count }
 
     /// Each unit's family and size in the family's smallest unit.
-    private static func sizeOf(_ unit: MeasureUnit) -> (family: Family, size: Double)? {
+    static func sizeOf(_ unit: MeasureUnit) -> (family: Family, size: Double)? {
         switch unit {
         case .g: return (.metricWeight, 1)
         case .kg: return (.metricWeight, 1000)
@@ -248,7 +248,7 @@ enum GroceryCombiner {
     /// Whether whatever `text` holds in brackets or after a slash is only a note ("(, minced)",
     /// "/ kosher salt", an unclosed "(see note"), never a second amount: no digit, no fraction
     /// and no unit word from the bracket or slash on.
-    private static func notesOnly(_ text: String, _ c: UnitConverter.Patterns) -> Bool {
+    static func notesOnly(_ text: String, _ c: UnitConverter.Patterns) -> Bool {
         guard let start = text.firstIndex(where: { $0 == "(" || $0 == "/" }) else { return true }
         let note = Array(text[start...])
         if note.contains(where: { ("0"..."9").contains($0) || ("０"..."９").contains($0) || fractions.contains($0) }) {
@@ -336,7 +336,7 @@ enum GroceryCombiner {
     }
 
     /// `value` formatted as the scaler writes amounts, or nil if that would round it.
-    private static func exactly(_ value: Double, metric: Bool, comma: Bool) -> String? {
+    static func exactly(_ value: Double, metric: Bool, comma: Bool) -> String? {
         let plain = metric ? IngredientScaler.formatMetric(value) : IngredientScaler.format(value)
         guard let shown = IngredientScaler.parse(plain) else { return nil }
         if abs(shown - value) > 1e-9 * max(1.0, abs(value)) { return nil }
