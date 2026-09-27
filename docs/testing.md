@@ -241,9 +241,14 @@ Using up the pantry at the end of cooking (#147): `PantryUseUpTest` (JVM) and
 unreadable text, a different name, parts and packages), and the corpus's `UseUp` rows pin the
 Swift to the Kotlin (write only `UseUp("2 lb", "chicken", ["1 lb chicken"]),`). The sheet's
 ViewModel over fakes: `PantryUseUpViewModelTest` / `PantryUseUpViewModelTests` (what it lists
-and preselects, one confirm, one Undo); the hand-over at "Done — finish":
-`RecipeCookFinishedTest` (iOS: in `PantryUseUpViewModelTests`); the sheet on screen:
-`PantryUseUpScreenTest` (Robolectric).
+and preselects, one confirm, one Undo; "I made this" with ticked lines or none; the 12-hour
+guard in both orders, cook mode then a photo and a photo then a photo, and after the window);
+the hand-over at "Done — finish": `RecipeCookFinishedTest` (iOS: in
+`PantryUseUpViewModelTests`); a photo just added saying the recipe was cooked once it closes:
+`CookedPhotosViewModelTest(s)`; the `pantry_use_up` key: `SharedPrefsAppPreferencesTest` /
+`UserDefaultsAppPreferencesTests`; the sheet on screen, from "Done — finish" and from a photo
+added, once: `PantryUseUpScreenTest` (Robolectric). iOS has no UI test for it: a UI test can't
+add a photo (see "I made this" photos, #116, below).
 
 Amounts inside steps (#101): `StepAmountsTest` (JVM) and `StepAmountsTests` (iOS) run
 the rules on steps modelled on real pages, and the corpus's `Step` rows pin the Swift to the

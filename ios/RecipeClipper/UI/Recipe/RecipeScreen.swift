@@ -22,7 +22,8 @@ struct RecipeScreen: View {
     /// leaves it out. Made on first use and kept for the screen's life.
     var makeSendFileVM: (() -> SendFileViewModel)? = nil
     /// Makes the pantry's use-up sheet (#147), opened when cook mode is finished with
-    /// ingredients ticked; nil (the tab flag off, so no pantry) leaves it out.
+    /// ingredients ticked or "I made this" adds a photo; nil (the tab flag off, so no pantry)
+    /// leaves it out.
     var makeUseUpVM: (() -> PantryUseUpViewModel)? = nil
 
     @Environment(\.dismiss) private var dismiss
@@ -152,7 +153,7 @@ struct RecipeScreen: View {
         }
         .fullScreenCover(item: Binding(
             get: { photosVM?.uiState.open }, set: { if $0 == nil { photosVM?.onClose() } }
-        )) { photo in
+        ), onDismiss: offerUseUpAfterMadeThis) { photo in
             if let photosVM { CookedPhotoViewer(vm: photosVM, photo: photo, recipeName: content?.recipe.name ?? "") }
         }
         .overlay(alignment: .bottom) {
@@ -170,8 +171,10 @@ struct RecipeScreen: View {
         // Cook mode just finished with ingredients ticked (#147): they go to the pantry's use-up sheet.
         .onChange(of: state.cookFinished) { _, finished in
             guard let finished else { return }
-            if useUpVM == nil { useUpVM = makeUseUpVM?() }
-            useUpVM?.onCookFinished(language: finished.language, lines: finished.lines)
+            if let recipe = vm.uiState.content.success?.recipe {
+                if useUpVM == nil { useUpVM = makeUseUpVM?() }
+                useUpVM?.onCookFinished(recipeId: recipe.id, language: finished.language, lines: finished.lines)
+            }
             vm.onCookFinishedHandled()
         }
         .sheet(isPresented: Binding(
@@ -209,6 +212,20 @@ struct RecipeScreen: View {
         ) {
             // No actions: the system supplies its own, localized OK.
         }
+    }
+
+    /// A photo just added with "I made this" (#116) has closed: the recipe was cooked, so the
+    /// pantry's use-up sheet (#147) gets the lines as shown now, ticked or all. Run from the
+    /// photo's cover once it has gone, since a view can't present the sheet while it leaves.
+    private func offerUseUpAfterMadeThis() {
+        guard let photosVM, photosVM.uiState.madeThis else { return }
+        photosVM.onMadeThisHandled()
+        guard let content = vm.uiState.content.success else { return }
+        if useUpVM == nil { useUpVM = makeUseUpVM?() }
+        useUpVM?.onMadeThis(
+            recipeId: content.recipe.id, language: content.words?.language,
+            ingredients: content.ingredients, ticked: vm.uiState.checkedIngredients
+        )
     }
 
     /// "Try again" on every error. For a page with no recipe data (the ViewModel decides) it is

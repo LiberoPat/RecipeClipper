@@ -4,7 +4,9 @@ import Observation
 
 /// "Your cooks" (#116; Android's CookedPhotosUiState): `photos` newest cook first; `open` the
 /// one shown full screen, with `noteDraft` its note as typed; `deleted` the one just deleted,
-/// until its Undo snackbar is settled; `addFailed` until the view has said so.
+/// until its Undo snackbar is settled; `addFailed` until the view has said so. `madeThis`: a
+/// photo was just added and its full-screen view has closed, so the recipe was cooked; the view
+/// offers the pantry's use-up sheet (#147), then calls `onMadeThisHandled`.
 struct CookedPhotosUiState: Equatable {
     var photos: [CookedPhoto] = []
     var open: CookedPhoto?
@@ -12,6 +14,7 @@ struct CookedPhotosUiState: Equatable {
     var adding = false
     var deleted: CookedPhoto?
     var addFailed = false
+    var madeThis = false
 }
 
 /// Android's CookedPhotosViewModel. The recipe id arrives through `setRecipe`, as with the
@@ -26,6 +29,8 @@ final class CookedPhotosViewModel: Identifiable {
     @ObservationIgnored private var recipeId: Int64?
     @ObservationIgnored private var subscription: AnyCancellable?
     @ObservationIgnored private var noteSave: Task<Void, Never>?
+    /// A photo was just added: `madeThis` follows once it closes.
+    @ObservationIgnored private var madeThisPending = false
     /// The last write, so a test can wait for it.
     @ObservationIgnored private var lastWrite: Task<Void, Never>?
 
@@ -57,6 +62,7 @@ final class CookedPhotosViewModel: Identifiable {
         uiState.adding = true
         write {
             let added = await self.repository.add(recipeId: recipeId, pictures: pictures)
+            if !added.isEmpty { self.madeThisPending = true }
             self.uiState.adding = false
             self.uiState.addFailed = added.count < pictures.count
             // The first new one opens, so its note and date are right there to fill in.
@@ -75,11 +81,16 @@ final class CookedPhotosViewModel: Identifiable {
         uiState.noteDraft = photo.note ?? ""
     }
 
+    /// Closing the photo just added offers the pantry's use-up sheet, after its note, not over it.
     func onClose() {
         saveNote()
         uiState.open = nil
         uiState.noteDraft = ""
+        if madeThisPending { uiState.madeThis = true }
+        madeThisPending = false
     }
+
+    func onMadeThisHandled() { uiState.madeThis = false }
 
     /// The note is written once typing pauses, or when the photo closes.
     func onNoteChange(_ text: String) {
@@ -101,6 +112,8 @@ final class CookedPhotosViewModel: Identifiable {
     /// Deletes the open photo at once; `onUndoDelete` brings it back until `onDeleteSettled`.
     func onDelete() {
         noteSave?.cancel()
+        // The photo just added, deleted at once, was the wrong picture: no cooking to offer.
+        madeThisPending = false
         guard let open = uiState.open else { return }
         uiState.open = nil
         uiState.noteDraft = ""

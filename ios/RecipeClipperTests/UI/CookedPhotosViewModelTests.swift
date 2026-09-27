@@ -89,6 +89,41 @@ final class CookedPhotosViewModelTests: XCTestCase {
         XCTAssertEqual(photos.forgotten, [photo.fileName])
     }
 
+    // The pantry's use-up sheet (#147) follows a photo just added, once its note is done.
+
+    func testAPhotoJustAddedSaysTheRecipeWasCookedOnceItCloses() async {
+        let vm = await viewModel()
+        vm.onAdd([Data([1])])
+        await vm.settleWrites()
+        await settleMain()
+        XCTAssertFalse(vm.uiState.madeThis)
+
+        vm.onClose()
+        XCTAssertTrue(vm.uiState.madeThis)
+        vm.onMadeThisHandled()
+        XCTAssertFalse(vm.uiState.madeThis)
+
+        // An older photo opened and closed says nothing.
+        vm.onOpen(vm.uiState.photos[0])
+        vm.onClose()
+        XCTAssertFalse(vm.uiState.madeThis)
+    }
+
+    func testAPictureThatCouldntBeAddedOrOneDeletedAtOnceSaysNothing() async {
+        let vm = await viewModel()
+        vm.onAdd([Data()])
+        await vm.settleWrites()
+        vm.onClose()
+        XCTAssertFalse(vm.uiState.madeThis)
+
+        vm.onAdd([Data([2])])
+        await vm.settleWrites()
+        await settleMain()
+        vm.onDelete()
+        await vm.settleWrites()
+        XCTAssertFalse(vm.uiState.madeThis)
+    }
+
     func testRecentlyCookedPutsCookedRecipesFirstOnlyWithItsFlag() async {
         let repository = FakeRecipeRepository()
         var two = testSummary(2), one = testSummary(1)

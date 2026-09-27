@@ -50,7 +50,7 @@ JSON file (Settings), an automatic copy of it in the user's own cloud folder, an
 unticked items or the pantry's in-stock ones, sent as a small file that another Recipe Clipper opens (#149); "Clip it yourself" (select a recipe by hand on a page
 with no recipe data, #37); the week meal plan, the grocery list and the
 pantry with the week's Have/Buy, behind the tab flag (#49–#51), used up when cook mode is
-finished (#147); Chef mode (short steps written on the device, behind its flag, #100); a
+finished or "I made this" adds a photo (#147); Chef mode (short steps written on the device, behind its flag, #100); a
 recipe picked from a page's text by the on-device model (behind its flag, #103); typed
 decisions by that model where the rules give up (close pantry names, aisles;
 `aiDecisions` flag, #104; count brackets only with `aiCountBrackets` too, #127);
@@ -330,8 +330,10 @@ Settled; don't reintroduce what they removed. The history behind each is in
   list silently; the row then shows "On list", and tapping that takes it off
   (no snackbar) (#146). The menu's "Send list" and "Send as file" send what's
   in stock, never what's out (that is on the grocery list already) (#149).
-  **Using up** (#147): cook mode's "Done — finish" with ingredients ticked opens
-  "Update the pantry" (never on a tick, never on Exit): per matched item, the
+  **Using up** (#147): cook mode's "Done — finish" with ingredients ticked, or a photo added
+  with "I made this" once its viewer closes (the ticked lines, else all), opens
+  "Update the pantry" (never on a tick, never on Exit; a recipe's is offered again only 12 h
+  after it was confirmed or dismissed, `pantry_use_up`): per matched item, the
   worked-out change ("2 lb → 1 lb", ticked; used up goes out and onto the list)
   or, when it can't be worked out, the lines as written with Keep / Running low
   (onto the list, still in stock) / Out, Keep chosen. One confirm, one Undo.
@@ -465,7 +467,8 @@ Settled; don't reintroduce what they removed. The history behind each is in
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
   under the same keys: `unit_system`, `convert_liquids`, `temperature_unit`,
   `dark_while_cooking`, `expiry_reminders`, `chef_mode`, `amounts_in_steps`, `recipe_sort` (the Recipes
-  screen's sort), and the tour's `tour_welcome`, `tour_sample_added`, `tour_tip_*` (#151),
+  screen's sort), the tour's `tour_welcome`, `tour_sample_added`, `tour_tip_*` (#151), and
+  `pantry_use_up` (#147: recipe id to when its sheet was settled, pruned to 12 h on each write),
   each enum stored by name, an unknown one read as the default. `AppPreferences.settings`
   (a Flow over the change listener; iOS a publisher over
   `UserDefaults.didChangeNotification`) emits them; ViewModels that show a
