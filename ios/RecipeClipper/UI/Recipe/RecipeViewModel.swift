@@ -523,10 +523,17 @@ final class RecipeViewModel {
             cook.currentStep = next
         } else {
             cook.active = false
+            // The end of cooking (#147): what was ticked goes to the pantry's use-up sheet. A
+            // finished run finishes again only after starting fresh, so once per cook.
+            let lines = uiState.checkedIngredients.sorted().compactMap { content.ingredients.indices.contains($0) ? content.ingredients[$0] : nil }
+            if !lines.isEmpty { uiState.cookFinished = FinishedCook(language: content.words?.language, lines: lines) }
         }
         uiState.cook = cook
         saveCook()
     }
+
+    /// The view has handed `cookFinished` on.
+    func onCookFinishedHandled() { uiState.cookFinished = nil }
 
     /// Saves the cook's place as it now stands (Android's `saveCook`). A running timer is saved
     /// by its deadline, so ticks never write and a closed app's timer keeps counting.

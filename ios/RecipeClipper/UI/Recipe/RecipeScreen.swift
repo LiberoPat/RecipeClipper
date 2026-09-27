@@ -21,6 +21,9 @@ struct RecipeScreen: View {
     /// Makes "Send as file" (#149): the recipe as a small file for someone else's app; nil
     /// leaves it out. Made on first use and kept for the screen's life.
     var makeSendFileVM: (() -> SendFileViewModel)? = nil
+    /// Makes the pantry's use-up sheet (#147), opened when cook mode is finished with
+    /// ingredients ticked; nil (the tab flag off, so no pantry) leaves it out.
+    var makeUseUpVM: (() -> PantryUseUpViewModel)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
@@ -36,6 +39,7 @@ struct RecipeScreen: View {
     @State private var photosVM: CookedPhotosViewModel?
     @State private var confirmingUpdate = false
     @State private var sendFileVM: SendFileViewModel?
+    @State private var useUpVM: PantryUseUpViewModel?
 
     var body: some View {
         let state = vm.uiState
@@ -162,6 +166,34 @@ struct RecipeScreen: View {
         .task(id: photosVM?.uiState.deleted?.id) {
             guard let photosVM, let deleted = photosVM.uiState.deleted else { return }
             await SnackbarTimeout.run(pending: [deleted.uid], onTimeout: photosVM.onDeleteSettled)
+        }
+        // Cook mode just finished with ingredients ticked (#147): they go to the pantry's use-up sheet.
+        .onChange(of: state.cookFinished) { _, finished in
+            guard let finished else { return }
+            if useUpVM == nil { useUpVM = makeUseUpVM?() }
+            useUpVM?.onCookFinished(language: finished.language, lines: finished.lines)
+            vm.onCookFinishedHandled()
+        }
+        .sheet(isPresented: Binding(
+            get: { useUpVM?.uiState.sheet != nil }, set: { if !$0 { useUpVM?.onDismissed() } }
+        )) {
+            if let useUpVM, let sheet = useUpVM.uiState.sheet {
+                PantryUseUpSheet(sheet: sheet, vm: useUpVM)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let useUpVM, useUpVM.uiState.updated != nil {
+                Snackbar(message: Strings.pantryUsedUp, actionLabel: Strings.undo, action: useUpVM.onUndo)
+                    .frame(maxWidth: ReadableWidth.column)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 80)
+            }
+        }
+        .task(id: useUpVM?.uiState.updated) {
+            guard let useUpVM, let updated = useUpVM.uiState.updated else { return }
+            await SnackbarTimeout.run(pending: ["\(updated)"], onTimeout: useUpVM.onUpdatedDismissed)
         }
         // A clip (#37) says what it loses in its own words: the parts picked from the page.
         .alert(clipped ? Strings.updateFromSourceClipTitle : Strings.updateFromSourceTitle, isPresented: $confirmingUpdate) {

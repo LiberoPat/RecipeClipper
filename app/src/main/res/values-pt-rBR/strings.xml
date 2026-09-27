@@ -346,6 +346,20 @@
     <string name="action_done_shopping">Compras feitas</string>
     <string name="put_away_intro">Marque o que vai para a despensa. Tudo o que foi marcado sai da lista.</string>
     <string name="action_put_away">Guardar e remover</string>
+    <!-- Using up the pantry when cook mode is finished (#147). -->
+    <string name="use_up_title">Atualizar a despensa</string>
+    <string name="use_up_intro">O que você usou, pelos ingredientes marcados. Desmarque o que não estiver certo.</string>
+    <string name="use_up_change">%1$s → %2$s</string>
+    <string name="use_up_used_up">%1$s → acabou, vai para a lista de compras</string>
+    <string name="use_up_cant_work_out">Não dá para calcular quanto foi usado</string>
+    <string name="use_up_keep">Manter</string>
+    <string name="use_up_low">Acabando</string>
+    <string name="use_up_out">Acabou</string>
+    <string name="action_use_up">Atualizar despensa</string>
+    <string name="snackbar_pantry_used_up">Despensa atualizada</string>
+    <string name="cd_use_up_change">%1$s, de %2$s para %3$s</string>
+    <string name="cd_use_up_used_up">%1$s, de %2$s para acabou; vai para a lista de compras</string>
+    <string name="cd_use_up_choice">%1$s: %2$s</string>
     <string name="aisle_produce">Hortifrúti</string>
     <string name="aisle_meat">Carnes</string>
     <string name="aisle_seafood">Peixes e frutos do mar</string>

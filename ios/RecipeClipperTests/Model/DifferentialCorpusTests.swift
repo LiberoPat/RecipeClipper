@@ -25,6 +25,9 @@ import XCTest
 // then Aisles.of each line. Regenerated the same way: write only `Groc(["2 eggs", "3 eggs"]),`.
 // Pantry rows (#51): a line, a pantry item's name, then PantryMatch.covered (the item in stock,
 // in the same language). Write only `Pant("2 cups flour", "flour"),`.
+// Use-up rows (#147): a pantry item's quantity and name, the ticked lines, then PantryUseUp.rows
+// against that one item (.none, .ask, .usedUp or .subtract(new quantity)). Write only
+// `UseUp("2 lb", "chicken", ["1 lb chicken"]),`.
 // Count-bracket rows (#104): a line, whether it asks the model (needsCountDecision), then the
 // line doubled when unsure, total and each. Write only `Count("4 Apfel (ca. 800g)", lang: "de"),`.
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
@@ -81,6 +84,15 @@ final class DifferentialCorpusTests: XCTestCase {
         let line: String; let name: String; let language: String; let covered: Bool
         init(_ line: String, _ name: String, lang: String = "en", _ covered: Bool) {
             self.line = line; self.name = name; self.language = lang; self.covered = covered
+        }
+    }
+
+    private enum UseUpResult: Equatable { case none, ask, usedUp, subtract(String) }
+
+    private struct UseUp {
+        let quantity: String; let name: String; let lines: [String]; let language: String; let result: UseUpResult
+        init(_ quantity: String, _ name: String, _ lines: [String], lang: String = "en", _ result: UseUpResult) {
+            self.quantity = quantity; self.name = name; self.lines = lines; self.language = lang; self.result = result
         }
     }
 
@@ -1326,6 +1338,55 @@ final class DifferentialCorpusTests: XCTestCase {
         Pant("無塩バター 20g", "バター", lang: "ja", true),
     ]
 
+    private static let useUps: [UseUp] = [
+        UseUp("2 lb", "chicken", ["1 lb chicken"], .subtract("1 lb")),
+        UseUp("6", "eggs", ["2 large eggs, beaten"], .subtract("4")),
+        UseUp("6 eggs", "Eggs", ["2 eggs"], .subtract("4 eggs")),
+        UseUp("2 lb", "chicken", ["8 oz chicken"], .subtract("1 1/2 lb")),
+        UseUp("2 lb", "chicken", ["3 oz chicken"], .subtract("29 oz")),
+        UseUp("4 cups", "milk", ["1 1/2 cups milk"], .subtract("2 1/2 cups")),
+        UseUp("1 kg", "flour", ["120 g flour"], .subtract("880 g")),
+        UseUp("1 kg", "flour", ["500 g flour"], .subtract("500 g")),
+        UseUp("1 l", "milk", ["250 ml milk", "100 ml milk"], .subtract("650 ml")),
+        UseUp("2 lb pack", "chicken", ["1 lb chicken"], .subtract("1 lb pack")),
+        UseUp("2,5 kg", "flour", ["1 kg flour"], .subtract("1,5 kg")),
+        UseUp("1 kg", "flour", ["2 cups all-purpose flour"], .subtract("760 g")),
+        UseUp("1 kg", "flour", ["1 cup (125 g) flour"], .subtract("875 g")),
+        UseUp("1 kg", "flour", ["1 cup/125 g flour"], .subtract("875 g")),
+        UseUp("2 lb", "chicken", ["454 g chicken"], .subtract("1 lb")),
+        UseUp("2 lb", "chicken", ["450 g chicken"], .subtract("1 lb 1/4 oz")),
+        UseUp("1 kg", "chicken", ["1 lb chicken"], .subtract("545 g")),
+        UseUp("6", "eggs", ["1 1/2 eggs"], .subtract("4 1/2")),
+        UseUp("2", "eggs", ["3 eggs"], .usedUp),
+        UseUp("1 lb", "chicken", ["16 oz chicken"], .usedUp),
+        UseUp("250 g", "butter", ["1 stick butter"], .subtract("135 g")),
+        UseUp("16 oz", "milk", ["1 cup milk"], .subtract("8 oz")),
+        UseUp("1 kg", "sugar", ["1 cup sugar"], .subtract("800 g")),
+        UseUp("half a bag", "flour", ["1 cup flour"], .ask),
+        UseUp("1 bag", "flour", ["1 cup flour"], .ask),
+        UseUp("about 1 kg", "flour", ["1 cup flour"], .ask),
+        UseUp("1 kg", "flour", ["flour, for dusting"], .ask),
+        UseUp("1 l", "milk", ["1-2 cups milk"], .ask),
+        UseUp("1 kg", "flour", ["1 cup plus 2 tbsp flour"], .ask),
+        UseUp("6", "eggs", ["2 eggs plus 3 yolks"], .ask),
+        UseUp("6", "eggs", ["2 eggs (about 100 g)"], .ask),
+        UseUp("2 lb", "chicken", ["1 chicken"], .ask),
+        UseUp("6", "eggs", ["100 g eggs"], .ask),
+        UseUp("500 g", "walnuts", ["1 cup walnuts"], .ask),
+        UseUp("3", "garlic", ["2 cloves garlic"], .ask),
+        UseUp("4", "tomatoes", ["1 can tomatoes"], .ask),
+        UseUp("2 cups", "milk", ["100 ml milk"], .ask),
+        UseUp("1 kg", "rice flour", ["1 cup flour"], .none),
+        UseUp("6", "Eier", ["2 große Eier"], lang: "de", .subtract("4")),
+        UseUp("1 kg", "Mehl", ["250 g Mehl"], lang: "de", .subtract("750 g")),
+        UseUp("500 g", "Butter", ["2 EL Butter"], lang: "de", .subtract("470 g")),
+        UseUp("1 kg", "farine", ["1 tasse de farine"], lang: "fr", .ask),
+        UseUp("1 kg", "farina", ["200 g di farina"], lang: "it", .subtract("800 g")),
+        UseUp("1 l", "leche", ["1 taza de leche"], lang: "es", .subtract("760 ml")),
+        UseUp("1,5 kg", "farinha", ["500 g de farinha"], lang: "pt", .subtract("1 kg")),
+        UseUp("200 g", "醤油", ["醤油 大さじ1"], lang: "ja", .ask),
+    ]
+
     private static let counts: [Count] = [
         Count("4 Apfel (ca. 800g)", lang: "de", true, ["4 Apfel (ca. 800g)", "8 Apfel (ca. 1600g)", "8 Apfel (ca. 800g)"]),
         Count("1 patate douce (300-400 g)", lang: "fr", true, ["1 patate douce (300-400 g)", "2 patate douce (600-800 g)", "2 patate douce (300-400 g)"]),
@@ -1645,6 +1706,23 @@ final class DifferentialCorpusTests: XCTestCase {
                 alwaysHave: false, purchasedDay: nil, expiresDay: nil
             )
             XCTAssertEqual(PantryMatch.covered(row.line, language: row.language, pantry: [item]), row.covered, "\(row.line) / \(row.name)")
+        }
+    }
+
+    func testPantryUseUpMatchesKotlin() {
+        for row in Self.useUps {
+            let item = PantryItem(
+                id: 1, name: row.name, quantity: row.quantity, language: row.language, aisle: .other, inStock: true,
+                alwaysHave: false, purchasedDay: nil, expiresDay: nil
+            )
+            let result: UseUpResult
+            switch PantryUseUp.rows(row.lines, language: row.language, pantry: [item]).first?.change {
+            case nil: result = .none
+            case .ask: result = .ask
+            case .subtract(_, let after?): result = .subtract(after)
+            case .subtract(_, nil): result = .usedUp
+            }
+            XCTAssertEqual(result, row.result, "\(row.quantity) \(row.name) / \(row.lines)")
         }
     }
 

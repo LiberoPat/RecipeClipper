@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Locale
 import javax.inject.Inject
 
 /** The edit sheet's fields, for item [id]. Written only on Save. */
@@ -101,15 +100,8 @@ class PantryViewModel @Inject constructor(
 
     private fun PantryUiState.arranged() = copy(sections = PantryList.arrange(items, query, sort))
 
-    /**
-     * The unticked grocery lines that are [item] itself: its name as the pantry puts it there
-     * (trimmed, case-insensitive, in its language). A recipe's "2 cups flour" isn't, so taking
-     * the item off the list never loses a recipe's line.
-     */
-    private fun linesFor(item: PantryItem): List<GroceryItem> {
-        val name = item.name.trim().lowercase(Locale.ROOT)
-        return groceryItems.filter { !it.checked && it.language == item.language && it.text.trim().lowercase(Locale.ROOT) == name }
-    }
+    /** The unticked grocery lines that are [item] itself ([PantryList.ownLines]). */
+    private fun linesFor(item: PantryItem): List<GroceryItem> = PantryList.ownLines(item, groceryItems)
 
     private fun onList(): Set<Long> = items.filter { linesFor(it).isNotEmpty() }.map { it.id }.toSet()
 

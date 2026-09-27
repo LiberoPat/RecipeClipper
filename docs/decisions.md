@@ -2825,3 +2825,59 @@ offer for the first was replaced and gone. Owner's decisions:
   switching it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
   deletes a recipe's line, which is why no undo is needed. No schema change: the link is the
   name.
+
+## Using up the pantry at the end of cooking (#147)
+
+The owner's idea: cook with 1 lb of the pantry's 2 lb of chicken and the pantry says 1 lb.
+Owner's decisions: subtract **once, at the end of cooking, through one sheet**, never on a tick
+(people tick to gather, untick by mistake, and change servings mid-recipe); and a line that
+can't be worked out **asks each time** (keep, running low or out), never guessed.
+
+- **The trigger is cook mode's "Done — finish"** (the last step's button, which ends cook mode),
+  with at least one ingredient ticked. Chosen over the issue's two candidates:
+  - "I made this" (#116) is a photo action (camera or library) at the foot of the reading view.
+    Each photo is its own "cooked today" entry, so one dinner photographed twice would subtract
+    twice, and a cook who never takes photos would never use anything up.
+  - Leaving cook mode by Exit is a pause, not the end: cook mode keeps its place "so it is never
+    lost by a stray tap on Exit", and cooks leave to check something and come back.
+  - A finished run finishes again only after starting fresh (all steps done restarts cook mode
+    from step 1), so a recipe cooked once opens the sheet once, and nothing changes without its
+    confirm. What it misses: recipes with no steps, and cooks who never use cook mode. Adding
+    "I made this" as a second way in would need a "used up for this cook already" record; the
+    owner can ask for it.
+- **The sheet lists the ticked lines' pantry items**, the lines as the recipe showed them
+  (scaled to the servings used and converted to the chosen units). A line is matched as Have/Buy
+  matches it (`PantryMatch.find`, and the model's cached definite "same" when there is one; no
+  new question is asked here). Staples are left out (a staple is never Buy, so it never runs out
+  onto the list), and so are items already out (nothing to subtract). Lines with no name and
+  lines matching nothing aren't listed. Several lines using one item are one row, added up.
+- **No schema change.** The pantry's free-text `quantity` is read at subtract time by the same
+  reader as the lines (the scaler's amount patterns, the unit words, a second measure in
+  brackets) and written back in its own style: the amount and unit are replaced and the rest
+  kept ("2 lb pack" → "1 lb pack", "6" → "4", "2,5 kg" → "1,5 kg"). Structured columns would
+  need this same parser to fill them, plus a migration and an edit form on both platforms, and
+  would buy no case the text can't do: a quantity the parser can't read ("half a bag") asks,
+  which is exactly what the owner wants for it. The text the user typed stays the one truth.
+- **What subtracts** (`PantryUseUp`, pinned for iOS by the corpus's `UseUp` rows): the
+  quantity and every line are one exact amount each (no range, "plus", alternative, second
+  amount after the name, package or piece); the same kind (weight, volume, or a count); volume and
+  weight only through the density table or the line's own second measure ("1 cup (125 g)
+  flour"). A count counts the ingredient itself only when nothing but a size stands between the
+  number and the name ("2 large eggs", the names tables' new `countSizes`); "2 cloves garlic" or
+  "1 can tomatoes" against "3" asks. Within one family (g/kg, oz/lb, the ml family, US spoons
+  and cups, sticks, counts) the result is exact, in the quantity's own unit when that shows it
+  exactly ("1 1/2 lb"), else a unit a line used, else g or ml ("880 g" rather than "0.9 kg").
+  Across families it's rounded as the converter rounds its results (g/kg or ml/L, oz/lb), with
+  Metric's 240 ml cup, so the pantry agrees with the recipe's Metric view; an imperial volume
+  that isn't exact asks, since the converter never writes cups.
+- **Used up** (zero or below, or too little to show): out of stock, the quantity cleared (none
+  is left to know, and a restock shouldn't bring back an old amount as a confident number), and
+  the name onto the grocery list unless it's there already, so the row shows #146's "On list".
+- **"Running low" has no state of its own**: the item's name goes on the grocery list and it
+  stays in stock, so the Pantry row shows "On list" with its switch on. "Out" is the switch
+  turned off plus the list, as the switch does it (the quantity stays as written). No schema
+  change for either.
+- **One confirm, one Undo.** Worked-out rows start ticked and can be unticked; asked rows start
+  on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
+  off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
+  so a killed app loses it with nothing changed. Behind `mealPlan`, like every pantry feature.

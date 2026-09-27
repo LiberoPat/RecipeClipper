@@ -87,13 +87,8 @@ final class PantryViewModel {
         uiState.sections = PantryList.arrange(items, query: uiState.query, sort: uiState.sort)
     }
 
-    /// The unticked grocery lines that are `item` itself: its name as the pantry puts it there
-    /// (trimmed, case-insensitive, in its language). A recipe's "2 cups flour" isn't, so taking
-    /// the item off the list never loses a recipe's line.
-    private func lines(for item: PantryItem) -> [GroceryItem] {
-        let name = item.name.kTrimmed.lowercased()
-        return groceryItems.filter { !$0.checked && $0.language == item.language && $0.text.kTrimmed.lowercased() == name }
-    }
+    /// The unticked grocery lines that are `item` itself (`PantryList.ownLines`).
+    private func lines(for item: PantryItem) -> [GroceryItem] { PantryList.ownLines(item, groceryItems) }
 
     private func onList() -> Set<Int64> { Set(items.filter { !lines(for: $0).isEmpty }.map(\.id)) }
 

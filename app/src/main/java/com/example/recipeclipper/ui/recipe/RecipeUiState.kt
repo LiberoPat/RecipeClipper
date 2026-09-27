@@ -136,5 +136,16 @@ data class RecipeUiState(
      */
     val notKept: Boolean = false,
     /** A purchase from the Unlock prompt that is pending or failed, until the screen says so. */
-    val unlockNotice: PurchaseOutcome? = null
+    val unlockNotice: PurchaseOutcome? = null,
+    /**
+     * Cook mode was just finished with ingredients ticked (#147), until the screen has handed
+     * them on to use up the pantry.
+     */
+    val cookFinished: FinishedCook? = null
 )
+
+/**
+ * A cook just finished (#147): the ticked ingredient [lines] as the screen showed them (scaled
+ * and converted), read with [language]'s words.
+ */
+data class FinishedCook(val language: String?, val lines: List<String>)

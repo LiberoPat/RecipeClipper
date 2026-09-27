@@ -378,6 +378,20 @@
     <string name="action_done_shopping">Done shopping</string>
     <string name="put_away_intro">Tick what goes in the pantry. Everything checked comes off the list.</string>
     <string name="action_put_away">Put away and clear</string>
+    <!-- Using up the pantry when cook mode is finished (#147). -->
+    <string name="use_up_title">Update the pantry</string>
+    <string name="use_up_intro">What this cook used, from the ingredients you ticked. Untick anything that isn\'t right.</string>
+    <string name="use_up_change">%1$s → %2$s</string>
+    <string name="use_up_used_up">%1$s → used up, onto the grocery list</string>
+    <string name="use_up_cant_work_out">Can\'t work out how much was used</string>
+    <string name="use_up_keep">Keep</string>
+    <string name="use_up_low">Running low</string>
+    <string name="use_up_out">Out</string>
+    <string name="action_use_up">Update pantry</string>
+    <string name="snackbar_pantry_used_up">Pantry updated</string>
+    <string name="cd_use_up_change">%1$s, from %2$s to %3$s</string>
+    <string name="cd_use_up_used_up">%1$s, from %2$s to used up; it goes on the grocery list</string>
+    <string name="cd_use_up_choice">%1$s: %2$s</string>
     <string name="aisle_produce">Fruit &amp; vegetables</string>
     <string name="aisle_meat">Meat</string>
     <string name="aisle_seafood">Fish &amp; seafood</string>
