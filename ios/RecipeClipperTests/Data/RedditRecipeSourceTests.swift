@@ -29,7 +29,9 @@ final class RedditStubURLProtocol: URLProtocol {
 
     override func startLoading() {
         let url = request.url!
-        Self.requests.append(url.path + (url.query.map { "?" + $0 } ?? ""))
+        // The path as sent, trailing slash kept (`URL.path` drops it).
+        let sent = URLComponents(url: url, resolvingAgainstBaseURL: true)?.percentEncodedPath ?? url.path
+        Self.requests.append(sent + (url.query.map { "?" + $0 } ?? ""))
         if Self.offline {
             client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
             return
