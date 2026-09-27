@@ -70,7 +70,7 @@ final class CookedPhotoTests: XCTestCase {
         }
         let migrated = try AppDatabase(path: path)
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
-        XCTAssertEqual(version, 13)
+        XCTAssertEqual(version, AppDatabase.schemaVersion)
         let recipeId = try await migrated.read { try XCTUnwrap(RecipeDao(db: $0).findByUrl("https://example.com/cake")).id }
         try await migrated.write { conn in
             try CookedPhotoDao(db: conn).insert(CookedPhotoRecord(
@@ -108,7 +108,7 @@ final class CookedPhotoTests: XCTestCase {
         }
         let migrated = try AppDatabase(path: path)
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
-        XCTAssertEqual(version, 14)
+        XCTAssertEqual(version, AppDatabase.schemaVersion)
         let kept = try await migrated.read { try CookedPhotoDao(db: $0).photosFor(recipeId) }
         XCTAssertEqual(kept, [CookedPhotoRecord(
             id: 3, recipeId: recipeId, fileName: "a.jpg", day: 20_000, note: "Good", createdAt: 1, updatedAt: 2, uid: "photo-uid"
