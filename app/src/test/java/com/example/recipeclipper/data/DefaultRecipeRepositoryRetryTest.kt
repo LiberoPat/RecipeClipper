@@ -347,6 +347,21 @@ class DefaultRecipeRepositoryRetryTest {
         }
     }
 
+    @Test fun `a source that reads no rendered page, Reddit's, is never rendered`() = runTest {
+        val reddit = object : RecipeSource {
+            var fetches = 0
+            override suspend fun fetch(url: String): ParseResult = blocked.also { fetches++ }
+            override fun readsRenderedPage(url: String) = false
+        }
+        val rendered = FakeRenderedPageSource { renderedRecipePage }
+
+        val result = repository(reddit, InMemoryRecipeDao(), rendered, Clock { currentTime }).importFromUrl(url)
+
+        assertEquals(blocked, result)
+        assertEquals(2, reddit.fetches) // the one retry still applies
+        assertEquals(emptyList<String>(), rendered.requests)
+    }
+
     @Test fun `a rendered page with no recipe keeps the direct fetch's cause`() = runTest {
         val dao = InMemoryRecipeDao()
         val rendered = FakeRenderedPageSource { renderedStoryPage }

@@ -25,10 +25,15 @@ protocol RecipeSource {
     /// `fetch`, plus the page's text when it loaded but held no recipe data (#103), for the
     /// on-device model to pick one from. A source that can't say gives no text.
     func fetchPage(url: String) async -> FetchedPage
+    /// Whether a failed fetch of `url` may go on to the page as an off-screen browser renders
+    /// it, and to the on-device model reading its text: only for pages the blog parsers read.
+    /// A Reddit post (#11) is read only through its `.json` listing.
+    func readsRenderedPage(url: String) -> Bool
 }
 
 extension RecipeSource {
     func fetchPage(url: String) async -> FetchedPage { FetchedPage(result: await fetch(url: url)) }
+    func readsRenderedPage(url: String) -> Bool { true }
 }
 
 /// A fetch's result, and `page` only when that is `.noRecipeFound` on a page that loaded.

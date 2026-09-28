@@ -59,8 +59,14 @@ final class ShareViewController: UIViewController {
     private static func makeRepository(_ db: AppDatabase) -> RecipeRepository {
         // The limit (#107) the app mirrors into the App Group suite: this process never
         // sees the flags or StoreKit.
-        let library = DefaultsLibraryLimit(defaults: UserDefaults(suiteName: AppGroup.identifier) ?? .standard)
-        return DefaultRecipeRepository(db: db, source: BlogRecipeSource(), clock: SystemClock(), library: library)
+        let defaults = UserDefaults(suiteName: AppGroup.identifier) ?? .standard
+        let library = DefaultsLibraryLimit(defaults: defaults)
+        // Reddit links (#11) as the app routes them, by its mirrored `reddit` flag.
+        let reddit = DefaultsRedditSwitch(defaults: defaults)
+        let source = RoutingRecipeSource(
+            blog: BlogRecipeSource(), reddit: RedditRecipeSource(), redditOn: { reddit.isOn }
+        )
+        return DefaultRecipeRepository(db: db, source: source, clock: SystemClock(), library: library)
     }
 
     /// "Add this list" (#149) over the same database, only while the app has the grocery list

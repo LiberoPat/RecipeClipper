@@ -90,6 +90,7 @@ enum Strings {
 
     // Errors
     static var errorNoRecipeFound: String { String(localized: "error_no_recipe_found") }
+    static var errorNoTranscription: String { String(localized: "error_no_transcription") }
     static func errorFetchFailed(_ detail: String?) -> String {
         let detail = detail ?? String(localized: "error_fetch_failed_unknown_detail")
         return String(localized: "error_fetch_failed \(detail)")
@@ -166,6 +167,7 @@ enum Strings {
     static func message(for error: ParseError) -> String {
         switch error {
         case .noRecipeFound: return errorNoRecipeFound
+        case .noTranscription: return errorNoTranscription
         case .blocked(let status): return errorBlocked(status)
         case .offline: return errorOffline
         case .fetchFailed(let detail, _): return errorFetchFailed(detail)

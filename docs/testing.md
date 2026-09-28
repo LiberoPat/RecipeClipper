@@ -136,6 +136,16 @@ rules on both platforms (due, nudge, names, which copies go, the fingerprint);
 Settings rows and Home's restore and folder card are `SettingsAutoBackupTest` and
 `HomeBackupTest` (Robolectric) and `SettingsAutoBackupTests` (iOS). The real Google Drive
 folder, WorkManager with the app closed, and iCloud Drive need a device (`docs/decisions.md`).
+Reddit has five suites on each platform with the same cases:
+`RecipeTextSplitterTest`, `RedditCommentScorerTest`, `RedditUrlsTest`,
+`RedditRecipeParserTest` and `RedditRecipeSourceTest` (a local socket on
+Android, a URLProtocol stub on iOS; also the host routing and the `reddit` flag). Their
+listings are JSON files in `shared/fixtures/reddit`, read by both suites (`RedditFixtures`):
+made-up posts in Reddit's real `raw_json=1` shape, which was checked against recorded
+responses because reddit.com answers 403 to the development machine (`docs/decisions.md`,
+"Reddit posts (#11)", has where they came from).
+`DefaultRecipeRepositoryRetryTest` (iOS `DataRepositoryTests`) checks that a blocked
+Reddit post never goes to the rendered page.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to

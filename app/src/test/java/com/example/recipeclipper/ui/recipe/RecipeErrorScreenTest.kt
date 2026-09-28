@@ -114,4 +114,15 @@ class RecipeErrorScreenTest {
 
     @Test
     fun aFailedFetchOffersNoReport() = assertNoReport(ParseError.FetchFailed("HTTP 400"))
+
+    @Test
+    fun aRedditPostWithNoTranscriptionShowsItsTitleWithOnlyTryAgain() {
+        show(ParseError.NoTranscription("Grandma's lemon pie card", imageUrl = null))
+
+        compose.onNodeWithText("Grandma's lemon pie card").assertIsDisplayed()
+        compose.onNodeWithText("No recipe text found for this post", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Try again").assertIsDisplayed()
+        compose.onNodeWithText("Report this site").assertDoesNotExist()
+        compose.onNodeWithText("Clip it yourself").assertDoesNotExist()
+    }
 }

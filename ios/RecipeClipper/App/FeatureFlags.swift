@@ -22,6 +22,8 @@ enum Flag: String, CaseIterable {
     case aiCountBrackets
     /// "I made this" (#116): your photos and notes on a recipe, and the Recently cooked sort.
     case cookedPhotos
+    /// Reddit posts (#11): Reddit links go to the Reddit source rather than the blog one.
+    case reddit
 }
 
 /// One flag as `shared/flags.json` declares it.

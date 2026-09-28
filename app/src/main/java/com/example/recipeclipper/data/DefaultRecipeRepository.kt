@@ -149,6 +149,8 @@ class DefaultRecipeRepository @Inject constructor(
         val fetched = fetchWithOneRetry(url)
         val result = fetched.result
         if (result !is ParseResult.Error || !result.error.triesRenderedPage) return result
+        // A Reddit post (#11) is read only from its listing: no rendered page, no page text.
+        if (!source.readsRenderedPage(url)) return result
         val html = withTimeoutOrNull(RENDER_TIMEOUT_MS) { renderedPages.render(url) }
         val rendered = html?.let { withContext(Dispatchers.Default) { BlogRecipeSource.parsePage(it, url) } }
         if (rendered != null && rendered.result is ParseResult.Success) return rendered.result

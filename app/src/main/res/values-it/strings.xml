@@ -28,6 +28,7 @@
     <string name="action_open_original">Apri l\'originale</string>
     <string name="cd_open_original">Apri la ricetta originale su %1$s</string>
     <string name="error_no_recipe_found">Nessun dato della ricetta trovato in questa pagina. Alcuni siti non contrassegnano ancora le ricette in un modo che questa app sa leggere.</string>
+    <string name="error_no_transcription">Nessun testo della ricetta trovato per questo post. Su Reddit le ricette sono spesso solo nella foto, e nessuno l\'ha ancora trascritta nei commenti.</string>
     <string name="error_fetch_failed">Impossibile caricare la pagina (%1$s).</string>
     <string name="error_blocked">Il sito ha bloccato l\'app (HTTP %1$d). Spesso è una cosa passeggera: riprova tra un minuto.</string>
     <string name="error_offline">Sei offline. La ricetta verrà caricata quando tornerai online.</string>

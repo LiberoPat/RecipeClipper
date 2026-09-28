@@ -166,7 +166,13 @@ final class AppContainer {
         )
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
-                db: database, source: BlogRecipeSource(), clock: clock,
+                db: database,
+                // Routed by host: Reddit links to the Reddit source (#11), the rest to the blog one.
+                source: RoutingRecipeSource(
+                    blog: BlogRecipeSource(), reddit: RedditRecipeSource(),
+                    redditOn: { featureFlags?.isOn(.reddit) ?? true }
+                ),
+                clock: clock,
                 renderedPages: WebViewRenderedPageSource(), library: libraryLimit,
                 extractor: FoundationModelsPageRecipeExtractor(),
                 extractionOn: { featureFlags?.isOn(.llmExtraction) ?? false },
@@ -210,6 +216,7 @@ final class AppContainer {
         storeKit?.start()
         container.libraryPolicy.startMirroring()
         container.startGroceriesMirroring(DefaultsGroceriesSwitch(defaults: defaults))
+        container.startRedditMirroring(DefaultsRedditSwitch(defaults: defaults))
         return container
     }
 
@@ -255,6 +262,14 @@ final class AppContainer {
     func startGroceriesMirroring(_ mirror: DefaultsGroceriesSwitch) {
         let on = withObservationTracking { featureFlags.isOn(.mealPlan) } onChange: { [weak self] in
             Task { @MainActor in self?.startGroceriesMirroring(mirror) }
+        }
+        mirror.store(on)
+    }
+
+    /// Keeps the share extension's copy of the `reddit` flag (#11) current, as above.
+    func startRedditMirroring(_ mirror: DefaultsRedditSwitch) {
+        let on = withObservationTracking { featureFlags.isOn(.reddit) } onChange: { [weak self] in
+            Task { @MainActor in self?.startRedditMirroring(mirror) }
         }
         mirror.store(on)
     }

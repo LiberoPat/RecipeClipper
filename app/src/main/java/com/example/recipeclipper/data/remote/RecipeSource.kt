@@ -16,6 +16,13 @@ interface RecipeSource {
      * on-device model to pick one from. A source that can't say gives no text.
      */
     suspend fun fetchPage(url: String): FetchedPage = FetchedPage(fetch(url))
+
+    /**
+     * Whether a failed fetch of [url] may go on to the page as an off-screen browser renders
+     * it, and to the on-device model reading its text: only for pages the blog parsers read.
+     * A Reddit post (#11) is read only through its `.json` listing.
+     */
+    fun readsRenderedPage(url: String): Boolean = true
 }
 
 /** A fetch's result, and [page] only when that is `NoRecipeFound` on a page that loaded. */

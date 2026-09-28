@@ -7262,6 +7262,47 @@
         }
       }
     },
+    "error_no_transcription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für diesen Beitrag wurde kein Rezepttext gefunden. Auf Reddit stehen Rezepte oft nur im Foto, und noch niemand hat dieses in den Kommentaren abgetippt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No recipe text found for this post. Reddit recipes are often only in the photo, and nobody has written this one out in the comments yet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha encontrado el texto de la receta en esta publicación. En Reddit, las recetas suelen estar solo en la foto, y nadie ha transcrito esta en los comentarios todavía."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun texte de recette trouvé pour cette publication. Sur Reddit, les recettes ne figurent souvent que sur la photo, et personne ne l'a encore retranscrite dans les commentaires."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun testo della ricetta trovato per questo post. Su Reddit le ricette sono spesso solo nella foto, e nessuno l'ha ancora trascritta nei commenti."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não encontramos o texto da receita neste post. No Reddit, as receitas muitas vezes estão só na foto, e ninguém a transcreveu nos comentários ainda."
+          }
+        }
+      }
+    },
     "error_not_saved" : {
       "extractionState" : "manual",
       "localizations" : {

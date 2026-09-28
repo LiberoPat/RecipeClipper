@@ -28,6 +28,7 @@
     <string name="action_open_original">Voir l\'original</string>
     <string name="cd_open_original">Ouvrir la recette originale sur %1$s</string>
     <string name="error_no_recipe_found">Aucune donnée de recette trouvée sur cette page. Certains sites ne balisent pas encore leurs recettes d\'une façon que cette appli sait lire.</string>
+    <string name="error_no_transcription">Aucun texte de recette trouvé pour cette publication. Sur Reddit, les recettes ne figurent souvent que sur la photo, et personne ne l\'a encore retranscrite dans les commentaires.</string>
     <string name="error_fetch_failed">Impossible de charger cette page (%1$s).</string>
     <string name="error_blocked">Le site a bloqué l\'appli (HTTP %1$d). C\'est souvent passager : réessayez dans une minute.</string>
     <string name="error_offline">Vous êtes hors ligne. La recette se chargera dès que vous serez de nouveau connecté.</string>

@@ -47,6 +47,12 @@
       "description": "\"I made this\": your own photos of a recipe, or \"Mark as cooked\" with none (#173), each with a date and a short note, in a \"Your cooks\" gallery under the recipe; the Recipes screen's Recently cooked sort. Recipes with photos are never removed automatically, and photos go into the export file either way.",
       "defaults": { "debug": true, "release": true },
       "issue": 116
+    },
+    {
+      "key": "reddit",
+      "description": "Reddit posts: a reddit.com or redd.it link (a /s/ share link is followed first) is read from the post's .json listing: the post body, else a transcription in the comments, else the post's photo and title with a note that no recipe text was found. Off, Reddit links go through the blog parsers like any page.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 11
     }
   ]
 }

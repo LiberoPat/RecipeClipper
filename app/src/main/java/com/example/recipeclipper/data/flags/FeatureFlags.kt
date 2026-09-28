@@ -34,7 +34,10 @@ enum class Flag(val key: String) {
     AI_COUNT_BRACKETS("aiCountBrackets"),
 
     /** "I made this" (#116): your photos and notes on a recipe, and the Recently cooked sort. */
-    COOKED_PHOTOS("cookedPhotos");
+    COOKED_PHOTOS("cookedPhotos"),
+
+    /** Reddit posts (#11): Reddit links go to the Reddit source rather than the blog one. */
+    REDDIT("reddit");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

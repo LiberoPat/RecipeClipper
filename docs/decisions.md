@@ -3135,6 +3135,64 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
   off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
   so a killed app loses it with nothing changed. Behind `mealPlan`, like every pantry feature.
 
+## Reddit posts (#11)
+
+The design is the issue's: one `.json` fetch, the post body if it splits, else the best comment
+that splits, else `NoTranscription` with the post's photo. What was decided when it met the
+app main had become:
+
+- **Behind a `reddit` flag, on in debug and release** (the owner's rule for flags). Off, a
+  Reddit link goes to the blog source, as before #11. The iOS share extension never sees the
+  flags, so the app mirrors this one into the App Group suite (`reddit_on`, on until written),
+  as it does `mealPlan` for "Add this list".
+- **No rendered page and no page text for a Reddit post** (`RecipeSource.readsRenderedPage`).
+  The blog parsers can't read Reddit's rendered HTML (there's no recipe markup in it), so a
+  WebView load after a 429 would only add up to 20 s before the same Blocked; and its text is a
+  whole thread, which the on-device model (#103) shouldn't pick a recipe out of when the
+  splitter, by design, declined. On iOS a page Safari already rendered (#35) is ignored for the
+  same reason. `RoutingRecipeSource` forwards `fetchPage` too, so blog pages keep their text for
+  the model.
+- **`NoTranscription` offers Try again only**: no "Report this site" (Reddit isn't a site whose
+  markup the app could learn) and no "Clip it yourself" (the recipe, when there is one, is
+  usually in the photo). Both stay tied to `NoRecipeFound`, which a Reddit link that isn't a
+  post still gives.
+- **The recipe's language** comes from its words, as for any page with none declared (#14).
+  The splitter's headers are English, so in practice these are English recipes.
+- **Detection was widened after the first phone test.** On the owner's S23, posts that had a
+  recipe (shared from the Reddit app, so `/s/` links) showed "No recipe text found": the
+  fetch and the share link worked, the splitter missed. reddit.com answers 403 to the
+  development machine, so real text came from recorded responses instead: PRAW's test
+  cassettes (the `/s/` 301 and its `?share_id=…&utm_…` target, comment trees with
+  `is_submitter`, `more` stubs and a stickied AutoModerator, crossposts, galleries) and 54
+  archived r/recipes `.json` listings on GitHub. The first splitter read 21 of their recipes;
+  this one reads 30, and the requests, questions and link-only posts still read none. What
+  real posts needed:
+  - Headers set apart as headers (bold, a Markdown heading, a trailing colon, capitals) may
+    have up to three words before the keyword ("Dry ingredients", "Cooking steps",
+    "Ingredient amounts:"), a typo two letters off ("Ingredeints:", "Intructions"), an emoji
+    or a bracket. A word that names a group ("Dry", "Sauce") stays as the group's heading; a
+    line that starts like a step ("**Mix the dry ingredients**") is never a header.
+  - Ingredients with no header: the lines just above the steps, read upwards while each reads
+    like an ingredient (an amount, a list item or a short line), with at least two amounts.
+    The note or story above them ends the block.
+  - Steps with no header: a numbered list starting at 1, or "Step 1", after the ingredients.
+  - Reddit's editor escapes a typed "1." as "1\."; glyph bullets ("•", "・", a copied card's
+    "▢"); a bold line inside a section is a group heading ("Sauce:", the app's convention);
+    a line with a bare link ("More on my blog: https://…") is left out.
+  - **The poster's own comment first** (`is_submitter`): r/recipes asks for the recipe in a
+    comment by the poster of a photo, and another reader's recipe can come first.
+    **AutoModerator's comments are skipped** (a subreddit's "post it like this" template can
+    split), but not the replies under them: r/Old_Recipes asks for transcriptions as replies
+    to the bot.
+  - **A crosspost's comments are on the original's thread**, so a crosspost with no recipe
+    of its own costs one more fetch, of the original (`crosspost_parent`); any failure there
+    keeps the crosspost's own outcome.
+
+  Still never prose: steps written as paragraphs with no header and no numbers aren't steps,
+  so a real post whose method is "Preheat oven to 375" and three paragraphs stays
+  `NoTranscription`, as does chatter with a number or a list in it. The fixtures are JSON
+  files in `shared/fixtures/reddit`, made-up posts in the real `raw_json=1` shape.
+
 ## Pantry stock: In stock, Running low, Run out (#194)
 
 Owner's decision (2026-09-27): the per-row on/off switch read like a setting, not a fact about
@@ -3325,7 +3383,9 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                ShareFileRepository (the file sent to someone else, #149; rules in backup/ShareFile)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
   remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, SiteRules, CardHeadings, CardSelector, CardIngredients),
-               MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103)
+               MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103),
+               RedditRecipeSource (+ RoutingRecipeSource), RedditRecipeParser, RedditCommentScorer,
+               RecipeTextSplitter, RedditUrls (#11)
   model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, Durations (times),
                RecipeShareText,

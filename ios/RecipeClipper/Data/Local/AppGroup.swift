@@ -31,3 +31,18 @@ struct DefaultsGroceriesSwitch: @unchecked Sendable {
         if defaults.object(forKey: Self.key) as? Bool != on { defaults.set(on, forKey: Self.key) }
     }
 }
+
+/// Whether Reddit links go to the Reddit source (the `reddit` flag, #11), as the share
+/// extension reads it: the app mirrors the flag into the App Group suite under `reddit_on`,
+/// since the extension never sees the flags. On until the app has written it, as the flag's
+/// default is.
+struct DefaultsRedditSwitch: @unchecked Sendable {
+    static let key = "reddit_on"
+    let defaults: UserDefaults
+
+    var isOn: Bool { defaults.object(forKey: Self.key) as? Bool ?? true }
+
+    func store(_ on: Bool) {
+        if defaults.object(forKey: Self.key) as? Bool != on { defaults.set(on, forKey: Self.key) }
+    }
+}

@@ -117,6 +117,9 @@ final class DefaultRecipeRepository: RecipeRepository {
     /// loads the page once in an off-screen browser if it is still blocked or has no recipe
     /// data.
     private func fetchWithFallbacks(_ url: String, renderedPage: String?) async -> ParseResult {
+        // A Reddit post (#11) is read only from its listing: no rendered page, no page text.
+        let readsPages = source.readsRenderedPage(url: url)
+        let renderedPage = readsPages ? renderedPage : nil
         if let renderedPage {
             let fromPage = BlogRecipeSource.parse(html: renderedPage, url: url)
             if case .success = fromPage { return fromPage }
@@ -140,7 +143,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         // Still blocked, or a page with no recipe data: load it once in an off-screen browser
         // and run what it renders through the same parsers. Never after offline or a timeout.
         // A rendered page with no recipe, or one that doesn't load, leaves the cause standing.
-        guard case .error(let error) = parsed, error.triesRenderedPage, !Task.isCancelled else { return parsed }
+        guard case .error(let error) = parsed, error.triesRenderedPage, readsPages, !Task.isCancelled else { return parsed }
         var rendered: FetchedPage?
         if let html = await renderCapped(url), !Task.isCancelled {
             rendered = BlogRecipeSource.parsePage(html: html, url: url)

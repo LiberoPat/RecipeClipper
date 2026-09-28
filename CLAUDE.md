@@ -42,10 +42,11 @@ recipes (#29); "Clip it yourself" (#37); export/import and an automatic
 backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147); Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
-(#151, #190: a sample recipe and tooltips); the UI in six languages (drafts
-awaiting a native speaker: `docs/translations.md`). iOS also honours Dynamic Type.
+(#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
+(`reddit` flag, #11); the UI in six languages (drafts awaiting a native speaker:
+`docs/translations.md`). iOS also honours Dynamic Type.
 
-Not built, all tracked as issues: Reddit (#11), other recipe languages,
+Not built, all tracked as issues: other recipe languages,
 release setup (#18, #20–#22).
 
 ## Commands
@@ -265,6 +266,9 @@ feature's full layout, are in `docs/decisions.md` under its issue.
     is false; on iOS, the no-connection `URLError` codes.
   - `FetchFailed(detail, timedOut)` for anything else.
   - `NoRecipeFound`.
+  - `NoTranscription(title, imageUrl)`: a Reddit post with no recipe as
+    text. An outcome, not a failure: the screen shows the post's photo and
+    a muted note, with Try again only. Never retried, never reloaded on reconnect.
 - The repository retries **once**, after an injectable 2 s pause, and only
   for `Blocked` or a `FetchFailed` that wasn't a timeout. Never for `Offline`
   (it fails at once), a timeout (a dead Wi-Fi costs one 15 s timeout, not
@@ -273,7 +277,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 - **Then, only if still `Blocked` or `NoRecipeFound`, one rendered fetch**
   (`RenderedPageSource`, an off-screen web view, capped at 20 s) through the
   same parsers: the only way to see a page rendered by JavaScript (a page
-  behind a login stays out of reach). No recipe there keeps the original cause.
+  behind a login stays out of reach). Never for a Reddit post (read only from
+  its `.json`). No recipe there keeps the original cause.
 - After any failure, a link saved before opens from the saved copy. Photos
   are cached (Coil; iOS `ImageLoader`), so they show offline too.
 - **Every error screen offers Try again, `NoRecipeFound` included**: a
@@ -316,6 +321,12 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 - **Times:** an ISO duration totalling zero ("PT0S") is absent; a
   whole-string phrase ("1 hour 30 minutes") renders like ISO ("1h 30m");
   anything else ("Overnight") stays as written.
+- **Reddit** (#11, `reddit` flag, routed by host): one `.json` fetch (a `/s/`
+  share link is followed first). The post body if it splits, else the
+  poster's comment, else the best other comment that splits, else
+  `NoTranscription`. `RecipeTextSplitter` needs an ingredients block (a
+  header, or quantity lines just above the steps) and steps (a header, or a
+  numbered list from 1): never prose. `sourceType` is `REDDIT`.
 - **Condensed duplicate sections are skipped** ("Abbreviated Recipe",
   "TL;DR", …; an exact set), only when another section still has steps.
 - **Only ingredient lines are scaled,** never numbers inside instructions. An
