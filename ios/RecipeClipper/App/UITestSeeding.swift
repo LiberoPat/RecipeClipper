@@ -20,7 +20,8 @@ import UIKit
 ///   - the first-run tour (#151, #190) done (the sample decided, every tooltip seen), unless
 ///     `-uiTestTooltips` asks for a fresh install's;
 ///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`;
-///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder.
+///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder;
+///   - with `RC_UITEST_REDDIT_LISTING` in the environment, Reddit links parsed from it (#11).
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -306,8 +307,16 @@ enum UITestSeeding {
 /// Every link resolves, offline, to the same canned recipe under that link, except two paths
 /// that stand in for failures: `/no-recipe` (the page loaded, no recipe data) and `/blocked`
 /// (the site answered 403 every time, so the repository's one automatic retry fails too).
+/// A Reddit link, while the `RC_UITEST_REDDIT_LISTING` environment variable holds a post's
+/// `.json` listing (a `shared/fixtures/reddit` file, handed in by the walkthrough), goes through
+/// the real `RedditRecipeParser` instead: reddit.com itself often refuses a simulator.
 private struct StubRecipeSource: RecipeSource {
+    static let redditListingKey = "RC_UITEST_REDDIT_LISTING"
+
     func fetch(url: String) async -> ParseResult {
+        if RedditUrls.isReddit(url), let listing = ProcessInfo.processInfo.environment[Self.redditListingKey] {
+            return RedditRecipeParser.parse(listing, sourceUrl: url)
+        }
         let path = URL(string: url)?.path ?? ""
         if path.hasSuffix("/no-recipe") { return .error(.noRecipeFound) }
         if path.hasSuffix("/blocked") { return .error(.blocked(httpStatus: 403)) }
