@@ -232,6 +232,16 @@ first ticks, put-away, one undo for the list and the pantry), `GroceriesScreenTe
 `PantryViewModelTest` and `PantryScreenTest`; iOS mirrors them in `PantryViewModelTests`,
 `GroceriesUITests` (Done shopping, Undo) and `PantryUITests` (the tag).
 
+The pantry's three states (#194): `MIGRATION_15_16` in `MigrationTest` (a real version-15 file's
+items keep their stock; one can then be marked running low) and iOS's
+`PantryDaoTests` (the user_version 14 → 15 step, running low kept until a restock); `PantryTest`
+/ `PantryTests` (the Run out section in both sorts, running low still covered);
+`PantryViewModelTest(s)` (running low, ran out and restock, each onto the list once);
+`BackupJsonTest(s)` (the key round-trips; the shared fixture, which has none, reads as in stock
+or run out); `PantryScreenTest` (Robolectric: the labelled action, the Run out heading, the
+touch-and-hold menu, the row's TalkBack description and custom actions) and `PantryUITests`
+(Ran out, Restock). Swipes are not driven by a test on either platform.
+
 The Pantry's "Send list" and "Send as file" (#149, what's in stock): `SendListTextTest` (the
 text, and its round trip through "Add this list"), `ShareFileTest` and
 `ShareFileRepositoryTest` (the file), `PantryViewModelTest`, `ShareFileViewModelsTest`, and
