@@ -2993,7 +2993,12 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   can't show over another presentation, so each screen passes `blocked` for its own sheets,
   dialogs and snackbars, and the host blocks while the keyboard is up. Toolbar items (the recipe's
   bookmark, share and menu, and the tabs' menus) are anchors too (`inToolbar`: on screen while the
-  bar shows).
+  bar shows), so `.tooltipHost` goes outside `.toolbar`. Anchors are measured in the host's own
+  coordinate space against its own bounds (a background's geometry reaches under the bars, and a
+  push animation moves everything). A NavigationStack's root doesn't always hear `onDisappear`
+  when a screen is pushed over it, nor `onAppear` when that screen goes, so leaving the top screen
+  makes the one under it the visit again, after its settling second; and a screen's reports are
+  kept by its token, so one still alive underneath can't overwrite the one on top (Android too).
 - **State** lives in `unit_preferences` / the settings suite, backed up with the settings, under
   the same keys on both platforms: `tooltip_<id>` (true once seen; "Show tips again" removes
   them) and `tour_sample_added`. #151's `tour_welcome` and `tour_tip_*` keys are **ignored**:
