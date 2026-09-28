@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -109,7 +108,7 @@ class ReceiveListViewModel @Inject constructor(
             val items = pantry.items()
             val today = calendar.today()
             val names = lines.map { line -> words?.let { IngredientName.of(line, it) } ?: line.trim() }
-                .distinctBy { it.lowercase(Locale.ROOT) }
+                .distinctBy { IngredientName.key(it, words) }
             val restock = mutableListOf<Long>()
             for (name in names) {
                 val tracked = if (words != null) PantryMatch.find(name, words.language, items)

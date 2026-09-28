@@ -59,7 +59,7 @@ enum PantryUseUp {
             guard let use = read(line, words, pantryName: nil) else { return .ask }
             uses.append(use)
         }
-        return subtract(quantity, stock, uses) ?? .ask
+        return subtract(quantity, stock, uses, words) ?? .ask
     }
 
     /// One exact amount: `value` in `unit` (nil: a count), `unitText` as written, the number and
@@ -169,14 +169,17 @@ enum PantryUseUp {
 
     private static func usedUp(_ left: Double, _ total: Double) -> Bool { left <= epsilon * Swift.max(1.0, total) }
 
-    /// `stock` less `uses`, as a change to `quantity`; nil when it can't be worked out.
-    private static func subtract(_ quantity: String, _ stock: Amount, _ uses: [Amount]) -> UseUpChange? {
+    /// `stock` less `uses`, as a change to `quantity`; nil when it can't be worked out. A count's
+    /// words are worded for what's left by a listed pair ("2 onions" less 1 is "1 onion", #191).
+    private static func subtract(_ quantity: String, _ stock: Amount, _ uses: [Amount], _ words: LanguageWords) -> UseUpChange? {
         guard let stockUnit = stock.unit else {
             if uses.contains(where: { $0.unit != nil }) { return nil }
             let left = stock.value - uses.reduce(0.0) { $0 + $1.value }
             if usedUp(left, stock.value) { return .subtract(before: quantity, after: nil) }
             guard let text = GroceryCombiner.exactly(left, metric: false, comma: stock.comma) else { return nil }
-            return .subtract(before: quantity, after: replace(quantity, stock, text))
+            let counted = quantity.u16Substring(0, stock.start) + text +
+                IngredientName.counted(quantity.u16Substring(from: stock.end), count: left, words: words)
+            return .subtract(before: quantity, after: counted)
         }
         if uses.contains(where: { $0.unit == nil }) { return nil }
 

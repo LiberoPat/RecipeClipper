@@ -40,6 +40,21 @@ class AislesTest {
         assertEquals(Aisle.CONDIMENTS, aisle("醤油 大さじ1", "ja"))
     }
 
+    @Test fun aListedPairFilesInEitherNumber() {
+        assertEquals(Aisle.PRODUCE, aisle("2 zucchinis"))
+        assertEquals(Aisle.PRODUCE, aisle("1 red onion"))
+        assertEquals(Aisle.MEAT, aisle("1 chicken wing"))
+        assertEquals(Aisle.CANNED, aisle("1 can chopped tomato"))
+        assertEquals(Aisle.BAKING, aisle("1 vanilla bean"))
+        assertEquals(Aisle.DRINKS, aisle("1 l zumo de naranjas", "es"))
+        // Not listed, so as before: nothing is inferred.
+        assertEquals(Aisle.OTHER, aisle("1 cup pea shoots"))
+        assertEquals(Aisle.OTHER, aisle("2 tbsp hummus"))
+        assertEquals(Aisle.PRODUCE, aisle("1 bunch asparagus"))
+        assertEquals(Aisle.GRAINS, aisle("1 cup couscous"))
+        assertEquals(Aisle.BAKING, aisle("2 tbsp molasses"))
+    }
+
     @Test fun anUnknownStoredKeyIsOther() {
         assertEquals(Aisle.OTHER, Aisle.fromKey("haberdashery"))
         assertEquals(Aisle.DAIRY, Aisle.fromKey("dairy"))

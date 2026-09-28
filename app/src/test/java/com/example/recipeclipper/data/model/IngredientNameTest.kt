@@ -8,6 +8,8 @@ import org.junit.Test
 
 class IngredientNameTest {
 
+    private val en = LanguageWords.ENGLISH
+
     private fun name(line: String) = IngredientName.of(line)
 
     @Test fun `drops the amount, unit and preparation`() {
@@ -92,6 +94,83 @@ class IngredientNameTest {
         val ja = LanguageWords.forTag("ja")!!
         assertTrue(IngredientName.matches("無塩バター", "バター", ja))
         assertFalse(IngredientName.matches("ピーナッツバター", "バター", ja))
+    }
+
+    // --- Listed singular/plural pairs (#191)
+
+    @Test fun `a listed pair is one name in either number, and only its number`() {
+        assertTrue(IngredientName.matches("onions", "onion"))
+        assertTrue(IngredientName.matches("Onion", "onions"))
+        assertTrue(IngredientName.matches("red onion", "red onions"))
+        assertTrue(IngredientName.matches("yellow onions", "yellow onion"))
+        assertTrue(IngredientName.matches("large eggs", "egg"))
+        assertTrue(IngredientName.matches("bay leaves", "bay leaf"))
+        assertTrue(IngredientName.matches("tomatoes", "tomato"))
+        assertTrue(IngredientName.matches("potatoes", "potato"))
+        assertTrue(IngredientName.matches("berries", "berry"))
+        assertTrue(IngredientName.matches("garlic cloves", "garlic clove"))
+        // The owner (2026-09-27): a colour is a different onion, in either number.
+        for ((a, b) in listOf(
+            "red onion" to "onion", "red onions" to "onion", "red onion" to "onions",
+            "red onion" to "yellow onion", "yellow onions" to "white onion", "yellow onion" to "white onions",
+            "onion powder" to "onion", "onion powder" to "onions", "rice flour" to "flour",
+            "peas" to "pea shoots", "pea" to "pea shoots"
+        )) {
+            assertFalse("$a / $b", IngredientName.matches(a, b))
+            assertFalse("$b / $a", IngredientName.matches(b, a))
+        }
+    }
+
+    @Test fun `nothing is inferred from a word that isn't listed`() {
+        for (word in listOf("glass", "hummus", "asparagus", "couscous", "molasses")) {
+            assertEquals(word, IngredientName.key(word, en))
+        }
+        assertEquals("pea", IngredientName.key("peas", en))
+        assertFalse(IngredientName.matches("glass", "gla"))
+        assertFalse(IngredientName.matches("hummus", "hummu"))
+        assertFalse(IngredientName.matches("asparagus", "asparagu"))
+        assertFalse(IngredientName.matches("couscous", "couscou"))
+        assertFalse(IngredientName.matches("molasses", "molasse"))
+        assertFalse(IngredientName.matches("peppers", "pepper")) // the spice and the vegetable: not listed
+    }
+
+    @Test fun `the key is trimmed, lowercase, and each listed plural singular`() {
+        assertEquals("red onion", IngredientName.key("  Red Onions ", en))
+        assertEquals("onion, sliced", IngredientName.key("onions, sliced", en))
+        assertEquals("onions", IngredientName.key(" Onions ", null))
+        assertTrue(IngredientName.same("Onions", "onion", en))
+        assertFalse(IngredientName.same("2 onions", "onion", en))
+        val fr = LanguageWords.forTag("fr")!!
+        assertEquals("pomme de terre", IngredientName.key("pommes de terre", fr))
+        assertEquals("oignon rouge", IngredientName.key("oignons rouges", fr))
+        val ja = LanguageWords.forTag("ja")!!
+        assertEquals("玉ねぎ", IngredientName.key("玉ねぎ", ja))
+    }
+
+    @Test fun `each language lists its own pairs`() {
+        fun matches(a: String, b: String, tag: String) = IngredientName.matches(a, b, LanguageWords.forTag(tag)!!)
+        assertTrue(matches("Zwiebeln", "Zwiebel", "de"))
+        assertTrue(matches("Eier", "Ei", "de"))
+        assertTrue(matches("rote Zwiebeln", "rote Zwiebel", "de"))
+        assertFalse(matches("rote Zwiebeln", "Zwiebel", "de"))
+        assertTrue(matches("cebollas", "cebolla", "es"))
+        assertTrue(matches("cebollas rojas", "cebolla roja", "es"))
+        assertFalse(matches("cebollas rojas", "cebolla", "es"))
+        assertTrue(matches("oignons", "oignon", "fr"))
+        assertTrue(matches("uova", "uovo", "it"))
+        assertTrue(matches("ovos", "ovo", "pt"))
+        assertFalse(matches("onions", "onion", "de")) // English words aren't German ones
+    }
+
+    @Test fun `a count's words are worded for the count by the pair`() {
+        assertEquals("onions", IngredientName.counted("onion", 3.0, en))
+        assertEquals("onion", IngredientName.counted("onions", 1.0, en))
+        assertEquals("onion", IngredientName.counted("onion", 0.5, en))
+        assertEquals("large eggs, beaten", IngredientName.counted("large egg, beaten", 2.0, en))
+        assertEquals("Onions", IngredientName.counted("Onion", 2.0, en))
+        assertEquals("glass", IngredientName.counted("glass", 2.0, en))
+        assertEquals("Zwiebeln", IngredientName.counted("Zwiebel", 3.0, LanguageWords.forTag("de")!!))
+        assertEquals("oignons rouges", IngredientName.counted("oignon rouge", 2.0, LanguageWords.forTag("fr")!!))
     }
 
     @Test fun `render scales, then converts with the line's own separator`() {

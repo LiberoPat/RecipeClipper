@@ -80,7 +80,7 @@ object PantryUseUp {
         val quantity = item.quantity?.trim()?.takeIf { it.isNotEmpty() } ?: return UseUpChange.Ask
         val stock = read(quantity, words, item.name) ?: return UseUpChange.Ask
         val uses = lines.map { read(it, words, null) ?: return UseUpChange.Ask }
-        return subtract(quantity, stock, uses) ?: UseUpChange.Ask
+        return subtract(quantity, stock, uses, words) ?: UseUpChange.Ask
     }
 
     /**
@@ -197,15 +197,20 @@ object PantryUseUp {
 
     private fun usedUp(left: Double, total: Double) = left <= EPSILON * max(1.0, total)
 
-    /** [stock] less [uses], as a change to [quantity]; null when it can't be worked out. */
-    private fun subtract(quantity: String, stock: Amount, uses: List<Amount>): UseUpChange? {
+    /**
+     * [stock] less [uses], as a change to [quantity]; null when it can't be worked out. A count's
+     * words are worded for what's left by a listed pair ("2 onions" less 1 is "1 onion", #191).
+     */
+    private fun subtract(quantity: String, stock: Amount, uses: List<Amount>, words: LanguageWords): UseUpChange? {
         val stockUnit = stock.unit
         if (stockUnit == null) {
             if (uses.any { it.unit != null }) return null
             val left = stock.value - uses.sumOf { it.value }
             if (usedUp(left, stock.value)) return UseUpChange.Subtract(quantity, null)
             val text = GroceryCombiner.exactly(left, metric = false, comma = stock.comma) ?: return null
-            return UseUpChange.Subtract(quantity, replace(quantity, stock, text))
+            val counted = quantity.substring(0, stock.start) + text +
+                IngredientName.counted(quantity.substring(stock.end), left, words)
+            return UseUpChange.Subtract(quantity, counted)
         }
         if (uses.any { it.unit == null }) return null
 
