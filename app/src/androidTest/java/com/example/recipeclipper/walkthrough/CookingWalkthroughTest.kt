@@ -237,7 +237,8 @@ class CookingWalkthroughTest : WalkthroughBase() {
         waitFor(hasTestTag("tooltip-settings_units"))
         pause(2500)
         tap("Got it", 1500)
-        tapScrolling("Show tips again")
+        reveal(hasText("Show tips again"))
+        press(hasText("Show tips again"), 2000) // by semantics: the row can sit under the tab bar
         back()
         waitFor(hasTestTag("tooltip-home_link"))
         pause(2500)
@@ -260,7 +261,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
         compose.onNode(hasTestTag("pantry-$oil")).performTouchInput { longClick(Offset(width * 0.3f, centerY)) }
         pause(1500)
         tapTag("stockMenu-RUNNING_LOW")
-        waitFor(hasTestTag("low-$oil"))
+        waitFor(hasText("Low")) // the tag (merged into the row, so found by its text)
         pause(2000)
         val garlic = pantryIds.getValue("garlic")
         scrollTo("pantryList", "pantry-$garlic")
