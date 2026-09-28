@@ -5,6 +5,8 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTouchInput
@@ -112,6 +114,27 @@ class PantryScreenTest {
             .assert(SemanticsMatcher("offers Restock and Ran out") { node ->
                 node.config.getOrNull(SemanticsActions.CustomActions)?.map { it.label } == listOf("Restock", "Ran out")
             })
+    }
+
+    // Every state is reachable from something visible: the edit sheet's stock control, applied at
+    // once through the row's own path (Running low goes on the list, and Restock brings it back).
+    @Test
+    fun theEditSheetSetsTheStock() {
+        val pantry = show(item(1, "garlic", aisle = Aisle.PRODUCE))
+        compose.onNodeWithText("garlic").performClick()
+        compose.onNodeWithTag("pantryEditStock-IN_STOCK").assertIsSelected()
+        compose.onNodeWithTag("pantryEditStock-RUNNING_LOW").performClick()
+
+        compose.waitUntil(5_000) { groceries.items.value.isNotEmpty() }
+        compose.runOnIdle { assertEquals(PantryStock.RUNNING_LOW, pantry.items.value.single().stock) }
+        compose.onNodeWithTag("pantryEditStock-RUNNING_LOW").assertIsSelected()
+        compose.onNodeWithTag("pantryEditStock-IN_STOCK").assertIsNotSelected()
+
+        compose.onNodeWithTag("pantryEditStock-RUN_OUT").performClick()
+        compose.waitUntil(5_000) { pantry.items.value.single().stock == PantryStock.RUN_OUT }
+        compose.onNodeWithTag("pantryEditStock-IN_STOCK").performClick()
+        compose.waitUntil(5_000) { pantry.items.value.single().stock == PantryStock.IN_STOCK }
+        compose.runOnIdle { assertEquals(listOf("garlic"), groceries.items.value.map { it.text }) }
     }
 
     // The menu offers only what the row's button doesn't: In stock → Running low (the button is

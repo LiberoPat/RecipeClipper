@@ -41,6 +41,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -77,6 +80,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -521,6 +525,21 @@ private fun EditSheet(editing: PantryEditing, viewModel: PantryViewModel) {
                 .testTag("pantryEdit")
         ) {
             SectionHeading(stringResource(R.string.pantry_edit_title))
+            Spacer(Modifier.height(12.dp))
+            // Every state, visibly (#194): the row's button, menu and swipes are shortcuts.
+            // Applied at once, as the row's button is.
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("pantryEditStock")) {
+                PantryStock.entries.forEachIndexed { index, choice ->
+                    SegmentedButton(
+                        selected = editing.stock == choice,
+                        onClick = { viewModel.onEditStock(choice) },
+                        shape = SegmentedButtonDefaults.itemShape(index, PantryStock.entries.size),
+                        modifier = Modifier.testTag("pantryEditStock-${choice.name}")
+                    ) {
+                        Text(stringResource(choice.label()), textAlign = TextAlign.Center)
+                    }
+                }
+            }
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = editing.name,

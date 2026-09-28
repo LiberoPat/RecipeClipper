@@ -560,7 +560,7 @@
     <string name="tooltip_groceries_done_shopping">De volta em casa? Guarde o que marcou na despensa e tire da lista.</string>
     <string name="tooltip_groceries_menu">Mais: Enviar lista, ou Colar uma lista.</string>
     <string name="tooltip_pantry_add">Adicione o que você tem em casa.</string>
-    <string name="tooltip_pantry_in_stock">Toque em Acabou quando algo terminar: vai para a sua lista de compras. Toque e segure para Acabando.</string>
+    <string name="tooltip_pantry_in_stock">Toque em Acabou quando algo terminar: vai para a sua lista de compras. Toque em um item para marcá-lo como Acabando.</string>
     <string name="tooltip_pantry_menu">Mais: Enviar lista, e ordenar por corredor ou validade.</string>
     <string name="tooltip_settings_units">Como as quantidades aparecem, em todas as receitas.</string>
     <string name="tooltip_settings_show_tips">Veja cada dica de novo, uma de cada vez.</string>

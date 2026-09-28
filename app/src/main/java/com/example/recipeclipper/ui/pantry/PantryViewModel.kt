@@ -25,14 +25,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** The edit sheet's fields, for item [id]. Written only on Save. */
+/**
+ * The edit sheet's fields, for item [id]. Written only on Save, except [stock]: the sheet's
+ * stock control applies at once, as the row's button does (#194).
+ */
 data class PantryEditing(
     val id: Long,
     val name: String,
     val quantity: String,
     val alwaysHave: Boolean,
     val expiresDay: Long?,
-    val purchasedDay: Long?
+    val purchasedDay: Long?,
+    val stock: PantryStock
 )
 
 /** The snackbar, only ever for undo (#146). [id] tells two messages about the same item apart. */
@@ -154,8 +158,16 @@ class PantryViewModel @Inject constructor(
 
     fun onEdit(item: PantryItem) = _uiState.update {
         it.copy(
-            editing = PantryEditing(item.id, item.name, item.quantity.orEmpty(), item.alwaysHave, item.expiresDay, item.purchasedDay)
+            editing = PantryEditing(item.id, item.name, item.quantity.orEmpty(), item.alwaysHave, item.expiresDay, item.purchasedDay, item.stock)
         )
+    }
+
+    /** The sheet's stock control: applied at once, through the same path as the row's button. */
+    fun onEditStock(stock: PantryStock) {
+        val editing = _uiState.value.editing ?: return
+        val item = items.firstOrNull { it.id == editing.id } ?: return
+        _uiState.update { it.copy(editing = it.editing?.copy(stock = stock)) }
+        onSetStock(item, stock)
     }
 
     fun onEditName(name: String) = _uiState.update { it.copy(editing = it.editing?.copy(name = name)) }
