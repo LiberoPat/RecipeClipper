@@ -3201,14 +3201,21 @@ the cupboard. It is replaced, and a **Running low** state added.
 - **Three states, shown by grouping.** In stock and running low sit in their aisle sections
   (running low with a small "Low" tag); run out sits in one dimmed "Run out" section at the
   bottom, in either sort (`PantryList.arrange`, `PantrySection.runOut`).
+- **Every state is reachable from something visible; gestures are shortcuts** (owner,
+  2026-09-28: touch and hold isn't discoverable). Tapping a row opens its edit sheet, which
+  starts with an In stock | Running low | Run out segmented control showing the current state.
+  It applies at once through the row button's own path (`onEditStock` → `onSetStock`), not on
+  Save, so "On list" and the grocery side effects are identical; dismissing the sheet keeps it.
+  The Pantry tooltip says "Tap an item to mark it Running low".
 - **Labelled actions, not a switch.** Each row has one text action: "Ran out" while in stock or
-  running low, "Restock" once out. The row's menu (touch and hold) offers only the state the
-  button doesn't, so it never repeats it: Running low while in stock, Restock while running
-  low, Running low once out (it offered both other states until the owner found it duplicated
-  the button). Running low is also reached from #147's sheet and, on iOS, a second trailing
-  swipe action. Swipes are shortcuts: leading Restock, trailing Ran out, each only where it
-  changes something. TalkBack and VoiceOver read the row as one ("Garlic, Run out, On list")
-  and still offer both other states as its actions, so every state is reachable from the row. iOS's Pantry became a `List` (as Recipes is) for the swipe actions.
+  running low, "Restock" once out. The shortcuts: the row's menu (touch and hold) offers only
+  the state the button doesn't, so it never repeats it: Running low while in stock, Restock
+  while running low, Running low once out (it offered both other states until the owner found
+  it duplicated the button). Swipes: leading Restock, trailing Ran out, each only where it
+  changes something; iOS adds Running low as a second trailing action. Running low is also
+  reached from #147's sheet. TalkBack and VoiceOver read the row as one ("Garlic, Run out, On
+  list") and still offer both other states as its actions. iOS's Pantry became a `List` (as
+  Recipes is) for the swipe actions.
 - **Groceries as #146.** Ran out and Running low both put the name on the grocery list
   silently, shown by "On list"; tapping the tag takes it off. Restock, Done shopping's
   put-away and typing a name already there all return an item to In stock (and bought today).
