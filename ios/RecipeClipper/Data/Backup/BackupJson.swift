@@ -11,7 +11,7 @@ import Foundation
 ///   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
 ///   "memberships": [{ "recipeId", "listId", "addedAt" }],
 ///   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
-///                     "purchasedDay", "expiresDay", "updatedAt" }],
+///                     "purchasedDay", "expiresDay", "updatedAt", "runningLow" }],
 ///   "groceries":   [{ "id", "text", "language", "aisle", "checked", "recipeId", "plannedDay",
 ///                     "updatedAt" }],
 ///   "mealTypes":   [{ "id", "name", "builtInKey", "sortOrder", "updatedAt" }],
@@ -166,17 +166,21 @@ enum BackupJson {
             let r = Reader(path: path)
             let id = try r.requiredId(o, "id")
             guard let name = try r.string(o, "name"), !name.isBlank else { throw Malformed(path: "\(path).name") }
+            let inStock = try r.bool(o, "inStock") ?? true
+            let runningLow = try r.bool(o, "runningLow") ?? false
             return BackupPantryItem(
                 id: id,
                 name: name,
                 quantity: try r.string(o, "quantity"),
                 language: try r.string(o, "language"),
                 aisle: try r.string(o, "aisle") ?? "other",
-                inStock: try r.bool(o, "inStock") ?? true,
+                inStock: inStock,
                 alwaysHave: try r.bool(o, "alwaysHave") ?? false,
                 purchasedDay: try r.int64(o, "purchasedDay"),
                 expiresDay: try r.int64(o, "expiresDay"),
-                updatedAt: try r.int64(o, "updatedAt") ?? 0
+                updatedAt: try r.int64(o, "updatedAt") ?? 0,
+                // Absent before #194: the old boolean alone is in stock or run out.
+                runningLow: inStock && runningLow
             )
         }
         try requireUniqueIds(pantry.map(\.id), "pantry")
@@ -444,6 +448,7 @@ enum BackupJson {
             "purchasedDay": p.purchasedDay.map { NSNumber(value: $0) } ?? NSNull(),
             "expiresDay": p.expiresDay.map { NSNumber(value: $0) } ?? NSNull(),
             "updatedAt": NSNumber(value: p.updatedAt),
+            "runningLow": p.runningLow,
         ]
     }
 

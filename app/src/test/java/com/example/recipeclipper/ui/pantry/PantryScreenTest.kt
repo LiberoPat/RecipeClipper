@@ -105,7 +105,7 @@ class PantryScreenTest {
         compose.waitUntil(5_000) { groceries.items.value.isNotEmpty() }
         compose.runOnIdle { assertEquals(PantryStock.RUNNING_LOW, pantry.items.value.single().stock) }
         compose.onNodeWithTag("low-1", useUnmergedTree = true).assertIsDisplayed().assertTextEquals("Low")
-        compose.onNodeWithText("Produce").assertIsDisplayed()
+        compose.onNodeWithText("Fruit & vegetables").assertIsDisplayed()
         compose.onNodeWithTag("stockAction-1").assertTextEquals("Ran out")
         compose.onNode(hasContentDescription("garlic, Running low, On list")).assertIsDisplayed()
             .assert(SemanticsMatcher("offers Restock and Ran out") { node ->

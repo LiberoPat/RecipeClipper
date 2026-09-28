@@ -221,7 +221,7 @@ struct BackupDao {
             try pantry.insert(PantryItemRecord(
                 name: p.name, quantity: p.quantity, language: p.language, aisle: p.aisle, inStock: p.inStock,
                 alwaysHave: p.alwaysHave, purchasedDay: p.purchasedDay, expiresDay: p.expiresDay,
-                updatedAt: p.updatedAt, uid: p.id
+                updatedAt: p.updatedAt, uid: p.id, runningLow: p.inStock && p.runningLow
             ))
         }
 

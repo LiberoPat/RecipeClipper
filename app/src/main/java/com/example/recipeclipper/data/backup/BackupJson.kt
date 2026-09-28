@@ -172,6 +172,7 @@ object BackupJson {
         val pantry = top.objects(root, "pantry").map { (path, o) ->
             val r = Reader(path)
             val inStock = r.bool(o, "inStock") ?: true
+            val runningLow = r.bool(o, "runningLow") ?: false
             BackupPantryItem(
                 id = r.requiredId(o, "id"),
                 name = r.string(o, "name")?.takeIf { it.isNotBlank() } ?: throw MalformedException("$path.name"),
@@ -184,7 +185,7 @@ object BackupJson {
                 expiresDay = r.long(o, "expiresDay"),
                 updatedAt = r.long(o, "updatedAt") ?: 0L,
                 // Absent before #194: the old boolean alone is in stock or run out.
-                runningLow = inStock && (r.bool(o, "runningLow") ?: false)
+                runningLow = inStock && runningLow
             )
         }
         requireUniqueIds(pantry.map { it.id }, "pantry")

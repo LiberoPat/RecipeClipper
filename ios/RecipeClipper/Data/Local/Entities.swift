@@ -238,12 +238,16 @@ struct PantryItemRecord: Equatable {
     var expiresDay: Int64?
     var updatedAt: Int64
     var uid: String = newUid()
+    /// Running low (#194, user_version 15): meaningful only while `inStock`; every write that
+    /// takes an item out clears it.
+    var runningLow: Bool = false
 
-    static let columns = "id, name, quantity, language, aisle, inStock, alwaysHave, purchasedDay, expiresDay, updatedAt, uid"
+    static let columns = "id, name, quantity, language, aisle, inStock, alwaysHave, purchasedDay, expiresDay, updatedAt, uid, runningLow"
 
     init(
         id: Int64 = 0, name: String, quantity: String?, language: String?, aisle: String, inStock: Bool,
-        alwaysHave: Bool, purchasedDay: Int64?, expiresDay: Int64?, updatedAt: Int64, uid: String = newUid()
+        alwaysHave: Bool, purchasedDay: Int64?, expiresDay: Int64?, updatedAt: Int64, uid: String = newUid(),
+        runningLow: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -256,6 +260,7 @@ struct PantryItemRecord: Equatable {
         self.expiresDay = expiresDay
         self.updatedAt = updatedAt
         self.uid = uid
+        self.runningLow = runningLow
     }
 
     init(row: SQLiteRow) {
@@ -270,12 +275,14 @@ struct PantryItemRecord: Equatable {
         expiresDay = row.isNull(8) ? nil : row.int64(8)
         updatedAt = row.int64(9)
         uid = row.string(10)
+        runningLow = row.bool(11)
     }
 
     var domain: PantryItem {
         PantryItem(
             id: id, name: name, quantity: quantity, language: language, aisle: Aisle.fromKey(aisle),
-            inStock: inStock, alwaysHave: alwaysHave, purchasedDay: purchasedDay, expiresDay: expiresDay
+            inStock: inStock, alwaysHave: alwaysHave, purchasedDay: purchasedDay, expiresDay: expiresDay,
+            runningLow: inStock && runningLow
         )
     }
 }
