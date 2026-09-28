@@ -569,9 +569,10 @@ answers simulated), 12 junk hidden in Groceries (simulated); 13 "I made this", 1
 backup copy and "Restore from a backup file", 15 Send list and Paste a list, 16 Send as file and
 a received file, 17 the first-run tour (the sample, and a tooltip or two), 18 Done shopping and the On list tag, 19 the Pantry's
 Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported phone
-(simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked". Android's
-13–21 and 23 are in `CookingWalkthroughTest` and `SharingWalkthroughTest` (22 beside 12, in
-`MealPlanWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (22
+(simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked", 24 the
+tooltips and "Show tips again", 25 the pantry's three states, 26 "onion" matching "onions" in What I
+need, 27 Reddit posts (from fixtures). Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
+`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (22
 in `+MealPlan.swift`). What they need from outside the app:
 
 - **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
@@ -583,7 +584,10 @@ in `+MealPlan.swift`). What they need from outside the app:
   `/data/local/tmp` and opened with a VIEW intent through the app's FileProvider; iOS opens its
   canned file with `-uiTestReceiveFile`. A pasted list is put on the clipboard by the test
   (iOS: `-uiTestPasteboard`).
-- **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20 and 23:
+- **The Reddit listings** (27): reddit.com refuses an emulator, so Android's Reddit links are read by
+  the real `RedditRecipeParser` from `shared/fixtures/reddit/` files the script pushes to
+  `/data/local/tmp`, in place of the `.json` fetch; the posts' photos don't load.
+- **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20, 23, 25 and 26:
   `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
 - **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the
   sheet, the picker's Cancel); Android waits for them to take the screen first

@@ -19,6 +19,11 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.geometry.Offset
 import androidx.core.content.FileProvider
 import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.DecisionModel
@@ -32,11 +37,13 @@ import dagger.hilt.android.testing.UninstallModules
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.time.LocalDate
 
 /**
- * Walkthroughs 13, 17, 18, 20, 21 and 23 (#106): "I made this" (#116), the first-run tour (#151, #190),
+ * Walkthroughs 13, 17, 18, 20, 21 and 23–26 (#106): "I made this" (#116), the first-run tour (#151, #190),
  * Done shopping and the On list tag (#146), using up the pantry after cooking (#147), what
- * Settings says about Chef mode on a phone that can't run it (#144), and "Mark as cooked" (#173). The model supports nothing
+ * Settings says about Chef mode on a phone that can't run it (#144), "Mark as cooked" (#173), the
+ * tooltips (#190), the pantry's three states (#194) and "onion" matching "onions" (#191). The model supports nothing
  * here: the typed decisions stay out of these clips, and Chef mode's model is "unsupported"
  * (simulated, as an emulator has none).
  */
@@ -206,6 +213,94 @@ class CookingWalkthroughTest : WalkthroughBase() {
         tapTag("useUpButton")
         waitFor(hasText("Undo"))
         pause(3000)
+    }
+
+    /**
+     * The tooltips (#190) on a fresh install: one per visit, Got it; a later visit shows the
+     * screen's next one; Settings' "Show tips again" brings the first back.
+     */
+    @Test
+    fun test24_tooltips() {
+        start("mealPlan", seeded = false, firstRun = true)
+        waitFor(hasTestTag("tooltip-home_link"))
+        pause(2500)
+        tap("Got it", 1500)
+        tap("Tomato and White Bean Soup", 2000)
+        waitFor(hasTestTag("tooltip-recipe_servings"))
+        pause(2500)
+        tap("Got it", 1500)
+        back()
+        waitFor(hasTestTag("tooltip-home_new_recipe")) // the later visit's next one
+        pause(2500)
+        tap("Got it", 1500)
+        tapDescription("Settings")
+        waitFor(hasTestTag("tooltip-settings_units"))
+        pause(2500)
+        tap("Got it", 1500)
+        reveal(hasText("Show tips again"))
+        press(hasText("Show tips again"), 2000) // by semantics: the row can sit under the tab bar
+        back()
+        waitFor(hasTestTag("tooltip-home_link"))
+        pause(2500)
+    }
+
+    /**
+     * The pantry's three states (#194): Ran out moves a row to Run out and puts it on the list;
+     * a long press offers Running low (the Low tag); Restock; and a swipe each way.
+     */
+    @Test
+    fun test25_pantryStates() {
+        start("mealPlan", kitchen = true)
+        tap("Pantry", 2000)
+        val onions = pantryIds.getValue("onions")
+        tapTag("stockAction-$onions") // Ran out: to Run out, and onto the list
+        scrollTo("pantryList", "onList-$onions")
+        pause(2000)
+        val oil = pantryIds.getValue("olive oil")
+        scrollTo("pantryList", "pantry-$oil")
+        compose.onNode(hasTestTag("pantry-$oil")).performTouchInput { longClick(Offset(width * 0.3f, centerY)) }
+        pause(1500)
+        tapTag("stockMenu-RUNNING_LOW")
+        waitFor(hasText("Low")) // the tag (merged into the row, so found by its text)
+        pause(2000)
+        val garlic = pantryIds.getValue("garlic")
+        scrollTo("pantryList", "pantry-$garlic")
+        tapTag("stockAction-$garlic", 2000) // Restock
+        swipeRow("basmati rice", left = true) // Ran out
+        swipeRow("milk", left = false) // Restock
+    }
+
+    private fun swipeRow(name: String, left: Boolean) {
+        val id = pantryIds.getValue(name)
+        scrollTo("pantryList", "pantry-$id")
+        pause(700)
+        compose.onNode(hasTestTag("pantry-$id")).performTouchInput {
+            if (left) swipeLeft(durationMillis = 700) else swipeRight(durationMillis = 700)
+        }
+        pause(2000)
+    }
+
+    /**
+     * "onion" is "onions" (#191): with onions in the pantry, What I need puts the Adobo's
+     * "1 onion, sliced" under In your pantry, while the Guacamole's red onion stays To buy.
+     */
+    @Test
+    fun test26_onionAndOnions() {
+        start("mealPlan", kitchen = true)
+        tap("Week")
+        planToday("Chicken Adobo")
+        planToday("Guacamole")
+        menu("What I need")
+        show("red onion", 2500)
+        show("onion, sliced", 3500)
+    }
+
+    private fun planToday(title: String) {
+        val today = LocalDate.now().toEpochDay()
+        scrollTo("weekList", "addToDay-$today")
+        tapTag("addToDay-$today")
+        type("addSearch", title.substringBefore(' '), submit = false)
+        tap(title)
     }
 
     /** Chef mode on a phone that can't run the model (#144), the model's answer simulated. */

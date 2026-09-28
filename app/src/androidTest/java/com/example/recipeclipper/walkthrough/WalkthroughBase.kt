@@ -235,7 +235,7 @@ abstract class WalkthroughBase {
 
     fun tap(text: String, pauseMs: Long = 1500) = tap(hasText(text) and !hasSetTextAction(), pauseMs)
     fun tapDescription(description: String) = tap(hasContentDescription(description))
-    fun tapTag(tag: String) = tap(hasTestTag(tag))
+    fun tapTag(tag: String, pauseMs: Long = 1500) = tap(hasTestTag(tag), pauseMs)
 
     fun type(tag: String, text: String, submit: Boolean = true) {
         waitFor(hasTestTag(tag))
