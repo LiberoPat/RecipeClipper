@@ -24,7 +24,9 @@ TESTS=("$@")
   CookingWalkthroughTest#test17_firstRunTour CookingWalkthroughTest#test18_doneShoppingAndOnList
   SharingWalkthroughTest#test19_pantrySendList CookingWalkthroughTest#test20_pantryUseUpAfterCooking
   CookingWalkthroughTest#test21_chefModeUnsupportedSimulated MealPlanWalkthroughTest#test22_recipeJunkHidden
-  CookingWalkthroughTest#test23_markAsCooked)
+  CookingWalkthroughTest#test23_markAsCooked CookingWalkthroughTest#test24_tooltips
+  CookingWalkthroughTest#test25_pantryStates CookingWalkthroughTest#test26_onionAndOnions
+  RecipesWalkthroughTest#test27_redditImport)
 mkdir -p "$OUT"
 export ANDROID_SERIAL=$SERIAL
 adb shell cmd uimode night no >/dev/null
@@ -32,6 +34,10 @@ adb shell cmd uimode night no >/dev/null
 # What the tests read from the device (the app itself can't reach /data/local/tmp): the file a
 # friend sends (#149), and the photo "I made this" adds (#116), a macOS sample picture.
 adb push shared/fixtures/backup/share-v1.recipeclipper /data/local/tmp/ >/dev/null
+# The Reddit listings the Reddit clip's links are read from, in place of reddit.com (#11).
+for f in recipes-self-post old-recipes-card-transcription food-photo-chatter; do
+  adb push "shared/fixtures/reddit/$f.json" /data/local/tmp/ >/dev/null
+done
 photo=$(mktemp -d)/photo.jpg
 if sips -s format jpeg "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo" >/dev/null 2>&1; then
   adb push "$photo" /data/local/tmp/rc-walkthrough-photo.jpg >/dev/null

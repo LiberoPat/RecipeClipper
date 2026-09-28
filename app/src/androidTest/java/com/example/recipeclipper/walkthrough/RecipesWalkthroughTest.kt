@@ -9,6 +9,8 @@ import com.example.recipeclipper.data.StepShortener
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.remote.RecipeSource
+import com.example.recipeclipper.data.remote.RedditRecipeParser
+import com.example.recipeclipper.data.remote.RoutingRecipeSource
 import com.example.recipeclipper.di.OnDeviceModelModule
 import com.example.recipeclipper.di.SourceModule
 import com.example.recipeclipper.fake.FakeStepShortener
@@ -18,24 +20,37 @@ import dagger.hilt.android.testing.UninstallModules
 import org.junit.Test
 
 /**
- * Walkthroughs 06–10 (#106): the Recipes screen, amounts in steps, Chef mode with a stub model
- * (an emulator has none), the free tier, and a recipe picked from the page text (seeded as
- * such: no model runs). A pasted link opens a canned recipe, as iOS's UI-test source does, so
- * no clip depends on the network.
+ * Walkthroughs 06–10 and 27 (#106): the Recipes screen, amounts in steps, Chef mode with a stub
+ * model (an emulator has none), the free tier, a recipe picked from the page text (seeded as
+ * such: no model runs), and Reddit posts (#11). A pasted link opens a canned recipe, as iOS's
+ * UI-test source does, so no clip depends on the network; a Reddit link is read by the real
+ * [RedditRecipeParser] from a `shared/fixtures/reddit/` listing the recording script pushed, in
+ * place of reddit.com's `.json` (which refuses an emulator with 403).
  */
 @HiltAndroidTest
 @UninstallModules(OnDeviceModelModule::class, SourceModule::class)
 class RecipesWalkthroughTest : WalkthroughBase() {
 
     @BindValue @JvmField
-    val source: RecipeSource = object : RecipeSource {
-        override suspend fun fetch(url: String): ParseResult = ParseResult.Success(Recipe(
-            name = "Stub Chicken Soup", image = null,
-            ingredients = listOf("1 whole chicken", "2 carrots", "8 cups water"),
-            instructions = listOf("Simmer everything for 1 hour.", "Season and serve."),
-            prepTime = null, cookTime = null, totalTime = null, yield = "4", sourceUrl = url
-        ))
-    }
+    val source: RecipeSource = RoutingRecipeSource(
+        blog = object : RecipeSource {
+            override suspend fun fetch(url: String): ParseResult = ParseResult.Success(Recipe(
+                name = "Stub Chicken Soup", image = null,
+                ingredients = listOf("1 whole chicken", "2 carrots", "8 cups water"),
+                instructions = listOf("Simmer everything for 1 hour.", "Season and serve."),
+                prepTime = null, cookTime = null, totalTime = null, yield = "4", sourceUrl = url
+            ))
+        },
+        // The post's listing, as reddit.com's `.json` would send it, through the real parser.
+        reddit = object : RecipeSource {
+            override suspend fun fetch(url: String): ParseResult {
+                val fixture = REDDIT_FIXTURES.entries.first { (id, _) -> "/comments/$id/" in url }.value
+                return RedditRecipeParser.parse(String(deviceFile("/data/local/tmp/$fixture")), url)
+            }
+
+            override fun readsRenderedPage(url: String) = false
+        }
+    )
 
     @BindValue @JvmField
     val decisionModel: DecisionModel = WalkthroughSeed.decisionModel()
@@ -129,5 +144,39 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         waitFor(hasText("Picked from the page text", substring = true))
         pause(3000)
         swipeUp()
+    }
+
+    /**
+     * Reddit posts (#11), read by the real parser from fixtures (see the class comment): a
+     * self-post's recipe, an old recipe card written out in a comment, and a food photo whose
+     * comments hold no recipe.
+     */
+    @Test
+    fun test27_redditImport() {
+        start("reddit")
+        for (post in listOf(SELF_POST, CARD_POST, PHOTO_POST)) {
+            waitFor(field("Recipe URL"))
+            compose.onAllNodes(field("Recipe URL"))[0].performTextInput(post)
+            pause(1000)
+            tap("Go", 3500)
+            if (post != PHOTO_POST) {
+                swipeUp()
+                pause(1500)
+            }
+            back()
+        }
+    }
+
+    companion object {
+        const val SELF_POST = "https://www.reddit.com/r/recipes/comments/1f4b2cd/weeknight_lemon_chicken_orzo/"
+        const val CARD_POST = "https://www.reddit.com/r/Old_Recipes/comments/1f5c3de/grandmas_date_nut_bread_found_in_her_recipe_tin/"
+        const val PHOTO_POST = "https://www.reddit.com/r/food/comments/1f6d4ef/homemade_sunday_lasagna/"
+
+        /** A post's id and the fixture `scripts/record-walkthroughs-android.sh` pushes for it. */
+        val REDDIT_FIXTURES = mapOf(
+            "1f4b2cd" to "recipes-self-post.json",
+            "1f5c3de" to "old-recipes-card-transcription.json",
+            "1f6d4ef" to "food-photo-chatter.json"
+        )
     }
 }
