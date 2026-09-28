@@ -3500,3 +3500,14 @@ ViewModels that show a preference collect it rather than reading once.
 - **Deliberately deferred: on-device OCR** (ML Kit) as a fourth Reddit step. It adds a
   dependency, and OCR is weakest on handwriting, the case that motivates it. Revisit
   once Reddit (#11) shows how often the comment fallback hits.
+
+## ViewModels in their own files, checked by a test (September 2026)
+
+`TooltipsViewModel` and `TooltipsUiState` (#190) had been written into the tooltip view
+files (`ui/tour/Tooltips.kt`, `UI/Tour/TooltipViews.swift`), which import Compose,
+SwiftUI and UIKit. The ViewModel used no UI type, so it moved unchanged into
+`TooltipsViewModel.kt` and `TooltipsViewModel.swift`. Nothing had caught it, because no
+check existed. Now `ViewModelImportsTest` (Android, JVM) and `ViewModelImportsTests`
+(iOS) scan every source file that declares a `class …ViewModel`, whatever the file is
+called, and fail on an `androidx.compose` import (Android) or a `SwiftUI` or `UIKit`
+import (iOS).
