@@ -53,6 +53,12 @@
       "description": "Reddit posts: a reddit.com or redd.it link (a /s/ share link is followed first) is read from the post's .json listing: the post body, else a transcription in the comments, else the post's photo and title with a note that no recipe text was found. Off, Reddit links go through the blog parsers like any page.",
       "defaults": { "debug": true, "release": true },
       "issue": 11
+    },
+    {
+      "key": "photoText",
+      "description": "Read the photo: on a Reddit post with no recipe text, a button reads the post's photo (each picture of a gallery, in order) with on-device text recognition (ML Kit's bundled Latin model on Android, Vision on iOS). The lines are sorted by the Reddit splitter into the recipe editor for the cook to check (unsure lines are marked); nothing is saved without that. When nothing sorts, the editor opens with the title, photo and any lines read.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 198
     }
   ]
 }

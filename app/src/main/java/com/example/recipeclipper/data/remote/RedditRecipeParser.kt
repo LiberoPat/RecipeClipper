@@ -66,7 +66,14 @@ object RedditRecipeParser {
         val body = bodyOf(post).ifBlank { original?.let(::bodyOf).orEmpty() }
         val split = RecipeTextSplitter.split(body)
             ?: RedditCommentScorer.pick(comments(listings.optJSONObject(1)))?.let(RecipeTextSplitter::split)
-            ?: return Reading(ParseResult.Error(ParseError.NoTranscription(title, image)), crosspostOf)
+            ?: return Reading(
+                ParseResult.Error(
+                    ParseError.NoTranscription(
+                        title, image, imagesOf(post).ifEmpty { original?.let(::imagesOf).orEmpty() }
+                    )
+                ),
+                crosspostOf
+            )
 
         return Reading(ParseResult.Success(
             Recipe(
@@ -139,6 +146,27 @@ object RedditRecipeParser {
         val link = post.optString("url_overridden_by_dest").ifEmpty { post.optString("url") }
         val path = try { java.net.URI(link).path.orEmpty() } catch (e: Exception) { "" }
         return link.takeIf { it.startsWith("http") && IMAGE_EXTENSION.containsMatchIn(path) }?.let(::unescape)
+    }
+
+    /**
+     * Every picture of the post, in order, for reading its text (#198): each of a gallery's
+     * (`gallery_data` gives the order, `media_metadata` the full-size address), else the one
+     * [imageOf] finds.
+     */
+    internal fun imagesOf(post: JSONObject): List<String> {
+        val items = post.optJSONObject("gallery_data")?.optJSONArray("items")
+        val metadata = post.optJSONObject("media_metadata")
+        if (items != null && metadata != null) {
+            val gallery = (0 until items.length()).mapNotNull { i ->
+                val id = items.optJSONObject(i)?.optString("media_id").orEmpty()
+                val s = metadata.optJSONObject(id)?.optJSONObject("s")
+                (s?.optString("u")?.ifEmpty { null } ?: s?.optString("gif")?.ifEmpty { null })
+                    ?.takeIf { it.startsWith("http") }
+                    ?.let(::unescape)
+            }
+            if (gallery.isNotEmpty()) return gallery
+        }
+        return listOfNotNull(imageOf(post))
     }
 
     private fun unescape(url: String) = url.replace("&amp;", "&")

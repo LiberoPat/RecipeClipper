@@ -220,6 +220,14 @@
     <string name="edit_label_photo">Link della foto (facoltativo)</string>
     <string name="edit_error_invalid">Una ricetta ha bisogno di un nome e di ingredienti o passaggi.</string>
     <string name="edit_error_save_failed">Impossibile salvare la ricetta. Riprova.</string>
+    <string name="action_read_photo">Leggi la foto</string>
+    <string name="photo_title">Controlla la ricetta</string>
+    <string name="photo_reading">Lettura della foto su questo telefono…</string>
+    <string name="photo_read">Letto dalla foto. Confronta ogni riga con la foto, soprattutto le quantità, prima di salvare.</string>
+    <string name="photo_not_sorted">Non è stato possibile leggere una ricetta dalla foto: completala a mano.</string>
+    <string name="photo_failed">Impossibile caricare la foto. Controlla la connessione e riprova.</string>
+    <string name="photo_check_heading">Controlla queste righe: lì la foto era difficile da leggere</string>
+    <string name="photo_image_description">Foto di %1$s</string>
 
     <!-- Week meal plan (#49) -->
     <string name="action_add_to_plan">Aggiungi al piano</string>

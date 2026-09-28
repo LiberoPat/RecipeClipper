@@ -1,6 +1,16 @@
 package com.example.recipeclipper.ui.edit
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import coil.compose.AsyncImage
+import com.example.recipeclipper.data.PhotoPost
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -71,22 +81,31 @@ fun EditRecipeScreen(
                     Spacer(Modifier.weight(1f))
                     Button(
                         onClick = viewModel::onSave,
-                        enabled = !state.loading && !state.saving && !state.missing,
+                        enabled = !state.loading && !state.saving && !state.missing && !state.reading,
                         shape = RoundedCornerShape(12.dp)
                     ) { Text(stringResource(R.string.action_save)) }
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    stringResource(if (state.isNew) R.string.edit_title_new else R.string.edit_title_edit),
-                    style = MaterialTheme.typography.headlineSmall
+                    stringResource(
+                        when {
+                            state.photo != null -> R.string.photo_title
+                            state.isNew -> R.string.edit_title_new
+                            else -> R.string.edit_title_edit
+                        }
+                    ),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.semantics { heading() }
                 )
                 Spacer(Modifier.height(16.dp))
+                state.photo?.let { PhotoReview(it, state, viewModel::onReadAgain) }
                 when {
                     state.loading -> CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     state.missing -> Text(
                         stringResource(R.string.error_not_saved),
                         color = MaterialTheme.colorScheme.error
                     )
+                    state.reading -> Unit // PhotoReview shows the progress
                     else -> EditFields(state, viewModel::onDraftChange)
                 }
             }
@@ -127,6 +146,71 @@ private fun EditFields(state: EditRecipeUiState, onChange: (RecipeDraft) -> Unit
         { onChange(draft.copy(image = it)) },
         keyboardType = KeyboardType.Uri
     )
+}
+
+/**
+ * "Read the photo" (#198), above the fields: the post's pictures to check the lines against,
+ * how the reading went, and the lines the recogniser was unsure of ("Check these lines").
+ */
+@Composable
+private fun PhotoReview(post: PhotoPost, state: EditRecipeUiState, onReadAgain: () -> Unit) {
+    post.imageUrls.forEach { image ->
+        AsyncImage(
+            model = image,
+            contentDescription = stringResource(R.string.photo_image_description, post.title),
+            contentScale = ContentScale.FillWidth,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 480.dp)
+                .clip(RoundedCornerShape(12.dp))
+        )
+        Spacer(Modifier.height(12.dp))
+    }
+    when (state.photoOutcome) {
+        null -> if (state.reading) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(stringResource(R.string.photo_reading), style = MaterialTheme.typography.bodyMedium)
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+        PhotoOutcome.READ -> Note(stringResource(R.string.photo_read))
+        PhotoOutcome.NOT_SORTED -> Note(stringResource(R.string.photo_not_sorted))
+        PhotoOutcome.FAILED -> {
+            Message(stringResource(R.string.photo_failed))
+            OutlinedButton(onClick = onReadAgain, shape = RoundedCornerShape(12.dp)) {
+                Text(stringResource(R.string.action_try_again))
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+    if (state.uncertain.isNotEmpty()) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                .padding(14.dp)
+                .semantics(mergeDescendants = true) {}
+        ) {
+            Text(
+                stringResource(R.string.photo_check_heading),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(6.dp))
+            state.uncertain.forEach { line ->
+                Text("• $line", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun Note(text: String) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.height(12.dp))
 }
 
 @Composable

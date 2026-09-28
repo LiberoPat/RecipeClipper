@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.Entitlements
+import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.ShortStepRepository
@@ -165,7 +166,10 @@ class RecipeViewModel @Inject constructor(
         loadJob?.cancel()
         reconnectJob?.cancel()
         _uiState.update {
-            it.copy(content = RecipeContent.Loading, reportSiteUrl = null, clipUrl = null, asWrittenSteps = emptySet())
+            it.copy(
+                content = RecipeContent.Loading, reportSiteUrl = null, clipUrl = null, photoPost = null,
+                asWrittenSteps = emptySet()
+            )
         }
         loadJob = viewModelScope.launch {
             val result = when {
@@ -186,7 +190,8 @@ class RecipeViewModel @Inject constructor(
                     is ParseResult.Error -> state.copy(
                         content = RecipeContent.Error(result.error),
                         reportSiteUrl = reportSiteUrl(result.error),
-                        clipUrl = shareUrl.takeIf { result.error == ParseError.NoRecipeFound }
+                        clipUrl = shareUrl.takeIf { result.error == ParseError.NoRecipeFound },
+                        photoPost = photoPost(result.error)
                     )
                 }
             }
@@ -209,6 +214,13 @@ class RecipeViewModel @Inject constructor(
         restored.alarms.forEach(alarms::schedule)
         _uiState.update { it.copy(cook = restored.cook) }
         if (cookSession.hasRunningTimers) ensureTicking()
+    }
+
+    /** A shared Reddit post with no recipe text but a picture can have its photo read (#198). */
+    private fun photoPost(error: ParseError): PhotoPost? {
+        val post = error as? ParseError.NoTranscription ?: return null
+        val link = shareUrl ?: return null
+        return PhotoPost(link, post.title, post.imageUrls).takeIf { it.imageUrls.isNotEmpty() }
     }
 
     /**

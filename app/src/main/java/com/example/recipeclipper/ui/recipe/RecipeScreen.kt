@@ -71,6 +71,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.LibraryLimit
@@ -131,6 +132,9 @@ fun RecipeScreen(
     onBack: () -> Unit,
     onClip: (url: String) -> Unit = {},
     onEdit: (recipeId: Long) -> Unit = {},
+    // "Read the photo" (#198): a Reddit post with no recipe text, read on the device.
+    onReadPhoto: (PhotoPost) -> Unit = {},
+    photoTextEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel(),
     mealPlanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.MEAL_PLAN),
@@ -380,7 +384,19 @@ fun RecipeScreen(
                         Spacer(Modifier.height(16.dp))
                         Column {
                             val clipUrl = state.clipUrl
-                            if (clipUrl == null) {
+                            val photoPost = state.photoPost?.takeIf { photoTextEnabled }
+                            if (photoPost != null) {
+                                // A post with a photo (#198): Try again, and beside it the
+                                // photo read on the device, for the cook to check.
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    OutlinedButton(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                                        Text(stringResource(R.string.action_try_again))
+                                    }
+                                    Button(onClick = { onReadPhoto(photoPost) }, shape = RoundedCornerShape(12.dp)) {
+                                        Text(stringResource(R.string.action_read_photo))
+                                    }
+                                }
+                            } else if (clipUrl == null) {
                                 Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
                                     Text(stringResource(R.string.action_try_again))
                                 }
