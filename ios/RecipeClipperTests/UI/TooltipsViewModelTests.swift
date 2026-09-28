@@ -99,6 +99,22 @@ final class TooltipsViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.current, .settingsUnits)
     }
 
+    /// A NavigationStack's root may hear neither onDisappear when a screen is pushed over it nor
+    /// onAppear when that screen goes: leaving the top screen makes the one under it the visit
+    /// again, after its settling second.
+    func testLeavingTheTopScreenResumesTheOneUnderItAfterASecond() async throws {
+        let vm = make()
+        vm.onVisit(token: "home", screen: .home)
+        vm.onReport(token: "home", visible: home, ready: true)
+        vm.onDismiss(.homeLink)
+        vm.onVisit(token: "recipe", screen: .recipe)
+        vm.onLeave(token: "recipe")
+        XCTAssertNil(vm.uiState.current, "not in its first second")
+
+        try await Task.sleep(for: .seconds(Tooltips.settleSeconds + 0.3))
+        XCTAssertEqual(vm.uiState, TooltipsUiState(current: .homeNewRecipe, token: "home"))
+    }
+
     func testATestContainerSeesNoTooltip() {
         let vm = TooltipsViewModel(preferences: MemoryTourPreferences(), flags: flags)
         vm.onVisit(token: "a", screen: .home)

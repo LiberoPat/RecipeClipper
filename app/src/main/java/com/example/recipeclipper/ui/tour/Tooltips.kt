@@ -106,20 +106,23 @@ class TooltipsViewModel @Inject constructor(
     flags: FeatureFlags
 ) : ViewModel() {
 
-    private data class Report(val token: String? = null, val visible: Set<Tooltip> = emptySet(), val ready: Boolean = false)
+    private data class Report(val visible: Set<Tooltip>, val ready: Boolean)
 
     private val visit = MutableStateFlow<TooltipVisit?>(null)
-    private val report = MutableStateFlow(Report())
+
+    // Each screen's last report, by its token: a screen still composed beside another (in a
+    // transition) may go on reporting, and must not overwrite the one now on screen.
+    private val reports = MutableStateFlow<Map<String, Report>>(emptyMap())
 
     // Nothing shows until the stored state has been read, so a seen tooltip never flashes. The
     // tooltip picked is kept as the visit's, so another can't follow it in the same visit.
     val uiState: StateFlow<TooltipsUiState> =
-        combine(preferences.seenTooltips, flags.values, visit, report) { seen, values, visit, report ->
-            val reported = report.token != null && report.token == visit?.token
+        combine(preferences.seenTooltips, flags.values, visit, reports) { seen, values, visit, reports ->
+            val report = visit?.let { reports[it.token] }
             val current = Tooltips.current(
                 visit, seen, values::isOn,
-                visible = if (reported) report.visible else emptySet(),
-                ready = reported && report.ready
+                visible = report?.visible.orEmpty(),
+                ready = report?.ready == true
             )
             TooltipsUiState(current, visit?.token)
         }.onEach { state ->
@@ -130,11 +133,14 @@ class TooltipsViewModel @Inject constructor(
     /** A screen appeared ([token] names this appearance; the same after a rotation). */
     fun onVisit(token: String, screen: TooltipScreen) = visit.update { Tooltips.visit(it, token, screen) }
 
-    fun onLeave(token: String) = visit.update { Tooltips.leave(it, token) }
+    fun onLeave(token: String) {
+        visit.update { Tooltips.leave(it, token) }
+        reports.update { it - token }
+    }
 
     /** What the screen [token] has on it now: the anchors in view, and whether it's settled and uncovered. */
     fun onReport(token: String, visible: Set<Tooltip>, ready: Boolean) {
-        report.value = Report(token, visible, ready)
+        reports.update { it + (token to Report(visible, ready)) }
     }
 
     /** "Got it", or a tap on the bubble: seen for good, and nothing more this visit. */

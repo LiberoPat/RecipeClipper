@@ -61,8 +61,6 @@ struct PantryScreen: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
-        // The tooltips (#190); none over this screen's sheet and snackbar.
-        .tooltipHost(.pantry, blocked: state.editing != nil || state.message != nil)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -93,6 +91,9 @@ struct PantryScreen: View {
                 .tooltipAnchor(.pantryMenu, inToolbar: true)
             }
         }
+        // The tooltips (#190); none over this screen's sheet and snackbar. Outside the
+        // toolbar, whose menu is an anchor too.
+        .tooltipHost(.pantry, blocked: state.editing != nil || state.message != nil)
         .overlay(alignment: .bottom) {
             if let message = state.message {
                 snackbar(message)

@@ -77,9 +77,6 @@ struct RecipeScreen: View {
             }
         }
         .screenBackground()
-        // The tooltips (#190): cook mode is its own screen. Outside the toolbar, whose bookmark,
-        // share and menu are anchors too; none over this screen's sheets, dialogs and snackbars.
-        .tooltipHost(state.cook.active ? .cook : .recipe, blocked: covered(state))
         // Cook mode follows the system theme like every other screen unless the user has
         // asked for it to stay dark.
         .environment(\.colorScheme, state.forceDark ? .dark : systemScheme)
@@ -95,6 +92,9 @@ struct RecipeScreen: View {
                 }
             }
         }
+        // The tooltips (#190): cook mode is its own screen. Outside the toolbar, whose bookmark,
+        // share and menu are anchors too; none over this screen's sheets, dialogs and snackbars.
+        .tooltipHost(state.cook.active ? .cook : .recipe, blocked: covered(state))
         // A full free library (#107): shown, not kept. Up until unlocked, above the content.
         .safeAreaInset(edge: .bottom) {
             if state.notKept && !state.cooking {

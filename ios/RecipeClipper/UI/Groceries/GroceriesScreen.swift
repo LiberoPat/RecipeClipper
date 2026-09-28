@@ -56,9 +56,6 @@ struct GroceriesScreen: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
-        // The tooltips (#190); none over this screen's sheets and snackbar.
-        .tooltipHost(.groceries, blocked: state.moving != nil || state.putAway != nil || state.removed != nil
-            || receiveVM?.uiState.lines != nil)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -90,6 +87,10 @@ struct GroceriesScreen: View {
                 .tooltipAnchor(.groceriesMenu, inToolbar: true)
             }
         }
+        // The tooltips (#190); none over this screen's sheets and snackbar. Outside the
+        // toolbar, whose menu is an anchor too.
+        .tooltipHost(.groceries, blocked: state.moving != nil || state.putAway != nil || state.removed != nil
+            || receiveVM?.uiState.lines != nil)
         // Snackbars only for undo (#146): a delete, or "Done shopping". "Done shopping" itself
         // shows while anything is ticked; the snackbar sits above it.
         .safeAreaInset(edge: .bottom, spacing: 0) {

@@ -62,10 +62,6 @@ struct WeekScreen: View {
         }
         }
         .screenBackground()
-        // The tooltips (#190); none over this screen's sheets, dialogs and snackbar.
-        .tooltipHost(.week, blocked: state.adding != nil || state.moving != nil || groceriesSheet != nil
-            || state.removed != nil || calendarURL != nil || state.menus.saving || state.menus.picking
-            || state.menus.renaming != nil || state.menus.deleting != nil)
         // The week as an .ics file (#52): written and shared here, in the view layer; the
         // ViewModel only makes the text.
         .background(ShareSheetAnchor(item: calendarURL) {
@@ -119,6 +115,11 @@ struct WeekScreen: View {
                 .tooltipAnchor(.weekMenu, inToolbar: true)
             }
         }
+        // The tooltips (#190); none over this screen's sheets, dialogs and snackbar. Outside
+        // the toolbar, whose menu is an anchor too.
+        .tooltipHost(.week, blocked: state.adding != nil || state.moving != nil || groceriesSheet != nil
+            || state.removed != nil || calendarURL != nil || state.menus.saving || state.menus.picking
+            || state.menus.renaming != nil || state.menus.deleting != nil)
         .overlay(alignment: .bottom) {
             if let removed = state.removed {
                 Snackbar(message: Strings.removedFromPlan(removed.label), actionLabel: Strings.undo, action: vm.onUndoRemove)

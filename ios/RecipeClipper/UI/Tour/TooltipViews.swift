@@ -22,7 +22,14 @@ final class TooltipsViewModel {
     @ObservationIgnored private let flags: FeatureFlags
     @ObservationIgnored private var seen: Set<Tooltip>
     @ObservationIgnored private var visit: TooltipVisit?
-    @ObservationIgnored private var report: (token: String, visible: Set<Tooltip>, ready: Bool)?
+    /// Each screen's last report, by its token: a screen still alive under another (pushed over
+    /// it) may go on reporting, and must not overwrite the one on top.
+    @ObservationIgnored private var reports: [String: (visible: Set<Tooltip>, ready: Bool)] = [:]
+    /// The screens still alive, the latest last. A NavigationStack's root doesn't always hear
+    /// `onDisappear` when a screen is pushed over it, nor `onAppear` when that screen goes, so
+    /// leaving the top one makes the one under it the visit again, after its settling second.
+    @ObservationIgnored private var live: [(token: String, screen: TooltipScreen)] = []
+    @ObservationIgnored private var settling = false
     @ObservationIgnored private var cancellables = Set<AnyCancellable>()
 
     init(preferences: TourPreferences, flags: FeatureFlags) {
@@ -41,18 +48,32 @@ final class TooltipsViewModel {
 
     /// A screen appeared (`token` names it for as long as its view lives).
     func onVisit(token: String, screen: TooltipScreen) {
+        live.removeAll { $0.token == token }
+        live.append((token, screen))
         visit = Tooltips.visit(visit, token: token, screen: screen)
         update()
     }
 
     func onLeave(token: String) {
+        live.removeAll { $0.token == token }
+        reports[token] = nil
+        let wasVisit = visit?.token == token
         visit = Tooltips.leave(visit, token: token)
+        if wasVisit, visit == nil, let under = live.last {
+            visit = Tooltips.visit(nil, token: under.token, screen: under.screen)
+            settling = true
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(Tooltips.settleSeconds))
+                self?.settling = false
+                self?.update()
+            }
+        }
         update()
     }
 
     /// What the screen `token` has on it now: the anchors in view, and whether it's settled and uncovered.
     func onReport(token: String, visible: Set<Tooltip>, ready: Bool) {
-        report = (token, visible, ready)
+        reports[token] = (visible, ready)
         update()
     }
 
@@ -82,12 +103,12 @@ final class TooltipsViewModel {
     }
 
     private func update() {
-        let reported = report != nil && report?.token == visit?.token
+        let report = visit.flatMap { reports[$0.token] }
         let current = Tooltips.current(
             visit, seen: seen,
             isOn: { [flags] key in Flag(rawValue: key).map(flags.isOn) ?? true },
-            visible: reported ? report?.visible ?? [] : [],
-            ready: reported && report?.ready == true
+            visible: report?.visible ?? [],
+            ready: report?.ready == true && !settling
         )
         // The tooltip picked is kept as the visit's, so another can't follow it in the same visit.
         if let current, let open = visit { visit = Tooltips.shown(open, current) }
@@ -117,7 +138,8 @@ extension View {
     }
 }
 
-/// Where the anchors inside one host are, in global coordinates, and which are wholly on screen.
+/// Where the anchors inside one host are, in the host's own coordinates (so a navigation
+/// transition moving the whole screen changes nothing), and which are wholly on screen.
 @MainActor
 @Observable
 final class TooltipAnchors {
@@ -168,21 +190,12 @@ private struct TooltipHostModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(anchors)
-            .background {
-                // The part of the screen the content shows in: its frame less the bars, and the
-                // keyboard, where they overlap it.
-                GeometryReader { proxy in
-                    let insets = proxy.safeAreaInsets
-                    let frame = proxy.frame(in: .global)
-                    Color.clear.onChange(of: frame, initial: true) { _, _ in
-                        anchors.viewport = CGRect(
-                            x: frame.minX + insets.leading, y: frame.minY + insets.top,
-                            width: max(0, frame.width - insets.leading - insets.trailing),
-                            height: max(0, frame.height - insets.top - insets.bottom)
-                        )
-                    }
-                }
+            // The part of the screen the content shows in: its own bounds, inside the bars (a
+            // background would reach under them), in its own coordinates, as the anchors measure.
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                anchors.viewport = CGRect(origin: .zero, size: size)
             }
+            .coordinateSpace(.named(anchors.token))
             .onAppear {
                 appearance += 1
                 tooltips?.onVisit(token: anchors.token, screen: screen)
@@ -217,13 +230,18 @@ private struct TooltipAnchorModifier: ViewModifier {
     let inToolbar: Bool
     @Environment(TooltipsViewModel.self) private var tooltips: TooltipsViewModel?
     @Environment(TooltipAnchors.self) private var anchors: TooltipAnchors?
+    /// Kept, so a screen coming back (whose geometry hasn't changed, so isn't reported again)
+    /// puts its anchors back.
+    @State private var frame: CGRect?
 
     func body(content: Content) -> some View {
         if let tooltips, let anchors {
             content
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(anchors.token)) } action: { frame in
+                    self.frame = frame
                     anchors.update(tooltip, frame: frame, inToolbar: inToolbar)
                 }
+                .onAppear { if let frame { anchors.update(tooltip, frame: frame, inToolbar: inToolbar) } }
                 .onDisappear { anchors.remove(tooltip) }
                 .modifier(TooltipPopover(
                     isPresented: Binding(

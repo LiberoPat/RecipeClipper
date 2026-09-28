@@ -16,21 +16,24 @@ final class TooltipsUITests: RecipeUITestCase {
         launch(.standard, extraArguments: ["-uiTestTooltips"])
         gotIt("home_link", "Home's first tooltip")
 
-        openRecipe("Chicken Adobo")
+        // A popover is modal: while it shows, what's under it is out of the accessibility tree,
+        // so the recipe is opened by its row and the stepper found once the bubble has gone.
+        require(row("Chicken Adobo")).tap()
         let servings = require(app.buttons["tooltip.recipe_servings"], "the recipe screen's first tooltip")
         XCTAssertTrue(servings.label.contains("Change the servings"), servings.label)
-        // At its control: the bubble sits against the Serves stepper, above or below it.
-        let stepper = require(app.buttons["Increase servings"], "the Serves stepper")
-        let gap = min(abs(servings.frame.minY - stepper.frame.maxY), abs(stepper.frame.minY - servings.frame.maxY))
-        XCTAssertLessThan(gap, 60, "bubble \(servings.frame), stepper \(stepper.frame)")
+        let bubble = servings.frame
         gotIt("recipe_servings", "the servings tooltip")
+        // At its control: the bubble sat against the Serves stepper, above or below it.
+        let stepper = require(app.buttons["Increase servings"], "the Serves stepper").frame
+        let gap = min(abs(bubble.minY - stepper.maxY), abs(stepper.minY - bubble.maxY))
+        XCTAssertLessThan(gap, 60, "bubble \(bubble), stepper \(stepper)")
 
         // Never chained: nothing else on this visit.
         XCTAssertFalse(app.buttons["tooltip.recipe_units"].waitForExistence(timeout: 3))
 
         back()
         gotIt("home_new_recipe", "Home's next tooltip, on its next visit")
-        openRecipe("Chicken Adobo")
+        require(row("Chicken Adobo")).tap()
         gotIt("recipe_units", "the recipe screen's next tooltip, on its next visit")
     }
 }
