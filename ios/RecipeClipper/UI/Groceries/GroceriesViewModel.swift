@@ -201,7 +201,8 @@ final class GroceriesViewModel {
         for item in (uiState.sections ?? []).flatMap({ $0.rows.flatMap(\.items) }) where item.checked {
             guard let words = LanguageWords.forTag(item.language), let name = IngredientName.of(item.text, words: words) else { continue }
             let tracked = PantryMatch.find(name, language: words.language, pantry: pantryItems)
-            let key = tracked.map { "pantry-\($0.id)" } ?? "new-\(words.language)-\(name.lowercased())"
+            // One row per ingredient: "1 onion" and "2 onions" are one new item, named as first met.
+            let key = tracked.map { "pantry-\($0.id)" } ?? "new-\(words.language)-\(IngredientName.key(name, words: words))"
             if !items.contains(where: { $0.key == key }) {
                 items.append(PutAwayItem(key: key, name: tracked?.name ?? name, language: words.language, aisle: item.aisle, trackedId: tracked?.id))
             }

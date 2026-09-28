@@ -340,6 +340,19 @@ final class GroceryCombinerTests: XCTestCase {
         XCTAssertEqual(sugar.map(\.text), ["1 cup sugar", "100 g sugar"])
     }
 
+    func testAListedPairIsOneRowAndADifferentOnionAnother() {
+        let rows = GroceryCombiner.sections([
+            item("1 onion"), item("1 red onion"), item("2 onions"), item("2 red onions"), item("1 yellow onion"),
+        ])[0].rows
+        XCTAssertEqual(rows.count, 3)
+        guard case .combined(let onion, let onions, _) = rows[0] else { return XCTFail("onion") }
+        XCTAssertEqual([onion, onions], ["onion", "3 onions"])
+        guard case .combined(let red, let reds, _) = rows[1] else { return XCTFail("red onion") }
+        XCTAssertEqual([red, reds], ["red onion", "3 red onions"])
+        guard case .single(let yellow) = rows[2] else { return XCTFail("yellow onion") }
+        XCTAssertEqual(yellow.text, "1 yellow onion")
+    }
+
     func testCheckedLinesComeAfterAndNeverCombineWithUnchecked() {
         let rows = GroceryCombiner.sections([item("200 g flour", checked: true), item("100 g flour"), item("1 tsp baking powder")])[0].rows
         XCTAssertEqual(rows.flatMap(\.items).map(\.text), ["100 g flour", "1 tsp baking powder", "200 g flour"])

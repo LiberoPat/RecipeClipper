@@ -57,6 +57,10 @@ final class PantryTests: XCTestCase {
         XCTAssertEqual(PantryList.sameName([flour], name: " flour ", language: "en"), flour)
         XCTAssertNil(PantryList.sameName([flour], name: "flour", language: "de"))
         XCTAssertNil(PantryList.sameName([flour], name: "rice flour", language: "en"))
+        // A listed pair's number aside (#191).
+        let onions = item("Onions")
+        XCTAssertEqual(PantryList.sameName([onions], name: "onion", language: "en"), onions)
+        XCTAssertNil(PantryList.sameName([onions], name: "red onion", language: "en"))
     }
 
     // MARK: Matching: presence, by the end-of-name rule
@@ -125,6 +129,42 @@ final class PantryTests: XCTestCase {
     func testTheSameNameInTwoLanguagesIsTwoRows() {
         let needs = PantryMatch.weekNeeds([source("A", "2 eggs", language: "en"), source("B", "2 eggs", language: "de")], pantry: [])
         XCTAssertEqual(needs.buy.count, 2)
+    }
+
+    // MARK: Listed singular/plural pairs (#191)
+
+    func testAListedPairIsHaveInEitherNumberButADifferentOnionIsBuy() {
+        // Walkthrough 03: "onions" in the pantry, "1 onion, sliced" in the recipe.
+        XCTAssertTrue(PantryMatch.covered("1 onion, sliced", language: "en", pantry: [item("onions")]))
+        XCTAssertTrue(PantryMatch.covered("2 large eggs", language: "en", pantry: [item("egg")]))
+        XCTAssertTrue(PantryMatch.covered("1 red onion", language: "en", pantry: [item("Red Onions")]))
+        // The owner: red onions are different, as yellow onions are from white.
+        XCTAssertFalse(PantryMatch.covered("1 red onion", language: "en", pantry: [item("yellow onions")]))
+        XCTAssertFalse(PantryMatch.covered("1 red onion", language: "en", pantry: [item("onions")]))
+        XCTAssertFalse(PantryMatch.covered("2 onions", language: "en", pantry: [item("red onion")]))
+        XCTAssertFalse(PantryMatch.covered("1 tsp onion powder", language: "en", pantry: [item("onions")]))
+        XCTAssertFalse(PantryMatch.covered("1 cup pea shoots", language: "en", pantry: [item("peas")]))
+    }
+
+    func testAListedPairsLinesAreOneRowOfWhatINeedNamedByTheFirst() {
+        let needs = PantryMatch.weekNeeds(
+            [source("Soup", "1 onion", "1 red onion"), source("Stew", "2 onions, sliced", recipeId: 2)],
+            pantry: [item("Onions")]
+        )
+        XCTAssertEqual(needs.have.count, 1)
+        XCTAssertEqual(needs.have.first?.name, "onion")
+        XCTAssertEqual(needs.have.first?.pantryName, "Onions")
+        XCTAssertEqual(needs.have.first?.lines.map(\.text), ["1 onion", "2 onions, sliced"])
+        XCTAssertEqual(needs.buy.map(\.name), ["red onion"])
+    }
+
+    func testOnListIsTheItemsOwnNameAListedPairsNumberAside() {
+        func grocery(_ id: Int64, _ text: String, checked: Bool = false) -> GroceryItem {
+            GroceryItem(id: id, text: text, language: "en", aisle: .produce, checked: checked, sortOrder: Int(id))
+        }
+        let list = [grocery(1, "onion"), grocery(2, "2 onions"), grocery(3, "red onions"), grocery(4, "Onions", checked: true)]
+        XCTAssertEqual(PantryList.ownLines(item("Onions"), list).map(\.id), [1])
+        XCTAssertEqual(PantryList.ownLines(item("red onion"), list).map(\.id), [3])
     }
 
     func testNothingPlannedIsEmpty() {
