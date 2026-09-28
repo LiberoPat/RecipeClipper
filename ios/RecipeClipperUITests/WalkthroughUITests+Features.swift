@@ -49,8 +49,9 @@ extension WalkthroughUITests {
         return require(element, what)
     }
 
-    /// In stock, Running low, Run out (#194): the row's button, its long-press menu, and a swipe
-    /// each way. Run out items sit in their own section at the foot of the Pantry.
+    /// In stock, Running low, Run out (#194, #199): the row's button, the edit sheet's stock
+    /// control, the long-press menu (only what the button doesn't offer), and a swipe each way.
+    /// Run out items sit in their own section at the foot of the Pantry.
     func test25_pantryStates() {
         start(flags: ["mealPlan"], scenario: .walkthroughPantry)
         tab("Pantry")
@@ -59,14 +60,25 @@ extension WalkthroughUITests {
         pause()
         reveal(app.buttons["Restock: soy sauce"], "soy sauce, run out")
         pause(2.5)
-        reveal(pantryRow("olive oil"), "olive oil").press(forDuration: 1.2)
-        pause()
-        require(app.buttons["Running low"], "the menu's Running low").tap()
-        require(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'low-'")).firstMatch, "the Low tag")
+        // Tapping a row opens its sheet, whose stock control shows every state (#199).
+        reveal(pantryRow("olive oil"), "olive oil").tap()
+        let control = require(app.segmentedControls["pantryEditStock"], "the sheet's stock control")
+        pause(2)
+        control.buttons["Running low"].tap()
+        pause(2.5)
+        require(app.buttons["pantryEditSave"], "Save").tap()
+        let lowTag = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'low-'")).firstMatch
+        reveal(lowTag, "the Low tag")
         pause(2.5)
         reveal(app.buttons["Restock: soy sauce"], "soy sauce's Restock").tap()
         pause()
         reveal(app.buttons["Ran out: soy sauce"], "soy sauce, back in stock")
+        pause(2)
+        // The long-press menu offers only what the row's button doesn't: Restock, beside Ran out.
+        reveal(pantryRow("olive oil"), "olive oil").press(forDuration: 1.2)
+        let restock = require(app.buttons["Restock"], "the menu's Restock")
+        pause(2.5)
+        restock.tap()
         pause(2)
         reveal(pantryRow("basmati rice"), "basmati rice").swipeLeft()
         pause(1.5)
