@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -245,8 +246,10 @@ class CookingWalkthroughTest : WalkthroughBase() {
     }
 
     /**
-     * The pantry's three states (#194): Ran out moves a row to Run out and puts it on the list;
-     * a long press offers Running low (the Low tag); Restock; and a swipe each way.
+     * The pantry's three states (#194, #199): Ran out moves a row to Run out and puts it on the
+     * list; tapping a row opens its sheet, whose stock control sets Running low (the Low tag, and
+     * on the list); Restock; the long-press menu, offering only what the row's button doesn't;
+     * and a swipe each way.
      */
     @Test
     fun test25_pantryStates() {
@@ -258,14 +261,23 @@ class CookingWalkthroughTest : WalkthroughBase() {
         pause(2000)
         val oil = pantryIds.getValue("olive oil")
         scrollTo("pantryList", "pantry-$oil")
-        compose.onNode(hasTestTag("pantry-$oil")).performTouchInput { longClick(Offset(width * 0.3f, centerY)) }
-        pause(1500)
-        tapTag("stockMenu-RUNNING_LOW")
-        waitFor(hasText("Low")) // the tag (merged into the row, so found by its text)
+        compose.onNode(hasTestTag("pantry-$oil")).performTouchInput { click(Offset(width * 0.3f, centerY)) }
+        waitFor(hasTestTag("pantryEditStock"))
         pause(2000)
+        tapTag("pantryEditStock-RUNNING_LOW", 2500) // applied at once
+        press(hasTestTag("pantryEditSave"))
+        scrollTo("pantryList", "pantry-$oil")
+        waitFor(hasText("Low")) // the tag (merged into the row, so found by its text)
+        waitFor(hasTestTag("onList-$oil"))
+        pause(2500)
         val garlic = pantryIds.getValue("garlic")
         scrollTo("pantryList", "pantry-$garlic")
         tapTag("stockAction-$garlic", 2000) // Restock
+        scrollTo("pantryList", "pantry-$oil")
+        compose.onNode(hasTestTag("pantry-$oil")).performTouchInput { longClick(Offset(width * 0.3f, centerY)) }
+        waitFor(hasTestTag("stockMenu-IN_STOCK")) // only Restock: the row's button is Ran out
+        pause(2500)
+        tapTag("stockMenu-IN_STOCK", 2000)
         swipeRow("basmati rice", left = true) // Ran out
         swipeRow("milk", left = false) // Restock
     }
