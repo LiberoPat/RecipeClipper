@@ -146,6 +146,15 @@ responses because reddit.com answers 403 to the development machine (`docs/decis
 "Reddit posts (#11)", has where they came from).
 `DefaultRecipeRepositoryRetryTest` (iOS `DataRepositoryTests`) checks that a blocked
 Reddit post never goes to the rendered page.
+"Read the photo" (#198): `PhotoTextSorterTest` / `PhotoTextSorterTests` pin the sorting,
+the "check this" marking and the unsorted fallback with the same cases;
+`RedditRecipeParserTest(s)` a gallery's pictures in order (`old-recipes-card-untranscribed`);
+`EditRecipePhotoViewModelTest` / `EditRecipePhotoTests` the editor over `FakePhotoTextReader`
+(read, not sorted, no text, a failed picture and Try again, leaving mid-read, save, a full
+library, a failed save); `EditRecipePhotoScreenTest` and `RecipeErrorScreenTest` (Robolectric)
+the review and the button behind its flag; iOS's `PhotoTextUITests` the whole path over the
+fixture listing and canned lines (`RC_UITEST_PHOTO_LINES`, UITestSeeding's stub reader).
+ML Kit and Vision themselves, on real photos of real cards, need a device.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to

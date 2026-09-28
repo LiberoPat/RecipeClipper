@@ -17,7 +17,7 @@ final class PhotoTextSorterTests: XCTestCase {
     ]
 
     private func lines(_ texts: [String], unsure: Set<String> = []) -> [PhotoLine] {
-        texts.map { PhotoLine(text: $0, confidence: unsure.contains($0) ? 0.3 : 1) }
+        texts.map { PhotoLine(text: $0, confidence: unsure.contains($0) ? Float(0.3) : Float(1)) }
     }
 
     func testACardsLinesSortIntoIngredientsAndStepsLikeATypedPost() {
