@@ -16,14 +16,13 @@ struct PantryScreen: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {
                     ScreenTitle(Strings.tabPantry)
-                    // The first Pantry visit (#151).
-                    TipCallout(tip: .pantry)
                     OutlinedField(
                         label: Strings.pantryAddHint,
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),
                         onSubmit: vm.onAddTyped
                     )
                     .accessibilityIdentifier("pantryDraft")
+                    .tooltipAnchor(.pantryAdd)
                     if state.hasItems {
                         OutlinedField(
                             label: Strings.pantrySearchHint,
@@ -48,7 +47,11 @@ struct PantryScreen: View {
                     .padding(.bottom, 2)
                     .accessibilityAddTraits(.isHeader)
                     ForEach(section.items) { item in
-                        PantryRow(item: item, today: state.today, onList: state.onList.contains(item.id), vm: vm)
+                        // The in-stock tooltip (#190) points at the first row's switch.
+                        PantryRow(
+                            item: item, today: state.today, onList: state.onList.contains(item.id),
+                            first: item.id == state.sections?.first?.items.first?.id, vm: vm
+                        )
                     }
                 }
             }
@@ -58,6 +61,8 @@ struct PantryScreen: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
+        // The tooltips (#190); none over this screen's sheet and snackbar.
+        .tooltipHost(.pantry, blocked: state.editing != nil || state.message != nil)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -85,6 +90,7 @@ struct PantryScreen: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 .accessibilityLabel(Strings.moreOptions)
+                .tooltipAnchor(.pantryMenu, inToolbar: true)
             }
         }
         .overlay(alignment: .bottom) {
@@ -138,6 +144,7 @@ private struct PantryRow: View {
     let item: PantryItem
     let today: Int64
     let onList: Bool
+    let first: Bool
     let vm: PantryViewModel
 
     var body: some View {
@@ -185,9 +192,19 @@ private struct PantryRow: View {
                 .tint(Palette.primary)
                 .accessibilityLabel("\(Strings.pantryInStock): \(item.name)")
                 .accessibilityIdentifier("inStock-\(item.id)")
+                .modifier(FirstSwitchAnchor(first: first))
         }
         .padding(.vertical, 4)
         .accessibilityIdentifier("pantry-\(item.id)")
+    }
+}
+
+/// The first row's switch, which the in-stock tooltip (#190) points at.
+private struct FirstSwitchAnchor: ViewModifier {
+    let first: Bool
+
+    func body(content: Content) -> some View {
+        if first { content.tooltipAnchor(.pantryInStock) } else { content }
     }
 }
 

@@ -52,8 +52,6 @@ struct ReadingView: View {
                     onUnitSystemChange: vm.onUnitSystemChange
                 )
                 .padding(.bottom, 20)
-                // The first recipe opened (#151): the row above, and the bookmark.
-                TipCallout(tip: .recipe, padding: EdgeInsets(top: 0, leading: 0, bottom: 20, trailing: 0))
 
                 SectionHeading(Strings.headingIngredients).padding(.bottom, 6)
                 ForEach(Array(content.ingredients.enumerated()), id: \.offset) { index, ingredient in
@@ -123,6 +121,7 @@ struct ReadingView: View {
                     Hairline()
                     Button(Strings.startCooking, action: vm.onCookStart)
                         .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: true))
+                        .tooltipAnchor(.recipeStartCooking)
                         .padding(.horizontal, 20)
                         .readableColumn()
                         .padding(.vertical, 12)

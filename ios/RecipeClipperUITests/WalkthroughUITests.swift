@@ -42,14 +42,14 @@ final class WalkthroughUITests: RecipeUITestCase {
         start(flags: flags, extraArguments: ["-uiTestDefaultFlags"])
     }
 
-    /// A fresh install's first launch (#151): no recipes, the welcome over Home (which `launch`
-    /// waits for, so it can't be used).
+    /// A fresh install's first launch (#151, #190): no recipes of its own, the sample added at
+    /// launch, and every tooltip still to see.
     func startFirstRun(flags: [String]) {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTestSeed", Scenario.empty.rawValue, "-uiTestTour", "-uiTestFlags", flags.joined(separator: ",")]
+        app.launchArguments = ["-uiTestSeed", Scenario.empty.rawValue, "-uiTestTooltips", "-uiTestFlags", flags.joined(separator: ",")]
         app.launch()
         self.app = app
-        require(app.buttons["welcome.next"], "the welcome")
+        require(app.textFields["Recipe URL"], "Home")
         mark("START")
         pause()
     }

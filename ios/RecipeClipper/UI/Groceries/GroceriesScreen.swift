@@ -22,13 +22,12 @@ struct GroceriesScreen: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {
                     ScreenTitle(Strings.tabGroceries)
-                    // The first Groceries visit (#151).
-                    TipCallout(tip: .groceries)
                     OutlinedField(
                         label: Strings.groceriesAddHint,
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),
                         onSubmit: vm.onAddTyped
                     )
+                    .tooltipAnchor(.groceriesAdd)
                     if state.isEmpty {
                         Text(Strings.groceriesEmpty)
                             .textStyle(Typography.bodyMedium)
@@ -46,7 +45,8 @@ struct GroceriesScreen: View {
                     .padding(.bottom, 2)
                     .accessibilityAddTraits(.isHeader)
                     ForEach(section.rows) { row in
-                        GroceryRowView(row: row, vm: vm)
+                        // The tick and long-press tooltips (#190) point at the list's first row.
+                        GroceryRowView(row: row, first: row.id == state.sections?.first?.rows.first?.id, vm: vm)
                     }
                 }
             }
@@ -56,6 +56,9 @@ struct GroceriesScreen: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
+        // The tooltips (#190); none over this screen's sheets and snackbar.
+        .tooltipHost(.groceries, blocked: state.moving != nil || state.putAway != nil || state.removed != nil
+            || receiveVM?.uiState.lines != nil)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -84,6 +87,7 @@ struct GroceriesScreen: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 .accessibilityLabel(Strings.moreOptions)
+                .tooltipAnchor(.groceriesMenu, inToolbar: true)
             }
         }
         // Snackbars only for undo (#146): a delete, or "Done shopping". "Done shopping" itself
@@ -106,6 +110,7 @@ struct GroceriesScreen: View {
                     Button(Strings.doneShopping, action: vm.onDoneShopping)
                         .buttonStyle(PrimaryButtonStyle(fillWidth: true))
                         .accessibilityIdentifier("doneShopping")
+                        .tooltipAnchor(.groceriesDoneShopping)
                         .frame(maxWidth: ReadableWidth.column)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
@@ -216,23 +221,24 @@ private struct PutAwaySheetView: View {
 /// their own: ticking the row ticks them all.
 private struct GroceryRowView: View {
     let row: GroceryCombiner.Row
+    let first: Bool
     let vm: GroceriesViewModel
 
     var body: some View {
         switch row {
         case .single(let item):
-            CheckLine(text: item.text, detail: [], checked: item.checked, row: row, label: item.text, vm: vm)
+            CheckLine(text: item.text, detail: [], checked: item.checked, row: row, label: item.text, first: first, vm: vm)
         case .combined(_, let text, let items):
             // "2 corn × 3" under "6 corn"; nothing under a line that is its own detail.
             CheckLine(
                 text: text, detail: [GroceryCombiner.lines(row).joined(separator: " + ")].filter { $0 != text },
-                checked: items.allSatisfy(\.checked), row: row, label: text, vm: vm
+                checked: items.allSatisfy(\.checked), row: row, label: text, first: first, vm: vm
             )
         case .together(let name, let items):
             // One tick for the ingredient; its lines, as written, have none of their own.
             CheckLine(
                 text: name, detail: GroceryCombiner.lines(row),
-                checked: items.allSatisfy(\.checked), row: row, label: name, vm: vm
+                checked: items.allSatisfy(\.checked), row: row, label: name, first: first, vm: vm
             )
         }
     }
@@ -244,12 +250,14 @@ private struct CheckLine: View {
     let checked: Bool
     let row: GroceryCombiner.Row
     let label: String
+    let first: Bool
     let vm: GroceriesViewModel
 
     var body: some View {
         Button { vm.onToggle(row) } label: {
             HStack(spacing: 12) {
                 CheckboxGlyph(checked: checked)
+                    .modifier(FirstRowAnchor(tooltip: .groceriesTick, first: first))
                 VStack(alignment: .leading, spacing: 0) {
                     Text(text)
                         .textStyle(Typography.bodyLarge)
@@ -259,6 +267,7 @@ private struct CheckLine: View {
                         Text(line).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
                     }
                 }
+                .modifier(FirstRowAnchor(tooltip: .groceriesLongPress, first: first))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.vertical, 6)
@@ -273,6 +282,16 @@ private struct CheckLine: View {
                 Label(Strings.delete, systemImage: "trash")
             }
         }
+    }
+}
+
+/// The list's first row, which the tick and long-press tooltips (#190) point at.
+private struct FirstRowAnchor: ViewModifier {
+    let tooltip: Tooltip
+    let first: Bool
+
+    func body(content: Content) -> some View {
+        if first { content.tooltipAnchor(tooltip) } else { content }
     }
 }
 
