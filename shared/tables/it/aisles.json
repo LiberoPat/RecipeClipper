@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "language": "it",
-  "about": "Groceries (#50): the aisle a grocery item is listed under. The item's ingredient name (IngredientName.of) is matched on its END, like the density table: the longest alias the name ends with at a word boundary wins, so 'peanut butter' (condiments) beats 'butter' (dairy), and 'butter beans' (canned) is not butter. There's no singulariser, so plurals are listed too. A name nothing matches, or a line with no name, is 'other'. The keys are fixed, and the app names and orders them: produce, meat, seafood, dairy, bakery, baking, grains, canned, condiments, spices, frozen, snacks, drinks, other. Aliases are lowercase, with hyphens as spaces and no apostrophes, as a name is read.",
+  "about": "Groceries (#50): the aisle a grocery item is listed under. The item's ingredient name (IngredientName.of) is matched on its END, like the density table: the longest alias the name ends with at a word boundary wins, so 'peanut butter' (condiments) beats 'butter' (dairy), and 'butter beans' (canned) is not butter. A word in names.json's pluralPairs matches in either number (#191), so 'onion' also files 'onions' and 'red onions'; a plural not listed there is listed here. Two aliases that are the same once pairs are read as one must be in the same aisle. A name nothing matches, or a line with no name, is 'other'. The keys are fixed, and the app names and orders them: produce, meat, seafood, dairy, bakery, baking, grains, canned, condiments, spices, frozen, snacks, drinks, other. Aliases are lowercase, with hyphens as spaces and no apostrophes, as a name is read.",
   "aisles": {
     "produce": [
       "cipolla",

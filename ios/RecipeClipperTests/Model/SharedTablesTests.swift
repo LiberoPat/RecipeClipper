@@ -31,6 +31,37 @@ final class SharedTablesTests: XCTestCase {
         }
     }
 
+    func testEveryPluralPairIsTwoLowercaseWordsAndNoWordIsListedTwice() {
+        for language in LanguageWords.shipped {
+            let pairs = SharedTables.load("names", language)["pluralPairs"] as? [[String]]
+            XCTAssertNotNil(pairs, language)
+            var words: [String] = []
+            for pair in pairs ?? [] {
+                XCTAssertEqual(pair.count, 2, "\(language) \(pair)")
+                XCTAssertNotEqual(pair.first, pair.last, "\(language) \(pair)")
+                for w in pair { XCTAssertTrue(!w.isEmpty && w == w.lowercased() && w.allSatisfy(\.isLetter), "\(language) \(w)") }
+                words += pair
+            }
+            XCTAssertEqual(words.count, Set(words).count, language)
+        }
+    }
+
+    func testNoTwoAislesShareAnAliasOnceListedPairsAreOneWord() {
+        // Aisles.ofName takes the longest keyed alias, so two of equal length must never both match.
+        for language in LanguageWords.shipped {
+            let words = LanguageWords.forTag(language)!
+            let aisles = SharedTables.load("aisles", language)["aisles"] as? [String: [String]] ?? [:]
+            var seen: [String: String] = [:]
+            for (aisle, aliases) in aisles {
+                for alias in aliases {
+                    let key = IngredientName.key(alias, words: words)
+                    if let before = seen[key] { XCTAssertEqual(before, aisle, "\(language): '\(key)'") }
+                    seen[key] = aisle
+                }
+            }
+        }
+    }
+
     func testEveryTableLoadsWithItsSchemaVersion() {
         for language in LanguageWords.shipped {
             for name in languageTables {

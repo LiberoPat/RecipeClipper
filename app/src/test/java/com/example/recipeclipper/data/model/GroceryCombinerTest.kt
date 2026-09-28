@@ -129,6 +129,32 @@ class GroceryCombinerTest {
         assertEquals("300 g Mehl", combine("200 g Mehl", "100 g Mehl", words = de))
     }
 
+    // --- Listed singular/plural pairs (#191)
+
+    @Test fun countsAddUpAcrossAListedPairWordedByThePair() {
+        assertEquals("3 onions", combine("1 onion", "2 onions"))
+        assertEquals("3 onions", combine("2 onions", "1 onion"))
+        assertEquals("2 onions", combine("1 onion", "1 onion"))
+        assertEquals("1 onion", combine("1/2 onion", "1/2 onions"))
+        assertEquals("3 red onions", combine("1 red onion", "2 red onions"))
+        assertEquals("3 onions, sliced", combine("1 onion, sliced", "2 onions, sliced"))
+        assertEquals("3 bay leaves", combine("1 bay leaf", "2 bay leaves"))
+        assertEquals("3 Zwiebeln", combine("1 Zwiebel", "2 Zwiebeln", words = LanguageWords.forTag("de")!!))
+        assertEquals("3 pommes de terre", combine("1 pomme de terre", "2 pommes de terre", words = LanguageWords.forTag("fr")!!))
+    }
+
+    @Test fun anythingElseAcrossAPairStaysAsWritten() {
+        // Words otherwise different, or a different onion altogether (the owner: red isn't yellow).
+        assertNull(combine("1 large onion", "2 onions"))
+        assertNull(combine("1 onion, sliced", "2 onions"))
+        assertNull(combine("1 red onion", "2 onions"))
+        assertNull(combine("1 red onion", "2 yellow onions"))
+        assertNull(combine("1 cup peas", "1 cup pea shoots"))
+        assertNull(combine("1 glass", "2 glasses"))
+        // With a unit, the words after it aren't counted: the shortest is kept, as before.
+        assertEquals("2 cup onion", combine("1 cup onion", "1 cup onions"))
+    }
+
     // --- The list
 
     private var nextId = 1L
@@ -156,6 +182,17 @@ class GroceryCombinerTest {
         val sugar = rows[1] as GroceryCombiner.Row.Together
         assertEquals("sugar", sugar.name)
         assertEquals(listOf("1 cup sugar", "100 g sugar"), sugar.items.map { it.text })
+    }
+
+    @Test fun aListedPairIsOneRowAndADifferentOnionAnother() {
+        val rows = GroceryCombiner.sections(
+            listOf(item("1 onion"), item("1 red onion"), item("2 onions"), item("2 red onions"), item("1 yellow onion"))
+        ).single().rows
+        assertEquals(
+            listOf("onion" to "3 onions", "red onion" to "3 red onions"),
+            rows.take(2).map { (it as GroceryCombiner.Row.Combined).name to it.text }
+        )
+        assertEquals("1 yellow onion", (rows[2] as GroceryCombiner.Row.Single).item.text)
     }
 
     @Test fun checkedLinesComeAfterAndNeverCombineWithUnchecked() {
