@@ -569,7 +569,11 @@ answers simulated), 12 junk hidden in Groceries (simulated); 13 "I made this", 1
 backup copy and "Restore from a backup file", 15 Send list and Paste a list, 16 Send as file and
 a received file, 17 the first-run tour (the sample, and a tooltip or two), 18 Done shopping and the On list tag, 19 the Pantry's
 Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported phone
-(simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked". Android's
+(simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked", 24 tooltips,
+25 the pantry's three states, 26 singular and plural names in What I need (onion/onions), 27 a Reddit
+post imported (iOS: reddit.com refuses a simulator here, so the UI-test stub source runs the link
+through the real `RedditRecipeParser` over a `shared/fixtures/reddit` listing the test hands in as
+`RC_UITEST_REDDIT_LISTING`; iOS's 24–27 are in `WalkthroughUITests+Features.swift`). Android's
 13–21 and 23 are in `CookingWalkthroughTest` and `SharingWalkthroughTest` (22 beside 12, in
 `MealPlanWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (22
 in `+MealPlan.swift`). What they need from outside the app:

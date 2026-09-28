@@ -19,6 +19,8 @@ TESTS=("$@")
   test27_redditImport)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
+# A new simulator's keyboard shows its slide-to-type introduction once, over the app: mark it seen.
+xcrun simctl spawn "$SIM" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
 # The photo "I made this" picks from the library (#116): a macOS sample picture, through BMP so
 # it loses its capture date and Photos files it under today, first in the picker.
 if [[ " ${TESTS[*]} " == *" test13_iMadeThis "* ]]; then
