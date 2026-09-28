@@ -126,7 +126,7 @@ class ShareFileRepositoryTest {
         assertEquals(db.pantryDao().item(rice)!!.uid, sent.id)
         assertTrue(file.recipes.isEmpty() && file.groceries.isEmpty())
 
-        db.pantryDao().setInStock(listOf(rice), false, 2)
+        db.pantryDao().setStock(listOf(rice), inStock = false, runningLow = false, now = 2)
         assertNull(repo().pantryFile())
     }
 

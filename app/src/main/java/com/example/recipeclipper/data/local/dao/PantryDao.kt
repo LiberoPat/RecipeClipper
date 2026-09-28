@@ -22,11 +22,12 @@ abstract class PantryDao {
     @Insert
     abstract suspend fun insert(item: PantryItemEntity): Long
 
-    @Query("UPDATE pantry_items SET inStock = :inStock, updatedAt = :now WHERE id IN (:ids)")
-    abstract suspend fun setInStock(ids: List<Long>, inStock: Boolean, now: Long)
+    /** The stock state (#194); [runningLow] only with [inStock]. */
+    @Query("UPDATE pantry_items SET inStock = :inStock, runningLow = :runningLow, updatedAt = :now WHERE id IN (:ids)")
+    abstract suspend fun setStock(ids: List<Long>, inStock: Boolean, runningLow: Boolean, now: Long)
 
-    /** Back in stock, bought on [day]. */
-    @Query("UPDATE pantry_items SET inStock = 1, purchasedDay = :day, updatedAt = :now WHERE id IN (:ids)")
+    /** Back in stock (no longer running low), bought on [day]. */
+    @Query("UPDATE pantry_items SET inStock = 1, runningLow = 0, purchasedDay = :day, updatedAt = :now WHERE id IN (:ids)")
     abstract suspend fun restock(ids: List<Long>, day: Long, now: Long)
 
     @Query(

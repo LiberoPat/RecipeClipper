@@ -37,7 +37,7 @@ import com.example.recipeclipper.data.model.MealType
         PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class,
         AiDecisionEntity::class, CookedPhotoEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -397,11 +397,25 @@ abstract class RecipeDatabase : RoomDatabase() {
             "CREATE UNIQUE INDEX IF NOT EXISTS `index_cooked_photos_uid` ON `cooked_photos` (`uid`)"
         )
 
+        /**
+         * Running low (#194): `pantry_items.runningLow`, a third stock state beside `inStock`.
+         * Every existing item keeps its stock: in stock stays in stock, out stays out. The same
+         * SQL is iOS's `addRunningLow`.
+         */
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(RUNNING_LOW_SQL)
+            }
+        }
+
+        private const val RUNNING_LOW_SQL =
+            "ALTER TABLE `pantry_items` ADD COLUMN `runningLow` INTEGER NOT NULL DEFAULT 0"
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-            MIGRATION_13_14, MIGRATION_14_15
+            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16
         )
     }
 }

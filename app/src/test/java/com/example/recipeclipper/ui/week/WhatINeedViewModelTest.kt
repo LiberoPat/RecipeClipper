@@ -5,6 +5,7 @@ import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.NeedStatus
 import com.example.recipeclipper.data.model.PantryItem
+import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.PlannedIngredients
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.data.model.DecisionQuestion
@@ -92,7 +93,7 @@ class WhatINeedViewModelTest {
         advanceUntilIdle()
         assertTrue(vm.uiState.value.needs!!.buy.any { it.name == "eggs" })
 
-        pantry.setInStock(listOf(1), true)
+        pantry.setStock(listOf(1), PantryStock.RUNNING_LOW) // running low still counts as having it (#194)
         advanceUntilIdle()
         assertTrue(vm.uiState.value.needs!!.have.any { it.name == "eggs" })
     }

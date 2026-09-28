@@ -43,6 +43,32 @@ class PantryTest {
         assertEquals(listOf("yogurt", "milk", "bread", "zucchini"), sections[0].items.map { it.name })
     }
 
+    // #194: what has run out is one last section, in either sort; running low stays in its aisle.
+    @Test fun `run out items are one last section, and running low stays in its aisle`() {
+        val items = listOf(
+            item("rice", aisle = Aisle.GRAINS), item("milk", inStock = false, aisle = Aisle.DAIRY, expires = 20_730),
+            item("apples", aisle = Aisle.PRODUCE).copy(runningLow = true), item("oats", inStock = false, aisle = Aisle.GRAINS)
+        )
+        val byAisle = PantryList.arrange(items, "", PantrySort.AISLE)
+        assertEquals(listOf(Aisle.PRODUCE, Aisle.GRAINS, null), byAisle.map { it.aisle })
+        assertEquals(listOf(false, false, true), byAisle.map { it.runOut })
+        assertEquals(listOf("milk", "oats"), byAisle.last().items.map { it.name })
+        assertEquals(PantryStock.RUNNING_LOW, byAisle[0].items.single().stock)
+
+        val byExpiry = PantryList.arrange(items, "", PantrySort.EXPIRY)
+        assertEquals(listOf(listOf("apples", "rice"), listOf("milk", "oats")), byExpiry.map { s -> s.items.map { it.name } })
+        assertEquals(listOf(false, true), byExpiry.map { it.runOut })
+
+        val onlyOut = PantryList.arrange(items, "oats", PantrySort.EXPIRY)
+        assertEquals(listOf(true), onlyOut.map { it.runOut })
+    }
+
+    @Test fun `the stock is run out whenever the item is out, running low only in stock`() {
+        assertEquals(PantryStock.IN_STOCK, item("a").stock)
+        assertEquals(PantryStock.RUNNING_LOW, item("b").copy(runningLow = true).stock)
+        assertEquals(PantryStock.RUN_OUT, item("c", inStock = false).copy(runningLow = true).stock)
+    }
+
     @Test fun `search is a case-insensitive part of the name, and finding nothing is no sections`() {
         val items = listOf(item("Plain flour"), item("rice flour"), item("butter"))
         assertEquals(listOf("Plain flour", "rice flour"), PantryList.arrange(items, " FLOUR ", PantrySort.AISLE).flatMap { s -> s.items.map { it.name } })
@@ -73,6 +99,10 @@ class PantryTest {
         assertTrue(PantryMatch.covered("2 cups all-purpose flour", "en", pantry))
         assertFalse(PantryMatch.covered("1 can butter beans", "en", pantry)) // not butter
         assertFalse(PantryMatch.covered("2 eggs", "en", pantry))
+    }
+
+    @Test fun `running low is still covered`() {
+        assertTrue(PantryMatch.covered("2 cups flour", "en", listOf(item("flour").copy(runningLow = true))))
     }
 
     @Test fun `out of stock is not covered, a staple always is`() {

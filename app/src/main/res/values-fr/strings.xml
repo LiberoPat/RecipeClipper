@@ -387,6 +387,10 @@
     <string name="pantry_in_stock">En stock</string>
     <string name="pantry_out">Épuisé</string>
     <string name="pantry_on_list">Sur la liste</string>
+    <string name="pantry_ran_out">Épuisé</string>
+    <string name="pantry_restock">Racheté</string>
+    <string name="pantry_running_low">Presque fini</string>
+    <string name="pantry_low">Bas</string>
     <string name="pantry_take_off_list">Retirer de la liste de courses</string>
     <string name="pantry_always_have">Toujours en réserve</string>
     <string name="pantry_always_have_detail">Les produits de base ne figurent jamais dans « À acheter ».</string>
@@ -558,7 +562,7 @@
     <string name="tip_cook_mode">Touchez une étape pour en faire l\'étape en cours, et « Terminé — étape suivante » pour avancer. Une étape avec une durée a un minuteur, et l\'écran reste allumé.</string>
     <string name="tip_week">Planifiez la semaine avec + Ajouter sur un jour, ou Ajouter au planning depuis le menu d\'une recette. Ce qu\'il me faut est dans le menu ici.</string>
     <string name="tip_groceries">Cochez au fil de vos achats : ce que vous cochez peut aller dans votre garde-manger. Maintenez un article appuyé pour le déplacer dans un autre rayon.</string>
-    <string name="tip_pantry">Ce que vous avez chez vous. Désactivez un article quand il est épuisé, et Ce qu\'il me faut le mettra à acheter.</string>
+    <string name="tip_pantry">Ce que vous avez chez vous. Touchez Épuisé quand un article est fini : il va sur la liste de courses, et Ce qu\'il me faut le mettra à acheter.</string>
     <string name="cd_dismiss_tip">Fermer l\'astuce</string>
     <string name="settings_section_help">Aide</string>
     <string name="settings_show_tour">Revoir la présentation</string>

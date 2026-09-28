@@ -417,8 +417,12 @@
     <string name="pantry_sort_aisle">Sort by aisle</string>
     <string name="pantry_sort_expiry">Sort by expiry</string>
     <string name="pantry_in_stock">In stock</string>
-    <string name="pantry_out">Out</string>
+    <string name="pantry_out">Run out</string>
     <string name="pantry_on_list">On list</string>
+    <string name="pantry_ran_out">Ran out</string>
+    <string name="pantry_restock">Restock</string>
+    <string name="pantry_running_low">Running low</string>
+    <string name="pantry_low">Low</string>
     <string name="pantry_take_off_list">Take off the grocery list</string>
     <string name="pantry_always_have">Always have</string>
     <string name="pantry_always_have_detail">Staples are never under “To buy”.</string>
@@ -591,7 +595,7 @@
     <string name="tip_cook_mode">Tap a step to make it current, and “Done — next step” to move on. A step with a time has a timer, and the screen stays on.</string>
     <string name="tip_week">Plan the week with + Add on a day, or Add to plan from a recipe\'s menu. What I need is in the menu here.</string>
     <string name="tip_groceries">Tick things off as you shop: what you tick can go into your pantry. Touch and hold an item to move it to another aisle.</string>
-    <string name="tip_pantry">What you have at home. Switch an item off when it runs out, and What I need lists it to buy.</string>
+    <string name="tip_pantry">What you have at home. Tap Ran out when something runs out: it goes on the grocery list, and What I need lists it to buy.</string>
     <string name="cd_dismiss_tip">Dismiss tip</string>
     <string name="settings_section_help">Help</string>
     <string name="settings_show_tour">Show the tour again</string>

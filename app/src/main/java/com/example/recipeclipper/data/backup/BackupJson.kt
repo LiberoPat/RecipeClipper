@@ -18,7 +18,7 @@ import org.json.JSONTokener
  *   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
  *   "memberships": [{ "recipeId", "listId", "addedAt" }],
  *   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
- *                     "purchasedDay", "expiresDay", "updatedAt" }],
+ *                     "purchasedDay", "expiresDay", "updatedAt", "runningLow" }],
  *   "groceries":   [{ "id", "text", "language", "aisle", "checked", "recipeId", "plannedDay",
  *                     "updatedAt" }],
  *   "mealTypes":   [{ "id", "name", "builtInKey", "sortOrder", "updatedAt" }],
@@ -171,17 +171,20 @@ object BackupJson {
 
         val pantry = top.objects(root, "pantry").map { (path, o) ->
             val r = Reader(path)
+            val inStock = r.bool(o, "inStock") ?: true
             BackupPantryItem(
                 id = r.requiredId(o, "id"),
                 name = r.string(o, "name")?.takeIf { it.isNotBlank() } ?: throw MalformedException("$path.name"),
                 quantity = r.string(o, "quantity"),
                 language = r.string(o, "language"),
                 aisle = r.string(o, "aisle") ?: "other",
-                inStock = r.bool(o, "inStock") ?: true,
+                inStock = inStock,
                 alwaysHave = r.bool(o, "alwaysHave") ?: false,
                 purchasedDay = r.long(o, "purchasedDay"),
                 expiresDay = r.long(o, "expiresDay"),
-                updatedAt = r.long(o, "updatedAt") ?: 0L
+                updatedAt = r.long(o, "updatedAt") ?: 0L,
+                // Absent before #194: the old boolean alone is in stock or run out.
+                runningLow = inStock && (r.bool(o, "runningLow") ?: false)
             )
         }
         requireUniqueIds(pantry.map { it.id }, "pantry")
@@ -428,6 +431,7 @@ object BackupJson {
         put("purchasedDay", purchasedDay ?: JSONObject.NULL)
         put("expiresDay", expiresDay ?: JSONObject.NULL)
         put("updatedAt", updatedAt)
+        put("runningLow", runningLow)
     }
 
     private fun BackupGroceryItem.toJson() = JSONObject().apply {

@@ -371,6 +371,10 @@
     <string name="pantry_in_stock">Vorrätig</string>
     <string name="pantry_out">Nicht vorrätig</string>
     <string name="pantry_on_list">Auf der Liste</string>
+    <string name="pantry_ran_out">Aufgebraucht</string>
+    <string name="pantry_restock">Nachgekauft</string>
+    <string name="pantry_running_low">Wird knapp</string>
+    <string name="pantry_low">Knapp</string>
     <string name="pantry_take_off_list">Von der Einkaufsliste nehmen</string>
     <string name="pantry_always_have">Immer im Haus</string>
     <string name="pantry_always_have_detail">Grundvorräte stehen nie unter „Zu kaufen“.</string>
@@ -539,7 +543,7 @@
     <string name="tip_cook_mode">Tippe auf einen Schritt, um ihn zum aktuellen zu machen, und auf „Fertig – nächster Schritt“, um weiterzugehen. Ein Schritt mit einer Zeit hat einen Timer, und der Bildschirm bleibt an.</string>
     <string name="tip_week">Plane die Woche mit + Hinzufügen an einem Tag oder mit Zum Plan hinzufügen im Menü eines Rezepts. Was ich brauche steht hier im Menü.</string>
     <string name="tip_groceries">Hake beim Einkaufen ab: Was du abhakst, kann in deinen Vorrat. Halte einen Eintrag gedrückt, um ihn in einen anderen Gang zu verschieben.</string>
-    <string name="tip_pantry">Was du zu Hause hast. Schalte einen Eintrag aus, wenn er aufgebraucht ist, dann führt Was ich brauche ihn zum Kaufen auf.</string>
+    <string name="tip_pantry">Was du zu Hause hast. Tippe auf Aufgebraucht, wenn etwas leer ist: Es kommt auf die Einkaufsliste, und Was ich brauche führt es zum Kaufen auf.</string>
     <string name="cd_dismiss_tip">Tipp schließen</string>
     <string name="settings_section_help">Hilfe</string>
     <string name="settings_show_tour">Einführung erneut zeigen</string>

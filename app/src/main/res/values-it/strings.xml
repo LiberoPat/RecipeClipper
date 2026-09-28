@@ -387,6 +387,10 @@
     <string name="pantry_in_stock">Disponibile</string>
     <string name="pantry_out">Finito</string>
     <string name="pantry_on_list">In lista</string>
+    <string name="pantry_ran_out">Finito</string>
+    <string name="pantry_restock">Ricomprato</string>
+    <string name="pantry_running_low">Sta finendo</string>
+    <string name="pantry_low">Poco</string>
     <string name="pantry_take_off_list">Togli dalla lista della spesa</string>
     <string name="pantry_always_have">Sempre in casa</string>
     <string name="pantry_always_have_detail">Gli essenziali non sono mai in «Da comprare».</string>
@@ -558,7 +562,7 @@
     <string name="tip_cook_mode">Tocca un passaggio per renderlo quello attuale, e «Fatto — passaggio successivo» per andare avanti. Un passaggio con un tempo ha un timer, e lo schermo resta acceso.</string>
     <string name="tip_week">Pianifica la settimana con + Aggiungi su un giorno, o con Aggiungi al piano dal menu di una ricetta. Cosa mi serve è nel menu qui.</string>
     <string name="tip_groceries">Spunta mentre fai la spesa: quello che spunti può finire nella dispensa. Tieni premuto un articolo per spostarlo in un altro reparto.</string>
-    <string name="tip_pantry">Quello che hai in casa. Disattiva un articolo quando finisce, e Cosa mi serve lo mette tra le cose da comprare.</string>
+    <string name="tip_pantry">Quello che hai in casa. Tocca Finito quando qualcosa finisce: va nella lista della spesa, e Cosa mi serve lo mette tra le cose da comprare.</string>
     <string name="cd_dismiss_tip">Chiudi suggerimento</string>
     <string name="settings_section_help">Aiuto</string>
     <string name="settings_show_tour">Rivedi la presentazione</string>

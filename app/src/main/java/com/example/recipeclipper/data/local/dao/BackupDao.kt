@@ -310,7 +310,8 @@ abstract class BackupDao {
                     alwaysHave = p.alwaysHave,
                     purchasedDay = p.purchasedDay,
                     expiresDay = p.expiresDay,
-                    updatedAt = p.updatedAt
+                    updatedAt = p.updatedAt,
+                    runningLow = p.inStock && p.runningLow
                 )
             )
         }
