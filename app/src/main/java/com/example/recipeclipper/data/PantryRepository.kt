@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.NewPantryItem
 import com.example.recipeclipper.data.model.PantryEdit
 import com.example.recipeclipper.data.model.PantryItem
+import com.example.recipeclipper.data.model.PantryStock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -30,9 +31,13 @@ interface PantryRepository {
      */
     suspend fun add(item: NewPantryItem): Long?
 
-    suspend fun setInStock(ids: List<Long>, inStock: Boolean)
+    /**
+     * Sets the stock state (#194) without touching the bought day. Use [restock] for back in
+     * stock after buying.
+     */
+    suspend fun setStock(ids: List<Long>, stock: PantryStock)
 
-    /** Back in stock, bought on [day] (an epoch day). */
+    /** Back in stock (and no longer running low), bought on [day] (an epoch day). */
     suspend fun restock(ids: List<Long>, day: Long)
 
     /** A blank name is ignored; a blank quantity is none. */
@@ -87,8 +92,10 @@ class DefaultPantryRepository @Inject constructor(
         }
     }
 
-    override suspend fun setInStock(ids: List<Long>, inStock: Boolean) =
-        log.guard("setPantryInStock", Unit) { dao.setInStock(ids, inStock, clock.now()) }
+    override suspend fun setStock(ids: List<Long>, stock: PantryStock) =
+        log.guard("setPantryStock", Unit) {
+            dao.setStock(ids, stock != PantryStock.RUN_OUT, stock == PantryStock.RUNNING_LOW, clock.now())
+        }
 
     override suspend fun restock(ids: List<Long>, day: Long) =
         log.guard("restockPantry", Unit) { dao.restock(ids, day, clock.now()) }
@@ -126,5 +133,6 @@ internal fun PantryItemEntity.toDomain() = PantryItem(
     inStock = inStock,
     alwaysHave = alwaysHave,
     purchasedDay = purchasedDay,
-    expiresDay = expiresDay
+    expiresDay = expiresDay,
+    runningLow = inStock && runningLow
 )

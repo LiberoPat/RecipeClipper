@@ -48,9 +48,22 @@ class PantryDaoTest {
         assertEquals(20_000L, milk.purchasedDay)
         assertEquals(5L, milk.updatedAt)
 
-        pantry.setInStock(listOf(id), false, now = 6)
+        pantry.setStock(listOf(id), inStock = false, runningLow = false, now = 6)
         assertFalse(pantry.item(id)!!.inStock)
         assertEquals(20_000L, pantry.item(id)!!.purchasedDay) // running out keeps the date
+    }
+
+    // #194: running low is a flag on an in-stock item; a restock clears it.
+    @Test
+    fun runningLowIsKeptUntilARestock() = runBlocking {
+        val id = pantry.insert(item("milk"))
+        pantry.setStock(listOf(id), inStock = true, runningLow = true, now = 5)
+        assertTrue(pantry.item(id)!!.inStock)
+        assertTrue(pantry.item(id)!!.runningLow)
+
+        pantry.restock(listOf(id), day = 20_001, now = 6)
+        assertTrue(pantry.item(id)!!.inStock)
+        assertFalse(pantry.item(id)!!.runningLow)
     }
 
     @Test

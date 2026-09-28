@@ -82,7 +82,7 @@ extension PantryItemRecord {
         BackupPantryItem(
             id: uid, name: name, quantity: quantity, language: language, aisle: aisle,
             inStock: inStock, alwaysHave: alwaysHave, purchasedDay: purchasedDay,
-            expiresDay: expiresDay, updatedAt: updatedAt
+            expiresDay: expiresDay, updatedAt: updatedAt, runningLow: inStock && runningLow
         )
     }
 }

@@ -37,6 +37,7 @@ import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.NewPantryItem
+import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.Tooltip
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltTestApplication
@@ -153,7 +154,7 @@ abstract class WalkthroughBase {
         WalkthroughSeed.pantry.forEach { (name, quantity, inStock) ->
             val id = pantryRepository.add(NewPantryItem(name, "en", quantity = quantity)) ?: return@forEach
             pantryIds[name] = id
-            if (!inStock) pantryRepository.setInStock(listOf(id), false)
+            if (!inStock) pantryRepository.setStock(listOf(id), PantryStock.RUN_OUT)
         }
         val adobo = recipeIds.getValue("Chicken Adobo")
         groceryRepository.add(WalkthroughSeed.groceries.map { NewGroceryLine(it, "en", recipeId = adobo) })

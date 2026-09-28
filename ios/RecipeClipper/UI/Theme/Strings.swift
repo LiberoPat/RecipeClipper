@@ -578,6 +578,10 @@ enum Strings {
     static var pantryInStock: String { String(localized: "pantry_in_stock") }
     static var pantryOut: String { String(localized: "pantry_out") }
     static var pantryOnList: String { String(localized: "pantry_on_list") }
+    static var pantryRanOut: String { String(localized: "pantry_ran_out") }
+    static var pantryRestock: String { String(localized: "pantry_restock") }
+    static var pantryRunningLow: String { String(localized: "pantry_running_low") }
+    static var pantryLow: String { String(localized: "pantry_low") }
     static var pantryTakeOffList: String { String(localized: "pantry_take_off_list") }
     static var pantryAlwaysHave: String { String(localized: "pantry_always_have") }
     static var pantryAlwaysHaveDetail: String { String(localized: "pantry_always_have_detail") }

@@ -149,6 +149,7 @@ final class AppDatabase: @unchecked Sendable {
         addAiDecisions,
         addCookedPhotos,
         allowCookedWithoutPhoto,
+        addRunningLow,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -447,6 +448,12 @@ final class AppDatabase: @unchecked Sendable {
             CREATE INDEX index_cooked_photos_recipeId ON cooked_photos (recipeId);
             CREATE UNIQUE INDEX index_cooked_photos_uid ON cooked_photos (uid);
             """)
+    }
+
+    /// Version 15 (Android's Room version 16, `MIGRATION_15_16`): running low (#194), a third
+    /// stock state beside `inStock`. Every existing item keeps its stock.
+    private static func addRunningLow(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE pantry_items ADD COLUMN runningLow INTEGER NOT NULL DEFAULT 0")
     }
 
     private static func addMenus(_ db: SQLiteConnection) throws {

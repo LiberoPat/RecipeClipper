@@ -154,7 +154,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
         pause(1000)
         tap("Undo", 2500)
         tap("Pantry", 2000)
-        tapTag("inStock-${pantryIds.getValue("onions")}") // run out: onto the list
+        tapTag("stockAction-${pantryIds.getValue("onions")}") // Ran out: onto the list
         waitFor(hasText("On list"))
         pause(2500)
         tap("Groceries", 2500)

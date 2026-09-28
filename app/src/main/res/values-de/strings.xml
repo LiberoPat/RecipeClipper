@@ -371,6 +371,10 @@
     <string name="pantry_in_stock">Vorrätig</string>
     <string name="pantry_out">Nicht vorrätig</string>
     <string name="pantry_on_list">Auf der Liste</string>
+    <string name="pantry_ran_out">Aufgebraucht</string>
+    <string name="pantry_restock">Nachgekauft</string>
+    <string name="pantry_running_low">Wird knapp</string>
+    <string name="pantry_low">Knapp</string>
     <string name="pantry_take_off_list">Von der Einkaufsliste nehmen</string>
     <string name="pantry_always_have">Immer im Haus</string>
     <string name="pantry_always_have_detail">Grundvorräte stehen nie unter „Zu kaufen“.</string>
@@ -536,7 +540,7 @@
     <string name="tooltip_groceries_done_shopping">Wieder zu Hause? Räume Abgehaktes in den Vorrat und entferne es von der Liste.</string>
     <string name="tooltip_groceries_menu">Mehr: Liste senden oder Liste einfügen.</string>
     <string name="tooltip_pantry_add">Füge hinzu, was du zu Hause hast.</string>
-    <string name="tooltip_pantry_in_stock">Schalte einen Artikel aus, wenn er aufgebraucht ist: Er kommt auf die Einkaufsliste.</string>
+    <string name="tooltip_pantry_in_stock">Tippe auf Aufgebraucht, wenn etwas leer ist: Es kommt auf deine Einkaufsliste. Halte gedrückt für Wird knapp.</string>
     <string name="tooltip_pantry_menu">Mehr: Liste senden, und nach Gang oder Haltbarkeit sortieren.</string>
     <string name="tooltip_settings_units">Wie Mengen angezeigt werden, in jedem Rezept.</string>
     <string name="tooltip_settings_show_tips">Sieh jeden Tipp noch einmal, einen nach dem anderen.</string>

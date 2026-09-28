@@ -110,6 +110,25 @@ final class BackupJsonTests: XCTestCase {
         XCTAssertNil(backup.mealPlan[4].recipeId)
     }
 
+    // #194: running low travels with the item; a file from before it (the fixture has none) reads
+    // each item as in stock or run out, and running low never survives an item that is out.
+    func testRunningLowRoundTripsAndAnOlderFilesItemsAreInStockOrRunOut() throws {
+        let old = try decodeOrFail(try backupFixture("backup-v1"))
+        XCTAssertEqual(old.pantry.map(\.runningLow), [false, false, false, false])
+
+        let low = BackupPantryItem(
+            id: "p-low", name: "garlic", quantity: nil, language: "en", aisle: "produce", inStock: true, alwaysHave: false,
+            purchasedDay: nil, expiresDay: nil, updatedAt: 1, runningLow: true
+        )
+        let file = Backup(exportedAt: 1, recipes: [], lists: [], memberships: [], pantry: [low])
+        XCTAssertEqual(try decodeOrFail(BackupJson.encode(file)).pantry, [low])
+
+        let outAndLow = try decodeOrFail(
+            #"{"format": "recipe-clipper-backup", "formatVersion": 1, "pantry": [{"id": "p", "name": "rice", "inStock": false, "runningLow": true}]}"#
+        )
+        XCTAssertEqual(outAndLow.pantry.first?.runningLow, false)
+    }
+
     func testAFileWithoutPantryOrGroceriesReadsThemAsEmpty() throws {
         let backup = try decodeOrFail(#"{"format": "recipe-clipper-backup", "formatVersion": 1}"#)
         XCTAssertTrue(backup.pantry.isEmpty)

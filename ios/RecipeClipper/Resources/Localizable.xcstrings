@@ -14117,7 +14117,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Out"
+            "value" : "Run out"
           }
         },
         "es" : {
@@ -14189,6 +14189,170 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Na lista"
+          }
+        }
+      }
+    },
+    "pantry_ran_out" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ran out"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgebraucht"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se acabó"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Épuisé"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finito"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acabou"
+          }
+        }
+      }
+    },
+    "pantry_restock" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restock"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nachgekauft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reponer"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Racheté"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricomprato"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repor"
+          }
+        }
+      }
+    },
+    "pantry_running_low" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running low"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird knapp"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Queda poco"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presque fini"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sta finendo"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acabando"
+          }
+        }
+      }
+    },
+    "pantry_low" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Low"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Knapp"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poco"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bas"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poco"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pouco"
           }
         }
       }
@@ -20131,37 +20295,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schalte einen Artikel aus, wenn er aufgebraucht ist: Er kommt auf die Einkaufsliste."
+            "value" : "Tippe auf Aufgebraucht, wenn etwas leer ist: Es kommt auf deine Einkaufsliste. Halte gedrückt für Wird knapp."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Switch an item off when it runs out: it goes on the grocery list."
+            "value" : "Tap Ran out when something's finished: it goes on your grocery list. Touch and hold for Running low."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desactiva un artículo cuando se acabe: pasa a la lista de la compra."
+            "value" : "Toca Se acabó cuando algo se termine: pasa a tu lista de la compra. Mantén pulsado para Queda poco."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Désactivez un article quand il est épuisé : il va sur la liste de courses."
+            "value" : "Touchez Épuisé quand quelque chose est fini : il va sur votre liste de courses. Maintenez appuyé pour Presque fini."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disattiva un articolo quando finisce: va nella lista della spesa."
+            "value" : "Tocca Finito quando qualcosa è terminato: va nella tua lista della spesa. Tieni premuto per Sta finendo."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desligue um item quando acabar: ele vai para a lista de compras."
+            "value" : "Toque em Acabou quando algo terminar: vai para a sua lista de compras. Toque e segure para Acabando."
           }
         }
       }

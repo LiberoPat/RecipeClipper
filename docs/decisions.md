@@ -1541,7 +1541,8 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   existing changes): `name` as typed, `language`, optional `quantity` as written,
   an `aisle` key (from the aisle table when added, like a grocery's), `inStock`,
   `alwaysHave`, and optional `purchasedDay` and `expiresDay`, plus #26's `uid` and
-  #53's `updatedAt`. The dates are **epoch days** (named `…Day`, like
+  #53's `updatedAt`, and #194's `runningLow` (Room 16, iOS `user_version` 15; see
+  its section below). The dates are **epoch days** (named `…Day`, like
   `plannedDay`), not the `…At` millis the brief suggested: a use-by date is a
   calendar day, and the plan already counts days that way.
 - **The quantity is never read.** It's a note for the cook ("half a bag"). Matching
@@ -1609,10 +1610,10 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     `IngredientName.of` by exact name or the aisle table, so this rule left them
     unchanged. (Since #191 every one of these compares names through
     `IngredientName.key`, so a listed pair's number never matters.)
-- **Running out puts it on the list** (#146; it was a snackbar offer before):
-  switching an item out adds its name as a typed item, silently, and the row
-  shows "On list". Typing a name already in the pantry puts it back in stock
-  rather than adding a twin.
+- **Running low or out puts it on the list** (#146, #194; it was a snackbar offer
+  before): "Ran out" or "Running low" adds its name as a typed item, silently,
+  and the row shows "On list". Typing a name already in the pantry puts it back
+  in stock rather than adding a twin.
 - **Expiry**: a badge only (#52 later added an opt-in morning reminder) (Expired before today; the date in paprika from today
   to 3 days ahead), no notifications, as the epic says. Sort by aisle (the
   default) or by expiry (soonest first, undated last), from the menu as radio
@@ -1644,23 +1645,26 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     week's dinner. A recipe planned only in the past is ordinary history: it
     takes a free place or is skipped, and its meal is dropped with it.
 - **The screen in short** (CLAUDE.md's summary until September 2026, with
-  #52, #146, #147 and #149): "Add to the pantry", search, then items by aisle
-  (menu: by expiry, radio glyphs); a switch per row for in stock; tap for the
-  edit sheet (quantity as written, "Always have", a use-by date, Delete with
-  undo). Expired or within 3 days shows a paprika badge; an opt-in 9:00
-  notification lists what expires today or tomorrow (Settings → Pantry).
-  Switching an item out puts its name on the grocery list silently; the row
-  then shows "On list", and tapping that takes it off (no snackbar). The menu's
-  "Send list" and "Send as file" send what's in stock, never what's out (that
-  is on the grocery list already). **Using up:** cook mode's "Done — finish"
+  #52, #146, #147, #149 and #194): "Add to the pantry", search, then items by
+  aisle (menu: by expiry, radio glyphs), with what has run out in a dimmed "Run
+  out" section last; each row has one labelled action ("Ran out", or "Restock"
+  once out), a "Low" tag while running low, swipes and a touch-and-hold menu for
+  the three states; tap for the edit sheet (quantity as written, "Always have",
+  a use-by date, Delete with undo). Expired or within 3 days shows a paprika
+  badge; an opt-in 9:00 notification lists what expires today or tomorrow
+  (Settings → Pantry). Running low or out puts its name on the grocery list
+  silently; the row then shows "On list", and tapping that takes it off (no
+  snackbar). The menu's "Send list" and "Send as file" send what's in stock
+  (running low included), never what's out (that is on the grocery list
+  already). **Using up:** cook mode's "Done — finish"
   with ingredients ticked, or a photo added with "I made this" (or "Mark as
   cooked", #173) once its viewer closes (the ticked lines, else all), opens
   "Update the pantry" (never on a
   tick, never on Exit; a recipe's is offered again only 12 h after it was
   confirmed or dismissed, `pantry_use_up`): per matched item, the worked-out
   change ("2 lb → 1 lb", ticked; used up goes out and onto the list) or, when
-  it can't be worked out, the lines as written with Keep / Running low (onto
-  the list, still in stock) / Out, Keep chosen. One confirm, one Undo. "What I
+  it can't be worked out, the lines as written with Keep / Running low (the
+  Running low state, onto the list) / Out, Keep chosen. One confirm, one Undo. "What I
   need" (Week menu): the shown week's lines at planned servings, grouped by
   ingredient, "To buy" then "In your pantry", with a note that having some
   isn't having enough; "Add to groceries" adds the To buy lines.
@@ -2956,8 +2960,8 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
     ingredients bar.
   - **Week:** the first day's "+ Add"; the Month switch; the ⋮ menu. **Groceries:** "Add an
     item"; the first row's tick; the first row (long-press); "Done shopping" (while anything is
-    ticked); the ⋮ menu. **Pantry:** the add field; the first row's in-stock switch; the ⋮
-    menu. All `mealPlan`.
+    ticked); the ⋮ menu. **Pantry:** the add field; the first row's "Ran out" / "Restock"
+    (#194; it names the long-press's "Running low" too); the ⋮ menu. All `mealPlan`.
   - **Settings:** the Units choice; "Show tips again".
 - **Which one, when** (`Tooltips.current`, the same rule on both platforms): a **visit** is one
   appearance of a screen, from when it shows until it's left (a rotation isn't a new one on
@@ -3048,14 +3052,15 @@ offer for the first was replaced and gone. Owner's decisions:
   `PantryRepository.add` returns the new id for that.
 - **Snackbars only for undo:** a delete, or Done shopping. The rest of the app already used
   them that way.
-- **Pantry to groceries shows a state, not a message.** Switching an item out adds its name to
-  the list silently (unless its line is there already), and the row shows a small "On list"
-  tag; tapping the tag takes it off the list, with no snackbar. "On list" means an unticked
+- **Pantry to groceries shows a state, not a message.** Marking an item out (or, since #194,
+  running low) adds its name to the list silently (unless its line is there already), and the
+  row shows a small "On list" tag; tapping the tag takes it off the list, with no snackbar. "On list" means an unticked
   grocery line that is the item's own name (trimmed, case-insensitive, a listed pair's number
   aside since #191, same language): what
-  switching it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
+  marking it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
   deletes a recipe's line, which is why no undo is needed. No schema change: the link is the
-  name.
+  name. Restocking (the row's action, or putting away) returns an item to In stock; it never
+  takes the line off the list.
 
 ## Using up the pantry at the end of cooking (#147)
 
@@ -3121,14 +3126,49 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
 - **Used up** (zero or below, or too little to show): out of stock, the quantity cleared (none
   is left to know, and a restock shouldn't bring back an old amount as a confident number), and
   the name onto the grocery list unless it's there already, so the row shows #146's "On list".
-- **"Running low" has no state of its own**: the item's name goes on the grocery list and it
-  stays in stock, so the Pantry row shows "On list" with its switch on. "Out" is the switch
-  turned off plus the list, as the switch does it (the quantity stays as written). No schema
-  change for either.
+- **"Running low" sets the Running low state** (#194; before it, running low had no state of
+  its own and only put the name on the list): the item stays in stock, gets its "Low" tag, and
+  its name goes on the grocery list. "Out" sets Run out plus the list, as the row's "Ran out"
+  does (the quantity stays as written). No schema change of #147's own: #194 added the column.
 - **One confirm, one Undo.** Worked-out rows start ticked and can be unticked; asked rows start
   on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
   off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
   so a killed app loses it with nothing changed. Behind `mealPlan`, like every pantry feature.
+
+## Pantry stock: In stock, Running low, Run out (#194)
+
+Owner's decision (2026-09-27): the per-row on/off switch read like a setting, not a fact about
+the cupboard. It is replaced, and a **Running low** state added.
+
+- **Three states, shown by grouping.** In stock and running low sit in their aisle sections
+  (running low with a small "Low" tag); run out sits in one dimmed "Run out" section at the
+  bottom, in either sort (`PantryList.arrange`, `PantrySection.runOut`).
+- **Labelled actions, not a switch.** Each row has one text action: "Ran out" while in stock or
+  running low, "Restock" once out. Running low is reached from the row's menu (touch and hold;
+  iOS also offers it as a second trailing swipe action) and from #147's sheet. Swipes are
+  shortcuts: leading Restock, trailing Ran out, each only where it changes something. TalkBack
+  and VoiceOver read the row as one ("Garlic, Run out, On list") and offer the other two states
+  as its actions. iOS's Pantry became a `List` (as Recipes is) for the swipe actions.
+- **Groceries as #146.** Ran out and Running low both put the name on the grocery list
+  silently, shown by "On list"; tapping the tag takes it off. Restock, Done shopping's
+  put-away and typing a name already there all return an item to In stock (and bought today).
+- **Presence only, unchanged.** Running low still counts as having it: What I need, the
+  grocery sheet's first ticks, the model's candidates and expiry reminders all read `inStock`,
+  which running low keeps. "Send list" and "Send as file" include running-low items (they are
+  at home).
+- **Stored as a second column, not an enum.** `pantry_items.runningLow` (Room 16,
+  `MIGRATION_15_16`; iOS `user_version` 15, `addRunningLow`), `INTEGER NOT NULL DEFAULT 0`,
+  beside `inStock`. It means something only while `inStock`: every write that takes an item out
+  (`setStock`) and every restock clears it, and reading an out item ignores it. An `ALTER TABLE
+  ADD COLUMN` leaves every existing item exactly as it was (in stays in, out stays out) and
+  keeps every reader of `inStock` (matching, reminders, send, use-up) correct without a change,
+  where a replacing enum column would have meant a table rebuild and touching all of them.
+  The domain reads the pair as `PantryItem.stock` (`PantryStock`).
+- **Files.** Export, backup and shared files carry `"runningLow"` beside `"inStock"`, still
+  `formatVersion` 1: an older reader ignores the key and sees in stock or out, and an older
+  file (no key) reads as In stock or Run out from its boolean. A file saying running low on an
+  item that is out reads as Run out. Merging is unchanged: what's already here keeps its stock.
+- "Always have" staples are unchanged.
 
 ## The recipe screen's ViewModel, split into collaborators (#169)
 
@@ -3325,10 +3365,10 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 15** (iOS `user_version` 14): `recipes`
+Room database `recipe_clipper.db`, **version 16** (iOS `user_version` 15): `recipes`
 (with nullable `notes`, `language`, `cookState`, `servingsTarget` and `editedAt`, and
 `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
-`meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51), `menus` and
+`meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51; `runningLow`, #194), `menus` and
 `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never
 exported), `cooked_photos` (#116, cascading; no `fileName` for "Mark as cooked", #173). Recipes, lists, the plan, grocery,
 pantry, menu and photo tables carry a unique, never-changing `uid`: what an export

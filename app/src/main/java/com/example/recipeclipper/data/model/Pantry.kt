@@ -7,7 +7,8 @@ import java.util.Locale
  * grocery line they ticked off), read with [language]'s words (null: none, so it never
  * matches). [quantity] is free text as written ("half a bag"), never read as a number.
  * [alwaysHave] marks a staple (salt, oil…): it is never on a Buy list. [purchasedDay] and
- * [expiresDay] are epoch days ([PlanDays]).
+ * [expiresDay] are epoch days ([PlanDays]). [inStock] and [runningLow] make its [stock] (#194):
+ * running low is still in stock, so everything that asks "is it there" reads [inStock].
  */
 data class PantryItem(
     val id: Long,
@@ -18,8 +19,22 @@ data class PantryItem(
     val inStock: Boolean,
     val alwaysHave: Boolean,
     val purchasedDay: Long?,
-    val expiresDay: Long?
-)
+    val expiresDay: Long?,
+    val runningLow: Boolean = false
+) {
+    val stock: PantryStock
+        get() = when {
+            !inStock -> PantryStock.RUN_OUT
+            runningLow -> PantryStock.RUNNING_LOW
+            else -> PantryStock.IN_STOCK
+        }
+}
+
+/**
+ * A pantry item's three states (#194). In stock and running low both count as having it
+ * (presence only, #51); running low and run out both put its name on the grocery list.
+ */
+enum class PantryStock { IN_STOCK, RUNNING_LOW, RUN_OUT }
 
 /** A new pantry item, before it has an id. It starts in stock, bought on [purchasedDay]. */
 data class NewPantryItem(
@@ -43,8 +58,11 @@ enum class ExpiryBadge { EXPIRED, SOON }
 
 enum class PantrySort { AISLE, EXPIRY }
 
-/** The pantry as shown: one section per aisle, or (by expiry) one section with no aisle. */
-data class PantrySection(val aisle: Aisle?, val items: List<PantryItem>)
+/**
+ * The pantry as shown: one section per aisle, or (by expiry) one section with no aisle, then
+ * [runOut]: the items that have run out, in their own section at the bottom (#194).
+ */
+data class PantrySection(val aisle: Aisle?, val items: List<PantryItem>, val runOut: Boolean = false)
 
 /** Sorting, searching and the expiry badge. Pure. */
 object PantryList {
@@ -62,23 +80,25 @@ object PantryList {
     /**
      * [items] matching [query] (a case-insensitive part of the name; blank matches all), sorted:
      * by aisle, aisles in [Aisle] order and names A–Z within; or by expiry, soonest first, then
-     * the items with no date, A–Z.
+     * the items with no date, A–Z. Items that have run out are left out of those and follow in
+     * one last section ([PantrySection.runOut]), in the same order (#194).
      */
     fun arrange(items: List<PantryItem>, query: String, sort: PantrySort): List<PantrySection> {
         val q = query.trim().lowercase(Locale.ROOT)
         val found = items.filter { q.isEmpty() || it.name.lowercase(Locale.ROOT).contains(q) }
         if (found.isEmpty()) return emptyList()
         val byName = compareBy<PantryItem> { it.name.lowercase(Locale.ROOT) }.thenBy { it.id }
-        return when (sort) {
-            PantrySort.AISLE -> found.groupBy { it.aisle }.toSortedMap(compareBy { it.ordinal })
-                .map { (aisle, inAisle) -> PantrySection(aisle, inAisle.sortedWith(byName)) }
-            PantrySort.EXPIRY -> listOf(
-                PantrySection(
-                    null,
-                    found.sortedWith(compareBy<PantryItem> { it.expiresDay == null }.thenBy { it.expiresDay }.then(byName))
-                )
-            )
+        val order = when (sort) {
+            PantrySort.AISLE -> compareBy<PantryItem> { it.aisle.ordinal }.then(byName)
+            PantrySort.EXPIRY -> compareBy<PantryItem> { it.expiresDay == null }.thenBy { it.expiresDay }.then(byName)
         }
+        val (have, out) = found.partition { it.inStock }
+        val sections = when (sort) {
+            PantrySort.AISLE -> have.groupBy { it.aisle }.toSortedMap(compareBy { it.ordinal })
+                .map { (aisle, inAisle) -> PantrySection(aisle, inAisle.sortedWith(byName)) }
+            PantrySort.EXPIRY -> if (have.isEmpty()) emptyList() else listOf(PantrySection(null, have.sortedWith(order)))
+        }
+        return if (out.isEmpty()) sections else sections + PantrySection(null, out.sortedWith(order), runOut = true)
     }
 
     /**

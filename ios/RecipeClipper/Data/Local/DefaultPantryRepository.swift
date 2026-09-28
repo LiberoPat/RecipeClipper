@@ -49,9 +49,11 @@ final class DefaultPantryRepository: PantryRepository {
         }
     }
 
-    func setInStock(_ ids: [Int64], inStock: Bool) async {
+    func setStock(_ ids: [Int64], stock: PantryStock) async {
         let now = clock.now()
-        await perform("setPantryInStock") { dao in try dao.setInStock(ids, inStock: inStock, now: now) }
+        await perform("setPantryStock") { dao in
+            try dao.setStock(ids, inStock: stock != .runOut, runningLow: stock == .runningLow, now: now)
+        }
     }
 
     func restock(_ ids: [Int64], day: Int64) async {
