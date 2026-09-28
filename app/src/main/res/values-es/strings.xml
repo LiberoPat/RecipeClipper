@@ -220,6 +220,15 @@
     <string name="edit_label_photo">Enlace de la foto (opcional)</string>
     <string name="edit_error_invalid">Una receta necesita un nombre, e ingredientes o pasos.</string>
     <string name="edit_error_save_failed">No se pudo guardar la receta. Inténtalo de nuevo.</string>
+    <string name="action_read_photo">Leer la foto</string>
+    <string name="photo_title">Revisa la receta</string>
+    <string name="photo_reading">Leyendo la foto en este teléfono…</string>
+    <string name="photo_read">Leído de la foto. Compara cada línea con ella, sobre todo las cantidades, antes de guardar.</string>
+    <string name="photo_not_sorted">No se pudo leer una receta en la foto: termínala a mano.</string>
+    <string name="photo_failed">No se pudo cargar la foto. Comprueba la conexión y vuelve a intentarlo.</string>
+    <string name="photo_not_ready">El lector de fotos aún no está listo en este teléfono: los servicios de Google Play lo descargan una vez, por internet. Vuelve a intentarlo en unos minutos o termina la receta a mano abajo.</string>
+    <string name="photo_check_heading">Revisa estas líneas: ahí la foto se leía mal</string>
+    <string name="photo_image_description">Foto de %1$s</string>
 
     <!-- Week meal plan (#49) -->
     <string name="action_add_to_plan">Añadir al plan</string>

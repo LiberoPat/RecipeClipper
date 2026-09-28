@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.SiteReportLink
@@ -39,7 +40,9 @@ class RecipeErrorScreenTest {
 
     private val clipped = mutableListOf<String>()
 
-    private fun show(error: ParseError): MutableList<String> {
+    private val readPhotos = mutableListOf<PhotoPost>()
+
+    private fun show(error: ParseError, photoText: Boolean = false): MutableList<String> {
         val opened = mutableListOf<String>()
         val handler = object : UriHandler {
             override fun openUri(uri: String) {
@@ -62,6 +65,8 @@ class RecipeErrorScreenTest {
                 RecipeScreen(
                     onBack = {},
                     onClip = { clipped += it },
+                    onReadPhoto = { readPhotos += it },
+                    photoTextEnabled = photoText,
                     viewModel = viewModel,
                     saveViewModel = saveViewModel
                 )
@@ -124,5 +129,33 @@ class RecipeErrorScreenTest {
         compose.onNodeWithText("Try again").assertIsDisplayed()
         compose.onNodeWithText("Report this site").assertDoesNotExist()
         compose.onNodeWithText("Clip it yourself").assertDoesNotExist()
+    }
+
+    @Test
+    fun aRedditPostWithAPhotoOffersToReadItBesideTryAgain() {
+        val gallery = listOf("https://preview.redd.it/front.jpg", "https://preview.redd.it/back.jpg")
+        show(ParseError.NoTranscription("Aunt June's cookies", gallery.first(), gallery), photoText = true)
+
+        compose.onNodeWithText("Try again").assertIsDisplayed()
+        compose.onNodeWithText("Read the photo").performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf(PhotoPost(link, "Aunt June's cookies", gallery)), readPhotos)
+    }
+
+    @Test
+    fun readThePhotoWaitsForItsFlag() {
+        show(ParseError.NoTranscription("Aunt June's cookies", "https://preview.redd.it/front.jpg"))
+
+        compose.onNodeWithText("Try again").assertIsDisplayed()
+        compose.onNodeWithText("Read the photo").assertDoesNotExist()
+    }
+
+    @Test
+    fun aPostWithNoPhotoHasNothingToRead() {
+        show(ParseError.NoTranscription("Pie", imageUrl = null), photoText = true)
+
+        compose.onNodeWithText("Try again").assertIsDisplayed()
+        compose.onNodeWithText("Read the photo").assertDoesNotExist()
     }
 }

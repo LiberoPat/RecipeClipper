@@ -49,9 +49,11 @@ final class Router {
     }
 
     /// A saved clip replaces both the clip screen and the error screen under it, so Back from
-    /// the recipe goes where the share came from.
+    /// the recipe goes where the share came from. A recipe read from a Reddit photo (#198) is
+    /// saved the same way, from the editor over the post's error screen.
     func openSavedClip(_ id: Int64) {
         if case .clip = path.last { path.removeLast() }
+        if case .photoRecipe = path.last { path.removeLast() }
         if case .importUrl = path.last { path.removeLast() }
         path.append(.recipe(id: id))
     }

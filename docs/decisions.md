@@ -3152,10 +3152,10 @@ app main had become:
   splitter, by design, declined. On iOS a page Safari already rendered (#35) is ignored for the
   same reason. `RoutingRecipeSource` forwards `fetchPage` too, so blog pages keep their text for
   the model.
-- **`NoTranscription` offers Try again only**: no "Report this site" (Reddit isn't a site whose
-  markup the app could learn) and no "Clip it yourself" (the recipe, when there is one, is
-  usually in the photo). Both stay tied to `NoRecipeFound`, which a Reddit link that isn't a
-  post still gives.
+- **`NoTranscription` offers Try again, and "Read the photo" when the post has a picture**
+  (#198, below): no "Report this site" (Reddit isn't a site whose markup the app could learn)
+  and no "Clip it yourself" (the recipe, when there is one, is usually in the photo). Both stay
+  tied to `NoRecipeFound`, which a Reddit link that isn't a post still gives.
 - **The recipe's language** comes from its words, as for any page with none declared (#14).
   The splitter's headers are English, so in practice these are English recipes.
 - **Detection was widened after the first phone test.** On the owner's S23, posts that had a
@@ -3368,6 +3368,59 @@ different, just as yellow onions are different than white."
   (now Have), `Groc(["2 cebollas", "1 cebolla"], lang: "es")` (now "3 cebollas") and the
   zucchinis row's aisle (now produce), all regenerated from the Kotlin.
 
+## Reading a Reddit photo on the device (#198)
+
+A photo-only post (a recipe card on r/Old_Recipes nobody has transcribed yet) used to end at "No
+recipe text found". The owner's decision (September 2026): read the photo on the device, but
+never save what it reads without the cook checking it, and fall back to typing it by hand.
+
+- **Entry:** on `NoTranscription` for a post with a picture, "Read the photo" (filled) beside
+  Try again (outlined), behind the `photoText` flag (on by default). Only then are the pictures
+  fetched, at full size: `NoTranscription` carries `imageUrls`, every picture in order (a
+  gallery's `gallery_data` order, each `media_metadata` source, not the preview; else the one
+  photo; a crosspost's borrowed from the original).
+- **On the device, behind a seam** (`PhotoTextReader`; fakes in tests, a canned one in iOS UI
+  tests via `RC_UITEST_PHOTO_LINES`). Android: ML Kit Text Recognition's Latin model
+  **through Google Play services** (`play-services-mlkit-text-recognition`, see Size below);
+  the picture comes through Coil (its cache when already shown), capped at 4096 px a
+  side, and lines keep ML Kit's per-line confidence. iOS: Vision's `VNRecognizeTextRequest`,
+  accurate, language correction on, hinted with the phone's language then English (the
+  recipe's own isn't known until it is read), through `ImageLoader`. A picture that fails is
+  skipped; the read fails only when all do.
+- **Sorted by the same splitter as a typed post** (`PhotoTextSorter` over
+  `RecipeTextSplitter`), so headers, lists and numbered steps read the same. Nothing is
+  corrected: "l cup butter" stays "l cup butter". Lines under 0.5 confidence (Vision answers
+  0.3 when unsure) are listed under **"Check these lines"**; a piece under four characters
+  marks only a line that is exactly it.
+- **The review is the #29 editor, pre-filled,** not a new screen: title "Check the recipe",
+  the post's pictures above (to compare against), a note on how it went, the lines to check,
+  then the usual fields, with the post's title as the name and its first picture as the photo.
+  The editor keeps text boxes, so an unsure line is listed rather than marked inside the box.
+- **Fallback:** no text, or text the splitter can't sort, opens the same editor with every line
+  read in the ingredients box and "Couldn't read a recipe from the photo: finish it by hand."
+  A picture that won't load says so, with Try again. **Reader not ready** (Android only:
+  Play services hasn't got the model yet, because it is still downloading, the first use is
+  offline, or the phone has no Play services): the read is `PhotoTextResult.NotReady` before
+  any picture is fetched, and the editor says "The photo reader isn't ready on this phone
+  yet…", with Try again and the fields below to finish by hand. The reader checks
+  `ModuleInstallClient.areModulesAvailable` first and, when the model is missing, asks for it
+  (`installModules`, not awaited) so a later Try again works; an `MlKitException.UNAVAILABLE`
+  from the read itself means the same. Save needs a recipe (#29's rule); **nothing
+  is ever saved automatically**, and leaving the editor ends the read.
+- **Saved as a clip** (`saveClip`: `CLIPPED`, the post's link, `REDDIT`), like #37: the user's
+  version, so a re-share opens it without fetching; "Clipped by you · reddit.com" under the
+  title; "Update from source" warns first (and on a post with still no transcription, fails and
+  keeps the clip). The saved recipe replaces the editor and the error screen.
+- **Size, and why Play services (owner, 2026-09-28):** the bundled model
+  (`com.google.mlkit:text-recognition`) was built first: it works offline from install, but is
+  a native library per ABI (about 11 MB each for arm64, x86 and x86_64, 7 MB for armv7) plus
+  1.5 MB of models, so the universal debug APK grew from 20.1 MB to 65.4 MB (about 12.5 MB per
+  phone from an app bundle). The owner chose the Play services model instead: the debug APK is
+  back to 20.3 MB (20,332,832 bytes, main's plus the feature's code). The cost is that the
+  model is downloaded once by Play services: the manifest's `com.google.mlkit.vision.DEPENDENCIES`
+  = `ocr` asks for it at install from the Play Store, so usually it is there before first use;
+  when it isn't, the not-ready fallback above applies. iOS is unchanged (Vision is in the OS).
+
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 
 `CLAUDE.md` had grown back to about 750 lines, and it is loaded into every session,
@@ -3423,7 +3476,10 @@ reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receive
 share target: parse, then upsert with no list membership), and
 `edit?recipeId={recipeId}` (no id: a new recipe; saving replaces the edit screen, and
 the recipe screen under it, with `recipe/{id}`), and `clip?url={url}` (Clip it
-yourself; saving replaces it and the error screen under it with `recipe/{id}`). Behind the
+yourself; saving replaces it and the error screen under it with `recipe/{id}`), and
+`edit/photo?url={url}&title={title}&images={images}` (Read the photo, #198: the editor filled
+from a Reddit post's pictures, one address per line in `images`; saving replaces it and the
+error screen like a clip). Behind the
 `mealPlan` feature flag
 (#47, on by default): a bottom tab bar nests this same graph under a Recipes tab
 alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and
@@ -3506,9 +3562,8 @@ ViewModels that show a preference collect it rather than reading once.
   comma, as decimals rather than fractions ("1,5 kg" ×1.5 is "2,25 kg"). Followed by 3
   digits ("1,500 g") it may be a thousands separator, so the whole line stays as
   written.
-- **Deliberately deferred: on-device OCR** (ML Kit) as a fourth Reddit step. It adds a
-  dependency, and OCR is weakest on handwriting, the case that motivates it. Revisit
-  once Reddit (#11) shows how often the comment fallback hits.
+- **On-device OCR**, once deferred (a new dependency, and weakest on handwriting), is built
+  as "Read the photo" (#198): never trusted blindly, always checked by the cook.
 
 ## ViewModels in their own files, checked by a test (September 2026)
 

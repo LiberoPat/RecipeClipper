@@ -268,6 +268,10 @@ dependencies {
     // inputs. Its structured output needs an alpha KSP schema compiler, so the reply is JSON
     // parsed strictly instead (docs/decisions.md).
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
+    // Reading a Reddit post's photo (#198): text recognition through Google Play services, which
+    // downloads the Latin model once (the manifest asks for it at install) instead of bundling
+    // ~11 MB of native code per ABI in the app (docs/decisions.md).
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
 }
 
 // DifferentialCorpusTest reads the iOS corpus and checks it against the Kotlin, so an edit to

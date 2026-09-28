@@ -52,6 +52,8 @@ final class AppContainer {
     let tooltips: TooltipsViewModel
     /// When each recipe's pantry use-up sheet was last settled (#147).
     let useUpLog: UseUpLog
+    /// Reads a Reddit post's photos on the device (#198).
+    let photoTextReader: PhotoTextReader
 
     init(
         recipeRepository: RecipeRepository,
@@ -80,8 +82,10 @@ final class AppContainer {
         shareFileRepository: ShareFileRepository? = nil,
         // Unless given, every tooltip is seen: a unit test sees none it didn't ask for.
         tourPreferences: TourPreferences = MemoryTourPreferences(),
-        useUpLog: UseUpLog = MemoryUseUpLog()
+        useUpLog: UseUpLog = MemoryUseUpLog(),
+        photoTextReader: PhotoTextReader = UnavailablePhotoTextReader()
     ) {
+        self.photoTextReader = photoTextReader
         self.useUpLog = useUpLog
         self.shareFileRepository = shareFileRepository
         self.autoBackup = autoBackup
@@ -207,7 +211,8 @@ final class AppContainer {
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             // Under XCTest (the unit tests' host) every tooltip is seen, as for any test container.
             tourPreferences: testing ? MemoryTourPreferences() : preferences,
-            useUpLog: testing ? MemoryUseUpLog() : preferences
+            useUpLog: testing ? MemoryUseUpLog() : preferences,
+            photoTextReader: VisionPhotoTextReader()
         )
         // Files no photo names any more (a delete whose Undo never came, an import's unused
         // copies) go once the process is past them.
@@ -323,6 +328,14 @@ final class AppContainer {
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {
         EditRecipeViewModel(recipeId: recipeId, repository: recipeRepository, entitlements: entitlements)
+    }
+
+    /// "Read the photo" (#198): the editor over a Reddit post's photos, read on the device.
+    func makeEditRecipeViewModel(photo: PhotoPost) -> EditRecipeViewModel {
+        EditRecipeViewModel(
+            recipeId: nil, repository: recipeRepository, entitlements: entitlements,
+            photo: photo, photoReader: photoTextReader
+        )
     }
 
     /// "Your cooks" (#116): only behind the `cookedPhotos` flag, and only with a repository.

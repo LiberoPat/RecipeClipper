@@ -9,6 +9,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.ui.clip.ClipScreen
 import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.edit.EditRecipeScreen
@@ -69,6 +70,15 @@ object Routes {
     const val CLIP = "clip?${ClipViewModel.URL_ARG}={${ClipViewModel.URL_ARG}}"
 
     fun clip(url: String) = "clip?${ClipViewModel.URL_ARG}=${Uri.encode(url)}"
+
+    // "Read the photo" (#198): the editor, filled from a Reddit post's photos read on the device.
+    const val EDIT_PHOTO = "edit/photo?${EditRecipeViewModel.PHOTO_URL_ARG}={${EditRecipeViewModel.PHOTO_URL_ARG}}" +
+        "&${EditRecipeViewModel.PHOTO_TITLE_ARG}={${EditRecipeViewModel.PHOTO_TITLE_ARG}}" +
+        "&${EditRecipeViewModel.PHOTO_IMAGES_ARG}={${EditRecipeViewModel.PHOTO_IMAGES_ARG}}"
+
+    fun editPhoto(post: PhotoPost) = "edit/photo?${EditRecipeViewModel.PHOTO_URL_ARG}=${Uri.encode(post.url)}" +
+        "&${EditRecipeViewModel.PHOTO_TITLE_ARG}=${Uri.encode(post.title)}" +
+        "&${EditRecipeViewModel.PHOTO_IMAGES_ARG}=${Uri.encode(post.imageUrls.joinToString("\n"))}"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
 }
@@ -200,7 +210,28 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onBack = { navController.popBackStack() },
             onEdit = { navController.navigate(Routes.edit(it)) },
             onClip = { navController.navigate(Routes.clip(it)) },
+            onReadPhoto = { navController.navigate(Routes.editPhoto(it)) },
             sendFileViewModel = hiltViewModel()
+        )
+    }
+
+    composable(
+        route = Routes.EDIT_PHOTO,
+        arguments = listOf(
+            navArgument(EditRecipeViewModel.PHOTO_URL_ARG) { type = NavType.StringType },
+            navArgument(EditRecipeViewModel.PHOTO_TITLE_ARG) { type = NavType.StringType; defaultValue = "" },
+            navArgument(EditRecipeViewModel.PHOTO_IMAGES_ARG) { type = NavType.StringType; defaultValue = "" }
+        )
+    ) {
+        EditRecipeScreen(
+            onBack = { navController.popBackStack() },
+            // The checked recipe replaces both the editor and the post's error screen, as a
+            // saved clip does, so Back from it goes where the share came from.
+            onSaved = { id ->
+                navController.navigate(Routes.recipe(id)) {
+                    popUpTo(Routes.IMPORT) { inclusive = true }
+                }
+            }
         )
     }
 

@@ -43,7 +43,8 @@ backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147); Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
-(`reddit` flag, #11); the UI in six languages (drafts awaiting a native speaker:
+(`reddit` flag, #11), or the photo read on the device and checked by the cook (`photoText`,
+#198); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: other recipe languages,
@@ -86,7 +87,7 @@ fixtures. The annotated map, and what each route does, are in
 Routes: `home`, `recipes`, `settings` (+ hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
-membership), `edit?recipeId={recipeId}`, `clip?url={url}`; with the tab
+membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `clip?url={url}`; with the tab
 shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
 `pantry`. A route from an intent always lands in Recipes.
 
@@ -267,9 +268,11 @@ feature's full layout, are in `docs/decisions.md` under its issue.
     is false; on iOS, the no-connection `URLError` codes.
   - `FetchFailed(detail, timedOut)` for anything else.
   - `NoRecipeFound`.
-  - `NoTranscription(title, imageUrl)`: a Reddit post with no recipe as
-    text. An outcome, not a failure: the screen shows the post's photo and
-    a muted note, with Try again only. Never retried, never reloaded on reconnect.
+  - `NoTranscription(title, imageUrl, imageUrls)`: a Reddit post with no
+    recipe as text. An outcome, not a failure: the screen shows the post's
+    photo and a muted note, with Try again and, for a post with a picture,
+    "Read the photo" (#198: OCR into the editor, never saved unchecked).
+    Never retried, never reloaded on reconnect.
 - The repository retries **once**, after an injectable 2 s pause, and only
   for `Blocked` or a `FetchFailed` that wasn't a timeout. Never for `Offline`
   (it fails at once), a timeout (a dead Wi-Fi costs one 15 s timeout, not

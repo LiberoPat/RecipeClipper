@@ -321,6 +321,15 @@
     <string name="edit_label_photo">Photo link (optional)</string>
     <string name="edit_error_invalid">A recipe needs a name, and ingredients or steps.</string>
     <string name="edit_error_save_failed">Couldn\'t save the recipe. Try again.</string>
+    <string name="action_read_photo">Read the photo</string>
+    <string name="photo_title">Check the recipe</string>
+    <string name="photo_reading">Reading the photo on this phone…</string>
+    <string name="photo_read">Read from the photo. Check every line against it, above all the amounts, before saving.</string>
+    <string name="photo_not_sorted">Couldn\'t read a recipe from the photo: finish it by hand.</string>
+    <string name="photo_failed">Couldn\'t load the photo. Check your connection and try again.</string>
+    <string name="photo_not_ready">The photo reader isn\'t ready on this phone yet: Google Play services downloads it once, over the internet. Try again in a few minutes, or finish the recipe by hand below.</string>
+    <string name="photo_check_heading">Check these lines: the photo was hard to read there</string>
+    <string name="photo_image_description">Photo of %1$s</string>
 
     <!-- Week meal plan (#49) -->
     <string name="action_add_to_plan">Add to plan</string>

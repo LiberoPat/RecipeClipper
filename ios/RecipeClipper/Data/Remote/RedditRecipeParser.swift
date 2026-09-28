@@ -51,7 +51,14 @@ enum RedditRecipeParser {
         let commentListing = listings.count > 1 ? listings[1] as? [String: Any] : nil
         guard let split = RecipeTextSplitter.split(body)
                 ?? RedditCommentScorer.pick(comments(commentListing)).flatMap(RecipeTextSplitter.split)
-        else { return Reading(result: .error(.noTranscription(title: title, imageUrl: image)), crosspostOf: crosspostOf) }
+        else {
+            let own = imagesOf(post)
+            let images = own.isEmpty ? (original.map(imagesOf) ?? []) : own
+            return Reading(
+                result: .error(.noTranscription(title: title, imageUrl: image, imageUrls: images)),
+                crosspostOf: crosspostOf
+            )
+        }
 
         return Reading(result: .success(Recipe(
             name: title,
@@ -124,6 +131,24 @@ enum RedditRecipeParser {
         let link = overridden.isEmpty ? str(post, "url") : overridden
         let path = URLComponents(string: link)?.path ?? ""
         return link.hasPrefix("http") && imageExtension.containsMatch(in: path) ? unescape(link) : nil
+    }
+
+    /// Every picture of the post, in order, for reading its text (#198): each of a gallery's
+    /// (`gallery_data` gives the order, `media_metadata` the full-size address), else the one
+    /// `imageOf` finds.
+    static func imagesOf(_ post: [String: Any]) -> [String] {
+        if let items = (post["gallery_data"] as? [String: Any])?["items"] as? [Any],
+           let metadata = post["media_metadata"] as? [String: Any] {
+            let gallery: [String] = items.compactMap { item in
+                let id = (item as? [String: Any]).map { str($0, "media_id") } ?? ""
+                guard let s = (metadata[id] as? [String: Any])?["s"] as? [String: Any] else { return nil }
+                let u = str(s, "u")
+                let candidate = u.isEmpty ? str(s, "gif") : u
+                return candidate.hasPrefix("http") ? unescape(candidate) : nil
+            }
+            if !gallery.isEmpty { return gallery }
+        }
+        return [imageOf(post)].compactMap { $0 }
     }
 
     private static func unescape(_ url: String) -> String {

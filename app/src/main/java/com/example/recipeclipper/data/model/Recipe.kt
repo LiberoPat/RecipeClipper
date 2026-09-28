@@ -140,9 +140,15 @@ sealed class ParseError {
      * A Reddit post with no recipe as text: neither the post body nor any comment splits into
      * ingredients and steps. A legitimate outcome (often a photo of a dish, or of a recipe
      * card nobody has transcribed yet), not a failure. Carries the post's [title] and
-     * [imageUrl] so the screen can show the photo. Never retried automatically.
+     * [imageUrl] so the screen can show the photo, and [imageUrls], every picture of the post
+     * in order (each of a gallery's; else the one photo), for "Read the photo" (#198). Never
+     * retried automatically.
      */
-    data class NoTranscription(val title: String, val imageUrl: String?) : ParseError()
+    data class NoTranscription(
+        val title: String,
+        val imageUrl: String?,
+        val imageUrls: List<String> = listOfNotNull(imageUrl)
+    ) : ParseError()
 
     /**
      * The site answered, but refused: 403, 404, 429 or any 5xx. Usually a bot block, and not

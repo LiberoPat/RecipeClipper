@@ -83,10 +83,25 @@ final class RedditRecipeParserTests: XCTestCase {
             RedditRecipeParser.parse(RedditFixtures.photoOnly, sourceUrl: url),
             .error(.noTranscription(
                 title: "[Homemade] Sunday lasagna",
-                imageUrl: "https://preview.redd.it/lasagna4x9.jpeg?auto=webp&s=4d5e6f"
+                imageUrl: "https://preview.redd.it/lasagna4x9.jpeg?auto=webp&s=4d5e6f",
+                imageUrls: ["https://preview.redd.it/lasagna4x9.jpeg?auto=webp&s=4d5e6f"]
             ))
         )
         XCTAssertNil(RedditRecipeParser.read(RedditFixtures.photoOnly, sourceUrl: url).crosspostOf)
+    }
+
+    func testAnUntranscribedGalleryCarriesEveryPictureInTheGallerysOrderForReading() {
+        XCTAssertEqual(
+            RedditRecipeParser.parse(RedditFixtures.cardUntranscribed, sourceUrl: url),
+            .error(.noTranscription(
+                title: "Aunt June's oatmeal cookies, front and back of the card",
+                imageUrl: "https://preview.redd.it/c3card1front.jpg?width=3024&format=pjpg&auto=webp&s=c32",
+                imageUrls: [
+                    "https://preview.redd.it/c3card1front.jpg?width=3024&format=pjpg&auto=webp&s=c32",
+                    "https://preview.redd.it/d4card1back.jpg?width=3024&format=pjpg&auto=webp&s=d42",
+                ]
+            ))
+        )
     }
 
     func testACrosspostWithNoRecipeOfItsOwnNamesTheOriginalForTheSource() {
@@ -94,7 +109,8 @@ final class RedditRecipeParserTests: XCTestCase {
         XCTAssertEqual(reading.crosspostOf, "1f3k9xq")
         XCTAssertEqual(reading.result, .error(.noTranscription(
             title: "Saw this on r/recipes and had to share",
-            imageUrl: "https://preview.redd.it/k2m8x7vq1abd1.jpeg?auto=webp&s=5c1e0f1a2b3c4d5e6f"
+            imageUrl: "https://preview.redd.it/k2m8x7vq1abd1.jpeg?auto=webp&s=5c1e0f1a2b3c4d5e6f",
+            imageUrls: ["https://preview.redd.it/k2m8x7vq1abd1.jpeg?auto=webp&s=5c1e0f1a2b3c4d5e6f"]
         )))
     }
 
@@ -134,7 +150,7 @@ final class RedditRecipeParserTests: XCTestCase {
             "selftext":"","url":"https://i.imgur.com/pie.png"}}]}},{"kind":"Listing","data":{"children":[]}}]
             """#
         XCTAssertEqual(RedditRecipeParser.parse(json, sourceUrl: url),
-                       .error(.noTranscription(title: "Pie", imageUrl: "https://i.imgur.com/pie.png")))
+                       .error(.noTranscription(title: "Pie", imageUrl: "https://i.imgur.com/pie.png", imageUrls: ["https://i.imgur.com/pie.png"])))
         let noImage = json.replacingOccurrences(of: "https://i.imgur.com/pie.png", with: "https://example.com/pie-recipe")
         XCTAssertEqual(RedditRecipeParser.parse(noImage, sourceUrl: url), .error(.noTranscription(title: "Pie", imageUrl: nil)))
         // Without raw_json Reddit escapes the preview's "&".
@@ -143,7 +159,7 @@ final class RedditRecipeParserTests: XCTestCase {
             with: #""preview":{"images":[{"source":{"url":"https://preview.redd.it/p.jpg?a=1&amp;s=2"}}]},"selftext""#
         )
         XCTAssertEqual(RedditRecipeParser.parse(escaped, sourceUrl: url),
-                       .error(.noTranscription(title: "Pie", imageUrl: "https://preview.redd.it/p.jpg?a=1&s=2")))
+                       .error(.noTranscription(title: "Pie", imageUrl: "https://preview.redd.it/p.jpg?a=1&s=2", imageUrls: ["https://preview.redd.it/p.jpg?a=1&s=2"])))
     }
 
     func testAnythingThatIsntAPostListingHasNoRecipe() {

@@ -68,6 +68,22 @@ final class RecipeReportSiteTests: XCTestCase {
         await settleMain()
         XCTAssertNil(vm.uiState.reportSiteUrl)
         XCTAssertNil(vm.uiState.clipUrl)
+        XCTAssertNil(vm.uiState.photoPost, "no picture, nothing to read")
+    }
+
+    func testARedditPostWithAPhotoCanHaveItRead() async {
+        // #198: every picture, in order, under the shared link.
+        let reddit = "https://www.reddit.com/r/Old_Recipes/comments/1abc02/grandmas_pie/"
+        let gallery = ["https://preview.redd.it/front.jpg", "https://preview.redd.it/back.jpg"]
+        let error = ParseError.noTranscription(title: "Pie", imageUrl: gallery[0], imageUrls: gallery)
+        let vm = viewModel(url: reddit, repository: repository(.error(error)))
+        await settleMain()
+        XCTAssertEqual(vm.uiState.photoPost, PhotoPost(url: reddit, title: "Pie", imageUrls: gallery))
+
+        // A single photo with no list (as a test or an older caller builds it) still reads.
+        let single = viewModel(url: reddit, repository: repository(.error(.noTranscription(title: "Pie", imageUrl: gallery[0]))))
+        await settleMain()
+        XCTAssertEqual(single.uiState.photoPost?.imageUrls, [gallery[0]])
     }
 
     func testASavedRecipeThatCantBeOpenedHasNoPageToReport() async {

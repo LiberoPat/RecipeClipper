@@ -150,8 +150,10 @@ enum ParseError: Equatable, Error {
     /// A Reddit post with no recipe as text: neither the body nor any comment splits into
     /// ingredients and steps. A legitimate outcome (often a photo of a dish, or of a recipe card
     /// nobody has transcribed yet), not a failure. Carries the post's title and photo so the
-    /// screen can show them. Never retried automatically.
-    case noTranscription(title: String, imageUrl: String?)
+    /// screen can show them, and `imageUrls`, every picture of the post in order (each of a
+    /// gallery's; else the one photo; `photoUrls` fills it in when empty), for "Read the photo"
+    /// (#198). Never retried automatically.
+    case noTranscription(title: String, imageUrl: String?, imageUrls: [String] = [])
     /// The site answered, but refused: 403, 404, 429 or any 5xx. Usually a bot block, and not a
     /// stable one (the same site can refuse one minute and answer the next, and some send 404
     /// as a disguise for a block), so this reads as "try again", not "unsupported".
@@ -167,6 +169,13 @@ enum ParseError: Equatable, Error {
     case saveFailed
     case notSaved
     case nothingToShow
+
+    /// A post with no transcription's pictures, in order (#198): `imageUrls`, else the one photo.
+    /// Nil for every other cause. (Android's `imageUrls` defaults to the photo.)
+    var photoUrls: [String]? {
+        guard case .noTranscription(_, let imageUrl, let imageUrls) = self else { return nil }
+        return imageUrls.isEmpty ? [imageUrl].compactMap { $0 } : imageUrls
+    }
 
     /// The statuses that mean "the site refused", as opposed to some other HTTP failure.
     static func isBlockStatus(_ status: Int) -> Bool {

@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.recipe
 
+import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
@@ -128,6 +129,12 @@ data class RecipeUiState(
      * [reportSiteUrl] is: only a page that loaded with no recipe data can be clipped.
      */
     val clipUrl: String? = null,
+    /**
+     * The post to read the photos of ("Read the photo", #198): set while a Reddit post with no
+     * recipe text ([ParseError.NoTranscription]) that has a picture is on screen. The screen
+     * offers it only behind the `photoText` flag.
+     */
+    val photoPost: PhotoPost? = null,
     /** Chef mode (#100): the steps the cook tapped to see as written, not short. */
     val asWrittenSteps: Set<Int> = emptySet(),
     /**

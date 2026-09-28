@@ -118,7 +118,8 @@ final class RedditRecipeSourceTests: XCTestCase {
         RedditStubURLProtocol.listings = ["/comments/1f3k9xq.json": RedditFixtures.photoOnly]
         let expected = ParseResult.error(.noTranscription(
             title: "Saw this on r/recipes and had to share",
-            imageUrl: "https://preview.redd.it/k2m8x7vq1abd1.jpeg?auto=webp&s=5c1e0f1a2b3c4d5e6f"
+            imageUrl: "https://preview.redd.it/k2m8x7vq1abd1.jpeg?auto=webp&s=5c1e0f1a2b3c4d5e6f",
+            imageUrls: ["https://preview.redd.it/k2m8x7vq1abd1.jpeg?auto=webp&s=5c1e0f1a2b3c4d5e6f"]
         ))
         let noRecipe = await source.fetch(url: postUrl)
         XCTAssertEqual(noRecipe, expected)
