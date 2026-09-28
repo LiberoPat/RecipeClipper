@@ -15,19 +15,20 @@ enum Aisle: String, CaseIterable, Identifiable {
 
 /// Which aisle a grocery line belongs in: its ingredient name (`IngredientName.of`) matched on
 /// its end against the language's `aisles.json`, like the density table, so "unsalted butter"
-/// is dairy, "peanut butter" condiments and "butter beans" canned. A line with no name, a name
-/// nothing matches, or a language with no words is `.other`.
+/// is dairy, "peanut butter" condiments and "butter beans" canned. A listed pair's words match in
+/// either number (`IngredientName.key`, #191): "red onions" is produce through "onion". A line
+/// with no name, a name nothing matches, or a language with no words is `.other`.
 enum Aisles {
 
     private final class Table {
-        // Longest alias first, so the most specific one wins. (No two aisles share an alias, so
-        // equal lengths can't both match one name.)
+        // Keyed, longest first, so the most specific one wins. (No two aisles share a keyed
+        // alias, so equal lengths can't both match one name: SharedTablesTests.)
         let aliases: [(alias: String, aisle: Aisle)]
 
         init(_ words: LanguageWords) {
             let aisles = words.table("aisles")["aisles"] as? [String: [String]] ?? [:]
             aliases = aisles
-                .flatMap { key, names in names.map { (alias: $0, aisle: Aisle.fromKey(key)) } }
+                .flatMap { key, names in names.map { (alias: IngredientName.key($0, words: words), aisle: Aisle.fromKey(key)) } }
                 .sorted { $0.alias.u16Count > $1.alias.u16Count }
         }
     }
@@ -41,7 +42,8 @@ enum Aisles {
 
     /// The aisle for a name as `IngredientName.of` gives it.
     static func ofName(_ name: String, words: LanguageWords) -> Aisle {
-        table(words).aliases.first { IngredientDensities.endsWithName(name, $0.alias, spaced: words.spaced) }?.aisle ?? .other
+        let key = IngredientName.key(name, words: words)
+        return table(words).aliases.first { IngredientDensities.endsWithName(key, $0.alias, spaced: words.spaced) }?.aisle ?? .other
     }
 }
 
@@ -64,11 +66,12 @@ struct GroceryItem: Equatable, Identifiable {
 /// ingredient kept together. The rule behind "never a confident wrong number", ported from the
 /// Kotlin `GroceryCombiner` (see there):
 ///
-/// - Lines with the same `IngredientName` (exactly, in the same language, checked or not
-///   alike) are one ingredient.
+/// - Lines with the same `IngredientName` (exactly, a listed pair's number aside, #191; in the
+///   same language, checked or not alike) are one ingredient.
 /// - They add up into one row only when every one is a single exact amount in one family of
 ///   units that convert exactly into each other (metric weight, imperial weight, metric volume,
-///   US volume, sticks, or counts with identical words), in a unit the lines used that shows
+///   US volume, sticks, or counts with identical words, a listed pair's number aside, worded for
+///   the total: "1 onion" and "2 onions" are "3 onions"), in a unit the lines used that shows
 ///   the total exactly.
 /// - A bracket or slash after the amount must be only a note ("(, minced)"): one that could hold
 ///   a second amount (a digit, a fraction, a unit word) stops the total.
@@ -124,14 +127,19 @@ enum GroceryCombiner {
     /// or junk is read without it, and groups whose names are definitely the same share a row,
     /// under the first group's name. Adding up keeps `combine`'s exact rules.
     private static func group(_ items: [GroceryItem], _ decisions: Decisions) -> [Row] {
-        // Keyed by language and name; a line with no name only groups with the very same line.
+        // Keyed by language and name, a listed pair's number aside ("onion" is "onions"); a line
+        // with no name only groups with the very same line.
         var order: [String] = []
         var groups: [String: [GroceryItem]] = [:]
         var names: [Int64: String] = [:]
+        var keys: [Int64: String] = [:]
         for item in items {
             let name = GroceryDecisions.name(item, decisions: decisions)
-            if let name { names[item.id] = name }
-            let key = name.map { "n\u{0}\(item.language ?? "")\u{0}\($0)" }
+            if let name {
+                names[item.id] = name
+                keys[item.id] = IngredientName.key(name, words: LanguageWords.forTag(item.language))
+            }
+            let key = keys[item.id].map { "n\u{0}\(item.language ?? "")\u{0}\($0)" }
                 ?? "l\u{0}\(item.language ?? "")\u{0}\(normalize(item.text))"
             if groups[key] == nil { order.append(key) }
             groups[key, default: []].append(item)
@@ -142,7 +150,7 @@ enum GroceryCombiner {
             let texts = lines.map(\.text)
             let read = lines.map { GroceryDecisions.effectiveText($0, decisions: decisions) }
             let name = names[first.id]
-            let sameName = lines.allSatisfy { names[$0.id] == name }
+            let sameName = lines.allSatisfy { keys[$0.id] == keys[first.id] }
             let total: String?
             if name != nil, let words = LanguageWords.forTag(first.language) {
                 total = sum(read, words: words, requireSameName: sameName) ?? repeated(texts)
@@ -301,8 +309,12 @@ enum GroceryCombiner {
     private static func sum(_ lines: [String], words: LanguageWords, requireSameName: Bool = true) -> String? {
         guard lines.count >= 2 else { return nil }
         if requireSameName {
-            guard let name = IngredientName.of(lines[0], words: words) else { return nil }
-            if lines.contains(where: { IngredientName.of($0, words: words) != name }) { return nil }
+            var names: [String] = []
+            for line in lines {
+                guard let name = IngredientName.of(line, words: words) else { return nil }
+                names.append(IngredientName.key(name, words: words))
+            }
+            if names.contains(where: { $0 != names[0] }) { return nil }
         }
         var amounts: [Amount] = []
         for line in lines {
@@ -315,10 +327,12 @@ enum GroceryCombiner {
         let total = amounts.reduce(0.0) { $0 + $1.value }
 
         if family == .count {
+            // The very same words, a listed pair's number aside ("onion", "onions"), worded for the total.
             let rest = amounts[0].rest
-            if amounts.contains(where: { normalize($0.rest) != normalize(rest) }) { return nil }
+            let same = IngredientName.key(normalize(rest), words: words)
+            if amounts.contains(where: { IngredientName.key(normalize($0.rest), words: words) != same }) { return nil }
             guard let text = exactly(total, metric: false, comma: comma) else { return nil }
-            return "\(text) \(rest)"
+            return "\(text) \(IngredientName.counted(rest, count: total, words: words))"
         }
 
         // The largest unit the lines used that shows the total exactly.

@@ -59,6 +59,37 @@ class SharedTablesTest {
     }
 
     @Test
+    fun everyPluralPairIsTwoLowercaseWordsAndNoWordIsListedTwice() {
+        for (language in LanguageWords.SHIPPED) {
+            val pairs = SharedTables.load("names", language).getJSONArray("pluralPairs")
+            val words = (0 until pairs.length()).flatMap { i ->
+                val pair = pairs.getJSONArray(i)
+                assertEquals("$language $pair", 2, pair.length())
+                val (one, many) = pair.getString(0) to pair.getString(1)
+                assertTrue("$language $pair", one != many && one.isNotEmpty() && many.isNotEmpty())
+                for (w in listOf(one, many)) assertTrue("$language $w", w == w.lowercase() && w.all { it.isLetter() })
+                listOf(one, many)
+            }
+            assertEquals(language, words.size, words.toSet().size)
+        }
+    }
+
+    @Test
+    fun noTwoAislesShareAnAliasOnceListedPairsAreOneWord() {
+        // Aisles.ofName takes the longest keyed alias, so two of equal length must never both match.
+        for (language in LanguageWords.SHIPPED) {
+            val words = LanguageWords.forTag(language)!!
+            val aisles = SharedTables.load("aisles", language).getJSONObject("aisles")
+            val seen = HashMap<String, String>()
+            for (aisle in aisles.keys()) for (alias in SharedTables.strings(aisles.getJSONArray(aisle))) {
+                val key = IngredientName.key(alias, words)
+                val before = seen.put(key, aisle)
+                assertTrue("$language: '$key' is $before and $aisle", before == null || before == aisle)
+            }
+        }
+    }
+
+    @Test
     fun everyTimerTableLabelsHoursMinutesAndSeconds() {
         for (language in LanguageWords.SHIPPED) {
             val units = SharedTables.objects(SharedTables.load("timers", language).getJSONArray("units"))

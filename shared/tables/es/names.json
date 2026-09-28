@@ -1,11 +1,33 @@
 {
   "schemaVersion": 1,
   "language": "es",
-  "about": "IngredientName: the ingredient's name in a line, for matching against the pantry (#46). After the amount and unit are dropped, leadingWords (sizes, containers, cuts and unit words the converter doesn't read) and a following 'of' are dropped from the start, before and after the unit; the name is cut before the first cutPhrase ('flour for dusting'); then the density table's head phrase is taken and trailingWords (preparation) are dropped from its end. A name holding a conjunction ('salt and pepper') is two ingredients, so it has no name, unless the conjunction is inside a density-table alias ('half and half'). leadingWords, trailingWords and cutPhrases are lowercase letters and spaces only. Two names match (PantryMatch) when they are equal, or when the longer ends with the shorter and every word before it is a matchModifier or a leadingWord ('unsalted butter' is 'butter'); any other word makes a different ingredient ('rice flour' is not 'flour', 'butter beans' not 'butter'), so the line is Buy. matchModifiers are lowercase, hyphens written as spaces ('all purpose'). Languages that put modifiers after the noun ('beurre doux') need none: the end-of-name rule never matched those. countSizes (#147) are the leadingWords that only say how big each one is ('2 large eggs'): when nothing but them stands between a count and the name, the count counts the ingredient itself, so using up the pantry can subtract it; any other word there ('2 cloves garlic', '1 can tomatoes') counts a part or a package, and the amount can't be worked out.",
+  "about": "IngredientName: the ingredient's name in a line, for matching against the pantry (#46). After the amount and unit are dropped, leadingWords (sizes, containers, cuts and unit words the converter doesn't read) and a following 'of' are dropped from the start, before and after the unit; the name is cut before the first cutPhrase ('flour for dusting'); then the density table's head phrase is taken and trailingWords (preparation) are dropped from its end. A name holding a conjunction ('salt and pepper') is two ingredients, so it has no name, unless the conjunction is inside a density-table alias ('half and half'). leadingWords, trailingWords and cutPhrases are lowercase letters and spaces only. Two names match (PantryMatch) when they are equal, or when the longer ends with the shorter and every word before it is a matchModifier or a leadingWord ('unsalted butter' is 'butter'); any other word makes a different ingredient ('rice flour' is not 'flour', 'butter beans' not 'butter'), so the line is Buy. matchModifiers are lowercase, hyphens written as spaces ('all purpose'). Languages that put modifiers after the noun ('beurre doux') need none: the end-of-name rule never matched those. countSizes (#147) are the leadingWords that only say how big each one is ('2 large eggs'): when nothing but them stands between a count and the name, the count counts the ingredient itself, so using up the pantry can subtract it; any other word there ('2 cloves garlic', '1 can tomatoes') counts a part or a package, and the amount can't be worked out. pluralPairs (#191) are [singular, plural] pairs of whole words, lowercase, as a name is read. Wherever names are compared (the pantry, the grocery list, the aisle table) a listed word is the same in either number, wherever it stands in the name ('red onions' is 'red onion', 'pommes de terre' is 'pomme de terre'), and a count that adds up is worded by the pair ('1 onion' and '2 onions' are '3 onions'). Nothing is inferred: a word not listed ('glass', 'hummus', 'asparagus') is only itself. Never list a word whose two numbers name different things ('pepper' the spice, 'peppers' the vegetable), and never one word twice.",
   "leadingWords": ["un", "una", "unos", "unas", "de", "del", "pizca", "pizcas", "diente", "dientes", "lata", "latas", "vaso", "vasos", "ramita", "ramitas", "manojo", "hoja", "hojas", "rebanada", "rebanadas", "trozo", "trozos", "grande", "grandes", "mediano", "mediana", "medianos", "medianas", "pequeño", "pequeña", "pequeños", "pequeñas", "sobre", "sobres", "chorrito", "chorro", "puñado"],
   "trailingWords": ["picado", "picada", "picados", "picadas", "rallado", "rallada", "pelado", "pelada", "troceado", "fresco", "fresca", "finamente"],
   "cutPhrases": ["al gusto", "a gusto", "para", "opcional"],
   "conjunctions": ["y", "o", "u", "&", "+"],
   "matchModifiers": [],
-  "countSizes": ["grande", "grandes", "mediano", "mediana", "medianos", "medianas", "pequeño", "pequeña", "pequeños", "pequeñas"]
+  "countSizes": ["grande", "grandes", "mediano", "mediana", "medianos", "medianas", "pequeño", "pequeña", "pequeños", "pequeñas"],
+  "pluralPairs": [
+    ["cebolla", "cebollas"], ["cebolleta", "cebolletas"], ["chalota", "chalotas"],
+    ["chalote", "chalotes"], ["puerro", "puerros"], ["huevo", "huevos"], ["yema", "yemas"],
+    ["clara", "claras"], ["diente", "dientes"], ["tomate", "tomates"], ["patata", "patatas"],
+    ["papa", "papas"], ["zanahoria", "zanahorias"], ["hoja", "hojas"], ["baya", "bayas"],
+    ["fresa", "fresas"], ["frambuesa", "frambuesas"], ["arándano", "arándanos"],
+    ["cereza", "cerezas"], ["limón", "limones"], ["lima", "limas"], ["naranja", "naranjas"],
+    ["chile", "chiles"], ["guindilla", "guindillas"], ["jalapeño", "jalapeños"],
+    ["pimiento", "pimientos"], ["manzana", "manzanas"], ["pera", "peras"], ["plátano", "plátanos"],
+    ["banana", "bananas"], ["melocotón", "melocotones"], ["durazno", "duraznos"],
+    ["champiñón", "champiñones"], ["seta", "setas"], ["hongo", "hongos"], ["judía", "judías"],
+    ["frijol", "frijoles"], ["alubia", "alubias"], ["garbanzo", "garbanzos"],
+    ["guisante", "guisantes"], ["arveja", "arvejas"], ["lenteja", "lentejas"],
+    ["pepino", "pepinos"], ["calabacín", "calabacines"], ["berenjena", "berenjenas"],
+    ["rábano", "rábanos"], ["aguacate", "aguacates"], ["aceituna", "aceitunas"],
+    ["alcaparra", "alcaparras"], ["pechuga", "pechugas"], ["muslo", "muslos"],
+    ["salchicha", "salchichas"], ["gamba", "gambas"], ["langostino", "langostinos"],
+    ["almendra", "almendras"], ["nuez", "nueces"], ["tortilla", "tortillas"], ["rojo", "rojos"],
+    ["roja", "rojas"], ["morado", "morados"], ["morada", "moradas"], ["verde", "verdes"],
+    ["amarillo", "amarillos"], ["amarilla", "amarillas"], ["blanco", "blancos"],
+    ["blanca", "blancas"], ["negro", "negros"], ["negra", "negras"]
+  ]
 }

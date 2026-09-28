@@ -35,6 +35,14 @@ class PantryUseUpTest {
 
     // --- Worked out
 
+    @Test fun `a listed pair subtracts in either number, and what's left is worded by it (#191)`() {
+        assertEquals("1 onion", after(item("onions", "2 onions"), "1 onion"))
+        assertEquals("1 egg", after(item("eggs", "6 eggs"), "5 eggs"))
+        assertEquals("5", after(item("eggs", "6"), "1 large egg"))
+        assertEquals("1", after(item("onion", "3"), "2 onions, sliced"))
+        assertTrue(PantryUseUp.rows(listOf("1 onion"), "en", listOf(item("red onions", "4"))).isEmpty())
+    }
+
     @Test fun `a weight from the same unit, the owner's chicken`() {
         val chicken = item("chicken", "2 lb")
         assertEquals(UseUpChange.Subtract("2 lb", "1 lb"), change(chicken, "1 lb chicken"))

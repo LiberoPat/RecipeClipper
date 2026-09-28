@@ -17,10 +17,19 @@ object IngredientName {
         val leadingWords = words.strings("names", "leadingWords").toSet()
         val trailingWords = words.strings("names", "trailingWords").toSet()
         val conjunctions = words.strings("names", "conjunctions").toSet()
+
+        // The listed singular/plural pairs (#191): each plural's singular, each singular's plural.
+        private val pairs = words.table("names").optJSONArray("pluralPairs")
+            ?.let { a -> List(a.length()) { a.getJSONArray(it).getString(0) to a.getJSONArray(it).getString(1) } }
+            ?: emptyList()
+        val singular: Map<String, String> = pairs.associate { (one, many) -> many to one }
+        val plural: Map<String, String> = pairs.associate { (one, many) -> one to many }
+
         // The words that may come before a shorter name and still mean it ("unsalted" butter),
-        // longest first, so "extra virgin" is tried before "extra".
+        // longest first, so "extra virgin" is tried before "extra". Keyed like the names they
+        // are compared with.
         val matchModifiers = (words.strings("names", "matchModifiers") + words.strings("names", "leadingWords"))
-            .distinct().sortedByDescending { it.length }
+            .map { keyOf(it, singular) }.distinct().sortedByDescending { it.length }
 
         // " for dusting", " to taste": the name ends before the first one.
         val cut = Regex(
@@ -79,15 +88,63 @@ object IngredientName {
      * names table's `matchModifiers` or `leadingWords`). So "unsalted butter" matches "butter",
      * while "rice flour", "butter beans" and "peanut butter" don't match "flour" or "butter", in
      * either direction: a word the table doesn't know makes a different ingredient, and the
-     * line is Buy. Either may be a name from [of] or one a person typed.
+     * line is Buy. Either may be a name from [of] or one a person typed. A listed pair's words
+     * are the same in either number ([key], #191): "onions" matches "onion", "red onions" "red
+     * onion", but "red onion" is still not "onion".
      */
     fun matches(a: String, b: String, words: LanguageWords = LanguageWords.ENGLISH): Boolean {
-        val x = IngredientDensities.headPhrase(a, words)
-        val y = IngredientDensities.headPhrase(b, words)
+        val x = key(IngredientDensities.headPhrase(a, words), words)
+        val y = key(IngredientDensities.headPhrase(b, words), words)
         if (x.isEmpty() || y.isEmpty()) return false
         val (longer, shorter) = if (x.length >= y.length) x to y else y to x
         if (!IngredientDensities.endsWithName(longer, shorter, words.spaced)) return false
         return onlyModifiers(longer.substring(0, longer.length - shorter.length).trim(), words)
+    }
+
+    /**
+     * [name] trimmed and lowercase, with every word the language lists as a plural (names.json
+     * `pluralPairs`, #191) in its singular, wherever it stands: "Red Onions" is "red onion",
+     * "pommes de terre" is "pomme de terre". Two names are one when their keys are equal. A word
+     * that isn't listed stays as it is, so nothing is inferred: "glass", "hummus" and "asparagus"
+     * are only themselves. With no [words], only trimmed and lowercase.
+     */
+    fun key(name: String, words: LanguageWords?): String =
+        keyOf(name, words?.let { words(it).singular } ?: emptyMap())
+
+    /** True when [a] and [b] are one name ([key]): trimmed, case aside, and a listed pair aside. */
+    fun same(a: String, b: String, words: LanguageWords?): Boolean = key(a, words) == key(b, words)
+
+    /**
+     * [text] (a count's words, "onion, sliced") with each word in a listed pair worded for
+     * [count]: the plural above one, else the singular, keeping the word's capitals ("Zwiebel"
+     * for 3 is "Zwiebeln"). Every other word stays as written.
+     */
+    fun counted(text: String, count: Double, words: LanguageWords): String {
+        val w = words(words)
+        if (w.plural.isEmpty()) return text
+        val many = count > 1.0
+        return WORD.replace(text) { m ->
+            val lower = m.value.lowercase()
+            // Null: not listed, or already in the right number.
+            val target = if (many) w.plural[lower] else w.singular[lower]
+            if (target == null) m.value else withCapitals(target, m.value)
+        }
+    }
+
+    // [word] with [like]'s capitals: all of them, or the first.
+    private fun withCapitals(word: String, like: String): String = when {
+        like.length > 1 && like == like.uppercase() -> word.uppercase()
+        like.first().isUpperCase() -> word.replaceFirstChar { it.uppercaseChar() }
+        else -> word
+    }
+
+    // A word in a name or a count's words: letters and their marks.
+    private val WORD = Regex("""[\p{L}\p{M}]+""")
+
+    private fun keyOf(name: String, singular: Map<String, String>): String {
+        val text = name.trim().lowercase()
+        if (singular.isEmpty()) return text
+        return WORD.replace(text) { singular[it.value] ?: it.value }
     }
 
     /** True when [text] is nothing but match modifiers, one after another. */

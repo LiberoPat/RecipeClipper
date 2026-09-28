@@ -83,18 +83,24 @@ object PantryList {
 
     /**
      * The unticked grocery lines that are [item] itself: its name as the pantry puts it there
-     * (trimmed, case-insensitive, in its language), which is what "On list" means (#146). A
-     * recipe's "2 cups flour" isn't, so taking the item off the list never loses a recipe's line.
+     * (trimmed, case-insensitive, a listed pair's number aside ([IngredientName.same]), in its
+     * language), which is what "On list" means (#146). A recipe's "2 cups flour" isn't, so taking
+     * the item off the list never loses a recipe's line.
      */
     fun ownLines(item: PantryItem, groceries: List<GroceryItem>): List<GroceryItem> {
-        val name = item.name.trim().lowercase(Locale.ROOT)
-        return groceries.filter { !it.checked && it.language == item.language && it.text.trim().lowercase(Locale.ROOT) == name }
+        val words = LanguageWords.forTag(item.language)
+        val name = IngredientName.key(item.name, words)
+        return groceries.filter { !it.checked && it.language == item.language && IngredientName.key(it.text, words) == name }
     }
 
-    /** The item already here with this name (trimmed, case-insensitive) in [language], if any. */
+    /**
+     * The item already here with this name (trimmed, case-insensitive, a listed pair's number
+     * aside: "onion" finds "Onions") in [language], if any.
+     */
     fun sameName(items: List<PantryItem>, name: String, language: String?): PantryItem? {
-        val key = name.trim().lowercase(Locale.ROOT)
-        return items.firstOrNull { it.language == language && it.name.trim().lowercase(Locale.ROOT) == key }
+        val words = LanguageWords.forTag(language)
+        val key = IngredientName.key(name, words)
+        return items.firstOrNull { it.language == language && IngredientName.key(it.name, words) == key }
     }
 }
 
@@ -145,8 +151,9 @@ data class NeedLine(
 )
 
 /**
- * One ingredient of the week: every line naming it (exactly the same [IngredientName], in the
- * same language), and whether the pantry has it. [name] is null for a line the app can't name
+ * One ingredient of the week: every line naming it (exactly the same [IngredientName], a listed
+ * pair's number aside, in the same language), and whether the pantry has it. [name] is the first
+ * line's; it is null for a line the app can't name
  * (a heading, "salt and pepper"): it stands alone and is always Buy, since nothing is guessed.
  * [pantryName] is the matched pantry item's name.
  */
@@ -216,9 +223,10 @@ object PantryMatch {
             for (text in source.lines) {
                 val line = NeedLine(text, source.recipeId, source.title, source.day, source.language)
                 val name = words?.let { IngredientName.of(text, it) }
-                val key: Any = if (name == null) unnamed++ else (source.language to name)
+                // One ingredient whatever the number of a listed pair's words ("onion", "onions").
+                val key: Any = if (name == null) unnamed++ else (source.language to IngredientName.key(name, words))
                 groups.getOrPut(key) { mutableListOf() }.add(line)
-                names[key] = name
+                if (key !in names) names[key] = name
             }
         }
         val rows = groups.map { (key, lines) ->

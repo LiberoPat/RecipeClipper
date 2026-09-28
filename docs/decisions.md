@@ -1183,7 +1183,9 @@ and on both platforms.
   wrong one: a heading, a leftover digit ("juice of 1 lemon") or two
   ingredients ("salt and pepper", "butter or margarine") give null, unless the
   conjunction is inside a density-table alias ("half and half"). There's no
-  singulariser: "eggs" and "egg" are different names.
+  singulariser, only listed pairs: "eggs" and "egg" are one name because
+  `names.json` lists the pair (#191, below); a word that isn't listed is only
+  itself.
 - `IngredientName.matches(a, b)` is the density table's end-of-name rule
   (`IngredientDensities.endsWithName`, now shared with `find`): "unsalted
   butter" matches "butter", "butter beans" doesn't. Both sides go through
@@ -1454,8 +1456,10 @@ The third tab of #46, still behind the #47 flag.
 - **Aisles are a per-language table** (`shared/tables/<lang>/aisles.json`,
   every shipped language, the Japanese one smaller), matched on the end of
   `IngredientName.of`, longest alias first, exactly like the density table:
-  "peanut butter" beats "butter", "butter beans" isn't butter. There's no
-  singulariser, so plurals are listed. The aisle is chosen once when the item
+  "peanut butter" beats "butter", "butter beans" isn't butter. A word in
+  `names.json`'s `pluralPairs` matches in either number (#191), so "onion" also
+  files "onions"; a plural not listed there is listed here, and two aliases
+  that are one once pairs are read as one must share an aisle. The aisle is chosen once when the item
   is added and stored; "Move to aisle…" overwrites it, and nothing reassigns it
   after that. A line with no name (a heading, "salt and pepper") or no words is
   Other. The aisle keys and their order are fixed in code (`Aisle`), since
@@ -1472,8 +1476,9 @@ The third tab of #46, still behind the #47 flag.
   brackets or after a slash, no package size) and all are in one family whose
   units convert by exact ratios: g/kg, oz/lb, ml/cl/dl/l (with the 200 ml and
   180 ml Japanese cups), tsp/tbsp/fl oz/cup (3, 6 and 48 teaspoons), sticks,
-  or counts whose words after the number are identical ("2 eggs" + "3 eggs",
-  not "2 large eggs" + "3 eggs"). Grams never meet ounces, cups never meet
+  or counts whose words after the number are identical, a listed pair's number
+  aside ("2 eggs" + "3 eggs", "1 onion" + "2 onions" = "3 onions", #191; not
+  "2 large eggs" + "3 eggs"). Grams never meet ounces, cups never meet
   grams, and a bare "oz" is a weight even for milk. The total is written in a
   unit the lines already used, the largest that shows it exactly under the
   scaler's own formatting ("1 cup" + "2 tbsp" is "1 1/8 cup"; 1.25 kg shows as
@@ -1549,7 +1554,7 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   which pantry item it matched ("You have butter"), so the cook can check. A staple (`alwaysHave`)
   is never on Buy, in stock or not. A line the app can't name ("salt and pepper",
   a heading) stands alone and is always Buy: nothing is guessed. Lines group by
-  exact name and language, each shown as written with its recipe and day; nothing
+  exact name (a listed pair's number aside, #191) and language, each shown as written with its recipe and day; nothing
   is added up here (the grocery list does that, when it's exact).
 - **"What I need"** is its own screen on the Week's stack (`week/need/{weekStart}`),
   from the Week menu, for the week shown. Its lines come from the same
@@ -1600,9 +1605,10 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     ("beurre doux"), which the end-of-name rule never matched anyway, so their
     lists are empty: there only equal names, or a size or container word
     before the name, match.
-  - `IngredientName.matches` has one caller, `PantryMatch.find`. Grocery
-    combining and aisles use `IngredientName.of` by exact name or the aisle
-    table, so they're unchanged.
+  - Grocery combining and aisles never used `matches`: they compare
+    `IngredientName.of` by exact name or the aisle table, so this rule left them
+    unchanged. (Since #191 every one of these compares names through
+    `IngredientName.key`, so a listed pair's number never matters.)
 - **Running out puts it on the list** (#146; it was a snackbar offer before):
   switching an item out adds its name as a typed item, silently, and the row
   shows "On list". Typing a name already in the pantry puts it back in stock
@@ -3045,7 +3051,8 @@ offer for the first was replaced and gone. Owner's decisions:
 - **Pantry to groceries shows a state, not a message.** Switching an item out adds its name to
   the list silently (unless its line is there already), and the row shows a small "On list"
   tag; tapping the tag takes it off the list, with no snackbar. "On list" means an unticked
-  grocery line that is the item's own name (trimmed, case-insensitive, same language): what
+  grocery line that is the item's own name (trimmed, case-insensitive, a listed pair's number
+  aside since #191, same language): what
   switching it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
   deletes a recipe's line, which is why no undo is needed. No schema change: the link is the
   name.
@@ -3210,6 +3217,49 @@ pantry update (#147). "Mark as cooked" records today's cooking with no photo. Be
   file with that section removed, which is what an older app reads).
 - **The file sent to someone else** (#149) still carries no cooked entries of either kind, and
   `ShareFile.chosen` drops any a file holds.
+
+## Singular and plural names are one ingredient (#191)
+
+Walkthrough 03 showed "1 onion, sliced" under To buy with "onions" in the pantry. **Owner's
+decision (2026-09-27): "Treat onion and onions as the same."** And, on colours: "red onions are
+different, just as yellow onions are different than white."
+
+- **Listed pairs, never a rule.** Each language's `names.json` has `pluralPairs`, `[singular,
+  plural]` pairs of whole words (en 80, de 48, es 68, fr 48, it 56, pt 57, ja none). Nothing is
+  inferred from a word's ending: "glass", "hummus", "asparagus", "couscous" and "molasses" are
+  only themselves, and "peas" is "pea" while "pea shoots" is neither. Irregulars ("leaf"/"leaves",
+  "uovo"/"uova", "Apfel"/"Äpfel") are just entries. A word is listed once, and never one whose
+  numbers name different things: "pepper" (the spice) and "peppers" (the vegetable) are left
+  out, as is Portuguese "pimenta"; "bell pepper(s)" were already both in the aisle table.
+- **The pairs change only a word's number, never which words match.** `IngredientName.key`
+  lowercases and trims a name and puts every listed plural in its singular, **wherever it
+  stands**, because French, Spanish, Italian and Portuguese put the plural head first ("pommes
+  de terre") and inflect their adjectives ("oignons rouges", "cebollas rojas"): those languages
+  list their common colour adjectives too. `matches` compares keys under #51's rule unchanged,
+  so "onion" = "onions" and "red onion" = "red onions", but "red onion" ≠ "onion" and "red
+  onion" ≠ "yellow onion": a colour isn't a `matchModifier`, in either number.
+- **One place compares names:** Pantry Have/Buy and the use-up sheet (`PantryMatch.find`, through
+  `matches`), "What I need"'s rows and grocery grouping (by key; a row is named by its first
+  line), the aisle table (aliases and names keyed; `SharedTablesTest` checks no two aisles share
+  a keyed alias), Done shopping's one row per ingredient, the "On list" tag and typing a name
+  already in the pantry (`IngredientName.same`), and a received list's names. Amounts in steps
+  (#101) keep `steps.json`'s ending rules: a step's word is only ever compared with a line's own
+  head word there, so they can't pair two different ingredients.
+- **Adding up** (`GroceryCombiner`): counts add across a pair only when their words are
+  otherwise identical, and the total's words are worded by the pair (`IngredientName.counted`:
+  above one plural, else singular, keeping capitals): "1 onion" + "2 onions" = "3 onions", "1
+  onion" + "1 onion" = "2 onions", "1 Zwiebel" + "2 Zwiebeln" = "3 Zwiebeln". "1 large onion" +
+  "2 onions" or "1 onion, sliced" + "2 onions" sit together as written; "1 red onion" and "2
+  onions" are different ingredients, two rows. A measured amount's words aren't counted, so
+  they stay as before (the shortest). The pantry's count after using up is worded the same way
+  ("2 onions" less 1 is "1 onion").
+- **The aisle table** gained "vanilla bean(s)" (baking): once "bean" read as "beans", a vanilla
+  bean would have been filed as canned. Keying also fixed a few wrong aisles ("zumo de naranjas"
+  was produce through "naranjas", now drinks) and filed names the table missed in one number
+  ("2 zucchinis", "1 chicken wing"), which were Other.
+- **Tests that pinned the old rule, updated:** the corpus's `Pant("2 large eggs, beaten", "egg")`
+  (now Have), `Groc(["2 cebollas", "1 cebolla"], lang: "es")` (now "3 cebollas") and the
+  zucchinis row's aisle (now produce), all regenerated from the Kotlin.
 
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 

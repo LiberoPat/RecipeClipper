@@ -16,8 +16,12 @@ enum IngredientName {
         let leadingWords: Set<String>
         let trailingWords: Set<String>
         let conjunctions: Set<String>
+        // The listed singular/plural pairs (#191): each plural's singular, each singular's plural.
+        let singular: [String: String]
+        let plural: [String: String]
         // The words that may come before a shorter name and still mean it ("unsalted" butter),
-        // longest first, so "extra virgin" is tried before "extra".
+        // longest first, so "extra virgin" is tried before "extra". Keyed like the names they
+        // are compared with.
         let matchModifiers: [String]
         // " for dusting", " to taste": the name ends before the first one.
         let cut: JRegex
@@ -26,8 +30,18 @@ enum IngredientName {
             leadingWords = Set(words.strings("names", "leadingWords"))
             trailingWords = Set(words.strings("names", "trailingWords"))
             conjunctions = Set(words.strings("names", "conjunctions"))
+            let pairs = (words.table("names")["pluralPairs"] as? [[String]] ?? []).map { ($0[0], $0[1]) }
+            var singular: [String: String] = [:]
+            var plural: [String: String] = [:]
+            for (one, many) in pairs {
+                singular[many] = one
+                plural[one] = many
+            }
+            self.singular = singular
+            self.plural = plural
             var modifiers: [String] = []
-            for m in words.strings("names", "matchModifiers") + words.strings("names", "leadingWords") where !modifiers.contains(m) {
+            for m in (words.strings("names", "matchModifiers") + words.strings("names", "leadingWords")).map({ IngredientName.keyOf($0, singular) })
+                where !modifiers.contains(m) {
                 modifiers.append(m)
             }
             // Stable, like Kotlin's sortedByDescending, and by UTF-16 length like Kotlin's String.length.
@@ -89,14 +103,59 @@ enum IngredientName {
     /// names table's `matchModifiers` or `leadingWords`). So "unsalted butter" matches "butter",
     /// while "rice flour", "butter beans" and "peanut butter" don't match "flour" or "butter", in
     /// either direction: a word the table doesn't know makes a different ingredient, and the
-    /// line is Buy. Either may be a name from `of` or one a person typed.
+    /// line is Buy. Either may be a name from `of` or one a person typed. A listed pair's words
+    /// are the same in either number (`key`, #191): "onions" matches "onion", "red onions" "red
+    /// onion", but "red onion" is still not "onion".
     static func matches(_ a: String, _ b: String, words: LanguageWords = .english) -> Bool {
-        let x = IngredientDensities.headPhrase(a, words: words)
-        let y = IngredientDensities.headPhrase(b, words: words)
+        let x = key(IngredientDensities.headPhrase(a, words: words), words: words)
+        let y = key(IngredientDensities.headPhrase(b, words: words), words: words)
         if x.isEmpty || y.isEmpty { return false }
         let (longer, shorter) = x.u16Count >= y.u16Count ? (x, y) : (y, x)
         if !IngredientDensities.endsWithName(longer, shorter, spaced: words.spaced) { return false }
         return onlyModifiers(longer.u16Substring(0, longer.u16Count - shorter.u16Count).kTrimmed, words)
+    }
+
+    /// `name` trimmed and lowercase, with every word the language lists as a plural (names.json
+    /// `pluralPairs`, #191) in its singular, wherever it stands: "Red Onions" is "red onion",
+    /// "pommes de terre" is "pomme de terre". Two names are one when their keys are equal. A word
+    /// that isn't listed stays as it is, so nothing is inferred: "glass", "hummus" and "asparagus"
+    /// are only themselves. With no `words`, only trimmed and lowercase.
+    static func key(_ name: String, words: LanguageWords?) -> String {
+        keyOf(name, words.map { $0.compiled(Words.self, Words.init).singular } ?? [:])
+    }
+
+    /// True when `a` and `b` are one name (`key`): trimmed, case aside, and a listed pair aside.
+    static func same(_ a: String, _ b: String, words: LanguageWords?) -> Bool { key(a, words: words) == key(b, words: words) }
+
+    /// `text` (a count's words, "onion, sliced") with each word in a listed pair worded for
+    /// `count`: the plural above one, else the singular, keeping the word's capitals ("Zwiebel"
+    /// for 3 is "Zwiebeln"). Every other word stays as written.
+    static func counted(_ text: String, count: Double, words language: LanguageWords) -> String {
+        let w = language.compiled(Words.self, Words.init)
+        if w.plural.isEmpty { return text }
+        let many = count > 1.0
+        return word.replace(text) { m in
+            let lower = m.value.lowercased()
+            // Nil: not listed, or already in the right number.
+            guard let target = many ? w.plural[lower] : w.singular[lower] else { return m.value }
+            return withCapitals(target, like: m.value)
+        }
+    }
+
+    // `word` with `like`'s capitals: all of them, or the first.
+    private static func withCapitals(_ word: String, like: String) -> String {
+        if like.u16Count > 1 && like == like.uppercased() { return word.uppercased() }
+        if let first = like.first, first.isUppercase { return word.prefix(1).uppercased() + word.dropFirst() }
+        return word
+    }
+
+    // A word in a name or a count's words: letters and their marks.
+    private static let word = JRegex(#"[\p{L}\p{M}]+"#)
+
+    fileprivate static func keyOf(_ name: String, _ singular: [String: String]) -> String {
+        let text = name.kTrimmed.lowercased()
+        if singular.isEmpty { return text }
+        return word.replace(text) { singular[$0.value] ?? $0.value }
     }
 
     /// True when `text` is nothing but match modifiers, one after another.

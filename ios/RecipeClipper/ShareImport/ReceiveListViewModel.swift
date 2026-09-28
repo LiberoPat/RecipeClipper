@@ -79,7 +79,7 @@ final class ReceiveListViewModel {
             var restock: [Int64] = []
             for line in lines {
                 let name = words.flatMap { IngredientName.of(line, words: $0) } ?? line.kTrimmed
-                guard seen.insert(name.lowercased()).inserted else { continue }
+                guard seen.insert(IngredientName.key(name, words: words)).inserted else { continue }
                 let tracked = words.map { PantryMatch.find(name, language: $0.language, pantry: items) }
                     ?? PantryList.sameName(items, name: name, language: language)
                 if let tracked {
