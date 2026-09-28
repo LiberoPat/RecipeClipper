@@ -333,6 +333,19 @@ private struct PantryEditSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(Strings.pantryEditTitle)
+                // Every state, visibly (#194): the row's button, menu and swipes are shortcuts.
+                // Applied at once, as the row's button is.
+                Picker(
+                    Strings.pantryEditTitle,
+                    selection: Binding(get: { vm.uiState.editing?.stock ?? editing.stock }, set: vm.onEditStock)
+                ) {
+                    ForEach(PantryStock.allCases, id: \.self) { choice in
+                        Text(PantryRow.label(choice)).tag(choice)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityIdentifier("pantryEditStock")
                 OutlinedField(
                     label: Strings.pantryLabelName,
                     text: Binding(get: { vm.uiState.editing?.name ?? "" }, set: vm.onEditName)
