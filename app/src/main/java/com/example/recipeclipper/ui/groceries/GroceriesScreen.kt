@@ -77,13 +77,15 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryCombiner
 import com.example.recipeclipper.data.model.GroceryCombiner.Row as GroceryRow
-import com.example.recipeclipper.data.model.Tip
+import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.recipe.Hairline
+import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
-import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
-import com.example.recipeclipper.ui.tour.TipCallout
+import com.example.recipeclipper.ui.tour.TooltipHost
+import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
  * The Groceries tab (#50): "Add an item", then the list by aisle. Lines naming the same
@@ -130,100 +132,104 @@ fun GroceriesScreen(
     }
 
     RecipeClipperTheme {
-        Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
-            // "Done shopping" (#146), while anything is ticked: one step to put away and clear.
-            bottomBar = {
-                if (state.hasChecked) {
-                    Button(
-                        onClick = viewModel::onDoneShopping,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                            .padding(horizontal = 20.dp, vertical = 8.dp)
-                            .testTag("doneShopping")
-                    ) {
-                        Text(stringResource(R.string.action_done_shopping))
-                    }
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.background,
-            contentWindowInsets = WindowInsets.safeDrawing
-        ) { padding ->
-            LazyColumn(
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                modifier = Modifier.fillMaxSize().padding(padding).testTag("groceryList")
-            ) {
-                item(key = "header") {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
-                        Text(
-                            stringResource(R.string.tab_groceries),
-                            style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        GroceriesMenu(
-                            canShare = !state.isEmpty,
-                            onShare = {
-                                val title = resources.getString(R.string.tab_groceries)
-                                viewModel.shareText(title) { resources.aisleName(it) }?.let { text ->
-                                    ShareCompat.IntentBuilder(context)
-                                        .setType("text/plain")
-                                        .setSubject(title)
-                                        .setText(text)
-                                        .setChooserTitle(title)
-                                        .startChooser()
-                                }
-                            },
-                            onPaste = receiveViewModel?.let { vm -> { vm.open(clipboardText(context)) } },
-                            canSendFile = state.hasUnchecked,
-                            onSendFile = sendFileViewModel?.let { vm ->
-                                { vm.sendGroceries(resources.getString(R.string.tab_groceries)) }
-                            }
-                        )
-                    }
-                    // The first Groceries visit (#151).
-                    TipCallout(Tip.GROCERIES, Modifier.padding(top = 4.dp, bottom = 4.dp))
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = state.draft,
-                        onValueChange = viewModel::onDraftChange,
-                        label = { Text(stringResource(R.string.groceries_add_hint)) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { viewModel.onAddTyped() }),
-                        trailingIcon = {
-                            if (state.draft.isNotBlank()) {
-                                TextButton(onClick = viewModel::onAddTyped) { Text(stringResource(R.string.action_add)) }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().testTag("groceryDraft")
-                    )
-                    if (state.isEmpty) {
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            stringResource(R.string.groceries_empty),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                state.sections.orEmpty().forEach { section ->
-                    item(key = "aisle-${section.aisle.key}") {
-                        Column(Modifier.padding(top = 18.dp, bottom = 2.dp)) {
-                            SectionHeading(stringResource(section.aisle.label()))
-                            Spacer(Modifier.height(4.dp))
-                            Hairline()
+        TooltipHost(TooltipScreen.GROCERIES, blocked = snackbarHostState.currentSnackbarData != null) {
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
+                // "Done shopping" (#146), while anything is ticked: one step to put away and clear.
+                bottomBar = {
+                    if (state.hasChecked) {
+                        Button(
+                            onClick = viewModel::onDoneShopping,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
+                                .testTag("doneShopping")
+                                .tooltipAnchor(Tooltip.GROCERIES_DONE_SHOPPING)
+                        ) {
+                            Text(stringResource(R.string.action_done_shopping))
                         }
                     }
-                    items(section.rows, key = { row -> "row-${row.items.first().id}" }) { row ->
-                        GroceryRowView(
-                            row = row,
-                            onToggle = viewModel::onToggle,
-                            onMove = viewModel::onMoveStart,
-                            onDelete = { r, label -> viewModel.onDelete(r, label) }
+                },
+                containerColor = MaterialTheme.colorScheme.background,
+                contentWindowInsets = WindowInsets.safeDrawing
+            ) { padding ->
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
+                    modifier = Modifier.fillMaxSize().padding(padding).testTag("groceryList")
+                ) {
+                    item(key = "header") {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
+                            Text(
+                                stringResource(R.string.tab_groceries),
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            GroceriesMenu(
+                                canShare = !state.isEmpty,
+                                onShare = {
+                                    val title = resources.getString(R.string.tab_groceries)
+                                    viewModel.shareText(title) { resources.aisleName(it) }?.let { text ->
+                                        ShareCompat.IntentBuilder(context)
+                                            .setType("text/plain")
+                                            .setSubject(title)
+                                            .setText(text)
+                                            .setChooserTitle(title)
+                                            .startChooser()
+                                    }
+                                },
+                                onPaste = receiveViewModel?.let { vm -> { vm.open(clipboardText(context)) } },
+                                canSendFile = state.hasUnchecked,
+                                onSendFile = sendFileViewModel?.let { vm ->
+                                    { vm.sendGroceries(resources.getString(R.string.tab_groceries)) }
+                                }
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = state.draft,
+                            onValueChange = viewModel::onDraftChange,
+                            label = { Text(stringResource(R.string.groceries_add_hint)) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { viewModel.onAddTyped() }),
+                            trailingIcon = {
+                                if (state.draft.isNotBlank()) {
+                                    TextButton(onClick = viewModel::onAddTyped) { Text(stringResource(R.string.action_add)) }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("groceryDraft").tooltipAnchor(Tooltip.GROCERIES_ADD)
                         )
+                        if (state.isEmpty) {
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                stringResource(R.string.groceries_empty),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    // The tick and long-press tooltips (#190) point at the list's first row.
+                    val firstRow = state.sections?.firstOrNull()?.rows?.firstOrNull()
+                    state.sections.orEmpty().forEach { section ->
+                        item(key = "aisle-${section.aisle.key}") {
+                            Column(Modifier.padding(top = 18.dp, bottom = 2.dp)) {
+                                SectionHeading(stringResource(section.aisle.label()))
+                                Spacer(Modifier.height(4.dp))
+                                Hairline()
+                            }
+                        }
+                        items(section.rows, key = { row -> "row-${row.items.first().id}" }) { row ->
+                            GroceryRowView(
+                                row = row,
+                                first = row == firstRow,
+                                onToggle = viewModel::onToggle,
+                                onMove = viewModel::onMoveStart,
+                                onDelete = { r, label -> viewModel.onDelete(r, label) }
+                            )
+                        }
                     }
                 }
             }
@@ -265,7 +271,7 @@ private fun GroceriesMenu(
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }) {
+        IconButton(onClick = { expanded = true }, modifier = Modifier.tooltipAnchor(Tooltip.GROCERIES_MENU)) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -309,6 +315,7 @@ private fun GroceriesMenu(
 @Composable
 private fun GroceryRowView(
     row: GroceryRow,
+    first: Boolean,
     onToggle: (GroceryRow) -> Unit,
     onMove: (GroceryRow) -> Unit,
     onDelete: (GroceryRow, String) -> Unit
@@ -319,6 +326,7 @@ private fun GroceryRowView(
             detail = emptyList(),
             checked = row.item.checked,
             tag = "grocery-${row.item.id}",
+            first = first,
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
             onDelete = { onDelete(row, row.item.text) }
@@ -328,6 +336,7 @@ private fun GroceryRowView(
             detail = listOf(GroceryCombiner.lines(row).joinToString(" + ")).filter { it != row.text },
             checked = row.items.all { it.checked },
             tag = "grocery-${row.items.first().id}",
+            first = first,
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
             onDelete = { onDelete(row, row.text) }
@@ -337,6 +346,7 @@ private fun GroceryRowView(
             detail = GroceryCombiner.lines(row),
             checked = row.items.all { it.checked },
             tag = "grocery-${row.items.first().id}",
+            first = first,
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
             onDelete = { onDelete(row, row.name) }
@@ -351,6 +361,7 @@ private fun CheckLine(
     detail: List<String>,
     checked: Boolean,
     tag: String,
+    first: Boolean,
     onToggle: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit
@@ -367,9 +378,13 @@ private fun CheckLine(
                 .padding(vertical = 6.dp)
                 .testTag(tag)
         ) {
-            Checkbox(checked = checked, onCheckedChange = null)
+            Checkbox(
+                checked = checked,
+                onCheckedChange = null,
+                modifier = if (first) Modifier.tooltipAnchor(Tooltip.GROCERIES_TICK) else Modifier
+            )
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f).then(if (first) Modifier.tooltipAnchor(Tooltip.GROCERIES_LONG_PRESS) else Modifier)) {
                 Text(
                     text,
                     style = MaterialTheme.typography.bodyLarge,

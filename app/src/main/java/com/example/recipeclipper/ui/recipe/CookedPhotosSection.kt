@@ -40,8 +40,10 @@ import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.CookedPhoto
+import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.ui.plan.fullDate
 import com.example.recipeclipper.ui.plan.shortDate
+import com.example.recipeclipper.ui.tour.tooltipAnchor
 import java.io.File
 
 /**
@@ -69,7 +71,11 @@ internal fun CookedPhotosSection(
             )
             Spacer(Modifier.height(10.dp))
             AddPhotoMenu(sources, onMarkCooked) { open ->
-                OutlinedButton(onClick = open, shape = RoundedCornerShape(12.dp)) {
+                OutlinedButton(
+                    onClick = open,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.tooltipAnchor(Tooltip.RECIPE_MADE_THIS)
+                ) {
                     Text(stringResource(R.string.action_i_made_this))
                 }
             }
@@ -95,7 +101,7 @@ internal fun CookedPhotosSection(
                 item(key = "cooked-add") {
                     AddPhotoMenu(sources, onMarkCooked) { open ->
                         Box(
-                            Modifier.size(THUMB).clip(RoundedCornerShape(10.dp))
+                            Modifier.size(THUMB).tooltipAnchor(Tooltip.RECIPE_MADE_THIS).clip(RoundedCornerShape(10.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = open),
                             contentAlignment = Alignment.Center
                         ) {

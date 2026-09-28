@@ -5,9 +5,8 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.TemperatureUnit
-import com.example.recipeclipper.data.model.Tip
+import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.UnitSystem
-import com.example.recipeclipper.data.model.WelcomeState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -93,29 +92,24 @@ class SharedPrefsAppPreferences @Inject constructor(
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }.conflate().distinctUntilChanged()
 
-    override var welcome: WelcomeState
-        get() = WelcomeState.fromStoredName(prefs.getString(KEY_WELCOME, null))
-        set(value) {
-            prefs.edit { putString(KEY_WELCOME, value.name) }
-        }
-
     override var sampleAdded: Boolean
         get() = prefs.getBoolean(KEY_SAMPLE_ADDED, false)
         set(value) {
             prefs.edit { putBoolean(KEY_SAMPLE_ADDED, value) }
         }
 
-    override fun setTipSeen(tip: Tip, seen: Boolean) {
-        prefs.edit { putBoolean(tip.key, seen) }
+    override fun setTooltipSeen(tooltip: Tooltip, seen: Boolean) {
+        prefs.edit { if (seen) putBoolean(tooltip.key, true) else remove(tooltip.key) }
     }
 
-    private fun currentSeenTips(): Set<Tip> = Tip.entries.filterTo(mutableSetOf()) { prefs.getBoolean(it.key, false) }
+    private fun currentSeenTooltips(): Set<Tooltip> =
+        Tooltip.entries.filterTo(mutableSetOf()) { prefs.getBoolean(it.key, false) }
 
     /** Over the same change listener as [settings]. */
-    override val seenTips: Flow<Set<Tip>> = callbackFlow {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> trySend(currentSeenTips()) }
+    override val seenTooltips: Flow<Set<Tooltip>> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> trySend(currentSeenTooltips()) }
         prefs.registerOnSharedPreferenceChangeListener(listener)
-        send(currentSeenTips())
+        send(currentSeenTooltips())
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }.conflate().distinctUntilChanged()
 
@@ -127,7 +121,6 @@ class SharedPrefsAppPreferences @Inject constructor(
 
     private companion object {
         const val KEY_USE_UP = "pantry_use_up"
-        const val KEY_WELCOME = "tour_welcome"
         const val KEY_SAMPLE_ADDED = "tour_sample_added"
         const val KEY_SYSTEM = "unit_system"
         const val KEY_LIQUIDS = "convert_liquids"

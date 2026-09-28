@@ -61,7 +61,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
-import androidx.core.content.FileProvider
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -73,6 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -80,7 +80,8 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlannedMeal
-import com.example.recipeclipper.data.model.Tip
+import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.MealTypeChoices
@@ -94,9 +95,10 @@ import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import com.example.recipeclipper.ui.tour.TooltipHost
+import com.example.recipeclipper.ui.tour.tooltipAnchor
 import java.io.File
 import java.io.IOException
-import com.example.recipeclipper.ui.tour.TipCallout
 
 /**
  * The Week tab (#49): ‹ week › with "This week", then the seven days from the locale's first
@@ -148,101 +150,104 @@ fun WeekScreen(
     }
 
     RecipeClipperTheme {
-        Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
-            containerColor = MaterialTheme.colorScheme.background,
-            contentWindowInsets = WindowInsets.safeDrawing
-        ) { padding ->
-            val typeNames = state.mealTypes.associate { it.id to it.name }
-            val listState = rememberLazyListState()
-            // After a tap in the month view: scroll to that day once its week has loaded. The
-            // header is item 0; each day is its heading, its meals, then its "+ Add".
-            val focusDay = state.focusDay
-            LaunchedEffect(focusDay, state.days) {
-                if (focusDay == null || state.days.none { it.day == focusDay }) return@LaunchedEffect
-                val index = 1 + state.days.takeWhile { it.day != focusDay }.sumOf { it.meals.size + 2 }
-                listState.scrollToItem(index)
-                viewModel.onFocusHandled()
-            }
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                modifier = Modifier.fillMaxSize().padding(padding).testTag("weekList")
-            ) {
-                item(key = "header") {
-                    val month = state.month
-                    Column(Modifier.fillMaxWidth()) {
-                        TitleRow(
-                            showingMonth = month != null,
-                            onToggleMonth = if (month == null) viewModel::onShowMonth else viewModel::onShowWeek,
-                            onOpenMealTypes = onOpenMealTypes,
-                            // The week's own actions act on the week shown, so the month view
-                            // leaves them out.
-                            onOpenWhatINeed = onOpenWhatINeed?.takeIf { month == null }?.let { open -> { open(state.weekStart) } },
-                            onAddToGroceries = groceriesViewModel?.takeIf { month == null }?.let { sheet ->
-                                {
-                                    sheet.loadWeek(state.weekStart)
-                                    groceriesSheetOpen = true
-                                }
-                            },
-                            onShareCalendar = viewModel::onShareCalendar.takeIf { month == null },
-                            canShareCalendar = state.hasMeals,
-                            onSaveMenu = viewModel::onSaveMenuStart.takeIf { month == null },
-                            onApplyMenu = viewModel::onPickMenuStart.takeIf { month == null }
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        if (month == null) {
-                            PeriodNavigation(
-                                label = remember(state.weekStart) { weekRange(state.weekStart) },
-                                labelTag = "weekRange",
-                                previousDescription = stringResource(R.string.cd_previous_week),
-                                nextDescription = stringResource(R.string.cd_next_week),
-                                backLabel = stringResource(R.string.action_this_week).takeUnless { state.isThisWeek },
-                                onPrevious = viewModel::onPreviousWeek,
-                                onNext = viewModel::onNextWeek,
-                                onBack = viewModel::onThisWeek
-                            )
-                            Hairline()
-                        } else {
-                            PeriodNavigation(
-                                label = remember(month.monthStart) { monthTitle(month.monthStart) },
-                                labelTag = "monthTitle",
-                                previousDescription = stringResource(R.string.cd_previous_month),
-                                nextDescription = stringResource(R.string.cd_next_month),
-                                backLabel = stringResource(R.string.action_this_month).takeUnless { month.isThisMonth },
-                                onPrevious = viewModel::onPreviousMonth,
-                                onNext = viewModel::onNextMonth,
-                                onBack = viewModel::onThisMonth
-                            )
-                            Hairline()
-                            MonthGrid(month = month, today = state.today, onSelect = viewModel::onMonthDaySelected)
-                        }
-                        // The first Week visit (#151).
-                        TipCallout(Tip.WEEK, Modifier.padding(top = 12.dp))
-                    }
+        TooltipHost(TooltipScreen.WEEK, blocked = snackbarHostState.currentSnackbarData != null) {
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
+                containerColor = MaterialTheme.colorScheme.background,
+                contentWindowInsets = WindowInsets.safeDrawing
+            ) { padding ->
+                val typeNames = state.mealTypes.associate { it.id to it.name }
+                val listState = rememberLazyListState()
+                // After a tap in the month view: scroll to that day once its week has loaded. The
+                // header is item 0; each day is its heading, its meals, then its "+ Add".
+                val focusDay = state.focusDay
+                LaunchedEffect(focusDay, state.days) {
+                    if (focusDay == null || state.days.none { it.day == focusDay }) return@LaunchedEffect
+                    val index = 1 + state.days.takeWhile { it.day != focusDay }.sumOf { it.meals.size + 2 }
+                    listState.scrollToItem(index)
+                    viewModel.onFocusHandled()
                 }
-                if (state.month != null) return@LazyColumn
-                state.days.forEach { weekDay ->
-                    item(key = "day-${weekDay.day}") {
-                        DayHeader(day = weekDay.day, isToday = weekDay.day == state.today)
-                    }
-                    items(weekDay.meals, key = { "meal-${it.id}" }) { meal ->
-                        MealRow(
-                            meal = meal,
-                            mealTypeName = typeNames[meal.mealTypeId].orEmpty(),
-                            onOpen = { meal.recipeId?.let { onOpenRecipe(it, meal.servings) } },
-                            onMove = { viewModel.onMoveStart(meal) },
-                            onRemove = { viewModel.onRemove(meal) }
-                        )
-                    }
-                    item(key = "add-${weekDay.day}") {
-                        TextButton(
-                            onClick = { viewModel.onAddToDay(weekDay.day) },
-                            modifier = Modifier.testTag("addToDay-${weekDay.day}")
-                        ) {
-                            Text(stringResource(R.string.action_add_meal))
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
+                    modifier = Modifier.fillMaxSize().padding(padding).testTag("weekList")
+                ) {
+                    item(key = "header") {
+                        val month = state.month
+                        Column(Modifier.fillMaxWidth()) {
+                            TitleRow(
+                                showingMonth = month != null,
+                                onToggleMonth = if (month == null) viewModel::onShowMonth else viewModel::onShowWeek,
+                                onOpenMealTypes = onOpenMealTypes,
+                                // The week's own actions act on the week shown, so the month view
+                                // leaves them out.
+                                onOpenWhatINeed = onOpenWhatINeed?.takeIf { month == null }?.let { open -> { open(state.weekStart) } },
+                                onAddToGroceries = groceriesViewModel?.takeIf { month == null }?.let { sheet ->
+                                    {
+                                        sheet.loadWeek(state.weekStart)
+                                        groceriesSheetOpen = true
+                                    }
+                                },
+                                onShareCalendar = viewModel::onShareCalendar.takeIf { month == null },
+                                canShareCalendar = state.hasMeals,
+                                onSaveMenu = viewModel::onSaveMenuStart.takeIf { month == null },
+                                onApplyMenu = viewModel::onPickMenuStart.takeIf { month == null }
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            if (month == null) {
+                                PeriodNavigation(
+                                    label = remember(state.weekStart) { weekRange(state.weekStart) },
+                                    labelTag = "weekRange",
+                                    previousDescription = stringResource(R.string.cd_previous_week),
+                                    nextDescription = stringResource(R.string.cd_next_week),
+                                    backLabel = stringResource(R.string.action_this_week).takeUnless { state.isThisWeek },
+                                    onPrevious = viewModel::onPreviousWeek,
+                                    onNext = viewModel::onNextWeek,
+                                    onBack = viewModel::onThisWeek
+                                )
+                                Hairline()
+                            } else {
+                                PeriodNavigation(
+                                    label = remember(month.monthStart) { monthTitle(month.monthStart) },
+                                    labelTag = "monthTitle",
+                                    previousDescription = stringResource(R.string.cd_previous_month),
+                                    nextDescription = stringResource(R.string.cd_next_month),
+                                    backLabel = stringResource(R.string.action_this_month).takeUnless { month.isThisMonth },
+                                    onPrevious = viewModel::onPreviousMonth,
+                                    onNext = viewModel::onNextMonth,
+                                    onBack = viewModel::onThisMonth
+                                )
+                                Hairline()
+                                MonthGrid(month = month, today = state.today, onSelect = viewModel::onMonthDaySelected)
+                            }
                         }
-                        Hairline()
+                    }
+                    if (state.month != null) return@LazyColumn
+                    state.days.forEach { weekDay ->
+                        item(key = "day-${weekDay.day}") {
+                            DayHeader(day = weekDay.day, isToday = weekDay.day == state.today)
+                        }
+                        items(weekDay.meals, key = { "meal-${it.id}" }) { meal ->
+                            MealRow(
+                                meal = meal,
+                                mealTypeName = typeNames[meal.mealTypeId].orEmpty(),
+                                onOpen = { meal.recipeId?.let { onOpenRecipe(it, meal.servings) } },
+                                onMove = { viewModel.onMoveStart(meal) },
+                                onRemove = { viewModel.onRemove(meal) }
+                            )
+                        }
+                        item(key = "add-${weekDay.day}") {
+                            TextButton(
+                                onClick = { viewModel.onAddToDay(weekDay.day) },
+                                modifier = Modifier.testTag("addToDay-${weekDay.day}").then(
+                                    // The tooltip (#190) points at the first day's.
+                                    if (weekDay == state.days.first()) Modifier.tooltipAnchor(Tooltip.WEEK_ADD) else Modifier
+                                )
+                            ) {
+                                Text(stringResource(R.string.action_add_meal))
+                            }
+                            Hairline()
+                        }
                     }
                 }
             }
@@ -296,7 +301,7 @@ private fun TitleRow(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.weight(1f)
         )
-        TextButton(onClick = onToggleMonth, modifier = Modifier.testTag("toggleMonth")) {
+        TextButton(onClick = onToggleMonth, modifier = Modifier.testTag("toggleMonth").tooltipAnchor(Tooltip.WEEK_MONTH)) {
             Text(stringResource(if (showingMonth) R.string.action_week_view else R.string.action_month_view))
         }
         WeekMenu(onOpenMealTypes, onOpenWhatINeed, onAddToGroceries, onShareCalendar, canShareCalendar, onSaveMenu, onApplyMenu)
@@ -401,7 +406,7 @@ private fun WeekMenu(
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }) {
+        IconButton(onClick = { expanded = true }, modifier = Modifier.tooltipAnchor(Tooltip.WEEK_MENU)) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
