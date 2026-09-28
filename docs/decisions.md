@@ -3380,9 +3380,9 @@ never save what it reads without the cook checking it, and fall back to typing i
   gallery's `gallery_data` order, each `media_metadata` source, not the preview; else the one
   photo; a crosspost's borrowed from the original).
 - **On the device, behind a seam** (`PhotoTextReader`; fakes in tests, a canned one in iOS UI
-  tests via `RC_UITEST_PHOTO_LINES`). Android: ML Kit Text Recognition's **bundled** Latin
-  model (`com.google.mlkit:text-recognition`), so it works offline with no Play services
-  download; the picture comes through Coil (its cache when already shown), capped at 4096 px a
+  tests via `RC_UITEST_PHOTO_LINES`). Android: ML Kit Text Recognition's Latin model
+  **through Google Play services** (`play-services-mlkit-text-recognition`, see Size below);
+  the picture comes through Coil (its cache when already shown), capped at 4096 px a
   side, and lines keep ML Kit's per-line confidence. iOS: Vision's `VNRecognizeTextRequest`,
   accurate, language correction on, hinted with the phone's language then English (the
   recipe's own isn't known until it is read), through `ImageLoader`. A picture that fails is
@@ -3398,17 +3398,28 @@ never save what it reads without the cook checking it, and fall back to typing i
   The editor keeps text boxes, so an unsure line is listed rather than marked inside the box.
 - **Fallback:** no text, or text the splitter can't sort, opens the same editor with every line
   read in the ingredients box and "Couldn't read a recipe from the photo: finish it by hand."
-  A picture that won't load says so, with Try again. Save needs a recipe (#29's rule); **nothing
+  A picture that won't load says so, with Try again. **Reader not ready** (Android only:
+  Play services hasn't got the model yet, because it is still downloading, the first use is
+  offline, or the phone has no Play services): the read is `PhotoTextResult.NotReady` before
+  any picture is fetched, and the editor says "The photo reader isn't ready on this phone
+  yet…", with Try again and the fields below to finish by hand. The reader checks
+  `ModuleInstallClient.areModulesAvailable` first and, when the model is missing, asks for it
+  (`installModules`, not awaited) so a later Try again works; an `MlKitException.UNAVAILABLE`
+  from the read itself means the same. Save needs a recipe (#29's rule); **nothing
   is ever saved automatically**, and leaving the editor ends the read.
 - **Saved as a clip** (`saveClip`: `CLIPPED`, the post's link, `REDDIT`), like #37: the user's
   version, so a re-share opens it without fetching; "Clipped by you · reddit.com" under the
   title; "Update from source" warns first (and on a post with still no transcription, fails and
   keeps the clip). The saved recipe replaces the editor and the error screen.
-- **Size:** the bundled model is a native library per ABI (about 11 MB each for arm64, x86 and
-  x86_64, 7 MB for armv7) plus 1.5 MB of models: the universal debug APK grew from 20.1 MB to
-  65.4 MB. A phone installing from an app bundle gets its own ABI only (about 12.5 MB more on
-  arm64). The unbundled Play services model would add little but needs a download before
-  first use and doesn't work offline until then; the owner chose bundled.
+- **Size, and why Play services (owner, 2026-09-28):** the bundled model
+  (`com.google.mlkit:text-recognition`) was built first: it works offline from install, but is
+  a native library per ABI (about 11 MB each for arm64, x86 and x86_64, 7 MB for armv7) plus
+  1.5 MB of models, so the universal debug APK grew from 20.1 MB to 65.4 MB (about 12.5 MB per
+  phone from an app bundle). The owner chose the Play services model instead: the debug APK is
+  back to 20.3 MB (20,332,832 bytes, main's plus the feature's code). The cost is that the
+  model is downloaded once by Play services: the manifest's `com.google.mlkit.vision.DEPENDENCIES`
+  = `ocr` asks for it at install from the Play Store, so usually it is there before first use;
+  when it isn't, the not-ready fallback above applies. iOS is unchanged (Vision is in the OS).
 
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 

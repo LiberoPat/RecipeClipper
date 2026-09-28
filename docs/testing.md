@@ -150,8 +150,8 @@ Reddit post never goes to the rendered page.
 the "check this" marking and the unsorted fallback with the same cases;
 `RedditRecipeParserTest(s)` a gallery's pictures in order (`old-recipes-card-untranscribed`);
 `EditRecipePhotoViewModelTest` / `EditRecipePhotoTests` the editor over `FakePhotoTextReader`
-(read, not sorted, no text, a failed picture and Try again, leaving mid-read, save, a full
-library, a failed save); `EditRecipePhotoScreenTest` and `RecipeErrorScreenTest` (Robolectric)
+(read, not sorted, no text, a failed picture and Try again, the reader not ready yet (Android),
+leaving mid-read, save, a full library, a failed save); `EditRecipePhotoScreenTest` and `RecipeErrorScreenTest` (Robolectric)
 the review and the button behind its flag; iOS's `PhotoTextUITests` the whole path over the
 fixture listing and canned lines (`RC_UITEST_PHOTO_LINES`, UITestSeeding's stub reader).
 ML Kit and Vision themselves, on real photos of real cards, need a device.
