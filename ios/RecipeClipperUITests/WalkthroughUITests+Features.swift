@@ -40,31 +40,43 @@ extension WalkthroughUITests {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "\(name), ")).firstMatch
     }
 
+    /// Scrolls the Pantry (a lazy List: rows off screen aren't in the tree) until `element` can
+    /// be tapped, down first, then back up.
+    @discardableResult
+    private func reveal(_ element: XCUIElement, _ what: String) -> XCUIElement {
+        for _ in 0..<3 where !(element.exists && element.isHittable) { app.swipeUp(); pause(0.6) }
+        for _ in 0..<4 where !(element.exists && element.isHittable) { app.swipeDown(); pause(0.6) }
+        return require(element, what)
+    }
+
     /// In stock, Running low, Run out (#194): the row's button, its long-press menu, and a swipe
-    /// each way.
+    /// each way. Run out items sit in their own section at the foot of the Pantry.
     func test25_pantryStates() {
         start(flags: ["mealPlan"], scenario: .walkthroughPantry)
         tab("Pantry")
         pause()
         require(app.buttons["Ran out: soy sauce"], "soy sauce's Ran out").tap()
-        require(app.buttons["Restock: soy sauce"], "soy sauce, run out")
+        pause()
+        reveal(app.buttons["Restock: soy sauce"], "soy sauce, run out")
         pause(2.5)
-        require(pantryRow("olive oil"), "olive oil").press(forDuration: 1.2)
+        reveal(pantryRow("olive oil"), "olive oil").press(forDuration: 1.2)
         pause()
         require(app.buttons["Running low"], "the menu's Running low").tap()
         require(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'low-'")).firstMatch, "the Low tag")
         pause(2.5)
-        require(app.buttons["Restock: soy sauce"], "soy sauce's Restock").tap()
-        require(app.buttons["Ran out: soy sauce"], "soy sauce, back in stock")
+        reveal(app.buttons["Restock: soy sauce"], "soy sauce's Restock").tap()
+        pause()
+        reveal(app.buttons["Ran out: soy sauce"], "soy sauce, back in stock")
         pause(2)
-        require(pantryRow("basmati rice"), "basmati rice").swipeLeft()
+        reveal(pantryRow("basmati rice"), "basmati rice").swipeLeft()
         pause(1.5)
         require(app.buttons["Running low"], "the swipe's Running low").tap()
         pause(2)
-        require(pantryRow("garlic"), "garlic").swipeRight()
+        reveal(pantryRow("garlic"), "garlic").swipeRight()
         pause(1.5)
         require(app.buttons["Restock"], "the swipe's Restock").tap()
-        require(app.buttons["Ran out: garlic"], "garlic, back in stock")
+        pause()
+        reveal(app.buttons["Ran out: garlic"], "garlic, back in stock")
         pause(2.5)
     }
 
