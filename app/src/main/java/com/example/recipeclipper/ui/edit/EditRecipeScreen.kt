@@ -177,8 +177,12 @@ private fun PhotoReview(post: PhotoPost, state: EditRecipeUiState, onReadAgain: 
         }
         PhotoOutcome.READ -> Note(stringResource(R.string.photo_read))
         PhotoOutcome.NOT_SORTED -> Note(stringResource(R.string.photo_not_sorted))
-        PhotoOutcome.FAILED -> {
-            Message(stringResource(R.string.photo_failed))
+        PhotoOutcome.FAILED, PhotoOutcome.NOT_READY -> {
+            Message(
+                stringResource(
+                    if (state.photoOutcome == PhotoOutcome.FAILED) R.string.photo_failed else R.string.photo_not_ready
+                )
+            )
             OutlinedButton(onClick = onReadAgain, shape = RoundedCornerShape(12.dp)) {
                 Text(stringResource(R.string.action_try_again))
             }

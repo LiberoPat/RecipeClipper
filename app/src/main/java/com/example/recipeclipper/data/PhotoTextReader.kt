@@ -15,11 +15,15 @@ sealed class PhotoTextResult {
 
     /** No picture could be fetched or read (offline, a refused or broken image). */
     data object Failed : PhotoTextResult()
+
+    /** The reader itself isn't on the phone yet: Android's model comes through Play services,
+     *  which may still be downloading it, be offline on first use, or be missing altogether. */
+    data object NotReady : PhotoTextResult()
 }
 
 /**
  * Reads the text in a post's photos on the device (#198): each picture is fetched at full size
- * only now, then recognised (ML Kit's bundled Latin model on Android, Vision on iOS). A seam,
+ * only now, then recognised (ML Kit's Latin model from Play services on Android, Vision on iOS). A seam,
  * so the ViewModel is tested with a fake and never sees Android.
  */
 interface PhotoTextReader {

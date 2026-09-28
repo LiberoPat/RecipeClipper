@@ -226,6 +226,7 @@
     <string name="photo_read">Lido da foto. Compare cada linha com ela, principalmente as quantidades, antes de salvar.</string>
     <string name="photo_not_sorted">Não foi possível ler uma receita na foto: termine à mão.</string>
     <string name="photo_failed">Não foi possível carregar a foto. Verifique a conexão e tente de novo.</string>
+    <string name="photo_not_ready">O leitor de fotos ainda não está pronto neste celular: o Google Play Services faz o download uma vez, pela internet. Tente de novo em alguns minutos ou termine a receita à mão abaixo.</string>
     <string name="photo_check_heading">Confira estas linhas: ali a foto estava difícil de ler</string>
     <string name="photo_image_description">Foto de %1$s</string>
 

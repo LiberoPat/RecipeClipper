@@ -32,7 +32,9 @@ enum class PhotoOutcome {
     /** No text, or none the splitter could sort: finish it by hand. */
     NOT_SORTED,
     /** No picture could be fetched or read: try again. */
-    FAILED
+    FAILED,
+    /** The phone's photo reader isn't there yet (Play services' model): try again or type it. */
+    NOT_READY
 }
 
 /**
@@ -112,7 +114,7 @@ class EditRecipeViewModel @Inject constructor(
         }
     }
 
-    /** "Try again" after the photos couldn't be fetched or read. */
+    /** "Try again" after the photos couldn't be fetched or read, or the reader wasn't ready. */
     fun onReadAgain() {
         val post = photo ?: return
         if (_uiState.value.reading) return
@@ -132,6 +134,7 @@ class EditRecipeViewModel @Inject constructor(
             _uiState.update { state ->
                 when (result) {
                     PhotoTextResult.Failed -> state.copy(reading = false, photoOutcome = PhotoOutcome.FAILED)
+                    PhotoTextResult.NotReady -> state.copy(reading = false, photoOutcome = PhotoOutcome.NOT_READY)
                     is PhotoTextResult.Read -> {
                         val reading = PhotoTextSorter.sort(result.lines)
                         state.copy(

@@ -327,6 +327,7 @@
     <string name="photo_read">Read from the photo. Check every line against it, above all the amounts, before saving.</string>
     <string name="photo_not_sorted">Couldn\'t read a recipe from the photo: finish it by hand.</string>
     <string name="photo_failed">Couldn\'t load the photo. Check your connection and try again.</string>
+    <string name="photo_not_ready">The photo reader isn\'t ready on this phone yet: Google Play services downloads it once, over the internet. Try again in a few minutes, or finish the recipe by hand below.</string>
     <string name="photo_check_heading">Check these lines: the photo was hard to read there</string>
     <string name="photo_image_description">Photo of %1$s</string>
 

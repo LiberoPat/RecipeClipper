@@ -140,6 +140,23 @@ class EditRecipePhotoViewModelTest {
             assertEquals(PhotoOutcome.READ, vm.uiState.value.photoOutcome)
         }
 
+    @Test fun `a reader that isn't ready yet says so, keeps the editor, and Try again reads again`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val reader = FakePhotoTextReader(PhotoTextResult.NotReady)
+            val vm = viewModel(reader)
+            advanceUntilIdle()
+            assertEquals(PhotoOutcome.NOT_READY, vm.uiState.value.photoOutcome)
+            assertEquals(false, vm.uiState.value.reading)
+            assertEquals("Aunt June's oatmeal cookies", vm.uiState.value.draft.name)
+
+            reader.result = PhotoTextResult.Read(card)
+            vm.onReadAgain()
+            advanceUntilIdle()
+
+            assertEquals(2, reader.calls.size)
+            assertEquals(PhotoOutcome.READ, vm.uiState.value.photoOutcome)
+        }
+
     @Test fun `while reading, Save waits, and leaving cancels the read with nothing saved`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = FakeRecipeRepository()

@@ -216,6 +216,7 @@
     <string name="photo_read">Aus dem Foto gelesen. Prüfe jede Zeile daran, vor allem die Mengen, bevor du speicherst.</string>
     <string name="photo_not_sorted">Aus dem Foto ließ sich kein Rezept lesen: Vervollständige es von Hand.</string>
     <string name="photo_failed">Das Foto konnte nicht geladen werden. Prüfe die Verbindung und versuche es erneut.</string>
+    <string name="photo_not_ready">Der Fotoleser ist auf diesem Telefon noch nicht bereit: Die Google Play-Dienste laden ihn einmal über das Internet herunter. Versuche es in ein paar Minuten erneut oder vervollständige das Rezept unten von Hand.</string>
     <string name="photo_check_heading">Prüfe diese Zeilen: Dort war das Foto schwer zu lesen</string>
     <string name="photo_image_description">Foto von %1$s</string>
 

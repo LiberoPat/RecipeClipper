@@ -76,6 +76,12 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Asks Play services to download the text recognition model (#198) when the app is
+             installed, so "Read the photo" usually works on first use, offline included. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr" />
+
         <receiver
             android:name=".timers.TimerAlarmReceiver"
             android:exported="false" />

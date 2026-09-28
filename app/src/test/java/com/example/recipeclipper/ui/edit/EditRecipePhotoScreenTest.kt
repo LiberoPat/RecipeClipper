@@ -81,4 +81,13 @@ class EditRecipePhotoScreenTest {
         compose.onNodeWithText("Couldn't load the photo", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Try again").assertIsDisplayed()
     }
+
+    @Test
+    fun aReaderThatIsntReadyOffersTryAgainAndTheEditor() {
+        show(PhotoTextResult.NotReady)
+
+        compose.onNodeWithText("The photo reader isn't ready", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Try again").assertIsDisplayed()
+        compose.onNodeWithText("Aunt June's oatmeal cookies").performScrollTo().assertIsDisplayed()
+    }
 }
