@@ -494,9 +494,11 @@ protocol PantryRepository: AnyObject {
     @discardableResult
     func add(_ item: NewPantryItem) async -> Int64?
 
-    func setInStock(_ ids: [Int64], inStock: Bool) async
+    /// Sets the stock state (#194) without touching the bought day. Use `restock` for back in
+    /// stock after buying.
+    func setStock(_ ids: [Int64], stock: PantryStock) async
 
-    /// Back in stock, bought on `day` (an epoch day).
+    /// Back in stock (and no longer running low), bought on `day` (an epoch day).
     func restock(_ ids: [Int64], day: Int64) async
 
     /// A blank name is ignored; a blank quantity is none.

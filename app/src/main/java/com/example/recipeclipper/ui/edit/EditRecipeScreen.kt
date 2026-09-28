@@ -53,11 +53,11 @@ fun EditRecipeScreen(
     LaunchedEffect(state.savedId) {
         state.savedId?.let(onSaved)
     }
-    if (state.libraryFull) {
-        LibraryFullDialog(onUnlock = viewModel::onUnlock, onDismiss = viewModel::onLibraryFullDismiss)
-    }
 
     RecipeClipperTheme {
+        if (state.libraryFull) {
+            LibraryFullDialog(onUnlock = viewModel::onUnlock, onDismiss = viewModel::onLibraryFullDismiss)
+        }
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(
                 Modifier

@@ -27,7 +27,7 @@ final class ShareViewController: UIViewController {
         super.init(coder: coder)
     }
 
-    /// The card's ViewModel, and its repository, which the first-run tour's note (#151) reads too.
+    /// The card's ViewModel, and its repository, which the first-run tour's sample (#151) uses too.
     private static func makeViewModel() -> (ShareImportViewModel, RecipeRepository?) {
         let db = openDatabase()
         let repository = db.map(makeRepository)
@@ -114,10 +114,12 @@ final class ShareViewController: UIViewController {
         let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
             .flatMap { $0.attachments ?? [] }
         Task { @MainActor [viewModel, repository] in
-            // A new user's first share, before the app was ever opened: the welcome (#151)
-            // waits for the app's first opening instead of being skipped for this recipe.
+            // A new user's first share, before the app was ever opened: the sample recipe (#151,
+            // #190) goes in first, as the app's first launch would have added it.
             if let repository, let defaults = UserDefaults(suiteName: AppGroup.identifier) {
-                await FirstRunTour.noteShare(defaults: defaults, recipes: repository)
+                await FirstRunTour.beforeShare(
+                    defaults: defaults, recipes: repository, language: Bundle.main.preferredLocalizations.first
+                )
             }
             let input = await SharedItems.read(from: providers)
             // No link: perhaps a list sent from another phone (#149).

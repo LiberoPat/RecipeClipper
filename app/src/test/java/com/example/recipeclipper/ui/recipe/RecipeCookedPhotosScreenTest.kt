@@ -1,6 +1,8 @@
 package com.example.recipeclipper.ui.recipe
 
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performSemanticsAction
@@ -18,6 +20,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.fake.FakeCookedPhotoRepository
+import com.example.recipeclipper.ui.assertInAppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -117,6 +120,25 @@ class RecipeCookedPhotosScreenTest {
         compose.onNodeWithText("Undo").performClick()
         compose.waitUntil(5_000) { photos.photos.value.size == 1 }
         assertEquals(emptyList<String>(), photos.forgotten)
+    }
+
+    /**
+     * #186: the full-screen photo was composed outside the recipe screen's theme, so it and its
+     * date picker came up Material purple.
+     */
+    @Test
+    fun theFullScreenPhotoAndItsDatePickerAreInTheAppsTheme() {
+        photos.photo(RecipeScreenFixture.RECIPE_ID)
+        RecipeScreenFixture(photos = photos).show(compose)
+        scrollTo("Your cooks")
+        compose.onAllNodesWithContentDescription("Your photo", substring = true).onFirst().tap()
+
+        val changeDate = SemanticsMatcher("clicks to change the date") {
+            it.config.getOrNull(SemanticsActions.OnClick)?.label?.startsWith("Change the date") == true
+        }
+        compose.onNode(changeDate).performClick()
+
+        compose.onNodeWithText("Cancel", useUnmergedTree = true).assertInAppTheme()
     }
 
     /** A phone restored from Android's backup has the entry but not its file. */

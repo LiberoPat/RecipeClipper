@@ -103,6 +103,23 @@ class BackupJsonTest {
         assertNull(backup.mealPlan[4].recipeId) // names no recipe in the file: none
     }
 
+    // #194: running low travels with the item; a file from before it (the fixture has none) reads
+    // each item as in stock or run out, and running low never survives an item that is out.
+    @Test fun `running low round-trips, and an older file's items are in stock or run out`() {
+        val old = decodeOrFail(fixture("backup-v1.json"))
+        assertEquals(listOf(false, false, false, false), old.pantry.map { it.runningLow })
+
+        val low = BackupPantryItem("p-low", "garlic", null, "en", "produce", inStock = true, alwaysHave = false,
+            purchasedDay = null, expiresDay = null, updatedAt = 1, runningLow = true)
+        val file = Backup(exportedAt = 1, recipes = emptyList(), lists = emptyList(), memberships = emptyList(), pantry = listOf(low))
+        assertEquals(listOf(low), decodeOrFail(BackupJson.encode(file)).pantry)
+
+        val outAndLow = decodeOrFail(
+            """{"format": "recipe-clipper-backup", "formatVersion": 1, "pantry": [{"id": "p", "name": "rice", "inStock": false, "runningLow": true}]}"""
+        )
+        assertEquals(false, outAndLow.pantry.single().runningLow)
+    }
+
     @Test fun `a file without pantry or groceries reads them as empty`() {
         val backup = decodeOrFail("""{"format": "recipe-clipper-backup", "formatVersion": 1}""")
         assertTrue(backup.pantry.isEmpty())

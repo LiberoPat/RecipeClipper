@@ -61,6 +61,7 @@ struct HomeScreen: View {
                         keyboard: .URL,
                         onSubmit: go
                     )
+                    .tooltipAnchor(.homeLink)
                     Button(Strings.go, action: go)
                         .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: dynamicTypeSize.isAccessibilitySize))
                 }
@@ -69,6 +70,7 @@ struct HomeScreen: View {
                 // Typing a recipe in by hand (#29): a small way in, not a section.
                 Button(Strings.newRecipe, action: onNewRecipe)
                     .buttonStyle(TextActionStyle())
+                    .tooltipAnchor(.homeNewRecipe)
                     .padding(.top, 8)
                     .accessibilityIdentifier("home.newRecipe")
 
@@ -126,6 +128,8 @@ struct HomeScreen: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
+        // The tooltips (#190); none while the file picker is up.
+        .tooltipHost(.home, blocked: restoring)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { now = currentMillis() }
         // The same picker as Settings' Import.

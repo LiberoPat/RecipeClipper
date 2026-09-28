@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,8 +45,9 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.StepTimers
-import com.example.recipeclipper.data.model.Tip
-import com.example.recipeclipper.ui.tour.TipCallout
+import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.ui.tour.TooltipSide
+import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 private enum class StepStatus { DONE, CURRENT, UPCOMING }
 
@@ -78,8 +79,6 @@ internal fun CookView(
             onExit = actions.onCookExit
         )
         IngredientsBar(content, state, actions)
-        // The first cook mode (#151). Outside the steps' list, so a step's index stays its row's.
-        TipCallout(Tip.COOK_MODE, Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp))
 
         LazyColumn(
             state = listState,
@@ -105,6 +104,8 @@ internal fun CookView(
                     timerWords = content.words ?: LanguageWords.ENGLISH,
                     timer = cook.timers[index],
                     isLast = index == steps.lastIndex,
+                    // "Tapping another step makes it current" (#190) points at the next one.
+                    isNext = index == cook.currentStep + 1,
                     actions = actions,
                     shortToggle = when {
                         !content.hasShortStep(index) -> null
@@ -159,6 +160,7 @@ private fun IngredientsBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
+                .tooltipAnchor(Tooltip.COOK_INGREDIENTS, TooltipSide.ABOVE)
                 .clickable(
                     role = Role.Button,
                     onClickLabel = stringResource(
@@ -211,6 +213,7 @@ private fun CookStep(
     timerWords: LanguageWords,
     timer: StepTimer?,
     isLast: Boolean,
+    isNext: Boolean,
     actions: RecipeActions,
     // Chef mode (#100): the current step's "As written" / "Short version" switch; null: none.
     // A tap on a step already makes it current, so the switch is a small button on the card.
@@ -249,10 +252,11 @@ private fun CookStep(
                 CurrentTimer(index, timerSeconds, timerWords, timer, actions)
             }
             Spacer(Modifier.height(20.dp))
+            // Its tooltip goes below the card, never over the step's text.
             Button(
                 onClick = actions.onStepDone,
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().height(52.dp)
+                modifier = Modifier.fillMaxWidth().height(52.dp).tooltipAnchor(Tooltip.COOK_DONE_NEXT, TooltipSide.BELOW)
             ) {
                 Text(
                     stringResource(if (isLast) R.string.cook_done_finish else R.string.cook_done_next),
@@ -267,6 +271,7 @@ private fun CookStep(
     Column(
         Modifier
             .fillMaxWidth()
+            .then(if (isNext) Modifier.tooltipAnchor(Tooltip.COOK_TAP_STEP, TooltipSide.BELOW) else Modifier)
             .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cd_go_to_step, index + 1)) {
                 actions.onStepSelected(index)
             }
@@ -317,7 +322,9 @@ private fun CurrentTimer(
         OutlinedButton(
             onClick = { actions.onTimerStart(step) },
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, colors.outline)
+            border = BorderStroke(1.dp, colors.outline),
+            // Below it is the Done button, not the step's text.
+            modifier = Modifier.tooltipAnchor(Tooltip.COOK_TIMER, TooltipSide.BELOW)
         ) {
             Text(
                 stringResource(R.string.timer_start, StepTimers.label(timerSeconds, timerWords)),
@@ -327,7 +334,7 @@ private fun CurrentTimer(
         return
     }
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.tooltipAnchor(Tooltip.COOK_TIMER, TooltipSide.BELOW)) {
         Column(Modifier.weight(1f)) {
             Text(
                 StepTimers.clock(timer.remainingSeconds),

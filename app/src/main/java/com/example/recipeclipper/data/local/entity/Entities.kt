@@ -102,7 +102,8 @@ data class GroceryItemEntity(
  * One pantry item (#51). [name] as typed, read with [language]'s words; [quantity] free text
  * as written; [aisle] an `Aisle` key, chosen when added. [purchasedDay] and [expiresDay] are
  * epoch days. [alwaysHave] marks a staple. No foreign keys: an item belongs to no recipe.
- * [uid] and [updatedAt] are for export and a later sync (#53).
+ * [uid] and [updatedAt] are for export and a later sync (#53). [runningLow] (#194, Room 16) is
+ * meaningful only while [inStock]: every write that takes an item out clears it.
  */
 @Entity(tableName = "pantry_items", indices = [Index(value = ["uid"], unique = true)])
 data class PantryItemEntity(
@@ -116,7 +117,8 @@ data class PantryItemEntity(
     val purchasedDay: Long?,
     val expiresDay: Long?,
     val updatedAt: Long,
-    val uid: String = newUid()
+    val uid: String = newUid(),
+    @ColumnInfo(defaultValue = "0") val runningLow: Boolean = false
 )
 
 /**

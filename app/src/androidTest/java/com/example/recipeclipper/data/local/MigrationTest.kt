@@ -677,12 +677,50 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Running low (#194): a new `pantry_items` column. Every item keeps its stock (in stays in,
+     * out stays out), none is running low, and an item can then be marked running low.
+     */
+    @Test
+    fun migration15To16KeepsEveryItemsStockAndAddsRunningLow() {
+        helper.createDatabase(name, 15).use { db ->
+            db.execSQL(
+                "INSERT INTO pantry_items (id, name, quantity, language, aisle, inStock, alwaysHave, purchasedDay, " +
+                    "expiresDay, updatedAt, uid) VALUES " +
+                    "(1, 'garlic', '1 head', 'en', 'produce', 1, 0, 20000, 20010, 5, 'garlic-uid'), " +
+                    "(2, 'rice', NULL, 'en', 'grains', 0, 0, NULL, NULL, 6, 'rice-uid')"
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 16, true, RecipeDatabase.MIGRATION_15_16)
+
+        val db = openMigrated()
+        runBlocking {
+            val items = db.pantryDao().items()
+            assertEquals(
+                listOf(
+                    com.example.recipeclipper.data.local.entity.PantryItemEntity(
+                        1, "garlic", "1 head", "en", "produce", inStock = true, alwaysHave = false,
+                        purchasedDay = 20_000, expiresDay = 20_010, updatedAt = 5, uid = "garlic-uid", runningLow = false
+                    ),
+                    com.example.recipeclipper.data.local.entity.PantryItemEntity(
+                        2, "rice", null, "en", "grains", inStock = false, alwaysHave = false,
+                        purchasedDay = null, expiresDay = null, updatedAt = 6, uid = "rice-uid", runningLow = false
+                    )
+                ),
+                items
+            )
+            db.pantryDao().setStock(listOf(1), inStock = true, runningLow = true, now = 7)
+            assertTrue(db.pantryDao().item(1)!!.runningLow)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 15, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 16, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

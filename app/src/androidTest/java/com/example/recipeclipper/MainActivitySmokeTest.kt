@@ -39,20 +39,21 @@ class MainActivitySmokeTest {
         scenario?.close()
     }
 
-    // A new user whose welcome is still to come (#151), whatever an earlier test or run left
-    // in the settings or the library.
+    // Settings as a fresh install has them (#190: every tooltip still to see), whatever an
+    // earlier test or run left.
     @Before
-    fun welcomePending() {
-        context.getSharedPreferences("unit_preferences", Context.MODE_PRIVATE).edit()
-            .clear().putString("tour_welcome", "PENDING").commit()
+    fun freshSettings() {
+        context.getSharedPreferences("unit_preferences", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
-    /** A new user's plain launch opens the welcome (#151); Skip leaves it for Home. */
+    /** The launcher opens Home, where the link field's tooltip shows, in its own window, until Got it (#190). */
     @Test
-    fun theLauncherOpensTheWelcomeThenHome() {
+    fun theLauncherOpensHomeWithItsFirstTooltip() {
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        compose.waitUntilAtLeastOneExists(hasText(context.getString(R.string.welcome_app_title)), 10_000)
-        compose.onNodeWithText(context.getString(R.string.welcome_skip)).performClick()
+        compose.waitUntilAtLeastOneExists(hasText(context.getString(R.string.home_subtitle)), 10_000)
+        compose.waitUntilAtLeastOneExists(hasText(context.getString(R.string.tooltip_home_link)), 10_000)
+        compose.onNodeWithText(context.getString(R.string.tooltip_got_it)).performClick()
+        compose.waitUntilDoesNotExist(hasText(context.getString(R.string.tooltip_home_link)), 5_000)
         compose.onNodeWithText(context.getString(R.string.home_subtitle)).assertIsDisplayed()
     }
 
@@ -60,7 +61,6 @@ class MainActivitySmokeTest {
      * A shared link opens the import screen, which fetches it for real. The host is under the
      * reserved `.invalid` TLD, so the lookup fails without touching any site, and the fetch
      * failure lands on the error screen with Try again (after the repository's one retry).
-     * A first launch from a share is not a plain one, so no welcome covers it (#151).
      */
     @Test
     fun aSharedLinkOpensTheImportScreen() {

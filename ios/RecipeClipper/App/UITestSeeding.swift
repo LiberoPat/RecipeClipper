@@ -10,14 +10,15 @@ import UIKit
 ///   - a throwaway UserDefaults suite, wiped at launch unless `-uiTestKeepPrefs` is also passed
 ///     (which is how a test proves a setting survives a relaunch);
 ///   - feature flags (#87) in their own throwaway suite, wiped likewise and set off whatever the
-///     build's defaults, then turned on through the store for each key in `-uiTestFlags key1,key2`
-///     (`UITestSupport.launch(flags:)`);
+///     build's defaults (unless `-uiTestDefaultFlags`), then turned on through the store for each
+///     key in `-uiTestFlags key1,key2` (`UITestSupport.launch(flags:)`);
 ///   - `-uiTestPasteboard <text>` puts `text` on the pasteboard as the app's own copy, so "Paste
 ///     a list" (#149) reads it without the paste prompt, which a UI test can't rely on. A launch
 ///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline;
 ///   - `-uiTestReceiveFile` opens a canned shared file (#149) at launch (`receivedFileURL`);
 ///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on;
-///   - the first-run tour (#151) done, unless `-uiTestTour` asks for a fresh install's;
+///   - the first-run tour (#151, #190) done (the sample decided, every tooltip seen), unless
+///     `-uiTestTooltips` asks for a fresh install's;
 ///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`;
 ///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder.
 ///
@@ -71,12 +72,17 @@ enum UITestSeeding {
         return url
     }
 
-    /// The first-run tour (#151) as a fresh install has it. Without it the tour is done, so no
-    /// welcome or tip gets in the way of the other suites.
-    static let tourFlag = "-uiTestTour"
+    /// The first-run tour (#151, #190) as a fresh install has it: every tooltip still to see, and
+    /// the sample added at launch to an empty library. Without it the tour is done, so no tooltip
+    /// gets in the way of the other suites.
+    static let tooltipsFlag = "-uiTestTooltips"
 
     /// Chef mode's model as a phone that can't run it answers (#144), for the walkthrough video.
     static let chefUnsupportedFlag = "-uiTestChefUnsupported"
+
+    /// The build's flag defaults (#152) in place of every flag off, so a walkthrough video shows
+    /// the app as a fresh install has it, as Android's does; `-uiTestFlags` still turns more on.
+    static let defaultFlagsFlag = "-uiTestDefaultFlags"
 
     /// The automatic backup copy (#150) with a throwaway local folder standing in for iCloud
     /// Drive, which a simulator doesn't have, for the walkthrough video. Without it the UI-test
@@ -111,17 +117,19 @@ enum UITestSeeding {
             defaults.removePersistentDomain(forName: defaultsSuite)
         }
         let preferences = UserDefaultsAppPreferences(defaults: defaults)
-        if !arguments.contains(tourFlag) {
-            preferences.welcome = .seen
+        if !arguments.contains(tooltipsFlag) {
             preferences.sampleAdded = true
-            for tip in Tip.allCases { preferences.setTipSeen(tip, true) }
+            for tooltip in Tooltip.allCases { preferences.setTooltipSeen(tooltip, true) }
         }
         let flagStore = UserDefaultsFeatureFlagStore(suiteName: flagsSuite)
         let flags = FeatureFlags(store: flagStore)
         if !arguments.contains(keepPrefsFlag) {
-            // Every flag off first, whatever the build's defaults: a test turns on only what it names.
+            // Every flag off first, whatever the build's defaults: a test turns on only what it
+            // names (with `-uiTestDefaultFlags`, on top of the defaults).
             flagStore.clear()
-            for flag in Flag.allCases { flags.set(flag, false) }
+            if !arguments.contains(defaultFlagsFlag) {
+                for flag in Flag.allCases { flags.set(flag, false) }
+            }
         }
         if let index = arguments.firstIndex(of: flagsFlag), index + 1 < arguments.count {
             for key in arguments[index + 1].split(separator: ",") {

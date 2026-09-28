@@ -509,6 +509,15 @@ spec's own muted and paprika are too dim to read there. No manual light/dark
 toggle for the app as a whole: the system setting decides. Avoid the default
 Material purple.
 
+**Android: every dialog, sheet and menu is composed inside its screen's
+`RecipeClipperTheme` block** (#142, #186). The theme is per screen, so one
+called before or after the block gets Material's baseline purple; only hosts
+over any screen (the tab bar, the received-file sheet) carry their own. The
+#186 sweep moved Recipes' Paste a link, List detail's Rename, the full-screen
+cooked photo with its date picker, and Edit's library-full prompt inside
+(`LibraryFullDialog` no longer wraps itself); a Robolectric test on each checks
+its button is paprika.
+
 *Revised.* Cook mode used to invert to ink unconditionally, on the reasoning
 that a screen propped up across a kitchen reads better dark. In practice a
 bright room made that the wrong call as often as the right one, so cook mode
@@ -1174,7 +1183,9 @@ and on both platforms.
   wrong one: a heading, a leftover digit ("juice of 1 lemon") or two
   ingredients ("salt and pepper", "butter or margarine") give null, unless the
   conjunction is inside a density-table alias ("half and half"). There's no
-  singulariser: "eggs" and "egg" are different names.
+  singulariser, only listed pairs: "eggs" and "egg" are one name because
+  `names.json` lists the pair (#191, below); a word that isn't listed is only
+  itself.
 - `IngredientName.matches(a, b)` is the density table's end-of-name rule
   (`IngredientDensities.endsWithName`, now shared with `find`): "unsalted
   butter" matches "butter", "butter beans" doesn't. Both sides go through
@@ -1445,8 +1456,10 @@ The third tab of #46, still behind the #47 flag.
 - **Aisles are a per-language table** (`shared/tables/<lang>/aisles.json`,
   every shipped language, the Japanese one smaller), matched on the end of
   `IngredientName.of`, longest alias first, exactly like the density table:
-  "peanut butter" beats "butter", "butter beans" isn't butter. There's no
-  singulariser, so plurals are listed. The aisle is chosen once when the item
+  "peanut butter" beats "butter", "butter beans" isn't butter. A word in
+  `names.json`'s `pluralPairs` matches in either number (#191), so "onion" also
+  files "onions"; a plural not listed there is listed here, and two aliases
+  that are one once pairs are read as one must share an aisle. The aisle is chosen once when the item
   is added and stored; "Move to aisle…" overwrites it, and nothing reassigns it
   after that. A line with no name (a heading, "salt and pepper") or no words is
   Other. The aisle keys and their order are fixed in code (`Aisle`), since
@@ -1463,8 +1476,9 @@ The third tab of #46, still behind the #47 flag.
   brackets or after a slash, no package size) and all are in one family whose
   units convert by exact ratios: g/kg, oz/lb, ml/cl/dl/l (with the 200 ml and
   180 ml Japanese cups), tsp/tbsp/fl oz/cup (3, 6 and 48 teaspoons), sticks,
-  or counts whose words after the number are identical ("2 eggs" + "3 eggs",
-  not "2 large eggs" + "3 eggs"). Grams never meet ounces, cups never meet
+  or counts whose words after the number are identical, a listed pair's number
+  aside ("2 eggs" + "3 eggs", "1 onion" + "2 onions" = "3 onions", #191; not
+  "2 large eggs" + "3 eggs"). Grams never meet ounces, cups never meet
   grams, and a bare "oz" is a weight even for milk. The total is written in a
   unit the lines already used, the largest that shows it exactly under the
   scaler's own formatting ("1 cup" + "2 tbsp" is "1 1/8 cup"; 1.25 kg shows as
@@ -1527,7 +1541,8 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   existing changes): `name` as typed, `language`, optional `quantity` as written,
   an `aisle` key (from the aisle table when added, like a grocery's), `inStock`,
   `alwaysHave`, and optional `purchasedDay` and `expiresDay`, plus #26's `uid` and
-  #53's `updatedAt`. The dates are **epoch days** (named `…Day`, like
+  #53's `updatedAt`, and #194's `runningLow` (Room 16, iOS `user_version` 15; see
+  its section below). The dates are **epoch days** (named `…Day`, like
   `plannedDay`), not the `…At` millis the brief suggested: a use-by date is a
   calendar day, and the plan already counts days that way.
 - **The quantity is never read.** It's a note for the cook ("half a bag"). Matching
@@ -1540,13 +1555,16 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   which pantry item it matched ("You have butter"), so the cook can check. A staple (`alwaysHave`)
   is never on Buy, in stock or not. A line the app can't name ("salt and pepper",
   a heading) stands alone and is always Buy: nothing is guessed. Lines group by
-  exact name and language, each shown as written with its recipe and day; nothing
+  exact name (a listed pair's number aside, #191) and language, each shown as written with its recipe and day; nothing
   is added up here (the grocery list does that, when it's exact).
 - **"What I need"** is its own screen on the Week's stack (`week/need/{weekStart}`),
   from the Week menu, for the week shown. Its lines come from the same
   `GrocerySources.fromPlan` as "Add this week's ingredients", so both show the
   same text at the same servings. It follows the pantry live. "Add to groceries"
   puts every Buy line on the list through #50's add path, once.
+- **iOS rows are keyed `buy-0`, `have-0`, as Android's** (#185): a lazy stack pools every
+  `ForEach`'s ids, so bare offsets left the first pantry rows blank (and, the same way, the
+  week sheet's later recipes and the month grid's first row).
 - **The grocery sheet starts with what the pantry covers unticked** (in stock or a
   staple), so "untick what's in the cupboard" is done for the cook, who still
   sees and can re-tick every line.
@@ -1588,13 +1606,14 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     ("beurre doux"), which the end-of-name rule never matched anyway, so their
     lists are empty: there only equal names, or a size or container word
     before the name, match.
-  - `IngredientName.matches` has one caller, `PantryMatch.find`. Grocery
-    combining and aisles use `IngredientName.of` by exact name or the aisle
-    table, so they're unchanged.
-- **Running out puts it on the list** (#146; it was a snackbar offer before):
-  switching an item out adds its name as a typed item, silently, and the row
-  shows "On list". Typing a name already in the pantry puts it back in stock
-  rather than adding a twin.
+  - Grocery combining and aisles never used `matches`: they compare
+    `IngredientName.of` by exact name or the aisle table, so this rule left them
+    unchanged. (Since #191 every one of these compares names through
+    `IngredientName.key`, so a listed pair's number never matters.)
+- **Running low or out puts it on the list** (#146, #194; it was a snackbar offer
+  before): "Ran out" or "Running low" adds its name as a typed item, silently,
+  and the row shows "On list". Typing a name already in the pantry puts it back
+  in stock rather than adding a twin.
 - **Expiry**: a badge only (#52 later added an opt-in morning reminder) (Expired before today; the date in paprika from today
   to 3 days ahead), no notifications, as the epic says. Sort by aisle (the
   default) or by expiry (soonest first, undated last), from the menu as radio
@@ -1626,23 +1645,26 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     week's dinner. A recipe planned only in the past is ordinary history: it
     takes a free place or is skipped, and its meal is dropped with it.
 - **The screen in short** (CLAUDE.md's summary until September 2026, with
-  #52, #146, #147 and #149): "Add to the pantry", search, then items by aisle
-  (menu: by expiry, radio glyphs); a switch per row for in stock; tap for the
-  edit sheet (quantity as written, "Always have", a use-by date, Delete with
-  undo). Expired or within 3 days shows a paprika badge; an opt-in 9:00
-  notification lists what expires today or tomorrow (Settings → Pantry).
-  Switching an item out puts its name on the grocery list silently; the row
-  then shows "On list", and tapping that takes it off (no snackbar). The menu's
-  "Send list" and "Send as file" send what's in stock, never what's out (that
-  is on the grocery list already). **Using up:** cook mode's "Done — finish"
+  #52, #146, #147, #149 and #194): "Add to the pantry", search, then items by
+  aisle (menu: by expiry, radio glyphs), with what has run out in a dimmed "Run
+  out" section last; each row has one labelled action ("Ran out", or "Restock"
+  once out), a "Low" tag while running low, swipes and a touch-and-hold menu for
+  the three states; tap for the edit sheet (quantity as written, "Always have",
+  a use-by date, Delete with undo). Expired or within 3 days shows a paprika
+  badge; an opt-in 9:00 notification lists what expires today or tomorrow
+  (Settings → Pantry). Running low or out puts its name on the grocery list
+  silently; the row then shows "On list", and tapping that takes it off (no
+  snackbar). The menu's "Send list" and "Send as file" send what's in stock
+  (running low included), never what's out (that is on the grocery list
+  already). **Using up:** cook mode's "Done — finish"
   with ingredients ticked, or a photo added with "I made this" (or "Mark as
   cooked", #173) once its viewer closes (the ticked lines, else all), opens
   "Update the pantry" (never on a
   tick, never on Exit; a recipe's is offered again only 12 h after it was
   confirmed or dismissed, `pantry_use_up`): per matched item, the worked-out
   change ("2 lb → 1 lb", ticked; used up goes out and onto the list) or, when
-  it can't be worked out, the lines as written with Keep / Running low (onto
-  the list, still in stock) / Out, Keep chosen. One confirm, one Undo. "What I
+  it can't be worked out, the lines as written with Keep / Running low (the
+  Running low state, onto the list) / Out, Keep chosen. One confirm, one Undo. "What I
   need" (Week menu): the shown week's lines at planned servings, grouped by
   ingredient, "To buy" then "In your pantry", with a note that having some
   isn't having enough; "Add to groceries" adds the To buy lines.
@@ -2879,36 +2901,16 @@ opening it from each on the other phone (Android: which apps pass the type or th
 app is offered; iOS: "Open in Recipe Clipper" from Files and Messages), in both directions
 between Android and iOS.
 
-## The first-run tour (#151)
+## The first-run tour (#151, #190)
 
-Owner's decision (2026-09-26): welcome cards, a bundled sample recipe and one-time tips in
-place; the sample is saved like a real recipe; every flow, daily and weekly, is covered.
+Owner's decisions: first (2026-09-26, #151) welcome cards, a bundled sample recipe and one-time
+tips in the screens' flow; then (2026-09-27, #190) **the welcome cards go** ("just blocks of text
+without showing anything"), with their route, "Try it with a sample recipe" and the welcome
+state, and **tooltips point at the major features instead**: a small bubble with an arrow at the
+real control, the first time it's reached. **The sample recipe stays**, added quietly. **Everyone
+sees the tooltips, existing users included**, which reverses #163's "existing users skip every
+tip". Settings' "Show the tour again" became **"Show tips again"**.
 
-- **Welcome cards,** full screen with no tab bar, skippable: what the app does; how to clip
-  (Share, paste, "+ New recipe"; iOS says the extension saves it to Home); every day
-  (servings and units, the bookmark, cook mode, and Chef mode with its flag); every week
-  (Week, What I need, Groceries, Pantry), only with `mealPlan` on. So three or four cards;
-  the last offers "Try it with a sample recipe" (opens it) or "Start". Skip, Start, Try it,
-  and Android's Back from the first card all mark it seen. No pager: one card at a time with
-  Back and Next, which reads well with TalkBack and VoiceOver ("Card 2 of 4") and scrolls at
-  the largest text sizes.
-- **When it shows** (`FirstRunTour`, the same rules on both platforms): once per app start,
-  only on a plain launch. A launch that opens something (a shared link, a notification, a
-  deep link) shows that and leaves the welcome pending for the next plain launch: capture
-  stays frictionless. Someone who already has recipes the first time the tour runs (an older
-  version's user, or a restored backup: Android's Auto Backup and iOS's device backup put the
-  database back before the first launch) never gets it, nor any tip. At first the Week,
-  Groceries and Pantry tips still showed for them, as those tabs were new to them now that the
-  flags are on; the owner decided (2026-09-26) that existing users skip every tip. iOS's share
-  extension saves without opening the app, so it notes a
-  new user's first share (`FirstRunTour.noteShare`: library empty, welcome undecided); the
-  recipe it adds then doesn't make them look like an old user, and the welcome shows at the
-  app's first opening.
-- **State** lives in `unit_preferences` / the settings suite, backed up with the settings,
-  under the same keys on both platforms: `tour_welcome` (`UNDECIDED` | `PENDING` | `SEEN` by
-  name; unknown reads as undecided), `tour_sample_added`, and `tour_tip_recipe`,
-  `tour_tip_cook_mode`, `tour_tip_week`, `tour_tip_groceries`, `tour_tip_pantry` (true once
-  dismissed).
 - **The sample recipe** is written for the app (a tomato and white bean soup; no photo, so
   nothing to license), in each UI language, once, in `shared/sample/recipe.json`: the UI's
   language picks it, else English, and it is saved in that language so its lines scale and
@@ -2916,9 +2918,16 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
   English (so Metric and Ounces change it), timers in steps, an oven temperature, and a
   "Meanwhile" step that overlaps the simmer. It is saved like a typed-in recipe: MANUAL
   under the fixed link `manual:sample`, so it is never fetched, has no Update from source or
-  source credit, and is never culled. It is added once, when the welcome first shows;
-  deleted, it stays deleted. "Try it" after "Show the tour again" opens it if it's there, and
-  adds it again only if it's gone.
+  source credit, and is never culled.
+- **It is added quietly, once, at a new user's first launch** (#190; before, when the welcome
+  first showed): `FirstRunTour.onLaunch`, before any shared link's route opens, adds it to an
+  empty library (counted without it) and sets `tour_sample_added`; someone who already has
+  recipes then (an older version's user, or a restored backup: Android's Auto Backup and iOS's
+  device backup put the database back before the first launch) never gets it, and it is decided
+  either way. Deleted, it stays deleted. A launch from a shared link adds it too, under the
+  shared recipe (capture stays frictionless: the link still opens on its recipe). iOS's share
+  extension saves without opening the app, so it takes the same step before a new user's first
+  share (`FirstRunTour.beforeShare`, with `shared/sample` bundled in the extension too).
 - **Its times read like a parsed recipe's (#179).** The file keeps ISO durations, so one value
   serves every language, and `SampleRecipe.forLanguage` passes each through `Durations.format`,
   the parsers' own formatting, in the sample's language: "10m · 25m · 35m" in English, "10min"
@@ -2937,16 +2946,89 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
   Home treats a library holding only the sample as empty (#150): "Restore from a backup
   file" still shows, which matters most on a new phone, and the "Keep a backup copy?" card
   waits for a recipe of the user's own.
-- **Tips:** one small callout in the screen's flow (never over it, so it never blocks),
-  dismissed by a tap anywhere on it (one button for TalkBack and VoiceOver, "Dismiss tip"):
-  under the Serves and units row on the first recipe opened (the row and the bookmark), at
-  the top of the first cook mode (outside the steps' list), and under the title of the first
-  Week, Groceries and Pantry visits. Those three hide with `mealPlan` off. One app-wide
-  `TipsViewModel` is handed to every screen (Android `LocalTips`, iOS the environment), so a
-  screen only names its tip; with none provided nothing shows, so screen tests are as before.
-- **"Show the tour again"** is an action row in Settings' Help section: the welcome again,
-  and every tip once more. The reading view is otherwise unchanged: the tip is the only
-  addition, and only until it is tapped.
+- **The tooltips** (`Tooltips` in `data/model` / `Data/Model`, pure, with the same ids on both
+  platforms; `shared/tooltips.json` lists them, and `TooltipsTest` / `TooltipsTests` fail if
+  either enum differs from it). In this order per screen; a flagged one shows only with its flag:
+  - **Home:** the link field ("Share a recipe link to this app, or paste one here"); "+ New
+    recipe".
+  - **Recipe (reading view):** Serves − / +; the units dropdown; the bookmark; the share icon;
+    the ⋮ menu (it names Add to plan and Add to groceries only with `mealPlan` on, as the menu
+    has them only then); "Start cooking"; "I made this" (the button, or the + tile once there
+    are photos; `cookedPhotos`).
+  - **Cook mode** (its own screen, though it is the recipe screen's): "Done — next step"; the
+    next step ("tap any step to make it the current one"); the current step's timer; the
+    ingredients bar.
+  - **Week:** the first day's "+ Add"; the Month switch; the ⋮ menu. **Groceries:** "Add an
+    item"; the first row's tick; the first row (long-press); "Done shopping" (while anything is
+    ticked); the ⋮ menu. **Pantry:** the add field; the first row's "Ran out" / "Restock"
+    (#194; it names the long-press's "Running low" too); the ⋮ menu. All `mealPlan`.
+  - **Settings:** the Units choice; "Show tips again".
+- **Which one, when** (`Tooltips.current`, the same rule on both platforms): a **visit** is one
+  appearance of a screen, from when it shows until it's left (a rotation isn't a new one on
+  Android: the visit's token is saved state, and leaving isn't reported while the activity is
+  changing configurations). A visit shows **at most one** tooltip: the first in the catalogue's
+  order that is unseen, has its flag on, and whose control is **wholly on screen** (not scrolled
+  partly away, not under a bar or the keyboard). Once picked it stays the visit's: scrolled away
+  it hides and comes back with its control, and nothing takes its place. Dismissed, the screen's
+  next one waits for a **later visit**, never chained. None shows in a screen's **first second**,
+  nor while anything covers it: a dialog, a sheet, a menu, the share sheet, the keyboard or a
+  snackbar. The whole app has one `TooltipsViewModel` (Android: MainActivity's, through
+  `LocalTooltips`; iOS: the container's, in the environment), so there is only ever one.
+- **Dismissing:** "Got it", or a tap anywhere on the bubble (it is one button), marks it seen
+  for good. On iOS a tap outside the popover also closes it, as popovers do; that is "not now",
+  not "seen": it shows again on a later visit.
+- **Never over cook mode's current step text:** "Done — next step", the timer and the next step
+  put their bubble below themselves, and the ingredients bar puts its bubble above itself (over
+  the top bar). Android places it itself; iOS 18 and later honour the side asked for, and iOS 17
+  picks the side itself.
+- **Android's bubble** is a `Popup` of its own, placed from the control's window bounds
+  (`Modifier.tooltipAnchor`, a `Modifier.Node` reporting `onGloballyPositioned` to its screen's
+  `TooltipHost`), in the theme's inverse colours (ink with ground text and "Got it" in paprika on
+  ink; the reverse in dark mode) and Karla, with an arrow drawn at the control. It is **not
+  focusable**, so a tap outside it and TalkBack reach the screen as before (no focus trap), and a
+  live region announces it. "Something covers the screen" is the window losing focus (a dialog,
+  a sheet, a menu and the share sheet are windows of their own), the keyboard, or the screen's
+  own `blocked` (its snackbar). Material 3's `TooltipBox` was the alternative: it wraps each
+  control in a box of its own, and its popup is focusable and dismissed by any tap outside,
+  which a tooltip that waits for "Got it" doesn't want.
+- **iOS's bubble** is SwiftUI's `.popover` kept a popover on iPhone
+  (`presentationCompactAdaptation(.popover)`), shown from our state (`.tooltipAnchor` on the
+  control, `.tooltipHost` on the screen), in the same inverse colours and Karla, wider at the
+  accessibility text sizes; VoiceOver reads it as it appears, and its escape gesture or a tap
+  outside closes it. **Not TipKit**, though it is first-party and has `popoverTip`: TipKit keeps
+  its own datastore of which tips were shown and closed, which can only be reset before
+  `Tips.configure` (so "Show tips again" would need a relaunch), and it decides eligibility itself,
+  asynchronously, so it would be a second source of truth beside the settings keys, the visits,
+  the first second and the anchors' visibility, which are ours on both platforms anyway. A popover
+  can't show over another presentation, so each screen passes `blocked` for its own sheets,
+  dialogs and snackbars, and the host blocks while the keyboard is up. Toolbar items (the recipe's
+  bookmark, share and menu, and the tabs' menus) are anchors too (`inToolbar`: on screen while the
+  bar shows), so `.tooltipHost` goes outside `.toolbar`. Anchors are measured in the host's own
+  coordinate space against its own bounds (a background's geometry reaches under the bars, and a
+  push animation moves everything). A NavigationStack's root doesn't always hear `onDisappear`
+  when a screen is pushed over it, nor `onAppear` when that screen goes, so leaving the top screen
+  makes the one under it the visit again, after its settling second; and a screen's reports are
+  kept by its token, so one still alive underneath can't overwrite the one on top (Android too).
+- **State** lives in `unit_preferences` / the settings suite, backed up with the settings, under
+  the same keys on both platforms: `tooltip_<id>` (true once seen; "Show tips again" removes
+  them) and `tour_sample_added`. #151's `tour_welcome` and `tour_tip_*` keys are **ignored**:
+  never read or written again (left where an older build wrote them, which costs nothing), so
+  everyone starts with every tooltip unseen.
+- **"Show tips again"** is an action row in Settings' Help section: every tooltip once more, one
+  at a time, as each screen is visited (the Settings screen's own first one can show at once).
+- **Tests:** the rule and the catalogue, pure (`TooltipsTest` / `TooltipsTests`); the ViewModels
+  over fakes (`TooltipsViewModelTest(s)`); Android's screens under Robolectric
+  (`TooltipsScreenTest`: Home's first visit shows the first tooltip after its first second, Got
+  it, the next visit the next; Settings' second shows only once scrolled to; the bubble's
+  placement at its control), and iOS's recipe screen in `TooltipsUITests` (one per visit, at the
+  Serves stepper, then the units on the next). Every other screen test, UI test and walkthrough
+  starts with every tooltip seen: Android's screen tests provide no `LocalTooltips`, iOS's test
+  containers use `MemoryTourPreferences`, and `-uiTestTooltips` (iOS) or `firstRun = true`
+  (Android's walkthroughs) turns them on. Walkthrough 17 shows the sample on Home and a tooltip
+  or two.
+- **Needs a real phone:** how each bubble sits at its control on small and large screens, in
+  both themes, at the largest text sizes and on iPad; TalkBack and VoiceOver announcing one;
+  cook mode's bubbles clear of the current step (iOS 17 especially).
 
 ## Done shopping: putting things away in one step (#146)
 
@@ -2970,13 +3052,15 @@ offer for the first was replaced and gone. Owner's decisions:
   `PantryRepository.add` returns the new id for that.
 - **Snackbars only for undo:** a delete, or Done shopping. The rest of the app already used
   them that way.
-- **Pantry to groceries shows a state, not a message.** Switching an item out adds its name to
-  the list silently (unless its line is there already), and the row shows a small "On list"
-  tag; tapping the tag takes it off the list, with no snackbar. "On list" means an unticked
-  grocery line that is the item's own name (trimmed, case-insensitive, same language): what
-  switching it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
+- **Pantry to groceries shows a state, not a message.** Marking an item out (or, since #194,
+  running low) adds its name to the list silently (unless its line is there already), and the
+  row shows a small "On list" tag; tapping the tag takes it off the list, with no snackbar. "On list" means an unticked
+  grocery line that is the item's own name (trimmed, case-insensitive, a listed pair's number
+  aside since #191, same language): what
+  marking it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
   deletes a recipe's line, which is why no undo is needed. No schema change: the link is the
-  name.
+  name. Restocking (the row's action, or putting away) returns an item to In stock; it never
+  takes the line off the list.
 
 ## Using up the pantry at the end of cooking (#147)
 
@@ -3042,10 +3126,10 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
 - **Used up** (zero or below, or too little to show): out of stock, the quantity cleared (none
   is left to know, and a restock shouldn't bring back an old amount as a confident number), and
   the name onto the grocery list unless it's there already, so the row shows #146's "On list".
-- **"Running low" has no state of its own**: the item's name goes on the grocery list and it
-  stays in stock, so the Pantry row shows "On list" with its switch on. "Out" is the switch
-  turned off plus the list, as the switch does it (the quantity stays as written). No schema
-  change for either.
+- **"Running low" sets the Running low state** (#194; before it, running low had no state of
+  its own and only put the name on the list): the item stays in stock, gets its "Low" tag, and
+  its name goes on the grocery list. "Out" sets Run out plus the list, as the row's "Ran out"
+  does (the quantity stays as written). No schema change of #147's own: #194 added the column.
 - **One confirm, one Undo.** Worked-out rows start ticked and can be unticked; asked rows start
   on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
   off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
@@ -3108,6 +3192,41 @@ app main had become:
   so a real post whose method is "Preheat oven to 375" and three paragraphs stays
   `NoTranscription`, as does chatter with a number or a list in it. The fixtures are JSON
   files in `shared/fixtures/reddit`, made-up posts in the real `raw_json=1` shape.
+
+## Pantry stock: In stock, Running low, Run out (#194)
+
+Owner's decision (2026-09-27): the per-row on/off switch read like a setting, not a fact about
+the cupboard. It is replaced, and a **Running low** state added.
+
+- **Three states, shown by grouping.** In stock and running low sit in their aisle sections
+  (running low with a small "Low" tag); run out sits in one dimmed "Run out" section at the
+  bottom, in either sort (`PantryList.arrange`, `PantrySection.runOut`).
+- **Labelled actions, not a switch.** Each row has one text action: "Ran out" while in stock or
+  running low, "Restock" once out. Running low is reached from the row's menu (touch and hold;
+  iOS also offers it as a second trailing swipe action) and from #147's sheet. Swipes are
+  shortcuts: leading Restock, trailing Ran out, each only where it changes something. TalkBack
+  and VoiceOver read the row as one ("Garlic, Run out, On list") and offer the other two states
+  as its actions. iOS's Pantry became a `List` (as Recipes is) for the swipe actions.
+- **Groceries as #146.** Ran out and Running low both put the name on the grocery list
+  silently, shown by "On list"; tapping the tag takes it off. Restock, Done shopping's
+  put-away and typing a name already there all return an item to In stock (and bought today).
+- **Presence only, unchanged.** Running low still counts as having it: What I need, the
+  grocery sheet's first ticks, the model's candidates and expiry reminders all read `inStock`,
+  which running low keeps. "Send list" and "Send as file" include running-low items (they are
+  at home).
+- **Stored as a second column, not an enum.** `pantry_items.runningLow` (Room 16,
+  `MIGRATION_15_16`; iOS `user_version` 15, `addRunningLow`), `INTEGER NOT NULL DEFAULT 0`,
+  beside `inStock`. It means something only while `inStock`: every write that takes an item out
+  (`setStock`) and every restock clears it, and reading an out item ignores it. An `ALTER TABLE
+  ADD COLUMN` leaves every existing item exactly as it was (in stays in, out stays out) and
+  keeps every reader of `inStock` (matching, reminders, send, use-up) correct without a change,
+  where a replacing enum column would have meant a table rebuild and touching all of them.
+  The domain reads the pair as `PantryItem.stock` (`PantryStock`).
+- **Files.** Export, backup and shared files carry `"runningLow"` beside `"inStock"`, still
+  `formatVersion` 1: an older reader ignores the key and sees in stock or out, and an older
+  file (no key) reads as In stock or Run out from its boolean. A file saying running low on an
+  item that is out reads as Run out. Merging is unchanged: what's already here keeps its stock.
+- "Always have" staples are unchanged.
 
 ## The recipe screen's ViewModel, split into collaborators (#169)
 
@@ -3197,6 +3316,49 @@ pantry update (#147). "Mark as cooked" records today's cooking with no photo. Be
 - **The file sent to someone else** (#149) still carries no cooked entries of either kind, and
   `ShareFile.chosen` drops any a file holds.
 
+## Singular and plural names are one ingredient (#191)
+
+Walkthrough 03 showed "1 onion, sliced" under To buy with "onions" in the pantry. **Owner's
+decision (2026-09-27): "Treat onion and onions as the same."** And, on colours: "red onions are
+different, just as yellow onions are different than white."
+
+- **Listed pairs, never a rule.** Each language's `names.json` has `pluralPairs`, `[singular,
+  plural]` pairs of whole words (en 80, de 48, es 68, fr 48, it 56, pt 57, ja none). Nothing is
+  inferred from a word's ending: "glass", "hummus", "asparagus", "couscous" and "molasses" are
+  only themselves, and "peas" is "pea" while "pea shoots" is neither. Irregulars ("leaf"/"leaves",
+  "uovo"/"uova", "Apfel"/"Äpfel") are just entries. A word is listed once, and never one whose
+  numbers name different things: "pepper" (the spice) and "peppers" (the vegetable) are left
+  out, as is Portuguese "pimenta"; "bell pepper(s)" were already both in the aisle table.
+- **The pairs change only a word's number, never which words match.** `IngredientName.key`
+  lowercases and trims a name and puts every listed plural in its singular, **wherever it
+  stands**, because French, Spanish, Italian and Portuguese put the plural head first ("pommes
+  de terre") and inflect their adjectives ("oignons rouges", "cebollas rojas"): those languages
+  list their common colour adjectives too. `matches` compares keys under #51's rule unchanged,
+  so "onion" = "onions" and "red onion" = "red onions", but "red onion" ≠ "onion" and "red
+  onion" ≠ "yellow onion": a colour isn't a `matchModifier`, in either number.
+- **One place compares names:** Pantry Have/Buy and the use-up sheet (`PantryMatch.find`, through
+  `matches`), "What I need"'s rows and grocery grouping (by key; a row is named by its first
+  line), the aisle table (aliases and names keyed; `SharedTablesTest` checks no two aisles share
+  a keyed alias), Done shopping's one row per ingredient, the "On list" tag and typing a name
+  already in the pantry (`IngredientName.same`), and a received list's names. Amounts in steps
+  (#101) keep `steps.json`'s ending rules: a step's word is only ever compared with a line's own
+  head word there, so they can't pair two different ingredients.
+- **Adding up** (`GroceryCombiner`): counts add across a pair only when their words are
+  otherwise identical, and the total's words are worded by the pair (`IngredientName.counted`:
+  above one plural, else singular, keeping capitals): "1 onion" + "2 onions" = "3 onions", "1
+  onion" + "1 onion" = "2 onions", "1 Zwiebel" + "2 Zwiebeln" = "3 Zwiebeln". "1 large onion" +
+  "2 onions" or "1 onion, sliced" + "2 onions" sit together as written; "1 red onion" and "2
+  onions" are different ingredients, two rows. A measured amount's words aren't counted, so
+  they stay as before (the shortest). The pantry's count after using up is worded the same way
+  ("2 onions" less 1 is "1 onion").
+- **The aisle table** gained "vanilla bean(s)" (baking): once "bean" read as "beans", a vanilla
+  bean would have been filed as canned. Keying also fixed a few wrong aisles ("zumo de naranjas"
+  was produce through "naranjas", now drinks) and filed names the table missed in one number
+  ("2 zucchinis", "1 chicken wing"), which were Other.
+- **Tests that pinned the old rule, updated:** the corpus's `Pant("2 large eggs, beaten", "egg")`
+  (now Have), `Groc(["2 cebollas", "1 cebolla"], lang: "es")` (now "3 cebollas") and the
+  zucchinis row's aisle (now produce), all regenerated from the Kotlin.
+
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 
 `CLAUDE.md` had grown back to about 750 lines, and it is loaded into every session,
@@ -3252,8 +3414,8 @@ reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receive
 share target: parse, then upsert with no list membership), and
 `edit?recipeId={recipeId}` (no id: a new recipe; saving replaces the edit screen, and
 the recipe screen under it, with `recipe/{id}`), and `clip?url={url}` (Clip it
-yourself; saving replaces it and the error screen under it with `recipe/{id}`), and
-`welcome?again={again}` (the first-run tour, #151). Behind the `mealPlan` feature flag
+yourself; saving replaces it and the error screen under it with `recipe/{id}`). Behind the
+`mealPlan` feature flag
 (#47, on by default): a bottom tab bar nests this same graph under a Recipes tab
 alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and
 `week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry` (#51)
@@ -3263,10 +3425,10 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 15** (iOS `user_version` 14): `recipes`
+Room database `recipe_clipper.db`, **version 16** (iOS `user_version` 15): `recipes`
 (with nullable `notes`, `language`, `cookState`, `servingsTarget` and `editedAt`, and
 `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
-`meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51), `menus` and
+`meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51; `runningLow`, #194), `menus` and
 `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never
 exported), `cooked_photos` (#116, cascading; no `fileName` for "Mark as cooked", #173). Recipes, lists, the plan, grocery,
 pantry, menu and photo tables carry a unique, never-changing `uid`: what an export
@@ -3283,7 +3445,7 @@ the `chefMode` flag, #100; each row shows with its own flag), Pantry ("Expiry
 reminders", only with the `mealPlan` flag; asks for notifications when turned on,
 never at launch), Unlimited recipes (only with `freeTier`: "Unlock for <store price>"
 and "Restore purchase", or the sentence "Unlocked: every recipe is kept."; Developer
-settings has an "Unlocked" override), Help ("Show the tour again", #151), and Your
+settings has an "Unlocked" override), Help ("Show tips again", #190), and Your
 recipes (export, import and the automatic copy, #150). Reached from the gear beside
 the Home title, on every tab of the shell. It could now open from elsewhere too (the
 recipe screen follows `AppPreferences.settings`), but adding an entry point is the
@@ -3292,8 +3454,8 @@ owner's call.
 **Keys** (the SharedPreferences file `unit_preferences`, and `UserDefaults` on iOS,
 the same on both): `unit_system`, `convert_liquids`, `temperature_unit`,
 `dark_while_cooking`, `expiry_reminders`, `chef_mode`, `amounts_in_steps`,
-`recipe_sort` (the Recipes screen's sort), the tour's `tour_welcome`,
-`tour_sample_added`, `tour_tip_*` (#151), and `pantry_use_up` (#147: recipe id to when
+`recipe_sort` (the Recipes screen's sort), the tour's `tour_sample_added` (#151) and
+`tooltip_<id>` (#190; #151's `tour_welcome` and `tour_tip_*` are ignored), and `pantry_use_up` (#147: recipe id to when
 its sheet was settled, pruned to 12 h on each write), each enum stored by name, an
 unknown one read as the default. `AppPreferences.settings` (a Flow over the change
 listener; iOS a publisher over `UserDefaults.didChangeNotification`) emits them;

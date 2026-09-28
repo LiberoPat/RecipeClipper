@@ -3,7 +3,6 @@ package com.example.recipeclipper.ui.home
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +41,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.common.RecipeRow
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
@@ -48,6 +50,8 @@ import com.example.recipeclipper.ui.settings.BackupStatus
 import com.example.recipeclipper.ui.settings.BackupStatusText
 import com.example.recipeclipper.ui.settings.IMPORT_MIME_TYPES
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import com.example.recipeclipper.ui.tour.TooltipHost
+import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
  * Home: the link field (kept so the app can be tried without the share sheet), then
@@ -80,135 +84,140 @@ fun HomeScreen(
     val recentlyViewedTitle = stringResource(R.string.section_recently_viewed)
 
     RecipeClipperTheme {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            LazyColumn(
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 32.dp),
-                modifier = Modifier.fillMaxSize()
-                    // Edge-to-edge: the background fills behind the bars, the rows stay clear
-                    // of them, the display cutout and the keyboard.
-                    .safeDrawingPadding()
-            ) {
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(R.string.home_title),
-                            style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        // Settings' only entry point today (see the note by the nav block
-                        // below). The gear sits up here because it is a destination you visit
-                        // rarely and on purpose, unlike Recipes and Lists, which are part of
-                        // the daily path and stay as named rows.
-                        IconButton(
-                            onClick = onOpenSettings,
-                            modifier = Modifier.offset(x = 8.dp) // optical edge, past the icon's padding
-                        ) {
-                            Icon(
-                                Icons.Default.Settings,
-                                contentDescription = stringResource(R.string.nav_settings),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+        TooltipHost(TooltipScreen.HOME) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 32.dp),
+                    modifier = Modifier.fillMaxSize()
+                        // Edge-to-edge: the background fills behind the bars, the rows stay clear
+                        // of them, the display cutout and the keyboard.
+                        .safeDrawingPadding()
+                ) {
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(R.string.home_title),
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.weight(1f)
                             )
+                            // Settings' only entry point today (see the note by the nav block
+                            // below). The gear sits up here because it is a destination you visit
+                            // rarely and on purpose, unlike Recipes and Lists, which are part of
+                            // the daily path and stay as named rows.
+                            IconButton(
+                                onClick = onOpenSettings,
+                                modifier = Modifier.offset(x = 8.dp) // optical edge, past the icon's padding
+                            ) {
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = stringResource(R.string.nav_settings),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        stringResource(R.string.home_subtitle),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(20.dp))
-                    Row(verticalAlignment = Alignment.Top) {
-                        OutlinedTextField(
-                            value = state.urlInput,
-                            onValueChange = viewModel::onUrlChange,
-                            label = { Text(stringResource(R.string.label_recipe_url)) },
-                            singleLine = true,
-                            isError = state.urlError,
-                            supportingText = if (state.urlError) {
-                                { Text(stringResource(R.string.error_invalid_url)) }
-                            } else null,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Button(
-                            onClick = { viewModel.onGo()?.let(onOpenUrl) },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.padding(top = 6.dp)
-                        ) { Text(stringResource(R.string.action_go)) }
-                    }
-                    // Typing a recipe in by hand (#29): a small way in, not a section.
-                    TextButton(onClick = onNewRecipe, modifier = Modifier.offset(x = (-12).dp)) {
+                        Spacer(Modifier.height(6.dp))
                         Text(
-                            stringResource(R.string.action_new_recipe),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                }
-
-                state.continueCooking?.let { latest ->
-                    item {
-                        Spacer(Modifier.height(24.dp))
-                        SectionHeading(stringResource(R.string.section_continue_cooking))
-                        RecipeRow(latest, now, onClick = { onOpenRecipe(latest.id) })
-                    }
-                }
-
-                section("recent", recentlyViewedTitle, state.recent, now, onOpenRecipe)
-
-                if (state.loaded && state.continueCooking == null) {
-                    item {
-                        Spacer(Modifier.height(28.dp))
-                        Text(
-                            stringResource(R.string.home_empty_hint),
+                            stringResource(R.string.home_subtitle),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                }
-
-                // A fresh install with an empty library (#150): bring a backup back in.
-                if (state.showsRestore && viewModel.canRestore) {
-                    item {
+                        Spacer(Modifier.height(20.dp))
+                        Row(verticalAlignment = Alignment.Top) {
+                            OutlinedTextField(
+                                value = state.urlInput,
+                                onValueChange = viewModel::onUrlChange,
+                                label = { Text(stringResource(R.string.label_recipe_url)) },
+                                singleLine = true,
+                                isError = state.urlError,
+                                supportingText = if (state.urlError) {
+                                    { Text(stringResource(R.string.error_invalid_url)) }
+                                } else null,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f).tooltipAnchor(Tooltip.HOME_LINK)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = { viewModel.onGo()?.let(onOpenUrl) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.padding(top = 6.dp)
+                            ) { Text(stringResource(R.string.action_go)) }
+                        }
+                        // Typing a recipe in by hand (#29): a small way in, not a section.
                         TextButton(
-                            onClick = { restorePicker.launch(IMPORT_MIME_TYPES) },
-                            enabled = state.restore != BackupStatus.Importing,
-                            modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp)
+                            onClick = onNewRecipe,
+                            modifier = Modifier.offset(x = (-12).dp).tooltipAnchor(Tooltip.HOME_NEW_RECIPE)
                         ) {
                             Text(
-                                stringResource(R.string.home_restore_backup),
+                                stringResource(R.string.action_new_recipe),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.tertiary
                             )
                         }
-                        BackupStatusText(state.restore)
                     }
-                }
 
-                if (state.offersBackupFolder) {
+                    state.continueCooking?.let { latest ->
+                        item {
+                            Spacer(Modifier.height(24.dp))
+                            SectionHeading(stringResource(R.string.section_continue_cooking))
+                            RecipeRow(latest, now, onClick = { onOpenRecipe(latest.id) })
+                        }
+                    }
+
+                    section("recent", recentlyViewedTitle, state.recent, now, onOpenRecipe)
+
+                    if (state.loaded && state.continueCooking == null) {
+                        item {
+                            Spacer(Modifier.height(28.dp))
+                            Text(
+                                stringResource(R.string.home_empty_hint),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // A fresh install with an empty library (#150): bring a backup back in.
+                    if (state.showsRestore && viewModel.canRestore) {
+                        item {
+                            TextButton(
+                                onClick = { restorePicker.launch(IMPORT_MIME_TYPES) },
+                                enabled = state.restore != BackupStatus.Importing,
+                                modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp)
+                            ) {
+                                Text(
+                                    stringResource(R.string.home_restore_backup),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                            BackupStatusText(state.restore)
+                        }
+                    }
+
+                    if (state.offersBackupFolder) {
+                        item {
+                            BackupFolderCard(
+                                onChoose = { folderPicker.launch(null) },
+                                onDismiss = viewModel::onBackupPromptDismissed
+                            )
+                        }
+                    }
+
+                    // Both entries are unconditional. The first (then History) used to appear only once there was a
+                    // "continue cooking" recipe, so the block changed shape depending on what was
+                    // in the database; a fixed block is easier to aim at than one that moves.
+                    //
+                    // Settings is not here — it's the gear beside the title, and today that gear
+                    // is its only entry point. It could open from elsewhere too: RecipeViewModel
+                    // collects AppPreferences.settings, so a recipe left underneath Settings
+                    // follows a change as it is made (#24). Whether the recipe screen offers it
+                    // is a product call, not a technical constraint.
                     item {
-                        BackupFolderCard(
-                            onChoose = { folderPicker.launch(null) },
-                            onDismiss = viewModel::onBackupPromptDismissed
-                        )
+                        Spacer(Modifier.height(20.dp))
+                        Hairline()
+                        NavRow(stringResource(R.string.recipes_title), onOpenRecipes)
+                        NavRow(stringResource(R.string.nav_lists), onOpenLists)
                     }
-                }
-
-                // Both entries are unconditional. The first (then History) used to appear only once there was a
-                // "continue cooking" recipe, so the block changed shape depending on what was
-                // in the database; a fixed block is easier to aim at than one that moves.
-                //
-                // Settings is not here — it's the gear beside the title, and today that gear
-                // is its only entry point. It could open from elsewhere too: RecipeViewModel
-                // collects AppPreferences.settings, so a recipe left underneath Settings
-                // follows a change as it is made (#24). Whether the recipe screen offers it
-                // is a product call, not a technical constraint.
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    Hairline()
-                    NavRow(stringResource(R.string.recipes_title), onOpenRecipes)
-                    NavRow(stringResource(R.string.nav_lists), onOpenLists)
                 }
             }
         }

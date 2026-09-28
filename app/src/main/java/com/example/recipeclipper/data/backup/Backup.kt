@@ -105,7 +105,11 @@ data class BackupMembership(
     val addedAt: Long
 )
 
-/** A pantry item (#51). [purchasedDay] and [expiresDay] are epoch days; [aisle] an `Aisle` key. */
+/**
+ * A pantry item (#51). [purchasedDay] and [expiresDay] are epoch days; [aisle] an `Aisle` key.
+ * [runningLow] (#194) only with [inStock]; a file from before it has none, so its items read as
+ * in stock or run out.
+ */
 data class BackupPantryItem(
     val id: String,
     val name: String,
@@ -116,7 +120,8 @@ data class BackupPantryItem(
     val alwaysHave: Boolean,
     val purchasedDay: Long?,
     val expiresDay: Long?,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val runningLow: Boolean = false
 )
 
 /**

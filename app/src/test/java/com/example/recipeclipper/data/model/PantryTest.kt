@@ -43,6 +43,32 @@ class PantryTest {
         assertEquals(listOf("yogurt", "milk", "bread", "zucchini"), sections[0].items.map { it.name })
     }
 
+    // #194: what has run out is one last section, in either sort; running low stays in its aisle.
+    @Test fun `run out items are one last section, and running low stays in its aisle`() {
+        val items = listOf(
+            item("rice", aisle = Aisle.GRAINS), item("milk", inStock = false, aisle = Aisle.DAIRY, expires = 20_730),
+            item("apples", aisle = Aisle.PRODUCE).copy(runningLow = true), item("oats", inStock = false, aisle = Aisle.GRAINS)
+        )
+        val byAisle = PantryList.arrange(items, "", PantrySort.AISLE)
+        assertEquals(listOf(Aisle.PRODUCE, Aisle.GRAINS, null), byAisle.map { it.aisle })
+        assertEquals(listOf(false, false, true), byAisle.map { it.runOut })
+        assertEquals(listOf("milk", "oats"), byAisle.last().items.map { it.name })
+        assertEquals(PantryStock.RUNNING_LOW, byAisle[0].items.single().stock)
+
+        val byExpiry = PantryList.arrange(items, "", PantrySort.EXPIRY)
+        assertEquals(listOf(listOf("apples", "rice"), listOf("milk", "oats")), byExpiry.map { s -> s.items.map { it.name } })
+        assertEquals(listOf(false, true), byExpiry.map { it.runOut })
+
+        val onlyOut = PantryList.arrange(items, "oats", PantrySort.EXPIRY)
+        assertEquals(listOf(true), onlyOut.map { it.runOut })
+    }
+
+    @Test fun `the stock is run out whenever the item is out, running low only in stock`() {
+        assertEquals(PantryStock.IN_STOCK, item("a").stock)
+        assertEquals(PantryStock.RUNNING_LOW, item("b").copy(runningLow = true).stock)
+        assertEquals(PantryStock.RUN_OUT, item("c", inStock = false).copy(runningLow = true).stock)
+    }
+
     @Test fun `search is a case-insensitive part of the name, and finding nothing is no sections`() {
         val items = listOf(item("Plain flour"), item("rice flour"), item("butter"))
         assertEquals(listOf("Plain flour", "rice flour"), PantryList.arrange(items, " FLOUR ", PantrySort.AISLE).flatMap { s -> s.items.map { it.name } })
@@ -63,6 +89,10 @@ class PantryTest {
         assertEquals(flour, PantryList.sameName(listOf(flour), " flour ", "en"))
         assertNull(PantryList.sameName(listOf(flour), "flour", "de"))
         assertNull(PantryList.sameName(listOf(flour), "rice flour", "en"))
+        // A listed pair's number aside (#191).
+        val onions = item("Onions")
+        assertEquals(onions, PantryList.sameName(listOf(onions), "onion", "en"))
+        assertNull(PantryList.sameName(listOf(onions), "red onion", "en"))
     }
 
     // --- Matching: presence, by the end-of-name rule
@@ -73,6 +103,10 @@ class PantryTest {
         assertTrue(PantryMatch.covered("2 cups all-purpose flour", "en", pantry))
         assertFalse(PantryMatch.covered("1 can butter beans", "en", pantry)) // not butter
         assertFalse(PantryMatch.covered("2 eggs", "en", pantry))
+    }
+
+    @Test fun `running low is still covered`() {
+        assertTrue(PantryMatch.covered("2 cups flour", "en", listOf(item("flour").copy(runningLow = true))))
     }
 
     @Test fun `out of stock is not covered, a staple always is`() {
@@ -140,6 +174,40 @@ class PantryTest {
             emptyList()
         )
         assertEquals(2, needs.buy.size)
+    }
+
+    // --- Listed singular/plural pairs (#191)
+
+    @Test fun `a listed pair is Have in either number, but a different onion is Buy`() {
+        // Walkthrough 03: "onions" in the pantry, "1 onion, sliced" in the recipe.
+        assertTrue(PantryMatch.covered("1 onion, sliced", "en", listOf(item("onions"))))
+        assertTrue(PantryMatch.covered("2 large eggs", "en", listOf(item("egg"))))
+        assertTrue(PantryMatch.covered("1 red onion", "en", listOf(item("Red Onions"))))
+        // The owner: red onions are different, as yellow onions are from white.
+        assertFalse(PantryMatch.covered("1 red onion", "en", listOf(item("yellow onions"))))
+        assertFalse(PantryMatch.covered("1 red onion", "en", listOf(item("onions"))))
+        assertFalse(PantryMatch.covered("2 onions", "en", listOf(item("red onion"))))
+        assertFalse(PantryMatch.covered("1 tsp onion powder", "en", listOf(item("onions"))))
+        assertFalse(PantryMatch.covered("1 cup pea shoots", "en", listOf(item("peas"))))
+    }
+
+    @Test fun `a listed pair's lines are one row of What I need, named by the first`() {
+        val needs = PantryMatch.weekNeeds(
+            listOf(source("Soup", "1 onion", "1 red onion"), source("Stew", "2 onions, sliced", recipeId = 2)),
+            listOf(item("Onions"))
+        )
+        val onion = needs.have.single()
+        assertEquals("onion", onion.name)
+        assertEquals("Onions", onion.pantryName)
+        assertEquals(listOf("1 onion", "2 onions, sliced"), onion.lines.map { it.text })
+        assertEquals(listOf("red onion"), needs.buy.map { it.name })
+    }
+
+    @Test fun `on list is the item's own name, a listed pair's number aside`() {
+        fun grocery(id: Long, text: String, checked: Boolean = false) = GroceryItem(id, text, "en", Aisle.PRODUCE, checked, id.toInt())
+        val list = listOf(grocery(1, "onion"), grocery(2, "2 onions"), grocery(3, "red onions"), grocery(4, "Onions", checked = true))
+        assertEquals(listOf(1L), PantryList.ownLines(item("Onions"), list).map { it.id })
+        assertEquals(listOf(3L), PantryList.ownLines(item("red onion"), list).map { it.id })
     }
 
     @Test fun `nothing planned is empty`() {

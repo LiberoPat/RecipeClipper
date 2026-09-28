@@ -42,7 +42,8 @@ recipes (#29); "Clip it yourself" (#37); export/import and an automatic
 backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147); Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
-(#151); Reddit posts, from the body or a comment (`reddit` flag, #11); the UI in six languages (drafts awaiting a native speaker:
+(#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
+(`reddit` flag, #11); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: other recipe languages,
@@ -85,10 +86,9 @@ fixtures. The annotated map, and what each route does, are in
 Routes: `home`, `recipes`, `settings` (+ hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
-membership), `edit?recipeId={recipeId}`, `clip?url={url}`,
-`welcome?again={again}`; with the tab shell (#47) they sit under Recipes,
-beside `week/…`, `groceries` and `pantry`. A route from an intent always
-lands in Recipes.
+membership), `edit?recipeId={recipeId}`, `clip?url={url}`; with the tab
+shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
+`pantry`. A route from an intent always lands in Recipes.
 
 ## Conventions
 
@@ -206,7 +206,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 15** (iOS `user_version` 14),
+- Room database `recipe_clipper.db`, **version 16** (iOS `user_version` 15),
   schema exported to `app/schemas/`: commit it. **Never use destructive
   migration**, and give every migration a `MigrationTest`. iOS mirrors the
   schema in SQLite, with `PRAGMA user_version` migrations, in the App Group
@@ -382,7 +382,8 @@ Each one exists to avoid showing a confident wrong number. Other languages
   method that crashes on older Android.
 - **LazyColumn keys must be unique across the whole list,** not per section.
   Home prefixes each key with its section; a duplicate key once crashed the
-  app.
+  app. So must every `ForEach` id in a SwiftUI lazy stack or grid, nested or
+  not: a repeat draws a blank row (#185).
 - **Espresso 3.6.x is broken on API 36+.** Every Compose test dies in
   `Espresso.onIdle()`, so `espresso-core` is pinned to 3.7.0.
 - **Unquoted string resources collapse runs of spaces:** `+  New list` renders

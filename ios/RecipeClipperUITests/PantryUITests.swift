@@ -1,6 +1,6 @@
 import XCTest
 
-/// The Pantry tab (#51), behind the tab flag: type an item, run out of it and it goes on the
+/// The Pantry tab (#51), behind the tab flag: type an item, tap Ran out (#194) and it goes on the
 /// grocery list by itself, with an "On list" tag that takes it off again (#146).
 final class PantryUITests: RecipeUITestCase {
 
@@ -22,7 +22,9 @@ final class PantryUITests: RecipeUITestCase {
         field.typeText("milk\n")
         require(text("Dairy & eggs"), "the dairy aisle")
 
-        require(app.switches["In stock: milk"], "the in-stock switch").tap()
+        require(app.buttons["Ran out: milk"], "Ran out").tap()
+        require(app.buttons["Restock: milk"], "Restock, once it has run out")
+        require(text("Run out"), "the Run out section")
         require(onListTag, "the On list tag")
         assertAbsent(app.buttons["Undo"], "a snackbar")
 

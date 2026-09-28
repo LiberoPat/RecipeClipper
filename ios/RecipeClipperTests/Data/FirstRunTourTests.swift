@@ -1,7 +1,7 @@
 import XCTest
 @testable import RecipeClipper
 
-/// Port of Android's FirstRunTourTest: the first-run tour's rules (#151) over fakes.
+/// Port of Android's FirstRunTourTest: the first-run tour's sample recipe (#151, #190) over fakes.
 @MainActor
 final class FirstRunTourTests: XCTestCase {
     private var preferences: MemoryTourPreferences!
@@ -9,7 +9,7 @@ final class FirstRunTourTests: XCTestCase {
     private var tour: FirstRunTour!
 
     override func setUp() {
-        preferences = MemoryTourPreferences(welcome: .undecided, sampleAdded: false, seen: [])
+        preferences = MemoryTourPreferences(sampleAdded: false, seen: [])
         recipes = FakeRecipeRepository()
         tour = FirstRunTour(preferences: preferences, recipes: recipes)
     }
@@ -18,110 +18,81 @@ final class FirstRunTourTests: XCTestCase {
         RecipeSummary(id: id, title: "Recipe \(id)", imageUrl: nil, totalTime: nil, lastViewedAt: id, isSaved: false)
     }
 
-    func testANewUsersFirstPlainLaunchShowsTheWelcomeUntilItIsFinished() async {
-        let first = await tour.onLaunch(plain: true)
-        XCTAssertTrue(first)
-        XCTAssertEqual(preferences.welcome, .pending)
-        let again = await tour.onLaunch(plain: true)
-        XCTAssertTrue(again, "left unfinished, it shows again")
-
-        tour.finishWelcome()
-        XCTAssertEqual(preferences.welcome, .seen)
-        let afterwards = await tour.onLaunch(plain: true)
-        XCTAssertFalse(afterwards)
-    }
-
-    func testALaunchThatOpensALinkWaitsForTheNextPlainLaunch() async {
-        let fromLink = await tour.onLaunch(plain: false)
-        XCTAssertFalse(fromLink)
-        XCTAssertEqual(preferences.welcome, .pending)
-
-        recipes.history.send([summary(1)])
-        let plain = await tour.onLaunch(plain: true)
-        XCTAssertTrue(plain)
-    }
-
-    func testSomeoneWhoAlreadyHasRecipesNeverGetsTheWelcomeNorAnyTip() async {
-        recipes.history.send([summary(1), summary(2)])
-
-        let shows = await tour.onLaunch(plain: true)
-        XCTAssertFalse(shows)
-        XCTAssertEqual(preferences.welcome, .seen)
-        XCTAssertEqual(preferences.seenTips, Set(Tip.allCases))
-    }
-
-    /// On iOS a share is saved by the extension without opening the app: a new user's first share
-    /// leaves the welcome pending, so the recipe it adds doesn't make them look like an old user.
-    func testTheExtensionNotesANewUsersFirstShare() async throws {
-        let suite = "FirstRunTourTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-
-        await FirstRunTour.noteShare(defaults: defaults, recipes: recipes)
-        XCTAssertEqual(defaults.string(forKey: "tour_welcome"), "PENDING")
-
-        let shared = UserDefaultsAppPreferences(defaults: defaults)
-        recipes.history.send([summary(1)])
-        let shows = await FirstRunTour(preferences: shared, recipes: recipes).onLaunch(plain: true)
-        XCTAssertTrue(shows)
-    }
-
-    func testTheExtensionLeavesAnOldUserUndecided() async throws {
-        let suite = "FirstRunTourTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        recipes.history.send([summary(1)])
-
-        await FirstRunTour.noteShare(defaults: defaults, recipes: recipes)
-        XCTAssertNil(defaults.string(forKey: "tour_welcome"))
-    }
-
-    func testTheSampleIsAddedOnceInTheUILanguageAndNotAgainAfterItIsDeleted() async {
-        await tour.addSampleOnce(language: "de")
+    func testANewUsersFirstLaunchAddsTheSampleQuietlyInTheUILanguage() async {
+        await tour.onLaunch(language: "de")
         XCTAssertEqual(recipes.addSampleCalls.map(\.language), ["de"])
         XCTAssertEqual(recipes.addSampleCalls.first?.sourceUrl, SampleRecipe.sourceUrl)
         XCTAssertTrue(preferences.sampleAdded)
+    }
 
+    func testDeletedTheSampleStaysDeleted() async {
+        await tour.onLaunch(language: "en")
         recipes.sample = nil // deleted
-        await tour.addSampleOnce(language: "de")
+        await tour.onLaunch(language: "en")
         XCTAssertEqual(recipes.addSampleCalls.count, 1)
     }
 
-    func testAFailedSaveTriesAgainAtTheNextWelcome() async {
+    func testSomeoneWhoAlreadyHasRecipesNeverGetsTheSample() async {
+        recipes.history.send([summary(1)])
+        await tour.onLaunch(language: "en")
+        XCTAssertTrue(recipes.addSampleCalls.isEmpty)
+        XCTAssertTrue(preferences.sampleAdded, "decided once")
+
+        recipes.history.send([]) // they deleted everything
+        await tour.onLaunch(language: "en")
+        XCTAssertTrue(recipes.addSampleCalls.isEmpty)
+    }
+
+    func testASampleAlreadyThereIsntAddedTwice() async {
+        recipes.sample = 5
+        await tour.onLaunch(language: "en")
+        XCTAssertTrue(recipes.addSampleCalls.isEmpty)
+        XCTAssertTrue(preferences.sampleAdded)
+    }
+
+    func testAFailedSaveTriesAgainAtTheNextLaunch() async {
         recipes.addSampleResult = nil
-        await tour.addSampleOnce(language: "en")
+        await tour.onLaunch(language: "en")
         XCTAssertFalse(preferences.sampleAdded)
 
         recipes.addSampleResult = 7
-        await tour.addSampleOnce(language: "en")
+        await tour.onLaunch(language: "en")
         XCTAssertTrue(preferences.sampleAdded)
         XCTAssertEqual(recipes.sample, 7)
     }
 
-    func testTryItOpensTheSampleThatIsThereAndAddsItAgainOnlyIfGone() async {
-        recipes.sample = 5
-        let there = await tour.sampleToOpen(language: "en")
-        XCTAssertEqual(there, 5)
-        XCTAssertTrue(recipes.addSampleCalls.isEmpty)
-
-        recipes.sample = nil
-        recipes.addSampleResult = 6
-        let added = await tour.sampleToOpen(language: "fr")
-        XCTAssertEqual(added, 6)
-        XCTAssertEqual(recipes.addSampleCalls.map(\.language), ["fr"])
-    }
-
-    func testEveryLaunchFormatsTheTimesOfASampleSavedBefore179WhateverTheWelcomesState() async {
-        _ = await tour.onLaunch(plain: true)
-        tour.finishWelcome()
-        _ = await tour.onLaunch(plain: false)
+    func testEveryLaunchFormatsTheTimesOfASampleSavedBefore179() async {
+        await tour.onLaunch(language: "en")
+        await tour.onLaunch(language: "en")
         XCTAssertEqual(recipes.formatSampleTimesCalls, 2)
     }
 
-    func testShowingTheTourAgainBringsEveryTipBack() {
-        for tip in Tip.allCases { preferences.setTipSeen(tip, true) }
-        tour.replay()
-        XCTAssertEqual(preferences.seenTips, [])
+    /// On iOS a share is saved by the extension without opening the app: a new user's first share
+    /// adds the sample first, as the app's first launch would have, and the app then adds nothing.
+    func testTheExtensionAddsTheSampleBeforeANewUsersFirstShare() async throws {
+        let suite = "FirstRunTourTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        await FirstRunTour.beforeShare(defaults: defaults, recipes: recipes, language: "fr")
+        XCTAssertEqual(recipes.addSampleCalls.map(\.language), ["fr"])
+        XCTAssertTrue(defaults.bool(forKey: "tour_sample_added"))
+
+        recipes.history.send([summary(1)]) // the shared recipe
+        await FirstRunTour(preferences: UserDefaultsAppPreferences(defaults: defaults), recipes: recipes)
+            .onLaunch(language: "fr")
+        XCTAssertEqual(recipes.addSampleCalls.count, 1)
+    }
+
+    func testTheExtensionAddsNoSampleForSomeoneWithRecipes() async throws {
+        let suite = "FirstRunTourTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        recipes.history.send([summary(1)])
+
+        await FirstRunTour.beforeShare(defaults: defaults, recipes: recipes, language: "en")
+        XCTAssertTrue(recipes.addSampleCalls.isEmpty)
+        XCTAssertTrue(defaults.bool(forKey: "tour_sample_added"))
     }
 
     func testTheTourStateIsStoredUnderTheAndroidKeys() throws {
@@ -129,17 +100,29 @@ final class FirstRunTourTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let prefs = UserDefaultsAppPreferences(defaults: defaults)
-        XCTAssertEqual(prefs.welcome, .undecided)
+        XCTAssertFalse(prefs.sampleAdded)
+        XCTAssertEqual(prefs.seenTooltips, [])
 
-        prefs.welcome = .pending
         prefs.sampleAdded = true
-        prefs.setTipSeen(.cookMode, true)
+        prefs.setTooltipSeen(.cookTimer, true)
 
-        XCTAssertEqual(defaults.string(forKey: "tour_welcome"), "PENDING")
         XCTAssertTrue(defaults.bool(forKey: "tour_sample_added"))
-        XCTAssertTrue(defaults.bool(forKey: "tour_tip_cook_mode"))
-        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).seenTips, [.cookMode])
-        defaults.set("LATER", forKey: "tour_welcome")
-        XCTAssertEqual(prefs.welcome, .undecided, "an unknown state reads as undecided")
+        XCTAssertTrue(defaults.bool(forKey: "tooltip_cook_timer"))
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).seenTooltips, [.cookTimer])
+
+        prefs.setTooltipSeen(.cookTimer, false)
+        XCTAssertNil(defaults.object(forKey: "tooltip_cook_timer"), "unseen again removes the key")
+    }
+
+    /// #151's keys are ignored: someone who dismissed every tip still gets the tooltips (the
+    /// owner's decision, reversing #163).
+    func testEveryoneStartsWithEveryTooltipUnseenWhatever151Stored() throws {
+        let suite = "FirstRunTourTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("SEEN", forKey: "tour_welcome")
+        defaults.set(true, forKey: "tour_tip_recipe")
+        defaults.set(true, forKey: "tour_tip_cook_mode")
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).seenTooltips, [])
     }
 }

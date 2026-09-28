@@ -29,6 +29,7 @@ struct CookedPhotosSection: View {
                 }
                 .buttonStyle(OutlinedActionStyle())
                 .accessibilityIdentifier("cooked.iMadeThis")
+                .tooltipAnchor(.recipeMadeThis)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 10) {
@@ -58,6 +59,7 @@ struct CookedPhotosSection: View {
                                 .background(RoundedRectangle(cornerRadius: 10).fill(Palette.surfaceContainer))
                         }
                         .accessibilityLabel(Strings.addPhoto)
+                        .tooltipAnchor(.recipeMadeThis)
                     }
                 }
             }

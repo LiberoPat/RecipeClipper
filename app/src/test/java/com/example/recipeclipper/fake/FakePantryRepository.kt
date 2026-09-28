@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.NewPantryItem
 import com.example.recipeclipper.data.model.PantryEdit
 import com.example.recipeclipper.data.model.PantryItem
+import com.example.recipeclipper.data.model.PantryStock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -42,12 +43,14 @@ class FakePantryRepository(initial: List<PantryItem> = emptyList()) : PantryRepo
         return id
     }
 
-    override suspend fun setInStock(ids: List<Long>, inStock: Boolean) {
-        items.value = items.value.map { if (it.id in ids) it.copy(inStock = inStock) else it }
+    override suspend fun setStock(ids: List<Long>, stock: PantryStock) {
+        items.value = items.value.map {
+            if (it.id in ids) it.copy(inStock = stock != PantryStock.RUN_OUT, runningLow = stock == PantryStock.RUNNING_LOW) else it
+        }
     }
 
     override suspend fun restock(ids: List<Long>, day: Long) {
-        items.value = items.value.map { if (it.id in ids) it.copy(inStock = true, purchasedDay = day) else it }
+        items.value = items.value.map { if (it.id in ids) it.copy(inStock = true, runningLow = false, purchasedDay = day) else it }
     }
 
     override suspend fun edit(id: Long, edit: PantryEdit) {
@@ -78,11 +81,11 @@ class FakePantryRepository(initial: List<PantryItem> = emptyList()) : PantryRepo
 
     private fun PantryItem.toEntity() = PantryItemEntity(
         id = id, name = name, quantity = quantity, language = language, aisle = aisle.key, inStock = inStock,
-        alwaysHave = alwaysHave, purchasedDay = purchasedDay, expiresDay = expiresDay, updatedAt = 0
+        alwaysHave = alwaysHave, purchasedDay = purchasedDay, expiresDay = expiresDay, updatedAt = 0, runningLow = runningLow
     )
 
     private fun PantryItemEntity.toDomain() = PantryItem(
         id = id, name = name, quantity = quantity, language = language, aisle = Aisle.fromKey(aisle), inStock = inStock,
-        alwaysHave = alwaysHave, purchasedDay = purchasedDay, expiresDay = expiresDay
+        alwaysHave = alwaysHave, purchasedDay = purchasedDay, expiresDay = expiresDay, runningLow = runningLow
     )
 }

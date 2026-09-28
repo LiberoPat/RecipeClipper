@@ -67,17 +67,20 @@ private struct ServesStepper: View {
     @ScaledMetric(relativeTo: .headline) private var numberWidth: CGFloat = 32
 
     var body: some View {
-        if labelAbove {
-            VStack(alignment: .leading, spacing: 4) {
-                label
-                stepper
-            }
-        } else {
-            HStack(spacing: 4) {
-                label.padding(.trailing, 2)
-                stepper
+        Group {
+            if labelAbove {
+                VStack(alignment: .leading, spacing: 4) {
+                    label
+                    stepper
+                }
+            } else {
+                HStack(spacing: 4) {
+                    label.padding(.trailing, 2)
+                    stepper
+                }
             }
         }
+        .tooltipAnchor(.recipeServings)
     }
 
     private var label: some View {
@@ -161,5 +164,6 @@ private struct UnitsMenu: View {
         }
         .accessibilityLabel(Strings.changeUnits)
         .accessibilityValue(Strings.unitLabel(system))
+        .tooltipAnchor(.recipeUnits)
     }
 }

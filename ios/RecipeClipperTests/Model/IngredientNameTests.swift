@@ -97,6 +97,89 @@ final class IngredientNameTests: XCTestCase {
         XCTAssertFalse(IngredientName.matches("ピーナッツバター", "バター", words: ja))
     }
 
+    // MARK: Listed singular/plural pairs (#191)
+
+    // a listed pair is one name in either number, and only its number
+    func testAListedPairIsOneNameInEitherNumberAndOnlyItsNumber() {
+        XCTAssertTrue(IngredientName.matches("onions", "onion"))
+        XCTAssertTrue(IngredientName.matches("Onion", "onions"))
+        XCTAssertTrue(IngredientName.matches("red onion", "red onions"))
+        XCTAssertTrue(IngredientName.matches("yellow onions", "yellow onion"))
+        XCTAssertTrue(IngredientName.matches("large eggs", "egg"))
+        XCTAssertTrue(IngredientName.matches("bay leaves", "bay leaf"))
+        XCTAssertTrue(IngredientName.matches("tomatoes", "tomato"))
+        XCTAssertTrue(IngredientName.matches("potatoes", "potato"))
+        XCTAssertTrue(IngredientName.matches("berries", "berry"))
+        XCTAssertTrue(IngredientName.matches("garlic cloves", "garlic clove"))
+        // The owner (2026-09-27): a colour is a different onion, in either number.
+        let different = [
+            ("red onion", "onion"), ("red onions", "onion"), ("red onion", "onions"),
+            ("red onion", "yellow onion"), ("yellow onions", "white onion"), ("yellow onion", "white onions"),
+            ("onion powder", "onion"), ("onion powder", "onions"), ("rice flour", "flour"),
+            ("peas", "pea shoots"), ("pea", "pea shoots"),
+        ]
+        for (a, b) in different {
+            XCTAssertFalse(IngredientName.matches(a, b), "\(a) / \(b)")
+            XCTAssertFalse(IngredientName.matches(b, a), "\(b) / \(a)")
+        }
+    }
+
+    // nothing is inferred from a word that isn't listed
+    func testNothingIsInferredFromAWordThatIsntListed() {
+        for word in ["glass", "hummus", "asparagus", "couscous", "molasses"] {
+            XCTAssertEqual(IngredientName.key(word, words: .english), word)
+        }
+        XCTAssertEqual(IngredientName.key("peas", words: .english), "pea")
+        XCTAssertFalse(IngredientName.matches("glass", "gla"))
+        XCTAssertFalse(IngredientName.matches("hummus", "hummu"))
+        XCTAssertFalse(IngredientName.matches("asparagus", "asparagu"))
+        XCTAssertFalse(IngredientName.matches("couscous", "couscou"))
+        XCTAssertFalse(IngredientName.matches("molasses", "molasse"))
+        XCTAssertFalse(IngredientName.matches("peppers", "pepper")) // the spice and the vegetable: not listed
+    }
+
+    // the key is trimmed, lowercase, and each listed plural singular
+    func testTheKeyIsTrimmedLowercaseAndEachListedPluralSingular() throws {
+        XCTAssertEqual(IngredientName.key("  Red Onions ", words: .english), "red onion")
+        XCTAssertEqual(IngredientName.key("onions, sliced", words: .english), "onion, sliced")
+        XCTAssertEqual(IngredientName.key(" Onions ", words: nil), "onions")
+        XCTAssertTrue(IngredientName.same("Onions", "onion", words: .english))
+        XCTAssertFalse(IngredientName.same("2 onions", "onion", words: .english))
+        let fr = try XCTUnwrap(LanguageWords.forTag("fr"))
+        XCTAssertEqual(IngredientName.key("pommes de terre", words: fr), "pomme de terre")
+        XCTAssertEqual(IngredientName.key("oignons rouges", words: fr), "oignon rouge")
+        let ja = try XCTUnwrap(LanguageWords.forTag("ja"))
+        XCTAssertEqual(IngredientName.key("玉ねぎ", words: ja), "玉ねぎ")
+    }
+
+    // each language lists its own pairs
+    func testEachLanguageListsItsOwnPairs() {
+        func matches(_ a: String, _ b: String, _ tag: String) -> Bool { IngredientName.matches(a, b, words: LanguageWords.forTag(tag)!) }
+        XCTAssertTrue(matches("Zwiebeln", "Zwiebel", "de"))
+        XCTAssertTrue(matches("Eier", "Ei", "de"))
+        XCTAssertTrue(matches("rote Zwiebeln", "rote Zwiebel", "de"))
+        XCTAssertFalse(matches("rote Zwiebeln", "Zwiebel", "de"))
+        XCTAssertTrue(matches("cebollas", "cebolla", "es"))
+        XCTAssertTrue(matches("cebollas rojas", "cebolla roja", "es"))
+        XCTAssertFalse(matches("cebollas rojas", "cebolla", "es"))
+        XCTAssertTrue(matches("oignons", "oignon", "fr"))
+        XCTAssertTrue(matches("uova", "uovo", "it"))
+        XCTAssertTrue(matches("ovos", "ovo", "pt"))
+        XCTAssertFalse(matches("onions", "onion", "de")) // English words aren't German ones
+    }
+
+    // a count's words are worded for the count by the pair
+    func testACountsWordsAreWordedForTheCountByThePair() {
+        XCTAssertEqual(IngredientName.counted("onion", count: 3, words: .english), "onions")
+        XCTAssertEqual(IngredientName.counted("onions", count: 1, words: .english), "onion")
+        XCTAssertEqual(IngredientName.counted("onion", count: 0.5, words: .english), "onion")
+        XCTAssertEqual(IngredientName.counted("large egg, beaten", count: 2, words: .english), "large eggs, beaten")
+        XCTAssertEqual(IngredientName.counted("Onion", count: 2, words: .english), "Onions")
+        XCTAssertEqual(IngredientName.counted("glass", count: 2, words: .english), "glass")
+        XCTAssertEqual(IngredientName.counted("Zwiebel", count: 3, words: LanguageWords.forTag("de")!), "Zwiebeln")
+        XCTAssertEqual(IngredientName.counted("oignon rouge", count: 2, words: LanguageWords.forTag("fr")!), "oignons rouges")
+    }
+
     // render scales, then converts with the line's own separator
     func testRenderScalesThenConvertsWithTheLinesOwnSeparator() {
         XCTAssertEqual(

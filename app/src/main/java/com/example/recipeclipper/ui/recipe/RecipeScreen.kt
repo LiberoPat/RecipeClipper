@@ -2,7 +2,6 @@ package com.example.recipeclipper.ui.recipe
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,27 +23,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarResult
-import com.example.recipeclipper.data.model.LibraryLimit
-import com.example.recipeclipper.data.model.Tip
-import com.example.recipeclipper.ui.common.noticeMessage
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -69,26 +66,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
-import com.example.recipeclipper.ui.sharefile.SendFileEffect
-import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.model.ContentOrigin
-import com.example.recipeclipper.data.model.ParseError
-import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.ContentOrigin
+import com.example.recipeclipper.data.model.LibraryLimit
+import com.example.recipeclipper.data.model.ParseError
+import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.data.model.TooltipScreen
+import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.ui.common.LocalFlagValues
+import com.example.recipeclipper.ui.common.noticeMessage
 import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.AddToPlanBottomSheet
 import com.example.recipeclipper.ui.plan.AddToPlanViewModel
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
+import com.example.recipeclipper.ui.sharefile.SendFileEffect
+import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
-import com.example.recipeclipper.ui.tour.TipCallout
+import com.example.recipeclipper.ui.tour.TooltipHost
+import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /** Every event the recipe screen can raise, bundled so views take one parameter, not eighteen. */
 internal class RecipeActions(
@@ -284,16 +286,6 @@ fun RecipeScreen(
     if (sendFileViewModel != null) {
         SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
     }
-    // A photo added with "I made this" (#116), or "Mark as cooked" (#173), once closed: the recipe was cooked, so the
-    // pantry's use-up sheet (#147) gets the lines as shown now, ticked or all.
-    val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState, onMadeThis = {
-        val current = viewModel.uiState.value
-        (current.content as? RecipeContent.Success)?.let { loaded ->
-            useUpViewModel?.onMadeThis(
-                loaded.recipe.id, loaded.words?.language, loaded.ingredients, current.checkedIngredients
-            )
-        }
-    })
 
     // Cook mode just finished with ingredients ticked (#147): they go to the pantry's use-up sheet.
     val finished = state.cookFinished
@@ -331,6 +323,17 @@ fun RecipeScreen(
     // Cook mode follows the system theme like every other screen unless the user has asked
     // for it to stay dark.
     RecipeClipperTheme(forceDark = cooking && state.darkWhileCooking) {
+        // A photo added with "I made this" (#116), or "Mark as cooked" (#173), once closed: the recipe was cooked, so the
+        // pantry's use-up sheet (#147) gets the lines as shown now, ticked or all. Called inside the theme (#186):
+        // it shows the full-screen photo, a dialog, which outside it was Material purple.
+        val photos = cookedPhotosUi(photosViewModel, content, snackbarHostState, onMadeThis = {
+            val current = viewModel.uiState.value
+            (current.content as? RecipeContent.Success)?.let { loaded ->
+                useUpViewModel?.onMadeThis(
+                    loaded.recipe.id, loaded.words?.language, loaded.ingredients, current.checkedIngredients
+                )
+            }
+        })
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
@@ -345,8 +348,16 @@ fun RecipeScreen(
                     is RecipeContent.Success -> {
                         // Amounts in steps (#101) show only behind their flag.
                         val shown = if (amountsInStepsEnabled) content else content.copy(stepAmounts = null)
-                        if (cooking) CookView(shown, state, actions)
-                        else ReadingView(shown, state, actions, saveState.isSaved, photos?.count ?: 0, photos?.section)
+                        // The tooltips (#190): cook mode is its own screen; neither shows one
+                        // over a snackbar.
+                        val snackbar = snackbarHostState.currentSnackbarData != null
+                        if (cooking) {
+                            TooltipHost(TooltipScreen.COOK, blocked = snackbar) { CookView(shown, state, actions) }
+                        } else {
+                            TooltipHost(TooltipScreen.RECIPE, blocked = snackbar) {
+                                ReadingView(shown, state, actions, saveState.isSaved, photos?.count ?: 0, photos?.section)
+                            }
+                        }
                     }
                     is RecipeContent.Loading -> StatusView(actions.onBack) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -520,7 +531,10 @@ private fun ReadingView(
                     // membership, so the icon is reading the same thing the database is.
                     // Lists and the overflow's actions need a saved recipe: not one shown but not
                     // kept (#107).
-                    if (!state.notKept) IconButton(onClick = actions.onSaveToList) {
+                    if (!state.notKept) IconButton(
+                        onClick = actions.onSaveToList,
+                        modifier = Modifier.tooltipAnchor(Tooltip.RECIPE_BOOKMARK)
+                    ) {
                         Icon(
                             painter = painterResource(
                                 if (isSaved) R.drawable.ic_bookmark else R.drawable.ic_bookmark_border
@@ -535,7 +549,7 @@ private fun ReadingView(
                             }
                         )
                     }
-                    IconButton(onClick = actions.onShare) {
+                    IconButton(onClick = actions.onShare, modifier = Modifier.tooltipAnchor(Tooltip.RECIPE_SHARE)) {
                         Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share_recipe))
                     }
                     if (state.updatingFromSource) {
@@ -607,8 +621,6 @@ private fun ReadingView(
                     onServingsChange = actions.onServingsChange,
                     onUnitSystemChange = actions.onUnitSystemChange
                 )
-                // The first recipe opened (#151): the row above, and the bookmark.
-                TipCallout(Tip.RECIPE, Modifier.padding(top = 12.dp))
                 Spacer(Modifier.height(20.dp))
                 SectionHeading(stringResource(R.string.heading_ingredients))
                 Spacer(Modifier.height(6.dp))
@@ -685,6 +697,7 @@ private fun ReadingView(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 12.dp)
                         .height(52.dp)
+                        .tooltipAnchor(Tooltip.RECIPE_START_COOKING)
                 ) {
                     Text(stringResource(R.string.action_start_cooking), style = MaterialTheme.typography.labelLarge)
                 }
@@ -715,7 +728,7 @@ private fun RecipeOverflowMenu(
     var confirming by rememberSaveable { mutableStateOf(false) }
     var confirmingUpdate by rememberSaveable { mutableStateOf(false) }
 
-    IconButton(onClick = { expanded = true }) {
+    IconButton(onClick = { expanded = true }, modifier = Modifier.tooltipAnchor(Tooltip.RECIPE_MENU)) {
         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {

@@ -580,6 +580,10 @@ enum Strings {
     static var pantryInStock: String { String(localized: "pantry_in_stock") }
     static var pantryOut: String { String(localized: "pantry_out") }
     static var pantryOnList: String { String(localized: "pantry_on_list") }
+    static var pantryRanOut: String { String(localized: "pantry_ran_out") }
+    static var pantryRestock: String { String(localized: "pantry_restock") }
+    static var pantryRunningLow: String { String(localized: "pantry_running_low") }
+    static var pantryLow: String { String(localized: "pantry_low") }
     static var pantryTakeOffList: String { String(localized: "pantry_take_off_list") }
     static var pantryAlwaysHave: String { String(localized: "pantry_always_have") }
     static var pantryAlwaysHaveDetail: String { String(localized: "pantry_always_have_detail") }
@@ -636,42 +640,42 @@ enum Strings {
         }
     }
 
-    // The first-run tour (#151)
-    static var welcomeSkip: String { String(localized: "welcome_skip") }
-    static var welcomeNext: String { String(localized: "welcome_next") }
-    static var welcomeBack: String { String(localized: "welcome_back") }
-    static func welcomePage(_ n: Int, of total: Int) -> String { String(localized: "welcome_page \(n) \(total)") }
-    static var welcomeTrySample: String { String(localized: "welcome_try_sample") }
-    static var welcomeStart: String { String(localized: "welcome_start") }
-    static var welcomeAppTitle: String { String(localized: "welcome_app_title") }
-    static var welcomeAppBody: String { String(localized: "welcome_app_body") }
-    static var welcomeAppOffline: String { String(localized: "welcome_app_offline") }
-    static var welcomeClipTitle: String { String(localized: "welcome_clip_title") }
-    /// iOS's own wording: the share extension saves the recipe without opening the app.
-    static var welcomeClipShare: String { String(localized: "welcome_clip_share_ios") }
-    static var welcomeClipPaste: String { String(localized: "welcome_clip_paste") }
-    static var welcomeClipType: String { String(localized: "welcome_clip_type") }
-    static var welcomeDailyTitle: String { String(localized: "welcome_daily_title") }
-    static var welcomeDailyServings: String { String(localized: "welcome_daily_servings") }
-    static var welcomeDailyLists: String { String(localized: "welcome_daily_lists") }
-    static var welcomeDailyCook: String { String(localized: "welcome_daily_cook") }
-    static var welcomeDailyChef: String { String(localized: "welcome_daily_chef") }
-    static var welcomeWeeklyTitle: String { String(localized: "welcome_weekly_title") }
-    static var welcomeWeeklyPlan: String { String(localized: "welcome_weekly_plan") }
-    static var welcomeWeeklyNeed: String { String(localized: "welcome_weekly_need") }
-    static var welcomeWeeklyGroceries: String { String(localized: "welcome_weekly_groceries") }
-    static var welcomeWeeklyPantry: String { String(localized: "welcome_weekly_pantry") }
-    static func tip(_ tip: Tip) -> String {
-        switch tip {
-        case .recipe: String(localized: "tip_recipe")
-        case .cookMode: String(localized: "tip_cook_mode")
-        case .week: String(localized: "tip_week")
-        case .groceries: String(localized: "tip_groceries")
-        case .pantry: String(localized: "tip_pantry")
+    // The tooltips (#190)
+    static var tooltipGotIt: String { String(localized: "tooltip_got_it") }
+    /// A tooltip's words. The recipe menu's name Add to plan and Add to groceries only with the
+    /// meal plan on, as the menu has them only then.
+    static func tooltip(_ tooltip: Tooltip, mealPlan: Bool) -> String {
+        switch tooltip {
+        case .homeLink: String(localized: "tooltip_home_link")
+        case .homeNewRecipe: String(localized: "tooltip_home_new_recipe")
+        case .recipeServings: String(localized: "tooltip_recipe_servings")
+        case .recipeUnits: String(localized: "tooltip_recipe_units")
+        case .recipeBookmark: String(localized: "tooltip_recipe_bookmark")
+        case .recipeShare: String(localized: "tooltip_recipe_share")
+        case .recipeMenu: mealPlan ? String(localized: "tooltip_recipe_menu") : String(localized: "tooltip_recipe_menu_no_plan")
+        case .recipeStartCooking: String(localized: "tooltip_recipe_start_cooking")
+        case .recipeMadeThis: String(localized: "tooltip_recipe_made_this")
+        case .cookDoneNext: String(localized: "tooltip_cook_done_next")
+        case .cookTapStep: String(localized: "tooltip_cook_tap_step")
+        case .cookTimer: String(localized: "tooltip_cook_timer")
+        case .cookIngredients: String(localized: "tooltip_cook_ingredients")
+        case .weekAdd: String(localized: "tooltip_week_add")
+        case .weekMonth: String(localized: "tooltip_week_month")
+        case .weekMenu: String(localized: "tooltip_week_menu")
+        case .groceriesAdd: String(localized: "tooltip_groceries_add")
+        case .groceriesTick: String(localized: "tooltip_groceries_tick")
+        case .groceriesLongPress: String(localized: "tooltip_groceries_long_press")
+        case .groceriesDoneShopping: String(localized: "tooltip_groceries_done_shopping")
+        case .groceriesMenu: String(localized: "tooltip_groceries_menu")
+        case .pantryAdd: String(localized: "tooltip_pantry_add")
+        case .pantryInStock: String(localized: "tooltip_pantry_in_stock")
+        case .pantryMenu: String(localized: "tooltip_pantry_menu")
+        case .settingsUnits: String(localized: "tooltip_settings_units")
+        case .settingsShowTips: String(localized: "tooltip_settings_show_tips")
         }
     }
     static var dismissTip: String { String(localized: "cd_dismiss_tip") }
     static var settingsSectionHelp: String { String(localized: "settings_section_help") }
-    static var settingsShowTour: String { String(localized: "settings_show_tour") }
-    static var settingsShowTourDescription: String { String(localized: "settings_show_tour_description") }
+    static var settingsShowTips: String { String(localized: "settings_show_tips") }
+    static var settingsShowTipsDescription: String { String(localized: "settings_show_tips_description") }
 }

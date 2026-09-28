@@ -32,17 +32,19 @@ enum class Aisle(val key: String) {
 /**
  * Which aisle a grocery line belongs in: its ingredient name ([IngredientName.of]) matched on
  * its end against the language's `aisles.json`, like the density table, so "unsalted butter"
- * is dairy, "peanut butter" condiments and "butter beans" canned. A line with no name, a name
- * nothing matches, or a language with no words is [Aisle.OTHER].
+ * is dairy, "peanut butter" condiments and "butter beans" canned. A listed pair's words match in
+ * either number ([IngredientName.key], #191): "red onions" is produce through "onion". A line
+ * with no name, a name nothing matches, or a language with no words is [Aisle.OTHER].
  */
 object Aisles {
 
     private class Table(words: LanguageWords) {
-        // Longest alias first, so the most specific one wins.
+        // Keyed, longest first, so the most specific one wins. (No two aisles share a keyed
+        // alias, so equal lengths can't both match one name: SharedTablesTest.)
         val aliases: List<Pair<String, Aisle>> = words.table("aisles").getJSONObject("aisles").let { aisles ->
             aisles.keys().asSequence().flatMap { key ->
                 val aisle = Aisle.fromKey(key)
-                SharedTables.strings(aisles.getJSONArray(key)).map { it to aisle }
+                SharedTables.strings(aisles.getJSONArray(key)).map { IngredientName.key(it, words) to aisle }
             }.toList()
         }.sortedByDescending { it.first.length }
     }
@@ -56,9 +58,11 @@ object Aisles {
     }
 
     /** The aisle for a name as [IngredientName.of] gives it. */
-    fun ofName(name: String, words: LanguageWords): Aisle =
-        table(words).aliases.firstOrNull { (alias, _) -> IngredientDensities.endsWithName(name, alias, words.spaced) }
+    fun ofName(name: String, words: LanguageWords): Aisle {
+        val key = IngredientName.key(name, words)
+        return table(words).aliases.firstOrNull { (alias, _) -> IngredientDensities.endsWithName(key, alias, words.spaced) }
             ?.second ?: Aisle.OTHER
+    }
 }
 
 /**
@@ -82,14 +86,15 @@ data class GroceryItem(
  * How the grocery list is shown: grouped by aisle, and within an aisle, lines naming the same
  * ingredient kept together. Pure, and the rule behind "never a confident wrong number":
  *
- * - Lines with the same [IngredientName] (exactly, in the same language, checked or not alike)
- *   are one ingredient.
+ * - Lines with the same [IngredientName] (exactly, a listed pair's number aside, #191: "onion" is
+ *   "onions"; in the same language, checked or not alike) are one ingredient.
  * - They combine into one row ([Row.Combined]) only when every one is a single exact amount
  *   (no range, no "plus", no second measure, no package size) and all are in one family of
  *   units that convert exactly into each other: metric weight (g, kg), imperial weight (oz, lb),
  *   metric volume (ml, cl, dl, l, and the Japanese 200 ml cup and 180 ml rice cup), US volume
- *   (tsp, tbsp, fl oz, cup), sticks, or plain counts whose words after the number are identical
- *   ("2 eggs" and "3 eggs"). Grams never add to ounces, nor cups to grams.
+ *   (tsp, tbsp, fl oz, cup), sticks, or plain counts whose words after the number are identical,
+ *   a listed pair's number aside ("2 eggs" and "3 eggs", "1 onion" and "2 onions"; the total's
+ *   words are worded for it, "3 onions"). Grams never add to ounces, nor cups to grams.
  * - The total is written in one of the units the lines used, the largest that shows it exactly
  *   ("1 cup" + "2 tbsp" is "1 1/8 cup"); if none can, nothing is combined.
  * - A bracket or slash after the amount must be only a note ("(, minced)"): one that could hold
@@ -148,13 +153,16 @@ object GroceryCombiner {
      * "2 corn" sit together, each as written).
      */
     private fun group(items: List<GroceryItem>, decisions: Decisions): List<Row> {
-        // Keyed by language and name; a line with no name only groups with the very same line.
+        // Keyed by language and name, a listed pair's number aside ("onion" is "onions"); a line
+        // with no name only groups with the very same line.
         val groups = LinkedHashMap<Any, MutableList<GroceryItem>>()
         val names = HashMap<Long, String?>()
+        val keys = HashMap<Long, String?>()
         for (item in items) {
             val name = GroceryDecisions.name(item, decisions)
             names[item.id] = name
-            val key: Any = if (name == null) Triple("line", item.language, normalize(item.text)) else (item.language to name)
+            keys[item.id] = name?.let { IngredientName.key(it, LanguageWords.forTag(item.language)) }
+            val key: Any = if (name == null) Triple("line", item.language, normalize(item.text)) else (item.language to keys[item.id])
             groups.getOrPut(key) { mutableListOf() } += item
         }
         val merged = mergeSame(groups.values.toList(), names, decisions)
@@ -164,7 +172,7 @@ object GroceryCombiner {
             val words = LanguageWords.forTag(first.language)
             val texts = lines.map { it.text }
             val read = lines.map { GroceryDecisions.effectiveText(it, decisions) }
-            val sameName = lines.all { names[it.id] == name }
+            val sameName = lines.all { keys[it.id] == keys[first.id] }
             val total = if (name != null && words != null) {
                 sum(read, words, requireSameName = sameName) ?: repeated(texts)
             } else {
@@ -332,8 +340,8 @@ object GroceryCombiner {
     private fun sum(lines: List<String>, words: LanguageWords, requireSameName: Boolean = true): String? {
         if (lines.size < 2) return null
         if (requireSameName) {
-            val name = IngredientName.of(lines.first(), words) ?: return null
-            if (lines.any { IngredientName.of(it, words) != name }) return null
+            val names = lines.map { line -> IngredientName.of(line, words)?.let { IngredientName.key(it, words) } ?: return null }
+            if (names.any { it != names.first() }) return null
         }
         val amounts = lines.map { amount(it, words) ?: return null }
         val family = amounts.first().family
@@ -342,10 +350,12 @@ object GroceryCombiner {
         val total = amounts.sumOf { it.value }
 
         if (family == Family.COUNT) {
+            // The very same words, a listed pair's number aside ("onion", "onions"), worded for the total.
             val rest = amounts.first().rest
-            if (amounts.any { normalize(it.rest) != normalize(rest) }) return null
+            val same = IngredientName.key(normalize(rest), words)
+            if (amounts.any { IngredientName.key(normalize(it.rest), words) != same }) return null
             val text = exactly(total, metric = false, comma = comma) ?: return null
-            return "$text $rest"
+            return "$text ${IngredientName.counted(rest, total, words)}"
         }
 
         // The largest unit the lines used that shows the total exactly.

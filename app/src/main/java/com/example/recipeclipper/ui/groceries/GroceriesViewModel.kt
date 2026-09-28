@@ -229,7 +229,8 @@ class GroceriesViewModel @Inject constructor(
             val words = LanguageWords.forTag(item.language) ?: continue
             val name = IngredientName.of(item.text, words) ?: continue
             val tracked = PantryMatch.find(name, words.language, pantryItems)
-            val key = tracked?.let { "pantry-${it.id}" } ?: "new-${words.language}-${name.lowercase(Locale.ROOT)}"
+            // One row per ingredient: "1 onion" and "2 onions" are one new item, named as first met.
+            val key = tracked?.let { "pantry-${it.id}" } ?: "new-${words.language}-${IngredientName.key(name, words)}"
             if (items.none { it.key == key }) items += PutAwayItem(key, tracked?.name ?: name, words.language, item.aisle, tracked?.id)
         }
         if (items.isEmpty()) return putAway(emptyList())

@@ -4,6 +4,8 @@ import Foundation
 /// ingredient name of a grocery line they ticked off), read with `language`'s words (nil: none,
 /// so it never matches). `quantity` is free text as written, never read as a number.
 /// `alwaysHave` marks a staple: it is never on a Buy list. The days are epoch days (`PlanDays`).
+/// `inStock` and `runningLow` make its `stock` (#194): running low is still in stock, so everything
+/// that asks "is it there" reads `inStock`.
 struct PantryItem: Equatable, Identifiable {
     let id: Int64
     var name: String
@@ -14,7 +16,18 @@ struct PantryItem: Equatable, Identifiable {
     var alwaysHave: Bool
     var purchasedDay: Int64?
     var expiresDay: Int64?
+    var runningLow: Bool = false
+
+    var stock: PantryStock {
+        if !inStock { return .runOut }
+        return runningLow ? .runningLow : .inStock
+    }
 }
+
+/// A pantry item's three states (#194; Android's `PantryStock`). In stock and running low both
+/// count as having it (presence only, #51); running low and run out both put its name on the
+/// grocery list.
+enum PantryStock: CaseIterable, Equatable { case inStock, runningLow, runOut }
 
 /// A new pantry item, before it has an id. It starts in stock, bought on `purchasedDay`.
 struct NewPantryItem: Equatable {
@@ -38,10 +51,12 @@ enum ExpiryBadge: Equatable { case expired, soon }
 
 enum PantrySort: Equatable { case aisle, expiry }
 
-/// The pantry as shown: one section per aisle, or (by expiry) one section with no aisle.
+/// The pantry as shown: one section per aisle, or (by expiry) one section with no aisle, then
+/// `runOut`: the items that have run out, in their own section at the bottom (#194).
 struct PantrySection: Equatable {
     let aisle: Aisle?
     let items: [PantryItem]
+    var runOut: Bool = false
 }
 
 /// Sorting, searching and the expiry badge (Android's `PantryList`). Pure.
@@ -59,7 +74,8 @@ enum PantryList {
 
     /// `items` matching `query` (a case-insensitive part of the name; blank matches all),
     /// sorted by aisle (aisles in `Aisle` order, names A–Z within), or by expiry (soonest first,
-    /// then undated, A–Z).
+    /// then undated, A–Z). Items that have run out are left out of those and follow in one last
+    /// section (`runOut`), in the same order (#194).
     static func arrange(_ items: [PantryItem], query: String, sort: PantrySort) -> [PantrySection] {
         let q = query.kTrimmed.lowercased()
         let found = items.filter { q.isEmpty || $0.name.lowercased().contains(q) }
@@ -68,37 +84,53 @@ enum PantryList {
             let x = a.name.lowercased(), y = b.name.lowercased()
             return x != y ? x < y : a.id < b.id
         }
+        let byExpiry: (PantryItem, PantryItem) -> Bool = { a, b in
+            switch (a.expiresDay, b.expiresDay) {
+            case let (x?, y?): return x != y ? x < y : byName(a, b)
+            case (.some, nil): return true
+            case (nil, .some): return false
+            case (nil, nil): return byName(a, b)
+            }
+        }
+        let order = Aisle.allCases
+        let byAisle: (PantryItem, PantryItem) -> Bool = { a, b in
+            let x = order.firstIndex(of: a.aisle)!, y = order.firstIndex(of: b.aisle)!
+            return x != y ? x < y : byName(a, b)
+        }
+        let have = found.filter(\.inStock)
+        let out = found.filter { !$0.inStock }
+        var sections: [PantrySection]
         switch sort {
         case .aisle:
-            let order = Aisle.allCases
-            return order.compactMap { aisle in
-                let inAisle = found.filter { $0.aisle == aisle }
+            sections = order.compactMap { aisle in
+                let inAisle = have.filter { $0.aisle == aisle }
                 return inAisle.isEmpty ? nil : PantrySection(aisle: aisle, items: inAisle.sorted(by: byName))
             }
         case .expiry:
-            return [PantrySection(aisle: nil, items: found.sorted { a, b in
-                switch (a.expiresDay, b.expiresDay) {
-                case let (x?, y?): return x != y ? x < y : byName(a, b)
-                case (.some, nil): return true
-                case (nil, .some): return false
-                case (nil, nil): return byName(a, b)
-                }
-            })]
+            sections = have.isEmpty ? [] : [PantrySection(aisle: nil, items: have.sorted(by: byExpiry))]
         }
+        if !out.isEmpty {
+            sections.append(PantrySection(aisle: nil, items: out.sorted(by: sort == .aisle ? byAisle : byExpiry), runOut: true))
+        }
+        return sections
     }
 
     /// The unticked grocery lines that are `item` itself: its name as the pantry puts it there
-    /// (trimmed, case-insensitive, in its language), which is what "On list" means (#146). A
-    /// recipe's "2 cups flour" isn't, so taking the item off the list never loses a recipe's line.
+    /// (trimmed, case-insensitive, a listed pair's number aside (`IngredientName.same`), in its
+    /// language), which is what "On list" means (#146). A recipe's "2 cups flour" isn't, so
+    /// taking the item off the list never loses a recipe's line.
     static func ownLines(_ item: PantryItem, _ groceries: [GroceryItem]) -> [GroceryItem] {
-        let name = item.name.kTrimmed.lowercased()
-        return groceries.filter { !$0.checked && $0.language == item.language && $0.text.kTrimmed.lowercased() == name }
+        let words = LanguageWords.forTag(item.language)
+        let name = IngredientName.key(item.name, words: words)
+        return groceries.filter { !$0.checked && $0.language == item.language && IngredientName.key($0.text, words: words) == name }
     }
 
-    /// The item already here with this name (trimmed, case-insensitive) in `language`, if any.
+    /// The item already here with this name (trimmed, case-insensitive, a listed pair's number
+    /// aside: "onion" finds "Onions") in `language`, if any.
     static func sameName(_ items: [PantryItem], name: String, language: String?) -> PantryItem? {
-        let key = name.kTrimmed.lowercased()
-        return items.first { $0.language == language && $0.name.kTrimmed.lowercased() == key }
+        let words = LanguageWords.forTag(language)
+        let key = IngredientName.key(name, words: words)
+        return items.first { $0.language == language && IngredientName.key($0.name, words: words) == key }
     }
 }
 
@@ -144,9 +176,10 @@ struct NeedLine: Equatable {
     let language: String?
 }
 
-/// One ingredient of the week: every line naming it (exactly the same `IngredientName`, in the
-/// same language), and whether the pantry has it. `name` is nil for a line the app can't name:
-/// it stands alone and is always Buy. `pantryName` is the matched pantry item's name.
+/// One ingredient of the week: every line naming it (exactly the same `IngredientName`, a listed
+/// pair's number aside, in the same language), and whether the pantry has it. `name` is the first
+/// line's; it is nil for a line the app can't name: it stands alone and is always Buy.
+/// `pantryName` is the matched pantry item's name.
 struct NeedRow: Equatable {
     let name: String?
     let lines: [NeedLine]
@@ -210,8 +243,9 @@ enum PantryMatch {
                 let name = words.flatMap { IngredientName.of(text, words: $0) }
                 let key: String
                 if let name {
-                    key = "n\u{1}\(source.language ?? "")\u{1}\(name)"
-                    names[key] = name
+                    // One ingredient whatever the number of a listed pair's words ("onion", "onions").
+                    key = "n\u{1}\(source.language ?? "")\u{1}\(IngredientName.key(name, words: words))"
+                    if names[key] == nil { names[key] = name }
                 } else {
                     key = "u\u{1}\(unnamed)"
                     unnamed += 1

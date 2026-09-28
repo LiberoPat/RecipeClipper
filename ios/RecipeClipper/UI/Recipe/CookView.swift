@@ -25,8 +25,6 @@ struct CookView: View {
                 // Sized ahead of the steps' scroll view, so an expanded list gets its full
                 // allowance at the larger text sizes instead of an even share of the height.
                 .layoutPriority(1)
-            // The first cook mode (#151). Outside the steps' scroll, so a step's id stays its row's.
-            TipCallout(tip: .cookMode, padding: EdgeInsets(top: 8, leading: 20, bottom: 0, trailing: 20))
 
             ScrollViewReader { proxy in
                 ScrollView {
@@ -46,6 +44,8 @@ struct CookView: View {
                                 timerWords: content.words ?? .english,
                                 timer: cook.timers[index],
                                 isLast: index == steps.count - 1,
+                                // "Tapping another step makes it current" (#190) points at the next one.
+                                isNext: index == cook.currentStep + 1,
                                 vm: vm
                             )
                             .id(index)
@@ -192,6 +192,8 @@ private struct IngredientsBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint(expanded ? Strings.hideIngredients : Strings.showIngredients)
+            // Its tooltip goes above, over the top bar, never over the current step (#190).
+            .tooltipAnchor(.cookIngredients, side: .above)
 
             if expanded {
                 let list = VStack(spacing: 0) {
@@ -230,6 +232,7 @@ private struct CookStep: View {
     let timerWords: LanguageWords
     let timer: StepTimer?
     let isLast: Bool
+    let isNext: Bool
     let vm: RecipeViewModel
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -254,11 +257,14 @@ private struct CookStep: View {
                     .foregroundStyle(Palette.onBackground)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if timerSeconds != nil || timer != nil {
+                    // The cook-mode tooltips (#190) go below their controls, never over the step's text.
                     CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
+                        .tooltipAnchor(.cookTimer, side: .below)
                         .padding(.top, 16)
                 }
                 Button(isLast ? Strings.cookDoneFinish : Strings.cookDoneNext, action: vm.onStepDone)
                     .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: true))
+                    .tooltipAnchor(.cookDoneNext, side: .below)
                     .padding(.top, 20)
             }
             .padding(20)
@@ -303,7 +309,17 @@ private struct CookStep: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint(Strings.goToStep(index + 1))
+            .modifier(NextStepAnchor(isNext: isNext))
         }
+    }
+}
+
+/// The next step, which "tap another step" (#190) points at.
+private struct NextStepAnchor: ViewModifier {
+    let isNext: Bool
+
+    func body(content: Content) -> some View {
+        if isNext { content.tooltipAnchor(.cookTapStep, side: .below) } else { content }
     }
 }
 

@@ -24,9 +24,11 @@ should review each one before release,** starting with the terms listed below.
   maintainer reads, not UI. Its button, "Report this site", is translated.
 - **The tour's sample recipe** (#151) is content in each UI language, once, in
   `shared/sample/recipe.json`: written as a cook in that language would (metric, local
-  ingredient names), not word for word from the English. A draft like the rest; the tour's
-  cards and tips name the app's buttons, so they must follow any change to those labels
-  ("Done — next step", "+ New recipe", "Add to plan", "What I need").
+  ingredient names), not word for word from the English. A draft like the rest.
+- **The tooltips** (#190, `tooltip_*`) name the app's buttons and menu items, so they must follow
+  any change to those labels ("Done — next step", "Add to plan", "Send as file", "Mark as
+  cooked", "What I need", "Send list", "Paste a list"). The recipe menu's has two versions, with
+  and without the meal plan's items.
 
 Adding a string: add the English, then all five translations, on both platforms. Mark
 the new term in the list below if you weren't sure of it.

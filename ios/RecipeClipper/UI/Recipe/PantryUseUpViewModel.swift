@@ -115,8 +115,9 @@ final class PantryUseUpViewModel: Identifiable {
     }
 
     /// The sheet's one button. A ticked worked-out row gets its new quantity; used up, it goes out
-    /// of stock with no quantity (none is left to know). Running low and out put the item's name
-    /// on the grocery list, unless it's there already (#146's "On list").
+    /// of stock with no quantity (none is left to know). Running low and out set those states
+    /// (#194) and put the item's name on the grocery list, unless it's there already (#146's "On
+    /// list").
     func onConfirm() {
         guard let sheet = uiState.sheet else { return }
         uiState.sheet = nil
@@ -124,6 +125,7 @@ final class PantryUseUpViewModel: Identifiable {
         settle(sheet.recipeId, at: clock.now())
         var quantities: [(PantryItem, String?)] = []
         var out: [PantryItem] = []
+        var low: [PantryItem] = []
         var onList: [PantryItem] = []
         for row in sheet.rows {
             let item = row.item
@@ -135,7 +137,7 @@ final class PantryUseUpViewModel: Identifiable {
             case .ask:
                 switch sheet.choice(item.id) {
                 case .keep: break
-                case .low: onList.append(item)
+                case .low: low.append(item); onList.append(item)
                 case .out: out.append(item); onList.append(item)
                 }
             }
@@ -149,7 +151,8 @@ final class PantryUseUpViewModel: Identifiable {
             for (item, quantity) in quantities {
                 await pantry.edit(item.id, PantryEdit(name: item.name, quantity: quantity, alwaysHave: item.alwaysHave, expiresDay: item.expiresDay))
             }
-            if !out.isEmpty { await pantry.setInStock(out.map(\.id), inStock: false) }
+            if !out.isEmpty { await pantry.setStock(out.map(\.id), stock: .runOut) }
+            if !low.isEmpty { await pantry.setStock(low.map(\.id), stock: .runningLow) }
             let list = await currentGroceries()
             let lines = onList.filter { PantryList.ownLines($0, list).isEmpty }.map { NewGroceryLine(text: $0.name, language: $0.language) }
             var added: [Int64] = []

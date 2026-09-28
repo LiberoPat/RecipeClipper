@@ -133,6 +133,11 @@ targets:
       - path: ../shared/tables
         type: folder
         buildPhase: resources
+      # A new user's first share adds the sample recipe first (#151, #190: FirstRunTour.beforeShare),
+      # which SampleRecipe reads from Bundle.main's sample/ folder, as in the app.
+      - path: ../shared/sample
+        type: folder
+        buildPhase: resources
     entitlements:
       path: RecipeClipperShare/RecipeClipperShare.entitlements
       properties:
@@ -171,6 +176,9 @@ targets:
         buildPhase: resources
       # The StoreKit configuration (#107), for StoreKitEntitlementsTests' SKTestSession.
       - path: RecipeClipper.storekit
+        buildPhase: resources
+      # The tooltips' catalogue (#190), which TooltipsTests checks the Tooltip enum against.
+      - path: ../shared/tooltips.json
         buildPhase: resources
     dependencies:
       - target: RecipeClipper
