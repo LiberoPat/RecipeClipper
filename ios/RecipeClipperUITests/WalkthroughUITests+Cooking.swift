@@ -75,7 +75,11 @@ extension WalkthroughUITests {
         pause(2.5)
         tab("Pantry")
         require(app.buttons["Ran out: onions"], "the onions' Ran out").tap() // onto the list
-        require(app.buttons["On list"], "the On list tag")
+        pause()
+        // Run out items sit at the foot of the Pantry (#194), below the fold.
+        scrollTo(app.buttons["Restock: onions"], "onions, run out")
+        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "onions, ", "On list")).firstMatch,
+                "the onions' On list tag")
         pause(2.5)
         tab("Groceries")
         pause(2)
