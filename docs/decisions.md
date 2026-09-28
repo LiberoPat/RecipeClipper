@@ -2891,36 +2891,16 @@ opening it from each on the other phone (Android: which apps pass the type or th
 app is offered; iOS: "Open in Recipe Clipper" from Files and Messages), in both directions
 between Android and iOS.
 
-## The first-run tour (#151)
+## The first-run tour (#151, #190)
 
-Owner's decision (2026-09-26): welcome cards, a bundled sample recipe and one-time tips in
-place; the sample is saved like a real recipe; every flow, daily and weekly, is covered.
+Owner's decisions: first (2026-09-26, #151) welcome cards, a bundled sample recipe and one-time
+tips in the screens' flow; then (2026-09-27, #190) **the welcome cards go** ("just blocks of text
+without showing anything"), with their route, "Try it with a sample recipe" and the welcome
+state, and **tooltips point at the major features instead**: a small bubble with an arrow at the
+real control, the first time it's reached. **The sample recipe stays**, added quietly. **Everyone
+sees the tooltips, existing users included**, which reverses #163's "existing users skip every
+tip". Settings' "Show the tour again" became **"Show tips again"**.
 
-- **Welcome cards,** full screen with no tab bar, skippable: what the app does; how to clip
-  (Share, paste, "+ New recipe"; iOS says the extension saves it to Home); every day
-  (servings and units, the bookmark, cook mode, and Chef mode with its flag); every week
-  (Week, What I need, Groceries, Pantry), only with `mealPlan` on. So three or four cards;
-  the last offers "Try it with a sample recipe" (opens it) or "Start". Skip, Start, Try it,
-  and Android's Back from the first card all mark it seen. No pager: one card at a time with
-  Back and Next, which reads well with TalkBack and VoiceOver ("Card 2 of 4") and scrolls at
-  the largest text sizes.
-- **When it shows** (`FirstRunTour`, the same rules on both platforms): once per app start,
-  only on a plain launch. A launch that opens something (a shared link, a notification, a
-  deep link) shows that and leaves the welcome pending for the next plain launch: capture
-  stays frictionless. Someone who already has recipes the first time the tour runs (an older
-  version's user, or a restored backup: Android's Auto Backup and iOS's device backup put the
-  database back before the first launch) never gets it, nor any tip. At first the Week,
-  Groceries and Pantry tips still showed for them, as those tabs were new to them now that the
-  flags are on; the owner decided (2026-09-26) that existing users skip every tip. iOS's share
-  extension saves without opening the app, so it notes a
-  new user's first share (`FirstRunTour.noteShare`: library empty, welcome undecided); the
-  recipe it adds then doesn't make them look like an old user, and the welcome shows at the
-  app's first opening.
-- **State** lives in `unit_preferences` / the settings suite, backed up with the settings,
-  under the same keys on both platforms: `tour_welcome` (`UNDECIDED` | `PENDING` | `SEEN` by
-  name; unknown reads as undecided), `tour_sample_added`, and `tour_tip_recipe`,
-  `tour_tip_cook_mode`, `tour_tip_week`, `tour_tip_groceries`, `tour_tip_pantry` (true once
-  dismissed).
 - **The sample recipe** is written for the app (a tomato and white bean soup; no photo, so
   nothing to license), in each UI language, once, in `shared/sample/recipe.json`: the UI's
   language picks it, else English, and it is saved in that language so its lines scale and
@@ -2928,9 +2908,16 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
   English (so Metric and Ounces change it), timers in steps, an oven temperature, and a
   "Meanwhile" step that overlaps the simmer. It is saved like a typed-in recipe: MANUAL
   under the fixed link `manual:sample`, so it is never fetched, has no Update from source or
-  source credit, and is never culled. It is added once, when the welcome first shows;
-  deleted, it stays deleted. "Try it" after "Show the tour again" opens it if it's there, and
-  adds it again only if it's gone.
+  source credit, and is never culled.
+- **It is added quietly, once, at a new user's first launch** (#190; before, when the welcome
+  first showed): `FirstRunTour.onLaunch`, before any shared link's route opens, adds it to an
+  empty library (counted without it) and sets `tour_sample_added`; someone who already has
+  recipes then (an older version's user, or a restored backup: Android's Auto Backup and iOS's
+  device backup put the database back before the first launch) never gets it, and it is decided
+  either way. Deleted, it stays deleted. A launch from a shared link adds it too, under the
+  shared recipe (capture stays frictionless: the link still opens on its recipe). iOS's share
+  extension saves without opening the app, so it takes the same step before a new user's first
+  share (`FirstRunTour.beforeShare`, with `shared/sample` bundled in the extension too).
 - **Its times read like a parsed recipe's (#179).** The file keeps ISO durations, so one value
   serves every language, and `SampleRecipe.forLanguage` passes each through `Durations.format`,
   the parsers' own formatting, in the sample's language: "10m · 25m · 35m" in English, "10min"
@@ -2949,16 +2936,84 @@ place; the sample is saved like a real recipe; every flow, daily and weekly, is 
   Home treats a library holding only the sample as empty (#150): "Restore from a backup
   file" still shows, which matters most on a new phone, and the "Keep a backup copy?" card
   waits for a recipe of the user's own.
-- **Tips:** one small callout in the screen's flow (never over it, so it never blocks),
-  dismissed by a tap anywhere on it (one button for TalkBack and VoiceOver, "Dismiss tip"):
-  under the Serves and units row on the first recipe opened (the row and the bookmark), at
-  the top of the first cook mode (outside the steps' list), and under the title of the first
-  Week, Groceries and Pantry visits. Those three hide with `mealPlan` off. One app-wide
-  `TipsViewModel` is handed to every screen (Android `LocalTips`, iOS the environment), so a
-  screen only names its tip; with none provided nothing shows, so screen tests are as before.
-- **"Show the tour again"** is an action row in Settings' Help section: the welcome again,
-  and every tip once more. The reading view is otherwise unchanged: the tip is the only
-  addition, and only until it is tapped.
+- **The tooltips** (`Tooltips` in `data/model` / `Data/Model`, pure, with the same ids on both
+  platforms; `shared/tooltips.json` lists them, and `TooltipsTest` / `TooltipsTests` fail if
+  either enum differs from it). In this order per screen; a flagged one shows only with its flag:
+  - **Home:** the link field ("Share a recipe link to this app, or paste one here"); "+ New
+    recipe".
+  - **Recipe (reading view):** Serves − / +; the units dropdown; the bookmark; the share icon;
+    the ⋮ menu (it names Add to plan and Add to groceries only with `mealPlan` on, as the menu
+    has them only then); "Start cooking"; "I made this" (the button, or the + tile once there
+    are photos; `cookedPhotos`).
+  - **Cook mode** (its own screen, though it is the recipe screen's): "Done — next step"; the
+    next step ("tap any step to make it the current one"); the current step's timer; the
+    ingredients bar.
+  - **Week:** the first day's "+ Add"; the Month switch; the ⋮ menu. **Groceries:** "Add an
+    item"; the first row's tick; the first row (long-press); "Done shopping" (while anything is
+    ticked); the ⋮ menu. **Pantry:** the add field; the first row's in-stock switch; the ⋮
+    menu. All `mealPlan`.
+  - **Settings:** the Units choice; "Show tips again".
+- **Which one, when** (`Tooltips.current`, the same rule on both platforms): a **visit** is one
+  appearance of a screen, from when it shows until it's left (a rotation isn't a new one on
+  Android: the visit's token is saved state, and leaving isn't reported while the activity is
+  changing configurations). A visit shows **at most one** tooltip: the first in the catalogue's
+  order that is unseen, has its flag on, and whose control is **wholly on screen** (not scrolled
+  partly away, not under a bar or the keyboard). Once picked it stays the visit's: scrolled away
+  it hides and comes back with its control, and nothing takes its place. Dismissed, the screen's
+  next one waits for a **later visit**, never chained. None shows in a screen's **first second**,
+  nor while anything covers it: a dialog, a sheet, a menu, the share sheet, the keyboard or a
+  snackbar. The whole app has one `TooltipsViewModel` (Android: MainActivity's, through
+  `LocalTooltips`; iOS: the container's, in the environment), so there is only ever one.
+- **Dismissing:** "Got it", or a tap anywhere on the bubble (it is one button), marks it seen
+  for good. On iOS a tap outside the popover also closes it, as popovers do; that is "not now",
+  not "seen": it shows again on a later visit.
+- **Never over cook mode's current step text:** "Done — next step", the timer and the next step
+  put their bubble below themselves, and the ingredients bar puts its bubble above itself (over
+  the top bar). Android places it itself; iOS 18 and later honour the side asked for, and iOS 17
+  picks the side itself.
+- **Android's bubble** is a `Popup` of its own, placed from the control's window bounds
+  (`Modifier.tooltipAnchor`, a `Modifier.Node` reporting `onGloballyPositioned` to its screen's
+  `TooltipHost`), in the theme's inverse colours (ink with ground text and "Got it" in paprika on
+  ink; the reverse in dark mode) and Karla, with an arrow drawn at the control. It is **not
+  focusable**, so a tap outside it and TalkBack reach the screen as before (no focus trap), and a
+  live region announces it. "Something covers the screen" is the window losing focus (a dialog,
+  a sheet, a menu and the share sheet are windows of their own), the keyboard, or the screen's
+  own `blocked` (its snackbar). Material 3's `TooltipBox` was the alternative: it wraps each
+  control in a box of its own, and its popup is focusable and dismissed by any tap outside,
+  which a tooltip that waits for "Got it" doesn't want.
+- **iOS's bubble** is SwiftUI's `.popover` kept a popover on iPhone
+  (`presentationCompactAdaptation(.popover)`), shown from our state (`.tooltipAnchor` on the
+  control, `.tooltipHost` on the screen), in the same inverse colours and Karla, wider at the
+  accessibility text sizes; VoiceOver reads it as it appears, and its escape gesture or a tap
+  outside closes it. **Not TipKit**, though it is first-party and has `popoverTip`: TipKit keeps
+  its own datastore of which tips were shown and closed, which can only be reset before
+  `Tips.configure` (so "Show tips again" would need a relaunch), and it decides eligibility itself,
+  asynchronously, so it would be a second source of truth beside the settings keys, the visits,
+  the first second and the anchors' visibility, which are ours on both platforms anyway. A popover
+  can't show over another presentation, so each screen passes `blocked` for its own sheets,
+  dialogs and snackbars, and the host blocks while the keyboard is up. Toolbar items (the recipe's
+  bookmark, share and menu, and the tabs' menus) are anchors too (`inToolbar`: on screen while the
+  bar shows).
+- **State** lives in `unit_preferences` / the settings suite, backed up with the settings, under
+  the same keys on both platforms: `tooltip_<id>` (true once seen; "Show tips again" removes
+  them) and `tour_sample_added`. #151's `tour_welcome` and `tour_tip_*` keys are **ignored**:
+  never read or written again (left where an older build wrote them, which costs nothing), so
+  everyone starts with every tooltip unseen.
+- **"Show tips again"** is an action row in Settings' Help section: every tooltip once more, one
+  at a time, as each screen is visited (the Settings screen's own first one can show at once).
+- **Tests:** the rule and the catalogue, pure (`TooltipsTest` / `TooltipsTests`); the ViewModels
+  over fakes (`TooltipsViewModelTest(s)`); Android's screens under Robolectric
+  (`TooltipsScreenTest`: Home's first visit shows the first tooltip after its first second, Got
+  it, the next visit the next; Settings' second shows only once scrolled to; the bubble's
+  placement at its control), and iOS's recipe screen in `TooltipsUITests` (one per visit, at the
+  Serves stepper, then the units on the next). Every other screen test, UI test and walkthrough
+  starts with every tooltip seen: Android's screen tests provide no `LocalTooltips`, iOS's test
+  containers use `MemoryTourPreferences`, and `-uiTestTooltips` (iOS) or `firstRun = true`
+  (Android's walkthroughs) turns them on. Walkthrough 17 shows the sample on Home and a tooltip
+  or two.
+- **Needs a real phone:** how each bubble sits at its control on small and large screens, in
+  both themes, at the largest text sizes and on iPad; TalkBack and VoiceOver announcing one;
+  cook mode's bubbles clear of the current step (iOS 17 especially).
 
 ## Done shopping: putting things away in one step (#146)
 
@@ -3204,8 +3259,8 @@ reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receive
 share target: parse, then upsert with no list membership), and
 `edit?recipeId={recipeId}` (no id: a new recipe; saving replaces the edit screen, and
 the recipe screen under it, with `recipe/{id}`), and `clip?url={url}` (Clip it
-yourself; saving replaces it and the error screen under it with `recipe/{id}`), and
-`welcome?again={again}` (the first-run tour, #151). Behind the `mealPlan` feature flag
+yourself; saving replaces it and the error screen under it with `recipe/{id}`). Behind the
+`mealPlan` feature flag
 (#47, on by default): a bottom tab bar nests this same graph under a Recipes tab
 alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and
 `week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry` (#51)
@@ -3235,7 +3290,7 @@ the `chefMode` flag, #100; each row shows with its own flag), Pantry ("Expiry
 reminders", only with the `mealPlan` flag; asks for notifications when turned on,
 never at launch), Unlimited recipes (only with `freeTier`: "Unlock for <store price>"
 and "Restore purchase", or the sentence "Unlocked: every recipe is kept."; Developer
-settings has an "Unlocked" override), Help ("Show the tour again", #151), and Your
+settings has an "Unlocked" override), Help ("Show tips again", #190), and Your
 recipes (export, import and the automatic copy, #150). Reached from the gear beside
 the Home title, on every tab of the shell. It could now open from elsewhere too (the
 recipe screen follows `AppPreferences.settings`), but adding an entry point is the
@@ -3244,8 +3299,8 @@ owner's call.
 **Keys** (the SharedPreferences file `unit_preferences`, and `UserDefaults` on iOS,
 the same on both): `unit_system`, `convert_liquids`, `temperature_unit`,
 `dark_while_cooking`, `expiry_reminders`, `chef_mode`, `amounts_in_steps`,
-`recipe_sort` (the Recipes screen's sort), the tour's `tour_welcome`,
-`tour_sample_added`, `tour_tip_*` (#151), and `pantry_use_up` (#147: recipe id to when
+`recipe_sort` (the Recipes screen's sort), the tour's `tour_sample_added` (#151) and
+`tooltip_<id>` (#190; #151's `tour_welcome` and `tour_tip_*` are ignored), and `pantry_use_up` (#147: recipe id to when
 its sheet was settled, pruned to 12 h on each write), each enum stored by name, an
 unknown one read as the default. `AppPreferences.settings` (a Flow over the change
 listener; iOS a publisher over `UserDefaults.didChangeNotification`) emits them;
