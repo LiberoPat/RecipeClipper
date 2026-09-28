@@ -470,7 +470,7 @@ private fun StockSwipeBackground(direction: SwipeToDismissBoxValue) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(if (restock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
+            .background(if (restock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             .padding(horizontal = 24.dp),
         contentAlignment = if (restock) Alignment.CenterStart else Alignment.CenterEnd
     ) {
@@ -478,7 +478,7 @@ private fun StockSwipeBackground(direction: SwipeToDismissBoxValue) {
             Text(
                 stringResource(if (restock) R.string.pantry_restock else R.string.pantry_ran_out),
                 style = MaterialTheme.typography.labelLarge,
-                color = if (restock) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
+                color = if (restock) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.background
             )
         }
     }
