@@ -23,6 +23,10 @@ object RedditFixtures {
      *  in capitals, with Reddit's escaped "1\." steps. */
     val CARD_WITH_TRANSCRIPTION get() = read("old-recipes-card-transcription")
 
+    /** A gallery of a recipe card (front, then back) that nobody has transcribed: only
+     *  AutoModerator's request and chatter. What "Read the photo" (#198) is for. */
+    val CARD_UNTRANSCRIBED get() = read("old-recipes-card-untranscribed")
+
     /** A photo of a finished dish: only chatter, the poster's included. */
     val PHOTO_ONLY get() = read("food-photo-chatter")
 

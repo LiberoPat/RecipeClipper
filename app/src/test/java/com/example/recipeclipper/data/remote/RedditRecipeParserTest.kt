@@ -111,6 +111,21 @@ class RedditRecipeParserTest {
         assertNull(RedditRecipeParser.read(RedditFixtures.PHOTO_ONLY, url).crosspostOf)
     }
 
+    @Test fun `an untranscribed gallery carries every picture, in the gallery's order, for reading (#198)`() {
+        val error = (RedditRecipeParser.parse(RedditFixtures.CARD_UNTRANSCRIBED, url) as ParseResult.Error).error
+        assertEquals(
+            ParseError.NoTranscription(
+                title = "Aunt June's oatmeal cookies, front and back of the card",
+                imageUrl = "https://preview.redd.it/c3card1front.jpg?width=3024&format=pjpg&auto=webp&s=c32",
+                imageUrls = listOf(
+                    "https://preview.redd.it/c3card1front.jpg?width=3024&format=pjpg&auto=webp&s=c32",
+                    "https://preview.redd.it/d4card1back.jpg?width=3024&format=pjpg&auto=webp&s=d42"
+                )
+            ),
+            error
+        )
+    }
+
     @Test fun `a crosspost with no recipe of its own names the original for the source`() {
         val reading = RedditRecipeParser.read(RedditFixtures.CROSSPOST, url)
         assertEquals("1f3k9xq", reading.crosspostOf)
