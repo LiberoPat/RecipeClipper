@@ -568,7 +568,7 @@
     <string name="tooltip_groceries_done_shopping">Tornato a casa? Metti in dispensa quello che hai spuntato e toglilo dalla lista.</string>
     <string name="tooltip_groceries_menu">Altro: Invia la lista, o Incolla una lista.</string>
     <string name="tooltip_pantry_add">Aggiungi quello che tieni in casa.</string>
-    <string name="tooltip_pantry_in_stock">Tocca Finito quando qualcosa è terminato: va nella tua lista della spesa. Tieni premuto per Sta finendo.</string>
+    <string name="tooltip_pantry_in_stock">Tocca Finito quando qualcosa è terminato: va nella tua lista della spesa. Tocca un articolo per segnarlo come Sta finendo.</string>
     <string name="tooltip_pantry_menu">Altro: Invia la lista, e ordina per reparto o per scadenza.</string>
     <string name="tooltip_settings_units">Come si mostrano le quantità, in ogni ricetta.</string>
     <string name="tooltip_settings_show_tips">Rivedi ogni suggerimento, uno alla volta.</string>

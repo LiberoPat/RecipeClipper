@@ -3201,12 +3201,21 @@ the cupboard. It is replaced, and a **Running low** state added.
 - **Three states, shown by grouping.** In stock and running low sit in their aisle sections
   (running low with a small "Low" tag); run out sits in one dimmed "Run out" section at the
   bottom, in either sort (`PantryList.arrange`, `PantrySection.runOut`).
+- **Every state is reachable from something visible; gestures are shortcuts** (owner,
+  2026-09-28: touch and hold isn't discoverable). Tapping a row opens its edit sheet, which
+  starts with an In stock | Running low | Run out segmented control showing the current state.
+  It applies at once through the row button's own path (`onEditStock` → `onSetStock`), not on
+  Save, so "On list" and the grocery side effects are identical; dismissing the sheet keeps it.
+  The Pantry tooltip says "Tap an item to mark it Running low".
 - **Labelled actions, not a switch.** Each row has one text action: "Ran out" while in stock or
-  running low, "Restock" once out. Running low is reached from the row's menu (touch and hold;
-  iOS also offers it as a second trailing swipe action) and from #147's sheet. Swipes are
-  shortcuts: leading Restock, trailing Ran out, each only where it changes something. TalkBack
-  and VoiceOver read the row as one ("Garlic, Run out, On list") and offer the other two states
-  as its actions. iOS's Pantry became a `List` (as Recipes is) for the swipe actions.
+  running low, "Restock" once out. The shortcuts: the row's menu (touch and hold) offers only
+  the state the button doesn't, so it never repeats it: Running low while in stock, Restock
+  while running low, Running low once out (it offered both other states until the owner found
+  it duplicated the button). Swipes: leading Restock, trailing Ran out, each only where it
+  changes something; iOS adds Running low as a second trailing action. Running low is also
+  reached from #147's sheet. TalkBack and VoiceOver read the row as one ("Garlic, Run out, On
+  list") and still offer both other states as its actions. iOS's Pantry became a `List` (as
+  Recipes is) for the swipe actions.
 - **Groceries as #146.** Ran out and Running low both put the name on the grocery list
   silently, shown by "On list"; tapping the tag takes it off. Restock, Done shopping's
   put-away and typing a name already there all return an item to In stock (and bought today).
@@ -3544,3 +3553,14 @@ ViewModels that show a preference collect it rather than reading once.
   written.
 - **On-device OCR**, once deferred (a new dependency, and weakest on handwriting), is built
   as "Read the photo" (#198): never trusted blindly, always checked by the cook.
+
+## ViewModels in their own files, checked by a test (September 2026)
+
+`TooltipsViewModel` and `TooltipsUiState` (#190) had been written into the tooltip view
+files (`ui/tour/Tooltips.kt`, `UI/Tour/TooltipViews.swift`), which import Compose,
+SwiftUI and UIKit. The ViewModel used no UI type, so it moved unchanged into
+`TooltipsViewModel.kt` and `TooltipsViewModel.swift`. Nothing had caught it, because no
+check existed. Now `ViewModelImportsTest` (Android, JVM) and `ViewModelImportsTests`
+(iOS) scan every source file that declares a `class …ViewModel`, whatever the file is
+called, and fail on an `androidx.compose` import (Android) or a `SwiftUI` or `UIKit`
+import (iOS).

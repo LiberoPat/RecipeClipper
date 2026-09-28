@@ -549,7 +549,7 @@
     <string name="tooltip_groceries_done_shopping">Wieder zu Hause? Räume Abgehaktes in den Vorrat und entferne es von der Liste.</string>
     <string name="tooltip_groceries_menu">Mehr: Liste senden oder Liste einfügen.</string>
     <string name="tooltip_pantry_add">Füge hinzu, was du zu Hause hast.</string>
-    <string name="tooltip_pantry_in_stock">Tippe auf Aufgebraucht, wenn etwas leer ist: Es kommt auf deine Einkaufsliste. Halte gedrückt für Wird knapp.</string>
+    <string name="tooltip_pantry_in_stock">Tippe auf Aufgebraucht, wenn etwas leer ist: Es kommt auf deine Einkaufsliste. Tippe auf einen Eintrag, um ihn als Wird knapp zu markieren.</string>
     <string name="tooltip_pantry_menu">Mehr: Liste senden, und nach Gang oder Haltbarkeit sortieren.</string>
     <string name="tooltip_settings_units">Wie Mengen angezeigt werden, in jedem Rezept.</string>
     <string name="tooltip_settings_show_tips">Sieh jeden Tipp noch einmal, einen nach dem anderen.</string>

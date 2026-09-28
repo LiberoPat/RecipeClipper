@@ -100,7 +100,8 @@ shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
 - **Edge-to-edge:** a screen's root fills behind the system bars and pads its
   content with `safeDrawingPadding()`. Never set bar colours.
 - ViewModels and repositories never import Compose, SwiftUI or UIKit, and
-  never touch `Context`. Platform effects (alarm sound, keep-screen-on, the
+  never touch `Context` (`ViewModelImportsTest` checks the imports).
+  Platform effects (alarm sound, keep-screen-on, the
   share sheet, opening a URL) live in the view layer.
 - Domain `Recipe` is separate from `RecipeEntity`; map at the repository.
 - Parsers are pure: text in, data out, no network, no Android APIs.
