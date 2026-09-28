@@ -33,12 +33,16 @@ final class FakePantryRepository: PantryRepository {
         return id
     }
 
-    func setInStock(_ ids: [Int64], inStock: Bool) async {
-        items.value = items.value.map { var i = $0; if ids.contains(i.id) { i.inStock = inStock }; return i }
+    func setStock(_ ids: [Int64], stock: PantryStock) async {
+        items.value = items.value.map {
+            var i = $0
+            if ids.contains(i.id) { i.inStock = stock != .runOut; i.runningLow = stock == .runningLow }
+            return i
+        }
     }
 
     func restock(_ ids: [Int64], day: Int64) async {
-        items.value = items.value.map { var i = $0; if ids.contains(i.id) { i.inStock = true; i.purchasedDay = day }; return i }
+        items.value = items.value.map { var i = $0; if ids.contains(i.id) { i.inStock = true; i.runningLow = false; i.purchasedDay = day }; return i }
     }
 
     func edit(_ id: Int64, _ edit: PantryEdit) async {

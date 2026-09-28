@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantrySort
+import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
@@ -96,7 +97,7 @@ class PantryViewModelTest {
         assertFalse(vm.uiState.value.hasInStock)
         assertNull(vm.shareText("Pantry") { it.key })
 
-        vm.onToggleStock(pantry.items.value.single())
+        vm.onSetStock(pantry.items.value.single(), PantryStock.IN_STOCK)
         advanceUntilIdle()
         assertTrue(vm.uiState.value.hasInStock)
         assertEquals("Pantry\n\nother\n- milk", vm.shareText("Pantry") { it.key })
@@ -129,7 +130,7 @@ class PantryViewModelTest {
         advanceUntilIdle()
         assertEquals(emptySet<Long>(), vm.uiState.value.onList)
 
-        vm.onToggleStock(pantry.items.value.first())
+        vm.onSetStock(pantry.items.value.first(), PantryStock.RUN_OUT)
         advanceUntilIdle()
         assertFalse(pantry.items.value.first().inStock)
         assertEquals(listOf("milk"), groceries.items.value.map { it.text })
@@ -138,11 +139,55 @@ class PantryViewModelTest {
         assertEquals(setOf(1L), vm.uiState.value.onList)
 
         // Back in and out again: still one line on the list.
-        vm.onToggleStock(pantry.items.value.first())
+        vm.onSetStock(pantry.items.value.first(), PantryStock.IN_STOCK)
         advanceUntilIdle()
-        vm.onToggleStock(pantry.items.value.first())
+        vm.onSetStock(pantry.items.value.first(), PantryStock.RUN_OUT)
         advanceUntilIdle()
         assertEquals(listOf("milk"), groceries.items.value.map { it.text })
+    }
+
+    // #194: running low is still in stock, and goes on the list like running out.
+    @Test
+    fun `running low keeps it in stock, puts it on the list once, and Ran out then moves it to Run out`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val pantry = FakePantryRepository(listOf(item(1, "milk", aisle = Aisle.DAIRY), item(2, "rice", aisle = Aisle.GRAINS)))
+            val vm = PantryViewModel(pantry, groceries, calendar)
+            advanceUntilIdle()
+
+            vm.onSetStock(pantry.items.value.first(), PantryStock.RUNNING_LOW)
+            advanceUntilIdle()
+            val milk = pantry.items.value.first()
+            assertEquals(PantryStock.RUNNING_LOW, milk.stock)
+            assertTrue(milk.inStock)
+            assertEquals(listOf("milk"), groceries.items.value.map { it.text })
+            assertEquals(setOf(1L), vm.uiState.value.onList)
+            assertEquals(listOf(Aisle.DAIRY, Aisle.GRAINS), vm.uiState.value.sections!!.map { it.aisle })
+            assertTrue(vm.uiState.value.hasInStock)
+
+            vm.onSetStock(pantry.items.value.first(), PantryStock.RUN_OUT)
+            advanceUntilIdle()
+            assertEquals(PantryStock.RUN_OUT, pantry.items.value.first().stock)
+            assertEquals(listOf("milk"), groceries.items.value.map { it.text })
+            val sections = vm.uiState.value.sections!!
+            assertEquals(listOf(false, true), sections.map { it.runOut })
+            assertEquals(listOf("milk"), sections.last().items.map { it.name })
+
+            // Restock: in stock again, not running low, bought today.
+            vm.onSetStock(pantry.items.value.first(), PantryStock.IN_STOCK)
+            advanceUntilIdle()
+            assertEquals(PantryStock.IN_STOCK, pantry.items.value.first().stock)
+            assertEquals(calendar.today(), pantry.items.value.first().purchasedDay)
+        }
+
+    @Test
+    fun `restocking a running-low item makes it plain in stock`() = runTest(mainDispatcherRule.dispatcher) {
+        val pantry = FakePantryRepository(listOf(item(1, "milk").copy(runningLow = true)))
+        val vm = PantryViewModel(pantry, groceries, calendar)
+        advanceUntilIdle()
+        vm.onSetStock(pantry.items.value.single(), PantryStock.IN_STOCK)
+        advanceUntilIdle()
+        assertEquals(PantryStock.IN_STOCK, pantry.items.value.single().stock)
+        assertTrue(groceries.items.value.isEmpty())
     }
 
     @Test
@@ -167,7 +212,7 @@ class PantryViewModelTest {
         val pantry = FakePantryRepository(listOf(item(1, "milk", inStock = false)))
         val vm = PantryViewModel(pantry, groceries, calendar)
         advanceUntilIdle()
-        vm.onToggleStock(pantry.items.value.single())
+        vm.onSetStock(pantry.items.value.single(), PantryStock.IN_STOCK)
         advanceUntilIdle()
         assertTrue(pantry.items.value.single().inStock)
         assertEquals(calendar.today(), pantry.items.value.single().purchasedDay)

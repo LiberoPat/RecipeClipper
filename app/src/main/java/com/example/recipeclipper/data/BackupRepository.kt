@@ -165,7 +165,7 @@ internal fun RecipeEntity.toBackup() = BackupRecipe(
 
 /** A pantry item as the export file holds it, and as the Pantry's shared file sends it (#149). */
 internal fun PantryItemEntity.toBackup() = BackupPantryItem(
-    uid, name, quantity, language, aisle, inStock, alwaysHave, purchasedDay, expiresDay, updatedAt
+    uid, name, quantity, language, aisle, inStock, alwaysHave, purchasedDay, expiresDay, updatedAt, inStock && runningLow
 )
 
 /** A grocery item as the export file holds it; [recipeUids] maps recipe row ids to uids. */

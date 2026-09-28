@@ -72,7 +72,7 @@ extension WalkthroughUITests {
         undo.tap()
         pause(2.5)
         tab("Pantry")
-        require(app.switches["In stock: onions"], "the onions' switch").tap() // run out: onto the list
+        require(app.buttons["Ran out: onions"], "the onions' Ran out").tap() // onto the list
         require(app.buttons["On list"], "the On list tag")
         pause(2.5)
         tab("Groceries")

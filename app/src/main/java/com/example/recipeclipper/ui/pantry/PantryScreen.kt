@@ -1,7 +1,10 @@
 package com.example.recipeclipper.ui.pantry
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,16 +45,22 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,8 +70,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -74,6 +86,7 @@ import com.example.recipeclipper.data.model.ExpiryBadge
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryList
 import com.example.recipeclipper.data.model.PantrySort
+import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.Tip
 import com.example.recipeclipper.ui.groceries.label
@@ -84,11 +97,12 @@ import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TipCallout
+import kotlinx.coroutines.launch
 
 /**
  * The Pantry tab (#51): "Add to the pantry", a search field, then everything by aisle (or by
- * expiry, from the menu). Each row's switch says whether it's in stock; tapping the row opens
- * its edit sheet (quantity, staple, use-by date, delete). The menu sends what's in stock, as
+ * expiry, from the menu), and what has run out last (#194). Each row shows whether it's in
+ * stock, running low or run out, with a labelled action; tapping the row opens its edit sheet (quantity, staple, use-by date, delete). The menu sends what's in stock, as
  * plain text or as a file (#149).
  */
 @Composable
@@ -198,11 +212,23 @@ fun PantryScreen(
                     }
                 }
                 state.sections.orEmpty().forEach { section ->
-                    item(key = "aisle-${section.aisle?.key ?: "expiry"}") {
+                    val sectionKey = if (section.runOut) "runOut" else section.aisle?.key ?: "expiry"
+                    item(key = "aisle-$sectionKey") {
                         Column(Modifier.padding(top = 18.dp, bottom = 2.dp)) {
-                            section.aisle?.let {
-                                SectionHeading(stringResource(it.label()))
+                            if (section.runOut) {
+                                // Run out sits last, dimmed (#194).
+                                Text(
+                                    stringResource(R.string.pantry_out),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.semantics { heading() }
+                                )
                                 Spacer(Modifier.height(4.dp))
+                            } else {
+                                section.aisle?.let {
+                                    SectionHeading(stringResource(it.label()))
+                                    Spacer(Modifier.height(4.dp))
+                                }
                             }
                             Hairline()
                         }
@@ -212,7 +238,7 @@ fun PantryScreen(
                             item = item,
                             today = state.today,
                             onList = item.id in state.onList,
-                            onToggle = { viewModel.onToggleStock(item) },
+                            onSetStock = { stock -> viewModel.onSetStock(item, stock) },
                             onEdit = { viewModel.onEdit(item) },
                             onTakeOffList = { viewModel.onTakeOffList(item) }
                         )
@@ -280,73 +306,196 @@ private fun PantryMenu(
     }
 }
 
+/**
+ * One item (#194): its name (tap to edit; touch and hold for the stock menu), a "Low" tag while
+ * running low, "On list" while its name is on the grocery list, and one labelled action: "Ran
+ * out", or "Restock" once it has. Swipes are shortcuts: towards the end restocks, towards the
+ * start runs out. TalkBack reads the row as one ("Garlic, Run out, On list"), with the other
+ * two states as its actions.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PantryRow(
     item: PantryItem,
     today: Long,
     onList: Boolean,
-    onToggle: () -> Unit,
+    onSetStock: (PantryStock) -> Unit,
     onEdit: () -> Unit,
     onTakeOffList: () -> Unit
 ) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("pantry-${item.id}")
-    ) {
-        Column(
-            Modifier
-                .weight(1f)
-                .clickable(onClick = onEdit)
-                .padding(vertical = 6.dp)
-        ) {
-            Text(
-                item.name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (item.inStock) MaterialTheme.colorScheme.onSurface else muted
-            )
-            val details = buildList {
-                item.quantity?.let { add(it) }
-                if (item.alwaysHave) add(stringResource(R.string.pantry_always_have))
-                if (!item.inStock) add(stringResource(R.string.pantry_out))
+    val stock = item.stock
+    val dismissState = rememberSwipeToDismissBoxState()
+    val scope = rememberCoroutineScope()
+    // SwipeToDismissBox calls onDismiss from an effect keyed on the lambda, so it stays one
+    // instance; the row then springs back, since it stays on screen in its new state.
+    val currentOnSetStock by rememberUpdatedState(onSetStock)
+    val onDismiss = remember {
+        { value: SwipeToDismissBoxValue ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> currentOnSetStock(PantryStock.IN_STOCK)
+                SwipeToDismissBoxValue.EndToStart -> currentOnSetStock(PantryStock.RUN_OUT)
+                SwipeToDismissBoxValue.Settled -> Unit
             }
-            if (details.isNotEmpty()) {
-                Text(details.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = muted)
-            }
-            item.expiresDay?.let { day ->
-                val badge = PantryList.badge(day, today)
-                Text(
-                    if (badge == ExpiryBadge.EXPIRED) stringResource(R.string.pantry_expired)
-                    else stringResource(R.string.pantry_use_by, shortDate(day)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (badge != null) MaterialTheme.colorScheme.tertiary else muted,
-                    modifier = Modifier.testTag("expiry-${item.id}")
-                )
-            }
+            scope.launch { dismissState.reset() }
+            Unit
         }
-        if (onList) {
-            // A state, not a message (#146): on the grocery list; tapping takes it off.
-            Text(
-                stringResource(R.string.pantry_on_list),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier
-                    .padding(start = 8.dp)
-                    .clip(RoundedCornerShape(50))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
-                    .clickable(onClickLabel = stringResource(R.string.pantry_take_off_list), role = Role.Button, onClick = onTakeOffList)
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                    .testTag("onList-${item.id}")
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        val label = stringResource(R.string.pantry_in_stock) + ": " + item.name
-        Switch(
-            checked = item.inStock,
-            onCheckedChange = { onToggle() },
-            modifier = Modifier.semantics { contentDescription = label }.testTag("inStock-${item.id}")
-        )
     }
+    var menu by rememberSaveable { mutableStateOf(false) }
+    val otherStates = PantryStock.entries.filter { it != stock }
+    val choiceLabels = otherStates.associateWith { stringResource(it.action()) }
+    val details = buildList {
+        item.quantity?.let { add(it) }
+        if (item.alwaysHave) add(stringResource(R.string.pantry_always_have))
+    }
+    val badge = item.expiresDay?.let { PantryList.badge(it, today) }
+    val expiry = item.expiresDay?.let { day ->
+        if (badge == ExpiryBadge.EXPIRED) stringResource(R.string.pantry_expired)
+        else stringResource(R.string.pantry_use_by, shortDate(day))
+    }
+    val description = (
+        listOf(item.name) + details + stringResource(stock.label()) +
+            listOfNotNull(stringResource(R.string.pantry_on_list).takeIf { onList }, expiry)
+        ).joinToString(", ")
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = { StockSwipeBackground(dismissState.dismissDirection) },
+        enableDismissFromStartToEnd = stock != PantryStock.IN_STOCK,
+        enableDismissFromEndToStart = stock != PantryStock.RUN_OUT,
+        onDismiss = onDismiss,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("pantry-${item.id}")
+            ) {
+                Box(Modifier.weight(1f)) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(onLongClick = { menu = true }, onClick = onEdit)
+                            .semantics {
+                                contentDescription = description
+                                customActions = otherStates.map { choice ->
+                                    CustomAccessibilityAction(choiceLabels.getValue(choice)) {
+                                        onSetStock(choice)
+                                        true
+                                    }
+                                }
+                            }
+                            .padding(vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                item.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (item.inStock) MaterialTheme.colorScheme.onSurface else muted,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (stock == PantryStock.RUNNING_LOW) {
+                                Text(
+                                    stringResource(R.string.pantry_low),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier
+                                        .padding(start = 8.dp)
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        .testTag("low-${item.id}")
+                                )
+                            }
+                        }
+                        if (details.isNotEmpty()) {
+                            Text(details.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = muted)
+                        }
+                        expiry?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (badge != null) MaterialTheme.colorScheme.tertiary else muted,
+                                modifier = Modifier.testTag("expiry-${item.id}")
+                            )
+                        }
+                    }
+                    // The row's menu: the other two states.
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        otherStates.forEach { choice ->
+                            DropdownMenuItem(
+                                text = { Text(choiceLabels.getValue(choice)) },
+                                onClick = {
+                                    menu = false
+                                    onSetStock(choice)
+                                },
+                                modifier = Modifier.testTag("stockMenu-${choice.name}")
+                            )
+                        }
+                    }
+                }
+                if (onList) {
+                    // A state, not a message (#146): on the grocery list; tapping takes it off.
+                    Text(
+                        stringResource(R.string.pantry_on_list),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
+                            .clickable(onClickLabel = stringResource(R.string.pantry_take_off_list), role = Role.Button, onClick = onTakeOffList)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .testTag("onList-${item.id}")
+                    )
+                }
+                Spacer(Modifier.width(4.dp))
+                // One labelled action instead of a switch (#194).
+                val next = if (stock == PantryStock.RUN_OUT) PantryStock.IN_STOCK else PantryStock.RUN_OUT
+                val actionLabel = stringResource(next.action())
+                val actionDescription = "$actionLabel: ${item.name}"
+                TextButton(
+                    onClick = { onSetStock(next) },
+                    modifier = Modifier.semantics { contentDescription = actionDescription }.testTag("stockAction-${item.id}")
+                ) {
+                    Text(actionLabel)
+                }
+            }
+        }
+    }
+}
+
+/** Behind a swiped row: Restock towards the end, Ran out towards the start. */
+@Composable
+private fun StockSwipeBackground(direction: SwipeToDismissBoxValue) {
+    val restock = direction == SwipeToDismissBoxValue.StartToEnd
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(if (restock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            .padding(horizontal = 24.dp),
+        contentAlignment = if (restock) Alignment.CenterStart else Alignment.CenterEnd
+    ) {
+        if (direction != SwipeToDismissBoxValue.Settled) {
+            Text(
+                stringResource(if (restock) R.string.pantry_restock else R.string.pantry_ran_out),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (restock) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.background
+            )
+        }
+    }
+}
+
+/** A stock state's name, as the row reads it out. */
+private fun PantryStock.label(): Int = when (this) {
+    PantryStock.IN_STOCK -> R.string.pantry_in_stock
+    PantryStock.RUNNING_LOW -> R.string.pantry_running_low
+    PantryStock.RUN_OUT -> R.string.pantry_out
+}
+
+/** The action that moves an item to this state. */
+private fun PantryStock.action(): Int = when (this) {
+    PantryStock.IN_STOCK -> R.string.pantry_restock
+    PantryStock.RUNNING_LOW -> R.string.pantry_running_low
+    PantryStock.RUN_OUT -> R.string.pantry_ran_out
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

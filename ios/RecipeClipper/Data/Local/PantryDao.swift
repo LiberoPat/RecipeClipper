@@ -17,23 +17,30 @@ struct PantryDao {
     @discardableResult
     func insert(_ e: PantryItemRecord) throws -> Int64 {
         try db.run(
-            "INSERT INTO pantry_items (\(PantryItemRecord.columns)) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO pantry_items (\(PantryItemRecord.columns)) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             e.id == 0 ? nil : e.id, e.name, e.quantity, e.language, e.aisle, e.inStock, e.alwaysHave,
-            e.purchasedDay, e.expiresDay, e.updatedAt, e.uid
+            e.purchasedDay, e.expiresDay, e.updatedAt, e.uid, e.runningLow
         )
         return db.lastInsertRowId
     }
 
-    func setInStock(_ ids: [Int64], inStock: Bool, now: Int64) throws {
+    /// The stock state (#194); `runningLow` only with `inStock`.
+    func setStock(_ ids: [Int64], inStock: Bool, runningLow: Bool, now: Int64) throws {
         for id in ids {
-            try db.run("UPDATE pantry_items SET inStock = ?, updatedAt = ? WHERE id = ?", inStock, now, id)
+            try db.run(
+                "UPDATE pantry_items SET inStock = ?, runningLow = ?, updatedAt = ? WHERE id = ?",
+                inStock, inStock && runningLow, now, id
+            )
         }
     }
 
-    /// Back in stock, bought on `day`.
+    /// Back in stock (no longer running low), bought on `day`.
     func restock(_ ids: [Int64], day: Int64, now: Int64) throws {
         for id in ids {
-            try db.run("UPDATE pantry_items SET inStock = 1, purchasedDay = ?, updatedAt = ? WHERE id = ?", day, now, id)
+            try db.run(
+                "UPDATE pantry_items SET inStock = 1, runningLow = 0, purchasedDay = ?, updatedAt = ? WHERE id = ?",
+                day, now, id
+            )
         }
     }
 

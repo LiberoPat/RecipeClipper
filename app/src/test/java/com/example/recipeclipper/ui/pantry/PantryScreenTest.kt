@@ -1,8 +1,13 @@
 package com.example.recipeclipper.ui.pantry
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -15,6 +20,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.PantryItem
+import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
@@ -58,18 +64,21 @@ class PantryScreenTest {
 
         compose.onNodeWithText("Dairy & eggs").assertIsDisplayed()
         compose.onNodeWithText("milk").assertIsDisplayed()
-        compose.onNodeWithTag("inStock-1").assertIsOn()
+        compose.onNodeWithTag("stockAction-1").assertTextEquals("Ran out")
         compose.runOnIdle { assertTrue(pantry.items.value.single().inStock) }
     }
 
     // #146: running out puts it on the list silently; the row says "On list", and tapping that
-    // takes it off again. No snackbar either way.
+    // takes it off again. No snackbar either way. #194: "Ran out" is a labelled action, and the
+    // item moves to the Run out section with "Restock" in its place.
     @Test
     fun runningOutPutsItOnTheListAndTheTagTakesItOff() {
         val pantry = show(item(1, "milk", aisle = Aisle.DAIRY))
         compose.onNodeWithTag("onList-1").assertDoesNotExist()
-        compose.onNodeWithTag("inStock-1").performClick()
-        compose.onNodeWithTag("inStock-1").assertIsOff()
+        compose.onNodeWithTag("stockAction-1").performClick()
+        compose.onNodeWithTag("stockAction-1").assertTextEquals("Restock")
+        compose.onNodeWithText("Run out").assertIsDisplayed()
+        compose.onNodeWithText("Dairy & eggs").assertDoesNotExist()
 
         compose.waitUntil(5_000) { groceries.items.value.isNotEmpty() }
         compose.runOnIdle {
@@ -83,6 +92,25 @@ class PantryScreenTest {
         compose.waitUntil(5_000) { groceries.items.value.isEmpty() }
         compose.onNodeWithTag("onList-1").assertDoesNotExist()
         compose.runOnIdle { assertTrue(!pantry.items.value.single().inStock) }
+    }
+
+    // #194: the row's menu (touch and hold) marks it running low: a "Low" tag, still in its
+    // aisle, onto the list; TalkBack reads the state and the tag, and offers the other states.
+    @Test
+    fun theRowMenuMarksItRunningLow() {
+        val pantry = show(item(1, "garlic", aisle = Aisle.PRODUCE))
+        compose.onNodeWithText("garlic").performTouchInput { longClick() }
+        compose.onNodeWithTag("stockMenu-RUNNING_LOW").performClick()
+
+        compose.waitUntil(5_000) { groceries.items.value.isNotEmpty() }
+        compose.runOnIdle { assertEquals(PantryStock.RUNNING_LOW, pantry.items.value.single().stock) }
+        compose.onNodeWithTag("low-1", useUnmergedTree = true).assertIsDisplayed().assertTextEquals("Low")
+        compose.onNodeWithText("Fruit & vegetables").assertIsDisplayed()
+        compose.onNodeWithTag("stockAction-1").assertTextEquals("Ran out")
+        compose.onNode(hasContentDescription("garlic, Running low, On list")).assertIsDisplayed()
+            .assert(SemanticsMatcher("offers Restock and Ran out") { node ->
+                node.config.getOrNull(SemanticsActions.CustomActions)?.map { it.label } == listOf("Restock", "Ran out")
+            })
     }
 
     @Test

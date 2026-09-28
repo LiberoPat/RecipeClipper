@@ -111,7 +111,7 @@ final class ShareFileRepositoryTests: XCTestCase {
         XCTAssertEqual(file.pantry.first?.id, rice.uid)
         XCTAssertTrue(file.recipes.isEmpty && file.groceries.isEmpty)
 
-        try await db.write { try PantryDao(db: $0).setInStock([riceId], inStock: false, now: 2) }
+        try await db.write { try PantryDao(db: $0).setStock([riceId], inStock: false, runningLow: false, now: 2) }
         let none = await repo().pantryFile()
         XCTAssertNil(none)
     }

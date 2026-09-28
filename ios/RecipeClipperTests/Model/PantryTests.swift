@@ -37,6 +37,35 @@ final class PantryTests: XCTestCase {
         XCTAssertEqual(sections[0].items.map(\.name), ["yogurt", "milk", "bread", "zucchini"])
     }
 
+    // #194: what has run out is one last section, in either sort; running low stays in its aisle.
+    func testRunOutItemsAreOneLastSectionAndRunningLowStaysInItsAisle() {
+        var apples = item("apples", aisle: .produce)
+        apples.runningLow = true
+        let items = [
+            item("rice", aisle: .grains), item("milk", inStock: false, aisle: .dairy, expires: 20_730),
+            apples, item("oats", inStock: false, aisle: .grains),
+        ]
+        let byAisle = PantryList.arrange(items, query: "", sort: .aisle)
+        XCTAssertEqual(byAisle.map(\.aisle), [.produce, .grains, nil])
+        XCTAssertEqual(byAisle.map(\.runOut), [false, false, true])
+        XCTAssertEqual(byAisle.last?.items.map(\.name), ["milk", "oats"])
+        XCTAssertEqual(byAisle[0].items.first?.stock, .runningLow)
+
+        let byExpiry = PantryList.arrange(items, query: "", sort: .expiry)
+        XCTAssertEqual(byExpiry.map { $0.items.map(\.name) }, [["apples", "rice"], ["milk", "oats"]])
+        XCTAssertEqual(byExpiry.map(\.runOut), [false, true])
+
+        XCTAssertEqual(PantryList.arrange(items, query: "oats", sort: .expiry).map(\.runOut), [true])
+    }
+
+    func testTheStockIsRunOutWheneverTheItemIsOutRunningLowOnlyInStock() {
+        XCTAssertEqual(item("a").stock, .inStock)
+        var b = item("b"); b.runningLow = true
+        XCTAssertEqual(b.stock, .runningLow)
+        var c = item("c", inStock: false); c.runningLow = true
+        XCTAssertEqual(c.stock, .runOut)
+    }
+
     func testSearchIsACaseInsensitivePartOfTheName() {
         let items = [item("Plain flour"), item("rice flour"), item("butter")]
         XCTAssertEqual(PantryList.arrange(items, query: " FLOUR ", sort: .aisle).flatMap { $0.items.map(\.name) }, ["Plain flour", "rice flour"])
@@ -71,6 +100,11 @@ final class PantryTests: XCTestCase {
         XCTAssertTrue(PantryMatch.covered("2 cups all-purpose flour", language: "en", pantry: pantry))
         XCTAssertFalse(PantryMatch.covered("1 can butter beans", language: "en", pantry: pantry))
         XCTAssertFalse(PantryMatch.covered("2 eggs", language: "en", pantry: pantry))
+    }
+
+    func testRunningLowIsStillCovered() {
+        var flour = item("flour"); flour.runningLow = true
+        XCTAssertTrue(PantryMatch.covered("2 cups flour", language: "en", pantry: [flour]))
     }
 
     func testOutOfStockIsNotCoveredAStapleAlwaysIs() {

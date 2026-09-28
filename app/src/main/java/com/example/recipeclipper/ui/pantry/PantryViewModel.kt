@@ -14,6 +14,7 @@ import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryList
 import com.example.recipeclipper.data.model.PantrySection
 import com.example.recipeclipper.data.model.PantryShareText
+import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.PantrySort
 import com.example.recipeclipper.ui.groceries.typedLanguage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -62,9 +63,10 @@ data class PantryUiState(
 )
 
 /**
- * The Pantry tab (#51): add by typing, search, sort by aisle or expiry, toggle in and out of
- * stock. Running out puts the item on the grocery list, silently (#146); its row then says "On
- * list", and tapping that takes it off again. A delete can be undone.
+ * The Pantry tab (#51): add by typing, search, sort by aisle or expiry, and mark each item in
+ * stock, running low or run out (#194). Running low or out puts the item on the grocery list,
+ * silently (#146); its row then says "On list", and tapping that takes it off again. A delete
+ * can be undone.
  */
 @HiltViewModel
 class PantryViewModel @Inject constructor(
@@ -126,16 +128,17 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * In → out puts the item on the grocery list, silently, unless it's there already (#146);
-     * out → in means just bought, today.
+     * A row's action, swipe or menu (#194). Running low and run out put the item on the grocery
+     * list, silently, unless it's there already (#146); back in stock means just bought, today.
      */
-    fun onToggleStock(item: PantryItem) {
+    fun onSetStock(item: PantryItem, stock: PantryStock) {
+        if (stock == item.stock) return
         viewModelScope.launch {
-            if (item.inStock) {
-                pantry.setInStock(listOf(item.id), false)
-                if (linesFor(item).isEmpty()) groceries.add(listOf(NewGroceryLine(item.name, item.language)))
-            } else {
+            if (stock == PantryStock.IN_STOCK) {
                 pantry.restock(listOf(item.id), calendar.today())
+            } else {
+                pantry.setStock(listOf(item.id), stock)
+                if (linesFor(item).isEmpty()) groceries.add(listOf(NewGroceryLine(item.name, item.language)))
             }
         }
     }
@@ -199,7 +202,7 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * "Send list" (#149): every in-stock item as plain text for the share sheet, arranged as the
+     * "Send list" (#149): every in-stock item (running low included) as plain text for the share sheet, arranged as the
      * screen's sort arranges them, whatever the search; null when nothing is in stock.
      */
     fun shareText(title: String, aisleName: (Aisle) -> String): String? {

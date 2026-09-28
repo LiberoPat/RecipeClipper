@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryItem
+import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.UseUpChange
 import com.example.recipeclipper.data.model.UseUpChoice
 import com.example.recipeclipper.fake.FakeGroceryRepository
@@ -101,7 +102,7 @@ class PantryUseUpViewModelTest {
     }
 
     @Test
-    fun `an asked row - running low goes on the list and stays in stock, out goes out too`() =
+    fun `an asked row - running low is marked running low and goes on the list, out goes out too`() =
         runTest(mainDispatcherRule.dispatcher) {
             val sugar = item(5, "sugar", null)
             val (pantry, vm) = viewModel(flour, sugar)
@@ -112,7 +113,7 @@ class PantryUseUpViewModelTest {
             vm.onConfirm()
             advanceUntilIdle()
 
-            assertEquals(listOf(true, false), pantry.items.value.map { it.inStock })
+            assertEquals(listOf(PantryStock.RUNNING_LOW, PantryStock.RUN_OUT), pantry.items.value.map { it.stock })
             // Asked rows keep whatever quantity was written: nothing was worked out.
             assertEquals(listOf("half a bag", null), pantry.items.value.map { it.quantity })
             assertEquals(listOf("flour", "sugar"), groceries.items.value.map { it.text })

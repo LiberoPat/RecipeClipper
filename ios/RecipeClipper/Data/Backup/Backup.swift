@@ -113,7 +113,8 @@ struct BackupMembership: Equatable {
     var addedAt: Int64
 }
 
-/// A pantry item (#51). The days are epoch days; `aisle` an `Aisle` key.
+/// A pantry item (#51). The days are epoch days; `aisle` an `Aisle` key. `runningLow` (#194)
+/// only with `inStock`; a file from before it has none, so its items read as in stock or run out.
 struct BackupPantryItem: Equatable {
     var id: String
     var name: String
@@ -125,6 +126,7 @@ struct BackupPantryItem: Equatable {
     var purchasedDay: Int64?
     var expiresDay: Int64?
     var updatedAt: Int64
+    var runningLow: Bool = false
 }
 
 /// A grocery item (#50). `recipeId` is the file id of the recipe it came from, or nil (typed,
