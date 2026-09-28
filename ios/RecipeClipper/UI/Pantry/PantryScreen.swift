@@ -43,53 +43,17 @@ struct PantryScreen: View {
                 }
                 .padding(.top, 4)
                 .listRowSeparator(.hidden)
-                // Keyed by name, not offset: a List pools ids, and an Int offset would equal an
-                // item's Int64 id (#185).
-                ForEach(state.sections ?? [], id: \.key) { section in
-                    VStack(alignment: .leading, spacing: 4) {
-                        if section.runOut {
-                            // Run out sits last, dimmed (#194).
-                            Text(Strings.pantryOut)
-                                .textStyle(Typography.titleMedium)
-                                .foregroundStyle(Palette.muted)
-                        } else if let aisle = section.aisle {
-                            SectionHeading(Strings.aisle(aisle))
-                        }
-                        Hairline()
-                    }
-                    .padding(.top, 18)
-                    .padding(.bottom, 2)
-                    .accessibilityAddTraits(.isHeader)
-                    .listRowSeparator(.hidden)
-                    ForEach(section.items) { item in
-                        // The stock tooltip (#190) points at the first row's action.
-                        PantryRow(
-                            item: item, today: state.today, onList: state.onList.contains(item.id),
-                            first: item.id == state.sections?.first?.items.first?.id, vm: vm
-                        )
-                            .listRowSeparator(.hidden)
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                if item.stock != .inStock {
-                                    Button { vm.onSetStock(item, .inStock) } label: {
-                                        Label(Strings.pantryRestock, systemImage: "arrow.uturn.backward")
-                                    }
-                                    .tint(Palette.primary)
-                                }
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                if item.stock != .runOut {
-                                    Button { vm.onSetStock(item, .runOut) } label: {
-                                        Label(Strings.pantryRanOut, systemImage: "xmark.circle")
-                                    }
-                                    .tint(Palette.muted)
-                                }
-                                if item.stock == .inStock {
-                                    Button { vm.onSetStock(item, .runningLow) } label: {
-                                        Label(Strings.pantryRunningLow, systemImage: "gauge.with.dots.needle.33percent")
-                                    }
-                                    .tint(Palette.accentText)
-                                }
-                            }
+                // One flat ForEach of headings and items, each with its own id ("heading-runOut",
+                // "item-12"), not a ForEach of items nested in a ForEach of sections: nested, an
+                // item's row id included its section, so a move between sections was a delete and
+                // an insert, which a List can leave drawn in a stale slot (#203). Flat, the row
+                // keeps its id and moves.
+                ForEach(PantryListRow.rows(state.sections ?? [])) { row in
+                    switch row {
+                    case .heading(let section):
+                        heading(section)
+                    case .item(let item):
+                        itemRow(item, state: state)
                     }
                 }
                 Color.clear.frame(height: 32).listRowSeparator(.hidden)
@@ -106,35 +70,7 @@ struct PantryScreen: View {
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    // What's in stock, as text or as a file (#149); shown only while anything is.
-                    if let text = vm.shareText(title: Strings.tabPantry, aisleName: Strings.aisle) {
-                        ShareLink(item: text, subject: Text(Strings.tabPantry)) {
-                            Label(Strings.shareGroceries, systemImage: "square.and.arrow.up")
-                        }
-                        if let makeSendFileVM {
-                            Button {
-                                let send = sendFileVM ?? makeSendFileVM()
-                                sendFileVM = send
-                                send.sendPantry(title: Strings.tabPantry)
-                            } label: {
-                                Label(Strings.sendFile, systemImage: "doc")
-                            }
-                        }
-                        Divider()
-                    }
-                    // An exclusive choice, so radio glyphs rather than a bare checkmark.
-                    sortButton(.aisle, Strings.pantrySortAisle, current: state.sort)
-                    sortButton(.expiry, Strings.pantrySortExpiry, current: state.sort)
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-                .accessibilityLabel(Strings.moreOptions)
-                .tooltipAnchor(.pantryMenu, inToolbar: true)
-            }
-        }
+        .toolbar { toolbar(state) }
         // The tooltips (#190); none over this screen's sheet and snackbar. Outside the toolbar,
         // whose menu is an anchor too.
         .tooltipHost(.pantry, blocked: state.editing != nil || state.message != nil)
@@ -160,6 +96,86 @@ struct PantryScreen: View {
             }
         }
         .modifier(SendFileEffect(vm: sendFileVM))
+    }
+
+    private func heading(_ section: PantrySection) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if section.runOut {
+                // Run out sits last, dimmed (#194).
+                Text(Strings.pantryOut)
+                    .textStyle(Typography.titleMedium)
+                    .foregroundStyle(Palette.muted)
+            } else if let aisle = section.aisle {
+                SectionHeading(Strings.aisle(aisle))
+            }
+            Hairline()
+        }
+        .padding(.top, 18)
+        .padding(.bottom, 2)
+        .accessibilityAddTraits(.isHeader)
+        .listRowSeparator(.hidden)
+    }
+
+    private func itemRow(_ item: PantryItem, state: PantryUiState) -> some View {
+        // The stock tooltip (#190) points at the first row's action.
+        PantryRow(
+            item: item, today: state.today, onList: state.onList.contains(item.id),
+            first: item.id == state.sections?.first?.items.first?.id, vm: vm
+        )
+        .listRowSeparator(.hidden)
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            if item.stock != .inStock {
+                Button { vm.onSetStock(item, .inStock) } label: {
+                    Label(Strings.pantryRestock, systemImage: "arrow.uturn.backward")
+                }
+                .tint(Palette.primary)
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if item.stock != .runOut {
+                Button { vm.onSetStock(item, .runOut) } label: {
+                    Label(Strings.pantryRanOut, systemImage: "xmark.circle")
+                }
+                .tint(Palette.muted)
+            }
+            if item.stock == .inStock {
+                Button { vm.onSetStock(item, .runningLow) } label: {
+                    Label(Strings.pantryRunningLow, systemImage: "gauge.with.dots.needle.33percent")
+                }
+                .tint(Palette.accentText)
+            }
+        }
+}
+
+    @ToolbarContentBuilder
+    private func toolbar(_ state: PantryUiState) -> some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                // What's in stock, as text or as a file (#149); shown only while anything is.
+                if let text = vm.shareText(title: Strings.tabPantry, aisleName: Strings.aisle) {
+                    ShareLink(item: text, subject: Text(Strings.tabPantry)) {
+                        Label(Strings.shareGroceries, systemImage: "square.and.arrow.up")
+                    }
+                    if let makeSendFileVM {
+                        Button {
+                            let send = sendFileVM ?? makeSendFileVM()
+                            sendFileVM = send
+                            send.sendPantry(title: Strings.tabPantry)
+                        } label: {
+                            Label(Strings.sendFile, systemImage: "doc")
+                        }
+                    }
+                    Divider()
+                }
+                // An exclusive choice, so radio glyphs rather than a bare checkmark.
+                sortButton(.aisle, Strings.pantrySortAisle, current: state.sort)
+                sortButton(.expiry, Strings.pantrySortExpiry, current: state.sort)
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .accessibilityLabel(Strings.moreOptions)
+            .tooltipAnchor(.pantryMenu, inToolbar: true)
+        }
     }
 
     private func emptyText(_ state: PantryUiState) -> String? {
@@ -306,9 +322,24 @@ private struct PantryRow: View {
     }
 }
 
-private extension PantrySection {
-    /// A stable id for the section's row in the List.
-    var key: String { runOut ? "runOut" : "aisle-\(aisle?.key ?? "expiry")" }
+/// One row of the Pantry's List: a section's heading or an item (#203). Ids are unique across
+/// the whole List (#185) and an item's doesn't name its section, so a move keeps its row.
+enum PantryListRow: Identifiable {
+    case heading(PantrySection)
+    case item(PantryItem)
+
+    var id: String {
+        switch self {
+        case .heading(let section):
+            return "heading-" + (section.runOut ? "runOut" : "aisle-\(section.aisle?.key ?? "expiry")")
+        case .item(let item):
+            return "item-\(item.id)"
+        }
+    }
+
+    static func rows(_ sections: [PantrySection]) -> [PantryListRow] {
+        sections.flatMap { [.heading($0)] + $0.items.map(PantryListRow.item) }
+    }
 }
 
 /// Use-by dates. An expiry is an epoch day, formatted at midnight UTC like the plan's days.

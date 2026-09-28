@@ -21,6 +21,21 @@ final class PantryViewModelTests: XCTestCase {
 
     // MARK: The Pantry tab
 
+    /// The List's rows (#203): ids unique across the List, headings apart from items, and an
+    /// item's id the same whichever section it's in, so running out moves the row.
+    func testListRowIdsAreUniqueAndAnItemKeepsItsIdAcrossSections() {
+        let garlic = item(1, "garlic", aisle: .produce)
+        let milk = item(2, "milk", inStock: false, aisle: .dairy)
+        let before = PantryListRow.rows(PantryList.arrange([garlic, milk], query: "", sort: .aisle))
+        var out = garlic
+        out.inStock = false
+        let after = PantryListRow.rows(PantryList.arrange([out, milk], query: "", sort: .aisle))
+
+        XCTAssertEqual(before.map(\.id), ["heading-aisle-produce", "item-1", "heading-runOut", "item-2"])
+        XCTAssertEqual(after.map(\.id), ["heading-runOut", "item-1", "item-2"])
+        for rows in [before, after] { XCTAssertEqual(Set(rows.map(\.id)).count, rows.count) }
+    }
+
     func testATypedItemIsAddedInStockTodayInItsAisle() async {
         let pantry = FakePantryRepository()
         let vm = await viewModel(pantry)

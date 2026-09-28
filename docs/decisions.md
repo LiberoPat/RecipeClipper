@@ -3236,6 +3236,10 @@ the cupboard. It is replaced, and a **Running low** state added.
   file (no key) reads as In stock or Run out from its boolean. A file saying running low on an
   item that is out reads as Run out. Merging is unchanged: what's already here keeps its stock.
 - "Always have" staples are unchanged.
+- **iOS: one flat `ForEach` of headings and items** (#203; `PantryListRow`, ids `heading-…` and
+  `item-<id>`). Items nested in a `ForEach` of sections got a row id that included the section,
+  so a move between sections was a delete plus an insert, which the `List` once left drawn in a
+  stale slot (garlic under Oils, a blank row, no Run out heading). Flat, the row keeps its id.
 
 ## The recipe screen's ViewModel, split into collaborators (#169)
 
