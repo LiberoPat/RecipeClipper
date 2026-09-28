@@ -572,7 +572,7 @@ Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported 
 (simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked", 24 the
 tooltips and "Show tips again", 25 the pantry's three states, 26 "onion" matching "onions" in What I
 need, 27 Reddit posts (from fixtures). Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
-`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (22
+`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–27 in `+Features.swift`, 22
 in `+MealPlan.swift`). What they need from outside the app:
 
 - **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
@@ -586,7 +586,9 @@ in `+MealPlan.swift`). What they need from outside the app:
   (iOS: `-uiTestPasteboard`).
 - **The Reddit listings** (27): reddit.com refuses an emulator, so Android's Reddit links are read by
   the real `RedditRecipeParser` from `shared/fixtures/reddit/` files the script pushes to
-  `/data/local/tmp`, in place of the `.json` fetch; the posts' photos don't load.
+  `/data/local/tmp`, in place of the `.json` fetch; the posts' photos don't load. iOS's test
+  hands one to the UI-test stub source as `RC_UITEST_REDDIT_LISTING`, and the stub runs a Reddit link
+  through the same parser.
 - **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20, 23, 25 and 26:
   `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
 - **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the

@@ -192,6 +192,10 @@ targets:
     platform: iOS
     sources:
       - path: RecipeClipperUITests
+      # The Reddit listings (#11) the Reddit walkthrough hands the app's stub source.
+      - path: ../shared/fixtures/reddit
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: RecipeClipper
     settings:

@@ -15,9 +15,12 @@ TESTS=("$@")
   test10_pageExtractionLine test11_groceriesAiMergingSimulated test12_groceriesJunkHidden test13_iMadeThis
   test14_automaticBackup test15_sendAndPasteAList test16_sendAndReceiveAFile test17_firstRunTour
   test18_doneShoppingAndOnList test19_pantrySendList test20_pantryUseUpAfterCooking test21_chefModeUnsupportedSimulated
-  test22_recipeJunkHidden test23_markAsCooked)
+  test22_recipeJunkHidden test23_markAsCooked test24_tooltips test25_pantryStates test26_onionPlurals
+  test27_redditImport)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
+# A new simulator's keyboard shows its slide-to-type introduction once, over the app: mark it seen.
+xcrun simctl spawn "$SIM" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
 # The photo "I made this" picks from the library (#116): a macOS sample picture, through BMP so
 # it loses its capture date and Photos files it under today, first in the picker.
 if [[ " ${TESTS[*]} " == *" test13_iMadeThis "* ]]; then
