@@ -132,6 +132,7 @@ final class RecipeViewModel {
         uiState.content = .loading
         uiState.reportSiteUrl = nil
         uiState.clipUrl = nil
+        uiState.photoPost = nil
         uiState.asWrittenSteps = []
         // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
         loadTask = Task { [weak self, recipeId, shareUrl, repository] in
@@ -175,9 +176,17 @@ final class RecipeViewModel {
                 uiState.content = .error(error)
                 uiState.reportSiteUrl = reportSiteUrl(for: error)
                 uiState.clipUrl = error == .noRecipeFound ? shareUrl : nil
+                uiState.photoPost = photoPost(for: error)
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
         }
+    }
+
+    /// A shared Reddit post with no recipe text but a picture can have its photo read (#198).
+    private func photoPost(for error: ParseError) -> PhotoPost? {
+        guard case .noTranscription(let title, _, _) = error, let shareUrl,
+              let images = error.photoUrls, !images.isEmpty else { return nil }
+        return PhotoPost(url: shareUrl, title: title, imageUrls: images)
     }
 
     /// Only a shared link that loaded but held no recipe is worth reporting: a block, being

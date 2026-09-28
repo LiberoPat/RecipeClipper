@@ -21,7 +21,8 @@ import UIKit
 ///     `-uiTestTooltips` asks for a fresh install's;
 ///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`;
 ///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder;
-///   - with `RC_UITEST_REDDIT_LISTING` in the environment, Reddit links parsed from it (#11).
+///   - with `RC_UITEST_REDDIT_LISTING` in the environment, Reddit links parsed from it (#11);
+///   - "Read the photo" (#198) answering the lines in `RC_UITEST_PHOTO_LINES` (`UITestPhotoTextReader`).
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -171,7 +172,8 @@ enum UITestSeeding {
                 ? AutoBackup(backups: backupRepository, folder: UITestBackupFolder(), store: MemoryAutoBackupStore(), clock: clock)
                 : nil,
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
-            tourPreferences: preferences
+            tourPreferences: preferences,
+            photoTextReader: UITestPhotoTextReader()
         )
         container.libraryPolicy.startMirroring()
         return container
@@ -329,6 +331,22 @@ private struct StubRecipeSource: RecipeSource {
             yield: "4",
             sourceUrl: url
         ))
+    }
+}
+
+/// "Read the photo" under UI test (#198): no picture is fetched and Vision never runs. Every
+/// read answers the lines in the `RC_UITEST_PHOTO_LINES` environment variable, one per line,
+/// a leading "?" marking one the recogniser was unsure of; without it, a photo with no text.
+private struct UITestPhotoTextReader: PhotoTextReader {
+    static let linesKey = "RC_UITEST_PHOTO_LINES"
+
+    func read(_ imageUrls: [String]) async -> PhotoTextResult {
+        let text = ProcessInfo.processInfo.environment[Self.linesKey] ?? ""
+        return .read(text.split(separator: "\n").map { line in
+            line.hasPrefix("?")
+                ? PhotoLine(text: String(line.dropFirst()), confidence: 0.3)
+                : PhotoLine(text: String(line), confidence: 1)
+        })
     }
 }
 

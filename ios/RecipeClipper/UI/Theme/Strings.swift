@@ -61,6 +61,16 @@ enum Strings {
     static var editLabelPhoto: String { String(localized: "edit_label_photo") }
     static var editErrorInvalid: String { String(localized: "edit_error_invalid") }
     static var editErrorSaveFailed: String { String(localized: "edit_error_save_failed") }
+
+    // "Read the photo" (#198)
+    static var readPhoto: String { String(localized: "action_read_photo") }
+    static var photoTitle: String { String(localized: "photo_title") }
+    static var photoReading: String { String(localized: "photo_reading") }
+    static var photoRead: String { String(localized: "photo_read") }
+    static var photoNotSorted: String { String(localized: "photo_not_sorted") }
+    static var photoFailed: String { String(localized: "photo_failed") }
+    static var photoCheckHeading: String { String(localized: "photo_check_heading") }
+    static func photoImageDescription(_ title: String) -> String { String(localized: "photo_image_description \(title)") }
     static func openOriginalHint(_ domain: String) -> String { String(localized: "cd_open_original \(domain)") }
 
     // Clip it yourself (#37)

@@ -14,6 +14,10 @@ struct RecipeScreen: View {
     var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
     /// Opens "Clip it yourself" on the shared link (#37).
     var onClip: (String) -> Void = { _ in }
+    /// Opens the editor on a Reddit post's photos, read on the device (#198).
+    var onReadPhoto: (PhotoPost) -> Void = { _ in }
+    /// The `photoText` flag (#198): "Read the photo" shows only behind it.
+    var photoTextEnabled = false
     /// The `amountsInSteps` flag (#101): amounts inside steps show only behind it.
     var amountsInStepsEnabled = false
     /// Makes "Your cooks" (#116); nil (the `cookedPhotos` flag off) leaves it out.
@@ -65,7 +69,7 @@ struct RecipeScreen: View {
                 }
             case .error(let error):
                 StatusView {
-                    if case .noTranscription(let title, let imageUrl) = error {
+                    if case .noTranscription(let title, let imageUrl, _) = error {
                         PostPreview(title: title, imageUrl: imageUrl)
                     }
                     Text(Strings.message(for: error))
@@ -253,7 +257,14 @@ struct RecipeScreen: View {
     @ViewBuilder
     private func errorActions(_ state: RecipeUiState) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let clipUrl = state.clipUrl {
+            if let photoPost = state.photoPost, photoTextEnabled {
+                // A post with a photo (#198): Try again, and beside it the photo read on the
+                // device, for the cook to check. Stacked when the words don't fit side by side.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) { readPhotoActions(photoPost) }
+                    VStack(alignment: .leading, spacing: 12) { readPhotoActions(photoPost) }
+                }
+            } else if let clipUrl = state.clipUrl {
                 Button(Strings.tryAgain, action: vm.onRetry)
                     .buttonStyle(OutlinedActionStyle())
                 Hairline().padding(.top, 20).padding(.bottom, 16)
@@ -273,6 +284,15 @@ struct RecipeScreen: View {
                     .padding(.top, 8)
             }
         }
+    }
+
+    @ViewBuilder
+    private func readPhotoActions(_ post: PhotoPost) -> some View {
+        Button(Strings.tryAgain, action: vm.onRetry)
+            .buttonStyle(OutlinedActionStyle())
+        Button(Strings.readPhoto) { onReadPhoto(post) }
+            .buttonStyle(PrimaryButtonStyle())
+            .accessibilityIdentifier("recipe.readPhoto")
     }
 
     /// Bookmark (filled once in any list), share, and an overflow holding Delete. Reading view

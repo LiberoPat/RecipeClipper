@@ -128,6 +128,11 @@ struct RecipeUiState: Equatable {
     /// `reportSiteUrl` is: only a page that loaded with no recipe data can be clipped.
     var clipUrl: String?
 
+    /// The post to read the photos of ("Read the photo", #198): set while a Reddit post with no
+    /// recipe text (`.noTranscription`) that has a picture is on screen. The screen offers it
+    /// only behind the `photoText` flag.
+    var photoPost: PhotoPost?
+
     /// Chef mode (#100): the steps the cook tapped to see as written, not short.
     var asWrittenSteps: Set<Int> = []
     /// The free library is full and every recipe in it is protected (#107): this one is shown

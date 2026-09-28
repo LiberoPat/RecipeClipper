@@ -25,6 +25,9 @@ enum Route: Hashable {
     case whatINeed(weekStart: Int64)
     /// "Clip it yourself" (#37) on a page with no recipe data.
     case clip(String)
+    /// "Read the photo" (#198): the editor, filled from a Reddit post's photos read on the device
+    /// (Android's `edit/photo?url=&title=&images=`).
+    case photoRecipe(PhotoPost)
 }
 
 /// `recipeclipper://import?url=<percent-encoded>` opens the import screen. The share extension

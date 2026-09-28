@@ -228,6 +228,12 @@ struct RootView: View {
             ScreenHost({ container.makeClipViewModel(url: url) }) { vm in
                 ClipScreen(vm: vm, fixtureHTML: container.clipFixtureHTML, onSaved: router.openSavedClip)
             }
+        case .photoRecipe(let post):
+            // The checked recipe replaces the editor and the post's error screen, as a saved clip does.
+            ScreenHost({ container.makeEditRecipeViewModel(photo: post) }) { vm in
+                EditRecipeScreen(vm: vm, onSaved: router.openSavedClip)
+            }
+            .toolbar(.hidden, for: .tabBar)
         }
     }
 
@@ -245,6 +251,8 @@ struct RootView: View {
             RecipeScreen(
                 vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
                 makePlanVM: makePlanVM, makeGroceriesVM: makeGroceriesVM, onClip: { push(.clip($0)) },
+                onReadPhoto: { push(.photoRecipe($0)) },
+                photoTextEnabled: container.featureFlags.isOn(.photoText),
                 amountsInStepsEnabled: container.featureFlags.isOn(.amountsInSteps),
                 makePhotosVM: container.makeCookedPhotosViewModel,
                 makeSendFileVM: makeSendFileVM,

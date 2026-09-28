@@ -10,6 +10,8 @@ enum RedditFixtures {
     static var selfPost: String { read("recipes-self-post") }
     /// A gallery of a recipe card, transcribed in a reply to AutoModerator.
     static var cardWithTranscription: String { read("old-recipes-card-transcription") }
+    /// A gallery of a recipe card (front, then back) nobody has transcribed (#198).
+    static var cardUntranscribed: String { read("old-recipes-card-untranscribed") }
     /// A photo of a finished dish: only chatter.
     static var photoOnly: String { read("food-photo-chatter") }
     /// A crosspost of `imageWithOpRecipe`, with no recipe of its own.

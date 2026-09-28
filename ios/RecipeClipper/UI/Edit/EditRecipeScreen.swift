@@ -10,15 +10,18 @@ struct EditRecipeScreen: View {
         let state = vm.uiState
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                ScreenTitle(state.isNew ? Strings.editTitleNew : Strings.editTitleEdit, style: Typography.headlineSmall)
+                ScreenTitle(title(state), style: Typography.headlineSmall)
                     .padding(.bottom, 4)
+                if let photo = state.photo {
+                    PhotoReview(post: photo, state: state, onReadAgain: vm.onReadAgain)
+                }
                 if state.loading {
                     ProgressView().tint(Palette.primary)
                 } else if state.missing {
                     Text(Strings.errorNotSaved)
                         .textStyle(Typography.bodyLarge)
                         .foregroundStyle(Palette.error)
-                } else {
+                } else if !state.reading {
                     fields(state)
                 }
             }
@@ -33,7 +36,7 @@ struct EditRecipeScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(Strings.save, action: vm.onSave)
-                    .disabled(state.loading || state.saving || state.missing)
+                    .disabled(state.loading || state.saving || state.missing || state.reading)
                     .accessibilityIdentifier("edit.save")
             }
         }
@@ -44,6 +47,11 @@ struct EditRecipeScreen: View {
             isPresented: Binding(get: { vm.uiState.libraryFull }, set: { if !$0 { vm.onLibraryFullDismiss() } }),
             onUnlock: vm.onUnlock
         )
+    }
+
+    private func title(_ state: EditRecipeUiState) -> String {
+        if state.photo != nil { return Strings.photoTitle }
+        return state.isNew ? Strings.editTitleNew : Strings.editTitleEdit
     }
 
     @ViewBuilder
@@ -83,6 +91,81 @@ struct EditRecipeScreen: View {
                 vm.onDraftChange(draft)
             }
         )
+    }
+}
+
+/// "Read the photo" (#198), above the fields: the post's pictures to check the lines against,
+/// how the reading went, and the lines the recogniser was unsure of ("Check these lines").
+private struct PhotoReview: View {
+    let post: PhotoPost
+    let state: EditRecipeUiState
+    let onReadAgain: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(post.imageUrls.enumerated()), id: \.offset) { _, image in
+                if let url = URL(string: image) {
+                    CachedAsyncImage(url: url) { picture in
+                        picture.resizable().scaledToFit()
+                    } placeholder: {
+                        Rectangle().fill(Palette.hairline).frame(height: 200)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: 480)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .accessibilityLabel(Strings.photoImageDescription(post.title))
+                }
+            }
+            outcome
+            if !state.uncertain.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(Strings.photoCheckHeading)
+                        .textStyle(Typography.titleSmall)
+                        .foregroundStyle(Palette.accentText)
+                    ForEach(Array(state.uncertain.enumerated()), id: \.offset) { _, line in
+                        Text("• \(line)")
+                            .textStyle(Typography.bodyMedium)
+                            .foregroundStyle(Palette.onBackground)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.primary, lineWidth: 1))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("edit.photoCheck")
+            }
+        }
+        .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private var outcome: some View {
+        switch state.photoOutcome {
+        case nil:
+            if state.reading {
+                HStack(spacing: 12) {
+                    ProgressView().tint(Palette.primary)
+                    Text(Strings.photoReading)
+                        .textStyle(Typography.bodyMedium)
+                        .foregroundStyle(Palette.onBackground)
+                }
+            }
+        case .read:
+            note(Strings.photoRead)
+        case .notSorted:
+            note(Strings.photoNotSorted)
+        case .failed:
+            Text(Strings.photoFailed)
+                .textStyle(Typography.bodyMedium)
+                .foregroundStyle(Palette.error)
+            Button(Strings.tryAgain, action: onReadAgain)
+                .buttonStyle(OutlinedActionStyle())
+        }
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .textStyle(Typography.bodyMedium)
+            .foregroundStyle(Palette.muted)
     }
 }
 
