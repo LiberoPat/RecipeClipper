@@ -196,6 +196,8 @@ private struct PantryRow: View {
         let stock = item.stock
         let others = PantryStock.allCases.filter { $0 != stock }
         let next: PantryStock = stock == .runOut ? .inStock : .runOut
+        // VoiceOver gets both other states; the context menu only the one the button doesn't offer.
+        let menuStates = others.filter { $0 != next }
         HStack(spacing: 8) {
             Button { vm.onEdit(item) } label: {
                 VStack(alignment: .leading, spacing: 0) {
@@ -261,9 +263,9 @@ private struct PantryRow: View {
                 .modifier(FirstActionAnchor(first: first))
         }
         .padding(.vertical, 4)
-        // The row's menu: the other two states.
+        // The row's menu: the one state the button doesn't offer.
         .contextMenu {
-            ForEach(others, id: \.self) { choice in
+            ForEach(menuStates, id: \.self) { choice in
                 Button(Self.action(choice)) { vm.onSetStock(item, choice) }
             }
         }

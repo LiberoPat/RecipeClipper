@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -111,6 +112,28 @@ class PantryScreenTest {
             .assert(SemanticsMatcher("offers Restock and Ran out") { node ->
                 node.config.getOrNull(SemanticsActions.CustomActions)?.map { it.label } == listOf("Restock", "Ran out")
             })
+    }
+
+    // The menu offers only what the row's button doesn't: In stock → Running low (the button is
+    // Ran out); Running low → Restock (button Ran out); Run out → Running low (button Restock).
+    @Test
+    fun theRowMenuNeverRepeatsTheButton() {
+        show(item(1, "garlic", aisle = Aisle.PRODUCE))
+        fun menuOffers(expected: PantryStock) {
+            compose.onNodeWithText("garlic").performTouchInput { longClick() }
+            PantryStock.entries.forEach { choice ->
+                val node = compose.onNodeWithTag("stockMenu-${choice.name}")
+                if (choice == expected) node.assertIsDisplayed() else node.assertDoesNotExist()
+            }
+        }
+        menuOffers(PantryStock.RUNNING_LOW)
+        compose.onNodeWithTag("stockMenu-RUNNING_LOW").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("low-1", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        menuOffers(PantryStock.IN_STOCK)
+        compose.onNodeWithTag("stockMenu-IN_STOCK").performClick()
+        compose.onNodeWithTag("stockAction-1").performClick()
+        compose.onNodeWithTag("stockAction-1").assertTextEquals("Restock")
+        menuOffers(PantryStock.RUNNING_LOW)
     }
 
     @Test
