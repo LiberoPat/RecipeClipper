@@ -16,13 +16,12 @@ struct RootView: View {
 
     var body: some View {
         root
-            // The one-time tips (#151): every screen's TipCallout reads them from here.
-            .environment(container.tips)
+            // The tooltips (#190): every screen's TooltipHost reads them from here.
+            .environment(container.tooltips)
             // A file sent from another Recipe Clipper (#149) opens its sheet over whatever is on
             // screen; a `recipeclipper://` link imports as before.
             .onOpenURL { url in
                 if url.isFileURL, let receive = container.receiveFileViewModel {
-                    router.openedFile()
                     receive.open(url)
                 } else {
                     router.handle(url)
@@ -35,13 +34,9 @@ struct RootView: View {
                 case .recipes: router.openInRecipes(.recipes)
                 }
             })
-            // The first-run welcome (#151), over whichever tab is open.
-            .fullScreenCover(item: $router.welcome) { request in
-                ScreenHost({ container.makeWelcomeViewModel(again: request.again) }) { vm in
-                    WelcomeScreen(vm: vm, onExit: router.closeWelcome)
-                }
-            }
-            .task { await router.checkWelcome(container.firstRunTour.onLaunch) }
+            // A new user's sample recipe (#151, #190), in the UI's language (English if the sample
+            // isn't written in it).
+            .task { await container.firstRunTour.onLaunch(language: Bundle.main.preferredLocalizations.first) }
             // The share extension saves from its own process; catch up on coming back.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { container.refreshAfterExternalChanges() }
@@ -54,7 +49,6 @@ struct RootView: View {
                 if router.path.isEmpty { router.path = DebugLaunch.initialPath }
                 // A UI test's stand-in for a file opened from Messages (#149).
                 if let file = UITestSeeding.receivedFileURL() {
-                    router.openedFile()
                     container.receiveFileViewModel?.open(file)
                 }
             }
@@ -208,7 +202,7 @@ struct RootView: View {
                 SettingsScreen(
                     vm: vm,
                     onOpenDeveloperSettings: { push(.developerSettings) },
-                    onShowTour: { router.welcome = WelcomeRequest(again: true) }
+                    onShowTips: container.tooltips.onReplay
                 )
             }
         case .developerSettings:

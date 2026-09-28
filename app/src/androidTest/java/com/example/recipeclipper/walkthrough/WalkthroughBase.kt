@@ -37,8 +37,7 @@ import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.NewPantryItem
-import com.example.recipeclipper.data.model.Tip
-import com.example.recipeclipper.data.model.WelcomeState
+import com.example.recipeclipper.data.model.Tooltip
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltTestApplication
 import kotlinx.coroutines.flow.first
@@ -86,8 +85,8 @@ abstract class WalkthroughBase {
 
     /**
      * Seeds, turns [flags] on and opens Home, recording from there. [seeded] false: an empty
-     * library. [firstRun]: the first-run tour (#151) as a fresh install has it, opening on the
-     * welcome; otherwise it is done, so no welcome or tip appears. [kitchen]: the Pantry and
+     * library. [firstRun]: the first-run tour (#151, #190) as a fresh install has it, every
+     * tooltip still to see; otherwise every one is seen, so none appears. [kitchen]: the Pantry and
      * the grocery list of [WalkthroughSeed.pantry] and [WalkthroughSeed.groceries] too.
      */
     fun start(
@@ -106,12 +105,9 @@ abstract class WalkthroughBase {
             if (kitchen) stockTheKitchen()
         }
         flags.forEach { flagStore.setOverride(it, true) }
-        if (!firstRun) {
-            tour.welcome = WelcomeState.SEEN
-            Tip.entries.forEach { tour.setTipSeen(it, true) }
-        }
+        if (!firstRun) Tooltip.entries.forEach { tour.setTooltipSeen(it, true) }
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        waitFor(hasText(if (firstRun) "Next" else "Recipe URL"))
+        waitFor(hasText("Recipe URL"))
         // Two-thirds size: the script scales every clip to 1280 high anyway, and a smaller frame
         // keeps the emulator's encoder up with the screen on a busy machine (at full size it fell
         // behind and lost the ends of clips).

@@ -46,6 +46,7 @@ import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.GlobalPositionAwareModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.currentValueOf
+import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
@@ -77,6 +78,10 @@ import com.example.recipeclipper.data.model.TooltipVisit
 import com.example.recipeclipper.data.model.Tooltips
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.UUID
+import javax.inject.Inject
+import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -85,10 +90,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import java.util.UUID
-import javax.inject.Inject
-import kotlin.math.max
-import kotlin.math.roundToInt
 
 /** The tooltip showing now (#190), and the screen appearance ([token]) it shows on. */
 data class TooltipsUiState(val current: Tooltip? = null, val token: String? = null)
@@ -274,16 +275,19 @@ private data class TooltipAnchorElement(val tooltip: Tooltip, val side: TooltipS
         node.tooltip = tooltip
         node.side = side
     }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "tooltipAnchor"
+        properties["tooltip"] = tooltip
+        properties["side"] = side
+    }
 }
 
 private class TooltipAnchorNode(var tooltip: Tooltip, var side: TooltipSide) :
     Modifier.Node(), GlobalPositionAwareModifierNode, CompositionLocalConsumerModifierNode {
 
+    /** The host it last reported to, so leaving can take it off. */
     var anchors: TooltipAnchors? = null
-
-    override fun onAttach() {
-        anchors = currentValueOf(LocalTooltipAnchors)
-    }
 
     override fun onDetach() {
         anchors?.remove(tooltip, this)
@@ -291,14 +295,16 @@ private class TooltipAnchorNode(var tooltip: Tooltip, var side: TooltipSide) :
     }
 
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
-        val anchors = anchors ?: return
+        val host = currentValueOf(LocalTooltipAnchors)
+        if (host !== anchors) anchors?.remove(tooltip, this)
+        anchors = host ?: return
         val full = Rect(coordinates.positionInWindow(), coordinates.size.toSize())
-        anchors.put(tooltip, AnchorBounds(full, coordinates.boundsInWindow(), side, this))
+        host.put(tooltip, AnchorBounds(full, coordinates.boundsInWindow(), side, this))
     }
 }
 
 /** Where the bubble went: which side, and where its arrow points, from its own left edge. */
-private data class BubblePlacement(val below: Boolean, val arrowX: Float)
+internal data class BubblePlacement(val below: Boolean, val arrowX: Float)
 
 /**
  * The bubble (#190), in its own window over the screen: not focusable, so TalkBack and taps
@@ -342,10 +348,10 @@ private fun TooltipBubble(text: String, tag: String, anchor: Rect, side: Tooltip
 }
 
 private val ARROW = 8.dp
-private val MARGIN = 12.dp
+internal val MARGIN = 12.dp
 
 /** Places the bubble by [anchor] (window coordinates), inside the window, and says where it went. */
-private class BubblePositionProvider(
+internal class BubblePositionProvider(
     private val anchor: Rect,
     private val side: TooltipSide,
     density: Density,
