@@ -33,10 +33,64 @@ final class PantryDaoTests: XCTestCase {
         XCTAssertEqual(milk?.purchasedDay, 20_000)
         XCTAssertEqual(milk?.updatedAt, 5)
 
-        try await db.write { try PantryDao(db: $0).setInStock([id], inStock: false, now: 6) }
+        try await db.write { try PantryDao(db: $0).setStock([id], inStock: false, runningLow: false, now: 6) }
         milk = try await get(id)
         XCTAssertEqual(milk?.inStock, false)
         XCTAssertEqual(milk?.purchasedDay, 20_000) // running out keeps the date
+    }
+
+    // #194: running low is a flag on an in-stock item; a restock clears it.
+    func testRunningLowIsKeptUntilARestock() async throws {
+        let id = try await db.write { try PantryDao(db: $0).insert(self.item("milk")) }
+        try await db.write { try PantryDao(db: $0).setStock([id], inStock: true, runningLow: true, now: 5) }
+        var milk = try await get(id)
+        XCTAssertEqual(milk?.inStock, true)
+        XCTAssertEqual(milk?.runningLow, true)
+        XCTAssertEqual(milk?.domain.stock, .runningLow)
+
+        try await db.write { try PantryDao(db: $0).restock([id], day: 20_001, now: 6) }
+        milk = try await get(id)
+        XCTAssertEqual(milk?.inStock, true)
+        XCTAssertEqual(milk?.runningLow, false)
+    }
+
+    /// A user_version 14 file (#173's), built by the real migrations, gains `runningLow` (#194):
+    /// every item keeps its stock, none is running low, and one can then be marked so.
+    func testAVersion14DatabaseMigratesToVersion15KeepingEveryItemsStock() async throws {
+        let path = NSTemporaryDirectory() + "rc-\(UUID().uuidString).sqlite"
+        defer {
+            for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) }
+        }
+        do {
+            let old = try SQLiteConnection(path: path)
+            try old.execute("PRAGMA foreign_keys = ON")
+            try AppDatabase.migrate(old, upTo: 14)
+            try old.execute("""
+                INSERT INTO pantry_items (id, name, quantity, language, aisle, inStock, alwaysHave, purchasedDay,
+                    expiresDay, updatedAt, uid) VALUES
+                    (1, 'garlic', '1 head', 'en', 'produce', 1, 0, 20000, 20010, 5, 'garlic-uid'),
+                    (2, 'rice', NULL, 'en', 'grains', 0, 0, NULL, NULL, 6, 'rice-uid')
+                """)
+            XCTAssertEqual(try old.queryOne("PRAGMA user_version") { $0.int(0) }, 14)
+        }
+
+        let migrated = try AppDatabase(path: path)
+        let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
+        XCTAssertEqual(version, AppDatabase.schemaVersion)
+        let items = try await migrated.read { try PantryDao(db: $0).items() }
+        XCTAssertEqual(items, [
+            PantryItemRecord(
+                id: 1, name: "garlic", quantity: "1 head", language: "en", aisle: "produce", inStock: true, alwaysHave: false,
+                purchasedDay: 20_000, expiresDay: 20_010, updatedAt: 5, uid: "garlic-uid", runningLow: false
+            ),
+            PantryItemRecord(
+                id: 2, name: "rice", quantity: nil, language: "en", aisle: "grains", inStock: false, alwaysHave: false,
+                purchasedDay: nil, expiresDay: nil, updatedAt: 6, uid: "rice-uid", runningLow: false
+            ),
+        ])
+        try await migrated.write { try PantryDao(db: $0).setStock([1], inStock: true, runningLow: true, now: 7) }
+        let garlic = try await migrated.read { try PantryDao(db: $0).item(1) }
+        XCTAssertEqual(garlic?.runningLow, true)
     }
 
     func testEditChangesOnlyWhatTheSheetShows() async throws {

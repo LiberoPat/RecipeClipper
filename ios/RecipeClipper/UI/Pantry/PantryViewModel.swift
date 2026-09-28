@@ -36,9 +36,9 @@ struct PantryUiState: Equatable {
 }
 
 /// The Pantry tab (#51; Android's PantryViewModel): add by typing, search, sort by aisle or
-/// expiry, toggle in and out of stock. Running out puts the item on the grocery list, silently
-/// (#146); its row then says "On list", and tapping that takes it off again. A delete can be
-/// undone.
+/// expiry, and mark each item in stock, running low or run out (#194). Running low or out puts
+/// the item on the grocery list, silently (#146); its row then says "On list", and tapping that
+/// takes it off again. A delete can be undone.
 @MainActor
 @Observable
 final class PantryViewModel {
@@ -121,17 +121,18 @@ final class PantryViewModel {
         }
     }
 
-    /// In → out puts the item on the grocery list, silently, unless it's there already (#146);
-    /// out → in means just bought, today.
-    func onToggleStock(_ item: PantryItem) {
+    /// A row's action, swipe or menu (#194). Running low and run out put the item on the grocery
+    /// list, silently, unless it's there already (#146); back in stock means just bought, today.
+    func onSetStock(_ item: PantryItem, _ stock: PantryStock) {
+        guard stock != item.stock else { return }
         Task {
-            if item.inStock {
-                await pantry.setInStock([item.id], inStock: false)
+            if stock == .inStock {
+                await pantry.restock([item.id], day: calendar.today())
+            } else {
+                await pantry.setStock([item.id], stock: stock)
                 if lines(for: item).isEmpty {
                     await groceries.add([NewGroceryLine(text: item.name, language: item.language)])
                 }
-            } else {
-                await pantry.restock([item.id], day: calendar.today())
             }
         }
     }
@@ -195,7 +196,7 @@ final class PantryViewModel {
         uiState.message = nil
     }
 
-    /// "Send list" (#149): every in-stock item as plain text for the share sheet, arranged as the
+    /// "Send list" (#149): every in-stock item (running low included) as plain text for the share sheet, arranged as the
     /// screen's sort arranges them, whatever the search; nil when nothing is in stock.
     func shareText(title: String, aisleName: (Aisle) -> String) -> String? {
         let inStock = items.filter(\.inStock)

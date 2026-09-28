@@ -84,7 +84,7 @@ final class PantryUseUpViewModelTests: XCTestCase {
         vm.onConfirm()
         await settleMain()
 
-        XCTAssertEqual(pantry.items.value.map(\.inStock), [true, false])
+        XCTAssertEqual(pantry.items.value.map(\.stock), [.runningLow, .runOut])
         XCTAssertEqual(pantry.items.value.map(\.quantity), ["half a bag", nil])
         XCTAssertEqual(groceries.items.value.map(\.text), ["flour", "sugar"])
     }

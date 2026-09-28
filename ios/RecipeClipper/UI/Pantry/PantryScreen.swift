@@ -1,19 +1,23 @@
 import SwiftUI
 
 /// The Pantry tab (#51; Android's PantryScreen): "Add to the pantry", a search field, then
-/// everything by aisle (or by expiry, from the menu). Each row's switch says whether it's in
-/// stock; tapping the row opens its edit sheet (quantity, staple, use-by date, delete). The menu
-/// sends what's in stock, as plain text or as a file (#149).
+/// everything by aisle (or by expiry, from the menu), and what has run out last (#194). Each row
+/// shows whether it's in stock, running low or run out, with a labelled action, swipes and a
+/// touch-and-hold menu; tapping the row opens its edit sheet (quantity, staple, use-by date,
+/// delete). The menu sends what's in stock, as plain text or as a file (#149). A `List`, for the
+/// swipe actions, so the readable column is made from the width, as on Recipes.
 struct PantryScreen: View {
     let vm: PantryViewModel
     /// Makes "Send as file" (#149, phase 2); nil leaves it out. Made on first use.
     var makeSendFileVM: (() -> SendFileViewModel)? = nil
     @State private var sendFileVM: SendFileViewModel?
+    /// A List's rows take insets, not a frame, so the readable column is made from the width.
+    @State private var sideInset = ReadableWidth.gutter
 
     var body: some View {
         let state = vm.uiState
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
+        List {
+            Group {
                 VStack(alignment: .leading, spacing: 8) {
                     ScreenTitle(Strings.tabPantry)
                     // The first Pantry visit (#151).
@@ -39,23 +43,63 @@ struct PantryScreen: View {
                     }
                 }
                 .padding(.top, 4)
-                ForEach(Array((state.sections ?? []).enumerated()), id: \.offset) { _, section in
+                .listRowSeparator(.hidden)
+                // Keyed by name, not offset: a List pools ids, and an Int offset would equal an
+                // item's Int64 id (#185).
+                ForEach(state.sections ?? [], id: \.key) { section in
                     VStack(alignment: .leading, spacing: 4) {
-                        if let aisle = section.aisle { SectionHeading(Strings.aisle(aisle)) }
+                        if section.runOut {
+                            // Run out sits last, dimmed (#194).
+                            Text(Strings.pantryOut)
+                                .textStyle(Typography.titleMedium)
+                                .foregroundStyle(Palette.muted)
+                        } else if let aisle = section.aisle {
+                            SectionHeading(Strings.aisle(aisle))
+                        }
                         Hairline()
                     }
                     .padding(.top, 18)
                     .padding(.bottom, 2)
                     .accessibilityAddTraits(.isHeader)
+                    .listRowSeparator(.hidden)
                     ForEach(section.items) { item in
                         PantryRow(item: item, today: state.today, onList: state.onList.contains(item.id), vm: vm)
+                            .listRowSeparator(.hidden)
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                if item.stock != .inStock {
+                                    Button { vm.onSetStock(item, .inStock) } label: {
+                                        Label(Strings.pantryRestock, systemImage: "arrow.uturn.backward")
+                                    }
+                                    .tint(Palette.primary)
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                if item.stock != .runOut {
+                                    Button { vm.onSetStock(item, .runOut) } label: {
+                                        Label(Strings.pantryRanOut, systemImage: "xmark.circle")
+                                    }
+                                    .tint(Palette.muted)
+                                }
+                                if item.stock == .inStock {
+                                    Button { vm.onSetStock(item, .runningLow) } label: {
+                                        Label(Strings.pantryRunningLow, systemImage: "gauge.with.dots.needle.33percent")
+                                    }
+                                    .tint(Palette.accentText)
+                                }
+                            }
                     }
                 }
+                Color.clear.frame(height: 32).listRowSeparator(.hidden)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 32)
-            .readableColumn()
+            .listRowInsets(EdgeInsets(top: 0, leading: sideInset, bottom: 0, trailing: sideInset))
+            .listRowBackground(Palette.background)
         }
+        .listStyle(.plain)
+        .environment(\.defaultMinListRowHeight, 0)
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
+            sideInset = ReadableWidth.inset(in: width)
+        }
+        .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
@@ -141,22 +185,33 @@ private struct PantryRow: View {
     let vm: PantryViewModel
 
     var body: some View {
-        HStack(spacing: 12) {
+        let stock = item.stock
+        let others = PantryStock.allCases.filter { $0 != stock }
+        let next: PantryStock = stock == .runOut ? .inStock : .runOut
+        HStack(spacing: 8) {
             Button { vm.onEdit(item) } label: {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(item.name)
-                        .textStyle(Typography.bodyLarge)
-                        .foregroundStyle(item.inStock ? Palette.onBackground : Palette.muted)
-                    let details = [item.quantity, item.alwaysHave ? Strings.pantryAlwaysHave : nil, item.inStock ? nil : Strings.pantryOut]
-                        .compactMap { $0 }
+                    HStack(spacing: 8) {
+                        Text(item.name)
+                            .textStyle(Typography.bodyLarge)
+                            .foregroundStyle(item.inStock ? Palette.onBackground : Palette.muted)
+                        if stock == .runningLow {
+                            Text(Strings.pantryLow)
+                                .textStyle(Typography.labelSmall)
+                                .foregroundStyle(Palette.accentText)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .overlay(Capsule().stroke(Palette.hairline, lineWidth: 1))
+                                .accessibilityIdentifier("low-\(item.id)")
+                        }
+                    }
                     if !details.isEmpty {
                         Text(details.joined(separator: " · ")).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
                     }
-                    if let day = item.expiresDay {
-                        let badge = PantryList.badge(day, today: today)
-                        Text(badge == .expired ? Strings.pantryExpired : Strings.pantryUseBy(PantryDate.short(day)))
+                    if let expiry {
+                        Text(expiry.text)
                             .textStyle(Typography.bodySmall)
-                            .foregroundStyle(badge != nil ? Palette.accentText : Palette.muted)
+                            .foregroundStyle(expiry.badge != nil ? Palette.accentText : Palette.muted)
                             .accessibilityIdentifier("expiry-\(item.id)")
                     }
                 }
@@ -165,6 +220,16 @@ private struct PantryRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // VoiceOver reads the row as one ("Garlic, Run out, On list"), with the other two
+            // states as its actions (#194).
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(description)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityActions {
+                ForEach(others, id: \.self) { choice in
+                    Button(Self.action(choice)) { vm.onSetStock(item, choice) }
+                }
+            }
             if onList {
                 // A state, not a message (#146): on the grocery list; tapping takes it off.
                 Button { vm.onTakeOffList(item) } label: {
@@ -180,15 +245,59 @@ private struct PantryRow: View {
                 .accessibilityHint(Strings.pantryTakeOffList)
                 .accessibilityIdentifier("onList-\(item.id)")
             }
-            Toggle(Strings.pantryInStock, isOn: Binding(get: { item.inStock }, set: { _ in vm.onToggleStock(item) }))
-                .labelsHidden()
-                .tint(Palette.primary)
-                .accessibilityLabel("\(Strings.pantryInStock): \(item.name)")
-                .accessibilityIdentifier("inStock-\(item.id)")
+            // One labelled action instead of a switch (#194).
+            Button(Self.action(next)) { vm.onSetStock(item, next) }
+                .buttonStyle(TextActionStyle(color: Palette.accentText))
+                .accessibilityLabel("\(Self.action(next)): \(item.name)")
+                .accessibilityIdentifier("stockAction-\(item.id)")
         }
         .padding(.vertical, 4)
+        // The row's menu: the other two states.
+        .contextMenu {
+            ForEach(others, id: \.self) { choice in
+                Button(Self.action(choice)) { vm.onSetStock(item, choice) }
+            }
+        }
         .accessibilityIdentifier("pantry-\(item.id)")
     }
+
+    private var details: [String] {
+        [item.quantity, item.alwaysHave ? Strings.pantryAlwaysHave : nil].compactMap { $0 }
+    }
+
+    private var expiry: (text: String, badge: ExpiryBadge?)? {
+        guard let day = item.expiresDay else { return nil }
+        let badge = PantryList.badge(day, today: today)
+        return (badge == .expired ? Strings.pantryExpired : Strings.pantryUseBy(PantryDate.short(day)), badge)
+    }
+
+    private var description: String {
+        ([item.name] + details + [Self.label(item.stock)] + [onList ? Strings.pantryOnList : nil, expiry?.text].compactMap { $0 })
+            .joined(separator: ", ")
+    }
+
+    /// A stock state's name, as the row reads it out.
+    static func label(_ stock: PantryStock) -> String {
+        switch stock {
+        case .inStock: return Strings.pantryInStock
+        case .runningLow: return Strings.pantryRunningLow
+        case .runOut: return Strings.pantryOut
+        }
+    }
+
+    /// The action that moves an item to this state.
+    static func action(_ stock: PantryStock) -> String {
+        switch stock {
+        case .inStock: return Strings.pantryRestock
+        case .runningLow: return Strings.pantryRunningLow
+        case .runOut: return Strings.pantryRanOut
+        }
+    }
+}
+
+private extension PantrySection {
+    /// A stable id for the section's row in the List.
+    var key: String { runOut ? "runOut" : "aisle-\(aisle?.key ?? "expiry")" }
 }
 
 /// Use-by dates. An expiry is an epoch day, formatted at midnight UTC like the plan's days.

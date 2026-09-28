@@ -68,7 +68,7 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertFalse(vm.uiState.hasInStock)
         XCTAssertNil(vm.shareText(title: "Pantry", aisleName: \.key))
 
-        vm.onToggleStock(pantry.items.value[0])
+        vm.onSetStock(pantry.items.value[0], .inStock)
         await settleMain()
         XCTAssertTrue(vm.uiState.hasInStock)
         XCTAssertEqual(vm.shareText(title: "Pantry", aisleName: \.key), "Pantry\n\nother\n- milk")
@@ -94,7 +94,7 @@ final class PantryViewModelTests: XCTestCase {
         let vm = await viewModel(pantry)
         XCTAssertEqual(vm.uiState.onList, [])
 
-        vm.onToggleStock(pantry.items.value[0])
+        vm.onSetStock(pantry.items.value[0], .runOut)
         await settleMain { !self.groceries.items.value.isEmpty }
         XCTAssertEqual(pantry.items.value.first?.inStock, false)
         XCTAssertEqual(groceries.items.value.map(\.text), ["milk"])
@@ -104,11 +104,50 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.onList, [1])
 
         // Back in and out again: still one line on the list.
-        vm.onToggleStock(pantry.items.value[0])
+        vm.onSetStock(pantry.items.value[0], .inStock)
         await settleMain { pantry.items.value[0].inStock }
-        vm.onToggleStock(pantry.items.value[0])
+        vm.onSetStock(pantry.items.value[0], .runOut)
         await settleMain { !pantry.items.value[0].inStock }
         XCTAssertEqual(groceries.items.value.map(\.text), ["milk"])
+    }
+
+    // #194: running low is still in stock, and goes on the list like running out.
+    func testRunningLowKeepsItInStockPutsItOnTheListOnceAndRanOutMovesItToRunOut() async {
+        let pantry = FakePantryRepository([item(1, "milk", aisle: .dairy), item(2, "rice", aisle: .grains)])
+        let vm = await viewModel(pantry)
+
+        vm.onSetStock(pantry.items.value[0], .runningLow)
+        await settleMain { !self.groceries.items.value.isEmpty }
+        XCTAssertEqual(pantry.items.value[0].stock, .runningLow)
+        XCTAssertTrue(pantry.items.value[0].inStock)
+        XCTAssertEqual(groceries.items.value.map(\.text), ["milk"])
+        await settleMain { vm.uiState.onList == [1] }
+        XCTAssertEqual(vm.uiState.sections?.map(\.aisle), [.dairy, .grains])
+        XCTAssertTrue(vm.uiState.hasInStock)
+
+        vm.onSetStock(pantry.items.value[0], .runOut)
+        await settleMain { vm.uiState.sections?.last?.runOut == true }
+        XCTAssertEqual(pantry.items.value[0].stock, .runOut)
+        XCTAssertEqual(groceries.items.value.map(\.text), ["milk"])
+        XCTAssertEqual(vm.uiState.sections?.map(\.runOut), [false, true])
+        XCTAssertEqual(vm.uiState.sections?.last?.items.map(\.name), ["milk"])
+
+        // Restock: in stock again, not running low, bought today.
+        vm.onSetStock(pantry.items.value[0], .inStock)
+        await settleMain { pantry.items.value[0].inStock }
+        XCTAssertEqual(pantry.items.value[0].stock, .inStock)
+        XCTAssertEqual(pantry.items.value[0].purchasedDay, calendar.today())
+    }
+
+    func testRestockingARunningLowItemMakesItPlainInStock() async {
+        var milk = item(1, "milk")
+        milk.runningLow = true
+        let pantry = FakePantryRepository([milk])
+        let vm = await viewModel(pantry)
+        vm.onSetStock(pantry.items.value[0], .inStock)
+        await settleMain { !pantry.items.value[0].runningLow }
+        XCTAssertEqual(pantry.items.value[0].stock, .inStock)
+        XCTAssertTrue(groceries.items.value.isEmpty)
     }
 
     func testTappingOnListTakesOnlyTheItemsOwnUntickedLineOffTheList() async {
@@ -134,7 +173,7 @@ final class PantryViewModelTests: XCTestCase {
     func testBackInStockIsBoughtTodayWithNoOffer() async {
         let pantry = FakePantryRepository([item(1, "milk", inStock: false)])
         let vm = await viewModel(pantry)
-        vm.onToggleStock(pantry.items.value[0])
+        vm.onSetStock(pantry.items.value[0], .inStock)
         await settleMain()
         XCTAssertEqual(pantry.items.value.first?.inStock, true)
         XCTAssertEqual(pantry.items.value.first?.purchasedDay, calendar.today())
@@ -345,7 +384,7 @@ final class PantryViewModelTests: XCTestCase {
         let pantry = FakePantryRepository([item(1, "eggs", inStock: false)])
         let vm = await needVM(pantry)
         XCTAssertTrue(vm.uiState.needs!.buy.contains { $0.name == "eggs" })
-        await pantry.setInStock([1], inStock: true)
+        await pantry.setStock([1], stock: .runningLow) // running low still counts as having it (#194)
         await settleMain()
         XCTAssertTrue(vm.uiState.needs!.have.contains { $0.name == "eggs" })
     }
