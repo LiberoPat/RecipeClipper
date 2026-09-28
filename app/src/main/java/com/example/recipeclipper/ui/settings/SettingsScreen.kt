@@ -2,18 +2,14 @@ package com.example.recipeclipper.ui.settings
 
 import android.Manifest
 import android.content.ActivityNotFoundException
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
-import androidx.core.net.toUri
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -46,6 +43,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
@@ -55,14 +55,18 @@ import com.example.recipeclipper.data.backup.BackupDestination
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.model.TemperatureUnit
+import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.data.model.UnitSystem
-import java.text.DateFormat
-import java.util.Date
-import java.util.Locale
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import com.example.recipeclipper.ui.tour.TooltipHost
+import com.example.recipeclipper.ui.tour.tooltipAnchor
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * The app's one settings surface. Everything here is a global default, applied to every
@@ -75,13 +79,13 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  * "Also convert liquids" for Ounces only), Oven temperature (the three [TemperatureUnit]
  * options, independent of Units), Appearance ("Dark while cooking"), Pantry ("Expiry
  * reminders", #52, only with the `mealPlan` flag on), Your recipes (Export and Import,
- * #26: actions, so plain rows), and Help ("Show the tour again", #151, an action too).
+ * #26: actions, so plain rows), and Help ("Show tips again", #190, an action too).
  */
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenDeveloperSettings: () -> Unit = {},
-    onShowTour: () -> Unit = {},
+    onShowTips: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -107,196 +111,202 @@ fun SettingsScreen(
     }
 
     RecipeClipperTheme {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            LazyColumn(
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                modifier = Modifier.fillMaxSize()
-                    // Edge-to-edge: the background fills behind the bars, the rows stay clear
-                    // of them, the display cutout and the keyboard.
-                    .safeDrawingPadding()
-            ) {
-                item {
-                    BackButton(onBack)
-                    Text(
-                        stringResource(R.string.settings_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    SectionHeading(stringResource(R.string.settings_section_units))
-                    Spacer(Modifier.height(4.dp))
-                }
-
-                items(UnitSystem.values().toList()) { option ->
-                    RadioRow(
-                        title = option.settingsLabel(),
-                        description = option.settingsDescription(),
-                        selected = option == state.unitSystem,
-                        onClick = { viewModel.onUnitSystemChange(option) }
-                    )
-                }
-
-                if (state.unitSystem == UnitSystem.OUNCES) {
+        TooltipHost(TooltipScreen.SETTINGS) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
+                    modifier = Modifier.fillMaxSize()
+                        // Edge-to-edge: the background fills behind the bars, the rows stay clear
+                        // of them, the display cutout and the keyboard.
+                        .safeDrawingPadding()
+                ) {
                     item {
-                        SwitchRow(
-                            title = stringResource(R.string.convert_liquids_title),
-                            description = stringResource(R.string.convert_liquids_description),
-                            checked = state.convertLiquids,
-                            onCheckedChange = viewModel::onConvertLiquidsChange
+                        BackButton(onBack)
+                        Text(
+                            stringResource(R.string.settings_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        SectionHeading(
+                            stringResource(R.string.settings_section_units),
+                            Modifier.tooltipAnchor(Tooltip.SETTINGS_UNITS)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    items(UnitSystem.values().toList()) { option ->
+                        RadioRow(
+                            title = option.settingsLabel(),
+                            description = option.settingsDescription(),
+                            selected = option == state.unitSystem,
+                            onClick = { viewModel.onUnitSystemChange(option) }
                         )
                     }
-                }
 
-                item {
-                    Spacer(Modifier.height(16.dp))
-                    Hairline()
-                    Spacer(Modifier.height(16.dp))
-                    SectionHeading(stringResource(R.string.settings_section_oven_temperature))
-                    Spacer(Modifier.height(4.dp))
-                }
-
-                items(TemperatureUnit.values().toList()) { option ->
-                    RadioRow(
-                        title = option.settingsLabel(),
-                        description = option.settingsDescription(),
-                        selected = option == state.temperatureUnit,
-                        onClick = { viewModel.onTemperatureUnitChange(option) }
-                    )
-                }
-
-                item {
-                    Spacer(Modifier.height(16.dp))
-                    Hairline()
-                    Spacer(Modifier.height(16.dp))
-                    SectionHeading(stringResource(R.string.settings_section_appearance))
-                    Spacer(Modifier.height(4.dp))
-                    SwitchRow(
-                        title = stringResource(R.string.dark_while_cooking_title),
-                        description = stringResource(R.string.dark_while_cooking_description),
-                        checked = state.darkWhileCooking,
-                        onCheckedChange = viewModel::onDarkWhileCookingChange
-                    )
-                }
-
-                if (state.showsSteps || state.showsChefMode) {
-                    item {
-                        Spacer(Modifier.height(16.dp))
-                        Hairline()
-                        Spacer(Modifier.height(16.dp))
-                        SectionHeading(stringResource(R.string.settings_section_steps))
-                        Spacer(Modifier.height(4.dp))
-                        if (state.showsSteps) {
+                    if (state.unitSystem == UnitSystem.OUNCES) {
+                        item {
                             SwitchRow(
-                                title = stringResource(R.string.amounts_in_steps_title),
-                                description = stringResource(R.string.amounts_in_steps_description),
-                                checked = state.amountsInSteps,
-                                onCheckedChange = viewModel::onAmountsInStepsChange
+                                title = stringResource(R.string.convert_liquids_title),
+                                description = stringResource(R.string.convert_liquids_description),
+                                checked = state.convertLiquids,
+                                onCheckedChange = viewModel::onConvertLiquidsChange
                             )
                         }
-                        if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
                     }
-                }
 
-                if (state.showsPantry) {
                     item {
                         Spacer(Modifier.height(16.dp))
                         Hairline()
                         Spacer(Modifier.height(16.dp))
-                        SectionHeading(stringResource(R.string.settings_section_pantry))
+                        SectionHeading(stringResource(R.string.settings_section_oven_temperature))
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    items(TemperatureUnit.values().toList()) { option ->
+                        RadioRow(
+                            title = option.settingsLabel(),
+                            description = option.settingsDescription(),
+                            selected = option == state.temperatureUnit,
+                            onClick = { viewModel.onTemperatureUnitChange(option) }
+                        )
+                    }
+
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Hairline()
+                        Spacer(Modifier.height(16.dp))
+                        SectionHeading(stringResource(R.string.settings_section_appearance))
                         Spacer(Modifier.height(4.dp))
                         SwitchRow(
-                            title = stringResource(R.string.expiry_reminders_title),
-                            description = stringResource(R.string.expiry_reminders_description),
-                            checked = state.expiryReminders,
-                            onCheckedChange = { on ->
-                                // Asking is a platform effect, so it lives here: only when the cook
-                                // turns reminders on, never on launch (#52).
-                                when {
-                                    !on -> viewModel.onExpiryRemindersOff()
-                                    NotificationManagerCompat.from(context).areNotificationsEnabled() ->
-                                        viewModel.onExpiryRemindersPermission(true)
-                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                                        PackageManager.PERMISSION_GRANTED ->
-                                        notificationPrompt.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    // Allowed, but switched off for the app in system settings.
-                                    else -> viewModel.onExpiryRemindersPermission(false)
-                                }
-                            }
+                            title = stringResource(R.string.dark_while_cooking_title),
+                            description = stringResource(R.string.dark_while_cooking_description),
+                            checked = state.darkWhileCooking,
+                            onCheckedChange = viewModel::onDarkWhileCookingChange
                         )
-                        if (state.expiryRemindersDenied && !state.expiryReminders) {
-                            Text(
-                                stringResource(R.string.expiry_reminders_denied),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                            )
+                    }
+
+                    if (state.showsSteps || state.showsChefMode) {
+                        item {
+                            Spacer(Modifier.height(16.dp))
+                            Hairline()
+                            Spacer(Modifier.height(16.dp))
+                            SectionHeading(stringResource(R.string.settings_section_steps))
+                            Spacer(Modifier.height(4.dp))
+                            if (state.showsSteps) {
+                                SwitchRow(
+                                    title = stringResource(R.string.amounts_in_steps_title),
+                                    description = stringResource(R.string.amounts_in_steps_description),
+                                    checked = state.amountsInSteps,
+                                    onCheckedChange = viewModel::onAmountsInStepsChange
+                                )
+                            }
+                            if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
                         }
                     }
-                }
 
-                item {
-                    Spacer(Modifier.height(16.dp))
-                    Hairline()
-                    Spacer(Modifier.height(16.dp))
-                    SectionHeading(stringResource(R.string.settings_section_your_recipes))
-                    Spacer(Modifier.height(4.dp))
-                    state.autoBackup?.let { auto ->
-                        AutoBackupRows(
-                            auto,
-                            onEnabledChange = viewModel::onAutoBackupChange,
-                            onChooseFolder = { folderPicker.launch(null) },
-                            onBackUpNow = viewModel::onBackUpNow
+                    if (state.showsPantry) {
+                        item {
+                            Spacer(Modifier.height(16.dp))
+                            Hairline()
+                            Spacer(Modifier.height(16.dp))
+                            SectionHeading(stringResource(R.string.settings_section_pantry))
+                            Spacer(Modifier.height(4.dp))
+                            SwitchRow(
+                                title = stringResource(R.string.expiry_reminders_title),
+                                description = stringResource(R.string.expiry_reminders_description),
+                                checked = state.expiryReminders,
+                                onCheckedChange = { on ->
+                                    // Asking is a platform effect, so it lives here: only when the cook
+                                    // turns reminders on, never on launch (#52).
+                                    when {
+                                        !on -> viewModel.onExpiryRemindersOff()
+                                        NotificationManagerCompat.from(context).areNotificationsEnabled() ->
+                                            viewModel.onExpiryRemindersPermission(true)
+                                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                                            PackageManager.PERMISSION_GRANTED ->
+                                            notificationPrompt.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        // Allowed, but switched off for the app in system settings.
+                                        else -> viewModel.onExpiryRemindersPermission(false)
+                                    }
+                                }
+                            )
+                            if (state.expiryRemindersDenied && !state.expiryReminders) {
+                                Text(
+                                    stringResource(R.string.expiry_reminders_denied),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Hairline()
+                        Spacer(Modifier.height(16.dp))
+                        SectionHeading(stringResource(R.string.settings_section_your_recipes))
+                        Spacer(Modifier.height(4.dp))
+                        state.autoBackup?.let { auto ->
+                            AutoBackupRows(
+                                auto,
+                                onEnabledChange = viewModel::onAutoBackupChange,
+                                onChooseFolder = { folderPicker.launch(null) },
+                                onBackUpNow = viewModel::onBackUpNow
+                            )
+                        }
+                        // Actions, not choices: plain rows, no radio or switch.
+                        ActionRow(
+                            title = stringResource(R.string.backup_export_title),
+                            description = stringResource(R.string.backup_export_description),
+                            enabled = !backup.isBusy,
+                            onClick = viewModel::onExport
+                        )
+                        ActionRow(
+                            title = stringResource(R.string.backup_import_title),
+                            description = stringResource(R.string.backup_import_description),
+                            enabled = !backup.isBusy,
+                            onClick = { importPicker.launch(IMPORT_MIME_TYPES) }
+                        )
+                        BackupStatusText(backup)
+                    }
+
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Hairline()
+                        Spacer(Modifier.height(16.dp))
+                        SectionHeading(stringResource(R.string.settings_section_help))
+                        Spacer(Modifier.height(4.dp))
+                        ActionRow(
+                            title = stringResource(R.string.settings_show_tips),
+                            description = stringResource(R.string.settings_show_tips_description),
+                            enabled = true,
+                            onClick = onShowTips,
+                            modifier = Modifier.tooltipAnchor(Tooltip.SETTINGS_SHOW_TIPS)
                         )
                     }
-                    // Actions, not choices: plain rows, no radio or switch.
-                    ActionRow(
-                        title = stringResource(R.string.backup_export_title),
-                        description = stringResource(R.string.backup_export_description),
-                        enabled = !backup.isBusy,
-                        onClick = viewModel::onExport
-                    )
-                    ActionRow(
-                        title = stringResource(R.string.backup_import_title),
-                        description = stringResource(R.string.backup_import_description),
-                        enabled = !backup.isBusy,
-                        onClick = { importPicker.launch(IMPORT_MIME_TYPES) }
-                    )
-                    BackupStatusText(backup)
-                }
 
-                item {
-                    Spacer(Modifier.height(16.dp))
-                    Hairline()
-                    Spacer(Modifier.height(16.dp))
-                    SectionHeading(stringResource(R.string.settings_section_help))
-                    Spacer(Modifier.height(4.dp))
-                    ActionRow(
-                        title = stringResource(R.string.settings_show_tour),
-                        description = stringResource(R.string.settings_show_tour_description),
-                        enabled = true,
-                        onClick = onShowTour
-                    )
-                }
-
-                state.unlock?.let { row ->
-                    item {
-                        UnlockSection(row, state.unlockNotice, viewModel::onUnlock, viewModel::onRestore)
+                    state.unlock?.let { row ->
+                        item {
+                            UnlockSection(row, state.unlockNotice, viewModel::onUnlock, viewModel::onRestore)
+                        }
                     }
-                }
 
-                item {
-                    // The version, quietly at the foot. Seven taps open Developer settings (#87);
-                    // the count is the ViewModel's, so it survives a rotation.
-                    Text(
-                        stringResource(R.string.settings_version, state.appVersion),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .padding(top = 24.dp)
-                            .clickable { if (viewModel.onVersionTapped()) onOpenDeveloperSettings() }
-                            .padding(vertical = 8.dp)
-                    )
+                    item {
+                        // The version, quietly at the foot. Seven taps open Developer settings (#87);
+                        // the count is the ViewModel's, so it survives a rotation.
+                        Text(
+                            stringResource(R.string.settings_version, state.appVersion),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(top = 24.dp)
+                                .clickable { if (viewModel.onVersionTapped()) onOpenDeveloperSettings() }
+                                .padding(vertical = 8.dp)
+                        )
+                    }
                 }
             }
         }
@@ -329,9 +339,15 @@ private fun RadioRow(title: String, description: String, selected: Boolean, onCl
 
 /** A row that does something when tapped: a title and, usually, a one-line description. */
 @Composable
-internal fun ActionRow(title: String, description: String?, enabled: Boolean, onClick: () -> Unit) {
+internal fun ActionRow(
+    title: String,
+    description: String?,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(vertical = 10.dp)

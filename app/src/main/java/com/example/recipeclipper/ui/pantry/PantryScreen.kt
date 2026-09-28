@@ -88,7 +88,8 @@ import com.example.recipeclipper.data.model.PantryList
 import com.example.recipeclipper.data.model.PantrySort
 import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.PlanDays
-import com.example.recipeclipper.data.model.Tip
+import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.groceries.label
 import com.example.recipeclipper.ui.plan.shortDate
 import com.example.recipeclipper.ui.recipe.Hairline
@@ -96,7 +97,8 @@ import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
-import com.example.recipeclipper.ui.tour.TipCallout
+import com.example.recipeclipper.ui.tour.TooltipHost
+import com.example.recipeclipper.ui.tour.tooltipAnchor
 import kotlinx.coroutines.launch
 
 /**
@@ -135,113 +137,115 @@ fun PantryScreen(
     }
 
     RecipeClipperTheme {
-        Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
-            containerColor = MaterialTheme.colorScheme.background,
-            contentWindowInsets = WindowInsets.safeDrawing
-        ) { padding ->
-            LazyColumn(
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                modifier = Modifier.fillMaxSize().padding(padding).testTag("pantryList")
-            ) {
-                item(key = "header") {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
-                        Text(
-                            stringResource(R.string.tab_pantry),
-                            style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        PantryMenu(
-                            sort = state.sort,
-                            onSort = viewModel::onSortChange,
-                            canSend = state.hasInStock,
-                            onShare = {
-                                val title = resources.getString(R.string.tab_pantry)
-                                viewModel.shareText(title) { resources.getString(it.label()) }?.let { text ->
-                                    ShareCompat.IntentBuilder(context)
-                                        .setType("text/plain")
-                                        .setSubject(title)
-                                        .setText(text)
-                                        .setChooserTitle(title)
-                                        .startChooser()
+        TooltipHost(TooltipScreen.PANTRY, blocked = snackbarHostState.currentSnackbarData != null) {
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
+                containerColor = MaterialTheme.colorScheme.background,
+                contentWindowInsets = WindowInsets.safeDrawing
+            ) { padding ->
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
+                    modifier = Modifier.fillMaxSize().padding(padding).testTag("pantryList")
+                ) {
+                    item(key = "header") {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
+                            Text(
+                                stringResource(R.string.tab_pantry),
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            PantryMenu(
+                                sort = state.sort,
+                                onSort = viewModel::onSortChange,
+                                canSend = state.hasInStock,
+                                onShare = {
+                                    val title = resources.getString(R.string.tab_pantry)
+                                    viewModel.shareText(title) { resources.getString(it.label()) }?.let { text ->
+                                        ShareCompat.IntentBuilder(context)
+                                            .setType("text/plain")
+                                            .setSubject(title)
+                                            .setText(text)
+                                            .setChooserTitle(title)
+                                            .startChooser()
+                                    }
+                                },
+                                onSendFile = sendFileViewModel?.let { vm ->
+                                    { vm.sendPantry(resources.getString(R.string.tab_pantry)) }
                                 }
-                            },
-                            onSendFile = sendFileViewModel?.let { vm ->
-                                { vm.sendPantry(resources.getString(R.string.tab_pantry)) }
-                            }
-                        )
-                    }
-                    // The first Pantry visit (#151).
-                    TipCallout(Tip.PANTRY, Modifier.padding(top = 4.dp, bottom = 4.dp))
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = state.draft,
-                        onValueChange = viewModel::onDraftChange,
-                        label = { Text(stringResource(R.string.pantry_add_hint)) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { viewModel.onAddTyped() }),
-                        trailingIcon = {
-                            if (state.draft.isNotBlank()) {
-                                TextButton(onClick = viewModel::onAddTyped) { Text(stringResource(R.string.action_add)) }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().testTag("pantryDraft")
-                    )
-                    if (state.hasItems) {
+                            )
+                        }
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
-                            value = state.query,
-                            onValueChange = viewModel::onQueryChange,
-                            label = { Text(stringResource(R.string.pantry_search_hint)) },
+                            value = state.draft,
+                            onValueChange = viewModel::onDraftChange,
+                            label = { Text(stringResource(R.string.pantry_add_hint)) },
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth().testTag("pantrySearch")
-                        )
-                    }
-                    val empty = when {
-                        state.sections == null -> null
-                        !state.hasItems -> stringResource(R.string.pantry_empty)
-                        state.sections.orEmpty().isEmpty() -> stringResource(R.string.pantry_no_results, state.query.trim())
-                        else -> null
-                    }
-                    if (empty != null) {
-                        Spacer(Modifier.height(16.dp))
-                        Text(empty, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                state.sections.orEmpty().forEach { section ->
-                    val sectionKey = if (section.runOut) "runOut" else section.aisle?.key ?: "expiry"
-                    item(key = "aisle-$sectionKey") {
-                        Column(Modifier.padding(top = 18.dp, bottom = 2.dp)) {
-                            if (section.runOut) {
-                                // Run out sits last, dimmed (#194).
-                                Text(
-                                    stringResource(R.string.pantry_out),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.semantics { heading() }
-                                )
-                                Spacer(Modifier.height(4.dp))
-                            } else {
-                                section.aisle?.let {
-                                    SectionHeading(stringResource(it.label()))
-                                    Spacer(Modifier.height(4.dp))
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { viewModel.onAddTyped() }),
+                            trailingIcon = {
+                                if (state.draft.isNotBlank()) {
+                                    TextButton(onClick = viewModel::onAddTyped) { Text(stringResource(R.string.action_add)) }
                                 }
-                            }
-                            Hairline()
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("pantryDraft").tooltipAnchor(Tooltip.PANTRY_ADD)
+                        )
+                        if (state.hasItems) {
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = state.query,
+                                onValueChange = viewModel::onQueryChange,
+                                label = { Text(stringResource(R.string.pantry_search_hint)) },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().testTag("pantrySearch")
+                            )
+                        }
+                        val empty = when {
+                            state.sections == null -> null
+                            !state.hasItems -> stringResource(R.string.pantry_empty)
+                            state.sections.orEmpty().isEmpty() -> stringResource(R.string.pantry_no_results, state.query.trim())
+                            else -> null
+                        }
+                        if (empty != null) {
+                            Spacer(Modifier.height(16.dp))
+                            Text(empty, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    items(section.items, key = { "item-${it.id}" }) { item ->
-                        PantryRow(
-                            item = item,
-                            today = state.today,
-                            onList = item.id in state.onList,
-                            onSetStock = { stock -> viewModel.onSetStock(item, stock) },
-                            onEdit = { viewModel.onEdit(item) },
-                            onTakeOffList = { viewModel.onTakeOffList(item) }
-                        )
+                    state.sections.orEmpty().forEach { section ->
+                        val sectionKey = if (section.runOut) "runOut" else section.aisle?.key ?: "expiry"
+                        item(key = "aisle-$sectionKey") {
+                            Column(Modifier.padding(top = 18.dp, bottom = 2.dp)) {
+                                if (section.runOut) {
+                                    // Run out sits last, dimmed (#194).
+                                    Text(
+                                        stringResource(R.string.pantry_out),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.semantics { heading() }
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                } else {
+                                    section.aisle?.let {
+                                        SectionHeading(stringResource(it.label()))
+                                        Spacer(Modifier.height(4.dp))
+                                    }
+                                }
+                                Hairline()
+                            }
+                        }
+                        items(section.items, key = { "item-${it.id}" }) { item ->
+                            PantryRow(
+                                item = item,
+                                today = state.today,
+                                onList = item.id in state.onList,
+                                // The stock tooltip (#190) points at the first row's action.
+                                first = item == state.sections?.firstOrNull()?.items?.firstOrNull(),
+                                onSetStock = { stock -> viewModel.onSetStock(item, stock) },
+                                onEdit = { viewModel.onEdit(item) },
+                                onTakeOffList = { viewModel.onTakeOffList(item) }
+                            )
+                        }
                     }
                 }
             }
@@ -267,7 +271,7 @@ private fun PantryMenu(
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }) {
+        IconButton(onClick = { expanded = true }, modifier = Modifier.tooltipAnchor(Tooltip.PANTRY_MENU)) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -319,6 +323,7 @@ private fun PantryRow(
     item: PantryItem,
     today: Long,
     onList: Boolean,
+    first: Boolean,
     onSetStock: (PantryStock) -> Unit,
     onEdit: () -> Unit,
     onTakeOffList: () -> Unit
@@ -455,6 +460,7 @@ private fun PantryRow(
                 TextButton(
                     onClick = { onSetStock(next) },
                     modifier = Modifier.semantics { contentDescription = actionDescription }.testTag("stockAction-${item.id}")
+                        .then(if (first) Modifier.tooltipAnchor(Tooltip.PANTRY_IN_STOCK) else Modifier)
                 ) {
                     Text(actionLabel)
                 }

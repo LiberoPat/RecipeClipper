@@ -11,7 +11,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
 import androidx.core.content.IntentCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,14 +32,14 @@ import com.example.recipeclipper.ui.navigation.openRoute
 import com.example.recipeclipper.ui.sharefile.ReceiveFileHost
 import com.example.recipeclipper.ui.sharefile.ReceivedFileInbox
 import com.example.recipeclipper.ui.sharefile.ReceivedWhere
-import com.example.recipeclipper.ui.tour.LocalTips
-import com.example.recipeclipper.ui.tour.TipsHost
-import com.example.recipeclipper.ui.tour.TipsViewModel
+import com.example.recipeclipper.ui.tour.LocalTooltips
+import com.example.recipeclipper.ui.tour.TooltipsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -61,8 +60,8 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var firstRunTour: FirstRunTour
 
-    // The one-time tips (#151), provided to every screen through LocalTips.
-    private val tips: TipsViewModel by viewModels()
+    // The tooltips (#190), provided to every screen through LocalTooltips.
+    private val tooltips: TooltipsViewModel by viewModels()
 
     // Routes from intents (a shared link, a tapped timer notification) wait here until the
     // NavHost is composed and can navigate to them.
@@ -74,9 +73,9 @@ class MainActivity : ComponentActivity() {
     // would otherwise die with the old activity, re-delivers it.
     private var shareHandled = false
 
-    // Whether this start has decided on the welcome (#151). Saved like shareHandled, so a
-    // rotation doesn't open it twice, and a flag change that swaps the NavController doesn't either.
-    private var welcomeChecked = false
+    // Whether this start has run the first-run tour's launch step (#151, #190: the sample
+    // recipe). Saved like shareHandled, so a rotation or a swapped NavController doesn't repeat it.
+    private var tourChecked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,10 +84,7 @@ class MainActivity : ComponentActivity() {
         // its content with the safe-drawing insets. Icon contrast is set by the theme.
         enableEdgeToEdge()
         shareHandled = savedInstanceState?.getBoolean(STATE_SHARE_HANDLED) ?: false
-        welcomeChecked = savedInstanceState?.getBoolean(STATE_WELCOME_CHECKED) ?: false
-        // A launch that opens something (a shared link, a notification) isn't a plain one: the
-        // welcome waits for the next plain launch, so a shared link still opens on the recipe.
-        val plainLaunch = routeFor(intent) == null && sharedFile(intent) == null
+        tourChecked = savedInstanceState?.getBoolean(STATE_TOUR_CHECKED) ?: false
 
         setContent {
             // The flags (#87) as they change in Developer settings. Turning the tab shell on or
@@ -102,14 +98,14 @@ class MainActivity : ComponentActivity() {
                 // tab bar on, the NavHost sits inside a Scaffold, which composes it later than
                 // this effect may start.
                 navController.currentBackStackEntryFlow.first()
-                // Decided once per start (#151), before any intent's route opens, so the library
-                // it counts is the one this launch found.
-                val showWelcome = !welcomeChecked && firstRunTour.onLaunch(plainLaunch)
-                welcomeChecked = true
+                // Once per start (#151), before any intent's route opens, so the library it
+                // counts is the one this launch found: a new user's sample recipe, in the UI's
+                // language (English if the sample isn't written in it).
+                if (!tourChecked) firstRunTour.onLaunch(Locale.getDefault().language)
+                tourChecked = true
                 // Back on the main thread, which navigation needs, whichever thread the database
                 // answered on: an effect's dispatcher isn't always the main one (tests).
                 withContext(Dispatchers.Main.immediate) {
-                    if (showWelcome) navController.navigate(Routes.welcome(again = false))
                     for (route in intentRoutes) {
                         // Into the Recipes tab, whichever tab is open (a tab's own route opens that tab).
                         navController.openRoute(route, tabsEnabled)
@@ -117,9 +113,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            val tipsState by tips.uiState.collectAsStateWithLifecycle()
-            val tipsHost = remember(tipsState) { TipsHost(tipsState.shown, tips::onDismiss) }
-            CompositionLocalProvider(LocalFlagValues provides flags, LocalTips provides tipsHost) {
+            CompositionLocalProvider(LocalFlagValues provides flags, LocalTooltips provides tooltips) {
                 AppShell(navController, tabsEnabled)
                 // A shared file (#149) opens its sheet over whatever is on screen; once added,
                 // the app shows where the things went.
@@ -172,7 +166,7 @@ class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(STATE_SHARE_HANDLED, shareHandled)
-        outState.putBoolean(STATE_WELCOME_CHECKED, welcomeChecked)
+        outState.putBoolean(STATE_TOUR_CHECKED, tourChecked)
     }
 
     /** Where an intent leads: a shared link imports, a timer notification opens cook mode, an
@@ -212,6 +206,6 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val STATE_SHARE_HANDLED = "share_handled"
-        const val STATE_WELCOME_CHECKED = "welcome_checked"
+        const val STATE_TOUR_CHECKED = "tour_checked"
     }
 }

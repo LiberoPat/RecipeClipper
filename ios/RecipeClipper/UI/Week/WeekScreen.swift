@@ -43,6 +43,8 @@ struct WeekScreen: View {
                     }
                     Button(Strings.addMeal) { vm.onAddToDay(weekDay.day) }
                         .buttonStyle(TextActionStyle())
+                        // The tooltip (#190) points at the first day's.
+                        .modifier(FirstDayAnchor(first: weekDay.day == state.days.first?.day))
                         .padding(.leading, -12)
                         .accessibilityIdentifier("addToDay-\(weekDay.day)")
                     Hairline()
@@ -110,8 +112,14 @@ struct WeekScreen: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 .accessibilityLabel(Strings.moreOptions)
+                .tooltipAnchor(.weekMenu, inToolbar: true)
             }
         }
+        // The tooltips (#190); none over this screen's sheets, dialogs and snackbar. Outside
+        // the toolbar, whose menu is an anchor too.
+        .tooltipHost(.week, blocked: state.adding != nil || state.moving != nil || groceriesSheet != nil
+            || state.removed != nil || calendarURL != nil || state.menus.saving || state.menus.picking
+            || state.menus.renaming != nil || state.menus.deleting != nil)
         .overlay(alignment: .bottom) {
             if let removed = state.removed {
                 Snackbar(message: Strings.removedFromPlan(removed.label), actionLabel: Strings.undo, action: vm.onUndoRemove)
@@ -168,6 +176,7 @@ struct WeekScreen: View {
                 }
                 .buttonStyle(TextActionStyle())
                 .accessibilityIdentifier("toggleMonth")
+                .tooltipAnchor(.weekMonth)
             }
             if let month = state.month {
                 periodNavigation(
@@ -193,8 +202,6 @@ struct WeekScreen: View {
                 )
             }
             Hairline()
-            // The first Week visit (#151).
-            TipCallout(tip: .week, padding: EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0))
         }
         .padding(.top, 4)
     }
@@ -392,5 +399,14 @@ private struct AddToDaySheet: View {
             .scrollDismissesKeyboard(.interactively)
             .presentationBackground(Palette.background)
         }
+    }
+}
+
+/// The first day's "+ Add", which the "+ Add" tooltip (#190) points at.
+private struct FirstDayAnchor: ViewModifier {
+    let first: Bool
+
+    func body(content: Content) -> some View {
+        if first { content.tooltipAnchor(.weekAdd) } else { content }
     }
 }

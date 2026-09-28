@@ -42,7 +42,7 @@ class SettingsScreenTest {
 
     private class Taps {
         var developerSettingsOpened = 0
-        var tourShown = 0
+        var tipsShown = 0
     }
 
     private fun show(
@@ -56,7 +56,7 @@ class SettingsScreenTest {
             SettingsScreen(
                 onBack = {},
                 onOpenDeveloperSettings = { taps.developerSettingsOpened++ },
-                onShowTour = { taps.tourShown++ },
+                onShowTips = { taps.tipsShown++ },
                 viewModel = viewModel
             )
         }
@@ -197,15 +197,15 @@ class SettingsScreenTest {
 
     // --- Developer settings (#87) ---
 
-    /** "Show the tour again" (#151): an action row under Help. */
+    /** "Show tips again" (#190): an action row under Help. */
     @Test
-    fun showTheTourAgainIsAnActionUnderHelp() {
+    fun showTipsAgainIsAnActionUnderHelp() {
         val taps = show()
-        scrollTo("Show the tour again")
+        scrollTo("Show tips again")
         compose.onNodeWithText("Help").assertExists()
-        compose.onNodeWithText("The welcome cards, and a tip on each screen once more.").assertExists()
-        compose.onNodeWithText("Show the tour again").performClick()
-        assertEquals(1, taps.tourShown)
+        compose.onNodeWithText("Each tip shows once more, one at a time.").assertExists()
+        compose.onNodeWithText("Show tips again").performClick()
+        assertEquals(1, taps.tipsShown)
     }
 
     @Test

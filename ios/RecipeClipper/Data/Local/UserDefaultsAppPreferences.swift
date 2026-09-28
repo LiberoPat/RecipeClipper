@@ -92,31 +92,27 @@ extension UserDefaultsAppPreferences: UseUpLog {
     }
 }
 
-/// The first-run tour's bookkeeping (#151), in the same suite as the settings.
+/// The first-run tour's bookkeeping (#151, #190), in the same suite as the settings.
 extension UserDefaultsAppPreferences: TourPreferences {
-    var welcome: WelcomeState {
-        get { WelcomeState(storedName: defaults.string(forKey: TourKeys.welcome)) }
-        set { defaults.set(newValue.rawValue, forKey: TourKeys.welcome) }
-    }
-
     var sampleAdded: Bool {
         get { defaults.bool(forKey: TourKeys.sampleAdded) }
         set { defaults.set(newValue, forKey: TourKeys.sampleAdded) }
     }
 
-    var seenTips: Set<Tip> { Set(Tip.allCases.filter { defaults.bool(forKey: $0.key) }) }
+    var seenTooltips: Set<Tooltip> { Set(Tooltip.allCases.filter { defaults.bool(forKey: $0.key) }) }
 
     /// Over the same notification as `settings`.
-    var seenTipsChanges: AnyPublisher<Set<Tip>, Never> {
+    var seenTooltipsChanges: AnyPublisher<Set<Tooltip>, Never> {
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
-            .map { [weak self] _ in self?.seenTips }
+            .map { [weak self] _ in self?.seenTooltips }
             .compactMap { $0 }
-            .prepend(seenTips)
+            .prepend(seenTooltips)
             .removeDuplicates()
             .eraseToAnyPublisher()
     }
 
-    func setTipSeen(_ tip: Tip, _ seen: Bool) {
-        defaults.set(seen, forKey: tip.key)
+    /// Unseen again removes the key, as on Android.
+    func setTooltipSeen(_ tooltip: Tooltip, _ seen: Bool) {
+        if seen { defaults.set(true, forKey: tooltip.key) } else { defaults.removeObject(forKey: tooltip.key) }
     }
 }

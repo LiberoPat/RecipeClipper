@@ -23,9 +23,9 @@ the commands; iOS test commands and the simulator rules are in
   `MainActivitySmokeTest`, the end-to-end smoke set: the real app with its
   real Hilt graph, database and network stack, launched from the launcher and
   by a shared link (an `ACTION_SEND` intent to a `.invalid` host, which must
-  reach the import screen and its Try again). It sets the first-run welcome
-  pending (#151): the launcher opens it and Skip leaves for Home, while the
-  shared link opens on the import screen with no welcome over it.
+  reach the import screen and its Try again). It clears the settings first, so
+  every tooltip is unseen (#190): the launcher opens Home and its first tooltip
+  shows in its own window until Got it.
 
 Waits that flaked under load (#91, and the nightly iOS UI tests), and what
 not to undo:
@@ -147,6 +147,17 @@ English. Its `Dur` rows (#179) pin `Durations.format`, the prep, cook and total
 times, per language; `SampleRecipeTest` / `SampleRecipeTests` check the tour's
 sample shows its times formatted, and `DefaultRecipeRepositorySampleTest` /
 `DataRepositoryTests` the launch-time fix for a sample saved with "PT10M".
+
+**The tooltips (#190).** `TooltipsTest` / `TooltipsTests` pin both `Tooltip` enums to
+`shared/tooltips.json` (ids, screens, flags, order) and test the rule; `TooltipsViewModelTest(s)`
+the visits, reports, Got it and Show tips again over fakes; `TooltipsScreenTest` (Robolectric)
+real screens with the app's ViewModel provided; iOS's `TooltipsUITests` the recipe screen.
+Robolectric reports the window as focused, so a tooltip shows there as on a phone. Every other
+test starts with every tooltip seen: Android's screen tests provide no `LocalTooltips`, iOS's
+test containers use `MemoryTourPreferences`, and a UI test turns them on with `-uiTestTooltips`
+(Android's walkthroughs with `start(firstRun = true)`). A tooltip is a popover on iOS, so it
+takes the first tap outside it: a UI test on a fresh install dismisses the screen's tooltip
+before tapping anything else.
 `SiteReportTest` covers the weekly site check's
 report and URL list offline (see CI below). `SiteReportLinkTest` pins the
 "Report this site" issue link byte for byte (percent-encoding, the cleaned
@@ -546,7 +557,7 @@ What I need, 04 weekly menus, 05 expiry reminders, 06 the Recipes screen, 07 amo
 08 Chef mode (stub model), 09 the free tier, 10 the page-extraction line, 11 grocery merging (AI
 answers simulated), 12 junk hidden in Groceries (simulated); 13 "I made this", 14 the automatic
 backup copy and "Restore from a backup file", 15 Send list and Paste a list, 16 Send as file and
-a received file, 17 the first-run tour, 18 Done shopping and the On list tag, 19 the Pantry's
+a received file, 17 the first-run tour (the sample, and a tooltip or two), 18 Done shopping and the On list tag, 19 the Pantry's
 Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported phone
 (simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked". Android's
 13–21 and 23 are in `CookingWalkthroughTest` and `SharingWalkthroughTest` (22 beside 12, in

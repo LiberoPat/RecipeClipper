@@ -42,8 +42,8 @@ recipes (#29); "Clip it yourself" (#37); export/import and an automatic
 backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147); Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
-(#151); the UI in six languages (drafts awaiting a native speaker:
-`docs/translations.md`). iOS also honours Dynamic Type.
+(#151, #190: a sample recipe and tooltips); the UI in six languages (drafts
+awaiting a native speaker: `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: Reddit (#11), other recipe languages,
 release setup (#18, #20–#22).
@@ -85,10 +85,9 @@ fixtures. The annotated map, and what each route does, are in
 Routes: `home`, `recipes`, `settings` (+ hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
-membership), `edit?recipeId={recipeId}`, `clip?url={url}`,
-`welcome?again={again}`; with the tab shell (#47) they sit under Recipes,
-beside `week/…`, `groceries` and `pantry`. A route from an intent always
-lands in Recipes.
+membership), `edit?recipeId={recipeId}`, `clip?url={url}`; with the tab
+shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
+`pantry`. A route from an intent always lands in Recipes.
 
 ## Conventions
 

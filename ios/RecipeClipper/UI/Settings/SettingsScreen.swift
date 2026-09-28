@@ -8,8 +8,8 @@ struct SettingsScreen: View {
     let vm: SettingsViewModel
     /// Seven taps on the version (#87).
     var onOpenDeveloperSettings: () -> Void = {}
-    /// "Show the tour again" (#151).
-    var onShowTour: () -> Void = {}
+    /// "Show tips again" (#190).
+    var onShowTips: () -> Void = {}
     @State private var importing = false
 
     var body: some View {
@@ -19,7 +19,9 @@ struct SettingsScreen: View {
                 ScreenTitle(Strings.settingsTitle, style: Typography.headlineSmall)
                     .padding(.bottom, 12)
 
-                SectionHeading(Strings.settingsSectionUnits).padding(.bottom, 4)
+                SectionHeading(Strings.settingsSectionUnits)
+                    .tooltipAnchor(.settingsUnits)
+                    .padding(.bottom, 4)
                 ForEach(UnitSystem.allCases, id: \.self) { option in
                     RadioRow(
                         title: Strings.unitLabel(option),
@@ -136,16 +138,17 @@ struct SettingsScreen: View {
                     }
                 }
 
-                // "Show the tour again" (#151): an action, so a plain row.
+                // "Show tips again" (#190): an action, so a plain row.
                 Divided {
                     SectionHeading(Strings.settingsSectionHelp).padding(.bottom, 4)
                     ActionRow(
-                        title: Strings.settingsShowTour,
-                        description: Strings.settingsShowTourDescription,
+                        title: Strings.settingsShowTips,
+                        description: Strings.settingsShowTipsDescription,
                         enabled: true,
-                        action: onShowTour
+                        action: onShowTips
                     )
-                    .accessibilityIdentifier("settings.showTour")
+                    .accessibilityIdentifier("settings.showTips")
+                    .tooltipAnchor(.settingsShowTips)
                 }
 
                 // "Unlimited recipes" (#107), only with the `freeTier` flag. Actions, not choices,
@@ -197,6 +200,8 @@ struct SettingsScreen: View {
             .padding(.bottom, 32)
         }
         .screenBackground()
+        // The tooltips (#190); none while the file picker is up.
+        .tooltipHost(.settings, blocked: importing)
         .navigationBarTitleDisplayMode(.inline)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .plainText, .zip]) { result in
             switch result {

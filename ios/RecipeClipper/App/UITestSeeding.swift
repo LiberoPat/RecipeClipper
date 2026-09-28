@@ -17,7 +17,8 @@ import UIKit
 ///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline;
 ///   - `-uiTestReceiveFile` opens a canned shared file (#149) at launch (`receivedFileURL`);
 ///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on;
-///   - the first-run tour (#151) done, unless `-uiTestTour` asks for a fresh install's;
+///   - the first-run tour (#151, #190) done (the sample decided, every tooltip seen), unless
+///     `-uiTestTooltips` asks for a fresh install's;
 ///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`;
 ///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder.
 ///
@@ -71,9 +72,10 @@ enum UITestSeeding {
         return url
     }
 
-    /// The first-run tour (#151) as a fresh install has it. Without it the tour is done, so no
-    /// welcome or tip gets in the way of the other suites.
-    static let tourFlag = "-uiTestTour"
+    /// The first-run tour (#151, #190) as a fresh install has it: every tooltip still to see, and
+    /// the sample added at launch to an empty library. Without it the tour is done, so no tooltip
+    /// gets in the way of the other suites.
+    static let tooltipsFlag = "-uiTestTooltips"
 
     /// Chef mode's model as a phone that can't run it answers (#144), for the walkthrough video.
     static let chefUnsupportedFlag = "-uiTestChefUnsupported"
@@ -115,10 +117,9 @@ enum UITestSeeding {
             defaults.removePersistentDomain(forName: defaultsSuite)
         }
         let preferences = UserDefaultsAppPreferences(defaults: defaults)
-        if !arguments.contains(tourFlag) {
-            preferences.welcome = .seen
+        if !arguments.contains(tooltipsFlag) {
             preferences.sampleAdded = true
-            for tip in Tip.allCases { preferences.setTipSeen(tip, true) }
+            for tooltip in Tooltip.allCases { preferences.setTooltipSeen(tooltip, true) }
         }
         let flagStore = UserDefaultsFeatureFlagStore(suiteName: flagsSuite)
         let flags = FeatureFlags(store: flagStore)

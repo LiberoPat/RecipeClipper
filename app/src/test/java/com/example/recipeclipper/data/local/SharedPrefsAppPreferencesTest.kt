@@ -4,8 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.RecipeSort
-import com.example.recipeclipper.data.model.Tip
-import com.example.recipeclipper.data.model.WelcomeState
+import com.example.recipeclipper.data.model.Tooltip
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -44,27 +43,34 @@ class SharedPrefsAppPreferencesTest {
         assertEquals(RecipeSort.RECENTLY_VIEWED, SharedPrefsAppPreferences(context).recipeSort)
     }
 
-    @Test fun `the tour's state round-trips under its keys, and the tips flow follows every change`() = runBlocking {
+    @Test fun `the tour's state round-trips under its keys, and the tooltips flow follows every change`() = runBlocking {
         val preferences = SharedPrefsAppPreferences(context)
-        assertEquals(WelcomeState.UNDECIDED, preferences.welcome)
         assertFalse(preferences.sampleAdded)
-        assertEquals(emptySet<Tip>(), preferences.seenTips.first())
+        assertEquals(emptySet<Tooltip>(), preferences.seenTooltips.first())
 
-        preferences.welcome = WelcomeState.PENDING
         preferences.sampleAdded = true
-        preferences.setTipSeen(Tip.COOK_MODE, true)
+        preferences.setTooltipSeen(Tooltip.COOK_TIMER, true)
 
-        assertEquals("PENDING", file.getString("tour_welcome", null))
         assertTrue(file.getBoolean("tour_sample_added", false))
-        assertTrue(file.getBoolean("tour_tip_cook_mode", false))
+        assertTrue(file.getBoolean("tooltip_cook_timer", false))
         val again = SharedPrefsAppPreferences(context)
-        assertEquals(WelcomeState.PENDING, again.welcome)
-        assertEquals(setOf(Tip.COOK_MODE), again.seenTips.first())
+        assertTrue(again.sampleAdded)
+        assertEquals(setOf(Tooltip.COOK_TIMER), again.seenTooltips.first())
+
+        preferences.setTooltipSeen(Tooltip.COOK_TIMER, false)
+        assertFalse("unseen again removes the key", file.contains("tooltip_cook_timer"))
+        assertEquals(emptySet<Tooltip>(), again.seenTooltips.first())
     }
 
-    @Test fun `an unknown welcome state reads as undecided`() {
-        file.edit().putString("tour_welcome", "LATER").commit()
-        assertEquals(WelcomeState.UNDECIDED, SharedPrefsAppPreferences(context).welcome)
+    @Test fun `everyone starts with every tooltip unseen, whatever #151 stored`() = runBlocking {
+        // #151's keys are ignored: someone who dismissed every tip, or skipped the tour, still
+        // gets the tooltips (the owner's decision, reversing #163).
+        file.edit()
+            .putString("tour_welcome", "SEEN")
+            .putBoolean("tour_tip_recipe", true)
+            .putBoolean("tour_tip_cook_mode", true)
+            .commit()
+        assertEquals(emptySet<Tooltip>(), SharedPrefsAppPreferences(context).seenTooltips.first())
     }
 
     @Test fun `the pantry use-up log round-trips under pantry_use_up, skipping what it can't read`() {

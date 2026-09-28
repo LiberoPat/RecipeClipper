@@ -92,6 +92,9 @@ struct RecipeScreen: View {
                 }
             }
         }
+        // The tooltips (#190): cook mode is its own screen. Outside the toolbar, whose bookmark,
+        // share and menu are anchors too; none over this screen's sheets, dialogs and snackbars.
+        .tooltipHost(state.cook.active ? .cook : .recipe, blocked: covered(state))
         // A full free library (#107): shown, not kept. Up until unlocked, above the content.
         .safeAreaInset(edge: .bottom) {
             if state.notKept && !state.cooking {
@@ -218,6 +221,14 @@ struct RecipeScreen: View {
         }
     }
 
+    /// Something of this screen's own is over it (#190): a sheet, a dialog, a cover or a snackbar.
+    private func covered(_ state: RecipeUiState) -> Bool {
+        sheetOpen || planSheet != nil || groceriesSheet != nil || confirmingDelete || confirmingUpdate
+            || state.unlockNotice != nil || state.updateError != nil || state.notKept
+            || photosVM?.uiState.open != nil || photosVM?.uiState.deleted != nil
+            || useUpVM?.uiState.sheet != nil || useUpVM?.uiState.updated != nil
+    }
+
     /// A photo just added with "I made this" (#116), or "Mark as cooked" (#173), has closed: the recipe was cooked, so the
     /// pantry's use-up sheet (#147) gets the lines as shown now, ticked or all. Run from the
     /// photo's cover once it has gone, since a view can't present the sheet while it leaves.
@@ -273,6 +284,7 @@ struct RecipeScreen: View {
             }
             .accessibilityLabel(saved ? Strings.inAList : Strings.saveToList)
             .accessibilityIdentifier("recipe.bookmark")
+            .tooltipAnchor(.recipeBookmark, inToolbar: true)
         }
 
         if let text = vm.shareText(labels: Strings.shareTextLabels) {
@@ -280,6 +292,7 @@ struct RecipeScreen: View {
                 Image(systemName: "square.and.arrow.up")
             }
             .accessibilityLabel(Strings.shareRecipe)
+            .tooltipAnchor(.recipeShare, inToolbar: true)
         }
 
         if vm.uiState.updatingFromSource {
@@ -336,7 +349,8 @@ struct RecipeScreen: View {
         } label: {
             Image(systemName: "ellipsis.circle")
         }
-        .accessibilityLabel(Strings.moreOptions) }
+        .accessibilityLabel(Strings.moreOptions)
+        .tooltipAnchor(.recipeMenu, inToolbar: true) }
     }
 }
 

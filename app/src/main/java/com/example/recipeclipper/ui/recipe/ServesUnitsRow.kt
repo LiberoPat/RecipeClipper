@@ -33,8 +33,10 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.Servings
 import com.example.recipeclipper.data.model.ServingsScale
+import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.data.model.YieldKind
+import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
  * Servings and units, always in view: `Serves − 6 +` on the left and the unit choice on
@@ -87,7 +89,7 @@ internal fun ServesUnitsRow(
 private fun ServesStepper(servings: ServingsScale, kind: YieldKind, onChange: (Int) -> Unit) {
     // "Makes 16" for a yield that counts things made (cookies, loaves); only the words change.
     val makes = kind == YieldKind.MAKES
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.tooltipAnchor(Tooltip.RECIPE_SERVINGS)) {
         Text(
             stringResource(if (makes) R.string.label_makes else R.string.label_serves),
             style = MaterialTheme.typography.bodyLarge
@@ -136,6 +138,7 @@ private fun UnitsMenu(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
+                .tooltipAnchor(Tooltip.RECIPE_UNITS)
                 .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cd_change_units)) { open = true }
                 .padding(horizontal = 4.dp, vertical = 12.dp)
         ) {

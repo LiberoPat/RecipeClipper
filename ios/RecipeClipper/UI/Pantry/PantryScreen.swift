@@ -20,14 +20,13 @@ struct PantryScreen: View {
             Group {
                 VStack(alignment: .leading, spacing: 8) {
                     ScreenTitle(Strings.tabPantry)
-                    // The first Pantry visit (#151).
-                    TipCallout(tip: .pantry)
                     OutlinedField(
                         label: Strings.pantryAddHint,
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),
                         onSubmit: vm.onAddTyped
                     )
                     .accessibilityIdentifier("pantryDraft")
+                    .tooltipAnchor(.pantryAdd)
                     if state.hasItems {
                         OutlinedField(
                             label: Strings.pantrySearchHint,
@@ -63,7 +62,11 @@ struct PantryScreen: View {
                     .accessibilityAddTraits(.isHeader)
                     .listRowSeparator(.hidden)
                     ForEach(section.items) { item in
-                        PantryRow(item: item, today: state.today, onList: state.onList.contains(item.id), vm: vm)
+                        // The stock tooltip (#190) points at the first row's action.
+                        PantryRow(
+                            item: item, today: state.today, onList: state.onList.contains(item.id),
+                            first: item.id == state.sections?.first?.items.first?.id, vm: vm
+                        )
                             .listRowSeparator(.hidden)
                             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                 if item.stock != .inStock {
@@ -129,8 +132,12 @@ struct PantryScreen: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 .accessibilityLabel(Strings.moreOptions)
+                .tooltipAnchor(.pantryMenu, inToolbar: true)
             }
         }
+        // The tooltips (#190); none over this screen's sheet and snackbar. Outside the toolbar,
+        // whose menu is an anchor too.
+        .tooltipHost(.pantry, blocked: state.editing != nil || state.message != nil)
         .overlay(alignment: .bottom) {
             if let message = state.message {
                 snackbar(message)
@@ -182,6 +189,7 @@ private struct PantryRow: View {
     let item: PantryItem
     let today: Int64
     let onList: Bool
+    let first: Bool
     let vm: PantryViewModel
 
     var body: some View {
@@ -250,6 +258,7 @@ private struct PantryRow: View {
                 .buttonStyle(TextActionStyle(color: Palette.accentText))
                 .accessibilityLabel("\(Self.action(next)): \(item.name)")
                 .accessibilityIdentifier("stockAction-\(item.id)")
+                .modifier(FirstActionAnchor(first: first))
         }
         .padding(.vertical, 4)
         // The row's menu: the other two states.
@@ -390,5 +399,14 @@ private struct PantryEditSheet: View {
                     .buttonStyle(TextActionStyle(color: Palette.accentText))
             }
         }
+    }
+}
+
+/// The first row's Ran out / Restock, which the stock tooltip (#190) points at.
+private struct FirstActionAnchor: ViewModifier {
+    let first: Bool
+
+    func body(content: Content) -> some View {
+        if first { content.tooltipAnchor(.pantryInStock) } else { content }
     }
 }

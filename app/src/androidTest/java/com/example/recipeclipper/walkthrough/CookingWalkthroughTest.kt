@@ -34,7 +34,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
- * Walkthroughs 13, 17, 18, 20, 21 and 23 (#106): "I made this" (#116), the first-run tour (#151),
+ * Walkthroughs 13, 17, 18, 20, 21 and 23 (#106): "I made this" (#116), the first-run tour (#151, #190),
  * Done shopping and the On list tag (#146), using up the pantry after cooking (#147), what
  * Settings says about Chef mode on a phone that can't run it (#144), and "Mark as cooked" (#173). The model supports nothing
  * here: the typed decisions stay out of these clips, and Chef mode's model is "unsupported"
@@ -120,16 +120,20 @@ class CookingWalkthroughTest : WalkthroughBase() {
         tapDescription("Close")
     }
 
-    /** The first-run tour (#151): the welcome cards, the sample recipe, and its one-time tip. */
+    /**
+     * The first-run tour (#151, #190): the sample recipe waiting on Home, and a tooltip on each
+     * screen, one at a time, pointing at its control.
+     */
     @Test
     fun test17_firstRunTour() {
         start("mealPlan", seeded = false, firstRun = true)
-        repeat(3) { tap("Next", 2500) }
-        tap("Try it with a sample recipe", 3000)
-        waitFor(hasTestTag("tip-RECIPE"))
-        pause(2000)
-        tapTag("tip-RECIPE")
-        pause(1000)
+        waitFor(hasTestTag("tooltip-home_link"))
+        pause(2500)
+        tap("Got it", 1500)
+        tap("Tomato and White Bean Soup", 2000)
+        waitFor(hasTestTag("tooltip-recipe_servings"))
+        pause(2500)
+        tap("Got it", 1500)
     }
 
     /**

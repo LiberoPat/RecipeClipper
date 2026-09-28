@@ -40,16 +40,18 @@ extension WalkthroughUITests {
         pause(1.5)
     }
 
+    /// The first-run tour (#151, #190): the sample recipe waiting on Home, and a tooltip on each
+    /// screen, one at a time, pointing at its control.
     func test17_firstRunTour() {
         startFirstRun(flags: ["mealPlan"])
-        for _ in 0..<3 {
-            require(app.buttons["welcome.next"], "Next").tap()
-            pause(2.5)
-        }
-        require(app.buttons["welcome.trySample"], "Try it with a sample recipe").tap()
-        let tip = require(app.buttons["tip.RECIPE"], "the recipe tip")
-        pause(3)
-        tip.tap()
+        let link = require(app.buttons["tooltip.home_link"], "Home's first tooltip")
+        pause(2.5)
+        link.tap()
+        pause(1.5)
+        require(row("Tomato and White Bean Soup"), "the sample recipe").tap()
+        let servings = require(app.buttons["tooltip.recipe_servings"], "the recipe's first tooltip")
+        pause(2.5)
+        servings.tap()
         pause()
     }
 
