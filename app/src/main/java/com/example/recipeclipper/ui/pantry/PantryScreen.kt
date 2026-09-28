@@ -41,6 +41,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -77,6 +80,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -347,7 +351,11 @@ private fun PantryRow(
         }
     }
     var menu by rememberSaveable { mutableStateOf(false) }
+    // The row's labelled action (#194): Ran out, or Restock once out.
+    val next = if (stock == PantryStock.RUN_OUT) PantryStock.IN_STOCK else PantryStock.RUN_OUT
+    // TalkBack gets both other states; the long-press menu only the one the button doesn't offer.
     val otherStates = PantryStock.entries.filter { it != stock }
+    val menuStates = otherStates.filter { it != next }
     val choiceLabels = otherStates.associateWith { stringResource(it.action()) }
     val details = buildList {
         item.quantity?.let { add(it) }
@@ -423,9 +431,9 @@ private fun PantryRow(
                             )
                         }
                     }
-                    // The row's menu: the other two states.
+                    // The row's menu: the one state the button doesn't offer.
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        otherStates.forEach { choice ->
+                        menuStates.forEach { choice ->
                             DropdownMenuItem(
                                 text = { Text(choiceLabels.getValue(choice)) },
                                 onClick = {
@@ -454,7 +462,6 @@ private fun PantryRow(
                 }
                 Spacer(Modifier.width(4.dp))
                 // One labelled action instead of a switch (#194).
-                val next = if (stock == PantryStock.RUN_OUT) PantryStock.IN_STOCK else PantryStock.RUN_OUT
                 val actionLabel = stringResource(next.action())
                 val actionDescription = "$actionLabel: ${item.name}"
                 TextButton(
@@ -518,6 +525,21 @@ private fun EditSheet(editing: PantryEditing, viewModel: PantryViewModel) {
                 .testTag("pantryEdit")
         ) {
             SectionHeading(stringResource(R.string.pantry_edit_title))
+            Spacer(Modifier.height(12.dp))
+            // Every state, visibly (#194): the row's button, menu and swipes are shortcuts.
+            // Applied at once, as the row's button is.
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("pantryEditStock")) {
+                PantryStock.entries.forEachIndexed { index, choice ->
+                    SegmentedButton(
+                        selected = editing.stock == choice,
+                        onClick = { viewModel.onEditStock(choice) },
+                        shape = SegmentedButtonDefaults.itemShape(index, PantryStock.entries.size),
+                        modifier = Modifier.testTag("pantryEditStock-${choice.name}")
+                    ) {
+                        Text(stringResource(choice.label()), textAlign = TextAlign.Center)
+                    }
+                }
+            }
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = editing.name,

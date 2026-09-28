@@ -180,6 +180,28 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertNil(vm.uiState.message)
     }
 
+    func testTheEditSheetsStockControlAppliesAtOnceLikeTheRowsButton() async {
+        let pantry = FakePantryRepository([item(1, "garlic", aisle: .produce)])
+        let vm = await viewModel(pantry)
+        vm.onEdit(pantry.items.value[0])
+        XCTAssertEqual(vm.uiState.editing?.stock, .inStock)
+
+        vm.onEditStock(.runningLow)
+        XCTAssertEqual(vm.uiState.editing?.stock, .runningLow)
+        await settleMain { !self.groceries.items.value.isEmpty }
+        XCTAssertEqual(pantry.items.value[0].stock, .runningLow)
+        XCTAssertEqual(groceries.items.value.map(\.text), ["garlic"])
+        XCTAssertNotNil(vm.uiState.editing)
+
+        vm.onEditStock(.inStock)
+        await settleMain { pantry.items.value[0].stock == .inStock }
+        XCTAssertEqual(pantry.items.value[0].purchasedDay, calendar.today())
+        // Dismissing the sheet keeps the stock: it was never waiting for Save.
+        vm.onEditDismissed()
+        await settleMain()
+        XCTAssertEqual(pantry.items.value[0].stock, .inStock)
+    }
+
     func testTheEditSheetSavesAndABlankNameIsntSaved() async {
         let pantry = FakePantryRepository([item(1, "oil")])
         let vm = await viewModel(pantry)

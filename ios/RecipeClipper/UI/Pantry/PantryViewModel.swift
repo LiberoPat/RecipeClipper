@@ -10,6 +10,8 @@ struct PantryEditing: Equatable {
     var alwaysHave: Bool
     var expiresDay: Int64?
     let purchasedDay: Int64?
+    /// Not written on Save: the sheet's stock control applies at once, as the row's button does (#194).
+    var stock: PantryStock
 }
 
 /// The snackbar, only ever for undo (#146). `id` tells two messages about the same item apart.
@@ -149,8 +151,15 @@ final class PantryViewModel {
     func onEdit(_ item: PantryItem) {
         uiState.editing = PantryEditing(
             id: item.id, name: item.name, quantity: item.quantity ?? "", alwaysHave: item.alwaysHave,
-            expiresDay: item.expiresDay, purchasedDay: item.purchasedDay
+            expiresDay: item.expiresDay, purchasedDay: item.purchasedDay, stock: item.stock
         )
+    }
+
+    /// The sheet's stock control: applied at once, through the same path as the row's button.
+    func onEditStock(_ stock: PantryStock) {
+        guard let editing = uiState.editing, let item = items.first(where: { $0.id == editing.id }) else { return }
+        uiState.editing?.stock = stock
+        onSetStock(item, stock)
     }
 
     func onEditName(_ name: String) { uiState.editing?.name = name }

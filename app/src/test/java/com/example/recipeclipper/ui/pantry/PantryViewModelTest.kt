@@ -220,6 +220,31 @@ class PantryViewModelTest {
     }
 
     @Test
+    fun `the edit sheet's stock control applies at once, like the row's button`() = runTest(mainDispatcherRule.dispatcher) {
+        val pantry = FakePantryRepository(listOf(item(1, "garlic", aisle = Aisle.PRODUCE)))
+        val vm = PantryViewModel(pantry, groceries, calendar)
+        advanceUntilIdle()
+        vm.onEdit(pantry.items.value.single())
+        assertEquals(PantryStock.IN_STOCK, vm.uiState.value.editing?.stock)
+
+        vm.onEditStock(PantryStock.RUNNING_LOW)
+        assertEquals(PantryStock.RUNNING_LOW, vm.uiState.value.editing?.stock)
+        advanceUntilIdle()
+        assertEquals(PantryStock.RUNNING_LOW, pantry.items.value.single().stock)
+        assertEquals(listOf("garlic"), groceries.items.value.map { it.text })
+        assertTrue(vm.uiState.value.editing != null)
+
+        vm.onEditStock(PantryStock.IN_STOCK)
+        advanceUntilIdle()
+        assertEquals(PantryStock.IN_STOCK, pantry.items.value.single().stock)
+        assertEquals(calendar.today(), pantry.items.value.single().purchasedDay)
+        // Dismissing the sheet keeps the stock: it was never waiting for Save.
+        vm.onEditDismissed()
+        advanceUntilIdle()
+        assertEquals(PantryStock.IN_STOCK, pantry.items.value.single().stock)
+    }
+
+    @Test
     fun `the edit sheet saves quantity, staple and use-by date, and a blank name isn't saved`() =
         runTest(mainDispatcherRule.dispatcher) {
             val pantry = FakePantryRepository(listOf(item(1, "oil")))

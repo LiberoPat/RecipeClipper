@@ -20336,37 +20336,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tippe auf Aufgebraucht, wenn etwas leer ist: Es kommt auf deine Einkaufsliste. Halte gedrückt für Wird knapp."
+            "value" : "Tippe auf Aufgebraucht, wenn etwas leer ist: Es kommt auf deine Einkaufsliste. Tippe auf einen Eintrag, um ihn als Wird knapp zu markieren."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tap Ran out when something's finished: it goes on your grocery list. Touch and hold for Running low."
+            "value" : "Tap Ran out when something's finished: it goes on your grocery list. Tap an item to mark it Running low."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toca Se acabó cuando algo se termine: pasa a tu lista de la compra. Mantén pulsado para Queda poco."
+            "value" : "Toca Se acabó cuando algo se termine: pasa a tu lista de la compra. Toca un artículo para marcarlo como Queda poco."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touchez Épuisé quand quelque chose est fini : il va sur votre liste de courses. Maintenez appuyé pour Presque fini."
+            "value" : "Touchez Épuisé quand quelque chose est fini : il va sur votre liste de courses. Touchez un article pour le marquer Presque fini."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tocca Finito quando qualcosa è terminato: va nella tua lista della spesa. Tieni premuto per Sta finendo."
+            "value" : "Tocca Finito quando qualcosa è terminato: va nella tua lista della spesa. Tocca un articolo per segnarlo come Sta finendo."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toque em Acabou quando algo terminar: vai para a sua lista de compras. Toque e segure para Acabando."
+            "value" : "Toque em Acabou quando algo terminar: vai para a sua lista de compras. Toque em um item para marcá-lo como Acabando."
           }
         }
       }
