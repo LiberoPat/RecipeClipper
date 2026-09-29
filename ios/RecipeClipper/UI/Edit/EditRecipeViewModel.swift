@@ -62,6 +62,8 @@ final class EditRecipeViewModel {
     @ObservationIgnored private let entitlements: Entitlements
     @ObservationIgnored private let photoReader: PhotoTextReader
     @ObservationIgnored private var readTask: Task<Void, Never>?
+    /// The language the photo's lines were read in (#208), or nil when nothing was clear.
+    @ObservationIgnored private var photoLanguage: String?
 
     init(
         recipeId: Int64?, repository: RecipeRepository, entitlements: Entitlements = UnavailableEntitlements(),
@@ -102,6 +104,7 @@ final class EditRecipeViewModel {
 
     private func readPhoto(_ post: PhotoPost) {
         readTask?.cancel()
+        photoLanguage = nil
         uiState.reading = true
         uiState.photoOutcome = nil
         uiState.uncertain = []
@@ -115,6 +118,7 @@ final class EditRecipeViewModel {
                 uiState.photoOutcome = .failed
             case .read(let lines):
                 let reading = PhotoTextSorter.sort(lines)
+                photoLanguage = reading.language
                 uiState.photoOutcome = reading.sorted ? .read : .notSorted
                 uiState.uncertain = reading.uncertain
                 uiState.draft.yield = reading.yield ?? ""
@@ -187,9 +191,10 @@ final class EditRecipeViewModel {
             name: "", image: nil, ingredients: [], instructions: [], prepTime: nil, cookTime: nil,
             totalTime: nil, yield: nil, sourceUrl: post.url, sourceType: .reddit
         ))
-        // Reddit declares no language: the words decide, else English (#14's rule).
+        // Reddit declares no language: the photo's words (#208), then the checked recipe's,
+        // decide, else English (#14's rule).
         let name = recipe.name, ingredients = recipe.ingredients
-        recipe.language = LanguageWords.resolve(declared: nil, page: nil) {
+        recipe.language = LanguageWords.resolve(declared: photoLanguage, page: nil) {
             LanguageWords.detectionText(name: name, ingredients: ingredients)
         }
         Task { [weak self, repository, recipe] in

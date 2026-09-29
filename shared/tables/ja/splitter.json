@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "The words RecipeTextSplitter reads Japanese free text with (a Reddit post, #11, or a photo's lines, #198, #208). The keys are explained in en/splitter.json. Japanese has no spaces between words, so only whole-line headers apply ('材料', '【作り方】', '材料（2人分）'): no keywords, misspellings or 'for' headers. The amount comes after the name ('鶏もも肉 2枚', '砂糖 大さじ2'), so amountPatterns say what an amount looks like. No glued units: the words are never spaced.",
+  "ingredientHeaders": ["材料", "材料表", "用意するもの", "準備するもの"],
+  "instructionHeaders": ["作り方", "つくり方", "作りかた", "手順", "作る手順"],
+  "endHeaders": ["ポイント", "コツ", "コツ・ポイント", "メモ", "栄養成分", "出典"],
+  "keywords": {
+    "ingredients": [],
+    "instructions": [],
+    "end": []
+  },
+  "keywordFirst": false,
+  "plainWords": [],
+  "verbs": [],
+  "misspelt": {
+    "ingredients": [],
+    "instructions": []
+  },
+  "forHeader": {
+    "ingredients": [],
+    "instructions": [],
+    "joiners": []
+  },
+  "editWords": [],
+  "stepLabels": [],
+  "yield": {
+    "whole": [],
+    "labels": [],
+    "for": []
+  },
+  "times": {
+    "prep": [],
+    "cook": [],
+    "total": []
+  },
+  "approx": ["約"],
+  "amountUnits": ["g", "kg", "ml", "cc", "個", "本", "枚", "片", "かけ", "束", "袋", "缶", "合", "切れ", "房", "丁", "玉", "株"],
+  "amountPatterns": ["(?:大さじ|小さじ|大匙|小匙|カップ)\\s*[0-9０-９½]", "[０-９]", "少々", "適量", "ひとつまみ"],
+  "gluedUnits": [],
+  "gluedExceptions": []
+}

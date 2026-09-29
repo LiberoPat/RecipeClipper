@@ -23,6 +23,9 @@ import org.jsoup.Jsoup
  *  3. **Nothing found:** [ParseError.NoTranscription], with the post's title and photo. A
  *     legitimate outcome, not a failure: never guess a recipe from prose.
  *
+ * Each text is read in the language its words say, the body with the title (#208), else
+ * English; the recipe keeps that language unless its name and ingredients clearly say another.
+ *
  * The recipe's name is the post title; its photo is the post's image. A crosspost with no body
  * or photo of its own borrows the original's; its comments are on the original's thread, so
  * [read] names that post for the source to fetch. Text that isn't a post listing at all is
@@ -64,8 +67,9 @@ object RedditRecipeParser {
         val crosspostOf = post.optString("crosspost_parent").removePrefix("t3_").ifEmpty { null }
 
         val body = bodyOf(post).ifBlank { original?.let(::bodyOf).orEmpty() }
-        val split = RecipeTextSplitter.split(body)
-            ?: RedditCommentScorer.pick(comments(listings.optJSONObject(1)))?.let(RecipeTextSplitter::split)
+        val split = RecipeTextSplitter.detectAndSplit(body, context = title)
+            ?: RedditCommentScorer.pick(comments(listings.optJSONObject(1)))
+                ?.let { RecipeTextSplitter.detectAndSplit(it) }
             ?: return Reading(
                 ParseResult.Error(
                     ParseError.NoTranscription(
@@ -87,8 +91,9 @@ object RedditRecipeParser {
                 yield = split.yield,
                 sourceUrl = sourceUrl,
                 sourceType = SourceType.REDDIT,
-                // Reddit declares no language: the words decide, else English (#14's rule).
-                language = LanguageWords.resolve(null, null) {
+                // Reddit declares no language: the text's words (#208), then the recipe's, decide,
+                // else English (#14's rule).
+                language = LanguageWords.resolve(split.language, null) {
                     LanguageWords.detectionText(title, split.ingredients)
                 }
             )

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "language": "de",
+  "about": "The words RecipeTextSplitter reads German free text with (a Reddit post, #11, or a photo's lines, #198, #208). The keys are explained in en/splitter.json. German puts the keyword last ('Trockene Zutaten'), like English. EL and TL are case-sensitive, as in language.json, because Spanish writes 'el'.",
+  "ingredientHeaders": [
+    "zutaten", "zutat", "zutatenliste", "die zutaten", "du brauchst", "ihr braucht", "was du brauchst",
+    "was ihr braucht", "das brauchst du", "das braucht ihr", "einkaufsliste"
+  ],
+  "instructionHeaders": [
+    "zubereitung", "anleitung", "arbeitsschritte", "zubereitungsschritte", "schritte", "so geht's",
+    "so gehts", "so wird's gemacht", "vorgehensweise", "herstellung"
+  ],
+  "endHeaders": [
+    "notizen", "hinweise", "hinweis", "tipps", "tipp", "anmerkungen", "anmerkung", "nährwerte",
+    "nährwertangaben", "quelle", "quellen", "utensilien", "küchenutensilien", "zubehör"
+  ],
+  "keywords": {
+    "ingredients": ["zutaten", "zutat"],
+    "instructions": ["zubereitung", "anleitung", "schritte", "arbeitsschritte"],
+    "end": ["notizen", "hinweise", "tipps", "tipp", "anmerkungen"]
+  },
+  "keywordFirst": false,
+  "plainWords": [
+    "die", "der", "das", "alle", "benötigte", "benötigten", "liste", "rezept", "einfache", "schnelle",
+    "meine", "unsere", "deine", "und", "&", "+", "-", "–"
+  ],
+  "verbs": [
+    "mischen", "mische", "verrühren", "verrühre", "vermengen", "vermenge", "geben", "gib", "hinzufügen",
+    "backen", "backe", "kochen", "koche", "schneiden", "schneide", "rühren", "rühre", "vorbereiten",
+    "bereite", "abwiegen", "wiege", "heize", "füge", "sieben", "siebe"
+  ],
+  "misspelt": {
+    "ingredients": ["zutaten"],
+    "instructions": ["zubereitung", "anleitung"]
+  },
+  "forHeader": {
+    "ingredients": ["zutaten"],
+    "instructions": ["zubereitung", "anleitung"],
+    "joiners": ["für"]
+  },
+  "editWords": ["edit", "update", "nachtrag"],
+  "stepLabels": ["schritt"],
+  "yield": {
+    "whole": ["ergibt"],
+    "labels": ["portionen", "personen"],
+    "for": ["für"]
+  },
+  "times": {
+    "prep": ["zubereitungszeit", "vorbereitungszeit", "arbeitszeit", "vorbereitung"],
+    "cook": ["kochzeit", "backzeit", "garzeit"],
+    "total": ["gesamtzeit"]
+  },
+  "approx": ["ca\\.?\\s*", "etwa\\s+", "circa\\s+"],
+  "amountUnits": [
+    "Essl(?:ö|oe)ffel", "(?-i:EL)", "Teel(?:ö|oe)ffel", "(?-i:TL)", "Msp", "Prisen?", "Tassen?", "Becher",
+    "Bund", "Stück", "Stk", "Dosen?", "Packungen?", "Pck", "Päckchen", "Zehen?", "Scheiben?", "Stangen?",
+    "Zweige?", "Blätter", "Blatt", "Gläser", "Glas", "Handvoll", "Kilogramm", "kg", "Gramm", "g",
+    "Milliliter", "ml", "cl", "dl", "Liter", "l", "cm"
+  ],
+  "amountPatterns": [],
+  "gluedUnits": [
+    "Essl(?:ö|oe)ffel", "Teel(?:ö|oe)ffel", "(?-i:EL)", "(?-i:TL)", "Kilogramm", "Gramm", "Milliliter",
+    "Liter", "Tassen?"
+  ],
+  "gluedExceptions": []
+}

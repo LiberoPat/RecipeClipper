@@ -1,0 +1,33 @@
+{
+  "about": "A French Reddit-style post and the lines read from a French recipe card (#208), made up in the shapes real ones take, with what the splitter and PhotoTextSorter make of them; negatives split to nothing. Read by RecipeTextSplitterLanguagesTest on both platforms.",
+  "language": "fr",
+  "post": {
+    "title": "La quiche de ma grand-mère",
+    "body": "Recette de ma grand-mère, toujours un succès :\n\nPour 6 personnes\n\n**Ingrédients :**\n\n*Pour la pâte :*\n- 250 g de farine\n- 125 g de beurre\n- 1 pincée de sel\n\n*Pour la garniture :*\n- 3 œufs\n- 20 cl de crème fraîche\n- 1 c. à soupe de sucre\n\n**Préparation :**\n\nÉtape 1 : Mélanger la farine, le beurre et le sel.\nÉtape 2 : Étaler la pâte dans un moule.\nÉtape 3 : Battre les œufs avec la crème et le sucre, verser sur la pâte.\nÉtape 4 : Cuire 30 minutes à 180 °C.",
+    "ingredients": ["Pour la pâte :", "250 g de farine", "125 g de beurre", "1 pincée de sel", "Pour la garniture :", "3 œufs", "20 cl de crème fraîche", "1 c. à soupe de sucre"],
+    "instructions": [
+      "Mélanger la farine, le beurre et le sel.",
+      "Étaler la pâte dans un moule.",
+      "Battre les œufs avec la crème et le sucre, verser sur la pâte.",
+      "Cuire 30 minutes à 180 °C."
+    ],
+    "yield": "Pour 6 personnes"
+  },
+  "photo": {
+    "lines": [
+      "Crêpes", "INGRÉDIENTS", "250 g de farine", "4 œufs", "1/2 l de lait", "2 c. à soupesucre", "1 pincée de sel",
+      "PRÉPARATION", "Mettre la farine dans un saladier.", "Ajouter les œufs puis le lait petit à petit.",
+      "Laisser reposer 1 heure et cuire dans une poêle chaude."
+    ],
+    "ingredients": ["250 g de farine", "4 œufs", "1/2 l de lait", "2 c. à soupesucre", "1 pincée de sel"],
+    "instructions": [
+      "Mettre la farine dans un saladier.", "Ajouter les œufs puis le lait petit à petit.",
+      "Laisser reposer 1 heure et cuire dans une poêle chaude."
+    ],
+    "uncertain": ["2 c. à soupesucre"]
+  },
+  "negatives": [
+    "Hier j'ai fait un gâteau avec de la farine, du sucre et des œufs, et avec un peu de beurre et du lait il était parfait. La prochaine fois je mettrai moins de sel et plus de poivre.",
+    "Quelqu'un a une bonne recette de crêpes sans œufs et sans lait ? Les miennes collent toujours à la poêle et la farine fait des grumeaux, merci d'avance !"
+  ]
+}

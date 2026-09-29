@@ -1,0 +1,23 @@
+{
+  "about": "A Japanese Reddit-style post and the lines read from a Japanese recipe card (#208), made up in the shapes real ones take, with what the splitter and PhotoTextSorter make of them; negatives split to nothing. Only whole-line headers apply, and no glued-unit check (the words are unspaced). Read by RecipeTextSplitterLanguagesTest on both platforms.",
+  "language": "ja",
+  "post": {
+    "title": "簡単！鶏の照り焼き",
+    "body": "いつも作っている照り焼きです。\n\n【材料】（2人分）\n- 鶏もも肉 1枚\n- 醤油 大さじ2\n- みりん 大さじ2\n- 砂糖 小さじ1\n\n【作り方】\n1. 鶏肉を一口大に切る。\n2. フライパンで皮目から焼く。\n3. 調味料を加えて煮詰める。\n\n【ポイント】\n皮はしっかり焼きましょう。",
+    "ingredients": ["鶏もも肉 1枚", "醤油 大さじ2", "みりん 大さじ2", "砂糖 小さじ1"],
+    "instructions": ["鶏肉を一口大に切る。", "フライパンで皮目から焼く。", "調味料を加えて煮詰める。"]
+  },
+  "photo": {
+    "lines": [
+      "肉じゃが", "材料", "じゃがいも 3個", "玉ねぎ 1個", "牛肉 200g", "醤油 大さじ3", "砂糖 大さじ2", "作り方",
+      "1. じゃがいもと玉ねぎを切る。", "2. 鍋で牛肉を炒める。", "3. 野菜と調味料を入れて20分煮る。"
+    ],
+    "ingredients": ["じゃがいも 3個", "玉ねぎ 1個", "牛肉 200g", "醤油 大さじ3", "砂糖 大さじ2"],
+    "instructions": ["じゃがいもと玉ねぎを切る。", "鍋で牛肉を炒める。", "野菜と調味料を入れて20分煮る。"],
+    "uncertain": []
+  },
+  "negatives": [
+    "昨日は醤油と砂糖で鶏肉を焼いてみました。大さじ2くらいのみりんを入れたら、とても美味しくなりました。また作りたいです。",
+    "誰か簡単なカレーのレシピを知りませんか？玉ねぎ 1個とじゃがいも 2個しかないのですが、よろしくお願いします。"
+  ]
+}

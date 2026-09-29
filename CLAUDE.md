@@ -330,7 +330,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   poster's comment, else the best other comment that splits, else
   `NoTranscription`. `RecipeTextSplitter` needs an ingredients block (a
   header, or quantity lines just above the steps) and steps (a header, or a
-  numbered list from 1): never prose. `sourceType` is `REDDIT`.
+  numbered list from 1): never prose. Its words are the text's detected
+  language's (`splitter.json`, #208), as are a photo's. `sourceType` is `REDDIT`.
 - **Condensed duplicate sections are skipped** ("Abbreviated Recipe",
   "TL;DR", …; an exact set), only when another section still has steps.
 - **Only ingredient lines are scaled,** never numbers inside instructions. An
