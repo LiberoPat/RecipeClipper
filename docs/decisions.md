@@ -1612,7 +1612,7 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     `IngredientName.key`, so a listed pair's number never matters.)
 - **Running low or out puts it on the list** (#146, #194; it was a snackbar offer
   before): "Ran out" or "Running low" adds its name as a typed item, silently,
-  and the row shows "On list". Typing a name already in the pantry puts it back
+  and the row shows the basket Groceries tag. Typing a name already in the pantry puts it back
   in stock rather than adding a twin.
 - **Expiry**: a badge only (#52 later added an opt-in morning reminder) (Expired before today; the date in paprika from today
   to 3 days ahead), no notifications, as the epic says. Sort by aisle (the
@@ -1647,14 +1647,14 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
 - **The screen in short** (CLAUDE.md's summary until September 2026, with
   #52, #146, #147, #149 and #194): "Add to the pantry", search, then items by
   aisle (menu: by expiry, radio glyphs), with what has run out in a dimmed "Run
-  out" section last; each row has one labelled action ("Ran out", or "Restock"
-  once out), a "Low" tag while running low, swipes and a touch-and-hold menu for
-  the three states; tap for the edit sheet (quantity as written, "Always have",
-  a use-by date, Delete with undo). Expired or within 3 days shows a paprika
+  out" section last; each row shows its quantity as written on the right (no
+  button since 2026-09-29) and a "Low" tag while running low; tap for the edit
+  sheet (the stock, quantity as written, "Always have", a use-by date, Delete
+  with undo), with swipes and a touch-and-hold menu as shortcuts. Expired or within 3 days shows a paprika
   badge; an opt-in 9:00 notification lists what expires today or tomorrow
   (Settings → Pantry). Running low or out puts its name on the grocery list
-  silently; the row then shows "On list", and tapping that takes it off (no
-  snackbar). The menu's "Send list" and "Send as file" send what's in stock
+  silently; the row then shows the Groceries tab's basket tag, and tapping that
+  takes it off (no snackbar). The menu's "Send list" and "Send as file" send what's in stock
   (running low included), never what's out (that is on the grocery list
   already). **Using up:** cook mode's "Done — finish"
   with ingredients ticked, or a photo added with "I made this" (or "Mark as
@@ -3064,13 +3064,20 @@ offer for the first was replaced and gone. Owner's decisions:
   them that way.
 - **Pantry to groceries shows a state, not a message.** Marking an item out (or, since #194,
   running low) adds its name to the list silently (unless its line is there already), and the
-  row shows a small "On list" tag; tapping the tag takes it off the list, with no snackbar. "On list" means an unticked
+  row shows a small tag; tapping the tag takes it off the list, with no snackbar. The tag means an unticked
   grocery line that is the item's own name (trimmed, case-insensitive, a listed pair's number
   aside since #191, same language): what
   marking it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
   deletes a recipe's line, which is why no undo is needed. No schema change: the link is the
-  name. Restocking (the row's action, or putting away) returns an item to In stock; it never
+  name. Restocking (from the row, or putting away) returns an item to In stock; it never
   takes the line off the list.
+- **The tag is the Groceries tab's basket and label** (owner, 2026-09-29, testing on a phone:
+  "On list" wasn't understood). The same outlined paprika chip, same place (after the name and
+  "Low", wrapping under a long name or large text), same meaning and tap, but it wears the tab's
+  own icon (`ic_tab_groceries`; iOS `basket`) and its "Groceries" label, so it says where the
+  item went. Spoken, it's "On your grocery list", and its action "Remove from grocery list". At
+  the largest text sizes (Android font scale 1.5 and up, iOS accessibility sizes) only the basket
+  shows. The Pantry tooltip names it: "The basket tag means it's on your grocery list."
 
 ## Using up the pantry at the end of cooking (#147)
 
@@ -3135,7 +3142,7 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
   that isn't exact asks, since the converter never writes cups.
 - **Used up** (zero or below, or too little to show): out of stock, the quantity cleared (none
   is left to know, and a restock shouldn't bring back an old amount as a confident number), and
-  the name onto the grocery list unless it's there already, so the row shows #146's "On list".
+  the name onto the grocery list unless it's there already, so the row shows #146's basket tag.
 - **"Running low" sets the Running low state** (#194; before it, running low had no state of
   its own and only put the name on the list): the item stays in stock, gets its "Low" tag, and
   its name goes on the grocery list. "Out" sets Run out plus the list, as the row's "Ran out"
@@ -3214,20 +3221,26 @@ the cupboard. It is replaced, and a **Running low** state added.
 - **Every state is reachable from something visible; gestures are shortcuts** (owner,
   2026-09-28: touch and hold isn't discoverable). Tapping a row opens its edit sheet, which
   starts with an In stock | Running low | Run out segmented control showing the current state.
-  It applies at once through the row button's own path (`onEditStock` → `onSetStock`), not on
-  Save, so "On list" and the grocery side effects are identical; dismissing the sheet keeps it.
-  The Pantry tooltip says "Tap an item to mark it Running low".
-- **Labelled actions, not a switch.** Each row has one text action: "Ran out" while in stock or
-  running low, "Restock" once out. The shortcuts: the row's menu (touch and hold) offers only
-  the state the button doesn't, so it never repeats it: Running low while in stock, Restock
-  while running low, Running low once out (it offered both other states until the owner found
-  it duplicated the button). Swipes: leading Restock, trailing Ran out, each only where it
-  changes something; iOS adds Running low as a second trailing action. Running low is also
-  reached from #147's sheet. TalkBack and VoiceOver read the row as one ("Garlic, Run out, On
-  list") and still offer both other states as its actions. iOS's Pantry became a `List` (as
-  Recipes is) for the swipe actions.
+  It applies at once through the same path as the menu and swipes (`onEditStock` →
+  `onSetStock`), not on Save, so the basket tag and the grocery side effects are identical;
+  dismissing the sheet keeps it. The Pantry tooltip points at the first row: "Tap an item to
+  change its stock or quantity; swipe left when it runs out. The basket tag means it's on your
+  grocery list."
+- **No button on the row** (owner, 2026-09-29: "redundant when I can click the item"). Until
+  then each row ended in one text action ("Ran out", or "Restock" once out), which replaced the
+  switch. In its place, on the right, the item's **quantity as written** (muted, cut short with
+  an ellipsis, at most 40% of the row on Android; nothing when there is none), and the quantity
+  line under the name is gone, so rows are shorter. State shows by section (Run out, dimmed) and
+  the "Low" tag. The shortcuts: the row's menu (touch and hold) offers **both other states**
+  (while the button existed it offered only the one the button didn't); swipes: leading
+  Restock, trailing Ran out, each only where it changes something; iOS adds Running low as a
+  second trailing action. Running low is also reached from #147's sheet. TalkBack and VoiceOver
+  read the row as one ("Garlic, 1 head, Run out, On your grocery list") and offer both other
+  states as its actions. iOS's Pantry became a `List` (as Recipes is) for the swipe actions; its
+  basket tag is drawn inside the row's button, where it wraps with the name, with its own
+  button laid over it.
 - **Groceries as #146.** Ran out and Running low both put the name on the grocery list
-  silently, shown by "On list"; tapping the tag takes it off. Restock, Done shopping's
+  silently, shown by the basket tag; tapping the tag takes it off. Restock, Done shopping's
   put-away and typing a name already there all return an item to In stock (and bought today).
 - **Presence only, unchanged.** Running low still counts as having it: What I need, the
   grocery sheet's first ticks, the model's candidates and expiry reminders all read `inStock`,
@@ -3362,7 +3375,7 @@ different, just as yellow onions are different than white."
 - **One place compares names:** Pantry Have/Buy and the use-up sheet (`PantryMatch.find`, through
   `matches`), "What I need"'s rows and grocery grouping (by key; a row is named by its first
   line), the aisle table (aliases and names keyed; `SharedTablesTest` checks no two aisles share
-  a keyed alias), Done shopping's one row per ingredient, the "On list" tag and typing a name
+  a keyed alias), Done shopping's one row per ingredient, the basket tag and typing a name
   already in the pantry (`IngredientName.same`), and a received list's names. Amounts in steps
   (#101) keep `steps.json`'s ending rules: a step's word is only ever compared with a line's own
   head word there, so they can't pair two different ingredients.

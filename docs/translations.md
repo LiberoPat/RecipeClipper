@@ -87,7 +87,9 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | What I need (#51) | Lo que necesito | Ce qu'il me faut | Was ich brauche | Cosa mi serve | O que preciso |
 | Done shopping (#146) | Compra terminada | Courses terminées | Einkauf erledigt | Spesa fatta | Compras feitas |
 | Put away and clear (#146) | Guardar y quitar de la lista | Ranger et retirer | Einräumen und entfernen | Metti via e rimuovi | Guardar e remover |
-| On list (a pantry row's tag, #146) | En la lista | Sur la liste | Auf der Liste | In lista | Na lista |
+| On your grocery list (a pantry row's basket tag, spoken; it shows the Groceries tab's label, #146) | En tu lista de la compra | Sur votre liste de courses | Auf deiner Einkaufsliste | Nella tua lista della spesa | Na sua lista de compras |
+| Remove from grocery list (the tag's action, spoken) | Quitar de la lista de la compra | Retirer de la liste de courses | Von der Einkaufsliste entfernen | Rimuovi dalla lista della spesa | Remover da lista de compras |
+| The basket tag (the Pantry tooltip, #194) | la etiqueta de la cesta | l'étiquette panier | die Korb-Markierung | l'etichetta col cestino | a etiqueta da cesta |
 | Update the pantry (after cooking, #147) | Actualizar la despensa | Mettre à jour le garde-manger | Vorrat aktualisieren | Aggiorna la dispensa | Atualizar a despensa |
 | Keep / Running low / Out (#147) | Dejar igual / Queda poco / Agotado | Garder / Presque fini / Épuisé | Behalten / Wird knapp / Leer | Lascia / Sta finendo / Finito | Manter / Acabando / Acabou |
 | “In your pantry” means you have some, not enough (#51) | «En tu despensa» significa que tienes algo… | « Dans votre garde-manger » signifie que vous en avez… | „In deinem Vorrat“ heißt, dass du etwas davon hast… | «Nella tua dispensa» vuol dire che ne hai… | “Na sua despensa” quer dizer que você tem um pouco… |
