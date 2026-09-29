@@ -2969,7 +2969,10 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   from the catalogue, so the units dropdown is the recipe screen's first; a stored
   `tooltip_recipe_servings` key is simply ignored. The units text used to be "Show amounts in
   metric or ounces, in every recipe", which didn't say what "As written", the label a new user
-  sees, means.
+  sees, means. Its bubble is asked to go below the dropdown on both platforms: left to choose,
+  iOS put the longer text beside it, over the title. Asking showed that iOS's side was
+  inverted: `arrowEdge` is the popover's own edge, so `.bottom` put a bubble above its control
+  (cook mode's "below" ones too). Fixed with it; `TooltipsUITests` now checks the side.
 - **Which one, when** (`Tooltips.current`, the same rule on both platforms): a **visit** is one
   appearance of a screen, from when it shows until it's left (a rotation isn't a new one on
   Android: the visit's token is saved state, and leaving isn't reported while the activity is

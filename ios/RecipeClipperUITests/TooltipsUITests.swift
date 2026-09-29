@@ -23,10 +23,10 @@ final class TooltipsUITests: RecipeUITestCase {
         XCTAssertTrue(units.label.contains("As written shows every amount"), units.label)
         let bubble = units.frame
         gotIt("recipe_units", "the units tooltip")
-        // At its control: the bubble sat against the units dropdown, above or below it.
+        // At its control: the bubble sat just below the units dropdown (asked for, so a long
+        // text doesn't go beside it, over the title).
         let dropdown = require(app.buttons["Change units"], "the units dropdown").frame
-        let gap = min(abs(bubble.minY - dropdown.maxY), abs(dropdown.minY - bubble.maxY))
-        XCTAssertLessThan(gap, 60, "bubble \(bubble), dropdown \(dropdown)")
+        XCTAssertLessThan(abs(bubble.minY - dropdown.maxY), 60, "bubble \(bubble), dropdown \(dropdown)")
 
         // Never chained: nothing else on this visit.
         XCTAssertFalse(app.buttons["tooltip.recipe_bookmark"].waitForExistence(timeout: 3))

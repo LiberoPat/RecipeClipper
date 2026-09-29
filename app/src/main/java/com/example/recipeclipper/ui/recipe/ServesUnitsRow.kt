@@ -36,6 +36,7 @@ import com.example.recipeclipper.data.model.ServingsScale
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.data.model.YieldKind
+import com.example.recipeclipper.ui.tour.TooltipSide
 import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
@@ -138,7 +139,7 @@ private fun UnitsMenu(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .tooltipAnchor(Tooltip.RECIPE_UNITS)
+                .tooltipAnchor(Tooltip.RECIPE_UNITS, TooltipSide.BELOW)
                 .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cd_change_units)) { open = true }
                 .padding(horizontal = 4.dp, vertical = 12.dp)
         ) {
