@@ -177,13 +177,13 @@ extension WalkthroughUITests {
         pause(3)
 
         // Fix the unsure line: the last ingredient, retyped at the end of the box.
-        let box = app.textViews["Ingredients"].exists ? app.textViews["Ingredients"] : app.textFields["Ingredients"]
+        let box = field("Ingredients, one per line")
         scrollTo(box, "the ingredients")
         pause()
         box.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.97)).tap()
         pause()
-        let text = box.value as? String ?? ""
-        let last = text.split(separator: "\n").last.map(String.init) ?? ""
+        let typed = box.value as? String ?? ""
+        let last = typed.split(separator: "\n").last.map(String.init) ?? ""
         box.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: last.count))
         pause(0.8)
         box.typeText("1 cup raisins")

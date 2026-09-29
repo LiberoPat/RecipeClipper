@@ -13,7 +13,7 @@ enum UITestWalkthroughStep {
 extension WalkthroughUITests {
 
     /// The editor's multi-line fields are text views; the name is a text field.
-    private func field(_ prompt: String) -> XCUIElement {
+    func field(_ prompt: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(
             format: "(elementType == %lu OR elementType == %lu) AND (placeholderValue == %@ OR label == %@)",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, prompt, prompt

@@ -3,8 +3,6 @@ package com.example.recipeclipper.di
 import com.example.recipeclipper.BuildConfig
 import com.example.recipeclipper.data.AndroidAppInfo
 import com.example.recipeclipper.data.MlKitPageRecipeExtractor
-import com.example.recipeclipper.data.MlKitPhotoTextReader
-import com.example.recipeclipper.data.PhotoTextReader
 import com.example.recipeclipper.data.PageRecipeExtractor
 import com.example.recipeclipper.data.flags.FeatureFlagStore
 import com.example.recipeclipper.data.flags.FeatureFlags
@@ -88,10 +86,6 @@ abstract class PlatformModule {
     @Binds
     @Singleton
     abstract fun pageRecipeExtractor(impl: MlKitPageRecipeExtractor): PageRecipeExtractor
-
-    @Binds
-    @Singleton
-    abstract fun photoTextReader(impl: MlKitPhotoTextReader): PhotoTextReader
 
     @Binds
     @Singleton
