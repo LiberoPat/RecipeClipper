@@ -396,7 +396,7 @@
     <string name="pantry_sort_expiry">Trier par date limite</string>
     <string name="pantry_in_stock">En stock</string>
     <string name="pantry_out">Épuisé</string>
-    <string name="pantry_on_list">Sur la liste</string>
+    <string name="pantry_on_list">Sur votre liste de courses</string>
     <string name="pantry_ran_out">Épuisé</string>
     <string name="pantry_restock">Racheté</string>
     <string name="pantry_running_low">Presque fini</string>
@@ -568,7 +568,7 @@
     <string name="tooltip_groceries_done_shopping">De retour ? Rangez ce que vous avez coché dans le garde-manger, et retirez-le de la liste.</string>
     <string name="tooltip_groceries_menu">Plus : Envoyer la liste, ou Coller une liste.</string>
     <string name="tooltip_pantry_add">Ajoutez ce que vous avez chez vous.</string>
-    <string name="tooltip_pantry_in_stock">Touchez Épuisé quand quelque chose est fini : il va sur votre liste de courses. Touchez un article pour le marquer Presque fini.</string>
+    <string name="tooltip_pantry_in_stock">Touchez un article pour changer son stock ou sa quantité ; balayez vers la gauche quand il est épuisé. L\'étiquette panier indique qu\'il est sur votre liste de courses.</string>
     <string name="tooltip_pantry_menu">Plus : Envoyer la liste, et trier par rayon ou par date limite.</string>
     <string name="tooltip_settings_units">Comment s\'affichent les quantités, dans toutes les recettes.</string>
     <string name="tooltip_settings_show_tips">Revoyez chaque astuce, une à la fois.</string>

@@ -428,12 +428,12 @@
     <string name="pantry_sort_expiry">Sort by expiry</string>
     <string name="pantry_in_stock">In stock</string>
     <string name="pantry_out">Run out</string>
-    <string name="pantry_on_list">On list</string>
+    <string name="pantry_on_list">On your grocery list</string>
     <string name="pantry_ran_out">Ran out</string>
     <string name="pantry_restock">Restock</string>
     <string name="pantry_running_low">Running low</string>
     <string name="pantry_low">Low</string>
-    <string name="pantry_take_off_list">Take off the grocery list</string>
+    <string name="pantry_take_off_list">Remove from grocery list</string>
     <string name="pantry_always_have">Always have</string>
     <string name="pantry_always_have_detail">Staples are never under “To buy”.</string>
     <string name="pantry_expired">Expired</string>
@@ -601,7 +601,7 @@
     <string name="tooltip_groceries_done_shopping">Back home? Put what you ticked away in the pantry, and clear it from the list.</string>
     <string name="tooltip_groceries_menu">More: Send list, or Paste a list.</string>
     <string name="tooltip_pantry_add">Add what you keep at home.</string>
-    <string name="tooltip_pantry_in_stock">Tap Ran out when something\'s finished: it goes on your grocery list. Tap an item to mark it Running low.</string>
+    <string name="tooltip_pantry_in_stock">Tap an item to change its stock or quantity; swipe left when it runs out. The basket tag means it\'s on your grocery list.</string>
     <string name="tooltip_pantry_menu">More: Send list, and sort by aisle or use-by date.</string>
     <string name="tooltip_settings_units">How amounts show, in every recipe.</string>
     <string name="tooltip_settings_show_tips">See every tip again, one at a time.</string>
