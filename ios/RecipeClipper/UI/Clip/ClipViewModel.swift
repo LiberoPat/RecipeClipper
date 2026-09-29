@@ -35,6 +35,9 @@ struct ClipUiState: Equatable {
     var savedRecipeId: Int64? = nil
     /// The clip couldn't be saved: the free library is full and all protected (#107).
     var libraryFull = false
+    /// Opened by itself because Reddit wouldn't let the app read the post (#213): the view
+    /// says so above the page.
+    var readBlocked = false
 }
 
 /// "Clip it yourself" (#37), Android's ClipViewModel. The page itself lives in the view layer;
@@ -55,14 +58,17 @@ final class ClipViewModel {
     @ObservationIgnored private var undoTo: ClipDraft?
     @ObservationIgnored private var serial = 0
 
-    init(url: String, repository: RecipeRepository, drafts: ClipDraftStore, entitlements: Entitlements = UnavailableEntitlements()) {
+    init(
+        url: String, repository: RecipeRepository, drafts: ClipDraftStore,
+        entitlements: Entitlements = UnavailableEntitlements(), readBlocked: Bool = false
+    ) {
         self.entitlements = entitlements
         let cleaned = UrlCleaner.clean(url)
         self.url = cleaned
         self.repository = repository
         self.drafts = drafts
         let restored = drafts.get(cleaned)
-        uiState = ClipUiState(url: cleaned, draft: restored ?? ClipDraft(sourceUrl: cleaned))
+        uiState = ClipUiState(url: cleaned, draft: restored ?? ClipDraft(sourceUrl: cleaned), readBlocked: readBlocked)
         if restored != nil { uiState.notice = notice(.draftRestored) }
     }
 

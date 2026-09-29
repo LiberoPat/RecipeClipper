@@ -80,4 +80,24 @@ final class RedditUrlsTests: XCTestCase {
         XCTAssertFalse(RedditUrls.isShareLink("https://www.reddit.com/r/recipes/comments/abc/x/"))
         XCTAssertFalse(RedditUrls.isShareLink("https://redd.it/abc"))
     }
+
+    func testOnlyABlockedReadOfARedditLinkWithTheFlagOnOpensTheClip() {
+        let post = "https://www.reddit.com/r/recipes/comments/1abc01/lemon_orzo/"
+        let share = "https://www.reddit.com/r/recipes/s/AbCd123"
+        XCTAssertTrue(RedditUrls.clipsWhenBlocked(post, error: .blocked(httpStatus: 403), redditOn: true))
+        XCTAssertTrue(RedditUrls.clipsWhenBlocked(share, error: .blocked(httpStatus: 429), redditOn: true))
+        XCTAssertTrue(RedditUrls.clipsWhenBlocked("https://redd.it/1abc01", error: .blocked(httpStatus: 503), redditOn: true))
+        // The flag off: a Reddit link is a page like any other.
+        XCTAssertFalse(RedditUrls.clipsWhenBlocked(post, error: .blocked(httpStatus: 403), redditOn: false))
+        // Another site's block is still an error screen.
+        XCTAssertFalse(RedditUrls.clipsWhenBlocked("https://example.com/pie", error: .blocked(httpStatus: 403), redditOn: true))
+        // Every other cause keeps its own screen.
+        let others: [ParseError] = [
+            .offline, .fetchFailed("timeout", timedOut: true), .fetchFailed("HTTP 400"), .noRecipeFound,
+            .noTranscription(title: "Pie", imageUrl: nil), .saveFailed,
+        ]
+        for error in others {
+            XCTAssertFalse(RedditUrls.clipsWhenBlocked(post, error: error, redditOn: true), "\(error)")
+        }
+    }
 }

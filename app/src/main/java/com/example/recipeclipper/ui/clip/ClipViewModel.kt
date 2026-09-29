@@ -56,7 +56,12 @@ data class ClipUiState(
     val notice: ClipNotice? = null,
     val savedRecipeId: Long? = null,
     /** The clip couldn't be saved: the free library is full and all protected (#107). */
-    val libraryFull: Boolean = false
+    val libraryFull: Boolean = false,
+    /**
+     * Opened by itself because Reddit wouldn't let the app read the post (#213): the screen
+     * says so above the page.
+     */
+    val readBlocked: Boolean = false
 )
 
 /**
@@ -94,7 +99,8 @@ class ClipViewModel @Inject constructor(
             ClipUiState(
                 url = url,
                 draft = restored ?: ClipDraft(url),
-                notice = restored?.let { notice(ClipMessage.DraftRestored) }
+                notice = restored?.let { notice(ClipMessage.DraftRestored) },
+                readBlocked = savedStateHandle.get<Boolean>(BLOCKED_ARG) == true
             )
         )
         uiState = _uiState.asStateFlow()
@@ -296,6 +302,9 @@ class ClipViewModel @Inject constructor(
 
     companion object {
         const val URL_ARG = "url"
+
+        /** True when Reddit's block opened this in the import's place (#213). */
+        const val BLOCKED_ARG = "blocked"
         private const val KEY_NAME = "clip.name"
         private const val KEY_INGREDIENTS = "clip.ingredients"
         private const val KEY_STEPS = "clip.steps"

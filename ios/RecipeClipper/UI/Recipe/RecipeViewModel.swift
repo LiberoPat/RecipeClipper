@@ -29,6 +29,9 @@ final class RecipeViewModel {
     @ObservationIgnored private let appInfo: AppInfo
     @ObservationIgnored private let alarms: TimerAlarmScheduler
     @ObservationIgnored private let entitlements: Entitlements
+    // The `reddit` flag (#11), read at each load as the source reads it at each fetch; on when a
+    // test passes no flags, as it is by default.
+    @ObservationIgnored private let flags: FeatureFlags?
     // Opened from a timer notification: start cook mode once the recipe has loaded.
     @ObservationIgnored private var openInCookMode: Bool
     // Opened from the Week (#49): show the planned servings rather than the saved choice. For
@@ -71,6 +74,7 @@ final class RecipeViewModel {
         decisions: DecisionRepository? = nil
     ) {
         self.entitlements = entitlements
+        self.flags = flags
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
         self.repository = repository
@@ -133,6 +137,7 @@ final class RecipeViewModel {
         uiState.reportSiteUrl = nil
         uiState.clipUrl = nil
         uiState.photoPost = nil
+        uiState.clipBlockedPost = nil
         uiState.asWrittenSteps = []
         // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
         loadTask = Task { [weak self, recipeId, shareUrl, repository] in
@@ -173,6 +178,12 @@ final class RecipeViewModel {
                     onCookStart()
                 }
             case .error(let error):
+                // Reddit wouldn't let the app read the post (#213): no error screen; the post
+                // opens in "Clip it yourself" instead, where Reddit does let it in.
+                if let shareUrl, RedditUrls.clipsWhenBlocked(shareUrl, error: error, redditOn: flags?.isOn(.reddit) ?? true) {
+                    uiState.clipBlockedPost = shareUrl
+                    return
+                }
                 uiState.content = .error(error)
                 uiState.reportSiteUrl = reportSiteUrl(for: error)
                 uiState.clipUrl = error == .noRecipeFound ? shareUrl : nil

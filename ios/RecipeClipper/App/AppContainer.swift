@@ -22,6 +22,9 @@ final class AppContainer {
     let notificationPermission: NotificationPermission
     /// Keeps the pantry's expiry reminders scheduled (#52); the live app only.
     private(set) var expiryReminders: ExpiryReminderCoordinator?
+    /// Where the share extension leaves a Reddit post it was blocked from reading (#213); nil
+    /// under test.
+    var pendingClip: PendingClip?
     /// The feature flags (#87), read by the root view and Developer settings.
     let featureFlags: FeatureFlags
     /// Chef mode's short steps (#100); nil (tests) leaves Chef mode unsupported.
@@ -222,6 +225,7 @@ final class AppContainer {
         container.libraryPolicy.startMirroring()
         container.startGroceriesMirroring(DefaultsGroceriesSwitch(defaults: defaults))
         container.startRedditMirroring(DefaultsRedditSwitch(defaults: defaults))
+        if !testing { container.pendingClip = PendingClip(defaults: defaults) }
         return container
     }
 
@@ -322,8 +326,15 @@ final class AppContainer {
         MealTypesViewModel(repository: mealPlanRepository)
     }
 
-    func makeClipViewModel(url: String) -> ClipViewModel {
-        ClipViewModel(url: url, repository: recipeRepository, drafts: clipDrafts, entitlements: entitlements)
+    func makeClipViewModel(url: String, blocked: Bool = false) -> ClipViewModel {
+        ClipViewModel(
+            url: url, repository: recipeRepository, drafts: clipDrafts, entitlements: entitlements, readBlocked: blocked
+        )
+    }
+
+    /// The post the share extension left (#213), if it did so within `PendingClip.window`.
+    func takePendingClip() -> String? {
+        pendingClip?.take(now: clock.now())
     }
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {

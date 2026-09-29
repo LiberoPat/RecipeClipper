@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.ParseError
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -92,5 +93,26 @@ class RedditUrlsTest {
         assertTrue(RedditUrls.isShareLink("https://www.reddit.com/u/some_cook/s/AbCd123"))
         assertFalse(RedditUrls.isShareLink("https://www.reddit.com/r/recipes/comments/abc/x/"))
         assertFalse(RedditUrls.isShareLink("https://redd.it/abc"))
+    }
+
+    @Test fun `only a blocked read of a reddit link, with the flag on, opens the clip`() {
+        val post = "https://www.reddit.com/r/recipes/comments/1abc01/lemon_orzo/"
+        val share = "https://www.reddit.com/r/recipes/s/AbCd123"
+        assertTrue(RedditUrls.clipsWhenBlocked(post, ParseError.Blocked(403), redditOn = true))
+        assertTrue(RedditUrls.clipsWhenBlocked(share, ParseError.Blocked(429), redditOn = true))
+        assertTrue(RedditUrls.clipsWhenBlocked("https://redd.it/1abc01", ParseError.Blocked(503), redditOn = true))
+        // The flag off: a Reddit link is a page like any other.
+        assertFalse(RedditUrls.clipsWhenBlocked(post, ParseError.Blocked(403), redditOn = false))
+        // Another site's block is still an error screen.
+        assertFalse(RedditUrls.clipsWhenBlocked("https://example.com/pie", ParseError.Blocked(403), redditOn = true))
+        // Every other cause keeps its own screen.
+        listOf(
+            ParseError.Offline,
+            ParseError.FetchFailed("timeout", timedOut = true),
+            ParseError.FetchFailed("HTTP 400"),
+            ParseError.NoRecipeFound,
+            ParseError.NoTranscription("Pie", imageUrl = null),
+            ParseError.SaveFailed,
+        ).forEach { assertFalse(it.toString(), RedditUrls.clipsWhenBlocked(post, it, redditOn = true)) }
     }
 }

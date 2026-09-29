@@ -79,6 +79,7 @@ enum Strings {
     static var discard: String { String(localized: "action_discard") }
     static var remove: String { String(localized: "action_remove") }
     static var clipHint: String { String(localized: "clip_hint") }
+    static var clipRedditBlockedNote: String { String(localized: "clip_reddit_blocked_note") }
     static var clipPickingPhoto: String { String(localized: "clip_picking_photo") }
     static var clipSkipPhoto: String { String(localized: "clip_skip_photo") }
     static var clipReview: String { String(localized: "clip_review") }
@@ -189,6 +190,7 @@ enum Strings {
 
     // Share extension (the confirmation card shown over the app that shared)
     static var shareGettingRecipe: String { String(localized: "share_getting_recipe") }
+    static var shareRedditBlocked: String { String(localized: "share_reddit_blocked") }
     static var shareSaved: String { String(localized: "share_saved") }
     static var shareOpenToCook: String { String(localized: "share_open_to_cook") }
     static var shareNoLink: String { String(localized: "share_no_link") }

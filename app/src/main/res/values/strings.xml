@@ -41,6 +41,7 @@
     <string name="clip_field_steps">Steps</string>
     <string name="clip_field_photo">Photo</string>
     <string name="clip_hint">Select text on the page, then tap where it goes. For the photo, tap Photo, then the picture.</string>
+    <string name="clip_reddit_blocked_note">Reddit didn\'t let the app read this post, so it\'s open here: select the recipe.</string>
     <string name="clip_picking_photo">Tap the picture to use as the photo.</string>
     <string name="clip_skip_photo">Skip</string>
     <string name="clip_photo_unreadable">Couldn\'t read a picture there. The photo is optional.</string>

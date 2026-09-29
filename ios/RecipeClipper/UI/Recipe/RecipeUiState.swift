@@ -137,6 +137,11 @@ struct RecipeUiState: Equatable {
     /// `reportSiteUrl` is: only a page that loaded with no recipe data can be clipped.
     var clipUrl: String?
 
+    /// A shared Reddit post the app was blocked from reading (#213, `RedditUrls.clipsWhenBlocked`):
+    /// the view opens "Clip it yourself" on it in its own place, with a note saying why, rather
+    /// than show the error. `content` stays loading meanwhile.
+    var clipBlockedPost: String?
+
     /// The post to read the photos of ("Read the photo", #198): set while a Reddit post with no
     /// recipe text (`.noTranscription`) that has a picture is on screen. The screen offers it
     /// only behind the `photoText` flag.

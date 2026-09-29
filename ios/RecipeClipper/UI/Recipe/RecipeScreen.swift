@@ -14,6 +14,9 @@ struct RecipeScreen: View {
     var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
     /// Opens "Clip it yourself" on the shared link (#37).
     var onClip: (String) -> Void = { _ in }
+    /// Reddit wouldn't let the app read the shared post (#213): "Clip it yourself" on it, in
+    /// this screen's place.
+    var onClipBlocked: (String) -> Void = { _ in }
     /// Opens the editor on a Reddit post's photos, read on the device (#198).
     var onReadPhoto: (PhotoPost) -> Void = { _ in }
     /// The `photoText` flag (#198): "Read the photo" shows only behind it.
@@ -136,6 +139,9 @@ struct RecipeScreen: View {
         // The recipe is gone the moment the delete lands; leave the screen.
         .onChange(of: state.deleted) { _, deleted in
             if deleted { dismiss() }
+        }
+        .onChange(of: state.clipBlockedPost, initial: true) { _, url in
+            if let url { onClipBlocked(url) }
         }
         .sheet(isPresented: $sheetOpen) {
             SaveToListSheet(vm: saveVM)

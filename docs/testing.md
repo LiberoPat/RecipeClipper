@@ -145,7 +145,11 @@ made-up posts in Reddit's real `raw_json=1` shape, which was checked against rec
 responses because reddit.com answers 403 to the development machine (`docs/decisions.md`,
 "Reddit posts (#11)", has where they came from).
 `DefaultRecipeRepositoryRetryTest` (iOS `DataRepositoryTests`) checks that a blocked
-Reddit post never goes to the rendered page.
+Reddit post never goes to the rendered page. Reddit's block (#213): `RecipeRedditBlockedTest(s)`
+(the clip instead of the error, the saved copy over the real repository, every other cause
+unchanged), `ClipBlockedNoteScreenTest` (Robolectric: the note, and the import handing the post
+on), iOS `ShareImportViewModelTests` (the card and `PendingClip`) and
+`ClipUITests.testABlockedRedditPostOpensHereWithANote`.
 Other languages (#208): `RecipeTextSplitterLanguagesTest(s)` read `shared/fixtures/languages/<language>.json`
 (a post, a photo's lines and negatives per language) with the same expectations on both platforms.
 "Read the photo" (#198): `PhotoTextSorterTest` / `PhotoTextSorterTests` pin the sorting,

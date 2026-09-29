@@ -994,7 +994,9 @@ had already broken it once. Now the extension does the import itself.
   have meant the reading view, scaling and conversion inside the extension's
   memory budget. The app doesn't jump to the recipe on its next launch
   either, since that would surprise someone who opens it hours later.
-  "Continue cooking" already puts it one tap away.
+  "Continue cooking" already puts it one tap away. (The one hand-off, bounded
+  to minutes, is a Reddit post Reddit won't let the app read, #213: see
+  "Reddit posts (#11)".)
 - **What only a device shows.** The memory ceiling (about 120 MB, which the
   simulator doesn't enforce). And iOS kills a suspended process that holds a
   file lock in a shared container (`0xdead10cc`). Writes are short
@@ -1672,7 +1674,8 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
 ## Clip it yourself (#37)
 
 A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or
-FetchFailed) offers **Clip it yourself**: the page opens live in a web view, the user selects
+FetchFailed) offers **Clip it yourself** (and a Reddit post Reddit won't let the app read opens in
+it by itself, #213: see "Reddit posts (#11)"): the page opens live in a web view, the user selects
 the name, ingredients and steps and taps where each goes, then reviews and saves. The design was
 approved as a mock-up (six frames); the owner's nine decisions are in the issue's comments.
 
@@ -3162,6 +3165,33 @@ app main had become:
   splitter, by design, declined. On iOS a page Safari already rendered (#35) is ignored for the
   same reason. `RoutingRecipeSource` forwards `fetchPage` too, so blog pages keep their text for
   the model.
+- **Blocked by Reddit: "Clip it yourself" by default (#213).** In September 2026 reddit.com
+  began answering the app's `.json` read, on the owner's phone and the development machine alike,
+  with a 403 page saying "You've been blocked by network security": its wall for clients that are
+  neither a browser nor signed in through its API. Waiting doesn't lift it, the app already sends
+  Reddit's documented User-Agent shape, and disguising the app as a browser is out (no chasing a
+  user-agent). Owner's decision (2026-09-29): a Reddit link (`reddit` flag on) whose read still
+  ends `Blocked` after the repository's one retry, with no saved copy, opens "Clip it yourself"
+  (#37) on the post in the import's place, where the web view, a real browser engine, is let in.
+  `RedditUrls.clipsWhenBlocked` decides and the import's ViewModel acts on it; the clip replaces
+  the import, so Back goes where the share came from, and a saved clip then replaces only the
+  clip. A note at the top says "Reddit didn't let the app read this post, so it's open here:
+  select the recipe." (announced by TalkBack and VoiceOver). **No Try again there** (owner, the
+  same day): this block isn't one that lifts, so a retry would be a dead end; sharing the link
+  again reads it again. Unchanged: a saved copy opens from it; `Offline`, `FetchFailed` and
+  timeouts keep their error screens with Try again and the reload on reconnect; a post that reads
+  but has no recipe text is still `NoTranscription` with "Read the photo"; other sites' blocks
+  keep theirs. A `/s/` share link is loaded as it is (the web view follows the redirect) and the
+  clip is saved under the link that was shared.
+- **Reddit's official API is not used, by decision** (owner, 2026-09-29): reading posts through
+  it would need an installed-app OAuth client registered by the owner and Reddit's terms for an
+  app, a cost the owner doesn't want. Clipping in the web view is the answer to the block.
+- **iOS's share extension can't open the app** (#19), so for a blocked post its card says to open
+  Recipe Clipper ("…the post will be open there, to select the recipe.", no Try again) and leaves
+  the post in the App Group suite (`PendingClip`: `pending_clip_url`, `pending_clip_at`). The app,
+  becoming active within 10 minutes, opens the clip on it in Recipes, with the note, once; an
+  older one is dropped, and each new share replaces or clears it. The window keeps #19's rule
+  (no jump on a later launch): a post shared a moment ago is what the cook opens the app for.
 - **`NoTranscription` offers Try again, and "Read the photo" when the post has a picture**
   (#198, below): no "Report this site" (Reddit isn't a site whose markup the app could learn)
   and no "Clip it yourself" (the recipe, when there is one, is usually in the photo). Both stay
@@ -3553,8 +3583,9 @@ reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receive
 (`cook=true` from a timer notification opens cook mode), `recipe/import?url={url}` (the
 share target: parse, then upsert with no list membership), and
 `edit?recipeId={recipeId}` (no id: a new recipe; saving replaces the edit screen, and
-the recipe screen under it, with `recipe/{id}`), and `clip?url={url}` (Clip it
-yourself; saving replaces it and the error screen under it with `recipe/{id}`), and
+the recipe screen under it, with `recipe/{id}`), and `clip?url={url}&blocked={blocked}` (Clip it
+yourself; `blocked=true` when Reddit's block opened it in the import's place, #213, with a note;
+saving replaces it and the error screen under it, if any, with `recipe/{id}`), and
 `edit/photo?url={url}&title={title}&images={images}` (Read the photo, #198: the editor filled
 from a Reddit post's pictures, one address per line in `images`; saving replaces it and the
 error screen like a clip). Behind the

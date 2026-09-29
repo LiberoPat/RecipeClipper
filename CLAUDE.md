@@ -87,7 +87,7 @@ fixtures. The annotated map, and what each route does, are in
 Routes: `home`, `recipes`, `settings` (+ hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
-membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `clip?url={url}`; with the tab
+membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `clip?url={url}&blocked=…`; with the tab
 shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
 `pantry`. A route from an intent always lands in Recipes.
 
@@ -283,6 +283,10 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   same parsers: the only way to see a page rendered by JavaScript (a page
   behind a login stays out of reach). Never for a Reddit post (read only from
   its `.json`). No recipe there keeps the original cause.
+- **A Reddit post still `Blocked` then, with no saved copy, opens "Clip it
+  yourself"** in the import's place, with a note and no Try again (#213:
+  Reddit's wall doesn't lift; its official API is out, by decision). iOS's
+  share extension leaves it for the app (`PendingClip`).
 - After any failure, a link saved before opens from the saved copy. Photos
   are cached (Coil; iOS `ImageLoader`), so they show offline too.
 - **Every error screen offers Try again, `NoRecipeFound` included**: a

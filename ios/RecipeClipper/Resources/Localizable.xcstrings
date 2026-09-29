@@ -20862,6 +20862,88 @@
           }
         }
       }
+    },
+    "clip_reddit_blocked_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit hat die App diesen Beitrag nicht lesen lassen, deshalb ist er hier geöffnet: Markiere das Rezept."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit didn't let the app read this post, so it's open here: select the recipe."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit no dejó que la app leyera esta publicación, así que está abierta aquí: selecciona la receta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit n'a pas laissé l'appli lire cette publication, elle est donc ouverte ici : sélectionnez la recette."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit non ha permesso all'app di leggere questo post, quindi è aperto qui: seleziona la ricetta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Reddit não deixou o app ler este post, então ele está aberto aqui: selecione a receita."
+          }
+        }
+      }
+    },
+    "share_reddit_blocked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit hat die App diesen Beitrag nicht lesen lassen. Öffne Recipe Clipper: Dort ist der Beitrag geöffnet, um das Rezept zu markieren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit didn't let the app read this post. Open Recipe Clipper: the post will be open there, to select the recipe."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit no dejó que la app leyera esta publicación. Abre Recipe Clipper: la publicación estará abierta allí para seleccionar la receta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit n'a pas laissé l'appli lire cette publication. Ouvrez Recipe Clipper : elle y sera ouverte, pour sélectionner la recette."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reddit non ha permesso all'app di leggere questo post. Apri Recipe Clipper: il post sarà aperto lì, per selezionare la ricetta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Reddit não deixou o app ler este post. Abra o Recipe Clipper: o post estará aberto lá para selecionar a receita."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -31,9 +31,13 @@ final class ShareViewController: UIViewController {
     private static func makeViewModel() -> (ShareImportViewModel, RecipeRepository?) {
         let db = openDatabase()
         let repository = db.map(makeRepository)
+        // A post Reddit won't let the app read is left here for the app (#213).
+        let defaults = UserDefaults(suiteName: AppGroup.identifier)
+        let reddit = defaults.map(DefaultsRedditSwitch.init)
         let viewModel = ShareImportViewModel(
             repository: repository, connectivity: PathConnectivity(),
-            makeReceiveList: { db.flatMap(makeReceiveList) }
+            makeReceiveList: { db.flatMap(makeReceiveList) },
+            redditOn: { reddit?.isOn ?? true }, pendingClip: defaults.map(PendingClip.init)
         )
         return (viewModel, repository)
     }

@@ -66,10 +66,13 @@ object Routes {
     // From a timer notification: the recipe, opened in cook mode.
     fun cookRecipe(id: Long) = "recipe/$id?${RecipeViewModel.COOK_ARG}=true"
 
-    // "Clip it yourself" (#37), from a page with no recipe data.
-    const val CLIP = "clip?${ClipViewModel.URL_ARG}={${ClipViewModel.URL_ARG}}"
+    // "Clip it yourself" (#37), from a page with no recipe data, or opened by itself in the
+    // import's place when Reddit blocks the app's read of a post (#213: `blocked`, with a note).
+    const val CLIP = "clip?${ClipViewModel.URL_ARG}={${ClipViewModel.URL_ARG}}" +
+        "&${ClipViewModel.BLOCKED_ARG}={${ClipViewModel.BLOCKED_ARG}}"
 
-    fun clip(url: String) = "clip?${ClipViewModel.URL_ARG}=${Uri.encode(url)}"
+    fun clip(url: String, blocked: Boolean = false) =
+        "clip?${ClipViewModel.URL_ARG}=${Uri.encode(url)}&${ClipViewModel.BLOCKED_ARG}=$blocked"
 
     // "Read the photo" (#198): the editor, filled from a Reddit post's photos read on the device.
     const val EDIT_PHOTO = "edit/photo?${EditRecipeViewModel.PHOTO_URL_ARG}={${EditRecipeViewModel.PHOTO_URL_ARG}}" +
@@ -210,6 +213,12 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onBack = { navController.popBackStack() },
             onEdit = { navController.navigate(Routes.edit(it)) },
             onClip = { navController.navigate(Routes.clip(it)) },
+            // Replaces the import, so Back from the clip never lands on an error screen (#213).
+            onClipBlocked = {
+                navController.navigate(Routes.clip(it, blocked = true)) {
+                    popUpTo(Routes.IMPORT) { inclusive = true }
+                }
+            },
             onReadPhoto = { navController.navigate(Routes.editPhoto(it)) },
             sendFileViewModel = hiltViewModel()
         )
@@ -237,15 +246,20 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
 
     composable(
         route = Routes.CLIP,
-        arguments = listOf(navArgument(ClipViewModel.URL_ARG) { type = NavType.StringType })
-    ) {
+        arguments = listOf(
+            navArgument(ClipViewModel.URL_ARG) { type = NavType.StringType },
+            navArgument(ClipViewModel.BLOCKED_ARG) { type = NavType.BoolType; defaultValue = false }
+        )
+    ) { entry ->
+        // Reddit's block (#213) opened it in the import's place: no error screen under it.
+        val blocked = entry.arguments?.getBoolean(ClipViewModel.BLOCKED_ARG) == true
         ClipScreen(
             onCancel = { navController.popBackStack() },
-            // The saved clip replaces both the error screen and the clip screen, so Back
+            // The saved clip replaces the clip screen and the error screen under it, so Back
             // from the recipe goes where the share came from.
             onSaved = { id ->
                 navController.navigate(Routes.recipe(id)) {
-                    popUpTo(Routes.IMPORT) { inclusive = true }
+                    popUpTo(if (blocked) Routes.CLIP else Routes.IMPORT) { inclusive = true }
                 }
             }
         )

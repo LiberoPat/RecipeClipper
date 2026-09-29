@@ -39,7 +39,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -126,6 +128,7 @@ fun ClipScreen(
                         onCancel = onCancel,
                         onDone = viewModel::onReview
                     )
+                    if (state.readBlocked && !state.reviewing) BlockedNote()
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         ClipWebPage(
                             url = state.url,
@@ -201,6 +204,24 @@ private fun noticeText(message: ClipMessage): String = when (message) {
     ClipMessage.SaveFailed -> stringResource(R.string.clip_save_failed)
     ClipMessage.PhotoUnreadable -> stringResource(R.string.clip_photo_unreadable)
     is ClipMessage.Unlock -> stringResource(message.outcome.noticeMessage())
+}
+
+/**
+ * Why the clip opened by itself (#213): Reddit wouldn't let the app read the post. Announced
+ * politely, since the cook asked for the recipe, not for this screen.
+ */
+@Composable
+private fun BlockedNote() {
+    Text(
+        stringResource(R.string.clip_reddit_blocked_note),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
