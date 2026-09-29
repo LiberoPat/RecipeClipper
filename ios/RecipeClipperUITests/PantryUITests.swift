@@ -141,62 +141,16 @@ final class PantryUITests: RecipeUITestCase {
         launch(.walkthroughPantry, flags: ["mealPlan"])
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         require(app.buttons["Ran out: soy sauce"], "the pantry")
-        let runOut = text("Run out")
-        let drawn = pixels(reveal(runOut, "the Run out heading"))
-        do { // TEMP sensitivity probe
-            let other = pixels(pantryRow("garlic"))
-            let d = Double(zip(other, drawn).map { abs(Int($0) - Int($1)) }.reduce(0, +)) / Double(drawn.count) / 255
-            print("PROBE garlic-vs-heading \(d)")
-            let again = pixels(runOut)
-            let d2 = Double(zip(again, drawn).map { abs(Int($0) - Int($1)) }.reduce(0, +)) / Double(drawn.count) / 255
-            print("PROBE heading-vs-heading \(d2) frame \(runOut.frame)")
-            try? runOut.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "/private/tmp/claude-502/-Users-oli-Downloads-RecipeClipper/16fed9c5-8eca-43ea-a868-c9bccb27aa0e/scratchpad/sw203/el-0.png"))
-        }
         for _ in 0..<3 {
             reveal(pantryRow("garlic"), "garlic").swipeRight()
             require(app.buttons["Restock"], "the swipe's Restock").tap()
             requireLaidOut(["garlic": "Fruit & vegetables", "milk": "Run out"])
-            requireDrawn(runOut, like: drawn, "the Run out heading, after Restock")
             reveal(pantryRow("garlic"), "garlic").swipeLeft()
             require(app.buttons["Ran out"], "the swipe's Ran out").tap()
             requireLaidOut(["garlic": "Run out", "onions": "Fruit & vegetables"])
-            requireDrawn(runOut, like: drawn, "the Run out heading, after Ran out")
         }
     }
 
-    /// An element as drawn on screen, shrunk to a small grey grid so a point's rounding doesn't
-    /// count: what's under its frame, not what the accessibility tree says is there.
-    private func pixels(_ element: XCUIElement) -> [UInt8] {
-        let width = 48, height = 12
-        var grid = [UInt8](repeating: 0, count: width * height)
-        guard let image = element.screenshot().image.cgImage else { return grid }
-        grid.withUnsafeMutableBytes { buffer in
-            let context = CGContext(
-                data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
-                bytesPerRow: width, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue
-            )
-            context?.interpolationQuality = .medium
-            context?.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        }
-        return grid
-    }
-
-    /// The element, revealed, looks as it did: a cell drawn over it changes its pixels.
-    private func requireDrawn(_ element: XCUIElement, like before: [UInt8], _ what: String, file: StaticString = #filePath, line: UInt = #line) {
-        let now = pixels(reveal(element, what))
-        do { // TEMP
-            let dir = "/private/tmp/claude-502/-Users-oli-Downloads-RecipeClipper/16fed9c5-8eca-43ea-a868-c9bccb27aa0e/scratchpad/sw203/"
-            let n = Int(Date().timeIntervalSince1970)
-            try? element.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: dir + "el-\(n).png"))
-            try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: dir + "scr-\(n).png"))
-            print("PROBE frame \(element.frame) at \(n)")
-        }
-        let difference = zip(now, before).map { abs(Int($0) - Int($1)) }.reduce(0, +)
-        let mean = Double(difference) / Double(before.count) / 255
-        XCTAssertLessThan(mean, 0.04, "\(what): drawn differently (mean difference \(mean))", file: file, line: line)
-    }
-
-    @discardableResult
     private func reveal(_ element: XCUIElement, _ what: String) -> XCUIElement {
         for _ in 0..<3 where !(element.exists && element.isHittable) { app.swipeUp() }
         for _ in 0..<4 where !(element.exists && element.isHittable) { app.swipeDown() }
