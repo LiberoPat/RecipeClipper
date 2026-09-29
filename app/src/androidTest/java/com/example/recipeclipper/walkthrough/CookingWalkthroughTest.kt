@@ -139,7 +139,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
         pause(2500)
         tap("Got it", 1500)
         tap("Tomato and White Bean Soup", 2000)
-        waitFor(hasTestTag("tooltip-recipe_servings"))
+        waitFor(hasTestTag("tooltip-recipe_units"))
         pause(2500)
         tap("Got it", 1500)
     }
@@ -227,8 +227,8 @@ class CookingWalkthroughTest : WalkthroughBase() {
         pause(2500)
         tap("Got it", 1500)
         tap("Tomato and White Bean Soup", 2000)
-        waitFor(hasTestTag("tooltip-recipe_servings"))
-        pause(2500)
+        waitFor(hasTestTag("tooltip-recipe_units"))
+        pause(4000) // a longer text
         tap("Got it", 1500)
         back()
         waitFor(hasTestTag("tooltip-home_new_recipe")) // the later visit's next one

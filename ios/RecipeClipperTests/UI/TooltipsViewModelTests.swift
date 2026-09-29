@@ -66,14 +66,14 @@ final class TooltipsViewModelTests: XCTestCase {
     func testScrolledAwayItHidesAndNothingElseShowsInItsPlace() {
         let vm = make()
         vm.onVisit(token: "a", screen: .recipe)
-        vm.onReport(token: "a", visible: [.recipeServings, .recipeStartCooking], ready: true)
-        XCTAssertEqual(vm.uiState.current, .recipeServings)
+        vm.onReport(token: "a", visible: [.recipeUnits, .recipeStartCooking], ready: true)
+        XCTAssertEqual(vm.uiState.current, .recipeUnits)
 
         vm.onReport(token: "a", visible: [.recipeStartCooking], ready: true)
         XCTAssertNil(vm.uiState.current)
 
-        vm.onReport(token: "a", visible: [.recipeServings, .recipeStartCooking], ready: true)
-        XCTAssertEqual(vm.uiState.current, .recipeServings, "back in view, back again")
+        vm.onReport(token: "a", visible: [.recipeUnits, .recipeStartCooking], ready: true)
+        XCTAssertEqual(vm.uiState.current, .recipeUnits, "back in view, back again")
     }
 
     func testAFlaggedScreensTooltipsWaitForTheFlag() {

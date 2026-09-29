@@ -658,7 +658,6 @@ enum Strings {
         switch tooltip {
         case .homeLink: String(localized: "tooltip_home_link")
         case .homeNewRecipe: String(localized: "tooltip_home_new_recipe")
-        case .recipeServings: String(localized: "tooltip_recipe_servings")
         case .recipeUnits: String(localized: "tooltip_recipe_units")
         case .recipeBookmark: String(localized: "tooltip_recipe_bookmark")
         case .recipeShare: String(localized: "tooltip_recipe_share")

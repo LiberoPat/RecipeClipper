@@ -73,13 +73,13 @@ class TooltipsTest {
 
     @Test
     fun `a visit keeps the tooltip it showed, and shows no other`() {
-        val shown = Tooltips.shown(visit(TooltipScreen.RECIPE), Tooltip.RECIPE_SERVINGS)
-        assertEquals(Tooltip.RECIPE_SERVINGS, Tooltips.current(shown, emptySet(), allOn, everything, ready = true))
+        val shown = Tooltips.shown(visit(TooltipScreen.RECIPE), Tooltip.RECIPE_UNITS)
+        assertEquals(Tooltip.RECIPE_UNITS, Tooltips.current(shown, emptySet(), allOn, everything, ready = true))
         assertNull(
             "scrolled away, it hides; nothing takes its place",
             Tooltips.current(shown, emptySet(), allOn, setOf(Tooltip.RECIPE_START_COOKING), ready = true)
         )
-        assertSame(shown, Tooltips.shown(shown, Tooltip.RECIPE_UNITS))
+        assertSame(shown, Tooltips.shown(shown, Tooltip.RECIPE_BOOKMARK))
     }
 
     @Test

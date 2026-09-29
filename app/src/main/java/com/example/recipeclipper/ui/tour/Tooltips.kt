@@ -135,7 +135,6 @@ fun Modifier.tooltipAnchor(tooltip: Tooltip, side: TooltipSide = TooltipSide.AUT
 private fun Tooltip.text(mealPlan: Boolean): Int = when (this) {
     Tooltip.HOME_LINK -> R.string.tooltip_home_link
     Tooltip.HOME_NEW_RECIPE -> R.string.tooltip_home_new_recipe
-    Tooltip.RECIPE_SERVINGS -> R.string.tooltip_recipe_servings
     Tooltip.RECIPE_UNITS -> R.string.tooltip_recipe_units
     Tooltip.RECIPE_BOOKMARK -> R.string.tooltip_recipe_bookmark
     Tooltip.RECIPE_SHARE -> R.string.tooltip_recipe_share

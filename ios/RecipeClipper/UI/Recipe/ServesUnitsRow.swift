@@ -80,7 +80,6 @@ private struct ServesStepper: View {
                 }
             }
         }
-        .tooltipAnchor(.recipeServings)
     }
 
     private var label: some View {

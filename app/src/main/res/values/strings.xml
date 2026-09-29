@@ -581,8 +581,7 @@
     <string name="tooltip_got_it">Got it</string>
     <string name="tooltip_home_link">Share a recipe link to this app, or paste one here.</string>
     <string name="tooltip_home_new_recipe">Or type in a recipe of your own.</string>
-    <string name="tooltip_recipe_servings">Change the servings: every amount changes with them.</string>
-    <string name="tooltip_recipe_units">Show amounts in metric or ounces, in every recipe.</string>
+    <string name="tooltip_recipe_units">As written shows every amount exactly as the recipe gives it. Tap to show every recipe in Metric or Ounces; anything that can\'t be converted exactly stays as written.</string>
     <string name="tooltip_recipe_bookmark">Save this recipe to a list, like Favorites.</string>
     <string name="tooltip_recipe_share">Send this recipe as text, as it shows here.</string>
     <string name="tooltip_recipe_menu">More: Add to plan, Add to groceries, Send as file and Edit.</string>

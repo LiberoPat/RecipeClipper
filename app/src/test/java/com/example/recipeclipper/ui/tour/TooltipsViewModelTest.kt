@@ -73,17 +73,17 @@ class TooltipsViewModelTest {
     fun `scrolled away it hides, and nothing else shows in its place`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = TooltipsViewModel(preferences, flags)
         vm.onVisit("a", TooltipScreen.RECIPE)
-        vm.onReport("a", setOf(Tooltip.RECIPE_SERVINGS, Tooltip.RECIPE_START_COOKING), ready = true)
+        vm.onReport("a", setOf(Tooltip.RECIPE_UNITS, Tooltip.RECIPE_START_COOKING), ready = true)
         advanceUntilIdle()
-        assertEquals(Tooltip.RECIPE_SERVINGS, vm.uiState.value.current)
+        assertEquals(Tooltip.RECIPE_UNITS, vm.uiState.value.current)
 
         vm.onReport("a", setOf(Tooltip.RECIPE_START_COOKING), ready = true)
         advanceUntilIdle()
         assertNull(vm.uiState.value.current)
 
-        vm.onReport("a", setOf(Tooltip.RECIPE_SERVINGS, Tooltip.RECIPE_START_COOKING), ready = true)
+        vm.onReport("a", setOf(Tooltip.RECIPE_UNITS, Tooltip.RECIPE_START_COOKING), ready = true)
         advanceUntilIdle()
-        assertEquals("back in view, back again", Tooltip.RECIPE_SERVINGS, vm.uiState.value.current)
+        assertEquals("back in view, back again", Tooltip.RECIPE_UNITS, vm.uiState.value.current)
     }
 
     @Test

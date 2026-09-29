@@ -6,9 +6,9 @@ import XCTest
 extension WalkthroughUITests {
 
     /// Taps a tooltip's "Got it" and waits for the bubble to go.
-    private func gotIt(_ id: String, _ what: String) {
+    private func gotIt(_ id: String, _ what: String, hold: Double = 2.5) {
         let bubble = require(app.buttons["tooltip.\(id)"], what)
-        pause(2.5)
+        pause(hold)
         bubble.tap()
         requireGone(bubble, "\(what), dismissed")
         pause()
@@ -20,7 +20,7 @@ extension WalkthroughUITests {
         startFirstRun(flags: ["mealPlan"])
         gotIt("home_link", "Home's first tooltip")
         require(row("Tomato and White Bean Soup"), "the sample recipe").tap()
-        gotIt("recipe_servings", "the recipe's first tooltip")
+        gotIt("recipe_units", "the recipe's first tooltip", hold: 4) // a longer text
         back()
         gotIt("home_new_recipe", "Home's next tooltip, on a later visit")
         require(app.buttons["Settings"]).tap()

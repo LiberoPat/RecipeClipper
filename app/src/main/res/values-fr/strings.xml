@@ -548,8 +548,7 @@
     <string name="tooltip_got_it">Compris</string>
     <string name="tooltip_home_link">Partagez le lien d\'une recette vers cette appli, ou collez-le ici.</string>
     <string name="tooltip_home_new_recipe">Ou saisissez vous-même une recette.</string>
-    <string name="tooltip_recipe_servings">Changez les portions : toutes les quantités suivent.</string>
-    <string name="tooltip_recipe_units">Affichez les quantités en métrique ou en onces, dans toutes les recettes.</string>
+    <string name="tooltip_recipe_units">Comme dans la recette affiche chaque quantité exactement comme la recette la donne. Touchez pour voir toutes les recettes en Métrique ou en Onces ; ce qui ne peut pas être converti exactement reste comme dans la recette.</string>
     <string name="tooltip_recipe_bookmark">Enregistrez cette recette dans une liste, comme Favoris.</string>
     <string name="tooltip_recipe_share">Envoyez cette recette en texte, telle qu\'elle s\'affiche ici.</string>
     <string name="tooltip_recipe_menu">Plus : Ajouter au planning, Ajouter aux courses, Envoyer en fichier et Modifier.</string>

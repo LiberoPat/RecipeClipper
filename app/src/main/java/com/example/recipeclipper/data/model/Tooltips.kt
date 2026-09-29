@@ -14,7 +14,6 @@ enum class TooltipScreen { HOME, RECIPE, COOK, WEEK, GROCERIES, PANTRY, SETTINGS
 enum class Tooltip(val id: String, val screen: TooltipScreen, val flag: Flag? = null) {
     HOME_LINK("home_link", TooltipScreen.HOME),
     HOME_NEW_RECIPE("home_new_recipe", TooltipScreen.HOME),
-    RECIPE_SERVINGS("recipe_servings", TooltipScreen.RECIPE),
     RECIPE_UNITS("recipe_units", TooltipScreen.RECIPE),
     RECIPE_BOOKMARK("recipe_bookmark", TooltipScreen.RECIPE),
     RECIPE_SHARE("recipe_share", TooltipScreen.RECIPE),

@@ -17,23 +17,23 @@ final class TooltipsUITests: RecipeUITestCase {
         gotIt("home_link", "Home's first tooltip")
 
         // A popover is modal: while it shows, what's under it is out of the accessibility tree,
-        // so the recipe is opened by its row and the stepper found once the bubble has gone.
+        // so the recipe is opened by its row and the dropdown found once the bubble has gone.
         require(row("Chicken Adobo")).tap()
-        let servings = require(app.buttons["tooltip.recipe_servings"], "the recipe screen's first tooltip")
-        XCTAssertTrue(servings.label.contains("Change the servings"), servings.label)
-        let bubble = servings.frame
-        gotIt("recipe_servings", "the servings tooltip")
-        // At its control: the bubble sat against the Serves stepper, above or below it.
-        let stepper = require(app.buttons["Increase servings"], "the Serves stepper").frame
-        let gap = min(abs(bubble.minY - stepper.maxY), abs(stepper.minY - bubble.maxY))
-        XCTAssertLessThan(gap, 60, "bubble \(bubble), stepper \(stepper)")
+        let units = require(app.buttons["tooltip.recipe_units"], "the recipe screen's first tooltip")
+        XCTAssertTrue(units.label.contains("As written shows every amount"), units.label)
+        let bubble = units.frame
+        gotIt("recipe_units", "the units tooltip")
+        // At its control: the bubble sat against the units dropdown, above or below it.
+        let dropdown = require(app.buttons["Change units"], "the units dropdown").frame
+        let gap = min(abs(bubble.minY - dropdown.maxY), abs(dropdown.minY - bubble.maxY))
+        XCTAssertLessThan(gap, 60, "bubble \(bubble), dropdown \(dropdown)")
 
         // Never chained: nothing else on this visit.
-        XCTAssertFalse(app.buttons["tooltip.recipe_units"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["tooltip.recipe_bookmark"].waitForExistence(timeout: 3))
 
         back()
         gotIt("home_new_recipe", "Home's next tooltip, on its next visit")
         require(row("Chicken Adobo")).tap()
-        gotIt("recipe_units", "the recipe screen's next tooltip, on its next visit")
+        gotIt("recipe_bookmark", "the recipe screen's next tooltip, on its next visit")
     }
 }

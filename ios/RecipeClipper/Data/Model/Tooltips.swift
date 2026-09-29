@@ -14,7 +14,6 @@ enum TooltipScreen: String, CaseIterable {
 enum Tooltip: String, CaseIterable {
     case homeLink = "home_link"
     case homeNewRecipe = "home_new_recipe"
-    case recipeServings = "recipe_servings"
     case recipeUnits = "recipe_units"
     case recipeBookmark = "recipe_bookmark"
     case recipeShare = "recipe_share"
@@ -47,7 +46,7 @@ enum Tooltip: String, CaseIterable {
     var screen: TooltipScreen {
         switch self {
         case .homeLink, .homeNewRecipe: .home
-        case .recipeServings, .recipeUnits, .recipeBookmark, .recipeShare, .recipeMenu, .recipeStartCooking,
+        case .recipeUnits, .recipeBookmark, .recipeShare, .recipeMenu, .recipeStartCooking,
              .recipeMadeThis: .recipe
         case .cookDoneNext, .cookTapStep, .cookTimer, .cookIngredients: .cook
         case .weekAdd, .weekMonth, .weekMenu: .week

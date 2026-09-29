@@ -65,10 +65,10 @@ final class TooltipsTests: XCTestCase {
     }
 
     func testAVisitKeepsTheTooltipItShowedAndShowsNoOther() {
-        let shown = Tooltips.shown(visit(.recipe), .recipeServings)
-        XCTAssertEqual(Tooltips.current(shown, seen: [], isOn: allOn, visible: everything, ready: true), .recipeServings)
+        let shown = Tooltips.shown(visit(.recipe), .recipeUnits)
+        XCTAssertEqual(Tooltips.current(shown, seen: [], isOn: allOn, visible: everything, ready: true), .recipeUnits)
         XCTAssertNil(Tooltips.current(shown, seen: [], isOn: allOn, visible: [.recipeStartCooking], ready: true))
-        XCTAssertEqual(Tooltips.shown(shown, .recipeUnits), shown)
+        XCTAssertEqual(Tooltips.shown(shown, .recipeBookmark), shown)
     }
 
     func testDismissedTheScreensNextTooltipWaitsForALaterVisitNeverChained() {

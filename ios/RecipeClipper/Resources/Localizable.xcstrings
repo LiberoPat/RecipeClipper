@@ -19797,84 +19797,43 @@
         }
       }
     },
-    "tooltip_recipe_servings" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ändere die Portionen: Alle Mengen ändern sich mit."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change the servings: every amount changes with them."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cambia las raciones: todas las cantidades cambian con ellas."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Changez les portions : toutes les quantités suivent."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cambia le porzioni: tutte le quantità cambiano con loro."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mude as porções: todas as quantidades mudam junto."
-          }
-        }
-      }
-    },
     "tooltip_recipe_units" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeige Mengen metrisch oder in Unzen, in jedem Rezept."
+            "value" : "Wie im Rezept zeigt jede Menge genau so, wie das Rezept sie angibt. Tippe hier, um jedes Rezept in Metrisch oder Unzen zu sehen; was sich nicht genau umrechnen lässt, bleibt wie im Rezept."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show amounts in metric or ounces, in every recipe."
+            "value" : "As written shows every amount exactly as the recipe gives it. Tap to show every recipe in Metric or Ounces; anything that can't be converted exactly stays as written."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Muestra las cantidades en sistema métrico u onzas, en todas las recetas."
+            "value" : "Como en la receta muestra cada cantidad tal como la da la receta. Toca para ver todas las recetas en Métrico u Onzas; lo que no se pueda convertir con exactitud se queda como en la receta."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Affichez les quantités en métrique ou en onces, dans toutes les recettes."
+            "value" : "Comme dans la recette affiche chaque quantité exactement comme la recette la donne. Touchez pour voir toutes les recettes en Métrique ou en Onces ; ce qui ne peut pas être converti exactement reste comme dans la recette."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostra le quantità in metrico o in once, in ogni ricetta."
+            "value" : "Come nella ricetta mostra ogni quantità esattamente come la dà la ricetta. Tocca per vedere ogni ricetta in Metrico o Once; ciò che non si può convertire con precisione resta come nella ricetta."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostre as quantidades no sistema métrico ou em onças, em todas as receitas."
+            "value" : "Como na receita mostra cada quantidade exatamente como a receita dá. Toque para ver todas as receitas em Métrico ou Onças; o que não puder ser convertido com exatidão fica como na receita."
           }
         }
       }
