@@ -176,22 +176,31 @@ extension WalkthroughUITests {
         scrollTo(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
         pause(3)
 
-        // Fix the unsure line: the last ingredient, retyped at the end of the box.
-        // Filled from the photo, the box has no placeholder any more: find it by what it holds.
+        // Fix the lines flagged to check. Filled from the photo, the box has no placeholder any
+        // more: find it by what it holds, select all of it and type it back corrected, so no
+        // caret placement can land a fix on the wrong line.
         let box = app.descendants(matching: .any).matching(NSPredicate(
             format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "cup butter"
         )).firstMatch
         scrollTo(box, "the ingredients")
         pause()
-        box.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.97)).tap()
-        pause()
         let typed = box.value as? String ?? ""
-        let last = typed.split(separator: "\n").last.map(String.init) ?? ""
-        box.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: last.count))
+        let fixed = typed.split(separator: "\n", omittingEmptySubsequences: false).map { line -> String in
+            if line.contains("cupraisi") || line.contains("rasins") { return "1 cup raisins" }
+            return line.replacingOccurrences(of: "11/2", with: "1 1/2")
+        }.joined(separator: "\n")
+        // Bring the whole box on screen, then tap past its last line: the caret goes to the very
+        // end, so deleting every character clears it and the corrected text replaces it.
+        for _ in 0..<6 where box.frame.maxY > app.frame.maxY - 140 {
+            app.swipeUp(velocity: .slow)
+        }
+        box.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.97)).tap()
         pause(0.8)
-        box.typeText("1 cup raisins")
-        pause(2)
+        box.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count + 2))
+        pause(0.5)
+        box.typeText(fixed)
+        pause(2.5)
         require(app.buttons["edit.save"], "Save").tap()
         require(bookmark, "the saved recipe")
         require(textContaining("Clipped by you"), "the clip's credit")
