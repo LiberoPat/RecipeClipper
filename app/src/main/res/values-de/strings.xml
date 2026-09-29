@@ -529,8 +529,7 @@
     <string name="tooltip_got_it">Verstanden</string>
     <string name="tooltip_home_link">Teile einen Rezeptlink mit dieser App oder füge ihn hier ein.</string>
     <string name="tooltip_home_new_recipe">Oder tippe ein eigenes Rezept ein.</string>
-    <string name="tooltip_recipe_servings">Ändere die Portionen: Alle Mengen ändern sich mit.</string>
-    <string name="tooltip_recipe_units">Zeige Mengen metrisch oder in Unzen, in jedem Rezept.</string>
+    <string name="tooltip_recipe_units">Wie im Rezept zeigt jede Menge genau so, wie das Rezept sie angibt. Tippe hier, um jedes Rezept in Metrisch oder Unzen zu sehen; was sich nicht genau umrechnen lässt, bleibt wie im Rezept.</string>
     <string name="tooltip_recipe_bookmark">Speichere dieses Rezept in einer Liste, etwa Favoriten.</string>
     <string name="tooltip_recipe_share">Sende dieses Rezept als Text, so wie es hier steht.</string>
     <string name="tooltip_recipe_menu">Mehr: Zum Plan hinzufügen, Zum Einkauf hinzufügen, Als Datei senden und Bearbeiten.</string>

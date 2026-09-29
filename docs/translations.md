@@ -26,7 +26,7 @@ should review each one before release,** starting with the terms listed below.
   `shared/sample/recipe.json`: written as a cook in that language would (metric, local
   ingredient names), not word for word from the English. A draft like the rest.
 - **The tooltips** (#190, `tooltip_*`) name the app's buttons and menu items, so they must follow
-  any change to those labels ("Done — next step", "Add to plan", "Send as file", "Mark as
+  any change to those labels ("As written", "Metric", "Ounces", "Done — next step", "Add to plan", "Send as file", "Mark as
   cooked", "What I need", "Send list", "Paste a list"). The recipe menu's has two versions, with
   and without the meal plan's items.
 

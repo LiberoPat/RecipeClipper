@@ -3,7 +3,6 @@
   "tooltips": [
     { "id": "home_link", "screen": "home" },
     { "id": "home_new_recipe", "screen": "home" },
-    { "id": "recipe_servings", "screen": "recipe" },
     { "id": "recipe_units", "screen": "recipe" },
     { "id": "recipe_bookmark", "screen": "recipe" },
     { "id": "recipe_share", "screen": "recipe" },

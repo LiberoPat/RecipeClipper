@@ -164,12 +164,13 @@ private struct TooltipPopover<Bubble: View>: ViewModifier {
         }
     }
 
-    /// The edge of the control the arrow sits on: the bubble is beyond it.
+    /// The popover's own edge the arrow sits on, so the opposite of the side asked for: `.bottom`
+    /// puts the bubble above the control (seen on the iOS 27 simulator, `TooltipsUITests`).
     private var arrowEdge: Edge? {
         switch side {
         case .auto: nil
-        case .above: .top
-        case .below: .bottom
+        case .above: .bottom
+        case .below: .top
         }
     }
 }

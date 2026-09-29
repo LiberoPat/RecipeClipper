@@ -2951,8 +2951,9 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   either enum differs from it). In this order per screen; a flagged one shows only with its flag:
   - **Home:** the link field ("Share a recipe link to this app, or paste one here"); "+ New
     recipe".
-  - **Recipe (reading view):** Serves − / +; the units dropdown; the bookmark; the share icon;
-    the ⋮ menu (it names Add to plan and Add to groceries only with `mealPlan` on, as the menu
+  - **Recipe (reading view):** the units dropdown, explaining "As written" (every amount as
+    the recipe gives it; tap for Metric or Ounces; what can't convert exactly stays as written);
+    the bookmark; the share icon; the ⋮ menu (it names Add to plan and Add to groceries only with `mealPlan` on, as the menu
     has them only then); "Start cooking"; "I made this" (the button, or the + tile once there
     are photos; `cookedPhotos`).
   - **Cook mode** (its own screen, though it is the recipe screen's): "Done — next step"; the
@@ -2963,6 +2964,15 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
     ticked); the ⋮ menu. **Pantry:** the add field; the first row's "Ran out" / "Restock"
     (#194; it names the long-press's "Running low" too); the ⋮ menu. All `mealPlan`.
   - **Settings:** the Units choice; "Show tips again".
+- **No Serves tooltip** (owner, 2026-09-29: "write a tooltip [that] explains the 'As written'
+  section; can remove the serving tooltip, it's straightforward"). `recipe_servings` is gone
+  from the catalogue, so the units dropdown is the recipe screen's first; a stored
+  `tooltip_recipe_servings` key is simply ignored. The units text used to be "Show amounts in
+  metric or ounces, in every recipe", which didn't say what "As written", the label a new user
+  sees, means. Its bubble is asked to go below the dropdown on both platforms: left to choose,
+  iOS put the longer text beside it, over the title. Asking showed that iOS's side was
+  inverted: `arrowEdge` is the popover's own edge, so `.bottom` put a bubble above its control
+  (cook mode's "below" ones too). Fixed with it; `TooltipsUITests` now checks the side.
 - **Which one, when** (`Tooltips.current`, the same rule on both platforms): a **visit** is one
   appearance of a screen, from when it shows until it's left (a rotation isn't a new one on
   Android: the visit's token is saved state, and leaving isn't reported while the activity is
@@ -3021,7 +3031,7 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   (`TooltipsScreenTest`: Home's first visit shows the first tooltip after its first second, Got
   it, the next visit the next; Settings' second shows only once scrolled to; the bubble's
   placement at its control), and iOS's recipe screen in `TooltipsUITests` (one per visit, at the
-  Serves stepper, then the units on the next). Every other screen test, UI test and walkthrough
+  units dropdown, then the bookmark on the next). Every other screen test, UI test and walkthrough
   starts with every tooltip seen: Android's screen tests provide no `LocalTooltips`, iOS's test
   containers use `MemoryTourPreferences`, and `-uiTestTooltips` (iOS) or `firstRun = true`
   (Android's walkthroughs) turns them on. Walkthrough 17 shows the sample on Home and a tooltip

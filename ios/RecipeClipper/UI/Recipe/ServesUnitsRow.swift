@@ -80,7 +80,6 @@ private struct ServesStepper: View {
                 }
             }
         }
-        .tooltipAnchor(.recipeServings)
     }
 
     private var label: some View {
@@ -164,6 +163,6 @@ private struct UnitsMenu: View {
         }
         .accessibilityLabel(Strings.changeUnits)
         .accessibilityValue(Strings.unitLabel(system))
-        .tooltipAnchor(.recipeUnits)
+        .tooltipAnchor(.recipeUnits, side: .below)
     }
 }

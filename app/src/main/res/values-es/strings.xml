@@ -548,8 +548,7 @@
     <string name="tooltip_got_it">Entendido</string>
     <string name="tooltip_home_link">Comparte el enlace de una receta con esta app, o pégalo aquí.</string>
     <string name="tooltip_home_new_recipe">O escribe tú mismo una receta.</string>
-    <string name="tooltip_recipe_servings">Cambia las raciones: todas las cantidades cambian con ellas.</string>
-    <string name="tooltip_recipe_units">Muestra las cantidades en sistema métrico u onzas, en todas las recetas.</string>
+    <string name="tooltip_recipe_units">Como en la receta muestra cada cantidad tal como la da la receta. Toca para ver todas las recetas en Métrico u Onzas; lo que no se pueda convertir con exactitud se queda como en la receta.</string>
     <string name="tooltip_recipe_bookmark">Guarda esta receta en una lista, como Favoritos.</string>
     <string name="tooltip_recipe_share">Envía esta receta como texto, tal como se ve aquí.</string>
     <string name="tooltip_recipe_menu">Más: Añadir al plan, Añadir a la compra, Enviar como archivo y Editar.</string>

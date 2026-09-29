@@ -49,9 +49,9 @@ extension WalkthroughUITests {
         link.tap()
         pause(1.5)
         require(row("Tomato and White Bean Soup"), "the sample recipe").tap()
-        let servings = require(app.buttons["tooltip.recipe_servings"], "the recipe's first tooltip")
+        let units = require(app.buttons["tooltip.recipe_units"], "the recipe's first tooltip")
         pause(2.5)
-        servings.tap()
+        units.tap()
         pause()
     }
 
