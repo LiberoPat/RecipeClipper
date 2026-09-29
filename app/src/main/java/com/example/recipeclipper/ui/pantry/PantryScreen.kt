@@ -5,7 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -329,7 +332,7 @@ private fun PantryMenu(
  * row as one ("Garlic, 1 head, Run out, On your grocery list"), with the other two states as its
  * actions.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun PantryRow(
     item: PantryItem,
@@ -401,12 +404,17 @@ private fun PantryRow(
                         .testTag("pantry-${item.id}")
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        // The name, then its tags; they wrap under a long name or large text
+                        // rather than squeezing it.
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
                                 item.name,
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = if (item.inStock) MaterialTheme.colorScheme.onSurface else muted,
-                                modifier = Modifier.weight(1f, fill = false)
+                                color = if (item.inStock) MaterialTheme.colorScheme.onSurface else muted
                             )
                             if (stock == PantryStock.RUNNING_LOW) {
                                 Text(
@@ -414,11 +422,13 @@ private fun PantryRow(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.tertiary,
                                     modifier = Modifier
-                                        .padding(start = 8.dp)
                                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                         .testTag("low-${item.id}")
                                 )
+                            }
+                            if (onList) {
+                                OnListTag(item.id, onTakeOffList)
                             }
                         }
                         alwaysHave?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = muted) }
@@ -430,9 +440,6 @@ private fun PantryRow(
                                 modifier = Modifier.testTag("expiry-${item.id}")
                             )
                         }
-                    }
-                    if (onList) {
-                        OnListTag(item.id, onTakeOffList)
                     }
                     // The quantity as written, in the button's old place (#194); a long one is cut
                     // short, never more than 40% of the row.
@@ -489,7 +496,6 @@ private fun OnListTag(itemId: Long, onTakeOffList: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .padding(start = 8.dp)
             .clip(RoundedCornerShape(50))
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
             .clickable(onClickLabel = stringResource(R.string.pantry_take_off_list), role = Role.Button, onClick = onTakeOffList)
