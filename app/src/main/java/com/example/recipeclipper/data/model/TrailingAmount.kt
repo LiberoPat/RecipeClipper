@@ -183,7 +183,7 @@ internal object TrailingAmount {
 
     // Grams and millilitres as "75" or "7.5"; anything else as a fraction, "2と1/2".
     private fun format(p: Patterns, value: Double, unit: MeasureUnit?): String =
-        if (unit?.metric == true) IngredientScaler.formatMetric(value)
+        if (unit?.metric == true) IngredientScaler.formatMetric(value, unit)
         else IngredientScaler.format(value).replace(" ", p.joiner)
 
     /**

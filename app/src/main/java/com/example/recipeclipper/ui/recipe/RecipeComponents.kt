@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -55,6 +57,23 @@ internal fun Hairline(modifier: Modifier = Modifier) {
 @Composable
 internal fun SectionHeading(text: String, modifier: Modifier = Modifier) {
     Text(text, style = MaterialTheme.typography.titleMedium, modifier = modifier)
+}
+
+/**
+ * A group heading among the ingredients ("For the sauce:"): a small subheading with no checkbox,
+ * nothing to tick. Marked as a heading for accessibility.
+ */
+@Composable
+internal fun IngredientHeadingRow(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp)
+            .semantics { heading() }
+    )
 }
 
 /** A whole-row tap target: the checkbox only draws the state, the row toggles it. */

@@ -494,7 +494,7 @@ data class GrocerySource(
 object GrocerySources {
 
     /** A blank line or a heading ("For the sauce:") is nothing to buy, so it isn't offered. */
-    fun buyable(line: String): Boolean = line.isNotBlank() && !line.trim().endsWith(":")
+    fun buyable(line: String): Boolean = line.isNotBlank() && !IngredientHeading.isHeading(line)
 
     /** A recipe on the reading view: [rendered] are its lines exactly as shown there. */
     fun fromRecipe(recipeId: Long, title: String, language: String?, rendered: List<String>): GrocerySource =

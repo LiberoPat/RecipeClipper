@@ -115,7 +115,8 @@ object UnitConverter {
         val p = patterns(words)
         if (p.scaler.amountAfterName) return convertTrailing(line, system, includeLiquids, words)
         if (p.scaler.unreadable(line)) return line
-        val comma = IngredientScaler.DECIMAL_COMMA.containsMatchIn(separatorFrom)
+        // "1,5 kg" converts with a comma, and so does any line in a language that writes one (#15).
+        val comma = IngredientScaler.DECIMAL_COMMA.containsMatchIn(separatorFrom) || p.scaler.decimalComma
 
         // "1 cup butter or 1/2 cup oil" (#61): every amount converts, or the line stays as written.
         // An amount with no unit ("2 vanilla pods") or already in the system's units is fine as it is.
@@ -394,8 +395,7 @@ object UnitConverter {
         return BigDecimal(rounded).setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
     }
 
-    private fun formatThousands(v: Double): String =
-        BigDecimal(v / 1000).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+    private fun formatThousands(v: Double): String = IngredientScaler.formatDecimal(v / 1000)
 
     internal fun ounceText(gramsLow: Double, gramsHigh: Double?, separator: String): String? {
         val low = gramsLow / GRAMS_PER_OUNCE

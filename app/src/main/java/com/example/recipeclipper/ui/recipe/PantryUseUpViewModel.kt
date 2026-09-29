@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.local.UseUpLog
 import com.example.recipeclipper.data.model.Decisions
+import com.example.recipeclipper.data.model.IngredientHeading
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryEdit
 import com.example.recipeclipper.data.model.PantryItem
@@ -92,7 +93,8 @@ class PantryUseUpViewModel @Inject constructor(
      * any are ticked (as cook mode hands over), else every line of [ingredients]; both as shown.
      */
     fun onMadeThis(recipeId: Long, language: String?, ingredients: List<String>, ticked: Set<Int>) {
-        val lines = ticked.sorted().mapNotNull { ingredients.getOrNull(it) }
+        // A tick stored on a heading doesn't count.
+        val lines = ticked.sorted().mapNotNull { ingredients.getOrNull(it) }.filterNot(IngredientHeading::isHeading)
         offer(recipeId, language, lines.ifEmpty { ingredients })
     }
 

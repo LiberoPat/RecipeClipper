@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.recipe
 
 import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.PurchaseOutcome
+import com.example.recipeclipper.data.model.IngredientHeading
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.Recipe
@@ -86,6 +87,15 @@ sealed class RecipeContent {
         }
 
         fun hasShortStep(index: Int): Boolean = shortInstructions.getOrNull(index) != null
+
+        /**
+         * Ingredient line [index] is a group heading ("For the sauce:"): drawn as a subheading
+         * with no box, never ticked. Ticks stay keyed by line index, so every line keeps its own.
+         */
+        fun isHeading(index: Int): Boolean = ingredients.getOrNull(index)?.let(IngredientHeading::isHeading) == true
+
+        /** The ingredient lines that aren't headings: what cook mode's bar counts. */
+        val ingredientCount: Int get() = ingredients.count { !IngredientHeading.isHeading(it) }
     }
 
     data class Error(val error: ParseError) : RecipeContent()

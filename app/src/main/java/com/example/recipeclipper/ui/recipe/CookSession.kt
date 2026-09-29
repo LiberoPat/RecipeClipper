@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.recipe
 
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.CookProgress
+import com.example.recipeclipper.data.model.IngredientHeading
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.SavedTimer
 import com.example.recipeclipper.data.model.StepAlarm
@@ -111,10 +112,11 @@ class CookSession(private val clock: Clock) {
 
     /**
      * The end of cooking (#147): the [ticked] lines as [content] shows them (scaled and
-     * converted), for using up the pantry; null when nothing is ticked.
+     * converted), for using up the pantry; null when nothing is ticked. A tick stored on a
+     * heading doesn't count.
      */
     fun finishedCook(content: RecipeContent.Success, ticked: Set<Int>): FinishedCook? {
-        val lines = ticked.sorted().mapNotNull { content.ingredients.getOrNull(it) }
+        val lines = ticked.sorted().mapNotNull { content.ingredients.getOrNull(it) }.filterNot(IngredientHeading::isHeading)
         return if (lines.isEmpty()) null else FinishedCook(content.words?.language, lines)
     }
 

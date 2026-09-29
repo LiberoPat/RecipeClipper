@@ -226,8 +226,52 @@ class IngredientScalerTest {
         assertEquals("2,25 kg flour", IngredientScaler.scale("1,5 kg flour", 1.5))
         assertEquals("0,17 l milk", IngredientScaler.scale("0,5 l milk", 1 / 3.0))
         assertEquals("3 kg (6,6 lb) potatoes", IngredientScaler.scale("2 kg (4,4 lb) potatoes", 1.5))
-        // A decimal point keeps the fractions it always had.
-        assertEquals("2 1/4 kg flour", IngredientScaler.scale("1.5 kg flour", 1.5))
+        // A metric amount is a decimal whatever the line wrote.
+        assertEquals("2.25 kg flour", IngredientScaler.scale("1.5 kg flour", 1.5))
+    }
+
+    // --- Metric amounts: decimals, never kitchen fractions ---
+
+    @Test fun `a scaled metric amount is a decimal, never a fraction`() {
+        // 4 to 5 servings: nobody weighs "312 1/2 g".
+        assertEquals("313 g flour", IngredientScaler.scale("250 g flour", 1.25))
+        assertEquals("6.3 g yeast", IngredientScaler.scale("5 g yeast", 1.25))
+        assertEquals("19 ml vanilla", IngredientScaler.scale("15 ml vanilla", 1.25))
+        assertEquals("0.75 kg potatoes", IngredientScaler.scale("1/2 kg potatoes", 1.5))
+        assertEquals("1.25 l milk", IngredientScaler.scale("1 l milk", 1.25))
+        // Both ends of a range.
+        assertEquals("250-313 ml water", IngredientScaler.scale("200-250 ml water", 1.25))
+        // Too little to round is not "0 g".
+        assertEquals("0.04 g saffron", IngredientScaler.scale("0.5 g saffron", 1 / 12.0))
+    }
+
+    @Test fun `kitchen measures and counts keep their fractions`() {
+        assertEquals("2 1/2 cups flour", IngredientScaler.scale("2 cups flour", 1.25))
+        assertEquals("1 1/4 tbsp oil", IngredientScaler.scale("1 tbsp oil", 1.25))
+        assertEquals("10 oz butter", IngredientScaler.scale("8 oz butter", 1.25))
+        assertEquals("1 7/8 lb beef", IngredientScaler.scale("1 1/2 lb beef", 1.25))
+        assertEquals("4 1/2 eggs", IngredientScaler.scale("3 eggs", 1.5))
+        // The site's figure beside a cup is metric, so it is a decimal.
+        assertEquals("1 1/4 cup (150 g) flour", IngredientScaler.scale("1 cup (120 g) flour", 1.25))
+        assertEquals("1 1/4 cup/150 g flour", IngredientScaler.scale("1 cup/120 g flour", 1.25))
+    }
+
+    @Test fun `a language that writes a decimal comma gets one on every metric amount`() {
+        val de = LanguageWords.forTag("de")!!
+        assertEquals("313 g Mehl", IngredientScaler.scale("250 g Mehl", 1.25, de))
+        assertEquals("6,3 g Hefe", IngredientScaler.scale("5 g Hefe", 1.25, de))
+        assertEquals("0,75 kg Kartoffeln", IngredientScaler.scale("1/2 kg Kartoffeln", 1.5, de))
+        assertEquals("1,5 l Wasser", IngredientScaler.scale("1 l Wasser", 1.5, de))
+        assertEquals("1,9 dl Sahne", IngredientScaler.scale("1,5 dl Sahne", 1.25, de))
+        assertEquals("2,25 kg Mehl", IngredientScaler.scale("1,5 kg Mehl", 1.5, de))
+        assertEquals("250-313 ml Milch", IngredientScaler.scale("200-250 ml Milch", 1.25, de))
+        assertEquals("2 1/2 EL Zucker", IngredientScaler.scale("2 EL Zucker", 1.25, de))
+        val fr = LanguageWords.forTag("fr")!!
+        assertEquals("0,75 l de lait", IngredientScaler.scale("1/2 l de lait", 1.5, fr))
+        assertEquals("19 cl de crème", IngredientScaler.scale("15 cl de crème", 1.25, fr))
+        assertEquals("7,5 ml (1/2 c. à soupe) de sucre", IngredientScaler.scale("15 ml (1 c. à soupe) de sucre", 0.5, fr))
+        // English keeps its point.
+        assertEquals("0.75 kg potatoes", IngredientScaler.scale("1/2 kg potatoes", 1.5, LanguageWords.ENGLISH))
     }
 
     @Test fun `a comma before three digits is ambiguous and left as written`() {
