@@ -1,5 +1,8 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.IngredientScaler
+import com.example.recipeclipper.data.model.LanguageWords
+
 /**
  * One line of text the device read from a photo (#198), in reading order, with the
  * recogniser's [confidence] (0 to 1) when it gives one: Vision always does; ML Kit gives it per
@@ -20,7 +23,7 @@ data class PhotoReading(
     val cookTime: String? = null,
     val totalTime: String? = null,
     val sorted: Boolean,
-    /** The lines shown that came from text the recogniser was unsure of: "check this". */
+    /** The lines shown to check: text the recogniser was unsure of, or an amount shaped like a misreading. */
     val uncertain: List<String> = emptyList()
 ) {
     /** Nothing at all was read. */
@@ -33,7 +36,8 @@ data class PhotoReading(
  *
  * **Nothing is invented or corrected.** Every line is the recogniser's text (only trimmed, and
  * cleaned by the splitter as a typed post's lines are); an amount it misread stays misread, and
- * the lines it was unsure of are named in [PhotoReading.uncertain] for the cook to check against
+ * the lines it was unsure of, or whose amount is shaped like a misreading ("11/2"), are named in
+ * [PhotoReading.uncertain] for the cook to check against
  * the photo. When the splitter finds no recipe the lines are returned unsorted, never guessed at.
  *
  * Pure: lines in, data out. The iOS port (`PhotoTextSorter.swift`) follows it line for line.
@@ -50,7 +54,7 @@ object PhotoTextSorter {
         val split = if (read.isEmpty()) null else RecipeTextSplitter.split(read.joinToString("\n") { it.text })
         if (split == null || (split.ingredients.isEmpty() && split.instructions.isEmpty())) {
             val all = read.map { it.text }
-            return PhotoReading(all, emptyList(), sorted = false, uncertain = marked(all, unsure))
+            return PhotoReading(all, emptyList(), sorted = false, uncertain = toCheck(all, unsure))
         }
         return PhotoReading(
             ingredients = split.ingredients,
@@ -60,9 +64,59 @@ object PhotoTextSorter {
             cookTime = split.cookTime,
             totalTime = split.totalTime,
             sorted = true,
-            uncertain = marked(split.ingredients + split.instructions, unsure)
+            uncertain = toCheck(split.ingredients + split.instructions, unsure)
         )
     }
+
+    /**
+     * The [shown] lines to check: those [marked] from text the recogniser was unsure of, then any
+     * other whose amount looks misread ([suspect]), however sure the recogniser was.
+     */
+    private fun toCheck(shown: List<String>, unsure: List<String>): List<String> {
+        val low = marked(shown, unsure).toSet()
+        return shown.filter { it in low || suspect(it) }.distinct()
+    }
+
+    /**
+     * True when [line]'s amount has a shape a recogniser gives for a misread one (#198), so the
+     * cook checks it against the photo. The text is never changed:
+     * - an improper fraction over 2 to 8, "11/2" or "31/3": most likely "1 1/2" or "3 1/3" with
+     *   its space lost (and the scaler would read 5½);
+     * - a digit beside a letter that looks like one: "l/2", "O.5", "1/Z", "1O", "35o°F";
+     * - a unit glued to the word after it, where the scaler reads no unit: "1 cupraisins".
+     */
+    internal fun suspect(line: String): Boolean =
+        IMPROPER.findAll(line).any { m ->
+            // The numerator without leading zeros: two digits or more is always above 2 to 8.
+            val n = m.groupValues[1].trimStart('0')
+            val d = m.groupValues[2].toInt()
+            d in 2..8 && (n.length > 1 || (n.isNotEmpty() && n.toInt() > d))
+        } || LOOK_ALIKE.containsMatchIn(line) || gluedUnit(line)
+
+    private fun gluedUnit(line: String): Boolean {
+        val p = IngredientScaler.patterns(LanguageWords.ENGLISH)
+        val lead = p.leading.find(line) ?: return false
+        val rest = line.substring(lead.range.last + 1)
+        return !p.unitAtStart.containsMatchIn(rest) && GLUED_UNIT.containsMatchIn(rest)
+    }
+
+    // "11/2": digits, a slash, one digit, and no more digits or slashes around it.
+    private val IMPROPER = Regex("""(?<![\d/⁄.,])(\d+)[/⁄](\d)(?![\d/⁄])""")
+
+    // A letter read for a digit, or a digit's neighbour read as a letter, beside a fraction's
+    // slash or a decimal point: "l/2", "O.5", "l2", "1/Z", "1.O", "1O", "35o°F". A lowercase "o"
+    // or "l" straight after a number is not one ("1oz", "1l"), only one standing alone.
+    private val LOOK_ALIKE = Regex(
+        """(?<![\p{L}\d])[lIOo|][/⁄.,]?\d|\d[/⁄.,][lIOoZS](?!\p{L})|\d[Oo](?!\p{L})"""
+    )
+
+    // A unit word run into the next ("cupraisins", "tbspsugar"): English, as the splitter reads.
+    // Units of one or two letters ("g", "c", "l", "oz") are left out, since "2 green onions"
+    // starts with one; "cupcake" is a word of its own.
+    private val GLUED_UNIT = Regex(
+        """^\s*(?!cupcake)(?:cups?|tsps?|tbsps?|tbs|teaspoons?|tablespoons?|ounces?|pounds?|lbs|grams?)\.?\p{L}""",
+        RegexOption.IGNORE_CASE
+    )
 
     /**
      * The [shown] lines that hold, or are held in, a line the recogniser was unsure of. The

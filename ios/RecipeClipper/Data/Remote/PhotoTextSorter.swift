@@ -18,7 +18,7 @@ struct PhotoReading: Equatable {
     var cookTime: String? = nil
     var totalTime: String? = nil
     let sorted: Bool
-    /// The lines shown that came from text the recogniser was unsure of: "check this".
+    /// The lines shown to check: text the recogniser was unsure of, or an amount shaped like a misreading.
     var uncertain: [String] = []
 
     /// Nothing at all was read.
@@ -30,7 +30,8 @@ struct PhotoReading: Equatable {
 ///
 /// **Nothing is invented or corrected.** Every line is the recogniser's text (only trimmed, and
 /// cleaned by the splitter as a typed post's lines are); an amount it misread stays misread, and
-/// the lines it was unsure of are named in `uncertain` for the cook to check against the photo.
+/// the lines it was unsure of, or whose amount is shaped like a misreading ("11/2"), are named in
+/// `uncertain` for the cook to check against the photo.
 /// When the splitter finds no recipe the lines are returned unsorted, never guessed at.
 ///
 /// Pure: lines in, data out. A line-for-line port of Android's `PhotoTextSorter.kt`.
@@ -47,7 +48,7 @@ enum PhotoTextSorter {
         let split = read.isEmpty ? nil : RecipeTextSplitter.split(read.map(\.text).joined(separator: "\n"))
         guard let split, !(split.ingredients.isEmpty && split.instructions.isEmpty) else {
             let all = read.map(\.text)
-            return PhotoReading(ingredients: all, instructions: [], sorted: false, uncertain: marked(all, unsure: unsure))
+            return PhotoReading(ingredients: all, instructions: [], sorted: false, uncertain: toCheck(all, unsure: unsure))
         }
         return PhotoReading(
             ingredients: split.ingredients,
@@ -57,9 +58,61 @@ enum PhotoTextSorter {
             cookTime: split.cookTime,
             totalTime: split.totalTime,
             sorted: true,
-            uncertain: marked(split.ingredients + split.instructions, unsure: unsure)
+            uncertain: toCheck(split.ingredients + split.instructions, unsure: unsure)
         )
     }
+
+    /// The `shown` lines to check: those `marked` from text the recogniser was unsure of, then any
+    /// other whose amount looks misread (`suspect`), however sure the recogniser was.
+    private static func toCheck(_ shown: [String], unsure: [String]) -> [String] {
+        let low = Set(marked(shown, unsure: unsure))
+        var out: [String] = []
+        for line in shown where !out.contains(line) && (low.contains(line) || suspect(line)) {
+            out.append(line)
+        }
+        return out
+    }
+
+    /// True when `line`'s amount has a shape a recogniser gives for a misread one (#198), so the
+    /// cook checks it against the photo. The text is never changed:
+    /// - an improper fraction over 2 to 8, "11/2" or "31/3": most likely "1 1/2" or "3 1/3" with
+    ///   its space lost (and the scaler would read 5½);
+    /// - a digit beside a letter that looks like one: "l/2", "O.5", "1/Z", "1O", "35o°F";
+    /// - a unit glued to the word after it, where the scaler reads no unit: "1 cupraisins".
+    static func suspect(_ line: String) -> Bool {
+        let improper = improperFraction.findAll(line).contains { m in
+            // The numerator without leading zeros: two digits or more is always above 2 to 8.
+            let n = String(m[1].drop { $0 == "0" })
+            guard let d = Int(m[2]), (2...8).contains(d) else { return false }
+            return n.count > 1 || (!n.isEmpty && Int(n)! > d)
+        }
+        return improper || lookAlike.containsMatch(in: line) || gluedUnit(line)
+    }
+
+    private static func gluedUnit(_ line: String) -> Bool {
+        let p = IngredientScaler.patterns(.english)
+        guard let lead = p.leading.find(line) else { return false }
+        let rest = line.u16Substring(from: lead.end)
+        return !p.unitAtStart.containsMatch(in: rest) && gluedUnitWord.containsMatch(in: rest)
+    }
+
+    // "11/2": digits, a slash, one digit, and no more digits or slashes around it.
+    private static let improperFraction = JRegex(#"(?<![\d/⁄.,])(\d+)[/⁄](\d)(?![\d/⁄])"#)
+
+    // A letter read for a digit, or a digit's neighbour read as a letter, beside a fraction's
+    // slash or a decimal point: "l/2", "O.5", "l2", "1/Z", "1.O", "1O", "35o°F". A lowercase "o"
+    // or "l" straight after a number is not one ("1oz", "1l"), only one standing alone.
+    private static let lookAlike = JRegex(
+        #"(?<![\p{L}\d])[lIOo|][/⁄.,]?\d|\d[/⁄.,][lIOoZS](?!\p{L})|\d[Oo](?!\p{L})"#
+    )
+
+    // A unit word run into the next ("cupraisins", "tbspsugar"): English, as the splitter reads.
+    // Units of one or two letters ("g", "c", "l", "oz") are left out, since "2 green onions"
+    // starts with one; "cupcake" is a word of its own.
+    private static let gluedUnitWord = JRegex(
+        #"^\s*(?!cupcake)(?:cups?|tsps?|tbsps?|tbs|teaspoons?|tablespoons?|ounces?|pounds?|lbs|grams?)\.?\p{L}"#,
+        ignoreCase: true
+    )
 
     /// The `shown` lines that hold, or are held in, a line the recogniser was unsure of. The
     /// splitter only takes markup off a line ("1." or "•"), so a line shown still contains the

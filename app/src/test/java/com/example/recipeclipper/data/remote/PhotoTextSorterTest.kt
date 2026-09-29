@@ -51,6 +51,51 @@ class PhotoTextSorterTest {
         assertEquals(listOf("l cup butter"), reading.uncertain)
     }
 
+    @Test fun `a mixed number that lost its space is checked however sure the recogniser was`() {
+        // Read from a real card by Vision, at full confidence: "1 1/2 cups flour".
+        val misread = card.map { if (it == "1 1/2 cups flour") "11/2 cups flour" else it }
+        val reading = PhotoTextSorter.sort(lines(misread))
+
+        assertEquals("11/2 cups flour", reading.ingredients[1])
+        assertEquals(listOf("11/2 cups flour"), reading.uncertain)
+    }
+
+    @Test fun `checked lines keep the order they are shown in`() {
+        val misread = card.map {
+            when (it) {
+                "1 cup butter" -> "1 cupbutter"
+                "3. Bake at 350°F for 12 minutes." -> "3. Bake at 35O°F for 12 minutes."
+                else -> it
+            }
+        }
+        val reading = PhotoTextSorter.sort(lines(misread, unsure = setOf("2 cups rolled oats")))
+
+        assertEquals(
+            listOf("1 cupbutter", "2 cups rolled oats", "Bake at 35O°F for 12 minutes."),
+            reading.uncertain
+        )
+    }
+
+    @Test fun `amounts shaped like a misreading are suspect`() {
+        listOf(
+            "11/2 cups flour", "13/4 cups sugar", "21/2 tsp baking soda", "31/3 cups milk",
+            "Bake for 11/2 hours.", "3/2 cup water",
+            "l/2 cup sugar", "I/4 tsp salt", "O.5 kg potatoes", "1/Z cup milk", "1/S tsp salt",
+            "1O eggs", "Bake at 35o°F.", "l2 eggs", "|/2 cup oil",
+            "1 cupraisitos", "1 cupraisins", "2 tbspsugar", "1 teaspoonvanilla"
+        ).forEach { assertTrue(it, PhotoTextSorter.suspect(it)) }
+    }
+
+    @Test fun `ordinary amounts are not suspect`() {
+        listOf(
+            "1 1/2 cups flour", "1/2 cup sugar", "3/4 tsp salt", "2/2 cups", "1-1/2 cups oats",
+            "1/2-3/4 cup milk", "11/16 inch", "1 cup raisins", "1cup flour", "2 green onions",
+            "3 carrots", "12 cupcake liners", "1oz chocolate", "1l milk", "10 oz spinach",
+            "2 lb chicken", "350°F", "Bake at 350°F for 12 minutes.", "Cool for 10 min.Serve.",
+            "Aunt June's Oatmeal Cookies", "Stir in 2 eggs", "0.5 kg potatoes", "1,5 kg flour"
+        ).forEach { assertFalse(it, PhotoTextSorter.suspect(it)) }
+    }
+
     @Test fun `no confidence is not low confidence`() {
         val reading = PhotoTextSorter.sort(card.map { PhotoLine(it, null) })
 

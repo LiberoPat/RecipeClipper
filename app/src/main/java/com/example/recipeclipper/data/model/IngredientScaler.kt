@@ -520,11 +520,15 @@ object IngredientScaler {
             return (if (whole.isEmpty()) 0.0 else whole.toDoubleOrNull() ?: return null) + fraction
         }
         var total = 0.0
-        for (part in q.split(Regex("""\s+"""))) {
+        val parts = q.split(Regex("""\s+"""))
+        for (part in parts) {
             total += if ('/' in part) {
                 val (n, d) = part.split('/').map { it.toDoubleOrNull() ?: return null }
-                // "1-3/2" is neither a mixed number nor a range anyone writes.
-                if (d == 0.0 || (dashed && n >= d)) return null
+                // "1-3/2" is neither a mixed number nor a range anyone writes. An improper
+                // fraction on its own ("11/2", "3/2") is more likely a mixed number that lost its
+                // space ("1 1/2", as a photo's reading gives it, #198) than an amount: it is never
+                // read as 5½, so the line stays as written.
+                if (d == 0.0 || (dashed && n >= d) || (parts.size == 1 && n > d)) return null
                 n / d
             } else {
                 part.toDoubleOrNull() ?: return null

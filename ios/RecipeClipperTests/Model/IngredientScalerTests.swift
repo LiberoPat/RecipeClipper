@@ -57,6 +57,16 @@ final class IngredientScalerTests: XCTestCase {
         XCTAssertEqual("1-3/2 cups sugar", scale("1-3/2 cups sugar", 2.0))
     }
 
+    func testAnImproperFractionOnItsOwnStaysAsWritten() {
+        // "11/2" is "1 1/2" with its space lost far more often than 5½ (#198).
+        XCTAssertEqual("11/2 cups flour", scale("11/2 cups flour", 2.0))
+        XCTAssertEqual("3/2 cup milk", scale("3/2 cup milk", 2.0))
+        XCTAssertEqual("11/2 cups flour", UnitConverter.convert("11/2 cups flour", system: .metric, includeLiquids: false))
+        // A proper fraction and a mixed number still scale.
+        XCTAssertEqual("1 cup flour", scale("1/2 cup flour", 2.0))
+        XCTAssertEqual("3 cups flour", scale("1 1/2 cups flour", 2.0))
+    }
+
     func testEveryReaderOfTheLeadingAmountTakesAHyphenatedMixedNumberWhole() {
         XCTAssertEqual("300 g sugar", UnitConverter.convert("1-1/2 cups sugar", system: .metric, includeLiquids: false))
         XCTAssertEqual("2 cups sugar", GroceryCombiner.combine(["1-1/2 cups sugar", "1/2 cup sugar"], words: .english))
