@@ -26,7 +26,7 @@ TESTS=("$@")
   CookingWalkthroughTest#test21_chefModeUnsupportedSimulated MealPlanWalkthroughTest#test22_recipeJunkHidden
   CookingWalkthroughTest#test23_markAsCooked CookingWalkthroughTest#test24_tooltips
   CookingWalkthroughTest#test25_pantryStates CookingWalkthroughTest#test26_onionAndOnions
-  RecipesWalkthroughTest#test27_redditImport)
+  RecipesWalkthroughTest#test27_redditImport RecipesWalkthroughTest#test28_readThePhoto)
 mkdir -p "$OUT"
 export ANDROID_SERIAL=$SERIAL
 adb shell cmd uimode night no >/dev/null
@@ -35,7 +35,7 @@ adb shell cmd uimode night no >/dev/null
 # friend sends (#149), and the photo "I made this" adds (#116), a macOS sample picture.
 adb push shared/fixtures/backup/share-v1.recipeclipper /data/local/tmp/ >/dev/null
 # The Reddit listings the Reddit clip's links are read from, in place of reddit.com (#11).
-for f in recipes-self-post old-recipes-card-transcription food-photo-chatter; do
+for f in recipes-self-post old-recipes-card-transcription food-photo-chatter old-recipes-card-untranscribed; do
   adb push "shared/fixtures/reddit/$f.json" /data/local/tmp/ >/dev/null
 done
 photo=$(mktemp -d)/photo.jpg

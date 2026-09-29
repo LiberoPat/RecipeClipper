@@ -22,7 +22,9 @@ import UIKit
 ///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`;
 ///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder;
 ///   - with `RC_UITEST_REDDIT_LISTING` in the environment, Reddit links parsed from it (#11);
-///   - "Read the photo" (#198) answering the lines in `RC_UITEST_PHOTO_LINES` (`UITestPhotoTextReader`).
+///   - "Read the photo" (#198) answering the lines in `RC_UITEST_PHOTO_LINES` (`UITestPhotoTextReader`),
+///     or, with `RC_UITEST_PHOTO_VISION=1`, the real Vision reader over the local pictures that
+///     `RC_UITEST_PHOTO_IMAGES` puts in place of a post's (walkthrough 28).
 ///
 /// Scenarios:
 ///   empty     no recipes; only the six seeded lists
@@ -173,7 +175,8 @@ enum UITestSeeding {
                 : nil,
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             tourPreferences: preferences,
-            photoTextReader: UITestPhotoTextReader()
+            photoTextReader: ProcessInfo.processInfo.environment[UITestPhotoTextReader.visionKey] == "1"
+                ? VisionPhotoTextReader() : UITestPhotoTextReader()
         )
         container.libraryPolicy.startMirroring()
         return container
@@ -317,7 +320,7 @@ private struct StubRecipeSource: RecipeSource {
 
     func fetch(url: String) async -> ParseResult {
         if RedditUrls.isReddit(url), let listing = ProcessInfo.processInfo.environment[Self.redditListingKey] {
-            return RedditRecipeParser.parse(listing, sourceUrl: url)
+            return Self.localPictures(RedditRecipeParser.parse(listing, sourceUrl: url), url: url)
         }
         let path = URL(string: url)?.path ?? ""
         if path.hasSuffix("/no-recipe") { return .error(.noRecipeFound) }
@@ -332,13 +335,30 @@ private struct StubRecipeSource: RecipeSource {
             sourceUrl: url
         ))
     }
+
+    /// A post with no transcription, its pictures swapped for local files (walkthrough 28): each
+    /// line of `RC_UITEST_PHOTO_IMAGES` is `<post id>=<file URL> <file URL>…`, for the Reddit
+    /// link whose path holds `/comments/<post id>/`. The fixtures' own pictures don't exist.
+    static func localPictures(_ result: ParseResult, url: String) -> ParseResult {
+        guard case .error(.noTranscription(let title, _, _)) = result,
+              let spec = ProcessInfo.processInfo.environment["RC_UITEST_PHOTO_IMAGES"] else { return result }
+        for line in spec.split(separator: "\n") {
+            let parts = line.split(separator: "=", maxSplits: 1).map(String.init)
+            guard parts.count == 2, url.contains("/comments/\(parts[0])/") else { continue }
+            let pictures = parts[1].split(separator: " ").map(String.init)
+            return .error(.noTranscription(title: title, imageUrl: pictures.first, imageUrls: pictures))
+        }
+        return result
+    }
 }
 
 /// "Read the photo" under UI test (#198): no picture is fetched and Vision never runs. Every
 /// read answers the lines in the `RC_UITEST_PHOTO_LINES` environment variable, one per line,
 /// a leading "?" marking one the recogniser was unsure of; without it, a photo with no text.
+/// With `RC_UITEST_PHOTO_VISION=1` the real `VisionPhotoTextReader` runs instead.
 private struct UITestPhotoTextReader: PhotoTextReader {
     static let linesKey = "RC_UITEST_PHOTO_LINES"
+    static let visionKey = "RC_UITEST_PHOTO_VISION"
 
     func read(_ imageUrls: [String]) async -> PhotoTextResult {
         let text = ProcessInfo.processInfo.environment[Self.linesKey] ?? ""
