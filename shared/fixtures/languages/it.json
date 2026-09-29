@@ -1,0 +1,34 @@
+{
+  "about": "An Italian Reddit-style post and the lines read from an Italian recipe card (#208), made up in the shapes real ones take, with what the splitter and PhotoTextSorter make of them; negatives split to nothing. Read by RecipeTextSplitterLanguagesTest on both platforms.",
+  "language": "it",
+  "post": {
+    "title": "Carbonara come a Roma",
+    "body": "La ricetta che faccio da anni, niente panna!\n\nTempo di cottura: 15 minuti\n\n**Ingredienti per 4 persone**\n- 320 g di spaghetti\n- 150 g di guanciale\n- 4 tuorli\n- 50 g di pecorino romano\n- pepe nero q.b.\n\n**Procedimento**\n1. Cuocere la pasta in abbondante acqua salata.\n2. Rosolare il guanciale in padella senza olio.\n3. Sbattere i tuorli con il pecorino e il pepe.\n4. Scolare la pasta, unirla al guanciale e mantecare fuori dal fuoco con le uova.",
+    "ingredients": ["320 g di spaghetti", "150 g di guanciale", "4 tuorli", "50 g di pecorino romano", "pepe nero q.b."],
+    "instructions": [
+      "Cuocere la pasta in abbondante acqua salata.",
+      "Rosolare il guanciale in padella senza olio.",
+      "Sbattere i tuorli con il pecorino e il pepe.",
+      "Scolare la pasta, unirla al guanciale e mantecare fuori dal fuoco con le uova."
+    ],
+    "cookTime": "15min"
+  },
+  "photo": {
+    "lines": [
+      "TIRAMISÙ", "Ingredienti:", "500 g di mascarpone", "4 uova", "100 g di zucchero", "300 g di savoiardi", "2 tazzecaffè",
+      "cacao amaro q.b.", "Preparazione:", "Montare i tuorli e lo zucchero.",
+      "Aggiungere il mascarpone e poi gli albumi montati a neve.",
+      "Inzuppare i savoiardi nel caffè e alternare strati di crema.", "Spolverare di cacao e lasciare in frigo 4 ore."
+    ],
+    "ingredients": ["500 g di mascarpone", "4 uova", "100 g di zucchero", "300 g di savoiardi", "2 tazzecaffè", "cacao amaro q.b."],
+    "instructions": [
+      "Montare i tuorli e lo zucchero.", "Aggiungere il mascarpone e poi gli albumi montati a neve.",
+      "Inzuppare i savoiardi nel caffè e alternare strati di crema.", "Spolverare di cacao e lasciare in frigo 4 ore."
+    ],
+    "uncertain": ["2 tazzecaffè"]
+  },
+  "negatives": [
+    "Ieri ho fatto una torta con farina, zucchero e uova, e con un po' di burro e latte era buonissima. La prossima volta metto meno sale e più olio nell'impasto.",
+    "Qualcuno ha una ricetta per il ragù con il latte? Il mio viene sempre troppo asciutto e l'aglio brucia, grazie mille a tutti per l'aiuto!"
+  ]
+}

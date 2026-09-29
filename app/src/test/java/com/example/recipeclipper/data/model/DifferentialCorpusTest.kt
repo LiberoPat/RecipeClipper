@@ -1,6 +1,9 @@
 package com.example.recipeclipper.data.model
 
 import com.example.recipeclipper.data.remote.CardHeadings
+import com.example.recipeclipper.data.remote.PhotoLine
+import com.example.recipeclipper.data.remote.PhotoTextSorter
+import com.example.recipeclipper.data.remote.RecipeTextSplitter
 import com.example.recipeclipper.data.remote.SiteRules
 import com.example.recipeclipper.data.remote.WprmIngredients
 import com.example.recipeclipper.ui.recipe.RecipeRenderer
@@ -78,6 +81,14 @@ import java.io.File
  * ["(dfsafs -": "junk"]` about trailing texts and `, names: ["2 onions dfsafs": "onions"]` about
  * lines' names).
  *
+ * `Split("text")` rows (#208) pin [RecipeTextSplitter.detectAndSplit]: free text (a Reddit post,
+ * `\n` between lines) as the language its words say (or nil: English), then the ingredients and
+ * steps (nil: no recipe) and the yield, prep, cook and total times; write only the text.
+ *
+ * `Photo(["line", ...])` rows (#208) pin [PhotoTextSorter.sort]: a photo's lines as the language
+ * they were read in, whether they sorted, the ingredients, steps and lines to check; write only
+ * the lines. `Sus("line")` rows pin [PhotoTextSorter.suspect] (optionally `, lang: "de"`).
+ *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
@@ -125,6 +136,12 @@ class DifferentialCorpusTest {
     private val siteRow = Regex(
         """^(\s*)Site\("([a-z0-9.-]+)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]"""
     )
+    // A splitter row (#208): free text, a Reddit post's or a photo's.
+    private val splitRow = Regex("""^(\s*)Split\("((?:[^"\\]|\\.)*)"""")
+    // A photo row (#208): the lines read from a photo.
+    private val photoRow = Regex("""^(\s*)Photo\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A suspect-amount row (#198, #208): a line read from a photo, optionally its language.
+    private val suspectRow = Regex("""^(\s*)Sus\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A trailing-text row (#99): a grocery line, optionally its language.
     private val trailRow = Regex("""^(\s*)Trail\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A name-cut row (#99): a grocery line, optionally its language, the model's name for it.
@@ -242,6 +259,27 @@ class DifferentialCorpusTest {
             val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
             val shown = Durations.format(text, LanguageWords.forTag(language))?.let { q(it) } ?: "nil"
             return m.groupValues[1] + "Dur(${q(text)}$lang, $shown),"
+        }
+        splitRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            val language = RecipeTextSplitter.languageOf(text)?.let { q(it) } ?: "nil"
+            val split = RecipeTextSplitter.detectAndSplit(text)
+            val (ingredients, steps) = split?.let { list(it.ingredients) to list(it.instructions) } ?: ("nil" to "nil")
+            val extras = split?.let { optionalList(listOf(it.yield, it.prepTime, it.cookTime, it.totalTime)) } ?: "[]"
+            return m.groupValues[1] + "Split(${q(text)}, $language, $ingredients, $steps, $extras),"
+        }
+        photoRow.find(line)?.let { m ->
+            val lines = literal.findAll(m.groupValues[2]).map { unescape(it.groupValues[1]) }.toList()
+            val reading = PhotoTextSorter.sort(lines.map { PhotoLine(it) })
+            val language = reading.language?.let { q(it) } ?: "nil"
+            return m.groupValues[1] + "Photo(${list(lines)}, $language, ${reading.sorted}, " +
+                "${list(reading.ingredients)}, ${list(reading.instructions)}, ${list(reading.uncertain)}),"
+        }
+        suspectRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            val language = m.groupValues[3].ifEmpty { "en" }
+            val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+            return m.groupValues[1] + "Sus(${q(text)}$lang, ${PhotoTextSorter.suspect(text, LanguageWords.forTag(language)!!)}),"
         }
         icsRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])

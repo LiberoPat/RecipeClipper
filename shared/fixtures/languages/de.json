@@ -1,0 +1,35 @@
+{
+  "about": "A German Reddit-style post and the lines read from a German recipe card (#208), made up in the shapes real ones take, with what the splitter and PhotoTextSorter make of them; negatives split to nothing. Read by RecipeTextSplitterLanguagesTest on both platforms.",
+  "language": "de",
+  "post": {
+    "title": "Omas Pfannkuchen",
+    "body": "Hab das Rezept von meiner Oma, super einfach und schnell!\n\nPortionen: 4\n\nZubereitungszeit: 10 Minuten\n\n**Zutaten (für 4 Personen):**\n\n* 250 g Mehl\n* 2 EL Zucker\n* 1 Prise Salz\n* 500 ml Milch\n* 3 Eier\n\n**Für die Füllung**\n\n* 1 Glas Apfelmus\n\n**Zubereitung:**\n\n1\\. Mehl, Zucker und Salz in einer Schüssel mischen.\n2\\. Milch und Eier dazugeben und zu einem glatten Teig verrühren.\n3\\. Den Teig 30 Minuten ruhen lassen und in der Pfanne ausbacken.\n\n**Tipps**\n\nSchmeckt auch mit Zimt und Zucker.",
+    "ingredients": ["250 g Mehl", "2 EL Zucker", "1 Prise Salz", "500 ml Milch", "3 Eier", "Für die Füllung:", "1 Glas Apfelmus"],
+    "instructions": [
+      "Mehl, Zucker und Salz in einer Schüssel mischen.",
+      "Milch und Eier dazugeben und zu einem glatten Teig verrühren.",
+      "Den Teig 30 Minuten ruhen lassen und in der Pfanne ausbacken."
+    ],
+    "yield": "4",
+    "prepTime": "10min"
+  },
+  "photo": {
+    "lines": [
+      "Omas Apfelkuchen", "ZUTATEN", "200 g Butter", "150 g Zucker", "3 Eier", "300 g Mehl", "1 Pck. Backpulver",
+      "2 ELMilch", "4 Äpfel", "ZUBEREITUNG:", "Butter und Zucker schaumig rühren.", "Eier nacheinander unterrühren.",
+      "Mehl mit Backpulver mischen und mit der Milch unterrühren.", "Äpfel schälen, in Spalten schneiden und auf den Teig legen.",
+      "Bei 180 °C etwa 45 Minuten backen."
+    ],
+    "ingredients": ["200 g Butter", "150 g Zucker", "3 Eier", "300 g Mehl", "1 Pck. Backpulver", "2 ELMilch", "4 Äpfel"],
+    "instructions": [
+      "Butter und Zucker schaumig rühren.", "Eier nacheinander unterrühren.",
+      "Mehl mit Backpulver mischen und mit der Milch unterrühren.", "Äpfel schälen, in Spalten schneiden und auf den Teig legen.",
+      "Bei 180 °C etwa 45 Minuten backen."
+    ],
+    "uncertain": ["2 ELMilch"]
+  },
+  "negatives": [
+    "Ich habe gestern einen Kuchen mit Mehl, Zucker und Eiern gebacken und er war mit Sahne und Milch einfach wunderbar. Nächstes Mal mache ich mehr davon, das Salz lasse ich aber weg.",
+    "Hat jemand ein gutes Rezept für Käsekuchen mit Quark und Zucker? Meiner wird immer rissig und das Mehl klumpt, danke euch und mit Grüßen!"
+  ]
+}

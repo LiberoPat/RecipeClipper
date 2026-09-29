@@ -1,0 +1,36 @@
+{
+  "about": "A Portuguese (Brazilian) Reddit-style post and the lines read from a Portuguese recipe card (#208), made up in the shapes real ones take, with what the splitter and PhotoTextSorter make of them; negatives split to nothing. Read by RecipeTextSplitterLanguagesTest on both platforms.",
+  "language": "pt",
+  "post": {
+    "title": "Bolo de cenoura da minha mãe",
+    "body": "Receita de família, fica super fofinho 🥕\n\nRende 12 pedaços\n\n**Ingredientes**\n- 3 cenouras médias\n- 4 ovos\n- 1 xícara (chá) de óleo\n- 2 xícaras (chá) de açúcar\n- 2 e 1/2 xícaras (chá) de farinha de trigo\n- 1 colher (sopa) de fermento em pó\n\n**Modo de preparo**\n1. Bata no liquidificador as cenouras, os ovos e o óleo.\n2. Misture o açúcar e a farinha e junte ao creme.\n3. Acrescente o fermento e asse por 40 minutos.\n\n**Dicas**\nCubra com calda de chocolate.",
+    "ingredients": [
+      "3 cenouras médias", "4 ovos", "1 xícara (chá) de óleo", "2 xícaras (chá) de açúcar",
+      "2 e 1/2 xícaras (chá) de farinha de trigo", "1 colher (sopa) de fermento em pó"
+    ],
+    "instructions": [
+      "Bata no liquidificador as cenouras, os ovos e o óleo.",
+      "Misture o açúcar e a farinha e junte ao creme.",
+      "Acrescente o fermento e asse por 40 minutos."
+    ],
+    "yield": "Rende 12 pedaços"
+  },
+  "photo": {
+    "lines": [
+      "Pão de queijo", "INGREDIENTES", "500 g de polvilho doce", "1 xícaraleite", "1/2 xícara (chá) de óleo", "2 ovos",
+      "200 g de queijo ralado", "Sal a gosto", "MODO DE PREPARO", "Ferva o leite com o óleo e o sal.",
+      "Escalde o polvilho e deixe esfriar.", "Junte os ovos e o queijo e sove bem.",
+      "Faça bolinhas e asse em forno a 180 °C por 25 minutos."
+    ],
+    "ingredients": ["500 g de polvilho doce", "1 xícaraleite", "1/2 xícara (chá) de óleo", "2 ovos", "200 g de queijo ralado", "Sal a gosto"],
+    "instructions": [
+      "Ferva o leite com o óleo e o sal.", "Escalde o polvilho e deixe esfriar.", "Junte os ovos e o queijo e sove bem.",
+      "Faça bolinhas e asse em forno a 180 °C por 25 minutos."
+    ],
+    "uncertain": ["1 xícaraleite"]
+  },
+  "negatives": [
+    "Ontem fiz um bolo com farinha, açúcar e ovos, e com um pouco de manteiga e leite ficou ótimo. Da próxima vez vou colocar menos alho no pão, com azeite fica melhor.",
+    "Alguém tem uma receita de pudim com leite condensado e ovos? O meu sempre fica cheio de furinhos e o açúcar queima, obrigado a todos!"
+  ]
+}

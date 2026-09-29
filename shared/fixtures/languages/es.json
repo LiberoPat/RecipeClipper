@@ -1,0 +1,33 @@
+{
+  "about": "A Spanish Reddit-style post and the lines read from a Spanish recipe card (#208), made up in the shapes real ones take, with what the splitter and PhotoTextSorter make of them; negatives split to nothing. Read by RecipeTextSplitterLanguagesTest on both platforms.",
+  "language": "es",
+  "post": {
+    "title": "Crepes fáciles",
+    "body": "Las hago todos los domingos, espero que os gusten.\n\nTiempo de cocción: 20 minutos\n\n**Ingredientes para 4 personas**\n\n- 2 tazas de harina\n- 1 cucharadita de sal\n- 3 huevos\n- 1 taza de leche\n- 2 cucharadas de mantequilla derretida\n\n**Preparación**\n\n1. Mezclar la harina y la sal en un bol.\n2. Añadir los huevos y la leche y batir bien.\n3. Incorporar la mantequilla y dejar reposar 10 minutos.\n\n**Notas**\n\nSe pueden rellenar con dulce de leche.",
+    "ingredients": ["2 tazas de harina", "1 cucharadita de sal", "3 huevos", "1 taza de leche", "2 cucharadas de mantequilla derretida"],
+    "instructions": [
+      "Mezclar la harina y la sal en un bol.",
+      "Añadir los huevos y la leche y batir bien.",
+      "Incorporar la mantequilla y dejar reposar 10 minutos."
+    ],
+    "cookTime": "20min"
+  },
+  "photo": {
+    "lines": [
+      "TORTILLA DE PATATAS", "Ingredientes", "4 patatas medianas", "6 huevos", "1 cebolla", "1 tazaaceite de oliva",
+      "Sal al gusto", "Elaboración", "Pelar y cortar las patatas en láminas finas.",
+      "Freír las patatas y la cebolla a fuego lento.",
+      "Batir los huevos, mezclar con las patatas y cuajar la tortilla por ambos lados."
+    ],
+    "ingredients": ["4 patatas medianas", "6 huevos", "1 cebolla", "1 tazaaceite de oliva", "Sal al gusto"],
+    "instructions": [
+      "Pelar y cortar las patatas en láminas finas.", "Freír las patatas y la cebolla a fuego lento.",
+      "Batir los huevos, mezclar con las patatas y cuajar la tortilla por ambos lados."
+    ],
+    "uncertain": ["1 tazaaceite de oliva"]
+  },
+  "negatives": [
+    "Ayer hice una tarta con harina, azúcar y huevos, y con un poco de leche y mantequilla quedó buenísima. La próxima vez le pongo más ajo al pan, que con aceite sabe mejor.",
+    "¿Alguien tiene una receta de flan con leche y huevos? El mío siempre sale con agujeros y el azúcar se quema, ¡gracias y un saludo!"
+  ]
+}

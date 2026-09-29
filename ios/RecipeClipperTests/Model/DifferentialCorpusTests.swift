@@ -53,6 +53,13 @@ import XCTest
 // Rendering rows (#169): a recipe's yield, chosen servings, lines and steps, optionally the model's
 // answers about junk (#174), then what RecipeRenderer.content shows of it (details beside
 // `Render`). Write only the inputs.
+// Splitter rows (#208): free text (a Reddit post, or a photo's lines), then the language its words
+// say (nil: English), RecipeTextSplitter.detectAndSplit's ingredients and steps (nil: no recipe) and
+// [yield, prep, cook, total]. Write only `Split("Zutaten:\n- 2 Eier\n…"),`.
+// Photo rows (#208): a photo's lines, then PhotoTextSorter.sort's language, whether they sorted, the
+// ingredients, steps and lines to check. Write only `Photo(["ZUTATEN", "2 Eier", …]),`.
+// Suspect rows (#198, #208): a line read from a photo, then PhotoTextSorter.suspect. Write only
+// `Sus("2 ELZucker", lang: "de"),`.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -1699,6 +1706,98 @@ final class DifferentialCorpusTests: XCTestCase {
         Pick(.step, "Add 9×13-inch pan.", "Add 9x13-inch pan.", "Add 9×13-inch pan."),
     ]
 
+    private struct Split {
+        let text: String; let language: String?; let ingredients: [String]?; let instructions: [String]?
+        let extras: [String?]
+        init(_ text: String, _ language: String?, _ ingredients: [String]?, _ instructions: [String]?, _ extras: [String?]) {
+            self.text = text; self.language = language; self.ingredients = ingredients
+            self.instructions = instructions; self.extras = extras
+        }
+    }
+
+    // Splitter rows (#208): see the header. Write only the text.
+    private static let splits: [Split] = [
+        Split("**Ingredients:**\n- 2 cups flour\n- 1 tsp salt\n\n**Directions:**\n1. Mix the flour and salt.\n2. Bake for 20 minutes.", "en", ["2 cups flour", "1 tsp salt"], ["Mix the flour and salt.", "Bake for 20 minutes."], [nil, nil, nil, nil]),
+        Split("**Zutaten:**\n- 500 g Mehl\n- 2 EL Zucker\n- 1 Prise Salz\n\n**Zubereitung:**\n1. Mehl und Zucker mischen.\n2. Salz dazugeben und verrühren.", "de", ["500 g Mehl", "2 EL Zucker", "1 Prise Salz"], ["Mehl und Zucker mischen.", "Salz dazugeben und verrühren."], [nil, nil, nil, nil]),
+        Split("Portionen: 4\nBackzeit: 45 Minuten\n**Trockene Zutaten**\n- 300 g Mehl\n- 1 TL Salz\n- 2 EL Zucker\n**Nasse Zutaten**\n- 3 Eier\n- 200 ml Milch\nZUBEREITNUG\nSchritt 1: Mehl, Salz und Zucker mischen.\nSchritt 2: Eier und Milch dazugeben.", "de", ["Trockene Zutaten:", "300 g Mehl", "1 TL Salz", "2 EL Zucker", "Nasse Zutaten:", "3 Eier", "200 ml Milch"], ["Mehl, Salz und Zucker mischen.", "Eier und Milch dazugeben."], ["4", nil, "45min", nil]),
+        Split("Zutaten für 4 Personen\n500 g Kartoffeln\n1 Zwiebel\n2 EL Öl\nSalz und Pfeffer\nAnleitung\nKartoffeln schälen und mit der Zwiebel in Öl braten.", "de", ["500 g Kartoffeln", "1 Zwiebel", "2 EL Öl", "Salz und Pfeffer"], ["Kartoffeln schälen und mit der Zwiebel in Öl braten."], [nil, nil, nil, nil]),
+        Split("Tiempo de cocción: 20 minutos\n**Ingredientes para 4 personas**\n- 2 tazas de harina\n- 1 cucharadita de sal\n- 3 huevos\n**Preparación**\nPaso 1. Mezclar la harina y la sal.\nPaso 2. Añadir los huevos y batir.", "es", ["2 tazas de harina", "1 cucharadita de sal", "3 huevos"], ["Mezclar la harina y la sal.", "Añadir los huevos y batir."], [nil, nil, "20min", nil]),
+        Split("**Ingredientes secos**\n- 2 tazas de harina\n- 1 taza de azúcar\n**Ingredientes húmedos**\n- 2 huevos\n- 1 taza de leche\n**Mezclar los ingredientes**\n**Elaboración**\n1. Mezclar todo con la leche y hornear.", "es", ["Ingredientes secos:", "2 tazas de harina", "1 taza de azúcar", "Ingredientes húmedos:", "2 huevos", "1 taza de leche", "Mezclar los ingredientes:"], ["Mezclar todo con la leche y hornear."], [nil, nil, nil, nil]),
+        Split("Pour 6 personnes\n**Ingrédients pour la pâte :**\n- 250 g de farine\n- 125 g de beurre\n- 1 pincée de sel\n**Préparation :**\nÉtape 1 : Mélanger la farine et le beurre.\nÉtape 2 : Cuire 30 minutes.", "fr", ["250 g de farine", "125 g de beurre", "1 pincée de sel"], ["Mélanger la farine et le beurre.", "Cuire 30 minutes."], ["Pour 6 personnes", nil, nil, nil]),
+        Split("INGRÉDIENTS\n2 c. à soupe de sucre\n3 œufs\n50 cl de lait\nÉTAPES\n1. Battre les œufs et le sucre.\n2. Ajouter le lait et la farine.", "fr", ["2 c. à soupe de sucre", "3 œufs", "50 cl de lait"], ["Battre les œufs et le sucre.", "Ajouter le lait et la farine."], [nil, nil, nil, nil]),
+        Split("Tempo di cottura: 15 minuti\n**Ingredienti per 4 persone**\n- 320 g di spaghetti\n- 4 uova\n- pepe nero q.b.\n**Procedimento**\n1. Cuocere la pasta.\n2. Unire le uova e il pepe.", "it", ["320 g di spaghetti", "4 uova", "pepe nero q.b."], ["Cuocere la pasta.", "Unire le uova e il pepe."], [nil, nil, "15min", nil]),
+        Split("**Ingredienti per la crema**\n- 500 g di mascarpone\n- 100 g di zucchero\n- 4 uova\n**Procedimeto**\nPasso 1: Montare le uova e lo zucchero.\nPasso 2: Aggiungere il mascarpone.", "it", ["Ingredienti per la crema:", "500 g di mascarpone", "100 g di zucchero", "4 uova"], ["Montare le uova e lo zucchero.", "Aggiungere il mascarpone."], [nil, nil, nil, nil]),
+        Split("Rende 12 pedaços\n**Ingredientes**\n- 3 cenouras\n- 4 ovos\n- 2 xícaras (chá) de açúcar\n- 1 colher (sopa) de fermento\n**Modo de preparo**\nPasso 1 - Bata as cenouras e os ovos.\nPasso 2 - Junte o açúcar e o fermento e asse.", "pt", ["3 cenouras", "4 ovos", "2 xícaras (chá) de açúcar", "1 colher (sopa) de fermento"], ["Bata as cenouras e os ovos.", "Junte o açúcar e o fermento e asse."], ["Rende 12 pedaços", nil, nil, nil]),
+        Split("Tempo de preparo: 15 minutos\nINGREDIENTES DA COBERTURA\n2 colheres de sopa de manteiga\n1 xícara de açúcar\n3 colheres de chocolate\nPREPARO\n1. Leve tudo ao fogo e mexa.", "pt", ["INGREDIENTES DA COBERTURA:", "2 colheres de sopa de manteiga", "1 xícara de açúcar", "3 colheres de chocolate"], ["Leve tudo ao fogo e mexa."], [nil, "15min", nil, nil]),
+        Split("【材料】（2人分）\n- 鶏もも肉 1枚\n- 醤油 大さじ2\n- 砂糖 小さじ1\n【作り方】\n1. 鶏肉を切る。\n2. 醤油と砂糖で煮る。", "ja", ["鶏もも肉 1枚", "醤油 大さじ2", "砂糖 小さじ1"], ["鶏肉を切る。", "醤油と砂糖で煮る。"], [nil, nil, nil, nil]),
+        Split("材料\nじゃがいも 3個\n玉ねぎ 1個\n醤油 大さじ3\n手順\n1. 切る。\n2. 煮る。\nコツ・ポイント\n弱火で煮る。", "ja", ["じゃがいも 3個", "玉ねぎ 1個", "醤油 大さじ3"], ["切る。", "煮る。"], [nil, nil, nil, nil]),
+        Split("Ich habe gestern einen Kuchen mit Mehl, Zucker und Eiern gebacken und er war mit Sahne und Milch wunderbar.", "de", nil, nil, []),
+        Split("¿Alguien tiene una receta de flan con leche y huevos? El mío siempre sale con agujeros, ¡gracias!", "es", nil, nil, []),
+        Split("Zutaten\n2 Eier\nZubereitung\nKochen.", nil, nil, nil, []),
+        Split("昨日は醤油と砂糖で鶏肉を焼きました。大さじ2のみりんを入れました。", nil, nil, nil, []),
+    ]
+
+    private struct Photo {
+        let lines: [String]; let language: String?; let sorted: Bool
+        let ingredients: [String]; let instructions: [String]; let uncertain: [String]
+        init(_ lines: [String], _ language: String?, _ sorted: Bool, _ ingredients: [String], _ instructions: [String], _ uncertain: [String]) {
+            self.lines = lines; self.language = language; self.sorted = sorted
+            self.ingredients = ingredients; self.instructions = instructions; self.uncertain = uncertain
+        }
+    }
+
+    // Photo rows (#208): see the header. Write only the lines.
+    private static let photos: [Photo] = [
+        Photo(["Banana Bread", "INGREDIENTS", "3 ripe bananas", "1 cupsugar", "11/2 cups flour", "1 large egg", "DIRECTIONS", "Mash the bananas and the sugar.", "Stir in the egg and the flour and bake."], "en", true, ["3 ripe bananas", "1 cupsugar", "11/2 cups flour", "1 large egg"], ["Mash the bananas and the sugar.", "Stir in the egg and the flour and bake."], ["1 cupsugar", "11/2 cups flour"]),
+        Photo(["Omas Apfelkuchen", "ZUTATEN", "200 g Butter", "150 g Zucker", "3 Eier", "2 ELMilch", "300 g Mehl", "ZUBEREITUNG:", "Butter und Zucker schaumig rühren.", "Eier und Mehl unterrühren und backen."], "de", true, ["200 g Butter", "150 g Zucker", "3 Eier", "2 ELMilch", "300 g Mehl"], ["Butter und Zucker schaumig rühren.", "Eier und Mehl unterrühren und backen."], ["2 ELMilch"]),
+        Photo(["TORTILLA", "Ingredientes", "4 patatas", "6 huevos", "1 cebolla", "1 tazaaceite", "Sal al gusto", "Elaboración", "Pelar y cortar las patatas.", "Batir los huevos y cuajar la tortilla con el aceite."], "es", true, ["4 patatas", "6 huevos", "1 cebolla", "1 tazaaceite", "Sal al gusto"], ["Pelar y cortar las patatas.", "Batir los huevos y cuajar la tortilla con el aceite."], ["1 tazaaceite"]),
+        Photo(["Crêpes", "INGRÉDIENTS", "250 g de farine", "4 œufs", "1/2 l de lait", "2 c. à soupesucre", "1 pincée de sel", "PRÉPARATION", "Mettre la farine dans un saladier.", "Ajouter les œufs puis le lait et le sel."], "fr", true, ["250 g de farine", "4 œufs", "1/2 l de lait", "2 c. à soupesucre", "1 pincée de sel"], ["Mettre la farine dans un saladier.", "Ajouter les œufs puis le lait et le sel."], ["2 c. à soupesucre"]),
+        Photo(["Tiramisù", "Ingredienti:", "500 g di mascarpone", "4 uova", "100 g di zucchero", "2 tazzecaffè", "cacao q.b.", "Preparazione:", "Montare le uova e lo zucchero.", "Inzuppare i savoiardi nel caffè."], "it", true, ["500 g di mascarpone", "4 uova", "100 g di zucchero", "2 tazzecaffè", "cacao q.b."], ["Montare le uova e lo zucchero.", "Inzuppare i savoiardi nel caffè."], ["2 tazzecaffè"]),
+        Photo(["Pão de queijo", "INGREDIENTES", "500 g de polvilho", "1 xícaraleite", "2 ovos", "200 g de queijo", "Sal a gosto", "MODO DE PREPARO", "Ferva o leite com o sal.", "Junte os ovos e o queijo e asse."], "pt", true, ["500 g de polvilho", "1 xícaraleite", "2 ovos", "200 g de queijo", "Sal a gosto"], ["Ferva o leite com o sal.", "Junte os ovos e o queijo e asse."], ["1 xícaraleite"]),
+        Photo(["肉じゃが", "材料", "じゃがいも 3個", "玉ねぎ 1個", "醤油 大さじ3", "砂糖 大さじ2", "作り方", "1. じゃがいもを切る。", "2. 煮る。"], "ja", true, ["じゃがいも 3個", "玉ねぎ 1個", "醤油 大さじ3", "砂糖 大さじ2"], ["じゃがいもを切る。", "煮る。"], []),
+        Photo(["Wir haben gestern gebacken.", "Mit Mehl und Zucker und Eiern.", "Es war lecker."], "de", false, ["Wir haben gestern gebacken.", "Mit Mehl und Zucker und Eiern.", "Es war lecker."], [], []),
+    ]
+
+    private struct Sus {
+        let line: String; let words: LanguageWords; let suspect: Bool
+        init(_ line: String, lang: String = "en", _ suspect: Bool) {
+            self.line = line; self.words = LanguageWords.forTag(lang)!; self.suspect = suspect
+        }
+    }
+
+    // Suspect rows (#198, #208): see the header. Write only the line (and its language).
+    private static let suspects: [Sus] = [
+        Sus("1 cupraisins", true),
+        Sus("2 tbspsugar", true),
+        Sus("2 cupcakes", false),
+        Sus("2 green onions", false),
+        Sus("2 cups flour", false),
+        Sus("11/2 cups flour", true),
+        Sus("2 ELZucker", lang: "de", true),
+        Sus("1 TLSalz", lang: "de", true),
+        Sus("2 Esslöffelzucker", lang: "de", true),
+        Sus("2 EL Zucker", lang: "de", false),
+        Sus("2 Eier", lang: "de", false),
+        Sus("2 Elche", lang: "de", false),
+        Sus("1 cupraisins", lang: "de", false),
+        Sus("1 tazaharina", lang: "es", true),
+        Sus("2 cucharadasazúcar", lang: "es", true),
+        Sus("1 taza de harina", lang: "es", false),
+        Sus("2 cucharaditas de sal", lang: "es", false),
+        Sus("1 c. à soupesucre", lang: "fr", true),
+        Sus("2 cuillères à soupesucre", lang: "fr", true),
+        Sus("2 cuillères de sucre", lang: "fr", false),
+        Sus("2 cassonade", lang: "fr", false),
+        Sus("2 cucchiaizucchero", lang: "it", true),
+        Sus("1 cucchiaino di sale", lang: "it", false),
+        Sus("1 litro di latte", lang: "it", false),
+        Sus("1 xícaraleite", lang: "pt", true),
+        Sus("2 colheresaçúcar", lang: "pt", true),
+        Sus("2 colheres de sopa de açúcar", lang: "pt", false),
+        Sus("砂糖 大さじ2", lang: "ja", false),
+        Sus("11/2 カップ", lang: "ja", true),
+    ]
+
     // Rendering rows (#169): a recipe's yield (or nil), chosen servings (or nil), ingredients and
     // steps, optionally Chef mode's saved short steps, then RecipeRenderer.content in Metric and
     // Celsius with amounts in steps on: the servings stepper as [base, target] (nil: none), the
@@ -1815,6 +1914,32 @@ final class DifferentialCorpusTests: XCTestCase {
         for row in Self.groceries {
             XCTAssertEqual(GroceryCombiner.combine(row.lines, words: row.words), row.combined, "combine: \(row.lines)")
             XCTAssertEqual(row.lines.map { Aisles.of($0, words: row.words).key }, row.aisles, "aisles: \(row.lines)")
+        }
+    }
+
+    func testSplitterMatchesKotlin() {
+        for row in Self.splits {
+            XCTAssertEqual(RecipeTextSplitter.languageOf(row.text), row.language, row.text)
+            let split = RecipeTextSplitter.detectAndSplit(row.text)
+            XCTAssertEqual(split?.ingredients, row.ingredients, row.text)
+            XCTAssertEqual(split?.instructions, row.instructions, row.text)
+            let extras: [String?] = split.map { [$0.yield, $0.prepTime, $0.cookTime, $0.totalTime] } ?? []
+            XCTAssertEqual(extras, row.extras, row.text)
+        }
+    }
+
+    func testPhotoTextSorterMatchesKotlin() {
+        for row in Self.photos {
+            let reading = PhotoTextSorter.sort(row.lines.map { PhotoLine(text: $0) })
+            let label = row.lines.joined(separator: " / ")
+            XCTAssertEqual(reading.language, row.language, label)
+            XCTAssertEqual(reading.sorted, row.sorted, label)
+            XCTAssertEqual(reading.ingredients, row.ingredients, label)
+            XCTAssertEqual(reading.instructions, row.instructions, label)
+            XCTAssertEqual(reading.uncertain, row.uncertain, label)
+        }
+        for row in Self.suspects {
+            XCTAssertEqual(PhotoTextSorter.suspect(row.line, words: row.words), row.suspect, row.line)
         }
     }
 
