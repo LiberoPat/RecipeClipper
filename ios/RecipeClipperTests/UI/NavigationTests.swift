@@ -20,6 +20,20 @@ final class NavigationTests: XCTestCase {
         XCTAssertNil(DeepLink.sharedUrl(from: try XCTUnwrap(URL(string: "recipeclipper://import?url="))))
     }
 
+    /// A saved clip replaces the clip and the error screen it was opened from (#37). One Reddit's
+    /// block opened (#213) has no error screen under it, so a recipe open beneath stays.
+    func testASavedClipReplacesOnlyTheScreensItCameFrom() {
+        let router = Router()
+        router.path = [.recipes, .importUrl("https://example.com/no-recipe"), .clip("https://example.com/no-recipe")]
+        router.openSavedClip(5)
+        XCTAssertEqual(router.path, [.recipes, .recipe(id: 5)])
+
+        let post = "https://www.reddit.com/r/recipes/comments/1abc01/x/"
+        router.path = [.importUrl("https://example.com/soup"), .clip(post, blocked: true)]
+        router.openSavedClip(6)
+        XCTAssertEqual(router.path, [.importUrl("https://example.com/soup"), .recipe(id: 6)])
+    }
+
     func testEveryShareIsPushedEvenARepeatWhileRunning() throws {
         let router = Router()
         let link = try XCTUnwrap(DeepLink.importUrl(for: "https://example.com/soup"))

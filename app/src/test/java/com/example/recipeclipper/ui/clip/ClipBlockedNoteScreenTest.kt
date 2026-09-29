@@ -72,12 +72,13 @@ class ClipBlockedNoteScreenTest {
             SavedStateHandle(mapOf(RecipeViewModel.URL_ARG to post)), repository, FakeAppPreferences(), { 0L },
             FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler()
         )
+        val saveViewModel = SaveToListViewModel(FakeListRepository())
         compose.setContent {
             RecipeScreen(
                 onBack = {},
                 onClipBlocked = { clipped += it },
                 viewModel = viewModel,
-                saveViewModel = SaveToListViewModel(FakeListRepository())
+                saveViewModel = saveViewModel
             )
         }
         compose.waitForIdle()

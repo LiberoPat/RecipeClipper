@@ -250,16 +250,16 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             navArgument(ClipViewModel.URL_ARG) { type = NavType.StringType },
             navArgument(ClipViewModel.BLOCKED_ARG) { type = NavType.BoolType; defaultValue = false }
         )
-    ) {
+    ) { entry ->
+        // Reddit's block (#213) opened it in the import's place: no error screen under it.
+        val blocked = entry.arguments?.getBoolean(ClipViewModel.BLOCKED_ARG) == true
         ClipScreen(
             onCancel = { navController.popBackStack() },
             // The saved clip replaces the clip screen and the error screen under it, so Back
-            // from the recipe goes where the share came from. A clip Reddit's block opened
-            // (#213) already replaced the import, so there is no error screen under it.
+            // from the recipe goes where the share came from.
             onSaved = { id ->
-                val overError = navController.previousBackStackEntry?.destination?.route == Routes.IMPORT
                 navController.navigate(Routes.recipe(id)) {
-                    popUpTo(if (overError) Routes.IMPORT else Routes.CLIP) { inclusive = true }
+                    popUpTo(if (blocked) Routes.CLIP else Routes.IMPORT) { inclusive = true }
                 }
             }
         )

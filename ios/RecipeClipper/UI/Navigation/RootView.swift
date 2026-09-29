@@ -37,13 +37,13 @@ struct RootView: View {
             // A new user's sample recipe (#151, #190), in the UI's language (English if the sample
             // isn't written in it).
             .task { await container.firstRunTour.onLaunch(language: Bundle.main.preferredLocalizations.first) }
-            // The share extension saves from its own process; catch up on coming back.
             // A post the share extension couldn't read (#213) opens in "Clip it yourself".
             .onChange(of: scenePhase, initial: true) { _, phase in
                 if phase == .active, let url = container.takePendingClip() {
                     router.openInRecipes(.clip(url, blocked: true))
                 }
             }
+            // The share extension saves from its own process; catch up on coming back.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { container.refreshAfterExternalChanges() }
                 // The automatic backup copy (#150): leaving the app is when a changed library is
