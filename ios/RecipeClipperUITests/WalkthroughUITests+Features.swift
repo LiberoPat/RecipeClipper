@@ -214,4 +214,87 @@ extension WalkthroughUITests {
         require(text("Couldn't read a recipe from the photo: finish it by hand."), "the fallback note", within: 30)
         pause(4)
     }
+
+    /// Reading other languages (#208): a German Reddit post (the `de` language fixture's, through
+    /// the real parser) sorted under its German headings, a serving more and Metric; then a French
+    /// recipe card read by the real Vision reader (`shared/fixtures/reddit/photos/card-fr.jpg`,
+    /// drawn from the `fr` fixture's photo lines), its glued "2 c. à soupesucre" flagged, fixed
+    /// and saved.
+    func test29_readingOtherLanguages() throws {
+        let bundle = Bundle(for: WalkthroughUITests.self)
+        func listing(_ name: String) throws -> String {
+            try String(contentsOf: try XCTUnwrap(bundle.url(forResource: name, withExtension: "json", subdirectory: "reddit")), encoding: .utf8)
+        }
+        let card = try XCTUnwrap(bundle.url(forResource: "card-fr", withExtension: "jpg", subdirectory: "reddit/photos"))
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "mealPlan,reddit,photoText"]
+        app.launchEnvironment["RC_UITEST_REDDIT_LISTING_1f8b4de"] = try listing("de-self-post")
+        app.launchEnvironment["RC_UITEST_REDDIT_LISTING_1f8c5fr"] = try listing("fr-card-untranscribed")
+        app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
+        app.launchEnvironment["RC_UITEST_PHOTO_IMAGES"] = "1f8c5fr=\(card.absoluteString)"
+        app.launch()
+        self.app = app
+        let field = require(app.textFields["Recipe URL"], "Home")
+        mark("START")
+        pause()
+
+        // The German post, its headings read in German, a serving more, then Metric.
+        field.tap()
+        field.typeText("https://www.reddit.com/r/Kochen/comments/1f8b4de/omas_pfannkuchen/")
+        pause(0.8)
+        app.scrollViews.firstMatch.buttons["Go"].tap()
+        require(bookmark, "the recipe screen")
+        pause(2.5)
+        require(app.buttons["Increase servings"], "the Serves stepper").tap()
+        pause(1.5)
+        require(app.buttons["Change units"], "the units menu").tap()
+        pause(1)
+        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Metric'")).firstMatch, "Metric").tap()
+        pause(2.5)
+        app.swipeUp()
+        pause(2)
+        app.swipeUp()
+        pause(2)
+
+        // The French card, read from the photo.
+        back()
+        let link = require(app.textFields["Recipe URL"], "Home")
+        link.tap()
+        link.typeText("https://www.reddit.com/r/cuisine/comments/1f8c5fr/la_fiche_de_crepes_de_ma_grandmere/")
+        pause(0.8)
+        app.scrollViews.firstMatch.buttons["Go"].tap()
+        require(textContaining("No recipe text found"), "the post's no-transcription note")
+        pause(2)
+        require(app.buttons["recipe.readPhoto"], "Read the photo").tap()
+        require(text("Check the recipe"), "the review")
+        require(textContaining("Read from the photo"), "how the reading went", within: 30)
+        pause(2)
+        scrollTo(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
+        pause(2.5)
+
+        // Fix the glued line, as clip 28 does: the whole box typed back corrected.
+        let box = app.descendants(matching: .any).matching(NSPredicate(
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "de farine"
+        )).firstMatch
+        scrollTo(box, "the ingredients")
+        pause()
+        let typed = box.value as? String ?? ""
+        let fixed = typed.replacingOccurrences(of: "soupesucre", with: "soupe de sucre")
+        for _ in 0..<6 where box.frame.maxY > app.frame.maxY - 140 {
+            app.swipeUp(velocity: .slow)
+        }
+        box.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.97)).tap()
+        pause(0.8)
+        box.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count + 2))
+        pause(0.5)
+        box.typeText(fixed)
+        pause(2)
+        require(app.buttons["edit.save"], "Save").tap()
+        require(bookmark, "the saved recipe")
+        require(textContaining("Clipped by you"), "the clip's credit")
+        pause(2.5)
+        app.swipeUp()
+        pause(2.5)
+    }
 }

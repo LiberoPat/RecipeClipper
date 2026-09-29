@@ -1,0 +1,63 @@
+[
+ {
+  "kind": "Listing",
+  "data": {
+   "after": null,
+   "dist": 1,
+   "modhash": "",
+   "geo_filter": "",
+   "before": null,
+   "children": [
+    {
+     "kind": "t3",
+     "data": {
+      "subreddit": "Kochen",
+      "subreddit_name_prefixed": "r/Kochen",
+      "id": "1f8b4de",
+      "name": "t3_1f8b4de",
+      "author": "pfannen_paula",
+      "title": "Omas Pfannkuchen",
+      "selftext": "Hab das Rezept von meiner Oma, super einfach und schnell!\n\nPortionen: 4\n\nZubereitungszeit: 10 Minuten\n\n**Zutaten (für 4 Personen):**\n\n* 250 g Mehl\n* 2 EL Zucker\n* 1 Prise Salz\n* 500 ml Milch\n* 3 Eier\n\n**Für die Füllung**\n\n* 1 Glas Apfelmus\n\n**Zubereitung:**\n\n1\\. Mehl, Zucker und Salz in einer Schüssel mischen.\n2\\. Milch und Eier dazugeben und zu einem glatten Teig verrühren.\n3\\. Den Teig 30 Minuten ruhen lassen und in der Pfanne ausbacken.\n\n**Tipps**\n\nSchmeckt auch mit Zimt und Zucker.",
+      "selftext_html": null,
+      "is_self": true,
+      "is_video": false,
+      "domain": "self.Kochen",
+      "url": "https://www.reddit.com/r/Kochen/comments/1f8b4de/omas_pfannkuchen/",
+      "permalink": "/r/Kochen/comments/1f8b4de/omas_pfannkuchen/",
+      "stickied": false,
+      "num_comments": 1,
+      "created_utc": 1727600000.0
+     }
+    }
+   ]
+  }
+ },
+ {
+  "kind": "Listing",
+  "data": {
+   "after": null,
+   "dist": null,
+   "modhash": "",
+   "geo_filter": "",
+   "before": null,
+   "children": [
+    {
+     "kind": "t1",
+     "data": {
+      "id": "lp8b401",
+      "name": "t1_lp8b401",
+      "parent_id": "t3_1f8b4de",
+      "link_id": "t3_1f8b4de",
+      "author": "zimtschnecke",
+      "is_submitter": false,
+      "stickied": false,
+      "distinguished": null,
+      "depth": 0,
+      "body": "Genau so macht meine Mutter die auch, mit Apfelmus sind die am besten!",
+      "replies": ""
+     }
+    }
+   ]
+  }
+ }
+]
