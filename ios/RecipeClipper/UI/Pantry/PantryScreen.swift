@@ -220,10 +220,11 @@ private struct PantryRow: View {
     let first: Bool
     let vm: PantryViewModel
 
+    /// VoiceOver's actions and the context menu: both other states.
+    private var others: [PantryStock] { PantryStock.allCases.filter { $0 != item.stock } }
+
     var body: some View {
         let stock = item.stock
-        // VoiceOver's actions and the context menu: both other states.
-        let others = PantryStock.allCases.filter { $0 != stock }
         Button { vm.onEdit(item) } label: {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {

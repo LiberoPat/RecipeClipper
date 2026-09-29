@@ -167,6 +167,13 @@ final class PantryUITests: RecipeUITestCase {
     private func reveal(_ element: XCUIElement, _ what: String) -> XCUIElement {
         for _ in 0..<3 where !(element.exists && element.isHittable) { app.swipeUp() }
         for _ in 0..<4 where !(element.exists && element.isHittable) { app.swipeDown() }
+        // Hittable even under the tab bar, where a swipe would land on the bar: drag until it
+        // clears it.
+        for _ in 0..<4 where element.exists && element.frame.maxY > tabBar.frame.minY - 8 {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)))
+            _ = element.waitForExistence(timeout: 0.6)
+        }
         return require(element, what)
     }
 
