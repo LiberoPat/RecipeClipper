@@ -250,6 +250,8 @@ class RecipeViewModel @Inject constructor(
     // --- Reading view ---
 
     fun onIngredientChecked(index: Int, checked: Boolean) {
+        // A heading has no box to tick.
+        if ((_uiState.value.content as? RecipeContent.Success)?.isHeading(index) == true) return
         val next = _uiState.value.checkedIngredients.let { if (checked) it + index else it - index }
         _uiState.update { it.copy(checkedIngredients = next) }
         // Saved as they change, so closing the app mid-cook doesn't lose the ticks.

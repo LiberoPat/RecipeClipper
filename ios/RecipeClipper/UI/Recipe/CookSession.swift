@@ -125,9 +125,12 @@ struct CookSession {
     }
 
     /// The end of cooking (#147): the `ticked` lines as `content` shows them (scaled and
-    /// converted), for using up the pantry; nil when nothing is ticked.
+    /// converted), for using up the pantry; nil when nothing is ticked. A tick stored on a
+    /// heading doesn't count.
     func finishedCook(_ content: RecipeSuccess, ticked: Set<Int>) -> FinishedCook? {
-        let lines = ticked.sorted().compactMap { content.ingredients.indices.contains($0) ? content.ingredients[$0] : nil }
+        let lines = ticked.sorted()
+            .compactMap { content.ingredients.indices.contains($0) ? content.ingredients[$0] : nil }
+            .filter { !IngredientHeading.isHeading($0) }
         return lines.isEmpty ? nil : FinishedCook(language: content.words?.language, lines: lines)
     }
 

@@ -170,4 +170,19 @@ class RecipeRendererTest {
         val zz = recipe(ingredients = listOf("2 eggs (dfsafs -")).copy(language = "zz")
         assertEquals(zz.ingredients, RecipeRenderer.content(zz, RecipeRenderer.Settings(decisions = junk)).ingredients)
     }
+
+    /** The owner's German recipe, 4 to 5 servings: "312 1/2 g Mehl" is now "313 g Mehl", in both systems. */
+    @Test fun `scaled metric amounts are decimals and headings stay as written`() {
+        val german = recipe(
+            target = 5,
+            ingredients = listOf("Für den Teig:", "250 g Mehl", "5 g Hefe", "1/2 l Milch", "2 EL Zucker")
+        ).copy(language = "de")
+        val expected = listOf("Für den Teig:", "313 g Mehl", "6,3 g Hefe", "0,63 l Milch", "2 1/2 EL Zucker")
+
+        assertEquals(expected, RecipeRenderer.content(german, RecipeRenderer.Settings()).ingredients)
+        assertEquals(
+            listOf("Für den Teig:", "313 g Mehl", "6,3 g Hefe", "0,63 l Milch", "31 g Zucker"),
+            RecipeRenderer.content(german, metric).ingredients
+        )
+    }
 }

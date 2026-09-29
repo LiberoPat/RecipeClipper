@@ -477,7 +477,7 @@ struct GrocerySource: Equatable, Identifiable {
 enum GrocerySources {
 
     /// A blank line or a heading ("For the sauce:") is nothing to buy, so it isn't offered.
-    static func buyable(_ line: String) -> Bool { !line.kIsBlank && !line.kTrimmed.hasSuffix(":") }
+    static func buyable(_ line: String) -> Bool { !line.kIsBlank && !IngredientHeading.isHeading(line) }
 
     /// A recipe on the reading view: `rendered` are its lines exactly as shown there.
     static func fromRecipe(recipeId: Int64, title: String, language: String?, rendered: [String]) -> GrocerySource {

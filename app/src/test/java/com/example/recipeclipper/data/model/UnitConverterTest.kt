@@ -374,4 +374,10 @@ class UnitConverterTest {
         // A package size is never the line's amount.
         assertEquals("2 cans (15 oz) beans", metric("2 cans (15 oz) beans"))
     }
+
+    @Test fun `a language that writes a decimal comma converts with one`() {
+        val de = LanguageWords.forTag("de")!!
+        assertEquals("2,5 ml Zimt", UnitConverter.convert("1/2 TL Zimt", UnitSystem.METRIC, false, words = de))
+        assertEquals("2.5 ml cinnamon", metric("1/2 tsp cinnamon"))
+    }
 }

@@ -8,7 +8,8 @@ package com.example.recipeclipper.data.model
  * [words] are the recipe's language's (#14); null leaves every line as written. [decisions]
  * are the model's definite answers (#104): count brackets, and junk after the ingredient,
  * hidden first as Groceries hides it (#174, [GroceryDecisions.shownLine]), so the rest still
- * scales and converts. [Decisions.NONE] is as before.
+ * scales and converts. [Decisions.NONE] is as before. A heading ([IngredientHeading]) stays as
+ * written.
  */
 object IngredientRendering {
 
@@ -21,6 +22,7 @@ object IngredientRendering {
         decisions: Decisions = Decisions.NONE
     ): List<String> =
         lines.map { line ->
+            if (IngredientHeading.isHeading(line)) return@map line
             // A line with junk never has a count bracket: that holds a digit, which is never cut.
             val shown = GroceryDecisions.shownLine(line, words, decisions)
             val scaled = IngredientScaler.scale(shown, factor, words, decisions.countBracket(line, words?.language))

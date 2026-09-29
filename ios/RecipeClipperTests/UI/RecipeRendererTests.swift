@@ -153,4 +153,19 @@ final class RecipeRendererTests: XCTestCase {
         zz.language = "zz"
         XCTAssertEqual(RecipeRenderer.content(zz, settings: RecipeRenderer.Settings(decisions: junk)).ingredients, zz.ingredients)
     }
+
+    /// The owner's German recipe, 4 to 5 servings: "312 1/2 g Mehl" is now "313 g Mehl", in both systems.
+    func testScaledMetricAmountsAreDecimalsAndHeadingsStayAsWritten() {
+        var german = recipe(target: 5, ingredients: ["Für den Teig:", "250 g Mehl", "5 g Hefe", "1/2 l Milch", "2 EL Zucker"])
+        german.language = "de"
+
+        XCTAssertEqual(
+            RecipeRenderer.content(german, settings: RecipeRenderer.Settings()).ingredients,
+            ["Für den Teig:", "313 g Mehl", "6,3 g Hefe", "0,63 l Milch", "2 1/2 EL Zucker"]
+        )
+        XCTAssertEqual(
+            RecipeRenderer.content(german, settings: metric).ingredients,
+            ["Für den Teig:", "313 g Mehl", "6,3 g Hefe", "0,63 l Milch", "31 g Zucker"]
+        )
+    }
 }

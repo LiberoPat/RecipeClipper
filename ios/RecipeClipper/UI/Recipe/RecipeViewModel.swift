@@ -222,6 +222,8 @@ final class RecipeViewModel {
     // MARK: Reading view
 
     func onIngredientChecked(_ index: Int, _ checked: Bool) {
+        // A heading has no box to tick.
+        if uiState.content.success?.isHeading(index) == true { return }
         var next = uiState.checkedIngredients
         if checked { next.insert(index) } else { next.remove(index) }
         uiState.checkedIngredients = next

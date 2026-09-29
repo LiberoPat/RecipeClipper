@@ -643,11 +643,15 @@ private fun ReadingView(
             }
 
             itemsIndexed(content.ingredients) { index, ingredient ->
-                IngredientRow(
-                    text = ingredient,
-                    checked = index in state.checkedIngredients,
-                    onCheckedChange = { actions.onIngredientChecked(index, it) }
-                )
+                if (content.isHeading(index)) {
+                    IngredientHeadingRow(ingredient)
+                } else {
+                    IngredientRow(
+                        text = ingredient,
+                        checked = index in state.checkedIngredients,
+                        onCheckedChange = { actions.onIngredientChecked(index, it) }
+                    )
+                }
             }
 
             item {

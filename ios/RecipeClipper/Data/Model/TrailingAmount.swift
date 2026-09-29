@@ -205,9 +205,8 @@ enum TrailingAmount {
 
     // Grams and millilitres as "75" or "7.5"; anything else as a fraction, "2と1/2".
     private static func format(_ p: Patterns, _ value: Double, _ unit: MeasureUnit?) -> String {
-        unit?.metric == true
-            ? IngredientScaler.formatMetric(value)
-            : IngredientScaler.format(value).replacingOccurrences(of: " ", with: p.joiner)
+        if let unit, unit.metric { return IngredientScaler.formatMetric(value, unit: unit) }
+        return IngredientScaler.format(value).replacingOccurrences(of: " ", with: p.joiner)
     }
 
     /// The ingredient's name in `line`, lowercase, without its group marker, asides in brackets

@@ -55,11 +55,15 @@ struct ReadingView: View {
 
                 SectionHeading(Strings.headingIngredients).padding(.bottom, 6)
                 ForEach(Array(content.ingredients.enumerated()), id: \.offset) { index, ingredient in
-                    IngredientRow(
-                        text: ingredient,
-                        checked: state.checkedIngredients.contains(index),
-                        onCheckedChange: { vm.onIngredientChecked(index, $0) }
-                    )
+                    if content.isHeading(index) {
+                        IngredientHeadingRow(text: ingredient)
+                    } else {
+                        IngredientRow(
+                            text: ingredient,
+                            checked: state.checkedIngredients.contains(index),
+                            onCheckedChange: { vm.onIngredientChecked(index, $0) }
+                        )
+                    }
                 }
 
                 SectionHeading(Strings.headingInstructions)

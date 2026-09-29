@@ -90,6 +90,20 @@ final class CookSessionTests: XCTestCase {
         XCTAssertNil(session.finishedCook(content, ticked: []))
     }
 
+    func testATickStoredOnAHeadingDoesntCountAtTheEndOfCooking() {
+        let content = RecipeSuccess(
+            recipe: recipe(), servings: nil, ingredients: ["For the soup:", "4 carrots", "480 ml stock"],
+            instructions: recipe().instructions, stepTimerSeconds: [nil, 1200, nil], sourceDomain: nil,
+            words: LanguageWords.english
+        )
+
+        XCTAssertEqual(session.finishedCook(content, ticked: [0, 1]), FinishedCook(language: "en", lines: ["4 carrots"]))
+        XCTAssertNil(session.finishedCook(content, ticked: [0]))
+        XCTAssertTrue(content.isHeading(0))
+        XCTAssertFalse(content.isHeading(1))
+        XCTAssertEqual(content.ingredientCount, 2)
+    }
+
     func testExitKeepsTheProgressAndTheIngredientsBarToggles() {
         let cook = CookState(active: true, currentStep: 1, doneSteps: [0])
         XCTAssertEqual(session.exit(cook), CookState(active: false, currentStep: 1, doneSteps: [0]))

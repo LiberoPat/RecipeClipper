@@ -235,8 +235,53 @@ final class IngredientScalerTests: XCTestCase {
         XCTAssertEqual("2,25 kg flour", IngredientScaler.scale("1,5 kg flour", factor: 1.5))
         XCTAssertEqual("0,17 l milk", IngredientScaler.scale("0,5 l milk", factor: 1 / 3.0))
         XCTAssertEqual("3 kg (6,6 lb) potatoes", IngredientScaler.scale("2 kg (4,4 lb) potatoes", factor: 1.5))
-        // A decimal point keeps the fractions it always had.
-        XCTAssertEqual("2 1/4 kg flour", IngredientScaler.scale("1.5 kg flour", factor: 1.5))
+        // A metric amount is a decimal whatever the line wrote.
+        XCTAssertEqual("2.25 kg flour", IngredientScaler.scale("1.5 kg flour", factor: 1.5))
+    }
+
+    // --- Metric amounts: decimals, never kitchen fractions ---
+
+    func testAScaledMetricAmountIsADecimalNeverAFraction() {
+        // 4 to 5 servings: nobody weighs "312 1/2 g".
+        XCTAssertEqual("313 g flour", scale("250 g flour", 1.25))
+        XCTAssertEqual("6.3 g yeast", scale("5 g yeast", 1.25))
+        XCTAssertEqual("19 ml vanilla", scale("15 ml vanilla", 1.25))
+        XCTAssertEqual("0.75 kg potatoes", scale("1/2 kg potatoes", 1.5))
+        XCTAssertEqual("1.25 l milk", scale("1 l milk", 1.25))
+        // Both ends of a range.
+        XCTAssertEqual("250-313 ml water", scale("200-250 ml water", 1.25))
+    }
+
+    func testKitchenMeasuresAndCountsKeepTheirFractions() {
+        XCTAssertEqual("2 1/2 cups flour", scale("2 cups flour", 1.25))
+        XCTAssertEqual("1 1/4 tbsp oil", scale("1 tbsp oil", 1.25))
+        XCTAssertEqual("10 oz butter", scale("8 oz butter", 1.25))
+        XCTAssertEqual("1 7/8 lb beef", scale("1 1/2 lb beef", 1.25))
+        XCTAssertEqual("4 1/2 eggs", scale("3 eggs", 1.5))
+        // The site's figure beside a cup is metric, so it is a decimal.
+        XCTAssertEqual("1 1/4 cup (150 g) flour", scale("1 cup (120 g) flour", 1.25))
+        XCTAssertEqual("1 1/4 cup/150 g flour", scale("1 cup/120 g flour", 1.25))
+    }
+
+    func testALanguageThatWritesADecimalCommaGetsOneOnEveryMetricAmount() throws {
+        let de = try XCTUnwrap(LanguageWords.forTag("de"))
+        func scaleDe(_ line: String, _ factor: Double) -> String { IngredientScaler.scale(line, factor: factor, words: de) }
+        XCTAssertEqual("313 g Mehl", scaleDe("250 g Mehl", 1.25))
+        XCTAssertEqual("6,3 g Hefe", scaleDe("5 g Hefe", 1.25))
+        XCTAssertEqual("0,75 kg Kartoffeln", scaleDe("1/2 kg Kartoffeln", 1.5))
+        XCTAssertEqual("1,5 l Wasser", scaleDe("1 l Wasser", 1.5))
+        XCTAssertEqual("1,9 dl Sahne", scaleDe("1,5 dl Sahne", 1.25))
+        XCTAssertEqual("2,25 kg Mehl", scaleDe("1,5 kg Mehl", 1.5))
+        XCTAssertEqual("250-313 ml Milch", scaleDe("200-250 ml Milch", 1.25))
+        XCTAssertEqual("2 1/2 EL Zucker", scaleDe("2 EL Zucker", 1.25))
+        let fr = try XCTUnwrap(LanguageWords.forTag("fr"))
+        XCTAssertEqual("0,75 l de lait", IngredientScaler.scale("1/2 l de lait", factor: 1.5, words: fr))
+        XCTAssertEqual("19 cl de crème", IngredientScaler.scale("15 cl de crème", factor: 1.25, words: fr))
+        XCTAssertEqual(
+            "7,5 ml (1/2 c. à soupe) de sucre", IngredientScaler.scale("15 ml (1 c. à soupe) de sucre", factor: 0.5, words: fr)
+        )
+        // English keeps its point.
+        XCTAssertEqual("0.75 kg potatoes", IngredientScaler.scale("1/2 kg potatoes", factor: 1.5, words: .english))
     }
 
     func testACommaBeforeThreeDigitsIsAmbiguousAndLeftAsWritten() {

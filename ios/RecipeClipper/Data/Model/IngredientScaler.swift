@@ -70,6 +70,9 @@ enum IngredientScaler {
         /// Lines are "name amount" ("醤油 大さじ1"), read by `TrailingAmount` (amounts.json "amountAfterName").
         let amountAfterName: Bool
 
+        /// The language writes decimals with a comma ("1,5 kg"), so a metric amount it scales does too.
+        let decimalComma: Bool
+
         /// A quantity, in this language's words ("2 and 1/2"). No capturing group.
         let qty: String
 
@@ -113,8 +116,16 @@ enum IngredientScaler {
         // with the first. groups: 1 prefix, 2 quantity, 3 space, 4 unit
         let continued: JRegex
 
-        /// The amount is a measure (it has a unit), not a count: "2 cups", "¾ de taza".
+        /// The amount is a measure (it has a unit), not a count: "2 cups", "¾ de taza". Group 1 is the unit.
         let unitAtStart: JRegex
+
+        /// The metric unit ("g", "kg", "ml", "l", "cl", "dl", as the language spells them) that `rest` starts with, if any.
+        func metricUnitAt(_ rest: String) -> MeasureUnit? {
+            guard let m = unitAtStart.find(rest), let unit = MeasureUnit.fromText(m[1], words: words), unit.metric else {
+                return nil
+            }
+            return unit
+        }
 
         // A second amount later in the line (#61, #62). Group 1 holds an alternative's word
         // ("or 1/2 cup oil"), an amount standing for the whole; otherwise the amount is a part
@@ -143,6 +154,7 @@ enum IngredientScaler {
             let thousandsDot = words.table("amounts")["thousandsDot"] as? Bool ?? false
             self.thousandsDot = thousandsDot
             amountAfterName = words.table("amounts")["amountAfterName"] as? Bool ?? false
+            decimalComma = words.table("amounts")["decimalComma"] as? Bool ?? false
             let qty = IngredientScaler.qtyPattern(
                 SharedTables.alternation(words.strings("amounts", "mixedJoiners")), thousandsDot: thousandsDot
             )
@@ -174,7 +186,7 @@ enum IngredientScaler {
             )
             unitAtStart = JRegex(
                 // Wrapped, since ICU rejects a quantifier straight after "(?!)" (no prefixes).
-                #"^\s*(?:"# + SharedTables.alternation(words.strings("amounts", "unitPrefixes")) + ")?" + units.plain,
+                #"^\s*(?:"# + SharedTables.alternation(words.strings("amounts", "unitPrefixes")) + ")?" + units.captured,
                 ignoreCase: true
             )
             joined = JRegex(
@@ -285,12 +297,18 @@ enum IngredientScaler {
 
             guard let low = p.parse(match[2]) else { return nil }
             let upperRaw = match[4]
+            // "250 g" x 1.25 is "313 g", never "312 1/2 g": a metric amount is a decimal.
+            let metric = p.metricUnitAt(rest)
+            func amount(_ value: Double) -> String {
+                if let metric { return formatFor(p, metric, value, comma: comma) }
+                return formatLeading(value, comma: comma)
+            }
             let scaled: String
             if upperRaw.isEmpty {
-                scaled = formatLeading(low * factor, comma: comma)
+                scaled = amount(low * factor)
             } else {
                 guard let high = p.parse(upperRaw) else { return nil }
-                scaled = formatLeading(low * factor, comma: comma) + match[3] + formatLeading(high * factor, comma: comma)
+                scaled = amount(low * factor) + match[3] + amount(high * factor)
             }
             let (region, regionLength) = scaleRegion(p, rest, factor: factor, comma: comma)
             let tailStart = start + match.end + regionLength
@@ -351,7 +369,7 @@ enum IngredientScaler {
         let (alternate, length) = scaleAlternateMeasure(
             p, unitText + rest.u16Substring(from: m.end), factor: factor, comma: comma
         )
-        return (m[1] + formatFor(unit, value * factor, comma: comma) + alternate, m.end - unitText.u16Count + length)
+        return (m[1] + formatFor(p, unit, value * factor, comma: comma) + alternate, m.end - unitText.u16Count + length)
     }
 
     /// Keeps "(120 g)" or "/120 grams" in step with the leading amount that was just scaled.
@@ -367,8 +385,8 @@ enum IngredientScaler {
             let upper = m[4]
             let high = upper.isEmpty ? nil : p.parse(upper)
             if upper.isEmpty || high != nil {
-                let range = high.map { m[3] + formatFor(unit, $0 * factor, comma: comma) } ?? ""
-                return (m[1] + formatFor(unit, value * factor, comma: comma) + range + m[5] + m[6], m.end)
+                let range = high.map { m[3] + formatFor(p, unit, $0 * factor, comma: comma) } ?? ""
+                return (m[1] + formatFor(p, unit, value * factor, comma: comma) + range + m[5] + m[6], m.end)
             }
         }
         return ("", 0)
@@ -497,9 +515,9 @@ enum IngredientScaler {
                     failed = true
                     return m.value
                 }
-                range = m[2] + formatFor(unit, high * factor, comma: comma)
+                range = m[2] + formatFor(p, unit, high * factor, comma: comma)
             }
-            return formatFor(unit, low * factor, comma: comma) + range + m[4] + m[5]
+            return formatFor(p, unit, low * factor, comma: comma) + range + m[4] + m[5]
         }
         return failed ? nil : scaled
     }
@@ -507,16 +525,25 @@ enum IngredientScaler {
     private static func scalePair(_ p: Patterns, _ match: JMatch, factor: Double, comma: Bool) -> String {
         guard let unit = MeasureUnit.fromText(match[3], words: p.words) else { return match.value }
         guard let value = p.parse(match[1]) else { return match.value }
-        return formatFor(unit, value * factor, comma: comma) + match[2] + match[3]
+        return formatFor(p, unit, value * factor, comma: comma) + match[2] + match[3]
     }
 
-    // Metric amounts read better as "240" or "7.5" than as "240" or "7 1/2".
-    private static func formatFor(_ unit: MeasureUnit, _ value: Double, comma: Bool) -> String {
-        if unit.metric { return withSeparator(formatMetric(value), comma: comma) }
+    // Metric amounts read better as "240" or "7.5" than as "240" or "7 1/2", and in the
+    // language's decimal separator ("7,5 g" in German) even where the line wrote none.
+    private static func formatFor(_ p: Patterns, _ unit: MeasureUnit, _ value: Double, comma: Bool) -> String {
+        if unit.metric { return withSeparator(formatMetric(value, unit: unit), comma: comma || p.decimalComma) }
         if comma { return withSeparator(plainDecimal(value, scale: 2), comma: true) }
         return format(value)
     }
 
+    /// A metric amount, never a fraction: g, ml, cl and dl whole from 10 up and to one decimal
+    /// below (`formatMetric(_:)`); kg and l to two decimals, trailing zeros dropped, as
+    /// `UnitConverter` writes them ("1.25 kg").
+    static func formatMetric(_ value: Double, unit: MeasureUnit) -> String {
+        unit == .kg || unit == .l ? plainDecimal(value, scale: 2) : formatMetric(value)
+    }
+
+    /// "313", "7.5": whole from 10 up, one decimal below.
     static func formatMetric(_ value: Double) -> String {
         plainDecimal(value, scale: value >= 10 ? 0 : 1)
     }

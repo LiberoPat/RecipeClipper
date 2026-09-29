@@ -90,6 +90,20 @@ class CookSessionTest {
         assertNull(session.finishedCook(content, emptySet()))
     }
 
+    @Test fun `a tick stored on a heading doesn't count at the end of cooking`() {
+        val content = RecipeContent.Success(
+            recipe = recipe(), servings = null, ingredients = listOf("For the soup:", "4 carrots", "480 ml stock"),
+            instructions = recipe().instructions, stepTimerSeconds = listOf(null, 1200, null), sourceDomain = null,
+            words = LanguageWords.ENGLISH
+        )
+
+        assertEquals(FinishedCook("en", listOf("4 carrots")), session.finishedCook(content, setOf(0, 1)))
+        assertNull(session.finishedCook(content, setOf(0)))
+        assertTrue(content.isHeading(0))
+        assertFalse(content.isHeading(1))
+        assertEquals(2, content.ingredientCount)
+    }
+
     @Test fun `exit keeps the progress and the ingredients bar toggles`() {
         val cook = CookState(active = true, currentStep = 1, doneSteps = setOf(0))
         assertEquals(cook.copy(active = false), session.exit(cook))

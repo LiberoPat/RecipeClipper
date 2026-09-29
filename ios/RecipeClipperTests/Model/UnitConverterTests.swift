@@ -379,4 +379,10 @@ final class UnitConverterTests: XCTestCase {
         // A package size is never the line's amount.
         XCTAssertEqual("2 cans (15 oz) beans", metric("2 cans (15 oz) beans"))
     }
+
+    func testALanguageThatWritesADecimalCommaConvertsWithOne() throws {
+        let de = try XCTUnwrap(LanguageWords.forTag("de"))
+        XCTAssertEqual("2,5 ml Zimt", UnitConverter.convert("1/2 TL Zimt", system: .metric, includeLiquids: false, words: de))
+        XCTAssertEqual("2.5 ml cinnamon", metric("1/2 tsp cinnamon"))
+    }
 }

@@ -74,6 +74,9 @@ object IngredientScaler {
         /** "1.500 g" is 1500 g (amounts.json "thousandsDot"). */
         val thousandsDot: Boolean = amounts.getBoolean("thousandsDot")
 
+        /** The language writes decimals with a comma ("1,5 kg"), so a metric amount it scales does too. */
+        val decimalComma: Boolean = amounts.optBoolean("decimalComma", false)
+
         /** Lines are "name amount" ("醤油 大さじ1"), read by [TrailingAmount] (amounts.json "amountAfterName"). */
         val amountAfterName: Boolean = amounts.optBoolean("amountAfterName", false)
 
@@ -145,12 +148,16 @@ object IngredientScaler {
             RegexOption.IGNORE_CASE
         )
 
-        /** The amount is a measure (it has a unit), not a count: "2 cups", "¾ de taza". */
+        /** The amount is a measure (it has a unit), not a count: "2 cups", "¾ de taza". Group 1 is the unit. */
         val unitAtStart = Regex(
             // Wrapped, since iOS's ICU rejects a quantifier straight after "(?!)" (no prefixes).
-            """^\s*(?:${SharedTables.alternation(words.strings("amounts", "unitPrefixes"))})?${units.plain}""",
+            """^\s*(?:${SharedTables.alternation(words.strings("amounts", "unitPrefixes"))})?${units.captured}""",
             RegexOption.IGNORE_CASE
         )
+
+        /** The metric unit ("g", "kg", "ml", "l", "cl", "dl", as the language spells them) that [rest] starts with, if any. */
+        fun metricUnitAt(rest: String): MeasureUnit? =
+            unitAtStart.find(rest)?.let { MeasureUnit.fromText(it.groupValues[1], words) }?.takeIf { it.metric }
 
         // A second amount later in the line (#61, #62). Group 1 holds an alternative's word
         // ("or 1/2 cup oil"), an amount standing for the whole; otherwise the amount is a part
@@ -268,11 +275,14 @@ object IngredientScaler {
 
             val low = p.parse(match.groupValues[2]) ?: return null
             val upperRaw = match.groupValues[4]
+            // "250 g" x 1.25 is "313 g", never "312 1/2 g": a metric amount is a decimal.
+            val metric = p.metricUnitAt(rest)
+            fun amount(value: Double) = if (metric != null) formatFor(p, metric, value, comma) else formatLeading(value, comma)
             val scaled = if (upperRaw.isEmpty()) {
-                formatLeading(low * factor, comma)
+                amount(low * factor)
             } else {
                 val high = p.parse(upperRaw) ?: return null
-                formatLeading(low * factor, comma) + match.groupValues[3] + formatLeading(high * factor, comma)
+                amount(low * factor) + match.groupValues[3] + amount(high * factor)
             }
             val (region, regionLength) = scaleRegion(p, rest, factor, comma)
             val tailStart = start + match.range.last + 1 + regionLength
@@ -313,7 +323,7 @@ object IngredientScaler {
     private fun formatLeading(value: Double, comma: Boolean): String =
         if (comma) withSeparator(formatDecimal(value), true) else format(value)
 
-    private fun formatDecimal(value: Double): String =
+    internal fun formatDecimal(value: Double): String =
         BigDecimal(value).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 
     /**
@@ -327,7 +337,7 @@ object IngredientScaler {
         // The alternate measure is read from the second part's unit on.
         val unitText = m.groupValues[3] + m.groupValues[4]
         val (alternate, length) = scaleAlternateMeasure(p, unitText + rest.substring(m.range.last + 1), factor, comma)
-        return Pair(m.groupValues[1] + formatFor(unit, value * factor, comma) + alternate, m.range.last + 1 - unitText.length + length)
+        return Pair(m.groupValues[1] + formatFor(p, unit, value * factor, comma) + alternate, m.range.last + 1 - unitText.length + length)
     }
 
     /**
@@ -345,9 +355,9 @@ object IngredientScaler {
             val upper = m.groupValues[4]
             val high = if (upper.isEmpty()) null else p.parse(upper)
             if (unit != null && value != null && (upper.isEmpty() || high != null)) {
-                val range = if (high == null) "" else m.groupValues[3] + formatFor(unit, high * factor, comma)
+                val range = if (high == null) "" else m.groupValues[3] + formatFor(p, unit, high * factor, comma)
                 return Pair(
-                    m.groupValues[1] + formatFor(unit, value * factor, comma) + range + m.groupValues[5] + m.groupValues[6],
+                    m.groupValues[1] + formatFor(p, unit, value * factor, comma) + range + m.groupValues[5] + m.groupValues[6],
                     m.range.last + 1
                 )
             }
@@ -473,8 +483,8 @@ object IngredientScaler {
                 failed = true
                 m.value
             } else {
-                formatFor(unit, low * factor, comma) +
-                    (if (high == null) "" else m.groupValues[2] + formatFor(unit, high * factor, comma)) +
+                formatFor(p, unit, low * factor, comma) +
+                    (if (high == null) "" else m.groupValues[2] + formatFor(p, unit, high * factor, comma)) +
                     m.groupValues[4] + m.groupValues[5]
             }
         }
@@ -484,16 +494,26 @@ object IngredientScaler {
     private fun scalePair(p: Patterns, match: MatchResult, factor: Double, comma: Boolean): String {
         val unit = MeasureUnit.fromText(match.groupValues[3], p.words) ?: return match.value
         val value = p.parse(match.groupValues[1]) ?: return match.value
-        return formatFor(unit, value * factor, comma) + match.groupValues[2] + match.groupValues[3]
+        return formatFor(p, unit, value * factor, comma) + match.groupValues[2] + match.groupValues[3]
     }
 
-    // Metric amounts read better as "240" or "7.5" than as "240" or "7 1/2".
-    private fun formatFor(unit: MeasureUnit, value: Double, comma: Boolean): String = when {
-        unit.metric -> withSeparator(formatMetric(value), comma)
+    // Metric amounts read better as "240" or "7.5" than as "240" or "7 1/2", and in the
+    // language's decimal separator ("7,5 g" in German) even where the line wrote none.
+    private fun formatFor(p: Patterns, unit: MeasureUnit, value: Double, comma: Boolean): String = when {
+        unit.metric -> withSeparator(formatMetric(value, unit), comma || p.decimalComma)
         comma -> withSeparator(formatDecimal(value), true)
         else -> format(value)
     }
 
+    /**
+     * A metric amount, never a fraction: g, ml, cl and dl whole from 10 up and to one decimal
+     * below ([formatMetric]); kg and l to two decimals, trailing zeros dropped, as
+     * [UnitConverter] writes them ("1.25 kg").
+     */
+    internal fun formatMetric(value: Double, unit: MeasureUnit): String =
+        if (unit == MeasureUnit.KG || unit == MeasureUnit.L) formatDecimal(value) else formatMetric(value)
+
+    /** "313", "7.5": whole from 10 up, one decimal below. */
     internal fun formatMetric(value: Double): String {
         val scale = if (value >= 10) 0 else 1
         return BigDecimal(value).setScale(scale, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()

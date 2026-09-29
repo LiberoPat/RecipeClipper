@@ -172,7 +172,7 @@ private fun IngredientsBar(
         ) {
             Text(stringResource(R.string.heading_ingredients), style = MaterialTheme.typography.titleSmall)
             Text(
-                stringResource(R.string.cook_ingredients_count, content.ingredients.size),
+                stringResource(R.string.cook_ingredients_count, content.ingredientCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -191,11 +191,15 @@ private fun IngredientsBar(
                     .padding(horizontal = 20.dp)
             ) {
                 content.ingredients.forEachIndexed { index, ingredient ->
-                    IngredientRow(
-                        text = ingredient,
-                        checked = index in state.checkedIngredients,
-                        onCheckedChange = { actions.onIngredientChecked(index, it) }
-                    )
+                    if (content.isHeading(index)) {
+                        IngredientHeadingRow(ingredient)
+                    } else {
+                        IngredientRow(
+                            text = ingredient,
+                            checked = index in state.checkedIngredients,
+                            onCheckedChange = { actions.onIngredientChecked(index, it) }
+                        )
+                    }
                 }
             }
         }
