@@ -216,7 +216,7 @@ extension WalkthroughUITests {
     }
 
     /// Reading other languages (#208): a German Reddit post (the `de` language fixture's, through
-    /// the real parser) sorted under its German headings, a serving more and Metric; then a French
+    /// the real parser) sorted under its German headings, doubled and in Metric; then a French
     /// recipe card read by the real Vision reader (`shared/fixtures/reddit/photos/card-fr.jpg`,
     /// drawn from the `fr` fixture's photo lines), its glued "2 c. à soupesucre" flagged, fixed
     /// and saved.
@@ -245,13 +245,13 @@ extension WalkthroughUITests {
         app.scrollViews.firstMatch.buttons["Go"].tap()
         require(bookmark, "the recipe screen")
         pause(2.5)
-        require(app.buttons["Increase servings"], "the Serves stepper").tap()
-        pause(1.5)
+        // Doubled, 4 to 8: whole amounts, where 5 would show "312 1/2 g Mehl".
+        let more = require(app.buttons["Increase servings"], "the Serves stepper")
+        for _ in 0..<4 { more.tap(); pause(0.4) }
+        pause(1)
         require(app.buttons["Change units"], "the units menu").tap()
         pause(1)
         require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Metric'")).firstMatch, "Metric").tap()
-        pause(2.5)
-        app.swipeUp()
         pause(2)
         app.swipeUp()
         pause(2)

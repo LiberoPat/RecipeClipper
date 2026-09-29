@@ -1,6 +1,7 @@
 package com.example.recipeclipper.walkthrough
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performTextInput
@@ -233,14 +234,13 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         waitFor(field("Recipe URL"))
         compose.onAllNodes(field("Recipe URL"))[0].performTextInput(GERMAN_POST)
         pause(1000)
-        tap("Go", 3000)
+        tap("Go", 2500)
         waitFor(hasText("Omas Pfannkuchen"))
-        tapDescription("Increase servings")
-        pause(1500)
+        // Doubled, 4 to 8: whole amounts, where 5 would show "312 1/2 g Mehl".
+        repeat(4) { tap(hasContentDescription("Increase servings"), 400) }
+        pause(1000)
         tap("As written", 1000)
-        tap("Metric", 2500)
-        swipeUp()
-        pause(2000)
+        tap("Metric", 2000)
         swipeUp()
         pause(2000)
         back()
@@ -255,11 +255,11 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         val typed = box.fetchSemanticsNode().config[SemanticsProperties.EditableText].text
         box.performTextReplacement(typed.replace("2 c. à soupesucre", "2 c. à soupe de sucre"))
         pause(2000)
-        tap("Save", 3000)
+        tap("Save", 2500)
         waitFor(hasText("Clipped by you", substring = true))
-        pause(2000)
+        pause(1500)
         swipeUp()
-        pause(2000)
+        pause(1000)
     }
 
     private fun openPost(link: String) {
