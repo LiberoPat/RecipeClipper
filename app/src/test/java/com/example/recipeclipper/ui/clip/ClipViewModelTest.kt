@@ -48,6 +48,12 @@ class ClipViewModelTest {
         assertNull(vm.uiState.value.notice)
     }
 
+    @Test fun `opened in the import's place by reddit's block, it says so`() {
+        assertFalse(viewModel().uiState.value.readBlocked)
+        val blocked = viewModel(SavedStateHandle(mapOf(ClipViewModel.URL_ARG to shared, ClipViewModel.BLOCKED_ARG to true)))
+        assertTrue(blocked.uiState.value.readBlocked)
+    }
+
     @Test fun `a selection is previewed as the lines it would become`() {
         val vm = viewModel()
         vm.onSelectionChanged("1 cup flour\n\n 2 eggs ")
