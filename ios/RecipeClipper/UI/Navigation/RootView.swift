@@ -38,6 +38,12 @@ struct RootView: View {
             // isn't written in it).
             .task { await container.firstRunTour.onLaunch(language: Bundle.main.preferredLocalizations.first) }
             // The share extension saves from its own process; catch up on coming back.
+            // A post the share extension couldn't read (#213) opens in "Clip it yourself".
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                if phase == .active, let url = container.takePendingClip() {
+                    router.openInRecipes(.clip(url, blocked: true))
+                }
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { container.refreshAfterExternalChanges() }
                 // The automatic backup copy (#150): leaving the app is when a changed library is
@@ -180,7 +186,11 @@ struct RootView: View {
         case .cookRecipe(let id):
             recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil, openInCookMode: true) }
         case .importUrl(let url):
-            recipe(push: push) { container.makeRecipeViewModel(recipeId: nil, url: url) }
+            // Reddit's block (#213) replaces the import with the clip, so Back never lands on an
+            // error screen.
+            recipe(push: push, onClipBlocked: { replace(1, .clip($0, blocked: true)) }) {
+                container.makeRecipeViewModel(recipeId: nil, url: url)
+            }
         case .weekRecipe(let id, let servings):
             recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil, plannedServings: servings) }
         case .mealTypes:
@@ -224,8 +234,8 @@ struct RootView: View {
             ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
                 ListDetailScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
             }
-        case .clip(let url):
-            ScreenHost({ container.makeClipViewModel(url: url) }) { vm in
+        case .clip(let url, let blocked):
+            ScreenHost({ container.makeClipViewModel(url: url, blocked: blocked) }) { vm in
                 ClipScreen(vm: vm, fixtureHTML: container.clipFixtureHTML, onSaved: router.openSavedClip)
             }
         case .photoRecipe(let post):
@@ -237,7 +247,10 @@ struct RootView: View {
         }
     }
 
-    private func recipe(push: @escaping (Route) -> Void, _ make: @escaping () -> RecipeViewModel) -> some View {
+    private func recipe(
+        push: @escaping (Route) -> Void, onClipBlocked: @escaping (String) -> Void = { _ in },
+        _ make: @escaping () -> RecipeViewModel
+    ) -> some View {
         // "Add to plan" (#49) only behind the tab flag, like the Week tab itself.
         let container = container
         let makePlanVM: (() -> AddToPlanViewModel)? = tabsEnabled ? { container.makeAddToPlanViewModel() } : nil
@@ -251,6 +264,7 @@ struct RootView: View {
             RecipeScreen(
                 vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
                 makePlanVM: makePlanVM, makeGroceriesVM: makeGroceriesVM, onClip: { push(.clip($0)) },
+                onClipBlocked: onClipBlocked,
                 onReadPhoto: { push(.photoRecipe($0)) },
                 photoTextEnabled: container.featureFlags.isOn(.photoText),
                 amountsInStepsEnabled: container.featureFlags.isOn(.amountsInSteps),

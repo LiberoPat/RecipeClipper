@@ -100,6 +100,11 @@ struct ShareImportView: View {
                 .foregroundStyle(Palette.muted)
             buttons { Button(Strings.close, action: onCancel).buttonStyle(PrimaryButtonStyle()) }
 
+        case .clipInApp:
+            // No Try again: Reddit's block isn't one that lifts (#213).
+            message(Strings.shareRedditBlocked)
+            buttons { Button(Strings.done, action: onDone).buttonStyle(PrimaryButtonStyle()) }
+
         case .noLink:
             message(Strings.shareNoLink)
             buttons { Button(Strings.close, action: onCancel).buttonStyle(TextActionStyle()) }

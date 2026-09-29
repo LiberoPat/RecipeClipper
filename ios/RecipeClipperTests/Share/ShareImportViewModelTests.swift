@@ -73,6 +73,80 @@ final class ShareImportViewModelTests: XCTestCase {
         }
     }
 
+    // MARK: Reddit's block (#213)
+
+    private let post = "https://www.reddit.com/r/recipes/comments/1abc01/lemon_orzo/"
+
+    private func pendingClips() -> PendingClip {
+        let suite = "ShareImportPendingClip-\(UUID().uuidString)"
+        return PendingClip(defaults: UserDefaults(suiteName: suite)!)
+    }
+
+    func testABlockedRedditPostIsLeftForTheAppToClip() async {
+        let pending = pendingClips()
+        let clock = DataTestClock(5_000)
+        let vm = ShareImportViewModel(
+            repository: ReconnectCountingRepository(.error(.blocked(httpStatus: 403))), pendingClip: pending, clock: clock
+        )
+        vm.start(with: SharedInput(url: post))
+        await vm.currentLoad?.value
+
+        XCTAssertEqual(vm.uiState, .clipInApp)
+        XCTAssertEqual(pending.take(now: 5_000 + PendingClip.window), post)
+    }
+
+    func testOtherBlocksAndCausesKeepTheirCardAndLeaveNothing() async {
+        let cases: [(String, ParseError, Bool)] = [
+            ("https://example.com/pie", .blocked(httpStatus: 403), true),
+            (post, .blocked(httpStatus: 403), false), // the reddit flag off
+            (post, .offline, true),
+            (post, .fetchFailed("timeout", timedOut: true), true),
+            (post, .noTranscription(title: "Pie", imageUrl: nil), true),
+        ]
+        for (url, cause, redditOn) in cases {
+            let pending = pendingClips()
+            let vm = ShareImportViewModel(
+                repository: ReconnectCountingRepository(.error(cause)), redditOn: { redditOn }, pendingClip: pending
+            )
+            vm.start(with: SharedInput(url: url))
+            await vm.currentLoad?.value
+
+            XCTAssertEqual(vm.uiState, .failed(cause), "\(url) \(cause)")
+            XCTAssertNil(pending.take(now: DataTestClock().now()), "\(url) \(cause)")
+        }
+    }
+
+    func testANewShareClearsAPostLeftBefore() async {
+        let pending = pendingClips()
+        pending.put(post, at: 1_000)
+        let vm = ShareImportViewModel(
+            repository: ReconnectCountingRepository(.success(recipe())), pendingClip: pending, clock: DataTestClock(1_000)
+        )
+        vm.start(with: input)
+        await vm.currentLoad?.value
+
+        XCTAssertEqual(vm.uiState, .saved(title: "Guacamole"))
+        XCTAssertNil(pending.take(now: 1_000))
+    }
+
+    func testThePostLeftOpensOnceAndOnlyWithinTheWindow() {
+        let pending = pendingClips()
+        pending.put(post, at: 1_000)
+        XCTAssertEqual(pending.take(now: 1_000 + PendingClip.window), post)
+        XCTAssertNil(pending.take(now: 1_000 + PendingClip.window), "taken once")
+
+        pending.put(post, at: 1_000)
+        XCTAssertNil(pending.take(now: 1_001 + PendingClip.window), "too old")
+        XCTAssertNil(pending.take(now: 1_000), "an old one is dropped, not kept")
+    }
+
+    func testTheCardSaysToOpenTheApp() {
+        XCTAssertEqual(
+            Strings.shareRedditBlocked,
+            "Reddit didn't let the app read this post. Open Recipe Clipper: the post will be open there, to select the recipe."
+        )
+    }
+
     func testOfflineReloadsOnceTheConnectionReturns() async {
         let connectivity = ReconnectFakeConnectivity(online: false)
         let repository = ReconnectCountingRepository(.error(.offline))

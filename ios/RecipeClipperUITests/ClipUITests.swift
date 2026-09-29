@@ -135,4 +135,21 @@ final class ClipUITests: RecipeUITestCase {
         requireSnackbar("3 ingredients added", "the Ingredients snackbar")
         require(text("Name ✓ · 3 ingredients · 0 steps · no photo"), "the summary")
     }
+
+    /// Reddit's block (#213): a Reddit post the app can't read opens here by itself, in the
+    /// import's place, with a note saying why and no Try again (the block doesn't lift). Cancel
+    /// goes back to Home, never to an error screen. The stub source answers 403 for a path ending
+    /// `/blocked`. Mirrors Android's ClipBlockedNoteScreenTest.
+    func testABlockedRedditPostOpensHereWithANote() {
+        launch(.empty, flags: ["reddit"])
+        importLink("reddit.com/r/recipes/comments/abc123/blocked")
+
+        require(text("Reddit didn't let the app read this post, so it's open here: select the recipe."), "the note")
+        XCTAssertFalse(app.buttons["Try again"].exists)
+        selectOnPage("Select title")
+        require(text("1 line selected · each line becomes one item"), "the page, ready to clip")
+
+        app.navigationBars.buttons["Cancel"].tap()
+        require(app.textFields["Recipe URL"], "Home, not an error screen")
+    }
 }

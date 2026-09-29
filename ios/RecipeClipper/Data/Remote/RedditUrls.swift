@@ -29,6 +29,17 @@ enum RedditUrls {
         return host == "reddit.com" || host.hasSuffix(".reddit.com") || host == "redd.it"
     }
 
+    /// Whether an import of `url` that ended in `error` opens "Clip it yourself" on the post in
+    /// place of the error screen (#213). Reddit's network-security wall answers the app's `.json`
+    /// read with a 403 that waiting doesn't lift, while the clip view, a real browser engine, is
+    /// let through. Only a block, and only for a link the Reddit source reads (`redditOn`, the
+    /// `reddit` flag). A link saved before never gets here: the repository opens its saved copy
+    /// after any failure.
+    static func clipsWhenBlocked(_ url: String, error: ParseError, redditOn: Bool) -> Bool {
+        guard redditOn, case .blocked = error else { return false }
+        return isReddit(url)
+    }
+
     static func isShareLink(_ url: String) -> Bool {
         guard let (host, path) = parts(url) else { return false }
         return host != "redd.it" && sharePath.matchEntire(path) != nil

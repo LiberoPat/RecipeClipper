@@ -17,6 +17,9 @@ enum ShareImportUiState: Equatable {
     case noLink
     /// No link, but a list (#149): `receiveList` holds its lines, for Groceries or the Pantry.
     case list
+    /// Reddit wouldn't let the app read the post (#213): it is left for the app
+    /// (`PendingClip`), which opens "Clip it yourself" on it; the card says to open the app.
+    case clipInApp
 }
 
 /// The share extension's one screen. The import itself is `RecipeRepository.importFromUrl`, the
@@ -31,6 +34,11 @@ final class ShareImportViewModel {
     @ObservationIgnored private let repository: RecipeRepository?
     @ObservationIgnored private let connectivity: Connectivity
     @ObservationIgnored private let makeReceiveList: (@MainActor () -> ReceiveListViewModel?)?
+    /// The `reddit` flag as the app mirrors it (#11), and where a blocked post is left for the
+    /// app (#213); nil leaves nothing.
+    @ObservationIgnored private let redditOn: () -> Bool
+    @ObservationIgnored private let pendingClip: PendingClip?
+    @ObservationIgnored private let clock: Clock
     @ObservationIgnored private var input: SharedInput?
     @ObservationIgnored private var text: String?
     /// "Add this list" (#149), made only for shared text with no link but with lines, and only
@@ -45,11 +53,15 @@ final class ShareImportViewModel {
     /// grocery list is off, or there's no database), keeps a list shared in as `.noLink`.
     init(
         repository: RecipeRepository?, connectivity: Connectivity = StaticConnectivity(),
-        makeReceiveList: (@MainActor () -> ReceiveListViewModel?)? = nil
+        makeReceiveList: (@MainActor () -> ReceiveListViewModel?)? = nil,
+        redditOn: @escaping () -> Bool = { true }, pendingClip: PendingClip? = nil, clock: Clock = SystemClock()
     ) {
         self.repository = repository
         self.connectivity = connectivity
         self.makeReceiveList = makeReceiveList
+        self.redditOn = redditOn
+        self.pendingClip = pendingClip
+        self.clock = clock
     }
 
     deinit {
@@ -96,6 +108,8 @@ final class ShareImportViewModel {
             return
         }
         uiState = .loading
+        // A new share moves on from any post left for the app before.
+        pendingClip?.clear()
         loadTask = Task { [weak self, repository, input] in
             let result = await repository.importFromUrl(input.url, renderedPage: input.page)
             guard !Task.isCancelled, let self else { return }
@@ -105,6 +119,12 @@ final class ShareImportViewModel {
             case .notKept(let recipe):
                 uiState = .notKept(title: recipe.name)
             case .error(let error):
+                // Reddit's block (#213): as in the app, the post goes to "Clip it yourself".
+                if RedditUrls.clipsWhenBlocked(input.url, error: error, redditOn: redditOn()) {
+                    pendingClip?.put(input.url, at: clock.now())
+                    uiState = .clipInApp
+                    return
+                }
                 uiState = .failed(error)
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
