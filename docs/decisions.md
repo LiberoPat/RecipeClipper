@@ -3157,7 +3157,7 @@ app main had become:
   and no "Clip it yourself" (the recipe, when there is one, is usually in the photo). Both stay
   tied to `NoRecipeFound`, which a Reddit link that isn't a post still gives.
 - **The recipe's language** comes from its words, as for any page with none declared (#14).
-  The splitter's headers are English, so in practice these are English recipes.
+  Since #208 (below) the text is also read in that language: its headers, labels and units.
 - **Detection was widened after the first phone test.** On the owner's S23, posts that had a
   recipe (shared from the Reddit app, so `/s/` links) showed "No recipe text found": the
   fetch and the share link worked, the splitter missed. reddit.com answers 403 to the
@@ -3392,7 +3392,8 @@ never save what it reads without the cook checking it, and fall back to typing i
   recipe's own isn't known until it is read), through `ImageLoader`. A picture that fails is
   skipped; the read fails only when all do.
 - **Sorted by the same splitter as a typed post** (`PhotoTextSorter` over
-  `RecipeTextSplitter`), so headers, lists and numbered steps read the same. Nothing is
+  `RecipeTextSplitter`), so headers, lists and numbered steps read the same, in the language the
+  lines' words say (#208, below). Nothing is
   corrected: "l cup butter" stays "l cup butter". Lines under 0.5 confidence (Vision answers
   0.3 when unsure) are listed under **"Check these lines"**; a piece under four characters
   marks only a line that is exactly it.
@@ -3404,7 +3405,8 @@ never save what it reads without the cook checking it, and fall back to typing i
   "1O", "35o°F", but not "1oz" or "1l"); and a line whose leading amount the scaler reads with
   no unit because a unit of three letters or more is run into the next word ("1 cupraisins",
   "2 tbspsugar"; "g", "c", "l" and "oz" are left out, since "2 green onions" starts with one,
-  and "cupcake" is a word).
+  and "cupcake" is a word). The units are the lines' language's (#208: "2 ELZucker",
+  "1 tazaharina"), none in Japanese.
 - **The scaler leaves an improper fraction on its own as written** (`IngredientScaler.parse`,
   every reader of an amount: scaling, conversion, groceries, timers): "11/2 cups flour" and
   "3/2 cup milk" are never read as 5½ or 1½, since a lost space is likelier than an improper
@@ -3437,6 +3439,55 @@ never save what it reads without the cook checking it, and fall back to typing i
   model is downloaded once by Play services: the manifest's `com.google.mlkit.vision.DEPENDENCIES`
   = `ocr` asks for it at install from the Play Store, so usually it is there before first use;
   when it isn't, the not-ready fallback above applies. iOS is unchanged (Vision is in the OS).
+
+## Reddit posts and photos in every language (#208)
+
+The owner's decision (2026-09-29): read Reddit posts (#11) and photos (#198) in every language
+the app reads recipes in, not only English. A German card ("Zutaten … Zubereitung") used to fall
+to "finish it by hand", and "2 ELZucker" wasn't flagged.
+
+- **The text's language picks the words, as a page's does (#14):** `LanguageWords.detect` over
+  the text (a post's body with its title; a comment alone; a photo's lines joined), else English.
+  One language's words only, never merged. Detection needs at least 3 of `language.json`'s words
+  and more than twice the runner-up's, so a short card may be too sparse to tell and is then read
+  in English (its headers unknown, so it falls to "finish it by hand", as before).
+- **Stored:** the recipe's language is `resolve(that language, …)` over its name and
+  ingredients, so the scaler, converter and timers use the same tables; a post whose words
+  say nothing clear is stored as before (#14's rule, English by default). The photo editor keeps
+  the language its lines were read in until the cook saves.
+- **Words in `shared/tables/<language>/splitter.json`,** English's moved out of the code
+  unchanged: whole-line headers (ingredients, steps, notes), header keywords, the words beside
+  them that name no group, verbs that make a line a step, typo targets, "for" headers, "Edit:"
+  words, step labels ("Schritt 3", "Paso 3", "Étape 3", "Passo 3"), labelled yields and times,
+  the words before an amount ("ca.", "environ"), unit words that make a line an amount, and the
+  glued-unit words. `headings.json` (#103) is a different reader and is unchanged.
+- **The fuzzy rules work per language.** German puts the keyword last ("Trockene Zutaten"), like
+  English; Spanish, French, Italian and Portuguese put it first ("Ingredientes secos",
+  "Ingrédients pour la pâte"), so `keywordFirst` also reads the first word. A header with a
+  servings phrase needs no colon ("Ingredienti per 4 persone", "Zutaten für 4 Personen", read
+  with `yield.json`'s serving words; English's "Ingredients for 4 servings" too), and neither does
+  a yield line of that shape ("Pour 6 personnes"). Typos two letters off, bold/colon/caps
+  markers, emoji and trailing parentheticals are unchanged. French's space before a colon was
+  already trimmed.
+- **Japanese:** whole-line headers only (材料, 作り方, 手順, 【材料】（2人分）: full-width brackets now
+  count as a trailing parenthetical), with no keywords or typos (no spaces to find words by).
+  Its amounts come after the name, so `amountPatterns` says what one looks like. A script without
+  case is never "in capitals" now (it had counted every kanji line as capitals; only
+  headerLike read it, and Japanese has no keyword rules).
+- **Glued units** (`PhotoTextSorter.suspect`, #198) use the language's `gluedUnits`: unit words
+  the scaler reads, long or distinct enough to flag when run into the next word. Short ones that
+  start ordinary words are left out, as English's "g" and "can" are: French "cas"/"càs"
+  ("cassonade"); Italian "litri?" (the scaler doesn't read "litro", so "1 litro" would be
+  flagged). German's `EL`/`TL` are case-sensitive, as in `language.json`. The word is taken
+  whole (an atomic group), so a plural the scaler doesn't read ("2 cuillères de sucre") isn't
+  cut back to a unit plus a letter. Never in Japanese (`spaced` false).
+- **Same guarantees:** an ingredients block and steps, never prose; nothing corrected; the
+  requests and prose in each language's fixture split to nothing.
+- **Tests:** `shared/fixtures/languages/<language>.json` (a Reddit-style post, a photo's lines,
+  negatives) read by `RecipeTextSplitterLanguagesTest(s)` on both platforms with the same
+  expectations, and `Split`, `Photo` and `Sus` rows in the differential corpus. The words are
+  drafts: a native speaker should check each table's headers, verbs and step labels, and which
+  unit words are safe to flag.
 
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 

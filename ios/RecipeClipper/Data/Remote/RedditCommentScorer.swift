@@ -28,9 +28,10 @@ enum RedditCommentScorer {
 
     static func score(_ text: String) -> Int {
         if gone.contains(text.kTrimmed) { return 0 }
-        let lines = RecipeTextSplitter.lines(text).filter { !$0.text.isEmpty }
+        let words = RecipeTextSplitter.wordsFor(RecipeTextSplitter.languageOf(text))
+        let lines = RecipeTextSplitter.lines(text, words: words).filter { !$0.text.isEmpty }
         if lines.isEmpty { return 0 }
-        let sections = Set(lines.compactMap { RecipeTextSplitter.header($0)?.section })
+        let sections = Set(lines.compactMap { RecipeTextSplitter.header($0, words: words)?.section })
 
         var score = 0
         if sections.contains(.ingredients) { score += 3 }
@@ -55,7 +56,7 @@ enum RedditCommentScorer {
                 if $0.comment.bySubmitter != $1.comment.bySubmitter { return $0.comment.bySubmitter }
                 return $0.score != $1.score ? $0.score > $1.score : $0.index < $1.index
             }
-            .first { RecipeTextSplitter.split($0.comment.body) != nil }?
+            .first { RecipeTextSplitter.detectAndSplit($0.comment.body) != nil }?
             .comment.body
     }
 }

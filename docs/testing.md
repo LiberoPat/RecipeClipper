@@ -146,6 +146,8 @@ responses because reddit.com answers 403 to the development machine (`docs/decis
 "Reddit posts (#11)", has where they came from).
 `DefaultRecipeRepositoryRetryTest` (iOS `DataRepositoryTests`) checks that a blocked
 Reddit post never goes to the rendered page.
+Other languages (#208): `RecipeTextSplitterLanguagesTest(s)` read `shared/fixtures/languages/<language>.json`
+(a post, a photo's lines and negatives per language) with the same expectations on both platforms.
 "Read the photo" (#198): `PhotoTextSorterTest` / `PhotoTextSorterTests` pin the sorting,
 the "check this" marking and the unsorted fallback with the same cases;
 `RedditRecipeParserTest(s)` a gallery's pictures in order (`old-recipes-card-untranscribed`);

@@ -63,7 +63,7 @@ class RecipeTextSplitterLanguagesTest {
         for (language in languages) {
             for (text in strings(fixture(language), "negatives")) {
                 assertNull("$language: $text", RecipeTextSplitter.detectAndSplit(text))
-                val lines = text.split(Regex("(?<=[.!?。！？])\\s*")).filter { it.isNotBlank() }.map { PhotoLine(it) }
+                val lines = text.replace(Regex("([.!?。！？])\\s*"), "$1\n").split("\n").filter { it.isNotBlank() }.map { PhotoLine(it) }
                 assertFalse("$language: $text", PhotoTextSorter.sort(lines).sorted)
             }
         }

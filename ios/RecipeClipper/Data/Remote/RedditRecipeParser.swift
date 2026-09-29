@@ -49,8 +49,8 @@ enum RedditRecipeParser {
         var body = bodyOf(post)
         if body.kIsBlank { body = original.map(bodyOf) ?? "" }
         let commentListing = listings.count > 1 ? listings[1] as? [String: Any] : nil
-        guard let split = RecipeTextSplitter.split(body)
-                ?? RedditCommentScorer.pick(comments(commentListing)).flatMap(RecipeTextSplitter.split)
+        guard let split = RecipeTextSplitter.detectAndSplit(body, context: title)
+                ?? RedditCommentScorer.pick(comments(commentListing)).flatMap({ RecipeTextSplitter.detectAndSplit($0) })
         else {
             let own = imagesOf(post)
             let images = own.isEmpty ? (original.map(imagesOf) ?? []) : own
@@ -71,8 +71,9 @@ enum RedditRecipeParser {
             yield: split.yield,
             sourceUrl: sourceUrl,
             sourceType: .reddit,
-            // Reddit declares no language: the words decide, else English (#14's rule).
-            language: LanguageWords.resolve(declared: nil, page: nil) {
+            // Reddit declares no language: the text's words (#208), then the recipe's, decide,
+            // else English (#14's rule).
+            language: LanguageWords.resolve(declared: split.language, page: nil) {
                 LanguageWords.detectionText(name: title, ingredients: split.ingredients)
             }
         )))
