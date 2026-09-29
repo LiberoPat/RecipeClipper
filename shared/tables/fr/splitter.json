@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "language": "fr",
+  "about": "The words RecipeTextSplitter reads French free text with (a Reddit post, #11, or a photo's lines, #198, #208). The keys are explained in en/splitter.json. French puts the keyword first ('Ingrédients pour la pâte'), so keywordFirst is on, and writes a space before a colon ('Préparation :'), which the header rules already trim. 'càs', 'cas' and the like are left out of gluedUnits: 'cassonade' starts with one.",
+  "ingredientHeaders": [
+    "ingrédients", "ingredients", "ingrédient", "liste des ingrédients", "les ingrédients", "il vous faut",
+    "il faut", "ce qu'il vous faut", "ce qu'il faut", "vous aurez besoin de"
+  ],
+  "instructionHeaders": [
+    "préparation", "preparation", "étapes", "etapes", "instructions", "déroulement", "marche à suivre",
+    "réalisation", "méthode", "la préparation"
+  ],
+  "endHeaders": [
+    "notes", "note", "astuces", "astuce", "conseils", "conseil", "remarques", "remarque",
+    "valeurs nutritionnelles", "source", "sources", "ustensiles", "matériel"
+  ],
+  "keywords": {
+    "ingredients": ["ingrédients", "ingredients", "ingrédient"],
+    "instructions": ["préparation", "preparation", "étapes", "etapes", "instructions", "déroulement"],
+    "end": ["notes", "note", "astuces", "conseils", "remarques"]
+  },
+  "keywordFirst": true,
+  "plainWords": [
+    "les", "la", "le", "liste", "des", "de", "du", "tous", "toutes", "principaux", "nécessaires",
+    "recette", "mes", "nos", "étape", "par", "et", "&", "+", "-", "–"
+  ],
+  "verbs": [
+    "mélanger", "mélangez", "ajouter", "ajoutez", "battre", "battez", "cuire", "faites", "faire",
+    "couper", "coupez", "préparer", "préparez", "verser", "versez", "incorporer", "incorporez", "réunir",
+    "réunissez", "rassembler", "rassemblez", "peser", "pesez", "préchauffer", "préchauffez", "mettre",
+    "mettez", "tamiser", "tamisez"
+  ],
+  "misspelt": {
+    "ingredients": ["ingrédients"],
+    "instructions": ["préparation", "instructions"]
+  },
+  "forHeader": {
+    "ingredients": ["ingrédients", "ingredients"],
+    "instructions": ["préparation", "preparation", "instructions"],
+    "joiners": ["pour", "de", "du", "des"]
+  },
+  "editWords": ["edit", "update"],
+  "stepLabels": ["(?:é|e)tape"],
+  "yield": {
+    "whole": [],
+    "labels": ["portions", "parts", "rendement", "personnes"],
+    "for": ["pour"]
+  },
+  "times": {
+    "prep": ["temps\\s+de\\s+pr(?:é|e)paration"],
+    "cook": ["temps\\s+de\\s+cuisson", "cuisson"],
+    "total": ["temps\\s+total"]
+  },
+  "approx": ["environ\\s+"],
+  "amountUnits": [
+    "cuill(?:è|e)res?\\s+à\\s+soupe", "cuill(?:è|e)res?\\s+à\\s+caf(?:é|e)", "cuill(?:è|e)res?",
+    "c\\.?\\s*à\\s*s(?:oupe)?", "c\\.?\\s*à\\s*c(?:af(?:é|e))?", "càs", "càc", "cas", "cac", "tasses?", "verres?",
+    "pinc(?:é|e)es?", "gousses?", "sachets?", "bo(?:î|i)tes?", "tranches?", "brins?", "bottes?", "feuilles?",
+    "poign(?:é|e)es?", "millilitres?", "ml", "cl", "dl", "kilogrammes?", "kilos?", "kg", "grammes?", "gr", "g",
+    "litres?", "l", "cm"
+  ],
+  "amountPatterns": [],
+  "gluedUnits": [
+    "cuill(?:è|e)res?\\s+à\\s+soupe", "cuill(?:è|e)res?\\s+à\\s+caf(?:é|e)", "cuill(?:è|e)res?",
+    "c\\.\\s*à\\s*soupe", "c\\.\\s*à\\s*caf(?:é|e)", "tasses?", "kilogrammes?", "grammes?", "millilitres?", "litres?"
+  ],
+  "gluedExceptions": []
+}

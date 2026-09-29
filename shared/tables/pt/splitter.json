@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "language": "pt",
+  "about": "The words RecipeTextSplitter reads Portuguese free text with (a Reddit post, #11, or a photo's lines, #198, #208). The keys are explained in en/splitter.json. Portuguese puts the keyword first ('Ingredientes da massa'), so keywordFirst is on; 'Modo de preparo', Brazil's usual steps header, is a whole line.",
+  "ingredientHeaders": [
+    "ingredientes", "ingrediente", "lista de ingredientes", "os ingredientes", "você vai precisar",
+    "você vai precisar de", "vai precisar", "o que você precisa"
+  ],
+  "instructionHeaders": [
+    "modo de preparo", "modo de fazer", "modo de preparação", "preparo", "preparação", "instruções",
+    "passos", "como fazer", "passo a passo", "o preparo"
+  ],
+  "endHeaders": [
+    "notas", "nota", "dicas", "dica", "observações", "observação", "informação nutricional",
+    "informações nutricionais", "fonte", "fontes", "utensílios"
+  ],
+  "keywords": {
+    "ingredients": ["ingredientes", "ingrediente"],
+    "instructions": ["preparo", "preparação", "instruções", "passos"],
+    "end": ["notas", "dicas", "observações"]
+  },
+  "keywordFirst": true,
+  "plainWords": [
+    "os", "as", "o", "a", "lista", "de", "dos", "das", "do", "da", "todos", "principais", "necessários",
+    "receita", "passo", "e", "&", "+", "-", "–"
+  ],
+  "verbs": [
+    "misturar", "misture", "mistura", "adicionar", "adicione", "acrescentar", "acrescente", "bater", "bata",
+    "assar", "asse", "cozinhar", "cozinhe", "cortar", "corte", "preparar", "prepare", "juntar", "junte",
+    "despejar", "despeje", "reunir", "reúna", "pesar", "pese", "separar", "separe", "peneirar", "peneire"
+  ],
+  "misspelt": {
+    "ingredients": ["ingredientes"],
+    "instructions": ["preparação", "instruções"]
+  },
+  "forHeader": {
+    "ingredients": ["ingredientes"],
+    "instructions": ["preparo", "modo\\s+de\\s+preparo", "preparação", "instruções"],
+    "joiners": ["para", "de", "do", "da", "dos", "das"]
+  },
+  "editWords": ["edit", "editado", "update"],
+  "stepLabels": ["passo", "etapa"],
+  "yield": {
+    "whole": ["rende", "serve"],
+    "labels": ["porções", "rendimento"],
+    "for": ["para"]
+  },
+  "times": {
+    "prep": ["tempo\\s+de\\s+preparo", "tempo\\s+de\\s+prepara(?:ç|c)(?:ã|a)o"],
+    "cook": ["tempo\\s+de\\s+cozimento", "tempo\\s+de\\s+forno"],
+    "total": ["tempo\\s+total"]
+  },
+  "approx": ["aprox\\.?\\s+", "cerca\\s+de\\s+"],
+  "amountUnits": [
+    "colher(?:es)?\\s*\\(sopa\\)", "colher(?:es)?\\s+de\\s+sopa", "colher(?:es)?\\s*\\(chá\\)", "colher(?:es)?\\s+de\\s+chá",
+    "colher(?:es)?", "xícaras?", "copos?", "pitadas?", "dentes?", "latas?", "pacotes?", "maços?", "ramos?",
+    "folhas?", "fatias?", "punhados?", "mililitros?", "ml", "cl", "dl", "quilogramas?", "quilos?", "kg",
+    "gramas?", "gr", "g", "litros?", "l", "cm"
+  ],
+  "amountPatterns": [],
+  "gluedUnits": ["colher(?:es)?", "xícaras?", "quilogramas?", "quilos?", "gramas?", "mililitros?", "litros?"],
+  "gluedExceptions": []
+}

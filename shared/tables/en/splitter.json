@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "The words RecipeTextSplitter reads free text with: a Reddit post (#11) or the lines read from a photo (#198), in the text's own detected language (#208). Headers are compared lowercased, without what may surround them (a symbol, a trailing colon, a parenthetical). ingredientHeaders, instructionHeaders, endHeaders: whole lines. keywords: one word that ends a header set apart as one (bold, a heading, a colon, capitals) of 2 to 4 words ('Dry ingredients'), or, where keywordFirst, starts it ('Ingredientes secos'); the other words, unless all plainWords, name a group. verbs: a line whose other words hold one is a step, never a header. misspelt: one-word headers two letters off. forHeader: '<keyword> <joiner> ...:' with its colon ('Ingredients for the cake:'), or '<keyword> <joiner> 4 <serving word>' (yield.json's serving words) without. editWords, stepLabels, yield, times, approx, amountUnits, amountPatterns, gluedUnits: case-insensitive regex fragments; editWords and yield words must end in an ASCII letter (a \\b follows them). yield.whole keeps the line ('Serves 4'), yield.labels are dropped ('Servings: 4'), yield.for keeps '<for> 4 <serving word>' whole. amountUnits: a number before one makes a line an amount ('Salt – 1/2 tsp'); amountPatterns: other shapes that do. gluedUnits: unit words the scaler reads (units.json) long and distinct enough to flag when run into the next word ('1 cupraisins', PhotoTextSorter.suspect); a short one that starts ordinary words ('g', 'can') is left out, and gluedExceptions are ordinary words that start with one. Empty for a language written without spaces.",
+  "ingredientHeaders": [
+    "ingredients", "ingredient", "ingredient list", "ingredients list",
+    "you will need", "you'll need", "what you need", "what you'll need", "what you will need",
+    "things you'll need", "things you will need"
+  ],
+  "instructionHeaders": [
+    "instructions", "directions", "method", "steps", "preparation", "procedure",
+    "how to make", "how to make it"
+  ],
+  "endHeaders": [
+    "notes", "note", "recipe notes", "tips", "tip", "nutrition", "nutrition facts",
+    "source", "sources", "equipment"
+  ],
+  "keywords": {
+    "ingredients": ["ingredients", "ingredient"],
+    "instructions": ["instructions", "instruction", "directions", "direction", "method", "steps", "preparation", "procedure"],
+    "end": ["notes", "note", "tips", "tip", "equipment"]
+  },
+  "keywordFirst": false,
+  "plainWords": [
+    "the", "main", "all", "full", "basic", "recipe", "cooking", "baking", "needed", "list",
+    "amounts", "amount", "required", "used", "easy", "simple", "quick", "your", "my", "our",
+    "step", "by", "step-by-step", "and", "&", "+", "-", "–"
+  ],
+  "verbs": [
+    "add", "assemble", "bake", "beat", "blend", "check", "chop", "combine", "cook", "cream",
+    "cut", "follow", "fold", "gather", "get", "heat", "measure", "melt", "mix", "make", "place",
+    "pour", "prep", "prepare", "put", "read", "repeat", "season", "serve", "set", "sift",
+    "stir", "toss", "use", "weigh", "whisk"
+  ],
+  "misspelt": {
+    "ingredients": ["ingredients"],
+    "instructions": ["instructions", "directions"]
+  },
+  "forHeader": {
+    "ingredients": ["ingredients"],
+    "instructions": ["instructions", "directions", "method"],
+    "joiners": ["for"]
+  },
+  "editWords": ["edit", "update", "eta"],
+  "stepLabels": ["step"],
+  "yield": {
+    "whole": ["serves", "makes"],
+    "labels": ["servings", "yields?", "portions"],
+    "for": ["for"]
+  },
+  "times": {
+    "prep": ["prep(?:aration)?(?:\\s+time)?"],
+    "cook": ["cook(?:ing)?(?:\\s+time)?", "bake(?:\\s+time)?", "baking\\s+time"],
+    "total": ["total(?:\\s+time)?"]
+  },
+  "approx": ["about\\s+", "approx\\.?\\s+"],
+  "amountUnits": [
+    "cups?", "c", "tsps?", "teaspoons?", "tbsps?", "tbs", "tablespoons?", "fl\\.?\\s*oz", "oz", "ounces?", "lbs?", "pounds?",
+    "g", "grams?", "kg", "kilos?", "kilograms?", "ml", "millilit(?:er|re)s?", "l", "lit(?:er|re)s?", "quarts?", "qts?", "pints?", "gallons?",
+    "pinch(?:es)?", "dash(?:es)?", "cloves?", "cans?", "jars?", "sticks?", "handfuls?", "bunch(?:es)?", "sprigs?", "slices?", "pieces?",
+    "packages?", "packets?", "pkgs?", "heads?", "stalks?", "leaves", "inch(?:es)?", "cm"
+  ],
+  "amountPatterns": [],
+  "gluedUnits": ["cups?", "tsps?", "tbsps?", "tbs", "teaspoons?", "tablespoons?", "ounces?", "pounds?", "lbs", "grams?"],
+  "gluedExceptions": ["cupcake"]
+}

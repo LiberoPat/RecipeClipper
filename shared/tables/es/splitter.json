@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "language": "es",
+  "about": "The words RecipeTextSplitter reads Spanish free text with (a Reddit post, #11, or a photo's lines, #198, #208). The keys are explained in en/splitter.json. Spanish puts the keyword first ('Ingredientes para la salsa'), so keywordFirst is on. Unaccented spellings are listed where people type them ('preparacion').",
+  "ingredientHeaders": [
+    "ingredientes", "ingrediente", "lista de ingredientes", "los ingredientes", "necesitas", "lo que necesitas",
+    "vas a necesitar", "necesitarás"
+  ],
+  "instructionHeaders": [
+    "preparación", "preparacion", "elaboración", "elaboracion", "instrucciones", "pasos", "procedimiento",
+    "modo de preparación", "modo de preparacion", "cómo hacerlo", "como hacerlo", "paso a paso"
+  ],
+  "endHeaders": [
+    "notas", "nota", "consejos", "consejo", "trucos", "truco", "información nutricional",
+    "valor nutricional", "fuente", "fuentes", "utensilios"
+  ],
+  "keywords": {
+    "ingredients": ["ingredientes", "ingrediente"],
+    "instructions": ["preparación", "preparacion", "elaboración", "elaboracion", "instrucciones", "pasos", "procedimiento"],
+    "end": ["notas", "nota", "consejos", "trucos"]
+  },
+  "keywordFirst": true,
+  "plainWords": [
+    "los", "las", "la", "el", "lista", "de", "del", "todos", "todas", "principales", "necesarios",
+    "necesarias", "receta", "mis", "nuestros", "paso", "a", "y", "&", "+", "-", "–"
+  ],
+  "verbs": [
+    "mezclar", "mezcla", "añadir", "añade", "agregar", "agrega", "batir", "bate", "hornear", "hornea",
+    "cocinar", "cocina", "cortar", "corta", "preparar", "prepara", "picar", "pica", "calentar", "calienta",
+    "poner", "pon", "verter", "vierte", "incorporar", "incorpora", "reunir", "reúne", "juntar", "junta",
+    "pesar", "pesa", "tamizar", "tamiza"
+  ],
+  "misspelt": {
+    "ingredients": ["ingredientes"],
+    "instructions": ["preparación", "elaboración", "instrucciones"]
+  },
+  "forHeader": {
+    "ingredients": ["ingredientes"],
+    "instructions": ["preparación", "preparacion", "elaboración", "elaboracion", "instrucciones"],
+    "joiners": ["para", "de", "del"]
+  },
+  "editWords": ["edit", "editado", "update"],
+  "stepLabels": ["paso"],
+  "yield": {
+    "whole": ["rinde"],
+    "labels": ["porciones", "raciones", "comensales", "rendimiento"],
+    "for": ["para"]
+  },
+  "times": {
+    "prep": ["tiempo\\s+de\\s+preparaci(?:ó|o)n"],
+    "cook": ["tiempo\\s+de\\s+cocci(?:ó|o)n", "tiempo\\s+de\\s+horneado"],
+    "total": ["tiempo\\s+total"]
+  },
+  "approx": ["aprox\\.?\\s+", "unos\\s+", "unas\\s+"],
+  "amountUnits": [
+    "cucharadas?\\s+soperas?", "cucharaditas?", "cucharadas?", "tazas?", "pizcas?", "dientes?", "latas?",
+    "sobres?", "ramas?", "ramitas?", "hojas?", "rebanadas?", "rodajas?", "puñados?", "paquetes?", "vasos?",
+    "mililitros?", "ml", "cl", "dl", "kilogramos?", "kilos?", "kg", "gramos?", "gr", "g", "litros?", "l", "cm"
+  ],
+  "amountPatterns": [],
+  "gluedUnits": ["cucharaditas?", "cucharadas?", "tazas?", "kilogramos?", "gramos?", "mililitros?", "litros?"],
+  "gluedExceptions": []
+}

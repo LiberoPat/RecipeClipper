@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "language": "it",
+  "about": "The words RecipeTextSplitter reads Italian free text with (a Reddit post, #11, or a photo's lines, #198, #208). The keys are explained in en/splitter.json. Italian puts the keyword first ('Ingredienti per la salsa'), so keywordFirst is on; 'Ingredienti per 4 persone' is a header through forHeader and yield.json's serving words. 'litri?' and 'millilitri?' are left out of gluedUnits: the scaler doesn't read 'litro' as a unit, so '1 litro' would be flagged.",
+  "ingredientHeaders": [
+    "ingredienti", "ingrediente", "lista degli ingredienti", "gli ingredienti", "occorrente", "cosa serve",
+    "cosa vi serve", "cosa ti serve", "ti serve", "vi serve"
+  ],
+  "instructionHeaders": [
+    "procedimento", "preparazione", "istruzioni", "passaggi", "esecuzione", "come fare", "come si fa",
+    "metodo", "realizzazione", "il procedimento", "la preparazione"
+  ],
+  "endHeaders": [
+    "note", "nota", "consigli", "consiglio", "suggerimenti", "valori nutrizionali", "fonte", "fonti",
+    "utensili", "attrezzatura"
+  ],
+  "keywords": {
+    "ingredients": ["ingredienti", "ingrediente"],
+    "instructions": ["procedimento", "preparazione", "istruzioni", "passaggi"],
+    "end": ["note", "consigli", "suggerimenti"]
+  },
+  "keywordFirst": true,
+  "plainWords": [
+    "gli", "i", "il", "la", "le", "lista", "degli", "dei", "delle", "della", "di", "del", "tutti",
+    "principali", "necessari", "ricetta", "passo", "a", "e", "&", "+", "-", "–"
+  ],
+  "verbs": [
+    "mescolare", "mescola", "mescolate", "aggiungere", "aggiungi", "aggiungete", "unire", "unite", "unisci",
+    "cuocere", "cuoci", "cuocete", "tagliare", "taglia", "tagliate", "preparare", "prepara", "preparate",
+    "versare", "versa", "versate", "sbattere", "sbatti", "sbattete", "impastare", "impasta", "impastate",
+    "pesare", "pesate", "setacciare", "setacciate"
+  ],
+  "misspelt": {
+    "ingredients": ["ingredienti"],
+    "instructions": ["procedimento", "preparazione", "istruzioni"]
+  },
+  "forHeader": {
+    "ingredients": ["ingredienti"],
+    "instructions": ["procedimento", "preparazione", "istruzioni"],
+    "joiners": ["per", "di", "del", "della", "dei", "delle"]
+  },
+  "editWords": ["edit", "update", "aggiornamento"],
+  "stepLabels": ["passo", "passaggio", "fase"],
+  "yield": {
+    "whole": ["dosi"],
+    "labels": ["porzioni"],
+    "for": ["per"]
+  },
+  "times": {
+    "prep": ["tempo\\s+di\\s+preparazione", "preparazione"],
+    "cook": ["tempo\\s+di\\s+cottura", "cottura"],
+    "total": ["tempo\\s+totale"]
+  },
+  "approx": ["circa\\s+", "ca\\.\\s*"],
+  "amountUnits": [
+    "cucchiain[oi]", "cucchiai[o]?", "tazz[ae]", "tazzin[ae]", "bicchier[ei]", "pizzic[oh]i?", "spicchi[o]?",
+    "bustin[ae]", "vasett[oi]", "fogli[ae]", "fett[ae]", "rametti?", "rametto", "mazzett[oi]", "confezion[ei]",
+    "millilitri?", "ml", "cl", "dl", "chilogramm[oi]", "chili", "kg", "grammi", "grammo", "gr", "g", "litri?",
+    "lt", "l", "cm"
+  ],
+  "amountPatterns": [],
+  "gluedUnits": ["cucchiain[oi]", "cucchiai[o]?", "tazz[ae]", "chilogramm[oi]", "grammi", "grammo"],
+  "gluedExceptions": []
+}

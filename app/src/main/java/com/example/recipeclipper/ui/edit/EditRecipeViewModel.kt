@@ -100,6 +100,9 @@ class EditRecipeViewModel @Inject constructor(
 
     private var readJob: Job? = null
 
+    /** The language the photo's lines were read in (#208), or null when nothing was clear. */
+    private var photoLanguage: String? = null
+
     init {
         if (recipeId != null) {
             viewModelScope.launch {
@@ -123,6 +126,7 @@ class EditRecipeViewModel @Inject constructor(
 
     private fun readPhoto(post: PhotoPost) {
         readJob?.cancel()
+        photoLanguage = null
         _uiState.update {
             it.copy(
                 reading = true, photoOutcome = null, uncertain = emptyList(),
@@ -137,6 +141,7 @@ class EditRecipeViewModel @Inject constructor(
                     PhotoTextResult.NotReady -> state.copy(reading = false, photoOutcome = PhotoOutcome.NOT_READY)
                     is PhotoTextResult.Read -> {
                         val reading = PhotoTextSorter.sort(result.lines)
+                        photoLanguage = reading.language
                         state.copy(
                             reading = false,
                             photoOutcome = if (reading.sorted) PhotoOutcome.READ else PhotoOutcome.NOT_SORTED,
@@ -198,9 +203,10 @@ class EditRecipeViewModel @Inject constructor(
                 sourceType = SourceType.REDDIT
             )
         )
-        // Reddit declares no language: the words decide, else English (#14's rule).
+        // Reddit declares no language: the photo's words (#208), then the checked recipe's,
+        // decide, else English (#14's rule).
         val recipe = content.copy(
-            language = LanguageWords.resolve(null, null) {
+            language = LanguageWords.resolve(photoLanguage, null) {
                 LanguageWords.detectionText(content.name, content.ingredients)
             }
         )

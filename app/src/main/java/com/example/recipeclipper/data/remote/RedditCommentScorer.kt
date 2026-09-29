@@ -11,7 +11,7 @@ data class RedditComment(val body: String, val bySubmitter: Boolean = false)
  *
  * [score] is a pure function over one comment's text. It adds up three signals:
  *  - an ingredients header line (+3) and an instructions header line (+3), recognised exactly
- *    as [RecipeTextSplitter] recognises them;
+ *    as [RecipeTextSplitter] recognises them, in the language the comment's words say (#208);
  *  - an explicit mention of transcribing ("Transcription:", "I transcribed it") (+2);
  *  - a plausible length: 4 to 150 non-empty lines (+1); fewer than 4 (-2), since a recipe
  *    doesn't fit in a remark; more than 150 (-1).
@@ -38,9 +38,10 @@ object RedditCommentScorer {
 
     fun score(text: String): Int {
         if (text.trim() in GONE) return 0
-        val lines = RecipeTextSplitter.lines(text).filter { it.text.isNotEmpty() }
+        val words = RecipeTextSplitter.wordsFor(RecipeTextSplitter.languageOf(text))
+        val lines = RecipeTextSplitter.lines(text, words).filter { it.text.isNotEmpty() }
         if (lines.isEmpty()) return 0
-        val sections = lines.mapNotNull { RecipeTextSplitter.header(it)?.section }.toSet()
+        val sections = lines.mapNotNull { RecipeTextSplitter.header(it, words)?.section }.toSet()
 
         var score = 0
         if (RecipeTextSplitter.Section.INGREDIENTS in sections) score += 3
@@ -64,6 +65,6 @@ object RedditCommentScorer {
                     .thenByDescending { it.second }
                     .thenBy { it.first.index }
             )
-            .firstOrNull { RecipeTextSplitter.split(it.first.value.body) != null }
+            .firstOrNull { RecipeTextSplitter.detectAndSplit(it.first.value.body) != null }
             ?.first?.value?.body
 }
