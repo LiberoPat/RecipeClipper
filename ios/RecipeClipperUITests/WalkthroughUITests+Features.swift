@@ -177,7 +177,11 @@ extension WalkthroughUITests {
         pause(3)
 
         // Fix the unsure line: the last ingredient, retyped at the end of the box.
-        let box = field("Ingredients, one per line")
+        // Filled from the photo, the box has no placeholder any more: find it by what it holds.
+        let box = app.descendants(matching: .any).matching(NSPredicate(
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "cup butter"
+        )).firstMatch
         scrollTo(box, "the ingredients")
         pause()
         box.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.97)).tap()
