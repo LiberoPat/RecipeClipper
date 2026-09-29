@@ -21,7 +21,8 @@ import UIKit
 ///     `-uiTestTooltips` asks for a fresh install's;
 ///   - Chef mode's stub model available in English, or unsupported with `-uiTestChefUnsupported`;
 ///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder;
-///   - with `RC_UITEST_REDDIT_LISTING` in the environment, Reddit links parsed from it (#11);
+///   - with `RC_UITEST_REDDIT_LISTING` in the environment, Reddit links parsed from it (#11), or
+///     from `RC_UITEST_REDDIT_LISTING_<post id>` for that post (walkthrough 29);
 ///   - "Read the photo" (#198) answering the lines in `RC_UITEST_PHOTO_LINES` (`UITestPhotoTextReader`),
 ///     or, with `RC_UITEST_PHOTO_VISION=1`, the real Vision reader over the local pictures that
 ///     `RC_UITEST_PHOTO_IMAGES` puts in place of a post's (walkthrough 28).
@@ -314,12 +315,13 @@ enum UITestSeeding {
 /// (the site answered 403 every time, so the repository's one automatic retry fails too).
 /// A Reddit link, while the `RC_UITEST_REDDIT_LISTING` environment variable holds a post's
 /// `.json` listing (a `shared/fixtures/reddit` file, handed in by the walkthrough), goes through
-/// the real `RedditRecipeParser` instead: reddit.com itself often refuses a simulator.
+/// the real `RedditRecipeParser` instead: reddit.com itself often refuses a simulator. A clip
+/// that opens several posts hands each its own, as `RC_UITEST_REDDIT_LISTING_<post id>`.
 private struct StubRecipeSource: RecipeSource {
     static let redditListingKey = "RC_UITEST_REDDIT_LISTING"
 
     func fetch(url: String) async -> ParseResult {
-        if RedditUrls.isReddit(url), let listing = ProcessInfo.processInfo.environment[Self.redditListingKey] {
+        if RedditUrls.isReddit(url), let listing = Self.listing(for: url) {
             return Self.localPictures(RedditRecipeParser.parse(listing, sourceUrl: url), url: url)
         }
         let path = URL(string: url)?.path ?? ""
@@ -334,6 +336,17 @@ private struct StubRecipeSource: RecipeSource {
             yield: "4",
             sourceUrl: url
         ))
+    }
+
+    /// The listing for a Reddit link: `RC_UITEST_REDDIT_LISTING_<post id>` for the link whose path
+    /// holds `/comments/<post id>/` (walkthrough 29 opens two posts), else the one listing.
+    static func listing(for url: String) -> String? {
+        let environment = ProcessInfo.processInfo.environment
+        let prefix = redditListingKey + "_"
+        for (key, listing) in environment where key.hasPrefix(prefix) {
+            if url.contains("/comments/\(key.dropFirst(prefix.count))/") { return listing }
+        }
+        return environment[redditListingKey]
     }
 
     /// A post with no transcription, its pictures swapped for local files (walkthrough 28): each

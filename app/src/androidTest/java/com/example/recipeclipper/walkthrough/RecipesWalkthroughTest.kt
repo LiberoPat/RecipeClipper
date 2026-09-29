@@ -1,6 +1,7 @@
 package com.example.recipeclipper.walkthrough
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performTextInput
@@ -26,9 +27,10 @@ import dagger.hilt.android.testing.UninstallModules
 import org.junit.Test
 
 /**
- * Walkthroughs 06–10, 27 and 28 (#106): the Recipes screen, amounts in steps, Chef mode with a stub
+ * Walkthroughs 06–10 and 27–29 (#106): the Recipes screen, amounts in steps, Chef mode with a stub
  * model (an emulator has none), the free tier, a recipe picked from the page text (seeded as
- * such: no model runs), and Reddit posts (#11). A pasted link opens a canned recipe, as iOS's
+ * such: no model runs), Reddit posts (#11) and their photos (#198), in German and French too
+ * (#208). A pasted link opens a canned recipe, as iOS's
  * UI-test source does, so no clip depends on the network; a Reddit link is read by the real
  * [RedditRecipeParser] from a `shared/fixtures/reddit/` listing the recording script pushed, in
  * place of reddit.com's `.json` (which refuses an emulator with 403).
@@ -63,15 +65,18 @@ class RecipesWalkthroughTest : WalkthroughBase() {
 
     /**
      * "Read the photo" (#198), OCR SIMULATED: an emulator has no Play services model, so the first
-     * read answers a recipe card's lines (one the recogniser was unsure of) and every later read
-     * answers nothing, for the fallback.
+     * read answers a recipe card's lines ([cardLines]: one the recogniser was unsure of) and every
+     * later read answers nothing, for the fallback.
      */
     @BindValue @JvmField
     val photoTextReader: PhotoTextReader = object : PhotoTextReader {
         private var reads = 0
         override suspend fun read(imageUrls: List<String>): PhotoTextResult =
-            if (reads++ == 0) PhotoTextResult.Read(CARD_LINES) else PhotoTextResult.Read(emptyList())
+            if (reads++ == 0) PhotoTextResult.Read(cardLines) else PhotoTextResult.Read(emptyList())
     }
+
+    /** What the first photo read answers: clip 28's English card, clip 29's French one. */
+    private var cardLines = CARD_LINES
 
     @BindValue @JvmField
     val shortener: StepShortener = FakeStepShortener(
@@ -216,6 +221,47 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         pause(4000)
     }
 
+    /**
+     * Walkthrough 29, reading other languages (#208): a German Reddit post (the `de` language
+     * fixture's, through the real parser) sorted under its German headings, scaled and shown in
+     * Metric; then a French recipe card, OCR SIMULATED (the `fr` fixture's photo lines), whose
+     * glued "2 c. à soupesucre" is flagged, fixed and saved.
+     */
+    @Test
+    fun test29_readingOtherLanguages() {
+        cardLines = FRENCH_CARD_LINES
+        start("reddit", "photoText")
+        waitFor(field("Recipe URL"))
+        compose.onAllNodes(field("Recipe URL"))[0].performTextInput(GERMAN_POST)
+        pause(1000)
+        tap("Go", 2500)
+        waitFor(hasText("Omas Pfannkuchen"))
+        // Doubled, 4 to 8: whole amounts, where 5 would show "312 1/2 g Mehl".
+        repeat(4) { tap(hasContentDescription("Increase servings"), 400) }
+        pause(1000)
+        tap("As written", 1000)
+        tap("Metric", 2000)
+        swipeUp()
+        pause(2000)
+        back()
+        openPost(FRENCH_CARD_POST)
+        tap("Read the photo", 2500)
+        waitFor(hasText("Read from the photo", substring = true))
+        pause(2000)
+        swipeUp()
+        pause(2500)
+        // Fix the line with its unit run into the next word.
+        val box = compose.onAllNodes(field("Ingredients, one per line"))[0]
+        val typed = box.fetchSemanticsNode().config[SemanticsProperties.EditableText].text
+        box.performTextReplacement(typed.replace("2 c. à soupesucre", "2 c. à soupe de sucre"))
+        pause(2000)
+        tap("Save", 2500)
+        waitFor(hasText("Clipped by you", substring = true))
+        pause(1500)
+        swipeUp()
+        pause(1000)
+    }
+
     private fun openPost(link: String) {
         waitFor(field("Recipe URL"))
         compose.onAllNodes(field("Recipe URL"))[0].performTextInput(link)
@@ -238,6 +284,16 @@ class RecipesWalkthroughTest : WalkthroughBase() {
             "2. Stir in the flour, soda, oats and raisins.", "3. Drop by spoonfuls and bake at 350°F for 10 minutes."
         ).map { PhotoLine(it, 0.9f) }
 
+        const val GERMAN_POST = "https://www.reddit.com/r/Kochen/comments/1f8b4de/omas_pfannkuchen/"
+        const val FRENCH_CARD_POST = "https://www.reddit.com/r/cuisine/comments/1f8c5fr/la_fiche_de_crepes_de_ma_grandmere/"
+
+        /** The French card's lines, as `shared/fixtures/languages/fr.json`'s photo has them. */
+        val FRENCH_CARD_LINES = listOf(
+            "Crêpes", "INGRÉDIENTS", "250 g de farine", "4 œufs", "1/2 l de lait", "2 c. à soupesucre", "1 pincée de sel",
+            "PRÉPARATION", "Mettre la farine dans un saladier.", "Ajouter les œufs puis le lait petit à petit.",
+            "Laisser reposer 1 heure et cuire dans une poêle chaude."
+        ).map { PhotoLine(it, 0.9f) }
+
         const val SELF_POST = "https://www.reddit.com/r/recipes/comments/1f4b2cd/weeknight_lemon_chicken_orzo/"
         const val CARD_POST = "https://www.reddit.com/r/Old_Recipes/comments/1f5c3de/grandmas_date_nut_bread_found_in_her_recipe_tin/"
         const val PHOTO_POST = "https://www.reddit.com/r/food/comments/1f6d4ef/homemade_sunday_lasagna/"
@@ -248,7 +304,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
             "1f5c3de" to "old-recipes-card-transcription.json",
             "1f6d4ef" to "food-photo-chatter.json",
             "1f7a2bc" to "old-recipes-card-untranscribed.json",
-            "1f7a3cd" to "old-recipes-card-untranscribed.json"
+            "1f7a3cd" to "old-recipes-card-untranscribed.json",
+            "1f8b4de" to "de-self-post.json",
+            "1f8c5fr" to "fr-card-untranscribed.json"
         )
     }
 }

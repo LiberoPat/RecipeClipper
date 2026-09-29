@@ -582,8 +582,9 @@ a received file, 17 the first-run tour (the sample, and a tooltip or two), 18 Do
 Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported phone
 (simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked", 24 the
 tooltips and "Show tips again", 25 the pantry's three states, 26 "onion" matching "onions" in What I
-need, 27 Reddit posts (from fixtures), 28 "Read the photo" (#198). Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
-`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27 and 28 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–28 in `+Features.swift`, 22
+need, 27 Reddit posts (from fixtures), 28 "Read the photo" (#198), 29 reading other languages (#208: a
+German post, a French card). Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
+`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–29 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–29 in `+Features.swift`, 22
 in `+MealPlan.swift`). What they need from outside the app:
 
 - **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
@@ -599,12 +600,16 @@ in `+MealPlan.swift`). What they need from outside the app:
   the real `RedditRecipeParser` from `shared/fixtures/reddit/` files the script pushes to
   `/data/local/tmp`, in place of the `.json` fetch; the posts' photos don't load. iOS's test
   hands one to the UI-test stub source as `RC_UITEST_REDDIT_LISTING`, and the stub runs a Reddit link
-  through the same parser.
+  through the same parser; a clip that opens two posts (29) hands each its own as
+  `RC_UITEST_REDDIT_LISTING_<post id>`. Clip 29's German post (`de-self-post.json`) is the `de`
+  language fixture's post in a listing.
 - **The photo read** (28): on iOS the real Vision reader runs (`RC_UITEST_PHOTO_VISION=1`) over the
   card photos in `shared/fixtures/reddit/photos/`, which `RC_UITEST_PHOTO_IMAGES` puts in place of the
-  untranscribed post's own; a blurred one gives the "finish it by hand" fallback. An emulator has no
-  Play services model, so Android's clip is OCR SIMULATED: the test swaps `PhotoTextModule` for a
-  reader that answers the card's lines once, then nothing.
+  untranscribed post's own; a blurred one gives the "finish it by hand" fallback. Clip 29's French
+  card, `card-fr.jpg`, is the `fr` language fixture's photo lines drawn in a handwriting font on a
+  ruled card (macOS Vision reads it line for line, "2 c. à soupesucre" included). An emulator has no
+  Play services model, so Android's 28 and 29 are OCR SIMULATED: the test swaps `PhotoTextModule` for a
+  reader that answers the card's lines once, then nothing (29: the `fr` fixture's lines).
 - **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20, 23, 25 and 26:
   `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
 - **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the
