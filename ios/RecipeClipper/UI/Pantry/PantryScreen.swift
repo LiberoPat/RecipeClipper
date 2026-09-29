@@ -125,7 +125,7 @@ struct PantryScreen: View {
         .listRowSeparator(.hidden)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if item.stock != .inStock {
-                Button { vm.onSetStock(item, .inStock) } label: {
+                Button { afterSwipeCloses { vm.onSetStock(item, .inStock) } } label: {
                     Label(Strings.pantryRestock, systemImage: "arrow.uturn.backward")
                 }
                 .tint(Palette.primary)
@@ -133,19 +133,27 @@ struct PantryScreen: View {
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             if item.stock != .runOut {
-                Button { vm.onSetStock(item, .runOut) } label: {
+                Button { afterSwipeCloses { vm.onSetStock(item, .runOut) } } label: {
                     Label(Strings.pantryRanOut, systemImage: "xmark.circle")
                 }
                 .tint(Palette.muted)
             }
             if item.stock == .inStock {
-                Button { vm.onSetStock(item, .runningLow) } label: {
+                Button { afterSwipeCloses { vm.onSetStock(item, .runningLow) } } label: {
                     Label(Strings.pantryRunningLow, systemImage: "gauge.with.dots.needle.33percent")
                 }
                 .tint(Palette.accentText)
             }
         }
-}
+    }
+
+    /// A swipe action's change waits until its row has closed (#203). Applied at once, the row
+    /// moves to another section while UIKit is still animating its swipe shut, and the List can
+    /// leave that cell drawn at its old place (over the Run out heading, a blank slot where it
+    /// belongs) although the tree is right. The button, menu and sheet change it at once.
+    private func afterSwipeCloses(_ change: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: change)
+    }
 
     @ToolbarContentBuilder
     private func toolbar(_ state: PantryUiState) -> some ToolbarContent {
