@@ -3667,8 +3667,7 @@ of a range too:
 
 - **g, ml, cl, dl:** whole from 10 up, one decimal below ("313 g", "6.3 g", "1.9 dl"). This is
   the scaler's existing metric rule (`IngredientScaler.formatMetric`), which already wrote the
-  site's figures ("1 cup (120 g)" x 1.25 is "1 1/4 cup (150 g)"). An amount that would round
-  to nothing keeps two decimals ("0.04 g"), never "0 g".
+  site's figures ("1 cup (120 g)" x 1.25 is "1 1/4 cup (150 g)"), unchanged.
 - **kg, l:** two decimals, trailing zeros dropped ("0.75 kg", "0.63 l"), the converter's
   kg/L rule (`UnitConverter.formatThousands` now calls the same function).
 - **The recipe language's separator:** `amounts.json` gained `decimalComma` (true for de, fr,

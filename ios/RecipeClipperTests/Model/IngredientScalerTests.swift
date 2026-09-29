@@ -250,8 +250,6 @@ final class IngredientScalerTests: XCTestCase {
         XCTAssertEqual("1.25 l milk", scale("1 l milk", 1.25))
         // Both ends of a range.
         XCTAssertEqual("250-313 ml water", scale("200-250 ml water", 1.25))
-        // Too little to round is not "0 g".
-        XCTAssertEqual("0.04 g saffron", scale("0.5 g saffron", 1 / 12.0))
     }
 
     func testKitchenMeasuresAndCountsKeepTheirFractions() {

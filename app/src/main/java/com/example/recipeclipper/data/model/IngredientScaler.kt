@@ -513,12 +513,10 @@ object IngredientScaler {
     internal fun formatMetric(value: Double, unit: MeasureUnit): String =
         if (unit == MeasureUnit.KG || unit == MeasureUnit.L) formatDecimal(value) else formatMetric(value)
 
-    /** "313", "7.5"; a small amount that would round to nothing keeps two decimals ("0.04"). */
+    /** "313", "7.5": whole from 10 up, one decimal below. */
     internal fun formatMetric(value: Double): String {
         val scale = if (value >= 10) 0 else 1
-        val rounded = BigDecimal(value).setScale(scale, RoundingMode.HALF_UP)
-        if (rounded.signum() == 0 && value > 0) return formatDecimal(value)
-        return rounded.stripTrailingZeros().toPlainString()
+        return BigDecimal(value).setScale(scale, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
     }
 
     // The language's word between a whole number and its fraction, which the quantity pattern

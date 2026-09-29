@@ -543,10 +543,9 @@ enum IngredientScaler {
         unit == .kg || unit == .l ? plainDecimal(value, scale: 2) : formatMetric(value)
     }
 
-    /// "313", "7.5"; a small amount that would round to nothing keeps two decimals ("0.04").
+    /// "313", "7.5": whole from 10 up, one decimal below.
     static func formatMetric(_ value: Double) -> String {
-        let text = plainDecimal(value, scale: value >= 10 ? 0 : 1)
-        return text == "0" && value > 0 ? plainDecimal(value, scale: 2) : text
+        plainDecimal(value, scale: value >= 10 ? 0 : 1)
     }
 
     // The language's word between a whole number and its fraction, which the quantity pattern

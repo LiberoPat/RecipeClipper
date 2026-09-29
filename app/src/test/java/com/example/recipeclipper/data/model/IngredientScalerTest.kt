@@ -241,8 +241,6 @@ class IngredientScalerTest {
         assertEquals("1.25 l milk", IngredientScaler.scale("1 l milk", 1.25))
         // Both ends of a range.
         assertEquals("250-313 ml water", IngredientScaler.scale("200-250 ml water", 1.25))
-        // Too little to round is not "0 g".
-        assertEquals("0.04 g saffron", IngredientScaler.scale("0.5 g saffron", 1 / 12.0))
     }
 
     @Test fun `kitchen measures and counts keep their fractions`() {
