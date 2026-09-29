@@ -3396,6 +3396,19 @@ never save what it reads without the cook checking it, and fall back to typing i
   corrected: "l cup butter" stays "l cup butter". Lines under 0.5 confidence (Vision answers
   0.3 when unsure) are listed under **"Check these lines"**; a piece under four characters
   marks only a line that is exactly it.
+- **An amount shaped like a misreading is listed too, however sure the recogniser was**
+  (`PhotoTextSorter.suspect`, the same rules on both platforms). Found on a real card: Vision
+  read "1 1/2 cups flour" as "11/2 cups flour" at full confidence, which the scaler read as
+  5½ cups. Listed, never corrected: an improper fraction over 2 to 8 ("11/2", "13/4",
+  "31/3", "3/2"); a digit beside a look-alike letter at a slash or point ("l/2", "O.5", "1/Z",
+  "1O", "35o°F", but not "1oz" or "1l"); and a line whose leading amount the scaler reads with
+  no unit because a unit of three letters or more is run into the next word ("1 cupraisins",
+  "2 tbspsugar"; "g", "c", "l" and "oz" are left out, since "2 green onions" starts with one,
+  and "cupcake" is a word).
+- **The scaler leaves an improper fraction on its own as written** (`IngredientScaler.parse`,
+  every reader of an amount: scaling, conversion, groceries, timers): "11/2 cups flour" and
+  "3/2 cup milk" are never read as 5½ or 1½, since a lost space is likelier than an improper
+  fraction a recipe meant. After a whole number ("1 3/2") nothing changed.
 - **The review is the #29 editor, pre-filled,** not a new screen: title "Check the recipe",
   the post's pictures above (to compare against), a note on how it went, the lines to check,
   then the usual fields, with the post's title as the name and its first picture as the photo.
