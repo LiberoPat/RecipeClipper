@@ -134,4 +134,71 @@ extension WalkthroughUITests {
         app.swipeUp()
         pause(2.5)
     }
+
+    /// "Read the photo" (#198) with the real Vision reader: an untranscribed r/Old_Recipes card
+    /// (the fixture listing through the real parser, its pictures swapped for the local card
+    /// photos in `shared/fixtures/reddit/photos`), the review with the line Vision was unsure of,
+    /// that line fixed, Save; then a photo too blurred to read, which opens the editor to finish
+    /// by hand.
+    func test28_readThePhoto() throws {
+        let bundle = Bundle(for: WalkthroughUITests.self)
+        let fixture = try XCTUnwrap(bundle.url(forResource: "old-recipes-card-untranscribed", withExtension: "json", subdirectory: "reddit"))
+        func photo(_ name: String) throws -> String {
+            try XCTUnwrap(bundle.url(forResource: name, withExtension: "jpg", subdirectory: "reddit/photos")).absoluteString
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "mealPlan,reddit,photoText"]
+        app.launchEnvironment["RC_UITEST_REDDIT_LISTING"] = try String(contentsOf: fixture, encoding: .utf8)
+        app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
+        app.launchEnvironment["RC_UITEST_PHOTO_IMAGES"] =
+            "1f7a2bc=\(try photo("card-front")) \(try photo("card-back"))\n1f7a3cd=\(try photo("card-blurred"))"
+        app.launch()
+        self.app = app
+        require(app.textFields["Recipe URL"], "Home")
+        mark("START")
+        pause()
+
+        func readPhoto(of link: String) {
+            let field = require(app.textFields["Recipe URL"], "Home")
+            field.tap()
+            field.typeText(link)
+            pause(0.8)
+            app.scrollViews.firstMatch.buttons["Go"].tap()
+            require(textContaining("No recipe text found"), "the post's no-transcription note")
+            pause(2.5)
+            require(app.buttons["recipe.readPhoto"], "Read the photo").tap()
+        }
+
+        readPhoto(of: "https://www.reddit.com/r/Old_Recipes/comments/1f7a2bc/aunt_junes_oatmeal_cookies_front_and_back_of_the_card/")
+        require(text("Check the recipe"), "the review")
+        require(textContaining("Read from the photo"), "how the reading went", within: 30)
+        pause(2.5)
+        scrollTo(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
+        pause(3)
+
+        // Fix the unsure line: the last ingredient, retyped at the end of the box.
+        let box = app.textViews["Ingredients"].exists ? app.textViews["Ingredients"] : app.textFields["Ingredients"]
+        scrollTo(box, "the ingredients")
+        pause()
+        box.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.97)).tap()
+        pause()
+        let text = box.value as? String ?? ""
+        let last = text.split(separator: "\n").last.map(String.init) ?? ""
+        box.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: last.count))
+        pause(0.8)
+        box.typeText("1 cup raisins")
+        pause(2)
+        require(app.buttons["edit.save"], "Save").tap()
+        require(bookmark, "the saved recipe")
+        require(textContaining("Clipped by you"), "the clip's credit")
+        pause(3)
+        app.swipeUp()
+        pause(3)
+
+        // A photo that reads nothing: the editor, to finish by hand.
+        back()
+        readPhoto(of: "https://www.reddit.com/r/Old_Recipes/comments/1f7a3cd/aunt_junes_oatmeal_cookies_blurry_photo/")
+        require(text("Couldn't read a recipe from the photo: finish it by hand."), "the fallback note", within: 30)
+        pause(4)
+    }
 }

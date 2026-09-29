@@ -16,7 +16,7 @@ TESTS=("$@")
   test14_automaticBackup test15_sendAndPasteAList test16_sendAndReceiveAFile test17_firstRunTour
   test18_doneShoppingAndOnList test19_pantrySendList test20_pantryUseUpAfterCooking test21_chefModeUnsupportedSimulated
   test22_recipeJunkHidden test23_markAsCooked test24_tooltips test25_pantryStates test26_onionPlurals
-  test27_redditImport)
+  test27_redditImport test28_readThePhoto)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
 # A new simulator's keyboard shows its slide-to-type introduction once, over the app: mark it seen.

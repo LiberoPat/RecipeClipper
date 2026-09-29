@@ -26,7 +26,7 @@ TESTS=("$@")
   CookingWalkthroughTest#test21_chefModeUnsupportedSimulated MealPlanWalkthroughTest#test22_recipeJunkHidden
   CookingWalkthroughTest#test23_markAsCooked CookingWalkthroughTest#test24_tooltips
   CookingWalkthroughTest#test25_pantryStates CookingWalkthroughTest#test26_onionAndOnions
-  RecipesWalkthroughTest#test27_redditImport)
+  RecipesWalkthroughTest#test27_redditImport RecipesWalkthroughTest#test28_readThePhoto)
 mkdir -p "$OUT"
 export ANDROID_SERIAL=$SERIAL
 adb shell cmd uimode night no >/dev/null
