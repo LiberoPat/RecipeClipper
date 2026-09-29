@@ -257,6 +257,7 @@
     <string name="clip_field_steps">Schritte</string>
     <string name="clip_field_photo">Foto</string>
     <string name="clip_hint">Markiere Text auf der Seite und tippe dann an, wohin er gehört. Für das Foto tippe auf Foto und dann auf das Bild.</string>
+    <string name="clip_reddit_blocked_note">Reddit hat die App diesen Beitrag nicht lesen lassen, deshalb ist er hier geöffnet: Markiere das Rezept.</string>
     <string name="clip_picking_photo">Tippe auf das Bild, das du als Foto verwenden willst.</string>
     <string name="clip_skip_photo">Überspringen</string>
     <string name="clip_photo_unreadable">Dort ließ sich kein Bild lesen. Das Foto ist optional.</string>

@@ -267,6 +267,7 @@
     <string name="clip_field_steps">Étapes</string>
     <string name="clip_field_photo">Photo</string>
     <string name="clip_hint">Sélectionnez du texte sur la page, puis touchez l\'endroit où il va. Pour la photo, touchez Photo, puis l\'image.</string>
+    <string name="clip_reddit_blocked_note">Reddit n\'a pas laissé l\'appli lire cette publication, elle est donc ouverte ici : sélectionnez la recette.</string>
     <string name="clip_picking_photo">Touchez l\'image à utiliser comme photo.</string>
     <string name="clip_skip_photo">Passer</string>
     <string name="clip_photo_unreadable">Impossible de lire une image à cet endroit. La photo est facultative.</string>

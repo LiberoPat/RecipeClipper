@@ -267,6 +267,7 @@
     <string name="clip_field_steps">Passos</string>
     <string name="clip_field_photo">Foto</string>
     <string name="clip_hint">Selecione o texto na página e toque onde ele vai. Para a foto, toque em Foto e depois na imagem.</string>
+    <string name="clip_reddit_blocked_note">O Reddit não deixou o app ler este post, então ele está aberto aqui: selecione a receita.</string>
     <string name="clip_picking_photo">Toque na imagem que vai ser a foto.</string>
     <string name="clip_skip_photo">Pular</string>
     <string name="clip_photo_unreadable">Não foi possível ler uma imagem ali. A foto é opcional.</string>

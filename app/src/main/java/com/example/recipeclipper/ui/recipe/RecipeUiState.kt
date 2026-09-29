@@ -140,6 +140,13 @@ data class RecipeUiState(
      */
     val clipUrl: String? = null,
     /**
+     * A shared Reddit post the app was blocked from reading (#213,
+     * [com.example.recipeclipper.data.remote.RedditUrls.clipsWhenBlocked]): the screen opens
+     * "Clip it yourself" on it in its own place, with a note saying why, rather than show the
+     * error. [content] stays Loading meanwhile.
+     */
+    val clipBlockedPost: String? = null,
+    /**
      * The post to read the photos of ("Read the photo", #198): set while a Reddit post with no
      * recipe text ([ParseError.NoTranscription]) that has a picture is on screen. The screen
      * offers it only behind the `photoText` flag.

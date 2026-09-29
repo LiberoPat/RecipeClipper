@@ -267,6 +267,7 @@
     <string name="clip_field_steps">Passaggi</string>
     <string name="clip_field_photo">Foto</string>
     <string name="clip_hint">Seleziona il testo nella pagina, poi tocca dove va. Per la foto, tocca Foto e poi l\'immagine.</string>
+    <string name="clip_reddit_blocked_note">Reddit non ha permesso all\'app di leggere questo post, quindi è aperto qui: seleziona la ricetta.</string>
     <string name="clip_picking_photo">Tocca l\'immagine da usare come foto.</string>
     <string name="clip_skip_photo">Salta</string>
     <string name="clip_photo_unreadable">Impossibile leggere un\'immagine lì. La foto è facoltativa.</string>

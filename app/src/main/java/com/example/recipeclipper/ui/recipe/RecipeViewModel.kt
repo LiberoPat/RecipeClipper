@@ -14,6 +14,7 @@ import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.ShortStepRepository
 import com.example.recipeclipper.data.TimerAlarmScheduler
 import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.ParseError
@@ -24,6 +25,7 @@ import com.example.recipeclipper.data.model.SiteReportLink
 import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.data.needsNotice
+import com.example.recipeclipper.data.remote.RedditUrls
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -78,6 +80,10 @@ class RecipeViewModel @Inject constructor(
     // Opened from the Week (#49): show the planned servings rather than the saved choice. For
     // this visit only; it isn't saved unless the cook changes the servings here.
     private var plannedServings: Int? = savedStateHandle.get<Int>(SERVINGS_ARG)?.takeIf { it > 0 }
+
+    // The `reddit` flag (#11), read at each load as the source reads it at each fetch; on when
+    // a test passes no flags, as it is by default.
+    private val redditOn: () -> Boolean = { featureFlags?.isOn(Flag.REDDIT) != false }
 
     // Seeded synchronously so the first render already uses the user's units; kept current
     // afterwards by collecting [AppPreferences.settings] in [init].
@@ -168,7 +174,7 @@ class RecipeViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 content = RecipeContent.Loading, reportSiteUrl = null, clipUrl = null, photoPost = null,
-                asWrittenSteps = emptySet()
+                clipBlockedPost = null, asWrittenSteps = emptySet()
             )
         }
         loadJob = viewModelScope.launch {
@@ -179,6 +185,11 @@ class RecipeViewModel @Inject constructor(
                 shareUrl != null -> repository.importFromUrl(shareUrl)
                 else -> ParseResult.Error(ParseError.NothingToShow)
             }
+            // Reddit wouldn't let the app read the post (#213): no error screen; the post opens
+            // in "Clip it yourself" instead, where Reddit does let it in.
+            val clipInstead = shareUrl?.takeIf {
+                result is ParseResult.Error && RedditUrls.clipsWhenBlocked(it, result.error, redditOn())
+            }
             _uiState.update { state ->
                 when (result) {
                     is ParseResult.Success -> state.copy(
@@ -187,12 +198,16 @@ class RecipeViewModel @Inject constructor(
                         notes = result.recipe.notes.orEmpty(),
                         notKept = !result.kept
                     )
-                    is ParseResult.Error -> state.copy(
-                        content = RecipeContent.Error(result.error),
-                        reportSiteUrl = reportSiteUrl(result.error),
-                        clipUrl = shareUrl.takeIf { result.error == ParseError.NoRecipeFound },
-                        photoPost = photoPost(result.error)
-                    )
+                    is ParseResult.Error -> if (clipInstead != null) {
+                        state.copy(clipBlockedPost = clipInstead)
+                    } else {
+                        state.copy(
+                            content = RecipeContent.Error(result.error),
+                            reportSiteUrl = reportSiteUrl(result.error),
+                            clipUrl = shareUrl.takeIf { result.error == ParseError.NoRecipeFound },
+                            photoPost = photoPost(result.error)
+                        )
+                    }
                 }
             }
             if (result is ParseResult.Success) {

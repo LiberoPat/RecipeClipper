@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.ParseError
 import java.net.URI
 
 /**
@@ -35,6 +36,17 @@ object RedditUrls {
         val host = parts(url)?.first ?: return false
         return host == "reddit.com" || host.endsWith(".reddit.com") || host == "redd.it"
     }
+
+    /**
+     * Whether an import of [url] that ended in [error] opens "Clip it yourself" on the post in
+     * place of the error screen (#213). Reddit's network-security wall answers the app's `.json`
+     * read with a 403 that waiting doesn't lift, while the clip view, a real browser engine, is
+     * let through. Only a block, and only for a link the Reddit source reads ([redditOn], the
+     * `reddit` flag). A link saved before never gets here: the repository opens its saved copy
+     * after any failure.
+     */
+    fun clipsWhenBlocked(url: String, error: ParseError, redditOn: Boolean): Boolean =
+        redditOn && error is ParseError.Blocked && isReddit(url)
 
     fun isShareLink(url: String): Boolean {
         val (host, path) = parts(url) ?: return false
