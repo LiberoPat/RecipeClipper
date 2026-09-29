@@ -1,7 +1,8 @@
 import XCTest
 
-/// The Pantry tab (#51), behind the tab flag: type an item, tap Ran out (#194) and it goes on the
-/// grocery list by itself, with an "On list" tag that takes it off again (#146).
+/// The Pantry tab (#51), behind the tab flag: type an item, run it out (#194) and it goes on the
+/// grocery list by itself, with the Groceries tab's basket tag, which takes it off again (#146).
+/// No row button since 2026-09-29: the sheet, the menu and the swipes change the stock.
 final class PantryUITests: RecipeUITestCase {
 
     private var tabBar: XCUIElement { app.tabBars.firstMatch }
@@ -11,7 +12,7 @@ final class PantryUITests: RecipeUITestCase {
     }
 
     private var onListTag: XCUIElement {
-        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ OR label == %@", "onList-", "On list")).firstMatch
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "onList-")).firstMatch
     }
 
     func testRunningOutPutsAnItemOnGroceriesAndTheTagTakesItOff() {
@@ -22,17 +23,20 @@ final class PantryUITests: RecipeUITestCase {
         field.typeText("milk\n")
         require(text("Dairy & eggs"), "the dairy aisle")
 
-        require(app.buttons["Ran out: milk"], "Ran out").tap()
-        require(app.buttons["Restock: milk"], "Restock, once it has run out")
+        require(pantryRow("milk"), "milk").swipeLeft()
+        require(app.buttons["Ran out"], "the swipe's Ran out").tap()
+        require(pantryRow("milk", "Run out"), "milk, run out")
         require(text("Run out"), "the Run out section")
-        require(onListTag, "the On list tag")
+        let tag = require(onListTag, "the basket tag")
+        XCTAssertEqual(tag.label, "On your grocery list")
+        require(pantryRow("milk", "On your grocery list"), "the row, read with the tag")
         assertAbsent(app.buttons["Undo"], "a snackbar")
 
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         require(button(containing: "milk"), "milk on the list")
 
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
-        require(onListTag, "the On list tag").tap()
+        require(onListTag, "the basket tag").tap()
         requireGone(onListTag, "the tag, once off the list")
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         requireGone(button(containing: "milk"), "milk, off the list")
@@ -44,6 +48,11 @@ final class PantryUITests: RecipeUITestCase {
 
     private func pantryRow(_ name: String) -> XCUIElement {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "\(name), ")).firstMatch
+    }
+
+    /// The row as VoiceOver reads it, holding `state` ("Run out", "In stock", …).
+    private func pantryRow(_ name: String, _ state: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "\(name), ", ", \(state)")).firstMatch
     }
 
     /// Every state is reachable from something visible: tapping the row opens its sheet, whose
@@ -62,12 +71,13 @@ final class PantryUITests: RecipeUITestCase {
         requireState(control.buttons["Running low"], "isSelected == true", "Running low, selected")
         require(app.buttons["pantryEditSave"], "Save").tap()
         require(lowTag, "the Low tag")
-        require(onListTag, "the On list tag")
+        require(onListTag, "the basket tag")
     }
 
-    /// The row's menu offers only the state its button doesn't (#194): In stock → Running low,
-    /// Running low → Restock, Run out → Running low.
-    func testTheRowMenuNeverRepeatsTheButton() {
+    /// With no row button (owner, 2026-09-29), the row's menu offers both other states (#194):
+    /// In stock → Running low, Ran out; Running low → Restock, Ran out; Run out → Restock,
+    /// Running low.
+    func testTheRowMenuOffersBothOtherStates() {
         launch(.empty, flags: ["mealPlan"])
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         let field = require(app.textFields["Add to the pantry"], "Add to the pantry")
@@ -76,21 +86,21 @@ final class PantryUITests: RecipeUITestCase {
 
         require(pantryRow("garlic"), "garlic").press(forDuration: 1.2)
         let runningLow = require(app.buttons["Running low"], "In stock's menu: Running low")
-        assertAbsent(app.buttons["Ran out"], "Ran out in the menu, beside the button")
+        require(app.buttons["Ran out"], "In stock's menu: Ran out")
         assertAbsent(app.buttons["Restock"], "Restock, while in stock")
         runningLow.tap()
         require(lowTag, "the Low tag")
 
         require(pantryRow("garlic"), "garlic").press(forDuration: 1.2)
-        require(app.buttons["Restock"], "Running low's menu: Restock").tap()
-        requireGone(lowTag, "the Low tag, once restocked")
+        require(app.buttons["Restock"], "Running low's menu: Restock")
+        require(app.buttons["Ran out"], "Running low's menu: Ran out").tap()
+        requireGone(lowTag, "the Low tag, once run out")
+        require(pantryRow("garlic", "Run out"), "garlic, run out")
 
-        require(app.buttons["Ran out: garlic"], "Ran out").tap()
-        require(app.buttons["Restock: garlic"], "Restock, once it has run out")
         require(pantryRow("garlic"), "garlic").press(forDuration: 1.2)
         require(app.buttons["Running low"], "Run out's menu: Running low")
-        assertAbsent(app.buttons["Restock"], "Restock in the menu, beside the button")
-        assertAbsent(app.buttons["Ran out"], "Ran out, once out")
+        require(app.buttons["Restock"], "Run out's menu: Restock").tap()
+        require(pantryRow("garlic", "In stock"), "garlic, back in stock")
     }
 
     // MARK: - Moves between sections (#203)
@@ -105,19 +115,22 @@ final class PantryUITests: RecipeUITestCase {
 
     /// Moving a row between sections leaves it under the right heading, with no blank row left
     /// behind and the Run out heading shown while anything has run out (#203): Restock (garlic is
-    /// run out in the seed), Ran out, Running low from a swipe, and the edit sheet's control.
+    /// run out in the seed) and Ran out from the row's menu, Running low from a swipe, and the
+    /// edit sheet's control.
     func testMovesBetweenSectionsRedrawTheList() {
         launch(.walkthroughPantry, flags: ["mealPlan"])
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
-        require(app.buttons["Ran out: soy sauce"], "the pantry")
+        require(pantryRow("soy sauce"), "the pantry")
         requireLaidOut(["garlic": "Run out", "milk": "Run out", "soy sauce": "Oils, sauces & condiments"])
 
-        reveal(app.buttons["Restock: garlic"], "garlic's Restock").tap()
-        require(app.buttons["Ran out: garlic"], "garlic, back in stock")
+        reveal(pantryRow("garlic"), "garlic").press(forDuration: 1.2)
+        require(app.buttons["Restock"], "the menu's Restock").tap()
+        require(pantryRow("garlic", "In stock"), "garlic, back in stock")
         requireLaidOut(["garlic": "Fruit & vegetables", "onions": "Fruit & vegetables", "milk": "Run out"])
 
-        reveal(app.buttons["Ran out: soy sauce"], "soy sauce's Ran out").tap()
-        require(app.buttons["Restock: soy sauce"], "soy sauce, run out")
+        reveal(pantryRow("soy sauce"), "soy sauce").press(forDuration: 1.2)
+        require(app.buttons["Ran out"], "the menu's Ran out").tap()
+        require(pantryRow("soy sauce", "Run out"), "soy sauce, run out")
         requireLaidOut(["soy sauce": "Run out", "milk": "Run out", "olive oil": "Oils, sauces & condiments"])
 
         reveal(pantryRow("basmati rice"), "basmati rice").swipeLeft()
@@ -129,7 +142,7 @@ final class PantryUITests: RecipeUITestCase {
         let control = require(app.segmentedControls["pantryEditStock"], "the sheet's stock control")
         control.buttons["In stock"].tap()
         require(app.buttons["pantryEditSave"], "Save").tap()
-        require(app.buttons["Ran out: soy sauce"], "soy sauce, back in stock")
+        require(pantryRow("soy sauce", "In stock"), "soy sauce, back in stock")
         requireLaidOut(["soy sauce": "Oils, sauces & condiments", "milk": "Run out", "garlic": "Fruit & vegetables"])
     }
 
@@ -140,7 +153,7 @@ final class PantryUITests: RecipeUITestCase {
     func testSwipeMovesRedrawTheList() {
         launch(.walkthroughPantry, flags: ["mealPlan"])
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
-        require(app.buttons["Ran out: soy sauce"], "the pantry")
+        require(pantryRow("soy sauce"), "the pantry")
         for _ in 0..<3 {
             reveal(pantryRow("garlic"), "garlic").swipeRight()
             require(app.buttons["Restock"], "the swipe's Restock").tap()

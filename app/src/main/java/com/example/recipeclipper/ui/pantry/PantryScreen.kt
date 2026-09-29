@@ -117,7 +117,7 @@ import kotlinx.coroutines.launch
 /**
  * The Pantry tab (#51): "Add to the pantry", a search field, then everything by aisle (or by
  * expiry, from the menu), and what has run out last (#194). Each row shows whether it's in
- * stock, running low or run out, with a labelled action; tapping the row opens its edit sheet (quantity, staple, use-by date, delete). The menu sends what's in stock, as
+ * stock, running low or run out, and its quantity as written; tapping the row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes and a touch-and-hold menu as shortcuts. The menu sends what's in stock, as
  * plain text or as a file (#149).
  */
 @Composable
@@ -572,8 +572,8 @@ private fun EditSheet(editing: PantryEditing, viewModel: PantryViewModel) {
         ) {
             SectionHeading(stringResource(R.string.pantry_edit_title))
             Spacer(Modifier.height(12.dp))
-            // Every state, visibly (#194): the row's button, menu and swipes are shortcuts.
-            // Applied at once, as the row's button is.
+            // Every state, visibly (#194): the row's menu and swipes are shortcuts. Applied at
+            // once, as they are.
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("pantryEditStock")) {
                 PantryStock.entries.forEachIndexed { index, choice ->
                     SegmentedButton(

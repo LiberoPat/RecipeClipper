@@ -1,7 +1,7 @@
 import XCTest
 
 // Walkthroughs 13, 17, 18, 20, 21 and 23: "I made this" (#116), the first-run tour (#151), Done
-// shopping and the On list tag (#146), using up the pantry after cooking (#147), what Settings
+// shopping and the basket Groceries tag (#146), using up the pantry after cooking (#147), what Settings
 // says about Chef mode on a phone that can't run it (#144, the model's answer simulated with
 // `-uiTestChefUnsupported`), and "Mark as cooked" (#173).
 
@@ -74,18 +74,21 @@ extension WalkthroughUITests {
         undo.tap()
         pause(2.5)
         tab("Pantry")
-        require(app.buttons["Ran out: onions"], "the onions' Ran out").tap() // onto the list
+        // Ran out, from a swipe (no row button since 2026-09-29): onto the list.
+        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "onions, ")).firstMatch, "onions").swipeLeft()
+        pause(1.5)
+        require(app.buttons["Ran out"], "the swipe's Ran out").tap()
         pause()
         // Run out items sit at the foot of the Pantry (#194), below the fold.
         // Hittable even under the tab bar, so drag until it clears the bar.
-        let restock = require(app.buttons["Restock: onions"], "onions, run out")
-        for _ in 0..<4 where restock.frame.maxY > tabBar.frame.minY - 60 {
+        let onions = app.buttons
+            .matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "onions, ", "On your grocery list")).firstMatch
+        require(onions, "onions, run out and on the list")
+        for _ in 0..<4 where onions.frame.maxY > tabBar.frame.minY - 60 {
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
                 .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35)))
             pause(0.6)
         }
-        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "onions, ", "On list")).firstMatch,
-                "the onions' On list tag")
         pause(2.5)
         tab("Groceries")
         pause(2)

@@ -104,7 +104,7 @@ object PantryList {
     /**
      * The unticked grocery lines that are [item] itself: its name as the pantry puts it there
      * (trimmed, case-insensitive, a listed pair's number aside ([IngredientName.same]), in its
-     * language), which is what "On list" means (#146). A recipe's "2 cups flour" isn't, so taking
+     * language), which is what the basket tag means (#146). A recipe's "2 cups flour" isn't, so taking
      * the item off the list never loses a recipe's line.
      */
     fun ownLines(item: PantryItem, groceries: List<GroceryItem>): List<GroceryItem> {

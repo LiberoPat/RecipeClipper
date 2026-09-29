@@ -10,7 +10,7 @@ struct PantryEditing: Equatable {
     var alwaysHave: Bool
     var expiresDay: Int64?
     let purchasedDay: Int64?
-    /// Not written on Save: the sheet's stock control applies at once, as the row's button does (#194).
+    /// Not written on Save: the sheet's stock control applies at once, as the row's menu and swipes do (#194).
     var stock: PantryStock
 }
 
@@ -23,7 +23,7 @@ enum PantryMessage: Equatable {
 /// `sections` is nil until the pantry has loaded; `hasItems` says whether it holds anything at
 /// all (a search can find nothing in a full pantry), and `hasInStock` whether anything is in
 /// stock, which is what "Send list" and "Send as file" send (#149). `onList` holds the items
-/// whose name is on the grocery list, unticked: their rows show "On list" (#146).
+/// whose name is on the grocery list, unticked: their rows show the basket Groceries tag (#146).
 struct PantryUiState: Equatable {
     var sections: [PantrySection]?
     var hasItems = false
@@ -39,7 +39,7 @@ struct PantryUiState: Equatable {
 
 /// The Pantry tab (#51; Android's PantryViewModel): add by typing, search, sort by aisle or
 /// expiry, and mark each item in stock, running low or run out (#194). Running low or out puts
-/// the item on the grocery list, silently (#146); its row then says "On list", and tapping that
+/// the item on the grocery list, silently (#146); its row then shows the basket Groceries tag, and tapping that
 /// takes it off again. A delete can be undone.
 @MainActor
 @Observable
@@ -123,7 +123,7 @@ final class PantryViewModel {
         }
     }
 
-    /// A row's action, swipe or menu (#194). Running low and run out put the item on the grocery
+    /// A row's swipe or menu, or the sheet's control (#194). Running low and run out put the item on the grocery
     /// list, silently, unless it's there already (#146); back in stock means just bought, today.
     func onSetStock(_ item: PantryItem, _ stock: PantryStock) {
         guard stock != item.stock else { return }
@@ -139,7 +139,7 @@ final class PantryViewModel {
         }
     }
 
-    /// The row's "On list" tag, tapped: the item's own lines leave the grocery list. No snackbar (#146).
+    /// The row's basket tag, tapped: the item's own lines leave the grocery list. No snackbar (#146).
     func onTakeOffList(_ item: PantryItem) {
         let ids = lines(for: item).map(\.id)
         guard !ids.isEmpty else { return }
@@ -155,7 +155,7 @@ final class PantryViewModel {
         )
     }
 
-    /// The sheet's stock control: applied at once, through the same path as the row's button.
+    /// The sheet's stock control: applied at once, through the same path as the row's menu and swipes.
     func onEditStock(_ stock: PantryStock) {
         guard let editing = uiState.editing, let item = items.first(where: { $0.id == editing.id }) else { return }
         uiState.editing?.stock = stock
