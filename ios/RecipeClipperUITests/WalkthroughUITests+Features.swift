@@ -288,7 +288,8 @@ extension WalkthroughUITests {
         pause(0.8)
         box.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count + 2))
         pause(0.5)
-        box.typeText(fixed)
+        // Emptied, the box no longer matches its query: type into whatever has the focus (it).
+        app.typeText(fixed)
         pause(2)
         require(app.buttons["edit.save"], "Save").tap()
         require(bookmark, "the saved recipe")
