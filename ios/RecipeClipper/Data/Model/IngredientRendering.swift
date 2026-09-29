@@ -15,6 +15,7 @@ enum IngredientRendering {
         decisions: Decisions = .none
     ) -> [String] {
         lines.map { line in
+            if IngredientHeading.isHeading(line) { return line }
             // A line with junk never has a count bracket: that holds a digit, which is never cut.
             let shown = GroceryDecisions.shownLine(line, words: words, decisions: decisions)
             let bracket = decisions.countBracket(line, language: words?.language)

@@ -64,6 +64,15 @@ struct RecipeSuccess: Equatable {
 
     func hasShortStep(_ index: Int) -> Bool { index < shortInstructions.count && shortInstructions[index] != nil }
 
+    /// Ingredient line `index` is a group heading ("For the sauce:"): drawn as a subheading with
+    /// no box, never ticked. Ticks stay keyed by line index, so every line keeps its own.
+    func isHeading(_ index: Int) -> Bool {
+        ingredients.indices.contains(index) && IngredientHeading.isHeading(ingredients[index])
+    }
+
+    /// The ingredient lines that aren't headings: what cook mode's bar counts.
+    var ingredientCount: Int { ingredients.filter { !IngredientHeading.isHeading($0) }.count }
+
     /// Step `index` with its amounts, or nil to show it as written.
     func stepParts(_ index: Int) -> [StepAmounts.Part]? {
         guard let stepAmounts, index < stepAmounts.count else { return nil }

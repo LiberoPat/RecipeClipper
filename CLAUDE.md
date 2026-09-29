@@ -373,8 +373,16 @@ Each one exists to avoid showing a confident wrong number. Other languages
   non-liquid with a site weight keeps it ("1 tsp (4 g) salt" is "4 g salt");
   known liquids stay in ml, even beside a gram figure.
 - **A bare "oz" is a weight,** unless the ingredient is a known liquid.
+- **Metric amounts are decimals, never fractions:** scaled g, ml, cl or dl
+  are whole from 10 up, one decimal below ("313 g", "6.3 g"); kg and l take
+  two ("0.63 l"). Cups, spoons, oz, lb and counts keep fractions. Metric
+  figures use the recipe language's separator (`decimalComma` in
+  `amounts.json`: "6,3 g" in German).
 - **Decimal commas:** "1,5 kg" is a decimal and keeps its comma when scaled;
   "1,500 g" may be thousands, so the line stays as written.
+- **Ingredient lines ending in a colon are group headings**
+  (`IngredientHeading`): a subheading with no checkbox, never scaled,
+  converted, ticked, bought or used up. Ticks stay keyed by line index.
 - **Temperatures** need 2–3 digits, then F or C; without a degree sign or a
   word, also a plausible cooking temperature ("2 C flour" is cups). Ovens round
   to recipe numbers (350°F ↔ 180°C); food-safety temperatures keep degree

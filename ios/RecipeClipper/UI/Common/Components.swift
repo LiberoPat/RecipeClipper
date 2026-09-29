@@ -78,6 +78,24 @@ struct RadioGlyph: View {
     }
 }
 
+/// A group heading among the ingredients ("For the sauce:"): a small subheading with no
+/// checkbox, nothing to tick. Marked as a header for VoiceOver.
+struct IngredientHeadingRow: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .textStyle(Typography.titleSmall)
+            .foregroundStyle(Palette.muted)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("ingredient-heading")
+    }
+}
+
 /// A whole-row tap target: the checkbox only draws the state, the row toggles it.
 struct IngredientRow: View {
     let text: String

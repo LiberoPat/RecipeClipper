@@ -156,6 +156,26 @@ final class RecipeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.checkedIngredients, [])
     }
 
+    /// A group heading has no box (the reading view and cook bar draw `IngredientHeadingRow` for
+    /// it); ticks stay keyed by line index, so the line after it ticks itself.
+    func testAHeadingIsNeverTickedAndTheLineAfterItTicksItself() async {
+        let lines = ["Für den Teig:", "250 g Mehl", "Für die Füllung:", "200 g Quark"]
+        let (vm, repository) = await loaded(testRecipe(id: 5, ingredients: lines, language: "de"))
+        guard let content = success(vm) else { return }
+        XCTAssertEqual((0..<4).map(content.isHeading), [true, false, true, false])
+        XCTAssertEqual(content.ingredientCount, 2)
+
+        vm.onIngredientChecked(0, true)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.checkedIngredients, [])
+        XCTAssertTrue(repository.setCheckedCalls.isEmpty)
+
+        vm.onIngredientChecked(1, true)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.checkedIngredients, [1])
+        XCTAssertEqual(repository.setCheckedCalls.map(\.checked), [[1]])
+    }
+
     // MARK: Notes
 
     func testTheNoteIsSeededFromTheLoadedRecipe() async {

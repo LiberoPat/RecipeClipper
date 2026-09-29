@@ -168,7 +168,7 @@ private struct IngredientsBar: View {
                     // The count drops under the heading at the accessibility sizes instead of
                     // wrapping mid-phrase beside it.
                     let stacked = dynamicTypeSize.isAccessibilitySize
-                    let count = content.ingredients.count
+                    let count = content.ingredientCount
                     let heading = stacked
                         ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
                         : AnyLayout(HStackLayout(spacing: 0))
@@ -198,11 +198,15 @@ private struct IngredientsBar: View {
             if expanded {
                 let list = VStack(spacing: 0) {
                     ForEach(Array(content.ingredients.enumerated()), id: \.offset) { index, ingredient in
-                        IngredientRow(
-                            text: ingredient,
-                            checked: state.checkedIngredients.contains(index),
-                            onCheckedChange: { vm.onIngredientChecked(index, $0) }
-                        )
+                        if content.isHeading(index) {
+                            IngredientHeadingRow(text: ingredient)
+                        } else {
+                            IngredientRow(
+                                text: ingredient,
+                                checked: state.checkedIngredients.contains(index),
+                                onCheckedChange: { vm.onIngredientChecked(index, $0) }
+                            )
+                        }
                     }
                 }
                 .padding(.horizontal, 20)

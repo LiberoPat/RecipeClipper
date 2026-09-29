@@ -64,7 +64,10 @@ final class PantryUseUpViewModel: Identifiable {
     /// A photo was added with "I made this" (#116): the recipe was cooked. The ticked lines, if
     /// any are ticked (as cook mode hands over), else every line of `ingredients`; both as shown.
     func onMadeThis(recipeId: Int64, language: String?, ingredients: [String], ticked: Set<Int>) {
-        let lines = ticked.sorted().compactMap { ingredients.indices.contains($0) ? ingredients[$0] : nil }
+        // A tick stored on a heading doesn't count.
+        let lines = ticked.sorted()
+            .compactMap { ingredients.indices.contains($0) ? ingredients[$0] : nil }
+            .filter { !IngredientHeading.isHeading($0) }
         offer(recipeId: recipeId, language: language, lines: lines.isEmpty ? ingredients : lines)
     }
 

@@ -129,7 +129,8 @@ enum UnitConverter {
         let p = patterns(words)
         if p.scaler.amountAfterName { return convertTrailing(line, system: system, includeLiquids: includeLiquids, words: words) }
         if p.scaler.unreadable(line) { return line }
-        let comma = IngredientScaler.decimalComma.containsMatch(in: separatorFrom ?? line)
+        // "1,5 kg" converts with a comma, and so does any line in a language that writes one (#15).
+        let comma = IngredientScaler.decimalComma.containsMatch(in: separatorFrom ?? line) || p.scaler.decimalComma
 
         // "1 cup butter or 1/2 cup oil" (#61): every amount converts, or the line stays as written.
         // An amount with no unit ("2 vanilla pods") or already in the system's units is fine as it is.

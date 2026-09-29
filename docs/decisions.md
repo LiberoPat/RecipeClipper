@@ -3639,7 +3639,8 @@ ViewModels that show a preference collect it rather than reading once.
   followed by 1–2 digits is a decimal ("1,5 kg"), and the line's output keeps the
   comma, as decimals rather than fractions ("1,5 kg" ×1.5 is "2,25 kg"). Followed by 3
   digits ("1,500 g") it may be a thousands separator, so the whole line stays as
-  written.
+  written. A metric amount the app writes uses the recipe language's separator even on
+  a line with no decimal (see "Metric amounts as decimals" below).
 - **On-device OCR**, once deferred (a new dependency, and weakest on handwriting), is built
   as "Read the photo" (#198): never trusted blindly, always checked by the cook.
 
@@ -3653,3 +3654,50 @@ check existed. Now `ViewModelImportsTest` (Android, JVM) and `ViewModelImportsTe
 (iOS) scan every source file that declares a `class …ViewModel`, whatever the file is
 called, and fail on an `androidx.compose` import (Android) or a `SwiftUI` or `UIKit`
 import (iOS).
+
+## Metric amounts as decimals, and ingredient headings without a box (September 2026)
+
+Two display fixes the owner asked for, on both platforms.
+
+**Metric amounts.** A German recipe scaled from 4 to 5 servings showed "312 1/2 g Mehl", in
+As written and in Metric: the scaler wrote every leading amount as a kitchen fraction, and
+nobody weighs half a gram. Now, when the unit after the amount is metric (g, kg, ml, l, cl,
+dl, in any language's spelling from `units.json`), the scaled amount is a decimal, both ends
+of a range too:
+
+- **g, ml, cl, dl:** whole from 10 up, one decimal below ("313 g", "6.3 g", "1.9 dl"). This is
+  the scaler's existing metric rule (`IngredientScaler.formatMetric`), which already wrote the
+  site's figures ("1 cup (120 g)" x 1.25 is "1 1/4 cup (150 g)"). An amount that would round
+  to nothing keeps two decimals ("0.04 g"), never "0 g".
+- **kg, l:** two decimals, trailing zeros dropped ("0.75 kg", "0.63 l"), the converter's
+  kg/L rule (`UnitConverter.formatThousands` now calls the same function).
+- **The recipe language's separator:** `amounts.json` gained `decimalComma` (true for de, fr,
+  es, it, pt), so "5 g Hefe" x 1.25 is "6,3 g Hefe" though the line wrote no decimal. The
+  converter's metric output follows it too ("1/2 TL Zimt" in Metric is "2,5 ml Zimt"). A line
+  that writes a decimal comma keeps it as before.
+- **Unchanged:** cups, spoons, oz, lb and counts keep their fractions; an unscaled line stays
+  as written ("1/2 kg" at the recipe's own servings).
+- **A known rounding:** scale then convert reads the scaled text, so a kg figure rounded to two
+  decimals can move a later ounce conversion by a quarter ounce ("0.75 kg" halved is "0.38 kg",
+  13 1/2 oz rather than 13 1/4). Within the converter's own rounding; left as it is.
+- **Corpus:** 77 existing `Ing` rows changed, all metric amounts (fractions became decimals,
+  a converted metric figure in de, fr, es, it and pt took a comma, the "(0,24 l)" site figures
+  kept two decimals); none outside `Ing` rows. New rows pin German, French and English metric
+  lines, ranges and headings, and one German `Render` row.
+
+**Ingredient headings.** Lines such as "Für die Füllung:", "For the sauce:" and "Pour la
+garniture :" were drawn as tickable rows. `IngredientHeading.isHeading` (a line ending in a
+colon, after trimming) is the test Groceries already used (`GrocerySources.buyable` now calls
+it), and the form every parser, card reader and the splitter writes a group heading in
+(#118, #119, #208), so it holds in every language.
+
+- The reading view and cook mode's ingredients bar draw a heading as a small muted
+  subheading (a heading for accessibility), with no checkbox and nothing to tap. Cook mode's
+  bar counts only the other lines.
+- `IngredientRendering` returns a heading as written: never scaled ("2 Portionen Soße:"),
+  converted or cut as junk.
+- **Ticks stay keyed by line index**, so nothing is reindexed and every saved tick still names
+  its line. A tick stored on a heading (from before) is ignored: `RecipeViewModel` won't set
+  one, and the end of cooking and "I made this" leave headings out of the lines they hand to
+  the pantry's use-up sheet (which already skipped them). "Add to groceries" already left them
+  out. Share text keeps them as plain lines, as before.
