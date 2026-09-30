@@ -469,7 +469,10 @@ private struct PantryEditSheet: View {
     }
 }
 
-/// The first row, which the stock tooltip (#190) points at.
+/// The first row, which the stock tooltip (#190) points at. The anchor is a background, so the
+/// row's own view is the same whether it's first or not: an `if first` around the row changed
+/// its identity when a swipe made it first, and the List left the swiped cell drawn in its old
+/// place (#216).
 private struct FirstRowAnchor: ViewModifier {
     let first: Bool
 
