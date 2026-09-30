@@ -105,6 +105,30 @@ final class GroceriesUITests: RecipeUITestCase {
         require(app.switches["In stock: flour"], "flour in the pantry")
     }
 
+    /// #219: a tick leaves the row where it is; "Clear the whole list" asks first, and Undo
+    /// brings the list back.
+    func testATickStaysPutAndTheWholeListClearsWithUndo() {
+        launch(.empty, flags: ["mealPlan"])
+        require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
+        let field = require(app.textFields["Add an item"], "Add an item")
+        field.tap()
+        field.typeText("2 onions\n")
+        field.typeText("3 carrots\n")
+        let onions = require(line("2 onions"), "the onions")
+        require(line("3 carrots"), "the carrots")
+        let top = onions.frame.minY
+        onions.tap()
+        require(app.buttons["doneShopping"], "Done shopping, once ticked")
+        XCTAssertEqual(line("2 onions").frame.minY, top, "the ticked row stays where it was")
+
+        require(app.buttons["More options"], "the Groceries menu").tap()
+        require(app.buttons["Clear the whole list"], "Clear the whole list").tap()
+        require(app.alerts["Clear all 2 items?"].buttons["Clear"], "the confirmation").tap()
+        require(app.buttons["Undo"], "the snackbar").tap()
+        require(line("2 onions"), "the onions, back")
+        require(line("3 carrots"), "the carrots, back")
+    }
+
     private func putFlourAway() {
         require(app.buttons["doneShopping"], "Done shopping").tap()
         require(app.buttons["putAway-new-en-flour"], "flour in the sheet, unticked").tap()

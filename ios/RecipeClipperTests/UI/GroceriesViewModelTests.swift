@@ -243,6 +243,147 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertEqual(repository.items.value.count, 2)
     }
 
+    // MARK: #219: ticks stay put for the visit; the menu clears the ticked items or the whole list.
+
+    private func shown(_ vm: GroceriesViewModel) -> [String] {
+        rows(vm).map { row in
+            let text: String
+            switch row {
+            case .single(let item): text = item.text
+            case .combined(_, let total, _): text = total
+            case .together(let name, _): text = name
+            }
+            return (row.items.allSatisfy(\.checked) ? "x " : "") + text
+        }
+    }
+
+    private func row(_ vm: GroceriesViewModel, _ text: String) -> GroceryCombiner.Row {
+        rows(vm).first { $0.items.contains { $0.text == text } }!
+    }
+
+    private func toggle(_ vm: GroceriesViewModel, _ text: String) async {
+        let before = repository.items.value.first { $0.text == text }!.checked
+        vm.onToggle(row(vm, text))
+        await settleMain { self.rows(vm).contains { $0.items.contains { $0.text == text && $0.checked != before } } }
+    }
+
+    func testATickOrAnUntickNeverMovesARowDuringTheVisitAndLeavingTidiesTheList() async {
+        await add("2 onions", "3 carrots", "1 lemon")
+        let vm = await viewModel()
+
+        await toggle(vm, "2 onions")
+        XCTAssertEqual(shown(vm), ["x 2 onions", "3 carrots", "1 lemon"])
+        await toggle(vm, "3 carrots")
+        await toggle(vm, "2 onions")
+        XCTAssertEqual(shown(vm), ["2 onions", "x 3 carrots", "1 lemon"])
+
+        // The next visit: ticked rows at the bottom of their aisle, as before #219.
+        vm.onLeave()
+        XCTAssertEqual(shown(vm), ["2 onions", "1 lemon", "x 3 carrots"])
+        await toggle(vm, "3 carrots")
+        XCTAssertEqual(shown(vm), ["2 onions", "1 lemon", "3 carrots"])
+    }
+
+    func testAnAddedUpRowStaysOneRowWhereItWasWhenTicked() async {
+        await add("200 g flour", "100 g flour", "1 cup sugar")
+        let vm = await viewModel()
+
+        await toggle(vm, "200 g flour")
+        XCTAssertEqual(shown(vm), ["x 300 g flour", "1 cup sugar"])
+        XCTAssertTrue(vm.uiState.hasChecked)
+    }
+
+    func testAddingMovingOrAChangeFromElsewhereTidiesTheListAtOnce() async {
+        await add("2 onions", "3 carrots")
+        let vm = await viewModel()
+
+        await toggle(vm, "2 onions")
+        XCTAssertEqual(shown(vm), ["x 2 onions", "3 carrots"])
+        vm.onDraftChange("1 lemon")
+        vm.onAddTyped()
+        await settleMain { self.rows(vm).count == 3 }
+        XCTAssertEqual(shown(vm), ["3 carrots", "1 lemon", "x 2 onions"])
+
+        await toggle(vm, "3 carrots")
+        XCTAssertEqual(shown(vm), ["x 3 carrots", "1 lemon", "x 2 onions"])
+        vm.onMoveStart(row(vm, "1 lemon"))
+        vm.onMoveTo(.other)
+        await settleMain { vm.uiState.sections?.count == 2 }
+        XCTAssertEqual(shown(vm), ["x 2 onions", "x 3 carrots", "1 lemon"])
+
+        await toggle(vm, "2 onions")
+        XCTAssertEqual(shown(vm), ["2 onions", "x 3 carrots", "1 lemon"])
+        await toggle(vm, "3 carrots")
+        await add("1 cup milk")
+        await settleMain { self.rows(vm).count == 4 }
+        XCTAssertEqual(shown(vm), ["2 onions", "3 carrots", "1 cup milk", "1 lemon"])
+    }
+
+    func testTheMenusClearsAreEnabledOnlyWhenThereIsSomethingToClear() async {
+        let vm = await viewModel()
+        XCTAssertFalse(vm.uiState.hasChecked)
+        XCTAssertFalse(vm.uiState.hasItems)
+        vm.onClearAll()
+        XCTAssertNil(vm.uiState.confirmClearAll)
+
+        await add("2 onions")
+        await settleMain { vm.uiState.hasItems }
+        XCTAssertFalse(vm.uiState.hasChecked)
+
+        await toggle(vm, "2 onions")
+        XCTAssertTrue(vm.uiState.hasChecked)
+    }
+
+    func testClearTickedItemsRemovesOnlyTheTickedLinesLeavesThePantryAloneAndCanBeUndone() async {
+        let pantry = FakePantryRepository()
+        await add("2 onions", "1 cup milk", "3 carrots")
+        let vm = GroceriesViewModel(repository: repository, pantry: pantry, calendar: FakePlanCalendar())
+        await settleMain()
+        await toggle(vm, "1 cup milk")
+        await toggle(vm, "3 carrots")
+
+        vm.onClearTicked()
+        await settleMain { vm.uiState.removed != nil }
+        XCTAssertEqual(repository.items.value.map(\.text), ["2 onions"])
+        XCTAssertNil(vm.uiState.putAway)
+        XCTAssertTrue(pantry.items.value.isEmpty)
+        XCTAssertNil(vm.uiState.removed?.label)
+        XCTAssertEqual(vm.uiState.removed?.putAway, false)
+        XCTAssertEqual(vm.uiState.removed?.all, false)
+
+        vm.onUndoRemove()
+        await settleMain { self.repository.items.value.count == 3 }
+        XCTAssertEqual(repository.items.value.map(\.text), ["2 onions", "1 cup milk", "3 carrots"])
+        XCTAssertEqual(repository.items.value.map(\.checked), [false, true, true])
+        XCTAssertTrue(pantry.items.value.isEmpty)
+    }
+
+    func testClearTheWholeListAsksFirstNamingTheRowsAndCanBeUndone() async {
+        await add("2 onions", "200 g flour", "100 g flour", "1 cup milk")
+        let vm = await viewModel()
+        await toggle(vm, "1 cup milk")
+
+        // Three rows: the flour is one.
+        vm.onClearAll()
+        XCTAssertEqual(vm.uiState.confirmClearAll, 3)
+        vm.onClearAllDismissed()
+        await settleMain()
+        XCTAssertNil(vm.uiState.confirmClearAll)
+        XCTAssertEqual(repository.items.value.count, 4)
+
+        vm.onClearAll()
+        vm.onClearAllConfirm()
+        await settleMain { vm.uiState.isEmpty }
+        XCTAssertNil(vm.uiState.confirmClearAll)
+        XCTAssertTrue(repository.items.value.isEmpty)
+        XCTAssertEqual(vm.uiState.removed?.all, true)
+
+        vm.onUndoRemove()
+        await settleMain { self.repository.items.value.count == 4 }
+        XCTAssertEqual(repository.items.value.map(\.text), ["2 onions", "200 g flour", "100 g flour", "1 cup milk"])
+        XCTAssertEqual(repository.items.value.map(\.checked), [false, false, false, true])
+    }
+
     func testTheSharedTextIsWhatIsLeftToBuy() async {
         let vm = await viewModel()
         XCTAssertNil(vm.shareText(title: "Groceries", aisleName: \.key))

@@ -4,7 +4,9 @@ import SwiftUI
 /// Lines naming the same ingredient sit together under its name, or as one added-up row when
 /// that's exact. Tap to tick; long-press to move to another aisle or delete (with undo). The
 /// menu sends the list as plain text and pastes one in (#149). While anything is ticked, "Done
-/// shopping" (#146) puts it away in the pantry and clears it, with undo.
+/// shopping" (#146) puts it away in the pantry and clears it, with undo. The menu also clears the
+/// ticked items, or the whole list after asking, with undo (#219). A tick never moves a row while
+/// the screen is shown; the list tidies on the next visit.
 ///
 /// `receiveVM` backs "Add this list" for a pasted list; nil leaves "Paste a list" out.
 /// `onOpenPantry` shows the pantry once lines were added to it.
@@ -80,6 +82,15 @@ struct GroceriesScreen: View {
                             Label(Strings.pasteList, systemImage: "doc.on.clipboard")
                         }
                     }
+                    // Clearing without "Done shopping" (#219): the pantry is untouched, and Undo puts it back.
+                    Button(action: vm.onClearTicked) {
+                        Label(Strings.clearTicked, systemImage: "xmark.circle")
+                    }
+                    .disabled(!state.hasChecked)
+                    Button(action: vm.onClearAll) {
+                        Label(Strings.clearGroceries, systemImage: "trash")
+                    }
+                    .disabled(!state.hasItems)
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -90,15 +101,17 @@ struct GroceriesScreen: View {
         // The tooltips (#190); none over this screen's sheets and snackbar. Outside the
         // toolbar, whose menu is an anchor too.
         .tooltipHost(.groceries, blocked: state.moving != nil || state.putAway != nil || state.removed != nil
-            || receiveVM?.uiState.lines != nil)
-        // Snackbars only for undo (#146): a delete, or "Done shopping". "Done shopping" itself
+            || state.confirmClearAll != nil || receiveVM?.uiState.lines != nil)
+        // Snackbars only for undo (#146): a delete, "Done shopping", or a clear from the menu
+        // (#219). "Done shopping" itself
         // shows while anything is ticked; the snackbar sits above it.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 if let removed = state.removed {
                     Snackbar(
                         message: removed.label.map(Strings.groceryDeleted)
-                            ?? (removed.putAway ? Strings.doneShoppingCleared : Strings.checkedCleared),
+                            ?? (removed.putAway ? Strings.doneShoppingCleared
+                                : removed.all ? Strings.groceriesCleared : Strings.checkedCleared),
                         actionLabel: Strings.undo,
                         action: vm.onUndoRemove
                     )
@@ -139,6 +152,15 @@ struct GroceriesScreen: View {
                     .presentationDragIndicator(.visible)
             }
         }
+        .alert(
+            Strings.clearGroceriesTitle(state.confirmClearAll ?? 0),
+            isPresented: Binding(get: { vm.uiState.confirmClearAll != nil }, set: { if !$0 { vm.onClearAllDismissed() } })
+        ) {
+            Button(Strings.clear, role: .destructive, action: vm.onClearAllConfirm)
+            Button(Strings.cancel, role: .cancel, action: vm.onClearAllDismissed)
+        }
+        // Leaving the screen ends the visit: the list tidies for the next (#219).
+        .onDisappear(perform: vm.onLeave)
         .modifier(ReceiveListSheet(vm: receiveVM, onAddedToPantry: onOpenPantry))
         .modifier(SendFileEffect(vm: sendFileVM))
     }
