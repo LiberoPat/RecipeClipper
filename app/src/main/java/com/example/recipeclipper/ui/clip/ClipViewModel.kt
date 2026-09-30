@@ -15,6 +15,7 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.UrlCleaner
+import com.example.recipeclipper.data.remote.RedditPageText
 import com.example.recipeclipper.data.remote.RedditUrls
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -39,6 +40,15 @@ sealed class ClipMessage {
 
     /** The Unlock from the full-library prompt (#107) is pending or failed. */
     data class Unlock(val outcome: PurchaseOutcome) : ClipMessage()
+
+    /**
+     * Done or Save with too little to save: what's still missing, a [name] and/or ingredients or
+     * steps ([lines]). Save never does nothing silently.
+     */
+    data class Missing(val name: Boolean, val lines: Boolean) : ClipMessage()
+
+    /** The Text view found no post in the page yet (still loading, or Reddit's check). */
+    object TextUnreadable : ClipMessage()
 }
 
 /**
@@ -82,7 +92,15 @@ data class ClipUiState(
      * which loads from www.reddit.com (`RedditUrls.clipPageUrl`, #213). The clip is still saved
      * under [url].
      */
-    val pageUrl: String = url
+    val pageUrl: String = url,
+    /** A Reddit post (#213): the clip offers the Text view beside the page. */
+    val offersText: Boolean = false,
+    /** The Text view asked for: the view layer reads the page and hands it to [ClipViewModel.onPageText]. */
+    val readingText: Boolean = false,
+    /** The post as plain text, read from the page the last time the Text view opened. */
+    val pageText: RedditPageText? = null,
+    /** The Text view is showing, over the page, which stays loaded under it. */
+    val showingText: Boolean = false
 )
 
 /**
@@ -129,7 +147,8 @@ class ClipViewModel @Inject constructor(
                 draft = restored ?: ClipDraft(url),
                 notice = restored?.let { notice(ClipMessage.DraftRestored) },
                 readBlocked = savedStateHandle.get<Boolean>(BLOCKED_ARG) == true,
-                check = ClipCheck.WAITING.takeIf { savedStateHandle.get<Boolean>(CHECK_ARG) == true }
+                check = ClipCheck.WAITING.takeIf { savedStateHandle.get<Boolean>(CHECK_ARG) == true },
+                offersText = RedditUrls.isReddit(url)
             )
         )
         uiState = _uiState.asStateFlow()
@@ -216,8 +235,46 @@ class ClipViewModel @Inject constructor(
         assign(field, selectionText)
     }
 
+    /** The photo is picked on the page, so this also leaves the Text view. */
     fun onPhotoButton() {
-        _uiState.update { it.copy(pickingPhoto = !it.pickingPhoto) }
+        _uiState.update { it.copy(pickingPhoto = !it.pickingPhoto, showingText = false) }
+    }
+
+    // --- The Text view (#213) ---
+
+    /**
+     * Asks for the Text view: the view layer reads the page as it stands (with whatever
+     * comments it has loaded) and calls [onPageText]. The selection belongs to the view it was
+     * made in, so it goes.
+     */
+    fun onShowText() {
+        if (!_uiState.value.offersText) return
+        clearSelection()
+        _uiState.update { it.copy(readingText = true, pickingPhoto = false) }
+    }
+
+    /** The page's markup, read for the Text view. A page with no post in it yet says so. */
+    fun onPageText(html: String) {
+        if (!_uiState.value.readingText) return
+        val text = RedditPageText.parse(html)
+        _uiState.update {
+            if (text.isEmpty) {
+                it.copy(readingText = false, notice = notice(ClipMessage.TextUnreadable))
+            } else {
+                // The same text keeps the same value, so the view doesn't reload it (and its marks).
+                it.copy(readingText = false, showingText = true, pageText = if (text == it.pageText) it.pageText else text)
+            }
+        }
+    }
+
+    fun onShowPage() {
+        clearSelection()
+        _uiState.update { it.copy(showingText = false, readingText = false) }
+    }
+
+    private fun clearSelection() {
+        selectionText = ""
+        _uiState.update { it.copy(selection = emptyList(), newMarkId = null) }
     }
 
     /** Leaves the photo step without a (new) photo: it's optional. */
@@ -242,9 +299,24 @@ class ClipViewModel @Inject constructor(
 
     // --- Review ---
 
+    /**
+     * Done: Review, when there's something to review. Never a silent no: with no name but some
+     * lines, Review opens with a note to type the name there (a Reddit title is hard to select);
+     * with no lines, the page stays and the note says what to select.
+     */
     fun onReview() {
-        if (_uiState.value.draft.canFinish) _uiState.update { it.copy(reviewing = true, pickingPhoto = false) }
+        val draft = _uiState.value.draft
+        val missing = missing(draft)
+        when {
+            missing == null -> _uiState.update { it.copy(reviewing = true, pickingPhoto = false) }
+            !missing.lines -> _uiState.update { it.copy(reviewing = true, pickingPhoto = false, notice = notice(missing)) }
+            else -> _uiState.update { it.copy(notice = notice(missing)) }
+        }
     }
+
+    /** What the draft still needs before it can be saved, or null when it can be. */
+    private fun missing(draft: ClipDraft): ClipMessage.Missing? =
+        if (draft.canFinish) null else ClipMessage.Missing(name = draft.name.isBlank(), lines = !draft.hasLines)
 
     fun onBackToPage() = _uiState.update { it.copy(reviewing = false) }
 
@@ -259,7 +331,11 @@ class ClipViewModel @Inject constructor(
     fun onSave() {
         val state = _uiState.value
         if (state.saving) return
-        val recipe = state.draft.toRecipe() ?: return
+        val recipe = state.draft.toRecipe()
+        if (recipe == null) {
+            missing(state.draft)?.let { missing -> _uiState.update { it.copy(notice = notice(missing)) } }
+            return
+        }
         _uiState.update { it.copy(saving = true) }
         viewModelScope.launch {
             when (val result = repository.saveClip(recipe)) {

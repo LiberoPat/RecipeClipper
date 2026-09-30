@@ -293,6 +293,14 @@
     <string name="clip_cleared_photo">Foto borrada</string>
     <string name="clip_draft_restored">Borrador recuperado</string>
     <string name="clip_save_failed">No se pudo guardar el recorte. Inténtalo de nuevo.</string>
+    <string name="clip_needs_name">Escribe el nombre de la receta para guardarla, o selecciónalo y toca Nombre.</string>
+    <string name="clip_needs_lines">Para guardar, selecciona los ingredientes o los pasos y toca Ingredientes o Pasos.</string>
+    <string name="clip_needs_name_and_lines">Para guardar, selecciona el nombre de la receta y sus ingredientes o pasos, y toca dónde va cada uno.</string>
+    <string name="clip_text_unreadable">La publicación aún no se ha cargado. Espera un momento y vuelve a tocar Texto.</string>
+    <string name="clip_show_text">Texto</string>
+    <string name="clip_show_page">Página</string>
+    <string name="clip_text_comments">Comentarios</string>
+    <string name="clip_text_loaded_note">Solo están los comentarios que Reddit ha cargado hasta ahora.</string>
     <string name="clip_back_to_page">‹  Volver a la página</string>
     <string name="clip_photo_from_page">Foto de la página</string>
     <string name="clip_no_photo">Sin foto. Toca Foto en la página y luego la imagen.</string>

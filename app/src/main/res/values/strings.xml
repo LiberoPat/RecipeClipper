@@ -61,6 +61,15 @@
     <string name="clip_cleared_photo">Photo cleared</string>
     <string name="clip_draft_restored">Draft restored</string>
     <string name="clip_save_failed">Couldn\'t save the clip. Try again.</string>
+    <string name="clip_needs_name">Type the recipe\'s name to save it, or select it and tap Name.</string>
+    <string name="clip_needs_lines">To save, select the ingredients or steps and tap Ingredients or Steps.</string>
+    <string name="clip_needs_name_and_lines">To save, select the recipe\'s name and its ingredients or steps, and tap where each goes.</string>
+    <string name="clip_text_unreadable">The post hasn\'t loaded yet. Wait a moment, then tap Text again.</string>
+    <string name="clip_show_text">Text</string>
+    <string name="clip_show_page">Page</string>
+    <string name="clip_text_comments">Comments</string>
+    <string name="clip_text_loaded_note">Only the comments Reddit has loaded so far are here.</string>
+    <string name="clip_text_author" translatable="false">u/%1$s</string>
     <string name="clip_back_to_page">‹  Back to page</string>
     <string name="clip_photo_from_page">Photo from the page</string>
     <string name="clip_no_photo">No photo. Tap Photo on the page, then the picture.</string>

@@ -293,6 +293,14 @@
     <string name="clip_cleared_photo">Photo effacée</string>
     <string name="clip_draft_restored">Brouillon restauré</string>
     <string name="clip_save_failed">Impossible d\'enregistrer la découpe. Réessayez.</string>
+    <string name="clip_needs_name">Saisissez le nom de la recette pour l\'enregistrer, ou sélectionnez-le et touchez Nom.</string>
+    <string name="clip_needs_lines">Pour enregistrer, sélectionnez les ingrédients ou les étapes et touchez Ingrédients ou Étapes.</string>
+    <string name="clip_needs_name_and_lines">Pour enregistrer, sélectionnez le nom de la recette et ses ingrédients ou étapes, et touchez l\'endroit où chacun va.</string>
+    <string name="clip_text_unreadable">La publication n\'est pas encore chargée. Patientez un instant, puis touchez de nouveau Texte.</string>
+    <string name="clip_show_text">Texte</string>
+    <string name="clip_show_page">Page</string>
+    <string name="clip_text_comments">Commentaires</string>
+    <string name="clip_text_loaded_note">Seuls les commentaires que Reddit a déjà chargés figurent ici.</string>
     <string name="clip_back_to_page">‹  Retour à la page</string>
     <string name="clip_photo_from_page">Photo de la page</string>
     <string name="clip_no_photo">Pas de photo. Touchez Photo sur la page, puis l\'image.</string>
