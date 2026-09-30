@@ -25,7 +25,7 @@ struct ClipScreen: View {
             }
             ZStack {
                 ClipWebPage(
-                    url: state.url,
+                    url: state.pageUrl,
                     fixtureHTML: fixtureHTML,
                     syncState: Self.syncJson(state.draft, newMarkId: state.newMarkId),
                     pickingPhoto: state.pickingPhoto,
@@ -66,7 +66,7 @@ struct ClipScreen: View {
                 }
             }
             ToolbarItem(placement: .principal) {
-                Text(SourceDomain.of(state.url) ?? "")
+                Text(SourceDomain.of(state.pageUrl) ?? "")
                     .textStyle(Typography.bodyMedium)
                     .foregroundStyle(Palette.muted)
                     .lineLimit(1)

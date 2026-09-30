@@ -35,8 +35,8 @@ not to undo:
   15 s wait; a call once allowed as long as the whole wait, so one slow answer
   from a busy renderer failed the test.
 - iOS UI tests that delete and then tap Undo tap it as soon as the snackbar
-  shows, and check the row went afterwards: the snackbar lasts four seconds of
-  real time, and waiting for the row first could outlast it.
+  shows, and check the row went afterwards: an undo snackbar lasts ten seconds of
+  real time (a plain notice four), and waiting for the row first could outlast it.
 - `ClipUITests` gives anything on the web page 60 s, not the usual 10: WebKit
   draws it and answers accessibility queries from its own process, which on a
   busy machine took over 10 s to show the page, and on CI 9 s and then 28 s to
@@ -149,7 +149,11 @@ Reddit post never goes to the rendered page. Reddit's block (#213): `RecipeReddi
 (the clip instead of the error, the saved copy over the real repository, every other cause
 unchanged), `ClipBlockedNoteScreenTest` (Robolectric: the note, and the import handing the post
 on), iOS `ShareImportViewModelTests` (the card and `PendingClip`) and
-`ClipUITests.testABlockedRedditPostOpensHereWithANote`.
+`ClipUITests.testABlockedRedditPostOpensHereWithANote`. The clip view getting past Reddit's
+check: `ClipNavigationTest(s)` (the page's form back to its own path loads, app links never
+do), `RedditUrlsTest(s)` (`clipPageUrl`: other Reddit hosts load from www). No test reaches
+reddit.com: after a change to the clip view's navigation, share a real post on a device and
+check the post shows, not the pulsing Snoo.
 Cloudflare's check (#220): `CloudflareChallengeTest(s)` read the pages in
 `shared/fixtures/cloudflare` (written in Cloudflare's shape, made-up hosts and tokens);
 `BlogRecipeSourceStatusTest` / `BlogRecipeSourceTests` the `cf-mitigated` header and body;

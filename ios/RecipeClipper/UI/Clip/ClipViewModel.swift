@@ -50,6 +50,11 @@ struct ClipUiState: Equatable {
     var readBlocked = false
     /// Opened for the cook to pass Cloudflare's check (#220); nil for every other clip.
     var check: ClipCheck? = nil
+
+    /// The address the page loads: `url`, except a Reddit link on another of Reddit's hosts,
+    /// which loads from www.reddit.com (`RedditUrls.clipPageUrl`, #213). The clip is still saved
+    /// under `url`.
+    var pageUrl: String { RedditUrls.clipPageUrl(url) }
 }
 
 /// "Clip it yourself" (#37), Android's ClipViewModel. The page itself lives in the view layer;

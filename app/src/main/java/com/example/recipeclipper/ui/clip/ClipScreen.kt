@@ -124,7 +124,7 @@ fun ClipScreen(
                 Column(Modifier.fillMaxSize().safeDrawingPadding()) {
                     val waiting = state.check == ClipCheck.WAITING
                     TopBar(
-                        host = SourceDomain.of(state.url).orEmpty(),
+                        host = SourceDomain.of(state.pageUrl).orEmpty(),
                         canFinish = state.draft.canFinish && !waiting,
                         onCancel = onCancel,
                         onDone = viewModel::onReview
@@ -137,7 +137,7 @@ fun ClipScreen(
                     }
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         ClipWebPage(
-                            url = state.url,
+                            url = state.pageUrl,
                             syncState = syncState,
                             pickingPhoto = state.pickingPhoto,
                             onEvent = { event ->

@@ -115,4 +115,30 @@ class RedditUrlsTest {
             ParseError.SaveFailed,
         ).forEach { assertFalse(it.toString(), RedditUrls.clipsWhenBlocked(post, it, redditOn = true)) }
     }
+
+    @Test fun `the clip view loads other reddit hosts from www, path query and fragment kept`() {
+        mapOf(
+            "https://old.reddit.com/r/recipes/comments/1abc01/apple_pie/" to
+                "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/",
+            "https://m.reddit.com/r/recipes/comments/1abc01/" to "https://www.reddit.com/r/recipes/comments/1abc01/",
+            "https://new.reddit.com/r/recipes/comments/1abc01/apple_pie/?sort=top#c1" to
+                "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/?sort=top#c1",
+            "http://np.reddit.com/r/recipes/comments/1abc01" to "https://www.reddit.com/r/recipes/comments/1abc01",
+            "https://reddit.com/r/recipes/comments/1abc01/apple_pie/" to
+                "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/",
+            "https://OLD.Reddit.com/r/recipes/s/AbCd123" to "https://www.reddit.com/r/recipes/s/AbCd123",
+        ).forEach { (link, page) -> assertEquals(link, page, RedditUrls.clipPageUrl(link)) }
+    }
+
+    @Test fun `the clip view loads www links, share links, short links and other sites as they are`() {
+        listOf(
+            "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/",
+            "https://www.reddit.com/r/recipes/comments/1abc01",
+            "https://www.reddit.com/r/recipes/s/AbCd123",
+            "https://redd.it/1abc01",
+            "https://www.hearthandcrumb.example/cookies",
+            "https://reddit.com.evil.example/r/x/comments/abc/",
+            "not a url",
+        ).forEach { assertEquals(it, it, RedditUrls.clipPageUrl(it)) }
+    }
 }

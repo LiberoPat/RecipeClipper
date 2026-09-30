@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -87,16 +88,10 @@ fun RecipesScreen(
     // Keyed on the whole pending list: a second swipe replaces the snackbar with one naming
     // the batch. The restart cancels showSnackbar, so neither branch below runs and the
     // earlier capture is left intact for the new snackbar's Undo to restore.
-    LaunchedEffect(state.pendingDeletes) {
-        val message = deletedMessage ?: return@LaunchedEffect
-        val result = snackbarHostState.showSnackbar(
-            message = message,
-            actionLabel = undoLabel,
-            withDismissAction = false
-        )
-        if (result == SnackbarResult.ActionPerformed) viewModel.onUndoDelete()
-        else viewModel.onSnackbarDismissed()
-    }
+    UndoSnackbarEffect(
+        state.pendingDeletes.takeIf { it.isNotEmpty() }, deletedMessage, undoLabel, snackbarHostState,
+        viewModel::onUndoDelete, viewModel::onSnackbarDismissed
+    )
 
     RecipeClipperTheme {
         // Inside the theme, like every dialog (#186): outside it, Material's purple applies.
