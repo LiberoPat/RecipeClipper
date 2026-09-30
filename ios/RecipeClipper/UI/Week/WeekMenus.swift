@@ -37,7 +37,7 @@ struct WeekMenusModifier: ViewModifier {
             .animation(.easeOut(duration: 0.2), value: menus.message == nil)
             .task(id: menus.message) {
                 guard let message = menus.message else { return }
-                await SnackbarTimeout.run(pending: [Self.text(message)], onTimeout: vm.onMenuMessageShown)
+                await SnackbarTimeout.run(pending: [Self.text(message)], for: SnackbarTimeout.duration, onTimeout: vm.onMenuMessageShown)
             }
     }
 

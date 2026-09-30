@@ -3647,6 +3647,17 @@ to "finish it by hand", and "2 ELZucker" wasn't flagged.
   drafts: a native speaker should check each table's headers, verbs and step labels, and which
   unit words are safe to flag.
 
+## Undo snackbars close by themselves (2026-09-29)
+
+The owner saw "Checked items removed" stay on the Groceries screen, and come back after changing
+tabs. On Android, an undo snackbar was shown with an action and no duration, which Material keeps up
+until it's tapped; and a tab's screen that left while it showed kept its pending removal, so the
+snackbar showed again on the next visit. Now every undo snackbar (Groceries, Pantry, Week, Recipes,
+the pantry use-up sheet, "Removed from your cooks") goes through `UndoSnackbarEffect`: it lasts
+Material's `Long` (about 10 s), and leaving the screen, but not rotating it, settles the removal as
+if it had timed out. iOS's `SnackbarTimeout` already closed them, after 4 s; its undo window is now
+10 s too (`SnackbarTimeout.undo`), while plain notices keep 4 s.
+
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 
 `CLAUDE.md` had grown back to about 750 lines, and it is loaded into every session,

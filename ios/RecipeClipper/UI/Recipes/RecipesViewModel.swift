@@ -212,11 +212,13 @@ final class RecipesViewModel {
 /// History drops the ViewModel and with it the captures, so the deletes stand).
 enum SnackbarTimeout {
     static let duration = Duration.seconds(4)
+    /// An Undo snackbar's window: longer than a notice, so a cook mid-shop can still reach Undo.
+    static let undo = Duration.seconds(10)
 
     @MainActor
-    static func run(pending: [String], sleep: Sleep = Sleeps.real, onTimeout: () -> Void) async {
+    static func run(pending: [String], for window: Duration = undo, sleep: Sleep = Sleeps.real, onTimeout: () -> Void) async {
         guard !pending.isEmpty else { return }
-        do { try await sleep(duration) } catch { return }
+        do { try await sleep(window) } catch { return }
         guard !Task.isCancelled else { return }
         onTimeout()
     }
