@@ -541,6 +541,12 @@ enum Strings {
     static var doneShopping: String { String(localized: "action_done_shopping") }
     static var putAwayIntro: String { String(localized: "put_away_intro") }
     static var putAway: String { String(localized: "action_put_away") }
+    // Clearing from the Groceries menu, without "Done shopping" (#219)
+    static var clearTicked: String { String(localized: "action_clear_ticked") }
+    static var clearGroceries: String { String(localized: "action_clear_groceries") }
+    static func clearGroceriesTitle(_ n: Int) -> String { String(localized: "clear_groceries_title \(n)") }
+    static var clear: String { String(localized: "action_clear") }
+    static var groceriesCleared: String { String(localized: "snackbar_groceries_cleared") }
     // Using up the pantry when cook mode is finished (#147)
     static var useUpTitle: String { String(localized: "use_up_title") }
     static var useUpIntro: String { String(localized: "use_up_intro") }

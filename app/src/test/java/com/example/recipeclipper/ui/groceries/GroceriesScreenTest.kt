@@ -2,12 +2,16 @@ package com.example.recipeclipper.ui.groceries
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -161,6 +165,64 @@ class GroceriesScreenTest {
         compose.onNodeWithText("6 corn").assertIsDisplayed()
         compose.onNodeWithText("2 corn \u00d7 3").assertIsDisplayed()
         compose.onAllNodes(isToggleable()).assertCountEquals(1)
+    }
+
+    // #219: a tick never moves the row under the cook's finger; it stays, struck through.
+    @Test
+    fun aTickedRowStaysWhereItIs() {
+        show("2 onions", "3 carrots", "1 lemon")
+        val (onions, carrots, lemon) = repository.items.value.map { it.id }
+        fun top(id: Long) = compose.onNodeWithTag("grocery-$id").getUnclippedBoundsInRoot().top
+        val before = listOf(top(onions), top(carrots), top(lemon))
+        assertTrue(before == before.sorted())
+
+        compose.onNodeWithTag("grocery-$onions").performClick()
+        compose.onNodeWithTag("grocery-$onions").assertIsOn()
+        assertEquals(before, listOf(top(onions), top(carrots), top(lemon)))
+        compose.onNodeWithTag("grocery-$onions").performClick()
+        compose.onNodeWithTag("grocery-$onions").assertIsOff()
+        assertEquals(before, listOf(top(onions), top(carrots), top(lemon)))
+    }
+
+    // #219: "Clear ticked items" clears at once, with no Done shopping sheet; Undo puts them back.
+    @Test
+    fun clearTickedItemsFromTheMenuCanBeUndone() {
+        show("2 onions", "1 cup milk")
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Clear ticked items").assertIsNotEnabled()
+        compose.onNodeWithText("Clear the whole list").assertIsEnabled()
+        compose.onNodeWithText("Clear the whole list").performClick()
+        compose.onNodeWithText("Clear all 2 items?").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Clear all 2 items?").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(2, repository.items.value.size) }
+
+        val milk = repository.items.value.last().id
+        compose.onNodeWithTag("grocery-$milk").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Clear ticked items").performClick()
+        compose.onNodeWithTag("putAway").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(listOf("2 onions"), repository.items.value.map { it.text }) }
+        compose.onNodeWithText("Checked items removed").assertIsDisplayed()
+        compose.onNodeWithText("Undo").performClick()
+        compose.runOnIdle { assertEquals(listOf("2 onions", "1 cup milk"), repository.items.value.map { it.text }) }
+    }
+
+    // #219: "Clear the whole list" asks first, then clears every line; Undo puts them back.
+    @Test
+    fun clearTheWholeListAsksFirstAndCanBeUndone() {
+        show("2 onions", "200 g flour", "100 g flour")
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Clear the whole list").performClick()
+        compose.onNodeWithText("Clear all 2 items?").assertIsDisplayed()
+        compose.onNodeWithTag("clearAllConfirm").performClick()
+        compose.runOnIdle { assertTrue(repository.items.value.isEmpty()) }
+        compose.onNodeWithText("Your list is empty", substring = true).assertIsDisplayed()
+
+        compose.onNodeWithText("Grocery list cleared").assertIsDisplayed()
+        compose.onNodeWithText("Undo").performClick()
+        compose.runOnIdle { assertEquals(3, repository.items.value.size) }
+        compose.onNodeWithText("300 g flour").assertIsDisplayed()
     }
 
     @Test

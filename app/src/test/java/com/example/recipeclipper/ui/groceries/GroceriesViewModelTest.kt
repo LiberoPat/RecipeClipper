@@ -300,6 +300,167 @@ class GroceriesViewModelTest {
         advanceUntilIdle()
         assertEquals("Groceries\n\nproduce\n- 2 onions", vm.shareText("Groceries") { it.key })
     }
+
+    // --- #219: ticks stay put for the visit; the menu clears the ticked items or the whole list.
+
+    private fun GroceriesViewModel.shown() = rows().map { row ->
+        (if (row.items.all { it.checked }) "x " else "") + when (row) {
+            is GroceryCombiner.Row.Single -> row.item.text
+            is GroceryCombiner.Row.Combined -> row.text
+            is GroceryCombiner.Row.Together -> row.name
+        }
+    }
+
+    private fun GroceriesViewModel.row(text: String) = rows().first { r -> r.items.any { it.text == text } }
+
+    @Test
+    fun `a tick or an untick never moves a row during the visit, and leaving tidies the list`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            add("2 onions", "3 carrots", "1 lemon")
+            val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
+            advanceUntilIdle()
+
+            vm.onToggle(vm.row("2 onions"))
+            advanceUntilIdle()
+            assertEquals(listOf("x 2 onions", "3 carrots", "1 lemon"), vm.shown())
+            vm.onToggle(vm.row("3 carrots"))
+            vm.onToggle(vm.row("2 onions"))
+            advanceUntilIdle()
+            assertEquals(listOf("2 onions", "x 3 carrots", "1 lemon"), vm.shown())
+
+            // The next visit: ticked rows at the bottom of their aisle, as before #219.
+            vm.onLeave()
+            assertEquals(listOf("2 onions", "1 lemon", "x 3 carrots"), vm.shown())
+            // And that order holds for the new visit: unticking stays put too.
+            vm.onToggle(vm.row("3 carrots"))
+            advanceUntilIdle()
+            assertEquals(listOf("2 onions", "1 lemon", "3 carrots"), vm.shown())
+        }
+
+    @Test
+    fun `an added-up row stays one row where it was when ticked`() = runTest(mainDispatcherRule.dispatcher) {
+        add("200 g flour", "100 g flour", "1 cup sugar")
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
+        advanceUntilIdle()
+
+        vm.onToggle(vm.row("200 g flour"))
+        advanceUntilIdle()
+        assertEquals(listOf("x 300 g flour", "1 cup sugar"), vm.shown())
+        assertTrue(vm.uiState.value.hasChecked)
+    }
+
+    @Test
+    fun `adding an item, moving one or a change from elsewhere tidies the list at once`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            add("2 onions", "3 carrots")
+            val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
+            advanceUntilIdle()
+
+            // Adding an item.
+            vm.onToggle(vm.row("2 onions"))
+            advanceUntilIdle()
+            assertEquals(listOf("x 2 onions", "3 carrots"), vm.shown())
+            vm.onDraftChange("1 lemon")
+            vm.onAddTyped()
+            advanceUntilIdle()
+            assertEquals(listOf("3 carrots", "1 lemon", "x 2 onions"), vm.shown())
+
+            // Moving one to another aisle.
+            vm.onToggle(vm.row("3 carrots"))
+            advanceUntilIdle()
+            assertEquals(listOf("x 3 carrots", "1 lemon", "x 2 onions"), vm.shown())
+            vm.onMoveStart(vm.row("1 lemon"))
+            vm.onMoveTo(Aisle.OTHER)
+            advanceUntilIdle()
+            assertEquals(listOf("x 2 onions", "x 3 carrots", "1 lemon"), vm.shown())
+
+            // A change from elsewhere (Add to groceries from a recipe).
+            vm.onToggle(vm.row("2 onions"))
+            advanceUntilIdle()
+            assertEquals(listOf("2 onions", "x 3 carrots", "1 lemon"), vm.shown())
+            vm.onToggle(vm.row("3 carrots"))
+            advanceUntilIdle()
+            add("1 cup milk")
+            advanceUntilIdle()
+            assertEquals(listOf("2 onions", "3 carrots", "1 cup milk", "1 lemon"), vm.shown())
+        }
+
+    @Test
+    fun `the menu's clears are enabled only when there is something to clear`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.hasChecked)
+        assertFalse(vm.uiState.value.hasItems)
+        vm.onClearAll()
+        assertNull(vm.uiState.value.confirmClearAll)
+
+        add("2 onions")
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.hasChecked)
+        assertTrue(vm.uiState.value.hasItems)
+
+        vm.onToggle(vm.rows().single())
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.hasChecked)
+    }
+
+    @Test
+    fun `clear ticked items removes only the ticked lines, leaves the pantry alone, and can be undone`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val pantry = FakePantryRepository()
+            add("2 onions", "1 cup milk", "3 carrots")
+            val vm = GroceriesViewModel(repository, pantry, FakePlanCalendar())
+            advanceUntilIdle()
+            vm.onToggle(vm.row("1 cup milk"))
+            vm.onToggle(vm.row("3 carrots"))
+            advanceUntilIdle()
+
+            vm.onClearTicked()
+            advanceUntilIdle()
+            assertEquals(listOf("2 onions"), repository.items.value.map { it.text })
+            assertNull(vm.uiState.value.putAway)
+            assertTrue(pantry.items.value.isEmpty())
+            val removed = vm.uiState.value.removed!!
+            assertNull(removed.label)
+            assertFalse(removed.putAway)
+            assertFalse(removed.all)
+
+            vm.onUndoRemove()
+            advanceUntilIdle()
+            assertEquals(listOf("2 onions", "1 cup milk", "3 carrots"), repository.items.value.map { it.text })
+            assertEquals(listOf(false, true, true), repository.items.value.map { it.checked })
+            assertTrue(pantry.items.value.isEmpty())
+        }
+
+    @Test
+    fun `clear the whole list asks first, naming the rows, and can be undone`() = runTest(mainDispatcherRule.dispatcher) {
+        add("2 onions", "200 g flour", "100 g flour", "1 cup milk")
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
+        advanceUntilIdle()
+        vm.onToggle(vm.row("1 cup milk"))
+        advanceUntilIdle()
+
+        // Three rows: the flour is one.
+        vm.onClearAll()
+        assertEquals(3, vm.uiState.value.confirmClearAll)
+        vm.onClearAllDismissed()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.confirmClearAll)
+        assertEquals(4, repository.items.value.size)
+
+        vm.onClearAll()
+        vm.onClearAllConfirm()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.confirmClearAll)
+        assertTrue(repository.items.value.isEmpty())
+        assertTrue(vm.uiState.value.isEmpty)
+        assertTrue(vm.uiState.value.removed!!.all)
+
+        vm.onUndoRemove()
+        advanceUntilIdle()
+        assertEquals(listOf("2 onions", "200 g flour", "100 g flour", "1 cup milk"), repository.items.value.map { it.text })
+        assertEquals(listOf(false, false, false, true), repository.items.value.map { it.checked })
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
