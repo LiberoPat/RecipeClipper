@@ -82,6 +82,7 @@ struct ClipWebPage: UIViewRepresentable {
         coordinator.onEvent = onEvent
         coordinator.readsPage = readsPage
         coordinator.pageUrl = url
+        coordinator.localPage = textHTML != nil
         let config = WKWebViewConfiguration()
         config.userContentController.addUserScript(
             WKUserScript(source: ClipperScript.redditReader, injectionTime: .atDocumentStart, forMainFrameOnly: true)
@@ -130,6 +131,8 @@ struct ClipWebPage: UIViewRepresentable {
         var readsPage = false
         var pageUrl = ""
         var readingText = false
+        /// The Text view's own page (#213): it loads as about:blank, which no web page may.
+        var localPage = false
         var pendingRead: Task<Void, Never>?
         private var loaded = false
         private var sent: String?
@@ -177,6 +180,10 @@ struct ClipWebPage: UIViewRepresentable {
         ) {
             guard navigationAction.targetFrame?.isMainFrame == true else {
                 decisionHandler(.allow)
+                return
+            }
+            if localPage {
+                decisionHandler(navigationAction.request.url?.scheme == "about" ? .allow : .cancel)
                 return
             }
             let type = navigationAction.navigationType
