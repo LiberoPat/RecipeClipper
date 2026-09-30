@@ -1788,8 +1788,10 @@ approved as a mock-up (six frames); the owner's nine decisions are in the issue'
   no readable image); native code pushes the draft's marks back with one declarative
   `RC.sync(...)`, so replace, undo and clear all redraw from state. Mark ids come from the draft, so an undo can show a mark
   again. Marks don't survive a page reload (rotation on Android, a restored draft); the draft does.
-- **Links to other pages are blocked** in the clip view (redirects and fragment jumps load), so
-  a clip is always saved under the page it came from.
+- **Links to other pages are blocked** in the clip view (redirects and fragment jumps load, and
+  so does a page sending itself back to its own path when no one tapped, as Reddit's check does,
+  #213; an app's own `intent:` or `reddit:` link never loads), so a clip is always saved under
+  the page it came from.
 - **Save** upserts on the cleaned URL like an import (same id, note and list membership) with
   `contentOrigin` CLIPPED (#29's column; no schema change), replacing whatever the row held,
   then the recipe replaces both the clip and the error screen in the back stack.
@@ -3289,6 +3291,20 @@ app main had become:
   but has no recipe text is still `NoTranscription` with "Read the photo"; other sites' blocks
   keep theirs. A `/s/` share link is loaded as it is (the web view follows the redirect) and the
   clip is saved under the link that was shared.
+- **Reddit's check in the clip view** (the owner's S23, 2026-09-29: the post never showed, only
+  a pulsing Snoo). Reddit first answers a browser with a check page whose script works out a
+  token and submits a hidden GET form back to the same path (`?solution=…&js_challenge=1&jsc_token=…`).
+  The clip view blocked that as a link to another page, so the check never finished. Now
+  (`ClipNavigation`, both platforms, pure and tested) the page may send itself back to its own
+  address, same host and path with a new query, when no one tapped (Android: no user gesture;
+  iOS: not a tapped link); a tapped link there still doesn't load. An app's own link
+  (`intent:`, `reddit:`, `market:`) never loads in the page's frame, even as a redirect: it
+  could only leave an error page in the post's place.
+- **Not old.reddit.com.** Its plain HTML would suit clipping, but since September 2026 it answers
+  a signed-out reader with "Log in to use old Reddit" (seen in the web view and with curl). So
+  the clip view goes the other way: a link on old., new., m., np. or bare reddit.com loads from
+  www.reddit.com (`RedditUrls.clipPageUrl`), with its path and query; the clip is still saved
+  under the link that was shared.
 - **Reddit's official API is not used, by decision** (owner, 2026-09-29): reading posts through
   it would need an installed-app OAuth client registered by the owner and Reddit's terms for an
   app, a cost the owner doesn't want. Clipping in the web view is the answer to the block.

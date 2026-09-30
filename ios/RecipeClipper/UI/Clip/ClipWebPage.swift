@@ -63,6 +63,7 @@ struct ClipWebPage: UIViewRepresentable {
         let coordinator = context.coordinator
         coordinator.onEvent = onEvent
         coordinator.readsPage = readsPage
+        coordinator.pageUrl = url
         let config = WKWebViewConfiguration()
         config.userContentController.addUserScript(
             WKUserScript(source: ClipperScript.source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
@@ -97,6 +98,7 @@ struct ClipWebPage: UIViewRepresentable {
         var onEvent: (ClipPageEvent) -> Void = { _ in }
         var script = ""
         var readsPage = false
+        var pageUrl = ""
         var pendingRead: Task<Void, Never>?
         private var loaded = false
         private var sent: String?
@@ -134,41 +136,68 @@ struct ClipWebPage: UIViewRepresentable {
             }
         }
 
-        /// Redirects, the first load and fragment jumps load; a tapped link to any other page,
-        /// or a form sent to one, does not.
+        /// `ClipNavigation.loads` decides for the page's own frame. WebKit doesn't mark a
+        /// redirect, so everything but a link or a form (the first load, redirects, a script's
+        /// move) is let through as a redirect is on Android; only a link counts as tapped.
         func webView(
             _ webView: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
         ) {
-            let userNavigation = navigationAction.navigationType == .linkActivated
-                || navigationAction.navigationType == .formSubmitted
-            guard navigationAction.targetFrame?.isMainFrame == true, userNavigation else {
+            guard navigationAction.targetFrame?.isMainFrame == true else {
                 decisionHandler(.allow)
                 return
             }
-            // Waiting on Cloudflare's check (#220): its form posts back within the site.
-            if readsPage, let host = navigationAction.request.url?.host,
-               host.caseInsensitiveCompare(webView.url?.host ?? "") == .orderedSame {
-                decisionHandler(.allow)
-                return
-            }
-            decisionHandler(Self.samePage(navigationAction.request.url, webView.url) ? .allow : .cancel)
-        }
-
-        private static func samePage(_ a: URL?, _ b: URL?) -> Bool {
-            guard let a, let b else { return false }
-            var left = URLComponents(url: a, resolvingAgainstBaseURL: true)
-            var right = URLComponents(url: b, resolvingAgainstBaseURL: true)
-            left?.fragment = nil
-            right?.fragment = nil
-            return left?.url == right?.url
+            let type = navigationAction.navigationType
+            let loads = ClipNavigation.loads(
+                navigationAction.request.url?.absoluteString ?? "",
+                current: webView.url?.absoluteString ?? pageUrl,
+                isRedirect: type != .linkActivated && type != .formSubmitted,
+                tapped: type == .linkActivated,
+                withinSite: readsPage
+            )
+            decisionHandler(loads ? .allow : .cancel)
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let json = message.body as? String, let event = ClipPageEvent.decode(json) else { return }
             onEvent(event)
         }
+    }
+}
+
+/// Which navigations of the page's own frame the clip view follows: Android's `ClipNavigation`,
+/// the same rule. Pure, so it is unit-tested.
+enum ClipNavigation {
+
+    /// Whether a navigation to `target` from `current` loads:
+    /// - never an address the web view can't show (`intent:`, `reddit:`, `market:`): an app's own
+    ///   link, which would leave an error, or nothing, in the post's place;
+    /// - redirects, and fragment jumps, always;
+    /// - the page sending itself back to its own address with a new query, when no one tapped
+    ///   (`tapped` false): Reddit's check (#213) does this once its script has run, and blocking
+    ///   it left the cook on its loading screen for good;
+    /// - anything on the page's site while waiting on Cloudflare's check (`withinSite`, #220);
+    /// - no link to any other page, so the clip always comes from the page it is saved under.
+    static func loads(_ target: String, current: String, isRedirect: Bool, tapped: Bool, withinSite: Bool) -> Bool {
+        guard let colon = target.firstIndex(of: ":"),
+              webSchemes.contains(target[..<colon].lowercased())
+        else { return false }
+        if isRedirect { return true }
+        guard let to = URLComponents(string: target), let from = URLComponents(string: current) else { return false }
+        let sameHost = (to.host ?? "").caseInsensitiveCompare(from.host ?? "") == .orderedSame
+        if withinSite && sameHost { return true }
+        if !tapped && sameHost && to.scheme?.lowercased() == from.scheme?.lowercased()
+            && to.percentEncodedPath == from.percentEncodedPath {
+            return true
+        }
+        return withoutFragment(target) == withoutFragment(current)
+    }
+
+    private static let webSchemes: Set<String> = ["http", "https"]
+
+    private static func withoutFragment(_ url: String) -> String {
+        url.firstIndex(of: "#").map { String(url[..<$0]) } ?? url
     }
 }
 

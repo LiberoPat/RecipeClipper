@@ -54,6 +54,16 @@ class ClipViewModelTest {
         assertTrue(blocked.uiState.value.readBlocked)
     }
 
+    @Test fun `the page loads from where the link points, except other reddit hosts, which load from www`() {
+        assertEquals(cleaned, viewModel().uiState.value.pageUrl)
+        val old = "https://old.reddit.com/r/recipes/comments/1abc01/apple_pie/"
+        val vm = viewModel(SavedStateHandle(mapOf(ClipViewModel.URL_ARG to old, ClipViewModel.BLOCKED_ARG to true)))
+        assertEquals("https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/", vm.uiState.value.pageUrl)
+        // The clip is still saved under the link that was shared.
+        assertEquals(old, vm.uiState.value.url)
+        assertEquals(old, vm.draft.sourceUrl)
+    }
+
     @Test fun `a selection is previewed as the lines it would become`() {
         val vm = viewModel()
         vm.onSelectionChanged("1 cup flour\n\n 2 eggs ")

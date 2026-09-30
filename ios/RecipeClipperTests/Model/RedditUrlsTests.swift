@@ -100,4 +100,31 @@ final class RedditUrlsTests: XCTestCase {
             XCTAssertFalse(RedditUrls.clipsWhenBlocked(post, error: error, redditOn: true), "\(error)")
         }
     }
+
+    func testTheClipViewLoadsOtherRedditHostsFromWwwPathQueryAndFragmentKept() {
+        let cases = [
+            ("https://old.reddit.com/r/recipes/comments/1abc01/apple_pie/",
+             "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/"),
+            ("https://m.reddit.com/r/recipes/comments/1abc01/", "https://www.reddit.com/r/recipes/comments/1abc01/"),
+            ("https://new.reddit.com/r/recipes/comments/1abc01/apple_pie/?sort=top#c1",
+             "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/?sort=top#c1"),
+            ("http://np.reddit.com/r/recipes/comments/1abc01", "https://www.reddit.com/r/recipes/comments/1abc01"),
+            ("https://reddit.com/r/recipes/comments/1abc01/apple_pie/",
+             "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/"),
+            ("https://OLD.Reddit.com/r/recipes/s/AbCd123", "https://www.reddit.com/r/recipes/s/AbCd123"),
+        ]
+        for (link, page) in cases { XCTAssertEqual(RedditUrls.clipPageUrl(link), page, link) }
+    }
+
+    func testTheClipViewLoadsWwwLinksShareLinksShortLinksAndOtherSitesAsTheyAre() {
+        for url in [
+            "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/",
+            "https://www.reddit.com/r/recipes/comments/1abc01",
+            "https://www.reddit.com/r/recipes/s/AbCd123",
+            "https://redd.it/1abc01",
+            "https://www.hearthandcrumb.example/cookies",
+            "https://reddit.com.evil.example/r/x/comments/abc/",
+            "not a url",
+        ] { XCTAssertEqual(RedditUrls.clipPageUrl(url), url, url) }
+    }
 }
