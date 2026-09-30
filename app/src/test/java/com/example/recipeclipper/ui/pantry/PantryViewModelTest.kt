@@ -190,22 +190,51 @@ class PantryViewModelTest {
         assertTrue(groceries.items.value.isEmpty())
     }
 
+    // Owner, 2026-09-29: the tag is any unticked line naming the item, in any stock state, and
+    // tapping it removes them all (a recipe's too), with Undo. Running out still checks only for
+    // the item's own line.
     @Test
-    fun `tapping On list takes only the item's own unticked line off the list`() = runTest(mainDispatcherRule.dispatcher) {
-        groceries.add(listOf(NewGroceryLine(" Milk ", "en"), NewGroceryLine("1 cup milk", "en"), NewGroceryLine("flour", "en")))
-        groceries.setChecked(listOf(groceries.items.value.last().id), true)
+    fun `tapping On list takes every unticked line naming the item off the list, with Undo`() = runTest(mainDispatcherRule.dispatcher) {
+        groceries.add(
+            listOf(
+                NewGroceryLine(" Milk ", "en"), NewGroceryLine("1 cup milk", "en", recipeId = 7), NewGroceryLine("flour", "en"),
+                NewGroceryLine("2 tbsp coconut milk", "en")
+            )
+        )
+        groceries.setChecked(listOf(groceries.items.value[2].id), true)
         val pantry = FakePantryRepository(listOf(item(1, "milk"), item(2, "flour", inStock = false), item(3, "rice")))
         val vm = PantryViewModel(pantry, groceries, calendar)
         advanceUntilIdle()
-        // A recipe's "1 cup milk" isn't the item's own line, and a ticked line is already bought.
+        // A ticked line is already bought; coconut milk is another ingredient.
         assertEquals(setOf(1L), vm.uiState.value.onList)
+        val before = groceries.items.value
 
         vm.onTakeOffList(pantry.items.value.first())
         advanceUntilIdle()
-        assertEquals(listOf("1 cup milk", "flour"), groceries.items.value.map { it.text })
+        assertEquals(listOf("flour", "2 tbsp coconut milk"), groceries.items.value.map { it.text })
         assertEquals(emptySet<Long>(), vm.uiState.value.onList)
+        assertEquals(2, (vm.uiState.value.message as PantryMessage.TakenOffList).count)
+
+        vm.onUndoDelete()
+        advanceUntilIdle()
+        assertEquals(before, groceries.items.value)
+        assertEquals(setOf(1L), vm.uiState.value.onList)
         assertNull(vm.uiState.value.message)
     }
+
+    @Test
+    fun `a typed line naming the item shows the tag in stock, and running out still adds its own line`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            groceries.add(listOf(NewGroceryLine("2 onions", "en"), NewGroceryLine("1 red onion", "en")))
+            val pantry = FakePantryRepository(listOf(item(1, "onions", aisle = Aisle.PRODUCE)))
+            val vm = PantryViewModel(pantry, groceries, calendar)
+            advanceUntilIdle()
+            assertEquals(setOf(1L), vm.uiState.value.onList)
+
+            vm.onSetStock(pantry.items.value.single(), PantryStock.RUN_OUT)
+            advanceUntilIdle()
+            assertEquals(listOf("2 onions", "1 red onion", "onions"), groceries.items.value.map { it.text })
+        }
 
     @Test
     fun `back in stock is bought today, with no offer`() = runTest(mainDispatcherRule.dispatcher) {

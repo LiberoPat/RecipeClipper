@@ -104,13 +104,31 @@ object PantryList {
     /**
      * The unticked grocery lines that are [item] itself: its name as the pantry puts it there
      * (trimmed, case-insensitive, a listed pair's number aside ([IngredientName.same]), in its
-     * language), which is what the basket tag means (#146). A recipe's "2 cups flour" isn't, so taking
-     * the item off the list never loses a recipe's line.
+     * language). Running out adds that line only when there is none (#146), and using up (#147)
+     * the same. A recipe's "2 cups flour" isn't one: the basket tag reads [onListLines].
      */
     fun ownLines(item: PantryItem, groceries: List<GroceryItem>): List<GroceryItem> {
         val words = LanguageWords.forTag(item.language)
         val name = IngredientName.key(item.name, words)
         return groceries.filter { !it.checked && it.language == item.language && IngredientName.key(it.text, words) == name }
+    }
+
+    /**
+     * The unticked grocery lines that put [item] on the list, which is what the basket tag means
+     * and what tapping it removes (owner, 2026-09-29): every line in its language whose
+     * ingredient's name matches the item's as What I need matches them ([IngredientName.matches]:
+     * a typed "2 onions" and a recipe's "1 onion, sliced" are "onions", "red onion" isn't), and
+     * its own line ([ownLines]) whatever that reads as.
+     */
+    fun onListLines(item: PantryItem, groceries: List<GroceryItem>): List<GroceryItem> {
+        val words = LanguageWords.forTag(item.language)
+        val own = IngredientName.key(item.name, words)
+        return groceries.filter { line ->
+            !line.checked && line.language == item.language && (
+                IngredientName.key(line.text, words) == own ||
+                    (words != null && IngredientName.of(line.text, words)?.let { IngredientName.matches(it, item.name, words) } == true)
+                )
+        }
     }
 
     /**

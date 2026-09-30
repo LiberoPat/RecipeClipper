@@ -415,6 +415,12 @@
     <string name="pantry_running_low">Queda poco</string>
     <string name="pantry_low">Poco</string>
     <string name="pantry_take_off_list">Quitar de la lista de la compra</string>
+    <string name="snackbar_taken_off_list">Quitado de la lista de la compra</string>
+    <plurals name="snackbar_taken_off_list_count">
+        <item quantity="one">%1$d artículo quitado de la lista de la compra</item>
+        <item quantity="many">%1$d de artículos quitados de la lista de la compra</item>
+        <item quantity="other">%1$d artículos quitados de la lista de la compra</item>
+    </plurals>
     <string name="pantry_always_have">Siempre en casa</string>
     <string name="pantry_always_have_detail">Los básicos nunca aparecen en «Por comprar».</string>
     <string name="pantry_expired">Caducado</string>

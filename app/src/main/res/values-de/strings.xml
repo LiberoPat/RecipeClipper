@@ -398,6 +398,11 @@
     <string name="pantry_running_low">Wird knapp</string>
     <string name="pantry_low">Knapp</string>
     <string name="pantry_take_off_list">Von der Einkaufsliste entfernen</string>
+    <string name="snackbar_taken_off_list">Von der Einkaufsliste entfernt</string>
+    <plurals name="snackbar_taken_off_list_count">
+        <item quantity="one">%1$d Artikel von der Einkaufsliste entfernt</item>
+        <item quantity="other">%1$d Artikel von der Einkaufsliste entfernt</item>
+    </plurals>
     <string name="pantry_always_have">Immer im Haus</string>
     <string name="pantry_always_have_detail">Grundvorräte stehen nie unter „Zu kaufen“.</string>
     <string name="pantry_expired">Abgelaufen</string>

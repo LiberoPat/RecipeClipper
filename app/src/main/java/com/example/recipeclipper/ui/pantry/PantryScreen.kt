@@ -133,11 +133,14 @@ fun PantryScreen(
     val context = LocalContext.current
     val resources = LocalResources.current
 
-    // Snackbars only for undo (#146): a delete, or "Clear run-out items" (#194).
+    // Snackbars only for undo (#146): a delete, "Clear run-out items" (#194), or the tag's removal.
     val message = state.message
     val text = when (message) {
         is PantryMessage.Deleted -> stringResource(R.string.snackbar_pantry_deleted, message.name)
         is PantryMessage.RunOutCleared -> stringResource(R.string.snackbar_run_out_cleared)
+        is PantryMessage.TakenOffList ->
+            if (message.count > 1) pluralStringResource(R.plurals.snackbar_taken_off_list_count, message.count, message.count)
+            else stringResource(R.string.snackbar_taken_off_list)
         null -> null
     }
     val undoLabel = stringResource(R.string.action_undo)

@@ -446,6 +446,12 @@
     <string name="pantry_running_low">Running low</string>
     <string name="pantry_low">Low</string>
     <string name="pantry_take_off_list">Remove from grocery list</string>
+    <!-- The basket tag, tapped: its lines left the grocery list, with Undo (a count when more than one) -->
+    <string name="snackbar_taken_off_list">Removed from groceries</string>
+    <plurals name="snackbar_taken_off_list_count">
+        <item quantity="one">Removed %1$d item from groceries</item>
+        <item quantity="other">Removed %1$d items from groceries</item>
+    </plurals>
     <string name="pantry_always_have">Always have</string>
     <string name="pantry_always_have_detail">Staples are never under “To buy”.</string>
     <string name="pantry_expired">Expired</string>

@@ -210,6 +210,22 @@ class PantryTest {
         assertEquals(listOf(3L), PantryList.ownLines(item("red onion"), list).map { it.id })
     }
 
+    // Owner, 2026-09-29: the basket tag is any unticked line naming the item, as What I need
+    // matches: a typed "2 onions" and a recipe's "1 onion, sliced" are "onions"; "red onion" isn't.
+    @Test fun `on list is any unticked line whose ingredient matches the item, recipes' included`() {
+        fun grocery(id: Long, text: String, checked: Boolean = false, recipeId: Long? = null, language: String = "en") =
+            GroceryItem(id, text, language, Aisle.PRODUCE, checked, id.toInt(), recipeId = recipeId)
+        val list = listOf(
+            grocery(1, "onions"), grocery(2, "2 onions"), grocery(3, "1 onion, sliced", recipeId = 7),
+            grocery(4, "1 red onion"), grocery(5, "3 onions", checked = true), grocery(6, "2 cebollas", language = "es"),
+            grocery(7, "2 tbsp onion powder")
+        )
+        assertEquals(listOf(1L, 2L, 3L), PantryList.onListLines(item("Onions"), list).map { it.id })
+        assertEquals(listOf(4L), PantryList.onListLines(item("red onion"), list).map { it.id })
+        assertEquals(emptyList<Long>(), PantryList.onListLines(item("flour"), listOf(grocery(1, "1 cup rice flour"))).map { it.id })
+        assertEquals(listOf(1L), PantryList.onListLines(item("butter"), listOf(grocery(1, "2 tbsp unsalted butter"))).map { it.id })
+    }
+
     @Test fun `nothing planned is empty`() {
         assertTrue(PantryMatch.weekNeeds(emptyList(), listOf(item("flour"))).isEmpty)
     }

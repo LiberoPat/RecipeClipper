@@ -221,6 +221,36 @@ class PantryScreenTest {
         compose.onNodeWithText("Nothing matches", substring = true).assertIsDisplayed()
     }
 
+    // Owner, 2026-09-29: an in-stock item shows the basket tag for a typed "2 onions" or a
+    // recipe's "1 onion, sliced", not for "red onion"; tapping it removes both, with Undo.
+    @Test
+    fun theTagShowsForAnyLineNamingTheItemAndItsRemovalCanBeUndone() {
+        kotlinx.coroutines.runBlocking {
+            groceries.add(
+                listOf(
+                    com.example.recipeclipper.data.model.NewGroceryLine("2 onions", "en"),
+                    com.example.recipeclipper.data.model.NewGroceryLine("1 onion, sliced", "en", recipeId = 7),
+                    com.example.recipeclipper.data.model.NewGroceryLine("1 red onion", "en")
+                )
+            )
+        }
+        show(item(1, "onions", aisle = Aisle.PRODUCE), item(2, "garlic", aisle = Aisle.PRODUCE))
+        compose.onNodeWithTag("onList-1").assertIsDisplayed()
+        compose.onNodeWithTag("onList-2").assertDoesNotExist()
+
+        compose.onNodeWithTag("onList-1").performClick()
+        compose.waitUntil(5_000) { groceries.items.value.size == 1 }
+        compose.runOnIdle { assertEquals(listOf("1 red onion"), groceries.items.value.map { it.text }) }
+        compose.onNodeWithTag("onList-1").assertDoesNotExist()
+        compose.onNodeWithText("Removed 2 items from groceries").assertIsDisplayed()
+        compose.onNodeWithText("Undo").performClick()
+        compose.waitUntil(5_000) { groceries.items.value.size == 3 }
+        compose.runOnIdle {
+            assertEquals(listOf("2 onions", "1 onion, sliced", "1 red onion"), groceries.items.value.map { it.text })
+        }
+        compose.onNodeWithTag("onList-1").assertIsDisplayed()
+    }
+
     // #194: "Clear run-out items" in the menu, disabled until something has run out; it asks
     // first, leaves the grocery list alone, and Undo puts the items back.
     @Test
