@@ -10,6 +10,8 @@ enum ClipPageEvent: Equatable {
     case noImage
     /// The page as it stands, read while waiting on Cloudflare's check (#220).
     case pageLoaded(String)
+    /// The post and its loaded comments, read for the Text view (#213).
+    case pageText(String)
 
     static func decode(_ json: String) -> ClipPageEvent? {
         guard let data = json.data(using: .utf8),
@@ -28,12 +30,21 @@ enum ClipPageEvent: Equatable {
 
 /// `shared/web/clipper.js`, bundled as the web/ folder (one copy for both platforms).
 enum ClipperScript {
-    static let source: String = {
-        guard let url = Bundle.main.url(forResource: "clipper", withExtension: "js", subdirectory: "web"),
+    static let source: String = read("clipper")
+
+    /// `shared/web/reddit-reader.js` (#213): Reddit's page as a reader, and its text. It does
+    /// nothing on any other site.
+    static let redditReader: String = read("reddit-reader")
+
+    private static func read(_ name: String) -> String {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "js", subdirectory: "web"),
               let source = try? String(contentsOf: url, encoding: .utf8)
-        else { fatalError("web/clipper.js is missing from the bundle") }
+        else { fatalError("web/\(name).js is missing from the bundle") }
         return source
-    }()
+    }
+
+    /// The post and its comment tree for the Text view, from `reddit-reader.js`, else the page.
+    static let readText = "window.RCReddit ? RCReddit.text() : document.documentElement.outerHTML"
 }
 
 /// The page being clipped, in a `WKWebView` with `clipper.js` injected at document end. The view
@@ -45,13 +56,20 @@ enum ClipperScript {
 /// With `readsPage` (waiting on Cloudflare's check, #220), the page's HTML is sent as
 /// `.pageLoaded` once it settles after each load, and every `readEvery` after, and the check
 /// may move the page within its own site (its form posts back to the page with a token).
+///
+/// On reddit.com (#213) `reddit-reader.js` runs too, from the document's start, which shows the
+/// post's whole text and hides Reddit's sign-in and app prompts; `readText` turning true reads
+/// the post for the Text view, as `.pageText`. `textHTML` is the Text view's own page, loaded
+/// with no address.
 struct ClipWebPage: UIViewRepresentable {
     let url: String
     var fixtureHTML: String? = nil
+    var textHTML: String? = nil
     let syncState: String
     let pickingPhoto: Bool
     let onEvent: (ClipPageEvent) -> Void
     var readsPage = false
+    var readText = false
 
     /// How often the page is read again while waiting on the check, after it first settles: a
     /// check can pass without loading a new page.
@@ -66,13 +84,18 @@ struct ClipWebPage: UIViewRepresentable {
         coordinator.pageUrl = url
         let config = WKWebViewConfiguration()
         config.userContentController.addUserScript(
+            WKUserScript(source: ClipperScript.redditReader, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        )
+        config.userContentController.addUserScript(
             WKUserScript(source: ClipperScript.source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         )
         config.userContentController.add(WeakMessageHandler(coordinator), name: "rc")
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = coordinator
         webView.accessibilityIdentifier = "clip.page"
-        if let fixtureHTML {
+        if let textHTML {
+            webView.loadHTMLString(textHTML, baseURL: nil)
+        } else if let fixtureHTML {
             webView.loadHTMLString(fixtureHTML, baseURL: URL(string: url))
         } else if let pageUrl = URL(string: url) {
             webView.load(URLRequest(url: pageUrl))
@@ -86,6 +109,13 @@ struct ClipWebPage: UIViewRepresentable {
         coordinator.readsPage = readsPage
         coordinator.script = "window.RC && (RC.sync(\(syncState)), RC.pickImage(\(pickingPhoto)));"
         coordinator.push(to: webView)
+        if readText && !coordinator.readingText {
+            coordinator.readingText = true
+            webView.evaluateJavaScript(ClipperScript.readText) { [weak coordinator] result, _ in
+                coordinator?.onEvent(.pageText(result as? String ?? ""))
+            }
+        }
+        if !readText { coordinator.readingText = false }
     }
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
@@ -99,6 +129,7 @@ struct ClipWebPage: UIViewRepresentable {
         var script = ""
         var readsPage = false
         var pageUrl = ""
+        var readingText = false
         var pendingRead: Task<Void, Never>?
         private var loaded = false
         private var sent: String?

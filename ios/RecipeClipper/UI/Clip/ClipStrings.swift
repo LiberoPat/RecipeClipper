@@ -25,6 +25,12 @@ extension Strings {
             draft.photo != nil ? String(localized: "clip_summary_photo") : String(localized: "clip_summary_no_photo"),
         ].joined(separator: " · ")
     }
+    static var clipShowText: String { String(localized: "clip_show_text") }
+    static var clipShowPage: String { String(localized: "clip_show_page") }
+    static var clipTextComments: String { String(localized: "clip_text_comments") }
+    static var clipTextLoadedNote: String { String(localized: "clip_text_loaded_note") }
+    /// Not words (Android's translatable="false" `clip_text_author`).
+    static func clipTextAuthor(_ name: String) -> String { "u/\(name)" }
     static func clipMessage(_ message: ClipMessage) -> String {
         switch message {
         case .assigned(.name, _): return String(localized: "clip_added_name")
@@ -39,6 +45,10 @@ extension Strings {
         case .saveFailed: return String(localized: "clip_save_failed")
         case .photoUnreadable: return String(localized: "clip_photo_unreadable")
         case .unlock(let outcome): return unlockNotice(outcome)
+        case .missing(name: true, lines: true): return String(localized: "clip_needs_name_and_lines")
+        case .missing(name: true, lines: false): return String(localized: "clip_needs_name")
+        case .missing: return String(localized: "clip_needs_lines")
+        case .textUnreadable: return String(localized: "clip_text_unreadable")
         }
     }
 }

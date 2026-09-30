@@ -60,10 +60,11 @@ struct ClipDraft: Equatable {
             && photo == nil && Self.blank(serves) && Self.blank(totalTime)
     }
 
+    /// Some ingredients or steps.
+    var hasLines: Bool { ingredients.contains { !Self.blank($0) } || steps.contains { !Self.blank($0) } }
+
     /// The parser's own rule: a name, plus ingredients or steps.
-    var canFinish: Bool {
-        !Self.blank(name) && (ingredients.contains { !Self.blank($0) } || steps.contains { !Self.blank($0) })
-    }
+    var canFinish: Bool { !Self.blank(name) && hasLines }
 
     /// Lines a field holds, as counted on the toolbar: 1 for a name or a photo.
     func count(_ field: ClipField) -> Int {

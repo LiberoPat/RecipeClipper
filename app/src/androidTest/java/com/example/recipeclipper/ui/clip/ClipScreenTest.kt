@@ -3,7 +3,6 @@ package com.example.recipeclipper.ui.clip
 import android.webkit.WebView
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
@@ -93,7 +92,9 @@ class ClipScreenTest {
     @Test
     fun clipAPageFromSelectionToSave() {
         show()
-        compose.onNodeWithText("Done").assertIsNotEnabled()
+        // Done with nothing yet says what's missing rather than doing nothing (#213).
+        compose.onNodeWithText("Done").performClick()
+        waitForText("To save, select the recipe's name and its ingredients or steps, and tap where each goes.")
 
         select("title")
         waitForText("1 line selected · each line becomes one item")
