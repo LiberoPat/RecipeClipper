@@ -54,9 +54,9 @@ final class Router {
     /// saved the same way, from the editor over the post's error screen.
     func openSavedClip(_ id: Int64) {
         var overError = true
-        if case .clip(_, let blocked) = path.last {
+        if case .clip(_, let blocked, let check) = path.last {
             path.removeLast()
-            overError = !blocked
+            overError = !blocked && !check
         }
         if case .photoRecipe = path.last { path.removeLast() }
         if overError, case .importUrl = path.last { path.removeLast() }

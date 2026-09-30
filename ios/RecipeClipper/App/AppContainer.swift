@@ -180,7 +180,10 @@ final class AppContainer {
                     redditOn: { featureFlags?.isOn(.reddit) ?? true }
                 ),
                 clock: clock,
-                renderedPages: WebViewRenderedPageSource(), library: libraryLimit,
+                renderedPages: WebViewRenderedPageSource(),
+                // Hosts that passed Cloudflare's check lately (#220), rendered first.
+                clearedHosts: testing ? NoClearedHosts() : FileClearedHosts(clock: clock),
+                library: libraryLimit,
                 extractor: FoundationModelsPageRecipeExtractor(),
                 extractionOn: { featureFlags?.isOn(.llmExtraction) ?? false },
                 photos: photoStore
@@ -326,9 +329,10 @@ final class AppContainer {
         MealTypesViewModel(repository: mealPlanRepository)
     }
 
-    func makeClipViewModel(url: String, blocked: Bool = false) -> ClipViewModel {
+    func makeClipViewModel(url: String, blocked: Bool = false, check: Bool = false) -> ClipViewModel {
         ClipViewModel(
-            url: url, repository: recipeRepository, drafts: clipDrafts, entitlements: entitlements, readBlocked: blocked
+            url: url, repository: recipeRepository, drafts: clipDrafts, entitlements: entitlements, readBlocked: blocked,
+            check: check
         )
     }
 

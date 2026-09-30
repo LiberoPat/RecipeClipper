@@ -31,6 +31,16 @@ final class FakeRecipeRepository: RecipeRepository {
 
     @MainActor func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult { importResult }
 
+    /// Staged answers for `importPage` (#220), by the page's HTML; a page not staged is still the
+    /// check. Every (url, html) it was called with, in order.
+    var importPageResults: [String: ParseResult] = [:]
+    private(set) var importPageCalls: [(url: String, html: String)] = []
+
+    @MainActor func importPage(_ sharedUrl: String, html: String) async -> ParseResult {
+        importPageCalls.append((sharedUrl, html))
+        return importPageResults[html] ?? .error(.humanCheck)
+    }
+
     @MainActor func saveClip(_ recipe: Recipe) async -> ParseResult {
         saveClipCalls.append(recipe)
         if let saveClipResult { return saveClipResult }

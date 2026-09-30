@@ -20944,6 +20944,129 @@
           }
         }
       }
+    },
+    "clip_human_check_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Website möchte prüfen, ob du ein Mensch bist. Setz das Häkchen, dann öffnet sich das Rezept."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This site wants to check you're human. Tick the box and the recipe will open."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este sitio quiere comprobar que eres una persona. Marca la casilla y se abrirá la receta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce site veut vérifier que vous êtes humain. Cochez la case et la recette s'ouvrira."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo sito vuole verificare che tu sia una persona. Spunta la casella e la ricetta si aprirà."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este site quer confirmar que você é humano. Marque a caixa e a receita vai abrir."
+          }
+        }
+      }
+    },
+    "clip_human_check_no_recipe_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Prüfung ist bestanden, aber diese Seite hat kein Rezept, das die App lesen kann, deshalb ist sie hier geöffnet: Markiere das Rezept."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The check passed, but this page has no recipe the app can read, so it's open here: select the recipe."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La comprobación se superó, pero esta página no tiene una receta que la app pueda leer, así que está abierta aquí: selecciona la receta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La vérification est passée, mais cette page n'a pas de recette que l'appli sait lire, elle est donc ouverte ici : sélectionnez la recette."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifica superata, ma questa pagina non ha una ricetta che l'app sappia leggere, quindi è aperta qui: seleziona la ricetta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A verificação passou, mas esta página não tem uma receita que o app consiga ler, então ela está aberta aqui: selecione a receita."
+          }
+        }
+      }
+    },
+    "error_human_check" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Website möchte prüfen, ob du ein Mensch bist, bevor sie die App hereinlässt. Öffne das Original, setz das Häkchen und versuch es dann noch einmal."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This site wants to check you're human before it lets the app in. Open the original, tick the box, then try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este sitio quiere comprobar que eres una persona antes de dejar entrar a la app. Abre el original, marca la casilla y vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce site veut vérifier que vous êtes humain avant de laisser entrer l'appli. Ouvrez l'original, cochez la case, puis réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo sito vuole verificare che tu sia una persona prima di far entrare l'app. Apri l'originale, spunta la casella e riprova."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este site quer confirmar que você é humano antes de deixar o app entrar. Abra o original, marque a caixa e tente de novo."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

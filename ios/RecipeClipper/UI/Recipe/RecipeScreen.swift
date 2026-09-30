@@ -17,6 +17,8 @@ struct RecipeScreen: View {
     /// Reddit wouldn't let the app read the shared post (#213): "Clip it yourself" on it, in
     /// this screen's place.
     var onClipBlocked: (String) -> Void = { _ in }
+    /// Cloudflare's check wants a person (#220): opens the page visibly in the import's place.
+    var onHumanCheck: (String) -> Void = { _ in }
     /// Opens the editor on a Reddit post's photos, read on the device (#198).
     var onReadPhoto: (PhotoPost) -> Void = { _ in }
     /// The `photoText` flag (#198): "Read the photo" shows only behind it.
@@ -142,6 +144,9 @@ struct RecipeScreen: View {
         }
         .onChange(of: state.clipBlockedPost, initial: true) { _, url in
             if let url { onClipBlocked(url) }
+        }
+        .onChange(of: state.humanCheckPage, initial: true) { _, url in
+            if let url { onHumanCheck(url) }
         }
         .sheet(isPresented: $sheetOpen) {
             SaveToListSheet(vm: saveVM)

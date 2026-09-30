@@ -37,9 +37,12 @@ extension RecipeSource {
 }
 
 /// A fetch's result, and `page` only when that is `.noRecipeFound` on a page that loaded.
+/// `challenge`: the refusal was Cloudflare's bot check (`CloudflareChallenge`, #220), which a
+/// second plain fetch wouldn't pass, so the repository skips its retry.
 struct FetchedPage {
     var result: ParseResult
     var page: PageText? = nil
+    var challenge = false
 }
 
 /// The on-device model reading a page with no recipe data (#103), beside `StepShortener`:
@@ -89,13 +92,44 @@ protocol RenderedPageSource {
     /// The page's `document.documentElement.outerHTML` once loaded and settled; nil if it
     /// couldn't be loaded, or when the calling task is cancelled (which stops the load). The
     /// caller caps the overall time.
-    func render(url: String) async -> String?
+    ///
+    /// While the settled page is Cloudflare's challenge (`CloudflareChallenge`, #220), it isn't
+    /// handed back: `onChallenge` is called (perhaps more than once) and the load goes on waiting
+    /// for the page the check moves on to, until the caller's cap. The caller gives a challenge
+    /// longer, and treats one still showing at the cap as needing a person.
+    func render(url: String, onChallenge: @escaping () -> Void) async -> String?
+}
+
+extension RenderedPageSource {
+    func render(url: String) async -> String? { await render(url: url, onChallenge: {}) }
 }
 
 /// Renders nothing: the default where the fallback isn't wanted (tests that aren't about it,
 /// the UI-test graph).
 struct NoRenderedPageSource: RenderedPageSource {
-    func render(url: String) async -> String? { nil }
+    func render(url: String, onChallenge: @escaping () -> Void) async -> String? { nil }
+}
+
+/// The hosts whose Cloudflare check (#220) the app's browser passed lately (Android's
+/// `ClearedHosts`). A plain fetch of such a host would only be refused (the `cf_clearance` cookie
+/// lives in the web view's store, and handing it to URLSession would be a fingerprint trick), so
+/// the repository renders its pages first. `FileClearedHosts` is the real one.
+protocol ClearedHosts: AnyObject {
+    /// Whether `host` passed the check within the last `clearedHostsTTL`.
+    func isCleared(_ host: String) -> Bool
+    /// `host` just got past the check (or loaded on its clearance): remember it.
+    func record(_ host: String)
+}
+
+/// How long a pass is remembered: a day. Sites choose how long Cloudflare's clearance lasts
+/// (often 30 minutes, up to a year); guessing long only costs a slower first try when a site no
+/// longer checks, while guessing short costs the refused fetch and its retry. Android's `TTL_MS`.
+let clearedHostsTTL: Int64 = 24 * 60 * 60 * 1000
+
+/// Remembers nothing: the default for tests that aren't about it, and the share extension.
+final class NoClearedHosts: ClearedHosts {
+    func isCleared(_ host: String) -> Bool { false }
+    func record(_ host: String) {}
 }
 
 /// Whether the device has a usable network (Android's Connectivity). A seam so RecipeViewModel
@@ -176,6 +210,13 @@ protocol RecipeRepository: AnyObject {
     /// recipe, or `.error(.saveFailed)`, or `.notKept` on a full library (#107), which the clip
     /// screen doesn't leave.
     func saveClip(_ recipe: Recipe) async -> ParseResult
+
+    /// A page the cook opened in the app's visible browser to pass Cloudflare's check (#220), as
+    /// it stands now (`html`): read by the same parsers and saved like an import. Returns
+    /// `.error(.humanCheck)` while it is still the check, the page's `.error(.noRecipeFound)`
+    /// once past it with no recipe data, else the saved recipe (or `.notKept` on a full
+    /// library). Past the check, the host is remembered, so its next import renders first.
+    func importPage(_ sharedUrl: String, html: String) async -> ParseResult
 
     /// "Update from source" (#29): fetches the recipe's link again and replaces the user's
     /// version with the site's, keeping the id, note and list membership, and making it PARSED.

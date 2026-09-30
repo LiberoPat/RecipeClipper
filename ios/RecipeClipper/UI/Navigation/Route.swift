@@ -24,8 +24,9 @@ enum Route: Hashable {
     /// The week's "What I need" (#51; Android's `week/need/{weekStart}`).
     case whatINeed(weekStart: Int64)
     /// "Clip it yourself" (#37) on a page with no recipe data, or opened by itself in the
-    /// import's place when Reddit blocks the app's read of a post (#213: `blocked`, with a note).
-    case clip(String, blocked: Bool = false)
+    /// import's place when Reddit blocks the app's read of a post (#213: `blocked`, with a note),
+    /// or for the cook to pass Cloudflare's check (#220: `check`, with a note).
+    case clip(String, blocked: Bool = false, check: Bool = false)
     /// "Read the photo" (#198): the editor, filled from a Reddit post's photos read on the device
     /// (Android's `edit/photo?url=&title=&images=`).
     case photoRecipe(PhotoPost)

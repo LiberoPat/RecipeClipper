@@ -80,6 +80,8 @@ enum Strings {
     static var remove: String { String(localized: "action_remove") }
     static var clipHint: String { String(localized: "clip_hint") }
     static var clipRedditBlockedNote: String { String(localized: "clip_reddit_blocked_note") }
+    static var clipHumanCheckNote: String { String(localized: "clip_human_check_note") }
+    static var clipHumanCheckNoRecipeNote: String { String(localized: "clip_human_check_no_recipe_note") }
     static var clipPickingPhoto: String { String(localized: "clip_picking_photo") }
     static var clipSkipPhoto: String { String(localized: "clip_skip_photo") }
     static var clipReview: String { String(localized: "clip_review") }
@@ -180,6 +182,7 @@ enum Strings {
         case .noRecipeFound: return errorNoRecipeFound
         case .noTranscription: return errorNoTranscription
         case .blocked(let status): return errorBlocked(status)
+        case .humanCheck: return String(localized: "error_human_check")
         case .offline: return errorOffline
         case .fetchFailed(let detail, _): return errorFetchFailed(detail)
         case .saveFailed: return errorSaveFailed

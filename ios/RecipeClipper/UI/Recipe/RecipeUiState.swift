@@ -142,6 +142,11 @@ struct RecipeUiState: Equatable {
     /// than show the error. `content` stays loading meanwhile.
     var clipBlockedPost: String?
 
+    /// A shared page whose Cloudflare check wants a person (#220, `.humanCheck`): the view opens
+    /// it visibly, in "Clip it yourself"'s web view with a note, in its own place, rather than
+    /// show the error. `content` stays loading meanwhile.
+    var humanCheckPage: String?
+
     /// The post to read the photos of ("Read the photo", #198): set while a Reddit post with no
     /// recipe text (`.noTranscription`) that has a picture is on screen. The screen offers it
     /// only behind the `photoText` flag.

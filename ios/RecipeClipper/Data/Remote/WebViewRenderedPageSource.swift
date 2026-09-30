@@ -14,18 +14,23 @@ import WebKit
 /// The user agent is WebKit's own: this is a real browser engine, not a user-agent trick (see
 /// CLAUDE.md, "Failure handling"). Its cookies are the app's, not Safari's, so a paywall still
 /// fails. Not used inside the share extension (memory, #19).
+///
+/// A settled page that is Cloudflare's challenge (#220) isn't taken: the load keeps waiting for
+/// the page the check moves on to, and says so through `onChallenge`. The web view uses the
+/// default website data store, the app's one persistent cookie store, so the `cf_clearance` a
+/// passed check leaves is kept for the clip view and the next render.
 @MainActor
 final class WebViewRenderedPageSource: RenderedPageSource {
     /// How long a page must stay quiet after loading before its HTML is taken: time for scripts
     /// that add the recipe data, or finish a bot check, after the load event. Android's SETTLE_MS.
     static let settle: Duration = .milliseconds(1500)
 
-    func render(url: String) async -> String? {
+    func render(url: String, onChallenge: @escaping () -> Void) async -> String? {
         // http(s) only, as the direct fetch enforces.
         guard let target = URL(string: url),
               let scheme = target.scheme?.lowercased(), scheme == "http" || scheme == "https"
         else { return nil }
-        let loader = PageLoader()
+        let loader = PageLoader(onChallenge: onChallenge)
         return await withTaskCancellationHandler {
             await loader.load(target)
         } onCancel: {
@@ -41,6 +46,11 @@ private final class PageLoader: NSObject, WKNavigationDelegate {
     private var continuation: CheckedContinuation<String?, Never>?
     private var pendingCapture: Task<Void, Never>?
     private var cancelled = false
+    private let onChallenge: () -> Void
+
+    init(onChallenge: @escaping () -> Void) {
+        self.onChallenge = onChallenge
+    }
 
     func load(_ url: URL) async -> String? {
         await withCheckedContinuation { continuation in
@@ -75,7 +85,25 @@ private final class PageLoader: NSObject, WKNavigationDelegate {
         guard let webView else { return }
         webView.evaluateJavaScript("document.documentElement.outerHTML") { [weak self] result, _ in
             // WebKit calls this on the main thread.
-            MainActor.assumeIsolated { self?.finish(result as? String) }
+            MainActor.assumeIsolated { self?.captured(result as? String) }
+        }
+    }
+
+    private func captured(_ html: String?) {
+        guard let html, CloudflareChallenge.isChallengePage(html) else { return finish(html) }
+        // Cloudflare's check (#220): not the page yet. It usually loads the page itself once it
+        // passes (a navigation, which restarts the wait); look again after another settle in
+        // case it changes the page in place.
+        onChallenge()
+        captureAfterSettle()
+    }
+
+    private func captureAfterSettle() {
+        pendingCapture?.cancel()
+        pendingCapture = Task { [weak self] in
+            try? await Task.sleep(for: WebViewRenderedPageSource.settle)
+            guard !Task.isCancelled else { return }
+            self?.capture()
         }
     }
 
@@ -87,12 +115,7 @@ private final class PageLoader: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        pendingCapture?.cancel()
-        pendingCapture = Task { [weak self] in
-            try? await Task.sleep(for: WebViewRenderedPageSource.settle)
-            guard !Task.isCancelled else { return }
-            self?.capture()
-        }
+        captureAfterSettle()
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

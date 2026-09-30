@@ -12,9 +12,16 @@ struct ClipScreen: View {
 
     var body: some View {
         let state = vm.uiState
+        let waiting = state.check == .waiting
         VStack(spacing: 0) {
             if state.readBlocked && !state.reviewing {
-                blockedNote
+                note(Strings.clipRedditBlockedNote)
+            }
+            // Cloudflare's check (#220): what to do, then, past it with no recipe, why this is open.
+            if waiting {
+                note(Strings.clipHumanCheckNote)
+            } else if state.check == .noRecipe && !state.reviewing {
+                note(Strings.clipHumanCheckNoRecipeNote)
             }
             ZStack {
                 ClipWebPage(
@@ -28,14 +35,17 @@ struct ClipScreen: View {
                         case .tagTapped(let field): vm.onTagTapped(field)
                         case .imageTapped(let src): vm.onImageTapped(src)
                         case .noImage: vm.onNoImageTapped()
+                        case .pageLoaded(let html): vm.onPageLoaded(html)
                         }
-                    }
+                    },
+                    readsPage: waiting
                 )
                 if state.reviewing {
                     ClipReviewPane(vm: vm)
                 }
             }
-            if !state.reviewing {
+            // Nothing to clip while the page is Cloudflare's check (#220).
+            if !state.reviewing && !waiting {
                 ClipToolbar(vm: vm)
             }
         }
@@ -63,7 +73,7 @@ struct ClipScreen: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(Strings.done, action: vm.onReview)
-                    .disabled(!state.draft.canFinish || state.reviewing)
+                    .disabled(!state.draft.canFinish || state.reviewing || waiting)
             }
         }
         .overlay(alignment: .bottom) {
@@ -84,10 +94,17 @@ struct ClipScreen: View {
         .onChange(of: state.savedRecipeId) { _, id in
             if let id { onSaved(id) }
         }
+        .onChange(of: state.check) { _, check in
+            if check == .noRecipe {
+                AccessibilityNotification.Announcement(Strings.clipHumanCheckNoRecipeNote).post()
+            }
+        }
         // The cook asked for the recipe, not for this screen (#213): VoiceOver hears why.
         .task {
             if vm.uiState.readBlocked {
                 AccessibilityNotification.Announcement(Strings.clipRedditBlockedNote).post()
+            } else if vm.uiState.check == .waiting {
+                AccessibilityNotification.Announcement(Strings.clipHumanCheckNote).post()
             }
         }
         .libraryFullAlert(
@@ -96,10 +113,11 @@ struct ClipScreen: View {
         )
     }
 
-    /// Why the clip opened by itself (#213): Reddit wouldn't let the app read the post.
-    private var blockedNote: some View {
+    /// Why the clip opened by itself: Reddit wouldn't let the app read the post (#213), or the
+    /// site wants the cook to pass Cloudflare's check (#220), or did and has no recipe data.
+    private func note(_ text: String) -> some View {
         VStack(spacing: 0) {
-            Text(Strings.clipRedditBlockedNote)
+            Text(text)
                 .textStyle(Typography.bodyMedium)
                 .foregroundStyle(Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
