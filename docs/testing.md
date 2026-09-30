@@ -653,8 +653,9 @@ Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported 
 (simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked", 24 the
 tooltips and "Show tips again", 25 the pantry's three states, 26 "onion" matching "onions" in What I
 need, 27 Reddit posts (from fixtures), 28 "Read the photo" (#198), 29 reading other languages (#208: a
-German post, a French card). Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
-`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–29 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–29 in `+Features.swift`, 22
+German post, a French card), 30 "Scan a recipe" (#226: a card's two sides from the library).
+Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
+`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–30 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–30 in `+Features.swift`, 22
 in `+MealPlan.swift`). What they need from outside the app:
 
 - **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
@@ -680,6 +681,15 @@ in `+MealPlan.swift`). What they need from outside the app:
   ruled card (macOS Vision reads it line for line, "2 c. à soupesucre" included). An emulator has no
   Play services model, so Android's 28 and 29 are OCR SIMULATED: the test swaps `PhotoTextModule` for a
   reader that answers the card's lines once, then nothing (29: the `fr` fixture's lines).
+- **The scan** (30): the pages are `card-front.jpg` and `card-back.jpg` from
+  `shared/fixtures/reddit/photos/`. iOS adds them to the simulator's Photos just before the test
+  (back, then front, so the front is newest and the picker lists it first), and the test picks both
+  in the real picker, in order, for the real Vision reader. Android pushes them to
+  `/data/local/tmp`, and the test hands them back as the Photo Picker's two-page answer. It tries
+  ML Kit first, because the `RC_Test` emulator (a Play Store image) did get the model from Play
+  services in September 2026, and falls back to clip 28's lines only if the model never arrives
+  (two minutes). It logs `OCR SIMULATED` when it falls back, and the script then names the clip
+  `-simulated`.
 - **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20, 23, 25 and 26:
   `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
 - **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the
