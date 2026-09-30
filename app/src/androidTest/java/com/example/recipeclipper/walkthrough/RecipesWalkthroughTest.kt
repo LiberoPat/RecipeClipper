@@ -332,11 +332,19 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         pause(2000)
         swipeUp()
         pause(2500)
-        // Fix the line with its unit run into the next word, however the reader spelt it.
+        // Fix the line with its unit run into the next word, however the reader spelt it, and
+        // ML Kit's slips on this card: "4 cufs" (the line it flags), "1/2l", "pineée", and the
+        // sugar line read as "à soupesuore", its "2 c." lost.
         val box = compose.onAllNodes(field("Ingredients, one per line"))[0]
         val typed = box.fetchSemanticsNode().config[SemanticsProperties.EditableText].text
         box.performTextReplacement(
-            typed.lines().joinToString("\n") { if ("soupe" in it && "sucre" in it) "2 c. à soupe de sucre" else it }
+            typed.lines().joinToString("\n") { line ->
+                when {
+                    "soupe" in line -> "2 c. à soupe de sucre"
+                    "ufs" in line -> "4 œufs"
+                    else -> line.replace("1/2l ", "1/2 l ").replace("1/21 ", "1/2 l ").replace("pineée", "pincée")
+                }
+            }
         )
         pause(2000)
         tap("Save", 2500)
