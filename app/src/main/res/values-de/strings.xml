@@ -283,6 +283,14 @@
     <string name="clip_cleared_photo">Foto entfernt</string>
     <string name="clip_draft_restored">Entwurf wiederhergestellt</string>
     <string name="clip_save_failed">Der Ausschnitt konnte nicht gespeichert werden. Versuche es noch einmal.</string>
+    <string name="clip_needs_name">Gib den Namen des Rezepts ein, um es zu speichern, oder markiere ihn und tippe auf Name.</string>
+    <string name="clip_needs_lines">Markiere zum Speichern die Zutaten oder Schritte und tippe auf Zutaten oder Schritte.</string>
+    <string name="clip_needs_name_and_lines">Markiere zum Speichern den Namen des Rezepts und seine Zutaten oder Schritte und tippe an, wohin sie gehören.</string>
+    <string name="clip_text_unreadable">Der Beitrag ist noch nicht geladen. Warte kurz und tippe dann noch einmal auf Text.</string>
+    <string name="clip_show_text">Text</string>
+    <string name="clip_show_page">Seite</string>
+    <string name="clip_text_comments">Kommentare</string>
+    <string name="clip_text_loaded_note">Hier stehen nur die Kommentare, die Reddit bisher geladen hat.</string>
     <string name="clip_back_to_page">‹  Zurück zur Seite</string>
     <string name="clip_photo_from_page">Foto von der Seite</string>
     <string name="clip_no_photo">Kein Foto. Tippe auf der Seite auf Foto und dann auf das Bild.</string>

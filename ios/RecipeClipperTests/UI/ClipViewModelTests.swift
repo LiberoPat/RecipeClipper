@@ -204,18 +204,41 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.notice?.message, .cleared(.name))
     }
 
-    func testReviewOpensOnlyOnceThereIsANamePlusIngredientsOrSteps() {
+    func testDoneOpensReviewOnceThereIsANamePlusIngredientsOrSteps() {
         let vm = viewModel()
         select(vm, "Cookies", .name)
-        vm.onReview()
-        XCTAssertFalse(vm.uiState.reviewing)
-
         select(vm, "Bake.", .steps)
         vm.onReview()
         XCTAssertTrue(vm.uiState.reviewing)
 
         vm.onBackToPage()
         XCTAssertFalse(vm.uiState.reviewing)
+    }
+
+    // The owner's S23 (#213): ingredients and steps selected on a Reddit post, no name (its title
+    // is hard to select there), and Done did nothing, greyed out, with nothing saying why.
+    func testDoneWithLinesButNoNameOpensReviewSayingToTypeTheName() {
+        let vm = viewModel()
+        select(vm, "flour\nsugar", .ingredients)
+        select(vm, "Mix.\nBake.", .steps)
+        vm.onReview()
+        XCTAssertTrue(vm.uiState.reviewing)
+        XCTAssertEqual(vm.uiState.notice?.message, .missing(name: true, lines: false))
+    }
+
+    func testDoneWithANameButNoLinesStaysOnThePageSayingWhatToSelect() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        vm.onReview()
+        XCTAssertFalse(vm.uiState.reviewing)
+        XCTAssertEqual(vm.uiState.notice?.message, .missing(name: false, lines: true))
+    }
+
+    func testDoneWithNothingYetSaysEverythingIsMissing() {
+        let vm = viewModel()
+        vm.onReview()
+        XCTAssertFalse(vm.uiState.reviewing)
+        XCTAssertEqual(vm.uiState.notice?.message, .missing(name: true, lines: true))
     }
 
     func testReviewEditsLinesAndTakesTypedServesAndTime() {
@@ -278,12 +301,145 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(store.get(cleaned)?.name, "Cookies")
     }
 
-    func testSavingDoesNothingUntilItCanFinish() async {
+    func testSavingWithoutANameSavesNothingAndSaysToTypeIt() async {
         let vm = viewModel()
-        select(vm, "Cookies", .name)
+        select(vm, "flour", .ingredients)
+        vm.onReview()
+        vm.onNameChange("  ")
         vm.onSave()
         await settleMain()
         XCTAssertTrue(repository.saveClipCalls.isEmpty)
+        XCTAssertEqual(vm.uiState.notice?.message, .missing(name: true, lines: false))
+        XCTAssertFalse(vm.uiState.saving)
+
+        // Typed in Review, the name is enough.
+        vm.onNameChange("Cookies")
+        vm.onSave()
+        await settleMain()
+        XCTAssertEqual(repository.saveClipCalls.map(\.name), ["Cookies"])
+        XCTAssertEqual(vm.uiState.savedRecipeId, 1)
+    }
+
+    func testSavingWithTheLinesBlankedInReviewSaysIngredientsOrStepsAreMissing() async {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        select(vm, "flour", .ingredients)
+        vm.onReview()
+        vm.onLineChange(.ingredients, 0, " ")
+        vm.onSave()
+        await settleMain()
+        XCTAssertTrue(repository.saveClipCalls.isEmpty)
+        XCTAssertEqual(vm.uiState.notice?.message, .missing(name: false, lines: true))
+    }
+
+    func testAFullLibrarySaysSoRatherThanSavingNothingSilently() async throws {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        select(vm, "flour", .ingredients)
+        repository.saveClipResult = .notKept(try XCTUnwrap(vm.uiState.draft.toRecipe()))
+        vm.onSave()
+        await settleMain()
+        XCTAssertTrue(vm.uiState.libraryFull)
+        XCTAssertNil(vm.uiState.savedRecipeId)
+        XCTAssertFalse(vm.uiState.saving)
+    }
+
+    func testARedditShareLinkSavesUnderTheLinkThatWasSharedNotThePageItLoadsFrom() async {
+        let shareLink = "https://www.reddit.com/r/recipes/s/AbCdEf123"
+        let vm = ClipViewModel(url: shareLink, repository: repository, drafts: store, readBlocked: true)
+        select(vm, "Soup", .name)
+        select(vm, "water", .ingredients)
+        vm.onSave()
+        await settleMain()
+        XCTAssertEqual(repository.saveClipCalls.map(\.sourceUrl), [shareLink])
+        XCTAssertEqual(vm.uiState.savedRecipeId, 1)
+    }
+
+    // MARK: The Text view (#213)
+
+    private let post = "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/"
+    private let postHtml = """
+        <shreddit-post post-title="Apple Pie"><div slot="text-body"><div property="schema:articleBody">
+          <ul><li><p>3 apples</p></li><li><p>1 crust</p></li></ul><p>Bake.</p>
+        </div></div></shreddit-post>
+        <shreddit-comment author="baker" depth="0"><div slot="comment"><p>Use 4 apples.</p></div></shreddit-comment>
+        """
+
+    private func redditViewModel() -> ClipViewModel {
+        ClipViewModel(url: post, repository: repository, drafts: store, readBlocked: true)
+    }
+
+    func testOnlyARedditPostOffersTheTextView() {
+        let blog = viewModel()
+        XCTAssertFalse(blog.uiState.offersText)
+        blog.onShowText()
+        XCTAssertFalse(blog.uiState.readingText)
+        XCTAssertTrue(redditViewModel().uiState.offersText)
+    }
+
+    func testTheTextViewReadsThePageThenShowsThePostAsText() {
+        let vm = redditViewModel()
+        vm.onSelectionChanged("something on the page")
+        vm.onShowText()
+        XCTAssertTrue(vm.uiState.readingText)
+        XCTAssertEqual(vm.uiState.selection, [])
+
+        vm.onPageText(postHtml)
+        let state = vm.uiState
+        XCTAssertFalse(state.readingText)
+        XCTAssertTrue(state.showingText)
+        XCTAssertEqual(state.pageText?.title, "Apple Pie")
+        XCTAssertEqual(state.pageText?.body, ["3 apples", "1 crust", "Bake."])
+        XCTAssertEqual(state.pageText?.comments.first?.lines, ["Use 4 apples."])
+    }
+
+    func testTextSelectedInTheTextViewIsAssignedAndSavedLikeThePages() async throws {
+        let vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+
+        select(vm, "Apple Pie", .name)
+        XCTAssertEqual(vm.uiState.newMarkId, "m1")
+        select(vm, "3 apples\n1 crust", .ingredients)
+        select(vm, "Bake.", .steps)
+        vm.onReview()
+        vm.onSave()
+        await settleMain()
+
+        let saved = try XCTUnwrap(repository.saveClipCalls.first)
+        XCTAssertEqual(saved.name, "Apple Pie")
+        XCTAssertEqual(saved.ingredients, ["3 apples", "1 crust"])
+        XCTAssertEqual(saved.instructions, ["Bake."])
+        XCTAssertEqual(saved.sourceUrl, post)
+    }
+
+    func testBackToThePageKeepsTheTextAndTheDraft() {
+        let vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        select(vm, "Apple Pie", .name)
+        vm.onShowPage()
+        XCTAssertFalse(vm.uiState.showingText)
+        XCTAssertEqual(vm.uiState.pageText?.title, "Apple Pie")
+        XCTAssertEqual(vm.uiState.draft.name, "Apple Pie")
+    }
+
+    func testAPageWithNoPostYetSaysSoAndStaysOnThePage() {
+        let vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText("<html><body><p>Checking your browser</p></body></html>")
+        XCTAssertFalse(vm.uiState.showingText)
+        XCTAssertFalse(vm.uiState.readingText)
+        XCTAssertEqual(vm.uiState.notice?.message, .textUnreadable)
+    }
+
+    func testPickingThePhotoGoesBackToThePage() {
+        let vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onPhotoButton()
+        XCTAssertTrue(vm.uiState.pickingPhoto)
+        XCTAssertFalse(vm.uiState.showingText)
     }
 
     func testLeavingKeepsTheDraftForTheSessionAndReopeningRestoresIt() {

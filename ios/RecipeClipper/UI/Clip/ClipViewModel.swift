@@ -12,6 +12,11 @@ enum ClipMessage: Equatable {
     case photoUnreadable
     /// The Unlock from the full-library prompt (#107) is pending or failed.
     case unlock(PurchaseOutcome)
+    /// Done or Save with too little to save: what's still missing, a `name` and/or ingredients or
+    /// steps (`lines`). Save never does nothing silently.
+    case missing(name: Bool, lines: Bool)
+    /// The Text view found no post in the page yet (still loading, or Reddit's check).
+    case textUnreadable
 }
 
 /// Where the cook is with Cloudflare's check (#220), when the clip view opened for it in the
@@ -55,6 +60,15 @@ struct ClipUiState: Equatable {
     /// which loads from www.reddit.com (`RedditUrls.clipPageUrl`, #213). The clip is still saved
     /// under `url`.
     var pageUrl: String { RedditUrls.clipPageUrl(url) }
+
+    /// A Reddit post (#213): the clip offers the Text view beside the page.
+    var offersText: Bool { RedditUrls.isReddit(url) }
+    /// The Text view asked for: the view layer reads the page and hands it to `onPageText`.
+    var readingText = false
+    /// The post as plain text, read from the page the last time the Text view opened.
+    var pageText: RedditPageText? = nil
+    /// The Text view is showing, over the page, which stays loaded under it.
+    var showingText = false
 }
 
 /// "Clip it yourself" (#37), Android's ClipViewModel. The page itself lives in the view layer;
@@ -174,7 +188,53 @@ final class ClipViewModel {
         assign(field, selectionText)
     }
 
-    func onPhotoButton() { uiState.pickingPhoto.toggle() }
+    /// The photo is picked on the page, so this also leaves the Text view.
+    func onPhotoButton() {
+        var state = uiState
+        state.pickingPhoto.toggle()
+        state.showingText = false
+        uiState = state
+    }
+
+    // MARK: The Text view (#213)
+
+    /// Asks for the Text view: the view layer reads the page as it stands (with whatever comments
+    /// it has loaded) and calls `onPageText`. The selection belongs to the view it was made in, so
+    /// it goes.
+    func onShowText() {
+        guard uiState.offersText else { return }
+        clearSelection()
+        uiState.readingText = true
+        uiState.pickingPhoto = false
+    }
+
+    /// The page's markup, read for the Text view. A page with no post in it yet says so.
+    func onPageText(_ html: String) {
+        guard uiState.readingText else { return }
+        let text = RedditPageText.parse(html)
+        var state = uiState
+        state.readingText = false
+        if text.isEmpty {
+            state.notice = notice(.textUnreadable)
+        } else {
+            state.showingText = true
+            // The same text leaves the view's page (and its marks) as they are.
+            if text != state.pageText { state.pageText = text }
+        }
+        uiState = state
+    }
+
+    func onShowPage() {
+        clearSelection()
+        uiState.showingText = false
+        uiState.readingText = false
+    }
+
+    private func clearSelection() {
+        selectionText = ""
+        uiState.selection = []
+        uiState.newMarkId = nil
+    }
 
     /// Leaves the photo step without a (new) photo: it's optional.
     func onSkipPhoto() { uiState.pickingPhoto = false }
@@ -198,10 +258,27 @@ final class ClipViewModel {
 
     // MARK: Review
 
+    /// Done: Review, when there's something to review. Never a silent no: with no name but some
+    /// lines, Review opens with a note to type the name there (a Reddit title is hard to select);
+    /// with no lines, the page stays and the note says what to select.
     func onReview() {
-        guard uiState.draft.canFinish else { return }
-        uiState.reviewing = true
-        uiState.pickingPhoto = false
+        var state = uiState
+        if let missing = missing(state.draft) {
+            state.notice = notice(missing)
+            if case .missing(_, lines: false) = missing {
+                state.reviewing = true
+                state.pickingPhoto = false
+            }
+        } else {
+            state.reviewing = true
+            state.pickingPhoto = false
+        }
+        uiState = state
+    }
+
+    /// What the draft still needs before it can be saved, or nil when it can be.
+    private func missing(_ draft: ClipDraft) -> ClipMessage? {
+        draft.canFinish ? nil : .missing(name: draft.name.kTrimmed.isEmpty, lines: !draft.hasLines)
     }
 
     func onBackToPage() { uiState.reviewing = false }
@@ -215,7 +292,11 @@ final class ClipViewModel {
     func onRemovePhoto() { edit { $0 = $0.clear(.photo) } }
 
     func onSave() {
-        guard !uiState.saving, let recipe = uiState.draft.toRecipe() else { return }
+        guard !uiState.saving else { return }
+        guard let recipe = uiState.draft.toRecipe() else {
+            if let missing = missing(uiState.draft) { uiState.notice = notice(missing) }
+            return
+        }
         uiState.saving = true
         Task { [weak self, repository] in
             let result = await repository.saveClip(recipe)

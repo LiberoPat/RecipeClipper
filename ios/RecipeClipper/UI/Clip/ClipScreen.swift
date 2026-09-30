@@ -27,19 +27,33 @@ struct ClipScreen: View {
                 ClipWebPage(
                     url: state.pageUrl,
                     fixtureHTML: fixtureHTML,
-                    syncState: Self.syncJson(state.draft, newMarkId: state.newMarkId),
+                    // The new mark goes to the view the selection was made in.
+                    syncState: Self.syncJson(state.draft, newMarkId: state.showingText ? nil : state.newMarkId),
                     pickingPhoto: state.pickingPhoto,
-                    onEvent: { event in
-                        switch event {
-                        case .selection(let text): vm.onSelectionChanged(text)
-                        case .tagTapped(let field): vm.onTagTapped(field)
-                        case .imageTapped(let src): vm.onImageTapped(src)
-                        case .noImage: vm.onNoImageTapped()
-                        case .pageLoaded(let html): vm.onPageLoaded(html)
-                        }
-                    },
-                    readsPage: waiting
+                    onEvent: onPageEvent,
+                    readsPage: waiting,
+                    readText: state.readingText
                 )
+                // The Text view (#213) lies over the page, which stays loaded (its scroll and
+                // marks) under it; hidden, it keeps its own.
+                if let text = state.pageText {
+                    let html = RedditTextPage.html(
+                        text, commentsHeading: Strings.clipTextComments, loadedNote: Strings.clipTextLoadedNote,
+                        author: Strings.clipTextAuthor
+                    )
+                    ClipWebPage(
+                        url: state.pageUrl,
+                        textHTML: html,
+                        syncState: Self.syncJson(state.draft, newMarkId: state.showingText ? state.newMarkId : nil),
+                        pickingPhoto: false,
+                        onEvent: onPageEvent
+                    )
+                    .id(html)
+                    .opacity(state.showingText ? 1 : 0)
+                    .allowsHitTesting(state.showingText)
+                    .accessibilityHidden(!state.showingText)
+                    .accessibilityIdentifier("clip.text")
+                }
                 if state.reviewing {
                     ClipReviewPane(vm: vm)
                 }
@@ -71,9 +85,24 @@ struct ClipScreen: View {
                     .foregroundStyle(Palette.muted)
                     .lineLimit(1)
             }
+            // The switch between the page and the Text view (#213).
             ToolbarItem(placement: .topBarTrailing) {
-                Button(Strings.done, action: vm.onReview)
-                    .disabled(!state.draft.canFinish || state.reviewing || waiting)
+                if state.offersText && !state.reviewing && !waiting {
+                    if state.showingText {
+                        Button(Strings.clipShowPage, action: vm.onShowPage)
+                    } else {
+                        Button(Strings.clipShowText, action: vm.onShowText)
+                    }
+                }
+            }
+            // Done opens Review; in Review it is Save. Either is always tappable (bar Cloudflare's
+            // check and a save under way): what's missing is said, never only greyed out.
+            ToolbarItem(placement: .topBarTrailing) {
+                if state.reviewing {
+                    Button(Strings.save, action: vm.onSave).disabled(state.saving)
+                } else {
+                    Button(Strings.done, action: vm.onReview).disabled(waiting)
+                }
             }
         }
         .overlay(alignment: .bottom) {
@@ -113,6 +142,17 @@ struct ClipScreen: View {
         )
     }
 
+    private func onPageEvent(_ event: ClipPageEvent) {
+        switch event {
+        case .selection(let text): vm.onSelectionChanged(text)
+        case .tagTapped(let field): vm.onTagTapped(field)
+        case .imageTapped(let src): vm.onImageTapped(src)
+        case .noImage: vm.onNoImageTapped()
+        case .pageLoaded(let html): vm.onPageLoaded(html)
+        case .pageText(let html): vm.onPageText(html)
+        }
+    }
+
     /// Why the clip opened by itself: Reddit wouldn't let the app read the post (#213), or the
     /// site wants the cook to pass Cloudflare's check (#220), or did and has no recipe data.
     private func note(_ text: String) -> some View {
@@ -144,8 +184,8 @@ struct ClipScreen: View {
             }
         case .saveFailed, .unlock:
             Snackbar(message: text, actionLabel: Strings.cancel) { vm.onNoticeShown(notice.serial) }
-        case .photoUnreadable:
-            // Nothing to act on: the page answers taps again, and the photo is optional.
+        case .photoUnreadable, .missing, .textUnreadable:
+            // Nothing to act on: the words say what to do.
             Snackbar(message: text, actionLabel: nil)
         }
     }
@@ -203,7 +243,7 @@ private struct ClipToolbar: View {
                         Text(Strings.clipSummary(draft))
                             .textStyle(Typography.labelLarge)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        if draft.canFinish {
+                        if !draft.isEmpty {
                             Button(Strings.clipReview, action: vm.onReview)
                                 .buttonStyle(TextActionStyle())
                         }
@@ -320,7 +360,7 @@ private struct ClipReviewPane: View {
 
                 Button(Strings.clipSave, action: vm.onSave)
                     .buttonStyle(PrimaryButtonStyle(fillWidth: true))
-                    .disabled(!draft.canFinish || state.saving)
+                    .disabled(state.saving)
                     .padding(.vertical, 12)
             }
             .padding(.horizontal, 20)

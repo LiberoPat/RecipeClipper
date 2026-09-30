@@ -226,18 +226,41 @@ class ClipViewModelTest {
         assertEquals(ClipMessage.Cleared(ClipField.NAME), vm.message)
     }
 
-    @Test fun `review opens only once there is a name plus ingredients or steps`() {
+    @Test fun `done opens review once there is a name plus ingredients or steps`() {
         val vm = viewModel()
         vm.select("Cookies", ClipField.NAME)
-        vm.onReview()
-        assertFalse(vm.uiState.value.reviewing)
-
         vm.select("Bake.", ClipField.STEPS)
         vm.onReview()
         assertTrue(vm.uiState.value.reviewing)
 
         vm.onBackToPage()
         assertFalse(vm.uiState.value.reviewing)
+    }
+
+    // The owner's S23 (#213): ingredients and steps selected on a Reddit post, no name (its title
+    // is hard to select there), and Done did nothing, greyed out, with nothing saying why.
+    @Test fun `done with lines but no name opens review, saying to type the name`() {
+        val vm = viewModel()
+        vm.select("flour\nsugar", ClipField.INGREDIENTS)
+        vm.select("Mix.\nBake.", ClipField.STEPS)
+        vm.onReview()
+        assertTrue(vm.uiState.value.reviewing)
+        assertEquals(ClipMessage.Missing(name = true, lines = false), vm.message)
+    }
+
+    @Test fun `done with a name but no lines stays on the page, saying what to select`() {
+        val vm = viewModel()
+        vm.select("Cookies", ClipField.NAME)
+        vm.onReview()
+        assertFalse(vm.uiState.value.reviewing)
+        assertEquals(ClipMessage.Missing(name = false, lines = true), vm.message)
+    }
+
+    @Test fun `done with nothing yet says everything is missing`() {
+        val vm = viewModel()
+        vm.onReview()
+        assertFalse(vm.uiState.value.reviewing)
+        assertEquals(ClipMessage.Missing(name = true, lines = true), vm.message)
     }
 
     @Test fun `review edits lines and takes typed serves and time`() {
@@ -298,12 +321,151 @@ class ClipViewModelTest {
         assertEquals("Cookies", store.get(cleaned)?.name)
     }
 
-    @Test fun `saving does nothing until it can finish`() = runTest(mainDispatcherRule.dispatcher) {
+    @Test fun `saving without a name saves nothing and says to type it`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = viewModel()
-        vm.select("Cookies", ClipField.NAME)
+        vm.select("flour", ClipField.INGREDIENTS)
+        vm.onReview()
+        vm.onNameChange("  ")
         vm.onSave()
         advanceUntilIdle()
         assertTrue(repository.saveClipCalls.isEmpty())
+        assertEquals(ClipMessage.Missing(name = true, lines = false), vm.message)
+        assertFalse(vm.uiState.value.saving)
+
+        // Typed in Review, the name is enough.
+        vm.onNameChange("Cookies")
+        vm.onSave()
+        advanceUntilIdle()
+        assertEquals("Cookies", repository.saveClipCalls.single().name)
+        assertEquals(1L, vm.uiState.value.savedRecipeId)
+    }
+
+    @Test fun `saving with the lines blanked in review says ingredients or steps are missing`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val vm = viewModel()
+            vm.select("Cookies", ClipField.NAME)
+            vm.select("flour", ClipField.INGREDIENTS)
+            vm.onReview()
+            vm.onLineChange(ClipField.INGREDIENTS, 0, " ")
+            vm.onSave()
+            advanceUntilIdle()
+            assertTrue(repository.saveClipCalls.isEmpty())
+            assertEquals(ClipMessage.Missing(name = false, lines = true), vm.message)
+        }
+
+    @Test fun `a full library says so rather than saving nothing silently`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        vm.select("Cookies", ClipField.NAME)
+        vm.select("flour", ClipField.INGREDIENTS)
+        repository.saveClipResult = ParseResult.Success(vm.draft.toRecipe()!!, kept = false)
+        vm.onSave()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.libraryFull)
+        assertNull(vm.uiState.value.savedRecipeId)
+        assertFalse(vm.uiState.value.saving)
+    }
+
+    @Test fun `a reddit share link saves under the link that was shared, not the page it loads from`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val shareLink = "https://www.reddit.com/r/recipes/s/AbCdEf123"
+            val vm = viewModel(SavedStateHandle(mapOf(ClipViewModel.URL_ARG to shareLink, ClipViewModel.BLOCKED_ARG to true)))
+            vm.select("Soup", ClipField.NAME)
+            vm.select("water", ClipField.INGREDIENTS)
+            vm.onSave()
+            advanceUntilIdle()
+            assertEquals(shareLink, repository.saveClipCalls.single().sourceUrl)
+            assertEquals(1L, vm.uiState.value.savedRecipeId)
+        }
+
+    // --- The Text view (#213) ---
+
+    private val post = "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/"
+    private val postHtml = """
+        <shreddit-post post-title="Apple Pie"><div slot="text-body"><div property="schema:articleBody">
+          <ul><li><p>3 apples</p></li><li><p>1 crust</p></li></ul><p>Bake.</p>
+        </div></div></shreddit-post>
+        <shreddit-comment author="baker" depth="0"><div slot="comment"><p>Use 4 apples.</p></div></shreddit-comment>
+    """.trimIndent()
+
+    private fun redditViewModel() = viewModel(SavedStateHandle(mapOf(ClipViewModel.URL_ARG to post, ClipViewModel.BLOCKED_ARG to true)))
+
+    @Test fun `only a reddit post offers the text view`() {
+        val blog = viewModel()
+        assertFalse(blog.uiState.value.offersText)
+        blog.onShowText()
+        assertFalse(blog.uiState.value.readingText)
+        assertTrue(redditViewModel().uiState.value.offersText)
+    }
+
+    @Test fun `the text view reads the page, then shows the post as text`() {
+        val vm = redditViewModel()
+        vm.onSelectionChanged("something on the page")
+        vm.onShowText()
+        assertTrue(vm.uiState.value.readingText)
+        assertEquals(emptyList<String>(), vm.uiState.value.selection)
+
+        vm.onPageText(postHtml)
+        val state = vm.uiState.value
+        assertFalse(state.readingText)
+        assertTrue(state.showingText)
+        assertEquals("Apple Pie", state.pageText?.title)
+        assertEquals(listOf("3 apples", "1 crust", "Bake."), state.pageText?.body)
+        assertEquals(listOf("Use 4 apples."), state.pageText?.comments?.single()?.lines)
+    }
+
+    @Test fun `text selected in the text view is assigned and saved like the page's`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+
+        vm.select("Apple Pie", ClipField.NAME)
+        assertEquals("m1", vm.uiState.value.newMarkId)
+        vm.select("3 apples\n1 crust", ClipField.INGREDIENTS)
+        vm.select("Bake.", ClipField.STEPS)
+        vm.onReview()
+        vm.onSave()
+        advanceUntilIdle()
+
+        val saved = repository.saveClipCalls.single()
+        assertEquals("Apple Pie", saved.name)
+        assertEquals(listOf("3 apples", "1 crust"), saved.ingredients)
+        assertEquals(listOf("Bake."), saved.instructions)
+        assertEquals(post, saved.sourceUrl)
+    }
+
+    @Test fun `back to the page keeps the text and the draft`() {
+        val vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.select("Apple Pie", ClipField.NAME)
+        vm.onShowPage()
+        assertFalse(vm.uiState.value.showingText)
+        assertEquals("Apple Pie", vm.uiState.value.pageText?.title)
+        assertEquals("Apple Pie", vm.draft.name)
+
+        // Reading the same text again keeps the same value, so the view keeps its marks.
+        val before = vm.uiState.value.pageText
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        assertTrue(before === vm.uiState.value.pageText)
+    }
+
+    @Test fun `a page with no post yet says so and stays on the page`() {
+        val vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText("<html><body><p>Checking your browser</p></body></html>")
+        assertFalse(vm.uiState.value.showingText)
+        assertFalse(vm.uiState.value.readingText)
+        assertEquals(ClipMessage.TextUnreadable, vm.message)
+    }
+
+    @Test fun `picking the photo goes back to the page`() {
+        val vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onPhotoButton()
+        assertTrue(vm.uiState.value.pickingPhoto)
+        assertFalse(vm.uiState.value.showingText)
     }
 
     @Test fun `leaving keeps the draft for the session, and reopening restores it`() {

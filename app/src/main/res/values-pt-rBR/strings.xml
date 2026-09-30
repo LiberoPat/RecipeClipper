@@ -293,6 +293,14 @@
     <string name="clip_cleared_photo">Foto removida</string>
     <string name="clip_draft_restored">Rascunho restaurado</string>
     <string name="clip_save_failed">Não foi possível salvar o recorte. Tente de novo.</string>
+    <string name="clip_needs_name">Digite o nome da receita para salvá-la, ou selecione-o e toque em Nome.</string>
+    <string name="clip_needs_lines">Para salvar, selecione os ingredientes ou os passos e toque em Ingredientes ou Passos.</string>
+    <string name="clip_needs_name_and_lines">Para salvar, selecione o nome da receita e os ingredientes ou passos, e toque onde cada um vai.</string>
+    <string name="clip_text_unreadable">O post ainda não carregou. Aguarde um momento e toque em Texto de novo.</string>
+    <string name="clip_show_text">Texto</string>
+    <string name="clip_show_page">Página</string>
+    <string name="clip_text_comments">Comentários</string>
+    <string name="clip_text_loaded_note">Aqui estão só os comentários que o Reddit carregou até agora.</string>
     <string name="clip_back_to_page">‹  Voltar à página</string>
     <string name="clip_photo_from_page">Foto da página</string>
     <string name="clip_no_photo">Sem foto. Toque em Foto na página e depois na imagem.</string>

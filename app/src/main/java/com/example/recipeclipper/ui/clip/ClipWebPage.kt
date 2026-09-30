@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.recipeclipper.data.WebViewRenderedPageSource
 import com.example.recipeclipper.data.model.ClipField
+import com.example.recipeclipper.data.remote.RedditUrls
 import org.json.JSONObject
 
 /** What the page reports, decoded from `clipper.js`'s messages. */
@@ -26,12 +27,20 @@ internal sealed class ClipPageEvent {
 
     /** The page as it stands, read while waiting on Cloudflare's check (#220). */
     data class PageLoaded(val html: String) : ClipPageEvent()
+
+    /** The post and its loaded comments, read for the Text view (#213). */
+    data class PageText(val html: String) : ClipPageEvent()
 }
 
 /** How the page is loaded: the live URL, or a fixed local page in a UI test. */
 typealias ClipPageLoader = (WebView, String) -> Unit
 
 internal val LoadLiveUrl: ClipPageLoader = { webView, url -> webView.loadUrl(url) }
+
+/** The Text view (#213): [html] as a page of its own, with no address, so nothing on it loads. */
+internal fun loadTextPage(html: String): ClipPageLoader = { webView, _ ->
+    webView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+}
 
 /**
  * The page being clipped, in a [WebView] with `clipper.js` injected once it has loaded. The
@@ -43,6 +52,10 @@ internal val LoadLiveUrl: ClipPageLoader = { webView, url -> webView.loadUrl(url
  * [ClipPageEvent.PageLoaded] once it settles after each load, and every [READ_EVERY_MS] after,
  * and the check may move the page within its own site (its form posts back to the page with a
  * token in the query).
+ *
+ * On reddit.com (#213) `reddit-reader.js` is injected too, which shows the post's whole text and
+ * hides Reddit's sign-in and app prompts; [readText] turning true reads the post for the Text
+ * view, as [ClipPageEvent.PageText].
  */
 @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
 @Composable
@@ -53,7 +66,8 @@ internal fun ClipWebPage(
     onEvent: (ClipPageEvent) -> Unit,
     loadPage: ClipPageLoader,
     modifier: Modifier = Modifier,
-    readsPage: Boolean = false
+    readsPage: Boolean = false,
+    readText: Boolean = false
 ) {
     // Read by the WebViewClient when a page finishes loading, so the script it injects starts
     // from the current state rather than the state at creation.
@@ -88,6 +102,13 @@ internal fun ClipWebPage(
         // Captures the two values, so it is a new lambda, and runs again, when either changes.
         update = { webView ->
             if (latest.injected) webView.evaluateJavascript(pageScript(syncState, pickingPhoto), null)
+            if (readText && !latest.readingText) {
+                latest.readingText = true
+                webView.evaluateJavascript(READ_TEXT) { result ->
+                    latest.onEvent(ClipPageEvent.PageText(WebViewRenderedPageSource.decodeJsString(result).orEmpty()))
+                }
+            }
+            if (!readText) latest.readingText = false
         }
     )
 }
@@ -98,6 +119,7 @@ private class LatestPageState {
     var onEvent: (ClipPageEvent) -> Unit = {}
     var injected: Boolean = false
     var readsPage: Boolean = false
+    var readingText: Boolean = false
 
     fun script() = pageScript(sync, picking)
 }
@@ -108,6 +130,9 @@ private const val READ_EVERY_MS = 2_000L
 
 /** The quiet after a load before the page is read: the off-screen render's settle. */
 private const val SETTLE_MS = 1_500L
+
+/** The post and its comment tree for the Text view, from `reddit-reader.js`, else the page. */
+private const val READ_TEXT = "window.RCReddit ? RCReddit.text() : document.documentElement.outerHTML"
 
 private fun pageScript(sync: String, picking: Boolean) =
     "window.RC && (RC.sync($sync), RC.pickImage($picking));"
@@ -125,7 +150,15 @@ private class ClipWebViewClient(
         pendingRead?.let(handler::removeCallbacks)
     }
 
+    /** Reddit's prompts are hidden as soon as the page shows, and again once it has loaded. */
+    override fun onPageCommitVisible(view: WebView, url: String?) = injectReader(view, url)
+
+    private fun injectReader(view: WebView, url: String?) {
+        if (RedditUrls.isReddit(url ?: pageUrl)) view.evaluateJavascript(ClipperScript.redditReader, null)
+    }
+
     override fun onPageFinished(view: WebView, url: String?) {
+        injectReader(view, url)
         view.evaluateJavascript(ClipperScript.source, null)
         latest.injected = true
         view.evaluateJavascript(latest.script(), null)
@@ -198,10 +231,13 @@ internal object ClipNavigation {
 
 /** `shared/web/clipper.js`, packaged as a Java resource alongside the shared tables. */
 internal object ClipperScript {
-    val source: String by lazy {
-        ClipperScript::class.java.getResourceAsStream("/web/clipper.js")!!
-            .bufferedReader().use { it.readText() }
-    }
+    val source: String by lazy { read("clipper.js") }
+
+    /** `shared/web/reddit-reader.js` (#213): Reddit's page as a reader, and its text. */
+    val redditReader: String by lazy { read("reddit-reader.js") }
+
+    private fun read(name: String) =
+        ClipperScript::class.java.getResourceAsStream("/web/$name")!!.bufferedReader().use { it.readText() }
 }
 
 private fun decode(json: String): ClipPageEvent? = try {

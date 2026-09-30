@@ -293,6 +293,14 @@
     <string name="clip_cleared_photo">Foto cancellata</string>
     <string name="clip_draft_restored">Bozza ripristinata</string>
     <string name="clip_save_failed">Impossibile salvare il ritaglio. Riprova.</string>
+    <string name="clip_needs_name">Scrivi il nome della ricetta per salvarla, oppure selezionalo e tocca Nome.</string>
+    <string name="clip_needs_lines">Per salvare, seleziona gli ingredienti o i passaggi e tocca Ingredienti o Passaggi.</string>
+    <string name="clip_needs_name_and_lines">Per salvare, seleziona il nome della ricetta e i suoi ingredienti o passaggi, e tocca dove va ciascuno.</string>
+    <string name="clip_text_unreadable">Il post non è ancora caricato. Attendi un momento, poi tocca di nuovo Testo.</string>
+    <string name="clip_show_text">Testo</string>
+    <string name="clip_show_page">Pagina</string>
+    <string name="clip_text_comments">Commenti</string>
+    <string name="clip_text_loaded_note">Qui ci sono solo i commenti che Reddit ha caricato finora.</string>
     <string name="clip_back_to_page">‹  Torna alla pagina</string>
     <string name="clip_photo_from_page">Foto dalla pagina</string>
     <string name="clip_no_photo">Nessuna foto. Tocca Foto nella pagina, poi l\'immagine.</string>

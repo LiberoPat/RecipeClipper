@@ -32,10 +32,13 @@ data class ClipDraft(
         get() = name.isBlank() && ingredients.none { it.isNotBlank() } &&
             steps.none { it.isNotBlank() } && photo == null && serves.isBlank() && totalTime.isBlank()
 
+    /** Some ingredients or steps. */
+    val hasLines: Boolean
+        get() = ingredients.any { it.isNotBlank() } || steps.any { it.isNotBlank() }
+
     /** The parser's own rule: a name, plus ingredients or steps. */
     val canFinish: Boolean
-        get() = name.isNotBlank() &&
-            (ingredients.any { it.isNotBlank() } || steps.any { it.isNotBlank() })
+        get() = name.isNotBlank() && hasLines
 
     /** Lines a field holds, as counted on the toolbar: 1 for a name or a photo. */
     fun count(field: ClipField): Int = when (field) {

@@ -33,10 +33,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -89,7 +91,8 @@ fun ClipScreen(
         val action = when (notice.message) {
             is ClipMessage.Assigned, is ClipMessage.Cleared -> undoLabel
             ClipMessage.DraftRestored -> discardLabel
-            ClipMessage.SaveFailed, ClipMessage.PhotoUnreadable, is ClipMessage.Unlock -> null
+            ClipMessage.SaveFailed, ClipMessage.PhotoUnreadable, is ClipMessage.Unlock, is ClipMessage.Missing,
+            ClipMessage.TextUnreadable -> null
         }
         // Long, not the Indefinite an action would get by default: a notice that never went
         // ("Photo added" long after the photo) read as the clip being stuck on that step.
@@ -106,11 +109,36 @@ fun ClipScreen(
     }
 
     val resources = LocalResources.current
-    val syncState = remember(state.draft, state.newMarkId) {
-        syncJson(state.draft, state.newMarkId) { field, count ->
-            val label = resources.getString(field.labelRes)
-            if (field == ClipField.NAME || count == 0) label
-            else resources.getString(R.string.clip_tag_count, label, count)
+    val tagLabel = { field: ClipField, count: Int ->
+        val label = resources.getString(field.labelRes)
+        if (field == ClipField.NAME || count == 0) label
+        else resources.getString(R.string.clip_tag_count, label, count)
+    }
+    // The new mark goes to the view the selection was made in: the page, or the Text view.
+    val pageSync = remember(state.draft, state.newMarkId, state.showingText) {
+        syncJson(state.draft, state.newMarkId.takeUnless { state.showingText }, tagLabel)
+    }
+    val textSync = remember(state.draft, state.newMarkId, state.showingText) {
+        syncJson(state.draft, state.newMarkId.takeIf { state.showingText }, tagLabel)
+    }
+    val textPage = state.pageText?.let { text ->
+        remember(text) {
+            RedditTextPage.html(
+                text,
+                commentsHeading = resources.getString(R.string.clip_text_comments),
+                loadedNote = resources.getString(R.string.clip_text_loaded_note),
+                author = { resources.getString(R.string.clip_text_author, it) }
+            )
+        }
+    }
+    val onPageEvent: (ClipPageEvent) -> Unit = { event ->
+        when (event) {
+            is ClipPageEvent.Selection -> viewModel.onSelectionChanged(event.text)
+            is ClipPageEvent.TagTapped -> viewModel.onTagTapped(event.field)
+            is ClipPageEvent.ImageTapped -> viewModel.onImageTapped(event.src)
+            ClipPageEvent.NoImage -> viewModel.onNoImageTapped()
+            is ClipPageEvent.PageLoaded -> viewModel.onPageLoaded(event.html)
+            is ClipPageEvent.PageText -> viewModel.onPageText(event.html)
         }
     }
 
@@ -125,9 +153,16 @@ fun ClipScreen(
                     val waiting = state.check == ClipCheck.WAITING
                     TopBar(
                         host = SourceDomain.of(state.pageUrl).orEmpty(),
-                        canFinish = state.draft.canFinish && !waiting,
+                        reviewing = state.reviewing,
+                        enabled = !waiting && !state.saving,
+                        textToggle = when {
+                            !state.offersText || state.reviewing || waiting -> null
+                            state.showingText -> TextToggle(R.string.clip_show_page, viewModel::onShowPage)
+                            else -> TextToggle(R.string.clip_show_text, viewModel::onShowText)
+                        },
                         onCancel = onCancel,
-                        onDone = viewModel::onReview
+                        onDone = viewModel::onReview,
+                        onSave = viewModel::onSave
                     )
                     if (state.readBlocked && !state.reviewing) Note(R.string.clip_reddit_blocked_note)
                     when (state.check) {
@@ -138,21 +173,32 @@ fun ClipScreen(
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         ClipWebPage(
                             url = state.pageUrl,
-                            syncState = syncState,
+                            syncState = pageSync,
                             pickingPhoto = state.pickingPhoto,
-                            onEvent = { event ->
-                                when (event) {
-                                    is ClipPageEvent.Selection -> viewModel.onSelectionChanged(event.text)
-                                    is ClipPageEvent.TagTapped -> viewModel.onTagTapped(event.field)
-                                    is ClipPageEvent.ImageTapped -> viewModel.onImageTapped(event.src)
-                                    ClipPageEvent.NoImage -> viewModel.onNoImageTapped()
-                                    is ClipPageEvent.PageLoaded -> viewModel.onPageLoaded(event.html)
-                                }
-                            },
+                            onEvent = onPageEvent,
                             loadPage = loadPage,
                             readsPage = waiting,
+                            readText = state.readingText,
                             modifier = Modifier.fillMaxSize()
                         )
+                        // The Text view (#213) lies over the page, which stays loaded (its scroll
+                        // and marks) under it; hidden, it keeps its own at no size.
+                        if (textPage != null) {
+                            key(textPage) {
+                                ClipWebPage(
+                                    url = state.pageUrl,
+                                    syncState = textSync,
+                                    pickingPhoto = false,
+                                    onEvent = onPageEvent,
+                                    loadPage = loadTextPage(textPage),
+                                    modifier = if (state.showingText) {
+                                        Modifier.fillMaxSize().testTag("clip.text")
+                                    } else {
+                                        Modifier.size(0.dp)
+                                    }
+                                )
+                            }
+                        }
                         if (state.reviewing) {
                             ReviewPane(state, viewModel, Modifier.fillMaxSize())
                         }
@@ -213,6 +259,14 @@ private fun noticeText(message: ClipMessage): String = when (message) {
     ClipMessage.SaveFailed -> stringResource(R.string.clip_save_failed)
     ClipMessage.PhotoUnreadable -> stringResource(R.string.clip_photo_unreadable)
     is ClipMessage.Unlock -> stringResource(message.outcome.noticeMessage())
+    is ClipMessage.Missing -> stringResource(
+        when {
+            message.name && message.lines -> R.string.clip_needs_name_and_lines
+            message.name -> R.string.clip_needs_name
+            else -> R.string.clip_needs_lines
+        }
+    )
+    ClipMessage.TextUnreadable -> stringResource(R.string.clip_text_unreadable)
 }
 
 /**
@@ -234,8 +288,23 @@ private fun Note(text: Int) {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
+/** The top bar's switch between the page and the Text view (#213). */
+private class TextToggle(val label: Int, val onClick: () -> Unit)
+
+/**
+ * Done opens Review; in Review it is Save. Either is always tappable (bar Cloudflare's check and
+ * a save under way): what's missing is said, never shown only as a greyed-out button.
+ */
 @Composable
-private fun TopBar(host: String, canFinish: Boolean, onCancel: () -> Unit, onDone: () -> Unit) {
+private fun TopBar(
+    host: String,
+    reviewing: Boolean,
+    enabled: Boolean,
+    textToggle: TextToggle?,
+    onCancel: () -> Unit,
+    onDone: () -> Unit,
+    onSave: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -250,7 +319,12 @@ private fun TopBar(host: String, canFinish: Boolean, onCancel: () -> Unit, onDon
             overflow = TextOverflow.Ellipsis,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        TextButton(onClick = onDone, enabled = canFinish) { Text(stringResource(R.string.action_done)) }
+        textToggle?.let { TextButton(onClick = it.onClick) { Text(stringResource(it.label)) } }
+        if (reviewing) {
+            TextButton(onClick = onSave, enabled = enabled) { Text(stringResource(R.string.action_save)) }
+        } else {
+            TextButton(onClick = onDone, enabled = enabled) { Text(stringResource(R.string.action_done)) }
+        }
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
@@ -290,7 +364,7 @@ private fun ClipToolbar(state: ClipUiState, viewModel: ClipViewModel) {
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.labelLarge
                     )
-                    if (draft.canFinish) {
+                    if (!draft.isEmpty) {
                         TextButton(onClick = viewModel::onReview) { Text(stringResource(R.string.clip_review)) }
                     }
                 }
@@ -442,7 +516,7 @@ private fun ReviewPane(state: ClipUiState, viewModel: ClipViewModel, modifier: M
         item("save") {
             Button(
                 onClick = viewModel::onSave,
-                enabled = draft.canFinish && !state.saving,
+                enabled = !state.saving,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors()
