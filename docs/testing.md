@@ -278,6 +278,13 @@ first ticks, put-away, one undo for the list and the pantry), `GroceriesScreenTe
 `PantryViewModelTest` and `PantryScreenTest`; iOS mirrors them in `PantryViewModelTests`,
 `GroceriesUITests` (Done shopping, Undo) and `PantryUITests` (the tag).
 
+Clearing from the Groceries menu and ticks that stay put (#219): `GroceriesViewModelTest` (the
+frozen order across ticks and unticks, and each thing that works it out afresh: leaving, adding,
+a move, a change from elsewhere; the clears' enabled states; both clears and their Undo, the
+pantry untouched) and `GroceriesScreenTest` (a ticked row keeps its place on screen; the menu's
+items and the "Clear all N items?" dialog); iOS mirrors them in `GroceriesViewModelTests` and a
+`GroceriesUITests` case (a tick keeps the row's place; Clear the whole list, then Undo).
+
 The pantry's three states (#194): `MIGRATION_15_16` in `MigrationTest` (a real version-15 file's
 items keep their stock; one can then be marked running low) and iOS's
 `PantryDaoTests` (the user_version 14 → 15 step, running low kept until a restock); `PantryTest`

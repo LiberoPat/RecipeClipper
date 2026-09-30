@@ -372,6 +372,14 @@
     <string name="action_share_groceries">Send list</string>
     <!-- A list sent from another phone, shared in or pasted (#149) -->
     <string name="action_paste_list">Paste a list</string>
+    <string name="action_clear_ticked">Clear ticked items</string>
+    <string name="action_clear_groceries">Clear the whole list</string>
+    <string name="action_clear">Clear</string>
+    <string name="snackbar_groceries_cleared">Grocery list cleared</string>
+    <plurals name="clear_groceries_title">
+        <item quantity="one">Clear %1$d item?</item>
+        <item quantity="other">Clear all %1$d items?</item>
+    </plurals>
     <string name="receive_list_title">Add this list</string>
     <string name="receive_list_empty">There\'s no list on the clipboard. Copy one first, then paste it here.</string>
     <!-- A file sent to someone else's Recipe Clipper (#149, phase 2) -->

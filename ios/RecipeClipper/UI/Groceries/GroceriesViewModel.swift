@@ -3,11 +3,12 @@ import Foundation
 import Observation
 
 /// What the undo snackbar says was removed: one row's `label`, or the checked items (`label`
-/// nil), and whether "Done shopping" also changed the pantry (`putAway`).
+/// nil), whether "Done shopping" also changed the pantry (`putAway`), or the whole list (`all`, #219).
 struct RemovedGroceries: Equatable {
     let id: Int
     let label: String?
     var putAway = false
+    var all = false
 }
 
 /// One thing to put away after shopping (#146): the pantry item it restocks (`trackedId`), or a
@@ -31,7 +32,8 @@ struct PutAwaySheet: Equatable {
 
 /// `sections` is nil until the list has loaded. `draft` is the "Add an item" field. `moving`
 /// is the row whose aisle is being chosen. `putAway` is the open "Done shopping" sheet.
-/// `recipeTitles` names the recipes items came from, for "Send list" (#149).
+/// `recipeTitles` names the recipes items came from, for "Send list" (#149). `confirmClearAll` is
+/// the number of rows "Clear the whole list" asks about (#219), while its dialog is open.
 struct GroceriesUiState: Equatable {
     var sections: [GroceryCombiner.Section]?
     var draft = ""
@@ -39,16 +41,26 @@ struct GroceriesUiState: Equatable {
     var removed: RemovedGroceries?
     var putAway: PutAwaySheet?
     var recipeTitles: [Int64: String] = [:]
+    var confirmClearAll: Int?
 
     var hasChecked: Bool { (sections ?? []).contains { $0.rows.contains { $0.items.contains(where: \.checked) } } }
     var isEmpty: Bool { sections?.isEmpty == true }
+    /// Anything on the list: what "Clear the whole list" needs (#219).
+    var hasItems: Bool { !(sections ?? []).isEmpty }
 }
 
 /// The Groceries tab (#50; Android's GroceriesViewModel): the list grouped by aisle, with lines
 /// naming the same ingredient together (and added up when that's exact, `GroceryCombiner`).
 /// Everything is written as it happens. A tick only ticks (#146): "Done shopping" puts what was
 /// bought in the pantry and clears the ticked items in one step. A delete or "Done shopping" can
-/// be undone from the snackbar, and nothing else raises one.
+/// be undone from the snackbar, and so can the menu's "Clear ticked items" and "Clear the whole
+/// list" (#219).
+///
+/// **Ticks stay put** (#219): within a visit, ticking or unticking never re-sorts the list. The
+/// order is worked out with each item's tick as it was when the order was last worked out
+/// (`orderTicks`), and shown with its tick now. It's worked out afresh when anything but a tick
+/// changes (an item added, removed, cleared, or moved to another aisle, here or elsewhere) and
+/// when the screen is left (`onLeave`), so ticked rows sink to the bottom of their aisle next time.
 ///
 /// A typed item has no recipe, so it's read with the phone's language when the app has words
 /// for it, else English: the one place the phone's language picks the words.
@@ -93,18 +105,49 @@ final class GroceriesViewModel {
             .sink { [weak self] items, decided in
                 guard let self else { return }
                 self.latestItems = items
-                self.uiState.sections = GroceryCombiner.sections(items, decisions: decided)
-                // A row being moved that has since gone closes the aisle picker.
-                if let moving = self.uiState.moving,
-                   !moving.items.allSatisfy({ i in items.contains { $0.id == i.id } }) {
-                    self.uiState.moving = nil
-                }
+                self.latestDecisions = decided
+                self.show()
                 self.askAisles(items)
                 self.askGroceryQuestions(items, decided)
             }
     }
 
     @ObservationIgnored private var latestItems: [GroceryItem] = []
+    @ObservationIgnored private var latestDecisions = Decisions.none
+    // The visit's order (#219): each item's tick when the order was last worked out, and the list
+    // then with its ticks left out; nil until worked out, and after the screen is left.
+    @ObservationIgnored private var orderTicks: [Int64: Bool]?
+    @ObservationIgnored private var orderShape: [GroceryItem]?
+
+    /// Lays the list out in the visit's order, working it out afresh when more than a tick changed.
+    private func show() {
+        let items = latestItems
+        let shape = items.map { item -> GroceryItem in
+            var unticked = item
+            unticked.checked = false
+            return unticked
+        }
+        let ticks: [Int64: Bool]
+        if let frozen = orderTicks, shape == orderShape {
+            ticks = frozen
+        } else {
+            ticks = Dictionary(items.map { ($0.id, $0.checked) }, uniquingKeysWith: { a, _ in a })
+            orderTicks = ticks
+            orderShape = shape
+        }
+        uiState.sections = GroceriesOrder.sections(items, decisions: latestDecisions, ticks: ticks)
+        // A row being moved that has since gone closes the aisle picker.
+        if let moving = uiState.moving, !moving.items.allSatisfy({ i in items.contains { $0.id == i.id } }) {
+            uiState.moving = nil
+        }
+    }
+
+    /// The screen was left (#219): the next visit tidies the list, ticked rows at the bottom of
+    /// their aisle. Done now, while nothing is on screen to jump.
+    func onLeave() {
+        orderTicks = nil
+        if uiState.sections != nil { show() }
+    }
     @ObservationIgnored private var askedGrocery = Set<DecisionQuestion>()
 
     /// Asks the model about close names and trailing text (#99), in the background. The list
@@ -249,10 +292,38 @@ final class GroceriesViewModel {
         }
     }
 
-    private func removed(_ deleted: DeletedGroceries, _ label: String?) {
+    /// "Clear ticked items" (#219): every ticked line leaves the list at once, with no "Done
+    /// shopping" sheet, so the pantry is untouched. Undo puts them back.
+    func onClearTicked() {
+        Task {
+            guard let cleared = await repository.clearChecked() else { return }
+            removed(cleared, nil)
+        }
+    }
+
+    /// "Clear the whole list" (#219) asks first, naming how many rows would go.
+    func onClearAll() {
+        let rows = (uiState.sections ?? []).reduce(0) { $0 + $1.rows.count }
+        if rows > 0 { uiState.confirmClearAll = rows }
+    }
+
+    func onClearAllDismissed() { uiState.confirmClearAll = nil }
+
+    /// The dialog's Clear: every line, ticked or not, leaves the list; the pantry is untouched. Undo puts them back.
+    func onClearAllConfirm() {
+        guard uiState.confirmClearAll != nil else { return }
+        uiState.confirmClearAll = nil
+        let ids = latestItems.map(\.id)
+        Task {
+            guard let deleted = await repository.delete(ids) else { return }
+            removed(deleted, nil, all: true)
+        }
+    }
+
+    private func removed(_ deleted: DeletedGroceries, _ label: String?, all: Bool = false) {
         undo = Undo(groceries: deleted)
         removals += 1
-        uiState.removed = RemovedGroceries(id: removals, label: label)
+        uiState.removed = RemovedGroceries(id: removals, label: label, all: all)
     }
 
     /// Puts back what the last removal took: the items and, after "Done shopping", the pantry as it was.
@@ -279,6 +350,31 @@ final class GroceriesViewModel {
         let sections = uiState.sections ?? []
         guard sections.contains(where: { $0.rows.contains { $0.items.allSatisfy { !$0.checked } } }) else { return nil }
         return GroceryShareText.format(sections, title: title, recipeTitles: uiState.recipeTitles, aisleName: aisleName)
+    }
+}
+
+/// The visit's order (#219): `GroceryCombiner.sections` laid out as if each item were ticked as in
+/// `ticks` (an item not in it, as it is), then shown with every item's tick as it is now. A row
+/// ticks all its lines, so its lines share one tick and it stays one row.
+enum GroceriesOrder {
+    static func sections(_ items: [GroceryItem], decisions: Decisions, ticks: [Int64: Bool]) -> [GroceryCombiner.Section] {
+        let now = Dictionary(items.map { ($0.id, $0.checked) }, uniquingKeysWith: { a, _ in a })
+        func with(_ item: GroceryItem, _ tick: Bool?) -> GroceryItem {
+            guard let tick, tick != item.checked else { return item }
+            var copy = item
+            copy.checked = tick
+            return copy
+        }
+        let asWas = items.map { with($0, ticks[$0.id]) }
+        return GroceryCombiner.sections(asWas, decisions: decisions).map { section in
+            GroceryCombiner.Section(aisle: section.aisle, rows: section.rows.map { row in
+                switch row {
+                case .single(let item): return .single(with(item, now[item.id]))
+                case .combined(let name, let text, let items): return .combined(name: name, text: text, items: items.map { with($0, now[$0.id]) })
+                case .together(let name, let items): return .together(name: name, items: items.map { with($0, now[$0.id]) })
+                }
+            })
+        }
     }
 }
 
