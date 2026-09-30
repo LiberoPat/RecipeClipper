@@ -30,6 +30,9 @@ enum Route: Hashable {
     /// "Read the photo" (#198): the editor, filled from a Reddit post's photos read on the device
     /// (Android's `edit/photo?url=&title=&images=`).
     case photoRecipe(PhotoPost)
+    /// "Scan a recipe" (#226): the same editor, filled from the cook's own pages, file URLs in
+    /// order (Android's `edit/scan?pages=`).
+    case scanRecipe([String])
 }
 
 /// `recipeclipper://import?url=<percent-encoded>` opens the import screen. The share extension

@@ -16,11 +16,13 @@ enum PhotoTextResult: Equatable, Sendable {
     case failed
 }
 
-/// Reads the text in a post's photos on the device (#198): each picture is fetched at full size
-/// only now, then recognised (Vision on iOS, ML Kit's bundled Latin model on Android). A seam, so
-/// the ViewModel is tested with a fake and never sees Vision or UIKit.
+/// Reads the text in pictures on the device: a post's photos (#198), each fetched at full size
+/// only now, or the cook's own pages (#226: a photo taken or picked, or an image shared in, as a
+/// local file URL, never cached), then recognised (Vision on iOS, ML Kit's Latin model from Play
+/// services on Android). A seam, so the ViewModel is tested with a fake and never sees Vision or
+/// UIKit: pictures travel as URL strings.
 protocol PhotoTextReader: Sendable {
-    /// The lines of `imageUrls`, in order. A picture that fails is skipped; `.failed` only when
+    /// The lines of `imageUrls` (web links or file URLs), in order. A picture that fails is skipped; `.failed` only when
     /// every one did. Cancellation ends the read.
     func read(_ imageUrls: [String]) async -> PhotoTextResult
 }

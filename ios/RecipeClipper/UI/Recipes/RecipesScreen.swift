@@ -1,15 +1,18 @@
 import SwiftUI
 
 /// Every recipe on the phone (#102, the library that replaced History): newest viewed first by
-/// default, searchable, sortable, swipe to delete. The + adds one: typed in (the editor), or
-/// from a pasted link (the import flow Home's link field uses).
+/// default, searchable, sortable, swipe to delete. The + adds one: typed in (the editor), from a
+/// pasted link (the import flow Home's link field uses), or scanned (#226).
 struct RecipesScreen: View {
     let vm: RecipesViewModel
     let onOpenRecipe: (Int64) -> Void
     var onNewRecipe: () -> Void = {}
     var onOpenUrl: (String) -> Void = { _ in }
+    /// "Scan a recipe" (#226): the pictures taken or picked, in order; nil hides it (flag off).
+    var onScan: (([Data]) -> Void)? = nil
 
     @State private var now = currentMillis()
+    @State private var scanSource: ScanSource?
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
     @State private var sideInset = ReadableWidth.gutter
 
@@ -79,6 +82,10 @@ struct RecipesScreen: View {
                 Menu {
                     Button(Strings.typeRecipe, action: onNewRecipe)
                     Button(Strings.pasteLink, action: vm.onPasteLink)
+                    // "Scan a recipe" (#226, the photoText flag): a submenu of its two sources.
+                    if onScan != nil {
+                        Menu(Strings.scanRecipe) { ScanChoices(source: $scanSource) }
+                    }
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -127,6 +134,7 @@ struct RecipesScreen: View {
             await SnackbarTimeout.run(pending: state.pendingDeletes, onTimeout: vm.onSnackbarDismissed)
         }
         .onAppear { now = currentMillis() }
+        .scanSources($scanSource) { onScan?($0) }
     }
 
     private func sortButton(_ sort: RecipeSort, _ title: String, current: RecipeSort) -> some View {

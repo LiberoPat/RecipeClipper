@@ -23,6 +23,7 @@ import UIKit
 ///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder;
 ///   - with `RC_UITEST_REDDIT_LISTING` in the environment, Reddit links parsed from it (#11), or
 ///     from `RC_UITEST_REDDIT_LISTING_<post id>` for that post (walkthrough 29);
+///   - with `RC_UITEST_SCAN_IMAGES`, a scan (#226) of those local pictures opened at launch;
 ///   - "Read the photo" (#198) answering the lines in `RC_UITEST_PHOTO_LINES` (`UITestPhotoTextReader`),
 ///     or, with `RC_UITEST_PHOTO_VISION=1`, the real Vision reader over the local pictures that
 ///     `RC_UITEST_PHOTO_IMAGES` puts in place of a post's (walkthrough 28).
@@ -307,6 +308,19 @@ enum UITestSeeding {
         let weeknights = try lists.create(name: "Weeknights", recipeId: ListDao.noRecipe, now: now - 60 * minute)
         try lists.addToList(ListMembership(recipeId: adobo, listId: weeknights, addedAt: now - 20 * minute))
         try lists.addToList(ListMembership(recipeId: carbonara, listId: weeknights, addedAt: now - 10 * minute))
+    }
+
+    /// "Scan a recipe" under UI test (#226): `RC_UITEST_SCAN_IMAGES` holds file URLs, space
+    /// separated, opened once at launch as a scan's pages (a UI test can't drive the camera or
+    /// the photo picker). With `RC_UITEST_PHOTO_VISION=1` the real Vision reader reads them.
+    @MainActor private static var scanOpened = false
+    @MainActor
+    static func scanPages() -> [String]? {
+        guard scenario != nil, !scanOpened,
+              let spec = ProcessInfo.processInfo.environment["RC_UITEST_SCAN_IMAGES"] else { return nil }
+        scanOpened = true
+        let pages = spec.split(separator: " ").map(String.init)
+        return pages.isEmpty ? nil : pages
     }
 }
 

@@ -25,6 +25,10 @@ final class AppContainer {
     /// Where the share extension leaves a Reddit post it was blocked from reading (#213); nil
     /// under test.
     var pendingClip: PendingClip?
+    /// Where the share extension leaves images shared in (#226); nil under test.
+    var pendingScan: PendingScan?
+    /// A scan's pages while they are read and checked (#226), in the App Group container.
+    let scanPages = ScanPages.shared()
     /// The feature flags (#87), read by the root view and Developer settings.
     let featureFlags: FeatureFlags
     /// Chef mode's short steps (#100); nil (tests) leaves Chef mode unsupported.
@@ -229,6 +233,14 @@ final class AppContainer {
         container.startGroceriesMirroring(DefaultsGroceriesSwitch(defaults: defaults))
         container.startRedditMirroring(DefaultsRedditSwitch(defaults: defaults))
         if !testing { container.pendingClip = PendingClip(defaults: defaults) }
+        // Scans (#226): the extension's copy of the flag, the hand-off, and pages nobody finished
+        // with, gone after an hour.
+        container.startPhotoTextMirroring(DefaultsPhotoTextSwitch(defaults: defaults))
+        if !testing {
+            container.pendingScan = PendingScan(defaults: defaults, pages: container.scanPages)
+            let pages = container.scanPages
+            Task.detached(priority: .utility) { pages.sweep(olderThan: 60 * 60) }
+        }
         return container
     }
 
@@ -286,6 +298,14 @@ final class AppContainer {
         mirror.store(on)
     }
 
+    /// Keeps the share extension's copy of the `photoText` flag (#226) current, as above.
+    func startPhotoTextMirroring(_ mirror: DefaultsPhotoTextSwitch) {
+        let on = withObservationTracking { featureFlags.isOn(.photoText) } onChange: { [weak self] in
+            Task { @MainActor in self?.startPhotoTextMirroring(mirror) }
+        }
+        mirror.store(on)
+    }
+
     /// Makes "Send as file"'s ViewModel (#149); nil without a share file repository.
     var makeSendFileViewModel: (() -> SendFileViewModel)? {
         guard let share = shareFileRepository else { return nil }
@@ -339,6 +359,21 @@ final class AppContainer {
     /// The post the share extension left (#213), if it did so within `PendingClip.window`.
     func takePendingClip() -> String? {
         pendingClip?.take(now: clock.now())
+    }
+
+    /// The images the share extension left (#226), if it did so within `PendingScan.window`,
+    /// and only while the photoText flag is on.
+    func takePendingScan() -> [String]? {
+        guard let pages = pendingScan?.take(now: clock.now()) else { return nil }
+        return featureFlags.isOn(.photoText) ? pages : nil
+    }
+
+    /// "Scan a recipe" (#226): the editor over the cook's own pages, read on the device.
+    func makeEditRecipeViewModel(scanPages: [String]) -> EditRecipeViewModel {
+        EditRecipeViewModel(
+            recipeId: nil, repository: recipeRepository, entitlements: entitlements,
+            photoReader: photoTextReader, scanPages: scanPages
+        )
     }
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {

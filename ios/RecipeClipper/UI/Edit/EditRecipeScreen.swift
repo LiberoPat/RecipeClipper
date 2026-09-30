@@ -95,7 +95,9 @@ struct EditRecipeScreen: View {
 }
 
 /// "Read the photo" (#198), above the fields: the post's pictures to check the lines against,
-/// how the reading went, and the lines the recogniser was unsure of ("Check these lines").
+/// how the reading went, and the lines the recogniser was unsure of ("Check these lines"). A scan
+/// (#226) shows the cook's pages the same way, each named "Page 1 of 2" for VoiceOver, read from
+/// their files (never cached).
 private struct PhotoReview: View {
     let post: PhotoPost
     let state: EditRecipeUiState
@@ -103,7 +105,7 @@ private struct PhotoReview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(Array(post.imageUrls.enumerated()), id: \.offset) { _, image in
+            ForEach(Array(post.imageUrls.enumerated()), id: \.offset) { index, image in
                 if let url = URL(string: image) {
                     CachedAsyncImage(url: url) { picture in
                         picture.resizable().scaledToFit()
@@ -112,7 +114,11 @@ private struct PhotoReview: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: 480)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .accessibilityLabel(Strings.photoImageDescription(post.title))
+                    .accessibilityLabel(
+                        state.scan
+                            ? Strings.scanPageDescription(index + 1, post.imageUrls.count)
+                            : Strings.photoImageDescription(post.title)
+                    )
                 }
             }
             outcome
@@ -154,7 +160,7 @@ private struct PhotoReview: View {
         case .notSorted:
             note(Strings.photoNotSorted)
         case .failed:
-            Text(Strings.photoFailed)
+            Text(state.scan ? Strings.scanFailed : Strings.photoFailed)
                 .textStyle(Typography.bodyMedium)
                 .foregroundStyle(Palette.error)
             Button(Strings.tryAgain, action: onReadAgain)

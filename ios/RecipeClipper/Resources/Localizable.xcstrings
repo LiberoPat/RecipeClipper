@@ -9408,6 +9408,88 @@
         }
       }
     },
+    "scan_failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Bild konnte nicht geöffnet werden. Versuche es erneut oder geh zurück und wähle ein anderes."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't open the picture. Try again, or go back and choose another."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo abrir la imagen. Vuelve a intentarlo, o vuelve atrás y elige otra."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d'ouvrir l'image. Réessayez, ou revenez en arrière pour en choisir une autre."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile aprire l'immagine. Riprova, oppure torna indietro e scegline un'altra."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir a imagem. Tente de novo ou volte e escolha outra."
+          }
+        }
+      }
+    },
+    "scan_page_description %lld %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seite %1$lld von %2$lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %1$lld of %2$lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página %1$lld de %2$lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %1$lld sur %2$lld"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pagina %1$lld di %2$lld"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página %1$lld de %2$lld"
+          }
+        }
+      }
+    },
     "section_continue_cooking" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10197,6 +10279,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ (originalmente %2$lld)"
+          }
+        }
+      }
+    },
+    "share_scan_in_app" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne Recipe Clipper, um das aus diesem Foto gelesene Rezept zu prüfen. Es wartet dort in den nächsten Minuten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Recipe Clipper to check the recipe read from this photo. It's waiting there for the next few minutes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre Recipe Clipper para revisar la receta leída de esta foto. Te espera allí durante los próximos minutos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrez Recipe Clipper pour vérifier la recette lue sur cette photo. Elle vous y attend pendant quelques minutes."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri Recipe Clipper per controllare la ricetta letta da questa foto. Ti aspetta lì per i prossimi minuti."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra o Recipe Clipper para conferir a receita lida desta foto. Ela fica esperando lá pelos próximos minutos."
           }
         }
       }
@@ -18522,6 +18645,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O iCloud Drive não está disponível, então nenhuma cópia está sendo feita. Ative-o no app Ajustes ou exporte uma cópia."
+          }
+        }
+      }
+    },
+    "action_scan_recipe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rezept scannen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan a recipe"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escanear una receta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanner une recette"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scansiona una ricetta"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escanear uma receita"
           }
         }
       }

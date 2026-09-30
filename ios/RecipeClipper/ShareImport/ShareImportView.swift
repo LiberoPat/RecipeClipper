@@ -105,6 +105,11 @@ struct ShareImportView: View {
             message(Strings.shareRedditBlocked)
             buttons { Button(Strings.done, action: onDone).buttonStyle(PrimaryButtonStyle()) }
 
+        case .scanInApp:
+            // The review needs the app (#226: never saved unchecked), which this card can't open.
+            message(Strings.shareScanInApp)
+            buttons { Button(Strings.done, action: onDone).buttonStyle(PrimaryButtonStyle()) }
+
         case .noLink:
             message(Strings.shareNoLink)
             buttons { Button(Strings.close, action: onCancel).buttonStyle(TextActionStyle()) }

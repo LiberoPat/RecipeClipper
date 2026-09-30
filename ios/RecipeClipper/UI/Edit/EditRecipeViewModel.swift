@@ -29,16 +29,20 @@ struct EditRecipeUiState: Equatable {
     /// A purchase from that prompt that is pending or failed; shown until the next edit.
     var unlockNotice: PurchaseOutcome?
     /// "Read the photo" (#198): the Reddit post whose photos fill this editor; nil otherwise.
+    /// For a scan (#226) its pictures are the cook's pages, with no link and no title.
     var photo: PhotoPost?
+    /// "Scan a recipe" (#226): the pages are the cook's own, saved as a typed-in recipe.
+    var scan = false
     /// The photos are being fetched and read; the fields wait.
     var reading = false
     var photoOutcome: PhotoOutcome?
     /// Lines the recogniser was unsure of, as they were put in the boxes: "check this".
     var uncertain: [String] = []
 
-    init(isNew: Bool, photo: PhotoPost? = nil) {
+    init(isNew: Bool, photo: PhotoPost? = nil, scan: Bool = false) {
         self.isNew = isNew
         self.photo = photo
+        self.scan = scan
         loading = !isNew
     }
 }
@@ -52,12 +56,20 @@ struct EditRecipeUiState: Equatable {
 /// steps, or, when nothing sorts, all in the ingredients box to finish by hand. Nothing is saved
 /// until the cook taps Save; then it is kept under the post's link as the user's version
 /// (clipped, like #37's clips), so a re-share never replaces it.
+///
+/// With `scanPages` (#226) it is the review of a scan: photos the cook took, picked or shared
+/// in, read the same way, in order. Saved as a typed-in recipe (manual, `manual:<uuid>`) in the
+/// language its words say, with no picture: the pages aren't kept.
 @MainActor
 @Observable
 final class EditRecipeViewModel {
     private(set) var uiState: EditRecipeUiState
     @ObservationIgnored private let recipeId: Int64?
     @ObservationIgnored private let photo: PhotoPost?
+    /// A scan's pages (#226), file URLs in order; nil when this isn't a scan.
+    @ObservationIgnored private let scanPages: [String]?
+    /// What is read: the post's pictures, or the scan's pages.
+    @ObservationIgnored private let pictures: PhotoPost?
     @ObservationIgnored private let repository: RecipeRepository
     @ObservationIgnored private let entitlements: Entitlements
     @ObservationIgnored private let photoReader: PhotoTextReader
@@ -67,14 +79,18 @@ final class EditRecipeViewModel {
 
     init(
         recipeId: Int64?, repository: RecipeRepository, entitlements: Entitlements = UnavailableEntitlements(),
-        photo: PhotoPost? = nil, photoReader: PhotoTextReader = UnavailablePhotoTextReader()
+        photo: PhotoPost? = nil, photoReader: PhotoTextReader = UnavailablePhotoTextReader(),
+        scanPages: [String]? = nil
     ) {
         self.entitlements = entitlements
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.photo = self.recipeId == nil ? photo : nil
+        let pages = (scanPages ?? []).filter { !$0.isEmpty }
+        self.scanPages = self.recipeId == nil && self.photo == nil && !pages.isEmpty ? pages : nil
+        pictures = self.photo ?? self.scanPages.map { PhotoPost(url: "", title: "", imageUrls: $0) }
         self.repository = repository
         self.photoReader = photoReader
-        uiState = EditRecipeUiState(isNew: self.recipeId == nil, photo: self.photo)
+        uiState = EditRecipeUiState(isNew: self.recipeId == nil, photo: pictures, scan: self.scanPages != nil)
         if let id = self.recipeId {
             Task { [weak self, repository] in
                 let recipe = await repository.open(id: id)
@@ -86,8 +102,8 @@ final class EditRecipeViewModel {
                     uiState.missing = true
                 }
             }
-        } else if let photo = self.photo {
-            readPhoto(photo)
+        } else if let pictures {
+            readPhoto(pictures)
         }
     }
 
@@ -98,8 +114,8 @@ final class EditRecipeViewModel {
 
     /// "Try again" after the photos couldn't be fetched or read.
     func onReadAgain() {
-        guard let photo, !uiState.reading else { return }
-        readPhoto(photo)
+        guard let pictures, !uiState.reading else { return }
+        readPhoto(pictures)
     }
 
     private func readPhoto(_ post: PhotoPost) {
@@ -108,7 +124,8 @@ final class EditRecipeViewModel {
         uiState.reading = true
         uiState.photoOutcome = nil
         uiState.uncertain = []
-        uiState.draft = RecipeDraft(name: post.title, image: post.imageUrls.first ?? "")
+        // A post's first picture is its photo; a scan's pages are never kept (#226).
+        uiState.draft = RecipeDraft(name: post.title, image: scanPages != nil ? "" : post.imageUrls.first ?? "")
         readTask = Task { [weak self, photoReader] in
             let result = await photoReader.read(post.imageUrls)
             guard let self, !Task.isCancelled else { return }
@@ -166,9 +183,12 @@ final class EditRecipeViewModel {
             savePhoto(photo, draft: state.draft)
             return
         }
-        Task { [weak self, recipeId, repository] in
+        let language = scanPages != nil ? scannedLanguage(state.draft) : nil
+        Task { [weak self, recipeId, repository, scanPages] in
             let saved: Recipe?
-            if let recipeId {
+            if scanPages != nil {
+                saved = await repository.addManual(draft: state.draft, language: language)
+            } else if let recipeId {
                 saved = await repository.saveEdit(id: recipeId, draft: state.draft)
             } else {
                 saved = await repository.addManual(draft: state.draft)
@@ -182,6 +202,18 @@ final class EditRecipeViewModel {
             } else {
                 uiState.saveFailed = true
             }
+        }
+    }
+
+    /// A scan's language (#226): its words (#208), then the checked recipe's, else English.
+    private func scannedLanguage(_ draft: RecipeDraft) -> String {
+        let content = draft.apply(to: Recipe(
+            name: "", image: nil, ingredients: [], instructions: [], prepTime: nil, cookTime: nil,
+            totalTime: nil, yield: nil, sourceUrl: ""
+        ))
+        let name = content.name, ingredients = content.ingredients
+        return LanguageWords.resolve(declared: photoLanguage, page: nil) {
+            LanguageWords.detectionText(name: name, ingredients: ingredients)
         }
     }
 

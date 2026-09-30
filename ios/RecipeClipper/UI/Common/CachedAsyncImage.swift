@@ -38,8 +38,12 @@ final class ImageLoader {
     /// The image's bytes: from the cache whenever it holds them, however old (a recipe photo
     /// doesn't change), else from the network. A fetched response is stored explicitly rather
     /// than left to URLSession, which skips responses marked no-store or without validators,
-    /// and those are exactly the ones that would then be missing offline.
+    /// and those are exactly the ones that would then be missing offline. A local file (a
+    /// scan's page, #226) is read where it is and never cached: a scan isn't kept.
     func data(for url: URL) async throws -> Data {
+        if url.isFileURL {
+            return try await Task.detached(priority: .userInitiated) { try Data(contentsOf: url) }.value
+        }
         let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 30)
         if let cached = cache.cachedResponse(for: request) { return cached.data }
         let (data, response) = try await session.data(for: request)

@@ -168,15 +168,19 @@ struct LocalPhoto: View {
 }
 
 /// The system photo library (PHPicker, out of process: no library access asked for), up to ten
-/// pictures, handed back as picked; the store reads each one's data.
+/// pictures, handed back as picked; the store reads each one's data. A scan (#226) takes up to
+/// six, `ordered`: the picker numbers them, and the pages are read in that order.
 struct LibraryPicker: UIViewControllerRepresentable {
+    var selectionLimit = 10
+    var ordered = false
     let onPick: ([PHPickerResult]) -> Void
     @Environment(\.dismiss) private var dismiss
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var configuration = PHPickerConfiguration()
         configuration.filter = .images
-        configuration.selectionLimit = 10
+        configuration.selectionLimit = selectionLimit
+        if ordered { configuration.selection = .ordered }
         let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = context.coordinator
         return picker
