@@ -231,6 +231,11 @@
     <string name="photo_check_heading">Revisa estas líneas: ahí la foto se leía mal</string>
     <string name="photo_image_description">Foto de %1$s</string>
 
+    <!-- Scan a recipe (#226) -->
+    <string name="action_scan_recipe">Escanear una receta</string>
+    <string name="scan_page_description">Página %1$d de %2$d</string>
+    <string name="scan_failed">No se pudo abrir la imagen. Vuelve a intentarlo, o vuelve atrás y elige otra.</string>
+
     <!-- Week meal plan (#49) -->
     <string name="action_add_to_plan">Añadir al plan</string>
     <string name="action_add_to_day">Añadir al %1$s</string>

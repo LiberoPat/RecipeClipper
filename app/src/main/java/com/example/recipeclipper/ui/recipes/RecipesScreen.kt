@@ -58,7 +58,7 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 /**
  * Every recipe on the phone (#102, the library that replaced History): newest viewed first by
  * default, searchable, sortable, swipe to delete. The + adds one: typed in (the editor), or
- * from a pasted link (the import flow Home's link field uses).
+ * from a pasted link (the import flow Home's link field uses), or scanned (#226).
  */
 @Composable
 fun RecipesScreen(
@@ -66,8 +66,10 @@ fun RecipesScreen(
     onOpenRecipe: (Long) -> Unit,
     onNewRecipe: () -> Unit = {},
     onOpenUrl: (String) -> Unit = {},
+    onScan: (List<String>) -> Unit = {},
     viewModel: RecipesViewModel = hiltViewModel(),
-    cookedPhotosEnabled: Boolean = LocalFlagValues.current.isOn(Flag.COOKED_PHOTOS)
+    cookedPhotosEnabled: Boolean = LocalFlagValues.current.isOn(Flag.COOKED_PHOTOS),
+    scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val now = remember { System.currentTimeMillis() }
@@ -134,7 +136,10 @@ fun RecipesScreen(
                                 style = MaterialTheme.typography.headlineSmall,
                                 modifier = Modifier.weight(1f)
                             )
-                            AddMenu(onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink)
+                            AddMenu(
+                                onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink,
+                                onScan = onScan.takeIf { scanEnabled }
+                            )
                             SortMenu(state.sort, viewModel::onSortChange, showCooked = cookedPhotosEnabled)
                         }
                         state.count?.let { LibraryCountText(it) }

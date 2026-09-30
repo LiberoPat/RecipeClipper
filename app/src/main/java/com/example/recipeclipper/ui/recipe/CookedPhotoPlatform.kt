@@ -20,14 +20,22 @@ import java.io.File
 /**
  * The two ways a picture arrives (#116), both platform effects, so they live in the view layer:
  * the Photo Picker (no permission needed) and the camera app through `ACTION_IMAGE_CAPTURE`
- * (no permission either, because the app doesn't declare CAMERA). Each hands URIs to [onPicked].
+ * (no permission either, because the app doesn't declare CAMERA). Each hands URIs to [onPicked],
+ * the picker's in the order picked. "Scan a recipe" (#226) takes up to [maxPicked] pages, and
+ * [freshCapture] gives each photo its own file: the scan reads the camera's file where it is,
+ * where #116's store copies it before the next capture.
  */
 internal class PhotoSources(val pickFromLibrary: () -> Unit, val takePhoto: () -> Unit)
 
 @Composable
-internal fun rememberPhotoSources(onPicked: (List<String>) -> Unit, onNoCamera: () -> Unit): PhotoSources {
+internal fun rememberPhotoSources(
+    onPicked: (List<String>) -> Unit,
+    onNoCamera: () -> Unit,
+    maxPicked: Int = MAX_PICKED,
+    freshCapture: Boolean = false
+): PhotoSources {
     val context = LocalContext.current
-    val library = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_PICKED)) { uris ->
+    val library = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxPicked)) { uris ->
         onPicked(uris.map(Uri::toString))
     }
     // Where the camera writes, kept across rotation and process death while the camera is open.
@@ -42,7 +50,7 @@ internal fun rememberPhotoSources(onPicked: (List<String>) -> Unit, onNoCamera: 
             library.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         },
         takePhoto = {
-            val uri = captureUri(context)
+            val uri = if (freshCapture) scanCaptureUri(context) else captureUri(context)
             pending = uri.toString()
             try {
                 camera.launch(uri)
@@ -58,6 +66,17 @@ internal fun rememberPhotoSources(onPicked: (List<String>) -> Unit, onNoCamera: 
 private fun captureUri(context: Context): Uri {
     val dir = File(context.cacheDir, "camera").apply { mkdirs() }
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(dir, "capture.jpg"))
+}
+
+/**
+ * A new file for a scan's photo (#226), the previous scan's removed first: a scan isn't kept,
+ * and one file per capture means a picture is never mistaken for the one before it.
+ */
+private fun scanCaptureUri(context: Context): Uri {
+    val dir = File(context.cacheDir, "camera").apply { mkdirs() }
+    dir.listFiles { file -> file.name.startsWith(SCAN_PREFIX) }?.forEach { it.delete() }
+    val file = File(dir, "$SCAN_PREFIX${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
 
 /** The share sheet with the photo and the recipe's name as plain text (#116). */
@@ -78,3 +97,4 @@ internal fun sharePhoto(context: Context, path: String, recipeName: String, choo
 }
 
 private const val MAX_PICKED = 10
+private const val SCAN_PREFIX = "scan-"

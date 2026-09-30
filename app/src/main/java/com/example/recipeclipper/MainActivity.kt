@@ -170,9 +170,13 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Where an intent leads: a shared link imports, a timer notification opens cook mode, an
-     *  expiry reminder (#52) opens the Pantry tab, and shared text with no link but with lines
-     *  (#149) opens Groceries on the "Add this list" sheet (only with the tabs, #47). */
+     *  expiry reminder (#52) opens the Pantry tab, shared text with no link but with lines
+     *  (#149) opens Groceries on the "Add this list" sheet (only with the tabs, #47), and shared
+     *  images (#226, the photoText flag) open the scan's review, read on the device. */
     private fun routeFor(intent: Intent?): String? {
+        if (featureFlags.current.isOn(Flag.PHOTO_TEXT)) {
+            ScanIntent.pages(intent)?.let { return Routes.scan(it) }
+        }
         if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) return Tab.PANTRY.route
         if (intent?.action == TimerNotifications.ACTION_OPEN_COOK) {
             val id = intent.getLongExtra(TimerNotifications.EXTRA_RECIPE_ID, -1)

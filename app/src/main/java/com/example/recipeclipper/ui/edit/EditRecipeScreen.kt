@@ -9,7 +9,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.example.recipeclipper.data.PhotoPost
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import com.example.recipeclipper.ui.common.LibraryFullDialog
 import com.example.recipeclipper.ui.common.noticeMessage
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -150,14 +154,24 @@ private fun EditFields(state: EditRecipeUiState, onChange: (RecipeDraft) -> Unit
 
 /**
  * "Read the photo" (#198), above the fields: the post's pictures to check the lines against,
- * how the reading went, and the lines the recogniser was unsure of ("Check these lines").
+ * how the reading went, and the lines the recogniser was unsure of ("Check these lines"). A scan
+ * (#226) shows the cook's pages the same way, each named "Page 1 of 2" for TalkBack, and read
+ * from where they are, never cached (a reused camera file must not show an earlier picture).
  */
 @Composable
 private fun PhotoReview(post: PhotoPost, state: EditRecipeUiState, onReadAgain: () -> Unit) {
-    post.imageUrls.forEach { image ->
+    val context = LocalContext.current
+    post.imageUrls.forEachIndexed { index, image ->
         AsyncImage(
-            model = image,
-            contentDescription = stringResource(R.string.photo_image_description, post.title),
+            model = if (state.scan) {
+                remember(image) {
+                    ImageRequest.Builder(context).data(image)
+                        .memoryCachePolicy(CachePolicy.DISABLED).diskCachePolicy(CachePolicy.DISABLED).build()
+                }
+            } else image,
+            contentDescription = if (state.scan) {
+                stringResource(R.string.scan_page_description, index + 1, post.imageUrls.size)
+            } else stringResource(R.string.photo_image_description, post.title),
             contentScale = ContentScale.FillWidth,
             modifier = Modifier
                 .fillMaxWidth()
@@ -180,7 +194,11 @@ private fun PhotoReview(post: PhotoPost, state: EditRecipeUiState, onReadAgain: 
         PhotoOutcome.FAILED, PhotoOutcome.NOT_READY -> {
             Message(
                 stringResource(
-                    if (state.photoOutcome == PhotoOutcome.FAILED) R.string.photo_failed else R.string.photo_not_ready
+                    when {
+                        state.photoOutcome == PhotoOutcome.NOT_READY -> R.string.photo_not_ready
+                        state.scan -> R.string.scan_failed
+                        else -> R.string.photo_failed
+                    }
                 )
             )
             OutlinedButton(onClick = onReadAgain, shape = RoundedCornerShape(12.dp)) {

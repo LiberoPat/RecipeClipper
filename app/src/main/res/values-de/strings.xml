@@ -221,6 +221,11 @@
     <string name="photo_check_heading">Prüfe diese Zeilen: Dort war das Foto schwer zu lesen</string>
     <string name="photo_image_description">Foto von %1$s</string>
 
+    <!-- Scan a recipe (#226) -->
+    <string name="action_scan_recipe">Rezept scannen</string>
+    <string name="scan_page_description">Seite %1$d von %2$d</string>
+    <string name="scan_failed">Das Bild konnte nicht geöffnet werden. Versuche es erneut oder geh zurück und wähle ein anderes.</string>
+
     <!-- Week meal plan (#49) -->
     <string name="action_add_to_plan">Zum Plan hinzufügen</string>
     <string name="action_add_to_day">Hinzufügen: %1$s</string>

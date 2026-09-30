@@ -76,6 +76,7 @@ class FakeRecipeRepository : RecipeRepository {
     val saveEditCalls = mutableListOf<Pair<Long, RecipeDraft>>()
     var addManualResult: Recipe? = null
     val addManualCalls = mutableListOf<RecipeDraft>()
+    val addManualLanguages = mutableListOf<String?>()
 
     /** How many times [importFromUrl] has been called — for the reload-on-reconnect tests. */
     var importCalls = 0
@@ -135,8 +136,9 @@ class FakeRecipeRepository : RecipeRepository {
         return saveEditResult
     }
 
-    override suspend fun addManual(draft: RecipeDraft): Recipe? {
+    override suspend fun addManual(draft: RecipeDraft, language: String?): Recipe? {
         addManualCalls += draft
+        addManualLanguages += language
         return addManualResult
     }
 

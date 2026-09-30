@@ -121,7 +121,7 @@ class DefaultRecipeRepository @Inject constructor(
         }
     }
 
-    override suspend fun addManual(draft: RecipeDraft): Recipe? {
+    override suspend fun addManual(draft: RecipeDraft, language: String?): Recipe? {
         if (!draft.isValid) return null
         val now = clock.now()
         val recipe = draft.applyTo(
@@ -130,7 +130,8 @@ class DefaultRecipeRepository @Inject constructor(
                 prepTime = null, cookTime = null, totalTime = null, yield = null,
                 sourceUrl = ManualRecipe.newSourceUrl(newUid()),
                 origin = ContentOrigin.MANUAL,
-                editedAt = now
+                editedAt = now,
+                language = language
             )
         )
         return log.guard("addManual", null) {
