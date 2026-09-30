@@ -1,7 +1,8 @@
 import XCTest
 
-// Walkthroughs 24–27: tooltips (#190), the pantry's three states (#194), singular and plural
-// names in What I need (#191), and a Reddit post imported (#11) from a fixture listing.
+// Walkthroughs 24–30: tooltips (#190), the pantry's three states (#194), singular and plural
+// names in What I need (#191), a Reddit post imported (#11) from a fixture listing, its photo
+// read (#198), other languages (#208), and a recipe card scanned (#226).
 
 extension WalkthroughUITests {
 
@@ -308,5 +309,91 @@ extension WalkthroughUITests {
         pause(2.5)
         app.swipeUp()
         pause(2.5)
+    }
+
+    /// "Scan a recipe" (#226): Recipes + → Scan a recipe → Choose from library, the fixture card's
+    /// two sides (`shared/fixtures/reddit/photos/card-front.jpg`, `card-back.jpg`) picked in order
+    /// in the real photo picker (the recording script adds them to the simulator's Photos just
+    /// before this test: the front newest), read by the real Vision reader; "Check the recipe"
+    /// with both pages on top, the name typed (none is guessed), the flagged lines fixed, Save;
+    /// then Home's own "Scan a recipe".
+    func test30_scanARecipe() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "mealPlan,photoText"]
+        app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
+        app.launch()
+        self.app = app
+        require(app.textFields["Recipe URL"], "Home")
+        mark("START")
+        pause()
+        openRecipes()
+        pause()
+        require(app.buttons["recipes.add"], "the + menu").tap()
+        pause()
+        require(app.buttons["Scan a recipe"], "Scan a recipe").tap()
+        pause()
+        require(app.buttons["Choose from library"], "the library choice").tap()
+        pause(2.5)
+        // The system's photo picker, newest first: the card's front, then its back, numbered 1, 2.
+        let photos = app.images.matching(identifier: "PXGGridLayout-Info")
+        require(photos.firstMatch, "the photos in the picker")
+        photos.element(boundBy: 0).tap()
+        pause()
+        photos.element(boundBy: 1).tap()
+        pause(1.5)
+        require(app.buttons.matching(NSPredicate(format: "label IN %@", ["Add", "Done"])).firstMatch, "the picker's Add").tap()
+
+        require(text("Check the recipe"), "the review")
+        require(app.descendants(matching: .any)["Page 2 of 2"], "both pages")
+        require(textContaining("Read from the photo"), "how the reading went", within: 30)
+        pause(3)
+        // No title is guessed: the cook names it.
+        let name = require(app.textFields["Name"], "the name field")
+        name.tap()
+        name.typeText("Aunt June's Oatmeal Cookies")
+        pause(1.5)
+        scrollTo(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
+        pause(3)
+
+        // Fix the lines flagged to check, as clip 28 does: the whole box typed back corrected.
+        let box = app.descendants(matching: .any).matching(NSPredicate(
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "brown sugar"
+        )).firstMatch
+        scrollTo(box, "the ingredients")
+        pause()
+        let typed = box.value as? String ?? ""
+        let fixed = typed.split(separator: "\n", omittingEmptySubsequences: false).map { line -> String in
+            if line.contains("cupraisi") || line.contains("rasins") { return "1 cup raisins" }
+            return line.replacingOccurrences(of: "11/2", with: "1 1/2").replacingOccurrences(of: "eg9s", with: "eggs")
+        }.joined(separator: "\n")
+        for _ in 0..<6 where box.frame.maxY > app.frame.maxY - 140 {
+            app.swipeUp(velocity: .slow)
+        }
+        box.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.97)).tap()
+        pause(0.8)
+        box.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count + 2))
+        pause(0.5)
+        // Emptied, the box no longer matches its query: type into whatever has the focus (it).
+        app.typeText(fixed)
+        pause(2.5)
+        require(app.buttons["edit.save"], "Save").tap()
+        require(bookmark, "the saved recipe")
+        require(text("Aunt June's Oatmeal Cookies"), "its name")
+        pause(3)
+        app.swipeUp()
+        pause(2.5)
+
+        // Home has its own "Scan a recipe", beside "+ New recipe".
+        let homeScan = app.buttons["home.scanRecipe"]
+        for _ in 0..<3 where !homeScan.exists {
+            back()
+            pause()
+        }
+        require(homeScan, "Home's Scan a recipe").tap()
+        require(app.buttons["Choose from library"], "its two choices")
+        pause(2.5)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
+        pause()
     }
 }

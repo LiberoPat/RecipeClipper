@@ -1,13 +1,25 @@
 package com.example.recipeclipper.walkthrough
 
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.ClipData
+import android.content.Intent
+import android.net.Uri
+import android.provider.MediaStore
+import android.util.Log
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.core.content.FileProvider
+import androidx.test.espresso.Espresso
 import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.DecisionModel
+import com.example.recipeclipper.data.MlKitPhotoTextReader
 import com.example.recipeclipper.data.PhotoTextReader
 import com.example.recipeclipper.data.PhotoTextResult
 import com.example.recipeclipper.data.StepShortener
@@ -24,13 +36,15 @@ import com.example.recipeclipper.fake.FakeStepShortener
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.UninstallModules
+import java.io.File
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 /**
- * Walkthroughs 06–10 and 27–29 (#106): the Recipes screen, amounts in steps, Chef mode with a stub
+ * Walkthroughs 06–10 and 27–30 (#106): the Recipes screen, amounts in steps, Chef mode with a stub
  * model (an emulator has none), the free tier, a recipe picked from the page text (seeded as
  * such: no model runs), Reddit posts (#11) and their photos (#198), in German and French too
- * (#208). A pasted link opens a canned recipe, as iOS's
+ * (#208), and a scanned recipe card (#226). A pasted link opens a canned recipe, as iOS's
  * UI-test source does, so no clip depends on the network; a Reddit link is read by the real
  * [RedditRecipeParser] from a `shared/fixtures/reddit/` listing the recording script pushed, in
  * place of reddit.com's `.json` (which refuses an emulator with 403).
@@ -72,8 +86,12 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     val photoTextReader: PhotoTextReader = object : PhotoTextReader {
         private var reads = 0
         override suspend fun read(imageUrls: List<String>): PhotoTextResult =
-            if (reads++ == 0) PhotoTextResult.Read(cardLines) else PhotoTextResult.Read(emptyList())
+            realReader?.read(imageUrls)
+                ?: if (reads++ == 0) PhotoTextResult.Read(cardLines) else PhotoTextResult.Read(emptyList())
     }
+
+    /** ML Kit itself, for clip 30 when the emulator's Play services can read (see [realOcr]). */
+    private var realReader: PhotoTextReader? = null
 
     /** What the first photo read answers: clip 28's English card, clip 29's French one. */
     private var cardLines = CARD_LINES
@@ -260,6 +278,106 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         pause(1500)
         swipeUp()
         pause(1000)
+    }
+
+    /**
+     * Walkthrough 30, "Scan a recipe" (#226): Recipes + → Scan a recipe → Choose from library, the
+     * fixture card's two sides handed back as the Photo Picker's answer (the picker can't be
+     * driven, as in clip 13), "Check the recipe" with both pages on top, the name typed (none is
+     * guessed), the flagged line fixed, Save; then Home's own "Scan a recipe". ML Kit reads the
+     * pages when the emulator's Play services can ([realOcr]); otherwise it's OCR SIMULATED (clip
+     * 28's card lines), which the test logs and the recording script puts in the clip's name.
+     */
+    @Test
+    fun test30_scanARecipe() {
+        val pages = listOf(scanPage("card-front"), scanPage("card-back"))
+        realReader = realOcr(pages.first())
+        Log.i("Walkthrough", if (realReader != null) "OCR REAL" else "OCR SIMULATED")
+        start("photoText")
+        openRecipes()
+        tapDescription("Add a recipe")
+        tap("Scan a recipe")
+        val picker = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+                if (intent.action != MediaStore.ACTION_PICK_IMAGES && intent.type?.startsWith("image/") != true) return null
+                val uris = pages.map(Uri::parse)
+                val data = Intent().apply {
+                    clipData = ClipData.newRawUri(null, uris[0]).apply { addItem(ClipData.Item(uris[1])) }
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                return Instrumentation.ActivityResult(Activity.RESULT_OK, data)
+            }
+        }
+        instrumentation.addMonitor(picker)
+        try {
+            tap("Choose from library", 2500)
+        } finally {
+            instrumentation.removeMonitor(picker)
+        }
+        waitFor(hasContentDescription("Page 2 of 2"))
+        compose.waitUntil(60_000) {
+            compose.onAllNodes(hasText("Read from the photo", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+        pause(3000)
+        // No title is guessed: the cook names it.
+        compose.onAllNodes(field("Name"))[0].performTextInput("Aunt June's Oatmeal Cookies")
+        pause(1500)
+        show("Check these lines", 3000)
+        // Fix the lines flagged to check, and ML Kit's other slips on this card (the simulated
+        // lines' "1 cup rasins"; the real reader's "2 eg9s", "11/2", "1 oup", and the back's
+        // "Directíons" heading, which it read with an accent and so left among the ingredients).
+        val box = compose.onAllNodes(field("Ingredients, one per line"))[0]
+        val typed = box.fetchSemanticsNode().config[SemanticsProperties.EditableText].text
+        box.performTextReplacement(
+            typed.lines().filterNot { it.trim().startsWith("Direct") }.joinToString("\n") { line ->
+                if ("rasin" in line || "raisi" in line) {
+                    "1 cup raisins"
+                } else {
+                    line.replace("11/2", "1 1/2").replace("eg9s", "eggs").replace("1 oup", "1 cup").replace("Cups", "cups")
+                }
+            }
+        )
+        pause(2500)
+        tap("Save", 3000)
+        waitFor(hasText("Aunt June's Oatmeal Cookies"))
+        pause(2000)
+        swipeUp()
+        pause(2500)
+        back()
+        back()
+        // Home, still scrolled down to its Recipes row: back up to the link field.
+        waitFor(hasScrollAction())
+        compose.onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Scan a recipe"))
+        pause(1000)
+        tap("Scan a recipe", 2500)
+        Espresso.pressBack()
+        pause(1000)
+    }
+
+    /** A fixture page the recording script pushed, as a picture of the app's own (FileProvider). */
+    private fun scanPage(name: String): String {
+        val context = instrumentation.targetContext
+        val file = File(context.cacheDir, "camera/walkthrough-$name.jpg").apply {
+            parentFile?.mkdirs()
+            writeBytes(deviceFile("/data/local/tmp/$name.jpg"))
+        }
+        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file).toString()
+    }
+
+    /**
+     * ML Kit's reader if it reads [page] here. Play services may first have to download the model
+     * (a read asks it to), so NotReady is retried for up to two minutes. Null: simulate.
+     */
+    private fun realOcr(page: String): PhotoTextReader? {
+        val reader = MlKitPhotoTextReader(instrumentation.targetContext)
+        repeat(24) {
+            when (val result = runBlocking { reader.read(listOf(page)) }) {
+                is PhotoTextResult.Read -> return reader.takeIf { result.lines.isNotEmpty() }
+                PhotoTextResult.NotReady -> Thread.sleep(5000)
+                PhotoTextResult.Failed -> return null
+            }
+        }
+        return null
     }
 
     private fun openPost(link: String) {

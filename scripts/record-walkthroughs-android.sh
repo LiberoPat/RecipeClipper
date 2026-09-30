@@ -27,7 +27,7 @@ TESTS=("$@")
   CookingWalkthroughTest#test23_markAsCooked CookingWalkthroughTest#test24_tooltips
   CookingWalkthroughTest#test25_pantryStates CookingWalkthroughTest#test26_onionAndOnions
   RecipesWalkthroughTest#test27_redditImport RecipesWalkthroughTest#test28_readThePhoto
-  RecipesWalkthroughTest#test29_readingOtherLanguages)
+  RecipesWalkthroughTest#test29_readingOtherLanguages RecipesWalkthroughTest#test30_scanARecipe)
 mkdir -p "$OUT"
 export ANDROID_SERIAL=$SERIAL
 adb shell cmd uimode night no >/dev/null
@@ -40,6 +40,10 @@ for f in recipes-self-post old-recipes-card-transcription food-photo-chatter old
   de-self-post fr-card-untranscribed; do
   adb push "shared/fixtures/reddit/$f.json" /data/local/tmp/ >/dev/null
 done
+# The recipe card's two sides, the pages clip 30 scans (#226).
+for f in card-front card-back; do
+  adb push "shared/fixtures/reddit/photos/$f.jpg" /data/local/tmp/ >/dev/null
+done
 photo=$(mktemp -d)/photo.jpg
 if sips -s format jpeg "/Library/User Pictures/Fun/Gingerbread Man.heic" --out "$photo" >/dev/null 2>&1; then
   adb push "$photo" /data/local/tmp/rc-walkthrough-photo.jpg >/dev/null
@@ -50,6 +54,7 @@ for t in "${TESTS[@]}"; do
   slug=$(echo "${name#test}" | sed -E 's/_/-/; s/([a-z])([A-Z])/\1-\2/g; s/([A-Z])([A-Z][a-z])/\1-\2/g' | tr 'A-Z' 'a-z')
   adb shell pm clear $PKG >/dev/null
   adb shell rm -f /data/local/tmp/rc-walkthrough.mp4
+  adb logcat -c
   result=$(adb shell am instrument -w -e class "$P.$t" $PKG.test/$P.WalkthroughRunner)
   if ! echo "$result" | grep -q "OK (1 test)"; then
     echo "FAILED: $t (screen at the miss: /tmp/android-$slug-miss.png)"
@@ -57,6 +62,8 @@ for t in "${TESTS[@]}"; do
     adb pull /data/local/tmp/rc-walkthrough-miss.png "/tmp/android-$slug-miss.png" >/dev/null 2>&1 || true
     continue
   fi
+  # A clip whose test had to stand in for the text reader (30: no Play services model) says so.
+  if adb logcat -d -s Walkthrough:I | grep -q "OCR SIMULATED"; then slug="$slug-simulated"; fi
   adb pull /data/local/tmp/rc-walkthrough.mp4 "/tmp/android-$slug-raw.mp4" >/dev/null
   # Smaller, and a phone-shaped 1280-high frame (macOS's avconvert; ffmpeg would do as well).
   avconvert --source "/tmp/android-$slug-raw.mp4" --preset Preset1280x720 \
