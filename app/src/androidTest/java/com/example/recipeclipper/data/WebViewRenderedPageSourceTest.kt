@@ -70,4 +70,38 @@ class WebViewRenderedPageSourceTest {
         assertEquals("Rendered Soup", recipe.name)
         assertEquals(listOf("2 cups stock", "1 onion"), recipe.ingredients)
     }
+
+    /**
+     * Cloudflare's check (#220), imitated: a "Just a moment..." page carrying the check's
+     * settings, which after 4 s (past two settles) turns into the recipe page, as a check that
+     * passes by itself does. The render mustn't hand back the check, must say it saw one, and
+     * must read the page it becomes. (A `data:` page can't navigate to another, so the page
+     * changes in place; a navigation restarts the wait the same way.)
+     */
+    @Test
+    fun waitsOutACloudflareCheckAndReadsThePageAfterIt() = runBlocking {
+        val check = """
+            <!doctype html>
+            <html><head><title>Just a moment...</title>
+            <script>
+              window._cf_chl_opt = {cType: 'managed', cRay: '8c1f0e2d4b5a6f70'};
+              setTimeout(function () {
+                document.title = 'Soup';
+                document.head.innerHTML = '<script type="application/ld+json">' +
+                  JSON.stringify($recipeJson) + '<\/script>';
+                document.body.innerHTML = '<p>Soup</p>';
+              }, 4000);
+            </script></head>
+            <body><p>Verifying you are human. This may take a few seconds.</p></body></html>
+        """.trimIndent()
+        var challenged = false
+
+        val html = withTimeout(30_000) { source.render(dataUrl(check)) { challenged = true } }
+
+        assertTrue("the check was never reported", challenged)
+        assertNotNull("the WebView returned no HTML", html)
+        val parsed = BlogRecipeSource.parse(html!!, "https://example.com/soup")
+        assertTrue("the page after the check should parse: $parsed", parsed is ParseResult.Success)
+        assertEquals("Rendered Soup", (parsed as ParseResult.Success).recipe.name)
+    }
 }
