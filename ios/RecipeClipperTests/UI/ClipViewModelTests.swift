@@ -32,6 +32,16 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertNil(vm.uiState.notice)
     }
 
+    func testThePageLoadsFromWhereTheLinkPointsExceptOtherRedditHostsWhichLoadFromWww() {
+        XCTAssertEqual(viewModel().uiState.pageUrl, cleaned)
+        let old = "https://old.reddit.com/r/recipes/comments/1abc01/apple_pie/"
+        let vm = ClipViewModel(url: old, repository: repository, drafts: store, readBlocked: true)
+        XCTAssertEqual(vm.uiState.pageUrl, "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/")
+        // The clip is still saved under the link that was shared.
+        XCTAssertEqual(vm.uiState.url, old)
+        XCTAssertEqual(vm.uiState.draft.sourceUrl, old)
+    }
+
     func testASelectionIsPreviewedAsTheLinesItWouldBecome() {
         let vm = viewModel()
         vm.onSelectionChanged("1 cup flour\n\n 2 eggs ")

@@ -149,7 +149,11 @@ Reddit post never goes to the rendered page. Reddit's block (#213): `RecipeReddi
 (the clip instead of the error, the saved copy over the real repository, every other cause
 unchanged), `ClipBlockedNoteScreenTest` (Robolectric: the note, and the import handing the post
 on), iOS `ShareImportViewModelTests` (the card and `PendingClip`) and
-`ClipUITests.testABlockedRedditPostOpensHereWithANote`.
+`ClipUITests.testABlockedRedditPostOpensHereWithANote`. The clip view getting past Reddit's
+check: `ClipNavigationTest(s)` (the page's form back to its own path loads, app links never
+do), `RedditUrlsTest(s)` (`clipPageUrl`: other Reddit hosts load from www). No test reaches
+reddit.com: after a change to the clip view's navigation, share a real post on a device and
+check the post shows, not the pulsing Snoo.
 Cloudflare's check (#220): `CloudflareChallengeTest(s)` read the pages in
 `shared/fixtures/cloudflare` (written in Cloudflare's shape, made-up hosts and tokens);
 `BlogRecipeSourceStatusTest` / `BlogRecipeSourceTests` the `cf-mitigated` header and body;

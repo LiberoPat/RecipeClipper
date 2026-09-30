@@ -40,6 +40,28 @@ enum RedditUrls {
         return isReddit(url)
     }
 
+    /// Reddit's other page hosts, which "Clip it yourself" moves to www (`clipPageUrl`).
+    private static let otherPageHosts: Set<String> = [
+        "reddit.com", "old.reddit.com", "new.reddit.com", "m.reddit.com", "np.reddit.com",
+    ]
+
+    /// The address "Clip it yourself" loads for `url` (#213). A link on another of Reddit's page
+    /// hosts (old., new., m., np., or none) moves to www.reddit.com with its path, query and
+    /// fragment: old.reddit.com answers a signed-out reader with "Log in to use old Reddit"
+    /// (September 2026), and the others lead to www anyway. A share link stays a share link: www
+    /// follows it to the post. Any other link is loaded as it is.
+    static func clipPageUrl(_ url: String) -> String {
+        guard var components = URLComponents(string: url.kTrimmed),
+              let host = components.host?.lowercased(), otherPageHosts.contains(host)
+        else { return url }
+        components.scheme = "https"
+        components.host = "www.reddit.com"
+        components.port = nil
+        components.user = nil
+        components.password = nil
+        return components.string ?? url
+    }
+
     static func isShareLink(_ url: String) -> Bool {
         guard let (host, path) = parts(url) else { return false }
         return host != "redd.it" && sharePath.matchEntire(path) != nil
