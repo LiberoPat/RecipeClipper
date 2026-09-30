@@ -54,8 +54,8 @@ internal fun ClipWebPage(
     pickingPhoto: Boolean,
     onEvent: (ClipPageEvent) -> Unit,
     loadPage: ClipPageLoader,
-    readsPage: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    readsPage: Boolean = false
 ) {
     // Read by the WebViewClient when a page finishes loading, so the script it injects starts
     // from the current state rather than the state at creation.
