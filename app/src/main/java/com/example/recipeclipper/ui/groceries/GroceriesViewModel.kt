@@ -33,9 +33,9 @@ import javax.inject.Inject
 
 /**
  * What the undo snackbar says was removed: one row's [label], or the checked items ([label]
- * null), and whether "Done shopping" also changed the pantry ([putAway]).
+ * null), whether "Done shopping" also changed the pantry ([putAway]), or the whole list ([all], #219).
  */
-data class RemovedGroceries(val id: Long, val label: String?, val putAway: Boolean = false)
+data class RemovedGroceries(val id: Long, val label: String?, val putAway: Boolean = false, val all: Boolean = false)
 
 /**
  * One thing to put away after shopping (#146): the pantry item it restocks ([trackedId]), or a
@@ -52,7 +52,8 @@ data class PutAwaySheet(val items: List<PutAwayItem>, val ticked: Set<String>)
 /**
  * [sections] is null until the list has loaded. [draft] is the "Add an item" field. [moving]
  * is the row whose aisle is being chosen. [putAway] is the open "Done shopping" sheet.
- * [recipeTitles] names the recipes items came from, for "Send list" (#149).
+ * [recipeTitles] names the recipes items came from, for "Send list" (#149). [confirmClearAll] is
+ * the number of rows "Clear the whole list" asks about (#219), while its dialog is open.
  */
 data class GroceriesUiState(
     val sections: List<GroceryCombiner.Section>? = null,
@@ -60,10 +61,13 @@ data class GroceriesUiState(
     val moving: GroceryCombiner.Row? = null,
     val removed: RemovedGroceries? = null,
     val putAway: PutAwaySheet? = null,
-    val recipeTitles: Map<Long, String> = emptyMap()
+    val recipeTitles: Map<Long, String> = emptyMap(),
+    val confirmClearAll: Int? = null
 ) {
     val hasChecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { it.checked } } }
     val isEmpty: Boolean get() = sections?.isEmpty() == true
+    /** Anything on the list: what "Clear the whole list" needs (#219). */
+    val hasItems: Boolean get() = !sections.isNullOrEmpty()
     /** Something is left to buy: what "Send as file" sends (#149). */
     val hasUnchecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { !it.checked } } }
 }
@@ -73,7 +77,13 @@ data class GroceriesUiState(
  * together (and added up when that's exact, [GroceryCombiner]). Everything is written as it
  * happens. A tick only ticks (#146): "Done shopping" puts what was bought in the pantry and
  * clears the ticked items in one step. A delete or "Done shopping" can be undone from the
- * snackbar, and nothing else raises one.
+ * snackbar, and so can the menu's "Clear ticked items" and "Clear the whole list" (#219).
+ *
+ * **Ticks stay put** (#219): within a visit, ticking or unticking never re-sorts the list. The
+ * order is worked out with each item's tick as it was when the order was last worked out
+ * ([orderTicks]), and shown with its tick now. It's worked out afresh when anything but a tick
+ * changes (an item added, removed, cleared, or moved to another aisle, here or elsewhere) and
+ * when the screen is left ([onLeave]), so ticked rows sink to the bottom of their aisle next time.
  *
  * A typed item has no recipe, so it's read with the phone's language when the app has words
  * for it, else English: the one place the phone's language picks the words, since the person
@@ -104,6 +114,12 @@ class GroceriesViewModel @Inject constructor(
 
     // Declared before init: a list that is already there is collected during construction.
     private var latestItems: List<GroceryItem> = emptyList()
+    private var latestDecisions: Decisions = Decisions.NONE
+
+    // The visit's order (#219): each item's tick when the order was last worked out, and the list
+    // then with its ticks left out; null until worked out, and after the screen is left.
+    private var orderTicks: Map<Long, Boolean>? = null
+    private var orderShape: List<GroceryItem>? = null
 
     // Grocery questions and items already asked about in this visit, so each is asked once.
     private val askedGrocery = mutableSetOf<DecisionQuestion>()
@@ -120,16 +136,37 @@ class GroceriesViewModel @Inject constructor(
             val answers = decisions?.observe() ?: flowOf(Decisions.NONE)
             repository.observeItems().combine(answers) { items, d -> items to d }.collect { (items, d) ->
                 latestItems = items
-                val sections = GroceryCombiner.sections(items, d)
-                _uiState.update { state ->
-                    // A row being moved that has since gone closes the aisle picker.
-                    val moving = state.moving?.takeIf { row -> row.items.all { i -> items.any { it.id == i.id } } }
-                    state.copy(sections = sections, moving = moving)
-                }
+                latestDecisions = d
+                show()
                 askAisles(items)
                 askGroceryQuestions(items, d)
             }
         }
+    }
+
+    /** Lays the list out in the visit's order, working it out afresh when more than a tick changed. */
+    private fun show() {
+        val items = latestItems
+        val shape = items.map { if (it.checked) it.copy(checked = false) else it }
+        val ticks = orderTicks?.takeIf { shape == orderShape } ?: items.associate { it.id to it.checked }.also {
+            orderTicks = it
+            orderShape = shape
+        }
+        val sections = GroceriesOrder.sections(items, latestDecisions, ticks)
+        _uiState.update { state ->
+            // A row being moved that has since gone closes the aisle picker.
+            val moving = state.moving?.takeIf { row -> row.items.all { i -> items.any { it.id == i.id } } }
+            state.copy(sections = sections, moving = moving)
+        }
+    }
+
+    /**
+     * The screen was left (not rotated, #219): the next visit tidies the list, ticked rows at the
+     * bottom of their aisle. Done now, while nothing is on screen to jump.
+     */
+    fun onLeave() {
+        orderTicks = null
+        if (_uiState.value.sections != null) show()
     }
 
     /**
@@ -267,9 +304,39 @@ class GroceriesViewModel @Inject constructor(
         }
     }
 
-    private fun removed(deleted: GroceryRepository.DeletedItems, label: String?) {
+    /**
+     * "Clear ticked items" (#219): every ticked line leaves the list at once, with no "Done
+     * shopping" sheet, so the pantry is untouched. Undo puts them back.
+     */
+    fun onClearTicked() {
+        viewModelScope.launch {
+            val cleared = repository.clearChecked() ?: return@launch
+            removed(cleared, null)
+        }
+    }
+
+    /** "Clear the whole list" (#219) asks first, naming how many rows would go. */
+    fun onClearAll() {
+        val rows = _uiState.value.sections.orEmpty().sumOf { it.rows.size }
+        if (rows > 0) _uiState.update { it.copy(confirmClearAll = rows) }
+    }
+
+    fun onClearAllDismissed() = _uiState.update { it.copy(confirmClearAll = null) }
+
+    /** The dialog's Clear: every line, ticked or not, leaves the list; the pantry is untouched. Undo puts them back. */
+    fun onClearAllConfirm() {
+        if (_uiState.value.confirmClearAll == null) return
+        _uiState.update { it.copy(confirmClearAll = null) }
+        val ids = latestItems.map { it.id }
+        viewModelScope.launch {
+            val deleted = repository.delete(ids) ?: return@launch
+            removed(deleted, null, all = true)
+        }
+    }
+
+    private fun removed(deleted: GroceryRepository.DeletedItems, label: String?, all: Boolean = false) {
         undo = Undo(deleted)
-        _uiState.update { it.copy(removed = RemovedGroceries(++removals, label)) }
+        _uiState.update { it.copy(removed = RemovedGroceries(++removals, label, all = all)) }
     }
 
     /** Puts back what the last removal took: the items and, after "Done shopping", the pantry as it was. */
@@ -299,6 +366,30 @@ class GroceriesViewModel @Inject constructor(
         val sections = state.sections.orEmpty()
         if (sections.none { s -> s.rows.any { r -> r.items.none { it.checked } } }) return null
         return GroceryShareText.format(sections, title, state.recipeTitles, aisleName)
+    }
+}
+
+/**
+ * The visit's order (#219): [GroceryCombiner.sections] laid out as if each item were ticked as in
+ * [ticks] (an item not in it, as it is), then shown with every item's tick as it is now. A row
+ * ticks all its lines, so its lines share one tick and it stays one row.
+ */
+internal object GroceriesOrder {
+    fun sections(items: List<GroceryItem>, decisions: Decisions, ticks: Map<Long, Boolean>): List<GroceryCombiner.Section> {
+        val now = items.associate { it.id to it.checked }
+        val asWas = items.map { item -> ticks[item.id]?.let { if (it == item.checked) item else item.copy(checked = it) } ?: item }
+        fun GroceryItem.current() = now[id]?.let { if (it == checked) this else copy(checked = it) } ?: this
+        return GroceryCombiner.sections(asWas, decisions).map { section ->
+            section.copy(
+                rows = section.rows.map { row ->
+                    when (row) {
+                        is GroceryCombiner.Row.Single -> GroceryCombiner.Row.Single(row.item.current())
+                        is GroceryCombiner.Row.Combined -> row.copy(items = row.items.map { it.current() })
+                        is GroceryCombiner.Row.Together -> row.copy(items = row.items.map { it.current() })
+                    }
+                }
+            )
+        }
     }
 }
 

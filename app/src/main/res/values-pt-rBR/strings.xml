@@ -336,6 +336,15 @@
     <string name="groceries_week_empty">Nenhuma receita planejada para esta semana.</string>
     <string name="action_share_groceries">Enviar lista</string>
     <string name="action_paste_list">Colar uma lista</string>
+    <string name="action_clear_ticked">Remover itens marcados</string>
+    <string name="action_clear_groceries">Limpar a lista toda</string>
+    <string name="action_clear">Limpar</string>
+    <string name="snackbar_groceries_cleared">Lista de compras limpa</string>
+    <plurals name="clear_groceries_title">
+        <item quantity="one">Remover %1$d item?</item>
+        <item quantity="many">Remover todos os %1$d de itens?</item>
+        <item quantity="other">Remover todos os %1$d itens?</item>
+    </plurals>
     <string name="receive_list_title">Adicionar esta lista</string>
     <string name="receive_list_empty">Não há nenhuma lista na área de transferência. Copie uma primeiro e cole aqui.</string>
     <!-- A file sent to someone else's Recipe Clipper (#149, phase 2) -->

@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.groceries
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.Resources
+import androidx.activity.compose.LocalActivity
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -31,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -51,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -92,7 +96,9 @@ import com.example.recipeclipper.ui.tour.tooltipAnchor
  * ingredient sit together under its name, or as one added-up row when that's exact. Tap to
  * tick; long-press to move to another aisle or delete (with undo). The menu sends the list as
  * plain text and pastes one in (#149). While anything is ticked, "Done shopping" (#146) puts it
- * away in the pantry and clears it, with undo.
+ * away in the pantry and clears it, with undo. The menu also clears the ticked items, or the
+ * whole list after asking, with undo (#219). A tick never moves a row while the screen is shown;
+ * the list tidies on the next visit.
  *
  * [receiveViewModel] backs "Add this list", for a list pasted here or shared into the app; null
  * leaves "Paste a list" out. [onOpenPantry] shows the pantry once lines were added to it.
@@ -110,12 +116,19 @@ fun GroceriesScreen(
     val context = LocalContext.current
     val resources = LocalResources.current
 
-    // Snackbars only for undo (#146): a delete, or "Done shopping".
+    // Leaving the screen (not rotating it) ends the visit: the list tidies for the next (#219).
+    val activity = LocalActivity.current
+    DisposableEffect(viewModel) {
+        onDispose { if (activity?.isChangingConfigurations != true) viewModel.onLeave() }
+    }
+
+    // Snackbars only for undo (#146): a delete, "Done shopping", or a clear from the menu (#219).
     val removed = state.removed
     val removedMessage = removed?.let {
         when {
             it.label != null -> stringResource(R.string.snackbar_grocery_deleted, it.label)
             it.putAway -> stringResource(R.string.snackbar_done_shopping)
+            it.all -> stringResource(R.string.snackbar_groceries_cleared)
             else -> stringResource(R.string.snackbar_checked_cleared)
         }
     }
@@ -183,7 +196,11 @@ fun GroceriesScreen(
                                 canSendFile = state.hasUnchecked,
                                 onSendFile = sendFileViewModel?.let { vm ->
                                     { vm.sendGroceries(resources.getString(R.string.tab_groceries)) }
-                                }
+                                },
+                                canClearTicked = state.hasChecked,
+                                onClearTicked = viewModel::onClearTicked,
+                                canClearAll = state.hasItems,
+                                onClearAll = viewModel::onClearAll
                             )
                         }
                         Spacer(Modifier.height(8.dp))
@@ -250,6 +267,20 @@ fun GroceriesScreen(
                 onDismiss = viewModel::onPutAwayDismissed
             )
         }
+        state.confirmClearAll?.let { rows ->
+            AlertDialog(
+                onDismissRequest = viewModel::onClearAllDismissed,
+                title = { Text(pluralStringResource(R.plurals.clear_groceries_title, rows, rows)) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::onClearAllConfirm, modifier = Modifier.testTag("clearAllConfirm")) {
+                        Text(stringResource(R.string.action_clear))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::onClearAllDismissed) { Text(stringResource(R.string.action_cancel)) }
+                }
+            )
+        }
         receiveViewModel?.let { ReceiveListSheet(it, onAddedToPantry = onOpenPantry) }
     }
 }
@@ -267,7 +298,11 @@ private fun GroceriesMenu(
     onShare: () -> Unit,
     onPaste: (() -> Unit)?,
     canSendFile: Boolean = false,
-    onSendFile: (() -> Unit)? = null
+    onSendFile: (() -> Unit)? = null,
+    canClearTicked: Boolean = false,
+    onClearTicked: () -> Unit = {},
+    canClearAll: Boolean = false,
+    onClearAll: () -> Unit = {}
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -303,6 +338,23 @@ private fun GroceriesMenu(
                     }
                 )
             }
+            // Clearing without "Done shopping" (#219): the pantry is untouched, and Undo puts it back.
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_clear_ticked)) },
+                enabled = canClearTicked,
+                onClick = {
+                    expanded = false
+                    onClearTicked()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_clear_groceries)) },
+                enabled = canClearAll,
+                onClick = {
+                    expanded = false
+                    onClearAll()
+                }
+            )
         }
     }
 }
