@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import UniformTypeIdentifiers
 
 /// What a share carried that the import can use.
@@ -35,6 +36,46 @@ enum SharedItems {
                let link = UrlInput.extractSharedUrl(text) {
                 return SharedInput(url: link)
             }
+        }
+        return nil
+    }
+
+    /// The images the share carried (#226), copied into `pages` as a new scan's pages, in order,
+    /// at most `ScanPages.maxPages`. Each is copied from the file the sharing app hands over,
+    /// never held whole in the extension's small memory; one handed over only as data or an
+    /// image is written out. Empty when the share held no image (the last scan's pages stay).
+    static func images(from providers: [NSItemProvider], into pages: ScanPages) async -> [String] {
+        let images = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
+        guard !images.isEmpty else { return [] }
+        pages.clear()
+        var staged: [String] = []
+        for provider in images.prefix(ScanPages.maxPages) {
+            let index = staged.count
+            if let page = await copiedFile(provider, into: pages, page: index) {
+                staged.append(page)
+            } else if let page = await writtenItem(provider, into: pages, page: index) {
+                staged.append(page)
+            }
+        }
+        return staged
+    }
+
+    /// The image's file, copied in while the provider still holds it.
+    private static func copiedFile(_ provider: NSItemProvider, into pages: ScanPages, page: Int) async -> String? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { url, _ in
+                continuation.resume(returning: url.flatMap { pages.copy($0, page: page) })
+            }
+        }
+    }
+
+    /// An image handed over as a file URL, bytes or a `UIImage` (a screenshot from its editor).
+    private static func writtenItem(_ provider: NSItemProvider, into pages: ScanPages, page: Int) async -> String? {
+        guard let item = try? await provider.loadItem(forTypeIdentifier: UTType.image.identifier) else { return nil }
+        if let url = item as? URL, url.isFileURL { return pages.copy(url, page: page) }
+        if let data = item as? Data { return pages.write(data, page: page) }
+        if let image = item as? UIImage, let data = image.jpegData(compressionQuality: 0.9) {
+            return pages.write(data, page: page)
         }
         return nil
     }

@@ -41,6 +41,15 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
 
+            <!-- "Scan a recipe" (#226): a photo or screenshot of a recipe, or several pages,
+                 shared in from the gallery or another app, read on the device -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
             <!-- A Recipe Clipper file (#149): recipes and grocery items sent from another phone,
                  opened from a message or a file manager, or shared in. By its own type... -->
             <intent-filter>

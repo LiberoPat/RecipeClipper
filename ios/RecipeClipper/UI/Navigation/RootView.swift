@@ -42,6 +42,10 @@ struct RootView: View {
                 if phase == .active, let url = container.takePendingClip() {
                     router.openInRecipes(.clip(url, blocked: true))
                 }
+                // Images the share extension left (#226) open the scan's review.
+                if phase == .active, let pages = container.takePendingScan() {
+                    router.openInRecipes(.scanRecipe(pages))
+                }
             }
             // The share extension saves from its own process; catch up on coming back.
             .onChange(of: scenePhase) { _, phase in
@@ -56,6 +60,10 @@ struct RootView: View {
                 // A UI test's stand-in for a file opened from Messages (#149).
                 if let file = UITestSeeding.receivedFileURL() {
                     container.receiveFileViewModel?.open(file)
+                }
+                // A UI test's stand-in for a scan (#226): local pictures, read by the real reader.
+                if let pages = UITestSeeding.scanPages() {
+                    router.openInRecipes(.scanRecipe(pages))
                 }
             }
             #endif
@@ -94,7 +102,8 @@ struct RootView: View {
                     onOpenRecipes: { router.push(.recipes) },
                     onOpenLists: { router.push(.lists) },
                     onOpenSettings: { router.push(.settings) },
-                    onNewRecipe: { router.push(.editRecipe(id: nil)) }
+                    onNewRecipe: { router.push(.editRecipe(id: nil)) },
+                    onScan: scanHandler(push: router.push)
                 )
             }
             .navigationDestination(for: Route.self) { route in
@@ -208,7 +217,8 @@ struct RootView: View {
                     vm: vm,
                     onOpenRecipe: { push(.recipe(id: $0)) },
                     onNewRecipe: { push(.editRecipe(id: nil)) },
-                    onOpenUrl: { push(.importUrl($0)) }
+                    onOpenUrl: { push(.importUrl($0)) },
+                    onScan: scanHandler(push: push)
                 )
             }
         case .settings:
@@ -248,6 +258,29 @@ struct RootView: View {
                 EditRecipeScreen(vm: vm, onSaved: router.openSavedClip)
             }
             .toolbar(.hidden, for: .tabBar)
+        case .scanRecipe(let pages):
+            // "Scan a recipe" (#226): the saved recipe replaces the review, as a typed-in one does,
+            // and the pages go.
+            ScreenHost({ container.makeEditRecipeViewModel(scanPages: pages) }) { vm in
+                EditRecipeScreen(vm: vm, onSaved: { saved in
+                    container.scanPages.clear()
+                    replace(1, .recipe(id: saved))
+                })
+            }
+            .toolbar(.hidden, for: .tabBar)
+        }
+    }
+
+    /// "Scan a recipe" (#226), behind the photoText flag: the pictures taken or picked become
+    /// the scan's pages on disk, then its review opens. Nil hides the entries.
+    private func scanHandler(push: @escaping (Route) -> Void) -> (([Data]) -> Void)? {
+        guard container.featureFlags.isOn(.photoText) else { return nil }
+        let pages = container.scanPages
+        return { pictures in
+            Task {
+                let staged = await Task.detached(priority: .userInitiated) { pages.stage(pictures) }.value
+                if !staged.isEmpty { push(.scanRecipe(staged)) }
+            }
         }
     }
 

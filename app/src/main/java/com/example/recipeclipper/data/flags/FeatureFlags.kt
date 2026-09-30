@@ -39,7 +39,8 @@ enum class Flag(val key: String) {
     /** Reddit posts (#11): Reddit links go to the Reddit source rather than the blog one. */
     REDDIT("reddit"),
 
-    /** Reading a Reddit post's photo with on-device text recognition, checked by the cook (#198). */
+    /** Reading a Reddit post's photo with on-device text recognition, checked by the cook (#198),
+     *  and scanning the cook's own photos the same way (#226). */
     PHOTO_TEXT("photoText");
 
     companion object {

@@ -70,6 +70,7 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var saveEditCalls: [(id: Int64, draft: RecipeDraft)] = []
     var addManualResult: Recipe?
     private(set) var addManualCalls: [RecipeDraft] = []
+    private(set) var addManualLanguages: [String?] = []
 
     @MainActor func updateFromSource(id: Int64) async -> ParseResult {
         updateFromSourceCalls.append(id)
@@ -81,8 +82,9 @@ final class FakeRecipeRepository: RecipeRepository {
         return saveEditResult
     }
 
-    @MainActor func addManual(draft: RecipeDraft) async -> Recipe? {
+    @MainActor func addManual(draft: RecipeDraft, language: String?) async -> Recipe? {
         addManualCalls.append(draft)
+        addManualLanguages.append(language)
         return addManualResult
     }
 

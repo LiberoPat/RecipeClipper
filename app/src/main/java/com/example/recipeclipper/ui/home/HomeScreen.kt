@@ -44,6 +44,9 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.common.RecipeRow
+import com.example.recipeclipper.ui.common.LocalFlagValues
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.edit.ScanRecipeButton
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.settings.BackupStatus
@@ -66,7 +69,9 @@ fun HomeScreen(
     onOpenLists: () -> Unit,
     onOpenSettings: () -> Unit,
     onNewRecipe: () -> Unit = {},
-    viewModel: HomeViewModel = hiltViewModel()
+    onScan: (List<String>) -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel(),
+    scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val now = remember { System.currentTimeMillis() }
@@ -142,16 +147,20 @@ fun HomeScreen(
                                 modifier = Modifier.padding(top = 6.dp)
                             ) { Text(stringResource(R.string.action_go)) }
                         }
-                        // Typing a recipe in by hand (#29): a small way in, not a section.
-                        TextButton(
-                            onClick = onNewRecipe,
-                            modifier = Modifier.offset(x = (-12).dp).tooltipAnchor(Tooltip.HOME_NEW_RECIPE)
-                        ) {
-                            Text(
-                                stringResource(R.string.action_new_recipe),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
+                        // Typing a recipe in by hand (#29): a small way in, not a section. Beside
+                        // it, scanning one from photos (#226, the photoText flag).
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = onNewRecipe,
+                                modifier = Modifier.offset(x = (-12).dp).tooltipAnchor(Tooltip.HOME_NEW_RECIPE)
+                            ) {
+                                Text(
+                                    stringResource(R.string.action_new_recipe),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                            if (scanEnabled) ScanRecipeButton(onScan, Modifier.offset(x = (-12).dp))
                         }
                     }
 

@@ -85,6 +85,11 @@ object Routes {
     fun editPhoto(post: PhotoPost) = "edit/photo?${EditRecipeViewModel.PHOTO_URL_ARG}=${Uri.encode(post.url)}" +
         "&${EditRecipeViewModel.PHOTO_TITLE_ARG}=${Uri.encode(post.title)}" +
         "&${EditRecipeViewModel.PHOTO_IMAGES_ARG}=${Uri.encode(post.imageUrls.joinToString("\n"))}"
+    // "Scan a recipe" (#226): the same editor, filled from the cook's own pages (local URIs).
+    const val SCAN = "edit/scan?${EditRecipeViewModel.SCAN_PAGES_ARG}={${EditRecipeViewModel.SCAN_PAGES_ARG}}"
+
+    fun scan(pages: List<String>) =
+        "edit/scan?${EditRecipeViewModel.SCAN_PAGES_ARG}=${Uri.encode(pages.joinToString("\n"))}"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
 }
@@ -116,7 +121,8 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onOpenRecipes = { navController.navigate(Routes.RECIPES) },
             onOpenLists = { navController.navigate(Routes.LISTS) },
             onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-            onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) }
+            onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) },
+            onScan = { navController.navigate(Routes.scan(it)) }
         )
     }
 
@@ -143,7 +149,8 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onBack = { navController.popBackStack() },
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
             onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) },
-            onOpenUrl = { navController.navigate(Routes.import(it)) }
+            onOpenUrl = { navController.navigate(Routes.import(it)) },
+            onScan = { navController.navigate(Routes.scan(it)) }
         )
     }
 
@@ -249,6 +256,22 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
                 navController.navigate(Routes.recipe(id)) {
                     popUpTo(Routes.IMPORT) { inclusive = true }
                 }
+            }
+        )
+    }
+
+    composable(
+        route = Routes.SCAN,
+        arguments = listOf(
+            navArgument(EditRecipeViewModel.SCAN_PAGES_ARG) { type = NavType.StringType; defaultValue = "" }
+        )
+    ) {
+        EditRecipeScreen(
+            onBack = { navController.popBackStack() },
+            // The saved recipe replaces the review, as a typed-in one does.
+            onSaved = { id ->
+                navController.popBackStack()
+                navController.navigate(Routes.recipe(id))
             }
         )
     }

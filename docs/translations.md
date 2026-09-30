@@ -100,6 +100,7 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | I made this (#116) | Lo he hecho | Je l'ai fait | Hab ich gekocht | L'ho fatto | Eu fiz |
 | Mark as cooked / Cooked (no photo, #173) | Marcar como cocinada / Cocinada | Marquer comme cuisinée / Cuisinée | Als gekocht markieren / Gekocht | Segna come cucinata / Cucinata | Marcar como feita / Feita |
 | Read the photo / Check the recipe (#198) | Leer la foto / Revisa la receta | Lire la photo / Vérifiez la recette | Foto lesen / Rezept prüfen | Leggi la foto / Controlla la ricetta | Ler a foto / Confira a receita |
+| Scan a recipe / Page 1 of 2 (#226) | Escanear una receta / Página 1 de 2 | Scanner une recette / Page 1 sur 2 | Rezept scannen / Seite 1 von 2 | Scansiona una ricetta / Pagina 1 di 2 | Escanear uma receita / Página 1 de 2 |
 | Check these lines: the photo was hard to read there (#198) | Revisa estas líneas: ahí la foto se leía mal | Vérifiez ces lignes : la photo y était difficile à lire | Prüfe diese Zeilen: Dort war das Foto schwer zu lesen | Controlla queste righe: lì la foto era difficile da leggere | Confira estas linhas: ali a foto estava difícil de ler |
 
 Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and Italian

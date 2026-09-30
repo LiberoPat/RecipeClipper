@@ -34,10 +34,12 @@ final class ShareViewController: UIViewController {
         // A post Reddit won't let the app read is left here for the app (#213).
         let defaults = UserDefaults(suiteName: AppGroup.identifier)
         let reddit = defaults.map(DefaultsRedditSwitch.init)
+        // Images shared in are left for the app's scan review too (#226).
         let viewModel = ShareImportViewModel(
             repository: repository, connectivity: PathConnectivity(),
             makeReceiveList: { db.flatMap(makeReceiveList) },
-            redditOn: { reddit?.isOn ?? true }, pendingClip: defaults.map(PendingClip.init)
+            redditOn: { reddit?.isOn ?? true }, pendingClip: defaults.map(PendingClip.init),
+            pendingScan: defaults.map { PendingScan(defaults: $0, pages: ScanPages.shared()) }
         )
         return (viewModel, repository)
     }
@@ -126,10 +128,13 @@ final class ShareViewController: UIViewController {
                 )
             }
             let input = await SharedItems.read(from: providers)
-            // No link: perhaps a list sent from another phone (#149).
-            let text = input == nil ? await SharedItems.text(from: providers) : nil
+            // No link: perhaps pictures of a recipe to scan (#226, while the app's photoText
+            // flag is on), copied for the app to read, or else a list sent from another phone (#149).
+            let scanOn = UserDefaults(suiteName: AppGroup.identifier).map { DefaultsPhotoTextSwitch(defaults: $0).isOn } ?? false
+            let pages = input == nil && scanOn ? await SharedItems.images(from: providers, into: ScanPages.shared()) : []
+            let text = input == nil && pages.isEmpty ? await SharedItems.text(from: providers) : nil
             MemoryFootprint.log("read the shared items")
-            viewModel.start(with: input, text: text)
+            viewModel.start(with: input, text: text, scanPages: pages)
             await viewModel.currentLoad?.value
             MemoryFootprint.log("import finished")
         }

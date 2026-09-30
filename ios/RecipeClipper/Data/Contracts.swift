@@ -230,8 +230,9 @@ protocol RecipeRepository: AnyObject {
 
     /// Saves a recipe typed in by hand (MANUAL, with a `manual:` link). Nil as for `saveEdit`.
     /// On a full free library (#107) with nothing to make room, the recipe comes back with id
-    /// 0: not kept, and the editor stays open.
-    func addManual(draft: RecipeDraft) async -> Recipe?
+    /// 0: not kept, and the editor stays open. `language` is a scanned recipe's (#226), as its
+    /// words said; a recipe typed in has none.
+    func addManual(draft: RecipeDraft, language: String?) async -> Recipe?
 
     /// Opens a recipe from history, a list or home. Counts as a view. Nil if it's gone.
     func open(id: Int64) async -> Recipe?
@@ -284,6 +285,11 @@ protocol RecipeRepository: AnyObject {
 
 extension RecipeRepository {
     func forget(_ deleted: DeletedRecipe) async {}
+
+    /// A recipe typed in by hand, with no language of its own (#29).
+    func addManual(draft: RecipeDraft) async -> Recipe? {
+        await addManual(draft: draft, language: nil)
+    }
 
     func observeCount() -> AnyPublisher<Int, Never> {
         observeHistory(query: "").map(\.count).removeDuplicates().eraseToAnyPublisher()

@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import coil.imageLoader
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import coil.size.Precision
@@ -27,7 +28,7 @@ import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
- * Reads a post's photos with ML Kit Text Recognition's Latin model from Google Play services
+ * Reads a post's photos, or the cook's own pages (#226, local URIs), with ML Kit Text Recognition's Latin model from Google Play services
  * (#198): on the phone, offline once the picture and the model are here. The model isn't in the
  * app: Play services downloads it, ahead of time when the manifest's DEPENDENCIES meta-data is
  * honoured, else on first use. Until it's there (still downloading, offline on first use, or no
@@ -88,11 +89,20 @@ class MlKitPhotoTextReader @Inject constructor(
     }
 
     private suspend fun load(url: String): Bitmap? {
+        // The cook's own page (#226) is read from where it is, never cached: a reused capture
+        // file must never answer with an earlier picture, and a scan isn't kept.
+        val local = url.startsWith("content:") || url.startsWith("file:")
         val request = ImageRequest.Builder(context)
             .data(url)
             .size(MAX_SIDE)
             .precision(Precision.INEXACT) // subsample a large picture, never enlarge a small one
             .allowHardware(false) // ML Kit reads the pixels
+            .apply {
+                if (local) {
+                    memoryCachePolicy(CachePolicy.DISABLED)
+                    diskCachePolicy(CachePolicy.DISABLED)
+                }
+            }
             .build()
         val result = context.imageLoader.execute(request) as? SuccessResult ?: return null
         return (result.drawable as? BitmapDrawable)?.bitmap

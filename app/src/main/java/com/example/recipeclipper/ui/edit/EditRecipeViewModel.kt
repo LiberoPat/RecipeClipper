@@ -56,8 +56,11 @@ data class EditRecipeUiState(
     val libraryFull: Boolean = false,
     /** A purchase from that prompt that is pending or failed; shown until the next edit. */
     val unlockNotice: PurchaseOutcome? = null,
-    /** "Read the photo" (#198): the Reddit post whose photos fill this editor; null otherwise. */
+    /** "Read the photo" (#198): the Reddit post whose photos fill this editor; null otherwise.
+     *  For a scan (#226) its pictures are the cook's pages, with no link and no title. */
     val photo: PhotoPost? = null,
+    /** "Scan a recipe" (#226): the pages are the cook's own, saved as a typed-in recipe. */
+    val scan: Boolean = false,
     /** The photos are being fetched and read; the fields wait. */
     val reading: Boolean = false,
     val photoOutcome: PhotoOutcome? = null,
@@ -74,6 +77,10 @@ data class EditRecipeUiState(
  * ingredients and steps, or, when nothing sorts, all in the ingredients box to finish by hand.
  * Nothing is saved until the cook taps Save; then it is kept under the post's link as the
  * user's version (CLIPPED, like #37's clips), so a re-share never replaces it.
+ *
+ * With pages ([SCAN_PAGES_ARG], #226) it is the review of a scan: photos the cook took, picked
+ * or shared in, read the same way, in order. Saved as a typed-in recipe (MANUAL, `manual:<uuid>`)
+ * in the language its words say, with no picture: the pages aren't kept.
  */
 @HiltViewModel
 class EditRecipeViewModel @Inject constructor(
@@ -95,7 +102,18 @@ class EditRecipeViewModel @Inject constructor(
             )
         }
 
-    private val _uiState = MutableStateFlow(EditRecipeUiState(isNew = recipeId == null, photo = photo))
+    /** A scan's pages (#226), local URIs in order; null when this isn't a scan. */
+    private val scanPages: List<String>? =
+        savedStateHandle.get<String>(SCAN_PAGES_ARG)?.split('\n')?.map { it.trim() }?.filter { it.isNotEmpty() }
+            ?.takeIf { it.isNotEmpty() && photo == null && recipeId == null }
+
+    /** What is read: the post's pictures, or the scan's pages. */
+    private val pictures: PhotoPost? =
+        photo ?: scanPages?.let { PhotoPost(url = "", title = "", imageUrls = it) }
+
+    private val _uiState = MutableStateFlow(
+        EditRecipeUiState(isNew = recipeId == null, photo = pictures, scan = scanPages != null)
+    )
     val uiState: StateFlow<EditRecipeUiState> = _uiState.asStateFlow()
 
     private var readJob: Job? = null
@@ -112,14 +130,14 @@ class EditRecipeViewModel @Inject constructor(
                     else it.copy(loading = false, draft = RecipeDraft.of(recipe))
                 }
             }
-        } else if (photo != null) {
-            readPhoto(photo)
+        } else if (pictures != null) {
+            readPhoto(pictures)
         }
     }
 
     /** "Try again" after the photos couldn't be fetched or read, or the reader wasn't ready. */
     fun onReadAgain() {
-        val post = photo ?: return
+        val post = pictures ?: return
         if (_uiState.value.reading) return
         readPhoto(post)
     }
@@ -130,7 +148,11 @@ class EditRecipeViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 reading = true, photoOutcome = null, uncertain = emptyList(),
-                draft = RecipeDraft(name = post.title, image = post.imageUrls.firstOrNull().orEmpty())
+                // A post's first picture is its photo; a scan's pages are never kept (#226).
+                draft = RecipeDraft(
+                    name = post.title,
+                    image = if (scanPages != null) "" else post.imageUrls.firstOrNull().orEmpty()
+                )
             )
         }
         readJob = viewModelScope.launch {
@@ -178,7 +200,9 @@ class EditRecipeViewModel @Inject constructor(
                 savePhoto(post, state.draft)
                 return@launch
             }
-            val saved = if (recipeId == null) {
+            val saved = if (scanPages != null) {
+                repository.addManual(state.draft, scannedLanguage(state.draft))
+            } else if (recipeId == null) {
                 repository.addManual(state.draft)
             } else {
                 repository.saveEdit(recipeId, state.draft)
@@ -220,6 +244,19 @@ class EditRecipeViewModel @Inject constructor(
         }
     }
 
+    /** A scan's language (#226): its words (#208), then the checked recipe's, else English. */
+    private fun scannedLanguage(draft: RecipeDraft): String? {
+        val content = draft.applyTo(
+            Recipe(
+                name = "", image = null, ingredients = emptyList(), instructions = emptyList(),
+                prepTime = null, cookTime = null, totalTime = null, yield = null, sourceUrl = ""
+            )
+        )
+        return LanguageWords.resolve(photoLanguage, null) {
+            LanguageWords.detectionText(content.name, content.ingredients)
+        }
+    }
+
     /** Unlock from the full-library prompt (#107), then save the recipe as typed. */
     fun onUnlock() {
         _uiState.update { it.copy(libraryFull = false) }
@@ -239,5 +276,8 @@ class EditRecipeViewModel @Inject constructor(
         const val PHOTO_URL_ARG = "url"
         const val PHOTO_TITLE_ARG = "title"
         const val PHOTO_IMAGES_ARG = "images"
+
+        /** "Scan a recipe" (#226): the pages, local URIs one per line, in order. */
+        const val SCAN_PAGES_ARG = "pages"
     }
 }

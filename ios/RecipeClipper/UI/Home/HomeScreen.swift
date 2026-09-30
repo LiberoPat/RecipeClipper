@@ -12,6 +12,8 @@ struct HomeScreen: View {
     let onOpenLists: () -> Void
     let onOpenSettings: () -> Void
     var onNewRecipe: () -> Void = {}
+    /// "Scan a recipe" (#226): the pictures taken or picked, in order; nil hides it (flag off).
+    var onScan: (([Data]) -> Void)? = nil
 
     @State private var now = currentMillis()
     @State private var restoring = false
@@ -67,12 +69,20 @@ struct HomeScreen: View {
                 }
                 .padding(.top, 20)
 
-                // Typing a recipe in by hand (#29): a small way in, not a section.
-                Button(Strings.newRecipe, action: onNewRecipe)
-                    .buttonStyle(TextActionStyle())
-                    .tooltipAnchor(.homeNewRecipe)
-                    .padding(.top, 8)
-                    .accessibilityIdentifier("home.newRecipe")
+                // Typing a recipe in by hand (#29): a small way in, not a section. Beside it,
+                // scanning one from photos (#226, the photoText flag); under it at the
+                // accessibility sizes.
+                let entryLayout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                    : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+                entryLayout {
+                    Button(Strings.newRecipe, action: onNewRecipe)
+                        .buttonStyle(TextActionStyle())
+                        .tooltipAnchor(.homeNewRecipe)
+                        .accessibilityIdentifier("home.newRecipe")
+                    if let onScan { ScanRecipeButton(onScan: onScan) }
+                }
+                .padding(.top, 8)
 
                 if let latest = state.continueCooking {
                     SectionHeading(Strings.sectionContinueCooking).padding(.top, 24)

@@ -20,6 +20,9 @@ enum ShareImportUiState: Equatable {
     /// Reddit wouldn't let the app read the post (#213): it is left for the app
     /// (`PendingClip`), which opens "Clip it yourself" on it; the card says to open the app.
     case clipInApp
+    /// Images shared in (#226): left for the app (`PendingScan`), whose review reads them and
+    /// the cook checks (never saved unchecked); the card says to open the app.
+    case scanInApp
 }
 
 /// The share extension's one screen. The import itself is `RecipeRepository.importFromUrl`, the
@@ -38,6 +41,10 @@ final class ShareImportViewModel {
     /// app (#213); nil leaves nothing.
     @ObservationIgnored private let redditOn: () -> Bool
     @ObservationIgnored private let pendingClip: PendingClip?
+    /// Where images shared in are left for the app (#226); nil leaves nothing.
+    @ObservationIgnored private let pendingScan: PendingScan?
+    /// The images a share carried, staged as a scan's pages (#226), when it had no link.
+    @ObservationIgnored private var scanPages: [String] = []
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private var input: SharedInput?
     @ObservationIgnored private var text: String?
@@ -54,13 +61,15 @@ final class ShareImportViewModel {
     init(
         repository: RecipeRepository?, connectivity: Connectivity = StaticConnectivity(),
         makeReceiveList: (@MainActor () -> ReceiveListViewModel?)? = nil,
-        redditOn: @escaping () -> Bool = { true }, pendingClip: PendingClip? = nil, clock: Clock = SystemClock()
+        redditOn: @escaping () -> Bool = { true }, pendingClip: PendingClip? = nil,
+        pendingScan: PendingScan? = nil, clock: Clock = SystemClock()
     ) {
         self.repository = repository
         self.connectivity = connectivity
         self.makeReceiveList = makeReceiveList
         self.redditOn = redditOn
         self.pendingClip = pendingClip
+        self.pendingScan = pendingScan
         self.clock = clock
     }
 
@@ -70,10 +79,11 @@ final class ShareImportViewModel {
     }
 
     /// Called once, with whatever the share carried (nil: no web link in it) and, when it had
-    /// no link, its plain `text`.
-    func start(with input: SharedInput?, text: String? = nil) {
+    /// no link, its images staged as a scan's pages (#226) or else its plain `text`.
+    func start(with input: SharedInput?, text: String? = nil, scanPages: [String] = []) {
         self.input = input
         self.text = text
+        self.scanPages = scanPages
         load()
     }
 
@@ -93,6 +103,13 @@ final class ShareImportViewModel {
         reconnectTask?.cancel()
         reconnectTask = nil
         guard let input else {
+            // Images (#226): the app reads them, and the cook checks what it read.
+            if !scanPages.isEmpty, let pendingScan {
+                pendingClip?.clear()
+                pendingScan.put(scanPages, at: clock.now())
+                uiState = .scanInApp
+                return
+            }
             if let text, !ReceivedList.lines(text).isEmpty,
                let list = receiveList ?? makeReceiveList?() {
                 receiveList = list
@@ -108,8 +125,9 @@ final class ShareImportViewModel {
             return
         }
         uiState = .loading
-        // A new share moves on from any post left for the app before.
+        // A new share moves on from any post or images left for the app before.
         pendingClip?.clear()
+        pendingScan?.clear()
         loadTask = Task { [weak self, repository, input] in
             let result = await repository.importFromUrl(input.url, renderedPage: input.page)
             guard !Task.isCancelled, let self else { return }

@@ -335,6 +335,11 @@
     <string name="photo_check_heading">Check these lines: the photo was hard to read there</string>
     <string name="photo_image_description">Photo of %1$s</string>
 
+    <!-- Scan a recipe (#226) -->
+    <string name="action_scan_recipe">Scan a recipe</string>
+    <string name="scan_page_description">Page %1$d of %2$d</string>
+    <string name="scan_failed">Couldn\'t open the picture. Try again, or go back and choose another.</string>
+
     <!-- Week meal plan (#49) -->
     <string name="action_add_to_plan">Add to plan</string>
     <string name="action_add_to_day">Add to %1$s</string>

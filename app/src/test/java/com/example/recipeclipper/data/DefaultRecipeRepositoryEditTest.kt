@@ -160,6 +160,15 @@ class DefaultRecipeRepositoryEditTest {
         assertEquals(0, source.fetches)
     }
 
+    @Test fun `a scanned recipe is typed-in and keeps the language it was read in (#226)`() = runTest {
+        val recipe = repository.addManual(edit, language = "de")!!
+
+        assertTrue(ManualRecipe.isManual(recipe.sourceUrl))
+        assertEquals(ContentOrigin.MANUAL, recipe.origin)
+        assertEquals("de", recipe.language)
+        assertEquals(null, repository.addManual(edit)!!.language)
+    }
+
     @Test fun `two manual recipes are two rows`() = runTest {
         val a = repository.addManual(edit)!!
         val b = repository.addManual(edit)!!

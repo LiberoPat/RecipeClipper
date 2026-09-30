@@ -71,6 +71,12 @@ enum Strings {
     static var photoFailed: String { String(localized: "photo_failed") }
     static var photoCheckHeading: String { String(localized: "photo_check_heading") }
     static func photoImageDescription(_ title: String) -> String { String(localized: "photo_image_description \(title)") }
+    // Scan a recipe (#226)
+    static var scanRecipe: String { String(localized: "action_scan_recipe") }
+    static func scanPageDescription(_ page: Int, _ count: Int) -> String {
+        String(localized: "scan_page_description \(page) \(count)")
+    }
+    static var scanFailed: String { String(localized: "scan_failed") }
     static func openOriginalHint(_ domain: String) -> String { String(localized: "cd_open_original \(domain)") }
 
     // Clip it yourself (#37)
@@ -194,6 +200,7 @@ enum Strings {
     // Share extension (the confirmation card shown over the app that shared)
     static var shareGettingRecipe: String { String(localized: "share_getting_recipe") }
     static var shareRedditBlocked: String { String(localized: "share_reddit_blocked") }
+    static var shareScanInApp: String { String(localized: "share_scan_in_app") }
     static var shareSaved: String { String(localized: "share_saved") }
     static var shareOpenToCook: String { String(localized: "share_open_to_cook") }
     static var shareNoLink: String { String(localized: "share_no_link") }

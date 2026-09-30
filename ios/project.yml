@@ -158,6 +158,9 @@ targets:
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
               NSExtensionActivationSupportsWebPageWithMaxCount: 1
               NSExtensionActivationSupportsText: true
+              # "Scan a recipe" (#226): photos of a recipe, up to ScanPages.maxPages, left for the
+              # app's review (the extension can't open it, #19; PendingScan).
+              NSExtensionActivationSupportsImageWithMaxCount: 6
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:

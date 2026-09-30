@@ -23,24 +23,42 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeSort
+import com.example.recipeclipper.ui.edit.ScanChoices
+import com.example.recipeclipper.ui.edit.rememberScanSources
 
-/** The + in the Recipes header (#102): type a recipe in, or paste a link. */
+/**
+ * The + in the Recipes header (#102): type a recipe in, paste a link, or, with [onScan] (the
+ * `photoText` flag, #226), scan one, whose row turns the menu into its two choices: take a
+ * photo or choose from the library.
+ */
 @Composable
-internal fun AddMenu(onTypeRecipe: () -> Unit, onPasteLink: () -> Unit) {
+internal fun AddMenu(onTypeRecipe: () -> Unit, onPasteLink: () -> Unit, onScan: ((List<String>) -> Unit)? = null) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var scanning by rememberSaveable { mutableStateOf(false) }
+    val sources = rememberScanSources { pages -> onScan?.invoke(pages) }
     Box {
-        IconButton(onClick = { expanded = true }) {
+        IconButton(onClick = { scanning = false; expanded = true }) {
             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_recipe))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_type_recipe)) },
-                onClick = { expanded = false; onTypeRecipe() }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_paste_link)) },
-                onClick = { expanded = false; onPasteLink() }
-            )
+            if (scanning) {
+                ScanChoices(sources) { expanded = false }
+            } else {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_type_recipe)) },
+                    onClick = { expanded = false; onTypeRecipe() }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_paste_link)) },
+                    onClick = { expanded = false; onPasteLink() }
+                )
+                if (onScan != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_scan_recipe)) },
+                        onClick = { scanning = true }
+                    )
+                }
+            }
         }
     }
 }
