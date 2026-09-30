@@ -1505,10 +1505,13 @@ The third tab of #46, still behind the #47 flag.
     listed once, "× 3". Before, each line had its own box, so a repeated
     recipe looked like separate items.
 - **Checked and shared.** Ticking a row ticks all its lines; checked
-  rows sort after unchecked ones in each aisle and are struck through. Share ("Send list" since #149)
+  rows are struck through and dimmed, and sort after unchecked ones in each aisle, though only
+  from the next visit: a tick never moves a row while Groceries is shown (#219, in the #146
+  section below). Share ("Send list" since #149)
   sends the unchecked rows as plain text by aisle. Delete and clearing the
   checked rows are undoable from one snackbar (one undo at a time, as on the
-  Week). "Clear checked" became "Done shopping" (#146, below).
+  Week). "Clear checked" became "Done shopping" (#146, below), and came back in the menu as
+  "Clear ticked items" beside "Clear the whole list" (#219).
 - **Adding.** "Add to groceries" in the recipe menu and "Add this week's
   ingredients" in the Week menu open the same sheet (Paprika's basket): every
   line ticked, headings (a line ending in ":") and blanks left out, one
@@ -1518,7 +1521,8 @@ The third tab of #46, still behind the #47 flag.
 - **In the export file** (#26) with the pantry and the plan: see the Pantry
   section's Export note.
 - **The screen in short** (CLAUDE.md's summary until September 2026, with
-  #146 and #149): "Add an item", then the list by aisle (unchecked first); tap
+  #146 and #149): "Add an item", then the list by aisle (unchecked first, as of the visit's
+  start: a tick never moves a row until Groceries is opened again, #219); tap
   ticks, and a tick only ticks (#146); long-press offers "Move to aisle…" and
   Delete (undo snackbar); the menu sends the list ("Send list": every unticked
   item as plain text, each naming its recipes in brackets; "Send as file": the
@@ -1529,8 +1533,9 @@ The third tab of #46, still behind the #47 flag.
   menu, after Add to plan) and "Add this week's ingredients" (Week menu) open
   one sheet: the lines as the reading view renders them (the week's at each
   meal's planned servings), headings left out, all ticked except what the
-  pantry has (#51), one button. **"Done shopping"** (#146, shown while anything
-  is ticked; there is no "Clear checked"): a sheet of the ticked items with
+  pantry has (#51), one button. The menu also clears without putting away (#219):
+  "Clear ticked items" at once, "Clear the whole list" after asking, each with Undo.
+  **"Done shopping"** (#146, shown while anything is ticked): a sheet of the ticked items with
   checkboxes, pantry-tracked ones ticked, the rest not; one confirm restocks or
   adds the ticked ones (only here, never on the tick) and clears every ticked
   line, with one Undo for both. Snackbars only for undo.
@@ -3049,8 +3054,8 @@ The owner found the per-tick snackbars annoying and easy to miss: tick one more 
 offer for the first was replaced and gone. Owner's decisions:
 
 - **A tick only ticks.** No snackbar, no pantry change, nothing offered.
-- **One "Done shopping" button replaces "Clear checked"** (one button rather than "Put away…"
-  beside "Clear checked"). It shows at the bottom of Groceries while anything is ticked, and
+- **One "Done shopping" button for putting away** (one button rather than "Put away…" beside
+  "Clear checked"; clearing without putting away came back in the menu with #219, below). It shows at the bottom of Groceries while anything is ticked, and
   opens a sheet of the ticked items with checkboxes: one row per pantry item or ingredient
   name (two butters the pantry tracks as "Butter" are one row), in the list's order. What the
   pantry tracks starts ticked; the rest starts unticked, since the pantry holds what the cook
@@ -3063,8 +3068,27 @@ offer for the first was replaced and gone. Owner's decisions:
   "Checked items removed" when nothing went in the pantry) puts back the cleared lines, the
   restocked items as they were (a snapshot) and deletes the added ones.
   `PantryRepository.add` returns the new id for that.
-- **Snackbars only for undo:** a delete, or Done shopping. The rest of the app already used
-  them that way.
+- **Snackbars only for undo:** a delete, Done shopping, or a clear from the menu (#219). The
+  rest of the app already used them that way.
+- **Clearing from the ⋮ menu, both** (owner, 2026-09-29, testing on a phone, #219: waiting for
+  the bottom "Done shopping" button to clear "doesn't feel good"). "Clear ticked items" removes
+  only the ticked lines, at once, with no Done shopping sheet, so nothing goes into the pantry;
+  it's disabled while nothing is ticked. "Clear the whole list" removes every line, ticked or
+  not, after a "Clear all 14 items?" dialog (the count is the rows shown: an added-up or
+  "Together" row is one item); it's disabled while the list is empty. Either raises the undo
+  snackbar, whose Undo puts back exactly what went (the repository's delete and restore). The
+  pantry is never touched by these; Done shopping stays for when the cook does want to put
+  things away. Send list, Send as file and Paste a list stay in the menu.
+- **Ticks don't move under the finger** (#219; the owner found the instant jump "strange"). A
+  ticked row stays exactly where it is, struck through and dimmed, and so does an unticked one.
+  The ViewModel lays the list out with each item's tick as it was when the order was last
+  worked out, and shows it with its tick now; a row ticks all its lines, so an added-up row
+  stays one row. The order is worked out afresh (ticked rows sink to the bottom of their aisle,
+  as before) when the screen is left (Android: the screen leaves composition other than for a
+  rotation, which keeps the order; iOS: `onDisappear`), and at once when anything but a tick
+  changes: an item added, deleted or cleared, Done shopping, a move to another aisle, or a
+  change from elsewhere (Add to groceries from a recipe, the pantry adding or removing a line).
+  Leaving the app for another and coming back is the same visit.
 - **Pantry to groceries shows a state, not a message.** Marking an item out (or, since #194,
   running low) adds its name to the list silently (unless its line is there already), and the
   row shows a small tag; tapping the tag takes it off the list, with no snackbar. The tag means an unticked
