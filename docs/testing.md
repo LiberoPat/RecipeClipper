@@ -154,6 +154,19 @@ check: `ClipNavigationTest(s)` (the page's form back to its own path loads, app 
 do), `RedditUrlsTest(s)` (`clipPageUrl`: other Reddit hosts load from www). No test reaches
 reddit.com: after a change to the clip view's navigation, share a real post on a device and
 check the post shows, not the pulsing Snoo.
+Reddit in the clip view (#213, the owner's S23): `ClipViewModelTest(s)` the Save and Done outcomes
+(every one that doesn't save says what's missing; a `/s/` link saves under itself) and the Text
+view (switching, assigning from it, a page with no post yet); `RedditPageTextTest(s)` read the
+post out of `shared/fixtures/reddit/page-text` (what `RCReddit.text()` returned from real posts in
+the emulator's clip view, usernames replaced, icons cut) and build the Text view's page.
+`reddit-reader.js` itself has no test (it needs Reddit's live markup). **Check a real post on a
+device** after touching it or the Text view: share a Reddit post (a text post, and a photo post
+with the recipe in a comment), wait a few minutes scrolling up and down (the body shows in full,
+no fade, no "Read more", no Open App or sign-in prompt, no related posts; it keeps scrolling, and
+tapping a link or a username leaves the post where it is), select a name, ingredients and steps
+on the page and Save; then Text, select from it, and Save. With WebView debugging on in a local
+build (`WebView.setWebContentsDebuggingEnabled(true)`, not committed) the page can be inspected
+through `adb forward tcp:9333 localabstract:webview_devtools_remote_<pid>`.
 Cloudflare's check (#220): `CloudflareChallengeTest(s)` read the pages in
 `shared/fixtures/cloudflare` (written in Cloudflare's shape, made-up hosts and tokens);
 `BlogRecipeSourceStatusTest` / `BlogRecipeSourceTests` the `cf-mitigated` header and body;

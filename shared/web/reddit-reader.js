@@ -8,6 +8,10 @@
 //    observer puts the style back and unlocks scrolling whenever the page changes, since Reddit
 //    renders as it goes. Nothing is clicked and nothing is removed from the page, so Reddit's own
 //    check page (#223) and clipper.js's selection and marks work as before.
+//    Reddit moves to another post inside the page (its own router, which the apps' navigation
+//    rule never sees): a tap on a link, or on the related posts under the comments, which on the
+//    emulator swapped the post being clipped for another. So the related posts are hidden and a
+//    tapped link to another page does nothing, as a link does in the clip view anyway.
 // 2. RCReddit.text(): the post and its loaded comments as markup, for the clip's Text view. Only
 //    the post (`shreddit-post`) and the comment tree, or the whole page when neither is there
 //    yet; the apps' RedditPageText reads it, so what counts as the text is decided (and tested)
@@ -27,7 +31,9 @@
     '#credential_picker_container, #credential_picker_iframe, iframe[src*="accounts.google.com/gsi"],' +
     'xpromo-app-selector, xpromo-bottom-sheet, xpromo-nsfw-blocking-container,' +
     'xpromo-untagged-content-blocking-modal, shreddit-async-loader[bundlename*="xpromo"],' +
-    'shreddit-async-loader[bundlename*="bottom_sheet"]' +
+    'shreddit-async-loader[bundlename*="bottom_sheet"],' +
+    // The related posts under the comments.
+    '[id$="_related"], reddit-pdp-right-rail-post' +
     '{display:none !important}' +
     // Scrolling, whatever a prompt locked.
     'html, body{overflow-y:auto !important;position:static !important;height:auto !important}';
@@ -51,6 +57,23 @@
     if (timer) return;
     timer = setTimeout(function () { timer = null; apply(); }, 200);
   }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+
+  // A tapped link to another page does nothing (in the capture phase, before Reddit's router;
+  // clipper.js's own listener, on the same node, still hears a tap while picking a photo).
+  document.addEventListener('click', function (e) {
+    var path = e.composedPath ? e.composedPath() : [e.target];
+    for (var i = 0; i < path.length; i++) {
+      var el = path[i];
+      if (el === document) return;
+      if (el.tagName !== 'A' || !el.href) continue;
+      var to;
+      try { to = new URL(el.href, location.href); } catch (x) { return; }
+      if (to.origin === location.origin && to.pathname === location.pathname) return;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+  }, true);
 
   window.RCReddit = {
     text: function () {

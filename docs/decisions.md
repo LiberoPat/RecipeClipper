@@ -1796,6 +1796,15 @@ approved as a mock-up (six frames); the owner's nine decisions are in the issue'
 - **Save** upserts on the cleaned URL like an import (same id, note and list membership) with
   `contentOrigin` CLIPPED (#29's column; no schema change), replacing whatever the row held,
   then the recipe replaces both the clip and the error screen in the back stack.
+- **Done and Save always answer: they save, or say what's missing** (the owner's S23 on a Reddit
+  post, 2026-09-30: "save doesn't work"). With ingredients and steps but no name, Done was greyed
+  out with nothing saying why (a Reddit title is hard to select: the selection jumps into the
+  header), and in Review the top bar's Done stayed tappable but did nothing, the real Save being
+  at the foot of a long list. Now Done is always tappable (bar Cloudflare's check): with lines
+  but no name it opens Review, where the name can be typed, and says so; with no lines it stays
+  on the page and says what to select. In Review the top bar's button is Save. Save with too
+  little says what's missing (`ClipMessage.Missing`); a failed save, a full library (#107) and a
+  save under way already said or showed so.
 - **A clip is the user's version** (#29's rule): a re-share opens it without a fetch. "Clipped
   by you · host" replaces the domain under the title (Open original stays), and History rows
   say "Clipped by you" (a derived `isClipped` in the summary queries). Update from source is
@@ -3307,6 +3316,31 @@ app main had become:
   iOS: not a tapped link); a tapped link there still doesn't load. An app's own link
   (`intent:`, `reddit:`, `market:`) never loads in the page's frame, even as a redirect: it
   could only leave an error page in the post's place.
+- **Reddit's page as a reader in the clip view** (`shared/web/reddit-reader.js`, injected on
+  reddit.com only, beside `clipper.js`: Android when the page shows and again when it has loaded,
+  iOS at the document's start). The owner's S23, 2026-09-30: "the longer I'm on the page reddit
+  kind of fades at the bottom to white and I can no longer scroll down". A signed-out reader gets
+  a long post body cut off under a fade to white with a small "Read more"
+  (`.read-more-overflow-cover`), and Reddit's app and sign-in prompts (Open App, Google's One Tap,
+  bottom sheets) can lock scrolling. The script's style shows the whole body and hides those
+  prompts, and restores `overflow` on html and body; an observer puts it back as Reddit renders.
+  It only hides: nothing is clicked or removed, so Reddit's check (#223) and the selection work
+  as before. It also hides the related posts under the comments and makes a tapped link to
+  another page do nothing: Reddit changes post inside the page with its own router, which the
+  clip view's navigation rule never sees, and on the emulator a stray tap there swapped the post
+  being clipped for another.
+- **A Text view for Reddit** (owner, 2026-09-30: built beside the reader, not as its fallback,
+  because Reddit's prompts and markup change often and old.reddit.com now wants a login). A Text
+  button in the clip's top bar reads the post as it stands (`RCReddit.text()`: the
+  `shreddit-post` and the comment tree, from the DOM, so it works under any overlay) and shows its
+  title, body and loaded comments as plain paragraphs in a second web view with `clipper.js`, so
+  selecting, assigning, marks, Review and Save are the same; Page goes back, the page kept under
+  it. What counts as the text is decided natively and tested (`RedditPageText`, a block a line,
+  a comment's own text without its replies'; `RedditTextPage` builds the escaped page, its labels
+  unselectable). **Only the comments Reddit has loaded are there** (deeper threads load as the
+  page scrolls), which the view says; the post body and top comments are what matter. A page
+  with no post yet (still loading, or the check) says to wait. The photo is still picked on the
+  page: Photo goes back to it.
 - **Not old.reddit.com.** Its plain HTML would suit clipping, but since September 2026 it answers
   a signed-out reader with "Log in to use old Reddit" (seen in the web view and with curl). So
   the clip view goes the other way: a link on old., new., m., np. or bare reddit.com loads from
