@@ -60,7 +60,7 @@ internal fun cookedPhotosUi(
     LaunchedEffect(deleted?.id) {
         if (deleted != null) {
             val message = if (deleted.hasPhoto) photoDeleted else markDeleted
-            val result = snackbarHostState.showSnackbar(message, undo, duration = SnackbarDuration.Short)
+            val result = snackbarHostState.showSnackbar(message, undo, duration = SnackbarDuration.Long)
             if (result == SnackbarResult.ActionPerformed) viewModel.onUndoDelete() else viewModel.onDeleteSettled()
         }
     }

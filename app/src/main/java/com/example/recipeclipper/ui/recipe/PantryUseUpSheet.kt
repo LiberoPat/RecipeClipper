@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.UseUpChange
 import com.example.recipeclipper.data.model.UseUpChoice
@@ -55,11 +56,7 @@ internal fun PantryUseUpUi(viewModel: PantryUseUpViewModel, snackbarHostState: S
     val message = stringResource(R.string.snackbar_pantry_used_up)
     val undoLabel = stringResource(R.string.action_undo)
     val updated = state.updated
-    LaunchedEffect(updated) {
-        if (updated == null) return@LaunchedEffect
-        val result = snackbarHostState.showSnackbar(message, actionLabel = undoLabel)
-        if (result == SnackbarResult.ActionPerformed) viewModel.onUndo() else viewModel.onUpdatedDismissed()
-    }
+    UndoSnackbarEffect(updated, message, undoLabel, snackbarHostState, viewModel::onUndo, viewModel::onUpdatedDismissed)
     state.sheet?.let { sheet ->
         UseUpSheetView(sheet, viewModel::onToggle, viewModel::onChoice, viewModel::onConfirm, viewModel::onDismissed)
     }

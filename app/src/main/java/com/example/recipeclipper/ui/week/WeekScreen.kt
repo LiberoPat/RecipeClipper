@@ -76,6 +76,7 @@ import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
@@ -123,11 +124,7 @@ fun WeekScreen(
     val removed = state.removed
     val removedMessage = removed?.let { stringResource(R.string.snackbar_removed_from_plan, it.label) }
     val undoLabel = stringResource(R.string.action_undo)
-    LaunchedEffect(removed) {
-        val message = removedMessage ?: return@LaunchedEffect
-        val result = snackbarHostState.showSnackbar(message, actionLabel = undoLabel, withDismissAction = false)
-        if (result == SnackbarResult.ActionPerformed) viewModel.onUndoRemove() else viewModel.onSnackbarDismissed()
-    }
+    UndoSnackbarEffect(removed, removedMessage, undoLabel, snackbarHostState, viewModel::onUndoRemove, viewModel::onSnackbarDismissed)
 
     // What a menu action did (#52), once.
     val resources = LocalResources.current

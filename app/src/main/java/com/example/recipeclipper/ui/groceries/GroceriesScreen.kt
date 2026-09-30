@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryCombiner
@@ -133,11 +134,7 @@ fun GroceriesScreen(
         }
     }
     val undoLabel = stringResource(R.string.action_undo)
-    LaunchedEffect(removed) {
-        val message = removedMessage ?: return@LaunchedEffect
-        val result = snackbarHostState.showSnackbar(message, actionLabel = undoLabel, withDismissAction = false)
-        if (result == SnackbarResult.ActionPerformed) viewModel.onUndoRemove() else viewModel.onSnackbarDismissed()
-    }
+    UndoSnackbarEffect(removed, removedMessage, undoLabel, snackbarHostState, viewModel::onUndoRemove, viewModel::onSnackbarDismissed)
 
     val sendFailedMessage = stringResource(R.string.send_file_failed)
     if (sendFileViewModel != null) {
