@@ -474,7 +474,9 @@ private struct FirstRowAnchor: ViewModifier {
     let first: Bool
 
     func body(content: Content) -> some View {
-        if first { content.tooltipAnchor(.pantryInStock) } else { content }
+        content.background {
+            if first { Color.clear.tooltipAnchor(.pantryInStock) }
+        }
     }
 }
 
