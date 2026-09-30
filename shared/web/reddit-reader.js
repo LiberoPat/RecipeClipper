@@ -36,7 +36,9 @@
     '[id$="_related"], reddit-pdp-right-rail-post' +
     '{display:none !important}' +
     // Scrolling, whatever a prompt locked.
-    'html, body{overflow-y:auto !important;position:static !important;height:auto !important}';
+    'html, body{overflow-y:auto !important;position:static !important;height:auto !important}' +
+    // The header stays over the page: a selection handle dragged up under it took its words.
+    'reddit-header-small, reddit-header-large, header{-webkit-user-select:none !important;user-select:none !important}';
 
   var style = document.createElement('style');
   style.id = 'rc-reddit';
