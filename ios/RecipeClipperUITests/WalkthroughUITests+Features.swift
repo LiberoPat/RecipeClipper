@@ -460,7 +460,8 @@ extension WalkthroughUITests {
         require(textContaining("Clipped by you"), "the clip's credit")
         pause(3)
         app.swipeUp()
-        pause(2)
+        // The fling settles slowly on a long recipe: long enough for the last screen to hold.
+        pause(4.5)
     }
 
     /// Types `link` into Home's field; Reddit refuses the read, and the post opens in the clip
