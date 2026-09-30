@@ -173,6 +173,26 @@ leaving mid-read, save, a full library, a failed save); `EditRecipePhotoScreenTe
 the review and the button behind its flag; iOS's `PhotoTextUITests` the whole path over the
 fixture listing and canned lines (`RC_UITEST_PHOTO_LINES`, UITestSeeding's stub reader).
 ML Kit and Vision themselves, on real photos of real cards, need a device.
+"Scan a recipe" (#226): `EditRecipeScanViewModelTest` / `EditRecipeScanTests` the review over
+`FakePhotoTextReader` (pages read in order, suspect and unsure lines, a German card saved in
+German, nothing sorted, a page that won't open and Try again, the reader not ready (Android), saved
+through `addManual` with the language and no picture); `DefaultRecipeRepositoryEditTest` /
+`DataEditTests` the language on a manual recipe; `ScanEntryScreenTest` (Robolectric) the Home
+button and the Recipes + menu's scan choices behind the flag, the picker's pages in order, a
+camera file of its own per scan, and the review (pages named "Page 1 of 2", the scan's failure
+note, not ready); `ScanIntentTest` (Robolectric) `SEND` / `SEND_MULTIPLE` of images resolving to
+MainActivity and turning into the review's route (at most six, in order; a link or a
+`.recipeclipper` file isn't a scan). iOS: `ScanHandOffTests` the pages on disk (`ScanPages`: staged
+in order, at most six, replaced by the next scan, swept after an hour), images copied from real
+`NSItemProvider`s, the share card leaving them for the app (`PendingScan`: once, within the
+window, cleared by a later link) and the mirrored flag; `EditRecipeScanTests` also runs the real
+`VisionPhotoTextReader` on `card-front.jpg` as a local file and checks it isn't cached;
+`ScanUITests` the entries (camera or library; the simulator's camera says it has none) and the
+review through the real Vision reader over the fixture card's two sides (`RC_UITEST_SCAN_IMAGES`
+with `RC_UITEST_PHOTO_VISION=1`). Needs a phone: the camera itself (a real photo, turned the
+right way up), the photo picker's numbered order, sharing one and several photos in from the
+gallery / Photos (Android: the chooser lists the app; iOS: the share sheet, then opening the
+app within 10 minutes), and a large HEIC.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to

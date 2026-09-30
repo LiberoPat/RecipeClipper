@@ -3626,6 +3626,8 @@ never save what it reads without the cook checking it, and fall back to typing i
   model is downloaded once by Play services: the manifest's `com.google.mlkit.vision.DEPENDENCIES`
   = `ocr` asks for it at install from the Play Store, so usually it is there before first use;
   when it isn't, the not-ready fallback above applies. iOS is unchanged (Vision is in the OS).
+- **The same reader and review scan the cook's own photos** (#226, below): a recipe card, a
+  cookbook page or a screenshot, taken, picked or shared in, saved as a typed-in recipe.
 
 ## Reddit posts and photos in every language (#208)
 
@@ -3675,6 +3677,69 @@ to "finish it by hand", and "2 ELZucker" wasn't flagged.
   expectations, and `Split`, `Photo` and `Sus` rows in the differential corpus. The words are
   drafts: a native speaker should check each table's headers, verbs and step labels, and which
   unit words are safe to flag.
+
+## Scan a recipe: your own photos, read on the device (#226)
+
+The owner's request (2026-09-29): "Read the photo" (#198) reads a Reddit post's pictures; do the
+same for any photo the cook takes or picks (a recipe card, a cookbook page, a screenshot) or
+shares into the app. Behind the existing `photoText` flag, on both platforms.
+
+- **Entries.** "Scan a recipe" in the Recipes **+** menu (after Type a recipe and Paste a link),
+  whose row turns the menu into its two choices (Android; iOS: a submenu): **Take a photo** or
+  **Choose from library**. Home has no + menu, so "Scan a recipe" sits beside "+ New recipe"
+  (under it at iOS's accessibility sizes) and opens the same two choices. Both are #116's
+  plumbing: the camera app through `ACTION_IMAGE_CAPTURE` (no CAMERA permission) or
+  `UIImagePickerController` (asks for the camera the first time; a simulator says it has none),
+  and the system photo picker (no library permission). The library takes up to **six pages**
+  in the order picked (iOS numbers them: `PHPickerConfiguration.selection = .ordered`); the
+  camera takes one.
+- **The same pipeline.** The pages go to `PhotoTextReader` as local pictures, read in order,
+  then `PhotoTextSorter` in the detected language (#208), with the suspect-amount and unsure-line
+  flags (#198, #205), into the same "Check the recipe" editor: the pages above (each named
+  "Page 1 of 2" for TalkBack and VoiceOver), how it went, the lines to check, the fields.
+  Nothing sorts: every line in the ingredients box, "finish it by hand". Android's reader not
+  ready: the same note and Try again. A page that won't open: "Couldn't open the picture. Try
+  again, or go back and choose another." (not #198's "check your connection"). **No title is
+  guessed**: the name starts empty (Save points out the rule), since the splitter has no title
+  and the card's first line might be anything.
+- **Local pictures, never cached.** Android passes `content:`/`file:` URIs through the same
+  reader: Coil opens them, with its memory and disk caches off for local pictures, and the
+  review shows them the same way, because a reused camera file would otherwise answer with an
+  earlier picture. For the same reason a scan's camera photo is a new file
+  (`cache/camera/scan-<time>.jpg`, the last one deleted first), unlike #116's one reused
+  `capture.jpg`, which its store copies at once. iOS's picker and camera hand back bytes, so
+  `ScanPages` writes them as files in `Scans/` in the App Group container; `ImageLoader` reads a
+  file URL straight from disk (never into its `URLCache`); Vision is given the picture's EXIF
+  orientation, so a phone's sideways-stored photo reads the right way up.
+- **Saved as the cook's own** (`addManual`, now with a language): `MANUAL`, `manual:<uuid>`,
+  never fetched or refreshed, no "Update from source", no source credit; the language is the
+  one the lines were read in (#208), then the checked recipe's words, else English, as for a
+  Reddit photo.
+- **No picture, and no switch for one** (coordinator, 2026-09-29, departing from the issue's
+  "Use this photo as the recipe's picture" switch). A typed recipe's photo is only a link, and
+  #116's store belongs to "Your cooks" rows (its sweep deletes any file no row names), so a scan
+  as the recipe's picture needed a new store, and the export and backup wouldn't have carried it
+  yet: a picture that silently doesn't travel with "photos included" isn't worth it now. The
+  idea, with backup and export, is a separate backlog issue. So the pages are read and not kept.
+- **Not kept.** Android copies nothing: picker and shared URIs are read where they are, and the
+  camera's scan file is replaced by the next scan's. iOS: each new scan replaces the last one's
+  pages, a saved scan clears them, and the app's launch sweeps any older than an hour (a review
+  left open keeps its pages until then).
+- **Shared in.** Android: `ACTION_SEND` and `ACTION_SEND_MULTIPLE` of `image/*` (at most six,
+  in the order sent) open the review through MainActivity's intent queue, in Recipes
+  (`ScanIntent`); with the flag off the app just opens. iOS: the share extension accepts up to
+  six images (`NSExtensionActivationSupportsImageWithMaxCount`) but **hands off rather than
+  reads** (#19: it can't open the app). The review needs the app anyway (never saved unchecked),
+  reading there keeps Vision out of the extension's small memory, and the files are copied from
+  the sharing app's file representation without being held whole. It copies them into `Scans/`,
+  leaves their names in the App Group suite (`PendingScan`: `pending_scan_pages`,
+  `pending_scan_at`) and says "Open Recipe Clipper to check the recipe read from this photo…";
+  the app, becoming active within 10 minutes, opens the review in Recipes, once, as #213's
+  `PendingClip` does. A link in the same share wins (it imports as before); a later link share
+  clears the pages left, and an image share clears a post left. The extension reads the flag
+  from the app's mirror (`photo_text_on`, on until written), like `reddit_on`.
+- **Needs a phone:** the camera itself, the picker's order, sharing from Photos or a gallery,
+  ML Kit's model through Play services, and real cards and cookbook pages (docs/testing.md).
 
 ## Undo snackbars close by themselves (2026-09-29)
 
@@ -3747,7 +3812,8 @@ yourself; `blocked=true` when Reddit's block opened it in the import's place, #2
 saving replaces it and the error screen under it, if any, with `recipe/{id}`), and
 `edit/photo?url={url}&title={title}&images={images}` (Read the photo, #198: the editor filled
 from a Reddit post's pictures, one address per line in `images`; saving replaces it and the
-error screen like a clip). Behind the
+error screen like a clip), and `edit/scan?pages={pages}` (Scan a recipe, #226: the same editor
+over the cook's own pages, local URIs one per line; saving replaces it with `recipe/{id}`). Behind the
 `mealPlan` feature flag
 (#47, on by default): a bottom tab bar nests this same graph under a Recipes tab
 alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and

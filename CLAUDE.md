@@ -44,7 +44,7 @@ mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
 (`reddit` flag, #11), or the photo read on the device and checked by the cook (`photoText`,
-#198); the UI in six languages (drafts awaiting a native speaker:
+#198), and your own photos scanned the same way (#226); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: other recipe languages,
@@ -87,7 +87,7 @@ fixtures. The annotated map, and what each route does, are in
 Routes: `home`, `recipes`, `settings` (+ hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
-membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `clip?url={url}&blocked=…&check=…`; with the tab
+membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `edit/scan?pages=…` (#226), `clip?url={url}&blocked=…&check=…`; with the tab
 shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
 `pantry`. A route from an intent always lands in Recipes.
 
