@@ -20,6 +20,8 @@ import com.example.recipeclipper.data.ExpiryReminderScheduler
 import com.example.recipeclipper.reminders.AndroidExpiryReminderScheduler
 import com.example.recipeclipper.timers.AndroidTimerAlarmScheduler
 import com.example.recipeclipper.data.WebViewRenderedPageSource
+import com.example.recipeclipper.data.ClearedHosts
+import com.example.recipeclipper.data.SharedPrefsClearedHosts
 import com.example.recipeclipper.data.remote.RenderedPageSource
 import dagger.Binds
 import dagger.Module
@@ -78,6 +80,10 @@ abstract class PlatformModule {
     @Binds
     @Singleton
     abstract fun renderedPageSource(impl: WebViewRenderedPageSource): RenderedPageSource
+
+    @Binds
+    @Singleton
+    abstract fun clearedHosts(impl: SharedPrefsClearedHosts): ClearedHosts
 
     @Binds
     @Singleton

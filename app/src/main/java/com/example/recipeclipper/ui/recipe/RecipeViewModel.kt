@@ -174,7 +174,7 @@ class RecipeViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 content = RecipeContent.Loading, reportSiteUrl = null, clipUrl = null, photoPost = null,
-                clipBlockedPost = null, asWrittenSteps = emptySet()
+                clipBlockedPost = null, humanCheckPage = null, asWrittenSteps = emptySet()
             )
         }
         loadJob = viewModelScope.launch {
@@ -190,6 +190,11 @@ class RecipeViewModel @Inject constructor(
             val clipInstead = shareUrl?.takeIf {
                 result is ParseResult.Error && RedditUrls.clipsWhenBlocked(it, result.error, redditOn())
             }
+            // Cloudflare's check wants a person (#220): no error screen; the page opens visibly
+            // for the cook to pass it.
+            val checkInstead = shareUrl?.takeIf {
+                result is ParseResult.Error && result.error == ParseError.HumanCheck
+            }
             _uiState.update { state ->
                 when (result) {
                     is ParseResult.Success -> state.copy(
@@ -200,6 +205,8 @@ class RecipeViewModel @Inject constructor(
                     )
                     is ParseResult.Error -> if (clipInstead != null) {
                         state.copy(clipBlockedPost = clipInstead)
+                    } else if (checkInstead != null) {
+                        state.copy(humanCheckPage = checkInstead)
                     } else {
                         state.copy(
                             content = RecipeContent.Error(result.error),

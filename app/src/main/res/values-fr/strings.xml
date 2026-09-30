@@ -31,6 +31,7 @@
     <string name="error_no_transcription">Aucun texte de recette trouvé pour cette publication. Sur Reddit, les recettes ne figurent souvent que sur la photo, et personne ne l\'a encore retranscrite dans les commentaires.</string>
     <string name="error_fetch_failed">Impossible de charger cette page (%1$s).</string>
     <string name="error_blocked">Le site a bloqué l\'appli (HTTP %1$d). C\'est souvent passager : réessayez dans une minute.</string>
+    <string name="error_human_check">Ce site veut vérifier que vous êtes humain avant de laisser entrer l\'appli. Ouvrez l\'original, cochez la case, puis réessayez.</string>
     <string name="error_offline">Vous êtes hors ligne. La recette se chargera dès que vous serez de nouveau connecté.</string>
     <string name="error_fetch_failed_unknown_detail">erreur inconnue</string>
     <string name="error_save_failed">Impossible d\'enregistrer cette recette.</string>
@@ -268,6 +269,8 @@
     <string name="clip_field_photo">Photo</string>
     <string name="clip_hint">Sélectionnez du texte sur la page, puis touchez l\'endroit où il va. Pour la photo, touchez Photo, puis l\'image.</string>
     <string name="clip_reddit_blocked_note">Reddit n\'a pas laissé l\'appli lire cette publication, elle est donc ouverte ici : sélectionnez la recette.</string>
+    <string name="clip_human_check_note">Ce site veut vérifier que vous êtes humain. Cochez la case et la recette s\'ouvrira.</string>
+    <string name="clip_human_check_no_recipe_note">La vérification est passée, mais cette page n\'a pas de recette que l\'appli sait lire, elle est donc ouverte ici : sélectionnez la recette.</string>
     <string name="clip_picking_photo">Touchez l\'image à utiliser comme photo.</string>
     <string name="clip_skip_photo">Passer</string>
     <string name="clip_photo_unreadable">Impossible de lire une image à cet endroit. La photo est facultative.</string>

@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.recipeclipper.data.WebViewRenderedPageSource
 import com.example.recipeclipper.data.model.ClipField
 import org.json.JSONObject
 
@@ -24,6 +25,9 @@ internal sealed class ClipPageEvent {
 
     /** While picking a photo, the tap found no image with an address the app can read. */
     object NoImage : ClipPageEvent()
+
+    /** The page as it stands, read while waiting on Cloudflare's check (#220). */
+    data class PageLoaded(val html: String) : ClipPageEvent()
 }
 
 /** How the page is loaded: the live URL, or a fixed local page in a UI test. */
@@ -36,6 +40,11 @@ internal val LoadLiveUrl: ClipPageLoader = { webView, url -> webView.loadUrl(url
  * view layer's half of the bridge: it forwards the page's events and pushes [syncState] and
  * [pickingPhoto] into the page whenever they change. Links to other pages are blocked, so the
  * clip always comes from the page it is saved under.
+ *
+ * With [readsPage] (waiting on Cloudflare's check, #220), the page's HTML is sent as
+ * [ClipPageEvent.PageLoaded] once it settles after each load, and every [READ_EVERY_MS] after,
+ * and the check may move the page within its own site (its form posts back to the page with a
+ * token in the query).
  */
 @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
 @Composable
@@ -45,6 +54,7 @@ internal fun ClipWebPage(
     pickingPhoto: Boolean,
     onEvent: (ClipPageEvent) -> Unit,
     loadPage: ClipPageLoader,
+    readsPage: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     // Read by the WebViewClient when a page finishes loading, so the script it injects starts
@@ -53,6 +63,7 @@ internal fun ClipWebPage(
     latest.sync = syncState
     latest.picking = pickingPhoto
     latest.onEvent = onEvent
+    latest.readsPage = readsPage
 
     AndroidView(
         modifier = modifier,
@@ -88,9 +99,17 @@ private class LatestPageState {
     var picking: Boolean = false
     var onEvent: (ClipPageEvent) -> Unit = {}
     var injected: Boolean = false
+    var readsPage: Boolean = false
 
     fun script() = pageScript(sync, picking)
 }
+
+/** How often the page is read again while waiting on Cloudflare's check (#220), after it first
+ *  settles: a check can pass without loading a new page. */
+private const val READ_EVERY_MS = 2_000L
+
+/** The quiet after a load before the page is read: the off-screen render's settle. */
+private const val SETTLE_MS = 1_500L
 
 private fun pageScript(sync: String, picking: Boolean) =
     "window.RC && (RC.sync($sync), RC.pickImage($picking));"
@@ -100,20 +119,42 @@ private class ClipWebViewClient(
     private val latest: LatestPageState
 ) : WebViewClient() {
 
+    private val handler = Handler(Looper.getMainLooper())
+    private var pendingRead: Runnable? = null
+
     override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
         latest.injected = false
+        pendingRead?.let(handler::removeCallbacks)
     }
 
     override fun onPageFinished(view: WebView, url: String?) {
         view.evaluateJavascript(ClipperScript.source, null)
         latest.injected = true
         view.evaluateJavascript(latest.script(), null)
+        if (latest.readsPage) readLater(view, SETTLE_MS)
     }
 
-    /** Redirects and fragment jumps load; a link to any other page does not. */
+    /** While waiting on Cloudflare's check (#220): the page's HTML, now and then again. */
+    private fun readLater(view: WebView, delayMs: Long) {
+        pendingRead?.let(handler::removeCallbacks)
+        pendingRead = Runnable {
+            if (!latest.readsPage) return@Runnable
+            view.evaluateJavascript("document.documentElement.outerHTML") { result ->
+                WebViewRenderedPageSource.decodeJsString(result)?.let { latest.onEvent(ClipPageEvent.PageLoaded(it)) }
+            }
+            readLater(view, READ_EVERY_MS)
+        }.also { handler.postDelayed(it, delayMs) }
+    }
+
+    /**
+     * Redirects and fragment jumps load; a link to any other page does not. While waiting on
+     * Cloudflare's check (#220), anything on the page's own site loads too.
+     */
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         if (!request.isForMainFrame || request.isRedirect) return false
-        return !samePage(request.url, (view.url ?: pageUrl).toUri())
+        val current = (view.url ?: pageUrl).toUri()
+        if (latest.readsPage && request.url.host.equals(current.host, ignoreCase = true)) return false
+        return !samePage(request.url, current)
     }
 
     private fun samePage(a: Uri, b: Uri): Boolean =

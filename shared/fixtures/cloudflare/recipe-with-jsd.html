@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<!-- An ordinary recipe page on a site behind Cloudflare: its bot detection adds the "jsd" script
+     from /cdn-cgi/challenge-platform/ to every page, and the comment form carries a Turnstile
+     widget. Neither is a challenge. Written for the app's tests; the recipe is made up. -->
+<html lang="en"><head><meta charset="utf-8"><title>Lemon drizzle cake</title>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Recipe","name":"Lemon drizzle cake","recipeYield":"8","recipeIngredient":["225 g butter","225 g caster sugar","4 eggs","225 g self-raising flour","1 lemon, zested"],"recipeInstructions":[{"@type":"HowToStep","text":"Heat the oven to 180C."},{"@type":"HowToStep","text":"Beat the butter and sugar, then the eggs, flour and zest."},{"@type":"HowToStep","text":"Bake for 45 minutes and pour over the drizzle."}]}</script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script></head>
+<body><article><h1>Lemon drizzle cake</h1><p>A cake for a Sunday.</p></article>
+<form id="comment-form" action="/wp-comments-post.php" method="post"><textarea name="comment"></textarea><div class="cf-turnstile" data-sitekey="0x4AAAAAAAFixtureKey"></div><button>Post comment</button></form>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'8c1f0e2d4b5a6f70',t:'MTcyNzAwMDAwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);c()}})();</script>
+</body></html>

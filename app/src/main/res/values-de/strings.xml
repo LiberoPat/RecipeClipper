@@ -31,6 +31,7 @@
     <string name="error_no_transcription">Für diesen Beitrag wurde kein Rezepttext gefunden. Auf Reddit stehen Rezepte oft nur im Foto, und noch niemand hat dieses in den Kommentaren abgetippt.</string>
     <string name="error_fetch_failed">Die Seite konnte nicht geladen werden (%1$s).</string>
     <string name="error_blocked">Die Seite hat die App blockiert (HTTP %1$d). Das ist oft nur vorübergehend – versuch es in einer Minute noch einmal.</string>
+    <string name="error_human_check">Diese Website möchte prüfen, ob du ein Mensch bist, bevor sie die App hereinlässt. Öffne das Original, setz das Häkchen und versuch es dann noch einmal.</string>
     <string name="error_offline">Du bist offline. Das Rezept wird geladen, sobald du wieder online bist.</string>
     <string name="error_fetch_failed_unknown_detail">unbekannter Fehler</string>
     <string name="error_save_failed">Das Rezept konnte nicht gespeichert werden.</string>
@@ -258,6 +259,8 @@
     <string name="clip_field_photo">Foto</string>
     <string name="clip_hint">Markiere Text auf der Seite und tippe dann an, wohin er gehört. Für das Foto tippe auf Foto und dann auf das Bild.</string>
     <string name="clip_reddit_blocked_note">Reddit hat die App diesen Beitrag nicht lesen lassen, deshalb ist er hier geöffnet: Markiere das Rezept.</string>
+    <string name="clip_human_check_note">Diese Website möchte prüfen, ob du ein Mensch bist. Setz das Häkchen, dann öffnet sich das Rezept.</string>
+    <string name="clip_human_check_no_recipe_note">Die Prüfung ist bestanden, aber diese Seite hat kein Rezept, das die App lesen kann, deshalb ist sie hier geöffnet: Markiere das Rezept.</string>
     <string name="clip_picking_photo">Tippe auf das Bild, das du als Foto verwenden willst.</string>
     <string name="clip_skip_photo">Überspringen</string>
     <string name="clip_photo_unreadable">Dort ließ sich kein Bild lesen. Das Foto ist optional.</string>

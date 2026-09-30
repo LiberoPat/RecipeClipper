@@ -21,17 +21,23 @@ import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.model.PageText
 import com.example.recipeclipper.data.model.RecipeTextWindow
 import com.example.recipeclipper.data.remote.BlogRecipeSource
+import com.example.recipeclipper.data.remote.CloudflareChallenge
 import com.example.recipeclipper.data.remote.FetchedPage
 import com.example.recipeclipper.data.remote.PageRecipe
 import com.example.recipeclipper.data.remote.RecipeSource
 import com.example.recipeclipper.data.remote.RenderedPageSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.net.URI
+import java.net.URISyntaxException
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -55,7 +61,8 @@ class DefaultRecipeRepository @Inject constructor(
     private val extractor: PageRecipeExtractor = PageRecipeExtractor.None,
     /** Null (tests that aren't about it) reads as every flag off. */
     private val flags: FeatureFlags? = null,
-    private val photos: PhotoStore = NoPhotoStore
+    private val photos: PhotoStore = NoPhotoStore,
+    private val clearedHosts: ClearedHosts = ClearedHosts.None
 ) : RecipeRepository {
 
     override suspend fun importFromUrl(sharedUrl: String): ParseResult {
@@ -135,29 +142,114 @@ class DefaultRecipeRepository @Inject constructor(
     /**
      * [fetchWithOneRetry], then, only if that still ends [ParseError.Blocked] or
      * [ParseError.NoRecipeFound] (see [ParseError.triesRenderedPage]), one load of the page in an
-     * off-screen browser, capped at [RENDER_TIMEOUT_MS], its HTML run through the same parsers.
-     * Never after Offline or a timeout. A rendered page that still has no recipe, or that
-     * doesn't load, leaves the direct fetch's cause standing: a block stays a block. Nothing
-     * is shown for it; the import is just slower. Cancelling during it throws out of here
-     * before anything is written.
+     * off-screen browser ([renderPage]), its HTML run through the same parsers. Never after
+     * Offline or a timeout. A rendered page that still has no recipe, or that doesn't load,
+     * leaves the direct fetch's cause standing: a block stays a block. Nothing is shown for it;
+     * the import is just slower. Cancelling during it throws out of here before anything is
+     * written.
+     *
+     * Cloudflare's check (#220) changes that: a render that met it and got past it is the page
+     * itself, so its answer stands (the recipe, or [ParseError.NoRecipeFound]); one still on the
+     * check when time runs out is [ParseError.HumanCheck], for the cook to pass in the app's
+     * visible browser. A host that passed lately ([ClearedHosts]) is rendered first, since its
+     * plain fetch would only be refused.
      *
      * Last, only when the page loaded with no recipe data ([ParseError.NoRecipeFound]), the
      * on-device model may pick one out of its text ([extractFromPage]; the rendered page's
      * text if there is one).
      */
     private suspend fun fetchWithFallbacks(url: String): ParseResult {
+        // A Reddit post (#11) is read only from its listing: no rendered page, no page text.
+        val readsPages = source.readsRenderedPage(url)
+        val host = hostOf(url)
+        val cleared = readsPages && host != null && clearedHosts.isCleared(host)
+        var rendered: Rendered? = null
+        if (cleared) {
+            rendered = renderPage(url, host, trusted = true)
+            rendered.answer(url)?.let { return it }
+        }
         val fetched = fetchWithOneRetry(url)
         val result = fetched.result
         if (result !is ParseResult.Error || !result.error.triesRenderedPage) return result
-        // A Reddit post (#11) is read only from its listing: no rendered page, no page text.
-        if (!source.readsRenderedPage(url)) return result
-        val html = withTimeoutOrNull(RENDER_TIMEOUT_MS) { renderedPages.render(url) }
-        val rendered = html?.let { withContext(Dispatchers.Default) { BlogRecipeSource.parsePage(it, url) } }
-        if (rendered != null && rendered.result is ParseResult.Success) return rendered.result
+        if (!readsPages) return result
+        if (rendered == null) {
+            rendered = renderPage(url, host, trusted = false)
+            rendered.answer(url)?.let { return it }
+        }
         if (result.error != ParseError.NoRecipeFound) return result
-        val page = rendered?.page ?: fetched.page ?: return result
+        val page = rendered.page?.page ?: fetched.page ?: return result
         return extractFromPage(page, url) ?: result
     }
+
+    /**
+     * What one render came to. [page] is the rendered page parsed, when the browser handed one
+     * back that isn't Cloudflare's check; [challenged], whether the check showed during it;
+     * [trusted], whether its page stands on its own (it went there on a clearance).
+     */
+    private inner class Rendered(val page: FetchedPage?, val challenged: Boolean, val trusted: Boolean) {
+        /**
+         * The import's answer from this render, or null to go on as before (#36): its recipe;
+         * [ParseError.HumanCheck] if the check still showed at the cap; the page's own
+         * [ParseError.NoRecipeFound] (after the on-device model's try) if it passed the check or
+         * went there on a clearance.
+         */
+        suspend fun answer(url: String): ParseResult? {
+            val result = page?.result
+            return when {
+                result is ParseResult.Success -> result
+                page == null -> if (challenged) ParseResult.Error(ParseError.HumanCheck) else null
+                challenged || trusted -> {
+                    val noRecipe = ParseResult.Error(ParseError.NoRecipeFound)
+                    page.page?.let { extractFromPage(it, url) } ?: noRecipe
+                }
+                else -> null
+            }
+        }
+    }
+
+    /**
+     * One load of [url] in the off-screen browser, capped at [RENDER_TIMEOUT_MS], or at
+     * [CHALLENGE_TIMEOUT_MS] in all once Cloudflare's check has shown (#220): a check that
+     * passes by itself takes a few seconds, and reads the page it moves on to. Its host is
+     * remembered ([ClearedHosts]) when a page loads past the check, or on a clearance.
+     */
+    private suspend fun renderPage(url: String, host: String?, trusted: Boolean): Rendered {
+        val challenged = AtomicBoolean(false)
+        val html = coroutineScope {
+            val render = async { renderedPages.render(url) { challenged.set(true) } }
+            val html = withTimeoutOrNull(RENDER_TIMEOUT_MS) { render.await() }
+                ?: if (challenged.get() && render.isActive) {
+                    withTimeoutOrNull(CHALLENGE_TIMEOUT_MS - RENDER_TIMEOUT_MS) { render.await() }
+                } else {
+                    null
+                }
+            render.cancel()
+            html
+        }
+        val page = html?.let { withContext(Dispatchers.Default) { BlogRecipeSource.parsePage(it, url) } }
+        // A browser that handed back the check itself hasn't got past it either.
+        if (html != null && page?.result !is ParseResult.Success && CloudflareChallenge.isChallengePage(html)) {
+            return Rendered(null, challenged = true, trusted = trusted)
+        }
+        if (page != null && host != null && (challenged.get() || trusted)) clearedHosts.record(host)
+        return Rendered(page, challenged.get(), trusted)
+    }
+
+    override suspend fun importPage(sharedUrl: String, html: String): ParseResult {
+        val url = UrlCleaner.clean(sharedUrl)
+        val parsed = withContext(Dispatchers.Default) { BlogRecipeSource.parsePage(html, url) }.result
+        if (parsed !is ParseResult.Success && CloudflareChallenge.isChallengePage(html)) {
+            return ParseResult.Error(ParseError.HumanCheck)
+        }
+        hostOf(url)?.let(clearedHosts::record)
+        if (parsed !is ParseResult.Success) return parsed
+        return log.guard("importPage save", ParseResult.Error(ParseError.SaveFailed)) {
+            save(parsed.recipe.copy(sourceUrl = url), clock.now())
+        }
+    }
+
+    private fun hostOf(url: String): String? =
+        try { URI(url).host?.lowercase() } catch (e: URISyntaxException) { null }
 
     /**
      * A recipe the on-device model picked out of [page]'s text (#103), behind the
@@ -187,7 +279,8 @@ class DefaultRecipeRepository @Inject constructor(
     private suspend fun fetchWithOneRetry(url: String): FetchedPage {
         val first = source.fetchPage(url)
         val error = (first.result as? ParseResult.Error)?.error
-        if (error == null || !error.shouldAutoRetry) return first
+        // Cloudflare's check (#220) refuses a plain fetch every time: straight on to the browser.
+        if (error == null || !error.shouldAutoRetry || first.challenge) return first
         delay(RETRY_PAUSE_MS)
         return source.fetchPage(url)
     }
@@ -309,5 +402,9 @@ class DefaultRecipeRepository @Inject constructor(
          *  top of the direct fetch and its retry, so a page that never settles can't hold the
          *  spinner much longer than they did. */
         const val RENDER_TIMEOUT_MS = 20_000L
+
+        /** The render's cap in all once Cloudflare's check has shown (#220): long enough for a
+         *  check that passes by itself, and the page it then loads, to settle. */
+        const val CHALLENGE_TIMEOUT_MS = 30_000L
     }
 }
