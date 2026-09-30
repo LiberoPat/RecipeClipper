@@ -16,7 +16,7 @@ TESTS=("$@")
   test14_automaticBackup test15_sendAndPasteAList test16_sendAndReceiveAFile test17_firstRunTour
   test18_doneShoppingAndOnList test19_pantrySendList test20_pantryUseUpAfterCooking test21_chefModeUnsupportedSimulated
   test22_recipeJunkHidden test23_markAsCooked test24_tooltips test25_pantryStates test26_onionPlurals
-  test27_redditImport test28_readThePhoto test29_readingOtherLanguages)
+  test27_redditImport test28_readThePhoto test29_readingOtherLanguages test30_scanARecipe)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
 # A new simulator's keyboard shows its slide-to-type introduction once, over the app: mark it seen.
@@ -37,6 +37,18 @@ for t in "${TESTS[@]}"; do
   slug=$(echo "${t#test}" | sed -E 's/_/-/; s/([a-z])([A-Z])/\1-\2/g; s/([A-Z])([A-Z][a-z])/\1-\2/g' | tr 'A-Z' 'a-z')
   raw="$DD/raw/$slug.mp4"; log="$DD/raw/$slug.log"
   rm -f "$raw"
+  # Clip 30 scans the fixture recipe card (#226): its two sides go into Photos just before (after
+  # clip 13's photo, so that one's test still finds its own first), back then front, so the picker
+  # shows the front first. Through BMP, as above, so Photos files them under the moment added.
+  if [ "$t" = test30_scanARecipe ]; then
+    for side in back front; do
+      card=$(mktemp -d)/card-$side
+      sips -s format bmp "shared/fixtures/reddit/photos/card-$side.jpg" --out "$card.bmp" >/dev/null 2>&1 &&
+        sips -s format png "$card.bmp" --out "$card.png" >/dev/null 2>&1 &&
+        xcrun simctl addmedia "$SIM" "$card.png"
+      sleep 2
+    done
+  fi
   xcrun simctl io "$SIM" recordVideo --codec h264 --force "$raw" 2>/dev/null &
   rec=$!
   sleep 1
