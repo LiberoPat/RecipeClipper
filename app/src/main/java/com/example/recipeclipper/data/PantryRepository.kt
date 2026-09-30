@@ -52,6 +52,13 @@ interface PantryRepository {
     /** Deletes an item; null when it was already gone. */
     suspend fun delete(id: Long): Snapshot?
 
+    /**
+     * "Clear run-out items" (#194): deletes every item that has run out, in one transaction, and
+     * returns them for [restore]; null when nothing had run out (or the write failed). The grocery
+     * list is not touched.
+     */
+    suspend fun deleteRunOut(): Snapshot?
+
     /** Puts rows back exactly as [snapshot] had them: undoes a delete, a restock or a stock change. */
     suspend fun restore(snapshot: Snapshot)
 }
@@ -116,6 +123,10 @@ class DefaultPantryRepository @Inject constructor(
         val entity = dao.item(id) ?: return@guard null
         dao.delete(id)
         PantryRepository.Snapshot(listOf(entity))
+    }
+
+    override suspend fun deleteRunOut(): PantryRepository.Snapshot? = log.guard("deleteRunOutPantry", null) {
+        dao.deleteRunOut().takeIf { it.isNotEmpty() }?.let { PantryRepository.Snapshot(it) }
     }
 
     override suspend fun restore(snapshot: PantryRepository.Snapshot) {

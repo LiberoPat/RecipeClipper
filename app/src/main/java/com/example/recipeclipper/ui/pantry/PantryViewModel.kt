@@ -45,13 +45,22 @@ sealed class PantryMessage {
 
     /** [name] was deleted: offers Undo. */
     data class Deleted(override val id: Long, val name: String) : PantryMessage()
+
+    /** "Clear run-out items" removed every item that had run out (#194): offers Undo. */
+    data class RunOutCleared(override val id: Long) : PantryMessage()
+
+    /** The basket tag took [count] lines off the grocery list (owner, 2026-09-29): offers Undo. */
+    data class TakenOffList(override val id: Long, val count: Int) : PantryMessage()
 }
 
 /**
  * [sections] is null until the pantry has loaded; [hasItems] says whether it holds anything at
  * all (a search can find nothing in a full pantry), and [hasInStock] whether anything is in
  * stock, which is what "Send list" and "Send as file" send (#149). [onList] holds the items
- * whose name is on the grocery list, unticked: their rows show the basket Groceries tag (#146).
+ * that are on the grocery list, unticked ([PantryList.onListLines]), in any stock: their rows show
+ * the basket Groceries tag (#146).
+ * [hasRunOut] says whether anything has run out, what "Clear run-out items" needs, and
+ * [confirmClearRunOut] is how many items its dialog asks about, while it's open (#194).
  */
 data class PantryUiState(
     val sections: List<PantrySection>? = null,
@@ -63,14 +72,17 @@ data class PantryUiState(
     val today: Long = 0,
     val editing: PantryEditing? = null,
     val message: PantryMessage? = null,
-    val onList: Set<Long> = emptySet()
+    val onList: Set<Long> = emptySet(),
+    val hasRunOut: Boolean = false,
+    val confirmClearRunOut: Int? = null
 )
 
 /**
  * The Pantry tab (#51): add by typing, search, sort by aisle or expiry, and mark each item in
  * stock, running low or run out (#194). Running low or out puts the item on the grocery list,
- * silently (#146); its row then shows the basket Groceries tag, and tapping that takes it off again. A delete
- * can be undone.
+ * silently (#146). An item on the grocery list, its own line or any line naming it, shows the basket Groceries
+ * tag, and tapping that takes those lines off. A delete, "Clear run-out items" (#194, which leaves the
+ * grocery list alone) and the tag's removal can each be undone, one at a time.
  */
 @HiltViewModel
 class PantryViewModel @Inject constructor(
@@ -84,7 +96,7 @@ class PantryViewModel @Inject constructor(
 
     private var items: List<PantryItem> = emptyList()
     private var groceryItems: List<GroceryItem> = emptyList()
-    private var deleted: PantryRepository.Snapshot? = null
+    private var undo: Undo? = null
     private var messages = 0L
 
     init {
@@ -92,7 +104,12 @@ class PantryViewModel @Inject constructor(
             pantry.observeItems().collect { all ->
                 items = all
                 _uiState.update {
-                    it.copy(hasItems = all.isNotEmpty(), hasInStock = all.any { item -> item.inStock }, onList = onList()).arranged()
+                    it.copy(
+                        hasItems = all.isNotEmpty(),
+                        hasInStock = all.any { item -> item.inStock },
+                        hasRunOut = all.any { item -> !item.inStock },
+                        onList = onList()
+                    ).arranged()
                 }
             }
         }
@@ -106,10 +123,17 @@ class PantryViewModel @Inject constructor(
 
     private fun PantryUiState.arranged() = copy(sections = PantryList.arrange(items, query, sort))
 
-    /** The unticked grocery lines that are [item] itself ([PantryList.ownLines]). */
+    /** What the snackbar's Undo puts back: pantry items, or grocery lines. */
+    private sealed class Undo {
+        data class Pantry(val snapshot: PantryRepository.Snapshot) : Undo()
+        data class Groceries(val lines: GroceryRepository.DeletedItems) : Undo()
+    }
+
+    /** The unticked grocery lines that are [item] itself ([PantryList.ownLines]): what running out checks for. */
     private fun linesFor(item: PantryItem): List<GroceryItem> = PantryList.ownLines(item, groceryItems)
 
-    private fun onList(): Set<Long> = items.filter { linesFor(it).isNotEmpty() }.map { it.id }.toSet()
+    private fun onList(): Set<Long> =
+        items.filter { PantryList.onListLines(it, groceryItems).isNotEmpty() }.map { it.id }.toSet()
 
     fun onQueryChange(query: String) = _uiState.update { it.copy(query = query).arranged() }
 
@@ -147,11 +171,18 @@ class PantryViewModel @Inject constructor(
         }
     }
 
-    /** The row's basket tag, tapped: the item's own lines leave the grocery list. No snackbar (#146). */
+    /**
+     * The row's basket tag, tapped: every line that puts the item on the grocery list
+     * ([PantryList.onListLines], a recipe's included) leaves it, with Undo (owner, 2026-09-29).
+     */
     fun onTakeOffList(item: PantryItem) {
-        val ids = linesFor(item).map { it.id }
+        val ids = PantryList.onListLines(item, groceryItems).map { it.id }
         if (ids.isEmpty()) return
-        viewModelScope.launch { groceries.delete(ids) }
+        viewModelScope.launch {
+            val gone = groceries.delete(ids) ?: return@launch
+            undo = Undo.Groceries(gone)
+            _uiState.update { it.copy(message = PantryMessage.TakenOffList(++messages, gone.entities.size)) }
+        }
     }
 
     // --- The edit sheet
@@ -195,21 +226,49 @@ class PantryViewModel @Inject constructor(
         _uiState.update { it.copy(editing = null) }
         viewModelScope.launch {
             val gone = pantry.delete(editing.id) ?: return@launch
-            deleted = gone
+            undo = Undo.Pantry(gone)
             _uiState.update { it.copy(message = PantryMessage.Deleted(++messages, gone.entities.first().name)) }
         }
     }
 
+    /** "Clear run-out items" (#194) asks first, naming how many items would go, whatever the search. */
+    fun onClearRunOut() {
+        val count = items.count { !it.inStock }
+        if (count > 0) _uiState.update { it.copy(confirmClearRunOut = count) }
+    }
+
+    fun onClearRunOutDismissed() = _uiState.update { it.copy(confirmClearRunOut = null) }
+
+    /**
+     * The dialog's Clear: every item that has run out leaves the pantry, in one write; their
+     * grocery lines stay. Undo ([onUndoDelete]) puts them back exactly as they were.
+     */
+    fun onClearRunOutConfirm() {
+        if (_uiState.value.confirmClearRunOut == null) return
+        _uiState.update { it.copy(confirmClearRunOut = null) }
+        viewModelScope.launch {
+            val gone = pantry.deleteRunOut() ?: return@launch
+            undo = Undo.Pantry(gone)
+            _uiState.update { it.copy(message = PantryMessage.RunOutCleared(++messages)) }
+        }
+    }
+
+    /** Undoes the last removal: a delete, "Clear run-out items", or the tag's lines. */
     fun onUndoDelete() {
-        val gone = deleted ?: return
-        deleted = null
+        val last = undo ?: return
+        undo = null
         _uiState.update { it.copy(message = null) }
-        viewModelScope.launch { pantry.restore(gone) }
+        viewModelScope.launch {
+            when (last) {
+                is Undo.Pantry -> pantry.restore(last.snapshot)
+                is Undo.Groceries -> groceries.restore(last.lines)
+            }
+        }
     }
 
     /** The snackbar timed out or was dismissed. */
     fun onMessageDismissed() {
-        if (_uiState.value.message is PantryMessage.Deleted) deleted = null
+        if (_uiState.value.message != null) undo = null
         _uiState.update { it.copy(message = null) }
     }
 

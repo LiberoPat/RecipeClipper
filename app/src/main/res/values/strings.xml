@@ -446,6 +446,12 @@
     <string name="pantry_running_low">Running low</string>
     <string name="pantry_low">Low</string>
     <string name="pantry_take_off_list">Remove from grocery list</string>
+    <!-- The basket tag, tapped: its lines left the grocery list, with Undo (a count when more than one) -->
+    <string name="snackbar_taken_off_list">Removed from groceries</string>
+    <plurals name="snackbar_taken_off_list_count">
+        <item quantity="one">Removed %1$d item from groceries</item>
+        <item quantity="other">Removed %1$d items from groceries</item>
+    </plurals>
     <string name="pantry_always_have">Always have</string>
     <string name="pantry_always_have_detail">Staples are never under “To buy”.</string>
     <string name="pantry_expired">Expired</string>
@@ -459,6 +465,13 @@
     <string name="action_set_date">Set date</string>
     <string name="action_clear_date">Clear date</string>
     <string name="snackbar_pantry_deleted">Deleted %1$s</string>
+    <!-- The Pantry menu's "Clear run-out items" (#194) -->
+    <string name="action_clear_run_out">Clear run-out items</string>
+    <string name="snackbar_run_out_cleared">Run-out items cleared</string>
+    <plurals name="clear_run_out_title">
+        <item quantity="one">Clear %1$d run-out item?</item>
+        <item quantity="other">Clear %1$d run-out items?</item>
+    </plurals>
     <string name="what_i_need_title">What I need</string>
     <string name="what_i_need_buy">To buy</string>
     <string name="what_i_need_have">In your pantry</string>

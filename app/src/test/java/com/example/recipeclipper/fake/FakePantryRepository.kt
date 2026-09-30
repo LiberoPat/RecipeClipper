@@ -74,6 +74,12 @@ class FakePantryRepository(initial: List<PantryItem> = emptyList()) : PantryRepo
         return PantryRepository.Snapshot(listOf(gone.toEntity()))
     }
 
+    override suspend fun deleteRunOut(): PantryRepository.Snapshot? {
+        val gone = items.value.filter { !it.inStock }.ifEmpty { return null }
+        items.value = items.value - gone.toSet()
+        return PantryRepository.Snapshot(gone.map { it.toEntity() })
+    }
+
     override suspend fun restore(snapshot: PantryRepository.Snapshot) {
         val back = snapshot.entities.map { it.toDomain() }
         items.value = (items.value.filterNot { item -> back.any { it.id == item.id } } + back).sortedBy { it.id }

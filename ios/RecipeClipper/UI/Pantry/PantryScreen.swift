@@ -4,7 +4,8 @@ import SwiftUI
 /// everything by aisle (or by expiry, from the menu), and what has run out last (#194). Each row
 /// shows whether it's in stock, running low or run out, and its quantity as written; tapping the
 /// row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes and a
-/// touch-and-hold menu as shortcuts. The menu sends what's in stock, as plain text or as a file (#149). A `List`, for the
+/// touch-and-hold menu as shortcuts. The menu sends what's in stock, as plain text or as a file (#149), and
+/// clears what has run out after asking, with undo (#194). A `List`, for the
 /// swipe actions, so the readable column is made from the width, as on Recipes.
 struct PantryScreen: View {
     let vm: PantryViewModel
@@ -73,7 +74,7 @@ struct PantryScreen: View {
         .toolbar { toolbar(state) }
         // The tooltips (#190); none over this screen's sheet and snackbar. Outside the toolbar,
         // whose menu is an anchor too.
-        .tooltipHost(.pantry, blocked: state.editing != nil || state.message != nil)
+        .tooltipHost(.pantry, blocked: state.editing != nil || state.message != nil || state.confirmClearRunOut != nil)
         .overlay(alignment: .bottom) {
             if let message = state.message {
                 snackbar(message)
@@ -94,6 +95,13 @@ struct PantryScreen: View {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
+        }
+        .alert(
+            Strings.clearRunOutTitle(state.confirmClearRunOut ?? 0),
+            isPresented: Binding(get: { vm.uiState.confirmClearRunOut != nil }, set: { if !$0 { vm.onClearRunOutDismissed() } })
+        ) {
+            Button(Strings.clear, role: .destructive, action: vm.onClearRunOutConfirm)
+            Button(Strings.cancel, role: .cancel, action: vm.onClearRunOutDismissed)
         }
         .modifier(SendFileEffect(vm: sendFileVM))
     }
@@ -178,6 +186,12 @@ struct PantryScreen: View {
                 // An exclusive choice, so radio glyphs rather than a bare checkmark.
                 sortButton(.aisle, Strings.pantrySortAisle, current: state.sort)
                 sortButton(.expiry, Strings.pantrySortExpiry, current: state.sort)
+                Divider()
+                // Asks first; the grocery list is left alone, and Undo puts the items back (#194).
+                Button(action: vm.onClearRunOut) {
+                    Label(Strings.clearRunOut, systemImage: "trash")
+                }
+                .disabled(!state.hasRunOut)
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
@@ -199,12 +213,16 @@ struct PantryScreen: View {
         }
     }
 
-    /// Snackbars only for undo (#146).
+    /// Snackbars only for undo (#146): a delete, "Clear run-out items" (#194), or the tag's removal.
     @ViewBuilder
     private func snackbar(_ message: PantryMessage) -> some View {
         switch message {
         case .deleted(_, let name):
             Snackbar(message: Strings.pantryDeleted(name), actionLabel: Strings.undo, action: vm.onUndoDelete)
+        case .runOutCleared:
+            Snackbar(message: Strings.runOutCleared, actionLabel: Strings.undo, action: vm.onUndoDelete)
+        case .takenOffList(_, let count):
+            Snackbar(message: Strings.takenOffList(count), actionLabel: Strings.undo, action: vm.onUndoDelete)
         }
     }
 }

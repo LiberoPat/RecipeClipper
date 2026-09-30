@@ -551,6 +551,11 @@ protocol PantryRepository: AnyObject {
     /// Deletes an item; nil when it was already gone.
     func delete(_ id: Int64) async -> PantrySnapshot?
 
+    /// "Clear run-out items" (#194): deletes every item that has run out, in one transaction, and
+    /// returns them for `restore`; nil when nothing had run out (or the write failed). The grocery
+    /// list is not touched.
+    func deleteRunOut() async -> PantrySnapshot?
+
     /// Puts rows back exactly as `snapshot` had them.
     func restore(_ snapshot: PantrySnapshot) async
 }

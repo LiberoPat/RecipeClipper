@@ -39,6 +39,35 @@ final class PantryDaoTests: XCTestCase {
         XCTAssertEqual(milk?.purchasedDay, 20_000) // running out keeps the date
     }
 
+    // #194: "Clear run-out items" deletes only what has run out (running low stays), and the
+    // repository's snapshot puts them back whole: ids, uids and every field.
+    func testDeleteRunOutRemovesOnlyRunOutItemsAndRestoresThemWhole() async throws {
+        let repository = DefaultPantryRepository(db: db, clock: TestClock(now: 99))
+        var milkRecord = item("milk", inStock: false)
+        milkRecord.quantity = "1 l"
+        milkRecord.expiresDay = 20_100
+        milkRecord.alwaysHave = true
+        var saltRecord = item("salt")
+        saltRecord.runningLow = true
+        let oil = try await db.write { try PantryDao(db: $0).insert(self.item("oil")) }
+        let milk = try await db.write { try PantryDao(db: $0).insert(milkRecord) }
+        let salt = try await db.write { try PantryDao(db: $0).insert(saltRecord) }
+        let rice = try await db.write { try PantryDao(db: $0).insert(self.item("rice", inStock: false)) }
+        let all = { try await self.db.read { try PantryDao(db: $0).items() } }
+        let before = try await all()
+
+        let gone = await repository.deleteRunOut()
+        XCTAssertEqual(gone?.items.map(\.id), [milk, rice])
+        var now = try await all()
+        XCTAssertEqual(now.map(\.id), [oil, salt])
+        let again = await repository.deleteRunOut()
+        XCTAssertNil(again)
+
+        await repository.restore(gone!)
+        now = try await all()
+        XCTAssertEqual(now, before)
+    }
+
     // #194: running low is a flag on an in-stock item; a restock clears it.
     func testRunningLowIsKeptUntilARestock() async throws {
         let id = try await db.write { try PantryDao(db: $0).insert(self.item("milk")) }

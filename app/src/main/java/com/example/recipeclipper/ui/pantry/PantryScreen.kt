@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -78,6 +79,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -119,7 +121,7 @@ import kotlinx.coroutines.launch
  * The Pantry tab (#51): "Add to the pantry", a search field, then everything by aisle (or by
  * expiry, from the menu), and what has run out last (#194). Each row shows whether it's in
  * stock, running low or run out, and its quantity as written; tapping the row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes and a touch-and-hold menu as shortcuts. The menu sends what's in stock, as
- * plain text or as a file (#149).
+ * plain text or as a file (#149), and clears what has run out after asking, with undo (#194).
  */
 @Composable
 fun PantryScreen(
@@ -132,10 +134,14 @@ fun PantryScreen(
     val context = LocalContext.current
     val resources = LocalResources.current
 
-    // Snackbars only for undo (#146).
+    // Snackbars only for undo (#146): a delete, "Clear run-out items" (#194), or the tag's removal.
     val message = state.message
     val text = when (message) {
         is PantryMessage.Deleted -> stringResource(R.string.snackbar_pantry_deleted, message.name)
+        is PantryMessage.RunOutCleared -> stringResource(R.string.snackbar_run_out_cleared)
+        is PantryMessage.TakenOffList ->
+            if (message.count > 1) pluralStringResource(R.plurals.snackbar_taken_off_list_count, message.count, message.count)
+            else stringResource(R.string.snackbar_taken_off_list)
         null -> null
     }
     val undoLabel = stringResource(R.string.action_undo)
@@ -181,7 +187,9 @@ fun PantryScreen(
                                 },
                                 onSendFile = sendFileViewModel?.let { vm ->
                                     { vm.sendPantry(resources.getString(R.string.tab_pantry)) }
-                                }
+                                },
+                                canClearRunOut = state.hasRunOut,
+                                onClearRunOut = viewModel::onClearRunOut
                             )
                         }
                         Spacer(Modifier.height(8.dp))
@@ -264,12 +272,26 @@ fun PantryScreen(
         state.editing?.let { editing ->
             EditSheet(editing, viewModel)
         }
+        state.confirmClearRunOut?.let { count ->
+            AlertDialog(
+                onDismissRequest = viewModel::onClearRunOutDismissed,
+                title = { Text(pluralStringResource(R.plurals.clear_run_out_title, count, count)) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::onClearRunOutConfirm, modifier = Modifier.testTag("clearRunOutConfirm")) {
+                        Text(stringResource(R.string.action_clear))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::onClearRunOutDismissed) { Text(stringResource(R.string.action_cancel)) }
+                }
+            )
+        }
     }
 }
 
 /**
  * "Send list" (the in-stock items as text) and "Send as file" (#149), disabled while nothing is
- * in stock, then the sort.
+ * in stock, then the sort, then "Clear run-out items" (#194), disabled while nothing has run out.
  */
 @Composable
 private fun PantryMenu(
@@ -277,7 +299,9 @@ private fun PantryMenu(
     onSort: (PantrySort) -> Unit,
     canSend: Boolean,
     onShare: () -> Unit,
-    onSendFile: (() -> Unit)?
+    onSendFile: (() -> Unit)?,
+    canClearRunOut: Boolean,
+    onClearRunOut: () -> Unit
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -316,6 +340,16 @@ private fun PantryMenu(
                         }
                     )
                 }
+            HorizontalDivider()
+            // Asks first; the grocery list is left alone, and Undo puts the items back (#194).
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_clear_run_out)) },
+                enabled = canClearRunOut,
+                onClick = {
+                    expanded = false
+                    onClearRunOut()
+                }
+            )
         }
     }
 }

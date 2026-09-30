@@ -398,6 +398,11 @@
     <string name="pantry_running_low">Wird knapp</string>
     <string name="pantry_low">Knapp</string>
     <string name="pantry_take_off_list">Von der Einkaufsliste entfernen</string>
+    <string name="snackbar_taken_off_list">Von der Einkaufsliste entfernt</string>
+    <plurals name="snackbar_taken_off_list_count">
+        <item quantity="one">%1$d Artikel von der Einkaufsliste entfernt</item>
+        <item quantity="other">%1$d Artikel von der Einkaufsliste entfernt</item>
+    </plurals>
     <string name="pantry_always_have">Immer im Haus</string>
     <string name="pantry_always_have_detail">Grundvorräte stehen nie unter „Zu kaufen“.</string>
     <string name="pantry_expired">Abgelaufen</string>
@@ -411,6 +416,12 @@
     <string name="action_set_date">Datum wählen</string>
     <string name="action_clear_date">Datum entfernen</string>
     <string name="snackbar_pantry_deleted">Gelöscht: %1$s</string>
+    <string name="action_clear_run_out">Aufgebrauchte Artikel entfernen</string>
+    <string name="snackbar_run_out_cleared">Aufgebrauchte Artikel entfernt</string>
+    <plurals name="clear_run_out_title">
+        <item quantity="one">%1$d aufgebrauchten Artikel entfernen?</item>
+        <item quantity="other">%1$d aufgebrauchte Artikel entfernen?</item>
+    </plurals>
     <string name="what_i_need_title">Was ich brauche</string>
     <string name="what_i_need_buy">Zu kaufen</string>
     <string name="what_i_need_have">In deinem Vorrat</string>

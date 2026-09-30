@@ -71,6 +71,13 @@ final class FakePantryRepository: PantryRepository {
         return PantrySnapshot(items: [Self.record(gone)])
     }
 
+    func deleteRunOut() async -> PantrySnapshot? {
+        let gone = items.value.filter { !$0.inStock }
+        guard !gone.isEmpty else { return nil }
+        items.value.removeAll { !$0.inStock }
+        return PantrySnapshot(items: gone.map(Self.record))
+    }
+
     func restore(_ snapshot: PantrySnapshot) async {
         let back = snapshot.items.map(\.domain)
         items.value = (items.value.filter { item in !back.contains { $0.id == item.id } } + back).sorted { $0.id < $1.id }

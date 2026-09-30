@@ -415,6 +415,12 @@
     <string name="pantry_running_low">Presque fini</string>
     <string name="pantry_low">Bas</string>
     <string name="pantry_take_off_list">Retirer de la liste de courses</string>
+    <string name="snackbar_taken_off_list">Retiré de la liste de courses</string>
+    <plurals name="snackbar_taken_off_list_count">
+        <item quantity="one">%1$d article retiré de la liste de courses</item>
+        <item quantity="many">%1$d d’articles retirés de la liste de courses</item>
+        <item quantity="other">%1$d articles retirés de la liste de courses</item>
+    </plurals>
     <string name="pantry_always_have">Toujours en réserve</string>
     <string name="pantry_always_have_detail">Les produits de base ne figurent jamais dans « À acheter ».</string>
     <string name="pantry_expired">Périmé</string>
@@ -428,6 +434,13 @@
     <string name="action_set_date">Choisir une date</string>
     <string name="action_clear_date">Effacer la date</string>
     <string name="snackbar_pantry_deleted">Supprimé : %1$s</string>
+    <string name="action_clear_run_out">Retirer les articles épuisés</string>
+    <string name="snackbar_run_out_cleared">Articles épuisés retirés</string>
+    <plurals name="clear_run_out_title">
+        <item quantity="one">Retirer %1$d article épuisé ?</item>
+        <item quantity="many">Retirer %1$d d’articles épuisés ?</item>
+        <item quantity="other">Retirer %1$d articles épuisés ?</item>
+    </plurals>
     <string name="what_i_need_title">Ce qu\'il me faut</string>
     <string name="what_i_need_buy">À acheter</string>
     <string name="what_i_need_have">Dans votre garde-manger</string>

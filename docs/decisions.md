@@ -1735,10 +1735,11 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   with undo), with swipes and a touch-and-hold menu as shortcuts. Expired or within 3 days shows a paprika
   badge; an opt-in 9:00 notification lists what expires today or tomorrow
   (Settings → Pantry). Running low or out puts its name on the grocery list
-  silently; the row then shows the Groceries tab's basket tag, and tapping that
-  takes it off (no snackbar). The menu's "Send list" and "Send as file" send what's in stock
-  (running low included), never what's out (that is on the grocery list
-  already). **Using up:** cook mode's "Done — finish"
+  silently; the row shows the Groceries tab's basket tag whenever a grocery line names the
+  item, in any stock, and tapping that takes those lines off (with Undo). The menu's "Send list"
+  and "Send as file" send what's in stock (running low included), never what's out (that is on
+  the grocery list already), and "Clear run-out items" removes what has run out, after asking,
+  with Undo. **Using up:** cook mode's "Done — finish"
   with ingredients ticked, or a photo added with "I made this" (or "Mark as
   cooked", #173) once its viewer closes (the ticked lines, else all), opens
   "Update the pantry" (never on a
@@ -3167,14 +3168,20 @@ offer for the first was replaced and gone. Owner's decisions:
   change from elsewhere (Add to groceries from a recipe, the pantry adding or removing a line).
   Leaving the app for another and coming back is the same visit.
 - **Pantry to groceries shows a state, not a message.** Marking an item out (or, since #194,
-  running low) adds its name to the list silently (unless its line is there already), and the
-  row shows a small tag; tapping the tag takes it off the list, with no snackbar. The tag means an unticked
-  grocery line that is the item's own name (trimmed, case-insensitive, a listed pair's number
-  aside since #191, same language): what
-  marking it out adds. A recipe's "2 cups flour" doesn't count, so tapping the tag never
-  deletes a recipe's line, which is why no undo is needed. No schema change: the link is the
-  name. Restocking (from the row, or putting away) returns an item to In stock; it never
-  takes the line off the list.
+  running low) adds its name to the list silently (unless its own line, the item's name as
+  written, is there already: `PantryList.ownLines`), and the row shows a small tag. **The tag
+  shows whenever the item is on the grocery list, in any stock** (owner, 2026-09-29: a typed
+  "2 onions" or a recipe's "1 onion, sliced" showed no tag on "onions"): any unticked line, same
+  language, that is the item's own name or whose ingredient's name matches it as What I need
+  matches (`PantryList.onListLines`, through `IngredientName.matches` and the listed plural
+  pairs: "red onion" isn't "onion", "rice flour" isn't "flour"). Tapping the tag removes every
+  one of those lines, a recipe's included, so it raises an Undo snackbar ("Removed from
+  groceries", or "Removed 2 items from groceries") that puts back exactly those lines. Its
+  spoken action is unchanged ("Remove from grocery list"). Until then the tag meant only the
+  item's own line, so tapping it never touched a recipe's line and needed no undo. Running out's
+  check for the own line, and Done shopping, are unchanged. No schema change: the link is the name.
+  Restocking (from the row, or putting away) returns an item to In stock; it never takes the
+  line off the list.
 - **The tag is the Groceries tab's basket and label** (owner, 2026-09-29, testing on a phone:
   "On list" wasn't understood). The same outlined paprika chip, same place (after the name and
   "Low", wrapping under a long name or large text), same meaning and tap, but it wears the tab's
@@ -3387,6 +3394,11 @@ the cupboard. It is replaced, and a **Running low** state added.
 - **Groceries as #146.** Ran out and Running low both put the name on the grocery list
   silently, shown by the basket tag; tapping the tag takes it off. Restock, Done shopping's
   put-away and typing a name already there all return an item to In stock (and bought today).
+- **"Clear run-out items"** (owner, 2026-09-29), last in the ⋮ menu, disabled while nothing
+  has run out: after a "Clear 3 run-out items?" dialog (the count is every run-out item, whatever
+  the search; iOS a destructive alert), it deletes every item in the Run out section in one
+  transaction (`deleteRunOut`), and one Undo snackbar puts them back exactly, ids and uids
+  included. The grocery list is left alone: the lines running out added stay.
 - **Presence only, unchanged.** Running low still counts as having it: What I need, the
   grocery sheet's first ticks, the model's candidates and expiry reminders all read `inStock`,
   which running low keeps. "Send list" and "Send as file" include running-low items (they are
@@ -3526,8 +3538,9 @@ different, just as yellow onions are different than white."
 - **One place compares names:** Pantry Have/Buy and the use-up sheet (`PantryMatch.find`, through
   `matches`), "What I need"'s rows and grocery grouping (by key; a row is named by its first
   line), the aisle table (aliases and names keyed; `SharedTablesTest` checks no two aisles share
-  a keyed alias), Done shopping's one row per ingredient, the basket tag and typing a name
-  already in the pantry (`IngredientName.same`), and a received list's names. Amounts in steps
+  a keyed alias), Done shopping's one row per ingredient, running out's own line and typing a
+  name already in the pantry (`IngredientName.same`), and a received list's names. The basket
+  tag (since 2026-09-29) matches as Pantry Have/Buy does, through `matches`. Amounts in steps
   (#101) keep `steps.json`'s ending rules: a step's word is only ever compared with a line's own
   head word there, so they can't pair two different ingredients.
 - **Adding up** (`GroceryCombiner`): counts add across a pair only when their words are

@@ -300,6 +300,17 @@ out and the Run out heading, the basket tag's spoken label and action, the touch
 with both other states, the row's TalkBack description and custom actions) and `PantryUITests`
 (a swipe to Ran out, the menu both ways, the sheet's control, moves between sections).
 
+"Clear run-out items" and the basket tag for any line naming the item (owner, 2026-09-29):
+`PantryDaoTest` / `PantryDaoTests` (`deleteRunOut` through the real repository: only run-out
+items go, running low stays, and the restore puts them back with their ids and uids);
+`PantryTest(s)` (`onListLines`: a typed "2 onions" and a recipe's "1 onion, sliced" count for
+"onions", "red onion", "onion powder", a ticked line and another language don't);
+`PantryViewModelTest(s)` (the menu item's enabled state, the dialog's count whatever the search,
+confirm and Undo with the grocery list untouched; the tag's removal of every matching line and
+its Undo; running out still adding the own line beside a typed "2 onions"); `PantryScreenTest`
+(Robolectric: the menu item, the "Clear 2 run-out items?" dialog, Cancel, Clear and Undo; the
+tag on a typed and a recipe line, its snackbar and Undo).
+
 The Pantry's "Send list" and "Send as file" (#149, what's in stock): `SendListTextTest` (the
 text, and its round trip through "Add this list"), `ShareFileTest` and
 `ShareFileRepositoryTest` (the file), `PantryViewModelTest`, `ShareFileViewModelsTest`, and
