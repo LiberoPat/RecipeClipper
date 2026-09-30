@@ -27,7 +27,7 @@ import javax.inject.Inject
 
 /**
  * The edit sheet's fields, for item [id]. Written only on Save, except [stock]: the sheet's
- * stock control applies at once, as the row's button does (#194).
+ * stock control applies at once, as the row's menu and swipes do (#194).
  */
 data class PantryEditing(
     val id: Long,
@@ -51,7 +51,7 @@ sealed class PantryMessage {
  * [sections] is null until the pantry has loaded; [hasItems] says whether it holds anything at
  * all (a search can find nothing in a full pantry), and [hasInStock] whether anything is in
  * stock, which is what "Send list" and "Send as file" send (#149). [onList] holds the items
- * whose name is on the grocery list, unticked: their rows show "On list" (#146).
+ * whose name is on the grocery list, unticked: their rows show the basket Groceries tag (#146).
  */
 data class PantryUiState(
     val sections: List<PantrySection>? = null,
@@ -69,7 +69,7 @@ data class PantryUiState(
 /**
  * The Pantry tab (#51): add by typing, search, sort by aisle or expiry, and mark each item in
  * stock, running low or run out (#194). Running low or out puts the item on the grocery list,
- * silently (#146); its row then says "On list", and tapping that takes it off again. A delete
+ * silently (#146); its row then shows the basket Groceries tag, and tapping that takes it off again. A delete
  * can be undone.
  */
 @HiltViewModel
@@ -132,7 +132,7 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * A row's action, swipe or menu (#194). Running low and run out put the item on the grocery
+     * A row's swipe or menu, or the sheet's control (#194). Running low and run out put the item on the grocery
      * list, silently, unless it's there already (#146); back in stock means just bought, today.
      */
     fun onSetStock(item: PantryItem, stock: PantryStock) {
@@ -147,7 +147,7 @@ class PantryViewModel @Inject constructor(
         }
     }
 
-    /** The row's "On list" tag, tapped: the item's own lines leave the grocery list. No snackbar (#146). */
+    /** The row's basket tag, tapped: the item's own lines leave the grocery list. No snackbar (#146). */
     fun onTakeOffList(item: PantryItem) {
         val ids = linesFor(item).map { it.id }
         if (ids.isEmpty()) return
@@ -162,7 +162,7 @@ class PantryViewModel @Inject constructor(
         )
     }
 
-    /** The sheet's stock control: applied at once, through the same path as the row's button. */
+    /** The sheet's stock control: applied at once, through the same path as the row's menu and swipes. */
     fun onEditStock(stock: PantryStock) {
         val editing = _uiState.value.editing ?: return
         val item = items.firstOrNull { it.id == editing.id } ?: return

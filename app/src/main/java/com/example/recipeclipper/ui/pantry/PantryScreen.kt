@@ -5,7 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,7 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -69,19 +72,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.ShareCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -108,7 +117,7 @@ import kotlinx.coroutines.launch
 /**
  * The Pantry tab (#51): "Add to the pantry", a search field, then everything by aisle (or by
  * expiry, from the menu), and what has run out last (#194). Each row shows whether it's in
- * stock, running low or run out, with a labelled action; tapping the row opens its edit sheet (quantity, staple, use-by date, delete). The menu sends what's in stock, as
+ * stock, running low or run out, and its quantity as written; tapping the row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes and a touch-and-hold menu as shortcuts. The menu sends what's in stock, as
  * plain text or as a file (#149).
  */
 @Composable
@@ -243,7 +252,7 @@ fun PantryScreen(
                                 item = item,
                                 today = state.today,
                                 onList = item.id in state.onList,
-                                // The stock tooltip (#190) points at the first row's action.
+                                // The stock tooltip (#190) points at the first row.
                                 first = item == state.sections?.firstOrNull()?.items?.firstOrNull(),
                                 onSetStock = { stock -> viewModel.onSetStock(item, stock) },
                                 onEdit = { viewModel.onEdit(item) },
@@ -315,13 +324,15 @@ private fun PantryMenu(
 }
 
 /**
- * One item (#194): its name (tap to edit; touch and hold for the stock menu), a "Low" tag while
- * running low, "On list" while its name is on the grocery list, and one labelled action: "Ran
- * out", or "Restock" once it has. Swipes are shortcuts: towards the end restocks, towards the
- * start runs out. TalkBack reads the row as one ("Garlic, Run out, On list"), with the other
- * two states as its actions.
+ * One item (#194): its name, a "Low" tag while running low, the basket "Groceries" tag while its
+ * name is on the grocery list, and its quantity as written on the right. Tap the row for the edit
+ * sheet (its In stock | Running low | Run out control changes the state); touch and hold for the
+ * other two states; swipes are shortcuts: towards the end restocks, towards the start runs out.
+ * No per-row button (owner, 2026-09-29: redundant beside tapping the item). TalkBack reads the
+ * row as one ("Garlic, 1 head, Run out, On your grocery list"), with the other two states as its
+ * actions.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun PantryRow(
     item: PantryItem,
@@ -351,23 +362,17 @@ private fun PantryRow(
         }
     }
     var menu by rememberSaveable { mutableStateOf(false) }
-    // The row's labelled action (#194): Ran out, or Restock once out.
-    val next = if (stock == PantryStock.RUN_OUT) PantryStock.IN_STOCK else PantryStock.RUN_OUT
-    // TalkBack gets both other states; the long-press menu only the one the button doesn't offer.
+    // TalkBack's actions and the long-press menu: both other states.
     val otherStates = PantryStock.entries.filter { it != stock }
-    val menuStates = otherStates.filter { it != next }
     val choiceLabels = otherStates.associateWith { stringResource(it.action()) }
-    val details = buildList {
-        item.quantity?.let { add(it) }
-        if (item.alwaysHave) add(stringResource(R.string.pantry_always_have))
-    }
+    val alwaysHave = if (item.alwaysHave) stringResource(R.string.pantry_always_have) else null
     val badge = item.expiresDay?.let { PantryList.badge(it, today) }
     val expiry = item.expiresDay?.let { day ->
         if (badge == ExpiryBadge.EXPIRED) stringResource(R.string.pantry_expired)
         else stringResource(R.string.pantry_use_by, shortDate(day))
     }
     val description = (
-        listOf(item.name) + details + stringResource(stock.label()) +
+        listOfNotNull(item.name, item.quantity, alwaysHave) + stringResource(stock.label()) +
             listOfNotNull(stringResource(R.string.pantry_on_list).takeIf { onList }, expiry)
         ).joinToString(", ")
     SwipeToDismissBox(
@@ -379,32 +384,37 @@ private fun PantryRow(
         modifier = Modifier.fillMaxWidth()
     ) {
         Surface(color = MaterialTheme.colorScheme.background) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("pantry-${item.id}")
-            ) {
-                Box(Modifier.weight(1f)) {
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(onLongClick = { menu = true }, onClick = onEdit)
-                            .semantics {
-                                contentDescription = description
-                                customActions = otherStates.map { choice ->
-                                    CustomAccessibilityAction(choiceLabels.getValue(choice)) {
-                                        onSetStock(choice)
-                                        true
-                                    }
+            Box(Modifier.fillMaxWidth()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(onLongClick = { menu = true }, onClick = onEdit)
+                        .semantics {
+                            contentDescription = description
+                            customActions = otherStates.map { choice ->
+                                CustomAccessibilityAction(choiceLabels.getValue(choice)) {
+                                    onSetStock(choice)
+                                    true
                                 }
                             }
-                            .padding(vertical = 6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        }
+                        .then(if (first) Modifier.tooltipAnchor(Tooltip.PANTRY_IN_STOCK) else Modifier)
+                        .padding(vertical = 12.dp)
+                        .testTag("pantry-${item.id}")
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        // The name, then its tags; they wrap under a long name or large text
+                        // rather than squeezing it.
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
                                 item.name,
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = if (item.inStock) MaterialTheme.colorScheme.onSurface else muted,
-                                modifier = Modifier.weight(1f, fill = false)
+                                color = if (item.inStock) MaterialTheme.colorScheme.onSurface else muted
                             )
                             if (stock == PantryStock.RUNNING_LOW) {
                                 Text(
@@ -412,16 +422,16 @@ private fun PantryRow(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.tertiary,
                                     modifier = Modifier
-                                        .padding(start = 8.dp)
                                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                         .testTag("low-${item.id}")
                                 )
                             }
+                            if (onList) {
+                                OnListTag(item.id, onTakeOffList)
+                            }
                         }
-                        if (details.isNotEmpty()) {
-                            Text(details.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = muted)
-                        }
+                        alwaysHave?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = muted) }
                         expiry?.let {
                             Text(
                                 it,
@@ -431,47 +441,83 @@ private fun PantryRow(
                             )
                         }
                     }
-                    // The row's menu: the one state the button doesn't offer.
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        menuStates.forEach { choice ->
-                            DropdownMenuItem(
-                                text = { Text(choiceLabels.getValue(choice)) },
-                                onClick = {
-                                    menu = false
-                                    onSetStock(choice)
-                                },
-                                modifier = Modifier.testTag("stockMenu-${choice.name}")
-                            )
-                        }
+                    // The quantity as written, in the button's old place (#194); a long one is cut
+                    // short, never more than 40% of the row.
+                    item.quantity?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = muted,
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(start = 12.dp).maxWidthFraction(0.4f).testTag("quantity-${item.id}")
+                        )
                     }
                 }
-                if (onList) {
-                    // A state, not a message (#146): on the grocery list; tapping takes it off.
-                    Text(
-                        stringResource(R.string.pantry_on_list),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .clip(RoundedCornerShape(50))
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
-                            .clickable(onClickLabel = stringResource(R.string.pantry_take_off_list), role = Role.Button, onClick = onTakeOffList)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                            .testTag("onList-${item.id}")
-                    )
-                }
-                Spacer(Modifier.width(4.dp))
-                // One labelled action instead of a switch (#194).
-                val actionLabel = stringResource(next.action())
-                val actionDescription = "$actionLabel: ${item.name}"
-                TextButton(
-                    onClick = { onSetStock(next) },
-                    modifier = Modifier.semantics { contentDescription = actionDescription }.testTag("stockAction-${item.id}")
-                        .then(if (first) Modifier.tooltipAnchor(Tooltip.PANTRY_IN_STOCK) else Modifier)
-                ) {
-                    Text(actionLabel)
+                // The row's menu: both other states.
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    otherStates.forEach { choice ->
+                        DropdownMenuItem(
+                            text = { Text(choiceLabels.getValue(choice)) },
+                            onClick = {
+                                menu = false
+                                onSetStock(choice)
+                            },
+                            modifier = Modifier.testTag("stockMenu-${choice.name}")
+                        )
+                    }
                 }
             }
+        }
+    }
+}
+
+/** Caps a child's width at [fraction] of what its parent offers; it may be narrower. */
+private fun Modifier.maxWidthFraction(fraction: Float): Modifier = layout { measurable, constraints ->
+    val max = if (constraints.hasBoundedWidth) (constraints.maxWidth * fraction).toInt() else constraints.maxWidth
+    val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = max))
+    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+}
+
+
+/**
+ * A state, not a message (#146): the item's name is on the grocery list; tapping takes it off.
+ * It wears the Groceries tab's basket and label (owner, 2026-09-29: "On list" wasn't understood)
+ * and reads "On your grocery list". At the largest font scales only the basket shows, so the
+ * item's name keeps its room.
+ */
+@Composable
+private fun OnListTag(itemId: Long, onTakeOffList: () -> Unit) {
+    val density = LocalDensity.current
+    val iconOnly = density.fontScale >= 1.5f
+    val iconSize = with(density) { 16.sp.toDp() }
+    val description = stringResource(R.string.pantry_on_list)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
+            .clickable(onClickLabel = stringResource(R.string.pantry_take_off_list), role = Role.Button, onClick = onTakeOffList)
+            .semantics { contentDescription = description }
+            .padding(horizontal = if (iconOnly) 6.dp else 8.dp, vertical = 4.dp)
+            .testTag("onList-$itemId")
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_tab_groceries),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(iconSize)
+        )
+        if (!iconOnly) {
+            Text(
+                stringResource(R.string.tab_groceries),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.tertiary,
+                maxLines = 1,
+                // The description above says it; the label isn't read twice.
+                modifier = Modifier.padding(start = 4.dp).clearAndSetSemantics {}
+            )
         }
     }
 }
@@ -526,8 +572,8 @@ private fun EditSheet(editing: PantryEditing, viewModel: PantryViewModel) {
         ) {
             SectionHeading(stringResource(R.string.pantry_edit_title))
             Spacer(Modifier.height(12.dp))
-            // Every state, visibly (#194): the row's button, menu and swipes are shortcuts.
-            // Applied at once, as the row's button is.
+            // Every state, visibly (#194): the row's menu and swipes are shortcuts. Applied at
+            // once, as they are.
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("pantryEditStock")) {
                 PantryStock.entries.forEachIndexed { index, choice ->
                     SegmentedButton(

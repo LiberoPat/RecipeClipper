@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.PantryItem
@@ -50,8 +51,23 @@ class PantryScreenTest {
         return pantry
     }
 
-    private fun item(id: Long, name: String, inStock: Boolean = true, expires: Long? = null, aisle: Aisle = Aisle.OTHER) =
-        PantryItem(id, name, null, "en", aisle, inStock, alwaysHave = false, purchasedDay = null, expiresDay = expires)
+    private fun item(
+        id: Long,
+        name: String,
+        inStock: Boolean = true,
+        expires: Long? = null,
+        aisle: Aisle = Aisle.OTHER,
+        quantity: String? = null
+    ) = PantryItem(id, name, quantity, "en", aisle, inStock, alwaysHave = false, purchasedDay = null, expiresDay = expires)
+
+    /** The row's menu (touch and hold) offers exactly [expected]. */
+    private fun menuOffers(name: String, vararg expected: PantryStock) {
+        compose.onNodeWithText(name).performTouchInput { longClick() }
+        PantryStock.entries.forEach { choice ->
+            val node = compose.onNodeWithTag("stockMenu-${choice.name}")
+            if (choice in expected) node.assertIsDisplayed() else node.assertDoesNotExist()
+        }
+    }
 
     @Test
     fun anEmptyPantrySaysHowToFillIt() {
@@ -67,19 +83,30 @@ class PantryScreenTest {
 
         compose.onNodeWithText("Dairy & eggs").assertIsDisplayed()
         compose.onNodeWithText("milk").assertIsDisplayed()
-        compose.onNodeWithTag("stockAction-1").assertTextEquals("Ran out")
+        compose.onNode(hasContentDescription("milk, In stock")).assertIsDisplayed()
         compose.runOnIdle { assertTrue(pantry.items.value.single().inStock) }
     }
 
-    // #146: running out puts it on the list silently; the row says "On list", and tapping that
-    // takes it off again. No snackbar either way. #194: "Ran out" is a labelled action, and the
-    // item moves to the Run out section with "Restock" in its place.
+    // Owner, 2026-09-29: no per-row button; the quantity as written sits on the right instead of
+    // under the name, and TalkBack reads it after the name.
+    @Test
+    fun theRowShowsItsQuantityOnTheRightAndNoButton() {
+        show(item(1, "chicken thighs", aisle = Aisle.MEAT, quantity = "2 lb"))
+        compose.onNodeWithTag("quantity-1", useUnmergedTree = true).assertIsDisplayed().assertTextEquals("2 lb")
+        compose.onNodeWithTag("stockAction-1").assertDoesNotExist()
+        compose.onNodeWithText("Ran out").assertDoesNotExist()
+        compose.onNode(hasContentDescription("chicken thighs, 2 lb, In stock")).assertIsDisplayed()
+    }
+
+    // #146: running out puts it on the list silently; the row wears the Groceries tab's basket
+    // tag (owner, 2026-09-29; it said "On list"), and tapping that takes it off again. No snackbar
+    // either way. #194: a swipe towards the start runs it out, into the Run out section.
     @Test
     fun runningOutPutsItOnTheListAndTheTagTakesItOff() {
         val pantry = show(item(1, "milk", aisle = Aisle.DAIRY))
         compose.onNodeWithTag("onList-1").assertDoesNotExist()
-        compose.onNodeWithTag("stockAction-1").performClick()
-        compose.onNodeWithTag("stockAction-1").assertTextEquals("Restock")
+        compose.onNodeWithTag("pantry-1").performTouchInput { swipeLeft() }
+        compose.waitUntil(5_000) { !pantry.items.value.single().inStock }
         compose.onNodeWithText("Run out").assertIsDisplayed()
         compose.onNodeWithText("Dairy & eggs").assertDoesNotExist()
 
@@ -88,7 +115,12 @@ class PantryScreenTest {
             assertEquals(listOf("milk"), groceries.items.value.map { it.text })
             assertTrue(!pantry.items.value.single().inStock)
         }
-        compose.onNodeWithTag("onList-1").assertIsDisplayed().assertTextEquals("On list")
+        compose.onNodeWithTag("onList-1").assertIsDisplayed()
+            .assert(hasContentDescription("On your grocery list"))
+            .assert(SemanticsMatcher("its action is Remove from grocery list") { node ->
+                node.config.getOrNull(SemanticsActions.OnClick)?.label == "Remove from grocery list"
+            })
+        compose.onNodeWithText("On list").assertDoesNotExist()
         compose.onNodeWithText("Undo").assertDoesNotExist()
 
         compose.onNodeWithTag("onList-1").performClick()
@@ -109,8 +141,7 @@ class PantryScreenTest {
         compose.runOnIdle { assertEquals(PantryStock.RUNNING_LOW, pantry.items.value.single().stock) }
         compose.onNodeWithTag("low-1", useUnmergedTree = true).assertIsDisplayed().assertTextEquals("Low")
         compose.onNodeWithText("Fruit & vegetables").assertIsDisplayed()
-        compose.onNodeWithTag("stockAction-1").assertTextEquals("Ran out")
-        compose.onNode(hasContentDescription("garlic, Running low, On list")).assertIsDisplayed()
+        compose.onNode(hasContentDescription("garlic, Running low, On your grocery list")).assertIsDisplayed()
             .assert(SemanticsMatcher("offers Restock and Ran out") { node ->
                 node.config.getOrNull(SemanticsActions.CustomActions)?.map { it.label } == listOf("Restock", "Ran out")
             })
@@ -137,26 +168,18 @@ class PantryScreenTest {
         compose.runOnIdle { assertEquals(listOf("garlic"), groceries.items.value.map { it.text }) }
     }
 
-    // The menu offers only what the row's button doesn't: In stock → Running low (the button is
-    // Ran out); Running low → Restock (button Ran out); Run out → Running low (button Restock).
+    // With no row button (owner, 2026-09-29), the menu offers both other states: In stock →
+    // Running low, Ran out; Running low → Restock, Ran out; Run out → Restock, Running low.
     @Test
-    fun theRowMenuNeverRepeatsTheButton() {
-        show(item(1, "garlic", aisle = Aisle.PRODUCE))
-        fun menuOffers(expected: PantryStock) {
-            compose.onNodeWithText("garlic").performTouchInput { longClick() }
-            PantryStock.entries.forEach { choice ->
-                val node = compose.onNodeWithTag("stockMenu-${choice.name}")
-                if (choice == expected) node.assertIsDisplayed() else node.assertDoesNotExist()
-            }
-        }
-        menuOffers(PantryStock.RUNNING_LOW)
+    fun theRowMenuOffersBothOtherStates() {
+        val pantry = show(item(1, "garlic", aisle = Aisle.PRODUCE))
+        menuOffers("garlic", PantryStock.RUNNING_LOW, PantryStock.RUN_OUT)
         compose.onNodeWithTag("stockMenu-RUNNING_LOW").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("low-1", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-        menuOffers(PantryStock.IN_STOCK)
-        compose.onNodeWithTag("stockMenu-IN_STOCK").performClick()
-        compose.onNodeWithTag("stockAction-1").performClick()
-        compose.onNodeWithTag("stockAction-1").assertTextEquals("Restock")
-        menuOffers(PantryStock.RUNNING_LOW)
+        menuOffers("garlic", PantryStock.IN_STOCK, PantryStock.RUN_OUT)
+        compose.onNodeWithTag("stockMenu-RUN_OUT").performClick()
+        compose.waitUntil(5_000) { pantry.items.value.single().stock == PantryStock.RUN_OUT }
+        menuOffers("garlic", PantryStock.IN_STOCK, PantryStock.RUNNING_LOW)
     }
 
     @Test

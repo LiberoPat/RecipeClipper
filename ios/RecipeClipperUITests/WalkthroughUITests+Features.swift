@@ -40,25 +40,39 @@ extension WalkthroughUITests {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "\(name), ")).firstMatch
     }
 
+    /// The row as VoiceOver reads it, holding `state` ("Run out", "In stock", …).
+    private func pantryRow(_ name: String, _ state: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "\(name), ", ", \(state)")).firstMatch
+    }
+
     /// Scrolls the Pantry (a lazy List: rows off screen aren't in the tree) until `element` can
     /// be tapped, down first, then back up.
     @discardableResult
     private func reveal(_ element: XCUIElement, _ what: String) -> XCUIElement {
         for _ in 0..<3 where !(element.exists && element.isHittable) { app.swipeUp(); pause(0.6) }
         for _ in 0..<4 where !(element.exists && element.isHittable) { app.swipeDown(); pause(0.6) }
+        // Hittable even under the tab bar, where a swipe would land on the bar: drag until it
+        // clears it.
+        for _ in 0..<4 where element.exists && element.frame.maxY > tabBar.frame.minY - 8 {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)))
+            _ = element.waitForExistence(timeout: 0.6)
+        }
         return require(element, what)
     }
 
-    /// In stock, Running low, Run out (#194, #199): the row's button, the edit sheet's stock
-    /// control, the long-press menu (only what the button doesn't offer), and a swipe each way.
-    /// Run out items sit in their own section at the foot of the Pantry.
+    /// In stock, Running low, Run out (#194, #199; no row button since 2026-09-29): a swipe runs
+    /// a row out, the edit sheet's stock control, the long-press menu (both other states), and a
+    /// swipe each way. Run out items sit in their own section at the foot of the Pantry.
     func test25_pantryStates() {
         start(flags: ["mealPlan"], scenario: .walkthroughPantry)
         tab("Pantry")
         pause()
-        require(app.buttons["Ran out: soy sauce"], "soy sauce's Ran out").tap()
+        reveal(pantryRow("soy sauce"), "soy sauce").swipeLeft()
+        pause(1.5)
+        require(app.buttons["Ran out"], "the swipe's Ran out").tap()
         pause()
-        reveal(app.buttons["Restock: soy sauce"], "soy sauce, run out")
+        reveal(pantryRow("soy sauce", "Run out"), "soy sauce, run out")
         pause(2.5)
         // Tapping a row opens its sheet, whose stock control shows every state (#199).
         reveal(pantryRow("olive oil"), "olive oil").tap()
@@ -70,13 +84,10 @@ extension WalkthroughUITests {
         let lowTag = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'low-'")).firstMatch
         reveal(lowTag, "the Low tag")
         pause(2.5)
-        reveal(app.buttons["Restock: soy sauce"], "soy sauce's Restock").tap()
-        pause()
-        reveal(app.buttons["Ran out: soy sauce"], "soy sauce, back in stock")
-        pause(2)
-        // The long-press menu offers only what the row's button doesn't: Restock, beside Ran out.
+        // The long-press menu offers both other states: Restock and Ran out, while running low.
         reveal(pantryRow("olive oil"), "olive oil").press(forDuration: 1.2)
         let restock = require(app.buttons["Restock"], "the menu's Restock")
+        require(app.buttons["Ran out"], "the menu's Ran out")
         pause(2.5)
         restock.tap()
         pause(2)
@@ -88,7 +99,7 @@ extension WalkthroughUITests {
         pause(1.5)
         require(app.buttons["Restock"], "the swipe's Restock").tap()
         pause()
-        reveal(app.buttons["Ran out: garlic"], "garlic, back in stock")
+        reveal(pantryRow("garlic", "In stock"), "garlic, back in stock")
         pause(2.5)
     }
 

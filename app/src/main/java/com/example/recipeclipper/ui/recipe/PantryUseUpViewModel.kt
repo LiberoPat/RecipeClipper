@@ -142,7 +142,7 @@ class PantryUseUpViewModel @Inject constructor(
     /**
      * The sheet's one button. A ticked worked-out row gets its new quantity; used up, it goes out
      * of stock with no quantity (none is left to know). Running low and out set those states
-     * (#194) and put the item's name on the grocery list, unless it's there already (#146's "On list").
+     * (#194) and put the item's name on the grocery list, unless it's there already (#146's basket tag).
      */
     fun onConfirm() {
         val sheet = _uiState.value.sheet ?: return

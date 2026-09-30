@@ -263,7 +263,7 @@ pinned for iOS by the corpus's `Pant` rows. iOS mirrors the rest in
 `PantryDaoTests` (with the user_version 8 → 9 step), `PantryTests`,
 `PantryViewModelTests` and `PantryUITests`.
 
-"Done shopping" and the pantry's "On list" tag (#146): `GroceriesPantryTest` (the sheet's
+"Done shopping" and the pantry's basket Groceries tag (#146): `GroceriesPantryTest` (the sheet's
 first ticks, put-away, one undo for the list and the pantry), `GroceriesScreenTest`,
 `PantryViewModelTest` and `PantryScreenTest`; iOS mirrors them in `PantryViewModelTests`,
 `GroceriesUITests` (Done shopping, Undo) and `PantryUITests` (the tag).
@@ -274,9 +274,10 @@ items keep their stock; one can then be marked running low) and iOS's
 / `PantryTests` (the Run out section in both sorts, running low still covered);
 `PantryViewModelTest(s)` (running low, ran out and restock, each onto the list once);
 `BackupJsonTest(s)` (the key round-trips; the shared fixture, which has none, reads as in stock
-or run out); `PantryScreenTest` (Robolectric: the labelled action, the Run out heading, the
-touch-and-hold menu, the row's TalkBack description and custom actions) and `PantryUITests`
-(Ran out, Restock). Swipes are not driven by a test on either platform.
+or run out); `PantryScreenTest` (Robolectric: the quantity on the right and no row button, a swipe to Ran
+out and the Run out heading, the basket tag's spoken label and action, the touch-and-hold menu
+with both other states, the row's TalkBack description and custom actions) and `PantryUITests`
+(a swipe to Ran out, the menu both ways, the sheet's control, moves between sections).
 
 The Pantry's "Send list" and "Send as file" (#149, what's in stock): `SendListTextTest` (the
 text, and its round trip through "Add this list"), `ShareFileTest` and
@@ -582,7 +583,7 @@ What I need, 04 weekly menus, 05 expiry reminders, 06 the Recipes screen, 07 amo
 08 Chef mode (stub model), 09 the free tier, 10 the page-extraction line, 11 grocery merging (AI
 answers simulated), 12 junk hidden in Groceries (simulated); 13 "I made this", 14 the automatic
 backup copy and "Restore from a backup file", 15 Send list and Paste a list, 16 Send as file and
-a received file, 17 the first-run tour (the sample, and a tooltip or two), 18 Done shopping and the On list tag, 19 the Pantry's
+a received file, 17 the first-run tour (the sample, and a tooltip or two), 18 Done shopping and the basket tag, 19 the Pantry's
 Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported phone
 (simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked", 24 the
 tooltips and "Show tips again", 25 the pantry's three states, 26 "onion" matching "onions" in What I

@@ -397,12 +397,12 @@
     <string name="pantry_sort_expiry">Ordina per scadenza</string>
     <string name="pantry_in_stock">Disponibile</string>
     <string name="pantry_out">Finito</string>
-    <string name="pantry_on_list">In lista</string>
+    <string name="pantry_on_list">Nella tua lista della spesa</string>
     <string name="pantry_ran_out">Finito</string>
     <string name="pantry_restock">Ricomprato</string>
     <string name="pantry_running_low">Sta finendo</string>
     <string name="pantry_low">Poco</string>
-    <string name="pantry_take_off_list">Togli dalla lista della spesa</string>
+    <string name="pantry_take_off_list">Rimuovi dalla lista della spesa</string>
     <string name="pantry_always_have">Sempre in casa</string>
     <string name="pantry_always_have_detail">Gli essenziali non sono mai in «Da comprare».</string>
     <string name="pantry_expired">Scaduto</string>
@@ -569,7 +569,7 @@
     <string name="tooltip_groceries_done_shopping">Tornato a casa? Metti in dispensa quello che hai spuntato e toglilo dalla lista.</string>
     <string name="tooltip_groceries_menu">Altro: Invia la lista, o Incolla una lista.</string>
     <string name="tooltip_pantry_add">Aggiungi quello che tieni in casa.</string>
-    <string name="tooltip_pantry_in_stock">Tocca Finito quando qualcosa è terminato: va nella tua lista della spesa. Tocca un articolo per segnarlo come Sta finendo.</string>
+    <string name="tooltip_pantry_in_stock">Tocca un articolo per cambiarne la scorta o la quantità; scorri a sinistra quando finisce. L\'etichetta col cestino indica che è nella tua lista della spesa.</string>
     <string name="tooltip_pantry_menu">Altro: Invia la lista, e ordina per reparto o per scadenza.</string>
     <string name="tooltip_settings_units">Come si mostrano le quantità, in ogni ricetta.</string>
     <string name="tooltip_settings_show_tips">Rivedi ogni suggerimento, uno alla volta.</string>

@@ -2,9 +2,9 @@ import SwiftUI
 
 /// The Pantry tab (#51; Android's PantryScreen): "Add to the pantry", a search field, then
 /// everything by aisle (or by expiry, from the menu), and what has run out last (#194). Each row
-/// shows whether it's in stock, running low or run out, with a labelled action, swipes and a
-/// touch-and-hold menu; tapping the row opens its edit sheet (quantity, staple, use-by date,
-/// delete). The menu sends what's in stock, as plain text or as a file (#149). A `List`, for the
+/// shows whether it's in stock, running low or run out, and its quantity as written; tapping the
+/// row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes and a
+/// touch-and-hold menu as shortcuts. The menu sends what's in stock, as plain text or as a file (#149). A `List`, for the
 /// swipe actions, so the readable column is made from the width, as on Recipes.
 struct PantryScreen: View {
     let vm: PantryViewModel
@@ -117,7 +117,7 @@ struct PantryScreen: View {
     }
 
     private func itemRow(_ item: PantryItem, state: PantryUiState) -> some View {
-        // The stock tooltip (#190) points at the first row's action.
+        // The stock tooltip (#190) points at the first row.
         PantryRow(
             item: item, today: state.today, onList: state.onList.contains(item.id),
             first: item.id == state.sections?.first?.items.first?.id, vm: vm
@@ -150,7 +150,7 @@ struct PantryScreen: View {
     /// A swipe action's change waits until its row has closed (#203). Applied at once, the row
     /// moves to another section while UIKit is still animating its swipe shut, and the List can
     /// leave that cell drawn at its old place (over the Run out heading, a blank slot where it
-    /// belongs) although the tree is right. The button, menu and sheet change it at once.
+    /// belongs) although the tree is right. The menu and sheet change it at once.
     private func afterSwipeCloses(_ change: @escaping () -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: change)
     }
@@ -209,6 +209,10 @@ struct PantryScreen: View {
     }
 }
 
+/// One item (#194): its name, a "Low" tag while running low, the basket "Groceries" tag while its
+/// name is on the grocery list, and its quantity as written on the right. Tap the row for the edit
+/// sheet (its stock control changes the state); touch and hold for the other two states; swipes
+/// are shortcuts. No per-row button (owner, 2026-09-29: redundant beside tapping the item).
 private struct PantryRow: View {
     let item: PantryItem
     let today: Int64
@@ -216,16 +220,17 @@ private struct PantryRow: View {
     let first: Bool
     let vm: PantryViewModel
 
+    /// VoiceOver's actions and the context menu: both other states.
+    private var others: [PantryStock] { PantryStock.allCases.filter { $0 != item.stock } }
+
     var body: some View {
         let stock = item.stock
-        let others = PantryStock.allCases.filter { $0 != stock }
-        let next: PantryStock = stock == .runOut ? .inStock : .runOut
-        // VoiceOver gets both other states; the context menu only the one the button doesn't offer.
-        let menuStates = others.filter { $0 != next }
-        HStack(spacing: 8) {
-            Button { vm.onEdit(item) } label: {
+        Button { vm.onEdit(item) } label: {
+            HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 8) {
+                    // The name, then its tags; they wrap under a long name or large text rather
+                    // than squeezing it.
+                    TagFlow {
                         Text(item.name)
                             .textStyle(Typography.bodyLarge)
                             .foregroundStyle(item.inStock ? Palette.onBackground : Palette.muted)
@@ -238,9 +243,13 @@ private struct PantryRow: View {
                                 .overlay(Capsule().stroke(Palette.hairline, lineWidth: 1))
                                 .accessibilityIdentifier("low-\(item.id)")
                         }
+                        if onList {
+                            OnListTag()
+                                .anchorPreference(key: OnListTagBounds.self, value: .bounds) { $0 }
+                        }
                     }
-                    if !details.isEmpty {
-                        Text(details.joined(separator: " · ")).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
+                    if item.alwaysHave {
+                        Text(Strings.pantryAlwaysHave).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
                     }
                     if let expiry {
                         Text(expiry.text)
@@ -250,54 +259,56 @@ private struct PantryRow: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 6)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            // VoiceOver reads the row as one ("Garlic, Run out, On list"), with the other two
-            // states as its actions (#194).
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(description)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityActions {
-                ForEach(others, id: \.self) { choice in
-                    Button(Self.action(choice)) { vm.onSetStock(item, choice) }
+                // The quantity as written, in the button's old place; a long one is cut short.
+                if let quantity = item.quantity {
+                    Text(quantity)
+                        .textStyle(Typography.bodyMedium)
+                        .foregroundStyle(Palette.muted)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .accessibilityIdentifier("quantity-\(item.id)")
                 }
             }
-            if onList {
-                // A state, not a message (#146): on the grocery list; tapping takes it off.
-                Button { vm.onTakeOffList(item) } label: {
-                    Text(Strings.pantryOnList)
-                        .textStyle(Typography.bodySmall)
-                        .foregroundStyle(Palette.accentText)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .overlay(Capsule().stroke(Palette.hairline, lineWidth: 1))
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint(Strings.pantryTakeOffList)
-                .accessibilityIdentifier("onList-\(item.id)")
-            }
-            // One labelled action instead of a switch (#194).
-            Button(Self.action(next)) { vm.onSetStock(item, next) }
-                .buttonStyle(TextActionStyle(color: Palette.accentText))
-                .accessibilityLabel("\(Self.action(next)): \(item.name)")
-                .accessibilityIdentifier("stockAction-\(item.id)")
-                .modifier(FirstActionAnchor(first: first))
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 4)
-        // The row's menu: the one state the button doesn't offer.
-        .contextMenu {
-            ForEach(menuStates, id: \.self) { choice in
+        .buttonStyle(.plain)
+        // VoiceOver reads the row as one ("Garlic, 1 head, Run out, On your grocery list"), with
+        // the other two states as its actions (#194).
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(description)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityActions {
+            ForEach(others, id: \.self) { choice in
                 Button(Self.action(choice)) { vm.onSetStock(item, choice) }
             }
         }
         .accessibilityIdentifier("pantry-\(item.id)")
-    }
-
-    private var details: [String] {
-        [item.quantity, item.alwaysHave ? Strings.pantryAlwaysHave : nil].compactMap { $0 }
+        .modifier(FirstRowAnchor(first: first))
+        // The tag is drawn inside the row's label, where it wraps with the name; its own button
+        // lies over it, so tapping it takes the item off the list rather than opening the sheet.
+        .overlayPreferenceValue(OnListTagBounds.self) { anchor in
+            if let anchor {
+                GeometryReader { proxy in
+                    let rect = proxy[anchor]
+                    Button { vm.onTakeOffList(item) } label: {
+                        Color.clear.contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: rect.width, height: rect.height)
+                    .position(x: rect.midX, y: rect.midY)
+                    .accessibilityLabel(Strings.pantryOnList)
+                    .accessibilityHint(Strings.pantryTakeOffList)
+                    .accessibilityIdentifier("onList-\(item.id)")
+                }
+            }
+        }
+        // The row's menu: both other states.
+        .contextMenu {
+            ForEach(others, id: \.self) { choice in
+                Button(Self.action(choice)) { vm.onSetStock(item, choice) }
+            }
+        }
     }
 
     private var expiry: (text: String, badge: ExpiryBadge?)? {
@@ -307,7 +318,9 @@ private struct PantryRow: View {
     }
 
     private var description: String {
-        ([item.name] + details + [Self.label(item.stock)] + [onList ? Strings.pantryOnList : nil, expiry?.text].compactMap { $0 })
+        ([item.name, item.quantity, item.alwaysHave ? Strings.pantryAlwaysHave : nil, Self.label(item.stock)]
+            + [onList ? Strings.pantryOnList : nil, expiry?.text])
+            .compactMap { $0 }
             .joined(separator: ", ")
     }
 
@@ -372,8 +385,8 @@ private struct PantryEditSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(Strings.pantryEditTitle)
-                // Every state, visibly (#194): the row's button, menu and swipes are shortcuts.
-                // Applied at once, as the row's button is.
+                // Every state, visibly (#194): the row's menu and swipes are shortcuts. Applied
+                // at once, as they are.
                 Picker(
                     Strings.pantryEditTitle,
                     selection: Binding(get: { vm.uiState.editing?.stock ?? editing.stock }, set: vm.onEditStock)
@@ -456,11 +469,94 @@ private struct PantryEditSheet: View {
     }
 }
 
-/// The first row's Ran out / Restock, which the stock tooltip (#190) points at.
-private struct FirstActionAnchor: ViewModifier {
+/// The first row, which the stock tooltip (#190) points at.
+private struct FirstRowAnchor: ViewModifier {
     let first: Bool
 
     func body(content: Content) -> some View {
         if first { content.tooltipAnchor(.pantryInStock) } else { content }
+    }
+}
+
+/// The basket "Groceries" tag (#146; owner, 2026-09-29: "On list" wasn't understood): the
+/// Groceries tab's icon and label. Drawn only; the row lays its button over it. At accessibility
+/// sizes only the basket shows, so the item's name keeps its room.
+private struct OnListTag: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        let iconOnly = dynamicTypeSize.isAccessibilitySize
+        HStack(spacing: 4) {
+            Image(systemName: "basket")
+            if !iconOnly {
+                Text(Strings.tabGroceries).lineLimit(1)
+            }
+        }
+        .textStyle(Typography.bodySmall)
+        .foregroundStyle(Palette.accentText)
+        .padding(.horizontal, iconOnly ? 8 : 10)
+        .padding(.vertical, 4)
+        .overlay(Capsule().stroke(Palette.hairline, lineWidth: 1))
+        .fixedSize()
+    }
+}
+
+/// Where the row's basket tag was drawn, for the button laid over it.
+private struct OnListTagBounds: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? { nil }
+
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = value ?? nextValue()
+    }
+}
+
+/// The name, then its tags, left to right, wrapping onto a new line when the next one doesn't
+/// fit (Android's FlowRow); each line's items are centred on each other.
+private struct TagFlow: Layout {
+    var spacing: CGFloat = 8
+    var lineSpacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let lines = arrange(proposal.width ?? .infinity, subviews)
+        let height = lines.map(\.height).reduce(0, +) + lineSpacing * CGFloat(max(lines.count - 1, 0))
+        return CGSize(width: lines.map(\.width).max() ?? 0, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in arrange(bounds.width, subviews) {
+            var x = bounds.minX
+            for (index, size) in line.items {
+                subviews[index].place(
+                    at: CGPoint(x: x, y: y + (line.height - size.height) / 2),
+                    proposal: ProposedViewSize(size)
+                )
+                x += size.width + spacing
+            }
+            y += line.height + lineSpacing
+        }
+    }
+
+    private struct Line {
+        var items: [(Int, CGSize)] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func arrange(_ maxWidth: CGFloat, _ subviews: Subviews) -> [Line] {
+        var lines: [Line] = []
+        var line = Line()
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+            if !line.items.isEmpty && line.width + spacing + size.width > maxWidth {
+                lines.append(line)
+                line = Line()
+            }
+            line.width += (line.items.isEmpty ? 0 : spacing) + size.width
+            line.height = max(line.height, size.height)
+            line.items.append((index, size))
+        }
+        if !line.items.isEmpty { lines.append(line) }
+        return lines
     }
 }

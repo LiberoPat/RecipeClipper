@@ -42,7 +42,7 @@ import java.time.LocalDate
 
 /**
  * Walkthroughs 13, 17, 18, 20, 21 and 23–26 (#106): "I made this" (#116), the first-run tour (#151, #190),
- * Done shopping and the On list tag (#146), using up the pantry after cooking (#147), what
+ * Done shopping and the basket Groceries tag (#146), using up the pantry after cooking (#147), what
  * Settings says about Chef mode on a phone that can't run it (#144), "Mark as cooked" (#173), the
  * tooltips (#190), the pantry's three states (#194) and "onion" matching "onions" (#191). The model supports nothing
  * here: the typed decisions stay out of these clips, and Chef mode's model is "unsupported"
@@ -146,7 +146,8 @@ class CookingWalkthroughTest : WalkthroughBase() {
 
     /**
      * Done shopping (#146): ticked items, the put-away sheet (what the pantry tracks starts
-     * ticked), and Undo; then running out of a pantry item puts it on the list, tagged "On list".
+     * ticked), and Undo; then running out of a pantry item (a swipe) puts it on the list, tagged
+     * with the Groceries tab's basket.
      */
     @Test
     fun test18_doneShoppingAndOnList() {
@@ -162,8 +163,10 @@ class CookingWalkthroughTest : WalkthroughBase() {
         pause(1000)
         tap("Undo", 2500)
         tap("Pantry", 2000)
-        tapTag("stockAction-${pantryIds.getValue("onions")}") // Ran out: onto the list
-        waitFor(hasText("On list"))
+        swipeRow("onions", left = true) // Ran out: onto the list
+        val onions = pantryIds.getValue("onions")
+        scrollTo("pantryList", "onList-$onions")
+        waitFor(hasTestTag("onList-$onions"))
         pause(2500)
         tap("Groceries", 2500)
     }
@@ -246,17 +249,17 @@ class CookingWalkthroughTest : WalkthroughBase() {
     }
 
     /**
-     * The pantry's three states (#194, #199): Ran out moves a row to Run out and puts it on the
-     * list; tapping a row opens its sheet, whose stock control sets Running low (the Low tag, and
-     * on the list); Restock; the long-press menu, offering only what the row's button doesn't;
-     * and a swipe each way.
+     * The pantry's three states (#194, #199; no row button since 2026-09-29): a swipe towards
+     * the start runs a row out, to Run out and onto the list; tapping a row opens its sheet, whose
+     * stock control sets Running low (the Low tag, and on the list); a swipe back restocks; the
+     * long-press menu offers both other states.
      */
     @Test
     fun test25_pantryStates() {
         start("mealPlan", kitchen = true)
         tap("Pantry", 2000)
         val onions = pantryIds.getValue("onions")
-        tapTag("stockAction-$onions") // Ran out: to Run out, and onto the list
+        swipeRow("onions", left = true) // Ran out: to Run out, and onto the list
         scrollTo("pantryList", "onList-$onions")
         pause(2000)
         val oil = pantryIds.getValue("olive oil")
@@ -270,16 +273,14 @@ class CookingWalkthroughTest : WalkthroughBase() {
         waitFor(hasText("Low")) // the tag (merged into the row, so found by its text)
         waitFor(hasTestTag("onList-$oil"))
         pause(2500)
-        val garlic = pantryIds.getValue("garlic")
-        scrollTo("pantryList", "pantry-$garlic")
-        tapTag("stockAction-$garlic", 2000) // Restock
+        swipeRow("garlic", left = false) // Restock (garlic is run out in the seed)
         scrollTo("pantryList", "pantry-$oil")
         compose.onNode(hasTestTag("pantry-$oil")).performTouchInput { longClick(Offset(width * 0.3f, centerY)) }
-        waitFor(hasTestTag("stockMenu-IN_STOCK")) // only Restock: the row's button is Ran out
+        waitFor(hasTestTag("stockMenu-IN_STOCK")) // Restock and Ran out: both other states
+        waitFor(hasTestTag("stockMenu-RUN_OUT"))
         pause(2500)
         tapTag("stockMenu-IN_STOCK", 2000)
         swipeRow("basmati rice", left = true) // Ran out
-        swipeRow("milk", left = false) // Restock
     }
 
     private fun swipeRow(name: String, left: Boolean) {

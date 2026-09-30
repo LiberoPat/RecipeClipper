@@ -397,7 +397,7 @@
     <string name="pantry_sort_expiry">Ordenar por caducidad</string>
     <string name="pantry_in_stock">Disponible</string>
     <string name="pantry_out">Agotado</string>
-    <string name="pantry_on_list">En la lista</string>
+    <string name="pantry_on_list">En tu lista de la compra</string>
     <string name="pantry_ran_out">Se acabó</string>
     <string name="pantry_restock">Reponer</string>
     <string name="pantry_running_low">Queda poco</string>
@@ -569,7 +569,7 @@
     <string name="tooltip_groceries_done_shopping">¿De vuelta en casa? Guarda lo marcado en la despensa y quítalo de la lista.</string>
     <string name="tooltip_groceries_menu">Más: Enviar lista, o Pegar una lista.</string>
     <string name="tooltip_pantry_add">Añade lo que tienes en casa.</string>
-    <string name="tooltip_pantry_in_stock">Toca Se acabó cuando algo se termine: pasa a tu lista de la compra. Toca un artículo para marcarlo como Queda poco.</string>
+    <string name="tooltip_pantry_in_stock">Toca un artículo para cambiar su estado o cantidad; desliza a la izquierda cuando se acabe. La etiqueta de la cesta indica que está en tu lista de la compra.</string>
     <string name="tooltip_pantry_menu">Más: Enviar lista, y ordenar por pasillo o fecha de caducidad.</string>
     <string name="tooltip_settings_units">Cómo se muestran las cantidades, en todas las recetas.</string>
     <string name="tooltip_settings_show_tips">Vuelve a ver cada consejo, de uno en uno.</string>
