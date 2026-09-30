@@ -287,4 +287,62 @@ class PantryViewModelTest {
         advanceUntilIdle()
         assertEquals(listOf("oil", "rice"), pantry.items.value.map { it.name })
     }
+
+    // --- #194: "Clear run-out items" in the menu.
+
+    @Test
+    fun `Clear run-out items is enabled only while something has run out`() = runTest(mainDispatcherRule.dispatcher) {
+        val pantry = FakePantryRepository(listOf(item(1, "oil"), item(2, "rice")))
+        val vm = PantryViewModel(pantry, groceries, calendar)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.hasRunOut)
+        vm.onClearRunOut()
+        assertNull(vm.uiState.value.confirmClearRunOut)
+
+        vm.onSetStock(pantry.items.value.first(), PantryStock.RUNNING_LOW)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.hasRunOut)
+        vm.onSetStock(pantry.items.value.last(), PantryStock.RUN_OUT)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.hasRunOut)
+    }
+
+    @Test
+    fun `Clear run-out items asks first, removes only what ran out, leaves the grocery list, and can be undone`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val pantry = FakePantryRepository(
+                listOf(
+                    item(1, "oil"), item(2, "milk", inStock = false, aisle = Aisle.DAIRY),
+                    item(3, "rice", inStock = false, aisle = Aisle.GRAINS, expires = 20_800), item(4, "flour")
+                )
+            )
+            groceries.add(listOf(NewGroceryLine("milk", "en")))
+            val vm = PantryViewModel(pantry, groceries, calendar)
+            // A search that hides one of them: the count is still every run-out item.
+            vm.onQueryChange("milk")
+            advanceUntilIdle()
+            val before = pantry.items.value
+
+            vm.onClearRunOut()
+            assertEquals(2, vm.uiState.value.confirmClearRunOut)
+            vm.onClearRunOutDismissed()
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.confirmClearRunOut)
+            assertEquals(4, pantry.items.value.size)
+
+            vm.onClearRunOut()
+            vm.onClearRunOutConfirm()
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.confirmClearRunOut)
+            assertEquals(listOf("oil", "flour"), pantry.items.value.map { it.name })
+            assertFalse(vm.uiState.value.hasRunOut)
+            assertTrue(vm.uiState.value.message is PantryMessage.RunOutCleared)
+            assertEquals(listOf("milk"), groceries.items.value.map { it.text })
+
+            vm.onUndoDelete()
+            advanceUntilIdle()
+            assertEquals(before, pantry.items.value)
+            assertNull(vm.uiState.value.message)
+            assertTrue(vm.uiState.value.hasRunOut)
+        }
 }

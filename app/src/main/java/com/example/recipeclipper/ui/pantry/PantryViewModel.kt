@@ -45,6 +45,9 @@ sealed class PantryMessage {
 
     /** [name] was deleted: offers Undo. */
     data class Deleted(override val id: Long, val name: String) : PantryMessage()
+
+    /** "Clear run-out items" removed every item that had run out (#194): offers Undo. */
+    data class RunOutCleared(override val id: Long) : PantryMessage()
 }
 
 /**
@@ -52,6 +55,8 @@ sealed class PantryMessage {
  * all (a search can find nothing in a full pantry), and [hasInStock] whether anything is in
  * stock, which is what "Send list" and "Send as file" send (#149). [onList] holds the items
  * whose name is on the grocery list, unticked: their rows show the basket Groceries tag (#146).
+ * [hasRunOut] says whether anything has run out, what "Clear run-out items" needs, and
+ * [confirmClearRunOut] is how many items its dialog asks about, while it's open (#194).
  */
 data class PantryUiState(
     val sections: List<PantrySection>? = null,
@@ -63,14 +68,16 @@ data class PantryUiState(
     val today: Long = 0,
     val editing: PantryEditing? = null,
     val message: PantryMessage? = null,
-    val onList: Set<Long> = emptySet()
+    val onList: Set<Long> = emptySet(),
+    val hasRunOut: Boolean = false,
+    val confirmClearRunOut: Int? = null
 )
 
 /**
  * The Pantry tab (#51): add by typing, search, sort by aisle or expiry, and mark each item in
  * stock, running low or run out (#194). Running low or out puts the item on the grocery list,
  * silently (#146); its row then shows the basket Groceries tag, and tapping that takes it off again. A delete
- * can be undone.
+ * can be undone, and so can "Clear run-out items" (#194), which leaves the grocery list alone.
  */
 @HiltViewModel
 class PantryViewModel @Inject constructor(
@@ -92,7 +99,12 @@ class PantryViewModel @Inject constructor(
             pantry.observeItems().collect { all ->
                 items = all
                 _uiState.update {
-                    it.copy(hasItems = all.isNotEmpty(), hasInStock = all.any { item -> item.inStock }, onList = onList()).arranged()
+                    it.copy(
+                        hasItems = all.isNotEmpty(),
+                        hasInStock = all.any { item -> item.inStock },
+                        hasRunOut = all.any { item -> !item.inStock },
+                        onList = onList()
+                    ).arranged()
                 }
             }
         }
@@ -200,6 +212,29 @@ class PantryViewModel @Inject constructor(
         }
     }
 
+    /** "Clear run-out items" (#194) asks first, naming how many items would go, whatever the search. */
+    fun onClearRunOut() {
+        val count = items.count { !it.inStock }
+        if (count > 0) _uiState.update { it.copy(confirmClearRunOut = count) }
+    }
+
+    fun onClearRunOutDismissed() = _uiState.update { it.copy(confirmClearRunOut = null) }
+
+    /**
+     * The dialog's Clear: every item that has run out leaves the pantry, in one write; their
+     * grocery lines stay. Undo ([onUndoDelete]) puts them back exactly as they were.
+     */
+    fun onClearRunOutConfirm() {
+        if (_uiState.value.confirmClearRunOut == null) return
+        _uiState.update { it.copy(confirmClearRunOut = null) }
+        viewModelScope.launch {
+            val gone = pantry.deleteRunOut() ?: return@launch
+            deleted = gone
+            _uiState.update { it.copy(message = PantryMessage.RunOutCleared(++messages)) }
+        }
+    }
+
+    /** Undoes the last delete or "Clear run-out items". */
     fun onUndoDelete() {
         val gone = deleted ?: return
         deleted = null
@@ -209,7 +244,7 @@ class PantryViewModel @Inject constructor(
 
     /** The snackbar timed out or was dismissed. */
     fun onMessageDismissed() {
-        if (_uiState.value.message is PantryMessage.Deleted) deleted = null
+        if (_uiState.value.message != null) deleted = null
         _uiState.update { it.copy(message = null) }
     }
 

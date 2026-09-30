@@ -3,6 +3,7 @@ package com.example.recipeclipper.data.local.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -38,6 +39,20 @@ abstract class PantryDao {
 
     @Query("DELETE FROM pantry_items WHERE id = :id")
     abstract suspend fun delete(id: Long)
+
+    @Query("SELECT * FROM pantry_items WHERE inStock = 0 ORDER BY id ASC")
+    protected abstract suspend fun runOutItems(): List<PantryItemEntity>
+
+    @Query("DELETE FROM pantry_items WHERE inStock = 0")
+    protected abstract suspend fun deleteAllRunOut()
+
+    /** "Clear run-out items" (#194): deletes every item that has run out, returning them whole for undo. */
+    @Transaction
+    open suspend fun deleteRunOut(): List<PantryItemEntity> {
+        val gone = runOutItems()
+        if (gone.isNotEmpty()) deleteAllRunOut()
+        return gone
+    }
 
     /** Undoes a delete, or a restock, or a stock change: the row exactly as it was. */
     @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)

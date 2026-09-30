@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.DefaultPantryRepository
+import com.example.recipeclipper.data.ErrorLog
 import com.example.recipeclipper.data.local.dao.PantryDao
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import kotlinx.coroutines.flow.first
@@ -11,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -94,5 +97,26 @@ class PantryDaoTest {
         pantry.insert(item("a").copy(uid = "same"))
         val failed = runCatching { pantry.insert(item("b").copy(uid = "same")) }.isFailure
         assertTrue(failed)
+    }
+
+    // #194: "Clear run-out items" deletes only what has run out (running low stays), and the
+    // repository's snapshot puts them back whole: ids, uids and every field.
+    @Test
+    fun deleteRunOutRemovesOnlyRunOutItemsAndRestoresThemWhole() = runBlocking {
+        val repository = DefaultPantryRepository(pantry, { 99L }, ErrorLog { _, e -> throw e })
+        val oil = pantry.insert(item("oil"))
+        val milk = pantry.insert(item("milk", inStock = false).copy(quantity = "1 l", expiresDay = 20_100, alwaysHave = true))
+        val salt = pantry.insert(item("salt").copy(runningLow = true))
+        val rice = pantry.insert(item("rice", inStock = false))
+        val before = pantry.items()
+
+        val gone = repository.deleteRunOut()
+        assertNotNull(gone)
+        assertEquals(listOf(milk, rice), gone!!.entities.map { it.id })
+        assertEquals(listOf(oil, salt), pantry.items().map { it.id })
+        assertNull(repository.deleteRunOut())
+
+        repository.restore(gone)
+        assertEquals(before, pantry.items())
     }
 }

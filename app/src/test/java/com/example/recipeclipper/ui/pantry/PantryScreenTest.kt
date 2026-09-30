@@ -5,6 +5,8 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
@@ -14,6 +16,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -216,5 +219,33 @@ class PantryScreenTest {
         compose.onNodeWithText("rice").assertDoesNotExist()
         compose.onNodeWithTag("pantrySearch").performTextInput("zzz")
         compose.onNodeWithText("Nothing matches", substring = true).assertIsDisplayed()
+    }
+
+    // #194: "Clear run-out items" in the menu, disabled until something has run out; it asks
+    // first, leaves the grocery list alone, and Undo puts the items back.
+    @Test
+    fun clearRunOutItemsAsksFirstAndCanBeUndone() {
+        val pantry = show(item(1, "oil"), item(2, "milk", inStock = false, aisle = Aisle.DAIRY), item(3, "rice", inStock = false))
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Clear run-out items").assertIsEnabled().performClick()
+        compose.onNodeWithText("Clear 2 run-out items?").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Clear 2 run-out items?").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(3, pantry.items.value.size) }
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Clear run-out items").performClick()
+        compose.onNodeWithTag("clearRunOutConfirm").performClick()
+        compose.runOnIdle { assertEquals(listOf("oil"), pantry.items.value.map { it.name }) }
+        compose.onNodeWithText("Run out").assertDoesNotExist()
+        compose.onNodeWithText("Run-out items cleared").assertIsDisplayed()
+        compose.onNodeWithText("Undo").performClick()
+        compose.runOnIdle { assertEquals(listOf("oil", "milk", "rice"), pantry.items.value.map { it.name }) }
+        compose.onNodeWithText("Run out").assertIsDisplayed()
+
+        // Nothing run out: the item is there, disabled.
+        compose.runOnIdle { pantry.items.value = pantry.items.value.map { it.copy(inStock = true) } }
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Clear run-out items").assertIsNotEnabled()
     }
 }

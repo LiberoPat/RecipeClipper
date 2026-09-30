@@ -428,6 +428,13 @@
     <string name="action_set_date">Scegli data</string>
     <string name="action_clear_date">Rimuovi data</string>
     <string name="snackbar_pantry_deleted">Eliminato: %1$s</string>
+    <string name="action_clear_run_out">Rimuovi gli articoli finiti</string>
+    <string name="snackbar_run_out_cleared">Articoli finiti rimossi</string>
+    <plurals name="clear_run_out_title">
+        <item quantity="one">Rimuovere %1$d articolo finito?</item>
+        <item quantity="many">Rimuovere %1$d di articoli finiti?</item>
+        <item quantity="other">Rimuovere %1$d articoli finiti?</item>
+    </plurals>
     <string name="what_i_need_title">Cosa mi serve</string>
     <string name="what_i_need_buy">Da comprare</string>
     <string name="what_i_need_have">Nella tua dispensa</string>
