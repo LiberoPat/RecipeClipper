@@ -11,9 +11,10 @@ final class FakeRenderedPageSource: RenderedPageSource {
     private let answer: (String) async -> String?
     private(set) var requests: [String] = []
 
+    /// A trailing closure is `answer` (Swift 5 matches it to the last parameter).
     init(
-        _ answer: @escaping (String) async -> String? = { _ in nil },
-        before: @escaping (@escaping () -> Void) async -> Void = { _ in }
+        before: @escaping (@escaping () -> Void) async -> Void = { _ in },
+        _ answer: @escaping (String) async -> String? = { _ in nil }
     ) {
         self.before = before
         self.answer = answer
