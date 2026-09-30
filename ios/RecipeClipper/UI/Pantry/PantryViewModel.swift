@@ -20,12 +20,15 @@ enum PantryMessage: Equatable {
     case deleted(id: Int, name: String)
     /// "Clear run-out items" removed every item that had run out (#194): offers Undo.
     case runOutCleared(id: Int)
+    /// The basket tag took `count` lines off the grocery list (owner, 2026-09-29): offers Undo.
+    case takenOffList(id: Int, count: Int)
 }
 
 /// `sections` is nil until the pantry has loaded; `hasItems` says whether it holds anything at
 /// all (a search can find nothing in a full pantry), and `hasInStock` whether anything is in
-/// stock, which is what "Send list" and "Send as file" send (#149). `onList` holds the items
-/// whose name is on the grocery list, unticked: their rows show the basket Groceries tag (#146).
+/// stock, which is what "Send list" and "Send as file" send (#149). `onList` holds the items that
+/// are on the grocery list, unticked (`PantryList.onListLines`), in any stock: their rows show the
+/// basket Groceries tag (#146).
 /// `hasRunOut` says whether anything has run out, what "Clear run-out items" needs, and
 /// `confirmClearRunOut` is how many items its dialog asks about, while it's open (#194).
 struct PantryUiState: Equatable {
@@ -45,9 +48,9 @@ struct PantryUiState: Equatable {
 
 /// The Pantry tab (#51; Android's PantryViewModel): add by typing, search, sort by aisle or
 /// expiry, and mark each item in stock, running low or run out (#194). Running low or out puts
-/// the item on the grocery list, silently (#146); its row then shows the basket Groceries tag, and tapping that
-/// takes it off again. A delete can be undone, and so can "Clear run-out items" (#194), which leaves
-/// the grocery list alone.
+/// the item on the grocery list, silently (#146). An item on the grocery list, its own line or any line naming
+/// it, shows the basket Groceries tag, and tapping that takes those lines off. A delete, "Clear run-out
+/// items" (#194, which leaves the grocery list alone) and the tag's removal can each be undone, one at a time.
 @MainActor
 @Observable
 final class PantryViewModel {
@@ -61,7 +64,13 @@ final class PantryViewModel {
     @ObservationIgnored private var grocerySubscription: AnyCancellable?
     @ObservationIgnored private var items: [PantryItem] = []
     @ObservationIgnored private var groceryItems: [GroceryItem] = []
-    @ObservationIgnored private var deleted: PantrySnapshot?
+    @ObservationIgnored private var undo: Undo?
+
+    /// What the snackbar's Undo puts back: pantry items, or grocery lines.
+    private enum Undo {
+        case pantry(PantrySnapshot)
+        case groceries(DeletedGroceries)
+    }
     @ObservationIgnored private var messages = 0
 
     init(
@@ -97,10 +106,12 @@ final class PantryViewModel {
         uiState.sections = PantryList.arrange(items, query: uiState.query, sort: uiState.sort)
     }
 
-    /// The unticked grocery lines that are `item` itself (`PantryList.ownLines`).
+    /// The unticked grocery lines that are `item` itself (`PantryList.ownLines`): what running out checks for.
     private func lines(for item: PantryItem) -> [GroceryItem] { PantryList.ownLines(item, groceryItems) }
 
-    private func onList() -> Set<Int64> { Set(items.filter { !lines(for: $0).isEmpty }.map(\.id)) }
+    private func onList() -> Set<Int64> {
+        Set(items.filter { !PantryList.onListLines($0, groceryItems).isEmpty }.map(\.id))
+    }
 
     func onQueryChange(_ query: String) {
         uiState.query = query
@@ -147,11 +158,17 @@ final class PantryViewModel {
         }
     }
 
-    /// The row's basket tag, tapped: the item's own lines leave the grocery list. No snackbar (#146).
+    /// The row's basket tag, tapped: every line that puts the item on the grocery list
+    /// (`PantryList.onListLines`, a recipe's included) leaves it, with Undo (owner, 2026-09-29).
     func onTakeOffList(_ item: PantryItem) {
-        let ids = lines(for: item).map(\.id)
+        let ids = PantryList.onListLines(item, groceryItems).map(\.id)
         guard !ids.isEmpty else { return }
-        Task { _ = await groceries.delete(ids) }
+        Task {
+            guard let gone = await groceries.delete(ids) else { return }
+            undo = .groceries(gone)
+            messages += 1
+            uiState.message = .takenOffList(id: messages, count: gone.items.count)
+        }
     }
 
     // MARK: The edit sheet
@@ -194,7 +211,7 @@ final class PantryViewModel {
         uiState.editing = nil
         Task {
             guard let gone = await pantry.delete(editing.id) else { return }
-            deleted = gone
+            undo = .pantry(gone)
             messages += 1
             uiState.message = .deleted(id: messages, name: gone.items[0].name)
         }
@@ -215,23 +232,28 @@ final class PantryViewModel {
         uiState.confirmClearRunOut = nil
         Task {
             guard let gone = await pantry.deleteRunOut() else { return }
-            deleted = gone
+            undo = .pantry(gone)
             messages += 1
             uiState.message = .runOutCleared(id: messages)
         }
     }
 
-    /// Undoes the last delete or "Clear run-out items".
+    /// Undoes the last removal: a delete, "Clear run-out items", or the tag's lines.
     func onUndoDelete() {
-        guard let gone = deleted else { return }
-        deleted = nil
+        guard let last = undo else { return }
+        undo = nil
         uiState.message = nil
-        Task { await pantry.restore(gone) }
+        Task {
+            switch last {
+            case .pantry(let snapshot): await pantry.restore(snapshot)
+            case .groceries(let lines): await groceries.restore(lines)
+            }
+        }
     }
 
     /// The snackbar timed out.
     func onMessageDismissed() {
-        if uiState.message != nil { deleted = nil }
+        if uiState.message != nil { undo = nil }
         uiState.message = nil
     }
 

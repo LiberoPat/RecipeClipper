@@ -117,12 +117,28 @@ enum PantryList {
 
     /// The unticked grocery lines that are `item` itself: its name as the pantry puts it there
     /// (trimmed, case-insensitive, a listed pair's number aside (`IngredientName.same`), in its
-    /// language), which is what the basket tag means (#146). A recipe's "2 cups flour" isn't, so
-    /// taking the item off the list never loses a recipe's line.
+    /// language). Running out adds that line only when there is none (#146), and using up (#147)
+    /// the same. A recipe's "2 cups flour" isn't one: the basket tag reads `onListLines`.
     static func ownLines(_ item: PantryItem, _ groceries: [GroceryItem]) -> [GroceryItem] {
         let words = LanguageWords.forTag(item.language)
         let name = IngredientName.key(item.name, words: words)
         return groceries.filter { !$0.checked && $0.language == item.language && IngredientName.key($0.text, words: words) == name }
+    }
+
+    /// The unticked grocery lines that put `item` on the list, which is what the basket tag means
+    /// and what tapping it removes (owner, 2026-09-29): every line in its language whose
+    /// ingredient's name matches the item's as What I need matches them (`IngredientName.matches`:
+    /// a typed "2 onions" and a recipe's "1 onion, sliced" are "onions", "red onion" isn't), and
+    /// its own line (`ownLines`) whatever that reads as.
+    static func onListLines(_ item: PantryItem, _ groceries: [GroceryItem]) -> [GroceryItem] {
+        let words = LanguageWords.forTag(item.language)
+        let own = IngredientName.key(item.name, words: words)
+        return groceries.filter { line in
+            guard !line.checked, line.language == item.language else { return false }
+            if IngredientName.key(line.text, words: words) == own { return true }
+            guard let words, let name = IngredientName.of(line.text, words: words) else { return false }
+            return IngredientName.matches(name, item.name, words: words)
+        }
     }
 
     /// The item already here with this name (trimmed, case-insensitive, a listed pair's number

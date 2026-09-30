@@ -213,7 +213,7 @@ struct PantryScreen: View {
         }
     }
 
-    /// Snackbars only for undo (#146): a delete, or "Clear run-out items" (#194).
+    /// Snackbars only for undo (#146): a delete, "Clear run-out items" (#194), or the tag's removal.
     @ViewBuilder
     private func snackbar(_ message: PantryMessage) -> some View {
         switch message {
@@ -221,6 +221,8 @@ struct PantryScreen: View {
             Snackbar(message: Strings.pantryDeleted(name), actionLabel: Strings.undo, action: vm.onUndoDelete)
         case .runOutCleared:
             Snackbar(message: Strings.runOutCleared, actionLabel: Strings.undo, action: vm.onUndoDelete)
+        case .takenOffList(_, let count):
+            Snackbar(message: Strings.takenOffList(count), actionLabel: Strings.undo, action: vm.onUndoDelete)
         }
     }
 }

@@ -165,24 +165,47 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertTrue(groceries.items.value.isEmpty)
     }
 
-    func testTappingOnListTakesOnlyTheItemsOwnUntickedLineOffTheList() async {
+    /// Owner, 2026-09-29: the tag is any unticked line naming the item, in any stock state, and
+    /// tapping it removes them all (a recipe's too), with Undo. Running out still checks only for
+    /// the item's own line.
+    func testTappingOnListTakesEveryUntickedLineNamingTheItemOffTheListWithUndo() async {
         await groceries.add([
-            NewGroceryLine(text: " Milk ", language: "en"), NewGroceryLine(text: "1 cup milk", language: "en"),
-            NewGroceryLine(text: "flour", language: "en"),
+            NewGroceryLine(text: " Milk ", language: "en"), NewGroceryLine(text: "1 cup milk", language: "en", recipeId: 7),
+            NewGroceryLine(text: "flour", language: "en"), NewGroceryLine(text: "2 tbsp coconut milk", language: "en"),
         ])
         await groceries.setChecked([groceries.items.value[2].id], checked: true)
         let pantry = FakePantryRepository([item(1, "milk"), item(2, "flour", inStock: false), item(3, "rice")])
         let vm = await viewModel(pantry)
-        // A recipe's "1 cup milk" isn't the item's own line, and a ticked line is already bought.
+        // A ticked line is already bought; coconut milk is another ingredient.
+        await settleMain { vm.uiState.onList == [1] }
+        XCTAssertEqual(vm.uiState.onList, [1])
+        let before = groceries.items.value
+
+        vm.onTakeOffList(pantry.items.value[0])
+        await settleMain { vm.uiState.message != nil }
+        XCTAssertEqual(groceries.items.value.map(\.text), ["flour", "2 tbsp coconut milk"])
+        await settleMain { vm.uiState.onList.isEmpty }
+        XCTAssertEqual(vm.uiState.onList, [])
+        XCTAssertEqual(vm.uiState.message, .takenOffList(id: 1, count: 2))
+
+        vm.onUndoDelete()
+        await settleMain { self.groceries.items.value.count == 4 }
+        XCTAssertEqual(groceries.items.value, before)
+        await settleMain { vm.uiState.onList == [1] }
+        XCTAssertEqual(vm.uiState.onList, [1])
+        XCTAssertNil(vm.uiState.message)
+    }
+
+    func testATypedLineNamingTheItemShowsTheTagInStockAndRunningOutStillAddsItsOwnLine() async {
+        await groceries.add([NewGroceryLine(text: "2 onions", language: "en"), NewGroceryLine(text: "1 red onion", language: "en")])
+        let pantry = FakePantryRepository([item(1, "onions", aisle: .produce)])
+        let vm = await viewModel(pantry)
         await settleMain { vm.uiState.onList == [1] }
         XCTAssertEqual(vm.uiState.onList, [1])
 
-        vm.onTakeOffList(pantry.items.value[0])
-        await settleMain { self.groceries.items.value.count == 2 }
-        XCTAssertEqual(groceries.items.value.map(\.text), ["1 cup milk", "flour"])
-        await settleMain { vm.uiState.onList.isEmpty }
-        XCTAssertEqual(vm.uiState.onList, [])
-        XCTAssertNil(vm.uiState.message)
+        vm.onSetStock(pantry.items.value[0], .runOut)
+        await settleMain { self.groceries.items.value.count == 3 }
+        XCTAssertEqual(groceries.items.value.map(\.text), ["2 onions", "1 red onion", "onions"])
     }
 
     func testBackInStockIsBoughtTodayWithNoOffer() async {

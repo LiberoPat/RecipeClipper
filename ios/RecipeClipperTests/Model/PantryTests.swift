@@ -201,6 +201,23 @@ final class PantryTests: XCTestCase {
         XCTAssertEqual(PantryList.ownLines(item("red onion"), list).map(\.id), [3])
     }
 
+    /// Owner, 2026-09-29: the basket tag is any unticked line naming the item, as What I need
+    /// matches: a typed "2 onions" and a recipe's "1 onion, sliced" are "onions"; "red onion" isn't.
+    func testOnListIsAnyUntickedLineWhoseIngredientMatchesTheItemRecipesIncluded() {
+        func grocery(_ id: Int64, _ text: String, checked: Bool = false, recipeId: Int64? = nil, language: String = "en") -> GroceryItem {
+            GroceryItem(id: id, text: text, language: language, aisle: .produce, checked: checked, sortOrder: Int(id), recipeId: recipeId)
+        }
+        let list = [
+            grocery(1, "onions"), grocery(2, "2 onions"), grocery(3, "1 onion, sliced", recipeId: 7),
+            grocery(4, "1 red onion"), grocery(5, "3 onions", checked: true), grocery(6, "2 cebollas", language: "es"),
+            grocery(7, "2 tbsp onion powder"),
+        ]
+        XCTAssertEqual(PantryList.onListLines(item("Onions"), list).map(\.id), [1, 2, 3])
+        XCTAssertEqual(PantryList.onListLines(item("red onion"), list).map(\.id), [4])
+        XCTAssertEqual(PantryList.onListLines(item("flour"), [grocery(1, "1 cup rice flour")]).map(\.id), [])
+        XCTAssertEqual(PantryList.onListLines(item("butter"), [grocery(1, "2 tbsp unsalted butter")]).map(\.id), [1])
+    }
+
     func testNothingPlannedIsEmpty() {
         XCTAssertTrue(PantryMatch.weekNeeds([], pantry: [item("flour")]).isEmpty)
     }
