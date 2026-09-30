@@ -18,12 +18,16 @@ struct PantryEditing: Equatable {
 enum PantryMessage: Equatable {
     /// `name` was deleted: offers Undo.
     case deleted(id: Int, name: String)
+    /// "Clear run-out items" removed every item that had run out (#194): offers Undo.
+    case runOutCleared(id: Int)
 }
 
 /// `sections` is nil until the pantry has loaded; `hasItems` says whether it holds anything at
 /// all (a search can find nothing in a full pantry), and `hasInStock` whether anything is in
 /// stock, which is what "Send list" and "Send as file" send (#149). `onList` holds the items
 /// whose name is on the grocery list, unticked: their rows show the basket Groceries tag (#146).
+/// `hasRunOut` says whether anything has run out, what "Clear run-out items" needs, and
+/// `confirmClearRunOut` is how many items its dialog asks about, while it's open (#194).
 struct PantryUiState: Equatable {
     var sections: [PantrySection]?
     var hasItems = false
@@ -35,12 +39,15 @@ struct PantryUiState: Equatable {
     var editing: PantryEditing?
     var message: PantryMessage?
     var onList: Set<Int64> = []
+    var hasRunOut = false
+    var confirmClearRunOut: Int?
 }
 
 /// The Pantry tab (#51; Android's PantryViewModel): add by typing, search, sort by aisle or
 /// expiry, and mark each item in stock, running low or run out (#194). Running low or out puts
 /// the item on the grocery list, silently (#146); its row then shows the basket Groceries tag, and tapping that
-/// takes it off again. A delete can be undone.
+/// takes it off again. A delete can be undone, and so can "Clear run-out items" (#194), which leaves
+/// the grocery list alone.
 @MainActor
 @Observable
 final class PantryViewModel {
@@ -73,6 +80,7 @@ final class PantryViewModel {
                 self.items = all
                 self.uiState.hasItems = !all.isEmpty
                 self.uiState.hasInStock = all.contains(where: \.inStock)
+                self.uiState.hasRunOut = all.contains { !$0.inStock }
                 self.uiState.onList = self.onList()
                 self.arrange()
             }
@@ -192,6 +200,28 @@ final class PantryViewModel {
         }
     }
 
+    /// "Clear run-out items" (#194) asks first, naming how many items would go, whatever the search.
+    func onClearRunOut() {
+        let count = items.filter { !$0.inStock }.count
+        if count > 0 { uiState.confirmClearRunOut = count }
+    }
+
+    func onClearRunOutDismissed() { uiState.confirmClearRunOut = nil }
+
+    /// The dialog's Clear: every item that has run out leaves the pantry, in one write; their
+    /// grocery lines stay. Undo (`onUndoDelete`) puts them back exactly as they were.
+    func onClearRunOutConfirm() {
+        guard uiState.confirmClearRunOut != nil else { return }
+        uiState.confirmClearRunOut = nil
+        Task {
+            guard let gone = await pantry.deleteRunOut() else { return }
+            deleted = gone
+            messages += 1
+            uiState.message = .runOutCleared(id: messages)
+        }
+    }
+
+    /// Undoes the last delete or "Clear run-out items".
     func onUndoDelete() {
         guard let gone = deleted else { return }
         deleted = nil
@@ -201,7 +231,7 @@ final class PantryViewModel {
 
     /// The snackbar timed out.
     func onMessageDismissed() {
-        if case .deleted = uiState.message { deleted = nil }
+        if uiState.message != nil { deleted = nil }
         uiState.message = nil
     }
 

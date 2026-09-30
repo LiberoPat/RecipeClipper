@@ -55,6 +55,17 @@ struct PantryDao {
         try db.run("DELETE FROM pantry_items WHERE id = ?", id)
     }
 
+    /// "Clear run-out items" (#194): deletes every item that has run out, returning them whole
+    /// for undo. Run inside one `write`, so it is one transaction.
+    func deleteRunOut() throws -> [PantryItemRecord] {
+        let gone = try db.query(
+            "SELECT \(PantryItemRecord.columns) FROM pantry_items WHERE inStock = 0 ORDER BY id ASC",
+            map: PantryItemRecord.init(row:)
+        )
+        if !gone.isEmpty { try db.run("DELETE FROM pantry_items WHERE inStock = 0") }
+        return gone
+    }
+
     /// Undoes a delete, a restock or a stock change: the rows exactly as they were.
     func put(_ items: [PantryItemRecord]) throws {
         for item in items {

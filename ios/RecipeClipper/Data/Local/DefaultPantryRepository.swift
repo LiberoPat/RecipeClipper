@@ -100,6 +100,18 @@ final class DefaultPantryRepository: PantryRepository {
         }
     }
 
+    func deleteRunOut() async -> PantrySnapshot? {
+        do {
+            return try await db.write { conn -> PantrySnapshot? in
+                let gone = try PantryDao(db: conn).deleteRunOut()
+                return gone.isEmpty ? nil : PantrySnapshot(items: gone)
+            }
+        } catch {
+            dataLog.error("deleteRunOutPantry failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
     func restore(_ snapshot: PantrySnapshot) async {
         if snapshot.items.isEmpty { return }
         await perform("restorePantry") { dao in try dao.put(snapshot.items) }

@@ -253,6 +253,57 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertEqual(pantry.items.value.map(\.name), ["oil", "rice"])
     }
 
+    // MARK: #194: "Clear run-out items" in the menu
+
+    func testClearRunOutItemsIsEnabledOnlyWhileSomethingHasRunOut() async {
+        let pantry = FakePantryRepository([item(1, "oil"), item(2, "rice")])
+        let vm = await viewModel(pantry)
+        XCTAssertFalse(vm.uiState.hasRunOut)
+        vm.onClearRunOut()
+        XCTAssertNil(vm.uiState.confirmClearRunOut)
+
+        vm.onSetStock(pantry.items.value[0], .runningLow)
+        await settleMain()
+        XCTAssertFalse(vm.uiState.hasRunOut)
+        vm.onSetStock(pantry.items.value[1], .runOut)
+        await settleMain { vm.uiState.hasRunOut }
+        XCTAssertTrue(vm.uiState.hasRunOut)
+    }
+
+    func testClearRunOutItemsAsksFirstRemovesOnlyWhatRanOutLeavesTheGroceryListAndCanBeUndone() async {
+        let pantry = FakePantryRepository([
+            item(1, "oil"), item(2, "milk", inStock: false, aisle: .dairy),
+            item(3, "rice", inStock: false, aisle: .grains, expires: 20_800), item(4, "flour"),
+        ])
+        await groceries.add([NewGroceryLine(text: "milk", language: "en")])
+        let vm = await viewModel(pantry)
+        // A search that hides one of them: the count is still every run-out item.
+        vm.onQueryChange("milk")
+        let before = pantry.items.value
+
+        vm.onClearRunOut()
+        XCTAssertEqual(vm.uiState.confirmClearRunOut, 2)
+        vm.onClearRunOutDismissed()
+        await settleMain()
+        XCTAssertNil(vm.uiState.confirmClearRunOut)
+        XCTAssertEqual(pantry.items.value.count, 4)
+
+        vm.onClearRunOut()
+        vm.onClearRunOutConfirm()
+        await settleMain { vm.uiState.message != nil }
+        XCTAssertNil(vm.uiState.confirmClearRunOut)
+        XCTAssertEqual(pantry.items.value.map(\.name), ["oil", "flour"])
+        XCTAssertFalse(vm.uiState.hasRunOut)
+        XCTAssertEqual(vm.uiState.message, .runOutCleared(id: 1))
+        XCTAssertEqual(groceries.items.value.map(\.text), ["milk"])
+
+        vm.onUndoDelete()
+        await settleMain { pantry.items.value.count == 4 }
+        XCTAssertEqual(pantry.items.value, before)
+        XCTAssertNil(vm.uiState.message)
+        XCTAssertTrue(vm.uiState.hasRunOut)
+    }
+
     // MARK: Grocery check-off into the pantry
 
     private func groceriesVM(_ pantry: FakePantryRepository) async -> GroceriesViewModel {
