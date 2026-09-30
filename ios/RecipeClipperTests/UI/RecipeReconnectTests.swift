@@ -49,6 +49,7 @@ final class ReconnectCountingRepository: RecipeRepository {
     func saveEdit(id: Int64, draft: RecipeDraft) async -> Recipe? { nil }
     func addManual(draft: RecipeDraft) async -> Recipe? { nil }
     func saveClip(_ recipe: Recipe) async -> ParseResult { .error(.saveFailed) }
+    func importPage(_ sharedUrl: String, html: String) async -> ParseResult { .error(.humanCheck) }
     func keep(_ recipe: Recipe) async -> ParseResult { .error(.saveFailed) }
     func open(id: Int64) async -> Recipe? { nil }
     func setChecked(id: Int64, checked: Set<Int>) async {}

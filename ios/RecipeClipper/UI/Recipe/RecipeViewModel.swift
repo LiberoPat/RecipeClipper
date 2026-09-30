@@ -138,6 +138,7 @@ final class RecipeViewModel {
         uiState.clipUrl = nil
         uiState.photoPost = nil
         uiState.clipBlockedPost = nil
+        uiState.humanCheckPage = nil
         uiState.asWrittenSteps = []
         // Weak: an import on a screen that has been popped must not keep the ViewModel alive.
         loadTask = Task { [weak self, recipeId, shareUrl, repository] in
@@ -182,6 +183,12 @@ final class RecipeViewModel {
                 // opens in "Clip it yourself" instead, where Reddit does let it in.
                 if let shareUrl, RedditUrls.clipsWhenBlocked(shareUrl, error: error, redditOn: flags?.isOn(.reddit) ?? true) {
                     uiState.clipBlockedPost = shareUrl
+                    return
+                }
+                // Cloudflare's check wants a person (#220): no error screen; the page opens
+                // visibly for the cook to pass it.
+                if let shareUrl, error == .humanCheck {
+                    uiState.humanCheckPage = shareUrl
                     return
                 }
                 uiState.content = .error(error)

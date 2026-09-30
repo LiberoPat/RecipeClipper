@@ -134,6 +134,7 @@ fun RecipeScreen(
     // Reddit wouldn't let the app read the shared post (#213): "Clip it yourself" on it, in
     // this screen's place.
     onClipBlocked: (url: String) -> Unit = {},
+    onHumanCheck: (url: String) -> Unit = {},
     onEdit: (recipeId: Long) -> Unit = {},
     // "Read the photo" (#198): a Reddit post with no recipe text, read on the device.
     onReadPhoto: (PhotoPost) -> Unit = {},
@@ -264,6 +265,9 @@ fun RecipeScreen(
     }
     LaunchedEffect(state.clipBlockedPost) {
         state.clipBlockedPost?.let(onClipBlocked)
+    }
+    LaunchedEffect(state.humanCheckPage) {
+        state.humanCheckPage?.let(onHumanCheck)
     }
 
     val content = state.content
@@ -477,6 +481,7 @@ private fun ParseError.toMessage(): String = when (this) {
     ParseError.SaveFailed -> stringResource(R.string.error_save_failed)
     ParseError.NotSaved -> stringResource(R.string.error_not_saved)
     ParseError.NothingToShow -> stringResource(R.string.error_nothing_to_show)
+    ParseError.HumanCheck -> stringResource(R.string.error_human_check)
 }
 
 /**

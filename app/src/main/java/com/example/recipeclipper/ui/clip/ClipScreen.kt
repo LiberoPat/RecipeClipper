@@ -122,13 +122,19 @@ fun ClipScreen(
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Box(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                    val waiting = state.check == ClipCheck.WAITING
                     TopBar(
                         host = SourceDomain.of(state.url).orEmpty(),
-                        canFinish = state.draft.canFinish,
+                        canFinish = state.draft.canFinish && !waiting,
                         onCancel = onCancel,
                         onDone = viewModel::onReview
                     )
-                    if (state.readBlocked && !state.reviewing) BlockedNote()
+                    if (state.readBlocked && !state.reviewing) Note(R.string.clip_reddit_blocked_note)
+                    when (state.check) {
+                        ClipCheck.WAITING -> Note(R.string.clip_human_check_note)
+                        ClipCheck.NO_RECIPE -> if (!state.reviewing) Note(R.string.clip_human_check_no_recipe_note)
+                        null -> Unit
+                    }
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         ClipWebPage(
                             url = state.url,
@@ -140,16 +146,19 @@ fun ClipScreen(
                                     is ClipPageEvent.TagTapped -> viewModel.onTagTapped(event.field)
                                     is ClipPageEvent.ImageTapped -> viewModel.onImageTapped(event.src)
                                     ClipPageEvent.NoImage -> viewModel.onNoImageTapped()
+                                    is ClipPageEvent.PageLoaded -> viewModel.onPageLoaded(event.html)
                                 }
                             },
                             loadPage = loadPage,
+                            readsPage = waiting,
                             modifier = Modifier.fillMaxSize()
                         )
                         if (state.reviewing) {
                             ReviewPane(state, viewModel, Modifier.fillMaxSize())
                         }
                     }
-                    if (!state.reviewing) ClipToolbar(state, viewModel)
+                    // Nothing to clip while the page is Cloudflare's check (#220).
+                    if (!state.reviewing && !waiting) ClipToolbar(state, viewModel)
                 }
                 SnackbarHost(
                     snackbar,
@@ -207,13 +216,14 @@ private fun noticeText(message: ClipMessage): String = when (message) {
 }
 
 /**
- * Why the clip opened by itself (#213): Reddit wouldn't let the app read the post. Announced
+ * Why the clip opened by itself: Reddit wouldn't let the app read the post (#213), or the site
+ * wants the cook to pass Cloudflare's check (#220), or did and has no recipe data. Announced
  * politely, since the cook asked for the recipe, not for this screen.
  */
 @Composable
-private fun BlockedNote() {
+private fun Note(text: Int) {
     Text(
-        stringResource(R.string.clip_reddit_blocked_note),
+        stringResource(text),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp)

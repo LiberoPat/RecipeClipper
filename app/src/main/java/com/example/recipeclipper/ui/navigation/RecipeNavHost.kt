@@ -68,11 +68,14 @@ object Routes {
 
     // "Clip it yourself" (#37), from a page with no recipe data, or opened by itself in the
     // import's place when Reddit blocks the app's read of a post (#213: `blocked`, with a note).
+    // `check` (#220): opened in the import's place for the cook to pass Cloudflare's check.
     const val CLIP = "clip?${ClipViewModel.URL_ARG}={${ClipViewModel.URL_ARG}}" +
-        "&${ClipViewModel.BLOCKED_ARG}={${ClipViewModel.BLOCKED_ARG}}"
+        "&${ClipViewModel.BLOCKED_ARG}={${ClipViewModel.BLOCKED_ARG}}" +
+        "&${ClipViewModel.CHECK_ARG}={${ClipViewModel.CHECK_ARG}}"
 
-    fun clip(url: String, blocked: Boolean = false) =
-        "clip?${ClipViewModel.URL_ARG}=${Uri.encode(url)}&${ClipViewModel.BLOCKED_ARG}=$blocked"
+    fun clip(url: String, blocked: Boolean = false, check: Boolean = false) =
+        "clip?${ClipViewModel.URL_ARG}=${Uri.encode(url)}&${ClipViewModel.BLOCKED_ARG}=$blocked" +
+            "&${ClipViewModel.CHECK_ARG}=$check"
 
     // "Read the photo" (#198): the editor, filled from a Reddit post's photos read on the device.
     const val EDIT_PHOTO = "edit/photo?${EditRecipeViewModel.PHOTO_URL_ARG}={${EditRecipeViewModel.PHOTO_URL_ARG}}" +
@@ -219,6 +222,12 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
                     popUpTo(Routes.IMPORT) { inclusive = true }
                 }
             },
+            // Cloudflare's check (#220), likewise in the import's place.
+            onHumanCheck = {
+                navController.navigate(Routes.clip(it, check = true)) {
+                    popUpTo(Routes.IMPORT) { inclusive = true }
+                }
+            },
             onReadPhoto = { navController.navigate(Routes.editPhoto(it)) },
             sendFileViewModel = hiltViewModel()
         )
@@ -248,11 +257,14 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         route = Routes.CLIP,
         arguments = listOf(
             navArgument(ClipViewModel.URL_ARG) { type = NavType.StringType },
-            navArgument(ClipViewModel.BLOCKED_ARG) { type = NavType.BoolType; defaultValue = false }
+            navArgument(ClipViewModel.BLOCKED_ARG) { type = NavType.BoolType; defaultValue = false },
+            navArgument(ClipViewModel.CHECK_ARG) { type = NavType.BoolType; defaultValue = false }
         )
     ) { entry ->
-        // Reddit's block (#213) opened it in the import's place: no error screen under it.
-        val blocked = entry.arguments?.getBoolean(ClipViewModel.BLOCKED_ARG) == true
+        // Reddit's block (#213) or Cloudflare's check (#220) opened it in the import's place: no
+        // error screen under it.
+        val blocked = entry.arguments?.getBoolean(ClipViewModel.BLOCKED_ARG) == true ||
+            entry.arguments?.getBoolean(ClipViewModel.CHECK_ARG) == true
         ClipScreen(
             onCancel = { navController.popBackStack() },
             // The saved clip replaces the clip screen and the error screen under it, so Back

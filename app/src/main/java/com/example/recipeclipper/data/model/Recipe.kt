@@ -169,6 +169,12 @@ sealed class ParseError {
      * dead Wi-Fi fails in one timeout rather than two.
      */
     data class FetchFailed(val detail: String?, val timedOut: Boolean = false) : ParseError()
+    /**
+     * Cloudflare's bot check (#220) still wanted a person when the off-screen browser's time ran
+     * out ("Verify you are human"). The import screen opens the page visibly instead, for the
+     * cook to pass the check once. Never retried automatically, never reloaded on reconnect.
+     */
+    object HumanCheck : ParseError()
     object SaveFailed : ParseError()
     object NotSaved : ParseError()
     object NothingToShow : ParseError()

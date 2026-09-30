@@ -13,6 +13,8 @@ final class DefaultRecipeRepository: RecipeRepository {
     private let sleep: RetrySleep
     private let renderedPages: RenderedPageSource
     private let renderTimeout: Duration
+    private let challengeTimeout: Duration
+    private let clearedHosts: ClearedHosts
     private let library: LibraryLimitSource
     private let photos: PhotoStore?
     private let extractor: PageRecipeExtractor
@@ -32,6 +34,11 @@ final class DefaultRecipeRepository: RecipeRepository {
     /// longer than they did. Android's RENDER_TIMEOUT_MS.
     static let renderTimeout: Duration = .seconds(20)
 
+    /// The render's cap in all once Cloudflare's check has shown (#220): long enough for a check
+    /// that passes by itself, and the page it then loads, to settle. Android's
+    /// CHALLENGE_TIMEOUT_MS.
+    static let challengeTimeout: Duration = .seconds(30)
+
     init(
         db: AppDatabase,
         source: RecipeSource,
@@ -39,6 +46,8 @@ final class DefaultRecipeRepository: RecipeRepository {
         sleep: @escaping RetrySleep = { try await Task.sleep(for: $0) },
         renderedPages: RenderedPageSource = NoRenderedPageSource(),
         renderTimeout: Duration = DefaultRecipeRepository.renderTimeout,
+        challengeTimeout: Duration = DefaultRecipeRepository.challengeTimeout,
+        clearedHosts: ClearedHosts = NoClearedHosts(),
         library: LibraryLimitSource = FixedLibraryLimit(),
         extractor: PageRecipeExtractor = NoPageRecipeExtractor(),
         extractionOn: @escaping () -> Bool = { false },
@@ -54,6 +63,8 @@ final class DefaultRecipeRepository: RecipeRepository {
         self.sleep = sleep
         self.renderedPages = renderedPages
         self.renderTimeout = renderTimeout
+        self.challengeTimeout = challengeTimeout
+        self.clearedHosts = clearedHosts
     }
 
     func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult {
@@ -116,6 +127,12 @@ final class DefaultRecipeRepository: RecipeRepository {
     /// Otherwise: fetches, retries once after a pause if that often clears on its own, then
     /// loads the page once in an off-screen browser if it is still blocked or has no recipe
     /// data.
+    ///
+    /// Cloudflare's check (#220) changes that: a challenged plain fetch isn't retried; a render
+    /// that met the check and got past it is the page itself, so its answer stands (the recipe,
+    /// or `.noRecipeFound`); one still on the check when time runs out is `.humanCheck`, for the
+    /// cook to pass in the app's visible browser. A host that passed lately (`ClearedHosts`) is
+    /// rendered first, since its plain fetch would only be refused.
     private func fetchWithFallbacks(_ url: String, renderedPage: String?) async -> ParseResult {
         // A Reddit post (#11) is read only from its listing: no rendered page, no page text.
         let readsPages = source.readsRenderedPage(url: url)
@@ -125,12 +142,21 @@ final class DefaultRecipeRepository: RecipeRepository {
             if case .success = fromPage { return fromPage }
         }
 
+        let host = Self.host(of: url)
+        var rendered: Rendered?
+        if readsPages, let host, clearedHosts.isCleared(host) {
+            let first = await renderPage(url, host: host, trusted: true)
+            rendered = first
+            if !Task.isCancelled, let answer = await answer(first, url: url) { return answer }
+        }
+
         var fetched = await source.fetchPage(url: url)
 
         // A block or a network blip often clears on its own: wait, then fetch once more. Offline
         // fails straight away, a timeout isn't repeated (a dead Wi-Fi costs one timeout, not
-        // two), and a page that loaded with no recipe is never retried.
-        if case .error(let error) = fetched.result, error.shouldAutoRetry, !Task.isCancelled {
+        // two), a page that loaded with no recipe is never retried, and neither is Cloudflare's
+        // check, which refuses a plain fetch every time.
+        if case .error(let error) = fetched.result, error.shouldAutoRetry, !fetched.challenge, !Task.isCancelled {
             do {
                 try await sleep(Self.retryPause)
             } catch {
@@ -144,18 +170,70 @@ final class DefaultRecipeRepository: RecipeRepository {
         // and run what it renders through the same parsers. Never after offline or a timeout.
         // A rendered page with no recipe, or one that doesn't load, leaves the cause standing.
         guard case .error(let error) = parsed, error.triesRenderedPage, readsPages, !Task.isCancelled else { return parsed }
-        var rendered: FetchedPage?
-        if let html = await renderCapped(url), !Task.isCancelled {
-            rendered = BlogRecipeSource.parsePage(html: html, url: url)
-            if let rendered, case .success = rendered.result { return rendered.result }
+        if rendered == nil {
+            let only = await renderPage(url, host: host, trusted: false)
+            rendered = only
+            if !Task.isCancelled, let answer = await answer(only, url: url) { return answer }
         }
         // Last, only for a page that loaded with no recipe data: the on-device model may pick
         // one out of its text (the rendered page's if there is one; #103).
         guard error == .noRecipeFound, !Task.isCancelled,
-              let page = rendered?.page ?? fetched.page ?? renderedPage.map({ PageTextReader.read(html: $0, url: url) })
+              let page = rendered?.page?.page ?? fetched.page ?? renderedPage.map({ PageTextReader.read(html: $0, url: url) })
         else { return parsed }
         return await extractFromPage(page, url: url) ?? parsed
     }
+
+    /// What one render came to (Android's `Rendered`). `page` is the rendered page parsed, when
+    /// the browser handed one back that isn't Cloudflare's check; `challenged`, whether the check
+    /// showed during it; `trusted`, whether its page stands on its own (it went there on a
+    /// clearance).
+    private struct Rendered {
+        var page: FetchedPage?
+        var challenged: Bool
+        var trusted: Bool
+    }
+
+    /// The import's answer from a render, or nil to go on as before (#36): its recipe;
+    /// `.humanCheck` if the check still showed at the cap; the page's own `.noRecipeFound`
+    /// (after the on-device model's try) if it passed the check or went there on a clearance.
+    private func answer(_ rendered: Rendered, url: String) async -> ParseResult? {
+        guard let page = rendered.page else { return rendered.challenged ? .error(.humanCheck) : nil }
+        if case .success = page.result { return page.result }
+        guard rendered.challenged || rendered.trusted else { return nil }
+        if let text = page.page, let extracted = await extractFromPage(text, url: url) { return extracted }
+        return .error(.noRecipeFound)
+    }
+
+    /// One load of `url` in the off-screen browser, capped at `renderTimeout`, or at
+    /// `challengeTimeout` in all once Cloudflare's check has shown (#220). Its host is
+    /// remembered (`ClearedHosts`) when a page loads past the check, or on a clearance.
+    private func renderPage(_ url: String, host: String?, trusted: Bool) async -> Rendered {
+        let seen = ChallengeSeen()
+        let html = await renderCapped(url, seen: seen)
+        guard let html, !Task.isCancelled else { return Rendered(page: nil, challenged: seen.value, trusted: trusted) }
+        let page = BlogRecipeSource.parsePage(html: html, url: url)
+        if case .success = page.result {} else if CloudflareChallenge.isChallengePage(html) {
+            // A browser that handed back the check itself hasn't got past it either.
+            return Rendered(page: nil, challenged: true, trusted: trusted)
+        }
+        if let host, seen.value || trusted { clearedHosts.record(host) }
+        return Rendered(page: page, challenged: seen.value, trusted: trusted)
+    }
+
+    func importPage(_ sharedUrl: String, html: String) async -> ParseResult {
+        let url = UrlCleaner.clean(sharedUrl)
+        let parsed = BlogRecipeSource.parse(html: html, url: url)
+        guard case .success(var recipe) = parsed else {
+            if CloudflareChallenge.isChallengePage(html) { return .error(.humanCheck) }
+            if let host = Self.host(of: url) { clearedHosts.record(host) }
+            return parsed
+        }
+        if let host = Self.host(of: url) { clearedHosts.record(host) }
+        recipe.sourceUrl = url
+        return await save(recipe, now: clock.now(), what: "importPage save")
+    }
+
+    private static func host(of url: String) -> String? { URL(string: url)?.host?.lowercased() }
 
     /// A recipe the on-device model picked out of `page`'s text (#103), behind the
     /// `llmExtraction` flag: the part most likely to hold it (`RecipeTextWindow`), then only what
@@ -244,14 +322,17 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
-    /// The rendered page, or nil once `renderTimeout` runs out (which cancels the render).
-    private func renderCapped(_ url: String) async -> String? {
+    /// The rendered page, or nil once `renderTimeout` runs out (which cancels the render), or
+    /// `challengeTimeout` in all when Cloudflare's check had shown by then (#220).
+    private func renderCapped(_ url: String, seen: ChallengeSeen) async -> String? {
         let renderedPages = renderedPages
         let renderTimeout = renderTimeout
+        let challengeTimeout = challengeTimeout
         return await withTaskGroup(of: String?.self) { group in
-            group.addTask { await renderedPages.render(url: url) }
+            group.addTask { await renderedPages.render(url: url) { seen.set() } }
             group.addTask {
                 try? await Task.sleep(for: renderTimeout)
+                if seen.value, !Task.isCancelled { try? await Task.sleep(for: challengeTimeout - renderTimeout) }
                 return nil
             }
             let first = await group.next() ?? nil
@@ -447,4 +528,14 @@ final class DefaultRecipeRepository: RecipeRepository {
             dataLog.error("formatSampleTimes failed: \(String(describing: error), privacy: .public)")
         }
     }
+}
+
+/// Whether a render reported Cloudflare's check (#220): set from the web view's callback, read by
+/// the repository's timer.
+private final class ChallengeSeen: @unchecked Sendable {
+    private let lock = NSLock()
+    private var seen = false
+
+    var value: Bool { lock.withLock { seen } }
+    func set() { lock.withLock { seen = true } }
 }

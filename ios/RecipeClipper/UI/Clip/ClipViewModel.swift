@@ -14,6 +14,16 @@ enum ClipMessage: Equatable {
     case unlock(PurchaseOutcome)
 }
 
+/// Where the cook is with Cloudflare's check (#220), when the clip view opened for it in the
+/// import's place (Android's ClipCheck). `waiting`: the page is the check, with a note saying
+/// what to do and no clip toolbar; each page it settles on is read, and one with a recipe opens
+/// as an ordinary import. `noRecipe`: past the check, the page has no recipe data, so the clip
+/// toolbar is offered with a note saying why.
+enum ClipCheck: Equatable {
+    case waiting
+    case noRecipe
+}
+
 /// A `ClipMessage` to show once. `serial` tells two identical messages apart.
 struct ClipNotice: Equatable {
     let message: ClipMessage
@@ -38,6 +48,8 @@ struct ClipUiState: Equatable {
     /// Opened by itself because Reddit wouldn't let the app read the post (#213): the view
     /// says so above the page.
     var readBlocked = false
+    /// Opened for the cook to pass Cloudflare's check (#220); nil for every other clip.
+    var check: ClipCheck? = nil
 }
 
 /// "Clip it yourself" (#37), Android's ClipViewModel. The page itself lives in the view layer;
@@ -57,10 +69,14 @@ final class ClipViewModel {
     // The draft before the last assignment or clear, for the snackbar's Undo.
     @ObservationIgnored private var undoTo: ClipDraft?
     @ObservationIgnored private var serial = 0
+    // Reading the page the check settled on (#220); a newer page replaces it.
+    @ObservationIgnored private var checkTask: Task<Void, Never>?
+    // A recipe read past the check that a full library didn't keep (#107), for the Unlock.
+    @ObservationIgnored private var unkept: Recipe?
 
     init(
         url: String, repository: RecipeRepository, drafts: ClipDraftStore,
-        entitlements: Entitlements = UnavailableEntitlements(), readBlocked: Bool = false
+        entitlements: Entitlements = UnavailableEntitlements(), readBlocked: Bool = false, check: Bool = false
     ) {
         self.entitlements = entitlements
         let cleaned = UrlCleaner.clean(url)
@@ -68,7 +84,10 @@ final class ClipViewModel {
         self.repository = repository
         self.drafts = drafts
         let restored = drafts.get(cleaned)
-        uiState = ClipUiState(url: cleaned, draft: restored ?? ClipDraft(sourceUrl: cleaned), readBlocked: readBlocked)
+        uiState = ClipUiState(
+            url: cleaned, draft: restored ?? ClipDraft(sourceUrl: cleaned), readBlocked: readBlocked,
+            check: check ? .waiting : nil
+        )
         if restored != nil { uiState.notice = notice(.draftRestored) }
     }
 
@@ -111,6 +130,35 @@ final class ClipViewModel {
         state.notice = notice(.photoUnreadable)
         uiState = state
     }
+
+    /// The page settled while waiting on Cloudflare's check (#220), as `html`: read through the
+    /// repository. A recipe opens as an import would (`savedRecipeId`); the check still showing
+    /// keeps waiting; a page past it with no recipe offers the clip.
+    func onPageLoaded(_ html: String) {
+        guard uiState.check == .waiting else { return }
+        checkTask?.cancel()
+        checkTask = Task { [weak self, repository, url] in
+            let result = await repository.importPage(url, html: html)
+            guard let self, !Task.isCancelled, uiState.check == .waiting else { return }
+            switch result {
+            case .success(let recipe):
+                drafts.remove(url)
+                uiState.savedRecipeId = recipe.id
+            case .notKept(let recipe):
+                unkept = recipe
+                uiState.libraryFull = true
+            case .error(.humanCheck):
+                break
+            case .error(.saveFailed):
+                uiState.notice = notice(.saveFailed)
+            case .error:
+                uiState.check = .noRecipe
+            }
+        }
+    }
+
+    /// The running page read, for a caller (the tests) that needs to wait for it.
+    var currentCheck: Task<Void, Never>? { checkTask }
 
     // MARK: Events from the toolbar
 
@@ -187,7 +235,14 @@ final class ClipViewModel {
             let outcome = await entitlements.purchase()
             guard let self else { return }
             if outcome == .unlocked {
-                onSave()
+                // The recipe read past Cloudflare's check (#220), else the clip as it stands.
+                guard let read = unkept else { return onSave() }
+                if case .success(let kept) = await repository.keep(read) {
+                    unkept = nil
+                    uiState.savedRecipeId = kept.id
+                } else {
+                    uiState.notice = notice(.saveFailed)
+                }
             } else if outcome.needsNotice {
                 uiState.notice = notice(.unlock(outcome))
             }

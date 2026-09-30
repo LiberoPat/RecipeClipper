@@ -150,6 +150,14 @@ Reddit post never goes to the rendered page. Reddit's block (#213): `RecipeReddi
 unchanged), `ClipBlockedNoteScreenTest` (Robolectric: the note, and the import handing the post
 on), iOS `ShareImportViewModelTests` (the card and `PendingClip`) and
 `ClipUITests.testABlockedRedditPostOpensHereWithANote`.
+Cloudflare's check (#220): `CloudflareChallengeTest(s)` read the pages in
+`shared/fixtures/cloudflare` (written in Cloudflare's shape, made-up hosts and tokens);
+`BlogRecipeSourceStatusTest` / `BlogRecipeSourceTests` the `cf-mitigated` header and body;
+`DefaultRecipeRepositoryCloudflareTest` / `RepositoryCloudflareTests` the skipped retry, the
+longer cap, `HumanCheck`, the saved copy, cleared hosts and `importPage`;
+`ClipHumanCheckTest(s)` and `RecipeHumanCheckTest(s)` the ViewModels;
+`ClipHumanCheckNoteScreenTest` (Robolectric) the notes; `SharedPrefsClearedHostsTest` /
+`FileClearedHostsTests` the day-long record.
 Other languages (#208): `RecipeTextSplitterLanguagesTest(s)` read `shared/fixtures/languages/<language>.json`
 (a post, a photo's lines and negatives per language) with the same expectations on both platforms.
 "Read the photo" (#198): `PhotoTextSorterTest` / `PhotoTextSorterTests` pin the sorting,
@@ -215,7 +223,9 @@ regressed to `isBuiltIn = 0` would fail rather than quietly return.
 a `data:` URL page (no network) whose script adds its recipe JSON-LD 300 ms
 after the load event must come back from `render` with that JSON-LD in the
 HTML, and parse through `BlogRecipeSource.parse`. It proves the settle wait
-and the `outerHTML` decoding; a JVM test can't host a WebView.
+and the `outerHTML` decoding; a JVM test can't host a WebView. Its second case imitates
+Cloudflare's check (#220): a "Just a moment..." page that turns into the recipe page after
+4 s must be reported through `onChallenge` and not handed back until it has.
 
 `MigrationTest` uses Room's `MigrationTestHelper` (hence
 `androidTestImplementation("androidx.room:room-testing")`) to open a real

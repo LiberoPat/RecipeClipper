@@ -893,15 +893,90 @@ parsers (JSON-LD, then microdata).
   cancelled navigation a redirect causes. A crashed renderer
   (`onRenderProcessGone`, `webViewWebContentProcessDidTerminate`) ends the
   render without taking the app down.
-- **Limits.** Not a guarantee: some checks detect web views or need a click
-  (a CAPTCHA), and still end `Blocked`; a later step could show the page to
-  the user. The web view has the app's cookies, not the user's browser
+- **Limits.** Not a guarantee: some checks detect web views, and still end
+  `Blocked`. Cloudflare's check is waited out, or shown to the cook when it
+  wants a click (#220, below). The web view has the app's cookies, not the user's browser
   logins, so paywalls still fail. Not inside the iOS share extension, for
   memory (#19); Safari shares could use Safari's own page instead (#35).
 - **Checked only by tests so far.** The repository rules are pinned by fakes
   on both platforms; the web views themselves need a device check on a page
   whose recipe data appears only after JavaScript runs, and on one that
   blocks the plain fetch.
+
+## Cloudflare's check (#220)
+
+Sites behind Cloudflare answer the plain fetch (Jsoup, URLSession) with a 403
+and Cloudflare's challenge; the one render (#36) then often landed on "Just a
+moment..." or "Verify you are human" and gave up. Owner's decision
+(2026-09-29): build three steps, on both platforms.
+
+- **Recognising it** (`CloudflareChallenge`, pure, both platforms, pinned by
+  the pages in `shared/fixtures/cloudflare`): only Cloudflare's own markers,
+  `window._cf_chl_opt`, a `__cf_chl_` token, the challenge's `orchestrate`
+  script under `/cdn-cgi/challenge-platform/`, or the title "Just a moment..."
+  on a page naming Cloudflare. **Not** the `scripts/jsd/` script Cloudflare's
+  bot detection adds to ordinary pages (same folder), a Turnstile widget on a
+  comment form, or the firewall block ("Sorry, you have been blocked", which
+  no one can pass: it stays `Blocked`). A refused plain fetch is a challenge
+  when it carries `cf-mitigated: challenge` or a challenge page as the body
+  of a 403, 429 or 503 (`FetchedPage.challenge`; Android now lets HTTP errors
+  through Jsoup to read them, and checks the content type itself). A real
+  challenge page fetched in September 2026 carried all four markers.
+- **Waiting it out.** A challenged plain fetch skips the 2 s retry (it would
+  be refused the same way). The render never hands back a challenge page: it
+  reads the page again after each settle, reports `onChallenge`, and waits
+  for the page the check moves on to. The repository's cap grows from 20 s to
+  30 s in all (`CHALLENGE_TIMEOUT_MS` / `challengeTimeout`) once a challenge
+  has shown by the 20 s mark. A render that got past the check is the page
+  itself, so its answer stands: its recipe, or `NoRecipeFound` (not the
+  403), which offers "Clip it yourself" as usual.
+- **Keeping the clearance.** The `cf_clearance` cookie lives in the web
+  view's own persistent store (Android's `CookieManager`, flushed after each
+  render; iOS's default `WKWebsiteDataStore`), shared by the render and the
+  clip view. It is never handed to the plain fetch: that would be the
+  fingerprint trick ruled out below. Instead a host that got past the check
+  is remembered for a day (`ClearedHosts`) and its next import renders
+  first; a render there that doesn't load falls back to the plain fetch, and
+  one that meets the check again goes on as below. A day, because sites set
+  how long a clearance lasts (often 30 minutes, up to a year) and guessing
+  long only costs a slower first try. **Where:** Android's
+  SharedPreferences file `cloudflare_clearances`, iOS's
+  `cloudflare-clearances.json` in Caches. **Not backed up** on purpose (the
+  backup rules are an include list; Caches is never backed up): the cookie
+  it stands for doesn't come with a restore.
+- **When it wants a person** (still on the check at 30 s): `ParseError.HumanCheck`,
+  never retried or reloaded on reconnect. With no saved copy (the saved copy
+  still wins), the import's ViewModel opens "Clip it yourself"'s web view on
+  the page **in the import's place** (`clip?url=…&check=true`; iOS
+  `.clip(url, check: true)`), with a note, "This site wants to check you're
+  human. Tick the box and the recipe will open.", no clip toolbar and Done
+  off. The view reads the page's HTML after each load settles and every 2 s
+  after, and hands it to `RecipeRepository.importPage`: the same parsers,
+  saved like an import (a full free library shows the clip's prompt, whose
+  Unlock keeps the recipe read). A recipe opens as an ordinary import,
+  replacing the clip view; the check still showing keeps waiting. While
+  waiting, the view lets the page move within its own site (the check posts
+  back to the page with a token), which clipping otherwise blocks.
+- **Past the check with no recipe:** the same view turns into "Clip it
+  yourself" on that page, with a note, "The check passed, but this page has
+  no recipe the app can read, so it's open here: select the recipe." Like
+  Reddit's (#213) there's no Try again there.
+- **Unchanged:** a saved copy opens first; `Offline`, timeouts and other
+  `FetchFailed` keep their screens; a 403 that isn't Cloudflare's keeps the
+  retry and today's flow; Reddit (#213). "Update from source" meeting the
+  check says so in its snackbar (`error_human_check`). The iOS share
+  extension has no render (#19), so there a Cloudflare block is the usual
+  card; a Safari share carries Safari's page (#35), which is past the check.
+- **Not doing** (owner): faked browser or TLS fingerprints, user-agent
+  tricks, paid scraping proxies.
+- **Tried for real** (September 2026): Serious Eats, Budget Bytes, Simply
+  Recipes and Half Baked Harvest answered curl with `cf-mitigated:
+  challenge`; the app's Jsoup fetch (from the development machine) got
+  `Blocked(403)` marked as a challenge. From the iOS simulator and the
+  Android emulator, the platforms' own fetches and web views got Budget
+  Bytes' recipe without a check (Cloudflare judges the client, not just the
+  site), so which sites check a phone, and whether its web view passes by
+  itself, needs a real phone.
 
 ## Background timers and saved cook progress (#10)
 
@@ -3626,8 +3701,9 @@ reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receive
 (`cook=true` from a timer notification opens cook mode), `recipe/import?url={url}` (the
 share target: parse, then upsert with no list membership), and
 `edit?recipeId={recipeId}` (no id: a new recipe; saving replaces the edit screen, and
-the recipe screen under it, with `recipe/{id}`), and `clip?url={url}&blocked={blocked}` (Clip it
+the recipe screen under it, with `recipe/{id}`), and `clip?url={url}&blocked={blocked}&check={check}` (Clip it
 yourself; `blocked=true` when Reddit's block opened it in the import's place, #213, with a note;
+`check=true` when Cloudflare's check wants the cook, #220, likewise;
 saving replaces it and the error screen under it, if any, with `recipe/{id}`), and
 `edit/photo?url={url}&title={title}&images={images}` (Read the photo, #198: the editor filled
 from a Reddit post's pictures, one address per line in `images`; saving replaces it and the

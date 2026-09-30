@@ -8,6 +8,8 @@ enum ClipPageEvent: Equatable {
     case imageTapped(String)
     /// While picking a photo, the tap found no image with an address the app can read.
     case noImage
+    /// The page as it stands, read while waiting on Cloudflare's check (#220).
+    case pageLoaded(String)
 
     static func decode(_ json: String) -> ClipPageEvent? {
         guard let data = json.data(using: .utf8),
@@ -39,18 +41,28 @@ enum ClipperScript {
 /// `syncState` and `pickingPhoto` into the page whenever they change. Links to other pages are
 /// blocked, so the clip always comes from the page it is saved under. `fixtureHTML` replaces the
 /// live page in UI tests.
+///
+/// With `readsPage` (waiting on Cloudflare's check, #220), the page's HTML is sent as
+/// `.pageLoaded` once it settles after each load, and every `readEvery` after, and the check
+/// may move the page within its own site (its form posts back to the page with a token).
 struct ClipWebPage: UIViewRepresentable {
     let url: String
     var fixtureHTML: String? = nil
     let syncState: String
     let pickingPhoto: Bool
     let onEvent: (ClipPageEvent) -> Void
+    var readsPage = false
+
+    /// How often the page is read again while waiting on the check, after it first settles: a
+    /// check can pass without loading a new page.
+    static let readEvery: Duration = .seconds(2)
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> WKWebView {
         let coordinator = context.coordinator
         coordinator.onEvent = onEvent
+        coordinator.readsPage = readsPage
         let config = WKWebViewConfiguration()
         config.userContentController.addUserScript(
             WKUserScript(source: ClipperScript.source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
@@ -70,11 +82,13 @@ struct ClipWebPage: UIViewRepresentable {
     func updateUIView(_ webView: WKWebView, context: Context) {
         let coordinator = context.coordinator
         coordinator.onEvent = onEvent
+        coordinator.readsPage = readsPage
         coordinator.script = "window.RC && (RC.sync(\(syncState)), RC.pickImage(\(pickingPhoto)));"
         coordinator.push(to: webView)
     }
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.pendingRead?.cancel()
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "rc")
     }
 
@@ -82,6 +96,8 @@ struct ClipWebPage: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var onEvent: (ClipPageEvent) -> Void = { _ in }
         var script = ""
+        var readsPage = false
+        var pendingRead: Task<Void, Never>?
         private var loaded = false
         private var sent: String?
 
@@ -95,12 +111,27 @@ struct ClipWebPage: UIViewRepresentable {
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             loaded = false
             sent = nil
+            pendingRead?.cancel()
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             loaded = true
             sent = nil
             push(to: webView)
+            if readsPage { readLater(webView, after: WebViewRenderedPageSource.settle) }
+        }
+
+        /// While waiting on Cloudflare's check (#220): the page's HTML, now and then again.
+        private func readLater(_ webView: WKWebView, after delay: Duration) {
+            pendingRead?.cancel()
+            pendingRead = Task { [weak self, weak webView] in
+                try? await Task.sleep(for: delay)
+                guard !Task.isCancelled, let self, let webView, readsPage else { return }
+                if let html = try? await webView.evaluateJavaScript("document.documentElement.outerHTML") as? String {
+                    onEvent(.pageLoaded(html))
+                }
+                readLater(webView, after: ClipWebPage.readEvery)
+            }
         }
 
         /// Redirects, the first load and fragment jumps load; a tapped link to any other page,
@@ -113,6 +144,12 @@ struct ClipWebPage: UIViewRepresentable {
             let userNavigation = navigationAction.navigationType == .linkActivated
                 || navigationAction.navigationType == .formSubmitted
             guard navigationAction.targetFrame?.isMainFrame == true, userNavigation else {
+                decisionHandler(.allow)
+                return
+            }
+            // Waiting on Cloudflare's check (#220): its form posts back within the site.
+            if readsPage, let host = navigationAction.request.url?.host,
+               host.caseInsensitiveCompare(webView.url?.host ?? "") == .orderedSame {
                 decisionHandler(.allow)
                 return
             }

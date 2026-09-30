@@ -87,7 +87,7 @@ fixtures. The annotated map, and what each route does, are in
 Routes: `home`, `recipes`, `settings` (+ hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
-membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `clip?url={url}&blocked=…`; with the tab
+membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `clip?url={url}&blocked=…&check=…`; with the tab
 shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
 `pantry`. A route from an intent always lands in Recipes.
 
@@ -283,6 +283,11 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   same parsers: the only way to see a page rendered by JavaScript (a page
   behind a login stays out of reach). Never for a Reddit post (read only from
   its `.json`). No recipe there keeps the original cause.
+- **Cloudflare's check** (#220, `CloudflareChallenge`): a challenged plain
+  fetch isn't retried; the render waits it out (cap 30 s once seen) and a
+  host that passed is rendered first for a day. Still on the check:
+  `HumanCheck` opens the page visibly in the clip view (`check=true`) for the
+  cook to tick; its recipe then imports, or no recipe offers the clip.
 - **A Reddit post still `Blocked` then, with no saved copy, opens "Clip it
   yourself"** in the import's place, with a note and no Try again (#213:
   Reddit's wall doesn't lift; its official API is out, by decision). iOS's

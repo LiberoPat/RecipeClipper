@@ -55,7 +55,13 @@ final class BlogRecipeSource: RecipeSource {
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             // 403/404/429/5xx are usually a bot block that lifts on its own (see
             // ParseError.blocked); anything else stays a plain fetch failure naming the status.
-            return FetchedPage(result: .error(ParseError.forHttpStatus(http.statusCode)))
+            // Cloudflare's check (#220) is told apart by its header or its page.
+            let challenge = CloudflareChallenge.isChallengeResponse(
+                status: http.statusCode,
+                cfMitigated: http.value(forHTTPHeaderField: "cf-mitigated"),
+                body: Self.decode(data, textEncodingName: response.textEncodingName)
+            )
+            return FetchedPage(result: .error(ParseError.forHttpStatus(http.statusCode)), challenge: challenge)
         }
 
         let html = Self.decode(data, textEncodingName: response.textEncodingName)

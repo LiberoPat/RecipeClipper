@@ -91,6 +91,16 @@ class FakeRecipeRepository : RecipeRepository {
         return saveClipResult ?: ParseResult.Success(recipe.copy(id = 1))
     }
 
+    /** Staged answers for [importPage] (#220), by the page's HTML; a page not staged is still
+     *  the check. Every (url, html) it was called with, in order. */
+    val importPageResults = mutableMapOf<String, ParseResult>()
+    val importPageCalls = mutableListOf<Pair<String, String>>()
+
+    override suspend fun importPage(sharedUrl: String, html: String): ParseResult {
+        importPageCalls += sharedUrl to html
+        return importPageResults[html] ?: ParseResult.Error(ParseError.HumanCheck)
+    }
+
     override suspend fun open(id: Long): Recipe? = openResult
 
     /** The tour's sample (#151): its id while it is "in the library", else null. */

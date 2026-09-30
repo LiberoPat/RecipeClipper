@@ -147,6 +147,12 @@ data class RecipeUiState(
      */
     val clipBlockedPost: String? = null,
     /**
+     * A shared page whose Cloudflare check wants a person (#220, [ParseError.HumanCheck]): the
+     * screen opens it visibly, in "Clip it yourself"'s web view with a note, in its own place,
+     * rather than show the error. [content] stays Loading meanwhile.
+     */
+    val humanCheckPage: String? = null,
+    /**
      * The post to read the photos of ("Read the photo", #198): set while a Reddit post with no
      * recipe text ([ParseError.NoTranscription]) that has a picture is on screen. The screen
      * offers it only behind the `photoText` flag.

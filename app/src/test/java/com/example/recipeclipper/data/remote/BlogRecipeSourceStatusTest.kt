@@ -24,6 +24,8 @@ class BlogRecipeSourceStatusTest {
     private lateinit var server: ServerSocket
     @Volatile private var status = 200
     @Volatile private var body = "<html><body>Just a story.</body></html>"
+    @Volatile private var extraHeaders = ""
+    @Volatile private var contentType = "text/html; charset=utf-8"
 
     @Before fun start() {
         server = ServerSocket(0, 50, InetAddress.getLoopbackAddress())
@@ -35,7 +37,7 @@ class BlogRecipeSourceStatusTest {
                     while (reader.readLine()?.isNotEmpty() == true) { } // skip the request
                     val bytes = body.toByteArray()
                     val head = "HTTP/1.1 $status Status\r\n" +
-                        "Content-Type: text/html; charset=utf-8\r\n" +
+                        "Content-Type: $contentType\r\n" + extraHeaders +
                         "Content-Length: ${bytes.size}\r\n" +
                         "Connection: close\r\n\r\n"
                     it.getOutputStream().apply { write(head.toByteArray()); write(bytes); flush() }
@@ -69,6 +71,44 @@ class BlogRecipeSourceStatusTest {
 
     @Test fun `400 stays a fetch failure naming the status`() =
         assertEquals(ParseResult.Error(ParseError.FetchFailed("HTTP 400")), fetchWithStatus(400))
+
+    private fun fetchPage(code: Int): FetchedPage = runBlocking {
+        status = code
+        BlogRecipeSource(FakeConnectivity()).fetchPage("http://127.0.0.1:${server.localPort}/recipe")
+    }
+
+    private fun cloudflarePage(name: String) =
+        javaClass.getResourceAsStream("/cloudflare/$name.html")!!.bufferedReader().use { it.readText() }
+
+    @Test fun `Cloudflare's cf-mitigated challenge header marks the refusal as a challenge (#220)`() {
+        extraHeaders = "cf-mitigated: challenge\r\n"
+        val page = fetchPage(403)
+        assertEquals(ParseResult.Error(ParseError.Blocked(403)), page.result)
+        assertTrue(page.challenge)
+    }
+
+    @Test fun `a 403 whose body is Cloudflare's challenge page is a challenge`() {
+        body = cloudflarePage("managed-challenge")
+        assertTrue(fetchPage(403).challenge)
+    }
+
+    @Test fun `other refusals are not challenges`() {
+        assertFalse(fetchPage(403).challenge)
+        body = cloudflarePage("blocked-1020")
+        assertFalse(fetchPage(403).challenge)
+    }
+
+    @Test fun `a refusal in another content type is still Blocked`() {
+        contentType = "application/json"
+        body = "{}"
+        assertEquals(ParseResult.Error(ParseError.Blocked(403)), fetchWithStatus(403))
+    }
+
+    @Test fun `a page in a content type that isn't a page is a fetch failure`() {
+        contentType = "image/png"
+        val error = (fetchWithStatus(200) as ParseResult.Error).error
+        assertTrue("$error", error is ParseError.FetchFailed)
+    }
 
     @Test fun `a page with no recipe is NoRecipeFound`() =
         assertEquals(ParseResult.Error(ParseError.NoRecipeFound), fetchWithStatus(200))

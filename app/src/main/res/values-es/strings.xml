@@ -31,6 +31,7 @@
     <string name="error_no_transcription">No se ha encontrado el texto de la receta en esta publicación. En Reddit, las recetas suelen estar solo en la foto, y nadie ha transcrito esta en los comentarios todavía.</string>
     <string name="error_fetch_failed">No se ha podido cargar la página (%1$s).</string>
     <string name="error_blocked">El sitio ha bloqueado la app (HTTP %1$d). Suele ser algo pasajero: vuelve a intentarlo en un minuto.</string>
+    <string name="error_human_check">Este sitio quiere comprobar que eres una persona antes de dejar entrar a la app. Abre el original, marca la casilla y vuelve a intentarlo.</string>
     <string name="error_offline">No tienes conexión. La receta se cargará cuando vuelvas a estar en línea.</string>
     <string name="error_fetch_failed_unknown_detail">error desconocido</string>
     <string name="error_save_failed">No se ha podido guardar la receta.</string>
@@ -268,6 +269,8 @@
     <string name="clip_field_photo">Foto</string>
     <string name="clip_hint">Selecciona texto en la página y toca dónde va. Para la foto, toca Foto y luego la imagen.</string>
     <string name="clip_reddit_blocked_note">Reddit no dejó que la app leyera esta publicación, así que está abierta aquí: selecciona la receta.</string>
+    <string name="clip_human_check_note">Este sitio quiere comprobar que eres una persona. Marca la casilla y se abrirá la receta.</string>
+    <string name="clip_human_check_no_recipe_note">La comprobación se superó, pero esta página no tiene una receta que la app pueda leer, así que está abierta aquí: selecciona la receta.</string>
     <string name="clip_picking_photo">Toca la imagen que quieras usar como foto.</string>
     <string name="clip_skip_photo">Omitir</string>
     <string name="clip_photo_unreadable">No se pudo leer ninguna imagen ahí. La foto es opcional.</string>

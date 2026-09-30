@@ -188,7 +188,11 @@ struct RootView: View {
         case .importUrl(let url):
             // Reddit's block (#213) replaces the import with the clip, so Back never lands on an
             // error screen.
-            recipe(push: push, onClipBlocked: { replace(1, .clip($0, blocked: true)) }) {
+            // Cloudflare's check (#220) likewise, for the cook to pass it.
+            recipe(
+                push: push, onClipBlocked: { replace(1, .clip($0, blocked: true)) },
+                onHumanCheck: { replace(1, .clip($0, check: true)) }
+            ) {
                 container.makeRecipeViewModel(recipeId: nil, url: url)
             }
         case .weekRecipe(let id, let servings):
@@ -234,8 +238,8 @@ struct RootView: View {
             ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
                 ListDetailScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
             }
-        case .clip(let url, let blocked):
-            ScreenHost({ container.makeClipViewModel(url: url, blocked: blocked) }) { vm in
+        case .clip(let url, let blocked, let check):
+            ScreenHost({ container.makeClipViewModel(url: url, blocked: blocked, check: check) }) { vm in
                 ClipScreen(vm: vm, fixtureHTML: container.clipFixtureHTML, onSaved: router.openSavedClip)
             }
         case .photoRecipe(let post):
@@ -249,6 +253,7 @@ struct RootView: View {
 
     private func recipe(
         push: @escaping (Route) -> Void, onClipBlocked: @escaping (String) -> Void = { _ in },
+        onHumanCheck: @escaping (String) -> Void = { _ in },
         _ make: @escaping () -> RecipeViewModel
     ) -> some View {
         // "Add to plan" (#49) only behind the tab flag, like the Week tab itself.
@@ -265,6 +270,7 @@ struct RootView: View {
                 vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
                 makePlanVM: makePlanVM, makeGroceriesVM: makeGroceriesVM, onClip: { push(.clip($0)) },
                 onClipBlocked: onClipBlocked,
+                onHumanCheck: onHumanCheck,
                 onReadPhoto: { push(.photoRecipe($0)) },
                 photoTextEnabled: container.featureFlags.isOn(.photoText),
                 amountsInStepsEnabled: container.featureFlags.isOn(.amountsInSteps),

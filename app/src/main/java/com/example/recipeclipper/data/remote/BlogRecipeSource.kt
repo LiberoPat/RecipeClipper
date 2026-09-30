@@ -13,7 +13,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
-import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.io.IOException
@@ -44,18 +43,33 @@ class BlogRecipeSource(
     /** [fetchPage], handing the loaded page to [inspect] first: the weekly site check's view of its site rules (#120). */
     internal suspend fun fetchPage(url: String, inspect: (Document) -> Unit): FetchedPage = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.connect(url)
+            // HTTP errors are let through, so a refusal's header and body can say whether it was
+            // Cloudflare's challenge (#220); the content type is then checked for 2xx only, as
+            // Jsoup's own get() does.
+            val response = Jsoup.connect(url)
                 .userAgent("Mozilla/5.0 (Linux; Android 10; Mobile) RecipeClipper/1.0")
                 .timeout(timeoutMs)
-                .get()
+                .ignoreHttpErrors(true)
+                .ignoreContentType(true)
+                .execute()
+            val status = response.statusCode()
+            if (status !in 200..299) {
+                // 403/404/429/5xx are usually a bot block that lifts on its own (see
+                // ParseError.Blocked); anything else stays a plain fetch failure naming the status.
+                val challenge = CloudflareChallenge.isChallengeResponse(
+                    status, response.header("cf-mitigated"), runCatching { response.body() }.getOrNull()
+                )
+                return@withContext FetchedPage(ParseResult.Error(ParseError.forHttpStatus(status)), challenge = challenge)
+            }
+            if (!isReadable(response.contentType())) {
+                return@withContext FetchedPage(
+                    ParseResult.Error(ParseError.FetchFailed("Unhandled content type ${response.contentType()}"))
+                )
+            }
+            val doc = response.parse()
 
             inspect(doc)
             parsePage(doc, url)
-        } catch (e: HttpStatusException) {
-            // Jsoup throws this for any non-2xx answer. 403/404/429/5xx are usually a bot
-            // block that lifts on its own (see ParseError.Blocked); anything else stays a
-            // plain fetch failure naming the status.
-            FetchedPage(ParseResult.Error(ParseError.forHttpStatus(e.statusCode)))
         } catch (e: CancellationException) {
             throw e // cancellation is never a failure to report
         } catch (e: IOException) {
@@ -71,6 +85,12 @@ class BlogRecipeSource(
     }
 
     companion object {
+        private val XML_TYPE = Regex("""^(application|text)/\w*\+?xml.*""")
+
+        /** What Jsoup's get() would parse: no content type, any `text/` type, or an XML type. */
+        private fun isReadable(contentType: String?): Boolean =
+            contentType == null || contentType.startsWith("text/") || XML_TYPE.matches(contentType)
+
         /**
          * The HTML-to-recipe step on its own, for a page that didn't come through [fetch]: the
          * HTML a [RenderedPageSource] returns. Pure and CPU-bound, so callers run it off the

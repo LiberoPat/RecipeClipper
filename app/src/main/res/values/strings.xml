@@ -42,6 +42,8 @@
     <string name="clip_field_photo">Photo</string>
     <string name="clip_hint">Select text on the page, then tap where it goes. For the photo, tap Photo, then the picture.</string>
     <string name="clip_reddit_blocked_note">Reddit didn\'t let the app read this post, so it\'s open here: select the recipe.</string>
+    <string name="clip_human_check_note">This site wants to check you\'re human. Tick the box and the recipe will open.</string>
+    <string name="clip_human_check_no_recipe_note">The check passed, but this page has no recipe the app can read, so it\'s open here: select the recipe.</string>
     <string name="clip_picking_photo">Tap the picture to use as the photo.</string>
     <string name="clip_skip_photo">Skip</string>
     <string name="clip_photo_unreadable">Couldn\'t read a picture there. The photo is optional.</string>
@@ -103,6 +105,7 @@
     <string name="error_no_transcription">No recipe text found for this post. Reddit recipes are often only in the photo, and nobody has written this one out in the comments yet.</string>
     <string name="error_fetch_failed">Couldn\'t load that page (%1$s).</string>
     <string name="error_blocked">The site didn\'t let the app in (HTTP %1$d). Sites often do this for a moment — try again in a minute.</string>
+    <string name="error_human_check">This site wants to check you\'re human before it lets the app in. Open the original, tick the box, then try again.</string>
     <string name="error_offline">You\'re offline. The recipe will load when you\'re back online.</string>
     <string name="error_fetch_failed_unknown_detail">unknown error</string>
     <string name="error_save_failed">Couldn\'t save that recipe.</string>

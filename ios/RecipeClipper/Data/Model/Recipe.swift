@@ -166,6 +166,10 @@ enum ParseError: Equatable, Error {
     /// `timedOut` marks a timeout: those are not retried automatically, so a dead Wi-Fi fails
     /// in one timeout rather than two.
     case fetchFailed(String?, timedOut: Bool = false)
+    /// Cloudflare's bot check (#220) still wanted a person when the off-screen browser's time ran
+    /// out ("Verify you are human"). The import screen opens the page visibly instead, for the
+    /// cook to pass the check once. Never retried automatically, never reloaded on reconnect.
+    case humanCheck
     case saveFailed
     case notSaved
     case nothingToShow

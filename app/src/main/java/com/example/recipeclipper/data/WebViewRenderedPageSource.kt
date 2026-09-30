@@ -6,9 +6,11 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.example.recipeclipper.data.remote.CloudflareChallenge
 import com.example.recipeclipper.data.remote.RenderedPageSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -31,6 +33,11 @@ import kotlin.coroutines.resume
  * WebView is destroyed on every way out: success, failure or cancellation. The overall cap is
  * the repository's, so a page that never settles is cut off there and cleaned up here.
  *
+ * A settled page that is Cloudflare's challenge (#220) isn't taken: the load keeps waiting for
+ * the page the check moves on to, and says so through `onChallenge`. The WebView's cookies are
+ * the app's one persistent store, so the `cf_clearance` a passed check leaves is kept for the
+ * clip view and the next render.
+ *
  * The WebView's user agent is left as the system's own: this is a real browser engine, not a
  * user-agent trick (see CLAUDE.md, "Failure handling"). Its cookies are the app's, not the
  * user's browser's, so a paywall still fails.
@@ -40,7 +47,7 @@ class WebViewRenderedPageSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) : RenderedPageSource {
 
-    override suspend fun render(url: String): String? = withContext(Dispatchers.Main) {
+    override suspend fun render(url: String, onChallenge: () -> Unit): String? = withContext(Dispatchers.Main) {
         val webView = try {
             WebView(context)
         } catch (e: Exception) {
@@ -48,7 +55,7 @@ class WebViewRenderedPageSource @Inject constructor(
             return@withContext null
         }
         try {
-            load(webView, url)
+            load(webView, url, onChallenge)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -57,11 +64,14 @@ class WebViewRenderedPageSource @Inject constructor(
             // On the main thread still, as destroy() requires, whichever way we left.
             webView.stopLoading()
             webView.destroy()
+            // Cloudflare's clearance cookie (#220), and any other the page set, on disk now:
+            // the clip view and the next render share this cookie store.
+            CookieManager.getInstance().flush()
         }
     }
 
     @SuppressLint("SetJavaScriptEnabled") // the point: pages whose recipe data needs scripts
-    private suspend fun load(webView: WebView, url: String): String? =
+    private suspend fun load(webView: WebView, url: String, onChallenge: () -> Unit): String? =
         suspendCancellableCoroutine { continuation ->
             val handler = Handler(Looper.getMainLooper())
             var pendingCapture: Runnable? = null
@@ -73,7 +83,16 @@ class WebViewRenderedPageSource @Inject constructor(
 
             fun capture() {
                 webView.evaluateJavascript("document.documentElement.outerHTML") { result ->
-                    finish(decodeJsString(result))
+                    val html = decodeJsString(result)
+                    if (html != null && CloudflareChallenge.isChallengePage(html)) {
+                        // Cloudflare's check (#220): not the page yet. It usually loads the page
+                        // itself once it passes (a navigation, which restarts the wait); look
+                        // again after another settle in case it changes the page in place.
+                        onChallenge()
+                        pendingCapture = Runnable { capture() }.also { handler.postDelayed(it, SETTLE_MS) }
+                    } else {
+                        finish(html)
+                    }
                 }
             }
 

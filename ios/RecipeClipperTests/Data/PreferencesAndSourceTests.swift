@@ -113,6 +113,8 @@ final class UserDefaultsAppPreferencesTests: XCTestCase {
 final class DataStubURLProtocol: URLProtocol {
     static var handler: ((URLRequest) -> (Int, Data))?
     static var lastRequest: URLRequest?
+    /// Response headers to send (#220: Cloudflare's `cf-mitigated`).
+    static var headers: [String: String]?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -120,7 +122,7 @@ final class DataStubURLProtocol: URLProtocol {
     override func startLoading() {
         Self.lastRequest = request
         let (status, body) = Self.handler?(request) ?? (500, Data())
-        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: nil)!
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: Self.headers)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: body)
         client?.urlProtocolDidFinishLoading(self)
@@ -141,7 +143,32 @@ final class BlogRecipeSourceTests: XCTestCase {
     override func tearDown() {
         DataStubURLProtocol.handler = nil
         DataStubURLProtocol.lastRequest = nil
+        DataStubURLProtocol.headers = nil
         DataFailingURLProtocol.code = .notConnectedToInternet
+    }
+
+    private func fetchPage(status: Int, body: String, headers: [String: String]? = nil) async -> FetchedPage {
+        DataStubURLProtocol.handler = { _ in (status, Data(body.utf8)) }
+        DataStubURLProtocol.headers = headers
+        return await source.fetchPage(url: "https://recipes.example.test/cake")
+    }
+
+    func testCloudflaresChallengeHeaderMarksTheRefusalAsAChallenge() async throws {
+        let page = await fetchPage(status: 403, body: "<html></html>", headers: ["cf-mitigated": "challenge"])
+        XCTAssertEqual(page.result, .error(.blocked(httpStatus: 403)))
+        XCTAssertTrue(page.challenge)
+    }
+
+    func testA403WhoseBodyIsTheChallengePageIsAChallenge() async throws {
+        let page = await fetchPage(status: 403, body: try cloudflareFixture("managed-challenge"))
+        XCTAssertTrue(page.challenge)
+    }
+
+    func testOtherRefusalsAreNotChallenges() async throws {
+        let plain = await fetchPage(status: 403, body: "Forbidden")
+        XCTAssertFalse(plain.challenge)
+        let firewall = await fetchPage(status: 403, body: try cloudflareFixture("blocked-1020"))
+        XCTAssertFalse(firewall.challenge)
     }
 
     private func fetch(status: Int) async -> ParseResult {

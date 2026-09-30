@@ -53,6 +53,15 @@ interface RecipeRepository {
     suspend fun saveClip(recipe: Recipe): ParseResult
 
     /**
+     * A page the cook opened in the app's visible browser to pass Cloudflare's check (#220),
+     * as it stands now ([html]): read by the same parsers and saved like an import. Returns
+     * `Error(HumanCheck)` while it is still the check, the page's `Error(NoRecipeFound)` once
+     * past it with no recipe data, else the saved recipe (or `Success(kept = false)` on a full
+     * library). Past the check, the host is remembered, so its next import renders first.
+     */
+    suspend fun importPage(sharedUrl: String, html: String): ParseResult
+
+    /**
      * "Update from source" (#29): fetches the recipe's link again and replaces the user's
      * version with the site's, keeping the id, note and list membership, and making it PARSED.
      * On any failure nothing changes and the cause is returned.

@@ -11,9 +11,12 @@ import com.example.recipeclipper.data.needsNotice
 import com.example.recipeclipper.data.model.ClipDraft
 import com.example.recipeclipper.data.model.ClipField
 import com.example.recipeclipper.data.model.ClipSelection
+import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
+import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.UrlCleaner
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +39,15 @@ sealed class ClipMessage {
     /** The Unlock from the full-library prompt (#107) is pending or failed. */
     data class Unlock(val outcome: PurchaseOutcome) : ClipMessage()
 }
+
+/**
+ * Where the cook is with Cloudflare's check (#220), when the clip view opened for it in the
+ * import's place. [WAITING]: the page is the check, with a note saying what to do, and no clip
+ * toolbar; each page it settles on is read, and one with a recipe opens as an ordinary import.
+ * [NO_RECIPE]: past the check, the page has no recipe data, so the clip toolbar is offered with
+ * a note saying why.
+ */
+enum class ClipCheck { WAITING, NO_RECIPE }
 
 /** A [ClipMessage] to show once. [serial] tells two identical messages apart. */
 data class ClipNotice(val message: ClipMessage, val serial: Long)
@@ -61,7 +73,9 @@ data class ClipUiState(
      * Opened by itself because Reddit wouldn't let the app read the post (#213): the screen
      * says so above the page.
      */
-    val readBlocked: Boolean = false
+    val readBlocked: Boolean = false,
+    /** Opened for the cook to pass Cloudflare's check (#220); null for every other clip. */
+    val check: ClipCheck? = null
 )
 
 /**
@@ -93,6 +107,12 @@ class ClipViewModel @Inject constructor(
 
     private var serial = 0L
 
+    // Reading the page the check settled on (#220); a newer page replaces it.
+    private var checkJob: Job? = null
+
+    // A recipe read past the check that a full library didn't keep (#107), for the Unlock.
+    private var unkept: Recipe? = null
+
     init {
         val restored = drafts.get(url) ?: restoreFrom(savedStateHandle)
         _uiState = MutableStateFlow(
@@ -100,7 +120,8 @@ class ClipViewModel @Inject constructor(
                 url = url,
                 draft = restored ?: ClipDraft(url),
                 notice = restored?.let { notice(ClipMessage.DraftRestored) },
-                readBlocked = savedStateHandle.get<Boolean>(BLOCKED_ARG) == true
+                readBlocked = savedStateHandle.get<Boolean>(BLOCKED_ARG) == true,
+                check = ClipCheck.WAITING.takeIf { savedStateHandle.get<Boolean>(CHECK_ARG) == true }
             )
         )
         uiState = _uiState.asStateFlow()
@@ -147,6 +168,35 @@ class ClipViewModel @Inject constructor(
     fun onNoImageTapped() {
         if (!_uiState.value.pickingPhoto) return
         _uiState.update { it.copy(pickingPhoto = false, notice = notice(ClipMessage.PhotoUnreadable)) }
+    }
+
+    /**
+     * The page settled while waiting on Cloudflare's check (#220), as [html]: read through the
+     * repository. A recipe opens as an import would ([ClipUiState.savedRecipeId]); the check
+     * still showing keeps waiting; a page past it with no recipe offers the clip.
+     */
+    fun onPageLoaded(html: String) {
+        if (_uiState.value.check != ClipCheck.WAITING) return
+        checkJob?.cancel()
+        checkJob = viewModelScope.launch {
+            val result = repository.importPage(url, html)
+            if (_uiState.value.check != ClipCheck.WAITING) return@launch
+            when {
+                result is ParseResult.Success && result.kept -> {
+                    drafts.remove(url)
+                    clearSavedState()
+                    _uiState.update { it.copy(savedRecipeId = result.recipe.id) }
+                }
+                result is ParseResult.Success -> {
+                    unkept = result.recipe
+                    _uiState.update { it.copy(libraryFull = true) }
+                }
+                result is ParseResult.Error && result.error == ParseError.HumanCheck -> Unit
+                result is ParseResult.Error && result.error == ParseError.SaveFailed ->
+                    _uiState.update { it.copy(notice = notice(ClipMessage.SaveFailed)) }
+                else -> _uiState.update { it.copy(check = ClipCheck.NO_RECIPE) }
+            }
+        }
     }
 
     // --- Events from the toolbar ---
@@ -219,13 +269,27 @@ class ClipViewModel @Inject constructor(
         }
     }
 
-    /** Unlock from the full-library prompt (#107), then save the clip as it stands. */
+    /**
+     * Unlock from the full-library prompt (#107), then save the clip as it stands, or the recipe
+     * read past Cloudflare's check (#220).
+     */
     fun onUnlock() {
         _uiState.update { it.copy(libraryFull = false) }
         viewModelScope.launch {
             val outcome = entitlements.purchase()
-            if (outcome == PurchaseOutcome.UNLOCKED) onSave()
-            else if (outcome.needsNotice) _uiState.update { it.copy(notice = notice(ClipMessage.Unlock(outcome))) }
+            if (outcome == PurchaseOutcome.UNLOCKED) {
+                val read = unkept
+                if (read == null) return@launch onSave()
+                val kept = repository.keep(read)
+                if (kept is ParseResult.Success && kept.kept) {
+                    unkept = null
+                    _uiState.update { it.copy(savedRecipeId = kept.recipe.id) }
+                } else {
+                    _uiState.update { it.copy(notice = notice(ClipMessage.SaveFailed)) }
+                }
+            } else if (outcome.needsNotice) {
+                _uiState.update { it.copy(notice = notice(ClipMessage.Unlock(outcome))) }
+            }
         }
     }
 
@@ -305,6 +369,9 @@ class ClipViewModel @Inject constructor(
 
         /** True when Reddit's block opened this in the import's place (#213). */
         const val BLOCKED_ARG = "blocked"
+
+        /** True when Cloudflare's check opened this in the import's place (#220). */
+        const val CHECK_ARG = "check"
         private const val KEY_NAME = "clip.name"
         private const val KEY_INGREDIENTS = "clip.ingredients"
         private const val KEY_STEPS = "clip.steps"
