@@ -48,6 +48,32 @@ object RedditUrls {
     fun clipsWhenBlocked(url: String, error: ParseError, redditOn: Boolean): Boolean =
         redditOn && error is ParseError.Blocked && isReddit(url)
 
+    /** Reddit's other page hosts, which "Clip it yourself" moves to www ([clipPageUrl]). */
+    private val OTHER_PAGE_HOSTS =
+        setOf("reddit.com", "old.reddit.com", "new.reddit.com", "m.reddit.com", "np.reddit.com")
+
+    /**
+     * The address "Clip it yourself" loads for [url] (#213). A link on another of Reddit's page
+     * hosts (old., new., m., np., or none) moves to www.reddit.com with its path, query and
+     * fragment: old.reddit.com answers a signed-out reader with "Log in to use old Reddit"
+     * (September 2026), and the others lead to www anyway. A share link stays a share link:
+     * www follows it to the post. Any other link is loaded as it is.
+     */
+    fun clipPageUrl(url: String): String {
+        val uri = try {
+            URI(url.trim())
+        } catch (e: Exception) {
+            return url
+        }
+        if (uri.host?.lowercase() !in OTHER_PAGE_HOSTS) return url
+        return buildString {
+            append("https://www.reddit.com")
+            append(uri.rawPath.orEmpty())
+            uri.rawQuery?.let { append('?').append(it) }
+            uri.rawFragment?.let { append('#').append(it) }
+        }
+    }
+
     fun isShareLink(url: String): Boolean {
         val (host, path) = parts(url) ?: return false
         return host != "redd.it" && SHARE_PATH.matches(path)

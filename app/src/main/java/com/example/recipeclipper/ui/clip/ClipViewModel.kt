@@ -15,6 +15,7 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.UrlCleaner
+import com.example.recipeclipper.data.remote.RedditUrls
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,7 +76,13 @@ data class ClipUiState(
      */
     val readBlocked: Boolean = false,
     /** Opened for the cook to pass Cloudflare's check (#220); null for every other clip. */
-    val check: ClipCheck? = null
+    val check: ClipCheck? = null,
+    /**
+     * The address the page loads: [url], except a Reddit link on another of Reddit's hosts,
+     * which loads from www.reddit.com (`RedditUrls.clipPageUrl`, #213). The clip is still saved
+     * under [url].
+     */
+    val pageUrl: String = url
 )
 
 /**
@@ -118,6 +125,7 @@ class ClipViewModel @Inject constructor(
         _uiState = MutableStateFlow(
             ClipUiState(
                 url = url,
+                pageUrl = RedditUrls.clipPageUrl(url),
                 draft = restored ?: ClipDraft(url),
                 notice = restored?.let { notice(ClipMessage.DraftRestored) },
                 readBlocked = savedStateHandle.get<Boolean>(BLOCKED_ARG) == true,

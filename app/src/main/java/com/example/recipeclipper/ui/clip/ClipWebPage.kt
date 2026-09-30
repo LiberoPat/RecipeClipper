@@ -1,8 +1,6 @@
 package com.example.recipeclipper.ui.clip
 
 import android.annotation.SuppressLint
-import android.net.Uri
-import androidx.core.net.toUri
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
@@ -39,7 +37,7 @@ internal val LoadLiveUrl: ClipPageLoader = { webView, url -> webView.loadUrl(url
  * The page being clipped, in a [WebView] with `clipper.js` injected once it has loaded. The
  * view layer's half of the bridge: it forwards the page's events and pushes [syncState] and
  * [pickingPhoto] into the page whenever they change. Links to other pages are blocked, so the
- * clip always comes from the page it is saved under.
+ * clip always comes from the page it is saved under ([ClipNavigation]).
  *
  * With [readsPage] (waiting on Cloudflare's check, #220), the page's HTML is sent as
  * [ClipPageEvent.PageLoaded] once it settles after each load, and every [READ_EVERY_MS] after,
@@ -146,19 +144,56 @@ private class ClipWebViewClient(
         }.also { handler.postDelayed(it, delayMs) }
     }
 
-    /**
-     * Redirects and fragment jumps load; a link to any other page does not. While waiting on
-     * Cloudflare's check (#220), anything on the page's own site loads too.
-     */
+    /** [ClipNavigation.loads] decides; `true` here means the navigation is dropped. */
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-        if (!request.isForMainFrame || request.isRedirect) return false
-        val current = (view.url ?: pageUrl).toUri()
-        if (latest.readsPage && request.url.host.equals(current.host, ignoreCase = true)) return false
-        return !samePage(request.url, current)
+        if (!request.isForMainFrame) return false
+        return !ClipNavigation.loads(
+            target = request.url.toString(),
+            current = view.url ?: pageUrl,
+            isRedirect = request.isRedirect,
+            tapped = request.hasGesture(),
+            withinSite = latest.readsPage
+        )
+    }
+}
+
+/**
+ * Which navigations of the page's own frame the clip view follows. Pure, so it is tested on the
+ * JVM; iOS's `ClipNavigation` is the same rule.
+ */
+internal object ClipNavigation {
+
+    /**
+     * Whether a navigation to [target] from [current] loads:
+     * - never an address the web view can't show (`intent:`, `reddit:`, `market:`): an app's own
+     *   link, which would leave an error page, or nothing, in the post's place;
+     * - redirects, and fragment jumps, always;
+     * - the page sending itself back to its own address with a new query, when no one tapped
+     *   ([tapped] false): Reddit's check (#213) does this once its script has run, and blocking
+     *   it left the cook on its loading screen for good;
+     * - anything on the page's site while waiting on Cloudflare's check ([withinSite], #220);
+     * - no link to any other page, so the clip always comes from the page it is saved under.
+     */
+    fun loads(target: String, current: String, isRedirect: Boolean, tapped: Boolean, withinSite: Boolean): Boolean {
+        if (target.substringBefore(':', "").lowercase() !in WEB_SCHEMES) return false
+        if (isRedirect) return true
+        val to = parse(target) ?: return false
+        val from = parse(current) ?: return false
+        val sameHost = to.host.equals(from.host, ignoreCase = true)
+        if (withinSite && sameHost) return true
+        if (!tapped && sameHost && to.scheme.equals(from.scheme, ignoreCase = true) && to.rawPath == from.rawPath) return true
+        return withoutFragment(to) == withoutFragment(from)
     }
 
-    private fun samePage(a: Uri, b: Uri): Boolean =
-        a.buildUpon().fragment(null).build() == b.buildUpon().fragment(null).build()
+    private val WEB_SCHEMES = setOf("http", "https")
+
+    private fun parse(url: String): java.net.URI? = try {
+        java.net.URI(url)
+    } catch (e: java.net.URISyntaxException) {
+        null
+    }
+
+    private fun withoutFragment(uri: java.net.URI): String = uri.toString().substringBefore('#')
 }
 
 /** `shared/web/clipper.js`, packaged as a Java resource alongside the shared tables. */
