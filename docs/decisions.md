@@ -3293,6 +3293,12 @@ the cupboard. It is replaced, and a **Running low** state added.
   `item-<id>`). Items nested in a `ForEach` of sections got a row id that included the section,
   so a move between sections was a delete plus an insert, which the `List` once left drawn in a
   stale slot (garlic under Oils, a blank row, no Run out heading). Flat, the row keeps its id.
+  A swipe's change waits 0.5 s for its row to close (#206, `afterSwipeCloses`). **Nothing at a
+  row's root may depend on where it sits** (#216): #214 put the stock tooltip's anchor there as
+  `if first { … } else { … }`, so a Restock that made garlic the first row gave the `List` a new
+  row in the swiped cell's place, and the old cell stayed drawn, dimmed, under Run out; the
+  anchor is now a `.background`. Only a screen recording shows it: the accessibility tree and
+  XCUITest's screenshots were right.
 
 ## The recipe screen's ViewModel, split into collaborators (#169)
 

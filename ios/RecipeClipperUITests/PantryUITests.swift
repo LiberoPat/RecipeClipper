@@ -147,9 +147,10 @@ final class PantryUITests: RecipeUITestCase {
     }
 
     /// The walkthrough's case (#203): a swipe's action moves its own row out of its section while
-    /// the swipe closes. Back and forth a few times, as the timing varies. The tree can be right
-    /// while the screen isn't (the swiped cell left drawn over the Run out heading), so the
-    /// heading's pixels are checked too, against how it looked before any move.
+    /// the swipe closes. Back and forth a few times, as the timing varies. This checks the tree,
+    /// which can be right while the screen isn't (the swiped cell left drawn in its old place,
+    /// #203, #216); XCUITest's screenshots showed it right too, so only a recording of the
+    /// walkthrough (ios-25) shows that.
     func testSwipeMovesRedrawTheList() {
         launch(.walkthroughPantry, flags: ["mealPlan"])
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
