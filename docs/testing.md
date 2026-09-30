@@ -653,9 +653,10 @@ Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported 
 (simulated), 22 junk hidden in a recipe's own lines (simulated), 23 "Mark as cooked", 24 the
 tooltips and "Show tips again", 25 the pantry's three states, 26 "onion" matching "onions" in What I
 need, 27 Reddit posts (from fixtures), 28 "Read the photo" (#198), 29 reading other languages (#208: a
-German post, a French card), 30 "Scan a recipe" (#226: a card's two sides from the library).
+German post, a French card), 30 "Scan a recipe" (#226: a card's two sides from the library), 31 "Clip it
+yourself" on a live Reddit post (#213, #230: Review asking for the name, then the Text view).
 Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
-`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–30 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–30 in `+Features.swift`, 22
+`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–31 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–31 in `+Features.swift`, 22
 in `+MealPlan.swift`). What they need from outside the app:
 
 - **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
@@ -667,7 +668,7 @@ in `+MealPlan.swift`). What they need from outside the app:
   `/data/local/tmp` and opened with a VIEW intent through the app's FileProvider; iOS opens its
   canned file with `-uiTestReceiveFile`. A pasted list is put on the clipboard by the test
   (iOS: `-uiTestPasteboard`).
-- **The Reddit listings** (27): reddit.com refuses an emulator, so Android's Reddit links are read by
+- **The Reddit listings** (27–29): reddit.com refuses an emulator, so Android's Reddit links are read by
   the real `RedditRecipeParser` from `shared/fixtures/reddit/` files the script pushes to
   `/data/local/tmp`, in place of the `.json` fetch; the posts' photos don't load. iOS's test
   hands one to the UI-test stub source as `RC_UITEST_REDDIT_LISTING`, and the stub runs a Reddit link
@@ -678,9 +679,11 @@ in `+MealPlan.swift`). What they need from outside the app:
   card photos in `shared/fixtures/reddit/photos/`, which `RC_UITEST_PHOTO_IMAGES` puts in place of the
   untranscribed post's own; a blurred one gives the "finish it by hand" fallback. Clip 29's French
   card, `card-fr.jpg`, is the `fr` language fixture's photo lines drawn in a handwriting font on a
-  ruled card (macOS Vision reads it line for line, "2 c. à soupesucre" included). An emulator has no
-  Play services model, so Android's 28 and 29 are OCR SIMULATED: the test swaps `PhotoTextModule` for a
-  reader that answers the card's lines once, then nothing (29: the `fr` fixture's lines).
+  ruled card (macOS Vision reads it line for line, "2 c. à soupesucre" included). Android's 28 and 29
+  read the same pictures (the script pushes them to `/data/local/tmp`) with ML Kit, as 30 does, and
+  fall back to OCR SIMULATED the same way (the card's lines once, then nothing; 29: the `fr`
+  fixture's lines) only if the model never arrives. ML Kit's slips differ from Vision's, so each
+  test fixes the lines by what they contain, not by an exact reading.
 - **The scan** (30): the pages are `card-front.jpg` and `card-back.jpg` from
   `shared/fixtures/reddit/photos/`. iOS adds them to the simulator's Photos just before the test
   (back, then front, so the front is newest and the picker lists it first), and the test picks both
@@ -690,6 +693,15 @@ in `+MealPlan.swift`). What they need from outside the app:
   services in September 2026, and falls back to clip 28's lines only if the model never arrives
   (two minutes). It logs `OCR SIMULATED` when it falls back, and the script then names the clip
   `-simulated`.
+- **Live Reddit** (31): the one clip with no fixture. It needs the network and two real r/recipes
+  posts (`1wpafnm`, the recipe in the body; `1wixh7a`, in the poster's comment): if one is deleted,
+  pick another of the same kind. What it shows is Reddit refusing the `.json` read, so a machine
+  Reddit lets through would import the post instead and the test would fail. Android's test uses
+  the real source for those two posts and selects on the live page by script (as `ClipScreenTest`
+  does). On iOS, `RC_UITEST_LIVE_REDDIT=1` sends a Reddit link with no listing to the real source
+  and drops the clip fixture page, and `RC_UITEST_CLIP_SCRIPT` is a script added to every clip page
+  (DEBUG, UI-test launches only) that lays unseen spots on the text: XCUITest can't drag a
+  selection across a web page, so tapping a spot selects by script.
 - **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20, 23, 25 and 26:
   `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
 - **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the
