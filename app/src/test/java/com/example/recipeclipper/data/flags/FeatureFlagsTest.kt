@@ -74,11 +74,13 @@ class FeatureFlagsTest {
     }
 
     @Test fun `every Flag is referenced by the app's code`() {
-        // Gradle runs unit tests in the module directory.
-        val sources = File("src/main/java").walkTopDown()
-            .filter { it.isFile && it.extension == "kt" && it.name != "FeatureFlags.kt" }
-            .map { it.readText() }
-            .toList()
+        // Gradle runs unit tests in the module directory; the model is in :core (#238), Flag too.
+        val sources = listOf(File("src/main/java"), File("../core/src/main/java")).flatMap { root ->
+            root.walkTopDown()
+                .filter { it.isFile && it.extension == "kt" && it.name != "FeatureFlags.kt" && it.name != "Flag.kt" }
+                .map { it.readText() }
+                .toList()
+        }
         assertTrue("no sources found", sources.isNotEmpty())
         Flag.entries.forEach { flag ->
             assertTrue("Flag.${flag.name} is not used anywhere: retire it", sources.any { "Flag.${flag.name}" in it })

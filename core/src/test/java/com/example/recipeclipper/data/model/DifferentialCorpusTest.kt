@@ -18,7 +18,7 @@ import java.io.File
  *
  * Every `Ing(...)` and `Ins(...)` row in the Swift file is recomputed here from its input
  * string alone, and the whole file is rewritten with the results to
- * `app/build/differential-corpus/DifferentialCorpusTests.swift`. A row read with another
+ * `core/build/differential-corpus/DifferentialCorpusTests.swift`. A row read with another
  * language's words (#15) names it after the input, `Ing("2 EL Zucker", lang: "de"),`; a row
  * without one is English. The test fails when that
  * differs from the committed file: a change to the scaler, converters or timers that forgot
