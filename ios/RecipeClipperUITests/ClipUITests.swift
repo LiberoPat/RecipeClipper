@@ -160,14 +160,16 @@ final class ClipUITests: RecipeUITestCase {
         if !ad.isHittable { page.swipeUp() } // the frame is at the foot of the page
         ad.tap()
         XCTAssertFalse(
-            text("1 line selected · each line becomes one item").waitForExistence(timeout: 3),
+            textContaining("selected ·").waitForExistence(timeout: 3),
             "a selection posted from a frame inside the page reached the app"
         )
-        require(text("No name · 0 ingredients · 0 steps · no photo"), "the summary, nothing selected")
+        require(text("Tap Name below, then tap the recipe's name on the page."), "the first hint, nothing selected")
 
         // The page itself is still heard.
-        selectOnPage("Select title")
-        require(text("1 line selected · each line becomes one item"), "the selection preview")
+        if !page.staticTexts["Brown Butter Oat Cookies"].isHittable { page.swipeDown() }
+        fieldButton("NAME").tap()
+        tapOnPage("Brown Butter Oat Cookies")
+        require(app.buttons["Use as the name"], "the page's tap, heard")
     }
 
     /// Reddit's block (#213): a Reddit post the app can't read opens here by itself, in the
