@@ -148,6 +148,28 @@ final class ClipUITests: RecipeUITestCase {
         require(text("3 ingredients added. Next: tap Steps."), "the ingredients added")
     }
 
+    /// #235: a frame inside the page (an ad, another site's widget) can reach the `rc` handler,
+    /// but the app hears the main frame only, so a selection posted from the frame never shows.
+    /// Mirrors Android's ClipScreenTest.
+    func testAFrameInsideThePageCantPostIntoTheClip() {
+        launch(.empty)
+        importLink("example.com/no-recipe")
+        require(app.buttons["Clip it yourself"], "Clip it yourself").tap()
+
+        let ad = onPage(page.buttons["Ad: post a selection"], "the button inside the frame")
+        if !ad.isHittable { page.swipeUp() } // the frame is at the foot of the page
+        ad.tap()
+        XCTAssertFalse(
+            text("1 line selected · each line becomes one item").waitForExistence(timeout: 3),
+            "a selection posted from a frame inside the page reached the app"
+        )
+        require(text("No name · 0 ingredients · 0 steps · no photo"), "the summary, nothing selected")
+
+        // The page itself is still heard.
+        selectOnPage("Select title")
+        require(text("1 line selected · each line becomes one item"), "the selection preview")
+    }
+
     /// Reddit's block (#213): a Reddit post the app can't read opens here by itself, in the
     /// import's place, with a note saying why and no Try again (the block doesn't lift). Cancel
     /// goes back to Home, never to an error screen. The stub source answers 403 for a path ending

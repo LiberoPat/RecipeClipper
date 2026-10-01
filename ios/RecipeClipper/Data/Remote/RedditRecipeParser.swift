@@ -112,26 +112,26 @@ enum RedditRecipeParser {
     private static let imageExtension = JRegex(#"\.(?:jpe?g|png|gif|webp)$"#, ignoreCase: true)
 
     /// The post's photo: Reddit's preview of it, else a gallery's first picture, else a link
-    /// straight to an image. `&amp;` in these URLs is undone, and nothing else: it's a URL.
+    /// straight to an image. `&amp;` in these URLs is undone, and nothing else: it's a URL. A web
+    /// image only (`WebImageUrl`, #235).
     static func imageOf(_ post: [String: Any]) -> String? {
         if let images = (post["preview"] as? [String: Any])?["images"] as? [Any],
-           let source = (images.first as? [String: Any])?["source"] as? [String: Any] {
-            let url = str(source, "url")
-            if url.hasPrefix("http") { return unescape(url) }
+           let source = (images.first as? [String: Any])?["source"] as? [String: Any],
+           let url = webImage(str(source, "url")) {
+            return url
         }
 
         if let items = (post["gallery_data"] as? [String: Any])?["items"] as? [Any],
            let firstId = (items.first as? [String: Any]).map({ str($0, "media_id") }), !firstId.isEmpty,
            let s = ((post["media_metadata"] as? [String: Any])?[firstId] as? [String: Any])?["s"] as? [String: Any] {
             let u = str(s, "u")
-            let candidate = u.isEmpty ? str(s, "gif") : u
-            if candidate.hasPrefix("http") { return unescape(candidate) }
+            if let url = webImage(u.isEmpty ? str(s, "gif") : u) { return url }
         }
 
         let overridden = str(post, "url_overridden_by_dest")
         let link = overridden.isEmpty ? str(post, "url") : overridden
         let path = URLComponents(string: link)?.path ?? ""
-        return link.hasPrefix("http") && imageExtension.containsMatch(in: path) ? unescape(link) : nil
+        return imageExtension.containsMatch(in: path) ? webImage(link) : nil
     }
 
     /// Every picture of the post, in order, for reading its text (#198): each of a gallery's
@@ -144,15 +144,14 @@ enum RedditRecipeParser {
                 let id = (item as? [String: Any]).map { str($0, "media_id") } ?? ""
                 guard let s = (metadata[id] as? [String: Any])?["s"] as? [String: Any] else { return nil }
                 let u = str(s, "u")
-                let candidate = u.isEmpty ? str(s, "gif") : u
-                return candidate.hasPrefix("http") ? unescape(candidate) : nil
+                return webImage(u.isEmpty ? str(s, "gif") : u)
             }
             if !gallery.isEmpty { return gallery }
         }
         return [imageOf(post)].compactMap { $0 }
     }
 
-    private static func unescape(_ url: String) -> String {
-        url.replacingOccurrences(of: "&amp;", with: "&")
+    private static func webImage(_ url: String) -> String? {
+        WebImageUrl.of(url.replacingOccurrences(of: "&amp;", with: "&"))
     }
 }

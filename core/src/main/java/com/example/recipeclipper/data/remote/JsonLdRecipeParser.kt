@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.model.Durations
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.WebImageUrl
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -110,7 +111,8 @@ internal object JsonLdRecipeParser {
 
         return Recipe(
             name = name,
-            image = extractImage(json.opt("image")),
+            // A web image only (#235): never an address on the device.
+            image = WebImageUrl.of(extractImage(json.opt("image"))),
             ingredients = ingredients,
             instructions = instructions,
             prepTime = Durations.format(json.optString("prepTime", ""), words),

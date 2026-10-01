@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.remote
 
 import com.example.recipeclipper.data.model.PageText
+import com.example.recipeclipper.data.model.WebImageUrl
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -58,7 +59,7 @@ internal object PageTextReader {
         val title = doc.selectFirst("body h1")?.text()?.trim()?.ifEmpty { null }
             ?: doc.selectFirst("meta[property=og:title]")?.attr("content")?.trim()?.ifEmpty { null }
             ?: doc.title().trim().ifEmpty { null }
-        val image = doc.selectFirst("meta[property=og:image]")?.absUrl("content")?.ifEmpty { null }
+        val image = WebImageUrl.of(doc.selectFirst("meta[property=og:image]")?.absUrl("content"))
         return PageText(title, lines, JsonLdRecipeParser.pageLanguage(doc), image)
     }
 

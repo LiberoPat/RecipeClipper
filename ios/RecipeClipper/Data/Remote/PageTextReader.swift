@@ -59,7 +59,7 @@ enum PageTextReader {
         }
         let h1 = first { $0.name == "h1" }.map { tree.text(of: $0) }.flatMap { $0.isEmpty ? nil : $0 }
         let titleElement = first { $0.name == "title" }.map { tree.text(of: $0) }.flatMap { $0.isEmpty ? nil : $0 }
-        let image = meta("og:image").flatMap { URL(string: $0, relativeTo: URL(string: url))?.absoluteString }
+        let image = WebImageUrl.of(meta("og:image").flatMap { URL(string: $0, relativeTo: URL(string: url))?.absoluteString })
         return PageText(
             title: h1 ?? meta("og:title") ?? titleElement,
             lines: lines,

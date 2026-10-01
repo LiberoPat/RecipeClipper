@@ -15,6 +15,7 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.UrlCleaner
+import com.example.recipeclipper.data.model.WebImageUrl
 import com.example.recipeclipper.data.remote.RedditPageText
 import com.example.recipeclipper.data.remote.RedditUrls
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -230,11 +231,16 @@ class ClipViewModel @Inject constructor(
         setDraft(draft.removeMark(markId), newMarkId = null, message = ClipMessage.Removed(mark.field, mark.lines.size))
     }
 
-    /** While Photo is armed, the image tapped on the page becomes the photo. */
+    /**
+     * While picking a photo, the next image tapped on the page becomes the photo: a web image
+     * only ([WebImageUrl], #235). Any other address (`file:`, `content:`, `data:`, relative, …)
+     * is no picture, as [onNoImageTapped] says.
+     */
     fun onImageTapped(src: String) {
         if (!_uiState.value.pickingPhoto) return
+        val photo = WebImageUrl.of(src) ?: return onNoImageTapped()
         disarm()
-        assign(ClipField.PHOTO, src)
+        assign(ClipField.PHOTO, photo)
     }
 
     /**

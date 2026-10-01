@@ -70,4 +70,20 @@ class MicrodataRecipeParserTest {
         assertNotNull(recipe)
         assertEquals(listOf("Stir."), recipe!!.instructions)
     }
+
+    @Test fun `the image is the first web image, never an address on the device (#235)`() {
+        fun page(images: String, og: String = "") = """<html><head>$og</head><body>
+            <div itemscope itemtype="https://schema.org/Recipe"><span itemprop="name">Toast</span>
+            $images<span itemprop="recipeIngredient">1 slice bread</span></div></body></html>"""
+        val og = """<meta property="og:image" content="https://img.example/og.jpg">"""
+
+        // A lazy loader's placeholder gives way to the next image, or to og:image.
+        assertEquals(
+            "https://img.example/toast.jpg",
+            parse(page("""<meta itemprop="image" content="data:image/gif;base64,R0lGOD"><img itemprop="image" src="https://img.example/toast.jpg">"""))!!.image
+        )
+        assertEquals("https://img.example/og.jpg", parse(page("""<meta itemprop="image" content="file:///data/x.db">""", og))!!.image)
+        assertNull(parse(page("""<meta itemprop="image" content="content://media/external/images/media/1">"""))!!.image)
+        assertNull(parse(page("", """<meta property="og:image" content="file:///data/x.db">"""))!!.image)
+    }
 }

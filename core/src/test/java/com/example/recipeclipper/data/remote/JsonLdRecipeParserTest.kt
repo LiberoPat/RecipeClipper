@@ -194,6 +194,18 @@ class JsonLdRecipeParserTest {
     }
 
     @Test
+    fun `the image is a web image or none, never an address on the device`() {
+        fun image(json: String) =
+            JsonLdRecipeParser.parse(listOf("""{"@type": "Recipe", "name": "R", "recipeIngredient": ["a"], "image": $json}"""), sourceUrl)!!.image
+        assertEquals("https://img.example/r.jpg", image("\"https://img.example/r.jpg\""))
+        assertEquals("https://img.example/r.jpg", image("\"http://img.example/r.jpg\""))
+        assertNull(image("\"file:///data/data/com.example.recipeclipper/databases/recipe_clipper.db\""))
+        assertNull(image("""{"@type": "ImageObject", "url": "content://media/external/images/media/1"}"""))
+        assertNull(image("""["data:image/gif;base64,R0lGODlhAQABAAAAACw="]"""))
+        assertNull(image("\"/img/r.jpg\""))
+    }
+
+    @Test
     fun `sections with ordinary names are all kept, in order, and a name that only contains summary is not skipped`() {
         val block = """
             {"@type": "Recipe", "name": "R", "recipeInstructions": [

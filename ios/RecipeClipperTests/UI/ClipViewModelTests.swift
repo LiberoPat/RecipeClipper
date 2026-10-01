@@ -264,6 +264,33 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.lastAdded, ClipAdded(field: .photo, count: 1))
     }
 
+    // #235: the page says which address was tapped; only a web image becomes the photo.
+
+    func testAPhotoAddressThatIsntAWebImageIsNoPictureSaidAsOne() {
+        for src in [
+            "file:///data/data/com.example.recipeclipper/databases/recipe_clipper.db",
+            "content://media/external/images/media/12",
+            "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+            "javascript:alert(1)",
+            "/img/cookies.jpg",
+            "",
+        ] {
+            let vm = viewModel()
+            vm.onFieldButton(.photo)
+            vm.onImageTapped(src)
+            XCTAssertNil(vm.uiState.draft.photo, src)
+            XCTAssertFalse(vm.uiState.pickingPhoto, src)
+            XCTAssertEqual(vm.uiState.notice?.message, .photoUnreadable, src)
+        }
+    }
+
+    func testAnHttpPhotoIsKeptAsHttps() {
+        let vm = viewModel()
+        vm.onFieldButton(.photo)
+        vm.onImageTapped("http://img.example/cookies.jpg")
+        XCTAssertEqual(vm.uiState.draft.photo, "https://img.example/cookies.jpg")
+    }
+
     func testThePhotoButtonDisarmsPhotoPickingAgain() {
         let vm = viewModel()
         vm.onFieldButton(.photo)

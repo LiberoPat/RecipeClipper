@@ -162,6 +162,17 @@ final class RedditRecipeParserTests: XCTestCase {
                        .error(.noTranscription(title: "Pie", imageUrl: "https://preview.redd.it/p.jpg?a=1&s=2", imageUrls: ["https://preview.redd.it/p.jpg?a=1&s=2"])))
     }
 
+    func testThePostsPictureIsAWebImageHttpUpgraded() {
+        let json = #"""
+            [{"kind":"Listing","data":{"children":[{"kind":"t3","data":{"title":"Pie",
+            "selftext":"","url":"http://i.imgur.com/pie.png"}}]}},{"kind":"Listing","data":{"children":[]}}]
+            """#
+        XCTAssertEqual(RedditRecipeParser.parse(json, sourceUrl: url),
+                       .error(.noTranscription(title: "Pie", imageUrl: "https://i.imgur.com/pie.png", imageUrls: ["https://i.imgur.com/pie.png"])))
+        let local = json.replacingOccurrences(of: "http://i.imgur.com/pie.png", with: "file:///sdcard/pie.png")
+        XCTAssertEqual(RedditRecipeParser.parse(local, sourceUrl: url), .error(.noTranscription(title: "Pie", imageUrl: nil)))
+    }
+
     func testAnythingThatIsntAPostListingHasNoRecipe() {
         let none = ParseResult.error(.noRecipeFound)
         XCTAssertEqual(RedditRecipeParser.parse("<html>whoa there, pardner</html>", sourceUrl: url), none)

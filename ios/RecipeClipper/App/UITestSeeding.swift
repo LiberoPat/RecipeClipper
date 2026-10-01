@@ -216,6 +216,7 @@ enum UITestSeeding {
     <h2>Method</h2>
     <ol id="steps"><li id="step1">Brown the butter until it smells nutty.</li><li id="step2">Bake at 350°F for 11 to 13 minutes.</li></ol>
     <p id="cool">Cool on the tray.</p>
+    <iframe title="Ad" width="300" height="50" srcdoc="<button onclick=&quot;webkit.messageHandlers.rc.postMessage(JSON.stringify({type:'selection',text:'Buy now'}))&quot;>Ad: post a selection</button>"></iframe>
     </body></html>
     """
 

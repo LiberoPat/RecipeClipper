@@ -242,7 +242,8 @@ enum JsonLdRecipeParser {
 
         return Recipe(
             name: name,
-            image: extractImage(opt(json, "image")),
+            // A web image only (#235): never an address on the device.
+            image: WebImageUrl.of(extractImage(opt(json, "image"))),
             ingredients: ingredients,
             instructions: instructions,
             prepTime: Durations.format(optString(json, "prepTime"), words: words),

@@ -41,6 +41,8 @@ import XCTest
 // or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
+// Photo-address rows (#235): an image's address as a page gives it, then WebImageUrl.of (nil: no
+// image). Write only `Img("http://img.example/a.jpg"),`.
 // Duration rows (#179): a prep, cook or total time, then Durations.format of it
 // (nil: hidden). Write only `Dur("PT1H30M"),` or `Dur("1 Std. 30 Min.", lang: "de"),`.
 // Chef mode rows (#100): a step, a short version of it, optionally the recipe's ingredient lines
@@ -170,6 +172,11 @@ final class DifferentialCorpusTests: XCTestCase {
     private struct Ics {
         let text: String; let line: String
         init(_ text: String, _ line: String) { self.text = text; self.line = line }
+    }
+
+    private struct Img {
+        let address: String; let kept: String?
+        init(_ address: String, _ kept: String?) { self.address = address; self.kept = kept }
     }
 
     private struct Dur {
@@ -1621,6 +1628,30 @@ final class DifferentialCorpusTests: XCTestCase {
         Ics("  ", "SUMMARY:  "),
     ]
 
+    // Photo-address rows (#235): see the header. Write only the address.
+    private static let images: [Img] = [
+        Img("https://img.example/a/cookies.jpg?w=1200&h=800#top", "https://img.example/a/cookies.jpg?w=1200&h=800#top"),
+        Img("http://img.example/a.jpg", "https://img.example/a.jpg"),
+        Img("HTTP://Img.Example/A.jpg", "https://Img.Example/A.jpg"),
+        Img("  https://img.example/a.jpg\n", "https://img.example/a.jpg"),
+        Img("https://user:pw@img.example:8443/a.jpg", "https://user:pw@img.example:8443/a.jpg"),
+        Img("https://cdn.example?id=4", "https://cdn.example?id=4"),
+        Img("https://img.example/ñandú.jpg", "https://img.example/ñandú.jpg"),
+        Img("https://点心.example/饺子.jpg", "https://点心.example/饺子.jpg"),
+        Img("file:///data/data/com.example.recipeclipper/databases/recipe_clipper.db", nil),
+        Img("content://media/external/images/media/12", nil),
+        Img("data:image/gif;base64,R0lGODlhAQABAAAAACw=", nil),
+        Img("javascript:alert('https://img.example/a.jpg')", nil),
+        Img("blob:https://img.example/1234", nil),
+        Img("/img/cookies.jpg", nil),
+        Img("//cdn.example/cookies.jpg", nil),
+        Img("https:///img/a.jpg", nil),
+        Img("https://user@:443/a.jpg", nil),
+        Img("https:/img.example/a.jpg", nil),
+        Img("", nil),
+        Img(" \t ", nil),
+    ]
+
     private static let durations: [Dur] = [
         Dur("PT10M", "10m"),
         Dur("PT25M", lang: "es", "25min"),
@@ -1994,6 +2025,12 @@ final class DifferentialCorpusTests: XCTestCase {
     func testCalendarLinesMatchKotlin() {
         for row in Self.ics {
             XCTAssertEqual(MealPlanIcs.contentLine("SUMMARY", row.text), row.line, row.text)
+        }
+    }
+
+    func testPhotoAddressesMatchKotlin() {
+        for row in Self.images {
+            XCTAssertEqual(WebImageUrl.of(row.address), row.kept, row.address)
         }
     }
 
