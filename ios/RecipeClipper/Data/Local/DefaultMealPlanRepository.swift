@@ -105,18 +105,18 @@ extension DefaultMealPlanRepository {
         db.observe { conn in try MenuDao(db: conn).menus() }
     }
 
-    func saveWeekAsMenu(name: String, weekStart: Int64) async -> Bool {
+    func saveWeekAsMenu(name: String, weekStart: Int64, firstDayOfWeek: Int) async -> Bool {
         let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return false }
         let now = clock.now()
         return await menuWrite("saveWeekAsMenu", false) { dao in
-            try dao.saveWeek(name: text, weekStart: weekStart, now: now) != nil
+            try dao.saveWeek(name: text, weekStart: weekStart, firstDayOfWeek: firstDayOfWeek, now: now) != nil
         }
     }
 
-    func applyMenu(id: Int64, weekStart: Int64) async -> Int {
+    func applyMenu(id: Int64, weekStart: Int64, firstDayOfWeek: Int) async -> Int {
         let now = clock.now()
-        return await menuWrite("applyMenu", 0) { dao in try dao.apply(menuId: id, weekStart: weekStart, now: now) }
+        return await menuWrite("applyMenu", 0) { dao in try dao.apply(menuId: id, weekStart: weekStart, firstDayOfWeek: firstDayOfWeek, now: now) }
     }
 
     func renameMenu(id: Int64, name: String) async {

@@ -9,8 +9,11 @@ import Foundation
 enum PlanDays {
     static let millisPerDay: Int64 = 86_400_000
 
-    /// How many days the plan sheets offer: this week and next.
+    /// How many days the plan sheets offer: today and the next 13 (#232).
     static let sheetDays = 14
+
+    /// The Week tab's weeks: seven-day blocks counted from today (#232).
+    static let blockDays: Int64 = 7
 
     /// The local calendar day containing `millis`, for a zone `offsetMillis` ahead of UTC.
     static func epochDay(millis: Int64, offsetMillis: Int64) -> Int64 {
@@ -31,6 +34,24 @@ enum PlanDays {
     /// The first day of the week holding `day`, for a week that starts on `firstDayOfWeek`.
     static func weekStart(_ day: Int64, firstDayOfWeek: Int) -> Int64 {
         day - floorMod(Int64(dayOfWeek(day) - firstDayOfWeek), 7)
+    }
+
+    /// The first day of the seven-day block holding `day`, blocks counted from `today` (#232):
+    /// today+7k … today+7k+6, so the week shown first starts today, whatever weekday that is.
+    static func blockStart(_ day: Int64, today: Int64) -> Int64 {
+        today + blockDays * floorDiv(day - today, blockDays)
+    }
+
+    /// A menu meal's `dayOffset` (#52): days after the locale's `firstDayOfWeek`, 0 to 6. Menus
+    /// keep weekdays, so a meal saved from a block that starts on any day keeps its weekday;
+    /// menus saved before #232 stored exactly this.
+    static func menuOffset(_ day: Int64, firstDayOfWeek: Int) -> Int {
+        Int(floorMod(Int64(dayOfWeek(day) - firstDayOfWeek), 7))
+    }
+
+    /// The day among the seven from `start` that falls on a menu meal's weekday (`menuOffset`).
+    static func menuDay(start: Int64, offset: Int, firstDayOfWeek: Int) -> Int64 {
+        start + floorMod(Int64(firstDayOfWeek + offset - dayOfWeek(start)), 7)
     }
 
     /// The seven days of the week starting on `start`.

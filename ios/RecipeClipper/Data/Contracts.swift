@@ -474,13 +474,15 @@ protocol MealPlanRepository: AnyObject {
     /// Every saved menu, by name.
     func observeMenus() -> AnyPublisher<[WeekMenu], Never>
 
-    /// Saves the seven days from `weekStart` as a new menu called `name`. A blank name or an
-    /// empty week saves nothing; returns whether a menu was saved.
-    func saveWeekAsMenu(name: String, weekStart: Int64) async -> Bool
+    /// Saves the seven days from `weekStart` as a new menu called `name`, each meal on its
+    /// weekday counted from the locale's `firstDayOfWeek` (#232). A blank name or an empty week
+    /// saves nothing; returns whether a menu was saved.
+    func saveWeekAsMenu(name: String, weekStart: Int64, firstDayOfWeek: Int) async -> Bool
 
-    /// Adds a menu's meals to the week from `weekStart`, after what is planned there. Never
-    /// changes or removes a meal already planned. Returns how many meals it added.
-    func applyMenu(id: Int64, weekStart: Int64) async -> Int
+    /// Adds a menu's meals to the seven days from `weekStart`, each on its weekday (#232), after
+    /// what is planned there. Never changes or removes a meal already planned. Returns how many
+    /// meals it added.
+    func applyMenu(id: Int64, weekStart: Int64, firstDayOfWeek: Int) async -> Int
 
     /// A blank name is ignored.
     func renameMenu(id: Int64, name: String) async
