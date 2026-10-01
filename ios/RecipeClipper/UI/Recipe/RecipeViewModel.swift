@@ -6,15 +6,17 @@ import Observation
 /// target). It follows `AppPreferences.settings`, so a default changed in Settings while the
 /// recipe is open re-renders it in place.
 ///
-/// The single owner of `uiState` (#169): it loads, then hands each job to a collaborator and
-/// writes what comes back. `RecipeRenderer` turns the recipe into what the screen shows,
-/// `CookSession` runs cook mode and its timers, and `ChefMode` brings the on-device model's
-/// short steps and decisions. This keeps the tick loop, the alert calls and the serialized
-/// writes (ticks, notes, cook progress, servings).
+/// The single owner of `uiState` (#169, #234): it loads, then hands each job to a collaborator
+/// and writes what comes back. `RecipeRenderer` turns the recipe into what the screen shows and
+/// `RecipeDisplay` keeps it rendered under the cook's settings and servings; `FailedLoad` says
+/// where a failed load goes; `CookController` runs cook mode (`CookSession`), its timers' alerts
+/// and tick loop; `NotesAndTicks` writes ticks and the note; `OrderedWrites` is the one queue for
+/// cook progress and servings; and `ChefMode` brings the on-device model's short steps and
+/// decisions.
 @MainActor
 @Observable
 final class RecipeViewModel {
-    static let tick = Duration.milliseconds(250)
+    static let tick = CookController.tick
     /// How long typing must pause before the note is written. Android's NOTES_SAVE_DELAY_MS.
     static let notesSaveDelay = Duration.milliseconds(500)
 
@@ -24,37 +26,32 @@ final class RecipeViewModel {
     @ObservationIgnored private let shareUrl: String?
     @ObservationIgnored private let repository: RecipeRepository
     @ObservationIgnored private let preferences: AppPreferences
-    @ObservationIgnored private let sleep: Sleep
     @ObservationIgnored private let connectivity: Connectivity
-    @ObservationIgnored private let appInfo: AppInfo
-    @ObservationIgnored private let alarms: TimerAlarmScheduler
     @ObservationIgnored private let entitlements: Entitlements
-    // The `reddit` flag (#11), read at each load as the source reads it at each fetch; on when a
-    // test passes no flags, as it is by default.
-    @ObservationIgnored private let flags: FeatureFlags?
     // Opened from a timer notification: start cook mode once the recipe has loaded.
     @ObservationIgnored private var openInCookMode: Bool
     // Opened from the Week (#49): show the planned servings rather than the saved choice. For
     // this visit only; it isn't saved unless the cook changes the servings here.
     @ObservationIgnored private var plannedServings: Int?
-    // The last queued cook-progress or servings write. Each waits for the one before, so two
-    // quick taps can never land out of order. They hold the repository, not the ViewModel, so a
-    // write queued just before the screen is popped still lands.
-    @ObservationIgnored private var lastWrite: Task<Void, Never>?
 
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     // Waits for offline -> online while an offline / fetch-failed error is showing.
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
-    // Cook mode's steps and timers; this keeps only the tick loop and the alert calls.
-    @ObservationIgnored private var cookSession: CookSession
-    @ObservationIgnored private var tickTask: Task<Void, Never>?
-    // The note as typed but not yet written (with its recipe), and the debounced write.
-    @ObservationIgnored private var pendingNotes: (id: Int64, text: String)?
-    @ObservationIgnored private var notesTask: Task<Void, Never>?
     @ObservationIgnored private var settingsSubscription: AnyCancellable?
 
+    // Where a failed load goes, with the `reddit` flag (#11), read at each load as the source
+    // reads it at each fetch; on when a test passes no flags, as it is by default.
+    @ObservationIgnored private let failedLoad: FailedLoad
+    // Ticks as they change, and the note once typing pauses or the screen is left.
+    @ObservationIgnored private let notesAndTicks: NotesAndTicks
+    // Cook progress and servings writes, each waiting for the one before.
+    @ObservationIgnored private let writes: OrderedWrites
+    // Cook mode's steps and timers, their alerts and tick loop, and saving the cook's place.
+    @ObservationIgnored private let cookMode: CookController
     // Chef mode (#100) and the model's count brackets (#104), two of the renderer's inputs.
     @ObservationIgnored private let chef: ChefMode
+    // The settings, servings and short steps the recipe is rendered with.
+    @ObservationIgnored private let display: RecipeDisplay
 
     init(
         recipeId: Int64?,
@@ -74,18 +71,19 @@ final class RecipeViewModel {
         decisions: DecisionRepository? = nil
     ) {
         self.entitlements = entitlements
-        self.flags = flags
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
-        self.shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+        let shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+        self.shareUrl = shareUrl
         self.repository = repository
         self.preferences = preferences
-        self.cookSession = CookSession(clock: clock)
-        self.sleep = sleep
         self.connectivity = connectivity
-        self.appInfo = appInfo
-        self.alarms = alarms
         self.openInCookMode = openInCookMode
         self.plannedServings = plannedServings.flatMap { $0 > 0 ? $0 : nil }
+        failedLoad = FailedLoad(shareUrl: shareUrl, appInfo: appInfo, redditOn: { flags?.isOn(.reddit) ?? true })
+        notesAndTicks = NotesAndTicks(repository: repository, sleep: sleep, saveDelay: Self.notesSaveDelay)
+        let writes = OrderedWrites()
+        self.writes = writes
+        cookMode = CookController(clock: clock, alarms: alarms, sleep: sleep, writes: writes, repository: repository)
         // Seeded synchronously so the first render already uses the user's units.
         let settings = preferences.current
         uiState = RecipeUiState(
@@ -95,7 +93,12 @@ final class RecipeViewModel {
             darkWhileCooking: settings.darkWhileCooking,
             amountsInSteps: settings.amountsInSteps
         )
-        chef = ChefMode(shortSteps: shortSteps, flags: flags, decisions: decisions, setting: settings.chefMode)
+        let chef = ChefMode(shortSteps: shortSteps, flags: flags, decisions: decisions, setting: settings.chefMode)
+        self.chef = chef
+        display = RecipeDisplay(shortSteps: { [weak chef] in chef?.shortSteps ?? [] }, decisions: { [weak chef] in chef?.decisions ?? .none })
+        cookMode.content = { [weak self] in self?.uiState.content.success }
+        cookMode.cook = { [weak self] in self?.uiState.cook ?? CookState() }
+        cookMode.onCook = { [weak self] in self?.uiState.cook = $0 }
         chef.keptRecipe = { [weak self] in
             guard let self, !self.uiState.notKept else { return nil }
             return self.uiState.content.success?.recipe
@@ -111,18 +114,12 @@ final class RecipeViewModel {
         load()
     }
 
-    /// Android's onCleared: a popped screen stops its import and its tick loop (and `ChefMode`,
-    /// going with it, its writing). No task holds the ViewModel strongly, so popping the screen
-    /// really does let it go.
+    /// Android's onCleared: a popped screen stops its import and its reload (and its
+    /// collaborators, going with it, their tick loop, writing and pending note). No task holds
+    /// the ViewModel strongly, so popping the screen really does let it go.
     deinit {
         loadTask?.cancel()
-        tickTask?.cancel()
         reconnectTask?.cancel()
-        notesTask?.cancel()
-        // A note typed just before leaving is still written: one short write, owned by no one.
-        if let pending = pendingNotes {
-            Task { [repository] in await repository.setNotes(id: pending.id, notes: pending.text) }
-        }
     }
 
     // MARK: Loading
@@ -168,10 +165,10 @@ final class RecipeViewModel {
                     plannedServings = nil
                     recipe.servingsTarget = planned
                 }
-                uiState.content = .success(RecipeRenderer.content(recipe, settings: renderSettings))
+                uiState.content = .success(display.content(recipe, uiState))
                 uiState.checkedIngredients = recipe.checkedIngredients
                 uiState.notes = recipe.notes ?? ""
-                restoreCook(recipe)
+                cookMode.restore(recipe)
                 chef.start()
                 askModel()
                 if openInCookMode {
@@ -179,50 +176,12 @@ final class RecipeViewModel {
                     onCookStart()
                 }
             case .error(let error):
-                // Reddit wouldn't let the app read the post (#213): no error screen; the post
-                // opens in "Clip it yourself" instead, where Reddit does let it in.
-                if let shareUrl, RedditUrls.clipsWhenBlocked(shareUrl, error: error, redditOn: flags?.isOn(.reddit) ?? true) {
-                    uiState.clipBlockedPost = shareUrl
-                    return
-                }
-                // Cloudflare's check wants a person (#220): no error screen; the page opens
-                // visibly for the cook to pass it.
-                if let shareUrl, error == .humanCheck {
-                    uiState.humanCheckPage = shareUrl
-                    return
-                }
-                uiState.content = .error(error)
-                uiState.reportSiteUrl = reportSiteUrl(for: error)
-                uiState.clipUrl = error == .noRecipeFound ? shareUrl : nil
-                uiState.photoPost = photoPost(for: error)
+                uiState = failedLoad.shown(uiState, error)
+                // Handed on in the screen's place (#213, #220): nothing on screen to reload.
+                guard case .error = uiState.content else { return }
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
         }
-    }
-
-    /// A shared Reddit post with no recipe text but a picture can have its photo read (#198).
-    private func photoPost(for error: ParseError) -> PhotoPost? {
-        guard case .noTranscription(let title, _, _) = error, let shareUrl,
-              let images = error.photoUrls, !images.isEmpty else { return nil }
-        return PhotoPost(url: shareUrl, title: title, imageUrls: images)
-    }
-
-    /// Only a shared link that loaded but held no recipe is worth reporting: a block, being
-    /// offline or a failed fetch usually lifts on its own, and a saved recipe has no page to
-    /// report.
-    private func reportSiteUrl(for error: ParseError) -> String? {
-        guard error == .noRecipeFound, let shareUrl else { return nil }
-        return SiteReportLink.issueUrl(link: shareUrl, platform: appInfo.platform, appVersion: appInfo.appVersion)
-    }
-
-    /// Picks up where the cook left off (`CookSession.restore`; Android's `restoreCook`). The
-    /// recipe's pending alerts are replaced by its running timers', which also clears any left
-    /// over from a re-share that changed the steps.
-    private func restoreCook(_ recipe: Recipe) {
-        let restored = cookSession.restore(recipe)
-        alarms.replaceAll(recipeId: recipe.id, with: restored.alarms)
-        uiState.cook = restored.cook
-        if cookSession.hasRunningTimers { ensureTicking() }
     }
 
     /// While an offline or fetch-failed error is on screen, waits for the connection to go from
@@ -247,28 +206,16 @@ final class RecipeViewModel {
         uiState.checkedIngredients = next
         // Saved as they change, so closing the app mid-cook doesn't lose the ticks.
         guard let id = uiState.content.success?.recipe.id else { return }
-        Task { [repository] in await repository.setChecked(id: id, checked: next) }
+        notesAndTicks.ticked(id: id, checked: next)
     }
 
     /// The user's note, edited in place. The screen shows every keystroke at once; the write
     /// waits until typing pauses for `notesSaveDelay`, so a sentence is one write rather than
-    /// one per letter. Leaving the screen before then still saves it (see `deinit`).
+    /// one per letter. Leaving the screen before then still saves it (`NotesAndTicks`).
     func onNotesChange(_ text: String) {
         uiState.notes = text
         guard let id = uiState.content.success?.recipe.id else { return }
-        pendingNotes = (id, text)
-        notesTask?.cancel()
-        // Weak across the sleep, so a popped screen still lets its ViewModel (and deinit) go.
-        notesTask = Task { [weak self, sleep] in
-            do { try await sleep(Self.notesSaveDelay) } catch { return }
-            await self?.flushNotes()
-        }
-    }
-
-    private func flushNotes() async {
-        guard let pending = pendingNotes else { return }
-        pendingNotes = nil
-        await repository.setNotes(id: pending.id, notes: pending.text)
+        notesAndTicks.noteChanged(id: id, text: text)
     }
 
     /// The recipe as currently on screen — scaled servings, converted units — formatted for
@@ -290,7 +237,7 @@ final class RecipeViewModel {
     func onDelete() {
         guard let id = uiState.content.success?.recipe.id else { return }
         // A deleted recipe's running timers must not ring later.
-        for step in cookSession.stopTimers() { alarms.cancel(recipeId: id, step: step) }
+        cookMode.stopTimers(recipeId: id)
         Task {
             // No undo here: the confirmation said the photos go with it (#116).
             if let deleted = await repository.delete(id: id) { await repository.forget(deleted) }
@@ -312,13 +259,13 @@ final class RecipeViewModel {
             uiState.updatingFromSource = false
             switch result {
             case .success(let fresh):
-                // Steps may have changed: drop this screen's alarms; restoreCook reschedules
-                // whatever the saved progress still holds.
-                for step in cookSession.stopTimers() { alarms.cancel(recipeId: recipe.id, step: step) }
-                uiState.content = .success(RecipeRenderer.content(fresh, settings: renderSettings))
+                // Steps may have changed: drop this screen's alarms; restoring the cook
+                // reschedules whatever the saved progress still holds.
+                cookMode.stopTimers(recipeId: recipe.id)
+                uiState.content = .success(display.content(fresh, uiState))
                 uiState.checkedIngredients = fresh.checkedIngredients
                 uiState.asWrittenSteps = []
-                restoreCook(fresh)
+                cookMode.restore(fresh)
                 chef.start()
                 askModel()
             case .error(let error):
@@ -355,14 +302,12 @@ final class RecipeViewModel {
     func onUpdateErrorShown() { uiState.updateError = nil }
 
     func onServingsChange(_ target: Int) {
-        guard let shown = uiState.content.success,
-              let content = RecipeRenderer.withServings(shown, target: target, settings: renderSettings),
-              let scale = content.servings else { return }
+        guard let content = display.withServings(uiState, target), let scale = content.servings else { return }
         uiState.content = .success(content)
         // The recipe's own yield is saved as no choice at all.
         let id = content.recipe.id
-        let saved: Int? = scale.target == scale.base ? nil : scale.target
-        save { await $0.setServingsTarget(id: id, target: saved) }
+        let saved = display.savedServings(scale)
+        writes.enqueue { [repository] in await repository.setServingsTarget(id: id, target: saved) }
     }
 
     /// The units dropdown on this screen. It is a global default, so it writes through; the
@@ -371,54 +316,29 @@ final class RecipeViewModel {
     /// `applySettings`.
     func onUnitSystemChange(_ system: UnitSystem) {
         preferences.unitSystem = system
-        uiState.unitSystem = system
-        rerender()
+        uiState = display.withUnitSystem(uiState, system)
     }
 
-    /// A change to the global defaults, from Settings or from this screen's own dropdown,
-    /// arriving while the recipe is open. Only a change that affects the text re-renders it:
-    /// darkWhileCooking is a display choice and leaves the recipe alone, and scaled servings,
-    /// ticks and cook progress are kept either way.
+    /// A change to the global defaults arriving while the recipe is open
+    /// (`RecipeDisplay.withSettings`).
     private func applySettings(_ settings: AppSettings) {
         chef.onSetting(settings.chefMode)
-        let rendersDifferently = settings.unitSystem != uiState.unitSystem
-            || settings.convertLiquids != uiState.convertLiquids
-            || settings.temperatureUnit != uiState.temperatureUnit
-            || settings.amountsInSteps != uiState.amountsInSteps
-        var state = uiState
-        state.unitSystem = settings.unitSystem
-        state.convertLiquids = settings.convertLiquids
-        state.temperatureUnit = settings.temperatureUnit
-        state.darkWhileCooking = settings.darkWhileCooking
-        state.amountsInSteps = settings.amountsInSteps
+        let next = display.withSettings(uiState, settings)
         // Assigned only when something changed, so an echo of our own write notifies no view.
-        guard state != uiState else { return }
-        uiState = state
-        if rendersDifferently { rerender() }
+        guard next != uiState else { return }
+        uiState = next
     }
 
     // Re-renders the loaded recipe under the current settings, keeping its chosen servings.
     private func rerender() {
-        guard let content = uiState.content.success else { return }
-        uiState.content = .success(RecipeRenderer.rerender(content, settings: renderSettings, shortSteps: chef.shortSteps))
+        guard uiState.content.success != nil else { return }
+        uiState = display.rerendered(uiState)
     }
 
     // Chef mode's short steps as they now stand, rendered like the steps they stand for.
     private func applyShortSteps() {
-        guard let content = uiState.content.success else { return }
-        let shown = RecipeRenderer.withShortSteps(content, chef.shortSteps, settings: renderSettings)
-        guard shown.shortInstructions != content.shortInstructions else { return }
-        uiState.content = .success(shown)
-    }
-
-    private var renderSettings: RecipeRenderer.Settings {
-        RecipeRenderer.Settings(
-            unitSystem: uiState.unitSystem,
-            convertLiquids: uiState.convertLiquids,
-            temperatureUnit: uiState.temperatureUnit,
-            amountsInSteps: uiState.amountsInSteps,
-            decisions: chef.decisions
-        )
+        guard let next = display.withShortSteps(uiState) else { return }
+        uiState = next
     }
 
     // The model's questions about the loaded recipe: count brackets (#104) and junk (#174).
@@ -437,122 +357,44 @@ final class RecipeViewModel {
         }
     }
 
-    // MARK: Cook mode
+    // MARK: Cook mode (`CookController`)
 
-    func onCookStart() {
-        guard let content = uiState.content.success else { return }
-        let count = content.instructions.count
-        guard count > 0 else { return }
-        let start = cookSession.start(uiState.cook, stepCount: count)
-        // A finished run starts fresh, and its timers go with it, so their alerts must too.
-        for step in start.stopped { alarms.cancel(recipeId: content.recipe.id, step: step) }
-        if let cook = start.cook { uiState.cook = cook }
-        saveCook()
-    }
+    func onCookStart() { cookMode.start() }
 
-    func onCookExit() {
-        uiState.cook = cookSession.exit(uiState.cook)
-        saveCook()
-    }
+    func onCookExit() { cookMode.exit() }
 
-    func onIngredientsToggle() { uiState.cook = cookSession.toggleIngredients(uiState.cook) }
+    func onIngredientsToggle() { cookMode.toggleIngredients() }
 
     /// Tapping a step makes it current. Only `onStepDone` ever advances or marks progress.
-    func onStepSelected(_ index: Int) {
-        uiState.cook = cookSession.select(uiState.cook, step: index)
-        saveCook()
-    }
+    func onStepSelected(_ index: Int) { cookMode.select(index) }
 
     func onStepDone() {
         guard let content = uiState.content.success else { return }
-        let done = cookSession.done(uiState.cook, stepCount: content.instructions.count)
-        // The end of cooking (#147): what was ticked goes to the pantry's use-up sheet. A
-        // finished run finishes again only after starting fresh, so once per cook.
-        if done.finished, let finished = cookSession.finishedCook(content, ticked: uiState.checkedIngredients) {
+        let done = cookMode.done(uiState.cook, content: content, checked: uiState.checkedIngredients)
+        // The end of cooking (#147): what was ticked goes to the pantry's use-up sheet.
+        if done.finished, let finished = done.finishedCook {
             uiState.cookFinished = finished
         }
         uiState.cook = done.cook
-        saveCook()
+        cookMode.save()
     }
 
     /// The view has handed `cookFinished` on.
     func onCookFinishedHandled() { uiState.cookFinished = nil }
 
-    /// Saves the cook's place as it now stands (`CookSession.progress`; Android's `saveCook`).
-    private func saveCook() {
-        guard let id = uiState.content.success?.recipe.id else { return }
-        let progress = cookSession.progress(uiState.cook)
-        save { await $0.setCookProgress(id: id, progress: progress) }
-    }
-
-    private func save(_ write: @escaping (RecipeRepository) async -> Void) {
-        let previous = lastWrite
-        lastWrite = Task { [repository] in
-            await previous?.value
-            await write(repository)
-        }
-    }
-
     /// Waits for every queued cook-progress and servings write. For tests.
-    func settleWrites() async { await lastWrite?.value }
+    func settleWrites() async { await writes.settle() }
 
     // MARK: Step timers. Several can run at once, since steps overlap.
 
-    func onTimerStart(_ step: Int) {
-        guard let content = uiState.content.success,
-              step >= 0, step < content.stepTimerSeconds.count,
-              let total = content.stepTimerSeconds[step] else { return }
-        applyTimer(cookSession.startTimer(uiState.cook, step: step, totalSeconds: total), content.recipe, step)
-    }
+    func onTimerStart(_ step: Int) { cookMode.startTimer(step) }
 
-    func onTimerToggle(_ step: Int) {
-        guard let recipe = uiState.content.success?.recipe,
-              let change = cookSession.toggleTimer(uiState.cook, step: step) else { return }
-        applyTimer(change, recipe, step)
-    }
+    func onTimerToggle(_ step: Int) { cookMode.toggleTimer(step) }
 
-    // Shows a timer's change, schedules or cancels its alert, and saves.
-    private func applyTimer(_ change: CookSession.TimerChange, _ recipe: Recipe, _ step: Int) {
-        uiState.cook = change.cook
-        if let endsAt = change.endsAt {
-            alarms.schedule(StepAlarm(recipeId: recipe.id, recipeTitle: recipe.name, step: step, endsAt: endsAt))
-            ensureTicking()
-        } else {
-            alarms.cancel(recipeId: recipe.id, step: step)
-        }
-        saveCook()
-    }
+    func onTimerReset(_ step: Int) { cookMode.resetTimer(step) }
 
-    func onTimerReset(_ step: Int) {
-        guard let cook = cookSession.resetTimer(uiState.cook, step: step) else { return }
-        uiState.cook = cook
-        if let id = uiState.content.success?.recipe.id { alarms.cancel(recipeId: id, step: step) }
-        saveCook()
-    }
-
-    func onTimerAlerted(_ step: Int) {
-        if let cook = cookSession.alerted(uiState.cook, step: step) { uiState.cook = cook }
-    }
-
-    /// One tick loop for every running timer. Remaining time is recomputed from the wall
-    /// clock each tick (`CookSession.tick`) rather than decremented, so a pause in delivery never
-    /// drifts it. The loop ends by itself once no timer is running, and `deinit` cancels it.
-    private func ensureTicking() {
-        guard tickTask == nil else { return }
-        // Weak across the sleep, so a screen popped with a timer running lets its ViewModel go.
-        tickTask = Task { [weak self, sleep] in
-            while self?.cookSession.hasRunningTimers == true {
-                do { try await sleep(Self.tick) } catch { break }
-                self?.tickOnce()
-            }
-            self?.tickTask = nil
-        }
-    }
+    func onTimerAlerted(_ step: Int) { cookMode.alerted(step) }
 
     /// Whether the tick loop is alive. For tests: it must not outlive the last running timer.
-    var isTicking: Bool { tickTask != nil }
-
-    private func tickOnce() {
-        if let cook = cookSession.tick(uiState.cook) { uiState.cook = cook }
-    }
+    var isTicking: Bool { cookMode.isTicking }
 }

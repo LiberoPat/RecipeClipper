@@ -3479,17 +3479,17 @@ change, and every existing ViewModel, screen and UI test passes unchanged.
 - **`CookSession`** (pure over `Clock`): cook mode's state machine (start and resume, select,
   done, the ingredients bar, the end of cooking #147 hooks into) and the timers as wall-clock
   deadlines, the one thing it keeps. It never touches alarms: each transition returns what to
-  schedule or cancel, and the ViewModel keeps the tick loop (a coroutine, a `Task`) and the
-  `TimerAlarmScheduler` calls. That's where #10-style progress rules now change, in one place
-  tested without a ViewModel.
+  schedule or cancel, and `CookController` (#234; the ViewModel until then) keeps the tick loop
+  (a coroutine, a `Task`) and the `TimerAlarmScheduler` calls. That's where #10-style progress
+  rules now change, in one place tested without a ViewModel.
 - **`ChefMode`**: the on-device model's two inputs to the renderer, short steps (#100) and
   count-bracket decisions (#104), with their repositories and flags. Not pure (it runs the model
   and follows the repositories on the screen's scope), so it says when an input changed and the
   ViewModel renders again, synchronously, as before. On iOS it goes with its screen and cancels
   its writing then, as the ViewModel's `deinit` used to.
 - **The ViewModel stays the single owner of `uiState`** (one `StateFlow`, one `private(set) var`)
-  and keeps loading and recovery, the serialized writes (ticks, notes, cook progress and
-  servings, in order) and `shareText`. Screens don't change. The constructors are unchanged, so
+  and keeps loading and recovery and `shareText`; since #234 the serialized writes (ticks,
+  notes, cook progress and servings, in order) are its collaborators' (below). Screens don't change. The constructors are unchanged, so
   Hilt, the navigation code and every test build it as before.
 - **Where the platforms already differed, they still do,** since each side kept its own
   behaviour: iOS doesn't follow the `chefMode` flag live (it reads it when the setting changes),
@@ -3785,6 +3785,45 @@ the pantry use-up sheet, "Removed from your cooks") goes through `UndoSnackbarEf
 Material's `Long` (about 10 s), and leaving the screen, but not rotating it, settles the removal as
 if it had timed out. iOS's `SnackbarTimeout` already closed them, after 4 s; its undo window is now
 10 s too (`SnackbarTimeout.undo`), while plain notices keep 4 s.
+
+## The recipe, groceries and pantry files, split further (#234)
+
+After #169 the largest files were still the recipe screen (929 lines on Android), its ViewModel
+(621; 558 on iOS), the Pantry screen (715; 585) and iOS's `GroceriesViewModel.swift` (495, with
+the add sheet's ViewModel in it). A behaviour-preserving refactor, mirrored on both platforms
+under the same names: no UI, string, state or behaviour change, the same public API, and every
+existing test passes unchanged.
+
+- **One ViewModel and one UiState per screen still.** Each collaborator is a plain class (or,
+  on iOS, a struct where it holds no tasks) that the ViewModel owns and delegates to: no Android
+  or UI imports, unit-tested with the fakes, returning state pieces or reducing the state the
+  ViewModel then writes. None exposes a flow to the screen.
+- **The recipe screen's** (`ui/recipe`, iOS `UI/Recipe`): `OrderedWrites`, the one queue for
+  cook progress and the chosen servings (a plain queue drained `NonCancellable` on Android, a
+  chain of `Task`s on iOS, each finishing after the screen goes); `NotesAndTicks`, ticks written
+  as they change and the note after the 500 ms pause or when the screen goes; `CookController`,
+  `CookSession` with its alerts, tick loop and saved progress, reading and writing the
+  ViewModel's `CookState` through callbacks as `ChefMode` does; `RecipeDisplay`, the settings,
+  servings and short steps the recipe renders with, as reducers over `RecipeUiState`; and
+  `FailedLoad`, where a failed load goes (the walled Reddit post's clip, Cloudflare's check, or
+  the error screen with its clip and report offers).
+- **The Groceries tab's** (`ui/groceries`): `VisitOrder` (beside `GroceriesOrder`, now in its
+  own file), the frozen ticks that keep rows still within a visit (#219); `GroceryQuestions`, the
+  model's aisle and close-name questions, each asked once per visit (#99, #104); and
+  `GroceryRemovals`, the one undo for a delete, a clear or "Done shopping" (#146, #219). iOS's
+  `AddToGroceriesViewModel` moved to its own file, as on Android.
+- **Screens split by section, code moved only:** Android's `RecipeScreen` into `RecipeActions`
+  (the events and their platform effects), `RecipeErrorView`, `ReadingView`, `RecipeHeader` (the
+  top row, source credit and times) and `RecipeOverflowMenu` (with its dialogs), `BackButton`
+  joining `RecipeComponents`; iOS's `RecipeScreen` gives up `RecipeErrorView` (its `ReadingView`
+  was already apart). The Pantry tab's row (with its tag and swipe background) and edit sheet get
+  their own files on both platforms, and Android's menu too. Composables and views keep their
+  test tags, strings and state.
+- **Noticed, not changed:** each platform kept its own small differences. A note still waiting
+  when the screen goes is written on iOS to the recipe it was typed for, on Android to the recipe
+  on screen then (none while a retry is loading); and a cook finished with nothing ticked clears
+  an unhandled `cookFinished` on Android but leaves it on iOS (the screen hands it on at once,
+  so it is never there). Neither is visible to a cook.
 
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 

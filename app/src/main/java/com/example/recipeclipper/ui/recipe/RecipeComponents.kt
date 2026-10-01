@@ -12,10 +12,12 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.StepAmounts
 
 /**
@@ -100,6 +103,18 @@ internal fun IngredientRow(
             ),
             color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant
             else MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+/** The quiet "Back" at the top left of the recipe screen, and of the other screens that borrow it. */
+@Composable
+internal fun BackButton(onBack: () -> Unit) {
+    TextButton(onClick = onBack) {
+        Text(
+            stringResource(R.string.action_back),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

@@ -56,11 +56,11 @@ struct GroceriesUiState: Equatable {
 /// be undone from the snackbar, and so can the menu's "Clear ticked items" and "Clear the whole
 /// list" (#219).
 ///
-/// **Ticks stay put** (#219): within a visit, ticking or unticking never re-sorts the list. The
-/// order is worked out with each item's tick as it was when the order was last worked out
-/// (`orderTicks`), and shown with its tick now. It's worked out afresh when anything but a tick
-/// changes (an item added, removed, cleared, or moved to another aisle, here or elsewhere) and
-/// when the screen is left (`onLeave`), so ticked rows sink to the bottom of their aisle next time.
+/// **Ticks stay put** (#219): within a visit, ticking or unticking never re-sorts the list
+/// (`VisitOrder`); it's tidied when the screen is left (`onLeave`).
+///
+/// The ViewModel owns `uiState` and hands the rest on (#234): `VisitOrder` lays the list out,
+/// `GroceryQuestions` asks the on-device model about it, and `GroceryRemovals` keeps the undo.
 ///
 /// A typed item has no recipe, so it's read with the phone's language when the app has words
 /// for it, else English: the one place the phone's language picks the words.
@@ -77,11 +77,10 @@ final class GroceriesViewModel {
     @ObservationIgnored private var pantrySubscription: AnyCancellable?
     @ObservationIgnored private var titlesSubscription: AnyCancellable?
     @ObservationIgnored private var pantryItems: [PantryItem] = []
-    @ObservationIgnored private var undo: Undo?
-    @ObservationIgnored private var removals = 0
-    // The model's aisles for what the keyword table puts in Other (#104), and the items asked about.
-    @ObservationIgnored private let decisions: DecisionRepository?
-    @ObservationIgnored private var askedAisles = Set<Int64>()
+    // Removals and their one undo.
+    @ObservationIgnored private let removals: GroceryRemovals
+    // The model's questions about the list (#99, #104); none without it.
+    @ObservationIgnored private let questions: GroceryQuestions?
 
     init(
         repository: GroceryRepository, pantry: PantryRepository, calendar: PlanCalendar,
@@ -92,7 +91,9 @@ final class GroceriesViewModel {
         self.pantry = pantry
         self.calendar = calendar
         self.phoneLanguage = phoneLanguage
-        self.decisions = decisions
+        removals = GroceryRemovals(repository: repository, pantry: pantry)
+        questions = decisions.map { GroceryQuestions(decisions: $0, repository: repository) }
+        questions?.latestItems = { [weak self] in self?.latestItems ?? [] }
         pantrySubscription = pantry.observeItems()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in self?.pantryItems = $0 }
@@ -107,35 +108,19 @@ final class GroceriesViewModel {
                 self.latestItems = items
                 self.latestDecisions = decided
                 self.show()
-                self.askAisles(items)
-                self.askGroceryQuestions(items, decided)
+                self.questions?.ask(items, decided)
             }
     }
 
     @ObservationIgnored private var latestItems: [GroceryItem] = []
     @ObservationIgnored private var latestDecisions = Decisions.none
-    // The visit's order (#219): each item's tick when the order was last worked out, and the list
-    // then with its ticks left out; nil until worked out, and after the screen is left.
-    @ObservationIgnored private var orderTicks: [Int64: Bool]?
-    @ObservationIgnored private var orderShape: [GroceryItem]?
+    // The visit's order (#219).
+    @ObservationIgnored private var visitOrder = VisitOrder()
 
     /// Lays the list out in the visit's order, working it out afresh when more than a tick changed.
     private func show() {
         let items = latestItems
-        let shape = items.map { item -> GroceryItem in
-            var unticked = item
-            unticked.checked = false
-            return unticked
-        }
-        let ticks: [Int64: Bool]
-        if let frozen = orderTicks, shape == orderShape {
-            ticks = frozen
-        } else {
-            ticks = Dictionary(items.map { ($0.id, $0.checked) }, uniquingKeysWith: { a, _ in a })
-            orderTicks = ticks
-            orderShape = shape
-        }
-        uiState.sections = GroceriesOrder.sections(items, decisions: latestDecisions, ticks: ticks)
+        uiState.sections = visitOrder.sections(items, decisions: latestDecisions)
         // A row being moved that has since gone closes the aisle picker.
         if let moving = uiState.moving, !moving.items.allSatisfy({ i in items.contains { $0.id == i.id } }) {
             uiState.moving = nil
@@ -145,52 +130,8 @@ final class GroceriesViewModel {
     /// The screen was left (#219): the next visit tidies the list, ticked rows at the bottom of
     /// their aisle. Done now, while nothing is on screen to jump.
     func onLeave() {
-        orderTicks = nil
+        visitOrder.reset()
         if uiState.sections != nil { show() }
-    }
-    @ObservationIgnored private var askedGrocery = Set<DecisionQuestion>()
-
-    /// Asks the model about close names and trailing text (#99), in the background. The list
-    /// shows today's grouping until an answer lands; the decisions publisher then regroups it,
-    /// and a fresh answer may file a line out of Other beside its partner.
-    private func askGroceryQuestions(_ items: [GroceryItem], _ current: Decisions) {
-        guard let decisions else { return }
-        let unchecked = items.filter { !$0.checked }
-        let open = (GroceryDecisions.ingredientNames(unchecked) + GroceryDecisions.trailingTexts(unchecked, decisions: current)
-            + GroceryDecisions.samePairs(unchecked, decisions: current))
-            .filter { !current.isAnswered($0) && askedGrocery.insert($0).inserted }
-        if open.isEmpty { return }
-        Task {
-            await decisions.decide(open)
-            let after = await decisions.current()
-            let fresh = Set(open.filter { after.isAnswered($0) })
-            for (aisle, ids) in GroceryDecisions.filing(self.latestItems, fresh: fresh, decisions: after) {
-                await repository.fileFromOther(ids, aisle: aisle)
-            }
-        }
-    }
-
-    /// Asks the model the aisle of each item in Other whose name the keyword table doesn't know
-    /// (#104), in the background. Only an answer that lands now files the items, and only those
-    /// still in Other: an item in Other whose aisle was already decided was put there by the user.
-    private func askAisles(_ items: [GroceryItem]) {
-        guard let decisions else { return }
-        var byQuestion: [DecisionQuestion: [Int64]] = [:]
-        for item in items where item.aisle == .other && !item.checked && askedAisles.insert(item.id).inserted {
-            if let q = DecisionCandidates.aisle(item.text, language: item.language) { byQuestion[q, default: []].append(item.id) }
-        }
-        if byQuestion.isEmpty { return }
-        Task {
-            let before = await decisions.current()
-            let open = byQuestion.filter { !before.isAnswered($0.key) }
-            if open.isEmpty { return }
-            await decisions.decide(Array(open.keys))
-            let after = await decisions.current()
-            for (question, ids) in open {
-                guard let aisle = after.aisle(question.input, language: question.language) else { continue }
-                await repository.fileFromOther(ids, aisle: aisle)
-            }
-        }
     }
 
     func onDraftChange(_ text: String) { uiState.draft = text }
@@ -227,13 +168,6 @@ final class GroceriesViewModel {
             guard let deleted = await repository.delete(row.items.map(\.id)) else { return }
             removed(deleted, label)
         }
-    }
-
-    /// What the snackbar's Undo puts back: the list's items and, after "Done shopping", the pantry.
-    private struct Undo {
-        let groceries: DeletedGroceries?
-        var restocked: PantrySnapshot?
-        var added: [Int64] = []
     }
 
     /// "Done shopping" (#146): opens the sheet of ticked items the pantry can hold, one per
@@ -273,22 +207,8 @@ final class GroceriesViewModel {
     private func putAway(_ items: [PutAwayItem]) {
         let today = calendar.today()
         Task {
-            let restock = items.compactMap(\.trackedId)
-            var restocked: PantrySnapshot?
-            if !restock.isEmpty {
-                restocked = await pantry.snapshot(restock)
-                await pantry.restock(restock, day: today)
-            }
-            var added: [Int64] = []
-            for item in items where item.trackedId == nil {
-                let new = NewPantryItem(name: item.name, language: item.language, aisle: item.aisle, purchasedDay: today)
-                if let id = await pantry.add(new) { added.append(id) }
-            }
-            let cleared = await repository.clearChecked()
-            if cleared == nil && restocked == nil && added.isEmpty { return }
-            undo = Undo(groceries: cleared, restocked: restocked, added: added)
-            removals += 1
-            uiState.removed = RemovedGroceries(id: removals, label: nil, putAway: !items.isEmpty)
+            guard let removed = await removals.putAway(items, today: today) else { return }
+            uiState.removed = removed
         }
     }
 
@@ -321,26 +241,19 @@ final class GroceriesViewModel {
     }
 
     private func removed(_ deleted: DeletedGroceries, _ label: String?, all: Bool = false) {
-        undo = Undo(groceries: deleted)
-        removals += 1
-        uiState.removed = RemovedGroceries(id: removals, label: label, all: all)
+        uiState.removed = removals.removed(deleted, label, all: all)
     }
 
     /// Puts back what the last removal took: the items and, after "Done shopping", the pantry as it was.
     func onUndoRemove() {
-        guard let last = undo else { return }
-        undo = nil
+        guard let last = removals.takeUndo() else { return }
         uiState.removed = nil
-        Task {
-            if let groceries = last.groceries { await repository.restore(groceries) }
-            if let restocked = last.restocked { await pantry.restore(restocked) }
-            for id in last.added { _ = await pantry.delete(id) }
-        }
+        Task { await removals.restore(last) }
     }
 
     /// The snackbar timed out: the removal stands.
     func onSnackbarDismissed() {
-        undo = nil
+        removals.settle()
         uiState.removed = nil
     }
 
@@ -352,144 +265,3 @@ final class GroceriesViewModel {
         return GroceryShareText.format(sections, title: title, recipeTitles: uiState.recipeTitles, aisleName: aisleName)
     }
 }
-
-/// The visit's order (#219): `GroceryCombiner.sections` laid out as if each item were ticked as in
-/// `ticks` (an item not in it, as it is), then shown with every item's tick as it is now. A row
-/// ticks all its lines, so its lines share one tick and it stays one row.
-enum GroceriesOrder {
-    static func sections(_ items: [GroceryItem], decisions: Decisions, ticks: [Int64: Bool]) -> [GroceryCombiner.Section] {
-        let now = Dictionary(items.map { ($0.id, $0.checked) }, uniquingKeysWith: { a, _ in a })
-        func with(_ item: GroceryItem, _ tick: Bool?) -> GroceryItem {
-            guard let tick, tick != item.checked else { return item }
-            var copy = item
-            copy.checked = tick
-            return copy
-        }
-        let asWas = items.map { with($0, ticks[$0.id]) }
-        return GroceryCombiner.sections(asWas, decisions: decisions).map { section in
-            GroceryCombiner.Section(aisle: section.aisle, rows: section.rows.map { row in
-                switch row {
-                case .single(let item): return .single(with(item, now[item.id]))
-                case .combined(let name, let text, let items): return .combined(name: name, text: text, items: items.map { with($0, now[$0.id]) })
-                case .together(let name, let items): return .together(name: name, items: items.map { with($0, now[$0.id]) })
-                }
-            })
-        }
-    }
-}
-
-/// One line in the add sheet: `source`'s line number `index`.
-struct SourceLine: Hashable {
-    let source: String
-    let index: Int
-}
-
-/// The "Add to groceries" sheet (#50): one recipe's lines or every planned recipe's, each
-/// ticked to start unless the pantry has it (#51). `sources` is nil while the week's are loading. `added` is set once the
-/// ticked lines are written; the sheet closes on it.
-struct AddToGroceriesUiState: Equatable {
-    var sources: [GrocerySource]?
-    var unticked: Set<SourceLine> = []
-    var added = false
-
-    var tickedCount: Int {
-        (sources ?? []).reduce(0) { total, s in
-            total + s.lines.indices.filter { !unticked.contains(SourceLine(source: s.key, index: $0)) }.count
-        }
-    }
-}
-
-/// Backs the "Add to groceries" sheet (Android's AddToGroceriesViewModel). Adding is one
-/// deliberate act with a button: the cook first unticks what's already in the cupboard.
-@MainActor
-@Observable
-final class AddToGroceriesViewModel {
-    private(set) var uiState = AddToGroceriesUiState()
-
-    @ObservationIgnored private let repository: GroceryRepository
-    @ObservationIgnored private let preferences: AppPreferences
-    @ObservationIgnored private let pantry: PantryRepository
-    @ObservationIgnored private let decisions: DecisionRepository?
-
-    /// `decisions`: the model's answers (#104); none without it.
-    init(
-        repository: GroceryRepository, preferences: AppPreferences, pantry: PantryRepository,
-        decisions: DecisionRepository? = nil
-    ) {
-        self.repository = repository
-        self.preferences = preferences
-        self.pantry = pantry
-        self.decisions = decisions
-    }
-
-    /// One recipe, its `rendered` lines exactly as the reading view shows them.
-    func setRecipe(_ recipeId: Int64, title: String, language: String?, rendered: [String]) {
-        let sources = [GrocerySources.fromRecipe(recipeId: recipeId, title: title, language: language, rendered: rendered)]
-        uiState = AddToGroceriesUiState(sources: sources)
-        loading?.cancel()
-        loading = Task { await untickCovered(sources) }
-    }
-
-    /// Lines whose ingredient the pantry has (in stock, or a staple) start unticked (#51), so
-    /// the cook only reviews them. Matching is by name, never amount; a tick already changed stays.
-    private func untickCovered(_ sources: [GrocerySource]) async {
-        let items = await pantry.items()
-        guard !Task.isCancelled, !items.isEmpty, uiState.sources == sources else { return }
-        // Answers already cached count now (#104); new questions are asked for next time, so
-        // ticks never change under the cook while the sheet is open.
-        let decided = await decisions?.current() ?? .none
-        var questions: [DecisionQuestion] = []
-        for source in sources {
-            for (index, line) in source.lines.enumerated()
-            where PantryMatch.covered(line, language: source.language, pantry: items, decisions: decided) {
-                uiState.unticked.insert(SourceLine(source: source.key, index: index))
-            }
-            if let words = LanguageWords.forTag(source.language) {
-                let names = source.lines.compactMap { IngredientName.of($0, words: words) }
-                questions += DecisionCandidates.samePairs(names, language: source.language, pantry: items)
-            }
-        }
-        if let decisions, !questions.isEmpty { Task { await decisions.decide(questions) } }
-    }
-
-    /// Every recipe planned from `start` for seven days, at its planned servings, in the
-    /// user's units.
-    /// Starts empty at once (the sheet shows a spinner), then fills in; `loading` is that fetch
-    /// (and, for one recipe too, the pantry read that unticks what's there).
-    func loadWeek(_ start: Int64) {
-        uiState = AddToGroceriesUiState()
-        loading?.cancel()
-        loading = Task { [repository, preferences] in
-            let planned = await repository.plannedIngredients(start: start, end: start + 6)
-            guard !Task.isCancelled else { return }
-            let settings = preferences.current
-            let decided = await self.decisions?.current() ?? .none
-            let sources = GrocerySources.fromPlan(
-                planned, system: settings.unitSystem, convertLiquids: settings.convertLiquids, decisions: decided
-            )
-            uiState.sources = sources
-            await untickCovered(sources)
-        }
-    }
-
-    @ObservationIgnored private(set) var loading: Task<Void, Never>?
-
-    func onToggle(_ line: SourceLine) {
-        if uiState.unticked.contains(line) { uiState.unticked.remove(line) } else { uiState.unticked.insert(line) }
-    }
-
-    func onAdd() {
-        guard !uiState.added else { return }
-        let lines: [NewGroceryLine] = (uiState.sources ?? []).flatMap { source in
-            source.lines.enumerated().compactMap { index, text in
-                uiState.unticked.contains(SourceLine(source: source.key, index: index)) ? nil
-                    : NewGroceryLine(text: text, language: source.language, recipeId: source.recipeId, plannedDay: source.day)
-            }
-        }
-        guard !lines.isEmpty else { return }
-        uiState.added = true
-        Task { await repository.add(lines) }
-    }
-}
-
-extension AddToGroceriesViewModel: Identifiable {}
