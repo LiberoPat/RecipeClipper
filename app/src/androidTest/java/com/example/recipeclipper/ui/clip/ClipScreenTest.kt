@@ -192,6 +192,26 @@ class ClipScreenTest {
         waitForText("Name ✓ · 3 ingredients · 0 steps · no photo")
     }
 
+    /**
+     * #235: a frame inside the page (an ad, another site's widget) has the bridge's object too,
+     * but the app hears the main frame only, so a selection posted from the frame never shows.
+     * iOS's ClipUITests taps the same frame's button.
+     */
+    @Test
+    fun aFrameInsideThePageCantPostIntoTheClip() {
+        show()
+        // The frame can reach the bridge, so what follows is the app ignoring it.
+        waitForPage("typeof document.getElementById('ad').contentWindow.RCBridge", "\"object\"")
+        js("document.getElementById('ad').contentWindow.document.getElementById('post').click()")
+        Thread.sleep(1_500)
+        compose.onNodeWithText("1 line selected", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("No name · 0 ingredients · 0 steps · no photo").assertExists()
+
+        // The page itself is still heard.
+        select("title")
+        waitForText("1 line selected · each line becomes one item")
+    }
+
     @Test
     fun linksToOtherPagesDoNotLoad() {
         show()
@@ -223,6 +243,7 @@ class ClipScreenTest {
 <h2>Method</h2>
 <ol id="steps"><li id="step1">Brown the butter until it smells nutty.</li><li id="step2">Bake at 350°F for 11 to 13 minutes.</li></ol>
 <p><a id="elsewhere" href="https://hearthandcrumb.example/other">Another recipe</a></p>
+<iframe id="ad" title="Ad" width="300" height="50" srcdoc="<button id=&quot;post&quot; onclick=&quot;RCBridge.postMessage(JSON.stringify({type:'selection',text:'Buy now'}))&quot;>Ad: post a selection</button>"></iframe>
 </body></html>"""
     }
 }

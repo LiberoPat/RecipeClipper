@@ -143,4 +143,25 @@ final class MicrodataRecipeParserTests: XCTestCase {
         }
         XCTAssertEqual(recipe.name, "From JSON-LD")
     }
+
+    func testTheImageIsTheFirstWebImageNeverAnAddressOnTheDevice() {
+        func page(_ images: String, og: String = "") -> String {
+            """
+            <html><head>\(og)</head><body>
+            <div itemscope itemtype="https://schema.org/Recipe"><span itemprop="name">Toast</span>
+            \(images)<span itemprop="recipeIngredient">1 slice bread</span></div></body></html>
+            """
+        }
+        let og = #"<meta property="og:image" content="https://img.example/og.jpg">"#
+
+        // A lazy loader's placeholder gives way to the next image, or to og:image.
+        XCTAssertEqual(
+            parse(page(#"<meta itemprop="image" content="data:image/gif;base64,R0lGOD"><img itemprop="image" src="https://img.example/toast.jpg">"#))?.image,
+            "https://img.example/toast.jpg"
+        )
+        XCTAssertEqual(parse(page(#"<meta itemprop="image" content="file:///data/x.db">"#, og: og))?.image, "https://img.example/og.jpg")
+        XCTAssertNotNil(parse(page(#"<meta itemprop="image" content="content://media/external/images/media/1">"#)))
+        XCTAssertNil(parse(page(#"<meta itemprop="image" content="content://media/external/images/media/1">"#))?.image)
+        XCTAssertNil(parse(page("", og: #"<meta property="og:image" content="file:///data/x.db">"#))?.image)
+    }
 }

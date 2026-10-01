@@ -13,6 +13,15 @@ enum ClipPageEvent: Equatable {
     /// The post and its loaded comments, read for the Text view (#213).
     case pageText(String)
 
+    /// A message from `clipper.js`, read only when it came from the page's main frame (#235).
+    /// The `rc` handler is there for every frame, so an ad or another site's iframe inside the
+    /// page could otherwise post a selection, a tag or a photo into the clip. Android's
+    /// `ClipBridge` is the same rule.
+    static func accept(_ body: Any, isMainFrame: Bool) -> ClipPageEvent? {
+        guard isMainFrame, let json = body as? String else { return nil }
+        return decode(json)
+    }
+
     static func decode(_ json: String) -> ClipPageEvent? {
         guard let data = json.data(using: .utf8),
               let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -21,7 +30,8 @@ enum ClipPageEvent: Equatable {
         switch type {
         case "selection": return .selection(message["text"] as? String ?? "")
         case "tag": return (message["field"] as? String).flatMap(ClipField.init(rawValue:)).map { .tagTapped($0) }
-        case "image": return (message["src"] as? String).flatMap { $0.isEmpty ? nil : .imageTapped($0) }
+        // Whether it's a picture the app can use is the ViewModel's call (WebImageUrl).
+        case "image": return .imageTapped(message["src"] as? String ?? "")
         case "noImage": return .noImage
         default: return nil
         }
@@ -48,8 +58,9 @@ enum ClipperScript {
 }
 
 /// The page being clipped, in a `WKWebView` with `clipper.js` injected at document end. The view
-/// layer's half of the bridge (Android's ClipWebPage): it forwards the page's events and pushes
-/// `syncState` and `pickingPhoto` into the page whenever they change. Links to other pages are
+/// layer's half of the bridge (Android's ClipWebPage): it forwards the page's events, heard from
+/// its main frame only (#235; the scripts run there only too), and pushes `syncState` and
+/// `pickingPhoto` into the page whenever they change. Links to other pages are
 /// blocked, so the clip always comes from the page it is saved under. `fixtureHTML` replaces the
 /// live page in UI tests.
 ///
@@ -205,8 +216,9 @@ struct ClipWebPage: UIViewRepresentable {
             decisionHandler(loads ? .allow : .cancel)
         }
 
+        /// The main frame's messages only (#235): `ClipPageEvent.accept` drops the rest.
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            guard let json = message.body as? String, let event = ClipPageEvent.decode(json) else { return }
+            guard let event = ClipPageEvent.accept(message.body, isMainFrame: message.frameInfo.isMainFrame) else { return }
             onEvent(event)
         }
     }
