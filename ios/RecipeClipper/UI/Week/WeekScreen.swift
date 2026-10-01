@@ -202,8 +202,12 @@ struct WeekScreen: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(previous)
+            // One line: the range names both weekdays since #232, so it shrinks a little
+            // beside "Today" rather than wrap.
             Text(label)
                 .textStyle(Typography.titleMedium)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
                 .accessibilityIdentifier(labelIdentifier)
             Button(action: onNext) {
                 Text("›").textStyle(Typography.headlineSmall).frame(minWidth: 40, minHeight: 40)
@@ -240,36 +244,46 @@ private struct DayList: View {
     var body: some View {
         let state = vm.uiState
         let typeNames = Dictionary(uniqueKeysWithValues: state.mealTypes.map { ($0.id, $0.name) })
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(state.allDays, id: \.self) { day in
-                    DaySection(
-                        vm: vm, day: day, isToday: day == state.today, meals: state.mealsOn(day),
-                        typeNames: typeNames, onOpenRecipe: onOpenRecipe
-                    )
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(state.allDays, id: \.self) { day in
+                        DaySection(
+                            vm: vm, day: day, isToday: day == state.today, meals: state.mealsOn(day),
+                            typeNames: typeNames, onOpenRecipe: onOpenRecipe
+                        )
+                    }
                 }
+                .scrollTargetLayout()
+                .padding(.horizontal, 20)
+                .padding(.bottom, 32)
+                .readableColumn()
             }
-            .scrollTargetLayout()
-            .padding(.horizontal, 20)
-            .padding(.bottom, 32)
-            .readableColumn()
-        }
-        .scrollPosition(id: $position, anchor: .top)
-        .accessibilityIdentifier("weekList")
-        .onChange(of: position) { _, day in
-            if let day { vm.onTopDayChanged(day) }
-        }
-        .onChange(of: state.scrollTo, initial: true) { _, target in
-            guard let target else { return }
-            if target.animate {
-                withAnimation(.easeInOut(duration: 0.35)) {
+            .scrollPosition(id: $position, anchor: .top)
+            .accessibilityIdentifier("weekList")
+            .onChange(of: position) { _, day in
+                if let day { vm.onTopDayChanged(day) }
+            }
+            .onChange(of: state.scrollTo, initial: true) { _, target in
+                guard let target else { return }
+                if target.animate {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        position = target.day
+                    } completion: {
+                        // A long way lands by estimated heights: settle it exactly.
+                        proxy.scrollTo(target.day, anchor: .top)
+                        vm.onScrollHandled(target.id, topDay: nil)
+                    }
+                } else {
                     position = target.day
-                } completion: {
                     vm.onScrollHandled(target.id, topDay: nil)
+                    // A far jump lands by estimated heights; once the days around it are laid out,
+                    // put it exactly at the top.
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(150))
+                        proxy.scrollTo(target.day, anchor: .top)
+                    }
                 }
-            } else {
-                position = target.day
-                vm.onScrollHandled(target.id, topDay: nil)
             }
         }
     }
