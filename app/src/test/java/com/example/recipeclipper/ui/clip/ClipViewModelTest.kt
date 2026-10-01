@@ -33,13 +33,16 @@ class ClipViewModelTest {
     private fun viewModel(handle: SavedStateHandle = SavedStateHandle(mapOf(ClipViewModel.URL_ARG to shared))) =
         ClipViewModel(handle, repository, store)
 
+    /** Field first (#237): arms [field] (unless it is armed), selects [text] on the page, confirms. */
     private fun ClipViewModel.select(text: String, field: ClipField) {
+        if (uiState.value.armed != field) onFieldButton(field)
         onSelectionChanged(text)
-        onAssign(field)
+        onConfirm()
     }
 
     private val ClipViewModel.draft get() = uiState.value.draft
     private val ClipViewModel.message get() = uiState.value.notice?.message
+    private val ClipViewModel.hint get() = uiState.value.hint
 
     @Test fun `the page is the cleaned link`() {
         val vm = viewModel()
@@ -70,39 +73,164 @@ class ClipViewModelTest {
         assertEquals(listOf("1 cup flour", "2 eggs"), vm.uiState.value.selection)
     }
 
-    @Test fun `assigning replaces the field, marks it and says how many`() {
-        val vm = viewModel()
-        vm.select("a\nb\nc\nd\ne\nf\ng\nh", ClipField.INGREDIENTS)
-        vm.select("1\n2\n3\n4", ClipField.INGREDIENTS)
+    // --- Field first (#237) ---
 
-        assertEquals(listOf("1", "2", "3", "4"), vm.draft.ingredients)
-        assertEquals(ClipMessage.Assigned(ClipField.INGREDIENTS, 4), vm.message)
-        assertEquals("m2", vm.uiState.value.newMarkId)
-        assertEquals(emptyList<String>(), vm.uiState.value.selection)
+    @Test fun `it opens with nothing armed, pointing to Name`() {
+        val vm = viewModel()
+        assertNull(vm.uiState.value.armed)
+        assertEquals(ClipHint.Next(added = null, next = ClipField.NAME), vm.hint)
     }
 
-    @Test fun `a name joins the selected lines`() {
+    @Test fun `a field button arms its field, again disarms it, and another switches`() {
         val vm = viewModel()
-        vm.select("Brown Butter\nOat Cookies", ClipField.NAME)
-        assertEquals("Brown Butter Oat Cookies", vm.draft.name)
+        vm.onFieldButton(ClipField.INGREDIENTS)
+        assertEquals(ClipField.INGREDIENTS, vm.uiState.value.armed)
+        assertEquals(ClipHint.Select(ClipField.INGREDIENTS), vm.hint)
+
+        vm.onFieldButton(ClipField.STEPS)
+        assertEquals(ClipField.STEPS, vm.uiState.value.armed)
+
+        vm.onFieldButton(ClipField.STEPS)
+        assertNull(vm.uiState.value.armed)
     }
 
-    @Test fun `assigning with nothing selected does nothing`() {
+    @Test fun `a selection while armed offers the confirm, and the confirm adds it`() {
         val vm = viewModel()
-        vm.onAssign(ClipField.STEPS)
-        vm.select(" \n ", ClipField.STEPS)
+        vm.onFieldButton(ClipField.INGREDIENTS)
+        vm.onSelectionChanged("1 cup flour\n2 eggs\n1 tsp salt")
+        assertEquals(ClipHint.Confirm(ClipField.INGREDIENTS, 3), vm.hint)
+        // Nothing is added before the confirm.
         assertTrue(vm.draft.isEmpty)
-        assertNull(vm.uiState.value.notice)
+
+        vm.onConfirm()
+        assertEquals(listOf("1 cup flour", "2 eggs", "1 tsp salt"), vm.draft.ingredients)
+        assertEquals("m1", vm.uiState.value.newMarkId)
+        assertEquals(emptyList<String>(), vm.uiState.value.selection)
+        // Ingredients stay armed for the next block; the hint says what was added and what's next.
+        assertEquals(ClipField.INGREDIENTS, vm.uiState.value.armed)
+        assertEquals(ClipHint.Next(ClipAdded(ClipField.INGREDIENTS, 3), ClipField.NAME), vm.hint)
+        // The words are in the hint bar, not a snackbar.
+        assertNull(vm.message)
+    }
+
+    @Test fun `a name confirms as one line, replaces, and disarms`() {
+        val vm = viewModel()
+        vm.onFieldButton(ClipField.NAME)
+        vm.onSelectionChanged("Brown Butter\nOat Cookies")
+        assertEquals(ClipHint.Confirm(ClipField.NAME, 1), vm.hint)
+        vm.onConfirm()
+        assertEquals("Brown Butter Oat Cookies", vm.draft.name)
+        assertNull(vm.uiState.value.armed)
+
+        vm.select("Oat Cookies", ClipField.NAME)
+        assertEquals("Oat Cookies", vm.draft.name)
+        assertEquals(listOf("m2"), vm.draft.marks.map { it.id })
+    }
+
+    @Test fun `ingredients and steps add up across separate blocks`() {
+        val vm = viewModel()
+        vm.select("1 cup flour\n2 eggs", ClipField.INGREDIENTS)
+        vm.select("For the glaze:\n1 cup sugar", ClipField.INGREDIENTS)
+        vm.select("Mix.", ClipField.STEPS)
+        vm.select("Bake.", ClipField.STEPS)
+
+        assertEquals(listOf("1 cup flour", "2 eggs", "For the glaze:", "1 cup sugar"), vm.draft.ingredients)
+        assertEquals(listOf("Mix.", "Bake."), vm.draft.steps)
+        assertEquals(listOf("m1", "m2", "m3", "m4"), vm.draft.marks.map { it.id })
+        assertEquals(ClipHint.Next(ClipAdded(ClipField.STEPS, 1), ClipField.NAME), vm.hint)
+    }
+
+    @Test fun `switching fields keeps the selection for the new one`() {
+        val vm = viewModel()
+        vm.onFieldButton(ClipField.STEPS)
+        vm.onSelectionChanged("1 cup flour\n2 eggs")
+        vm.onFieldButton(ClipField.INGREDIENTS)
+        assertEquals(ClipHint.Confirm(ClipField.INGREDIENTS, 2), vm.hint)
+        vm.onConfirm()
+        assertEquals(listOf("1 cup flour", "2 eggs"), vm.draft.ingredients)
+        assertEquals(emptyList<String>(), vm.draft.steps)
+    }
+
+    @Test fun `disarming, or Clear, drops the selection and tells the page`() {
+        val vm = viewModel()
+        vm.onFieldButton(ClipField.STEPS)
+        vm.onSelectionChanged("Mix.")
+        val cleared = vm.uiState.value.clearSelection
+
+        vm.onClearSelection()
+        assertEquals(emptyList<String>(), vm.uiState.value.selection)
+        assertEquals(ClipField.STEPS, vm.uiState.value.armed)
+        assertEquals(cleared + 1, vm.uiState.value.clearSelection)
+
+        vm.onSelectionChanged("Bake.")
+        vm.onFieldButton(ClipField.STEPS)
+        assertNull(vm.uiState.value.armed)
+        assertEquals(emptyList<String>(), vm.uiState.value.selection)
+        assertEquals(cleared + 2, vm.uiState.value.clearSelection)
+        vm.onConfirm()
+        assertTrue(vm.draft.isEmpty)
+    }
+
+    @Test fun `text selected with nothing armed (a long press) asks for the field, which then confirms`() {
+        val vm = viewModel()
+        vm.onSelectionChanged("Mix.\nBake.")
+        assertEquals(ClipHint.Selected(2), vm.hint)
+        vm.onConfirm()
+        assertTrue(vm.draft.isEmpty)
+
+        vm.onFieldButton(ClipField.STEPS)
+        assertEquals(ClipHint.Confirm(ClipField.STEPS, 2), vm.hint)
+        vm.onConfirm()
+        assertEquals(listOf("Mix.", "Bake."), vm.draft.steps)
+    }
+
+    @Test fun `confirming with nothing selected does nothing`() {
+        val vm = viewModel()
+        vm.onConfirm()
+        vm.onFieldButton(ClipField.STEPS)
+        vm.onConfirm()
+        vm.onSelectionChanged(" \n ")
+        vm.onConfirm()
+        assertTrue(vm.draft.isEmpty)
+        assertNull(vm.uiState.value.lastAdded)
     }
 
     @Test fun `the selection is used once`() {
         val vm = viewModel()
         vm.select("Mix.", ClipField.STEPS)
-        vm.onAssign(ClipField.INGREDIENTS)
+        vm.onFieldButton(ClipField.INGREDIENTS)
+        vm.onConfirm()
         assertEquals(emptyList<String>(), vm.draft.ingredients)
     }
 
-    @Test fun `undo puts back the draft before the last assignment, once`() {
+    @Test fun `the hint walks through the fields, then says to tap Done`() {
+        val vm = viewModel()
+        vm.onFieldButton(ClipField.PHOTO)
+        vm.onImageTapped("https://img.example/cookies.jpg")
+        // The owner's example: "Photo added. Next: tap Name".
+        assertEquals(ClipHint.Next(ClipAdded(ClipField.PHOTO, 1), ClipField.NAME), vm.hint)
+
+        vm.select("Cookies", ClipField.NAME)
+        assertEquals(ClipHint.Next(ClipAdded(ClipField.NAME, 1), ClipField.INGREDIENTS), vm.hint)
+        vm.select("flour\nsugar", ClipField.INGREDIENTS)
+        assertEquals(ClipHint.Next(ClipAdded(ClipField.INGREDIENTS, 2), ClipField.STEPS), vm.hint)
+        vm.select("Bake.", ClipField.STEPS)
+        assertEquals(ClipHint.Next(ClipAdded(ClipField.STEPS, 1), null), vm.hint)
+
+        // Arming another field moves on from what was added.
+        vm.onFieldButton(ClipField.NAME)
+        assertEquals(ClipHint.Select(ClipField.NAME), vm.hint)
+    }
+
+    @Test fun `without a photo, the hint points to it last`() {
+        val vm = viewModel()
+        vm.select("Cookies", ClipField.NAME)
+        vm.select("flour", ClipField.INGREDIENTS)
+        vm.select("Bake.", ClipField.STEPS)
+        assertEquals(ClipHint.Next(ClipAdded(ClipField.STEPS, 1), ClipField.PHOTO), vm.hint)
+    }
+
+    @Test fun `undo takes back each add in turn`() {
         val vm = viewModel()
         vm.select("Cookies", ClipField.NAME)
         vm.select("flour\nsugar", ClipField.INGREDIENTS)
@@ -110,25 +238,39 @@ class ClipViewModelTest {
 
         vm.onUndo()
         assertEquals(listOf("flour", "sugar"), vm.draft.ingredients)
-        assertEquals("m2", vm.draft.marks[ClipField.INGREDIENTS])
+        assertEquals(listOf("m1", "m2"), vm.draft.marks.map { it.id })
         assertNull(vm.uiState.value.newMarkId)
+        assertNull(vm.uiState.value.lastAdded)
 
         vm.onUndo()
-        assertEquals(listOf("flour", "sugar"), vm.draft.ingredients)
+        assertEquals(emptyList<String>(), vm.draft.ingredients)
+        vm.onUndo()
+        assertTrue(vm.draft.isEmpty)
+        vm.onUndo()
+        assertTrue(vm.draft.isEmpty)
     }
 
-    @Test fun `tapping a tag clears that field, with undo`() {
+    @Test fun `tapping an add's tag takes back just that add, with undo`() {
         val vm = viewModel()
         vm.select("Cookies", ClipField.NAME)
         vm.select("Mix.\nBake.", ClipField.STEPS)
+        vm.select("Cool.", ClipField.STEPS)
 
-        vm.onTagTapped(ClipField.STEPS)
-        assertEquals(emptyList<String>(), vm.draft.steps)
+        vm.onTagTapped("m2")
+        assertEquals(listOf("Cool."), vm.draft.steps)
         assertEquals("Cookies", vm.draft.name)
-        assertEquals(ClipMessage.Cleared(ClipField.STEPS), vm.message)
+        assertEquals(ClipMessage.Removed(ClipField.STEPS, 2), vm.message)
 
         vm.onUndo()
-        assertEquals(listOf("Mix.", "Bake."), vm.draft.steps)
+        assertEquals(listOf("Mix.", "Bake.", "Cool."), vm.draft.steps)
+    }
+
+    @Test fun `a tag the draft no longer holds does nothing`() {
+        val vm = viewModel()
+        vm.select("Cookies", ClipField.NAME)
+        vm.onTagTapped("m9")
+        assertEquals("Cookies", vm.draft.name)
+        assertNull(vm.message)
     }
 
     @Test fun `the photo is the next image tapped after the Photo button, and only that`() {
@@ -136,21 +278,31 @@ class ClipViewModelTest {
         vm.onImageTapped("https://img.example/ad.jpg")
         assertNull(vm.draft.photo)
 
-        vm.onPhotoButton()
+        vm.onFieldButton(ClipField.PHOTO)
         assertTrue(vm.uiState.value.pickingPhoto)
+        assertEquals(ClipHint.PickPhoto, vm.hint)
         vm.onImageTapped("https://img.example/cookies.jpg")
         vm.onImageTapped("https://img.example/ad.jpg")
 
         assertEquals("https://img.example/cookies.jpg", vm.draft.photo)
         assertFalse(vm.uiState.value.pickingPhoto)
-        assertEquals(ClipMessage.Assigned(ClipField.PHOTO, 1), vm.message)
+        assertEquals(ClipAdded(ClipField.PHOTO, 1), vm.uiState.value.lastAdded)
     }
 
-    @Test fun `the Photo button toggles picking off again`() {
+    @Test fun `the Photo button disarms photo picking again`() {
         val vm = viewModel()
-        vm.onPhotoButton()
-        vm.onPhotoButton()
+        vm.onFieldButton(ClipField.PHOTO)
+        vm.onFieldButton(ClipField.PHOTO)
         assertFalse(vm.uiState.value.pickingPhoto)
+    }
+
+    @Test fun `arming the photo drops a text selection, which it can't use`() {
+        val vm = viewModel()
+        vm.onFieldButton(ClipField.STEPS)
+        vm.onSelectionChanged("Mix.")
+        vm.onFieldButton(ClipField.PHOTO)
+        assertEquals(emptyList<String>(), vm.uiState.value.selection)
+        assertEquals(ClipHint.PickPhoto, vm.hint)
     }
 
     // The owner's "stuck in the photo section": a tap on a picture the page can't give an
@@ -158,7 +310,7 @@ class ClipViewModelTest {
 
     @Test fun `a tap with no readable picture ends picking, says so, and the other fields go on`() {
         val vm = viewModel()
-        vm.onPhotoButton()
+        vm.onFieldButton(ClipField.PHOTO)
         vm.onNoImageTapped()
 
         assertFalse(vm.uiState.value.pickingPhoto)
@@ -167,14 +319,13 @@ class ClipViewModelTest {
 
         vm.select("Brown Butter Oat Cookies", ClipField.NAME)
         assertEquals("Brown Butter Oat Cookies", vm.draft.name)
-        assertEquals(ClipMessage.Assigned(ClipField.NAME, 1), vm.message)
     }
 
     @Test fun `a tap with no readable picture keeps the photo there was`() {
         val vm = viewModel()
-        vm.onPhotoButton()
+        vm.onFieldButton(ClipField.PHOTO)
         vm.onImageTapped("https://img.example/cookies.jpg")
-        vm.onPhotoButton()
+        vm.onFieldButton(ClipField.PHOTO)
         vm.onNoImageTapped()
         assertEquals("https://img.example/cookies.jpg", vm.draft.photo)
         assertFalse(vm.uiState.value.pickingPhoto)
@@ -188,31 +339,30 @@ class ClipViewModelTest {
 
     @Test fun `Skip leaves the photo step without a photo`() {
         val vm = viewModel()
-        vm.onPhotoButton()
+        vm.onFieldButton(ClipField.PHOTO)
         vm.onSkipPhoto()
         assertFalse(vm.uiState.value.pickingPhoto)
         assertNull(vm.draft.photo)
         assertNull(vm.uiState.value.notice)
     }
 
-    @Test fun `selecting text while picking moves on from the photo`() {
+    @Test fun `selecting text (a long press) while picking moves on from the photo`() {
         val vm = viewModel()
-        vm.onPhotoButton()
+        vm.onFieldButton(ClipField.PHOTO)
         vm.onSelectionChanged("1 cup flour\n2 eggs")
         assertFalse(vm.uiState.value.pickingPhoto)
 
-        vm.onAssign(ClipField.INGREDIENTS)
+        vm.onFieldButton(ClipField.INGREDIENTS)
+        vm.onConfirm()
         assertEquals(listOf("1 cup flour", "2 eggs"), vm.draft.ingredients)
-        // Nothing sends the toolbar back to "Tap the picture" once the selection is used.
         assertFalse(vm.uiState.value.pickingPhoto)
     }
 
-    @Test fun `the same selection reported again, or cleared, leaves picking on`() {
+    @Test fun `a selection cleared while picking leaves picking on`() {
         val vm = viewModel()
         vm.onSelectionChanged("Brown Butter")
-        vm.onPhotoButton()
-        vm.onSelectionChanged("Brown Butter")
-        assertTrue(vm.uiState.value.pickingPhoto)
+        vm.onFieldButton(ClipField.PHOTO)
+        // Arming the photo dropped the selection; the page reports it gone.
         vm.onSelectionChanged("")
         assertTrue(vm.uiState.value.pickingPhoto)
     }
@@ -220,10 +370,10 @@ class ClipViewModelTest {
     @Test fun `tapping a tag while picking ends picking`() {
         val vm = viewModel()
         vm.select("Brown Butter", ClipField.NAME)
-        vm.onPhotoButton()
-        vm.onTagTapped(ClipField.NAME)
+        vm.onFieldButton(ClipField.PHOTO)
+        vm.onTagTapped("m1")
         assertFalse(vm.uiState.value.pickingPhoto)
-        assertEquals(ClipMessage.Cleared(ClipField.NAME), vm.message)
+        assertEquals(ClipMessage.Removed(ClipField.NAME, 1), vm.message)
     }
 
     @Test fun `done opens review once there is a name plus ingredients or steps`() {
@@ -288,7 +438,7 @@ class ClipViewModelTest {
         val vm = viewModel()
         vm.select("Cookies", ClipField.NAME)
         vm.select("flour", ClipField.INGREDIENTS)
-        vm.onPhotoButton()
+        vm.onFieldButton(ClipField.PHOTO)
         vm.onImageTapped("https://img.example/c.jpg")
         vm.onReview()
         vm.onServesChange("24")
@@ -450,6 +600,38 @@ class ClipViewModelTest {
         assertTrue(before === vm.uiState.value.pageText)
     }
 
+    // The owner (#237): "when toggling a reddit page from text back to page, page doesnt work".
+    // Page, Text, Page: the page takes the armed field's selections again, as before.
+    @Test fun `page, then text, then page again, the armed field carries over and the page works as before`() {
+        val vm = redditViewModel()
+        vm.onFieldButton(ClipField.INGREDIENTS)
+        vm.onSelectionChanged("on the page")
+        val cleared = vm.uiState.value.clearSelection
+
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        assertEquals(ClipField.INGREDIENTS, vm.uiState.value.armed)
+        assertEquals(cleared + 1, vm.uiState.value.clearSelection)
+        vm.onSelectionChanged("3 apples\n1 crust")
+        vm.onConfirm()
+
+        vm.onShowPage()
+        val state = vm.uiState.value
+        assertFalse(state.showingText)
+        assertFalse(state.readingText)
+        assertEquals(ClipField.INGREDIENTS, state.armed)
+        assertEquals(emptyList<String>(), state.selection)
+        assertNull(state.newMarkId)
+        assertEquals(cleared + 2, state.clearSelection)
+
+        // The page's next selection goes in as the Text view's did.
+        vm.onSelectionChanged("1 tsp cinnamon")
+        assertEquals(ClipHint.Confirm(ClipField.INGREDIENTS, 1), vm.hint)
+        vm.onConfirm()
+        assertEquals(listOf("3 apples", "1 crust", "1 tsp cinnamon"), vm.draft.ingredients)
+        assertEquals("m2", vm.uiState.value.newMarkId)
+    }
+
     @Test fun `a page with no post yet says so and stays on the page`() {
         val vm = redditViewModel()
         vm.onShowText()
@@ -463,9 +645,16 @@ class ClipViewModelTest {
         val vm = redditViewModel()
         vm.onShowText()
         vm.onPageText(postHtml)
-        vm.onPhotoButton()
+        vm.onFieldButton(ClipField.PHOTO)
         assertTrue(vm.uiState.value.pickingPhoto)
         assertFalse(vm.uiState.value.showingText)
+    }
+
+    @Test fun `the text view never keeps photo picking`() {
+        val vm = redditViewModel()
+        vm.onFieldButton(ClipField.PHOTO)
+        vm.onShowText()
+        assertFalse(vm.uiState.value.pickingPhoto)
     }
 
     @Test fun `leaving keeps the draft for the session, and reopening restores it`() {
@@ -499,7 +688,7 @@ class ClipViewModelTest {
     @Test fun `clearing everything leaves no draft behind`() {
         val vm = viewModel()
         vm.select("Cookies", ClipField.NAME)
-        vm.onTagTapped(ClipField.NAME)
+        vm.onTagTapped("m1")
         assertNull(store.get(cleaned))
     }
 
@@ -518,10 +707,12 @@ class ClipViewModelTest {
     @Test fun `a shown notice is cleared only by its own serial`() {
         val vm = viewModel()
         vm.select("Cookies", ClipField.NAME)
-        val first = vm.uiState.value.notice!!
         vm.select("Mix.", ClipField.STEPS)
+        vm.onTagTapped("m1")
+        val first = vm.uiState.value.notice!!
+        vm.onTagTapped("m2")
         vm.onNoticeShown(first.serial)
-        assertEquals(ClipMessage.Assigned(ClipField.STEPS, 1), vm.message)
+        assertEquals(ClipMessage.Removed(ClipField.STEPS, 1), vm.message)
         vm.onNoticeShown(vm.uiState.value.notice!!.serial)
         assertNull(vm.uiState.value.notice)
     }

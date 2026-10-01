@@ -56,7 +56,7 @@ class ClipHumanCheckNoteScreenTest {
         showCheck()
 
         compose.onNodeWithText(note).assertIsDisplayed()
-        compose.onNodeWithText("Select text on the page", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Tap Name below", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Done").assertIsNotEnabled()
         compose.onNodeWithText("Try again").assertDoesNotExist()
     }
@@ -73,7 +73,7 @@ class ClipHumanCheckNoteScreenTest {
 
         compose.onNodeWithText(note).assertDoesNotExist()
         compose.onNodeWithText(noRecipeNote).assertIsDisplayed()
-        compose.onNodeWithText("Select text on the page", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Tap Name below", substring = true).assertIsDisplayed()
     }
 
     @Test

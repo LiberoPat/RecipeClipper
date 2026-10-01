@@ -210,7 +210,7 @@
           e.preventDefault();
           e.stopPropagation();
           dragging = end;
-          if (handle.setPointerCapture) handle.setPointerCapture(e.pointerId);
+          try { handle.setPointerCapture(e.pointerId); } catch (x) { /* no such pointer: a script's event */ }
         });
         handle.addEventListener('pointermove', function (e) {
           if (dragging !== end) return;
@@ -277,6 +277,7 @@
   function setArmed(field) {
     armed = field || null;
     document.documentElement.classList.toggle('rc-armed', !!armed);
+    document.documentElement.setAttribute('data-rc-armed', armed || '');
   }
 
   // A tap while a text field is armed selects (in the capture phase, before the page's own
