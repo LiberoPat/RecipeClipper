@@ -10,7 +10,7 @@ class WprmIngredientsTest {
 
     private fun ingredients(page: String): List<String> {
         val html = javaClass.getResourceAsStream("/pages/$page.html")!!.bufferedReader().use { it.readText() }
-        return (BlogRecipeSource.parse(html, "https://example.com/r") as ParseResult.Success).recipe.ingredients
+        return (BlogPageParser.parse(html, "https://example.com/r") as ParseResult.Success).recipe.ingredients
     }
 
     private fun card(vararg items: String) =

@@ -16,7 +16,7 @@ class SiteRulesTest {
 
     private fun html(page: String) = javaClass.getResourceAsStream("/pages/$page.html")!!.bufferedReader().use { it.readText() }
 
-    private fun recipe(page: String, url: String): Recipe = (BlogRecipeSource.parse(html(page), url) as ParseResult.Success).recipe
+    private fun recipe(page: String, url: String): Recipe = (BlogPageParser.parse(html(page), url) as ParseResult.Success).recipe
 
     private val nyt = "https://cooking.nytimes.com/recipes/1026066-lemon-layer-cake-with-cream-cheese-frosting"
     private val bbc = "https://www.bbcgoodfood.com/recipes/classic-victoria-sandwich-recipe"
@@ -79,10 +79,10 @@ class SiteRulesTest {
 
     @Test fun `the site check sees each rule match, and a renamed class stop matching`() {
         val page = Jsoup.parse(html("site-bonappetit-carrot-cake"))
-        assertEquals(mapOf("ingredients" to true, "step noise" to true), BlogRecipeSource.siteRuleCheck(page, ba))
+        assertEquals(mapOf("ingredients" to true, "step noise" to true), BlogPageParser.siteRuleCheck(page, ba))
         val renamed = Jsoup.parse(html("site-bbcgoodfood-victoria-sandwich").replace("ingredients-list__item ", "item "))
-        assertEquals(mapOf("ingredients" to false), BlogRecipeSource.siteRuleCheck(renamed, bbc))
-        assertNull(BlogRecipeSource.siteRuleCheck(page, "https://example.com/carrot-cake"))
+        assertEquals(mapOf("ingredients" to false), BlogPageParser.siteRuleCheck(renamed, bbc))
+        assertNull(BlogPageParser.siteRuleCheck(page, "https://example.com/carrot-cake"))
     }
 
     @Test fun `noise is cut only where its phrase starts, and never takes the only step`() {
