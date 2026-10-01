@@ -1,0 +1,32 @@
+# Dependabot: security updates only (#235).
+#
+# open-pull-requests-limit: 0 turns version updates off, so the only pull requests that come in
+# are security updates (enabled in the repository's settings; they keep GitHub's own limit).
+# Versions are otherwise bumped by hand, and the coupled Android toolchain (Gradle, AGP, Kotlin,
+# KSP, Hilt, Room, the Compose BOM with navigation-compose) always together: a security PR that
+# touches one of them is replaced by a hand bump of the whole set (docs/testing.md).
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    groups:
+      # Fixes to the toolchain arrive as one pull request, never one piece at a time.
+      toolchain:
+        applies-to: security-updates
+        patterns:
+          - "com.android.*"
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp*"
+          - "com.google.dagger*"
+          - "androidx.room*"
+          - "androidx.compose*"
+          - "androidx.navigation*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
