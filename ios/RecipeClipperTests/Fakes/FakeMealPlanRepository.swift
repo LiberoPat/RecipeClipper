@@ -31,8 +31,12 @@ final class FakeMealPlanRepository: MealPlanRepository {
 
     func observeMealTypes() -> AnyPublisher<[MealType], Never> { types.eraseToAnyPublisher() }
 
+    /// Every day range asked for, in order: how the Week tab pages (#232).
+    var observedRanges: [ClosedRange<Int64>] = []
+
     func observeDays(start: Int64, end: Int64) -> AnyPublisher<[PlannedMeal], Never> {
-        meals.combineLatest(types)
+        observedRanges.append(start...end)
+        return meals.combineLatest(types)
             .map { all, order in
                 let rank = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1.id, $0) })
                 return all.enumerated()
@@ -124,6 +128,8 @@ final class FakeMealPlanRepository: MealPlanRepository {
 final class FakePlanCalendar: PlanCalendar {
     /// 2026-09-23, a Wednesday.
     static let wednesday: Int64 = 20_719
+    /// 2026-10-01, a Thursday.
+    static let thursday: Int64 = 20_727
     static let mondayFirst = 2
     static let sundayFirst = 1
 
@@ -147,23 +153,23 @@ final class FakePlanCalendar: PlanCalendar {
 extension FakeMealPlanRepository {
     func observeMenus() -> AnyPublisher<[WeekMenu], Never> { menus.eraseToAnyPublisher() }
 
-    func saveWeekAsMenu(name: String, weekStart: Int64) async -> Bool {
+    func saveWeekAsMenu(name: String, weekStart: Int64, firstDayOfWeek: Int) async -> Bool {
         let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let week = meals.value.filter { $0.day >= weekStart && $0.day <= weekStart + 6 }
         guard !text.isEmpty, !week.isEmpty else { return false }
         nextId += 1
-        menuMeals[nextId] = week.map { ($0.day - weekStart, $0) }
+        menuMeals[nextId] = week.map { (Int64(PlanDays.menuOffset($0.day, firstDayOfWeek: firstDayOfWeek)), $0) }
         menus.value = (menus.value + [WeekMenu(id: nextId, name: text, mealCount: week.count)])
             .sorted { $0.name.lowercased() < $1.name.lowercased() }
         return true
     }
 
-    func applyMenu(id: Int64, weekStart: Int64) async -> Int {
+    func applyMenu(id: Int64, weekStart: Int64, firstDayOfWeek: Int) async -> Int {
         let saved = menuMeals[id] ?? []
         for (offset, meal) in saved {
             nextId += 1
             meals.value.append(PlannedMeal(
-                id: nextId, day: weekStart + offset, mealTypeId: meal.mealTypeId, recipeId: meal.recipeId,
+                id: nextId, day: PlanDays.menuDay(start: weekStart, offset: Int(offset), firstDayOfWeek: firstDayOfWeek), mealTypeId: meal.mealTypeId, recipeId: meal.recipeId,
                 title: meal.title, imageUrl: meal.imageUrl, servings: meal.servings, note: meal.note
             ))
         }

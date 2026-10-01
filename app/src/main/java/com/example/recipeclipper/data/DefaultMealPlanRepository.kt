@@ -97,14 +97,14 @@ class DefaultMealPlanRepository @Inject constructor(
         menuDao.observeMenus().map { rows -> rows.map { Menu(it.id, it.name, it.mealCount) } }
             .orEmptyOnError(log, "observeMenus")
 
-    override suspend fun saveWeekAsMenu(name: String, weekStart: Long): Boolean {
+    override suspend fun saveWeekAsMenu(name: String, weekStart: Long, firstDayOfWeek: Int): Boolean {
         val text = name.trim()
         if (text.isEmpty()) return false
-        return log.guard("saveWeekAsMenu", false) { menuDao.saveWeek(text, weekStart, clock.now()) != null }
+        return log.guard("saveWeekAsMenu", false) { menuDao.saveWeek(text, weekStart, firstDayOfWeek, clock.now()) != null }
     }
 
-    override suspend fun applyMenu(menuId: Long, weekStart: Long): Int =
-        log.guard("applyMenu", 0) { menuDao.apply(menuId, weekStart, clock.now()) }
+    override suspend fun applyMenu(menuId: Long, weekStart: Long, firstDayOfWeek: Int): Int =
+        log.guard("applyMenu", 0) { menuDao.apply(menuId, weekStart, firstDayOfWeek, clock.now()) }
 
     override suspend fun renameMenu(id: Long, name: String) {
         val text = name.trim()

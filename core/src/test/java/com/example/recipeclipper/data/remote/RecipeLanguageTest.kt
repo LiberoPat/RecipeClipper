@@ -14,7 +14,7 @@ class RecipeLanguageTest {
     }
 
     private fun parse(html: String): Recipe =
-        (BlogRecipeSource.parse(html, "https://example.com/r") as ParseResult.Success).recipe
+        (BlogPageParser.parse(html, "https://example.com/r") as ParseResult.Success).recipe
 
     private val sections = """
         "recipeInstructions": [

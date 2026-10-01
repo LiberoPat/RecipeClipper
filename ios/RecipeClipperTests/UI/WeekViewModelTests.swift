@@ -8,25 +8,180 @@ final class WeekViewModelTests: XCTestCase {
     private let recipes = FakeRecipeRepository()
     private let calendar = FakePlanCalendar()
     private let today = FakePlanCalendar.wednesday
-    private var monday: Int64 { today - 2 }
+    private let thursday = FakePlanCalendar.thursday
 
     private func viewModel() -> WeekViewModel {
         WeekViewModel(plan: plan, recipes: recipes, calendar: calendar, sleep: immediateSleep)
     }
 
-    func testOpensOnThisWeekFromTheLocalesFirstDay() async {
+    private func mealCount(_ vm: WeekViewModel) -> Int { vm.uiState.days.reduce(0) { $0 + $1.meals.count } }
+
+    // MARK: Rolling weeks (#232)
+
+    func testOpensOnTodayAndTheWeekIsTheSevenDaysFromIt() async {
+        calendar.todayValue = thursday
         let vm = viewModel()
         await settleMain()
-        XCTAssertEqual(vm.uiState.weekStart, monday)
-        XCTAssertTrue(vm.uiState.isThisWeek)
-        XCTAssertEqual(vm.uiState.days.map(\.day), Array(monday...(monday + 6)))
+        let state = vm.uiState
+        XCTAssertEqual(state.topDay, thursday)
+        XCTAssertEqual(state.weekStart, thursday)
+        XCTAssertTrue(state.isThisWeek)
+        // Thursday to Wednesday.
+        XCTAssertEqual(state.days.map(\.day), Array(thursday...(thursday + 6)))
+        XCTAssertEqual(PlanDays.dayOfWeek(thursday + 6), 4)
+        // The list: a year back, two ahead.
+        XCTAssertEqual(state.firstDay, thursday - 365)
+        XCTAssertEqual(state.lastDay, thursday + 730)
+        XCTAssertNil(state.scrollTo)
     }
 
-    func testASundayFirstLocaleStartsTheWeekOnSunday() async {
+    func testTheLocalesFirstDayNoLongerStartsTheWeek() async {
         calendar.firstDay = FakePlanCalendar.sundayFirst
         let vm = viewModel()
         await settleMain()
-        XCTAssertEqual(vm.uiState.days.first?.day, today - 3)
+        XCTAssertEqual(vm.uiState.days.first?.day, today)
+    }
+
+    func testFreeScrollingMovesTheWeekToTheBlockAtTheTop() async {
+        calendar.todayValue = thursday
+        let vm = viewModel()
+        await settleMain()
+
+        vm.onTopDayChanged(thursday + 6)
+        XCTAssertEqual(vm.uiState.weekStart, thursday)
+        vm.onTopDayChanged(thursday + 10)
+        XCTAssertEqual(vm.uiState.weekStart, thursday + 7)
+        XCTAssertFalse(vm.uiState.isThisWeek)
+        vm.onTopDayChanged(thursday - 1)
+        XCTAssertEqual(vm.uiState.weekStart, thursday - 7)
+    }
+
+    func testArrowsSnapToTheNextOrPreviousBlockCountedFromTheOneAtTheTop() async {
+        calendar.todayValue = thursday
+        let vm = viewModel()
+        await settleMain()
+        vm.onTopDayChanged(thursday + 10) // a Sunday, mid-block
+
+        vm.onNextWeek()
+        let first = vm.uiState.scrollTo!
+        XCTAssertEqual(first.day, thursday + 14)
+        XCTAssertTrue(first.animate)
+        XCTAssertEqual(vm.uiState.weekStart, thursday + 14)
+
+        // Pressed again before the scroll lands: counts from where it's going.
+        vm.onNextWeek()
+        let second = vm.uiState.scrollTo!
+        XCTAssertEqual(second.day, thursday + 21)
+        vm.onScrollHandled(first.id, topDay: nil) // the first was cut short: not this one's to clear
+        XCTAssertEqual(vm.uiState.scrollTo, second)
+        vm.onScrollHandled(second.id, topDay: nil)
+        XCTAssertNil(vm.uiState.scrollTo)
+        XCTAssertEqual(vm.uiState.topDay, thursday + 21)
+
+        // Free scrolling back into this week, then ‹: the block before this one.
+        vm.onTopDayChanged(thursday + 3)
+        vm.onPreviousWeek()
+        XCTAssertEqual(vm.uiState.scrollTo?.day, thursday - 7)
+        XCTAssertEqual(vm.uiState.weekStart, thursday - 7)
+    }
+
+    func testWhileARequestedScrollRunsTheDaysItPassesDontMoveTheWeek() async {
+        calendar.todayValue = thursday
+        let vm = viewModel()
+        await settleMain()
+        vm.onNextWeek()
+        let target = vm.uiState.scrollTo!
+
+        vm.onTopDayChanged(thursday + 3)
+        XCTAssertEqual(vm.uiState.weekStart, thursday + 7)
+
+        // Stopped on the way: the day it stopped on is the top.
+        vm.onScrollHandled(target.id, topDay: thursday + 4)
+        XCTAssertNil(vm.uiState.scrollTo)
+        XCTAssertEqual(vm.uiState.topDay, thursday + 4)
+        XCTAssertTrue(vm.uiState.isThisWeek)
+    }
+
+    func testTodayScrollsBackFromTodayAsItIsNow() async {
+        calendar.todayValue = thursday
+        await plan.addRecipe(recipeId: 8, day: thursday + 1, mealTypeId: FakeMealPlanRepository.dinner, servings: nil)
+        let vm = viewModel()
+        await settleMain()
+        vm.onNextWeek()
+        vm.onNextWeek()
+        XCTAssertFalse(vm.uiState.isThisWeek)
+
+        vm.onToday()
+        await settleMain()
+        XCTAssertEqual(vm.uiState.scrollTo?.day, thursday)
+        XCTAssertEqual(vm.uiState.scrollTo?.animate, true)
+        XCTAssertTrue(vm.uiState.isThisWeek)
+        XCTAssertEqual(mealCount(vm), 1)
+
+        // The next morning, the weeks start from Friday.
+        calendar.todayValue = thursday + 1
+        vm.onToday()
+        XCTAssertEqual(vm.uiState.today, thursday + 1)
+        XCTAssertEqual(vm.uiState.weekStart, thursday + 1)
+    }
+
+    func testComingBackOnANewDayPutsTheNewTodayAtTheTop() async {
+        calendar.todayValue = thursday
+        let vm = viewModel()
+        await settleMain()
+        vm.onTopDayChanged(thursday + 20)
+
+        vm.onScreenResumed() // the same day: left where it was
+        XCTAssertNil(vm.uiState.scrollTo)
+        XCTAssertEqual(vm.uiState.topDay, thursday + 20)
+
+        calendar.todayValue = thursday + 1
+        vm.onScreenResumed()
+        XCTAssertEqual(vm.uiState.today, thursday + 1)
+        XCTAssertEqual(vm.uiState.scrollTo?.day, thursday + 1)
+        XCTAssertEqual(vm.uiState.scrollTo?.animate, false)
+        XCTAssertEqual(vm.uiState.weekStart, thursday + 1)
+    }
+
+    func testOnlyAWindowOfMealsAroundTheTopIsHeldHoweverFarTheListScrolls() async {
+        calendar.todayValue = thursday
+        await plan.addNote("Today", day: thursday, mealTypeId: FakeMealPlanRepository.dinner)
+        await plan.addNote("Far", day: thursday + 700, mealTypeId: FakeMealPlanRepository.dinner)
+        let vm = viewModel()
+        await settleMain()
+        XCTAssertEqual(vm.uiState.meals.values.flatMap { $0 }.map(\.note), ["Today"])
+
+        for day in stride(from: thursday, through: thursday + 700, by: 3) { vm.onTopDayChanged(day) }
+        vm.onTopDayChanged(thursday + 700)
+        await settleMain()
+        let far = vm.uiState
+        XCTAssertEqual(far.loadedTo - far.loadedFrom + 1, WeekViewModel.windowDays)
+        XCTAssertTrue(far.isLoaded(far.weekStart - 7) && far.isLoaded(far.weekStart + 13))
+        XCTAssertEqual(far.meals.values.flatMap { $0 }.map(\.note), ["Far"])
+        XCTAssertTrue(far.meals.keys.allSatisfy { far.isLoaded($0) })
+        // A query every four weeks or so, never one per day scrolled.
+        XCTAssertLessThanOrEqual(plan.observedRanges.count, 30)
+        XCTAssertTrue(plan.observedRanges.allSatisfy { Int64($0.count) == WeekViewModel.windowDays })
+
+        for day in stride(from: thursday + 700, through: thursday, by: -5) { vm.onTopDayChanged(day) }
+        vm.onTopDayChanged(thursday)
+        await settleMain()
+        let back = vm.uiState
+        XCTAssertEqual(back.loadedTo - back.loadedFrom + 1, WeekViewModel.windowDays)
+        XCTAssertEqual(back.meals.values.flatMap { $0 }.map(\.note), ["Today"])
+        XCTAssertEqual(back.firstDay, thursday - 365) // the list's days never moved
+        XCTAssertEqual(back.lastDay, thursday + 730)
+    }
+
+    func testTheNextBlocksMealsShowOnceItIsAtTheTop() async {
+        await plan.addRecipe(recipeId: 8, day: today + 7, mealTypeId: FakeMealPlanRepository.dinner, servings: nil)
+        let vm = viewModel()
+        await settleMain()
+
+        vm.onNextWeek()
+        await settleMain()
+        XCTAssertEqual(vm.uiState.weekStart, today + 7)
+        XCTAssertEqual(mealCount(vm), 1)
     }
 
     func testMealsLandOnTheirDayInMealTypeOrder() async {
@@ -39,28 +194,6 @@ final class WeekViewModelTests: XCTestCase {
         let wednesday = vm.uiState.days.first { $0.day == today }
         XCTAssertEqual(wednesday?.meals.map { $0.note ?? $0.title ?? "" }, ["Leftovers", "Recipe 7"])
         XCTAssertEqual(vm.uiState.days.reduce(0) { $0 + $1.meals.count }, 2)
-    }
-
-    func testArrowsChangeTheWeekAndThisWeekComesBack() async {
-        await plan.addRecipe(recipeId: 8, day: today + 7, mealTypeId: FakeMealPlanRepository.dinner, servings: nil)
-        let vm = viewModel()
-        await settleMain()
-
-        vm.onNextWeek()
-        await settleMain()
-        XCTAssertEqual(vm.uiState.weekStart, monday + 7)
-        XCTAssertFalse(vm.uiState.isThisWeek)
-        XCTAssertEqual(vm.uiState.days.reduce(0) { $0 + $1.meals.count }, 1)
-
-        vm.onPreviousWeek()
-        vm.onPreviousWeek()
-        await settleMain()
-        XCTAssertEqual(vm.uiState.weekStart, monday - 7)
-
-        vm.onThisWeek()
-        await settleMain()
-        XCTAssertEqual(vm.uiState.weekStart, monday)
-        XCTAssertTrue(vm.uiState.isThisWeek)
     }
 
     func testPlusOnADayAddsARecipeFromHistoryAsDinnerByDefault() async {
@@ -106,24 +239,25 @@ final class WeekViewModelTests: XCTestCase {
         XCTAssertTrue(plan.meals.value.isEmpty)
     }
 
-    func testMovingOffersThisWeekAndNextAndWritesTheNewSlot() async {
+    func testMovingOffersTodayAndTheNext13DaysAndWritesTheNewSlot() async {
         await plan.addRecipe(recipeId: 7, day: today, mealTypeId: FakeMealPlanRepository.dinner, servings: 2)
         let vm = viewModel()
         await settleMain()
-        let meal = vm.uiState.days.first { $0.day == today }!.meals[0]
+        vm.onNextWeek() // the strip doesn't follow the week shown
+        let meal = vm.uiState.mealsOn(today)[0]
 
         vm.onMoveStart(meal)
-        XCTAssertEqual(vm.uiState.moving?.days, Array(monday..<(monday + 14)))
+        XCTAssertEqual(vm.uiState.moving?.days, Array(today..<(today + 14)))
         XCTAssertEqual(vm.uiState.moving?.day, today)
 
-        vm.onMoveDaySelected(monday + 9)
+        vm.onMoveDaySelected(today + 9)
         vm.onMoveMealTypeSelected(FakeMealPlanRepository.lunch)
         vm.onMoveConfirm()
         await settleMain()
 
         XCTAssertNil(vm.uiState.moving)
         let moved = plan.meals.value.first
-        XCTAssertEqual(moved?.day, monday + 9)
+        XCTAssertEqual(moved?.day, today + 9)
         XCTAssertEqual(moved?.mealTypeId, FakeMealPlanRepository.lunch)
         XCTAssertEqual(moved?.servings, 2)
     }
@@ -204,47 +338,62 @@ final class WeekViewModelTests: XCTestCase {
     func testTheMonthShownIsTheOneHoldingMostOfTheWeek() async {
         let vm = viewModel()
         await settleMain()
-        vm.onNextWeek() // Sep 28 – Oct 4: mostly October
+        vm.onNextWeek() // Sep 30 – Oct 6: mostly October
         vm.onShowMonth()
         await settleMain()
         XCTAssertEqual(vm.uiState.month?.monthStart, day(2026, 10, 1))
     }
 
-    func testTappingADayOpensItsWeekFocusedOnIt() async {
+    func testTappingADayInTheMonthScrollsTheDaysToIt() async {
+        let tapped = day(2026, 10, 15) // a Thursday
+        await plan.addNote("Dinner out", day: tapped, mealTypeId: FakeMealPlanRepository.dinner)
         let vm = viewModel()
         await settleMain()
         vm.onShowMonth()
         vm.onNextMonth()
         await settleMain()
 
-        let thursday = day(2026, 10, 15)
-        vm.onMonthDaySelected(thursday)
+        vm.onMonthDaySelected(tapped)
         await settleMain()
-        XCTAssertNil(vm.uiState.month)
-        XCTAssertEqual(vm.uiState.weekStart, thursday - 3)
-        XCTAssertEqual(vm.uiState.focusDay, thursday)
-        XCTAssertEqual(vm.uiState.days.count, 7)
+        let state = vm.uiState
+        XCTAssertNil(state.month)
+        XCTAssertEqual(state.scrollTo?.day, tapped)
+        XCTAssertEqual(state.scrollTo?.animate, false)
+        XCTAssertEqual(state.topDay, tapped)
+        // Its block from today (Wednesday): Wednesday 14 to Tuesday 20.
+        XCTAssertEqual(state.weekStart, today + 21)
+        XCTAssertEqual(state.mealsOn(tapped).map(\.note), ["Dinner out"])
 
-        vm.onFocusHandled()
-        XCTAssertNil(vm.uiState.focusDay)
+        vm.onScrollHandled(state.scrollTo!.id, topDay: nil)
+        XCTAssertNil(vm.uiState.scrollTo)
     }
 
-    func testTappingADayOfTheWeekAlreadyShownKeepsItsMeals() async {
+    func testADayTappedBeyondTheListsDaysMovesTheListAroundIt() async {
+        let vm = viewModel()
+        await settleMain()
+        vm.onShowMonth()
+        let far = today + 1_200
+        vm.onMonthDaySelected(far)
+        await settleMain()
+
+        let state = vm.uiState
+        XCTAssertEqual(state.firstDay, far - 365)
+        XCTAssertEqual(state.lastDay, far + 730)
+        XCTAssertEqual(state.scrollTo?.day, far)
+        XCTAssertTrue(state.isLoaded(far))
+    }
+
+    func testBackFromTheMonthTheDaysStayWhereTheyWere() async {
         await plan.addRecipe(recipeId: 7, day: today, mealTypeId: FakeMealPlanRepository.dinner, servings: nil)
         let vm = viewModel()
         await settleMain()
         vm.onShowMonth()
-        await settleMain()
-        vm.onMonthDaySelected(today)
-        await settleMain()
-        XCTAssertEqual(vm.uiState.weekStart, monday)
-        XCTAssertEqual(vm.uiState.days.reduce(0) { $0 + $1.meals.count }, 1)
-
-        vm.onShowMonth()
         vm.onShowWeek()
         await settleMain()
         XCTAssertNil(vm.uiState.month)
-        XCTAssertEqual(vm.uiState.weekStart, monday)
+        XCTAssertNil(vm.uiState.scrollTo)
+        XCTAssertEqual(vm.uiState.weekStart, today)
+        XCTAssertEqual(mealCount(vm), 1)
     }
 
     // MARK: Calendar file (#52)
@@ -262,7 +411,7 @@ final class WeekViewModelTests: XCTestCase {
         await settleMain()
         vm.onShareCalendar()
         let file = vm.uiState.calendarFile
-        XCTAssertEqual(file?.fileName, "meal-plan-2026-09-21.ics")
+        XCTAssertEqual(file?.fileName, "meal-plan-2026-09-23.ics")
         XCTAssertTrue(file?.text.contains("SUMMARY:Dinner · Chicken Adobo\r\n") ?? false)
         XCTAssertTrue(file?.text.contains("DTSTAMP:20260923T142500Z\r\n") ?? false)
         XCTAssertFalse(file?.text.contains("Leftovers") ?? true)

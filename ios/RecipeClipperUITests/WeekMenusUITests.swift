@@ -44,11 +44,16 @@ final class WeekMenusUITests: RecipeUITestCase {
         weekMenu("Save week as menu…")
         answer("Save week as menu", typing: "Usual", button: "Save")
 
+        // The next seven days at the top (#232: one scroll of days, so this week's meal is
+        // scrolled away rather than gone).
         require(app.buttons["Next week"], "the next-week arrow").tap()
-        requireGone(meals.firstMatch, "this week's meal")
+        require(app.buttons["todayButton"], "the next week")
+        let soups = meals.matching(NSPredicate(format: "label CONTAINS 'Miso Soup'"))
+        let before = soups.count // today's, if the lazy stack still holds it
         weekMenu("Apply a menu…")
         require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'menu-'")).firstMatch, "the menu").tap()
-        XCTAssertTrue(require(meals.firstMatch, "the added meal").label.contains("Miso Soup"))
+        expectation(for: NSPredicate(format: "count == \(before + 1)"), evaluatedWith: soups)
+        waitForExpectations(timeout: 10)
 
         weekMenu("Apply a menu…")
         require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'menuOptions-'")).firstMatch, "the menu's options").tap()

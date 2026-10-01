@@ -167,24 +167,57 @@ class WeekScreenTest {
     }
 
     @Test
-    fun theMonthViewMarksPlannedDaysAndATapOpensThatWeek() {
+    fun theMonthViewMarksPlannedDaysAndATapScrollsToThatDay() {
         plan.titles[7] = "Chicken Adobo"
-        val nextTuesday = today + 6
-        runBlocking { plan.addRecipe(7, nextTuesday, DINNER, servings = null) }
+        val nextFriday = today + 9
+        runBlocking { plan.addRecipe(7, nextFriday, DINNER, servings = null) }
         show()
 
         compose.onNodeWithTag("toggleMonth").performClick()
         // The labels follow the device's locale, so they are built the way the screen builds them.
         compose.onNodeWithTag("monthTitle").assertTextEquals(monthTitle(today))
-        compose.onNodeWithTag("monthDay-$nextTuesday")
-            .assertContentDescriptionEquals("${dayTitle(nextTuesday)}, meals planned")
+        compose.onNodeWithTag("monthDay-$nextFriday")
+            .assertContentDescriptionEquals("${dayTitle(nextFriday)}, meals planned")
         compose.onNodeWithTag("monthDay-$today").assertContentDescriptionEquals(dayTitle(today))
 
-        compose.onNodeWithTag("monthDay-$nextTuesday").performClick()
-        // Scrolled to the day tapped, on that day's week.
+        compose.onNodeWithTag("monthDay-$nextFriday").performClick()
+        // The day tapped is at the top, and the header names its block from today (#232).
         compose.onNodeWithText("Chicken Adobo").assertIsDisplayed()
-        compose.onNodeWithTag("weekList").performScrollToIndex(0)
-        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today + 5))
+        compose.onNodeWithTag("addToDay-$today").assertDoesNotExist()
+        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today + 7))
         compose.onNodeWithTag("toggleMonth").assertTextEquals("Month")
+    }
+
+    @Test
+    fun itOpensOnTodayAndTheArrowsSnapToTheNextAndPreviousWeek() {
+        show()
+        // Today at the top, its week from today (#232).
+        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today))
+        compose.onNodeWithTag("addToDay-$today").assertIsDisplayed()
+        compose.onNodeWithText("Today", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("todayButton").assertDoesNotExist()
+
+        compose.onNodeWithContentDescription("Next week").performClick()
+        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today + 7))
+        compose.onNodeWithTag("addToDay-${today + 7}").assertIsDisplayed()
+        compose.onNodeWithTag("addToDay-$today").assertDoesNotExist()
+
+        compose.onNodeWithContentDescription("Previous week").performClick()
+        compose.onNodeWithContentDescription("Previous week").performClick()
+        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today - 7))
+
+        compose.onNodeWithTag("todayButton").performClick()
+        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today))
+        compose.onNodeWithTag("addToDay-$today").assertIsDisplayed()
+        compose.onNodeWithTag("todayButton").assertDoesNotExist()
+    }
+
+    @Test
+    fun freeScrollingMovesTheWeekWithTheTopDay() {
+        show()
+        compose.onNodeWithTag("weekList").performScrollToIndex(365 + 10)
+        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today + 7))
+        compose.onNodeWithTag("weekList").performScrollToIndex(365 - 1)
+        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today - 7))
     }
 }

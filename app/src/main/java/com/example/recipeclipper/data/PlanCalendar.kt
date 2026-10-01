@@ -5,7 +5,7 @@ import java.util.Calendar
 import javax.inject.Inject
 
 /**
- * Today and the first day of the week, on the user's calendar (#49). A seam so the Week and
+ * Today and the locale's first day of the week, on the user's calendar (#49). A seam so the Week and
  * plan-sheet ViewModels never read the clock, zone or locale themselves, and a test can pin
  * both. [SystemPlanCalendar] is the real one.
  */
@@ -13,7 +13,10 @@ interface PlanCalendar {
     /** Today, as an epoch day (see [PlanDays]). */
     fun today(): Long
 
-    /** 1 = Sunday … 7 = Saturday: the locale's own, never a fixed Monday (owner's call). */
+    /**
+     * 1 = Sunday … 7 = Saturday, the locale's own: the month grid's columns and menus' weekdays
+     * (the Week's weeks start today, #232).
+     */
     fun firstDayOfWeek(): Int
 
     /** Now, in epoch millis: when a calendar file (#52) was made. */
