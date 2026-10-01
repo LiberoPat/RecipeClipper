@@ -180,6 +180,15 @@ class RedditRecipeParserTest {
             RedditRecipeParser.parse(escaped, url))
     }
 
+    @Test fun `the post's picture is a web image, http upgraded (#235)`() {
+        val json = """[{"kind":"Listing","data":{"children":[{"kind":"t3","data":{"title":"Pie",
+            "selftext":"","url":"http://i.imgur.com/pie.png"}}]}},{"kind":"Listing","data":{"children":[]}}]"""
+        assertEquals(ParseResult.Error(ParseError.NoTranscription("Pie", "https://i.imgur.com/pie.png")),
+            RedditRecipeParser.parse(json, url))
+        val local = json.replace("http://i.imgur.com/pie.png", "file:///sdcard/pie.png")
+        assertEquals(ParseResult.Error(ParseError.NoTranscription("Pie", null)), RedditRecipeParser.parse(local, url))
+    }
+
     @Test fun `anything that isn't a post listing has no recipe`() {
         val none = ParseResult.Error(ParseError.NoRecipeFound)
         assertEquals(none, RedditRecipeParser.parse("<html>whoa there, pardner</html>", url))

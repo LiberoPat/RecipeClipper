@@ -18,10 +18,17 @@
 
   var PAPRIKA = '#BF4A2B';
 
+  // The apps hear this page's main frame only (#235), never an ad's or another site's iframe.
+  // Android: RCBridge, a message listener that reports the frame; on a WebView too old for one,
+  // the old interface, with a token handed to this main frame alone (RCBridgeToken) that every
+  // message carries. iOS: the rc handler, which checks the frame itself.
+  var token = window.RCBridgeToken || null;
+
   function post(message) {
+    if (token) message.token = token;
     var json = JSON.stringify(message);
-    if (window.RCAndroid && window.RCAndroid.post) {
-      window.RCAndroid.post(json);
+    if (window.RCBridge && window.RCBridge.postMessage) {
+      window.RCBridge.postMessage(json);
     } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.rc) {
       window.webkit.messageHandlers.rc.postMessage(json);
     }

@@ -146,6 +146,33 @@ class ClipViewModelTest {
         assertEquals(ClipMessage.Assigned(ClipField.PHOTO, 1), vm.message)
     }
 
+    // #235: the page says which address was tapped; only a web image becomes the photo.
+
+    @Test fun `a photo address that isn't a web image is no picture, said as one`() {
+        listOf(
+            "file:///data/data/com.example.recipeclipper/databases/recipe_clipper.db",
+            "content://media/external/images/media/12",
+            "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+            "javascript:alert(1)",
+            "/img/cookies.jpg",
+            ""
+        ).forEach { src ->
+            val vm = viewModel()
+            vm.onPhotoButton()
+            vm.onImageTapped(src)
+            assertNull(src, vm.draft.photo)
+            assertFalse(src, vm.uiState.value.pickingPhoto)
+            assertEquals(src, ClipMessage.PhotoUnreadable, vm.message)
+        }
+    }
+
+    @Test fun `an http photo is kept as https`() {
+        val vm = viewModel()
+        vm.onPhotoButton()
+        vm.onImageTapped("http://img.example/cookies.jpg")
+        assertEquals("https://img.example/cookies.jpg", vm.draft.photo)
+    }
+
     @Test fun `the Photo button toggles picking off again`() {
         val vm = viewModel()
         vm.onPhotoButton()

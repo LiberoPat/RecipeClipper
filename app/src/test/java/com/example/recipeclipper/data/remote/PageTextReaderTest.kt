@@ -2,6 +2,7 @@ package com.example.recipeclipper.data.remote
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,6 +36,14 @@ class PageTextReaderTest {
         assertEquals("Soup", og.title)
         assertEquals("https://example.com/img/soup.jpg", og.image)
         assertEquals("Site | Soup", PageTextReader.read("<title>Site | Soup</title><p>x</p>", "https://e.com/").title)
+    }
+
+    @Test fun `og image is a web image or none (#235)`() {
+        fun image(content: String) =
+            PageTextReader.read("""<head><meta property="og:image" content="$content"></head><p>x</p>""", "https://example.com/soup").image
+        assertEquals("https://example.com/soup.jpg", image("http://example.com/soup.jpg"))
+        assertNull(image("file:///data/data/com.example.recipeclipper/files/a.jpg"))
+        assertNull(image("data:image/gif;base64,R0lGOD"))
     }
 
     @Test fun `a real blog page with no recipe data`() {

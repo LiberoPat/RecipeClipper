@@ -6,6 +6,7 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.WebImageUrl
 import com.example.recipeclipper.data.Connectivity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -233,7 +234,8 @@ internal object JsonLdRecipeParser {
 
         return Recipe(
             name = name,
-            image = extractImage(json.opt("image")),
+            // A web image only (#235): never an address on the device.
+            image = WebImageUrl.of(extractImage(json.opt("image"))),
             ingredients = ingredients,
             instructions = instructions,
             prepTime = Durations.format(json.optString("prepTime", ""), words),

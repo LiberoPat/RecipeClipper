@@ -3,7 +3,6 @@ package com.example.recipeclipper.ui.clip
 import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
-import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -14,7 +13,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.recipeclipper.data.WebViewRenderedPageSource
 import com.example.recipeclipper.data.model.ClipField
 import com.example.recipeclipper.data.remote.RedditUrls
-import org.json.JSONObject
 
 /** What the page reports, decoded from `clipper.js`'s messages. */
 internal sealed class ClipPageEvent {
@@ -44,9 +42,10 @@ internal fun loadTextPage(html: String): ClipPageLoader = { webView, _ ->
 
 /**
  * The page being clipped, in a [WebView] with `clipper.js` injected once it has loaded. The
- * view layer's half of the bridge: it forwards the page's events and pushes [syncState] and
- * [pickingPhoto] into the page whenever they change. Links to other pages are blocked, so the
- * clip always comes from the page it is saved under ([ClipNavigation]).
+ * view layer's half of the bridge: it forwards the page's events, heard from its main frame only
+ * ([ClipBridge], #235), and pushes [syncState] and [pickingPhoto] into the page whenever they
+ * change. Links to other pages are blocked, so the clip always comes from the page it is saved
+ * under ([ClipNavigation]).
  *
  * With [readsPage] (waiting on Cloudflare's check, #220), the page's HTML is sent as
  * [ClipPageEvent.PageLoaded] once it settles after each load, and every [READ_EVERY_MS] after,
@@ -57,7 +56,7 @@ internal fun loadTextPage(html: String): ClipPageLoader = { webView, _ ->
  * hides Reddit's sign-in and app prompts; [readText] turning true reads the post for the Text
  * view, as [ClipPageEvent.PageText].
  */
-@SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 internal fun ClipWebPage(
     url: String,
@@ -83,18 +82,7 @@ internal fun ClipWebPage(
             WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
-                val main = Handler(Looper.getMainLooper())
-                addJavascriptInterface(
-                    object {
-                        // Called on the JavaBridge thread; the ViewModel is fed on the main one.
-                        @JavascriptInterface
-                        fun post(json: String) {
-                            val event = decode(json) ?: return
-                            main.post { latest.onEvent(event) }
-                        }
-                    },
-                    "RCAndroid"
-                )
+                latest.bridgeToken = ClipBridge.attach(this) { latest.onEvent(it) }
                 webViewClient = ClipWebViewClient(url, latest)
                 loadPage(this, url)
             }
@@ -120,6 +108,9 @@ private class LatestPageState {
     var injected: Boolean = false
     var readsPage: Boolean = false
     var readingText: Boolean = false
+
+    /** The old JavaScript interface's token for the main frame ([ClipBridge]), or null. */
+    var bridgeToken: String? = null
 
     fun script() = pageScript(sync, picking)
 }
@@ -159,6 +150,7 @@ private class ClipWebViewClient(
 
     override fun onPageFinished(view: WebView, url: String?) {
         injectReader(view, url)
+        latest.bridgeToken?.let { view.evaluateJavascript(ClipBridge.tokenScript(it), null) }
         view.evaluateJavascript(ClipperScript.source, null)
         latest.injected = true
         view.evaluateJavascript(latest.script(), null)
@@ -238,18 +230,4 @@ internal object ClipperScript {
 
     private fun read(name: String) =
         ClipperScript::class.java.getResourceAsStream("/web/$name")!!.bufferedReader().use { it.readText() }
-}
-
-private fun decode(json: String): ClipPageEvent? = try {
-    val message = JSONObject(json)
-    when (message.optString("type")) {
-        "selection" -> ClipPageEvent.Selection(message.optString("text"))
-        "tag" -> ClipField.entries.firstOrNull { it.name == message.optString("field") }
-            ?.let { ClipPageEvent.TagTapped(it) }
-        "image" -> message.optString("src").takeIf { it.isNotEmpty() }?.let { ClipPageEvent.ImageTapped(it) }
-        "noImage" -> ClipPageEvent.NoImage
-        else -> null
-    }
-} catch (e: org.json.JSONException) {
-    null
 }
