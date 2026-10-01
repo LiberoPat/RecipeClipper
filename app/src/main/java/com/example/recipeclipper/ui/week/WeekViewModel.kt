@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** One day of the week and its meals, in plan order. */
+/** One day and its meals, in plan order. */
 data class WeekDay(val day: Long, val meals: List<PlannedMeal>)
 
 /**
@@ -41,7 +41,7 @@ data class AddToDayState(
     val results: List<RecipeSummary>? = null
 )
 
-/** Moving [meal]: choose another day (this week and next, from the week shown) or meal type. */
+/** Moving [meal]: choose another day (today and the next 13) or meal type. */
 data class MoveState(
     val meal: PlannedMeal,
     val days: List<Long>,
@@ -54,6 +54,12 @@ data class RemovedMeal(val id: Long, val label: String)
 
 /** An .ics file to share: its name and its text (#52). */
 data class CalendarFile(val fileName: String, val text: String)
+
+/**
+ * A scroll the list owes (#232): [day] to the top, animated or not. [id] tells two requests for
+ * the same day apart, and lets a finished scroll clear only its own request.
+ */
+data class ScrollTarget(val day: Long, val animate: Boolean, val id: Int)
 
 /** What the snackbar says after a menu action (#52). */
 sealed interface MenuMessage {
@@ -92,37 +98,65 @@ data class MonthUiState(
 }
 
 /**
- * [days] is empty until the plan has loaded. [removed] names the meal just removed, for the
- * undo snackbar (the recipe title, or the note).
+ * The Week tab (#49, rolling since #232). The list holds every day from [firstDay] to [lastDay],
+ * one section each; [topDay] is the day at the top of it. Weeks are seven-day blocks counted
+ * from [today], and [weekStart] is the block at the top: what the header names and the week's
+ * actions use.
+ *
+ * Only [meals] of the days from [loadedFrom] to [loadedTo] are held, a window around the top
+ * that moves with it; a day outside it shows no meals until the window reaches it. [removed]
+ * names the meal just removed, for the undo snackbar (the recipe title, or the note).
  */
 data class WeekUiState(
-    val weekStart: Long = 0,
-    val thisWeekStart: Long = 0,
     val today: Long = 0,
-    val days: List<WeekDay> = emptyList(),
+    val firstDay: Long = 0,
+    val lastDay: Long = -1,
+    val topDay: Long = 0,
+    val loadedFrom: Long = 0,
+    val loadedTo: Long = -1,
+    val meals: Map<Long, List<PlannedMeal>> = emptyMap(),
     val mealTypes: List<MealType> = emptyList(),
     val adding: AddToDayState? = null,
     val moving: MoveState? = null,
     val removed: RemovedMeal? = null,
-    /** The month view, or null while the week is shown. */
+    /** The month view, or null while the days are shown. */
     val month: MonthUiState? = null,
-    /** A day the week view scrolls to once, after a tap in the month view. */
-    val focusDay: Long? = null,
+    /** A day the list is to bring to the top, once. */
+    val scrollTo: ScrollTarget? = null,
     /** The shown week as a calendar file, waiting for the screen to share it (#52). */
     val calendarFile: CalendarFile? = null,
     /** Saved weekly menus and their dialogs (#52). */
     val menus: MenusUiState = MenusUiState()
 ) {
-    val isThisWeek: Boolean get() = weekStart == thisWeekStart
+    /** The first day of the block at the top. */
+    val weekStart: Long get() = PlanDays.blockStart(topDay, today)
 
-    /** Whether the week shown has anything to put in a calendar file. */
+    /** "This week": the block that starts today. */
+    val isThisWeek: Boolean get() = weekStart == today
+
+    /** How many day sections the list holds. */
+    val dayCount: Int get() = (lastDay - firstDay + 1).toInt().coerceAtLeast(0)
+
+    fun isLoaded(day: Long): Boolean = day in loadedFrom..loadedTo
+
+    fun mealsOn(day: Long): List<PlannedMeal> = meals[day].orEmpty()
+
+    /** The seven days of the block at the top with their meals, empty until they have loaded. */
+    val days: List<WeekDay>
+        get() = if (isLoaded(weekStart) && isLoaded(weekStart + 6)) {
+            PlanDays.weekDays(weekStart).map { WeekDay(it, mealsOn(it)) }
+        } else {
+            emptyList()
+        }
+
+    /** Whether the week shown has anything to put in a calendar file or a menu. */
     val hasMeals: Boolean get() = days.any { it.meals.isNotEmpty() }
 }
 
 /**
- * The Week tab (#49): seven days from the locale's first day of the week, ‹ › between weeks,
- * and "This week" back. Everything is written as it happens; removing a meal can be undone
- * from the snackbar.
+ * The Week tab (#49): one scroll of days, opening on today; ‹ › snap to the previous or next
+ * seven-day block from today (#232), and "Today" comes back. Everything is written as it
+ * happens; removing a meal can be undone from the snackbar.
  */
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
@@ -135,24 +169,28 @@ class WeekViewModel @Inject constructor(
     private val _uiState: MutableStateFlow<WeekUiState>
     val uiState: StateFlow<WeekUiState>
 
-    private val weekStart: MutableStateFlow<Long>
+    /** The first day of the window of meals held (see [WeekUiState.meals]). */
+    private val window: MutableStateFlow<Long>
     private val monthStart = MutableStateFlow<Long?>(null)
     private var removedMeal: MealPlanRepository.DeletedMeal? = null
+    private var scrollRequests = 0
 
     init {
         val today = calendar.today()
-        val start = PlanDays.weekStart(today, calendar.firstDayOfWeek())
-        weekStart = MutableStateFlow(start)
-        _uiState = MutableStateFlow(WeekUiState(weekStart = start, thisWeekStart = start, today = today))
+        window = MutableStateFlow(today - WINDOW_BEFORE)
+        _uiState = MutableStateFlow(
+            WeekUiState(today = today, firstDay = today - DAYS_BEFORE, lastDay = today + DAYS_AFTER, topDay = today)
+        )
         uiState = _uiState.asStateFlow()
 
         viewModelScope.launch {
-            weekStart.flatMapLatest { first ->
-                plan.observeDays(first, first + 6).map { meals -> first to meals }
-            }.collect { (first, meals) ->
-                val byDay = meals.groupBy { it.day }
-                _uiState.update { state ->
-                    state.copy(days = PlanDays.weekDays(first).map { WeekDay(it, byDay[it].orEmpty()) })
+            window.flatMapLatest { from ->
+                plan.observeDays(from, from + WINDOW_DAYS - 1).map { meals -> from to meals }
+            }.collect { (from, meals) ->
+                // Replaced, never added to: what is held stays one window, however far the
+                // list scrolls.
+                _uiState.update {
+                    it.copy(meals = meals.groupBy { meal -> meal.day }, loadedFrom = from, loadedTo = from + WINDOW_DAYS - 1)
                 }
             }
         }
@@ -195,18 +233,88 @@ class WeekViewModel @Inject constructor(
         }
     }
 
-    // --- Weeks
+    // --- Scrolling and weeks (#232)
 
-    fun onPreviousWeek() = showWeek(weekStart.value - 7)
+    /**
+     * The list has scrolled freely and [day] is at the top. Ignored while a requested scroll is
+     * on its way, so the header doesn't flicker through the days it passes.
+     */
+    fun onTopDayChanged(day: Long) {
+        if (_uiState.value.scrollTo != null) return
+        showTop(day)
+    }
 
-    fun onNextWeek() = showWeek(weekStart.value + 7)
+    /** The list has finished (or given up) the scroll [id]; [topDay] is the day now at the top. */
+    fun onScrollHandled(id: Int, topDay: Long?) {
+        if (_uiState.value.scrollTo?.id != id) return
+        _uiState.update { it.copy(scrollTo = null) }
+        if (topDay != null) showTop(topDay)
+    }
 
-    /** Back to the week holding today, which may have changed since the screen opened. */
-    fun onThisWeek() {
+    /** › : the first day of the block after the one at the top (or the one being scrolled to). */
+    fun onNextWeek() = stepBlocks(1)
+
+    /** ‹ : the first day of the block before the one at the top. */
+    fun onPreviousWeek() = stepBlocks(-1)
+
+    /** "Today": back to today at the top, which may have changed since the screen opened. */
+    fun onToday() {
         val today = calendar.today()
-        val start = PlanDays.weekStart(today, calendar.firstDayOfWeek())
-        _uiState.update { it.copy(today = today, thisWeekStart = start) }
-        showWeek(start)
+        _uiState.update { it.copy(today = today) }
+        jumpTo(today, animate = true)
+    }
+
+    /**
+     * The screen is back in front. On a new day, the weeks start from it again and today goes
+     * to the top: the week starts on the day the app is opened.
+     */
+    fun onScreenResumed() {
+        val today = calendar.today()
+        if (today == _uiState.value.today) return
+        _uiState.update { it.copy(today = today) }
+        jumpTo(today, animate = false)
+    }
+
+    private fun stepBlocks(blocks: Int) {
+        val state = _uiState.value
+        val from = state.scrollTo?.day ?: state.topDay
+        jumpTo(PlanDays.blockStart(from, state.today) + blocks * PlanDays.BLOCK_DAYS, animate = true)
+    }
+
+    /**
+     * Asks the list to bring [day] to the top. A day outside the list's days moves the whole
+     * range to sit around it (the same span as around today), and then it can't animate.
+     */
+    private fun jumpTo(day: Long, animate: Boolean) {
+        val id = ++scrollRequests
+        _uiState.update { state ->
+            val inRange = day in state.firstDay..state.lastDay
+            state.copy(
+                topDay = day,
+                firstDay = if (inRange) state.firstDay else day - DAYS_BEFORE,
+                lastDay = if (inRange) state.lastDay else day + DAYS_AFTER,
+                scrollTo = ScrollTarget(day, animate && inRange, id)
+            )
+        }
+        follow(day)
+    }
+
+    private fun showTop(day: Long) {
+        _uiState.update { it.copy(topDay = day) }
+        follow(day)
+    }
+
+    /**
+     * Moves the window of meals when the block before or after the one at the top would fall
+     * outside it, re-centring it on that block: one query per four weeks scrolled.
+     */
+    private fun follow(day: Long) {
+        val start = PlanDays.blockStart(day, _uiState.value.today)
+        val from = window.value
+        val to = from + WINDOW_DAYS - 1
+        if (start - PlanDays.BLOCK_DAYS < from || start + 2 * PlanDays.BLOCK_DAYS - 1 > to) {
+            window.value = start - WINDOW_BEFORE
+        }
     }
 
     // --- Month view (#52)
@@ -217,11 +325,11 @@ class WeekViewModel @Inject constructor(
         val state = _uiState.value
         val today = calendar.today()
         val first = PlanDays.monthStart(if (state.isThisWeek) today else state.weekStart + 3)
-        _uiState.update { it.copy(today = today, month = MonthUiState(first, PlanDays.monthStart(today))) }
+        _uiState.update { it.copy(month = MonthUiState(first, PlanDays.monthStart(today))) }
         monthStart.value = first
     }
 
-    /** Back to the week view, on the week that was shown. */
+    /** Back to the days, where they were. */
     fun onShowWeek() {
         monthStart.value = null
         _uiState.update { it.copy(month = null) }
@@ -238,7 +346,7 @@ class WeekViewModel @Inject constructor(
     /** Back to the month holding today, which may have changed since the view opened. */
     fun onThisMonth() {
         val today = calendar.today()
-        _uiState.update { it.copy(today = today, month = it.month?.copy(thisMonthStart = PlanDays.monthStart(today))) }
+        _uiState.update { it.copy(month = it.month?.copy(thisMonthStart = PlanDays.monthStart(today))) }
         showMonth(PlanDays.monthStart(today))
     }
 
@@ -247,15 +355,12 @@ class WeekViewModel @Inject constructor(
         monthStart.value = first
     }
 
-    /** A day in the month grid: back to the week view, on that day's week, scrolled to it. */
+    /** A day in the month grid: back to the days, with that one at the top. */
     fun onMonthDaySelected(day: Long) {
         monthStart.value = null
-        _uiState.update { it.copy(month = null, focusDay = day) }
-        showWeek(PlanDays.weekStart(day, calendar.firstDayOfWeek()))
+        _uiState.update { it.copy(month = null) }
+        jumpTo(day, animate = false)
     }
-
-    /** The week view has scrolled to [WeekUiState.focusDay]. */
-    fun onFocusHandled() = _uiState.update { it.copy(focusDay = null) }
 
     // --- Calendar file (#52)
 
@@ -273,15 +378,6 @@ class WeekViewModel @Inject constructor(
 
     /** The share sheet has opened (or couldn't): the file is done with. */
     fun onCalendarShared() = _uiState.update { it.copy(calendarFile = null) }
-
-    private fun showWeek(start: Long) {
-        // The same week again (a day of it tapped in the month view) keeps its loaded days: the
-        // StateFlow wouldn't emit again to refill them.
-        if (start == weekStart.value) return
-        // Clear first: on Main.immediate the new week's days can arrive before this returns.
-        _uiState.update { it.copy(weekStart = start, days = emptyList()) }
-        weekStart.value = start
-    }
 
     // --- Adding to a day
 
@@ -317,7 +413,7 @@ class WeekViewModel @Inject constructor(
         it.copy(
             moving = MoveState(
                 meal = meal,
-                days = (0 until PlanDays.SHEET_DAYS).map { offset -> it.weekStart + offset },
+                days = (0 until PlanDays.SHEET_DAYS).map { offset -> it.today + offset },
                 day = meal.day,
                 mealTypeId = meal.mealTypeId
             )
@@ -374,10 +470,10 @@ class WeekViewModel @Inject constructor(
     fun onSaveMenu(name: String) {
         val text = name.trim()
         if (text.isEmpty()) return
-        val start = weekStart.value
+        val start = _uiState.value.weekStart
         updateMenus { it.copy(saving = false) }
         viewModelScope.launch {
-            val saved = plan.saveWeekAsMenu(text, start)
+            val saved = plan.saveWeekAsMenu(text, start, calendar.firstDayOfWeek())
             updateMenus { it.copy(message = if (saved) MenuMessage.Saved(text) else MenuMessage.SaveFailed) }
         }
     }
@@ -388,10 +484,10 @@ class WeekViewModel @Inject constructor(
 
     /** Adds [menu]'s meals to the week shown, after what is planned there. */
     fun onApplyMenu(menu: Menu) {
-        val start = weekStart.value
+        val start = _uiState.value.weekStart
         updateMenus { it.copy(picking = false) }
         viewModelScope.launch {
-            val added = plan.applyMenu(menu.id, start)
+            val added = plan.applyMenu(menu.id, start, calendar.firstDayOfWeek())
             updateMenus { it.copy(message = MenuMessage.Applied(menu.name, added)) }
         }
     }
@@ -421,4 +517,14 @@ class WeekViewModel @Inject constructor(
 
     private fun defaultType(types: List<MealType>): Long? =
         (types.firstOrNull { it.builtInKey == MealType.DINNER } ?: types.firstOrNull())?.id
+
+    companion object {
+        /** The list's days: a year back and two ahead of today (or of a day jumped to beyond). */
+        const val DAYS_BEFORE = 365L
+        const val DAYS_AFTER = 730L
+
+        /** The window of meals held: four weeks either side of the block at the top. */
+        const val WINDOW_BEFORE = 28L
+        const val WINDOW_DAYS = 63L
+    }
 }

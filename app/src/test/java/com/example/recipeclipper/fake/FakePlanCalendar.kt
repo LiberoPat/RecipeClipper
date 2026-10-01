@@ -16,6 +16,9 @@ class FakePlanCalendar(
     companion object {
         /** 2026-09-23, a Wednesday. */
         const val WEDNESDAY = 20_719L
+
+        /** 2026-10-01, a Thursday. */
+        const val THURSDAY = 20_727L
         const val MONDAY_FIRST = 2
         const val SUNDAY_FIRST = 1
     }

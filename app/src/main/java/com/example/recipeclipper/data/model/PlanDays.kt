@@ -16,8 +16,11 @@ object PlanDays {
 
     const val MILLIS_PER_DAY = 86_400_000L
 
-    /** How many days the plan sheets offer: this week and next. */
+    /** How many days the plan sheets offer: today and the next 13 (#232). */
     const val SHEET_DAYS = 14
+
+    /** The Week tab's weeks: seven-day blocks counted from today (#232). */
+    const val BLOCK_DAYS = 7
 
     /** The local calendar day containing [millis], for a zone [offsetMillis] ahead of UTC. */
     fun epochDay(millis: Long, offsetMillis: Int): Long =
@@ -33,6 +36,24 @@ object PlanDays {
     /** The first day of the week holding [day], for a week that starts on [firstDayOfWeek]. */
     fun weekStart(day: Long, firstDayOfWeek: Int): Long =
         day - Math.floorMod((dayOfWeek(day) - firstDayOfWeek).toLong(), 7L)
+
+    /**
+     * The first day of the seven-day block holding [day], blocks counted from [today] (#232):
+     * today+7k … today+7k+6, so the week shown first starts today, whatever weekday that is.
+     */
+    fun blockStart(day: Long, today: Long): Long = today + BLOCK_DAYS * Math.floorDiv(day - today, BLOCK_DAYS.toLong())
+
+    /**
+     * A menu meal's `dayOffset` (#52): days after the locale's [firstDayOfWeek], 0 to 6. Menus
+     * keep weekdays, so a meal saved from a block that starts on any day keeps its weekday;
+     * menus saved before #232 stored exactly this.
+     */
+    fun menuOffset(day: Long, firstDayOfWeek: Int): Int =
+        Math.floorMod((dayOfWeek(day) - firstDayOfWeek).toLong(), 7L).toInt()
+
+    /** The day among the seven from [start] that falls on a menu meal's weekday ([menuOffset]). */
+    fun menuDay(start: Long, offset: Int, firstDayOfWeek: Int): Long =
+        start + Math.floorMod((firstDayOfWeek + offset - dayOfWeek(start)).toLong(), 7L)
 
     /** The seven days of the week starting on [start]. */
     fun weekDays(start: Long): List<Long> = (0 until 7).map { start + it }

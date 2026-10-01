@@ -233,7 +233,6 @@
     <string name="snackbar_removed_from_plan">%1$s aus dem Plan entfernt</string>
     <string name="cd_previous_week">Vorherige Woche</string>
     <string name="cd_next_week">Nächste Woche</string>
-    <string name="action_this_week">Diese Woche</string>
     <string name="meal_types_title">Mahlzeiten</string>
     <string name="label_today">Heute</string>
     <string name="action_add_meal">+ Hinzufügen</string>

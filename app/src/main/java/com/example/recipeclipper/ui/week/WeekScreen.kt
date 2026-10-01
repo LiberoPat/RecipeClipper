@@ -23,7 +23,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -49,10 +52,12 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +79,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
@@ -100,10 +106,14 @@ import com.example.recipeclipper.ui.tour.TooltipHost
 import com.example.recipeclipper.ui.tour.tooltipAnchor
 import java.io.File
 import java.io.IOException
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 
 /**
- * The Week tab (#49): ‹ week › with "This week", then the seven days from the locale's first
- * day of the week, each with its meals and a "+ Add". Tapping a recipe opens it at the planned
+ * The Week tab (#49): ‹ week › over one scroll of days that opens with today at the top, each
+ * day with its meals and a "+ Add" (#232). The weeks are seven-day blocks from today; the label
+ * names the block at the top, the arrows snap to the block before or after, and "Today", away
+ * from this week, scrolls back. Tapping a recipe opens it at the planned
  * servings; long-pressing a meal offers Move and Remove (Remove can be undone). The menu's "Add
  * this week's ingredients" (#50) opens the grocery sheet over every recipe planned in the week
  * shown; [groceriesViewModel] null leaves it out. "What I need" (#51) opens the week against the
@@ -153,98 +163,70 @@ fun WeekScreen(
                 containerColor = MaterialTheme.colorScheme.background,
                 contentWindowInsets = WindowInsets.safeDrawing
             ) { padding ->
-                val typeNames = state.mealTypes.associate { it.id to it.name }
-                val listState = rememberLazyListState()
-                // After a tap in the month view: scroll to that day once its week has loaded. The
-                // header is item 0; each day is its heading, its meals, then its "+ Add".
-                val focusDay = state.focusDay
-                LaunchedEffect(focusDay, state.days) {
-                    if (focusDay == null || state.days.none { it.day == focusDay }) return@LaunchedEffect
-                    val index = 1 + state.days.takeWhile { it.day != focusDay }.sumOf { it.meals.size + 2 }
-                    listState.scrollToItem(index)
-                    viewModel.onFocusHandled()
-                }
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                    modifier = Modifier.fillMaxSize().padding(padding).testTag("weekList")
-                ) {
-                    item(key = "header") {
-                        val month = state.month
-                        Column(Modifier.fillMaxWidth()) {
-                            TitleRow(
-                                showingMonth = month != null,
-                                onToggleMonth = if (month == null) viewModel::onShowMonth else viewModel::onShowWeek,
-                                onOpenMealTypes = onOpenMealTypes,
-                                // The week's own actions act on the week shown, so the month view
-                                // leaves them out.
-                                onOpenWhatINeed = onOpenWhatINeed?.takeIf { month == null }?.let { open -> { open(state.weekStart) } },
-                                onAddToGroceries = groceriesViewModel?.takeIf { month == null }?.let { sheet ->
-                                    {
-                                        sheet.loadWeek(state.weekStart)
-                                        groceriesSheetOpen = true
-                                    }
-                                },
-                                onShareCalendar = viewModel::onShareCalendar.takeIf { month == null },
-                                canShareCalendar = state.hasMeals,
-                                onSaveMenu = viewModel::onSaveMenuStart.takeIf { month == null },
-                                onApplyMenu = viewModel::onPickMenuStart.takeIf { month == null }
+                // The list's position is the view's own state; the ViewModel says which days the
+                // list holds, which is at the top and where an arrow, "Today" or the month goes.
+                val listState = rememberLazyListState(
+                    initialFirstVisibleItemIndex = (state.topDay - state.firstDay).toInt().coerceAtLeast(0)
+                )
+                val month = state.month
+                Column(Modifier.fillMaxSize().padding(padding)) {
+                    // The header stays put while the days scroll under it.
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                        TitleRow(
+                            showingMonth = month != null,
+                            onToggleMonth = if (month == null) viewModel::onShowMonth else viewModel::onShowWeek,
+                            onOpenMealTypes = onOpenMealTypes,
+                            // The week's own actions act on the week shown, so the month view
+                            // leaves them out.
+                            onOpenWhatINeed = onOpenWhatINeed?.takeIf { month == null }?.let { open -> { open(state.weekStart) } },
+                            onAddToGroceries = groceriesViewModel?.takeIf { month == null }?.let { sheet ->
+                                {
+                                    sheet.loadWeek(state.weekStart)
+                                    groceriesSheetOpen = true
+                                }
+                            },
+                            onShareCalendar = viewModel::onShareCalendar.takeIf { month == null },
+                            canShareCalendar = state.hasMeals,
+                            onSaveMenu = viewModel::onSaveMenuStart.takeIf { month == null },
+                            onApplyMenu = viewModel::onPickMenuStart.takeIf { month == null }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        if (month == null) {
+                            PeriodNavigation(
+                                label = remember(state.weekStart) { weekRange(state.weekStart) },
+                                labelTag = "weekRange",
+                                backTag = "todayButton",
+                                previousDescription = stringResource(R.string.cd_previous_week),
+                                nextDescription = stringResource(R.string.cd_next_week),
+                                backLabel = stringResource(R.string.label_today).takeUnless { state.isThisWeek },
+                                onPrevious = viewModel::onPreviousWeek,
+                                onNext = viewModel::onNextWeek,
+                                onBack = viewModel::onToday
                             )
-                            Spacer(Modifier.height(8.dp))
-                            if (month == null) {
-                                PeriodNavigation(
-                                    label = remember(state.weekStart) { weekRange(state.weekStart) },
-                                    labelTag = "weekRange",
-                                    previousDescription = stringResource(R.string.cd_previous_week),
-                                    nextDescription = stringResource(R.string.cd_next_week),
-                                    backLabel = stringResource(R.string.action_this_week).takeUnless { state.isThisWeek },
-                                    onPrevious = viewModel::onPreviousWeek,
-                                    onNext = viewModel::onNextWeek,
-                                    onBack = viewModel::onThisWeek
-                                )
-                                Hairline()
-                            } else {
-                                PeriodNavigation(
-                                    label = remember(month.monthStart) { monthTitle(month.monthStart) },
-                                    labelTag = "monthTitle",
-                                    previousDescription = stringResource(R.string.cd_previous_month),
-                                    nextDescription = stringResource(R.string.cd_next_month),
-                                    backLabel = stringResource(R.string.action_this_month).takeUnless { month.isThisMonth },
-                                    onPrevious = viewModel::onPreviousMonth,
-                                    onNext = viewModel::onNextMonth,
-                                    onBack = viewModel::onThisMonth
-                                )
-                                Hairline()
-                                MonthGrid(month = month, today = state.today, onSelect = viewModel::onMonthDaySelected)
-                            }
+                        } else {
+                            PeriodNavigation(
+                                label = remember(month.monthStart) { monthTitle(month.monthStart) },
+                                labelTag = "monthTitle",
+                                backTag = "thisMonthButton",
+                                previousDescription = stringResource(R.string.cd_previous_month),
+                                nextDescription = stringResource(R.string.cd_next_month),
+                                backLabel = stringResource(R.string.action_this_month).takeUnless { month.isThisMonth },
+                                onPrevious = viewModel::onPreviousMonth,
+                                onNext = viewModel::onNextMonth,
+                                onBack = viewModel::onThisMonth
+                            )
                         }
+                        Hairline()
                     }
-                    if (state.month != null) return@LazyColumn
-                    state.days.forEach { weekDay ->
-                        item(key = "day-${weekDay.day}") {
-                            DayHeader(day = weekDay.day, isToday = weekDay.day == state.today)
+                    if (month != null) {
+                        Column(
+                            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                                .padding(start = 20.dp, end = 20.dp, bottom = 32.dp)
+                        ) {
+                            MonthGrid(month = month, today = state.today, onSelect = viewModel::onMonthDaySelected)
                         }
-                        items(weekDay.meals, key = { "meal-${it.id}" }) { meal ->
-                            MealRow(
-                                meal = meal,
-                                mealTypeName = typeNames[meal.mealTypeId].orEmpty(),
-                                onOpen = { meal.recipeId?.let { onOpenRecipe(it, meal.servings) } },
-                                onMove = { viewModel.onMoveStart(meal) },
-                                onRemove = { viewModel.onRemove(meal) }
-                            )
-                        }
-                        item(key = "add-${weekDay.day}") {
-                            TextButton(
-                                onClick = { viewModel.onAddToDay(weekDay.day) },
-                                modifier = Modifier.testTag("addToDay-${weekDay.day}").then(
-                                    // The tooltip (#190) points at the first day's.
-                                    if (weekDay == state.days.first()) Modifier.tooltipAnchor(Tooltip.WEEK_ADD) else Modifier
-                                )
-                            ) {
-                                Text(stringResource(R.string.action_add_meal))
-                            }
-                            Hairline()
-                        }
+                    } else {
+                        DayList(state, listState, viewModel, onOpenRecipe)
                     }
                 }
             }
@@ -310,6 +292,7 @@ private fun TitleRow(
 private fun PeriodNavigation(
     label: String,
     labelTag: String,
+    backTag: String,
     previousDescription: String,
     nextDescription: String,
     backLabel: String?,
@@ -327,7 +310,7 @@ private fun PeriodNavigation(
         }
         Spacer(Modifier.weight(1f))
         if (backLabel != null) {
-            TextButton(onClick = onBack) { Text(backLabel) }
+            TextButton(onClick = onBack, modifier = Modifier.testTag(backTag)) { Text(backLabel) }
         }
     }
 }
@@ -488,6 +471,109 @@ private fun shareCalendarFile(context: Context, file: CalendarFile, title: Strin
         // Couldn't write the file: nothing to share.
     } catch (e: ActivityNotFoundException) {
         // Nothing can receive a file.
+    }
+}
+
+/**
+ * Every day the ViewModel holds, one section each (#232), keyed by its epoch day so the place
+ * holds when the range moves. Free scrolling tells the ViewModel the day at the top; a
+ * [WeekUiState.scrollTo] from an arrow, "Today", a new day or the month is carried out here.
+ */
+@Composable
+private fun DayList(
+    state: WeekUiState,
+    listState: LazyListState,
+    viewModel: WeekViewModel,
+    onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit
+) {
+    val typeNames = remember(state.mealTypes) { state.mealTypes.associate { it.id to it.name } }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? Long }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collect(viewModel::onTopDayChanged)
+    }
+
+    // On a new day, today goes to the top again (the week starts on the day the app is opened).
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onScreenResumed()
+        onPauseOrDispose {}
+    }
+
+    val target = state.scrollTo
+    val firstDay = state.firstDay
+    LaunchedEffect(target) {
+        if (target == null) return@LaunchedEffect
+        val index = (target.day - firstDay).toInt()
+        var done = false
+        try {
+            if (target.animate) listState.animateScrollToItem(index) else listState.scrollToItem(index)
+            done = true
+        } finally {
+            // Done: the day asked for is the top. Interrupted (a finger on the list): the day
+            // actually there is.
+            val top = if (done) null else listState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? Long
+            viewModel.onScrollHandled(target.id, top)
+        }
+    }
+
+    LazyColumn(
+        state = listState,
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 32.dp),
+        modifier = Modifier.fillMaxSize().testTag("weekList")
+    ) {
+        items(count = state.dayCount, key = { firstDay + it }, contentType = { "day" }) { index ->
+            val day = firstDay + index
+            DaySection(
+                day = day,
+                isToday = day == state.today,
+                meals = state.mealsOn(day),
+                typeNames = typeNames,
+                onOpenRecipe = onOpenRecipe,
+                onAdd = { viewModel.onAddToDay(day) },
+                onMove = viewModel::onMoveStart,
+                onRemove = viewModel::onRemove
+            )
+        }
+    }
+}
+
+/** One day: its heading, its meals, then its "+ Add". */
+@Composable
+private fun DaySection(
+    day: Long,
+    isToday: Boolean,
+    meals: List<PlannedMeal>,
+    typeNames: Map<Long, String>,
+    onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit,
+    onAdd: () -> Unit,
+    onMove: (PlannedMeal) -> Unit,
+    onRemove: (PlannedMeal) -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        DayHeader(day = day, isToday = isToday)
+        meals.forEach { meal ->
+            key(meal.id) {
+                MealRow(
+                    meal = meal,
+                    mealTypeName = typeNames[meal.mealTypeId].orEmpty(),
+                    onOpen = { meal.recipeId?.let { onOpenRecipe(it, meal.servings) } },
+                    onMove = { onMove(meal) },
+                    onRemove = { onRemove(meal) }
+                )
+            }
+        }
+        TextButton(
+            onClick = onAdd,
+            modifier = Modifier.testTag("addToDay-$day").then(
+                // The tooltip (#190) points at today's, the first day shown.
+                if (isToday) Modifier.tooltipAnchor(Tooltip.WEEK_ADD) else Modifier
+            )
+        ) {
+            Text(stringResource(R.string.action_add_meal))
+        }
+        Hairline()
     }
 }
 
