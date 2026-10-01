@@ -3995,6 +3995,16 @@ Android on its classpath, so an `android.*` or `androidx.*` import there is a co
   an alias of its `test` (skipped under `-PsiteCheck`). `DifferentialCorpusTest` writes to
   `core/build/differential-corpus/`. `ViewModelImportsTest` stays: the model side is now the
   compiler's job, the ViewModels' side still the test's.
+- **iOS: a test, not a framework.** A local `RecipeCore` framework target would give the same
+  compile-time guarantee, but Swift makes everything a framework exports say `public`: about
+  750 declarations in `Data/Model` and the parsers, plus hand-written public initialisers for
+  some 40 structs that use the memberwise one, and a second `@testable import` in the tests.
+  That is a large, noisy diff for a rule all of that code already keeps (it imports only
+  Foundation), so a test stands in for the compiler instead: `CoreImportsTests` fails when
+  any file in `Data/Model`, or any Swift file named like a Kotlin file in `core/` (the parsers,
+  `RecipeRenderer`), imports anything but Foundation. Matching Android's `:core` by name keeps
+  the two platforms' notion of "core" the same as files move. The share extension still
+  compiles `Data/` by target membership, unchanged.
 
 ## Metric amounts as decimals, and ingredient headings without a box (September 2026)
 
