@@ -87,16 +87,11 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            // shared/ is a main resource dir for its tables (#9); its fixtures/ are test data
-            // (see the test source set below), not something to ship.
-            excludes += "/fixtures/**"
         }
     }
 
-    // The word and density tables shared with iOS (#9) live in shared/tables/ at the repo
-    // root. As Java resources they land in the APK and on the JVM test classpath alike, so
-    // the pure model code reads them with getResourceAsStream and no Context.
-    sourceSets.getByName("main").resources.directories += "$rootDir/shared"
+    // shared/ (the tables, flags, sample and clip scripts, #9) is :core's resource directory
+    // (#238): it reaches the APK and this module's JVM tests through the dependency on :core.
 
     // MigrationTestHelper reads the exported schema JSON from the instrumentation APK's
     // assets, not from the project directory, so the schemas have to be packaged into the
@@ -155,6 +150,11 @@ ksp {
 }
 
 dependencies {
+    // The pure logic (#238): the model, the parsers, RecipeRenderer. Plain Kotlin/JVM.
+    implementation(project(":core"))
+    // RedditFixtures (core/src/testFixtures), which RedditRecipeSourceTest feeds its fake server.
+    testImplementation(testFixtures(project(":core")))
+
     val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
 
@@ -174,6 +174,7 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     // org.json is an Android framework class; plain JVM tests need a real implementation.
+    // The same version as :core's tests.
     testImplementation("org.json:json:20260814")
     // viewModelScope posts to Dispatchers.Main, which doesn't exist on the JVM; this lets a
     // test install a StandardTestDispatcher/UnconfinedTestDispatcher in its place.
@@ -237,7 +238,8 @@ dependencies {
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.11.0")
     }
 
-    // Fetch + parse the shared page (also reads embedded JSON-LD recipe data).
+    // Fetch + parse the shared page (also reads embedded JSON-LD recipe data). :core declares
+    // the same version (its parsers' API); keep the two in step.
     // Held at 1.17.2 on purpose; it is not part of the toolchain. Newer releases need core
     // library desugaring on Android (1.19.1), fetch through java.net.http.HttpClient where it
     // exists (1.21.1: on the JVM, so unit tests no longer exercise the device's
@@ -272,12 +274,4 @@ dependencies {
     // downloads the Latin model once (the manifest asks for it at install) instead of bundling
     // ~11 MB of native code per ABI in the app (docs/decisions.md).
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
-}
-
-// DifferentialCorpusTest reads the iOS corpus and checks it against the Kotlin, so an edit to
-// that Swift file alone must rerun the unit tests rather than leave them "up to date".
-tasks.withType<Test>().configureEach {
-    inputs.files("../ios/RecipeClipperTests/Model/DifferentialCorpusTests.swift")
-        .withPropertyName("differentialCorpus")
-        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
