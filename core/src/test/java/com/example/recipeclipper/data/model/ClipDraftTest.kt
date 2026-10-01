@@ -53,24 +53,29 @@ class ClipDraftTest {
     @Test fun `assigning splits lines and records a mark`() {
         val draft = empty.assign(ClipField.INGREDIENTS, "1 cup flour\n\n2 eggs")
         assertEquals(listOf("1 cup flour", "2 eggs"), draft.ingredients)
-        assertEquals(mapOf(ClipField.INGREDIENTS to "m1"), draft.marks)
+        assertEquals(listOf(ClipMark("m1", ClipField.INGREDIENTS, listOf("1 cup flour", "2 eggs"))), draft.marks)
         assertEquals("m2", draft.pendingMarkId)
         assertEquals(2, draft.count(ClipField.INGREDIENTS))
     }
 
-    @Test fun `assigning replaces, never appends`() {
+    // The owner's call (#237): separate blocks of a page add up.
+    @Test fun `ingredients and steps add up, each add with its own mark`() {
         val draft = empty
-            .assign(ClipField.INGREDIENTS, "a\nb\nc\nd\ne\nf\ng\nh")
-            .assign(ClipField.INGREDIENTS, "1\n2\n3\n4")
-        assertEquals(listOf("1", "2", "3", "4"), draft.ingredients)
-        assertEquals(4, draft.count(ClipField.INGREDIENTS))
-        assertEquals(mapOf(ClipField.INGREDIENTS to "m2"), draft.marks)
+            .assign(ClipField.INGREDIENTS, "a\nb")
+            .assign(ClipField.INGREDIENTS, "1\n2\n3")
+            .assign(ClipField.STEPS, "Mix.")
+            .assign(ClipField.STEPS, "Bake.")
+        assertEquals(listOf("a", "b", "1", "2", "3"), draft.ingredients)
+        assertEquals(listOf("Mix.", "Bake."), draft.steps)
+        assertEquals(5, draft.count(ClipField.INGREDIENTS))
+        assertEquals(listOf("m1", "m2", "m3", "m4"), draft.marks.map { it.id })
     }
 
-    @Test fun `a name is one line, and replaces too`() {
+    @Test fun `a name is one line, and replaces, with its mark`() {
         val draft = empty.assign(ClipField.NAME, "Brown Butter\nOat Cookies").assign(ClipField.NAME, "Cookies")
         assertEquals("Cookies", draft.name)
         assertEquals(1, draft.count(ClipField.NAME))
+        assertEquals(listOf(ClipMark("m2", ClipField.NAME, listOf("Cookies"))), draft.marks)
     }
 
     @Test fun `a blank selection changes nothing`() {
@@ -80,27 +85,59 @@ class ClipDraftTest {
         assertSame(draft, draft.assign(ClipField.PHOTO, " "))
     }
 
-    @Test fun `the photo is the image address as given`() {
+    @Test fun `the photo is the image address as given, and replaces`() {
         val draft = empty.assign(ClipField.PHOTO, " https://img.example/c.jpg ")
         assertEquals("https://img.example/c.jpg", draft.photo)
         assertEquals(1, draft.count(ClipField.PHOTO))
-        assertEquals("m1", draft.marks[ClipField.PHOTO])
+        assertEquals("m1", draft.marks.single { it.field == ClipField.PHOTO }.id)
+        val again = draft.assign(ClipField.PHOTO, "https://img.example/d.jpg")
+        assertEquals(listOf("m2"), again.marks.map { it.id })
     }
 
-    @Test fun `clearing empties one field and drops only its mark`() {
+    @Test fun `removing an add takes out just its lines`() {
+        val draft = empty.assign(ClipField.NAME, "Cookies")
+            .assign(ClipField.STEPS, "Mix.\nBake.")
+            .assign(ClipField.STEPS, "Cool.")
+        val removed = draft.removeMark("m2")
+        assertEquals(listOf("Cool."), removed.steps)
+        assertEquals("Cookies", removed.name)
+        assertEquals(listOf("m1", "m3"), removed.marks.map { it.id })
+        assertEquals("", draft.removeMark("m1").name)
+        assertSame(draft, draft.removeMark("m9"))
+    }
+
+    @Test fun `removing an add leaves a line edited by hand since, and repeats taken once`() {
+        val draft = empty.assign(ClipField.INGREDIENTS, "salt\nflour").assign(ClipField.INGREDIENTS, "salt")
+            .editLine(ClipField.INGREDIENTS, 1, "plain flour")
+        assertEquals(listOf("plain flour", "salt"), draft.removeMark("m1").ingredients)
+        // "salt" twice: the first add takes one with it, the second add's stays.
+        val twice = empty.assign(ClipField.INGREDIENTS, "salt\nflour").assign(ClipField.INGREDIENTS, "salt")
+        assertEquals(listOf("salt"), twice.removeMark("m1").ingredients)
+    }
+
+    @Test fun `clearing empties one field and drops only its marks`() {
         val draft = empty.assign(ClipField.NAME, "Cookies").assign(ClipField.STEPS, "Mix.\nBake.")
+            .assign(ClipField.STEPS, "Cool.")
             .clear(ClipField.STEPS)
         assertEquals(emptyList<String>(), draft.steps)
         assertEquals("Cookies", draft.name)
-        assertEquals(mapOf(ClipField.NAME to "m1"), draft.marks)
+        assertEquals(listOf("m1"), draft.marks.map { it.id })
         assertNull(empty.assign(ClipField.PHOTO, "x").clear(ClipField.PHOTO).photo)
     }
 
     @Test fun `mark ids never repeat, even after a clear`() {
         val draft = empty.assign(ClipField.NAME, "A").clear(ClipField.NAME).assign(ClipField.NAME, "B")
-        assertEquals("m2", draft.marks[ClipField.NAME])
+        assertEquals(listOf("m2"), draft.marks.map { it.id })
     }
 
+    @Test fun `the next field is the first empty one, the photo last`() {
+        assertEquals(ClipField.NAME, empty.nextField)
+        assertEquals(ClipField.NAME, empty.assign(ClipField.PHOTO, "p").nextField)
+        assertEquals(ClipField.STEPS, empty.assign(ClipField.NAME, "A").assign(ClipField.INGREDIENTS, "x").nextField)
+        val full = empty.assign(ClipField.NAME, "A").assign(ClipField.INGREDIENTS, "x").assign(ClipField.STEPS, "y")
+        assertEquals(ClipField.PHOTO, full.nextField)
+        assertNull(full.assign(ClipField.PHOTO, "p").nextField)
+    }
     @Test fun `finishing needs a name plus ingredients or steps`() {
         assertFalse(empty.canFinish)
         assertFalse(empty.assign(ClipField.NAME, "Cookies").canFinish)

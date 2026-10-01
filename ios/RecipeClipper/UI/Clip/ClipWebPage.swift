@@ -4,7 +4,8 @@ import WebKit
 /// What the page reports, decoded from `clipper.js`'s messages.
 enum ClipPageEvent: Equatable {
     case selection(String)
-    case tagTapped(ClipField)
+    /// An add's tag on the page: the id names the add.
+    case tagTapped(String)
     case imageTapped(String)
     /// While picking a photo, the tap found no image with an address the app can read.
     case noImage
@@ -29,7 +30,7 @@ enum ClipPageEvent: Equatable {
         else { return nil }
         switch type {
         case "selection": return .selection(message["text"] as? String ?? "")
-        case "tag": return (message["field"] as? String).flatMap(ClipField.init(rawValue:)).map { .tagTapped($0) }
+        case "tag": return (message["id"] as? String).flatMap { $0.isEmpty ? nil : .tagTapped($0) }
         // Whether it's a picture the app can use is the ViewModel's call (WebImageUrl).
         case "image": return .imageTapped(message["src"] as? String ?? "")
         case "noImage": return .noImage

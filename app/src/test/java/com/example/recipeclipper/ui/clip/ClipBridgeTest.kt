@@ -1,6 +1,5 @@
 package com.example.recipeclipper.ui.clip
 
-import com.example.recipeclipper.data.model.ClipField
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -17,8 +16,8 @@ class ClipBridgeTest {
     @Test fun `the main frame's messages are read`() {
         assertEquals(ClipPageEvent.Selection("2 cups flour"), ClipBridge.fromListener(selection, isMainFrame = true))
         assertEquals(
-            ClipPageEvent.TagTapped(ClipField.STEPS),
-            ClipBridge.fromListener("""{"type":"tag","field":"STEPS"}""", isMainFrame = true)
+            ClipPageEvent.TagTapped("m2"),
+            ClipBridge.fromListener("""{"type":"tag","field":"STEPS","id":"m2"}""", isMainFrame = true)
         )
         assertEquals(ClipPageEvent.NoImage, ClipBridge.fromListener("""{"type":"noImage"}""", isMainFrame = true))
     }
@@ -26,7 +25,7 @@ class ClipBridgeTest {
     @Test fun `a message from any other frame is dropped`() {
         assertNull(ClipBridge.fromListener(selection, isMainFrame = false))
         assertNull(ClipBridge.fromListener("""{"type":"image","src":"https://ads.example/a.jpg"}""", isMainFrame = false))
-        assertNull(ClipBridge.fromListener("""{"type":"tag","field":"NAME"}""", isMainFrame = false))
+        assertNull(ClipBridge.fromListener("""{"type":"tag","field":"NAME","id":"m1"}""", isMainFrame = false))
         assertNull(ClipBridge.fromListener("""{"type":"noImage"}""", isMainFrame = false))
     }
 

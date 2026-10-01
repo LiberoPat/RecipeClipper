@@ -10,14 +10,14 @@ final class ClipPageEventTests: XCTestCase {
 
     func testTheMainFramesMessagesAreRead() {
         XCTAssertEqual(ClipPageEvent.accept(selection, isMainFrame: true), .selection("2 cups flour"))
-        XCTAssertEqual(ClipPageEvent.accept(#"{"type":"tag","field":"STEPS"}"#, isMainFrame: true), .tagTapped(.steps))
+        XCTAssertEqual(ClipPageEvent.accept(#"{"type":"tag","field":"STEPS","id":"m2"}"#, isMainFrame: true), .tagTapped("m2"))
         XCTAssertEqual(ClipPageEvent.accept(#"{"type":"noImage"}"#, isMainFrame: true), .noImage)
     }
 
     func testAMessageFromAnyOtherFrameIsDropped() {
         XCTAssertNil(ClipPageEvent.accept(selection, isMainFrame: false))
         XCTAssertNil(ClipPageEvent.accept(#"{"type":"image","src":"https://ads.example/a.jpg"}"#, isMainFrame: false))
-        XCTAssertNil(ClipPageEvent.accept(#"{"type":"tag","field":"NAME"}"#, isMainFrame: false))
+        XCTAssertNil(ClipPageEvent.accept(#"{"type":"tag","field":"NAME","id":"m1"}"#, isMainFrame: false))
         XCTAssertNil(ClipPageEvent.accept(#"{"type":"noImage"}"#, isMainFrame: false))
     }
 

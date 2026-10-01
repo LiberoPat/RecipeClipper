@@ -45,22 +45,26 @@ final class ClipDraftTests: XCTestCase {
     func testAssigningSplitsLinesAndRecordsAMark() {
         let draft = empty.assign(.ingredients, "1 cup flour\n\n2 eggs")
         XCTAssertEqual(draft.ingredients, ["1 cup flour", "2 eggs"])
-        XCTAssertEqual(draft.marks, [.ingredients: "m1"])
+        XCTAssertEqual(draft.marks, [ClipMark(id: "m1", field: .ingredients, lines: ["1 cup flour", "2 eggs"])])
         XCTAssertEqual(draft.pendingMarkId, "m2")
         XCTAssertEqual(draft.count(.ingredients), 2)
     }
 
-    func testAssigningReplacesNeverAppends() {
-        let draft = empty.assign(.ingredients, "a\nb\nc\nd\ne\nf\ng\nh").assign(.ingredients, "1\n2\n3\n4")
-        XCTAssertEqual(draft.ingredients, ["1", "2", "3", "4"])
-        XCTAssertEqual(draft.count(.ingredients), 4)
-        XCTAssertEqual(draft.marks, [.ingredients: "m2"])
+    // The owner's call (#237): separate blocks of a page add up.
+    func testIngredientsAndStepsAddUpEachAddWithItsOwnMark() {
+        let draft = empty.assign(.ingredients, "a\nb").assign(.ingredients, "1\n2\n3")
+            .assign(.steps, "Mix.").assign(.steps, "Bake.")
+        XCTAssertEqual(draft.ingredients, ["a", "b", "1", "2", "3"])
+        XCTAssertEqual(draft.steps, ["Mix.", "Bake."])
+        XCTAssertEqual(draft.count(.ingredients), 5)
+        XCTAssertEqual(draft.marks.map(\.id), ["m1", "m2", "m3", "m4"])
     }
 
-    func testANameIsOneLineAndReplacesToo() {
+    func testANameIsOneLineAndReplacesWithItsMark() {
         let draft = empty.assign(.name, "Brown Butter\nOat Cookies").assign(.name, "Cookies")
         XCTAssertEqual(draft.name, "Cookies")
         XCTAssertEqual(draft.count(.name), 1)
+        XCTAssertEqual(draft.marks, [ClipMark(id: "m2", field: .name, lines: ["Cookies"])])
     }
 
     func testABlankSelectionChangesNothing() {
@@ -70,25 +74,53 @@ final class ClipDraftTests: XCTestCase {
         XCTAssertEqual(draft.assign(.photo, " "), draft)
     }
 
-    func testThePhotoIsTheImageAddressAsGiven() {
+    func testThePhotoIsTheImageAddressAsGivenAndReplaces() {
         let draft = empty.assign(.photo, " https://img.example/c.jpg ")
         XCTAssertEqual(draft.photo, "https://img.example/c.jpg")
         XCTAssertEqual(draft.count(.photo), 1)
-        XCTAssertEqual(draft.marks[.photo], "m1")
+        XCTAssertEqual(draft.marks.first { $0.field == .photo }?.id, "m1")
+        XCTAssertEqual(draft.assign(.photo, "https://img.example/d.jpg").marks.map(\.id), ["m2"])
     }
 
-    func testClearingEmptiesOneFieldAndDropsOnlyItsMark() {
-        let draft = empty.assign(.name, "Cookies").assign(.steps, "Mix.\nBake.").clear(.steps)
+    func testRemovingAnAddTakesOutJustItsLines() {
+        let draft = empty.assign(.name, "Cookies").assign(.steps, "Mix.\nBake.").assign(.steps, "Cool.")
+        let removed = draft.removeMark("m2")
+        XCTAssertEqual(removed.steps, ["Cool."])
+        XCTAssertEqual(removed.name, "Cookies")
+        XCTAssertEqual(removed.marks.map(\.id), ["m1", "m3"])
+        XCTAssertEqual(draft.removeMark("m1").name, "")
+        XCTAssertEqual(draft.removeMark("m9"), draft)
+    }
+
+    func testRemovingAnAddLeavesALineEditedByHandSinceAndRepeatsTakenOnce() {
+        let draft = empty.assign(.ingredients, "salt\nflour").assign(.ingredients, "salt")
+            .editLine(.ingredients, 1, "plain flour")
+        XCTAssertEqual(draft.removeMark("m1").ingredients, ["plain flour", "salt"])
+        // "salt" twice: the first add takes one with it, the second add's stays.
+        let twice = empty.assign(.ingredients, "salt\nflour").assign(.ingredients, "salt")
+        XCTAssertEqual(twice.removeMark("m1").ingredients, ["salt"])
+    }
+
+    func testClearingEmptiesOneFieldAndDropsOnlyItsMarks() {
+        let draft = empty.assign(.name, "Cookies").assign(.steps, "Mix.\nBake.").assign(.steps, "Cool.").clear(.steps)
         XCTAssertEqual(draft.steps, [])
         XCTAssertEqual(draft.name, "Cookies")
-        XCTAssertEqual(draft.marks, [.name: "m1"])
+        XCTAssertEqual(draft.marks.map(\.id), ["m1"])
         XCTAssertNil(empty.assign(.photo, "x").clear(.photo).photo)
     }
 
     func testMarkIdsNeverRepeatEvenAfterAClear() {
-        XCTAssertEqual(empty.assign(.name, "A").clear(.name).assign(.name, "B").marks[.name], "m2")
+        XCTAssertEqual(empty.assign(.name, "A").clear(.name).assign(.name, "B").marks.map(\.id), ["m2"])
     }
 
+    func testTheNextFieldIsTheFirstEmptyOneThePhotoLast() {
+        XCTAssertEqual(empty.nextField, .name)
+        XCTAssertEqual(empty.assign(.photo, "p").nextField, .name)
+        XCTAssertEqual(empty.assign(.name, "A").assign(.ingredients, "x").nextField, .steps)
+        let full = empty.assign(.name, "A").assign(.ingredients, "x").assign(.steps, "y")
+        XCTAssertEqual(full.nextField, .photo)
+        XCTAssertNil(full.assign(.photo, "p").nextField)
+    }
     func testFinishingNeedsANamePlusIngredientsOrSteps() {
         XCTAssertFalse(empty.canFinish)
         XCTAssertFalse(empty.assign(.name, "Cookies").canFinish)

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,6 +38,9 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -44,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -89,7 +94,7 @@ fun ClipScreen(
     LaunchedEffect(notice?.serial) {
         if (notice == null || noticeText == null) return@LaunchedEffect
         val action = when (notice.message) {
-            is ClipMessage.Assigned, is ClipMessage.Cleared -> undoLabel
+            is ClipMessage.Removed -> undoLabel
             ClipMessage.DraftRestored -> discardLabel
             ClipMessage.SaveFailed, ClipMessage.PhotoUnreadable, is ClipMessage.Unlock, is ClipMessage.Missing,
             ClipMessage.TextUnreadable -> null
@@ -111,15 +116,26 @@ fun ClipScreen(
     val resources = LocalResources.current
     val tagLabel = { field: ClipField, count: Int ->
         val label = resources.getString(field.labelRes)
-        if (field == ClipField.NAME || count == 0) label
-        else resources.getString(R.string.clip_tag_count, label, count)
+        if (field.replaces) label else resources.getString(R.string.clip_tag_count, label, count)
     }
-    // The new mark goes to the view the selection was made in: the page, or the Text view.
-    val pageSync = remember(state.draft, state.newMarkId, state.showingText) {
-        syncJson(state.draft, state.newMarkId.takeUnless { state.showingText }, tagLabel)
+    // The new mark, and taps that select, go to the view showing: the page, or the Text view.
+    val pageSync = remember(state.draft, state.newMarkId, state.showingText, state.armed, state.clearSelection) {
+        syncJson(
+            state.draft,
+            newMarkId = state.newMarkId.takeUnless { state.showingText },
+            armed = state.armedText.takeUnless { state.showingText },
+            clear = state.clearSelection,
+            label = tagLabel
+        )
     }
-    val textSync = remember(state.draft, state.newMarkId, state.showingText) {
-        syncJson(state.draft, state.newMarkId.takeIf { state.showingText }, tagLabel)
+    val textSync = remember(state.draft, state.newMarkId, state.showingText, state.armed, state.clearSelection) {
+        syncJson(
+            state.draft,
+            newMarkId = state.newMarkId.takeIf { state.showingText },
+            armed = state.armedText.takeIf { state.showingText },
+            clear = state.clearSelection,
+            label = tagLabel
+        )
     }
     val textPage = state.pageText?.let { text ->
         remember(text) {
@@ -134,7 +150,7 @@ fun ClipScreen(
     val onPageEvent: (ClipPageEvent) -> Unit = { event ->
         when (event) {
             is ClipPageEvent.Selection -> viewModel.onSelectionChanged(event.text)
-            is ClipPageEvent.TagTapped -> viewModel.onTagTapped(event.field)
+            is ClipPageEvent.TagTapped -> viewModel.onTagTapped(event.markId)
             is ClipPageEvent.ImageTapped -> viewModel.onImageTapped(event.src)
             ClipPageEvent.NoImage -> viewModel.onNoImageTapped()
             is ClipPageEvent.PageLoaded -> viewModel.onPageLoaded(event.html)
@@ -182,7 +198,9 @@ fun ClipScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                         // The Text view (#213) lies over the page, which stays loaded (its scroll
-                        // and marks) under it; hidden, it keeps its own at no size.
+                        // and marks) under it. Hidden, it keeps its own: full size, but not drawn
+                        // and under the page (#237: shrunk to no size, its last frame stayed over
+                        // the page, which then looked dead).
                         if (textPage != null) {
                             key(textPage) {
                                 ClipWebPage(
@@ -191,16 +209,16 @@ fun ClipScreen(
                                     pickingPhoto = false,
                                     onEvent = onPageEvent,
                                     loadPage = loadTextPage(textPage),
-                                    modifier = if (state.showingText) {
-                                        Modifier.fillMaxSize().testTag("clip.text")
-                                    } else {
-                                        Modifier.size(0.dp)
-                                    }
+                                    visible = state.showingText,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(if (state.showingText) 1f else -1f)
+                                        .then(if (state.showingText) Modifier.testTag("clip.text") else Modifier)
                                 )
                             }
                         }
                         if (state.reviewing) {
-                            ReviewPane(state, viewModel, Modifier.fillMaxSize())
+                            ReviewPane(state, viewModel, Modifier.fillMaxSize().zIndex(2f))
                         }
                     }
                     // Nothing to clip while the page is Cloudflare's check (#220).
@@ -223,38 +241,43 @@ private val ClipField.labelRes: Int
         ClipField.PHOTO -> R.string.clip_field_photo
     }
 
-/** The argument to `RC.sync`: the marks this draft holds, with their tags' labels. */
-private fun syncJson(draft: ClipDraft, newMarkId: String?, label: (ClipField, Int) -> String): String {
+/**
+ * The argument to `RC.sync`: the marks this draft holds, each add with its own tag ("Ingredients
+ * · 3"), the field the page's taps select for ([armed], #237) and the clear count.
+ */
+private fun syncJson(
+    draft: ClipDraft,
+    newMarkId: String?,
+    armed: ClipField?,
+    clear: Int,
+    label: (ClipField, Int) -> String
+): String {
     val marks = JSONArray()
-    draft.marks.forEach { (field, id) ->
-        if (field != ClipField.PHOTO) {
-            marks.put(JSONObject().put("id", id).put("field", field.name).put("label", label(field, draft.count(field))))
+    draft.marks.forEach { mark ->
+        if (mark.field != ClipField.PHOTO) {
+            marks.put(
+                JSONObject().put("id", mark.id).put("field", mark.field.name)
+                    .put("label", label(mark.field, mark.lines.size))
+            )
         }
     }
-    val json = JSONObject().put("marks", marks)
+    val json = JSONObject().put("marks", marks).put("armed", armed?.name ?: JSONObject.NULL).put("clear", clear)
     newMarkId?.let { json.put("newId", it) }
-    draft.photo?.let {
-        json.put("photo", JSONObject().put("src", it).put("label", label(ClipField.PHOTO, 0)))
+    draft.photo?.let { src ->
+        val id = draft.marks.lastOrNull { it.field == ClipField.PHOTO }?.id.orEmpty()
+        json.put("photo", JSONObject().put("src", src).put("id", id).put("label", label(ClipField.PHOTO, 1)))
     }
     return json.toString()
 }
 
 @Composable
 private fun noticeText(message: ClipMessage): String = when (message) {
-    is ClipMessage.Assigned -> when (message.field) {
-        ClipField.NAME -> stringResource(R.string.clip_added_name)
-        ClipField.INGREDIENTS -> pluralStringResource(R.plurals.clip_added_ingredients, message.count, message.count)
-        ClipField.STEPS -> pluralStringResource(R.plurals.clip_added_steps, message.count, message.count)
-        ClipField.PHOTO -> stringResource(R.string.clip_added_photo)
+    is ClipMessage.Removed -> when (message.field) {
+        ClipField.NAME -> stringResource(R.string.clip_cleared_name)
+        ClipField.INGREDIENTS -> pluralStringResource(R.plurals.clip_removed_ingredients, message.count, message.count)
+        ClipField.STEPS -> pluralStringResource(R.plurals.clip_removed_steps, message.count, message.count)
+        ClipField.PHOTO -> stringResource(R.string.clip_cleared_photo)
     }
-    is ClipMessage.Cleared -> stringResource(
-        when (message.field) {
-            ClipField.NAME -> R.string.clip_cleared_name
-            ClipField.INGREDIENTS -> R.string.clip_cleared_ingredients
-            ClipField.STEPS -> R.string.clip_cleared_steps
-            ClipField.PHOTO -> R.string.clip_cleared_photo
-        }
-    )
     ClipMessage.DraftRestored -> stringResource(R.string.clip_draft_restored)
     ClipMessage.SaveFailed -> stringResource(R.string.clip_save_failed)
     ClipMessage.PhotoUnreadable -> stringResource(R.string.clip_photo_unreadable)
@@ -329,26 +352,39 @@ private fun TopBar(
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
+/**
+ * Field first (#237): the hint bar (what to do now) over one button per field. A field button
+ * arms its field (filled while armed) and shows what it holds (a check and a count).
+ */
 @Composable
 private fun ClipToolbar(state: ClipUiState, viewModel: ClipViewModel) {
-    val draft = state.draft
-    val selecting = state.selection.isNotEmpty()
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-        when {
-            selecting -> {
-                Text(
-                    pluralStringResource(R.plurals.clip_lines_selected, state.selection.size, state.selection.size) +
-                        stringResource(R.string.clip_summary_separator) + stringResource(R.string.clip_lines_selected_hint),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                state.selection.take(2).forEach { line ->
-                    Text(line, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        HintBar(state, viewModel)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            ClipField.entries.forEach { field ->
+                FieldButton(field, armed = state.armed == field, count = state.draft.count(field)) {
+                    viewModel.onFieldButton(field)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HintBar(state: ClipUiState, viewModel: ClipViewModel) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 40.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        verticalArrangement = Arrangement.Center
+    ) {
+        when (val hint = state.hint) {
             // The photo is optional: Skip leaves this step without tapping the page.
-            state.pickingPhoto -> Row(verticalAlignment = Alignment.CenterVertically) {
+            ClipHint.PickPhoto -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     stringResource(R.string.clip_picking_photo),
                     modifier = Modifier.weight(1f),
@@ -357,82 +393,134 @@ private fun ClipToolbar(state: ClipUiState, viewModel: ClipViewModel) {
                 )
                 TextButton(onClick = viewModel::onSkipPhoto) { Text(stringResource(R.string.clip_skip_photo)) }
             }
-            else -> {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        summary(draft),
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    if (!draft.isEmpty) {
-                        TextButton(onClick = viewModel::onReview) { Text(stringResource(R.string.clip_review)) }
+            is ClipHint.Select -> Text(
+                stringResource(
+                    when (hint.field) {
+                        ClipField.NAME -> R.string.clip_select_name
+                        ClipField.INGREDIENTS -> R.string.clip_select_ingredients
+                        else -> R.string.clip_select_steps
                     }
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            is ClipHint.Confirm -> {
+                state.selection.firstOrNull()?.let { line ->
+                    Text(line, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = viewModel::onConfirm,
+                        modifier = Modifier.weight(1f).testTag("clip.confirm"),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            when (hint.field) {
+                                ClipField.NAME -> stringResource(R.string.clip_confirm_name)
+                                ClipField.INGREDIENTS ->
+                                    pluralStringResource(R.plurals.clip_confirm_ingredients, hint.lines, hint.lines)
+                                else -> pluralStringResource(R.plurals.clip_confirm_steps, hint.lines, hint.lines)
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    TextButton(onClick = viewModel::onClearSelection) { Text(stringResource(R.string.action_clear)) }
+                }
+            }
+            is ClipHint.Selected -> {
+                Text(
+                    pluralStringResource(R.plurals.clip_lines_selected, hint.lines, hint.lines) +
+                        stringResource(R.string.clip_summary_separator) + stringResource(R.string.clip_selected_hint),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = muted
+                )
+                state.selection.firstOrNull()?.let { line ->
+                    Text(line, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            is ClipHint.Next -> Row(verticalAlignment = Alignment.CenterVertically) {
+                val photo = state.draft.photo
+                if (hint.added?.field == ClipField.PHOTO && photo != null) {
+                    AsyncImage(
+                        model = photo,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(36.dp).clip(RoundedCornerShape(6.dp))
+                    )
+                    Spacer(Modifier.width(10.dp))
                 }
                 Text(
-                    stringResource(R.string.clip_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    listOfNotNull(hint.added?.let { addedText(it) }, nextText(hint.next, state.draft.isEmpty))
+                        .joinToString(" "),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
                 )
+                if (hint.added != null) {
+                    TextButton(onClick = viewModel::onUndo) { Text(stringResource(R.string.action_undo)) }
+                }
             }
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-            // With a selection, a count shows what the field would hold: assigning replaces.
-            val lines = state.selection.size
-            FieldButton(stringResource(R.string.clip_field_name), selecting) { viewModel.onAssign(ClipField.NAME) }
-            FieldButton(
-                stringResource(R.string.clip_field_ingredients) + if (selecting) " $lines" else "",
-                selecting
-            ) { viewModel.onAssign(ClipField.INGREDIENTS) }
-            FieldButton(
-                stringResource(R.string.clip_field_steps) + if (selecting) " $lines" else "",
-                selecting
-            ) { viewModel.onAssign(ClipField.STEPS) }
-            FieldButton(
-                stringResource(R.string.clip_field_photo),
-                enabled = true,
-                selected = state.pickingPhoto,
-                onClick = viewModel::onPhotoButton
-            )
         }
     }
 }
 
 @Composable
-private fun summary(draft: ClipDraft): String {
-    val separator = stringResource(R.string.clip_summary_separator)
-    val ingredients = draft.count(ClipField.INGREDIENTS)
-    val steps = draft.count(ClipField.STEPS)
-    return listOf(
-        stringResource(if (draft.count(ClipField.NAME) > 0) R.string.clip_summary_name else R.string.clip_summary_no_name),
-        pluralStringResource(R.plurals.clip_summary_ingredients, ingredients, ingredients),
-        pluralStringResource(R.plurals.clip_summary_steps, steps, steps),
-        stringResource(if (draft.photo != null) R.string.clip_summary_photo else R.string.clip_summary_no_photo)
-    ).joinToString(separator)
-}
+private fun addedText(added: ClipAdded): String = when (added.field) {
+    ClipField.NAME -> stringResource(R.string.clip_added_name)
+    ClipField.INGREDIENTS -> pluralStringResource(R.plurals.clip_added_ingredients, added.count, added.count)
+    ClipField.STEPS -> pluralStringResource(R.plurals.clip_added_steps, added.count, added.count)
+    ClipField.PHOTO -> stringResource(R.string.clip_added_photo)
+} + "."
+
+@Composable
+private fun nextText(next: ClipField?, empty: Boolean): String = stringResource(
+    when (next) {
+        ClipField.NAME -> if (empty) R.string.clip_hint_start else R.string.clip_next_name
+        ClipField.INGREDIENTS -> R.string.clip_next_ingredients
+        ClipField.STEPS -> R.string.clip_next_steps
+        ClipField.PHOTO -> R.string.clip_next_photo
+        null -> R.string.clip_ready
+    }
+)
 
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.FieldButton(
-    label: String,
-    enabled: Boolean,
-    selected: Boolean = false,
+    field: ClipField,
+    armed: Boolean,
+    count: Int,
     onClick: () -> Unit
 ) {
-    val modifier = Modifier.weight(1f)
-    val padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-    if (selected) {
+    val modifier = Modifier
+        .weight(1f)
+        .testTag("clip.field.${field.name}")
+        .semantics { selected = armed }
+    val padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+    val content: @Composable () -> Unit = {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                stringResource(field.labelRes),
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            // What the field holds: a check, with the count for ingredients and steps.
+            Text(
+                when {
+                    count == 0 -> ""
+                    field.replaces -> stringResource(R.string.clip_filled)
+                    else -> stringResource(R.string.clip_filled_count, count)
+                },
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+    if (armed) {
         Button(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(10.dp), contentPadding = padding) {
-            Text(label, maxLines = 1)
+            content()
         }
     } else {
-        OutlinedButton(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = modifier,
-            shape = RoundedCornerShape(10.dp),
-            contentPadding = padding
-        ) {
-            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        OutlinedButton(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(10.dp), contentPadding = padding) {
+            content()
         }
     }
 }

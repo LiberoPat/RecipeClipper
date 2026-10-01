@@ -201,16 +201,13 @@ enum UITestSeeding {
         return container
     }
 
-    /// The page "Clip it yourself" shows under test, in place of the live one. XCUITest can't
-    /// drag a selection in a web view reliably, so the page carries buttons that select a block
-    /// by script, as a finger would; the app hears it through the page's `selectionchange`, the
-    /// same path a person's selection takes. Android's ClipScreenTest uses the same page.
+    /// The page "Clip it yourself" shows under test, in place of the live one. Field first (#237):
+    /// a tap on the page's text selects it, so the tests tap the text as a finger would; the app
+    /// hears it through the page's `selectionchange`, the same path a person's selection takes.
+    /// Android's ClipScreenTest uses the same page.
     static let clipFixtureHTML = """
     <!doctype html><html><head><meta name="viewport" content="width=device-width">
-    <style>body{font:16px -apple-system,sans-serif;margin:16px}button{font-size:14px;margin:2px}</style>
-    <script>function sel(id){var r=document.createRange();r.selectNodeContents(document.getElementById(id));
-    var s=getSelection();s.removeAllRanges();s.addRange(r);}</script></head><body>
-    <p><button onclick="sel('title')">Select title</button><button onclick="sel('ingredients')">Select ingredients</button><button onclick="sel('steps')">Select steps</button><button onclick="sel('step2')">Select last step</button></p>
+    <style>body{font:16px -apple-system,sans-serif;margin:16px}</style></head><body>
     <h1 id="title">Brown Butter Oat Cookies</h1>
     <img id="photo" src="/img/cookies.jpg" width="200" height="120" alt="Cookies photo" style="background:#c98b4e">
     <img id="placeholder" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" width="200" height="60" alt="Placeholder picture" style="background:#ddd">
@@ -218,6 +215,7 @@ enum UITestSeeding {
     <ul id="ingredients"><li>1 cup (226 g) unsalted butter</li><li>1 cup packed brown sugar</li><li>3 cups rolled oats</li></ul>
     <h2>Method</h2>
     <ol id="steps"><li id="step1">Brown the butter until it smells nutty.</li><li id="step2">Bake at 350°F for 11 to 13 minutes.</li></ol>
+    <p id="cool">Cool on the tray.</p>
     <iframe title="Ad" width="300" height="50" srcdoc="<button onclick=&quot;webkit.messageHandlers.rc.postMessage(JSON.stringify({type:'selection',text:'Buy now'}))&quot;>Ad: post a selection</button>"></iframe>
     </body></html>
     """

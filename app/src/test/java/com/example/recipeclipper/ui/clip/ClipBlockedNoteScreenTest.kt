@@ -54,7 +54,7 @@ class ClipBlockedNoteScreenTest {
         compose.onNodeWithText(note).assertIsDisplayed()
         // No way to try the read again from here: the block isn't one that lifts.
         compose.onNodeWithText("Try again").assertDoesNotExist()
-        compose.onNodeWithText("Select text on the page", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Tap Name below", substring = true).assertIsDisplayed()
     }
 
     @Test

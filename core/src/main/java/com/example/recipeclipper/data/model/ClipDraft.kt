@@ -1,16 +1,30 @@
 package com.example.recipeclipper.data.model
 
 /** Where a selection on the page can go. The photo is picked by tapping an image instead. */
-enum class ClipField { NAME, INGREDIENTS, STEPS, PHOTO }
+enum class ClipField {
+    NAME, INGREDIENTS, STEPS, PHOTO;
+
+    /** A name or a photo is replaced by each assignment; ingredients and steps add up (#237). */
+    val replaces: Boolean get() = this == NAME || this == PHOTO
+}
+
+/**
+ * One add to a [ClipDraft], and the page mark drawn for it (#37, #237): [id] names the mark,
+ * [lines] are what it put into [field] (a name, or a photo's address, as its one line), so
+ * removing it takes out exactly those lines.
+ */
+data class ClipMark(val id: String, val field: ClipField, val lines: List<String>)
 
 /**
  * A recipe being clipped by hand from a page with no recipe data (#37). Immutable and pure:
  * every change returns a new draft, so undo is simply "the draft before the last change".
  *
- * Assigning to a field **replaces** what it held (the owner's decision), for every field.
- * [marks] records, per field, the id of the highlight the page drew for that assignment, so
- * the page can show exactly the marks this draft holds after an undo or a clear. Mark ids come
- * from [nextMark], so they never repeat within one draft.
+ * The name and the photo are **replaced** by each assignment; ingredients and steps are
+ * **added** after what the field holds, so separate blocks of a page (a list, then a second
+ * list under another heading) add up (the owner's call, #237). [marks] records each add with
+ * the id of the highlight the page drew for it, so the page can show exactly the marks this
+ * draft holds after an undo, and one add can be taken back on its own ([removeMark]). Mark ids
+ * come from [nextMark], so they never repeat within one draft.
  *
  * [serves] and [totalTime] are only ever typed by the user in Review; they are never read from
  * the page.
@@ -23,7 +37,7 @@ data class ClipDraft(
     val photo: String? = null,
     val serves: String = "",
     val totalTime: String = "",
-    val marks: Map<ClipField, String> = emptyMap(),
+    val marks: List<ClipMark> = emptyList(),
     val nextMark: Int = 1
 ) {
 
@@ -48,25 +62,61 @@ data class ClipDraft(
         ClipField.PHOTO -> if (photo == null) 0 else 1
     }
 
+    /**
+     * The field the cook is pointed to next (#237): the first of name, ingredients, steps and
+     * photo still empty, or null when every one holds something.
+     */
+    val nextField: ClipField?
+        get() = ClipField.entries.firstOrNull { count(it) == 0 }
+
     /** The id the next assignment's page mark will use. */
     val pendingMarkId: String get() = "m$nextMark"
 
     /**
-     * Puts the selected [text] into [field], replacing what was there, and records the page
-     * mark under [pendingMarkId]. A selection with no text in it changes nothing. For
+     * Puts the selected [text] into [field] and records the page mark under [pendingMarkId]: a
+     * name or a photo replaces what was there (and its mark); ingredients and steps are added
+     * after what the field holds. A selection with no text in it changes nothing. For
      * [ClipField.PHOTO], [text] is the image's address.
      */
     fun assign(field: ClipField, text: String): ClipDraft {
+        val lines = when (field) {
+            ClipField.NAME -> listOfNotNull(ClipSelection.name(text).takeIf { it.isNotEmpty() })
+            ClipField.INGREDIENTS, ClipField.STEPS -> ClipSelection.lines(text)
+            ClipField.PHOTO -> listOfNotNull(text.trim().takeIf { it.isNotEmpty() })
+        }
+        if (lines.isEmpty()) return this
         val assigned = when (field) {
-            ClipField.NAME -> ClipSelection.name(text).takeIf { it.isNotEmpty() }?.let { copy(name = it) }
-            ClipField.INGREDIENTS -> ClipSelection.lines(text).takeIf { it.isNotEmpty() }?.let { copy(ingredients = it) }
-            ClipField.STEPS -> ClipSelection.lines(text).takeIf { it.isNotEmpty() }?.let { copy(steps = it) }
-            ClipField.PHOTO -> text.trim().takeIf { it.isNotEmpty() }?.let { copy(photo = it) }
-        } ?: return this
-        return assigned.copy(marks = marks + (field to pendingMarkId), nextMark = nextMark + 1)
+            ClipField.NAME -> copy(name = lines.single())
+            ClipField.INGREDIENTS -> copy(ingredients = ingredients + lines)
+            ClipField.STEPS -> copy(steps = steps + lines)
+            ClipField.PHOTO -> copy(photo = lines.single())
+        }
+        val kept = if (field.replaces) marks.filter { it.field != field } else marks
+        return assigned.copy(marks = kept + ClipMark(pendingMarkId, field, lines), nextMark = nextMark + 1)
     }
 
-    /** Empties [field] and drops its page mark. */
+    /** The add a page mark stands for, while this draft still holds it. */
+    fun mark(id: String): ClipMark? = marks.firstOrNull { it.id == id }
+
+    /**
+     * Takes back one add: a name or a photo empties its field; ingredients or steps lose the
+     * lines that add put there (for each, the first line still equal to it, so a line edited by
+     * hand in Review since then stays). An unknown id changes nothing.
+     */
+    fun removeMark(id: String): ClipDraft {
+        val mark = mark(id) ?: return this
+        val removed = when (mark.field) {
+            ClipField.NAME, ClipField.PHOTO -> clear(mark.field)
+            ClipField.INGREDIENTS, ClipField.STEPS -> {
+                val left = lines(mark.field).toMutableList()
+                mark.lines.forEach { line -> left.indexOf(line).takeIf { it >= 0 }?.let { left.removeAt(it) } }
+                withLines(mark.field, left)
+            }
+        }
+        return removed.copy(marks = marks.filter { it.id != id })
+    }
+
+    /** Empties [field] and drops its page marks. */
     fun clear(field: ClipField): ClipDraft {
         val cleared = when (field) {
             ClipField.NAME -> copy(name = "")
@@ -74,7 +124,7 @@ data class ClipDraft(
             ClipField.STEPS -> copy(steps = emptyList())
             ClipField.PHOTO -> copy(photo = null)
         }
-        return cleared.copy(marks = marks - field)
+        return cleared.copy(marks = marks.filter { it.field != field })
     }
 
     // --- Review: editing lines by hand. Blank lines are kept while editing, dropped on save.

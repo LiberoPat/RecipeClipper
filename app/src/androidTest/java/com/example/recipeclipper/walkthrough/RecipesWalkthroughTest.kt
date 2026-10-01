@@ -11,7 +11,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -559,8 +558,10 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     }
 
     /** Taps the toolbar's [field] button: the selection goes there, and is marked on the page. */
+    /** Field first (#237): the field's button arms it, and the hint bar's confirm adds the selection. */
     private fun assign(field: String) {
-        tap(hasText(field, substring = true) and hasClickAction(), 3000)
+        tapTag("clip.field.${field.uppercase()}")
+        tapTag("clip.confirm", 3000)
     }
 
     private fun quote(text: String) = "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"

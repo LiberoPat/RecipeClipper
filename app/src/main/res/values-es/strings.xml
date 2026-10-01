@@ -262,7 +262,7 @@
     <string name="label_meal_type_name">Nombre del tipo de comida</string>
 
     <!-- Clip it yourself (#37) -->
-    <string name="clip_offer">Abre la página, selecciona el nombre, los ingredientes y los pasos, y toca dónde va cada uno.</string>
+    <string name="clip_offer">Abre la página, toca Nombre, Ingredientes y Pasos y elige cada uno en la página.</string>
     <string name="action_clip_it_yourself">Recortar a mano</string>
     <string name="action_done">Listo</string>
     <string name="action_discard">Descartar</string>
@@ -271,30 +271,22 @@
     <string name="clip_field_ingredients">Ingredientes</string>
     <string name="clip_field_steps">Pasos</string>
     <string name="clip_field_photo">Foto</string>
-    <string name="clip_hint">Selecciona texto en la página y toca dónde va. Para la foto, toca Foto y luego la imagen.</string>
     <string name="clip_reddit_blocked_note">Reddit no dejó que la app leyera esta publicación, así que está abierta aquí: selecciona la receta.</string>
     <string name="clip_human_check_note">Este sitio quiere comprobar que eres una persona. Marca la casilla y se abrirá la receta.</string>
     <string name="clip_human_check_no_recipe_note">La comprobación se superó, pero esta página no tiene una receta que la app pueda leer, así que está abierta aquí: selecciona la receta.</string>
     <string name="clip_picking_photo">Toca la imagen que quieras usar como foto.</string>
     <string name="clip_skip_photo">Omitir</string>
     <string name="clip_photo_unreadable">No se pudo leer ninguna imagen ahí. La foto es opcional.</string>
-    <string name="clip_lines_selected_hint">cada línea es un elemento</string>
-    <string name="clip_summary_name">Nombre ✓</string>
-    <string name="clip_summary_no_name">Sin nombre</string>
-    <string name="clip_summary_photo">foto</string>
-    <string name="clip_summary_no_photo">sin foto</string>
     <string name="clip_review">Revisar</string>
     <string name="clip_added_name">Nombre añadido</string>
     <string name="clip_added_photo">Foto añadida</string>
     <string name="clip_cleared_name">Nombre borrado</string>
-    <string name="clip_cleared_ingredients">Ingredientes borrados</string>
-    <string name="clip_cleared_steps">Pasos borrados</string>
     <string name="clip_cleared_photo">Foto borrada</string>
     <string name="clip_draft_restored">Borrador recuperado</string>
     <string name="clip_save_failed">No se pudo guardar el recorte. Inténtalo de nuevo.</string>
-    <string name="clip_needs_name">Escribe el nombre de la receta para guardarla, o selecciónalo y toca Nombre.</string>
-    <string name="clip_needs_lines">Para guardar, selecciona los ingredientes o los pasos y toca Ingredientes o Pasos.</string>
-    <string name="clip_needs_name_and_lines">Para guardar, selecciona el nombre de la receta y sus ingredientes o pasos, y toca dónde va cada uno.</string>
+    <string name="clip_needs_name">Escribe el nombre de la receta para guardarla, o toca Nombre y luego el nombre en la página.</string>
+    <string name="clip_needs_lines">Para guardar, toca Ingredientes o Pasos y elígelos en la página.</string>
+    <string name="clip_needs_name_and_lines">Para guardar, toca Nombre y luego Ingredientes o Pasos, y elige cada uno en la página.</string>
     <string name="clip_text_unreadable">La publicación aún no se ha cargado. Espera un momento y vuelve a tocar Texto.</string>
     <string name="clip_show_text">Texto</string>
     <string name="clip_show_page">Página</string>
@@ -319,16 +311,6 @@
         <item quantity="one">%1$d línea seleccionada</item>
         <item quantity="many">%1$d de líneas seleccionadas</item>
         <item quantity="other">%1$d líneas seleccionadas</item>
-    </plurals>
-    <plurals name="clip_summary_ingredients">
-        <item quantity="one">%1$d ingrediente</item>
-        <item quantity="many">%1$d de ingredientes</item>
-        <item quantity="other">%1$d ingredientes</item>
-    </plurals>
-    <plurals name="clip_summary_steps">
-        <item quantity="one">%1$d paso</item>
-        <item quantity="many">%1$d de pasos</item>
-        <item quantity="other">%1$d pasos</item>
     </plurals>
     <plurals name="clip_added_ingredients">
         <item quantity="one">%1$d ingrediente añadido</item>
@@ -613,4 +595,35 @@
     <string name="settings_section_help">Ayuda</string>
     <string name="settings_show_tips">Volver a mostrar los consejos</string>
     <string name="settings_show_tips_description">Cada consejo se muestra una vez más, de uno en uno.</string>
+    <string name="clip_hint_start">Toca Nombre abajo y luego el nombre de la receta en la página.</string>
+    <string name="clip_select_name">Toca el nombre de la receta en la página.</string>
+    <string name="clip_select_ingredients">Toca los ingredientes en la página: una lista se toma entera. Arrastra los tiradores para ajustar.</string>
+    <string name="clip_select_steps">Toca los pasos en la página: una lista se toma entera. Arrastra los tiradores para ajustar.</string>
+    <string name="clip_confirm_name">Usar como nombre</string>
+    <string name="clip_next_name">Ahora: toca Nombre.</string>
+    <string name="clip_next_ingredients">Ahora: toca Ingredientes.</string>
+    <string name="clip_next_steps">Ahora: toca Pasos.</string>
+    <string name="clip_next_photo">Ahora: toca Foto, o Listo.</string>
+    <string name="clip_ready">Toca Listo para revisar y guardar.</string>
+    <string name="clip_selected_hint">toca el campo al que van</string>
+    <plurals name="clip_confirm_ingredients">
+        <item quantity="one">Añadir %1$d línea a Ingredientes</item>
+        <item quantity="many">Añadir %1$d de líneas a Ingredientes</item>
+        <item quantity="other">Añadir %1$d líneas a Ingredientes</item>
+    </plurals>
+    <plurals name="clip_confirm_steps">
+        <item quantity="one">Añadir %1$d línea a Pasos</item>
+        <item quantity="many">Añadir %1$d de líneas a Pasos</item>
+        <item quantity="other">Añadir %1$d líneas a Pasos</item>
+    </plurals>
+    <plurals name="clip_removed_ingredients">
+        <item quantity="one">%1$d ingrediente quitado</item>
+        <item quantity="many">%1$d de ingredientes quitados</item>
+        <item quantity="other">%1$d ingredientes quitados</item>
+    </plurals>
+    <plurals name="clip_removed_steps">
+        <item quantity="one">%1$d paso quitado</item>
+        <item quantity="many">%1$d de pasos quitados</item>
+        <item quantity="other">%1$d pasos quitados</item>
+    </plurals>
 </resources>

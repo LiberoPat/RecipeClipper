@@ -31,7 +31,7 @@
     <string name="cd_open_original">Open the original recipe on %1$s</string>
 
     <!-- Clip it yourself (#37) -->
-    <string name="clip_offer">Open the page, select the name, ingredients and steps, and tap where each one goes.</string>
+    <string name="clip_offer">Open the page, then tap Name, Ingredients and Steps and pick each one on the page.</string>
     <string name="action_clip_it_yourself">Clip it yourself</string>
     <string name="action_done">Done</string>
     <string name="action_discard">Discard</string>
@@ -40,30 +40,22 @@
     <string name="clip_field_ingredients">Ingredients</string>
     <string name="clip_field_steps">Steps</string>
     <string name="clip_field_photo">Photo</string>
-    <string name="clip_hint">Select text on the page, then tap where it goes. For the photo, tap Photo, then the picture.</string>
     <string name="clip_reddit_blocked_note">Reddit didn\'t let the app read this post, so it\'s open here: select the recipe.</string>
     <string name="clip_human_check_note">This site wants to check you\'re human. Tick the box and the recipe will open.</string>
     <string name="clip_human_check_no_recipe_note">The check passed, but this page has no recipe the app can read, so it\'s open here: select the recipe.</string>
     <string name="clip_picking_photo">Tap the picture to use as the photo.</string>
     <string name="clip_skip_photo">Skip</string>
     <string name="clip_photo_unreadable">Couldn\'t read a picture there. The photo is optional.</string>
-    <string name="clip_lines_selected_hint">each line becomes one item</string>
-    <string name="clip_summary_name">Name ✓</string>
-    <string name="clip_summary_no_name">No name</string>
-    <string name="clip_summary_photo">photo</string>
-    <string name="clip_summary_no_photo">no photo</string>
     <string name="clip_review">Review</string>
     <string name="clip_added_name">Name added</string>
     <string name="clip_added_photo">Photo added</string>
     <string name="clip_cleared_name">Name cleared</string>
-    <string name="clip_cleared_ingredients">Ingredients cleared</string>
-    <string name="clip_cleared_steps">Steps cleared</string>
     <string name="clip_cleared_photo">Photo cleared</string>
     <string name="clip_draft_restored">Draft restored</string>
     <string name="clip_save_failed">Couldn\'t save the clip. Try again.</string>
-    <string name="clip_needs_name">Type the recipe\'s name to save it, or select it and tap Name.</string>
-    <string name="clip_needs_lines">To save, select the ingredients or steps and tap Ingredients or Steps.</string>
-    <string name="clip_needs_name_and_lines">To save, select the recipe\'s name and its ingredients or steps, and tap where each goes.</string>
+    <string name="clip_needs_name">Type the recipe\'s name to save it, or tap Name and then the name on the page.</string>
+    <string name="clip_needs_lines">To save, tap Ingredients or Steps, then pick them on the page.</string>
+    <string name="clip_needs_name_and_lines">To save, tap Name, then Ingredients or Steps, and pick each one on the page.</string>
     <string name="clip_text_unreadable">The post hasn\'t loaded yet. Wait a moment, then tap Text again.</string>
     <string name="clip_show_text">Text</string>
     <string name="clip_show_page">Page</string>
@@ -89,14 +81,6 @@
         <item quantity="one">%1$d line selected</item>
         <item quantity="other">%1$d lines selected</item>
     </plurals>
-    <plurals name="clip_summary_ingredients">
-        <item quantity="one">%1$d ingredient</item>
-        <item quantity="other">%1$d ingredients</item>
-    </plurals>
-    <plurals name="clip_summary_steps">
-        <item quantity="one">%1$d step</item>
-        <item quantity="other">%1$d steps</item>
-    </plurals>
     <plurals name="clip_added_ingredients">
         <item quantity="one">%1$d ingredient added</item>
         <item quantity="other">%1$d ingredients added</item>
@@ -107,6 +91,8 @@
     </plurals>
     <string name="clip_tag_count" translatable="false">%1$s · %2$d</string>
     <string name="clip_summary_separator" translatable="false">" · "</string>
+    <string name="clip_filled" translatable="false">✓</string>
+    <string name="clip_filled_count" translatable="false">✓ %1$d</string>
     <string name="clip_remove_line" translatable="false">✕</string>
 
     <!-- Errors -->
@@ -646,4 +632,31 @@
     <string name="settings_section_help">Help</string>
     <string name="settings_show_tips">Show tips again</string>
     <string name="settings_show_tips_description">Each tip shows once more, one at a time.</string>
+    <string name="clip_hint_start">Tap Name below, then tap the recipe\'s name on the page.</string>
+    <string name="clip_select_name">Tap the recipe\'s name on the page.</string>
+    <string name="clip_select_ingredients">Tap the ingredients on the page: a list comes whole. Drag the handles to adjust.</string>
+    <string name="clip_select_steps">Tap the steps on the page: a list comes whole. Drag the handles to adjust.</string>
+    <string name="clip_confirm_name">Use as the name</string>
+    <string name="clip_next_name">Next: tap Name.</string>
+    <string name="clip_next_ingredients">Next: tap Ingredients.</string>
+    <string name="clip_next_steps">Next: tap Steps.</string>
+    <string name="clip_next_photo">Next: tap Photo, or Done.</string>
+    <string name="clip_ready">Tap Done to review and save.</string>
+    <string name="clip_selected_hint">tap the field they go in</string>
+    <plurals name="clip_confirm_ingredients">
+        <item quantity="one">Add %1$d line to Ingredients</item>
+        <item quantity="other">Add %1$d lines to Ingredients</item>
+    </plurals>
+    <plurals name="clip_confirm_steps">
+        <item quantity="one">Add %1$d line to Steps</item>
+        <item quantity="other">Add %1$d lines to Steps</item>
+    </plurals>
+    <plurals name="clip_removed_ingredients">
+        <item quantity="one">%1$d ingredient removed</item>
+        <item quantity="other">%1$d ingredients removed</item>
+    </plurals>
+    <plurals name="clip_removed_steps">
+        <item quantity="one">%1$d step removed</item>
+        <item quantity="other">%1$d steps removed</item>
+    </plurals>
 </resources>

@@ -483,13 +483,17 @@ extension WalkthroughUITests {
     }
 
     /// Taps the unseen spot that selects `spot` (the text scrolls into view, then is selected),
-    /// then the toolbar's button for `field`: the selection goes there and is marked on the page.
+    /// then the toolbar's button for `field` and the hint bar's confirm (field first, #237): the
+    /// selection goes there and is marked on the page. A field left armed is disarmed, so the
+    /// next spot's tap reaches the spot rather than selecting it.
     private func selectAndAssign(in page: XCUIElement, _ spot: String, _ field: String) {
         require(page.buttons["rc-walk-\(spot)"], "the \(spot) spot", within: 60).tap()
         require(textContaining("selected ·"), "the \(spot) selected", within: 15)
         pause(2.5)
         require(app.buttons["clip.field.\(field)"], field).tap()
+        require(app.buttons["clip.confirm"], "the confirm").tap()
         pause(3)
+        if field != "NAME" { app.buttons["clip.field.\(field)"].tap() }
     }
 
     /// Spots down the left edge, clear and unseen, each selecting from its first text to its

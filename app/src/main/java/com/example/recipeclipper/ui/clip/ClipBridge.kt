@@ -8,7 +8,6 @@ import android.webkit.WebView
 import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
-import com.example.recipeclipper.data.model.ClipField
 import org.json.JSONObject
 import java.util.UUID
 
@@ -85,8 +84,8 @@ internal object ClipBridge {
 
     private fun decode(message: JSONObject): ClipPageEvent? = when (message.optString("type")) {
         "selection" -> ClipPageEvent.Selection(message.optString("text"))
-        "tag" -> ClipField.entries.firstOrNull { it.name == message.optString("field") }
-            ?.let { ClipPageEvent.TagTapped(it) }
+        // An add's tag (#237): its mark id names the add.
+        "tag" -> message.optString("id").takeIf { it.isNotEmpty() }?.let { ClipPageEvent.TagTapped(it) }
         // Whether it's a picture the app can use is the ViewModel's call (WebImageUrl).
         "image" -> ClipPageEvent.ImageTapped(message.optString("src"))
         "noImage" -> ClipPageEvent.NoImage
