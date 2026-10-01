@@ -67,6 +67,7 @@ first-run tour (#151, #190) is marked done in both, so no tooltip gets in a test
 | `RecipeRepository` / `ListRepository` / `AppPreferences` / `Clock` interfaces | protocols in `Data/Contracts.swift` |
 | `Flow<List<…>>` | Combine `AnyPublisher`, delivered on main |
 | `@HiltViewModel` + `StateFlow<UiState>` | `@MainActor @Observable` class with one `private(set) var uiState` |
+| A ViewModel's collaborators (`CookSession`, `CookController`, `RecipeDisplay`, `OrderedWrites`, `NotesAndTicks`, `FailedLoad`, `ChefMode`; `VisitOrder`, `GroceryQuestions`, `GroceryRemovals`; #169, #234) | the same names beside their ViewModel, `@MainActor` where they hold tasks or state; each stops in `deinit` what `viewModelScope` would stop on Android (a tick loop, a debounce) and lets queued writes land |
 | Room (`RecipeDao`, `ListDao`, migrations) | SQLite via the system `SQLite3` module (`Data/Local/`), `PRAGMA user_version` migrations |
 | SharedPreferences (`unit_preferences`) | `UserDefaults`, same key names and enum spellings |
 | Jsoup fetch + `JsonLdRecipeParser` | `URLSession` (`BlogRecipeSource`) + the same parser, with a hand-written Jsoup-compatible `stripHtml` |
