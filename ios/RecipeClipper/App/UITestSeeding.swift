@@ -23,6 +23,8 @@ import UIKit
 ///   - with `-uiTestBackupFolder`, the automatic backup copy (#150) in a throwaway folder;
 ///   - with `RC_UITEST_REDDIT_LISTING` in the environment, Reddit links parsed from it (#11), or
 ///     from `RC_UITEST_REDDIT_LISTING_<post id>` for that post (walkthrough 29);
+///   - with `RC_UITEST_LIVE_REDDIT=1`, other Reddit links read from reddit.com itself and clipped
+///     on the live page, where `RC_UITEST_CLIP_SCRIPT` can select by script (walkthrough 31);
 ///   - with `RC_UITEST_SCAN_IMAGES`, a scan (#226) of those local pictures opened at launch;
 ///   - "Read the photo" (#198) answering the lines in `RC_UITEST_PHOTO_LINES` (`UITestPhotoTextReader`),
 ///     or, with `RC_UITEST_PHOTO_VISION=1`, the real Vision reader over the local pictures that
@@ -100,6 +102,21 @@ enum UITestSeeding {
 
     private static var arguments: [String] { ProcessInfo.processInfo.arguments }
 
+    /// With `RC_UITEST_LIVE_REDDIT=1` (walkthrough 31), a Reddit link with no listing goes to
+    /// reddit.com itself, through the real source, and "Clip it yourself" loads the live page.
+    static let liveRedditKey = "RC_UITEST_LIVE_REDDIT"
+
+    static var liveReddit: Bool { ProcessInfo.processInfo.environment[liveRedditKey] == "1" }
+
+    /// `RC_UITEST_CLIP_SCRIPT` (walkthrough 31): a script run in every clip page after
+    /// `clipper.js`, under a UI-test launch only. XCUITest can't drag a selection across a live
+    /// web page, so the walkthrough's script lays unseen spots on it that select by script when
+    /// tapped, as a finger's drag would (the fixture page's buttons do the same).
+    static var clipTestScript: String? {
+        guard scenario != nil else { return nil }
+        return ProcessInfo.processInfo.environment["RC_UITEST_CLIP_SCRIPT"]
+    }
+
     static var scenario: String? {
         guard let index = arguments.firstIndex(of: flag) else { return nil }
         return index + 1 < arguments.count ? arguments[index + 1] : "standard"
@@ -166,7 +183,7 @@ enum UITestSeeding {
             backupRepository: backupRepository,
             preferences: preferences,
             clock: clock,
-            clipFixtureHTML: clipFixtureHTML,
+            clipFixtureHTML: liveReddit ? nil : clipFixtureHTML,
             featureFlags: flags,
             shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
             decisionRepository: decisions,
@@ -337,6 +354,9 @@ private struct StubRecipeSource: RecipeSource {
     func fetch(url: String) async -> ParseResult {
         if RedditUrls.isReddit(url), let listing = Self.listing(for: url) {
             return Self.localPictures(RedditRecipeParser.parse(listing, sourceUrl: url), url: url)
+        }
+        if RedditUrls.isReddit(url), UITestSeeding.liveReddit {
+            return await RedditRecipeSource().fetch(url: url)
         }
         let path = URL(string: url)?.path ?? ""
         if path.hasSuffix("/no-recipe") { return .error(.noRecipeFound) }

@@ -90,6 +90,14 @@ struct ClipWebPage: UIViewRepresentable {
         config.userContentController.addUserScript(
             WKUserScript(source: ClipperScript.source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         )
+        #if DEBUG
+        // Walkthrough 31 only: spots that select by script on a live page (UITestSeeding).
+        if let script = UITestSeeding.clipTestScript {
+            config.userContentController.addUserScript(
+                WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            )
+        }
+        #endif
         config.userContentController.add(WeakMessageHandler(coordinator), name: "rc")
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = coordinator

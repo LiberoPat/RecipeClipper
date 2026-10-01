@@ -27,7 +27,8 @@ TESTS=("$@")
   CookingWalkthroughTest#test23_markAsCooked CookingWalkthroughTest#test24_tooltips
   CookingWalkthroughTest#test25_pantryStates CookingWalkthroughTest#test26_onionAndOnions
   RecipesWalkthroughTest#test27_redditImport RecipesWalkthroughTest#test28_readThePhoto
-  RecipesWalkthroughTest#test29_readingOtherLanguages RecipesWalkthroughTest#test30_scanARecipe)
+  RecipesWalkthroughTest#test29_readingOtherLanguages RecipesWalkthroughTest#test30_scanARecipe
+  RecipesWalkthroughTest#test31_redditClipYourself)
 mkdir -p "$OUT"
 export ANDROID_SERIAL=$SERIAL
 adb shell cmd uimode night no >/dev/null
@@ -40,8 +41,9 @@ for f in recipes-self-post old-recipes-card-transcription food-photo-chatter old
   de-self-post fr-card-untranscribed; do
   adb push "shared/fixtures/reddit/$f.json" /data/local/tmp/ >/dev/null
 done
-# The recipe card's two sides, the pages clip 30 scans (#226).
-for f in card-front card-back; do
+# The recipe cards read from photos (28, 29: in place of the posts' own pictures) and the two
+# sides clip 30 scans (#226).
+for f in card-front card-back card-blurred card-fr; do
   adb push "shared/fixtures/reddit/photos/$f.jpg" /data/local/tmp/ >/dev/null
 done
 photo=$(mktemp -d)/photo.jpg
@@ -62,7 +64,7 @@ for t in "${TESTS[@]}"; do
     adb pull /data/local/tmp/rc-walkthrough-miss.png "/tmp/android-$slug-miss.png" >/dev/null 2>&1 || true
     continue
   fi
-  # A clip whose test had to stand in for the text reader (30: no Play services model) says so.
+  # A clip whose test had to stand in for the text reader (28–30: no Play services model) says so.
   if adb logcat -d -s Walkthrough:I | grep -q "OCR SIMULATED"; then slug="$slug-simulated"; fi
   adb pull /data/local/tmp/rc-walkthrough.mp4 "/tmp/android-$slug-raw.mp4" >/dev/null
   # Smaller, and a phone-shaped 1280-high frame (macOS's avconvert; ffmpeg would do as well).

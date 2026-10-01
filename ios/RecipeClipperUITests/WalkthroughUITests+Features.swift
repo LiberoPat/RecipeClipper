@@ -1,8 +1,9 @@
 import XCTest
 
-// Walkthroughs 24–30: tooltips (#190), the pantry's three states (#194), singular and plural
+// Walkthroughs 24–31: tooltips (#190), the pantry's three states (#194), singular and plural
 // names in What I need (#191), a Reddit post imported (#11) from a fixture listing, its photo
-// read (#198), other languages (#208), and a recipe card scanned (#226).
+// read (#198), other languages (#208), a recipe card scanned (#226), and a live Reddit post
+// clipped by hand (#213, #230).
 
 extension WalkthroughUITests {
 
@@ -211,7 +212,9 @@ extension WalkthroughUITests {
         pause(0.8)
         box.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count + 2))
         pause(0.5)
-        box.typeText(fixed)
+        // Emptied, the box no longer matches its "cup butter" query: type into whatever has the
+        // keyboard, which is still that box.
+        app.typeText(fixed)
         pause(2.5)
         require(app.buttons["edit.save"], "Save").tap()
         require(bookmark, "the saved recipe")
@@ -396,4 +399,153 @@ extension WalkthroughUITests {
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
         pause()
     }
+
+    /// "Clip it yourself" on a Reddit post Reddit won't let the app read (#213, #230), LIVE: real
+    /// r/recipes posts through the real source (`RC_UITEST_LIVE_REDDIT`), whose `.json` read
+    /// reddit.com refuses, so each opens in the clip view with the note and no Try again. The
+    /// whole body shows (no "Read more" fade, no app or sign-in prompt) and scrolls with the
+    /// finger. XCUITest can't drag a selection across a web page, so unseen spots the test lays on
+    /// it (`RC_UITEST_CLIP_SCRIPT`, `clipSpots`) select by script when tapped, as ClipUITests'
+    /// fixture buttons do; the toolbar assigns each. Done with no name opens Review, which asks
+    /// for it; typed, Save opens the recipe. Then a second post in the Text view: its name, and
+    /// the recipe in the poster's comment, selected there and saved.
+    func test31_redditClipYourself() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "mealPlan,reddit"]
+        app.launchEnvironment["RC_UITEST_LIVE_REDDIT"] = "1"
+        app.launchEnvironment["RC_UITEST_CLIP_SCRIPT"] = Self.clipSpots
+        app.launch()
+        self.app = app
+        require(app.textFields["Recipe URL"], "Home")
+        mark("START")
+        pause()
+
+        let page = openBlockedPost(
+            "https://www.reddit.com/r/recipes/comments/1wpafnm/braised_chicken_with_white_beans_and_zucchini/"
+        )
+        // The whole post body, scrolled with the finger to its end.
+        for _ in 0..<5 {
+            page.swipeUp(velocity: .slow)
+            pause(1.2)
+        }
+        pause(1.5)
+        selectAndAssign(in: page, "ingredients", "INGREDIENTS")
+        selectAndAssign(in: page, "steps", "STEPS")
+        // No name yet: Done opens Review, which asks for it.
+        require(app.navigationBars.buttons["Done"], "Done").tap()
+        require(textContaining("Type the recipe"), "Review asking for the name")
+        pause(2)
+        let name = require(app.textFields["Name"], "the name field")
+        name.tap()
+        name.typeText("Braised Chicken with White Beans and Zucchini")
+        pause(2)
+        require(app.navigationBars.buttons["Save"], "Save").tap()
+        require(bookmark, "the saved recipe", within: 20)
+        pause(3)
+        app.swipeUp()
+        pause(2)
+        back()
+
+        // The Text view: the post and its loaded comments as plain text.
+        openBlockedPost("https://www.reddit.com/r/recipes/comments/1wixh7a/beef_bourguignon/")
+        require(app.navigationBars.buttons["Text"], "Text").tap()
+        let textView = app.webViews["clip.text"]
+        let spots = textView.waitForExistence(timeout: 10) ? textView : app.webViews.element(boundBy: 1)
+        pause(2.5)
+        selectAndAssign(in: spots, "name", "NAME")
+        selectAndAssign(in: spots, "ingredients", "INGREDIENTS")
+        selectAndAssign(in: spots, "steps", "STEPS")
+        require(app.navigationBars.buttons["Done"], "Done").tap()
+        pause(3)
+        require(app.navigationBars.buttons["Save"], "Save").tap()
+        require(bookmark, "the saved recipe", within: 20)
+        require(textContaining("Clipped by you"), "the clip's credit")
+        pause(3)
+        app.swipeUp()
+        // The fling settles slowly on a long recipe: long enough for the last screen to hold.
+        pause(4.5)
+    }
+
+    /// Types `link` into Home's field; Reddit refuses the read, and the post opens in the clip
+    /// view with the note (after Reddit's own check in the page). Returns the page.
+    private func openBlockedPost(_ link: String) -> XCUIElement {
+        let field = require(app.textFields["Recipe URL"], "Home")
+        field.tap()
+        field.typeText(link)
+        pause(0.8)
+        app.scrollViews.firstMatch.buttons["Go"].tap()
+        require(text("Reddit didn't let the app read this post, so it's open here: select the recipe."), "the note", within: 60)
+        XCTAssertFalse(app.buttons["Try again"].exists, "no Try again")
+        let page = app.webViews["clip.page"]
+        require(page.buttons["rc-walk-steps"], "the post, loaded", within: 90)
+        pause(3.5)
+        return page
+    }
+
+    /// Taps the unseen spot that selects `spot` (the text scrolls into view, then is selected),
+    /// then the toolbar's button for `field`: the selection goes there and is marked on the page.
+    private func selectAndAssign(in page: XCUIElement, _ spot: String, _ field: String) {
+        require(page.buttons["rc-walk-\(spot)"], "the \(spot) spot", within: 60).tap()
+        require(textContaining("selected ·"), "the \(spot) selected", within: 15)
+        pause(2.5)
+        require(app.buttons["clip.field.\(field)"], field).tap()
+        pause(3)
+    }
+
+    /// Spots down the left edge, clear and unseen, each selecting from its first text to its
+    /// last as a finger's drag would, after scrolling it into view below Reddit's header: the
+    /// first post's lines, else the second's. They wait for the post (not Reddit's check page).
+    static let clipSpots = """
+    (function () {
+      var spots = {
+        name: [['Beef Bourguignon', null]],
+        ingredients: [['2 pounds bone-in', 'Black pepper, to taste'], ['800g beef chuck', 'to serve']],
+        steps: [['Prepare the chicken:', 'remaining vinaigrette on the side.'], ['Marinate the beef overnight', 'with parsley on top.']]
+      };
+      function select(from, to) {
+        to = to || from;
+        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), node, start = null, offset = 0;
+        while ((node = walker.nextNode())) {
+          if (!start) {
+            var i = node.data.indexOf(from);
+            if (i < 0) continue;
+            start = node; offset = i;
+          }
+          var j = node.data.indexOf(to, node === start ? offset : 0);
+          if (j < 0) continue;
+          var range = document.createRange();
+          range.setStart(start, offset);
+          range.setEnd(node, j + to.length);
+          var top = range.getBoundingClientRect().top + window.scrollY - 140;
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+          setTimeout(function () {
+            var selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }, 900);
+          return true;
+        }
+        return false;
+      }
+      function lay() {
+        if (/reddit\\.com$/.test(location.hostname) && !document.querySelector('shreddit-post')) {
+          return setTimeout(lay, 500);
+        }
+        Object.keys(spots).forEach(function (name, n) {
+          var spot = document.createElement('div');
+          spot.setAttribute('role', 'button');
+          spot.setAttribute('aria-label', 'rc-walk-' + name);
+          spot.style.cssText = 'position:fixed;left:0;top:' + (30 + n * 10) + '%;width:44px;height:44px;' +
+            'z-index:2147483647;background:transparent';
+          spot.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            spots[name].some(function (pair) { return select(pair[0], pair[1]); });
+          });
+          document.documentElement.appendChild(spot);
+        });
+      }
+      lay();
+    })();
+    """
 }
