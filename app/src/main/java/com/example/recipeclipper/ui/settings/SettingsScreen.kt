@@ -77,8 +77,8 @@ import java.util.Locale
  * are [Switch] rows — never a bare checkmark for either, which is the whole reason this
  * screen exists (see CLAUDE.md). The sections: Units (the three [UnitSystem] options, plus
  * "Also convert liquids" for Ounces only), Oven temperature (the three [TemperatureUnit]
- * options, independent of Units), Appearance ("Dark while cooking"), Pantry ("Expiry
- * reminders", #52, only with the `mealPlan` flag on), Your recipes (Export and Import,
+ * options, independent of Units), Appearance ("Dark while cooking"), Steps ("Amounts in
+ * steps", #101, and Chef mode), Pantry ("Expiry reminders", #52), Your recipes (Export and Import,
  * #26: actions, so plain rows), and Help ("Show tips again", #190, an action too).
  */
 @Composable

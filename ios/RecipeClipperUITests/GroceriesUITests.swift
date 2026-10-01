@@ -1,6 +1,6 @@
 import XCTest
 
-/// The Groceries tab (#50), behind the tab flag: add a recipe's lines from its menu, see them
+/// The Groceries tab (#50): add a recipe's lines from its menu, see them
 /// by aisle, type an item, delete one with Undo, and put ticked items away (#146).
 final class GroceriesUITests: RecipeUITestCase {
 
@@ -12,7 +12,7 @@ final class GroceriesUITests: RecipeUITestCase {
     }
 
     func testARecipesLinesGoOnTheListByAisle() {
-        launch(.standard, flags: ["mealPlan"])
+        launch(.standard)
         require(app.staticTexts["Chicken Adobo"], "Continue cooking").tap()
         require(app.buttons["More options"], "the recipe menu").tap()
         require(app.buttons["Add to groceries"], "Add to groceries").tap()
@@ -28,7 +28,7 @@ final class GroceriesUITests: RecipeUITestCase {
     }
 
     func testATypedItemCanBeDeletedAndBroughtBack() {
-        launch(.standard, flags: ["mealPlan"])
+        launch(.standard)
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()
@@ -57,7 +57,7 @@ final class GroceriesUITests: RecipeUITestCase {
     func testASentListPastesBackIntoThePantry() {
         let sent = "Groceries\n\nMeat\n- 2 lb chicken thighs (Chicken Adobo)\n\nProduce\n- 1 lime"
         let escaped = sent.replacingOccurrences(of: "\n", with: "\\n")
-        launch(.standard, flags: ["mealPlan"], extraArguments: ["-uiTestPasteboard", escaped])
+        launch(.standard, extraArguments: ["-uiTestPasteboard", escaped])
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()
@@ -90,7 +90,7 @@ final class GroceriesUITests: RecipeUITestCase {
     /// #146: a tick only ticks; "Done shopping" opens the put-away sheet, and one confirm puts
     /// the ticked ones in the pantry and clears the list, with one Undo for both.
     func testDoneShoppingPutsTickedItemsAwayWithOneUndo() {
-        launch(.empty, flags: ["mealPlan"])
+        launch(.empty)
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()
@@ -113,7 +113,7 @@ final class GroceriesUITests: RecipeUITestCase {
     /// #219: a tick leaves the row where it is; "Clear the whole list" asks first, and Undo
     /// brings the list back.
     func testATickStaysPutAndTheWholeListClearsWithUndo() {
-        launch(.empty, flags: ["mealPlan"])
+        launch(.empty)
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()

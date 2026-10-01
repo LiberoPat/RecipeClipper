@@ -27,7 +27,7 @@ final class ExpiryRemindersUITests: RecipeUITestCase {
     }
 
     func testTurnsOnAndStaysOn() {
-        launch(flags: ["mealPlan"])
+        launch()
         openSettings()
         scrollToReminders()
         requireState(require(reminders, "the Expiry reminders switch"), "value == '0'", "off by default")

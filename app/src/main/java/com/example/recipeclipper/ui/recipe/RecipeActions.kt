@@ -40,9 +40,9 @@ internal class RecipeActions(
     val onDelete: () -> Unit,
     val onEdit: () -> Unit = {},
     val onUpdateFromSource: () -> Unit = {},
-    /** "Add to plan" (#49); null hides it, as while the tab flag is off. */
+    /** "Add to plan" (#49); null (screen tests) hides it. */
     val onAddToPlan: (() -> Unit)? = null,
-    /** "Add to groceries" (#50); null hides it, as while the tab flag is off. */
+    /** "Add to groceries" (#50); null (screen tests) hides it. */
     val onAddToGroceries: (() -> Unit)? = null,
     /** "Send as file" (#149): the recipe as a small file for someone else's app; null hides it. */
     val onSendFile: (() -> Unit)? = null

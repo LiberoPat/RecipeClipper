@@ -120,7 +120,7 @@ final class AppContainer {
         self.entitlements = entitlements ?? UnavailableEntitlements()
         libraryPolicy = LibraryPolicy(flags: self.featureFlags, entitlements: self.entitlements, mirror: libraryMirror)
         firstRunTour = FirstRunTour(preferences: tourPreferences, recipes: recipeRepository)
-        tooltips = TooltipsViewModel(preferences: tourPreferences, flags: self.featureFlags)
+        tooltips = TooltipsViewModel(preferences: tourPreferences)
     }
 
     /// Called when the app comes to the foreground. The share extension saves recipes into the
@@ -136,7 +136,7 @@ final class AppContainer {
     /// schedules a notification.
     func startExpiryReminders(_ scheduler: ExpiryReminderScheduler) {
         let coordinator = ExpiryReminderCoordinator(
-            pantry: pantryRepository, preferences: preferences, flags: featureFlags,
+            pantry: pantryRepository, preferences: preferences,
             scheduler: scheduler, clock: clock
         )
         coordinator.start()

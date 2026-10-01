@@ -26,7 +26,7 @@ import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
- * Overflow menu: "Add to plan" (#49) and "Add to groceries" (#50), while the tab flag is on, Edit, "Update from source" for the user's version of a linked recipe (#29),
+ * Overflow menu: "Add to plan" (#49) and "Add to groceries" (#50), Edit, "Update from source" for the user's version of a linked recipe (#29),
  * behind a warning that the edits will be lost, and Delete, behind a confirm dialog naming
  * the recipe.
  */

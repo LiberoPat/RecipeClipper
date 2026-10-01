@@ -186,7 +186,7 @@
     <string name="delete_list_body">La liste sera supprimée. Ses recettes resteront dans votre historique.</string>
     <string name="action_delete_list">Supprimer la liste</string>
 
-    <!-- Bottom tabs (#47), behind the mealPlan flag (#87) -->
+    <!-- Bottom tabs (#47) -->
     <string name="tab_recipes">Recettes</string>
     <string name="tab_week">Semaine</string>
     <string name="tab_groceries">Courses</string>

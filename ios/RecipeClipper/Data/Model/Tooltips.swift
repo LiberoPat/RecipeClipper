@@ -8,9 +8,8 @@ enum TooltipScreen: String, CaseIterable {
 
 /// The tooltips (#190): a small bubble pointing at a control, shown the first time it's reached.
 /// In the order each screen shows them; `shared/tooltips.json` lists the same ids (the raw
-/// values), screens and flags for both apps (Android's `Tooltip`), and `TooltipsTests` fails if
-/// this differs from it. A tooltip with a flag shows only while the flag is on. Seen once
-/// dismissed, stored under `key`.
+/// values) and screens for both apps (Android's `Tooltip`), and `TooltipsTests` fails if this
+/// differs from it. Seen once dismissed, stored under `key`.
 enum Tooltip: String, CaseIterable {
     case homeLink = "home_link"
     case homeNewRecipe = "home_new_recipe"
@@ -55,15 +54,6 @@ enum Tooltip: String, CaseIterable {
         case .settingsUnits, .settingsShowTips: .settings
         }
     }
-
-    /// The feature flag it waits for, by its key (`Flag`'s raw value, as in `shared/flags.json`):
-    /// the share extension compiles the model but has no `Flag`.
-    var flagKey: String? {
-        switch screen {
-        case .week, .groceries, .pantry: "mealPlan"
-        default: self == .recipeMadeThis ? "cookedPhotos" : nil
-        }
-    }
 }
 
 /// One visit to a screen (#190), from when it appears until it's left. `token` names the
@@ -80,8 +70,7 @@ struct TooltipVisit: Equatable {
 ///
 /// - One at a time: only the current visit's screen shows one, and a visit shows one at most.
 ///   Dismissed, the screen's next one waits for a later visit: never chained.
-/// - In the catalogue's order, the first not yet seen, with its flag on, whose control is on
-///   screen: an anchor scrolled away, or under a sheet or the keyboard, is passed over.
+/// - In the catalogue's order, the first not yet seen whose control is on screen: an anchor scrolled away, or under a sheet or the keyboard, is passed over.
 /// - Never before the screen has settled (`settleSeconds`) or while something covers it: the
 ///   caller says so with `ready`.
 enum Tooltips {
@@ -111,7 +100,6 @@ enum Tooltips {
     static func current(
         _ visit: TooltipVisit?,
         seen: Set<Tooltip>,
-        isOn: (String) -> Bool,
         visible: Set<Tooltip>,
         ready: Bool
     ) -> Tooltip? {
@@ -120,7 +108,7 @@ enum Tooltips {
             return visible.contains(shown) && !seen.contains(shown) ? shown : nil
         }
         return forScreen(visit.screen).first { tooltip in
-            !seen.contains(tooltip) && (tooltip.flagKey.map(isOn) ?? true) && visible.contains(tooltip)
+            !seen.contains(tooltip) && visible.contains(tooltip)
         }
     }
 

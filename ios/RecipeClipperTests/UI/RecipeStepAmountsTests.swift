@@ -50,16 +50,9 @@ final class RecipeStepAmountsTests: XCTestCase {
         XCTAssertEqual(vm.uiState.content.success?.instructions, recipe.instructions)
     }
 
-    func testSettingsShowsTheStepsSectionOnlyBehindTheFlagAndTheSwitchWrites() {
+    func testTheSettingsSwitchWrites() {
         let preferences = FakeAppPreferences()
-        let flags = FeatureFlags(store: MemoryFeatureFlagStore(), definitions: [
-            FlagDefinition(key: "amountsInSteps", description: "Amounts in steps", defaults: .init(debug: false, release: false), issue: 101)
-        ], isDebug: true)
-        let vm = SettingsViewModel(preferences: preferences, backups: FakeBackupRepository(), files: FakeBackupFiles(), flags: flags)
-        XCTAssertFalse(vm.showsSteps)
-        flags.set(.amountsInSteps, true)
-        XCTAssertTrue(vm.showsSteps)
-
+        let vm = SettingsViewModel(preferences: preferences, backups: FakeBackupRepository(), files: FakeBackupFiles())
         XCTAssertFalse(vm.uiState.amountsInSteps)
         vm.onAmountsInStepsChange(true)
         XCTAssertTrue(preferences.amountsInSteps)

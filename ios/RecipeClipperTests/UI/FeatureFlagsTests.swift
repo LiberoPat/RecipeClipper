@@ -7,37 +7,37 @@ import XCTest
 final class FeatureFlagsTests: XCTestCase {
 
     private let definitions = [
-        FlagDefinition(key: "mealPlan", description: "The meal plan",
-                       defaults: .init(debug: true, release: false), issue: 47)
+        FlagDefinition(key: "freeTier", description: "The free tier",
+                       defaults: .init(debug: true, release: false), issue: 107)
     ]
 
     func testEachBuildTypeGetsItsOwnDefault() {
-        XCTAssertTrue(FeatureFlags(store: MemoryFeatureFlagStore(), definitions: definitions, isDebug: true).isOn(.mealPlan))
-        XCTAssertFalse(FeatureFlags(store: MemoryFeatureFlagStore(), definitions: definitions, isDebug: false).isOn(.mealPlan))
+        XCTAssertTrue(FeatureFlags(store: MemoryFeatureFlagStore(), definitions: definitions, isDebug: true).isOn(.freeTier))
+        XCTAssertFalse(FeatureFlags(store: MemoryFeatureFlagStore(), definitions: definitions, isDebug: false).isOn(.freeTier))
     }
 
     func testAnOverrideWinsAndResetReturnsToTheDefault() {
         let store = MemoryFeatureFlagStore()
         let flags = FeatureFlags(store: store, definitions: definitions, isDebug: false)
 
-        flags.set(.mealPlan, true)
-        XCTAssertTrue(flags.isOn(.mealPlan))
-        XCTAssertTrue(flags.isOverridden(.mealPlan))
-        XCTAssertEqual(store.overrides, ["mealPlan": true])
+        flags.set(.freeTier, true)
+        XCTAssertTrue(flags.isOn(.freeTier))
+        XCTAssertTrue(flags.isOverridden(.freeTier))
+        XCTAssertEqual(store.overrides, ["freeTier": true])
 
         flags.reset()
-        XCTAssertFalse(flags.isOn(.mealPlan))
-        XCTAssertFalse(flags.isOverridden(.mealPlan))
+        XCTAssertFalse(flags.isOn(.freeTier))
+        XCTAssertFalse(flags.isOverridden(.freeTier))
     }
 
     func testChoosingTheDefaultStoresNoOverride() {
-        let store = MemoryFeatureFlagStore(["mealPlan": true])
-        FeatureFlags(store: store, definitions: definitions, isDebug: false).set(.mealPlan, false)
+        let store = MemoryFeatureFlagStore(["freeTier": true])
+        FeatureFlags(store: store, definitions: definitions, isDebug: false).set(.freeTier, false)
         XCTAssertEqual(store.overrides, [:])
     }
 
     func testAFlagMissingFromTheRegistryIsOff() {
-        XCTAssertFalse(FeatureFlags(store: MemoryFeatureFlagStore(), definitions: [], isDebug: true).isOn(.mealPlan))
+        XCTAssertFalse(FeatureFlags(store: MemoryFeatureFlagStore(), definitions: [], isDebug: true).isOn(.freeTier))
     }
 
     func testTheUserDefaultsStoreKeepsOnlyItsOwnSuite() {
@@ -46,9 +46,35 @@ final class FeatureFlagsTests: XCTestCase {
         store.clear()
         defer { store.clear() }
 
-        store.setOverride("mealPlan", true)
-        XCTAssertEqual(UserDefaultsFeatureFlagStore(suiteName: suite).overrides, ["mealPlan": true])
-        store.setOverride("mealPlan", nil)
+        store.setOverride("freeTier", true)
+        XCTAssertEqual(UserDefaultsFeatureFlagStore(suiteName: suite).overrides, ["freeTier": true])
+        store.setOverride("freeTier", nil)
+        XCTAssertEqual(store.overrides, [:])
+    }
+
+    /// mealPlan, amountsInSteps and cookedPhotos were retired (#242); a phone may still hold an
+    /// override for one from Developer settings. It names no `Flag`, so it changes nothing.
+    func testAStoredOverrideForARetiredFlagIsIgnored() {
+        let suite = "FeatureFlagsTests.retired"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(false, forKey: "mealPlan")
+        defaults.set(false, forKey: "amountsInSteps")
+        defaults.set(false, forKey: "cookedPhotos")
+        defaults.set("not a boolean", forKey: "reddit")
+
+        let store = UserDefaultsFeatureFlagStore(suiteName: suite)
+        let flags = FeatureFlags(store: store, definitions: FlagRegistry.definitions, isDebug: false)
+        let clean = FeatureFlags(store: MemoryFeatureFlagStore(), definitions: FlagRegistry.definitions, isDebug: false)
+        for flag in Flag.allCases {
+            XCTAssertEqual(flags.isOn(flag), clean.isOn(flag), flag.rawValue)
+            XCTAssertFalse(flags.isOverridden(flag), flag.rawValue)
+        }
+        XCTAssertEqual(DeveloperSettingsViewModel(flags: flags).uiState.anyChanged, false)
+
+        // Reset clears the strays with everything else.
+        flags.reset()
         XCTAssertEqual(store.overrides, [:])
     }
 
@@ -90,25 +116,25 @@ final class DeveloperSettingsViewModelTests: XCTestCase {
 
     private func flags(_ store: FeatureFlagStore = MemoryFeatureFlagStore()) -> FeatureFlags {
         FeatureFlags(store: store, definitions: [
-            FlagDefinition(key: "mealPlan", description: "The meal plan", defaults: .init(debug: false, release: false), issue: 47)
+            FlagDefinition(key: "chefMode", description: "Chef mode", defaults: .init(debug: false, release: false), issue: 100)
         ], isDebug: true)
     }
 
     func testListsEveryFlagWithItsDescriptionIssueAndState() {
         let row = DeveloperSettingsViewModel(flags: flags()).uiState.flags.first
-        XCTAssertEqual(row, FlagRow(flag: .mealPlan, description: "The meal plan", issue: 47, on: false, changed: false))
+        XCTAssertEqual(row, FlagRow(flag: .chefMode, description: "Chef mode", issue: 100, on: false, changed: false))
     }
 
     func testASwitchOverridesTheFlagAndResetClearsIt() {
         let flags = flags()
         let vm = DeveloperSettingsViewModel(flags: flags)
 
-        vm.onFlagChange(.mealPlan, true)
-        XCTAssertTrue(flags.isOn(.mealPlan))
+        vm.onFlagChange(.chefMode, true)
+        XCTAssertTrue(flags.isOn(.chefMode))
         XCTAssertTrue(vm.uiState.anyChanged)
 
         vm.onReset()
-        XCTAssertFalse(flags.isOn(.mealPlan))
+        XCTAssertFalse(flags.isOn(.chefMode))
         XCTAssertFalse(vm.uiState.anyChanged)
     }
 

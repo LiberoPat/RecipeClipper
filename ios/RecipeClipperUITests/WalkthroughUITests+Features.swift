@@ -19,7 +19,7 @@ extension WalkthroughUITests {
     /// A fresh install's tooltips: one a visit, at its control; the next on a later visit; and
     /// Settings' "Show tips again".
     func test24_tooltips() {
-        startFirstRun(flags: ["mealPlan"])
+        startFirstRun()
         gotIt("home_link", "Home's first tooltip")
         require(row("Tomato and White Bean Soup"), "the sample recipe").tap()
         gotIt("recipe_units", "the recipe's first tooltip", hold: 4) // a longer text
@@ -67,7 +67,7 @@ extension WalkthroughUITests {
     /// a row out, the edit sheet's stock control, the long-press menu (both other states), and a
     /// swipe each way. Run out items sit in their own section at the foot of the Pantry.
     func test25_pantryStates() {
-        start(flags: ["mealPlan"], scenario: .walkthroughPantry)
+        start(scenario: .walkthroughPantry)
         tab("Pantry")
         pause()
         reveal(pantryRow("soy sauce"), "soy sauce").swipeLeft()
@@ -108,7 +108,7 @@ extension WalkthroughUITests {
     /// "onions" in the pantry covers the Adobo's "1 onion, sliced" (#191); the Guacamole's red
     /// onion is another thing, so it stays To buy.
     func test26_onionPlurals() {
-        start(flags: ["mealPlan"])
+        start()
         tab("Pantry")
         type("onions\n", into: app.textFields["Add to the pantry"])
         pause()
@@ -129,7 +129,7 @@ extension WalkthroughUITests {
         let fixture = try XCTUnwrap(Bundle(for: WalkthroughUITests.self)
             .url(forResource: "recipes-image-op-comment", withExtension: "json", subdirectory: "reddit"))
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "mealPlan,reddit"]
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "reddit"]
         app.launchEnvironment["RC_UITEST_REDDIT_LISTING"] = try String(contentsOf: fixture, encoding: .utf8)
         app.launch()
         self.app = app
@@ -160,7 +160,7 @@ extension WalkthroughUITests {
             try XCTUnwrap(bundle.url(forResource: name, withExtension: "jpg", subdirectory: "reddit/photos")).absoluteString
         }
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "mealPlan,reddit,photoText"]
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "reddit,photoText"]
         app.launchEnvironment["RC_UITEST_REDDIT_LISTING"] = try String(contentsOf: fixture, encoding: .utf8)
         app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
         app.launchEnvironment["RC_UITEST_PHOTO_IMAGES"] =
@@ -242,7 +242,7 @@ extension WalkthroughUITests {
         }
         let card = try XCTUnwrap(bundle.url(forResource: "card-fr", withExtension: "jpg", subdirectory: "reddit/photos"))
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "mealPlan,reddit,photoText"]
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "reddit,photoText"]
         app.launchEnvironment["RC_UITEST_REDDIT_LISTING_1f8b4de"] = try listing("de-self-post")
         app.launchEnvironment["RC_UITEST_REDDIT_LISTING_1f8c5fr"] = try listing("fr-card-untranscribed")
         app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
@@ -322,7 +322,7 @@ extension WalkthroughUITests {
     /// then Home's own "Scan a recipe".
     func test30_scanARecipe() {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "mealPlan,photoText"]
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "photoText"]
         app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
         app.launch()
         self.app = app
@@ -411,7 +411,7 @@ extension WalkthroughUITests {
     /// the recipe in the poster's comment, selected there and saved.
     func test31_redditClipYourself() {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "mealPlan,reddit"]
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "reddit"]
         app.launchEnvironment["RC_UITEST_LIVE_REDDIT"] = "1"
         app.launchEnvironment["RC_UITEST_CLIP_SCRIPT"] = Self.clipSpots
         app.launch()

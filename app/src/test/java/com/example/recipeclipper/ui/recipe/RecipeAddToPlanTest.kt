@@ -14,7 +14,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** "Add to plan" in the recipe screen's overflow menu (#49), only behind the tab flag. */
+/** "Add to plan" in the recipe screen's overflow menu (#49). */
 @RunWith(AndroidJUnit4::class)
 class RecipeAddToPlanTest {
 

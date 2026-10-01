@@ -137,7 +137,7 @@ private struct TooltipAnchorModifier: ViewModifier {
                     ),
                     side: side
                 ) {
-                    TooltipBubble(tooltip: tooltip, mealPlan: tooltips.isOn(.mealPlan)) { tooltips.onDismiss(tooltip) }
+                    TooltipBubble(tooltip: tooltip) { tooltips.onDismiss(tooltip) }
                 })
         } else {
             content
@@ -179,14 +179,13 @@ private struct TooltipPopover<Bubble: View>: ViewModifier {
 /// visible label) that VoiceOver reads as it appears. Wider at the accessibility text sizes.
 private struct TooltipBubble: View {
     let tooltip: Tooltip
-    let mealPlan: Bool
     let onDismiss: () -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Button(action: onDismiss) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(Strings.tooltip(tooltip, mealPlan: mealPlan))
+                Text(Strings.tooltip(tooltip))
                     .textStyle(Typography.bodyMedium)
                     .foregroundStyle(Palette.inverseOnSurface)
                     .multilineTextAlignment(.leading)

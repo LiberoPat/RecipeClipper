@@ -13,7 +13,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** "Add to groceries" in the recipe screen's overflow menu (#50), only behind the tab flag. */
+/** "Add to groceries" in the recipe screen's overflow menu (#50). */
 @RunWith(AndroidJUnit4::class)
 class RecipeAddToGroceriesTest {
 

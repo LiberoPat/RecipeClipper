@@ -32,7 +32,7 @@ extension WalkthroughUITests {
     }
 
     func test06_recipesScreen() {
-        startAsShipped(flags: [])
+        startAsShipped()
         openRecipes()
         pause()
         app.swipeUp()
@@ -56,7 +56,7 @@ extension WalkthroughUITests {
     }
 
     func test07_amountsInSteps() {
-        startAsShipped(flags: ["amountsInSteps"])
+        startAsShipped()
         require(app.buttons["Settings"]).tap()
         pause()
         flipSwitch("Amounts in steps")

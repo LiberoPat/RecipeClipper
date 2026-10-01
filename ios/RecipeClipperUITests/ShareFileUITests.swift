@@ -14,7 +14,7 @@ final class ShareFileUITests: RecipeUITestCase {
     }
 
     func testAReceivedFileAddsWhatIsTickedAndShowsTheGroceries() {
-        launch(.standard, flags: ["mealPlan"], extraArguments: ["-uiTestReceiveFile"])
+        launch(.standard, extraArguments: ["-uiTestReceiveFile"])
         require(text("Add from this file"), "the sheet")
         require(app.buttons["receiveRow-r:ui-cake"], "the recipe")
         require(app.buttons["receiveRow-g:ui-lemons"], "the lemons, for the cake")

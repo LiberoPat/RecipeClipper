@@ -176,7 +176,7 @@
     <string name="delete_list_body">Die Liste wird entfernt. Die Rezepte darin bleiben in deinem Verlauf.</string>
     <string name="action_delete_list">Liste löschen</string>
 
-    <!-- Bottom tabs (#47), behind the mealPlan flag (#87) -->
+    <!-- Bottom tabs (#47) -->
     <string name="tab_recipes">Rezepte</string>
     <string name="tab_week">Woche</string>
     <string name="tab_groceries">Einkauf</string>

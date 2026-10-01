@@ -186,7 +186,7 @@
     <string name="delete_list_body">Se eliminará la lista. Sus recetas seguirán en tu historial.</string>
     <string name="action_delete_list">Eliminar lista</string>
 
-    <!-- Bottom tabs (#47), behind the mealPlan flag (#87) -->
+    <!-- Bottom tabs (#47) -->
     <string name="tab_recipes">Recetas</string>
     <string name="tab_week">Semana</string>
     <string name="tab_groceries">Compras</string>

@@ -1,9 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// The app's root. With the `mealPlan` flag off (#87, until the meal plan ships) it is the single
-/// Recipes NavigationStack, exactly as before the tab shell. On, that same stack is the first of
-/// four tabs, each with its own NavigationStack, so each keeps its own place.
+/// The app's root: four tabs (#47), each with its own NavigationStack, so each keeps its own
+/// place; the Recipes stack is the first.
 /// Every destination gets its ViewModel from the container, once per stack entry (ScreenHost),
 /// and takes it as a parameter so a screen never builds its own.
 struct RootView: View {

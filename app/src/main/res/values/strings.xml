@@ -295,7 +295,7 @@
     <string name="delete_list_body">The list is removed. The recipes in it stay in your history.</string>
     <string name="action_delete_list">Delete list</string>
 
-    <!-- Bottom tabs (#47), behind the mealPlan flag (#87) -->
+    <!-- Bottom tabs (#47) -->
     <string name="tab_recipes">Recipes</string>
     <string name="tab_week">Week</string>
     <string name="tab_groceries">Groceries</string>

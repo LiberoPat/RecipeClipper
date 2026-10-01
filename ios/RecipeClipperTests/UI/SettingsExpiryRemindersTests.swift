@@ -5,22 +5,13 @@ import XCTest
 @MainActor
 final class SettingsExpiryRemindersTests: XCTestCase {
     private let preferences = FakeAppPreferences()
-    private let flags = FeatureFlags(store: MemoryFeatureFlagStore(), definitions: [
-        FlagDefinition(key: "mealPlan", description: "The meal plan", defaults: .init(debug: false, release: false), issue: 47)
-    ], isDebug: true)
+    private let flags = FeatureFlags(store: MemoryFeatureFlagStore(), definitions: [], isDebug: true)
 
     private func vm(granted: Bool = true) -> SettingsViewModel {
         SettingsViewModel(
             preferences: preferences, backups: FakeBackupRepository(), files: FakeBackupFiles(),
             flags: flags, notificationPermission: FixedNotificationPermission(granted: granted)
         )
-    }
-
-    func testThePantrySectionFollowsTheMealPlanFlag() {
-        let vm = vm()
-        XCTAssertFalse(vm.showsPantry)
-        flags.set(.mealPlan, true)
-        XCTAssertTrue(vm.showsPantry)
     }
 
     func testAllowedNotificationsTurnRemindersOn() async {

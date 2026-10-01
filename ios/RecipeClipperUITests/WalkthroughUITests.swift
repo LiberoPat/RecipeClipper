@@ -29,7 +29,7 @@ final class WalkthroughUITests: RecipeUITestCase {
         Thread.sleep(forTimeInterval: seconds)
     }
 
-    func start(flags: [String], scenario: Scenario = .walkthrough, extraArguments: [String] = []) {
+    func start(flags: [String] = [], scenario: Scenario = .walkthrough, extraArguments: [String] = []) {
         launch(scenario, flags: flags, extraArguments: extraArguments)
         mark("START")
         pause()
@@ -38,13 +38,13 @@ final class WalkthroughUITests: RecipeUITestCase {
     /// Clips 01–11: the app as a fresh install has it, the build's flag defaults on (#152), as
     /// Android's walkthroughs have them, and `flags` too. (A UI-test launch otherwise turns every
     /// flag off but the ones it names.)
-    func startAsShipped(flags: [String]) {
+    func startAsShipped(flags: [String] = []) {
         start(flags: flags, extraArguments: ["-uiTestDefaultFlags"])
     }
 
     /// A fresh install's first launch (#151, #190): no recipes of its own, the sample added at
     /// launch, and every tooltip still to see.
-    func startFirstRun(flags: [String]) {
+    func startFirstRun(flags: [String] = []) {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestSeed", Scenario.empty.rawValue, "-uiTestTooltips", "-uiTestFlags", flags.joined(separator: ",")]
         app.launch()

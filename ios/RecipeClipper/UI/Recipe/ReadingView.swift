@@ -6,7 +6,7 @@ struct ReadingView: View {
     let content: RecipeSuccess
     let state: RecipeUiState
     let vm: RecipeViewModel
-    /// "Your cooks" (#116); nil while its flag is off.
+    /// "Your cooks" (#116); nil leaves it out.
     var photos: CookedPhotosViewModel? = nil
     /// The step-number column grows with the numbers in it (titleMedium follows .headline).
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32

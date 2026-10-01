@@ -17,7 +17,6 @@ struct TooltipsUiState: Equatable {
 final class TooltipsViewModel {
     private(set) var uiState = TooltipsUiState()
     @ObservationIgnored private let preferences: TourPreferences
-    @ObservationIgnored private let flags: FeatureFlags
     @ObservationIgnored private var seen: Set<Tooltip>
     @ObservationIgnored private var visit: TooltipVisit?
     /// Each screen's last report, by its token: a screen still alive under another (pushed over
@@ -30,9 +29,8 @@ final class TooltipsViewModel {
     @ObservationIgnored private var settling = false
     @ObservationIgnored private var cancellables = Set<AnyCancellable>()
 
-    init(preferences: TourPreferences, flags: FeatureFlags) {
+    init(preferences: TourPreferences) {
         self.preferences = preferences
-        self.flags = flags
         // Read at once, so a seen tooltip never flashes.
         seen = preferences.seenTooltips
         preferences.seenTooltipsChanges
@@ -90,9 +88,6 @@ final class TooltipsViewModel {
         update()
     }
 
-    /// A flag, for the words a bubble picks (the recipe menu's without the meal plan).
-    func isOn(_ flag: Flag) -> Bool { flags.isOn(flag) }
-
     /// Settings' "Show tips again": every tooltip shows once more, one at a time.
     func onReplay() {
         for tooltip in Tooltip.allCases { preferences.setTooltipSeen(tooltip, false) }
@@ -104,7 +99,6 @@ final class TooltipsViewModel {
         let report = visit.flatMap { reports[$0.token] }
         let current = Tooltips.current(
             visit, seen: seen,
-            isOn: { [flags] key in Flag(rawValue: key).map(flags.isOn) ?? true },
             visible: report?.visible ?? [],
             ready: report?.ready == true && !settling
         )

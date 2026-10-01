@@ -11,7 +11,7 @@ extension WalkthroughUITests {
     /// opens for its note: typed with the keyboard up, then × closes the viewer, and the photo
     /// reopens from its thumbnail (Android's test13).
     func test13_iMadeThis() {
-        start(flags: ["cookedPhotos"])
+        start()
         openRecipes()
         scrollTo(row("Chocolate Chip Cookies"), "the cookies").tap()
         require(bookmark, "the recipe")
@@ -43,7 +43,7 @@ extension WalkthroughUITests {
     /// The first-run tour (#151, #190): the sample recipe waiting on Home, and a tooltip on each
     /// screen, one at a time, pointing at its control.
     func test17_firstRunTour() {
-        startFirstRun(flags: ["mealPlan"])
+        startFirstRun()
         let link = require(app.buttons["tooltip.home_link"], "Home's first tooltip")
         pause(2.5)
         link.tap()
@@ -56,7 +56,7 @@ extension WalkthroughUITests {
     }
 
     func test18_doneShoppingAndOnList() {
-        start(flags: ["mealPlan"], scenario: .walkthroughPantry)
+        start(scenario: .walkthroughPantry)
         tab("Groceries")
         for item in ["soy sauce", "garlic", "bay leaves"] {
             require(line(item), item).tap()
@@ -95,7 +95,7 @@ extension WalkthroughUITests {
     }
 
     func test20_pantryUseUpAfterCooking() {
-        start(flags: ["mealPlan"], scenario: .walkthroughPantry)
+        start(scenario: .walkthroughPantry)
         open("Chicken Adobo")
         for ingredient in ["2 lb chicken thighs", "1/2 cup soy sauce", "1/3 cup white vinegar"] {
             require(line(ingredient), ingredient).tap()
@@ -123,7 +123,7 @@ extension WalkthroughUITests {
     /// "Mark as cooked" (#173): a cooking with no photo, "Cooked" in its place, and a note;
     /// closing it offers the pantry's use-up sheet (#147) for every line.
     func test23_markAsCooked() {
-        start(flags: ["mealPlan", "cookedPhotos"], scenario: .walkthroughPantry)
+        start(scenario: .walkthroughPantry)
         open("Chicken Adobo")
         scrollTo(app.buttons["cooked.iMadeThis"], "I made this").tap()
         pause(0.8)

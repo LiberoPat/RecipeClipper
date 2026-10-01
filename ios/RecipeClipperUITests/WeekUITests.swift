@@ -1,6 +1,6 @@
 import XCTest
 
-/// The Week tab (#49), behind the tab flag: plan a recipe on today from "+ Add", open it, and
+/// The Week tab (#49): plan a recipe on today from "+ Add", open it, and
 /// remove it again with Undo; plan one from the recipe screen's "Add to plan".
 final class WeekUITests: RecipeUITestCase {
 
@@ -14,7 +14,7 @@ final class WeekUITests: RecipeUITestCase {
     }
 
     private func openWeek() {
-        launch(.standard, flags: ["mealPlan"])
+        launch(.standard)
         require(tabBar.buttons["Week"], "the Week tab").tap()
         require(app.staticTexts["weekRange"], "the Week")
     }
@@ -43,7 +43,7 @@ final class WeekUITests: RecipeUITestCase {
     }
 
     func testAddToPlanFromTheRecipeMenu() {
-        launch(.standard, flags: ["mealPlan"])
+        launch(.standard)
         require(app.staticTexts["Chicken Adobo"], "Continue cooking").tap()
         require(app.buttons["More options"], "the recipe menu").tap()
         require(app.buttons["Add to plan"], "Add to plan").tap()
@@ -61,7 +61,7 @@ final class WeekUITests: RecipeUITestCase {
     /// has at least three rows to buy and three in the pantry. Both sections sit in one
     /// LazyVStack; with ids repeated across them, the first pantry rows left a blank gap.
     func testWhatINeedDrawsEveryRowOfBothSections() {
-        launch(.walkthroughPantry, flags: ["mealPlan"])
+        launch(.walkthroughPantry)
         require(tabBar.buttons["Week"], "the Week tab").tap()
         planToday("Chicken Adobo")
         require(app.buttons["More options"], "the Week menu").tap()

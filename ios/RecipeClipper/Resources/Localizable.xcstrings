@@ -20412,47 +20412,6 @@
         }
       }
     },
-    "tooltip_recipe_menu_no_plan" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mehr: Als Datei senden und Bearbeiten."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "More: Send as file and Edit."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Más: Enviar como archivo y Editar."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plus : Envoyer en fichier et Modifier."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Altro: Invia come file e Modifica."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mais: Enviar como arquivo e Editar."
-          }
-        }
-      }
-    },
     "tooltip_recipe_start_cooking" : {
       "extractionState" : "manual",
       "localizations" : {
