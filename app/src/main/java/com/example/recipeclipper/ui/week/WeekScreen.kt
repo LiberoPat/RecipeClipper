@@ -27,6 +27,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -77,6 +78,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -304,11 +306,21 @@ private fun PeriodNavigation(
         IconButton(onClick = onPrevious, modifier = Modifier.semantics { contentDescription = previousDescription }) {
             Text("‹", style = MaterialTheme.typography.headlineSmall)
         }
-        Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag(labelTag))
-        IconButton(onClick = onNext, modifier = Modifier.semantics { contentDescription = nextDescription }) {
-            Text("›", style = MaterialTheme.typography.headlineSmall)
+        // One line: the range names both weekdays since #232, so it shrinks a little beside
+        // "Today" rather than squeeze the button or wrap.
+        val labelStyle = MaterialTheme.typography.titleMedium
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Text(
+                label,
+                style = labelStyle,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = labelStyle.fontSize),
+                modifier = Modifier.weight(1f, fill = false).testTag(labelTag)
+            )
+            IconButton(onClick = onNext, modifier = Modifier.semantics { contentDescription = nextDescription }) {
+                Text("›", style = MaterialTheme.typography.headlineSmall)
+            }
         }
-        Spacer(Modifier.weight(1f))
         if (backLabel != null) {
             TextButton(onClick = onBack, modifier = Modifier.testTag(backTag)) { Text(backLabel) }
         }
