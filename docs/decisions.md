@@ -4180,9 +4180,13 @@ blocked on both platforms anyway); anything else (`file:`, `content:`, `data:`, 
   image link (which already required `http`; now one rule, and `http` upgraded). A relative
   JSON-LD image had loaded nothing useful (Coil read it as a file path); it is now no image
   rather than being resolved against the page.
-- Not changed: an image address typed by the cook in the editor, a scan's local pages (#226,
-  never a recipe's image), and the `imageUrl` in an import file (#26, #149), which isn't page
-  data.
+- An import file's recipe `imageUrl` (#26, #149: a backup, or a file someone sent), read in
+  `BackupJson` on both platforms, so every import path gets it: anything not a web image reads
+  as no photo. The cook's own photos (#116) are untouched: they travel as `photos/…` entries
+  in the archive (`PHOTO_FILE`), are unpacked into a folder the app chooses, and are never
+  named by an address from the JSON.
+- Not changed: an image address typed by the cook in the editor, and a scan's local pages
+  (#226, never a recipe's image).
 
 **Dependabot, security updates only.** `.github/dependabot.yml` covers `gradle` and
 `github-actions` with `open-pull-requests-limit: 0`, which turns version updates off, so the
