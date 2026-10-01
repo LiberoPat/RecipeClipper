@@ -1770,7 +1770,8 @@ approved as a mock-up (six frames); the owner's nine decisions are in the issue'
   line (`getSelection().toString()` breaks between blocks); a name joins its lines. Serves and
   Total time are typed in Review, optional, never read from the page.
 - **Photo:** a Photo button, then **one tap** on the page. An image with a readable `http(s)`
-  address becomes the photo: lazy-loading placeholders (`data:` URIs) are skipped for the real
+  address becomes the photo (kept as `https`, and checked natively: `WebImageUrl`, #235):
+  lazy-loading placeholders (`data:` URIs) are skipped for the real
   address (`data-src`, a `srcset`, the `<picture>`'s sources, inside open shadow roots too).
   Anything else ends the step and says "Couldn't read a picture there. The photo is optional."
   Selecting new text, tapping a tag, or **Skip** (beside "Tap the picture…") ends it too. No
@@ -1786,7 +1787,8 @@ approved as a mock-up (six frames); the owner's nine decisions are in the issue'
   "Draft restored" snackbar offering Discard. Save or Discard drops it. Never on disk.
 - **One script, `shared/web/clipper.js`,** injected by both apps (Android as a Java resource, iOS
   from the bundled `web/` folder). The page only reports (selection, tag tapped, image tapped,
-  no readable image); native code pushes the draft's marks back with one declarative
+  no readable image), and the apps hear its main frame only (#235, "Security hardening");
+  native code pushes the draft's marks back with one declarative
   `RC.sync(...)`, so replace, undo and clear all redraw from state. Mark ids come from the draft, so an undo can show a mark
   again. Marks don't survive a page reload (rotation on Android, a restored draft); the draft does.
 - **Links to other pages are blocked** in the clip view (redirects and fragment jumps load, and
@@ -3990,3 +3992,65 @@ it), and the form every parser, card reader and the splitter writes a group head
   one, and the end of cooking and "I made this" leave headings out of the lines they hand to
   the pantry's use-up sheet (which already skipped them). "Add to groceries" already left them
   out. Share text keeps them as plain lines, as before.
+
+## Security hardening (#235)
+
+Three changes, on both platforms, made in October 2026.
+
+**The clip view hears its page's main frame only.** "Clip it yourself" (#37), Cloudflare's
+check (#220) and Reddit's clip (#213) load arbitrary sites, with their ads and other sites'
+iframes. The page's script talks to the app through a bridge, and before this any frame could
+use it: Android's `addJavascriptInterface("RCAndroid")` is exposed to every frame of every
+origin, and iOS's `rc` message handler is reachable from every frame. An ad could post a
+selection, clear a field through a tag, or set the photo. Now:
+
+- **Android** (`ClipBridge`): `WebViewCompat.addWebMessageListener` (androidx.webkit) injects
+  `RCBridge` with the origin rule `*` (the page is any site) and reports which frame posted;
+  a message whose frame isn't the main one is dropped, as is one that isn't a string. This
+  needs `WEB_MESSAGE_LISTENER`, which a WebView kept up to date through Google Play has (the
+  emulator's API 37 WebView does).
+- **Android's fallback, honestly:** a WebView without the listener gets the old interface
+  (now named `RCBridge` too), which every frame still sees and which can't say who called.
+  The app generates a random token per web view, hands it to the main frame alone
+  (`evaluateJavascript` runs only there) just before `clipper.js`, and drops any message
+  without it. Another site's frame can't read the main frame's variables, so it can't post;
+  a frame of the page's own site could read the token, but it could already reach the page's
+  script. Robolectric's WebView reports no listener, so the JVM screen tests take this path.
+- **iOS:** `ClipPageEvent.accept` drops a message unless `message.frameInfo.isMainFrame`. The
+  three user scripts (`clipper.js`, `reddit-reader.js`, the walkthrough's hook) were already
+  `forMainFrameOnly`. Reading the page (#220) and the Text view's read (#213) go through
+  `evaluateJavaScript`, which runs in the main frame, so they never used the bridge.
+- **What it doesn't stop:** the page's own scripts in the main frame, ads included, can still
+  post, as they always could; they can also rewrite the page being clipped. The clip is the
+  cook's selection on that page, reviewed before saving.
+- Tests: `ClipBridgeTest` and `ClipPageEventTests` (the decision), and the fixture page in
+  `ClipScreenTest` and `ClipUITests` now holds an iframe whose button posts a selection, which
+  must never show.
+
+**A photo address from a page must be a web image** (`WebImageUrl`, pure, in `data/model` and
+iOS `Data/Model`, pinned by the corpus's `Img` rows). Coil loads `file:`, `content:` and a bare
+path from the device, and iOS's `ImageLoader` reads a file URL where it is, so a page naming
+`file:///…/recipe_clipper.db` as its image would have had the app open its own files. Only
+`https` with a host is kept, `http` upgraded as `UrlCleaner` upgrades a link (cleartext is
+blocked on both platforms anyway); anything else (`file:`, `content:`, `data:`, `javascript:`,
+`blob:`, a relative or blank address) is no image. Where it applies:
+
+- The clip's photo: an address the rule refuses ends the photo step with the existing "Couldn't
+  read a picture there" (`onNoImageTapped`). `clipper.js` already sent only `http(s)`; the check
+  is native so a page can't get round it.
+- JSON-LD's `image` (blog pages, the rendered page #36, Safari's page #35), microdata's `image`
+  (now the first one that is a web image, so a lazy loader's `data:` placeholder gives way) and
+  its `og:image` fallback, the page text's `og:image` (#103), and Reddit's preview, gallery and
+  image link (which already required `http`; now one rule, and `http` upgraded). A relative
+  JSON-LD image had loaded nothing useful (Coil read it as a file path); it is now no image
+  rather than being resolved against the page.
+- Not changed: an image address typed by the cook in the editor, a scan's local pages (#226,
+  never a recipe's image), and the `imageUrl` in an import file (#26, #149), which isn't page
+  data.
+
+**Dependabot, security updates only.** `.github/dependabot.yml` covers `gradle` and
+`github-actions` with `open-pull-requests-limit: 0`, which turns version updates off, so the
+only pull requests are security updates. A fix to the coupled toolchain (Gradle, AGP, Kotlin,
+KSP, Hilt, Room, the Compose BOM with `navigation-compose`) is grouped into one PR, and is still
+applied by bumping the whole set together by hand (docs/testing.md, "CI"). Dependabot alerts and
+security updates were off on the repository and were turned on (2026-10-01) through the API.

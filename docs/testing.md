@@ -761,6 +761,13 @@ both.
   in `app/build.gradle.kts`, so the normal runs never touch the network.
   Replace a URL only when its page is gone in a browser too.
 
+**Dependabot** (`.github/dependabot.yml`, #235) opens security updates only, for Gradle and
+GitHub Actions; version updates are off (`open-pull-requests-limit: 0`). Its PRs are handled
+like any other: merge only when CI is green, and run the device tests when the bump touches
+what they cover. A fix to the coupled Android toolchain (CLAUDE.md, "Commands") isn't merged on
+its own: bump the whole set together by hand in a PR of its own, which supersedes Dependabot's,
+and close it. Its toolchain fixes arrive grouped in one PR to make that plain.
+
 When a new Xcode major comes out, GitHub ships it as a new image label
 (`xcode-28`), so the label, `DEVELOPER_DIR`, the simulator `OS=` and
 `.github/actionlint.yaml` move together. Check workflow edits with

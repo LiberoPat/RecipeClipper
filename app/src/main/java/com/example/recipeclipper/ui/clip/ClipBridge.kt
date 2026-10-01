@@ -38,7 +38,8 @@ internal object ClipBridge {
      */
     @SuppressLint("JavascriptInterface")
     fun attach(webView: WebView, onEvent: (ClipPageEvent) -> Unit): String? {
-        if (listenerSupported()) {
+        // Robolectric's WebView has no listener either, so the JVM screen tests take the old path.
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
             // Called on the main thread. Only a string is read: the data of any other kind of
             // message (an ArrayBuffer) can't be asked for as one.
             WebViewCompat.addWebMessageListener(webView, NAME, setOf("*")) { _, message, _, isMainFrame, _ ->
@@ -65,12 +66,6 @@ internal object ClipBridge {
 
     /** Hands the main frame the old interface's [token], before `clipper.js` runs. */
     fun tokenScript(token: String) = "window.RCBridgeToken = ${JSONObject.quote(token)};"
-
-    private fun listenerSupported(): Boolean = try {
-        WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
-    } catch (e: RuntimeException) {
-        false // no WebView provider to ask (Robolectric has none): the old interface
-    }
 
     /** A message heard by the listener: read only when it came from the main frame. */
     fun fromListener(json: String?, isMainFrame: Boolean): ClipPageEvent? =
