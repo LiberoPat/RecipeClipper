@@ -6,7 +6,6 @@ import XCTest
 final class AddToPlanViewModelTests: XCTestCase {
     private let plan = FakeMealPlanRepository()
     private let today = FakePlanCalendar.wednesday
-    private var monday: Int64 { today - 2 }
 
     private func viewModel() async -> AddToPlanViewModel {
         let vm = AddToPlanViewModel(repository: plan, calendar: FakePlanCalendar())
@@ -14,11 +13,11 @@ final class AddToPlanViewModelTests: XCTestCase {
         return vm
     }
 
-    func testStartsOnTodayDinnerAndTheYieldOverThisWeekAndNext() async {
+    func testStartsOnTodayDinnerAndTheYieldOverTodayAndTheNext13Days() async {
         let vm = await viewModel()
         vm.setRecipe(7, yieldServings: 4)
 
-        XCTAssertEqual(vm.uiState.days, Array(monday..<(monday + 14)))
+        XCTAssertEqual(vm.uiState.days, Array(today..<(today + 14)))
         XCTAssertEqual(vm.uiState.selectedDay, today)
         XCTAssertEqual(vm.uiState.selectedMealTypeId, FakeMealPlanRepository.dinner)
         XCTAssertEqual(vm.uiState.servings, 4)
@@ -28,7 +27,7 @@ final class AddToPlanViewModelTests: XCTestCase {
     func testAddsTheChosenDayMealTypeAndServings() async {
         let vm = await viewModel()
         vm.setRecipe(7, yieldServings: 4)
-        vm.onDaySelected(monday + 8)
+        vm.onDaySelected(today + 8)
         vm.onMealTypeSelected(FakeMealPlanRepository.snack)
         vm.onServingsChange(6)
         vm.onAdd()
@@ -36,7 +35,7 @@ final class AddToPlanViewModelTests: XCTestCase {
 
         let meal = plan.meals.value.first
         XCTAssertEqual(meal?.recipeId, 7)
-        XCTAssertEqual(meal?.day, monday + 8)
+        XCTAssertEqual(meal?.day, today + 8)
         XCTAssertEqual(meal?.mealTypeId, FakeMealPlanRepository.snack)
         XCTAssertEqual(meal?.servings, 6)
         XCTAssertTrue(vm.uiState.added)

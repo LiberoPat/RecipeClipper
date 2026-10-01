@@ -8,7 +8,6 @@ final class WeekMenusViewModelTests: XCTestCase {
     private let plan = FakeMealPlanRepository()
     private let calendar = FakePlanCalendar()
     private let today = FakePlanCalendar.wednesday
-    private var monday: Int64 { today - 2 }
 
     private func viewModel() async -> WeekViewModel {
         let vm = WeekViewModel(plan: plan, recipes: FakeRecipeRepository(), calendar: calendar, sleep: immediateSleep)
@@ -98,5 +97,46 @@ final class WeekMenusViewModelTests: XCTestCase {
         await settleMain()
         XCTAssertTrue(vm.uiState.menus.menus.isEmpty)
         XCTAssertEqual(mealCount(vm), 1, "the plan is untouched")
+    }
+
+    // MARK: Menus keep weekdays across rolling weeks (#232)
+
+    func testAMenuSavedFromAThursdayWeekKeepsItsWeekdaysWhenAppliedToAnother() async {
+        let thursday = FakePlanCalendar.thursday
+        calendar.todayValue = thursday // the locale's week starts on Monday
+        await plan.addNote("Thursday soup", day: thursday, mealTypeId: FakeMealPlanRepository.dinner)
+        await plan.addNote("Monday pasta", day: thursday + 4, mealTypeId: FakeMealPlanRepository.dinner)
+        let vm = await viewModel()
+        vm.onSaveMenu("Usual")
+        await settleMain()
+        let id = plan.menus.value[0].id
+        // Stored from the locale's Monday, as before rolling weeks.
+        XCTAssertEqual(plan.menuMeals[id]?.map(\.dayOffset), [3, 0])
+
+        // Opened on Saturday 10, the week runs Saturday to Friday: Monday 12 and Thursday 15.
+        calendar.todayValue = thursday + 9
+        let later = await viewModel()
+        later.onApplyMenu(plan.menus.value[0])
+        await settleMain()
+        let applied = Array(plan.meals.value.dropFirst(2))
+        XCTAssertEqual(applied.map(\.day), [thursday + 14, thursday + 11])
+        XCTAssertEqual(applied.map(\.note), ["Thursday soup", "Monday pasta"])
+        XCTAssertEqual(applied.map { PlanDays.dayOfWeek($0.day) }, [5, 2])
+    }
+
+    func testAMenuSavedBeforeRollingWeeksLandsOnItsWeekdays() async {
+        // Saved by the code before #232 from a Monday-first week: offsets from Monday.
+        await plan.addNote("Monday pasta", day: today - 2, mealTypeId: FakeMealPlanRepository.dinner)
+        await plan.addNote("Friday fish", day: today + 2, mealTypeId: FakeMealPlanRepository.dinner)
+        let old = plan.meals.value
+        plan.meals.value = []
+        plan.menuMeals[50] = [(dayOffset: 0, meal: old[0]), (dayOffset: 4, meal: old[1])]
+        plan.menus.value = [WeekMenu(id: 50, name: "Old", mealCount: 2)]
+
+        let vm = await viewModel() // today is a Wednesday: the block runs to Tuesday
+        vm.onApplyMenu(plan.menus.value[0])
+        await settleMain()
+        XCTAssertEqual(plan.meals.value.map(\.day), [today + 5, today + 2])
+        XCTAssertEqual(plan.meals.value.map(\.note), ["Monday pasta", "Friday fish"])
     }
 }

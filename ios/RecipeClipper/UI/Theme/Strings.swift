@@ -474,7 +474,6 @@ enum Strings {
     static func removedFromPlan(_ label: String) -> String { String(localized: "snackbar_removed_from_plan \(label)") }
     static var previousWeek: String { String(localized: "cd_previous_week") }
     static var nextWeek: String { String(localized: "cd_next_week") }
-    static var thisWeek: String { String(localized: "action_this_week") }
     // Month view (#52)
     static var monthView: String { String(localized: "action_month_view") }
     static var weekView: String { String(localized: "action_week_view") }

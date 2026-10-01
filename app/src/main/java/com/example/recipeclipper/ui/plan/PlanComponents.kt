@@ -69,15 +69,14 @@ internal fun fullDate(day: Long): String = format(day, "yMMMd")
 /** "September 2026", in the locale's order. */
 internal fun monthTitle(day: Long): String = format(day, "yMMMM")
 
-/** "Sep 21 – 27", or across months "Sep 28 – Oct 4". */
-internal fun weekRange(start: Long): String {
-    val end = start + 6
-    val sameMonth = format(start, "M") == format(end, "M")
-    return format(start, "MMMd") + " – " + (if (sameMonth) format(end, "d") else format(end, "MMMd"))
-}
+/**
+ * "Thu, Oct 1 – Wed, Oct 7", in the locale's order. Weeks start on any weekday since #232, so
+ * both ends name theirs.
+ */
+internal fun weekRange(start: Long): String = format(start, "EEEMMMd") + " – " + format(start + 6, "EEEMMMd")
 
 /**
- * The strip of days in a plan sheet: this week and next, each a short weekday over its date.
+ * The strip of days in a plan sheet: today and the next 13 (#232), each a short weekday over its date.
  * The chosen day is ringed in paprika, today's date is paprika text. An exclusive choice, so
  * each cell is `selectable` with a radio-button role.
  */

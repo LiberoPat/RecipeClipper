@@ -7,6 +7,11 @@ import XCTest
 final class MenuDaoTests: XCTestCase {
     private var db: AppDatabase!
     private let today: Int64 = 20_000
+    /// The locale's first day, today's weekday (a Friday), so `today` starts its week as before
+    /// rolling weeks (#232).
+    private let fdow = PlanDays.dayOfWeek(20_000)
+    private let mondayFirst = 2
+    private let thursday: Int64 = 19_999 // 19_996 is the Monday before it
 
     override func setUpWithError() throws { db = try AppDatabase(path: nil) }
 
@@ -36,7 +41,7 @@ final class MenuDaoTests: XCTestCase {
     }
 
     private func save(_ name: String, _ start: Int64) async throws -> Int64? {
-        try await db.write { try MenuDao(db: $0).saveWeek(name: name, weekStart: start, now: 5) }
+        try await db.write { [fdow] in try MenuDao(db: $0).saveWeek(name: name, weekStart: start, firstDayOfWeek: fdow, now: 5) }
     }
 
     func testASavedWeekAppliesToAnotherWeekOnTheSameWeekdaysAfterWhatIsPlanned() async throws {
@@ -47,7 +52,7 @@ final class MenuDaoTests: XCTestCase {
         XCTAssertNotNil(menuId)
         try await plan(nil, day: today + 8, note: "Already here")
 
-        let added = try await db.write { [today] in try MenuDao(db: $0).apply(menuId: menuId!, weekStart: today + 7, now: 6) }
+        let added = try await db.write { [today, fdow] in try MenuDao(db: $0).apply(menuId: menuId!, weekStart: today + 7, firstDayOfWeek: fdow, now: 6) }
 
         XCTAssertEqual(added, 2)
         let next = try await week(today + 7)
@@ -121,5 +126,50 @@ final class MenuDaoTests: XCTestCase {
         XCTAssertNotNil(id)
         let menus = try await db.read { try MenuDao(db: $0).menus() }
         XCTAssertEqual(menus.map(\.name), ["Stew week"])
+    }
+
+    // MARK: Weekdays across rolling weeks (#232)
+
+    func testAMenuSavedFromARollingWeekKeepsItsWeekdays() async throws {
+        try await plan(nil, day: thursday, note: "Thursday soup")
+        try await plan(nil, day: thursday + 4, note: "Monday pasta")
+        let menuId = try await db.write { [thursday, mondayFirst] in
+            try MenuDao(db: $0).saveWeek(name: "Usual", weekStart: thursday, firstDayOfWeek: mondayFirst, now: 1)
+        }
+        let entries = try await db.read { try MenuDao(db: $0).entries(menuId: menuId!) }
+        // Stored from the locale's Monday, as menus always were: Monday 0, Thursday 3.
+        XCTAssertEqual(entries.map(\.dayOffset), [0, 3])
+        XCTAssertEqual(entries.map(\.note), ["Monday pasta", "Thursday soup"])
+
+        // Applied to the seven days from a Saturday, each still lands on its weekday.
+        let saturday = thursday + 9
+        _ = try await db.write { [mondayFirst] in
+            try MenuDao(db: $0).apply(menuId: menuId!, weekStart: saturday, firstDayOfWeek: mondayFirst, now: 2)
+        }
+        let applied = try await week(saturday)
+        XCTAssertEqual(applied.map(\.day), [saturday + 2, saturday + 5])
+        XCTAssertEqual(applied.map(\.note), ["Monday pasta", "Thursday soup"])
+    }
+
+    func testAMenuSavedBeforeRollingWeeksStillLandsOnItsWeekdays() async throws {
+        // Written as the code before #232 did, for a Monday-first locale: offsets from Monday.
+        let dinner = try await typeId("dinner")
+        try await db.write { conn in
+            try conn.execute("INSERT INTO menus (id, name, updatedAt, uid) VALUES (90, 'Old', 1, 'old-menu')")
+            try conn.execute(
+                "INSERT INTO menu_entries (menuId, dayOffset, mealTypeId, note, sortOrder, updatedAt, uid) VALUES " +
+                    "(90, 0, \(dinner), 'Monday pasta', 0, 1, 'e1'), (90, 3, \(dinner), 'Thursday soup', 1, 1, 'e2')"
+            )
+        }
+
+        // Applied to the seven days from a Thursday: Thursday first, Monday four days later.
+        let added = try await db.write { [thursday, mondayFirst] in
+            try MenuDao(db: $0).apply(menuId: 90, weekStart: thursday, firstDayOfWeek: mondayFirst, now: 2)
+        }
+        XCTAssertEqual(added, 2)
+        let applied = try await week(thursday)
+        XCTAssertEqual(applied.map(\.day), [thursday, thursday + 4])
+        XCTAssertEqual(applied.map(\.note), ["Thursday soup", "Monday pasta"])
+        XCTAssertEqual(PlanDays.dayOfWeek(thursday + 4), mondayFirst)
     }
 }

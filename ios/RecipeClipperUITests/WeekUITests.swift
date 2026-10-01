@@ -103,6 +103,33 @@ final class WeekUITests: RecipeUITestCase {
         require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-' AND label CONTAINS %@", title)).firstMatch, "\(title) planned")
     }
 
+    /// Rolling weeks (#232): the days open with today at the top, › snaps to the next seven
+    /// days from today, ‹ back, and "Today" (only away from this week) returns.
+    func testTheDaysOpenOnTodayAndTheArrowsSnapBetweenWeeks() {
+        openWeek()
+        let range = app.staticTexts["weekRange"]
+        let thisWeek = range.label
+        XCTAssertTrue(require(app.buttons["addToDay-\(today)"], "today's + Add").isHittable)
+        XCTAssertFalse(app.buttons["todayButton"].exists)
+
+        app.buttons["Next week"].tap()
+        require(app.buttons["todayButton"], "Today, away from this week")
+        let nextWeek = range.label
+        XCTAssertNotEqual(nextWeek, thisWeek)
+        XCTAssertTrue(require(app.buttons["addToDay-\(today + 7)"], "the next week's first day").isHittable)
+
+        app.buttons["Previous week"].tap()
+        requireGone(app.buttons["todayButton"], "Today, back on this week")
+        XCTAssertEqual(range.label, thisWeek)
+
+        app.buttons["Next week"].tap()
+        app.buttons["Next week"].tap()
+        require(app.buttons["todayButton"], "Today").tap()
+        requireGone(app.buttons["todayButton"], "Today, back on this week")
+        XCTAssertEqual(range.label, thisWeek)
+        XCTAssertTrue(app.buttons["addToDay-\(today)"].isHittable)
+    }
+
     /// The month view (#52): Week ↔ Month, and a tapped day opens its week. The grid's first
     /// row draws (#185: it shared its ids with the weekday headings); the 1st is always in it.
     func testTheMonthViewOpensTheWeekOfATappedDay() {

@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MenuEntity
 import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.newUid
+import com.example.recipeclipper.data.model.PlanDays
 import kotlinx.coroutines.flow.Flow
 
 /** A menu as the Week screen's menu sheet shows it, with how many meals it holds. */
@@ -43,10 +44,11 @@ abstract class MenuDao {
 
     /**
      * Saves the seven days from [weekStart] as a new menu called [name], and returns its id.
-     * An empty week saves nothing and returns null.
+     * An empty week saves nothing and returns null. Each meal keeps its weekday, as an offset
+     * from the locale's [firstDayOfWeek] ([PlanDays.menuOffset]), whatever day the seven start on.
      */
     @Transaction
-    open suspend fun saveWeek(name: String, weekStart: Long, now: Long): Long? {
+    open suspend fun saveWeek(name: String, weekStart: Long, firstDayOfWeek: Int, now: Long): Long? {
         val meals = planEntries(weekStart, weekStart + 6)
         if (meals.isEmpty()) return null
         val menuId = insertMenu(MenuEntity(name = name, updatedAt = now))
@@ -54,7 +56,7 @@ abstract class MenuDao {
             meals.mapIndexed { index, meal ->
                 MenuEntryEntity(
                     menuId = menuId,
-                    dayOffset = (meal.day - weekStart).toInt(),
+                    dayOffset = PlanDays.menuOffset(meal.day, firstDayOfWeek),
                     mealTypeId = meal.mealTypeId,
                     recipeId = meal.recipeId,
                     servings = meal.servings,
@@ -74,14 +76,15 @@ abstract class MenuDao {
     protected abstract suspend fun insertPlanEntry(entry: MealPlanEntryEntity): Long
 
     /**
-     * Adds every meal of [menuId] to the week from [weekStart], each at the end of its day and
-     * meal type. It only adds: what is planned already stays as it is. Returns how many it added.
+     * Adds every meal of [menuId] to the seven days from [weekStart], each on its weekday
+     * ([PlanDays.menuDay], from the locale's [firstDayOfWeek]) at the end of its day and meal
+     * type. It only adds: what is planned already stays as it is. Returns how many it added.
      */
     @Transaction
-    open suspend fun apply(menuId: Long, weekStart: Long, now: Long): Int {
+    open suspend fun apply(menuId: Long, weekStart: Long, firstDayOfWeek: Int, now: Long): Int {
         val meals = entries(menuId)
         meals.forEach { meal ->
-            val day = weekStart + meal.dayOffset
+            val day = PlanDays.menuDay(weekStart, meal.dayOffset, firstDayOfWeek)
             insertPlanEntry(
                 MealPlanEntryEntity(
                     day = day,

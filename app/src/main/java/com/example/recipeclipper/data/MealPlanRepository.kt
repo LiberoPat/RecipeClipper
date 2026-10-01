@@ -54,16 +54,18 @@ interface MealPlanRepository {
     fun observeMenus(): Flow<List<Menu>>
 
     /**
-     * Saves the seven days from [weekStart] as a new menu called [name]. A blank name or an empty
-     * week saves nothing; returns whether a menu was saved.
+     * Saves the seven days from [weekStart] as a new menu called [name], each meal on its weekday
+     * counted from the locale's [firstDayOfWeek] (#232). A blank name or an empty week saves
+     * nothing; returns whether a menu was saved.
      */
-    suspend fun saveWeekAsMenu(name: String, weekStart: Long): Boolean
+    suspend fun saveWeekAsMenu(name: String, weekStart: Long, firstDayOfWeek: Int): Boolean
 
     /**
-     * Adds a menu's meals to the week from [weekStart], after what is planned there. Never
-     * changes or removes a meal already planned. Returns how many meals it added.
+     * Adds a menu's meals to the seven days from [weekStart], each on its weekday (#232), after
+     * what is planned there. Never changes or removes a meal already planned. Returns how many
+     * meals it added.
      */
-    suspend fun applyMenu(menuId: Long, weekStart: Long): Int
+    suspend fun applyMenu(menuId: Long, weekStart: Long, firstDayOfWeek: Int): Int
 
     /** A blank name is ignored. */
     suspend fun renameMenu(id: Long, name: String)

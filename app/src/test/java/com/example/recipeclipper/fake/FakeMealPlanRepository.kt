@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.Menu
+import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.PlannedMeal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,14 +28,19 @@ class FakeMealPlanRepository : MealPlanRepository {
 
     override fun observeMealTypes(): Flow<List<MealType>> = types
 
-    override fun observeDays(start: Long, end: Long): Flow<List<PlannedMeal>> =
-        combine(meals, types) { all, order ->
+    /** Every day range asked for, in order: how the Week tab pages (#232). */
+    val observedRanges = mutableListOf<LongRange>()
+
+    override fun observeDays(start: Long, end: Long): Flow<List<PlannedMeal>> {
+        observedRanges += start..end
+        return combine(meals, types) { all, order ->
             val rank = order.withIndex().associate { (i, t) -> t.id to i }
             all.filter { it.day in start..end }
                 .withIndex()
                 .sortedWith(compareBy({ it.value.day }, { rank[it.value.mealTypeId] ?: Int.MAX_VALUE }, { it.index }))
                 .map { it.value }
         }
+    }
 
     override suspend fun addRecipe(recipeId: Long, day: Long, mealTypeId: Long, servings: Int?) {
         meals.value = meals.value + PlannedMeal(
@@ -105,17 +111,17 @@ class FakeMealPlanRepository : MealPlanRepository {
 
     override fun observeMenus(): Flow<List<Menu>> = menus
 
-    override suspend fun saveWeekAsMenu(name: String, weekStart: Long): Boolean {
+    override suspend fun saveWeekAsMenu(name: String, weekStart: Long, firstDayOfWeek: Int): Boolean {
         val week = meals.value.filter { it.day in weekStart..weekStart + 6 }
         if (name.isBlank() || week.isEmpty()) return false
         val id = nextId++
-        menuMeals[id] = week.map { MenuMeal((it.day - weekStart).toInt(), it) }
+        menuMeals[id] = week.map { MenuMeal(PlanDays.menuOffset(it.day, firstDayOfWeek), it) }
         menus.value = (menus.value + Menu(id, name.trim(), week.size)).sortedBy { it.name.lowercase() }
         return true
     }
 
-    override suspend fun applyMenu(menuId: Long, weekStart: Long): Int {
-        val added = menuMeals[menuId].orEmpty().map { it.meal.copy(id = nextId++, day = weekStart + it.dayOffset) }
+    override suspend fun applyMenu(menuId: Long, weekStart: Long, firstDayOfWeek: Int): Int {
+        val added = menuMeals[menuId].orEmpty().map { it.meal.copy(id = nextId++, day = PlanDays.menuDay(weekStart, it.dayOffset, firstDayOfWeek)) }
         meals.value = meals.value + added
         return added.size
     }

@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * The "Add to plan" sheet (#49): a strip of days (this week and next), a meal type, and the
+ * The "Add to plan" sheet (#49): a strip of days (today and the next 13, #232), a meal type, and the
  * servings. [selectedMealTypeId] is null only until the types have loaded; it then defaults to
  * Dinner. [servings] is null for a recipe whose yield has no number (no stepper, as on the
  * recipe screen). [added] is set once the meal is written, and the sheet closes on it.
@@ -70,10 +70,9 @@ class AddToPlanViewModel @Inject constructor(
     fun setRecipe(id: Long, yieldServings: Int?) {
         recipeId = id
         val today = calendar.today()
-        val start = PlanDays.weekStart(today, calendar.firstDayOfWeek())
         _uiState.update {
             it.copy(
-                days = (0 until PlanDays.SHEET_DAYS).map { offset -> start + offset },
+                days = (0 until PlanDays.SHEET_DAYS).map { offset -> today + offset },
                 today = today,
                 selectedDay = today,
                 selectedMealTypeId = defaultType(it.mealTypes),

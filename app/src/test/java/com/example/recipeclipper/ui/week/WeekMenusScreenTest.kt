@@ -9,7 +9,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.DINNER
 import com.example.recipeclipper.fake.FakePlanCalendar
@@ -66,7 +65,7 @@ class WeekMenusScreenTest {
     fun applyingAMenuAddsItsMealsToTheWeekShown() {
         runBlocking {
             plan.addNote("Soup", today, DINNER)
-            plan.saveWeekAsMenu("Week A", weekStart)
+            plan.saveWeekAsMenu("Week A", today, FakePlanCalendar.MONDAY_FIRST)
         }
         show()
         viewModel.onNextWeek()
@@ -84,7 +83,7 @@ class WeekMenusScreenTest {
     fun aMenuIsRenamedAndDeletedFromTheSheet() {
         runBlocking {
             plan.addNote("Soup", today, DINNER)
-            plan.saveWeekAsMenu("Week A", weekStart)
+            plan.saveWeekAsMenu("Week A", today, FakePlanCalendar.MONDAY_FIRST)
         }
         show()
         val id = plan.menus.value.single().id
@@ -106,5 +105,4 @@ class WeekMenusScreenTest {
         }
     }
 
-    private val weekStart = PlanDays.weekStart(today, FakePlanCalendar().firstDayOfWeek())
 }

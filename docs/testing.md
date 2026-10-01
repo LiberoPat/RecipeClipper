@@ -292,6 +292,17 @@ and `AppShellTest` cover the screens. iOS
 mirrors them in `MealPlanDaoTests` (with the user_version 6 → 7 step) and
 `WeekUITests`.
 
+Rolling weeks (#232) are pinned at the ViewModel (`WeekViewModelTest`, iOS
+`WeekViewModelTests`, today fixed by `FakePlanCalendar`, a Wednesday or
+`THURSDAY`): the block math, arrows from a free-scrolled position, Today and a
+new day, the month tap (and one beyond the list's days), the Add to plan and
+Move strips, and a scroll to +700 days and back holding one window of meals
+(`FakeMealPlanRepository.observedRanges` counts the queries). Menus' weekdays
+across blocks, including a menu written as the code before #232 wrote it, are in
+`MenuDaoTest` / `MenuDaoTests` and the menus ViewModel tests. `WeekScreenTest`
+and `WeekUITests.testTheDaysOpenOnTodayAndTheArrowsSnapBetweenWeeks` drive the
+real list: today at the top, › and ‹ snapping, Today back.
+
 The grocery list (#50) adds `MIGRATION_8_9` (one new table) to `MigrationTest`,
 from a real version-8 file holding a recipe and a planned meal, and
 `GroceryDaoTest`: order added, delete and undo restoring whole, a recipe's items

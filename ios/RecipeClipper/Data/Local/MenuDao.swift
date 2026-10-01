@@ -29,8 +29,9 @@ struct MenuDao {
     }
 
     /// Saves the seven days from `weekStart` as a new menu called `name` and returns its id. An
-    /// empty week saves nothing and returns nil.
-    func saveWeek(name: String, weekStart: Int64, now: Int64) throws -> Int64? {
+    /// empty week saves nothing and returns nil. Each meal keeps its weekday, as an offset from the
+    /// locale's `firstDayOfWeek` (`PlanDays.menuOffset`), whatever day the seven start on (#232).
+    func saveWeek(name: String, weekStart: Int64, firstDayOfWeek: Int, now: Int64) throws -> Int64? {
         let meals = try db.query(
             """
             SELECT \(MealPlanEntryRecord.columns) FROM meal_plan_entries WHERE day BETWEEN ? AND ?
@@ -42,21 +43,22 @@ struct MenuDao {
         let menuId = try insertMenu(MenuRecord(name: name, updatedAt: now))
         for (index, meal) in meals.enumerated() {
             try insertEntry(MenuEntryRecord(
-                menuId: menuId, dayOffset: Int(meal.day - weekStart), mealTypeId: meal.mealTypeId,
+                menuId: menuId, dayOffset: PlanDays.menuOffset(meal.day, firstDayOfWeek: firstDayOfWeek), mealTypeId: meal.mealTypeId,
                 recipeId: meal.recipeId, servings: meal.servings, note: meal.note, sortOrder: index, updatedAt: now
             ))
         }
         return menuId
     }
 
-    /// Adds every meal of `menuId` to the week from `weekStart`, each at the end of its day and
-    /// meal type. Returns how many it added.
-    func apply(menuId: Int64, weekStart: Int64, now: Int64) throws -> Int {
+    /// Adds every meal of `menuId` to the seven days from `weekStart`, each on its weekday
+    /// (`PlanDays.menuDay`, from the locale's `firstDayOfWeek`) at the end of its day and meal
+    /// type. Returns how many it added.
+    func apply(menuId: Int64, weekStart: Int64, firstDayOfWeek: Int, now: Int64) throws -> Int {
         let meals = try entries(menuId: menuId)
         let plan = MealPlanDao(db: db)
         for meal in meals {
             try plan.add(MealPlanEntryRecord(
-                day: weekStart + Int64(meal.dayOffset), mealTypeId: meal.mealTypeId, recipeId: meal.recipeId,
+                day: PlanDays.menuDay(start: weekStart, offset: meal.dayOffset, firstDayOfWeek: firstDayOfWeek), mealTypeId: meal.mealTypeId, recipeId: meal.recipeId,
                 servings: meal.servings, note: meal.note, sortOrder: 0, updatedAt: now
             ))
         }

@@ -47,8 +47,8 @@ final class AddToPlanViewModel {
     func setRecipe(_ id: Int64, yieldServings: Int?) {
         recipeId = id
         let today = calendar.today()
-        let start = PlanDays.weekStart(today, firstDayOfWeek: calendar.firstDayOfWeek())
-        uiState.days = (0..<PlanDays.sheetDays).map { start + Int64($0) }
+        // Today and the next 13 days (#232).
+        uiState.days = (0..<PlanDays.sheetDays).map { today + Int64($0) }
         uiState.today = today
         uiState.selectedDay = today
         uiState.selectedMealTypeId = Self.defaultType(uiState.mealTypes)

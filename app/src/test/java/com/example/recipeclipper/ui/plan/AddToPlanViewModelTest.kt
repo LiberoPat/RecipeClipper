@@ -23,17 +23,16 @@ class AddToPlanViewModelTest {
 
     private val plan = FakeMealPlanRepository()
     private val today = FakePlanCalendar.WEDNESDAY
-    private val monday = today - 2
 
     @Test
-    fun `starts on today, Dinner and the recipe's yield, over this week and next`() =
+    fun `starts on today, Dinner and the recipe's yield, over today and the next 13 days (#232)`() =
         runTest(mainDispatcherRule.dispatcher) {
             val vm = AddToPlanViewModel(plan, FakePlanCalendar())
             advanceUntilIdle()
             vm.setRecipe(7, yieldServings = 4)
 
             val state = vm.uiState.value
-            assertEquals((monday until monday + 14).toList(), state.days)
+            assertEquals((today until today + 14).toList(), state.days)
             assertEquals(today, state.selectedDay)
             assertEquals(DINNER, state.selectedMealTypeId)
             assertEquals(4, state.servings)
@@ -45,7 +44,7 @@ class AddToPlanViewModelTest {
         val vm = AddToPlanViewModel(plan, FakePlanCalendar())
         advanceUntilIdle()
         vm.setRecipe(7, yieldServings = 4)
-        vm.onDaySelected(monday + 8)
+        vm.onDaySelected(today + 8)
         vm.onMealTypeSelected(SNACK)
         vm.onServingsChange(6)
         vm.onAdd()
@@ -53,7 +52,7 @@ class AddToPlanViewModelTest {
 
         val meal = plan.meals.value.single()
         assertEquals(7L, meal.recipeId)
-        assertEquals(monday + 8, meal.day)
+        assertEquals(today + 8, meal.day)
         assertEquals(SNACK, meal.mealTypeId)
         assertEquals(6, meal.servings)
         assertTrue(vm.uiState.value.added)

@@ -523,10 +523,10 @@ class MigrationTest {
             assertEquals("Adobo", db.recipeDao().get(7)?.title)
             assertEquals(listOf(7L), db.mealPlanDao().observeDays(20_000, 20_006).first().map { it.recipeId })
             assertTrue(db.menuDao().observeMenus().first().isEmpty())
-            db.menuDao().saveWeek("Usual", weekStart = 20_000, now = 2)
+            db.menuDao().saveWeek("Usual", weekStart = 20_000, firstDayOfWeek = 2, now = 2)
             val menu = db.menuDao().observeMenus().first().single()
             assertEquals(1, menu.mealCount)
-            assertEquals(1, db.menuDao().apply(menu.id, weekStart = 20_007, now = 3))
+            assertEquals(1, db.menuDao().apply(menu.id, weekStart = 20_007, firstDayOfWeek = 2, now = 3))
             assertEquals(listOf(2), db.mealPlanDao().observeDays(20_007, 20_013).first().map { it.servings })
         }
     }
