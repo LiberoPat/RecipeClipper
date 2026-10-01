@@ -497,7 +497,12 @@ private fun androidx.compose.foundation.layout.RowScope.FieldButton(
     val padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 2.dp, vertical = 6.dp)
     val content: @Composable () -> Unit = {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(stringResource(field.labelRes), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                stringResource(field.labelRes),
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             // What the field holds: a check, with the count for ingredients and steps.
             Text(
                 when {
