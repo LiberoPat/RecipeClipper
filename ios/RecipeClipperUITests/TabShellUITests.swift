@@ -153,12 +153,12 @@ final class TabShellUITests: RecipeUITestCase {
         require(app.buttons["Clip it yourself"], "Clip it yourself").tap()
 
         requireGone(tabBar, "the tab bar on the clip page")
-        require(app.webViews.firstMatch.buttons["Select title"], "the page").tap()
-        require(text("1 line selected · each line becomes one item"), "the selection, heard by the app")
         app.buttons["clip.field.NAME"].tap()
-        require(text("Name added"), "the Name snackbar")
+        require(app.webViews.firstMatch.staticTexts["Brown Butter Oat Cookies"], "the page", within: 60).tap()
+        require(app.buttons["Use as the name"], "the tap, heard by the app").tap()
+        require(text("Name added. Next: tap Ingredients."), "the name added")
         app.buttons["clip.field.PHOTO"].tap()
         require(app.webViews.firstMatch.images["Cookies photo"], "the photo").tap()
-        require(text("Photo added"), "the image tap, heard by the app")
+        require(textContaining("Photo added."), "the image tap, heard by the app")
     }
 }

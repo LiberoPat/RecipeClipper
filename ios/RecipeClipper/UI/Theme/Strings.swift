@@ -84,7 +84,6 @@ enum Strings {
     static var clipItYourself: String { String(localized: "action_clip_it_yourself") }
     static var discard: String { String(localized: "action_discard") }
     static var remove: String { String(localized: "action_remove") }
-    static var clipHint: String { String(localized: "clip_hint") }
     static var clipRedditBlockedNote: String { String(localized: "clip_reddit_blocked_note") }
     static var clipHumanCheckNote: String { String(localized: "clip_human_check_note") }
     static var clipHumanCheckNoRecipeNote: String { String(localized: "clip_human_check_no_recipe_note") }

@@ -20,9 +20,11 @@ final class ClipViewModelTests: XCTestCase {
         ClipViewModel(url: url ?? shared, repository: repository, drafts: store)
     }
 
+    /// Field first (#237): arms `field` (unless it is armed), selects `text` on the page, confirms.
     private func select(_ vm: ClipViewModel, _ text: String, _ field: ClipField) {
+        if vm.uiState.armed != field { vm.onFieldButton(field) }
         vm.onSelectionChanged(text)
-        vm.onAssign(field)
+        vm.onConfirm()
     }
 
     func testThePageIsTheCleanedLink() {
@@ -48,39 +50,162 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.selection, ["1 cup flour", "2 eggs"])
     }
 
-    func testAssigningReplacesTheFieldMarksItAndSaysHowMany() {
-        let vm = viewModel()
-        select(vm, "a\nb\nc\nd\ne\nf\ng\nh", .ingredients)
-        select(vm, "1\n2\n3\n4", .ingredients)
+    // MARK: Field first (#237)
 
-        XCTAssertEqual(vm.uiState.draft.ingredients, ["1", "2", "3", "4"])
-        XCTAssertEqual(vm.uiState.notice?.message, .assigned(.ingredients, count: 4))
-        XCTAssertEqual(vm.uiState.newMarkId, "m2")
-        XCTAssertEqual(vm.uiState.selection, [])
+    func testItOpensWithNothingArmedPointingToName() {
+        let vm = viewModel()
+        XCTAssertNil(vm.uiState.armed)
+        XCTAssertEqual(vm.uiState.hint, .next(added: nil, next: .name))
     }
 
-    func testANameJoinsTheSelectedLines() {
+    func testAFieldButtonArmsItsFieldAgainDisarmsItAndAnotherSwitches() {
         let vm = viewModel()
-        select(vm, "Brown Butter\nOat Cookies", .name)
-        XCTAssertEqual(vm.uiState.draft.name, "Brown Butter Oat Cookies")
+        vm.onFieldButton(.ingredients)
+        XCTAssertEqual(vm.uiState.armed, .ingredients)
+        XCTAssertEqual(vm.uiState.hint, .select(.ingredients))
+        vm.onFieldButton(.steps)
+        XCTAssertEqual(vm.uiState.armed, .steps)
+        vm.onFieldButton(.steps)
+        XCTAssertNil(vm.uiState.armed)
     }
 
-    func testAssigningWithNothingSelectedDoesNothing() {
+    func testASelectionWhileArmedOffersTheConfirmAndTheConfirmAddsIt() {
         let vm = viewModel()
-        vm.onAssign(.steps)
-        select(vm, " \n ", .steps)
+        vm.onFieldButton(.ingredients)
+        vm.onSelectionChanged("1 cup flour\n2 eggs\n1 tsp salt")
+        XCTAssertEqual(vm.uiState.hint, .confirm(.ingredients, lines: 3))
+        // Nothing is added before the confirm.
         XCTAssertTrue(vm.uiState.draft.isEmpty)
+
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.draft.ingredients, ["1 cup flour", "2 eggs", "1 tsp salt"])
+        XCTAssertEqual(vm.uiState.newMarkId, "m1")
+        XCTAssertEqual(vm.uiState.selection, [])
+        // Ingredients stay armed for the next block; the hint says what was added and what's next.
+        XCTAssertEqual(vm.uiState.armed, .ingredients)
+        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .ingredients, count: 3), next: .name))
+        // The words are in the hint bar, not a snackbar.
         XCTAssertNil(vm.uiState.notice)
+    }
+
+    func testANameConfirmsAsOneLineReplacesAndDisarms() {
+        let vm = viewModel()
+        vm.onFieldButton(.name)
+        vm.onSelectionChanged("Brown Butter\nOat Cookies")
+        XCTAssertEqual(vm.uiState.hint, .confirm(.name, lines: 1))
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.draft.name, "Brown Butter Oat Cookies")
+        XCTAssertNil(vm.uiState.armed)
+
+        select(vm, "Oat Cookies", .name)
+        XCTAssertEqual(vm.uiState.draft.name, "Oat Cookies")
+        XCTAssertEqual(vm.uiState.draft.marks.map(\.id), ["m2"])
+    }
+
+    func testIngredientsAndStepsAddUpAcrossSeparateBlocks() {
+        let vm = viewModel()
+        select(vm, "1 cup flour\n2 eggs", .ingredients)
+        select(vm, "For the glaze:\n1 cup sugar", .ingredients)
+        select(vm, "Mix.", .steps)
+        select(vm, "Bake.", .steps)
+
+        XCTAssertEqual(vm.uiState.draft.ingredients, ["1 cup flour", "2 eggs", "For the glaze:", "1 cup sugar"])
+        XCTAssertEqual(vm.uiState.draft.steps, ["Mix.", "Bake."])
+        XCTAssertEqual(vm.uiState.draft.marks.map(\.id), ["m1", "m2", "m3", "m4"])
+        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .steps, count: 1), next: .name))
+    }
+
+    func testSwitchingFieldsKeepsTheSelectionForTheNewOne() {
+        let vm = viewModel()
+        vm.onFieldButton(.steps)
+        vm.onSelectionChanged("1 cup flour\n2 eggs")
+        vm.onFieldButton(.ingredients)
+        XCTAssertEqual(vm.uiState.hint, .confirm(.ingredients, lines: 2))
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.draft.ingredients, ["1 cup flour", "2 eggs"])
+        XCTAssertEqual(vm.uiState.draft.steps, [])
+    }
+
+    func testDisarmingOrClearDropsTheSelectionAndTellsThePage() {
+        let vm = viewModel()
+        vm.onFieldButton(.steps)
+        vm.onSelectionChanged("Mix.")
+        let cleared = vm.uiState.clearSelection
+
+        vm.onClearSelection()
+        XCTAssertEqual(vm.uiState.selection, [])
+        XCTAssertEqual(vm.uiState.armed, .steps)
+        XCTAssertEqual(vm.uiState.clearSelection, cleared + 1)
+
+        vm.onSelectionChanged("Bake.")
+        vm.onFieldButton(.steps)
+        XCTAssertNil(vm.uiState.armed)
+        XCTAssertEqual(vm.uiState.selection, [])
+        XCTAssertEqual(vm.uiState.clearSelection, cleared + 2)
+        vm.onConfirm()
+        XCTAssertTrue(vm.uiState.draft.isEmpty)
+    }
+
+    func testTextSelectedWithNothingArmedAsksForTheFieldWhichThenConfirms() {
+        let vm = viewModel()
+        vm.onSelectionChanged("Mix.\nBake.")
+        XCTAssertEqual(vm.uiState.hint, .selected(lines: 2))
+        vm.onConfirm()
+        XCTAssertTrue(vm.uiState.draft.isEmpty)
+
+        vm.onFieldButton(.steps)
+        XCTAssertEqual(vm.uiState.hint, .confirm(.steps, lines: 2))
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.draft.steps, ["Mix.", "Bake."])
+    }
+
+    func testConfirmingWithNothingSelectedDoesNothing() {
+        let vm = viewModel()
+        vm.onConfirm()
+        vm.onFieldButton(.steps)
+        vm.onConfirm()
+        vm.onSelectionChanged(" \n ")
+        vm.onConfirm()
+        XCTAssertTrue(vm.uiState.draft.isEmpty)
+        XCTAssertNil(vm.uiState.lastAdded)
     }
 
     func testTheSelectionIsUsedOnce() {
         let vm = viewModel()
         select(vm, "Mix.", .steps)
-        vm.onAssign(.ingredients)
+        vm.onFieldButton(.ingredients)
+        vm.onConfirm()
         XCTAssertEqual(vm.uiState.draft.ingredients, [])
     }
 
-    func testUndoPutsBackTheDraftBeforeTheLastAssignmentOnce() {
+    func testTheHintWalksThroughTheFieldsThenSaysToTapDone() {
+        let vm = viewModel()
+        vm.onFieldButton(.photo)
+        vm.onImageTapped("https://img.example/cookies.jpg")
+        // The owner's example: "Photo added. Next: tap Name".
+        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .photo, count: 1), next: .name))
+
+        select(vm, "Cookies", .name)
+        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .name, count: 1), next: .ingredients))
+        select(vm, "flour\nsugar", .ingredients)
+        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .ingredients, count: 2), next: .steps))
+        select(vm, "Bake.", .steps)
+        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .steps, count: 1), next: nil))
+
+        // Arming another field moves on from what was added.
+        vm.onFieldButton(.name)
+        XCTAssertEqual(vm.uiState.hint, .select(.name))
+    }
+
+    func testWithoutAPhotoTheHintPointsToItLast() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        select(vm, "flour", .ingredients)
+        select(vm, "Bake.", .steps)
+        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .steps, count: 1), next: .photo))
+    }
+
+    func testUndoTakesBackEachAddInTurn() {
         let vm = viewModel()
         select(vm, "Cookies", .name)
         select(vm, "flour\nsugar", .ingredients)
@@ -88,25 +213,39 @@ final class ClipViewModelTests: XCTestCase {
 
         vm.onUndo()
         XCTAssertEqual(vm.uiState.draft.ingredients, ["flour", "sugar"])
-        XCTAssertEqual(vm.uiState.draft.marks[.ingredients], "m2")
+        XCTAssertEqual(vm.uiState.draft.marks.map(\.id), ["m1", "m2"])
         XCTAssertNil(vm.uiState.newMarkId)
+        XCTAssertNil(vm.uiState.lastAdded)
 
         vm.onUndo()
-        XCTAssertEqual(vm.uiState.draft.ingredients, ["flour", "sugar"])
+        XCTAssertEqual(vm.uiState.draft.ingredients, [])
+        vm.onUndo()
+        XCTAssertTrue(vm.uiState.draft.isEmpty)
+        vm.onUndo()
+        XCTAssertTrue(vm.uiState.draft.isEmpty)
     }
 
-    func testTappingATagClearsThatFieldWithUndo() {
+    func testTappingAnAddsTagTakesBackJustThatAddWithUndo() {
         let vm = viewModel()
         select(vm, "Cookies", .name)
         select(vm, "Mix.\nBake.", .steps)
+        select(vm, "Cool.", .steps)
 
-        vm.onTagTapped(.steps)
-        XCTAssertEqual(vm.uiState.draft.steps, [])
+        vm.onTagTapped("m2")
+        XCTAssertEqual(vm.uiState.draft.steps, ["Cool."])
         XCTAssertEqual(vm.uiState.draft.name, "Cookies")
-        XCTAssertEqual(vm.uiState.notice?.message, .cleared(.steps))
+        XCTAssertEqual(vm.uiState.notice?.message, .removed(.steps, count: 2))
 
         vm.onUndo()
-        XCTAssertEqual(vm.uiState.draft.steps, ["Mix.", "Bake."])
+        XCTAssertEqual(vm.uiState.draft.steps, ["Mix.", "Bake.", "Cool."])
+    }
+
+    func testATagTheDraftNoLongerHoldsDoesNothing() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        vm.onTagTapped("m9")
+        XCTAssertEqual(vm.uiState.draft.name, "Cookies")
+        XCTAssertNil(vm.uiState.notice)
     }
 
     func testThePhotoIsTheNextImageTappedAfterThePhotoButtonAndOnlyThat() {
@@ -114,21 +253,31 @@ final class ClipViewModelTests: XCTestCase {
         vm.onImageTapped("https://img.example/ad.jpg")
         XCTAssertNil(vm.uiState.draft.photo)
 
-        vm.onPhotoButton()
+        vm.onFieldButton(.photo)
         XCTAssertTrue(vm.uiState.pickingPhoto)
+        XCTAssertEqual(vm.uiState.hint, .pickPhoto)
         vm.onImageTapped("https://img.example/cookies.jpg")
         vm.onImageTapped("https://img.example/ad.jpg")
 
         XCTAssertEqual(vm.uiState.draft.photo, "https://img.example/cookies.jpg")
         XCTAssertFalse(vm.uiState.pickingPhoto)
-        XCTAssertEqual(vm.uiState.notice?.message, .assigned(.photo, count: 1))
+        XCTAssertEqual(vm.uiState.lastAdded, ClipAdded(field: .photo, count: 1))
     }
 
-    func testThePhotoButtonTogglesPickingOffAgain() {
+    func testThePhotoButtonDisarmsPhotoPickingAgain() {
         let vm = viewModel()
-        vm.onPhotoButton()
-        vm.onPhotoButton()
+        vm.onFieldButton(.photo)
+        vm.onFieldButton(.photo)
         XCTAssertFalse(vm.uiState.pickingPhoto)
+    }
+
+    func testArmingThePhotoDropsATextSelectionWhichItCantUse() {
+        let vm = viewModel()
+        vm.onFieldButton(.steps)
+        vm.onSelectionChanged("Mix.")
+        vm.onFieldButton(.photo)
+        XCTAssertEqual(vm.uiState.selection, [])
+        XCTAssertEqual(vm.uiState.hint, .pickPhoto)
     }
 
     // The owner's "stuck in the photo section": a tap on a picture the page can't give an
@@ -136,7 +285,7 @@ final class ClipViewModelTests: XCTestCase {
 
     func testATapWithNoReadablePictureEndsPickingSaysSoAndTheOtherFieldsGoOn() {
         let vm = viewModel()
-        vm.onPhotoButton()
+        vm.onFieldButton(.photo)
         vm.onNoImageTapped()
 
         XCTAssertFalse(vm.uiState.pickingPhoto)
@@ -145,14 +294,13 @@ final class ClipViewModelTests: XCTestCase {
 
         select(vm, "Brown Butter Oat Cookies", .name)
         XCTAssertEqual(vm.uiState.draft.name, "Brown Butter Oat Cookies")
-        XCTAssertEqual(vm.uiState.notice?.message, .assigned(.name, count: 1))
     }
 
     func testATapWithNoReadablePictureKeepsThePhotoThereWas() {
         let vm = viewModel()
-        vm.onPhotoButton()
+        vm.onFieldButton(.photo)
         vm.onImageTapped("https://img.example/cookies.jpg")
-        vm.onPhotoButton()
+        vm.onFieldButton(.photo)
         vm.onNoImageTapped()
         XCTAssertEqual(vm.uiState.draft.photo, "https://img.example/cookies.jpg")
         XCTAssertFalse(vm.uiState.pickingPhoto)
@@ -166,31 +314,30 @@ final class ClipViewModelTests: XCTestCase {
 
     func testSkipLeavesThePhotoStepWithoutAPhoto() {
         let vm = viewModel()
-        vm.onPhotoButton()
+        vm.onFieldButton(.photo)
         vm.onSkipPhoto()
         XCTAssertFalse(vm.uiState.pickingPhoto)
         XCTAssertNil(vm.uiState.draft.photo)
         XCTAssertNil(vm.uiState.notice)
     }
 
-    func testSelectingTextWhilePickingMovesOnFromThePhoto() {
+    func testSelectingTextALongPressWhilePickingMovesOnFromThePhoto() {
         let vm = viewModel()
-        vm.onPhotoButton()
+        vm.onFieldButton(.photo)
         vm.onSelectionChanged("1 cup flour\n2 eggs")
         XCTAssertFalse(vm.uiState.pickingPhoto)
 
-        vm.onAssign(.ingredients)
+        vm.onFieldButton(.ingredients)
+        vm.onConfirm()
         XCTAssertEqual(vm.uiState.draft.ingredients, ["1 cup flour", "2 eggs"])
-        // Nothing sends the toolbar back to "Tap the picture" once the selection is used.
         XCTAssertFalse(vm.uiState.pickingPhoto)
     }
 
-    func testTheSameSelectionReportedAgainOrClearedLeavesPickingOn() {
+    func testASelectionClearedWhilePickingLeavesPickingOn() {
         let vm = viewModel()
         vm.onSelectionChanged("Brown Butter")
-        vm.onPhotoButton()
-        vm.onSelectionChanged("Brown Butter")
-        XCTAssertTrue(vm.uiState.pickingPhoto)
+        vm.onFieldButton(.photo)
+        // Arming the photo dropped the selection; the page reports it gone.
         vm.onSelectionChanged("")
         XCTAssertTrue(vm.uiState.pickingPhoto)
     }
@@ -198,12 +345,11 @@ final class ClipViewModelTests: XCTestCase {
     func testTappingATagWhilePickingEndsPicking() {
         let vm = viewModel()
         select(vm, "Brown Butter", .name)
-        vm.onPhotoButton()
-        vm.onTagTapped(.name)
+        vm.onFieldButton(.photo)
+        vm.onTagTapped("m1")
         XCTAssertFalse(vm.uiState.pickingPhoto)
-        XCTAssertEqual(vm.uiState.notice?.message, .cleared(.name))
+        XCTAssertEqual(vm.uiState.notice?.message, .removed(.name, count: 1))
     }
-
     func testDoneOpensReviewOnceThereIsANamePlusIngredientsOrSteps() {
         let vm = viewModel()
         select(vm, "Cookies", .name)
@@ -267,7 +413,7 @@ final class ClipViewModelTests: XCTestCase {
         let vm = viewModel()
         select(vm, "Cookies", .name)
         select(vm, "flour", .ingredients)
-        vm.onPhotoButton()
+        vm.onFieldButton(.photo)
         vm.onImageTapped("https://img.example/c.jpg")
         vm.onReview()
         vm.onServesChange("24")
@@ -424,6 +570,45 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.draft.name, "Apple Pie")
     }
 
+    // The owner (#237): "when toggling a reddit page from text back to page, page doesnt work".
+    // Page, Text, Page: the page takes the armed field's selections again, as before.
+    func testPageThenTextThenPageAgainTheArmedFieldCarriesOverAndThePageWorksAsBefore() {
+        let vm = redditViewModel()
+        vm.onFieldButton(.ingredients)
+        vm.onSelectionChanged("on the page")
+        let cleared = vm.uiState.clearSelection
+
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        XCTAssertEqual(vm.uiState.armed, .ingredients)
+        XCTAssertEqual(vm.uiState.clearSelection, cleared + 1)
+        vm.onSelectionChanged("3 apples\n1 crust")
+        vm.onConfirm()
+
+        vm.onShowPage()
+        let state = vm.uiState
+        XCTAssertFalse(state.showingText)
+        XCTAssertFalse(state.readingText)
+        XCTAssertEqual(state.armed, .ingredients)
+        XCTAssertEqual(state.selection, [])
+        XCTAssertNil(state.newMarkId)
+        XCTAssertEqual(state.clearSelection, cleared + 2)
+
+        // The page's next selection goes in as the Text view's did.
+        vm.onSelectionChanged("1 tsp cinnamon")
+        XCTAssertEqual(vm.uiState.hint, .confirm(.ingredients, lines: 1))
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.draft.ingredients, ["3 apples", "1 crust", "1 tsp cinnamon"])
+        XCTAssertEqual(vm.uiState.newMarkId, "m2")
+    }
+
+    func testTheTextViewNeverKeepsPhotoPicking() {
+        let vm = redditViewModel()
+        vm.onFieldButton(.photo)
+        vm.onShowText()
+        XCTAssertFalse(vm.uiState.pickingPhoto)
+    }
+
     func testAPageWithNoPostYetSaysSoAndStaysOnThePage() {
         let vm = redditViewModel()
         vm.onShowText()
@@ -437,7 +622,7 @@ final class ClipViewModelTests: XCTestCase {
         let vm = redditViewModel()
         vm.onShowText()
         vm.onPageText(postHtml)
-        vm.onPhotoButton()
+        vm.onFieldButton(.photo)
         XCTAssertTrue(vm.uiState.pickingPhoto)
         XCTAssertFalse(vm.uiState.showingText)
     }
@@ -472,17 +657,19 @@ final class ClipViewModelTests: XCTestCase {
     func testClearingEverythingLeavesNoDraftBehind() {
         let vm = viewModel()
         select(vm, "Cookies", .name)
-        vm.onTagTapped(.name)
+        vm.onTagTapped("m1")
         XCTAssertNil(store.get(cleaned))
     }
 
     func testAShownNoticeIsClearedOnlyByItsOwnSerial() throws {
         let vm = viewModel()
         select(vm, "Cookies", .name)
-        let first = try XCTUnwrap(vm.uiState.notice)
         select(vm, "Mix.", .steps)
+        vm.onTagTapped("m1")
+        let first = try XCTUnwrap(vm.uiState.notice)
+        vm.onTagTapped("m2")
         vm.onNoticeShown(first.serial)
-        XCTAssertEqual(vm.uiState.notice?.message, .assigned(.steps, count: 1))
+        XCTAssertEqual(vm.uiState.notice?.message, .removed(.steps, count: 1))
         vm.onNoticeShown(try XCTUnwrap(vm.uiState.notice).serial)
         XCTAssertNil(vm.uiState.notice)
     }
@@ -490,14 +677,21 @@ final class ClipViewModelTests: XCTestCase {
     func testTheSyncStateCarriesTheMarksTheDraftHolds() throws {
         var draft = ClipDraft(sourceUrl: cleaned).assign(.name, "Cookies").assign(.ingredients, "a\nb")
         draft = draft.assign(.photo, "https://img.example/c.jpg")
-        let json = ClipScreen.syncJson(draft, newMarkId: "m2")
+        draft = draft.assign(.ingredients, "c")
+        let json = ClipScreen.syncJson(draft, newMarkId: "m2", armed: .steps, clear: 3)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
         let marks = try XCTUnwrap(object["marks"] as? [[String: String]])
+        // Each add has its own mark and tag (#237).
         XCTAssertEqual(marks, [
             ["id": "m1", "field": "NAME", "label": "Name"],
             ["id": "m2", "field": "INGREDIENTS", "label": "Ingredients · 2"],
+            ["id": "m4", "field": "INGREDIENTS", "label": "Ingredients · 1"],
         ])
         XCTAssertEqual(object["newId"] as? String, "m2")
+        XCTAssertEqual(object["armed"] as? String, "STEPS")
+        XCTAssertEqual(object["clear"] as? Int, 3)
         XCTAssertEqual((object["photo"] as? [String: String])?["src"], "https://img.example/c.jpg")
+        XCTAssertEqual((object["photo"] as? [String: String])?["id"], "m3")
+        XCTAssertTrue(ClipScreen.syncJson(draft, newMarkId: nil).contains("\"armed\":null"))
     }
 }

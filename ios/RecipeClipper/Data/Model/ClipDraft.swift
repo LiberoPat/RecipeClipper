@@ -34,13 +34,27 @@ enum ClipField: String, CaseIterable, Equatable {
     case ingredients = "INGREDIENTS"
     case steps = "STEPS"
     case photo = "PHOTO"
+
+    /// A name or a photo is replaced by each assignment; ingredients and steps add up (#237).
+    var replaces: Bool { self == .name || self == .photo }
 }
 
-/// A recipe being clipped by hand from a page with no recipe data. A value type: every change
-/// returns a new draft, so undo is "the draft before the last change". Assigning to a field
-/// **replaces** what it held. `marks` records, per field, the id of the highlight the page drew
-/// for that assignment; ids come from `nextMark`, so they never repeat within one draft.
-/// `serves` and `totalTime` are only ever typed by the user in Review.
+/// One add to a `ClipDraft`, and the page mark drawn for it (#37, #237): `id` names the mark,
+/// `lines` are what it put into `field` (a name, or a photo's address, as its one line), so
+/// removing it takes out exactly those lines.
+struct ClipMark: Equatable {
+    let id: String
+    let field: ClipField
+    let lines: [String]
+}
+
+/// A recipe being clipped by hand from a page with no recipe data (Android's ClipDraft). A value
+/// type: every change returns a new draft, so undo is "the draft before the last change". The
+/// name and the photo are **replaced** by each assignment; ingredients and steps are **added**
+/// after what the field holds, so separate blocks of a page add up (the owner's call, #237).
+/// `marks` records each add with the id of the highlight the page drew for it; ids come from
+/// `nextMark`, so they never repeat within one draft. `serves` and `totalTime` are only ever typed
+/// by the user in Review.
 struct ClipDraft: Equatable {
     var sourceUrl: String
     var name: String = ""
@@ -49,7 +63,7 @@ struct ClipDraft: Equatable {
     var photo: String? = nil
     var serves: String = ""
     var totalTime: String = ""
-    var marks: [ClipField: String] = [:]
+    var marks: [ClipMark] = []
     var nextMark: Int = 1
 
     private static func blank(_ s: String) -> Bool { s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -76,38 +90,67 @@ struct ClipDraft: Equatable {
         }
     }
 
+    /// The field the cook is pointed to next (#237): the first of name, ingredients, steps and
+    /// photo still empty, or nil when every one holds something.
+    var nextField: ClipField? { ClipField.allCases.first { count($0) == 0 } }
+
     /// The id the next assignment's page mark will use.
     var pendingMarkId: String { "m\(nextMark)" }
 
-    /// Puts the selected `text` into `field`, replacing what was there, and records the page
-    /// mark under `pendingMarkId`. A selection with no text changes nothing (returns self).
-    /// For `.photo`, `text` is the image's address.
+    /// Puts the selected `text` into `field` and records the page mark under `pendingMarkId`: a
+    /// name or a photo replaces what was there (and its mark); ingredients and steps are added
+    /// after what the field holds. A selection with no text changes nothing (returns self). For
+    /// `.photo`, `text` is the image's address.
     func assign(_ field: ClipField, _ text: String) -> ClipDraft {
-        var draft = self
+        let lines: [String]
         switch field {
         case .name:
             let name = ClipSelection.name(text)
-            if name.isEmpty { return self }
-            draft.name = name
-        case .ingredients:
-            let lines = ClipSelection.lines(text)
-            if lines.isEmpty { return self }
-            draft.ingredients = lines
-        case .steps:
-            let lines = ClipSelection.lines(text)
-            if lines.isEmpty { return self }
-            draft.steps = lines
+            lines = name.isEmpty ? [] : [name]
+        case .ingredients, .steps:
+            lines = ClipSelection.lines(text)
         case .photo:
             let src = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if src.isEmpty { return self }
-            draft.photo = src
+            lines = src.isEmpty ? [] : [src]
         }
-        draft.marks[field] = pendingMarkId
+        guard !lines.isEmpty else { return self }
+        var draft = self
+        switch field {
+        case .name: draft.name = lines[0]
+        case .ingredients: draft.ingredients += lines
+        case .steps: draft.steps += lines
+        case .photo: draft.photo = lines[0]
+        }
+        if field.replaces { draft.marks.removeAll { $0.field == field } }
+        draft.marks.append(ClipMark(id: pendingMarkId, field: field, lines: lines))
         draft.nextMark += 1
         return draft
     }
 
-    /// Empties `field` and drops its page mark.
+    /// The add a page mark stands for, while this draft still holds it.
+    func mark(_ id: String) -> ClipMark? { marks.first { $0.id == id } }
+
+    /// Takes back one add: a name or a photo empties its field; ingredients or steps lose the
+    /// lines that add put there (for each, the first line still equal to it, so a line edited by
+    /// hand in Review since then stays). An unknown id changes nothing.
+    func removeMark(_ id: String) -> ClipDraft {
+        guard let mark = mark(id) else { return self }
+        var draft: ClipDraft
+        switch mark.field {
+        case .name, .photo:
+            draft = clear(mark.field)
+        case .ingredients, .steps:
+            var left = lines(mark.field)
+            for line in mark.lines {
+                if let index = left.firstIndex(of: line) { left.remove(at: index) }
+            }
+            draft = with(mark.field, lines: left)
+        }
+        draft.marks = marks.filter { $0.id != id }
+        return draft
+    }
+
+    /// Empties `field` and drops its page marks.
     func clear(_ field: ClipField) -> ClipDraft {
         var draft = self
         switch field {
@@ -116,7 +159,7 @@ struct ClipDraft: Equatable {
         case .steps: draft.steps = []
         case .photo: draft.photo = nil
         }
-        draft.marks[field] = nil
+        draft.marks.removeAll { $0.field == field }
         return draft
     }
 

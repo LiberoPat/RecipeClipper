@@ -14,16 +14,48 @@ extension Strings {
     }
     /// Not words (Android's translatable="false" `clip_tag_count`).
     static func clipTagCount(_ label: String, _ n: Int) -> String { "\(label) · \(n)" }
-    static func clipLinesSelected(_ n: Int) -> String {
-        String(localized: "clip_lines_selected \(n)") + " · " + String(localized: "clip_lines_selected_hint")
+    /// What a field button shows it holds (#237): a check, with the count for ingredients and
+    /// steps. Not words (Android's translatable="false" `clip_filled` and `clip_filled_count`).
+    static func clipFilled(_ field: ClipField, _ n: Int) -> String {
+        n == 0 ? "" : field.replaces ? "✓" : "✓ \(n)"
     }
-    static func clipSummary(_ draft: ClipDraft) -> String {
-        [
-            draft.count(.name) > 0 ? String(localized: "clip_summary_name") : String(localized: "clip_summary_no_name"),
-            String(localized: "clip_summary_ingredients \(draft.count(.ingredients))"),
-            String(localized: "clip_summary_steps \(draft.count(.steps))"),
-            draft.photo != nil ? String(localized: "clip_summary_photo") : String(localized: "clip_summary_no_photo"),
-        ].joined(separator: " · ")
+    static func clipLinesSelected(_ n: Int) -> String {
+        String(localized: "clip_lines_selected \(n)") + " · " + String(localized: "clip_selected_hint")
+    }
+    // Field first (#237): the hint bar.
+    static func clipSelect(_ field: ClipField) -> String {
+        switch field {
+        case .name: return String(localized: "clip_select_name")
+        case .ingredients: return String(localized: "clip_select_ingredients")
+        case .steps, .photo: return String(localized: "clip_select_steps")
+        }
+    }
+    static func clipConfirm(_ field: ClipField, _ n: Int) -> String {
+        switch field {
+        case .name: return String(localized: "clip_confirm_name")
+        case .ingredients: return String(localized: "clip_confirm_ingredients \(n)")
+        case .steps, .photo: return String(localized: "clip_confirm_steps \(n)")
+        }
+    }
+    static func clipAdded(_ added: ClipAdded) -> String {
+        let words: String
+        switch added.field {
+        case .name: words = String(localized: "clip_added_name")
+        case .ingredients: words = String(localized: "clip_added_ingredients \(added.count)")
+        case .steps: words = String(localized: "clip_added_steps \(added.count)")
+        case .photo: words = String(localized: "clip_added_photo")
+        }
+        return words + "."
+    }
+    /// The field to fill next; `empty` (nothing in the draft yet) starts with how it works.
+    static func clipNext(_ next: ClipField?, empty: Bool) -> String {
+        switch next {
+        case .name: return empty ? String(localized: "clip_hint_start") : String(localized: "clip_next_name")
+        case .ingredients: return String(localized: "clip_next_ingredients")
+        case .steps: return String(localized: "clip_next_steps")
+        case .photo: return String(localized: "clip_next_photo")
+        case nil: return String(localized: "clip_ready")
+        }
     }
     static var clipShowText: String { String(localized: "clip_show_text") }
     static var clipShowPage: String { String(localized: "clip_show_page") }
@@ -33,14 +65,10 @@ extension Strings {
     static func clipTextAuthor(_ name: String) -> String { "u/\(name)" }
     static func clipMessage(_ message: ClipMessage) -> String {
         switch message {
-        case .assigned(.name, _): return String(localized: "clip_added_name")
-        case .assigned(.ingredients, let n): return String(localized: "clip_added_ingredients \(n)")
-        case .assigned(.steps, let n): return String(localized: "clip_added_steps \(n)")
-        case .assigned(.photo, _): return String(localized: "clip_added_photo")
-        case .cleared(.name): return String(localized: "clip_cleared_name")
-        case .cleared(.ingredients): return String(localized: "clip_cleared_ingredients")
-        case .cleared(.steps): return String(localized: "clip_cleared_steps")
-        case .cleared(.photo): return String(localized: "clip_cleared_photo")
+        case .removed(.name, _): return String(localized: "clip_cleared_name")
+        case .removed(.ingredients, let n): return String(localized: "clip_removed_ingredients \(n)")
+        case .removed(.steps, let n): return String(localized: "clip_removed_steps \(n)")
+        case .removed(.photo, _): return String(localized: "clip_cleared_photo")
         case .draftRestored: return String(localized: "clip_draft_restored")
         case .saveFailed: return String(localized: "clip_save_failed")
         case .photoUnreadable: return String(localized: "clip_photo_unreadable")
