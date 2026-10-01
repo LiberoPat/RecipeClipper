@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.backup
 
+import com.example.recipeclipper.data.model.WebImageUrl
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -124,7 +125,9 @@ object BackupJson {
                     ?: throw MalformedException("$path.sourceUrl"),
                 sourceType = r.string(o, "sourceType") ?: "BLOG",
                 title = r.string(o, "title") ?: throw MalformedException("$path.title"),
-                imageUrl = r.string(o, "imageUrl"),
+                // A web image only (#235): a file someone sent can't name one on the device. The
+                // user's own photos travel as `photos/…` entries in the archive, not here.
+                imageUrl = WebImageUrl.of(r.string(o, "imageUrl")),
                 ingredients = r.strings(o, "ingredients"),
                 instructions = r.strings(o, "instructions"),
                 prepTime = r.string(o, "prepTime"),

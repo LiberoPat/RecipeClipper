@@ -116,7 +116,9 @@ enum BackupJson {
                 sourceUrl: url,
                 sourceType: try r.string(o, "sourceType") ?? "BLOG",
                 title: title,
-                imageUrl: try r.string(o, "imageUrl"),
+                // A web image only (#235): a file someone sent can't name one on the device. The
+                // user's own photos travel as `photos/…` entries in the archive, not here.
+                imageUrl: WebImageUrl.of(try r.string(o, "imageUrl")),
                 ingredients: try r.strings(o, "ingredients"),
                 instructions: try r.strings(o, "instructions"),
                 prepTime: try r.string(o, "prepTime"),

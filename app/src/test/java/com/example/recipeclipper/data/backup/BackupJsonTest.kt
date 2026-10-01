@@ -268,6 +268,36 @@ class BackupJsonTest {
         )
     }
 
+    /**
+     * #235: a recipe's photo address in a file someone sent is a web image or none, never one on
+     * the device; the archive's own photos (`photos/…` entries) still come in.
+     */
+    @Test fun `a file's photo address must be a web image, and the archive's own photos still import`() {
+        fun recipe(id: String, image: String) =
+            """{"id":"$id","sourceUrl":"https://a.b/$id","title":"T","imageUrl":"$image"}"""
+        val backup = decodeOrFail(
+            """{"format":"recipe-clipper-backup","formatVersion":1,"recipes":[""" +
+                recipe("f", "file:///data/data/com.liberopat.recipeclipper/databases/recipe_clipper.db") + "," +
+                recipe("c", "content://media/external/images/media/1") + "," +
+                recipe("p", "/data/user/0/com.liberopat.recipeclipper/files/x.jpg") + "," +
+                recipe("h", "http://img.example/h.jpg") + "," +
+                recipe("s", "https://img.example/s.jpg") +
+                """],"cookedPhotos":[{"id":"x","recipeId":"s","day":1,"file":"photos/x.jpg"}]}"""
+        )
+        assertEquals(
+            listOf(null, null, null, "https://img.example/h.jpg", "https://img.example/s.jpg"),
+            backup.recipes.map { it.imageUrl }
+        )
+        assertEquals("photos/x.jpg", backup.cookedPhotos.single().file)
+
+        val plan = BackupMerger.plan(
+            backup = backup, existingRecipes = emptyList(), existingLists = emptyList(), maxSortOrder = 0,
+            historyLimit = 50, newUid = { "fresh" }, availablePhotoFiles = setOf("photos/x.jpg")
+        )
+        assertEquals(listOf("x"), plan.newCookedPhotos.map { it.photo.id })
+        assertEquals(1, plan.summary.photosAdded)
+    }
+
     @Test fun `an empty export is valid`() {
         val backup = decodeOrFail("""{"format":"recipe-clipper-backup","formatVersion":1}""")
         assertEquals(Backup(0, emptyList(), emptyList(), emptyList()), backup)

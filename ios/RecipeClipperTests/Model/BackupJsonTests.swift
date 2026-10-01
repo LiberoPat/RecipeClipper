@@ -252,6 +252,36 @@ final class BackupJsonTests: XCTestCase {
         )
     }
 
+    /// #235: a recipe's photo address in a file someone sent is a web image or none, never one on
+    /// the device; the archive's own photos (`photos/…` entries) still come in. Android's
+    /// `BackupJsonTest`, the same case.
+    func testAFilesPhotoAddressMustBeAWebImageAndTheArchivesOwnPhotosStillImport() throws {
+        func recipe(_ id: String, _ image: String) -> String {
+            #"{"id":"\#(id)","sourceUrl":"https://a.b/\#(id)","title":"T","imageUrl":"\#(image)"}"#
+        }
+        let backup = try decodeOrFail(
+            #"{"format":"recipe-clipper-backup","formatVersion":1,"recipes":["#
+                + recipe("f", "file:///data/data/com.liberopat.recipeclipper/databases/recipe_clipper.db") + ","
+                + recipe("c", "content://media/external/images/media/1") + ","
+                + recipe("p", "/data/user/0/com.liberopat.recipeclipper/files/x.jpg") + ","
+                + recipe("h", "http://img.example/h.jpg") + ","
+                + recipe("s", "https://img.example/s.jpg")
+                + #"],"cookedPhotos":[{"id":"x","recipeId":"s","day":1,"file":"photos/x.jpg"}]}"#
+        )
+        XCTAssertEqual(
+            backup.recipes.map(\.imageUrl),
+            [nil, nil, nil, "https://img.example/h.jpg", "https://img.example/s.jpg"]
+        )
+        XCTAssertEqual(backup.cookedPhotos.map(\.file), ["photos/x.jpg"])
+
+        let plan = BackupMerger.plan(
+            backup, existingRecipes: [], existingLists: [], maxSortOrder: 0, historyLimit: 50, newUid: { "fresh" },
+            availablePhotoFiles: ["photos/x.jpg"]
+        )
+        XCTAssertEqual(plan.newCookedPhotos.map(\.photo.id), ["x"])
+        XCTAssertEqual(plan.summary.photosAdded, 1)
+    }
+
     func testAnEmptyExportIsValid() throws {
         let backup = try decodeOrFail(#"{"format":"recipe-clipper-backup","formatVersion":1}"#)
         XCTAssertEqual(backup, Backup(exportedAt: 0, recipes: [], lists: [], memberships: []))
