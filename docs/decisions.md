@@ -1178,7 +1178,7 @@ parameters) and, per language, `en/densities.json`, `units.json`,
 `sections.json` and (since #48) `names.json`. Each has a `schemaVersion` and an `about` saying how the code
 reads it.
 
-- Android adds `shared/` as a `main` Java resource directory, so the pure model
+- Android adds `shared/` as a `main` Java resource directory (`:core`'s since #238), so the pure model
   code reads the tables with `getResourceAsStream`: no `Context`, and the JVM
   tests read exactly what the APK ships. iOS bundles the folder as a folder
   reference (`project.yml`) and reads it from `Bundle.main`.
@@ -3836,7 +3836,19 @@ bullet.
 
 ### Code map (Android)
 
+`core/` (#238) is plain Kotlin/JVM, the packages unchanged: the code that can't reach
+Android. `app/` is everything else and depends on it.
+
 ```
+core/          (#238; package paths under com.example.recipeclipper, as in the app)
+  data/model/  (as listed under data/ below)
+  data/remote/ BlogPageParser (a page's HTML to a recipe: JsonLdRecipeParser, refined by WprmIngredients,
+               SiteRules, CardHeadings, CardSelector, CardIngredients; else MicrodataRecipeParser), FetchedPage,
+               PageTextReader, PageRecipe (#103), RedditRecipeParser, RedditCommentScorer, RedditPageText,
+               RecipeTextSplitter, RedditUrls (#11), PhotoTextSorter (#198), CloudflareChallenge (#220)
+  data/flags/  Flag (the enum; FeatureFlags and its store are the app's)
+  ui/recipe/   RecipeRenderer + RecipeContent (#169: what the reading view shows; the corpus's Render rows)
+app/
 MainActivity   share intent or timer notification → queued route → navigated once the NavHost exists;
                a received .recipeclipper file → ReceivedFileInbox → its sheet over any screen (#149)
 di/            DatabaseModule, RepositoryModule, SourceModule, ClockModule, PlatformModule,
@@ -3848,11 +3860,9 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                AutoBackup + BackupFolder (the automatic backup copy, WorkManager, #150)
                ShareFileRepository (the file sent to someone else, #149; rules in backup/ShareFile)
   local/       RecipeDatabase (+ migrations), entities, RecipeDao, ListDao, AppPreferences
-  remote/      BlogRecipeSource (+ JsonLdRecipeParser, WprmIngredients, SiteRules, CardHeadings, CardSelector, CardIngredients),
-               MicrodataRecipeParser, RenderedPageSource, PageTextReader, PageRecipe (#103),
-               RedditRecipeSource (+ RoutingRecipeSource), RedditRecipeParser, RedditCommentScorer,
-               RecipeTextSplitter, RedditUrls (#11)
-  model/       Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
+  remote/      BlogRecipeSource (fetches; BlogPageParser parses), RecipeSource, RenderedPageSource (the seams),
+               RedditRecipeSource (+ RoutingRecipeSource); the parsers are in core/
+  model/       (in core/) Recipe, ParseError, UrlCleaner, Servings, IngredientScaler, UnitConverter,
                Units, IngredientDensities, TemperatureConverter, StepTimers, Durations (times),
                RecipeShareText,
                SiteReportLink, SourceDomain, SharedTables (loads shared/tables),
@@ -3983,6 +3993,57 @@ check existed. Now `ViewModelImportsTest` (Android, JVM) and `ViewModelImportsTe
 (iOS) scan every source file that declares a `class …ViewModel`, whatever the file is
 called, and fail on an `androidx.compose` import (Android) or a `SwiftUI` or `UIKit`
 import (iOS).
+
+## The `:core` module (#238)
+
+The model and the parsers were pure by convention: CLAUDE.md said they never touch Android,
+`Context` or Compose, and only review kept it so (`ViewModelImportsTest` polices the
+ViewModels, not the model). They now live in their own Gradle module, `core/`, which has no
+Android on its classpath, so an `android.*` or `androidx.*` import there is a compile error.
+
+- **Plain Kotlin/JVM, not Kotlin Multiplatform: the owner's decision, 2026-10-01.** #9's
+  reasoning stands (KMP would cost iOS its no-dependency property and need multiplatform
+  Jsoup and org.json). iOS keeps its own Swift copy, pinned by the differential corpus.
+- **In `:core`:** all of `data/model`; the parsers in `data/remote` that take text and give
+  data; `Flag`, the enum only (`Tooltip` names flags; `FeatureFlags` and its store stay);
+  `RecipeRenderer` and `RecipeContent`, which are pure and pinned by the corpus's `Render`
+  rows, so the corpus generator moves with everything it checks.
+- **In `:app`:** whatever fetches, renders in a WebView, needs `Context` or is wired by Hilt:
+  `BlogRecipeSource`, `RedditRecipeSource`, `RoutingRecipeSource`, and the `RecipeSource` and
+  `RenderedPageSource` seams. `BlogRecipeSource` was split at the seam: its page parse is
+  `BlogPageParser`, which `BlogRecipeSource.parse` and `parsePage` hand over to (so callers,
+  and iOS's `BlogRecipeSource.parse(html:url:)`, are unchanged); `JsonLdRecipeParser` and
+  `FetchedPage` got files of their own.
+- **Package names are unchanged** and the files moved with `git mv`, so no import changed and
+  branches written before it merge by rename detection. The cost is a `ui.recipe` package in
+  `:core`, for `RecipeRenderer`.
+- **`internal` now means `:core` only.** Just `PageRecipe` had to become public (the
+  repository calls it). Tests of internal code moved to `core/src/test` with it; the two
+  fixtures `:app`'s fetch tests also serve (`RedditFixtures`, `MicrodataFixtures`) are
+  `:core` test fixtures (`java-test-fixtures`).
+- **`shared/`** (tables, flags, sample, web scripts; not `fixtures/`) is `:core`'s resource
+  directory. The APK gets it through the jar, as it did through the app's own resources, and
+  every JVM test still reads exactly what ships.
+- **Dependencies:** Jsoup 1.17.2 is `api` (its types are in the parsers' signatures); `:app`
+  still declares the same version, as it fetches with Jsoup and lint's `NewerVersionAvailable`
+  advisory reads its line. `org.json` is `compileOnly`: the framework's copy is what runs on
+  the device, and bundling one trips lint's `DuplicatePlatformClasses`; the tests get
+  `org.json:json`. Jsoup's jspecify annotations are `compileOnly` too (AndroidX brought them
+  to `:app`).
+- **Tests:** `./gradlew testDebugUnitTest` still runs everything, as `:core` registers it as
+  an alias of its `test` (skipped under `-PsiteCheck`). `DifferentialCorpusTest` writes to
+  `core/build/differential-corpus/`. `ViewModelImportsTest` stays: the model side is now the
+  compiler's job, the ViewModels' side still the test's.
+- **iOS: a test, not a framework.** A local `RecipeCore` framework target would give the same
+  compile-time guarantee, but Swift makes everything a framework exports say `public`: about
+  750 declarations in `Data/Model` and the parsers, plus hand-written public initialisers for
+  some 40 structs that use the memberwise one, and a second `@testable import` in the tests.
+  That is a large, noisy diff for a rule all of that code already keeps (it imports only
+  Foundation), so a test stands in for the compiler instead: `CoreImportsTests` fails when
+  any file in `Data/Model`, or any Swift file named like a Kotlin file in `core/` (the parsers,
+  `RecipeRenderer`), imports anything but Foundation. Matching Android's `:core` by name keeps
+  the two platforms' notion of "core" the same as files move. The share extension still
+  compiles `Data/` by target membership, unchanged.
 
 ## Metric amounts as decimals, and ingredient headings without a box (September 2026)
 

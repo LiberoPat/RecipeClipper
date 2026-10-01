@@ -9,7 +9,9 @@ the commands; iOS test commands and the simulator rules are in
 
 ### Which tests run where (#91)
 
-- **JVM, `./gradlew testDebugUnitTest`** (and CI): the pure logic and
+- **JVM, `./gradlew testDebugUnitTest`** (and CI): the pure logic's tests
+  (in `core/src/test`, #238: `:core` registers `testDebugUnitTest` as an
+  alias of its `test`, so the one command runs both modules), the
   ViewModel tests, and, under Robolectric, the Compose screen tests
   (`*ScreenTest`, `CookModeTest`, `AppShellTest`, `SaveToListBottomSheetTest`,
   the `Recipe*Test`s) and the Room DAO tests (`*DaoTest`, on an in-memory
@@ -209,8 +211,8 @@ app within 10 minutes), and a large HEIC.
 `DifferentialCorpusTest` recomputes every ingredient and instruction row of
 the iOS `DifferentialCorpusTests.swift` from its input, fails if the file is
 stale, and writes the regenerated file to
-`app/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
-(`app/build.gradle.kts` declares the Swift file as a test input, so editing
+`core/build/differential-corpus/DifferentialCorpusTests.swift` to copy over it
+(`core/build.gradle.kts` declares the Swift file as a test input, so editing
 it alone reruns the tests). A row read with another language's words names it
 after the input (`Ing("2 EL Zucker", lang: "de"),`); a row without one is
 English. Its `Dur` rows (#179) pin `Durations.format`, the prep, cook and total
@@ -719,7 +721,7 @@ in `+MealPlan.swift`). What they need from outside the app:
 ## CI
 
 GitHub Actions, in `.github/workflows/`. On a pull request each platform's job
-runs only when the PR touches its files (Android: `app/`, `shared/`, the Gradle
+runs only when the PR touches its files (Android: `app/`, `core/`, `shared/`, the Gradle
 files, its workflow and `.github/scripts/`; iOS: `ios/`, `shared/`, its
 workflow); otherwise its check reports as skipped. Pushes to `main` always run
 both.
@@ -799,7 +801,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 
 ./gradlew assembleDebug        # build; APK lands in app/build/outputs/apk/debug/
 ./gradlew installDebug         # install on a connected device or emulator
-./gradlew testDebugUnitTest    # JVM tests, screen and DAO tests included (Robolectric)
+./gradlew testDebugUnitTest    # JVM tests of both modules, screen and DAO tests included (Robolectric)
 ./gradlew connectedDebugAndroidTest  # migrations, WebView, smoke; needs a running emulator
 ./gradlew lintDebug            # report at app/build/reports/lint-results-debug.html
 ```
@@ -907,9 +909,11 @@ and that neither the directory nor the database and its WAL are flagged
 share extension, #19), that is backed up too; move the test with it. Photos are
 in Caches (`ImageLoader`), which isn't backed up, as intended.
 
-A single test:
-`./gradlew testDebugUnitTest --tests "com.example.recipeclipper.data.model.IngredientScalerTest"`
-(append `.` and a backticked method name to run one case).
+A single test, named with its module (#238; `--tests` can't pass through
+`:core`'s `testDebugUnitTest` alias):
+`./gradlew :core:test --tests "com.example.recipeclipper.data.model.IngredientScalerTest"`
+for the model and parsers, `./gradlew :app:testDebugUnitTest --tests "…"` for
+the rest (append `.` and a backticked method name to run one case).
 
 The emulator may be in use by a person while you work. Scripted taps, force-stops
 and settings changes land in their session, so check for activity first (a

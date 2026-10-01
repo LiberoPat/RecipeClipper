@@ -12,7 +12,7 @@ import com.example.recipeclipper.data.model.Recipe
  * The pure ends of reading a recipe out of a page's text (#103); the model call sits between
  * them, in the repository. The iOS app's `PageRecipe` is the same.
  */
-internal object PageRecipe {
+object PageRecipe {
 
     /** The lines language detection reads before the model is asked. */
     private const val DETECTION_LINES = 300

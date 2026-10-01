@@ -9,6 +9,7 @@
 .cxx
 local.properties
 /app/build
+/core/build
 /.kotlin
 
 # Signing keys and their passwords never go in the repo (see docs/release.md)

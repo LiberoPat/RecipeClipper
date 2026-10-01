@@ -55,6 +55,7 @@ says so instead of guessing at a recipe from prose.
 ```
 RecipeClipper/
 ├── app/          Android app: MVVM, Hilt, Room, Compose Navigation
+├── core/         Android's pure logic (model, parsers): plain Kotlin/JVM, no Android
 ├── ios/          iOS app: SwiftUI, iOS 17+, no third-party dependencies
 ├── CLAUDE.md     the rules for both platforms: product rules, UI decisions,
 │                 data, parsing and unit-conversion rules, commands
