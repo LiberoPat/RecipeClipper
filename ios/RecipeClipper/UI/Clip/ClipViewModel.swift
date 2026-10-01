@@ -132,11 +132,14 @@ final class ClipViewModel {
         setDraft(draft.clear(field), newMarkId: nil, message: .cleared(field))
     }
 
-    /// While picking a photo, the next image tapped on the page becomes the photo.
+    /// While picking a photo, the next image tapped on the page becomes the photo: a web image
+    /// only (`WebImageUrl`, #235). Any other address (`file:`, `data:`, relative, …) is no
+    /// picture, as `onNoImageTapped` says.
     func onImageTapped(_ src: String) {
         guard uiState.pickingPhoto else { return }
+        guard let photo = WebImageUrl.of(src) else { return onNoImageTapped() }
         uiState.pickingPhoto = false
-        assign(.photo, src)
+        assign(.photo, photo)
     }
 
     /// While picking a photo, the tap found no picture with an address the app can read (not an

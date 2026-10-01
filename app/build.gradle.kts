@@ -247,6 +247,10 @@ dependencies {
     // change Element.text() boundaries (1.22.2), which the iOS stripHtml port mirrors.
     implementation("org.jsoup:jsoup:1.17.2")
 
+    // "Clip it yourself" hears its page's main frame only (#235): WebViewCompat's message
+    // listener says which frame posted, which the old JavaScript interface can't.
+    implementation("androidx.webkit:webkit:1.17.1")
+
     // Recipe photo
     implementation("io.coil-kt:coil-compose:2.7.0")
     // "I made this" (#116): a photo's EXIF orientation. Coil already brings it; the framework's

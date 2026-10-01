@@ -31,6 +31,16 @@ final class RecipeTextWindowTests: XCTestCase {
         XCTAssertEqual(PageTextReader.read(html: "<title>Site | Soup</title><p>x</p>", url: "https://e.com/").title, "Site | Soup")
     }
 
+    func testOgImageIsAWebImageOrNone() {
+        func image(_ content: String) -> String? {
+            PageTextReader.read(html: #"<head><meta property="og:image" content=""# + content + #""></head><p>x</p>"#,
+                                url: "https://example.com/soup").image
+        }
+        XCTAssertEqual(image("http://example.com/soup.jpg"), "https://example.com/soup.jpg")
+        XCTAssertNil(image("file:///data/data/com.example.recipeclipper/files/a.jpg"))
+        XCTAssertNil(image("data:image/gif;base64,R0lGOD"))
+    }
+
     func testARealBlogPageWithNoRecipeData() throws {
         let page = PageTextReader.read(html: try pageFixture(), url: "https://blog.example/banana-bread")
         XCTAssertEqual(page.title, "Grandma’s Banana Bread")

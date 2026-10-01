@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.SourceType
+import com.example.recipeclipper.data.model.WebImageUrl
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -132,25 +133,26 @@ object RedditRecipeParser {
     /**
      * The post's photo: the preview Reddit renders for it, else the first picture of a
      * gallery, else a link straight to an image. Reddit escapes `&` in these URLs even with
-     * `raw_json` off, so `&amp;` is undone (and nothing else is touched: it's a URL).
+     * `raw_json` off, so `&amp;` is undone (and nothing else is touched: it's a URL). A web
+     * image only ([WebImageUrl], #235).
      */
     internal fun imageOf(post: JSONObject): String? {
         post.optJSONObject("preview")?.optJSONArray("images")?.optJSONObject(0)
-            ?.optJSONObject("source")?.optString("url")?.takeIf { it.startsWith("http") }
-            ?.let { return unescape(it) }
+            ?.optJSONObject("source")?.optString("url")?.let(::webImage)
+            ?.let { return it }
 
         val firstId = post.optJSONObject("gallery_data")?.optJSONArray("items")
             ?.optJSONObject(0)?.optString("media_id")
         if (!firstId.isNullOrEmpty()) {
             val s = post.optJSONObject("media_metadata")?.optJSONObject(firstId)?.optJSONObject("s")
             (s?.optString("u")?.ifEmpty { null } ?: s?.optString("gif")?.ifEmpty { null })
-                ?.takeIf { it.startsWith("http") }
-                ?.let { return unescape(it) }
+                ?.let(::webImage)
+                ?.let { return it }
         }
 
         val link = post.optString("url_overridden_by_dest").ifEmpty { post.optString("url") }
         val path = try { java.net.URI(link).path.orEmpty() } catch (e: Exception) { "" }
-        return link.takeIf { it.startsWith("http") && IMAGE_EXTENSION.containsMatchIn(path) }?.let(::unescape)
+        return link.takeIf { IMAGE_EXTENSION.containsMatchIn(path) }?.let(::webImage)
     }
 
     /**
@@ -166,13 +168,12 @@ object RedditRecipeParser {
                 val id = items.optJSONObject(i)?.optString("media_id").orEmpty()
                 val s = metadata.optJSONObject(id)?.optJSONObject("s")
                 (s?.optString("u")?.ifEmpty { null } ?: s?.optString("gif")?.ifEmpty { null })
-                    ?.takeIf { it.startsWith("http") }
-                    ?.let(::unescape)
+                    ?.let(::webImage)
             }
             if (gallery.isNotEmpty()) return gallery
         }
         return listOfNotNull(imageOf(post))
     }
 
-    private fun unescape(url: String) = url.replace("&amp;", "&")
+    private fun webImage(url: String) = WebImageUrl.of(url.replace("&amp;", "&"))
 }

@@ -371,4 +371,20 @@ final class JsonLdRecipeParserTests: XCTestCase {
     func testStripHtmlLeavesALessThanThatIsNotATagAlone() {
         XCTAssertEqual("1 < 2 and <3", JsonLdRecipeParser.stripHtml("1 < 2 and <3"))
     }
+
+    /// Android's `the image is a web image or none, never an address on the device` (#235).
+    func testTheImageIsAWebImageOrNoneNeverAnAddressOnTheDevice() {
+        func image(_ json: String) -> String? {
+            JsonLdRecipeParser.parse(
+                [#"{"@type": "Recipe", "name": "R", "recipeIngredient": ["a"], "image": "# + json + "}"],
+                sourceUrl: sourceUrl
+            )?.image
+        }
+        XCTAssertEqual(image(#""https://img.example/r.jpg""#), "https://img.example/r.jpg")
+        XCTAssertEqual(image(#""http://img.example/r.jpg""#), "https://img.example/r.jpg")
+        XCTAssertNil(image(#""file:///data/data/com.example.recipeclipper/databases/recipe_clipper.db""#))
+        XCTAssertNil(image(#"{"@type": "ImageObject", "url": "content://media/external/images/media/1"}"#))
+        XCTAssertNil(image(#"["data:image/gif;base64,R0lGODlhAQABAAAAACw="]"#))
+        XCTAssertNil(image(#""/img/r.jpg""#))
+    }
 }

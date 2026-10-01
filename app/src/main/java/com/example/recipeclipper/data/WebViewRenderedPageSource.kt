@@ -70,7 +70,10 @@ class WebViewRenderedPageSource @Inject constructor(
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled") // the point: pages whose recipe data needs scripts
+    // SetJavaScriptEnabled: the point, pages whose recipe data needs scripts.
+    // MissingOnRenderProcessGone (androidx.webkit's check, #235): it flags every `WebViewClient()`
+    // constructor call, Kotlin's superclass call included; the client below implements it.
+    @SuppressLint("SetJavaScriptEnabled", "MissingOnRenderProcessGone")
     private suspend fun load(webView: WebView, url: String, onChallenge: () -> Unit): String? =
         suspendCancellableCoroutine { continuation ->
             val handler = Handler(Looper.getMainLooper())

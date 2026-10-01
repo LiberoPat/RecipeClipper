@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.model.Durations
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.WebImageUrl
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -56,8 +57,9 @@ internal object MicrodataRecipeParser {
 
         return Recipe(
             name = name,
-            image = props(root, "image").map(::value).firstOrNull { it.isNotBlank() }
-                ?: doc.selectFirst("meta[property=og:image]")?.absUrl("content")?.ifBlank { null },
+            // The first that is a web image (#235): a lazy loader's data: placeholder gives way.
+            image = props(root, "image").firstNotNullOfOrNull { WebImageUrl.of(value(it)) }
+                ?: WebImageUrl.of(doc.selectFirst("meta[property=og:image]")?.absUrl("content")),
             ingredients = ingredients,
             instructions = instructions,
             prepTime = duration(root, "prepTime", words),

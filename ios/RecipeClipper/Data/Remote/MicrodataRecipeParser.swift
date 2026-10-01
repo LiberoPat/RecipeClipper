@@ -60,7 +60,9 @@ enum MicrodataRecipeParser {
 
         return Recipe(
             name: name,
-            image: reader.props(root, "image").map(reader.value).first(where: { !$0.isEmpty }) ?? ogImage,
+            // The first that is a web image (#235): a lazy loader's data: placeholder gives way.
+            image: reader.props(root, "image").lazy.compactMap { WebImageUrl.of(reader.value($0)) }.first
+                ?? WebImageUrl.of(ogImage),
             ingredients: ingredients,
             instructions: instructions,
             prepTime: reader.duration(root, "prepTime", words),
