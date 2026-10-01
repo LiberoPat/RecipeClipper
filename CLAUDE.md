@@ -6,7 +6,8 @@ filler.
 
 - **Android** (`app/`): Kotlin, Jetpack Compose, single Activity. MVVM +
   repository, Hilt, Room, Compose Navigation. minSdk 26 (for ML Kit GenAI,
-  #100), targetSdk 36, compileSdk 37.
+  #100), targetSdk 36, compileSdk 37. The pure logic is `core/`, a plain
+  Kotlin/JVM module with no Android to reach (#238; not KMP, by decision).
 - **iOS** (`ios/`): SwiftUI, iOS 17+, no third-party dependencies, at parity
   with Android. iOS specifics (XcodeGen, the Android→iOS type map, the share
   extension, simulator rules, test commands, iPad) are in `ios/README.md`.
@@ -16,7 +17,7 @@ changes on the other. The pure logic (`data/model`, iOS `Data/Model`, and the
 parsers) is pinned to the Kotlin by
 `ios/RecipeClipperTests/Model/DifferentialCorpusTests.swift`, whose
 expectations come from running the Kotlin: regenerate them (the JVM
-`DifferentialCorpusTest` writes the file to `app/build/differential-corpus/`;
+`DifferentialCorpusTest` writes the file to `core/build/differential-corpus/`;
 a new row needs only its input), never hand-edit them.
 
 **The word and density tables live once, in `shared/tables/`** (JSON, read
@@ -56,7 +57,7 @@ release setup (#18, #20–#22).
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ./gradlew assembleDebug               # APK in app/build/outputs/apk/debug/
 ./gradlew installDebug
-./gradlew testDebugUnitTest           # one class: --tests "com.example.recipeclipper.data.model.IngredientScalerTest"
+./gradlew testDebugUnitTest           # :core's tests too; one class: :core:test (or :app:testDebugUnitTest) --tests "com.example.recipeclipper.data.model.IngredientScalerTest"
 ./gradlew lintDebug
 ./gradlew connectedDebugAndroidTest   # the few device-only tests (docs/testing.md): wipes the app's data
 cd ios && xcodegen generate           # after adding or removing iOS files
@@ -79,9 +80,10 @@ cd ios && xcodegen generate           # after adding or removing iOS files
 ## Where things are
 
 Android code is in `app/src/main/java/com/example/recipeclipper/` (`data/`
-with `local/`, `remote/` and the pure `model/`; `ui/` a package per screen;
-`di/`, `timers/`, `reminders/`); `shared/` holds the tables, flags and
-fixtures. The annotated map, and what each route does, are in
+with `local/` and `remote/`'s fetching; `ui/` a package per screen; `di/`,
+`timers/`, `reminders/`). The pure logic (`data/model`, the parsers in
+`data/remote`, `RecipeRenderer`) is in `core/src/main/java/`, same packages
+(#238). `shared/` holds the tables, flags and fixtures. The annotated map, and what each route does, are in
 `docs/decisions.md` ("Code map and routes").
 
 Routes: `home`, `recipes`, `settings` (+ hidden `settings/developer`),
@@ -100,7 +102,8 @@ shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
 - **Edge-to-edge:** a screen's root fills behind the system bars and pads its
   content with `safeDrawingPadding()`. Never set bar colours.
 - ViewModels and repositories never import Compose, SwiftUI or UIKit, and
-  never touch `Context` (`ViewModelImportsTest` checks the imports).
+  never touch `Context` (`ViewModelImportsTest` checks the imports; `:core`
+  can't reach Android at all).
   Platform effects (alarm sound, keep-screen-on, the
   share sheet, opening a URL) live in the view layer.
 - Domain `Recipe` is separate from `RecipeEntity`; map at the repository.
