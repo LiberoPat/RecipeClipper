@@ -1,21 +1,17 @@
 import SwiftUI
 import UIKit
 
-/// The app's root. With the `mealPlan` flag off (#87, until the meal plan ships) it is the single
-/// Recipes NavigationStack, exactly as before the tab shell. On, that same stack is the first of
-/// four tabs, each with its own NavigationStack, so each keeps its own place.
+/// The app's root: four tabs (#47), each with its own NavigationStack, so each keeps its own
+/// place; the Recipes stack is the first.
 /// Every destination gets its ViewModel from the container, once per stack entry (ScreenHost),
 /// and takes it as a parameter so a screen never builds its own.
 struct RootView: View {
     let container: AppContainer
     @Bindable var router: Router
-    /// The `mealPlan` flag, read through the container's observable flags, so turning it on or
-    /// off in Developer settings swaps the root at once.
-    private var tabsEnabled: Bool { container.featureFlags.isOn(.mealPlan) }
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        root
+        tabs
             // The tooltips (#190): every screen's TooltipHost reads them from here.
             .environment(container.tooltips)
             // A file sent from another Recipe Clipper (#149) opens its sheet over whatever is on
@@ -80,15 +76,6 @@ struct RootView: View {
         Task {
             await autoBackup.run()
             if task != .invalid { app.endBackgroundTask(task) }
-        }
-    }
-
-    @ViewBuilder
-    private var root: some View {
-        if tabsEnabled {
-            tabs
-        } else {
-            recipesStack
         }
     }
 
@@ -289,31 +276,22 @@ struct RootView: View {
         onHumanCheck: @escaping (String) -> Void = { _ in },
         _ make: @escaping () -> RecipeViewModel
     ) -> some View {
-        // "Add to plan" (#49) only behind the tab flag, like the Week tab itself.
         let container = container
-        let makePlanVM: (() -> AddToPlanViewModel)? = tabsEnabled ? { container.makeAddToPlanViewModel() } : nil
-        let makeGroceriesVM: (() -> AddToGroceriesViewModel)? =
-            tabsEnabled ? { container.makeAddToGroceriesViewModel() } : nil
-        // Using up the pantry at the end of cooking (#147): the pantry is behind the tab flag.
-        let makeUseUpVM: (() -> PantryUseUpViewModel)? = tabsEnabled ? { container.makePantryUseUpViewModel() } : nil
-        // "Send as file" (#149), whatever the flags.
-        let makeSendFileVM = container.makeSendFileViewModel
         return ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
             RecipeScreen(
                 vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
-                makePlanVM: makePlanVM, makeGroceriesVM: makeGroceriesVM, onClip: { push(.clip($0)) },
+                makePlanVM: container.makeAddToPlanViewModel, makeGroceriesVM: container.makeAddToGroceriesViewModel,
+                onClip: { push(.clip($0)) },
                 onClipBlocked: onClipBlocked,
                 onHumanCheck: onHumanCheck,
                 onReadPhoto: { push(.photoRecipe($0)) },
                 photoTextEnabled: container.featureFlags.isOn(.photoText),
-                amountsInStepsEnabled: container.featureFlags.isOn(.amountsInSteps),
                 makePhotosVM: container.makeCookedPhotosViewModel,
-                makeSendFileVM: makeSendFileVM,
-                makeUseUpVM: makeUseUpVM
+                makeSendFileVM: container.makeSendFileViewModel,
+                makeUseUpVM: container.makePantryUseUpViewModel
             )
         }
         // The reading view and cook mode are full screen, so a recipe still opens on the recipe.
-        // A no-op while the tab bar is off.
         .toolbar(.hidden, for: .tabBar)
     }
 }

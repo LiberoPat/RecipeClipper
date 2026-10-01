@@ -1,6 +1,6 @@
 import XCTest
 
-/// Settings → Steps → "Amounts in steps" (#101), behind the `amountsInSteps` flag. The `cook`
+/// Settings → Steps → "Amounts in steps" (#101). The `cook`
 /// scenario's "Weeknight Chili" lists "1 lb beef", and its first step is "Brown the beef in a
 /// large pot.": with the switch on it reads "Brown 1 lb beef in a large pot." in the reading
 /// view and in cook mode.
@@ -11,7 +11,7 @@ final class AmountsInStepsUITests: RecipeUITestCase {
     }
 
     func testTheSwitchPutsTheAmountInsideTheStep() {
-        launch(.cook, flags: ["amountsInSteps"])
+        launch(.cook)
         openSettings()
         app.swipeUp()
         requireState(require(amountsSwitch, "the Amounts in steps switch"), "value == '0'", "off by default")

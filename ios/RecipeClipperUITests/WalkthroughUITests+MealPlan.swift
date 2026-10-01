@@ -5,7 +5,7 @@ import XCTest
 extension WalkthroughUITests {
 
     func test01_tabsAndWeek() {
-        startAsShipped(flags: ["mealPlan"])
+        startAsShipped()
         open("Chicken Adobo")
         recipeMenu("Add to plan")
         require(app.buttons["plan.confirm"], "the sheet's button").tap()
@@ -26,7 +26,7 @@ extension WalkthroughUITests {
     }
 
     func test02_groceries() {
-        startAsShipped(flags: ["mealPlan"])
+        startAsShipped()
         for title in ["Chicken Adobo", "Weeknight Chili", "Chicken Adobo"] { // Adobo twice: "× 2"
             open(title)
             recipeMenu("Add to groceries")
@@ -56,7 +56,7 @@ extension WalkthroughUITests {
     }
 
     func test03_pantryAndWhatINeed() {
-        startAsShipped(flags: ["mealPlan"])
+        startAsShipped()
         tab("Pantry")
         for item in ["soy sauce", "garlic", "bay leaves", "white vinegar"] {
             type("\(item)\n", into: app.textFields["Add to the pantry"])
@@ -73,7 +73,7 @@ extension WalkthroughUITests {
     }
 
     func test04_weeklyMenus() {
-        startAsShipped(flags: ["mealPlan"])
+        startAsShipped()
         tab("Week")
         planToday("Chicken Adobo")
         planToday("Spaghetti Carbonara")
@@ -92,7 +92,7 @@ extension WalkthroughUITests {
     }
 
     func test05_expiryReminders() {
-        startAsShipped(flags: ["mealPlan"])
+        startAsShipped()
         require(app.buttons["Settings"]).tap()
         pause()
         // To the foot of Settings, so the switch sits clear of the tab bar.
@@ -104,7 +104,7 @@ extension WalkthroughUITests {
     /// Grocery lines merged with the model's help (#99), its answers simulated by the UI-test
     /// stub (`UITestDecisionModel`): close names become one row, trailing notes are ignored.
     func test11_groceriesAiMergingSimulated() {
-        startAsShipped(flags: ["mealPlan", "aiDecisions"])
+        startAsShipped(flags: ["aiDecisions"])
         tab("Groceries")
         let field = app.textFields["Add an item"]
         for pair in [["200 g sweetcorn", "100 g corn"], ["2 eggs, beaten", "3 eggs"]] {
@@ -118,7 +118,7 @@ extension WalkthroughUITests {
     /// Junk after an ingredient (#132, #174), judged by the model (simulated, as above): the
     /// recipe and Groceries both show "2 eggs dfsafs" as "2 eggs"; the stored line is unchanged.
     func test12_groceriesJunkHidden() {
-        start(flags: ["mealPlan", "aiDecisions"])
+        start(flags: ["aiDecisions"])
         open("Banana Bread")
         // The answers land in the background; then the line shows without its junk.
         requireGone(textContaining("2 eggs dfsafs"), "the junk")
@@ -138,7 +138,7 @@ extension WalkthroughUITests {
     /// Banana Bread's "2 eggs dfsafs" reads "2 eggs" in the reading view and in cook mode's
     /// ingredients, while the editor still holds the line as stored.
     func test22_recipeJunkHidden() {
-        start(flags: ["mealPlan", "aiDecisions"])
+        start(flags: ["aiDecisions"])
         open("Banana Bread")
         // The answers land in the background; then the line shows without its junk.
         requireGone(textContaining("2 eggs dfsafs"), "the junk")

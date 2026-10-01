@@ -1,6 +1,6 @@
 import XCTest
 
-/// The Pantry tab (#51), behind the tab flag: type an item, run it out (#194) and it goes on the
+/// The Pantry tab (#51): type an item, run it out (#194) and it goes on the
 /// grocery list by itself, with the Groceries tab's basket tag, which takes it off again (#146).
 /// No row button since 2026-09-29: the sheet, the menu and the swipes change the stock.
 final class PantryUITests: RecipeUITestCase {
@@ -16,7 +16,7 @@ final class PantryUITests: RecipeUITestCase {
     }
 
     func testRunningOutPutsAnItemOnGroceriesAndTheTagTakesItOff() {
-        launch(.empty, flags: ["mealPlan"])
+        launch(.empty)
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         let field = require(app.textFields["Add to the pantry"], "Add to the pantry")
         field.tap()
@@ -58,7 +58,7 @@ final class PantryUITests: RecipeUITestCase {
     /// Every state is reachable from something visible: tapping the row opens its sheet, whose
     /// stock control applies at once (#194).
     func testTheEditSheetMarksItRunningLow() {
-        launch(.empty, flags: ["mealPlan"])
+        launch(.empty)
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         let field = require(app.textFields["Add to the pantry"], "Add to the pantry")
         field.tap()
@@ -78,7 +78,7 @@ final class PantryUITests: RecipeUITestCase {
     /// In stock → Running low, Ran out; Running low → Restock, Ran out; Run out → Restock,
     /// Running low.
     func testTheRowMenuOffersBothOtherStates() {
-        launch(.empty, flags: ["mealPlan"])
+        launch(.empty)
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         let field = require(app.textFields["Add to the pantry"], "Add to the pantry")
         field.tap()
@@ -118,7 +118,7 @@ final class PantryUITests: RecipeUITestCase {
     /// run out in the seed) and Ran out from the row's menu, Running low from a swipe, and the
     /// edit sheet's control.
     func testMovesBetweenSectionsRedrawTheList() {
-        launch(.walkthroughPantry, flags: ["mealPlan"])
+        launch(.walkthroughPantry)
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         require(pantryRow("soy sauce"), "the pantry")
         requireLaidOut(["garlic": "Run out", "milk": "Run out", "soy sauce": "Oils, sauces & condiments"])
@@ -152,7 +152,7 @@ final class PantryUITests: RecipeUITestCase {
     /// #203, #216); XCUITest's screenshots showed it right too, so only a recording of the
     /// walkthrough (ios-25) shows that.
     func testSwipeMovesRedrawTheList() {
-        launch(.walkthroughPantry, flags: ["mealPlan"])
+        launch(.walkthroughPantry)
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         require(pantryRow("soy sauce"), "the pantry")
         for _ in 0..<3 {

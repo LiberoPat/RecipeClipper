@@ -6,12 +6,8 @@ import Observation
 /// anywhere: retiring a flag deletes it here, in flags.json and its branches in one PR.
 /// Android's twin is `Flag` in `data/flags/FeatureFlags.kt`, with the same keys.
 enum Flag: String, CaseIterable {
-    /// The meal plan (#47, #49–#51): the bottom tabs and the recipe screen's plan actions.
-    case mealPlan
     /// Chef mode (#100): the Settings switch for short steps written on the device.
     case chefMode
-    /// Ingredient amounts inside steps (#101): the Settings switch and what it shows.
-    case amountsInSteps
     /// The free tier (#107): 20 recipes, and the one-time unlock for unlimited ones.
     case freeTier
     /// A recipe picked from the page's text by the on-device model when the page has no recipe data (#103).
@@ -20,8 +16,6 @@ enum Flag: String, CaseIterable {
     case aiDecisions
     /// With `aiDecisions`, the count-bracket decision too (#104); off since #127, kept to re-measure.
     case aiCountBrackets
-    /// "I made this" (#116): your photos and notes on a recipe, and the Recently cooked sort.
-    case cookedPhotos
     /// Reddit posts (#11): Reddit links go to the Reddit source rather than the blog one.
     case reddit
     /// Reading a Reddit post's photo with on-device text recognition, checked by the cook (#198),

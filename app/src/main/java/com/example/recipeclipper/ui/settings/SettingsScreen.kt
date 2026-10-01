@@ -77,8 +77,8 @@ import java.util.Locale
  * are [Switch] rows — never a bare checkmark for either, which is the whole reason this
  * screen exists (see CLAUDE.md). The sections: Units (the three [UnitSystem] options, plus
  * "Also convert liquids" for Ounces only), Oven temperature (the three [TemperatureUnit]
- * options, independent of Units), Appearance ("Dark while cooking"), Pantry ("Expiry
- * reminders", #52, only with the `mealPlan` flag on), Your recipes (Export and Import,
+ * options, independent of Units), Appearance ("Dark while cooking"), Steps ("Amounts in
+ * steps", #101, and Chef mode), Pantry ("Expiry reminders", #52), Your recipes (Export and Import,
  * #26: actions, so plain rows), and Help ("Show tips again", #190, an action too).
  */
 @Composable
@@ -186,60 +186,54 @@ fun SettingsScreen(
                         )
                     }
 
-                    if (state.showsSteps || state.showsChefMode) {
-                        item {
-                            Spacer(Modifier.height(16.dp))
-                            Hairline()
-                            Spacer(Modifier.height(16.dp))
-                            SectionHeading(stringResource(R.string.settings_section_steps))
-                            Spacer(Modifier.height(4.dp))
-                            if (state.showsSteps) {
-                                SwitchRow(
-                                    title = stringResource(R.string.amounts_in_steps_title),
-                                    description = stringResource(R.string.amounts_in_steps_description),
-                                    checked = state.amountsInSteps,
-                                    onCheckedChange = viewModel::onAmountsInStepsChange
-                                )
-                            }
-                            if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
-                        }
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Hairline()
+                        Spacer(Modifier.height(16.dp))
+                        SectionHeading(stringResource(R.string.settings_section_steps))
+                        Spacer(Modifier.height(4.dp))
+                        SwitchRow(
+                            title = stringResource(R.string.amounts_in_steps_title),
+                            description = stringResource(R.string.amounts_in_steps_description),
+                            checked = state.amountsInSteps,
+                            onCheckedChange = viewModel::onAmountsInStepsChange
+                        )
+                        if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
                     }
 
-                    if (state.showsPantry) {
-                        item {
-                            Spacer(Modifier.height(16.dp))
-                            Hairline()
-                            Spacer(Modifier.height(16.dp))
-                            SectionHeading(stringResource(R.string.settings_section_pantry))
-                            Spacer(Modifier.height(4.dp))
-                            SwitchRow(
-                                title = stringResource(R.string.expiry_reminders_title),
-                                description = stringResource(R.string.expiry_reminders_description),
-                                checked = state.expiryReminders,
-                                onCheckedChange = { on ->
-                                    // Asking is a platform effect, so it lives here: only when the cook
-                                    // turns reminders on, never on launch (#52).
-                                    when {
-                                        !on -> viewModel.onExpiryRemindersOff()
-                                        NotificationManagerCompat.from(context).areNotificationsEnabled() ->
-                                            viewModel.onExpiryRemindersPermission(true)
-                                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                                            PackageManager.PERMISSION_GRANTED ->
-                                            notificationPrompt.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        // Allowed, but switched off for the app in system settings.
-                                        else -> viewModel.onExpiryRemindersPermission(false)
-                                    }
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Hairline()
+                        Spacer(Modifier.height(16.dp))
+                        SectionHeading(stringResource(R.string.settings_section_pantry))
+                        Spacer(Modifier.height(4.dp))
+                        SwitchRow(
+                            title = stringResource(R.string.expiry_reminders_title),
+                            description = stringResource(R.string.expiry_reminders_description),
+                            checked = state.expiryReminders,
+                            onCheckedChange = { on ->
+                                // Asking is a platform effect, so it lives here: only when the cook
+                                // turns reminders on, never on launch (#52).
+                                when {
+                                    !on -> viewModel.onExpiryRemindersOff()
+                                    NotificationManagerCompat.from(context).areNotificationsEnabled() ->
+                                        viewModel.onExpiryRemindersPermission(true)
+                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                                        PackageManager.PERMISSION_GRANTED ->
+                                        notificationPrompt.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    // Allowed, but switched off for the app in system settings.
+                                    else -> viewModel.onExpiryRemindersPermission(false)
                                 }
-                            )
-                            if (state.expiryRemindersDenied && !state.expiryReminders) {
-                                Text(
-                                    stringResource(R.string.expiry_reminders_denied),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                                )
                             }
+                        )
+                        if (state.expiryRemindersDenied && !state.expiryReminders) {
+                            Text(
+                                stringResource(R.string.expiry_reminders_denied),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                            )
                         }
                     }
 

@@ -176,7 +176,7 @@
     <string name="delete_list_body">Die Liste wird entfernt. Die Rezepte darin bleiben in deinem Verlauf.</string>
     <string name="action_delete_list">Liste löschen</string>
 
-    <!-- Bottom tabs (#47), behind the mealPlan flag (#87) -->
+    <!-- Bottom tabs (#47) -->
     <string name="tab_recipes">Rezepte</string>
     <string name="tab_week">Woche</string>
     <string name="tab_groceries">Einkauf</string>
@@ -568,7 +568,6 @@
     <string name="tooltip_recipe_bookmark">Speichere dieses Rezept in einer Liste, etwa Favoriten.</string>
     <string name="tooltip_recipe_share">Sende dieses Rezept als Text, so wie es hier steht.</string>
     <string name="tooltip_recipe_menu">Mehr: Zum Plan hinzufügen, Zum Einkauf hinzufügen, Als Datei senden und Bearbeiten.</string>
-    <string name="tooltip_recipe_menu_no_plan">Mehr: Als Datei senden und Bearbeiten.</string>
     <string name="tooltip_recipe_start_cooking">Kochmodus: ein Schritt nach dem anderen, mit Timern, und der Bildschirm bleibt an.</string>
     <string name="tooltip_recipe_made_this">Gekocht? Füge ein Foto und eine Notiz hinzu, oder Als gekocht markieren.</string>
     <string name="tooltip_cook_done_next">Ist ein Schritt fertig, tippe hier für den nächsten.</string>

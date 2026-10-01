@@ -186,7 +186,7 @@
     <string name="delete_list_body">La liste sera supprimée. Ses recettes resteront dans votre historique.</string>
     <string name="action_delete_list">Supprimer la liste</string>
 
-    <!-- Bottom tabs (#47), behind the mealPlan flag (#87) -->
+    <!-- Bottom tabs (#47) -->
     <string name="tab_recipes">Recettes</string>
     <string name="tab_week">Semaine</string>
     <string name="tab_groceries">Courses</string>
@@ -590,7 +590,6 @@
     <string name="tooltip_recipe_bookmark">Enregistrez cette recette dans une liste, comme Favoris.</string>
     <string name="tooltip_recipe_share">Envoyez cette recette en texte, telle qu\'elle s\'affiche ici.</string>
     <string name="tooltip_recipe_menu">Plus : Ajouter au planning, Ajouter aux courses, Envoyer en fichier et Modifier.</string>
-    <string name="tooltip_recipe_menu_no_plan">Plus : Envoyer en fichier et Modifier.</string>
     <string name="tooltip_recipe_start_cooking">Mode cuisine : une étape à la fois, avec minuteurs, et l\'écran reste allumé.</string>
     <string name="tooltip_recipe_made_this">Vous l\'avez faite ? Ajoutez une photo et une note, ou Marquer comme cuisinée.</string>
     <string name="tooltip_cook_done_next">Quand une étape est finie, touchez ici pour passer à la suivante.</string>

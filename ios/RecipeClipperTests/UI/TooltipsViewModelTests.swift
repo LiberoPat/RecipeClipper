@@ -6,15 +6,13 @@ import XCTest
 @MainActor
 final class TooltipsViewModelTests: XCTestCase {
     private var preferences: MemoryTourPreferences!
-    private var flags: FeatureFlags!
     private let home: Set<Tooltip> = [.homeLink, .homeNewRecipe]
 
     override func setUp() {
         preferences = MemoryTourPreferences(sampleAdded: true, seen: [])
-        flags = FeatureFlags(store: MemoryFeatureFlagStore())
     }
 
-    private func make() -> TooltipsViewModel { TooltipsViewModel(preferences: preferences, flags: flags) }
+    private func make() -> TooltipsViewModel { TooltipsViewModel(preferences: preferences) }
 
     func testAReadyScreenShowsItsFirstTooltipOnThatAppearanceOnly() {
         let vm = make()
@@ -76,18 +74,6 @@ final class TooltipsViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.current, .recipeUnits, "back in view, back again")
     }
 
-    func testAFlaggedScreensTooltipsWaitForTheFlag() {
-        flags.set(.mealPlan, false)
-        let vm = make()
-        vm.onVisit(token: "a", screen: .pantry)
-        vm.onReport(token: "a", visible: [.pantryAdd], ready: true)
-        XCTAssertNil(vm.uiState.current)
-
-        flags.set(.mealPlan, true)
-        vm.onReport(token: "a", visible: [.pantryAdd], ready: true)
-        XCTAssertEqual(vm.uiState.current, .pantryAdd)
-    }
-
     func testShowTipsAgainBringsEveryTooltipBack() {
         for tooltip in Tooltip.allCases { preferences.setTooltipSeen(tooltip, true) }
         let vm = make()
@@ -116,7 +102,7 @@ final class TooltipsViewModelTests: XCTestCase {
     }
 
     func testATestContainerSeesNoTooltip() {
-        let vm = TooltipsViewModel(preferences: MemoryTourPreferences(), flags: flags)
+        let vm = TooltipsViewModel(preferences: MemoryTourPreferences())
         vm.onVisit(token: "a", screen: .home)
         vm.onReport(token: "a", visible: home, ready: true)
         XCTAssertNil(vm.uiState.current)

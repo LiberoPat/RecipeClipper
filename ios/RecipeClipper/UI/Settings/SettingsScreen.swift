@@ -57,54 +57,48 @@ struct SettingsScreen: View {
                     )
                 }
 
-                if vm.showsSteps || vm.showsChefMode {
-                    Divided {
-                        SectionHeading(Strings.settingsSectionSteps).padding(.bottom, 4)
-                        if vm.showsSteps {
-                            SwitchRow(
-                                title: Strings.amountsInStepsTitle,
-                                description: Strings.amountsInStepsDescription,
-                                isOn: Binding(get: { vm.uiState.amountsInSteps }, set: vm.onAmountsInStepsChange)
-                            )
-                        }
-                        if vm.showsChefMode {
-                            // Chef mode (#100): disabled, with one line saying why, where the phone can't.
-                            let available = state.chefSupport?.isAvailable ?? false
-                            SwitchRow(
-                                title: Strings.chefModeTitle,
-                                description: Strings.chefModeDescription,
-                                isOn: Binding(get: { vm.uiState.chefMode && available }, set: vm.onChefModeChange)
-                            )
-                            .disabled(!available)
-                            .accessibilityIdentifier("settings.chefMode")
-                            if let note = chefNote(state.chefSupport) {
-                                Text(note)
-                                    .textStyle(Typography.bodySmall)
-                                    .foregroundStyle(Palette.muted)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .accessibilityIdentifier("settings.chefModeNote")
-                            }
+                Divided {
+                    SectionHeading(Strings.settingsSectionSteps).padding(.bottom, 4)
+                    SwitchRow(
+                        title: Strings.amountsInStepsTitle,
+                        description: Strings.amountsInStepsDescription,
+                        isOn: Binding(get: { vm.uiState.amountsInSteps }, set: vm.onAmountsInStepsChange)
+                    )
+                    if vm.showsChefMode {
+                        // Chef mode (#100): disabled, with one line saying why, where the phone can't.
+                        let available = state.chefSupport?.isAvailable ?? false
+                        SwitchRow(
+                            title: Strings.chefModeTitle,
+                            description: Strings.chefModeDescription,
+                            isOn: Binding(get: { vm.uiState.chefMode && available }, set: vm.onChefModeChange)
+                        )
+                        .disabled(!available)
+                        .accessibilityIdentifier("settings.chefMode")
+                        if let note = chefNote(state.chefSupport) {
+                            Text(note)
+                                .textStyle(Typography.bodySmall)
+                                .foregroundStyle(Palette.muted)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityIdentifier("settings.chefModeNote")
                         }
                     }
-                    .onAppear { vm.onStepsShown() }
                 }
+                .onAppear { vm.onStepsShown() }
 
-                if vm.showsPantry {
-                    Divided {
-                        SectionHeading(Strings.settingsSectionPantry).padding(.bottom, 4)
-                        SwitchRow(
-                            title: Strings.expiryRemindersTitle,
-                            description: Strings.expiryRemindersDescription,
-                            isOn: Binding(get: { vm.uiState.expiryReminders }, set: { vm.onExpiryRemindersChange($0) })
-                        )
-                        .accessibilityIdentifier("settings.expiryReminders")
-                        if state.expiryRemindersDenied && !state.expiryReminders {
-                            Text(Strings.expiryRemindersDenied)
-                                .textStyle(Typography.bodySmall)
-                                .foregroundStyle(Palette.error)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .accessibilityIdentifier("settings.expiryRemindersDenied")
-                        }
+                Divided {
+                    SectionHeading(Strings.settingsSectionPantry).padding(.bottom, 4)
+                    SwitchRow(
+                        title: Strings.expiryRemindersTitle,
+                        description: Strings.expiryRemindersDescription,
+                        isOn: Binding(get: { vm.uiState.expiryReminders }, set: { vm.onExpiryRemindersChange($0) })
+                    )
+                    .accessibilityIdentifier("settings.expiryReminders")
+                    if state.expiryRemindersDenied && !state.expiryReminders {
+                        Text(Strings.expiryRemindersDenied)
+                            .textStyle(Typography.bodySmall)
+                            .foregroundStyle(Palette.error)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityIdentifier("settings.expiryRemindersDenied")
                     }
                 }
 

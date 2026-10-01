@@ -43,7 +43,7 @@ data class CookState(
  * [temperatureUnit] is independent of [unitSystem] — see [TemperatureUnit]'s doc.
  * [darkWhileCooking] forces the ink scheme in cook mode even in light mode; off by default,
  * so cook mode follows the system theme like every other screen. [amountsInSteps] is the
- * Settings switch (#101), behind the `amountsInSteps` flag, which the screen checks.
+ * Settings switch (#101).
  */
 data class RecipeUiState(
     val content: RecipeContent = RecipeContent.Loading,

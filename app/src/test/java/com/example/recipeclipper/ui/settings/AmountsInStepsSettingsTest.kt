@@ -11,7 +11,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
@@ -38,13 +37,7 @@ class AmountsInStepsSettingsTest {
         compose.setContent { SettingsScreen(onBack = {}, viewModel = viewModel) }
     }
 
-    @Test fun hiddenWithoutTheFlag() {
-        show()
-        compose.onNodeWithText("Amounts in steps").assertDoesNotExist()
-    }
-
     @Test fun offByDefaultAndTurnsOn() {
-        flags.set(Flag.AMOUNTS_IN_STEPS, true)
         show()
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Amounts in steps", substring = true))
         compose.onNodeWithText("Steps").assertExists()

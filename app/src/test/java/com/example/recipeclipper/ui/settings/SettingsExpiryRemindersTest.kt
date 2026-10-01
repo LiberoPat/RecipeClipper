@@ -2,8 +2,6 @@ package com.example.recipeclipper.ui.settings
 
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.Flag
-import com.example.recipeclipper.data.flags.FlagDefinition
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeBackupFiles
@@ -26,23 +24,9 @@ class SettingsExpiryRemindersTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val preferences = FakeAppPreferences()
-    private val flags = FeatureFlags(
-        FakeFeatureFlagStore(),
-        listOf(FlagDefinition("mealPlan", "The meal plan", debugDefault = false, releaseDefault = false, issue = 47)),
-        isDebug = true
-    )
+    private val flags = FeatureFlags(FakeFeatureFlagStore(), emptyList(), isDebug = true)
 
     private fun vm() = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo(), flags)
-
-    @Test fun `the Pantry section follows the mealPlan flag`() = runTest(mainDispatcherRule.dispatcher) {
-        val vm = vm()
-        advanceUntilIdle()
-        assertFalse(vm.uiState.value.showsPantry)
-
-        flags.set(Flag.MEAL_PLAN, true)
-        advanceUntilIdle()
-        assertTrue(vm.uiState.value.showsPantry)
-    }
 
     @Test fun `allowed notifications turn reminders on`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = vm()

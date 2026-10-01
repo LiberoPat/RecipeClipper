@@ -68,7 +68,6 @@ fun RecipesScreen(
     onOpenUrl: (String) -> Unit = {},
     onScan: (List<String>) -> Unit = {},
     viewModel: RecipesViewModel = hiltViewModel(),
-    cookedPhotosEnabled: Boolean = LocalFlagValues.current.isOn(Flag.COOKED_PHOTOS),
     scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -140,7 +139,7 @@ fun RecipesScreen(
                                 onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink,
                                 onScan = onScan.takeIf { scanEnabled }
                             )
-                            SortMenu(state.sort, viewModel::onSortChange, showCooked = cookedPhotosEnabled)
+                            SortMenu(state.sort, viewModel::onSortChange)
                         }
                         state.count?.let { LibraryCountText(it) }
                         Spacer(Modifier.height(12.dp))

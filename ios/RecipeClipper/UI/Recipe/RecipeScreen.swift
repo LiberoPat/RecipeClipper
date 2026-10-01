@@ -7,8 +7,8 @@ struct RecipeScreen: View {
     let vm: RecipeViewModel
     let saveVM: SaveToListViewModel
     var onEdit: (Int64) -> Void = { _ in }
-    /// Makes the "Add to plan" sheet's ViewModel (#49); nil hides the menu item, as while the
-    /// tab flag is off. Made on first use and kept for the screen's life.
+    /// Makes the "Add to plan" sheet's ViewModel (#49); nil (tests) hides the menu item. Made on
+    /// first use and kept for the screen's life.
     var makePlanVM: (() -> AddToPlanViewModel)? = nil
     /// Makes the "Add to groceries" sheet's ViewModel (#50); nil hides the menu item.
     var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
@@ -23,16 +23,13 @@ struct RecipeScreen: View {
     var onReadPhoto: (PhotoPost) -> Void = { _ in }
     /// The `photoText` flag (#198): "Read the photo" shows only behind it.
     var photoTextEnabled = false
-    /// The `amountsInSteps` flag (#101): amounts inside steps show only behind it.
-    var amountsInStepsEnabled = false
-    /// Makes "Your cooks" (#116); nil (the `cookedPhotos` flag off) leaves it out.
+    /// Makes "Your cooks" (#116); nil leaves it out.
     var makePhotosVM: (() -> CookedPhotosViewModel)? = nil
     /// Makes "Send as file" (#149): the recipe as a small file for someone else's app; nil
     /// leaves it out. Made on first use and kept for the screen's life.
     var makeSendFileVM: (() -> SendFileViewModel)? = nil
     /// Makes the pantry's use-up sheet (#147), opened when cook mode is finished with
-    /// ingredients ticked or "I made this" adds a photo; nil (the tab flag off, so no pantry)
-    /// leaves it out.
+    /// ingredients ticked or "I made this" adds a photo; nil leaves it out.
     var makeUseUpVM: (() -> PantryUseUpViewModel)? = nil
 
     @Environment(\.dismiss) private var dismiss
@@ -61,11 +58,10 @@ struct RecipeScreen: View {
         Group {
             switch state.content {
             case .success(let success):
-                let shown = amountsInStepsEnabled ? success : success.withoutStepAmounts
                 if state.cook.active {
-                    CookView(content: shown, state: state, vm: vm)
+                    CookView(content: success, state: state, vm: vm)
                 } else {
-                    ReadingView(content: shown, state: state, vm: vm, photos: photosVM)
+                    ReadingView(content: success, state: state, vm: vm, photos: photosVM)
                 }
             case .loading:
                 StatusView {

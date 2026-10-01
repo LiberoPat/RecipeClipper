@@ -1,17 +1,15 @@
 package com.example.recipeclipper.data.model
 
-import com.example.recipeclipper.data.flags.Flag
-
 /** The screens that show tooltips (#190). Cook mode is its own, though it is the recipe screen's. */
 enum class TooltipScreen { HOME, RECIPE, COOK, WEEK, GROCERIES, PANTRY, SETTINGS }
 
 /**
  * The tooltips (#190): a small bubble pointing at a control, shown the first time it's reached.
- * In the order each screen shows them; `shared/tooltips.json` lists the same ids, screens and
- * flags for both apps (iOS's `Tooltip`), and `TooltipsTest` fails if this differs from it. A
- * tooltip with a [flag] shows only while the flag is on. Seen once dismissed, stored under [key].
+ * In the order each screen shows them; `shared/tooltips.json` lists the same ids and screens for
+ * both apps (iOS's `Tooltip`), and `TooltipsTest` fails if this differs from it. Seen once
+ * dismissed, stored under [key].
  */
-enum class Tooltip(val id: String, val screen: TooltipScreen, val flag: Flag? = null) {
+enum class Tooltip(val id: String, val screen: TooltipScreen) {
     HOME_LINK("home_link", TooltipScreen.HOME),
     HOME_NEW_RECIPE("home_new_recipe", TooltipScreen.HOME),
     RECIPE_UNITS("recipe_units", TooltipScreen.RECIPE),
@@ -19,22 +17,22 @@ enum class Tooltip(val id: String, val screen: TooltipScreen, val flag: Flag? = 
     RECIPE_SHARE("recipe_share", TooltipScreen.RECIPE),
     RECIPE_MENU("recipe_menu", TooltipScreen.RECIPE),
     RECIPE_START_COOKING("recipe_start_cooking", TooltipScreen.RECIPE),
-    RECIPE_MADE_THIS("recipe_made_this", TooltipScreen.RECIPE, Flag.COOKED_PHOTOS),
+    RECIPE_MADE_THIS("recipe_made_this", TooltipScreen.RECIPE),
     COOK_DONE_NEXT("cook_done_next", TooltipScreen.COOK),
     COOK_TAP_STEP("cook_tap_step", TooltipScreen.COOK),
     COOK_TIMER("cook_timer", TooltipScreen.COOK),
     COOK_INGREDIENTS("cook_ingredients", TooltipScreen.COOK),
-    WEEK_ADD("week_add", TooltipScreen.WEEK, Flag.MEAL_PLAN),
-    WEEK_MONTH("week_month", TooltipScreen.WEEK, Flag.MEAL_PLAN),
-    WEEK_MENU("week_menu", TooltipScreen.WEEK, Flag.MEAL_PLAN),
-    GROCERIES_ADD("groceries_add", TooltipScreen.GROCERIES, Flag.MEAL_PLAN),
-    GROCERIES_TICK("groceries_tick", TooltipScreen.GROCERIES, Flag.MEAL_PLAN),
-    GROCERIES_LONG_PRESS("groceries_long_press", TooltipScreen.GROCERIES, Flag.MEAL_PLAN),
-    GROCERIES_DONE_SHOPPING("groceries_done_shopping", TooltipScreen.GROCERIES, Flag.MEAL_PLAN),
-    GROCERIES_MENU("groceries_menu", TooltipScreen.GROCERIES, Flag.MEAL_PLAN),
-    PANTRY_ADD("pantry_add", TooltipScreen.PANTRY, Flag.MEAL_PLAN),
-    PANTRY_IN_STOCK("pantry_in_stock", TooltipScreen.PANTRY, Flag.MEAL_PLAN),
-    PANTRY_MENU("pantry_menu", TooltipScreen.PANTRY, Flag.MEAL_PLAN),
+    WEEK_ADD("week_add", TooltipScreen.WEEK),
+    WEEK_MONTH("week_month", TooltipScreen.WEEK),
+    WEEK_MENU("week_menu", TooltipScreen.WEEK),
+    GROCERIES_ADD("groceries_add", TooltipScreen.GROCERIES),
+    GROCERIES_TICK("groceries_tick", TooltipScreen.GROCERIES),
+    GROCERIES_LONG_PRESS("groceries_long_press", TooltipScreen.GROCERIES),
+    GROCERIES_DONE_SHOPPING("groceries_done_shopping", TooltipScreen.GROCERIES),
+    GROCERIES_MENU("groceries_menu", TooltipScreen.GROCERIES),
+    PANTRY_ADD("pantry_add", TooltipScreen.PANTRY),
+    PANTRY_IN_STOCK("pantry_in_stock", TooltipScreen.PANTRY),
+    PANTRY_MENU("pantry_menu", TooltipScreen.PANTRY),
     SETTINGS_UNITS("settings_units", TooltipScreen.SETTINGS),
     SETTINGS_SHOW_TIPS("settings_show_tips", TooltipScreen.SETTINGS);
 
@@ -59,7 +57,7 @@ data class TooltipVisit(
  *
  * - One at a time: only the current visit's screen shows one, and a visit shows one at most.
  *   Dismissed, the screen's next one waits for a later visit: never chained.
- * - In the catalogue's order, the first not yet seen, with its flag on, whose control is on
+ * - In the catalogue's order, the first not yet seen whose control is on
  *   screen: an anchor scrolled away, or under a sheet or the keyboard, is passed over.
  * - Never before the screen has settled ([SETTLE_MILLIS]) or while something covers it: the
  *   caller says so with `ready`.
@@ -87,14 +85,13 @@ object Tooltips {
     fun current(
         visit: TooltipVisit?,
         seen: Set<Tooltip>,
-        isOn: (Flag) -> Boolean,
         visible: Set<Tooltip>,
         ready: Boolean
     ): Tooltip? {
         if (visit == null || visit.closed || !ready) return null
         visit.shown?.let { return it.takeIf { it in visible && it !in seen } }
         return forScreen(visit.screen).firstOrNull {
-            it !in seen && (it.flag == null || isOn(it.flag)) && it in visible
+            it !in seen && it in visible
         }
     }
 

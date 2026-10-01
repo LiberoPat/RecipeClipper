@@ -14,7 +14,7 @@ extension WalkthroughUITests {
     /// The copy goes to a local folder standing in for iCloud Drive (`-uiTestBackupFolder`): a
     /// simulator has none.
     func test14_automaticBackup() {
-        start(flags: ["mealPlan"], scenario: .empty, extraArguments: ["-uiTestBackupFolder"])
+        start(scenario: .empty, extraArguments: ["-uiTestBackupFolder"])
         let restore = require(app.buttons["home.restore"], "Restore from a backup file")
         pause()
         restore.tap()
@@ -33,7 +33,7 @@ extension WalkthroughUITests {
 
     func test15_sendAndPasteAList() {
         let pasteboard = UITestWalkthroughList.friends.replacingOccurrences(of: "\n", with: "\\n")
-        start(flags: ["mealPlan"], scenario: .walkthroughPantry, extraArguments: ["-uiTestPasteboard", pasteboard])
+        start(scenario: .walkthroughPantry, extraArguments: ["-uiTestPasteboard", pasteboard])
         tab("Groceries")
         recipeMenu("Send list")
         dismissShareSheet()
@@ -49,7 +49,7 @@ extension WalkthroughUITests {
     /// A file received first (`-uiTestReceiveFile` opens it at launch, as if from Messages), then
     /// a recipe sent as a file.
     func test16_sendAndReceiveAFile() {
-        start(flags: ["mealPlan"], extraArguments: ["-uiTestReceiveFile"])
+        start(extraArguments: ["-uiTestReceiveFile"])
         require(text("Add from this file"), "the sheet")
         pause(2.5)
         require(app.buttons["receiveRow-g:ui-paper"], "the typed item").tap() // unticked: stays out
@@ -63,7 +63,7 @@ extension WalkthroughUITests {
     }
 
     func test19_pantrySendList() {
-        start(flags: ["mealPlan"], scenario: .walkthroughPantry)
+        start(scenario: .walkthroughPantry)
         tab("Pantry")
         pause()
         recipeMenu("Send list")

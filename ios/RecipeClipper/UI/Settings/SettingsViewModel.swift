@@ -193,9 +193,6 @@ final class SettingsViewModel {
         )
     }
 
-    /// The Steps section's "Amounts in steps" (#101): only with the `amountsInSteps` flag on.
-    var showsSteps: Bool { flags?.isOn(.amountsInSteps) ?? false }
-
     /// The Steps section's "Chef mode" (#100): only with the `chefMode` flag on.
     var showsChefMode: Bool { flags?.isOn(.chefMode) ?? false }
 
@@ -222,10 +219,6 @@ final class SettingsViewModel {
         preferences.chefMode = enabled
         uiState.chefMode = enabled
     }
-
-    /// The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind
-    /// it. Read through the observable flags, so it follows Developer settings.
-    var showsPantry: Bool { flags?.isOn(.mealPlan) ?? false }
 
     /// The "Unlimited recipes" row (#107): nil while the `freeTier` flag is off. Unlocked counts
     /// Developer settings' override too. Read through the observable flags and store.

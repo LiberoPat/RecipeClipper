@@ -461,7 +461,7 @@ enum Strings {
         }
     }
 
-    // Bottom tabs (#47), behind the mealPlan flag (#87)
+    // Bottom tabs (#47)
     static var tabRecipes: String { String(localized: "tab_recipes") }
     static var tabWeek: String { String(localized: "tab_week") }
     static var tabGroceries: String { String(localized: "tab_groceries") }
@@ -677,16 +677,15 @@ enum Strings {
 
     // The tooltips (#190)
     static var tooltipGotIt: String { String(localized: "tooltip_got_it") }
-    /// A tooltip's words. The recipe menu's name Add to plan and Add to groceries only with the
-    /// meal plan on, as the menu has them only then.
-    static func tooltip(_ tooltip: Tooltip, mealPlan: Bool) -> String {
+    /// A tooltip's words.
+    static func tooltip(_ tooltip: Tooltip) -> String {
         switch tooltip {
         case .homeLink: String(localized: "tooltip_home_link")
         case .homeNewRecipe: String(localized: "tooltip_home_new_recipe")
         case .recipeUnits: String(localized: "tooltip_recipe_units")
         case .recipeBookmark: String(localized: "tooltip_recipe_bookmark")
         case .recipeShare: String(localized: "tooltip_recipe_share")
-        case .recipeMenu: mealPlan ? String(localized: "tooltip_recipe_menu") : String(localized: "tooltip_recipe_menu_no_plan")
+        case .recipeMenu: String(localized: "tooltip_recipe_menu")
         case .recipeStartCooking: String(localized: "tooltip_recipe_start_cooking")
         case .recipeMadeThis: String(localized: "tooltip_recipe_made_this")
         case .cookDoneNext: String(localized: "tooltip_cook_done_next")

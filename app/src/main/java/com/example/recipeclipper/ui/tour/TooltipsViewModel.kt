@@ -2,7 +2,6 @@ package com.example.recipeclipper.ui.tour
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.local.TourPreferences
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.TooltipScreen
@@ -29,8 +28,7 @@ data class TooltipsUiState(val current: Tooltip? = null, val token: String? = nu
  */
 @HiltViewModel
 class TooltipsViewModel @Inject constructor(
-    private val preferences: TourPreferences,
-    flags: FeatureFlags
+    private val preferences: TourPreferences
 ) : ViewModel() {
 
     private data class Report(val visible: Set<Tooltip>, val ready: Boolean)
@@ -44,10 +42,10 @@ class TooltipsViewModel @Inject constructor(
     // Nothing shows until the stored state has been read, so a seen tooltip never flashes. The
     // tooltip picked is kept as the visit's, so another can't follow it in the same visit.
     val uiState: StateFlow<TooltipsUiState> =
-        combine(preferences.seenTooltips, flags.values, visit, reports) { seen, values, visit, reports ->
+        combine(preferences.seenTooltips, visit, reports) { seen, visit, reports ->
             val report = visit?.let { reports[it.token] }
             val current = Tooltips.current(
-                visit, seen, values::isOn,
+                visit, seen,
                 visible = report?.visible.orEmpty(),
                 ready = report?.ready == true
             )

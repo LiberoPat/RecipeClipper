@@ -26,7 +26,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The tab shell (#47) in both states of `BuildConfig.MEAL_PLAN_TABS`. The Recipes graph is a
+ * The tab shell (#47). The Recipes graph is a
  * stand-in with the real routes and one line of text per screen (the real screens need Hilt);
  * what's under test is the shell: which tab shows, where the bar shows, that each tab keeps its
  * own back stack, and that a shared link always lands in Recipes.
@@ -77,11 +77,11 @@ class AppShellTest {
         composable(Routes.PANTRY) { Text("stub:pantry") }
     }
 
-    private fun show(tabsEnabled: Boolean) {
+    private fun show() {
         compose.setContent {
             nav = rememberNavController()
             AppShell(
-                nav, tabsEnabled = tabsEnabled, recipes = { stubRecipes() }, week = { stubWeek() },
+                nav, recipes = { stubRecipes() }, week = { stubWeek() },
                 groceries = { stubGroceries() }, pantry = { stubPantry() }
             )
         }
@@ -97,36 +97,9 @@ class AppShellTest {
     private fun tab(label: String) = compose.onNode(hasText(label) and isSelectable())
     private fun bar() = compose.onNodeWithTag("tabBar")
 
-    // Flag off: the app as it was before the shell.
-
-    @Test
-    fun withTheFlagOffThereIsNoTabBar() {
-        show(tabsEnabled = false)
-
-        bar().assertDoesNotExist()
-        tab("Week").assertDoesNotExist()
-        onNav { navigate(Routes.RECIPES) }
-        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
-        bar().assertDoesNotExist()
-    }
-
-    @Test
-    fun withTheFlagOffAShareImportsOnTopOfTheSingleStack() {
-        show(tabsEnabled = false)
-        onNav { navigate(Routes.RECIPES) }
-
-        onNav { openRoute(Routes.import("https://example.com/soup"), tabsEnabled = false) }
-        compose.onNodeWithText("stub:import https://example.com/soup").assertIsDisplayed()
-
-        onNav { popBackStack() }
-        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
-    }
-
-    // Flag on.
-
     @Test
     fun theBarShowsFourTabsInOrderWithRecipesOpen() {
-        show(tabsEnabled = true)
+        show()
 
         bar().assertIsDisplayed()
         val lefts = listOf("Recipes", "Week", "Groceries", "Pantry").map {
@@ -139,7 +112,7 @@ class AppShellTest {
 
     @Test
     fun theBarShowsOnTheRecipesListScreensAndHidesOnARecipe() {
-        show(tabsEnabled = true)
+        show()
 
         for (route in listOf(Routes.RECIPES, Routes.LISTS, Routes.list(4), Routes.SETTINGS)) {
             onNav { navigate(route) }
@@ -159,7 +132,7 @@ class AppShellTest {
 
     @Test
     fun theOtherTabsShowTheirScreens() {
-        show(tabsEnabled = true)
+        show()
 
         tab("Week").performClick()
         compose.onNodeWithText("stub:week").assertIsDisplayed()
@@ -176,7 +149,7 @@ class AppShellTest {
 
     @Test
     fun eachTabKeepsItsOwnBackStack() {
-        show(tabsEnabled = true)
+        show()
         onNav { navigate(Routes.LISTS) }
         onNav { navigate(Routes.list(4)) }
 
@@ -191,7 +164,7 @@ class AppShellTest {
 
     @Test
     fun choosingTheOpenTabAgainGoesBackToItsFirstScreen() {
-        show(tabsEnabled = true)
+        show()
         onNav { navigate(Routes.RECIPES) }
 
         tab("Recipes").performClick()
@@ -202,12 +175,12 @@ class AppShellTest {
 
     @Test
     fun aShareFromAnotherTabLandsInRecipesOnTopOfItsStack() {
-        show(tabsEnabled = true)
+        show()
         onNav { navigate(Routes.RECIPES) }
         tab("Pantry").performClick()
         compose.onNodeWithText("stub:pantry").assertIsDisplayed()
 
-        onNav { openRoute(Routes.import("https://example.com/soup"), tabsEnabled = true) }
+        onNav { openRoute(Routes.import("https://example.com/soup")) }
 
         compose.onNodeWithText("stub:import https://example.com/soup").assertIsDisplayed()
         bar().assertDoesNotExist()
@@ -225,11 +198,11 @@ class AppShellTest {
 
     @Test
     fun aShareWhileInRecipesPushesOnTopWithoutResettingTheStack() {
-        show(tabsEnabled = true)
+        show()
         onNav { navigate(Routes.LISTS) }
 
-        onNav { openRoute(Routes.import("https://example.com/a"), tabsEnabled = true) }
-        onNav { openRoute(Routes.import("https://example.com/b"), tabsEnabled = true) }
+        onNav { openRoute(Routes.import("https://example.com/a")) }
+        onNav { openRoute(Routes.import("https://example.com/b")) }
 
         compose.onNodeWithText("stub:import https://example.com/b").assertIsDisplayed()
         onNav { popBackStack() }

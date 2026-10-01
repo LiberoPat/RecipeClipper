@@ -1,12 +1,10 @@
 package com.example.recipeclipper.ui.navigation
 
 import android.net.Uri
-import androidx.compose.runtime.Composable
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.recipeclipper.data.PhotoPost
@@ -42,7 +40,7 @@ object Routes {
     // The share-target entry: parse, then persist.
     const val IMPORT = "recipe/import?${RecipeViewModel.URL_ARG}={${RecipeViewModel.URL_ARG}}"
 
-    // The tabs (#47). Only reachable while the mealPlan flag (#87) is on.
+    // The tabs (#47).
     const val WEEK = "week"
 
     // The Week tab's own stack (#49): a planned recipe opens at its planned servings.
@@ -94,25 +92,7 @@ object Routes {
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
 }
 
-/**
- * The single-stack app, as it is while the `mealPlan` flag is off: exactly the
- * Recipes graph, with no tab bar. With the flag on, [AppShell] nests the same destinations
- * under the Recipes tab instead.
- */
-@Composable
-fun RecipeNavHost(
-    navController: NavHostController,
-    recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) }
-) {
-    NavHost(navController = navController, startDestination = Routes.HOME) {
-        recipes(navController)
-    }
-}
-
-/**
- * Every destination of the Recipes stack, starting at [Routes.HOME]. Shared by the flag-off
- * [RecipeNavHost] and the Recipes tab of [AppShell], so both are the same graph.
- */
+/** Every destination of the Recipes stack, starting at [Routes.HOME]: the Recipes tab of [AppShell]. */
 fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     composable(Routes.HOME) {
         HomeScreen(
@@ -183,7 +163,11 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         RecipeScreen(
             onBack = { navController.popBackStack() },
             onEdit = { navController.navigate(Routes.edit(it)) },
-            sendFileViewModel = hiltViewModel()
+            planViewModel = hiltViewModel(),
+            groceriesViewModel = hiltViewModel(),
+            photosViewModel = hiltViewModel(),
+            sendFileViewModel = hiltViewModel(),
+            useUpViewModel = hiltViewModel()
         )
     }
 
@@ -236,7 +220,11 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
                 }
             },
             onReadPhoto = { navController.navigate(Routes.editPhoto(it)) },
-            sendFileViewModel = hiltViewModel()
+            planViewModel = hiltViewModel(),
+            groceriesViewModel = hiltViewModel(),
+            photosViewModel = hiltViewModel(),
+            sendFileViewModel = hiltViewModel(),
+            useUpViewModel = hiltViewModel()
         )
     }
 

@@ -98,7 +98,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
     /** "I made this" (#116): a photo from the library (canned, see [cannedPhotoResult]) and a note. */
     @Test
     fun test13_iMadeThis() {
-        start("cookedPhotos")
+        start()
         tapScrolling(hasText("Recipes") and !isSelectable()) // Home's row, not the tab
         tapScrolling("Chocolate Chip Cookies")
         repeat(3) { swipeUp() }
@@ -134,7 +134,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test17_firstRunTour() {
-        start("mealPlan", seeded = false, firstRun = true)
+        start(seeded = false, firstRun = true)
         waitFor(hasTestTag("tooltip-home_link"))
         pause(2500)
         tap("Got it", 1500)
@@ -151,7 +151,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test18_doneShoppingAndOnList() {
-        start("mealPlan", kitchen = true)
+        start(kitchen = true)
         tap("Groceries")
         for (item in listOf("soy sauce", "garlic", "bay leaves")) tap(hasText(item, substring = true), 1000)
         pause(1000)
@@ -178,7 +178,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test20_pantryUseUpAfterCooking() {
-        start("mealPlan", kitchen = true)
+        start(kitchen = true)
         tap("Chicken Adobo")
         for (line in listOf("2 lb chicken thighs", "1/2 cup soy sauce", "1/3 cup white vinegar")) {
             tap(hasText(line, substring = true), 1000)
@@ -202,7 +202,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test23_markAsCooked() {
-        start("mealPlan", "cookedPhotos", kitchen = true)
+        start(kitchen = true)
         tap("Chicken Adobo")
         repeat(3) { swipeUp() }
         press(hasText("I made this"))
@@ -225,7 +225,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test24_tooltips() {
-        start("mealPlan", seeded = false, firstRun = true)
+        start(seeded = false, firstRun = true)
         waitFor(hasTestTag("tooltip-home_link"))
         pause(2500)
         tap("Got it", 1500)
@@ -256,7 +256,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test25_pantryStates() {
-        start("mealPlan", kitchen = true)
+        start(kitchen = true)
         tap("Pantry", 2000)
         val onions = pantryIds.getValue("onions")
         swipeRow("onions", left = true) // Ran out: to Run out, and onto the list
@@ -299,7 +299,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test26_onionAndOnions() {
-        start("mealPlan", kitchen = true)
+        start(kitchen = true)
         tap("Week")
         planToday("Chicken Adobo")
         planToday("Guacamole")

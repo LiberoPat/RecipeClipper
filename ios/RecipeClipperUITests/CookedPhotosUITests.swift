@@ -1,7 +1,7 @@
 import XCTest
 
 /// "I made this" (#116; Android's RecipeCookedPhotosScreenTest): "Your cooks" sits at the foot
-/// of the reading view only behind its flag, and offers the camera or the library. The iOS 27
+/// of the reading view, and offers the camera or the library. The iOS 27
 /// simulator opens the real UIImagePickerController, but its virtual camera shows a grey
 /// preview and never captures, so the test only checks that the camera (or, on a simulator
 /// without one, the no-camera alert) opens and closes without adding a photo. The library is
@@ -20,15 +20,8 @@ final class CookedPhotosUITests: RecipeUITestCase {
         for _ in 0..<3 { app.scrollViews.firstMatch.swipeUp() }
     }
 
-    func testWithTheFlagOffThereIsNoGallery() {
-        launch()
-        openRecipe("Miso Soup")
-        scrollToTheEnd()
-        assertAbsent(text("Your cooks"), "Your cooks with the flag off")
-    }
-
     func testIMadeThisOpensTheCameraAndClosingItAddsNothing() {
-        launch(flags: ["cookedPhotos"])
+        launch()
         openRecipe("Miso Soup")
         scrollToTheEnd()
         require(text("Your cooks"), "the Your cooks heading")
@@ -63,7 +56,7 @@ final class CookedPhotosUITests: RecipeUITestCase {
     /// new photo, "Cooked" in place of the picture and no Share, for its note; then the row shows
     /// it as a dated entry VoiceOver reads as cooked with no photo.
     func testMarkAsCookedAddsADatedEntryWithoutAPicture() {
-        launch(flags: ["cookedPhotos"])
+        launch()
         openRecipe("Miso Soup")
         scrollToTheEnd()
         require(iMadeThis, "I made this").tap()
@@ -88,7 +81,7 @@ final class CookedPhotosUITests: RecipeUITestCase {
     /// gone, so it keeps its safe area. With the keyboard up for the note, the note shows above
     /// it and × stays in reach, below the status bar, and closes the viewer.
     func testAPhotoFromTheLibraryKeepsItsNoteAndCloseInReach() {
-        launch(flags: ["cookedPhotos"])
+        launch()
         openRecipe("Miso Soup")
         scrollToTheEnd()
         require(iMadeThis, "I made this").tap()

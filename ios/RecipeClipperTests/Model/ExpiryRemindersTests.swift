@@ -117,13 +117,9 @@ final class ExpiryReminderCoordinatorTests: XCTestCase {
                        alwaysHave: false, purchasedDay: nil, expiresDay: today + 1)
         ])
         let preferences = FakeAppPreferences(expiryReminders: true)
-        let flags = FeatureFlags(store: MemoryFeatureFlagStore(), definitions: [
-            FlagDefinition(key: "mealPlan", description: "The meal plan", defaults: .init(debug: false, release: false), issue: 47)
-        ], isDebug: true)
-        flags.set(.mealPlan, true)
         let scheduler = RecordingScheduler()
         let coordinator = ExpiryReminderCoordinator(
-            pantry: pantry, preferences: preferences, flags: flags, scheduler: scheduler,
+            pantry: pantry, preferences: preferences, scheduler: scheduler,
             clock: FixedClock(millis: today * PlanDays.millisPerDay + 8 * 3_600_000), zone: TimeZone(identifier: "UTC")!
         )
         coordinator.start()
@@ -138,11 +134,6 @@ final class ExpiryReminderCoordinatorTests: XCTestCase {
         await settle()
         XCTAssertEqual(scheduler.calls.last?.count, 2)
 
-        flags.set(.mealPlan, false)
-        await settle()
-        XCTAssertEqual(scheduler.calls.last, [])
-
-        flags.set(.mealPlan, true)
         pantry.items.value = pantry.items.value.map { var item = $0; item.inStock = false; return item }
         await settle()
         XCTAssertEqual(scheduler.calls.last, [])

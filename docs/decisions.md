@@ -1419,10 +1419,8 @@ The navigation shell for #46 (weekly meal plan, groceries, pantry), landing
 dark behind a flag so the shipped app is unchanged until the Week tab (#49)
 has something in it.
 
-- **One flag.** Now `mealPlan` in the feature-flag system (#87, below),
-  default off in both build types. Android's `AppShellTest` calls `AppShell`
-  directly with `tabsEnabled = true`; the iOS UI tests turn it on through the
-  flag store.
+- **One flag,** `mealPlan` (#87, below), until it was retired with the
+  single-stack navigation (#242): the tab shell is the only root now.
 - **Where the bar shows is an allow-list, not a deny-list**
   (`tabBarRoutes` on Android; `.toolbar(.hidden, for: .tabBar)` set only on
   the recipe destination on iOS). A new screen is bar-less by default, so
@@ -1431,9 +1429,7 @@ has something in it.
 - **Each tab is its own nested graph** (Android: `navigation(route =
   tab.route, ...)` under one `NavHost`, with `popUpTo`/`saveState`/
   `restoreState` on tab switch; iOS: one `NavigationStack` per `TabView`
-  case). Recipes' graph is shared, byte-for-byte, between the flag-off
-  `RecipeNavHost` and the flag-on shell's Recipes tab, so there are not two
-  copies of the Home stack to keep in sync.
+  case). Recipes' graph is `recipesDestinations` in `RecipeNavHost.kt`.
 - **A share always lands in Recipes,** even mid-import from another tab:
   the router/nav controller switches tabs first, then pushes the import
   route on top of whatever the Recipes stack already held — so a share
@@ -1904,7 +1900,7 @@ brings one).
   `unlimited_recipes` exists (on without it, users would hit the 20-recipe
   limit with an Unlock that can't complete), and `aiCountBrackets` stays off
   because the #105 evaluation found it confidently wrong on 4 of 22 lines.
-  The flags stay as kill switches rather than being retired.
+  The flags stay as kill switches until they are retired (below).
 - **Tests don't lean on the defaults.** A unit test that needs a flag on or
   off sets it through the fake store. iOS UI tests start with every flag off
   and turn on only the ones `launch(flags:)` names (`UITestSeeding`).
@@ -1915,8 +1911,8 @@ brings one).
   drift. Each platform also has a typed `Flag` enum with the same keys, and a
   unit test (`FeatureFlagsTest` / `FeatureFlagsTests`) fails if the enum and
   the file differ, or if a flag is no longer referenced by the app's code.
-- **Typed access over an injectable store:** `FeatureFlags.isOn(Flag.MEAL_PLAN)`
-  / `isOn(.mealPlan)`. `FeatureFlagStore` holds only overrides; choosing a
+- **Typed access over an injectable store:** `FeatureFlags.isOn(Flag.REDDIT)`
+  / `isOn(.reddit)`. `FeatureFlagStore` holds only overrides; choosing a
   flag's default removes its override, so a later change of default still
   reaches everyone. ViewModels see `FeatureFlags`, never prefs; tests use
   `FakeFeatureFlagStore` / `MemoryFeatureFlagStore`.
@@ -1933,17 +1929,30 @@ brings one).
   come from flags.json and stay English: developer text, not UI. The
   screen's own words are translated.
 - **Changes apply without a restart.** Android: MainActivity collects
-  `FeatureFlags.values` and provides them as `LocalFlagValues`; the tab shell
-  and the recipe screen read them. Turning the tab shell on or off swaps the
-  navigation graph, so the NavController is keyed by the flag and the app
-  reopens on Home (the screen says so). iOS: `FeatureFlags` is `@Observable`
-  and `RootView` reads it, so the root switches in place and the stack stays.
+  `FeatureFlags.values` and provides them as `LocalFlagValues`, which screens
+  read. iOS: `FeatureFlags` is `@Observable`, so a view reading it redraws.
 - **UI tests set flags through the store,** not a special launch argument:
-  `launch(flags: ["mealPlan"])` passes `-uiTestFlags`, which the UI-test
+  `launch(flags: ["reddit"])` passes `-uiTestFlags`, which the UI-test
   container writes as overrides into its own throwaway suite.
-- **Retiring a flag:** a flag stays while it's useful as a kill switch. When
-  one is no longer wanted, delete it from flags.json and the enums, with its
-  branches, in one PR. flags.json keeps no history.
+- **Retiring a flag:** a flag is retired once its feature is shipped and
+  stable with no open bug: delete it from flags.json and the enums, keep the
+  on behaviour, and delete the off paths, their strings and tests, in one PR.
+  flags.json keeps no history. An override a phone still holds for a retired
+  key names no `Flag`, so it is never read; Reset clears it with the rest
+  (tested on both platforms).
+- **Retired, 2026-10-01 (#242):** `mealPlan` (#47: the tab shell, Week,
+  Groceries, Pantry and the recipe screen's plan actions; the single-stack
+  navigation is gone), `amountsInSteps` (#101: Settings' Steps section always
+  shows the switch) and `cookedPhotos` (#116: "Your cooks" and the Recently
+  cooked sort). Open bug #218 (an iOS Pantry swipe's timing, seen only under
+  XCUITest) touches the Pantry, but nobody would switch the whole tab shell
+  off for it, so `mealPlan` went too: the rule keeps a flag only when it would
+  plausibly be switched off to contain a bug. Tooltips no longer carry a flag
+  (`shared/tooltips.json`), and iOS's share extension no longer reads a
+  mirrored `groceries_on` (a stale key in the App Group suite is never read).
+  Kept: `freeTier` and `aiCountBrackets` (off on purpose), `chefMode`,
+  `llmExtraction` and `aiDecisions` (kill switches for on-device AI), and
+  `reddit` and `photoText` (changed that week).
 
 ## Pantry expiry reminders (#52)
 
@@ -1952,9 +1961,7 @@ pantry is about to be used up by its date. #51's badge stays; this adds the
 nudge for a cook who isn't looking at the pantry.
 
 - **Opt-in, in Settings.** A Pantry section with one switch, "Expiry
-  reminders", off by default, shown only while the `mealPlan` flag is on (the
-  pantry is behind it). With the flag off nothing is scheduled even if the
-  setting is on. Stored as `expiry_reminders` in `unit_preferences` /
+  reminders", off by default. Stored as `expiry_reminders` in `unit_preferences` /
   UserDefaults, like the other settings.
 - **The permission is asked when the switch goes on, never at launch.**
   Android: `POST_NOTIFICATIONS` from the Settings screen (it holds the
@@ -1996,7 +2003,7 @@ nudge for a cook who isn't looking at the pantry.
 
 ## Meal plan extras (#52)
 
-The optional extras of #46, one PR each, still behind the `mealPlan` flag.
+The optional extras of #46, one PR each.
 
 ### Month view
 
@@ -2196,7 +2203,7 @@ Part of #99: the model writes words, code owns every number.
 ## Ingredient amounts inside steps (#101)
 
 Part of #99. "Add the carrots" reads "Add **2** carrots": a Settings switch, "Amounts in steps"
-(Settings → Steps, off by default, key `amounts_in_steps`), behind the `amountsInSteps` flag.
+(Settings → Steps, off by default, key `amounts_in_steps`); its flag was retired (#242).
 Deterministic, no AI: `StepAmounts.annotate(steps, lines, words)`, pure, both platforms, pinned
 by the differential corpus's `Step` rows. The lines are the ingredient lines **as the reading
 view renders them** (scaled, then converted), so the amount follows the servings stepper and the
@@ -2713,9 +2720,7 @@ Pinned by the scaler tests on both platforms and the corpus's #125 rows.
 ## "I made this": your photos on a recipe (#116)
 
 Owner's request: a private cooking journal on the phone, with no server and no accounts. It is
-the groundwork for the backlog social feed (#117). Behind `cookedPhotos`, off by default. With
-the flag off nothing shows, but the rules below (protection, deleting, backup) apply to any
-photo that exists.
+the groundwork for the backlog social feed (#117). Its `cookedPhotos` flag was retired (#242).
 
 - **One photo per entry.** Each photo has its own `day` (an epoch day, like the plan's, so the
   date never slips across time zones) and an optional note of up to 280 characters. Picking
@@ -2771,7 +2776,7 @@ photo that exists.
   - **Format.** An export with photos is a `.zip` holding `backup.json` (the same JSON, with a
     new `cookedPhotos` section: id, recipeId, day, note, createdAt, updatedAt, file) and each
     picture at `photos/<name>.jpg`. An export without photos is the same `.json` file as before,
-    byte for byte, so with the flag off nothing changes. A file that doesn't start with a zip
+    byte for byte. A file that doesn't start with a zip
     signature is read as JSON, so every older backup imports.
   - **Why a zip, not base64 in the JSON.** Base64 would mean a single string of tens of MB
     (+33%), held in memory while parsing. A zip keeps the JSON small and the pictures as files.
@@ -2937,12 +2942,9 @@ works either way.
 - **Where a list comes in.** "Paste a list" in the Groceries menu reads the clipboard when
   tapped (an empty one shows the sheet with a sentence saying so). On Android, shared text
   with a link still imports the link, exactly as before; text with no link but with lines
-  opens the Groceries tab on the sheet (through `ReceivedListInbox`, in memory), only with
-  the `mealPlan` flag. The iOS share extension can't open the app (#19), so it shows the same
+  opens the Groceries tab on the sheet (through `ReceivedListInbox`, in memory). The iOS share extension can't open the app (#19), so it shows the same
   sheet in its card and writes to the App Group database itself; the app catches up when it
-  becomes active, like a shared recipe. The extension never sees the flags, so the app
-  mirrors `mealPlan` into the App Group suite as `groceries_on` (as #107's limit is); off, a
-  list shared in is "no link", as before.
+  becomes active, like a shared recipe.
 - **The Pantry's "Send list" sends what's in stock** (owner's decision, 2026-09-26): what's at
   home, so someone at the shops can check before buying twice. Items switched to out are not
   sent: running out already put them on the grocery list (#146), so Groceries' "Send list"
@@ -3002,7 +3004,7 @@ stores them. No server, no account: the file goes through the user's own share s
 - **What the receiver chooses.** "Add from this file" opens over whatever is on screen: the
   recipes, the grocery items (each with its recipe beneath) and the pantry items, every row
   ticked, then two radio rows for the pantry items (the Pantry, or Groceries as their names),
-  then one Add. Groceries and Pantry rows show only with the `mealPlan` flag, like their tabs.
+  then one Add.
   Once added, the app shows where things went: Groceries, else the Pantry, else Recipes. A
   file that can't be read says why (the export's errors), with nothing to add.
 - **How it merges: `BackupMerger`, with two differences from an import.** Recipes match by the
@@ -3081,16 +3083,15 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
     recipe".
   - **Recipe (reading view):** the units dropdown, explaining "As written" (every amount as
     the recipe gives it; tap for Metric or Ounces; what can't convert exactly stays as written);
-    the bookmark; the share icon; the ⋮ menu (it names Add to plan and Add to groceries only with `mealPlan` on, as the menu
-    has them only then); "Start cooking"; "I made this" (the button, or the + tile once there
-    are photos; `cookedPhotos`).
+    the bookmark; the share icon; the ⋮ menu (it names Add to plan and Add to groceries); "Start cooking"; "I made this"
+    (the button, or the + tile once there are photos).
   - **Cook mode** (its own screen, though it is the recipe screen's): "Done — next step"; the
     next step ("tap any step to make it the current one"); the current step's timer; the
     ingredients bar.
   - **Week:** the first day's "+ Add"; the Month switch; the ⋮ menu. **Groceries:** "Add an
     item"; the first row's tick; the first row (long-press); "Done shopping" (while anything is
     ticked); the ⋮ menu. **Pantry:** the add field; the first row's "Ran out" / "Restock"
-    (#194; it names the long-press's "Running low" too); the ⋮ menu. All `mealPlan`.
+    (#194; it names the long-press's "Running low" too); the ⋮ menu.
   - **Settings:** the Units choice; "Show tips again".
 - **No Serves tooltip** (owner, 2026-09-29: "write a tooltip [that] explains the 'As written'
   section; can remove the serving tooltip, it's straightforward"). `recipe_servings` is gone
@@ -3303,7 +3304,7 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
 - **One confirm, one Undo.** Worked-out rows start ticked and can be unticked; asked rows start
   on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
   off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
-  so a killed app loses it with nothing changed. Behind `mealPlan`, like every pantry feature.
+  so a killed app loses it with nothing changed.
 
 ## Reddit posts (#11)
 
@@ -3313,8 +3314,7 @@ app main had become:
 
 - **Behind a `reddit` flag, on in debug and release** (the owner's rule for flags). Off, a
   Reddit link goes to the blog source, as before #11. The iOS share extension never sees the
-  flags, so the app mirrors this one into the App Group suite (`reddit_on`, on until written),
-  as it does `mealPlan` for "Add this list".
+  flags, so the app mirrors this one into the App Group suite (`reddit_on`, on until written).
 - **No rendered page and no page text for a Reddit post** (`RecipeSource.readsRenderedPage`).
   The blog parsers can't read Reddit's rendered HTML (there's no recipe markup in it), so a
   WebView load after a 429 would only add up to 20 s before the same Blocked; and its text is a
@@ -3535,8 +3535,7 @@ change, and every existing ViewModel, screen and UI test passes unchanged.
 
 The owner's idea: "I made this" (#116) recorded a cooking only with a photo, so a cook who
 neither finishes cook mode nor takes photos never recorded it, and was never offered the
-pantry update (#147). "Mark as cooked" records today's cooking with no photo. Behind
-`cookedPhotos`, like #116; the sheet it offers behind `mealPlan`, like #147.
+pantry update (#147). "Mark as cooked" records today's cooking with no photo.
 
 - **Where.** A third item in "I made this"'s menu, after Take a photo and Choose from library,
   from both the empty section's button and the row's +. One tap writes the entry (cooked today,
@@ -3929,9 +3928,7 @@ saving replaces it and the error screen under it, if any, with `recipe/{id}`), a
 `edit/photo?url={url}&title={title}&images={images}` (Read the photo, #198: the editor filled
 from a Reddit post's pictures, one address per line in `images`; saving replaces it and the
 error screen like a clip), and `edit/scan?pages={pages}` (Scan a recipe, #226: the same editor
-over the cook's own pages, local URIs one per line; saving replaces it with `recipe/{id}`). Behind the
-`mealPlan` feature flag
-(#47, on by default): a bottom tab bar nests this same graph under a Recipes tab
+over the cook's own pages, local URIs one per line; saving replaces it with `recipe/{id}`). A bottom tab bar (#47) nests this graph under a Recipes tab
 alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and
 `week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry` (#51)
 (`AppShell`/iOS `RootView`'s `tabs`). Hidden on the recipe reading view and in cook
@@ -3955,9 +3952,8 @@ extension writes to as well.
 
 **Sections:** Units (with "Also convert liquids" for Ounces only), Oven temperature
 (independent of units, default As written), Appearance ("Dark while cooking"), Steps
-("Amounts in steps", off, behind the `amountsInSteps` flag, #101; "Chef mode", behind
-the `chefMode` flag, #100; each row shows with its own flag), Pantry ("Expiry
-reminders", only with the `mealPlan` flag; asks for notifications when turned on,
+("Amounts in steps", off, #101; "Chef mode", behind the `chefMode` flag, #100),
+Pantry ("Expiry reminders"; asks for notifications when turned on,
 never at launch), Unlimited recipes (only with `freeTier`: "Unlock for <store price>"
 and "Restore purchase", or the sentence "Unlocked: every recipe is kept."; Developer
 settings has an "Unlocked" override), Help ("Show tips again", #190), and Your

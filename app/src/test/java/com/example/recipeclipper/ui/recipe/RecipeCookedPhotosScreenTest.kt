@@ -28,8 +28,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * "I made this" (#116) on the recipe screen: "Your cooks" at the foot of the reading view,
- * only behind its flag; the full-screen photo with its note and Undo for a delete; and the
+ * "I made this" (#116) on the recipe screen: "Your cooks" at the foot of the reading view;
+ * the full-screen photo with its note and Undo for a delete; and the
  * recipe's delete confirmation naming the photos that go with it.
  */
 @RunWith(AndroidJUnit4::class)

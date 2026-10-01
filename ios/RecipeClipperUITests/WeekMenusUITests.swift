@@ -1,6 +1,6 @@
 import XCTest
 
-/// Reusable weekly menus on the Week tab (#52), behind the tab flag: save this week as a menu,
+/// Reusable weekly menus on the Week tab (#52): save this week as a menu,
 /// add it to next week, then rename and delete it from the menus sheet.
 final class WeekMenusUITests: RecipeUITestCase {
 
@@ -33,7 +33,7 @@ final class WeekMenusUITests: RecipeUITestCase {
     }
 
     func testSaveApplyRenameAndDeleteAMenu() {
-        launch(.standard, flags: ["mealPlan"])
+        launch(.standard)
         require(app.tabBars.firstMatch.buttons["Week"], "the Week tab").tap()
         let add = app.buttons["addToDay-\(today)"]
         for _ in 0 ..< 5 where !add.isHittable { app.swipeUp() }

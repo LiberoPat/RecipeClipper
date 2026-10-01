@@ -1,18 +1,15 @@
 import Combine
 import Foundation
-import Observation
 import UserNotifications
 
-/// Keeps the scheduled expiry reminders (#52) in step with the pantry, the setting and the
-/// `mealPlan` flag (the pantry is invisible without it, so it reminds of nothing). Started once
-/// by the live container; each change replaces every pending reminder (Android's
+/// Keeps the scheduled expiry reminders (#52) in step with the pantry and the setting. Started
+/// once by the live container; each change replaces every pending reminder (Android's
 /// `ExpiryReminderCoordinator`). Coming back to the foreground plans again, so a pending list
 /// planned days ago still starts from today.
 @MainActor
 final class ExpiryReminderCoordinator {
     private let pantry: PantryRepository
     private let preferences: AppPreferences
-    private let flags: FeatureFlags
     private let scheduler: ExpiryReminderScheduler
     private let clock: Clock
     private let zone: TimeZone?
@@ -22,12 +19,11 @@ final class ExpiryReminderCoordinator {
 
     /// `zone` nil is the phone's current one, read each time.
     init(
-        pantry: PantryRepository, preferences: AppPreferences, flags: FeatureFlags,
+        pantry: PantryRepository, preferences: AppPreferences,
         scheduler: ExpiryReminderScheduler, clock: Clock, zone: TimeZone? = nil
     ) {
         self.pantry = pantry
         self.preferences = preferences
-        self.flags = flags
         self.scheduler = scheduler
         self.clock = clock
         self.zone = zone
@@ -50,14 +46,12 @@ final class ExpiryReminderCoordinator {
                 self?.reschedule()
             }
             .store(in: &subscriptions)
-        observeFlag()
     }
 
     /// Plans again from what is known now (the app came back to the foreground).
     func reschedule() {
         guard let items else { return }
-        let on = settingOn && flags.isOn(.mealPlan)
-        scheduler.replaceAll(on ? plan(items) : [])
+        scheduler.replaceAll(settingOn ? plan(items) : [])
     }
 
     private func plan(_ items: [PantryItem]) -> [ExpiryReminder] {
@@ -67,18 +61,6 @@ final class ExpiryReminderCoordinator {
         let today = PlanDays.epochDay(millis: now, offsetMillis: offset)
         let minute = Int((now + offset - today * PlanDays.millisPerDay) / 60_000)
         return ExpiryReminders.plan(items, today: today, minuteOfDay: minute)
-    }
-
-    /// FeatureFlags is @Observable: re-plan whenever the flag flips, and keep watching.
-    private func observeFlag() {
-        withObservationTracking {
-            _ = flags.isOn(.mealPlan)
-        } onChange: { [weak self] in
-            Task { @MainActor in
-                self?.reschedule()
-                self?.observeFlag()
-            }
-        }
     }
 }
 

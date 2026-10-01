@@ -170,7 +170,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
 
     @Test
     fun test07_amountsInSteps() {
-        start("amountsInSteps")
+        start()
         tapDescription("Settings")
         swipeUp()
         tap("Amounts in steps")

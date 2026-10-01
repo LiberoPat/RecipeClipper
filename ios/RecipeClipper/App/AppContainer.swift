@@ -120,7 +120,7 @@ final class AppContainer {
         self.entitlements = entitlements ?? UnavailableEntitlements()
         libraryPolicy = LibraryPolicy(flags: self.featureFlags, entitlements: self.entitlements, mirror: libraryMirror)
         firstRunTour = FirstRunTour(preferences: tourPreferences, recipes: recipeRepository)
-        tooltips = TooltipsViewModel(preferences: tourPreferences, flags: self.featureFlags)
+        tooltips = TooltipsViewModel(preferences: tourPreferences)
     }
 
     /// Called when the app comes to the foreground. The share extension saves recipes into the
@@ -136,7 +136,7 @@ final class AppContainer {
     /// schedules a notification.
     func startExpiryReminders(_ scheduler: ExpiryReminderScheduler) {
         let coordinator = ExpiryReminderCoordinator(
-            pantry: pantryRepository, preferences: preferences, flags: featureFlags,
+            pantry: pantryRepository, preferences: preferences,
             scheduler: scheduler, clock: clock
         )
         coordinator.start()
@@ -230,7 +230,6 @@ final class AppContainer {
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
         storeKit?.start()
         container.libraryPolicy.startMirroring()
-        container.startGroceriesMirroring(DefaultsGroceriesSwitch(defaults: defaults))
         container.startRedditMirroring(DefaultsRedditSwitch(defaults: defaults))
         if !testing { container.pendingClip = PendingClip(defaults: defaults) }
         // Scans (#226): the extension's copy of the flag, the hand-off, and pages nobody finished
@@ -251,7 +250,7 @@ final class AppContainer {
     func makeRecipesViewModel() -> RecipesViewModel {
         RecipesViewModel(
             repository: recipeRepository, preferences: preferences, library: libraryPolicy,
-            cookedSort: cookedPhotoRepository != nil && featureFlags.isOn(.cookedPhotos)
+            cookedSort: cookedPhotoRepository != nil
         )
     }
 
@@ -281,16 +280,8 @@ final class AppContainer {
         )
     }
 
-    /// Keeps the share extension's copy of the `mealPlan` flag (#149) current: now, and after
-    /// every change, as `LibraryPolicy` does the library limit.
-    func startGroceriesMirroring(_ mirror: DefaultsGroceriesSwitch) {
-        let on = withObservationTracking { featureFlags.isOn(.mealPlan) } onChange: { [weak self] in
-            Task { @MainActor in self?.startGroceriesMirroring(mirror) }
-        }
-        mirror.store(on)
-    }
-
-    /// Keeps the share extension's copy of the `reddit` flag (#11) current, as above.
+    /// Keeps the share extension's copy of the `reddit` flag (#11) current: now, and after every
+    /// change, as `LibraryPolicy` does the library limit.
     func startRedditMirroring(_ mirror: DefaultsRedditSwitch) {
         let on = withObservationTracking { featureFlags.isOn(.reddit) } onChange: { [weak self] in
             Task { @MainActor in self?.startRedditMirroring(mirror) }
@@ -314,8 +305,8 @@ final class AppContainer {
 
     /// The sheet a file opened with the app shows (#149): one for the app's life, since the file
     /// can arrive over any screen.
-    private(set) lazy var receiveFileViewModel: ReceiveFileViewModel? = shareFileRepository.map { [featureFlags] share in
-        ReceiveFileViewModel(files: backupFiles, share: share, groceriesOn: { featureFlags.isOn(.mealPlan) })
+    private(set) lazy var receiveFileViewModel: ReceiveFileViewModel? = shareFileRepository.map { share in
+        ReceiveFileViewModel(files: backupFiles, share: share)
     }
 
     func makeReceiveListViewModel() -> ReceiveListViewModel {
@@ -390,7 +381,7 @@ final class AppContainer {
 
     /// "Your cooks" (#116): only behind the `cookedPhotos` flag, and only with a repository.
     var makeCookedPhotosViewModel: (() -> CookedPhotosViewModel)? {
-        guard let photos = cookedPhotoRepository, featureFlags.isOn(.cookedPhotos) else { return nil }
+        guard let photos = cookedPhotoRepository else { return nil }
         return { CookedPhotosViewModel(repository: photos) }
     }
 

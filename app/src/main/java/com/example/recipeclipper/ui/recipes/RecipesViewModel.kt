@@ -15,8 +15,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import com.example.recipeclipper.data.LibraryPolicy
-import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.LibraryLimit
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -56,9 +54,7 @@ data class LibraryCount(val recipes: Int, val max: Int) {
 class RecipesViewModel @Inject constructor(
     private val repository: RecipeRepository,
     private val preferences: AppPreferences,
-    library: LibraryPolicy = LibraryPolicy.HistoryOnly,
-    /** Null (tests that aren't about it) reads as every flag off. */
-    flags: FeatureFlags? = null
+    library: LibraryPolicy = LibraryPolicy.HistoryOnly
 ) : ViewModel() {
 
     // The query box's live value. Kept in a StateFlow, not `remember`, so it survives rotation.
@@ -66,10 +62,8 @@ class RecipesViewModel @Inject constructor(
     private val pendingDeletes = MutableStateFlow<List<String>>(emptyList())
     // Remembered in AppPreferences, so it survives leaving the screen; the flow keeps the
     // screen in step with what is stored.
-    // Recently cooked (#116) only while its flag is on; stored, it reads as the default.
-    private val cookedSort = flags?.isOn(Flag.COOKED_PHOTOS) == true
     private val sort = preferences.settings
-        .map { it.recipeSort.takeIf { s -> s != RecipeSort.RECENTLY_COOKED || cookedSort } ?: RecipeSort.RECENTLY_VIEWED }
+        .map { it.recipeSort }
         .distinctUntilChanged()
     private val linkInput = MutableStateFlow<String?>(null)
 

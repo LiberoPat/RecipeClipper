@@ -46,10 +46,6 @@ data class SettingsUiState(
     val temperatureUnit: TemperatureUnit = TemperatureUnit.AS_WRITTEN,
     val darkWhileCooking: Boolean = false,
     val backup: BackupStatus = BackupStatus.Idle,
-    /** The Pantry section (#52): only with the `mealPlan` flag on, since the pantry is behind it. */
-    val showsPantry: Boolean = false,
-    /** The Steps section's "Amounts in steps" (#101): only with the `amountsInSteps` flag on. */
-    val showsSteps: Boolean = false,
     /** Ingredient amounts inside steps. */
     val amountsInSteps: Boolean = false,
     /** A morning notification when pantry items are about to expire. */
@@ -192,8 +188,6 @@ class SettingsViewModel @Inject constructor(
                 flags.values.collect { values ->
                     _uiState.update {
                         it.copy(
-                            showsPantry = values.isOn(Flag.MEAL_PLAN),
-                            showsSteps = values.isOn(Flag.AMOUNTS_IN_STEPS),
                             showsChefMode = values.isOn(Flag.CHEF_MODE)
                         )
                     }
@@ -256,8 +250,6 @@ class SettingsViewModel @Inject constructor(
     private fun AppSettings.toUiState(previous: SettingsUiState? = null) = SettingsUiState(
         unitSystem, convertLiquids, temperatureUnit, darkWhileCooking,
         backup = previous?.backup ?: BackupStatus.Idle,
-        showsPantry = previous?.showsPantry ?: (featureFlags?.isOn(Flag.MEAL_PLAN) ?: false),
-        showsSteps = previous?.showsSteps ?: (featureFlags?.isOn(Flag.AMOUNTS_IN_STEPS) ?: false),
         amountsInSteps = amountsInSteps,
         expiryReminders = expiryReminders,
         expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,

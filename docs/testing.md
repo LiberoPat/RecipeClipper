@@ -541,7 +541,6 @@ or the calls will fail as "not mocked".
 
 ## "I made this" photos (#116)
 
-- **Turning it on:** Developer settings → `cookedPhotos`.
 - **Automated:**
   - Android, against real SQLite and real files: `CookedPhotoDaoTest` (order, edits, cull and
     free-tier protection, cascade with Undo, the sweep) and `CookedPhotoBackupTest` (the zip
