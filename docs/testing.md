@@ -701,7 +701,9 @@ in `+MealPlan.swift`). What they need from outside the app:
   does). On iOS, `RC_UITEST_LIVE_REDDIT=1` sends a Reddit link with no listing to the real source
   and drops the clip fixture page, and `RC_UITEST_CLIP_SCRIPT` is a script added to every clip page
   (DEBUG, UI-test launches only) that lays unseen spots on the text: XCUITest can't drag a
-  selection across a web page, so tapping a spot selects by script.
+  selection across a web page, so tapping a spot selects by script. Since #237 (field first) both
+  then arm the field and tap the confirm; the recordings still show the old toolbar until 31 is
+  recorded again.
 - **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20, 23, 25 and 26:
   `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
 - **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the

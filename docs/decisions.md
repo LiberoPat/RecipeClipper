@@ -1756,64 +1756,115 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
 
 A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or
 FetchFailed) offers **Clip it yourself** (and a Reddit post Reddit won't let the app read opens in
-it by itself, #213: see "Reddit posts (#11)"): the page opens live in a web view, the user selects
-the name, ingredients and steps and taps where each goes, then reviews and saves. The design was
-approved as a mock-up (six frames); the owner's nine decisions are in the issue's comments.
+it by itself, #213: see "Reddit posts (#11)"): the page opens live in a web view, the cook taps a
+field, then its text on the page, and confirms; then reviews and saves. The first design was
+approved as a mock-up (six frames, the owner's nine decisions in the issue's comments); the field
+first flow below replaced its select-then-tag toolbar (#237).
 
+- **Field first (the owner's call, 2026-10-01, #237).** The owner: "they're not sure what to do
+  next; they'd have to just know to hold long press to extract text. Wouldn't it be better if they
+  can press name or ingredients and then all they have to do is drag and extract the text". A
+  long press isn't discoverable, and with the photo first the toolbar left people unsure what
+  came next. So the field buttons come first: **Name, Ingredients, Steps, Photo**.
+  - **Tapping one arms it:** filled, with the hint bar above saying what to do ("Tap the recipe's
+    name on the page."). Tapping it again disarms; another switches, keeping a selection already
+    made for the new field.
+  - **While a text field is armed, a tap selects** (`clipper.js`, in the capture phase, so a
+    tapped link or button does nothing else): a paragraph, list item or heading; for Ingredients
+    or Steps, the **whole list** the tap landed in. A second tap outside the selection, for
+    Ingredients or Steps, stretches it to cover that block too (tap the first line, then the
+    last), which suits the Reddit Text view's one paragraph a line. A tap between blocks, on a
+    label the page keeps out of selections (`user-select: none`), or on nothing with text, does
+    nothing.
+  - **The page draws its own two handles** on a selection it made: WebViews show none for a
+    script's selection. Dragging one moves that end a whole block at a time (snapping to blocks
+    keeps lines whole); dragged past the other end, the selection is that one block; near the
+    top or bottom the page scrolls along. The handles take the finger with `touch-action: none`,
+    so a plain drag anywhere else still scrolls. A long press still selects as the browser does
+    (the page's handles step aside for the browser's), and a selection made with nothing armed
+    says "N lines selected · tap the field they go in".
+  - **A confirm, not auto-assign (the owner's call, 2026-10-01).** The selection shows in the
+    hint bar as one button, "Add 12 lines to Ingredients" ("Use as the name"), with Clear beside
+    it. One tap adds it. Auto-assigning would have taken partial selections while a handle was
+    being dragged, and a wrong grab (a list's container, a heading) would have gone in silently.
+  - **Name and photo replace; ingredients and steps add up,** so separate blocks (a list, then
+    the list under "For the glaze:") are added one after the other. Name disarms after its
+    confirm; Ingredients and Steps stay armed for the next block.
+  - **Each add can be taken back:** Undo in the hint bar right after it (a stack: Undo again
+    takes the one before), and each add's own tag on the page ("Ingredients · 3", one tag per
+    add) takes back just that add, with a snackbar Undo. Taking an add back removes the lines it
+    put there (a line edited by hand in Review since stays). A hand edit in Review empties the
+    Undo stack.
+  - **Guidance after each step:** the hint bar says what was added and names the next empty
+    field, name, ingredients, steps, then photo ("Photo added. Next: tap Name."; "7 steps added.
+    Tap Done to review and save."). Each field button shows what it holds: a check, with the
+    count for ingredients and steps. Opened empty, the hint says "Tap Name below, then tap the
+    recipe's name on the page."
+  - **ViewModel state:** the armed field, the hint (derived from the state), the pending
+    selection, the last add and the Undo stack are the ViewModel's; the page only reports
+    selections and taps. A count (`clearSelection`) tells the page to drop its selection (a
+    disarm, Clear, the other view).
+- **Photo:** Photo arms photo picking ("Tap the picture to use as the photo."), then **one tap**
+  on the page. An image with a readable `http(s)` address becomes the photo: lazy-loading
+  placeholders (`data:` URIs) are skipped for the real address (`data-src`, a `srcset`, the
+  `<picture>`'s sources, inside open shadow roots too). Its thumbnail then shows in the hint bar,
+  which names the next empty field. Anything else ends the step and says "Couldn't read a
+  picture there. The photo is optional." Selecting new text, tapping a tag, or **Skip** (beside
+  the hint) ends it too. Picking used to last until a readable image was tapped: on a Reddit post
+  the owner found every other tap swallowed ("stuck in the photo section"), so neither the page
+  nor the ViewModel keeps it past one tap. A tag is kept inside the page's width (Reddit's
+  backdrop image, drawn wider than the page, put its tag outside and pushed the page's own
+  controls off the screen). Android's clip snackbars are `Long`, not the Indefinite an action gets
+  by default.
 - **Error screen:** Try again stays first, outlined; under a hairline, one line of explanation,
   then Clip it yourself (the one filled button), then Report this site (#30) as a text button.
-- **Assigning replaces** what a field held, for every field. The toolbar count shows the
-  replacement ("Ingredients 4", never "8 + 4").
-- **Undo, both ways:** a snackbar Undo after each assignment or clear, and tapping a field's tag
-  on the page clears that field (with Undo).
 - **Nothing is guessed.** No field is suggested for a selection. A selection splits one item per
   line (`getSelection().toString()` breaks between blocks); a name joins its lines. Serves and
   Total time are typed in Review, optional, never read from the page.
-- **Photo:** a Photo button, then **one tap** on the page. An image with a readable `http(s)`
-  address becomes the photo: lazy-loading placeholders (`data:` URIs) are skipped for the real
-  address (`data-src`, a `srcset`, the `<picture>`'s sources, inside open shadow roots too).
-  Anything else ends the step and says "Couldn't read a picture there. The photo is optional."
-  Selecting new text, tapping a tag, or **Skip** (beside "Tap the picture…") ends it too. No
-  long-press. Picking used to last until a readable image was tapped: on a Reddit post the
-  owner found every other tap swallowed, and the fields disabled again after each assignment
-  ("stuck in the photo section"), so now neither the page nor the ViewModel keeps it past one
-  tap. A tag is kept inside the page's width (Reddit's backdrop image, drawn wider than the
-  page, put its tag outside and pushed the page's own controls off the screen). Android's clip
-  snackbars are `Long`, not the Indefinite an action gets by default: "Photo added" that never
-  went read as the clip being stuck there.
 - **Session draft per URL:** Cancel keeps the draft in memory (`ClipDraftStore`, keyed by the
   cleaned URL; Android also mirrors it into `SavedStateHandle`); reopening restores it with a
   "Draft restored" snackbar offering Discard. Save or Discard drops it. Never on disk.
 - **One script, `shared/web/clipper.js`,** injected by both apps (Android as a Java resource, iOS
   from the bundled `web/` folder). The page only reports (selection, tag tapped, image tapped,
-  no readable image); native code pushes the draft's marks back with one declarative
-  `RC.sync(...)`, so replace, undo and clear all redraw from state. Mark ids come from the draft, so an undo can show a mark
-  again. Marks don't survive a page reload (rotation on Android, a restored draft); the draft does.
+  no readable image); native code pushes the draft's marks, the armed field and the clear count
+  back with one declarative `RC.sync(...)`, so add, undo and removal all redraw from state. Mark
+  ids come from the draft, so an undo can show a mark again. Marks don't survive a page reload
+  (rotation on Android, a restored draft); the draft does.
 - **Links to other pages are blocked** in the clip view (redirects and fragment jumps load, and
   so does a page sending itself back to its own path when no one tapped, as Reddit's check does,
   #213; an app's own `intent:` or `reddit:` link never loads), so a clip is always saved under
   the page it came from.
+- **The Reddit Text view (#230) works the same way:** the armed field carries between Page and
+  Text, and taps select there too. **Text, then Page, left the page dead on Android (#237):** the
+  hidden Text view was shrunk to no size, and its last frame stayed on the screen over the page,
+  which answered underneath (it scrolled by script, a tap reached it) while the screen showed
+  the text, frozen. Now the hidden Text view keeps its full size, isn't drawn
+  (`View.INVISIBLE`) and sits under the page. `ClipScreenTest` checks the screen's pixels after
+  Text, then Page. iOS hides it with opacity and no hit testing, which never showed this.
 - **Save** upserts on the cleaned URL like an import (same id, note and list membership) with
   `contentOrigin` CLIPPED (#29's column; no schema change), replacing whatever the row held,
   then the recipe replaces both the clip and the error screen in the back stack.
 - **Done and Save always answer: they save, or say what's missing** (the owner's S23 on a Reddit
   post, 2026-09-30: "save doesn't work"). With ingredients and steps but no name, Done was greyed
-  out with nothing saying why (a Reddit title is hard to select: the selection jumps into the
-  header), and in Review the top bar's Done stayed tappable but did nothing, the real Save being
-  at the foot of a long list. Now Done is always tappable (bar Cloudflare's check): with lines
-  but no name it opens Review, where the name can be typed, and says so; with no lines it stays
-  on the page and says what to select. In Review the top bar's button is Save. Save with too
-  little says what's missing (`ClipMessage.Missing`); a failed save, a full library (#107) and a
-  save under way already said or showed so.
+  out with nothing saying why, and in Review the top bar's Done stayed tappable but did nothing,
+  the real Save being at the foot of a long list. Now Done is always tappable (bar Cloudflare's
+  check): with lines but no name it opens Review, where the name can be typed, and says so; with
+  no lines it stays on the page and says what to do. In Review the top bar's button is Save. Save
+  with too little says what's missing (`ClipMessage.Missing`); a failed save, a full library
+  (#107) and a save under way already said or showed so.
 - **A clip is the user's version** (#29's rule): a re-share opens it without a fetch. "Clipped
   by you · host" replaces the domain under the title (Open original stays), and History rows
   say "Clipped by you" (a derived `isClipped` in the summary queries). Update from source is
   always offered for a clip, warning "Replace your clip?"; on failure the clip is kept and the
   snackbar says why. On success it becomes PARSED and the line goes.
-- **UI tests** use a fixed local page, never the network: Android's `ClipScreenTest` makes the
-  selection by script in a real WebView; iOS's `ClipUITests` taps buttons on the fixture page
-  (`UITestSeeding.clipFixtureHTML`) that select by script, since XCUITest can't drag a web
-  selection reliably. Either way the app hears it through the page's `selectionchange`.
+- **UI tests** use a fixed local page, never the network, and no long press: Android's
+  `ClipScreenTest` taps the page's elements by script (`click()`, which reaches the page's own
+  listener as a tap does), drags a handle with script pointer events, and makes the Text →
+  Page check with a real tap through the shell; iOS's `ClipUITests` taps the page's text with
+  XCUITest. Either way the app hears the selection through the page's `selectionchange`.
+- **Walkthrough clip 31** (Android and iOS, live Reddit) was recorded with the old flow: select,
+  then a field button. Its code now arms the field and taps the confirm, but the recording
+  still shows the old toolbar until it is recorded again.
 
 ## Alternatives, second parts and totals after the name (#61, #62, #63)
 
