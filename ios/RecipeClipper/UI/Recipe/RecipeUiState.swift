@@ -86,13 +86,6 @@ struct RecipeSuccess: Equatable {
         guard let shortStepAmounts, index < shortStepAmounts.count else { return nil }
         return shortStepAmounts[index]
     }
-
-    /// The same, with every step as written: how the view shows it while the flag is off.
-    var withoutStepAmounts: RecipeSuccess {
-        var copy = self
-        copy.stepAmounts = nil
-        return copy
-    }
 }
 
 enum RecipeContent: Equatable {

@@ -6,14 +6,8 @@ package com.example.recipeclipper.data.flags
  * referenced anywhere: retiring a flag deletes it here, in flags.json and its branches in one PR.
  */
 enum class Flag(val key: String) {
-    /** The meal plan (#47, #49–#51): the bottom tabs and the recipe screen's plan actions. */
-    MEAL_PLAN("mealPlan"),
-
     /** Chef mode (#100): the Settings switch for short steps written on the device. */
     CHEF_MODE("chefMode"),
-
-    /** Ingredient amounts inside steps (#101): the Settings switch and what it shows. */
-    AMOUNTS_IN_STEPS("amountsInSteps"),
 
     /** The free tier (#107): 20 recipes, and the one-time unlock for unlimited ones. */
     FREE_TIER("freeTier"),
@@ -26,9 +20,6 @@ enum class Flag(val key: String) {
 
     /** With [AI_DECISIONS], the count-bracket decision too (#104); off since #127, kept to re-measure. */
     AI_COUNT_BRACKETS("aiCountBrackets"),
-
-    /** "I made this" (#116): your photos and notes on a recipe, and the Recently cooked sort. */
-    COOKED_PHOTOS("cookedPhotos"),
 
     /** Reddit posts (#11): Reddit links go to the Reddit source rather than the blog one. */
     REDDIT("reddit"),

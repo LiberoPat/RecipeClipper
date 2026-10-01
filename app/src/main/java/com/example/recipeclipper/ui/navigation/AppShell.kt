@@ -87,22 +87,19 @@ fun NavHostController.selectTab(tab: Tab) {
  * A route from an intent (a shared link's import, or a timer notification's cook-mode open,
  * MainActivity's queue) always lands in Recipes: switch to that tab if another is open, then
  * navigate on top of whatever the Recipes stack held. A tab's own route (an expiry reminder's
- * [Tab.PANTRY], #52; a list shared in, [Tab.GROCERIES], #149) opens that tab instead, and does
- * nothing while the tab bar is off.
+ * [Tab.PANTRY], #52; a list shared in, [Tab.GROCERIES], #149) opens that tab instead.
  */
-fun NavHostController.openRoute(route: String, tabsEnabled: Boolean) {
+fun NavHostController.openRoute(route: String) {
     Tab.entries.firstOrNull { it.route == route }?.let { tab ->
-        if (tabsEnabled) selectTab(tab)
+        selectTab(tab)
         return
     }
-    if (tabsEnabled && currentDestination.tab() != Tab.RECIPES) selectTab(Tab.RECIPES)
+    if (currentDestination.tab() != Tab.RECIPES) selectTab(Tab.RECIPES)
     navigate(route)
 }
 
 /**
- * The app's root. With [tabsEnabled] off (the `mealPlan` flag, #87, off by default until the
- * meal plan ships) it is [RecipeNavHost] alone, exactly the app as it was before
- * the shell. On, the same Recipes graph sits under the first tab of a bottom bar.
+ * The app's root: the Recipes graph under the first tab of a bottom bar.
  *
  * [recipes] is the Recipes graph, [week] the Week tab's (#49), [groceries] the Groceries
  * tab's (#50) and [pantry] the Pantry tab's (#51); tests pass stand-ins, since the real screens need Hilt.
@@ -110,17 +107,11 @@ fun NavHostController.openRoute(route: String, tabsEnabled: Boolean) {
 @Composable
 fun AppShell(
     navController: NavHostController,
-    tabsEnabled: Boolean,
     recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) },
     week: NavGraphBuilder.(NavHostController) -> Unit = { weekDestinations(it) },
     groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations(it) },
     pantry: NavGraphBuilder.(NavHostController) -> Unit = { pantryDestinations() }
 ) {
-    if (!tabsEnabled) {
-        RecipeNavHost(navController, recipes)
-        return
-    }
-
     val entry by navController.currentBackStackEntryAsState()
     val destination = entry?.destination
 

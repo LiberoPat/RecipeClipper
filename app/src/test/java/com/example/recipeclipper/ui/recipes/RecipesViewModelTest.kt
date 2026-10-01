@@ -218,27 +218,17 @@ class RecipesViewModelTest {
             assertEquals(listOf(3L, 2L, 1L), vm.uiState.value.recipes?.map { it.id })
         }
 
-    @Test fun `recently cooked puts cooked recipes first, latest cook first, only with its flag (#116)`() =
+    @Test fun `recently cooked puts cooked recipes first, latest cook first (#116)`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = FakeRecipeRepository()
             repository.history.value = listOf(
                 summary(3), summary(2).copy(lastCookedDay = 10), summary(1).copy(lastCookedDay = 12)
             )
-            val flags = com.example.recipeclipper.data.flags.FeatureFlags(
-                com.example.recipeclipper.fake.FakeFeatureFlagStore(mapOf("cookedPhotos" to true)),
-                com.example.recipeclipper.data.flags.FlagRegistry.definitions, isDebug = false
-            )
-            val preferences = FakeAppPreferences(recipeSort = RecipeSort.RECENTLY_COOKED)
-            val on = RecipesViewModel(repository, preferences, flags = flags)
-            val off = RecipesViewModel(repository, preferences)
-            collectEagerly(on.uiState)
-            collectEagerly(off.uiState)
+            val vm = RecipesViewModel(repository, FakeAppPreferences(recipeSort = RecipeSort.RECENTLY_COOKED))
+            collectEagerly(vm.uiState)
             advanceUntilIdle()
 
-            assertEquals(listOf(1L, 2L, 3L), on.uiState.value.recipes?.map { it.id })
-            // With the flag off a stored Recently cooked reads as the default.
-            assertEquals(RecipeSort.RECENTLY_VIEWED, off.uiState.value.sort)
-            assertEquals(listOf(3L, 2L, 1L), off.uiState.value.recipes?.map { it.id })
+            assertEquals(listOf(1L, 2L, 3L), vm.uiState.value.recipes?.map { it.id })
         }
 
     @Test fun `a swiped delete forgets its photos only once it stands (#116)`() =

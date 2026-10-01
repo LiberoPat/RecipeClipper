@@ -75,12 +75,9 @@ final class ShareViewController: UIViewController {
         return DefaultRecipeRepository(db: db, source: source, clock: SystemClock(), library: library)
     }
 
-    /// "Add this list" (#149) over the same database, only while the app has the grocery list
-    /// and the pantry on (the `mealPlan` flag, mirrored into the App Group suite).
+    /// "Add this list" (#149) over the same database.
     @MainActor
     private static func makeReceiveList(_ db: AppDatabase) -> ReceiveListViewModel? {
-        guard let defaults = UserDefaults(suiteName: AppGroup.identifier),
-              DefaultsGroceriesSwitch(defaults: defaults).isOn else { return nil }
         let clock = SystemClock()
         return ReceiveListViewModel(
             groceries: DefaultGroceryRepository(db: db, clock: clock),

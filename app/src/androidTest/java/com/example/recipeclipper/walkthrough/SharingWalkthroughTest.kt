@@ -71,7 +71,7 @@ class SharingWalkthroughTest : WalkthroughBase() {
     /** "Send list" (the share sheet, with the list as text), then a list pasted in (#149). */
     @Test
     fun test15_sendAndPasteAList() {
-        start("mealPlan", kitchen = true)
+        start(kitchen = true)
         tap("Groceries", 2000)
         menu("Send list")
         waitForSystemScreen() // the share sheet
@@ -88,7 +88,7 @@ class SharingWalkthroughTest : WalkthroughBase() {
     /** A recipe's "Send as file" (the share sheet), then a file received: "Add from this file" (#149). */
     @Test
     fun test16_sendAndReceiveAFile() {
-        start("mealPlan")
+        start()
         tap("Chicken Adobo")
         menu("Send as file")
         waitForSystemScreen() // the share sheet, with "Chicken Adobo.recipeclipper"
@@ -105,7 +105,7 @@ class SharingWalkthroughTest : WalkthroughBase() {
     /** The Pantry's menu sends what's in stock (#149): Send list, then Send as file. */
     @Test
     fun test19_pantrySendList() {
-        start("mealPlan", kitchen = true)
+        start(kitchen = true)
         tap("Pantry", 2000)
         menu("Send list")
         waitForSystemScreen() // the share sheet: what's in stock, by aisle

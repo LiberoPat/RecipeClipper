@@ -7,10 +7,7 @@ import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.backup.PantryDestination
 import com.example.recipeclipper.data.backup.ShareChoice
 import com.example.recipeclipper.data.backup.fixture
-import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.fake.FakeBackupFiles
-import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeShareFileRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -34,10 +31,7 @@ class ShareFileViewModelsTest {
     private val inbox = ReceivedFileInbox()
     private val uri = "content://messages/attachment/Sheet-pan chicken.recipeclipper"
 
-    private fun flags(mealPlan: Boolean) =
-        FeatureFlags(FakeFeatureFlagStore(mapOf("mealPlan" to mealPlan)), FlagRegistry.definitions, isDebug = false)
-
-    private fun receiver(mealPlan: Boolean = true) = ReceiveFileViewModel(files, share, flags(mealPlan), inbox)
+    private fun receiver() = ReceiveFileViewModel(files, share, inbox)
 
     // --- Sending
 
@@ -106,17 +100,6 @@ class ShareFileViewModelsTest {
         assertEquals(listOf("Basmati rice"), state.pantry.map { it.text })
         assertEquals(6, state.tickedCount)
         assertNull(inbox.pending.value)
-    }
-
-    @Test
-    fun `without the tabs only the recipes are offered`() = runTest(mainDispatcherRule.dispatcher) {
-        files.files[uri] = fixture("share-v1.recipeclipper")
-        val vm = receiver(mealPlan = false)
-        vm.open(uri)
-        advanceUntilIdle()
-
-        assertEquals(2, vm.uiState.value.recipes.size)
-        assertTrue(vm.uiState.value.groceries.isEmpty() && vm.uiState.value.pantry.isEmpty())
     }
 
     @Test

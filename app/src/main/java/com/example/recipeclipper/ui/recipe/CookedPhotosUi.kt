@@ -20,7 +20,7 @@ internal class CookedPhotosUi(val count: Int, val section: @Composable () -> Uni
 /**
  * The recipe screen's side of "I made this" (#116): the section, the full-screen photo, and the
  * snackbars (a picture that couldn't be added, no camera app, Undo for a deleted photo). Null
- * while the flag is off (no ViewModel) or before the recipe has loaded. [onMadeThis] runs once
+ * with no ViewModel (screen tests) or before the recipe has loaded. [onMadeThis] runs once
  * a photo just added, or a "Mark as cooked" entry (#173), has been closed: the recipe was cooked (#147).
  */
 @Composable

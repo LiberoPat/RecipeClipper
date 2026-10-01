@@ -590,7 +590,6 @@
     <string name="tooltip_recipe_bookmark">Salva questa ricetta in una lista, come Preferiti.</string>
     <string name="tooltip_recipe_share">Invia questa ricetta come testo, così come la vedi qui.</string>
     <string name="tooltip_recipe_menu">Altro: Aggiungi al piano, Aggiungi alla spesa, Invia come file e Modifica.</string>
-    <string name="tooltip_recipe_menu_no_plan">Altro: Invia come file e Modifica.</string>
     <string name="tooltip_recipe_start_cooking">Modalità cucina: un passaggio alla volta, con i timer, e lo schermo resta acceso.</string>
     <string name="tooltip_recipe_made_this">L\'hai fatta? Aggiungi una foto e una nota, oppure Segna come cucinata.</string>
     <string name="tooltip_cook_done_next">Finito un passaggio, tocca qui per andare al successivo.</string>

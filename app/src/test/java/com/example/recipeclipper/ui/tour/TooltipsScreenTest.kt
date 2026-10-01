@@ -23,15 +23,12 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.Tooltips
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeBackupFiles
 import com.example.recipeclipper.fake.FakeBackupRepository
-import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeTourPreferences
 import com.example.recipeclipper.ui.home.HomeScreen
@@ -59,10 +56,7 @@ class TooltipsScreenTest {
     val compose = createComposeRule()
 
     private val preferences = FakeTourPreferences()
-    private val tooltips = TooltipsViewModel(
-        preferences,
-        FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = false)
-    )
+    private val tooltips = TooltipsViewModel(preferences)
 
     /** Home, which a test can take off screen and bring back: a later visit. */
     private var homeShown by mutableStateOf(true)

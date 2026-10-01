@@ -44,8 +44,7 @@ struct ReceiveFileUiState: Equatable {
 /// Backs the sheet a shared file opens (#149, phase 2; Android's ReceiveFileViewModel): what's
 /// inside, each part ticked, and one Add. Recipes come in as an import would (merged by cleaned
 /// link, never replacing one here); grocery items go on the grocery list, each naming its recipe;
-/// pantry items go to the Pantry or onto the grocery list, the receiver's choice. Groceries and
-/// the Pantry show only with the `mealPlan` flag, like their tabs.
+/// pantry items go to the Pantry or onto the grocery list, the receiver's choice.
 @MainActor
 @Observable
 final class ReceiveFileViewModel {
@@ -53,15 +52,13 @@ final class ReceiveFileViewModel {
 
     @ObservationIgnored private let files: BackupFiles
     @ObservationIgnored private let share: ShareFileRepository
-    @ObservationIgnored private let groceriesOn: () -> Bool
     @ObservationIgnored private var file: Backup?
     /// The read or the write in progress, for the tests.
     @ObservationIgnored private(set) var currentWork: Task<Void, Never>?
 
-    init(files: BackupFiles, share: ShareFileRepository, groceriesOn: @escaping () -> Bool) {
+    init(files: BackupFiles, share: ShareFileRepository) {
         self.files = files
         self.share = share
-        self.groceriesOn = groceriesOn
     }
 
     /// Reads the file at `url` and opens the sheet on it (or on why it can't be read).
@@ -134,14 +131,13 @@ final class ReceiveFileViewModel {
 
     private func rows(_ file: Backup) -> ReceiveFileUiState {
         let titles = Dictionary(file.recipes.map { ($0.id, $0.title) }, uniquingKeysWith: { first, _ in first })
-        let groceriesOn = groceriesOn()
         return ReceiveFileUiState(
             open: true,
             recipes: file.recipes.map { ReceivedRow(key: "r:\($0.id)", text: $0.title) },
-            groceries: groceriesOn ? file.groceries.map {
+            groceries: file.groceries.map {
                 ReceivedRow(key: "g:\($0.id)", text: $0.text, detail: $0.recipeId.flatMap { titles[$0] })
-            } : [],
-            pantry: groceriesOn ? file.pantry.map { ReceivedRow(key: "p:\($0.id)", text: $0.name, detail: $0.quantity) } : []
+            },
+            pantry: file.pantry.map { ReceivedRow(key: "p:\($0.id)", text: $0.name, detail: $0.quantity) }
         )
     }
 }

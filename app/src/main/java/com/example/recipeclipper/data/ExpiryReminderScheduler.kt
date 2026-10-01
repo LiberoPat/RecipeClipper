@@ -1,7 +1,5 @@
 package com.example.recipeclipper.data
 
-import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.model.ExpiryReminder
 import com.example.recipeclipper.data.model.ExpiryReminders
@@ -26,8 +24,7 @@ fun interface ExpiryReminderScheduler {
 }
 
 /**
- * Keeps the scheduled reminders in step with the pantry, the setting and the `mealPlan` flag
- * (#87: the pantry is invisible without it, so it reminds of nothing). Started once with the
+ * Keeps the scheduled reminders in step with the pantry and the setting. Started once with the
  * app, it reschedules on every change; the alarm's receiver and the boot receiver call
  * [refresh] for a one-off plan.
  */
@@ -35,7 +32,6 @@ fun interface ExpiryReminderScheduler {
 class ExpiryReminderCoordinator @Inject constructor(
     private val pantry: PantryRepository,
     private val preferences: AppPreferences,
-    private val flags: FeatureFlags,
     private val scheduler: ExpiryReminderScheduler,
     private val clock: Clock
 ) {
@@ -50,9 +46,8 @@ class ExpiryReminderCoordinator @Inject constructor(
         scope.launch {
             combine(
                 pantry.observeItems(),
-                preferences.settings.map { it.expiryReminders }.distinctUntilChanged(),
-                flags.values.map { it.isOn(Flag.MEAL_PLAN) }.distinctUntilChanged()
-            ) { items, on, pantryShown -> plan(items, on && pantryShown) }
+                preferences.settings.map { it.expiryReminders }.distinctUntilChanged()
+            ) { items, on -> plan(items, on) }
                 .collect(scheduler::replaceAll)
         }
     }
@@ -62,9 +57,9 @@ class ExpiryReminderCoordinator @Inject constructor(
         scheduler.replaceAll(plan(pantry.items(), enabled))
     }
 
-    /** Whether reminders are wanted at all: the setting on and the pantry shown. */
+    /** Whether reminders are wanted at all: the setting. */
     val enabled: Boolean
-        get() = preferences.expiryReminders && flags.isOn(Flag.MEAL_PLAN)
+        get() = preferences.expiryReminders
 
     /** Today's reminder, for the alarm that has just gone off; null when there is none. */
     suspend fun dueToday(): ExpiryReminder? {

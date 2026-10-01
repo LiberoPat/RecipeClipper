@@ -38,21 +38,21 @@ class DeveloperSettingsScreenTest {
     fun aSwitchPerFlagTurnsItOffAndResetTurnsItBack() {
         show()
         // On by default, like every flag without a known bug.
-        val mealPlan = compose.onNodeWithText("mealPlan")
-        mealPlan.assertIsDisplayed().assertIsOn()
+        val chefMode = compose.onNodeWithText("chefMode")
+        chefMode.assertIsDisplayed().assertIsOn()
 
-        mealPlan.performClick()
+        chefMode.performClick()
 
-        mealPlan.assertIsOff()
-        assertFalse(flags.isOn(Flag.MEAL_PLAN))
+        chefMode.assertIsOff()
+        assertFalse(flags.isOn(Flag.CHEF_MODE))
         compose.onNode(hasText("Changed from the default", substring = true)).assertIsDisplayed()
 
         // With enough flags the button is below the fold of the lazy list.
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Reset to defaults"))
         compose.onNodeWithText("Reset to defaults").performClick()
-        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("mealPlan"))
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("chefMode"))
 
-        mealPlan.assertIsOn()
-        assertTrue(flags.isOn(Flag.MEAL_PLAN))
+        chefMode.assertIsOn()
+        assertTrue(flags.isOn(Flag.CHEF_MODE))
     }
 }

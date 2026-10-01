@@ -10,8 +10,6 @@ import com.example.recipeclipper.data.backup.BackupJson
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.PantryDestination
 import com.example.recipeclipper.data.backup.ShareChoice
-import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.Flag
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,14 +71,12 @@ data class ReceiveFileUiState(
  * Backs the sheet a shared file opens (#149, phase 2): what's inside, each part ticked, and one
  * Add. Recipes come in as an import would (merged by cleaned link, never replacing one here);
  * grocery items go on the grocery list, each naming its recipe; pantry items go to the Pantry or
- * onto the grocery list, the receiver's choice. Groceries and the Pantry show only with the
- * `mealPlan` flag, like their tabs.
+ * onto the grocery list, the receiver's choice.
  */
 @HiltViewModel
 class ReceiveFileViewModel @Inject constructor(
     private val files: BackupFiles,
     private val share: ShareFileRepository,
-    private val flags: FeatureFlags,
     inbox: ReceivedFileInbox
 ) : ViewModel() {
 
@@ -155,14 +151,13 @@ class ReceiveFileViewModel @Inject constructor(
 
     private fun rows(file: Backup): ReceiveFileUiState {
         val titles = file.recipes.associate { it.id to it.title }
-        val groceriesOn = flags.isOn(Flag.MEAL_PLAN)
         return ReceiveFileUiState(
             open = true,
             recipes = file.recipes.map { ReceivedRow("r:${it.id}", it.title) },
-            groceries = if (!groceriesOn) emptyList() else file.groceries.map {
+            groceries = file.groceries.map {
                 ReceivedRow("g:${it.id}", it.text, it.recipeId?.let(titles::get))
             },
-            pantry = if (!groceriesOn) emptyList() else file.pantry.map {
+            pantry = file.pantry.map {
                 ReceivedRow("p:${it.id}", it.name, it.quantity)
             }
         )

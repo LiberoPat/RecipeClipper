@@ -67,11 +67,9 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.data.model.Tooltips
-import com.example.recipeclipper.ui.common.LocalFlagValues
 import java.util.UUID
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -118,7 +116,7 @@ fun TooltipHost(screen: TooltipScreen, blocked: Boolean = false, content: @Compo
         val current = state.current?.takeIf { state.token == token } ?: return@Box
         val bounds = anchors[current] ?: return@Box
         TooltipBubble(
-            text = stringResource(current.text(LocalFlagValues.current.isOn(Flag.MEAL_PLAN))),
+            text = stringResource(current.text()),
             tag = "tooltip-${current.id}",
             anchor = bounds.full,
             side = bounds.side,
@@ -132,14 +130,13 @@ fun Modifier.tooltipAnchor(tooltip: Tooltip, side: TooltipSide = TooltipSide.AUT
     this then TooltipAnchorElement(tooltip, side)
 
 @StringRes
-private fun Tooltip.text(mealPlan: Boolean): Int = when (this) {
+private fun Tooltip.text(): Int = when (this) {
     Tooltip.HOME_LINK -> R.string.tooltip_home_link
     Tooltip.HOME_NEW_RECIPE -> R.string.tooltip_home_new_recipe
     Tooltip.RECIPE_UNITS -> R.string.tooltip_recipe_units
     Tooltip.RECIPE_BOOKMARK -> R.string.tooltip_recipe_bookmark
     Tooltip.RECIPE_SHARE -> R.string.tooltip_recipe_share
-    // Add to plan and Add to groceries are in the menu only with the meal plan on.
-    Tooltip.RECIPE_MENU -> if (mealPlan) R.string.tooltip_recipe_menu else R.string.tooltip_recipe_menu_no_plan
+    Tooltip.RECIPE_MENU -> R.string.tooltip_recipe_menu
     Tooltip.RECIPE_START_COOKING -> R.string.tooltip_recipe_start_cooking
     Tooltip.RECIPE_MADE_THIS -> R.string.tooltip_recipe_made_this
     Tooltip.COOK_DONE_NEXT -> R.string.tooltip_cook_done_next

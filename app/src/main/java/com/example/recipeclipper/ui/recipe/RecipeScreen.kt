@@ -54,19 +54,16 @@ fun RecipeScreen(
     photoTextEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel(),
-    mealPlanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.MEAL_PLAN),
-    amountsInStepsEnabled: Boolean = LocalFlagValues.current.isOn(Flag.AMOUNTS_IN_STEPS),
-    // Only resolved behind the tab flag (#49), so screen tests without Hilt need not pass one.
-    planViewModel: AddToPlanViewModel? = if (mealPlanEnabled) hiltViewModel() else null,
-    groceriesViewModel: AddToGroceriesViewModel? = if (mealPlanEnabled) hiltViewModel() else null,
-    cookedPhotosEnabled: Boolean = LocalFlagValues.current.isOn(Flag.COOKED_PHOTOS),
-    // "I made this" (#116), only behind its flag, like the plan's sheets above.
-    photosViewModel: CookedPhotosViewModel? = if (cookedPhotosEnabled) hiltViewModel() else null,
-    // "Send as file" (#149): the navigation passes one; null (screen tests) leaves it out.
+    // The navigation passes each of these; null (screen tests without Hilt) leaves its part out:
+    // "Add to plan" (#49) and "Add to groceries" (#50),
+    planViewModel: AddToPlanViewModel? = null,
+    groceriesViewModel: AddToGroceriesViewModel? = null,
+    // "I made this" (#116),
+    photosViewModel: CookedPhotosViewModel? = null,
+    // "Send as file" (#149),
     sendFileViewModel: SendFileViewModel? = null,
-    // Using up the pantry when cook mode is finished or "I made this" adds a photo (#147): the
-    // pantry is behind the tab flag.
-    useUpViewModel: PantryUseUpViewModel? = if (mealPlanEnabled) hiltViewModel() else null
+    // and using up the pantry when cook mode is finished or "I made this" adds a photo (#147).
+    useUpViewModel: PantryUseUpViewModel? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
@@ -182,16 +179,14 @@ fun RecipeScreen(
             Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                 when (content) {
                     is RecipeContent.Success -> {
-                        // Amounts in steps (#101) show only behind their flag.
-                        val shown = if (amountsInStepsEnabled) content else content.copy(stepAmounts = null)
                         // The tooltips (#190): cook mode is its own screen; neither shows one
                         // over a snackbar.
                         val snackbar = snackbarHostState.currentSnackbarData != null
                         if (cooking) {
-                            TooltipHost(TooltipScreen.COOK, blocked = snackbar) { CookView(shown, state, actions) }
+                            TooltipHost(TooltipScreen.COOK, blocked = snackbar) { CookView(content, state, actions) }
                         } else {
                             TooltipHost(TooltipScreen.RECIPE, blocked = snackbar) {
-                                ReadingView(shown, state, actions, saveState.isSaved, photos?.count ?: 0, photos?.section)
+                                ReadingView(content, state, actions, saveState.isSaved, photos?.count ?: 0, photos?.section)
                             }
                         }
                     }

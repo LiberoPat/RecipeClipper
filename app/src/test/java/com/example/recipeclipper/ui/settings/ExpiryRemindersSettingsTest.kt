@@ -16,7 +16,6 @@ import androidx.compose.ui.test.isToggleable
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.core.app.ApplicationProvider
 import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
@@ -61,14 +60,7 @@ class ExpiryRemindersSettingsTest {
     }
 
     @Test
-    fun hiddenWithoutTheMealPlanFlag() {
-        show()
-        compose.onNodeWithText("Expiry reminders").assertDoesNotExist()
-    }
-
-    @Test
     fun turnsOnWhenNotificationsAreAllowed() {
-        flags.set(Flag.MEAL_PLAN, true)
         show()
         scrollTo("Expiry reminders")
         val switch = compose.onNode(isToggleable().and(hasText("Expiry reminders", substring = true)))
@@ -87,7 +79,6 @@ class ExpiryRemindersSettingsTest {
 
     @Test
     fun aRefusalExplainsAndStaysOff() {
-        flags.set(Flag.MEAL_PLAN, true)
         show()
         compose.runOnIdle { viewModel.onExpiryRemindersPermission(false) }
         scrollTo("Notifications are off")

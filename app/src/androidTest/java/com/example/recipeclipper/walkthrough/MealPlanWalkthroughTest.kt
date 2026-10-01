@@ -37,7 +37,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
 
     @Test
     fun test01_tabsAndWeek() {
-        start("mealPlan")
+        start()
         tap("Chicken Adobo")
         menu("Add to plan")
         tapTag("planDay-$today")
@@ -57,7 +57,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
 
     @Test
     fun test02_groceries() {
-        start("mealPlan")
+        start()
         for (title in listOf("Chicken Adobo", "Weeknight Chili", "Chicken Adobo")) { // Adobo twice: "× 2"
             tap(title)
             menu("Add to groceries")
@@ -81,7 +81,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
 
     @Test
     fun test03_pantryAndWhatINeed() {
-        start("mealPlan")
+        start()
         tap("Pantry")
         listOf("soy sauce", "garlic", "bay leaves", "white vinegar").forEach { type("pantryDraft", it) }
         tap("Week")
@@ -94,7 +94,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
 
     @Test
     fun test04_weeklyMenus() {
-        start("mealPlan")
+        start()
         tap("Week")
         planToday("Chicken Adobo")
         planToday("Spaghetti Carbonara")
@@ -108,7 +108,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
 
     @Test
     fun test05_expiryReminders() {
-        start("mealPlan")
+        start()
         tapDescription("Settings")
         repeat(3) { swipeUp() }
         tap("Expiry reminders", 2500)
@@ -120,7 +120,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test11_groceriesAiMergingSimulated() {
-        start("mealPlan", "aiDecisions")
+        start("aiDecisions")
         tap("Groceries")
         listOf(listOf("200 g sweetcorn", "100 g corn"), listOf("2 eggs, beaten", "3 eggs"))
             .forEach { pair ->
@@ -137,7 +137,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test12_groceriesJunkHidden() {
-        start("mealPlan", "aiDecisions")
+        start("aiDecisions")
         tapScrolling("Banana Bread") // below the fold on Home (a lazy list)
         // The answers land in the background; then the line shows without its junk.
         waitFor(hasText("2 eggs"))
@@ -158,7 +158,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
      */
     @Test
     fun test22_recipeJunkHidden() {
-        start("mealPlan", "aiDecisions")
+        start("aiDecisions")
         tapScrolling("Banana Bread") // below the fold on Home (a lazy list)
         // The answers land in the background; then the line shows without its junk.
         waitFor(hasText("2 eggs"))

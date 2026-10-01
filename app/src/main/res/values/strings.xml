@@ -623,7 +623,6 @@
     <string name="tooltip_recipe_bookmark">Save this recipe to a list, like Favorites.</string>
     <string name="tooltip_recipe_share">Send this recipe as text, as it shows here.</string>
     <string name="tooltip_recipe_menu">More: Add to plan, Add to groceries, Send as file and Edit.</string>
-    <string name="tooltip_recipe_menu_no_plan">More: Send as file and Edit.</string>
     <string name="tooltip_recipe_start_cooking">Cook mode: one step at a time, with timers, and the screen stays on.</string>
     <string name="tooltip_recipe_made_this">Made it? Add a photo and a note, or Mark as cooked.</string>
     <string name="tooltip_cook_done_next">When a step is done, tap here to move to the next.</string>

@@ -23,16 +23,16 @@ class DeveloperSettingsViewModelTest {
     private val store = FakeFeatureFlagStore()
     private val flags = FeatureFlags(
         store,
-        listOf(FlagDefinition("mealPlan", "The meal plan", debugDefault = false, releaseDefault = false, issue = 47)),
+        listOf(FlagDefinition("chefMode", "Chef mode", debugDefault = false, releaseDefault = false, issue = 100)),
         isDebug = true
     )
 
     @Test fun `lists every flag with its description, issue and state`() = runTest(mainDispatcherRule.dispatcher) {
-        val row = DeveloperSettingsViewModel(flags).uiState.value.flags.single { it.flag == Flag.MEAL_PLAN }
+        val row = DeveloperSettingsViewModel(flags).uiState.value.flags.single { it.flag == Flag.CHEF_MODE }
 
-        assertEquals(Flag.MEAL_PLAN, row.flag)
-        assertEquals("The meal plan", row.description)
-        assertEquals(47, row.issue)
+        assertEquals(Flag.CHEF_MODE, row.flag)
+        assertEquals("Chef mode", row.description)
+        assertEquals(100, row.issue)
         assertFalse(row.on)
         assertFalse(row.changed)
     }
@@ -40,22 +40,22 @@ class DeveloperSettingsViewModelTest {
     @Test fun `a switch overrides the flag, and reset clears it`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = DeveloperSettingsViewModel(flags)
 
-        vm.onFlagChange(Flag.MEAL_PLAN, true)
-        assertTrue(flags.isOn(Flag.MEAL_PLAN))
-        assertTrue(vm.uiState.value.flags.single { it.flag == Flag.MEAL_PLAN }.on)
+        vm.onFlagChange(Flag.CHEF_MODE, true)
+        assertTrue(flags.isOn(Flag.CHEF_MODE))
+        assertTrue(vm.uiState.value.flags.single { it.flag == Flag.CHEF_MODE }.on)
         assertTrue(vm.uiState.value.anyChanged)
 
         vm.onReset()
-        assertFalse(flags.isOn(Flag.MEAL_PLAN))
+        assertFalse(flags.isOn(Flag.CHEF_MODE))
         assertFalse(vm.uiState.value.anyChanged)
     }
 
     @Test fun `follows a change made elsewhere`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = DeveloperSettingsViewModel(flags)
 
-        store.setOverride("mealPlan", true)
+        store.setOverride("chefMode", true)
         advanceUntilIdle()
 
-        assertTrue(vm.uiState.value.flags.single { it.flag == Flag.MEAL_PLAN }.on)
+        assertTrue(vm.uiState.value.flags.single { it.flag == Flag.CHEF_MODE }.on)
     }
 }

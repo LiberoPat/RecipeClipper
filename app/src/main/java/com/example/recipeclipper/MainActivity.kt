@@ -10,7 +10,6 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.core.content.IntentCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -87,16 +86,13 @@ class MainActivity : ComponentActivity() {
         tourChecked = savedInstanceState?.getBoolean(STATE_TOUR_CHECKED) ?: false
 
         setContent {
-            // The flags (#87) as they change in Developer settings. Turning the tab shell on or
-            // off swaps the whole navigation graph, so it gets a fresh NavController (and opens
-            // on Home) rather than restoring a back stack from the other graph.
+            // The flags (#87) as they change in Developer settings.
             val flags by featureFlags.values.collectAsStateWithLifecycle(featureFlags.current)
-            val tabsEnabled = flags.isOn(Flag.MEAL_PLAN)
-            val navController = key(tabsEnabled) { rememberNavController() }
+            val navController = rememberNavController()
             LaunchedEffect(navController) {
-                // The first back-stack entry exists once the NavHost has set its graph. With the
-                // tab bar on, the NavHost sits inside a Scaffold, which composes it later than
-                // this effect may start.
+                // The first back-stack entry exists once the NavHost has set its graph. The
+                // NavHost sits inside the tab shell's Scaffold, which composes it later than this
+                // effect may start.
                 navController.currentBackStackEntryFlow.first()
                 // Once per start (#151), before any intent's route opens, so the library it
                 // counts is the one this launch found: a new user's sample recipe, in the UI's
@@ -108,13 +104,13 @@ class MainActivity : ComponentActivity() {
                 withContext(Dispatchers.Main.immediate) {
                     for (route in intentRoutes) {
                         // Into the Recipes tab, whichever tab is open (a tab's own route opens that tab).
-                        navController.openRoute(route, tabsEnabled)
+                        navController.openRoute(route)
                         shareHandled = true
                     }
                 }
             }
             CompositionLocalProvider(LocalFlagValues provides flags, LocalTooltips provides tooltips) {
-                AppShell(navController, tabsEnabled)
+                AppShell(navController)
                 // A shared file (#149) opens its sheet over whatever is on screen; once added,
                 // the app shows where the things went.
                 ReceiveFileHost(hiltViewModel()) { where ->
@@ -123,8 +119,7 @@ class MainActivity : ComponentActivity() {
                             ReceivedWhere.GROCERIES -> Tab.GROCERIES.route
                             ReceivedWhere.PANTRY -> Tab.PANTRY.route
                             ReceivedWhere.RECIPES -> Routes.RECIPES
-                        },
-                        tabsEnabled
+                        }
                     )
                 }
             }
@@ -171,7 +166,7 @@ class MainActivity : ComponentActivity() {
 
     /** Where an intent leads: a shared link imports, a timer notification opens cook mode, an
      *  expiry reminder (#52) opens the Pantry tab, shared text with no link but with lines
-     *  (#149) opens Groceries on the "Add this list" sheet (only with the tabs, #47), and shared
+     *  (#149) opens Groceries on the "Add this list" sheet, and shared
      *  images (#226, the photoText flag) open the scan's review, read on the device. */
     private fun routeFor(intent: Intent?): String? {
         if (featureFlags.current.isOn(Flag.PHOTO_TEXT)) {
@@ -184,7 +179,7 @@ class MainActivity : ComponentActivity() {
         }
         val text = sharedText(intent) ?: return null
         Regex("https?://\\S+").find(text)?.let { return Routes.import(it.value) }
-        if (featureFlags.current.isOn(Flag.MEAL_PLAN) && ReceivedList.lines(text).isNotEmpty()) {
+        if (ReceivedList.lines(text).isNotEmpty()) {
             receivedLists.offer(text)
             return Tab.GROCERIES.route
         }

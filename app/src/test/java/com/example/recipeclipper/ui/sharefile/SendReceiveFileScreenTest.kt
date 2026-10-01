@@ -18,11 +18,8 @@ import com.example.recipeclipper.data.backup.PantryDestination
 import com.example.recipeclipper.data.backup.ShareChoice
 import com.example.recipeclipper.data.backup.ShareFile
 import com.example.recipeclipper.data.backup.fixture
-import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.fake.FakeBackupFiles
-import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
@@ -100,8 +97,7 @@ class SendReceiveFileScreenTest {
         val uri = "content://messages/attachment/1"
         files.files[uri] = fixture("share-v1.recipeclipper")
         val inbox = ReceivedFileInbox()
-        val flags = FeatureFlags(FakeFeatureFlagStore(mapOf("mealPlan" to true)), FlagRegistry.definitions, isDebug = false)
-        val viewModel = ReceiveFileViewModel(files, share, flags, inbox)
+        val viewModel = ReceiveFileViewModel(files, share, inbox)
         var shown: ReceivedWhere? = null
         compose.setContent { ReceiveFileHost(viewModel) { shown = it } }
 

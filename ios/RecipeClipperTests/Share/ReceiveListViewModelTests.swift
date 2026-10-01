@@ -103,15 +103,4 @@ final class ReceiveListViewModelTests: XCTestCase {
         let text = await SharedItems.text(from: [provider])
         XCTAssertEqual(text, "- milk\n- 2 eggs")
     }
-
-    func testTheSwitchIsOffUntilTheAppWritesIt() {
-        let defaults = UserDefaults(suiteName: "ReceiveListViewModelTests")!
-        defaults.removePersistentDomain(forName: "ReceiveListViewModelTests")
-        let mirror = DefaultsGroceriesSwitch(defaults: defaults)
-        XCTAssertFalse(mirror.isOn)
-        mirror.store(true)
-        XCTAssertTrue(mirror.isOn)
-        mirror.store(false)
-        XCTAssertFalse(mirror.isOn)
-    }
 }

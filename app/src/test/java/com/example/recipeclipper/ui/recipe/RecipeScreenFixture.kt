@@ -40,19 +40,17 @@ import java.util.concurrent.atomic.AtomicLong
  */
 class RecipeScreenFixture(
     recipe: Recipe = testRecipe(),
-    /** Set to show "Add to plan" (#49), as behind the tab flag. */
+    /** Set to show "Add to plan" (#49) and "Add to groceries" with this plan. */
     val plan: FakeMealPlanRepository? = null,
-    /** Set to show "Add to groceries" (#50), as behind the tab flag. */
+    /** Set to show them with this grocery list (#50). */
     val groceries: FakeGroceryRepository? = null,
-    /** The `amountsInSteps` flag (#101); the switch itself is [preferences]' `amountsInSteps`. */
-    val amountsInSteps: Boolean = false,
     /** Set to turn Chef mode (#100) on, flag and setting, with this as the model. */
     val chef: FakeStepShortener? = null,
     /** Set to turn "I made this" (#116) on, with these as the photos. */
     val photos: com.example.recipeclipper.fake.FakeCookedPhotoRepository? = null,
     /** Set to show "Send as file" (#149), as the navigation does. */
     val sendFile: com.example.recipeclipper.ui.sharefile.SendFileViewModel? = null,
-    /** Set to use up this pantry when cook mode is finished (#147), as behind the tab flag. */
+    /** Set to use up this pantry when cook mode is finished (#147). */
     val pantry: FakePantryRepository? = null,
     /** Set to give the screen the on-device model's decisions (#104, #174). */
     val decisions: com.example.recipeclipper.fake.FakeDecisionRepository? = null
@@ -99,14 +97,14 @@ class RecipeScreenFixture(
             decisionRepository = decisions
         )
         val saveViewModel = SaveToListViewModel(lists)
-        // Behind the flag both menu items show, so both sheets need a ViewModel (not Hilt's).
-        val flagOn = plan != null || groceries != null || pantry != null
-        val planViewModel = if (flagOn) AddToPlanViewModel(plan ?: FakeMealPlanRepository(), FakePlanCalendar()) else null
+        // Both menu items show together, so both sheets need a ViewModel (not Hilt's).
+        val mealPlan = plan != null || groceries != null || pantry != null
+        val planViewModel = if (mealPlan) AddToPlanViewModel(plan ?: FakeMealPlanRepository(), FakePlanCalendar()) else null
         val groceriesViewModel =
-            if (flagOn) AddToGroceriesViewModel(groceries ?: FakeGroceryRepository(), preferences, FakePantryRepository()) else null
+            if (mealPlan) AddToGroceriesViewModel(groceries ?: FakeGroceryRepository(), preferences, FakePantryRepository()) else null
         photosViewModel = photos?.let { CookedPhotosViewModel(it) }
         val useUpViewModel =
-            if (flagOn) {
+            if (mealPlan) {
                 PantryUseUpViewModel(
                     pantry ?: FakePantryRepository(), groceries ?: FakeGroceryRepository(), useUpLog, Clock { now.get() }
                 )
@@ -118,11 +116,8 @@ class RecipeScreenFixture(
                 onBack = { backs++ },
                 viewModel = viewModel,
                 saveViewModel = saveViewModel,
-                mealPlanEnabled = flagOn,
-                amountsInStepsEnabled = amountsInSteps,
                 planViewModel = planViewModel,
                 groceriesViewModel = groceriesViewModel,
-                cookedPhotosEnabled = photosViewModel != null,
                 photosViewModel = photosViewModel,
                 sendFileViewModel = sendFile,
                 useUpViewModel = useUpViewModel

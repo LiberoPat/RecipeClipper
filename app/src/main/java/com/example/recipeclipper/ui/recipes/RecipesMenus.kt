@@ -65,7 +65,7 @@ internal fun AddMenu(onTypeRecipe: () -> Unit, onPasteLink: () -> Unit, onScan: 
 
 /** The order of the rows: an exclusive choice, so radio rows (the pantry's pattern). */
 @Composable
-internal fun SortMenu(sort: RecipeSort, onSort: (RecipeSort) -> Unit, showCooked: Boolean = false) {
+internal fun SortMenu(sort: RecipeSort, onSort: (RecipeSort) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
@@ -75,8 +75,9 @@ internal fun SortMenu(sort: RecipeSort, onSort: (RecipeSort) -> Unit, showCooked
             listOf(
                 RecipeSort.RECENTLY_VIEWED to R.string.sort_recently_viewed,
                 RecipeSort.NAME to R.string.sort_name,
-                RecipeSort.DATE_ADDED to R.string.sort_date_added
-            ).plus(if (showCooked) listOf(RecipeSort.RECENTLY_COOKED to R.string.sort_recently_cooked) else emptyList()).forEach { (option, label) ->
+                RecipeSort.DATE_ADDED to R.string.sort_date_added,
+                RecipeSort.RECENTLY_COOKED to R.string.sort_recently_cooked
+            ).forEach { (option, label) ->
                 DropdownMenuItem(
                     text = { Text(stringResource(label)) },
                     leadingIcon = { RadioButton(selected = option == sort, onClick = null) },

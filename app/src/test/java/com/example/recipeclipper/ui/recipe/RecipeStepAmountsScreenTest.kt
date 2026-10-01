@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 
 /**
  * "Amounts in steps" (#101) on the real [RecipeScreen]: the fixture's "Stir in the milk." reads
- * "Stir in 1 cup milk." in the reading view and in cook mode, only with the flag and the switch on.
+ * "Stir in 1 cup milk." in the reading view and in cook mode, only with the switch on.
  */
 @RunWith(AndroidJUnit4::class)
 class RecipeStepAmountsScreenTest {
@@ -20,13 +20,13 @@ class RecipeStepAmountsScreenTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun show(flag: Boolean, switch: Boolean) = RecipeScreenFixture(amountsInSteps = flag).apply {
+    private fun show(switch: Boolean) = RecipeScreenFixture().apply {
         preferences.amountsInSteps = switch
         show(compose)
     }
 
     @Test fun `the reading view and cook mode show the amount inside the step`() {
-        show(flag = true, switch = true)
+        show(switch = true)
         compose.onNodeWithText("Stir in 1 cup milk.").performScrollTo().assertIsDisplayed()
 
         compose.onNodeWithText("Start cooking").performClick()
@@ -34,12 +34,7 @@ class RecipeStepAmountsScreenTest {
     }
 
     @Test fun `the step stays as written with the switch off`() {
-        show(flag = true, switch = false)
-        compose.onNodeWithText("Stir in the milk.").performScrollTo().assertIsDisplayed()
-    }
-
-    @Test fun `the step stays as written with the flag off, whatever the switch`() {
-        show(flag = false, switch = true)
+        show(switch = false)
         compose.onNodeWithText("Stir in the milk.").performScrollTo().assertIsDisplayed()
     }
 }

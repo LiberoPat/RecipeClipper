@@ -590,7 +590,6 @@
     <string name="tooltip_recipe_bookmark">Salve esta receita em uma lista, como Favoritos.</string>
     <string name="tooltip_recipe_share">Envie esta receita como texto, como aparece aqui.</string>
     <string name="tooltip_recipe_menu">Mais: Adicionar ao plano, Adicionar às compras, Enviar como arquivo e Editar.</string>
-    <string name="tooltip_recipe_menu_no_plan">Mais: Enviar como arquivo e Editar.</string>
     <string name="tooltip_recipe_start_cooking">Modo cozinhar: um passo de cada vez, com timers, e a tela fica ligada.</string>
     <string name="tooltip_recipe_made_this">Fez a receita? Adicione uma foto e uma nota, ou Marcar como feita.</string>
     <string name="tooltip_cook_done_next">Quando terminar um passo, toque aqui para ir ao próximo.</string>

@@ -10,13 +10,13 @@ final class ShareFileViewModelsTests: XCTestCase {
     private let share = FakeShareFileRepository()
     private let url = URL(fileURLWithPath: "/tmp/Inbox/Sheet-pan chicken.recipeclipper")
 
-    private func receiver(groceriesOn: Bool = true) -> ReceiveFileViewModel {
-        ReceiveFileViewModel(files: files, share: share, groceriesOn: { groceriesOn })
+    private func receiver() -> ReceiveFileViewModel {
+        ReceiveFileViewModel(files: files, share: share)
     }
 
-    private func opened(groceriesOn: Bool = true) async throws -> ReceiveFileViewModel {
+    private func opened() async throws -> ReceiveFileViewModel {
         files.files[url] = try shareFixture()
-        let vm = receiver(groceriesOn: groceriesOn)
+        let vm = receiver()
         vm.open(url)
         await vm.currentWork?.value
         return vm
@@ -78,12 +78,6 @@ final class ShareFileViewModelsTests: XCTestCase {
         XCTAssertEqual(state.groceries.map(\.detail), ["Sheet-pan chicken", "Sheet-pan chicken", nil])
         XCTAssertEqual(state.pantry.map(\.text), ["Basmati rice"])
         XCTAssertEqual(state.tickedCount, 6)
-    }
-
-    func testWithoutTheTabsOnlyTheRecipesAreOffered() async throws {
-        let vm = try await opened(groceriesOn: false)
-        XCTAssertEqual(vm.uiState.recipes.count, 2)
-        XCTAssertTrue(vm.uiState.groceries.isEmpty && vm.uiState.pantry.isEmpty)
     }
 
     func testAFileThatCantBeReadOrIsntOneSaysWhy() async {

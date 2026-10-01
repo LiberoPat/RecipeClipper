@@ -12,49 +12,62 @@ import java.io.File
 class FeatureFlagsTest {
 
     private val definitions = listOf(
-        FlagDefinition("mealPlan", "The meal plan", debugDefault = true, releaseDefault = false, issue = 47)
+        FlagDefinition("freeTier", "The free tier", debugDefault = true, releaseDefault = false, issue = 107)
     )
 
     @Test fun `each build type gets its own default`() {
-        assertTrue(FeatureFlags(FakeFeatureFlagStore(), definitions, isDebug = true).isOn(Flag.MEAL_PLAN))
-        assertFalse(FeatureFlags(FakeFeatureFlagStore(), definitions, isDebug = false).isOn(Flag.MEAL_PLAN))
+        assertTrue(FeatureFlags(FakeFeatureFlagStore(), definitions, isDebug = true).isOn(Flag.FREE_TIER))
+        assertFalse(FeatureFlags(FakeFeatureFlagStore(), definitions, isDebug = false).isOn(Flag.FREE_TIER))
     }
 
     @Test fun `an override wins over the default, and reset returns to it`() {
         val store = FakeFeatureFlagStore()
         val flags = FeatureFlags(store, definitions, isDebug = false)
 
-        flags.set(Flag.MEAL_PLAN, true)
-        assertTrue(flags.isOn(Flag.MEAL_PLAN))
-        assertTrue(flags.isOverridden(Flag.MEAL_PLAN))
-        assertEquals(mapOf("mealPlan" to true), store.overrides.value)
+        flags.set(Flag.FREE_TIER, true)
+        assertTrue(flags.isOn(Flag.FREE_TIER))
+        assertTrue(flags.isOverridden(Flag.FREE_TIER))
+        assertEquals(mapOf("freeTier" to true), store.overrides.value)
 
         flags.reset()
-        assertFalse(flags.isOn(Flag.MEAL_PLAN))
-        assertFalse(flags.isOverridden(Flag.MEAL_PLAN))
+        assertFalse(flags.isOn(Flag.FREE_TIER))
+        assertFalse(flags.isOverridden(Flag.FREE_TIER))
     }
 
     @Test fun `choosing the default stores no override`() {
-        val store = FakeFeatureFlagStore(mapOf("mealPlan" to true))
+        val store = FakeFeatureFlagStore(mapOf("freeTier" to true))
         val flags = FeatureFlags(store, definitions, isDebug = false)
 
-        flags.set(Flag.MEAL_PLAN, false)
+        flags.set(Flag.FREE_TIER, false)
 
         assertEquals(emptyMap<String, Boolean>(), store.overrides.value)
     }
 
     @Test fun `values follow the store`() = runTest {
         val flags = FeatureFlags(FakeFeatureFlagStore(), definitions, isDebug = false)
-        assertFalse(flags.values.first().isOn(Flag.MEAL_PLAN))
+        assertFalse(flags.values.first().isOn(Flag.FREE_TIER))
 
-        flags.set(Flag.MEAL_PLAN, true)
+        flags.set(Flag.FREE_TIER, true)
 
-        assertTrue(flags.values.first().isOn(Flag.MEAL_PLAN))
-        assertTrue(flags.current.isOn(Flag.MEAL_PLAN))
+        assertTrue(flags.values.first().isOn(Flag.FREE_TIER))
+        assertTrue(flags.current.isOn(Flag.FREE_TIER))
     }
 
     @Test fun `a flag missing from the registry is off`() {
-        assertFalse(FeatureFlags(FakeFeatureFlagStore(), emptyList(), isDebug = true).isOn(Flag.MEAL_PLAN))
+        assertFalse(FeatureFlags(FakeFeatureFlagStore(), emptyList(), isDebug = true).isOn(Flag.FREE_TIER))
+    }
+
+    @Test fun `a stored override for a retired flag is ignored (#242)`() {
+        // mealPlan, amountsInSteps and cookedPhotos were retired (#242); a phone may still hold
+        // an override for one from Developer settings. It names no Flag, so it changes nothing.
+        val retired = mapOf("mealPlan" to false, "amountsInSteps" to false, "cookedPhotos" to false)
+        val flags = FeatureFlags(FakeFeatureFlagStore(retired), FlagRegistry.definitions, isDebug = false)
+        val clean = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = false)
+
+        assertEquals(clean.current, flags.current)
+        Flag.entries.forEach { assertFalse(flags.isOverridden(it)) }
+        flags.reset()
+        assertEquals(clean.current, flags.current)
     }
 
     @Test fun `parses the registry format`() {
