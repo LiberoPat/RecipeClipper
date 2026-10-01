@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// The Week tab (#49; Android's WeekScreen): ‹ week › with "This week", then the seven days
-/// from the locale's first day of the week, each with its meals and a "+ Add". Tapping a recipe
-/// opens it at the planned servings; long-pressing a meal offers Move and Remove (Remove can be
-/// undone).
+/// The Week tab (#49; Android's WeekScreen): ‹ week › over one scroll of days that opens with
+/// today at the top, each day with its meals and a "+ Add" (#232). The weeks are seven-day blocks
+/// from today; the label names the block at the top, the arrows snap to the block before or
+/// after, and "Today", away from this week, scrolls back. Tapping a recipe opens it at the
+/// planned servings; long-pressing a meal offers Move and Remove (Remove can be undone).
 struct WeekScreen: View {
     let vm: WeekViewModel
     let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
@@ -16,52 +17,33 @@ struct WeekScreen: View {
     @State private var groceriesSheet: AddToGroceriesViewModel?
     /// The week's .ics file once written, for the share sheet (#52).
     @State private var calendarURL: URL?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         let state = vm.uiState
-        let typeNames = Dictionary(uniqueKeysWithValues: state.mealTypes.map { ($0.id, $0.name) })
-        ScrollViewReader { proxy in
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                header(state)
-                if let month = state.month {
+        VStack(spacing: 0) {
+            // The header stays put while the days scroll under it.
+            header(state)
+                .padding(.horizontal, 20)
+                .readableColumn()
+            if let month = state.month {
+                ScrollView {
                     MonthGrid(month: month, today: state.today, onSelect: vm.onMonthDaySelected)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 32)
+                        .readableColumn()
                 }
-                ForEach(state.month == nil ? state.days : []) { weekDay in
-                    dayHeader(weekDay.day, isToday: weekDay.day == state.today)
-                        .id("day-\(weekDay.day)")
-                    ForEach(weekDay.meals) { meal in
-                        MealRow(meal: meal, mealTypeName: typeNames[meal.mealTypeId] ?? "") {
-                            if let recipeId = meal.recipeId { onOpenRecipe(recipeId, meal.servings) }
-                        }
-                        .contextMenu {
-                            Button { vm.onMoveStart(meal) } label: { Label(Strings.move, systemImage: "arrow.right") }
-                            Button(role: .destructive) { vm.onRemove(meal) } label: {
-                                Label(Strings.removeFromPlan, systemImage: "minus.circle")
-                            }
-                        }
-                    }
-                    Button(Strings.addMeal) { vm.onAddToDay(weekDay.day) }
-                        .buttonStyle(TextActionStyle())
-                        // The tooltip (#190) points at the first day's.
-                        .modifier(FirstDayAnchor(first: weekDay.day == state.days.first?.day))
-                        .padding(.leading, -12)
-                        .accessibilityIdentifier("addToDay-\(weekDay.day)")
-                    Hairline()
-                }
+            } else {
+                DayList(vm: vm, onOpenRecipe: onOpenRecipe)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 32)
-            .readableColumn()
-        }
-        // After a tap in the month view: scroll to that day once its week has loaded.
-        .onChange(of: FocusKey(day: state.focusDay, loaded: state.days.map(\.day)), initial: true) { _, key in
-            guard let day = key.day, key.loaded.contains(day) else { return }
-            proxy.scrollTo("day-\(day)", anchor: .top)
-            vm.onFocusHandled()
-        }
         }
         .screenBackground()
+        // On a new day, today goes to the top again (the week starts on the day the app is
+        // opened).
+        .onAppear { vm.onScreenResumed() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { vm.onScreenResumed() }
+        }
         // The week as an .ics file (#52): written and shared here, in the view layer; the
         // ViewModel only makes the text.
         .background(ShareSheetAnchor(item: calendarURL) {
@@ -185,6 +167,7 @@ struct WeekScreen: View {
                     previous: Strings.previousMonth,
                     next: Strings.nextMonth,
                     back: month.isThisMonth ? nil : Strings.thisMonth,
+                    backIdentifier: "thisMonthButton",
                     onPrevious: vm.onPreviousMonth,
                     onNext: vm.onNextMonth,
                     onBack: vm.onThisMonth
@@ -195,10 +178,11 @@ struct WeekScreen: View {
                     labelIdentifier: "weekRange",
                     previous: Strings.previousWeek,
                     next: Strings.nextWeek,
-                    back: state.isThisWeek ? nil : Strings.thisWeek,
+                    back: state.isThisWeek ? nil : Strings.today,
+                    backIdentifier: "todayButton",
                     onPrevious: vm.onPreviousWeek,
                     onNext: vm.onNextWeek,
-                    onBack: vm.onThisWeek
+                    onBack: vm.onToday
                 )
             }
             Hairline()
@@ -209,6 +193,7 @@ struct WeekScreen: View {
     /// ‹ label › and, away from the current week or month, a way back to it.
     private func periodNavigation(
         label: String, labelIdentifier: String, previous: String, next: String, back: String?,
+        backIdentifier: String,
         onPrevious: @escaping () -> Void, onNext: @escaping () -> Void, onBack: @escaping () -> Void
     ) -> some View {
         HStack(spacing: 4) {
@@ -227,29 +212,110 @@ struct WeekScreen: View {
             .accessibilityLabel(next)
             Spacer()
             if let back {
-                Button(back, action: onBack).buttonStyle(TextActionStyle())
+                Button(back, action: onBack)
+                    .buttonStyle(TextActionStyle())
+                    .accessibilityIdentifier(backIdentifier)
             }
         }
         .foregroundStyle(Palette.onBackground)
     }
+}
 
-    private func dayHeader(_ day: Int64, isToday: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(PlanDayFormat.title(day)).textStyle(Typography.titleMedium).foregroundStyle(Palette.onBackground)
-            if isToday {
-                Text(Strings.today).textStyle(Typography.labelMedium).foregroundStyle(Palette.accentText)
+/// Every day the ViewModel holds, one section each (#232; Android's DayList), keyed by its epoch
+/// day: the stack's one `ForEach`, so its ids are unique (#185). Free scrolling tells the
+/// ViewModel the day at the top; a `scrollTo` from an arrow, "Today", a new day or the month is
+/// carried out here. The position is the view's own state, starting on the ViewModel's top day,
+/// so coming back from the month finds the days where they were.
+private struct DayList: View {
+    let vm: WeekViewModel
+    let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
+    @State private var position: Int64?
+
+    init(vm: WeekViewModel, onOpenRecipe: @escaping (_ recipeId: Int64, _ servings: Int?) -> Void) {
+        self.vm = vm
+        self.onOpenRecipe = onOpenRecipe
+        _position = State(initialValue: vm.uiState.topDay)
+    }
+
+    var body: some View {
+        let state = vm.uiState
+        let typeNames = Dictionary(uniqueKeysWithValues: state.mealTypes.map { ($0.id, $0.name) })
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(state.allDays, id: \.self) { day in
+                    DaySection(
+                        vm: vm, day: day, isToday: day == state.today, meals: state.mealsOn(day),
+                        typeNames: typeNames, onOpenRecipe: onOpenRecipe
+                    )
+                }
+            }
+            .scrollTargetLayout()
+            .padding(.horizontal, 20)
+            .padding(.bottom, 32)
+            .readableColumn()
+        }
+        .scrollPosition(id: $position, anchor: .top)
+        .accessibilityIdentifier("weekList")
+        .onChange(of: position) { _, day in
+            if let day { vm.onTopDayChanged(day) }
+        }
+        .onChange(of: state.scrollTo, initial: true) { _, target in
+            guard let target else { return }
+            if target.animate {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    position = target.day
+                } completion: {
+                    vm.onScrollHandled(target.id, topDay: nil)
+                }
+            } else {
+                position = target.day
+                vm.onScrollHandled(target.id, topDay: nil)
             }
         }
-        .padding(.top, 18)
-        .padding(.bottom, 4)
-        .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// What the week view waits for before scrolling to a day tapped in the month view.
-private struct FocusKey: Equatable {
-    let day: Int64?
-    let loaded: [Int64]
+/// One day: its heading, its meals, then its "+ Add".
+private struct DaySection: View {
+    let vm: WeekViewModel
+    let day: Int64
+    let isToday: Bool
+    let meals: [PlannedMeal]
+    let typeNames: [Int64: String]
+    let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(PlanDayFormat.title(day)).textStyle(Typography.titleMedium).foregroundStyle(Palette.onBackground)
+                if isToday {
+                    Text(Strings.today).textStyle(Typography.labelMedium).foregroundStyle(Palette.accentText)
+                }
+            }
+            .padding(.top, 18)
+            .padding(.bottom, 4)
+            .accessibilityAddTraits(.isHeader)
+            ForEach(meals) { meal in
+                MealRow(meal: meal, mealTypeName: typeNames[meal.mealTypeId] ?? "") {
+                    if let recipeId = meal.recipeId { onOpenRecipe(recipeId, meal.servings) }
+                }
+                .contextMenu {
+                    Button { vm.onMoveStart(meal) } label: { Label(Strings.move, systemImage: "arrow.right") }
+                    Button(role: .destructive) { vm.onRemove(meal) } label: {
+                        Label(Strings.removeFromPlan, systemImage: "minus.circle")
+                    }
+                }
+            }
+            Button(Strings.addMeal) { vm.onAddToDay(day) }
+                .buttonStyle(TextActionStyle())
+                // The tooltip (#190) points at today's, the first day shown.
+                .modifier(TodayAnchor(isToday: isToday))
+                .padding(.leading, -12)
+                .accessibilityIdentifier("addToDay-\(day)")
+            Hairline()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
 /// The month view (#52): the locale's weekdays over whole weeks. A day with meals has a paprika
@@ -402,11 +468,11 @@ private struct AddToDaySheet: View {
     }
 }
 
-/// The first day's "+ Add", which the "+ Add" tooltip (#190) points at.
-private struct FirstDayAnchor: ViewModifier {
-    let first: Bool
+/// Today's "+ Add", which the "+ Add" tooltip (#190) points at.
+private struct TodayAnchor: ViewModifier {
+    let isToday: Bool
 
     func body(content: Content) -> some View {
-        if first { content.tooltipAnchor(.weekAdd) } else { content }
+        if isToday { content.tooltipAnchor(.weekAdd) } else { content }
     }
 }

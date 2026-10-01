@@ -31,8 +31,12 @@ final class FakeMealPlanRepository: MealPlanRepository {
 
     func observeMealTypes() -> AnyPublisher<[MealType], Never> { types.eraseToAnyPublisher() }
 
+    /// Every day range asked for, in order: how the Week tab pages (#232).
+    var observedRanges: [ClosedRange<Int64>] = []
+
     func observeDays(start: Int64, end: Int64) -> AnyPublisher<[PlannedMeal], Never> {
-        meals.combineLatest(types)
+        observedRanges.append(start...end)
+        return meals.combineLatest(types)
             .map { all, order in
                 let rank = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1.id, $0) })
                 return all.enumerated()
@@ -124,6 +128,8 @@ final class FakeMealPlanRepository: MealPlanRepository {
 final class FakePlanCalendar: PlanCalendar {
     /// 2026-09-23, a Wednesday.
     static let wednesday: Int64 = 20_719
+    /// 2026-10-01, a Thursday.
+    static let thursday: Int64 = 20_727
     static let mondayFirst = 2
     static let sundayFirst = 1
 

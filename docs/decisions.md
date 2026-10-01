@@ -1456,11 +1456,31 @@ The first real tab of #46, still behind the #47 flag.
   zone moves. No `java.time` (API 26+; minSdk is 24): the arithmetic is plain
   integers, and labels are formatted at midnight UTC with a UTC formatter so
   the local zone can't show the day before.
-- **The week starts on the locale's first day** (owner's call):
-  `Calendar.getInstance().firstDayOfWeek` (the same answer as
-  `WeekFields.of(Locale)` without java.time) and iOS
-  `Calendar.current.firstWeekday`. Both number Sunday as 1. Both sit behind a
-  `PlanCalendar` seam, so ViewModel tests pin today and the first day.
+- **The week starts today** (owner's call, 2026-10-01, #232, replacing #49's "the locale's
+  first day"): "so if today is thursday the first date shown is today thursday". Weeks are
+  seven-day blocks counted from today, today+7k … today+7k+6 (`PlanDays.blockStart`), so
+  "This week" is Thursday to Wednesday when the app is opened on a Thursday. Today comes from
+  the `PlanCalendar` seam, so ViewModel tests pin it; on a new day (the app back in front, or
+  "Today" tapped) the blocks start from the new today. The locale's first day
+  (`Calendar.getInstance().firstDayOfWeek`, iOS `Calendar.current.firstWeekday`, Sunday = 1)
+  still lays out the month grid and anchors menus' weekdays.
+- **One scroll of days** (#232): the Week is one vertical lazy list, a section per day (its
+  meals and "+ Add"), opening with today at the top; plain scrolling moves freely. The
+  header stays put: ‹ range › names the block holding the day at the top ("Thu, Oct 1 –
+  Wed, Oct 7", both ends with their weekday), and the week's actions use that block. ‹ and ›
+  scroll (animated) so the first day of the block before or after the one at the top is at
+  the top, so after free scrolling an arrow lands on a block boundary; a second press during
+  the scroll counts from where it's going. Away from this week, "Today" (the old "This
+  week" place; the owner can veto) scrolls back.
+- **Bounded days, a window of meals** (#232). The list's days are fixed at today − 365 to
+  today + 730, so indices are stable and a jump is instant; a month tap beyond them re-centres
+  the same span on that day. Only the meals of a 63-day window (four weeks either side of the
+  block at the top) are held, read with the existing `observeDays` range query and replaced,
+  never added to, when the block next to the top's would leave it: one query per four weeks
+  scrolled, and memory stays flat however far the list goes. The scroll position is the
+  view's own state; the ViewModel owns the days, the window, the block math and one-shot
+  `scrollTo` requests (an arrow, "Today", a new day, a month tap), and ignores the days a
+  requested scroll passes until it lands.
 - **Meal types are a table** (`meal_types`, owner's call): Breakfast, Lunch,
   Dinner and Snack are seeded with a `builtInKey` that survives a rename, as
   `isFavorites` does for lists. Any type can be renamed and reordered; only
@@ -1481,8 +1501,8 @@ The first real tab of #46, still behind the #47 flag.
   recipe ids (notes), because `NOT IN` a set holding a NULL is never true and
   would silently stop the cull. `today` is passed in by the repository; other
   callers default to protecting nothing.
-- **Moving is long-press → Move** on both platforms: the same day strip (the
-  shown week and the next) and meal types as "Add to plan". Drag and drop
+- **Moving is long-press → Move** on both platforms: the same day strip (today
+  and the next 13 days, #232) and meal types as "Add to plan". Drag and drop
   across day sections was left out, because it needs experimental Compose
   APIs and gives no parity with iOS for the same result.
 - **Opening a planned recipe uses the planned servings for that visit only.**
@@ -1498,20 +1518,23 @@ The first real tab of #46, still behind the #47 flag.
 - **In the export file** (#26) since the plan joined it after groceries and the
   pantry, with no `formatVersion` bump: see the Pantry section's Export note.
 - **The screen in short** (CLAUDE.md's summary until September 2026, #52's
-  extras included): ‹ week › and "This week", seven day sections from the
-  locale's first day, meal rows (type, thumbnail, title, servings, or a note),
-  "+ Add" per day (a meal type, then a recipe from history or the typed text as
-  a note). Long-press: Move (the day strip and meal types) or Remove (undo
-  snackbar). A tapped recipe opens at its planned servings, for that visit
-  only. "Month" beside the title swaps in a month grid (locale weeks, a dot on
-  planned days; a tapped day opens its week). "Save week as menu…" / "Apply a
-  menu…" (Week menu): a named copy of the week; applying adds its meals on the
-  same weekdays, never replacing what's planned; rename and delete in the menus
-  sheet. "Share as calendar file" (Week menu): the shown week as an .ics of
-  all-day events, never invented times. "Meal types" from the Week menu: add,
+  extras included; rolling since #232): a fixed header, ‹ range › naming the
+  seven days from today (or the block at the top), and "Today" when away from
+  them; under it one scroll of day sections, opening on today, from a year back
+  to two ahead; ‹ › snap to the previous or next block. Meal rows (type,
+  thumbnail, title, servings, or a note), "+ Add" per day (a meal type, then a
+  recipe from history or the typed text as a note). Long-press: Move (the day
+  strip and meal types) or Remove (undo snackbar). A tapped recipe opens at its
+  planned servings, for that visit only. "Month" beside the title swaps in a
+  month grid (locale weeks, a dot on planned days; a tapped day goes to the top
+  of the days). "Save week as menu…" / "Apply a menu…" (Week menu): a named copy
+  of the block at the top; applying adds its meals on the same weekdays within
+  that block, never replacing what's planned; rename and delete in the menus
+  sheet. "Share as calendar file" (Week menu): the block at the top as an .ics
+  of all-day events, never invented times. "Meal types" from the Week menu: add,
   rename, reorder any, delete the user's own. "Add to plan" (recipe menu, first
-  item, flag on only): this week's and next week's days, a meal type (Dinner
-  first), servings (the yield first), one button.
+  item, flag on only): today and the next 13 days, a meal type (Dinner first),
+  servings (the yield first), one button.
 
 ## Groceries (#50)
 
@@ -1978,7 +2001,7 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
 - **A switch, not a destination.** "Month" beside the Week title swaps the week for a month
   grid in place ("Week" swaps back), so the tab keeps one stack and Back never has to learn
   about it. It's ViewModel state, so it survives rotation; it isn't remembered across launches
-  (the Week tab opens on this week, as #49 decided). No new schema: the grid reads the same
+  (the Week tab opens on today, #232). No new schema: the grid reads the same
   `observeDays` range query as the week, over the grid's first to last day.
 - **The grid is whole weeks from the locale's first day** (`PlanDays.monthGrid`, both
   platforms), four to six rows, the days before and after the month muted but tappable. The
@@ -1986,9 +2009,10 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
   no `java.time` on minSdk 24.
 - **A day with meals shows a paprika dot, not a count or titles.** The month answers "which
   days are planned"; the week answers "what". Screen readers hear "…, meals planned".
-- **Tapping a day opens its week, scrolled to that day.** Which month opens: today's for this
-  week, otherwise the month holding most of the shown week (its fourth day), so Sep 28 – Oct 4
-  opens October.
+- **Tapping a day scrolls the days to it** (#232: that day at the top, the header naming its
+  block from today; before, it opened the day's locale week). Which month opens: today's for
+  this week, otherwise the month holding most of the shown week (its fourth day), so Sep 30 –
+  Oct 6 opens October.
 - The week's own menu actions (What I need, Add this week's ingredients) act on the week shown,
   so they're hidden while the month shows; Meal types stays.
 
@@ -2019,15 +2043,22 @@ The optional extras of #46, one PR each, still behind the `mealPlan` flag.
 
 - **A menu is a named copy of a week, not a template the plan follows** (Paprika's Menus).
   "Save week as menu…" (Week menu, week view only, disabled for an empty week) copies the
-  shown week's meals into a new menu: each keeps its weekday (`dayOffset` 0–6 from the week's
-  first day), meal type, recipe with planned servings, or note. Nothing links a planned meal
+  shown week's meals into a new menu: each keeps its weekday (`dayOffset` 0–6 from the locale's
+  first day of the week), meal type, recipe with planned servings, or note. Nothing links a planned meal
   to a menu afterwards, so editing the plan never changes a menu, and vice versa.
 - **Applying only adds.** "Apply a menu…" opens the menus sheet (name, meal count); tapping one
   copies its meals into the week shown on the same weekdays, each at the end of its day and
   meal type. What is planned stays, so applying twice doubles up (visibly, and each meal
   can be removed) rather than silently replacing a week the user built. The snackbar says how many
-  meals came in. A week starting on another weekday (a locale change) keeps offsets from the
-  week's first day, not weekday names.
+  meals came in.
+- **Weekdays across rolling weeks** (#232, owner's call 2026-10-01). The shown week is now
+  the seven days from today, so it can start on any weekday, but a menu still means "same
+  weekdays": Monday's meals land on the Monday among the seven days at the top. The schema
+  is unchanged (no migration): `dayOffset` stays what it always was, days after the locale's
+  first day of the week, and is converted at save (`PlanDays.menuOffset`) and apply
+  (`PlanDays.menuDay`) time, so menus saved before keep working (`MenuDaoTest` /
+  `MenuDaoTests` insert one as the old code wrote it). A locale whose first day differs from
+  the one a menu was saved under still shifts it, as before.
 - **Names are free text,** trimmed; blank does nothing. Duplicate names are allowed; the sheet sorts
   by name, case-insensitively.
   Rename and Delete sit on each row's menu in the sheet (iOS: their alerts show over the

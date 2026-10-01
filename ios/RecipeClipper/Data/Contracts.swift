@@ -584,7 +584,8 @@ protocol PlanCalendar {
     /// Today, as an epoch day (see `PlanDays`).
     func today() -> Int64
 
-    /// 1 = Sunday … 7 = Saturday: the locale's own, never a fixed Monday (owner's call).
+    /// 1 = Sunday … 7 = Saturday, the locale's own: the month grid's columns and menus' weekdays
+    /// (the Week's weeks start today, #232).
     func firstDayOfWeek() -> Int
 
     /// Now, in epoch millis: when a calendar file (#52) was made.

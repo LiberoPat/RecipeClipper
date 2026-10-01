@@ -29,15 +29,14 @@ enum PlanDayFormat {
     /// "September 2026", in the locale's order.
     static func monthTitle(_ day: Int64) -> String { format(day, "yMMMM") }
 
-    /// "Sep 21 – 27", or across months "Sep 28 – Oct 4".
+    /// "Thu, Oct 1 – Wed, Oct 7", in the locale's order. Weeks start on any weekday since #232,
+    /// so both ends name theirs.
     static func weekRange(_ start: Int64) -> String {
-        let end = start + 6
-        let sameMonth = format(start, "M") == format(end, "M")
-        return format(start, "MMMd") + " – " + (sameMonth ? format(end, "d") : format(end, "MMMd"))
+        format(start, "EEEMMMd") + " – " + format(start + 6, "EEEMMMd")
     }
 }
 
-/// The strip of days in a plan sheet: this week and next, a short weekday over its date. The
+/// The strip of days in a plan sheet: today and the next 13 (#232), a short weekday over its date. The
 /// chosen day is ringed in paprika; today's date is paprika text.
 struct DayStrip: View {
     let days: [Int64]
