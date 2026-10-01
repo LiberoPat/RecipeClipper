@@ -609,18 +609,22 @@
     <string name="clip_selected_hint">touchez le champ où ils vont</string>
     <plurals name="clip_confirm_ingredients">
         <item quantity="one">Ajouter %1$d ligne aux ingrédients</item>
+        <item quantity="many">Ajouter %1$d de lignes aux ingrédients</item>
         <item quantity="other">Ajouter %1$d lignes aux ingrédients</item>
     </plurals>
     <plurals name="clip_confirm_steps">
         <item quantity="one">Ajouter %1$d ligne aux étapes</item>
+        <item quantity="many">Ajouter %1$d de lignes aux étapes</item>
         <item quantity="other">Ajouter %1$d lignes aux étapes</item>
     </plurals>
     <plurals name="clip_removed_ingredients">
         <item quantity="one">%1$d ingrédient retiré</item>
+        <item quantity="many">%1$d d’ingrédients retirés</item>
         <item quantity="other">%1$d ingrédients retirés</item>
     </plurals>
     <plurals name="clip_removed_steps">
         <item quantity="one">%1$d étape retirée</item>
+        <item quantity="many">%1$d d’étapes retirées</item>
         <item quantity="other">%1$d étapes retirées</item>
     </plurals>
 </resources>

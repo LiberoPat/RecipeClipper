@@ -22114,6 +22114,12 @@
                   "value" : "Añadir %lld línea a Ingredientes"
                 }
               },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Añadir %lld de líneas a Ingredientes"
+                }
+              },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22130,6 +22136,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Ajouter %lld ligne aux ingrédients"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ajouter %lld de lignes aux ingrédients"
                 }
               },
               "other" : {
@@ -22150,6 +22162,12 @@
                   "value" : "Aggiungi %lld riga agli ingredienti"
                 }
               },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Aggiungi %lld di righe agli ingredienti"
+                }
+              },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22166,6 +22184,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Adicionar %lld linha a Ingredientes"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adicionar %lld de linhas a Ingredientes"
                 }
               },
               "other" : {
@@ -22227,6 +22251,12 @@
                   "value" : "Añadir %lld línea a Pasos"
                 }
               },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Añadir %lld de líneas a Pasos"
+                }
+              },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22243,6 +22273,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Ajouter %lld ligne aux étapes"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ajouter %lld de lignes aux étapes"
                 }
               },
               "other" : {
@@ -22263,6 +22299,12 @@
                   "value" : "Aggiungi %lld riga ai passaggi"
                 }
               },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Aggiungi %lld di righe ai passaggi"
+                }
+              },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22279,6 +22321,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Adicionar %lld linha a Passos"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adicionar %lld de linhas a Passos"
                 }
               },
               "other" : {
@@ -22340,6 +22388,12 @@
                   "value" : "%lld ingrediente quitado"
                 }
               },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld de ingredientes quitados"
+                }
+              },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22356,6 +22410,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld ingrédient retiré"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld d’ingrédients retirés"
                 }
               },
               "other" : {
@@ -22376,6 +22436,12 @@
                   "value" : "%lld ingrediente rimosso"
                 }
               },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld di ingredienti rimossi"
+                }
+              },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22392,6 +22458,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld ingrediente removido"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld de ingredientes removidos"
                 }
               },
               "other" : {
@@ -22453,6 +22525,12 @@
                   "value" : "%lld paso quitado"
                 }
               },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld de pasos quitados"
+                }
+              },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22469,6 +22547,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld étape retirée"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld d’étapes retirées"
                 }
               },
               "other" : {
@@ -22489,6 +22573,12 @@
                   "value" : "%lld passaggio rimosso"
                 }
               },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld di passaggi rimossi"
+                }
+              },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22505,6 +22595,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld passo removido"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld de passos removidos"
                 }
               },
               "other" : {
