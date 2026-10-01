@@ -1776,8 +1776,10 @@ first flow below replaced its select-then-tag toolbar (#237).
     last), which suits the Reddit Text view's one paragraph a line. A tap between blocks, on a
     label the page keeps out of selections (`user-select: none`), or on nothing with text, does
     nothing.
-  - **The page draws its own two handles** on a selection it made: WebViews show none for a
-    script's selection. Dragging one moves that end a whole block at a time (snapping to blocks
+  - **On Android the page draws its own two handles** on a selection it made: Android's WebView
+    shows none for a script's selection. (iOS's WebKit shows its own once the tap has given the
+    page the focus, so there the page draws none: two pairs sat on top of each other, seen on
+    the simulator.) Dragging one moves that end a whole block at a time (snapping to blocks
     keeps lines whole); dragged past the other end, the selection is that one block; near the
     top or bottom the page scrolls along. The handles take the finger with `touch-action: none`,
     so a plain drag anywhere else still scrolls. A long press still selects as the browser does

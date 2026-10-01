@@ -227,8 +227,13 @@
     return handles;
   }
 
+  // iOS's WebKit shows its own handles on a script's selection once the page has the focus (a
+  // tap gives it), so there the page draws none: two pairs would sit on top of each other.
+  // Android's WebView shows none, so the page draws its own.
+  var NATIVE_HANDLES = /AppleWebKit/.test(navigator.userAgent) && !/Android|Chrome/.test(navigator.userAgent);
+
   function drawHandles() {
-    if (!own) {
+    if (!own || NATIVE_HANDLES) {
       if (handles) handles.style.display = 'none';
       return;
     }

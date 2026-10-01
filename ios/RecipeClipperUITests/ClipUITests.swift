@@ -30,9 +30,11 @@ final class ClipUITests: RecipeUITestCase {
 
     private func fieldButton(_ field: String) -> XCUIElement { app.buttons["clip.field.\(field)"] }
 
-    /// A finger's tap on the page's text `label`.
+    /// A finger's tap on the page's text `label` (a list item's may carry its marker, so the text
+    /// is matched as part of the label).
     private func tapOnPage(_ label: String) {
-        onPage(page.staticTexts[label], label).tap()
+        let element = page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", label)).firstMatch
+        onPage(element, label).tap()
     }
 
     /// The hint bar's confirm, reading `label`.
