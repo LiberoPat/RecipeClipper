@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.clip
 import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -12,14 +13,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.recipeclipper.data.WebViewRenderedPageSource
-import com.example.recipeclipper.data.model.ClipField
 import com.example.recipeclipper.data.remote.RedditUrls
 import org.json.JSONObject
 
 /** What the page reports, decoded from `clipper.js`'s messages. */
 internal sealed class ClipPageEvent {
     data class Selection(val text: String) : ClipPageEvent()
-    data class TagTapped(val field: ClipField) : ClipPageEvent()
+    /** An add's tag on the page: [markId] names the add. */
+    data class TagTapped(val markId: String) : ClipPageEvent()
     data class ImageTapped(val src: String) : ClipPageEvent()
 
     /** While picking a photo, the tap found no image with an address the app can read. */
@@ -56,6 +57,10 @@ internal fun loadTextPage(html: String): ClipPageLoader = { webView, _ ->
  * On reddit.com (#213) `reddit-reader.js` is injected too, which shows the post's whole text and
  * hides Reddit's sign-in and app prompts; [readText] turning true reads the post for the Text
  * view, as [ClipPageEvent.PageText].
+ *
+ * [visible] false keeps the page loaded, at full size, but not drawn and not touched (the Text
+ * view behind the page, #237). Shrinking it to no size instead left its last frame over the
+ * page, which then looked dead: Text, then Page, showed the text still, frozen.
  */
 @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
 @Composable
@@ -67,7 +72,8 @@ internal fun ClipWebPage(
     loadPage: ClipPageLoader,
     modifier: Modifier = Modifier,
     readsPage: Boolean = false,
-    readText: Boolean = false
+    readText: Boolean = false,
+    visible: Boolean = true
 ) {
     // Read by the WebViewClient when a page finishes loading, so the script it injects starts
     // from the current state rather than the state at creation.
@@ -101,6 +107,7 @@ internal fun ClipWebPage(
         },
         // Captures the two values, so it is a new lambda, and runs again, when either changes.
         update = { webView ->
+            webView.visibility = if (visible) View.VISIBLE else View.INVISIBLE
             if (latest.injected) webView.evaluateJavascript(pageScript(syncState, pickingPhoto), null)
             if (readText && !latest.readingText) {
                 latest.readingText = true
@@ -244,8 +251,7 @@ private fun decode(json: String): ClipPageEvent? = try {
     val message = JSONObject(json)
     when (message.optString("type")) {
         "selection" -> ClipPageEvent.Selection(message.optString("text"))
-        "tag" -> ClipField.entries.firstOrNull { it.name == message.optString("field") }
-            ?.let { ClipPageEvent.TagTapped(it) }
+        "tag" -> message.optString("id").takeIf { it.isNotEmpty() }?.let { ClipPageEvent.TagTapped(it) }
         "image" -> message.optString("src").takeIf { it.isNotEmpty() }?.let { ClipPageEvent.ImageTapped(it) }
         "noImage" -> ClipPageEvent.NoImage
         else -> null

@@ -2,13 +2,16 @@
 // (Android loads it as a Java resource, iOS from the bundled web/ folder). One copy only.
 //
 // The page reports what happens on it; native code decides everything. Messages to native are
-// JSON strings: {type:"selection", text}, {type:"tag", field}, {type:"image", src},
+// JSON strings: {type:"selection", text}, {type:"tag", field, id}, {type:"image", src},
 // {type:"noImage"}.
 // Native calls:
-//   RC.sync({marks:[{id, field, label}], newId, photo:{src, label} | null})
+//   RC.sync({marks:[{id, field, label}], newId, photo:{src, label} | null, armed, clear})
 //     Shows exactly these marks and hides every other. `newId`, if it names a mark not seen
 //     yet, is recorded from the last selection first (then the selection is cleared). So
-//     replace, undo and clear are all one declarative call from the draft's state.
+//     add, undo and removal are all one declarative call from the draft's state.
+//     `armed` (#237) is the text field the cook tapped ("NAME", "INGREDIENTS", "STEPS") or null:
+//     while one is armed, a tap on a block of text selects it (see "Field first" below).
+//     `clear` is a count: when it changes, the page drops its selection.
 //   RC.pickImage(on)
 //     While on, the next tap on the page is swallowed and ends picking: it posts the tapped
 //     image's address, or noImage when there is no image there with one to read. A tap on a
@@ -36,7 +39,18 @@
     '#rc-layer{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:2147483647}' +
     '.rc-tag{position:absolute;transform:translateX(-100%);font:600 12px/1 -apple-system,system-ui,sans-serif;' +
     'color:#fff;background:' + PAPRIKA + ';border-radius:10px;padding:5px 9px;white-space:nowrap;' +
-    '-webkit-user-select:none;user-select:none;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}';
+    '-webkit-user-select:none;user-select:none;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}' +
+    // Field first (#237): the blocks a tap selected, and the page's own drag handles for them.
+    '.rc-pending{background-color:rgba(191,74,43,.14) !important;outline:2px solid rgba(191,74,43,.6) !important;' +
+    'outline-offset:2px;border-radius:2px}' +
+    '#rc-handles{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:2147483647}' +
+    '.rc-handle{position:absolute;width:44px;height:44px;margin-left:-22px;touch-action:none;' +
+    '-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}' +
+    '.rc-handle::after{content:"";position:absolute;left:11px;width:22px;height:22px;background:' + PAPRIKA + ';' +
+    'box-shadow:0 1px 3px rgba(0,0,0,.3)}' +
+    '.rc-handle-start::after{bottom:4px;border-radius:50% 50% 0 50%}' +
+    '.rc-handle-end::after{top:4px;border-radius:0 50% 50% 50%}' +
+    'html.rc-armed{-webkit-tap-highlight-color:rgba(191,74,43,.18)}';
   (document.head || document.documentElement).appendChild(style);
 
   // --- Selection ---
@@ -49,10 +63,15 @@
     selectionTimer = setTimeout(function () {
       var selection = window.getSelection();
       var text = '';
+      var range = null;
       if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
         text = selection.toString();
-        lastRange = selection.getRangeAt(0).cloneRange();
+        range = selection.getRangeAt(0);
+        lastRange = range.cloneRange();
       }
+      // A selection the page didn't make (a long press, the system's handles) is the
+      // browser's own: the page's handles and highlight step aside for it.
+      if (own && !(range && sameRange(range, own))) clearOwn();
       post({ type: 'selection', text: text });
     }, 120);
   });
@@ -90,6 +109,195 @@
     });
   }
 
+  // --- Field first (#237) ---
+  //
+  // While a text field is armed, a tap selects a block of text, so nobody has to know about a
+  // long press: a paragraph, a list item or a heading; for Ingredients or Steps, the whole list
+  // the tap landed in. Another tap outside the selection, for Ingredients or Steps, stretches it
+  // to cover that block too (tap the first line, then the last). The page draws its own two
+  // handles on a selection it made (WebViews don't show theirs for a script's selection), and
+  // dragging one moves that end a block at a time. A plain drag anywhere else still scrolls,
+  // and a long press still selects as the browser does. The selection reaches native code as any
+  // other does, through `selectionchange`; native code decides what it becomes.
+
+  var armed = null;
+  var clearSeen = null;
+  var own = null; // the range the page selected itself, while it is still the selection
+  var pending = [];
+  var handles = null;
+  var dragging = null;
+
+  function sameRange(a, b) {
+    return a.startContainer === b.startContainer && a.startOffset === b.startOffset &&
+      a.endContainer === b.endContainer && a.endOffset === b.endOffset;
+  }
+
+  function ours(node) {
+    var el = node && (node.nodeType === 1 ? node : node.parentElement);
+    return !!(el && el.closest && el.closest('#rc-layer, #rc-handles'));
+  }
+
+  function unselectable(el) {
+    var style = window.getComputedStyle(el);
+    return style.userSelect === 'none' || style.webkitUserSelect === 'none';
+  }
+
+  function holdsBlocks(el) {
+    return Array.prototype.some.call(el.children, function (child) {
+      return isBlock(child) && /\S/.test(child.textContent);
+    });
+  }
+
+  // The block a tap on `node` selects for `field`, or null: nothing with text, a label the page
+  // keeps out of selections, or the gap between blocks (a container of other blocks).
+  function blockFor(node, field) {
+    if (!node || ours(node)) return null;
+    var el = blockOf(node);
+    if (!el || el === document.body || el === document.documentElement) return null;
+    if (field !== 'NAME') {
+      var list = el.closest('ul, ol');
+      if (list) el = list;
+    }
+    if (!/\S/.test(el.textContent) || unselectable(el)) return null;
+    if (el.tagName !== 'UL' && el.tagName !== 'OL' && holdsBlocks(el)) return null;
+    return el;
+  }
+
+  function rangeOf(el) {
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    return range;
+  }
+
+  function before(a, b) { return a.compareBoundaryPoints(Range.START_TO_START, b) < 0; }
+  function after(a, b) { return a.compareBoundaryPoints(Range.END_TO_END, b) > 0; }
+
+  function setOwn(range) {
+    own = range.cloneRange();
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    drawOwn();
+  }
+
+  function clearOwn() {
+    own = null;
+    drawOwn();
+  }
+
+  function dropSelection() {
+    clearOwn();
+    var selection = window.getSelection();
+    if (selection) selection.removeAllRanges();
+  }
+
+  function drawOwn() {
+    pending.forEach(function (el) { el.classList.remove('rc-pending'); });
+    pending = own ? blocksIn(own) : [];
+    pending.forEach(function (el) { el.classList.add('rc-pending'); });
+    drawHandles();
+  }
+
+  function ensureHandles() {
+    if (!handles || !handles.isConnected) {
+      handles = document.createElement('div');
+      handles.id = 'rc-handles';
+      ['start', 'end'].forEach(function (end) {
+        var handle = document.createElement('div');
+        handle.className = 'rc-handle rc-handle-' + end;
+        handle.setAttribute('data-rc-end', end);
+        handle.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          dragging = end;
+          if (handle.setPointerCapture) handle.setPointerCapture(e.pointerId);
+        });
+        handle.addEventListener('pointermove', function (e) {
+          if (dragging !== end) return;
+          e.preventDefault();
+          drag(end, e.clientX, e.clientY);
+        });
+        var stop = function () { dragging = null; };
+        handle.addEventListener('pointerup', stop);
+        handle.addEventListener('pointercancel', stop);
+        handles.appendChild(handle);
+      });
+      document.body.appendChild(handles);
+    }
+    return handles;
+  }
+
+  function drawHandles() {
+    if (!own) {
+      if (handles) handles.style.display = 'none';
+      return;
+    }
+    var host = ensureHandles();
+    host.style.display = '';
+    var rects = own.getClientRects();
+    if (!rects.length) return;
+    var origin = host.getBoundingClientRect();
+    var first = rects[0];
+    var last = rects[rects.length - 1];
+    var start = host.querySelector('.rc-handle-start');
+    var end = host.querySelector('.rc-handle-end');
+    start.style.left = (first.left - origin.left) + 'px';
+    start.style.top = (first.top - origin.top - 44) + 'px';
+    end.style.left = (last.right - origin.left) + 'px';
+    end.style.top = (last.bottom - origin.top) + 'px';
+  }
+
+  // A handle dragged to (x, y): that end of the selection moves to the start (or end) of the
+  // block under the finger, just past the handle's knob. Dragged past the other end, the
+  // selection is that one block. Near the top or bottom, the page scrolls along.
+  function drag(end, x, y) {
+    if (!own) return;
+    var probe = end === 'start' ? y + 30 : y - 30;
+    var under = document.elementsFromPoint ? document.elementsFromPoint(x, probe) : [];
+    var block = null;
+    for (var i = 0; i < under.length && !block; i++) {
+      if (!ours(under[i])) block = blockFor(under[i], 'NAME');
+    }
+    if (block) {
+      var target = rangeOf(block);
+      var range = own.cloneRange();
+      if (end === 'start') {
+        if (after(target, own)) range = target;
+        else range.setStart(target.startContainer, target.startOffset);
+      } else {
+        if (before(target, own)) range = target;
+        else range.setEnd(target.endContainer, target.endOffset);
+      }
+      if (!sameRange(range, own)) setOwn(range);
+    }
+    if (y < 60) window.scrollBy(0, -12);
+    else if (y > window.innerHeight - 60) window.scrollBy(0, 12);
+  }
+
+  function setArmed(field) {
+    armed = field || null;
+    document.documentElement.classList.toggle('rc-armed', !!armed);
+  }
+
+  // A tap while a text field is armed selects (in the capture phase, before the page's own
+  // handlers: a tapped link or button does nothing else).
+  document.addEventListener('click', function (e) {
+    if (!armed || picking || ours(e.target)) return;
+    var block = blockFor(e.target, armed);
+    if (!block) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var range = rangeOf(block);
+    if (armed !== 'NAME' && own) {
+      if (!before(range, own) && !after(range, own)) return; // already inside the selection
+      var stretched = own.cloneRange();
+      if (before(range, own)) stretched.setStart(range.startContainer, range.startOffset);
+      if (after(range, own)) stretched.setEnd(range.endContainer, range.endOffset);
+      range = stretched;
+    }
+    setOwn(range);
+  }, true);
+
   // --- Marks ---
 
   var recorded = {}; // mark id -> [elements]
@@ -105,7 +313,7 @@
     return layer;
   }
 
-  function addTag(el, field, label) {
+  function addTag(el, field, label, id) {
     var host = ensureLayer();
     var origin = host.getBoundingClientRect();
     var rect = el.getBoundingClientRect();
@@ -124,7 +332,7 @@
     tag.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      post({ type: 'tag', field: field });
+      post({ type: 'tag', field: field, id: id });
     }, true);
     host.appendChild(tag);
   }
@@ -142,13 +350,14 @@
     current.marks.forEach(function (mark) {
       var els = (recorded[mark.id] || []).filter(function (el) { return el.isConnected; });
       els.forEach(function (el) { el.classList.add('rc-marked'); });
-      if (els.length > 0) addTag(els[0], mark.field, mark.label);
+      if (els.length > 0) addTag(els[0], mark.field, mark.label, mark.id);
     });
     if (current.photo) {
       var imgs = photoElements(current.photo.src);
       imgs.forEach(function (img) { img.classList.add('rc-photo'); });
-      if (imgs.length > 0) addTag(imgs[0], 'PHOTO', current.photo.label);
+      if (imgs.length > 0) addTag(imgs[0], 'PHOTO', current.photo.label, current.photo.id);
     }
+    drawHandles();
   }
 
   // --- Images ---
@@ -225,12 +434,17 @@
 
   window.RC = {
     sync: function (state) {
-      if (state.newId && !recorded[state.newId] && lastRange) {
-        recorded[state.newId] = blocksIn(lastRange);
+      var source = own || lastRange;
+      if (state.newId && !recorded[state.newId] && source) {
+        recorded[state.newId] = blocksIn(source);
         lastRange = null;
-        var selection = window.getSelection();
-        if (selection) selection.removeAllRanges();
+        dropSelection();
       }
+      if (state.clear !== undefined && state.clear !== clearSeen) {
+        if (clearSeen !== null) dropSelection();
+        clearSeen = state.clear;
+      }
+      setArmed(state.armed);
       current = { marks: state.marks || [], photo: state.photo || null };
       render();
     },

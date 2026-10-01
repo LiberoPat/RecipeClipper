@@ -26,10 +26,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** What the snackbar says. The screen picks the words; [Assigned] and [Cleared] offer Undo. */
+/** What the snackbar says. The screen picks the words; [Removed] offers Undo. */
 sealed class ClipMessage {
-    data class Assigned(val field: ClipField, val count: Int) : ClipMessage()
-    data class Cleared(val field: ClipField) : ClipMessage()
+    /** A page tag took back one add: [count] lines of [field] (1 for a name or a photo). */
+    data class Removed(val field: ClipField, val count: Int) : ClipMessage()
 
     /** A session draft for this page was brought back; offers Discard. */
     object DraftRestored : ClipMessage()
@@ -63,16 +63,45 @@ enum class ClipCheck { WAITING, NO_RECIPE }
 /** A [ClipMessage] to show once. [serial] tells two identical messages apart. */
 data class ClipNotice(val message: ClipMessage, val serial: Long)
 
+/** The add just made, for the hint bar (#237): [count] lines put into [field]. */
+data class ClipAdded(val field: ClipField, val count: Int)
+
+/**
+ * The one line over the field buttons (#237): what to do now. The screen picks the words.
+ */
+sealed class ClipHint {
+    /** Photo is armed: tap the recipe's photo (or Skip). */
+    object PickPhoto : ClipHint()
+
+    /** [field] is armed and nothing is selected yet: tap (or select) it on the page. */
+    data class Select(val field: ClipField) : ClipHint()
+
+    /** [field] is armed and [lines] are selected: one tap adds them. */
+    data class Confirm(val field: ClipField, val lines: Int) : ClipHint()
+
+    /** Text selected with no field armed (a long press): tap the field it goes in. */
+    data class Selected(val lines: Int) : ClipHint()
+
+    /** What was just [added], if anything, and the field to fill [next] (null: all there). */
+    data class Next(val added: ClipAdded?, val next: ClipField?) : ClipHint()
+}
+
 /**
  * [selection] is the page's current selection split the way it would be assigned (one item a
  * line). [newMarkId] is the mark the page should take from its current selection: the id the
  * last assignment recorded. [savedRecipeId] is set once Save lands, so the screen can open it.
+ *
+ * Field first (#237): [armed] is the field the cook tapped, which the page's taps select for;
+ * [lastAdded] is the add just made; [clearSelection] counts the times the page's selection was
+ * dropped (a disarm, Clear, the other view), so the page clears its own when it changes.
  */
 data class ClipUiState(
     val url: String,
     val draft: ClipDraft,
     val selection: List<String> = emptyList(),
-    val pickingPhoto: Boolean = false,
+    val armed: ClipField? = null,
+    val lastAdded: ClipAdded? = null,
+    val clearSelection: Int = 0,
     val newMarkId: String? = null,
     val reviewing: Boolean = false,
     val saving: Boolean = false,
@@ -101,12 +130,30 @@ data class ClipUiState(
     val pageText: RedditPageText? = null,
     /** The Text view is showing, over the page, which stays loaded under it. */
     val showingText: Boolean = false
-)
+) {
+    /** Photo is armed: the page's next tap picks the photo. */
+    val pickingPhoto: Boolean get() = armed == ClipField.PHOTO
+
+    /** The armed field a page selection goes to, when it is one of the text fields. */
+    val armedText: ClipField? get() = armed?.takeUnless { it == ClipField.PHOTO }
+
+    val hint: ClipHint
+        get() = when {
+            pickingPhoto -> ClipHint.PickPhoto
+            selection.isNotEmpty() && armed != null ->
+                ClipHint.Confirm(armed, if (armed == ClipField.NAME) 1 else selection.size)
+            selection.isNotEmpty() -> ClipHint.Selected(selection.size)
+            lastAdded != null -> ClipHint.Next(lastAdded, draft.nextField)
+            armed != null -> ClipHint.Select(armed)
+            else -> ClipHint.Next(null, draft.nextField)
+        }
+}
 
 /**
- * "Clip it yourself" (#37): the user selects text on a page with no recipe data and says where
- * each part goes. The page itself lives in the view layer; this only hears what happened on it
- * (a selection, a tag or image tapped) and holds the [ClipDraft].
+ * "Clip it yourself" (#37): on a page with no recipe data, the user taps a field (Name,
+ * Ingredients, Steps, Photo), then taps or selects its text on the page and confirms (#237).
+ * The page itself lives in the view layer; this only hears what happened on it (a selection,
+ * a tag or image tapped) and holds the [ClipDraft], the armed field and the undo stack.
  *
  * The draft is kept in [ClipDraftStore] as it changes, so Cancel keeps it for the session, and
  * mirrored into [SavedStateHandle] so it survives the process being killed in the background.
@@ -127,8 +174,9 @@ class ClipViewModel @Inject constructor(
     // The page's selection as given, before splitting: a name joins it rather than splitting it.
     private var selectionText = ""
 
-    // The draft before the last assignment or clear, for the snackbar's Undo.
-    private var undoTo: ClipDraft? = null
+    // The drafts before each change made on the page (an add, a tag's removal), newest last, for
+    // Undo. A hand edit in Review empties it: Undo never steps over typing.
+    private val undo = ArrayDeque<ClipDraft>()
 
     private var serial = 0L
 
@@ -157,7 +205,7 @@ class ClipViewModel @Inject constructor(
     // --- Events from the page ---
 
     fun onSelectionChanged(text: String) {
-        // Selecting new text moves on from the photo: the other fields never wait on it.
+        // Selecting new text (a long press) moves on from the photo: the other fields never wait on it.
         val selectedAnew = text != selectionText
         selectionText = text
         val lines = ClipSelection.lines(text)
@@ -166,35 +214,37 @@ class ClipViewModel @Inject constructor(
                 selection = lines,
                 // A new selection is never the one the last assignment was taken from.
                 newMarkId = if (lines.isEmpty()) it.newMarkId else null,
-                pickingPhoto = it.pickingPhoto && (lines.isEmpty() || !selectedAnew)
+                armed = if (it.pickingPhoto && lines.isNotEmpty() && selectedAnew) null else it.armed,
+                lastAdded = if (lines.isEmpty()) it.lastAdded else null
             )
         }
     }
 
-    /** Tapping a field's tag on the page clears that field, with Undo. */
-    fun onTagTapped(field: ClipField) {
-        stopPicking()
+    /** Tapping an add's tag on the page takes that add back, with Undo. */
+    fun onTagTapped(markId: String) {
         val draft = _uiState.value.draft
-        if (draft.count(field) == 0) return
-        undoTo = draft
-        setDraft(draft.clear(field), newMarkId = null, message = ClipMessage.Cleared(field))
+        val mark = draft.mark(markId)
+        _uiState.update { it.copy(armed = it.armed.takeUnless { a -> a == ClipField.PHOTO }, lastAdded = null) }
+        if (mark == null) return
+        push(draft)
+        setDraft(draft.removeMark(markId), newMarkId = null, message = ClipMessage.Removed(mark.field, mark.lines.size))
     }
 
-    /** While picking a photo, the next image tapped on the page becomes the photo. */
+    /** While Photo is armed, the image tapped on the page becomes the photo. */
     fun onImageTapped(src: String) {
         if (!_uiState.value.pickingPhoto) return
-        stopPicking()
+        disarm()
         assign(ClipField.PHOTO, src)
     }
 
     /**
-     * While picking a photo, the tap found no picture with an address the app can read (not an
+     * While Photo is armed, the tap found no picture with an address the app can read (not an
      * image, or one drawn some other way). Picking ends and the screen says so: no photo is
      * better than a guessed one, and the photo is optional.
      */
     fun onNoImageTapped() {
         if (!_uiState.value.pickingPhoto) return
-        _uiState.update { it.copy(pickingPhoto = false, notice = notice(ClipMessage.PhotoUnreadable)) }
+        _uiState.update { it.copy(armed = null, notice = notice(ClipMessage.PhotoUnreadable)) }
     }
 
     /**
@@ -226,31 +276,55 @@ class ClipViewModel @Inject constructor(
         }
     }
 
-    // --- Events from the toolbar ---
+    // --- Events from the toolbar: field first (#237) ---
 
-    /** Puts the current selection into [field], replacing what it held. */
-    fun onAssign(field: ClipField) {
-        if (field == ClipField.PHOTO) return
-        stopPicking()
+    /**
+     * A field button: arms [field], so the page's taps select for it (or, for the photo, the
+     * next tap picks it); the armed field again disarms it, and another switches. A selection
+     * already made stays for the field switched to; disarming drops it. The photo is picked on
+     * the page, so arming it also leaves the Text view.
+     */
+    fun onFieldButton(field: ClipField) {
+        val state = _uiState.value
+        when {
+            state.armed == field -> {
+                if (state.selection.isNotEmpty()) clearSelection()
+                _uiState.update { it.copy(armed = null, lastAdded = null) }
+            }
+            field == ClipField.PHOTO -> {
+                if (state.selection.isNotEmpty()) clearSelection()
+                _uiState.update { it.copy(armed = field, lastAdded = null, showingText = false) }
+            }
+            else -> _uiState.update { it.copy(armed = field, lastAdded = null) }
+        }
+    }
+
+    /**
+     * The hint bar's confirm ("Add 12 lines to Ingredients"): the selection goes into the armed
+     * field. A name replaces and disarms; ingredients and steps add, and stay armed for the next
+     * block.
+     */
+    fun onConfirm() {
+        val field = _uiState.value.armedText ?: return
+        if (_uiState.value.selection.isEmpty()) return
         assign(field, selectionText)
+        if (field == ClipField.NAME) disarm()
     }
 
-    /** The photo is picked on the page, so this also leaves the Text view. */
-    fun onPhotoButton() {
-        _uiState.update { it.copy(pickingPhoto = !it.pickingPhoto, showingText = false) }
-    }
+    /** The hint bar's Clear: drops the selection, keeping the field armed. */
+    fun onClearSelection() = clearSelection()
 
     // --- The Text view (#213) ---
 
     /**
      * Asks for the Text view: the view layer reads the page as it stands (with whatever
      * comments it has loaded) and calls [onPageText]. The selection belongs to the view it was
-     * made in, so it goes.
+     * made in, so it goes; an armed text field stays armed.
      */
     fun onShowText() {
         if (!_uiState.value.offersText) return
         clearSelection()
-        _uiState.update { it.copy(readingText = true, pickingPhoto = false) }
+        _uiState.update { it.copy(readingText = true, armed = it.armedText) }
     }
 
     /** The page's markup, read for the Text view. A page with no post in it yet says so. */
@@ -267,6 +341,7 @@ class ClipViewModel @Inject constructor(
         }
     }
 
+    /** Back to the page from the Text view: the draft and the armed field carry over. */
     fun onShowPage() {
         clearSelection()
         _uiState.update { it.copy(showingText = false, readingText = false) }
@@ -274,22 +349,24 @@ class ClipViewModel @Inject constructor(
 
     private fun clearSelection() {
         selectionText = ""
-        _uiState.update { it.copy(selection = emptyList(), newMarkId = null) }
+        _uiState.update { it.copy(selection = emptyList(), newMarkId = null, clearSelection = it.clearSelection + 1) }
     }
 
     /** Leaves the photo step without a (new) photo: it's optional. */
-    fun onSkipPhoto() = stopPicking()
+    fun onSkipPhoto() = disarm()
 
+    /** Takes back the last change from the page (an add, or a tag's removal). */
     fun onUndo() {
-        val previous = undoTo ?: return
-        undoTo = null
+        val previous = undo.removeLastOrNull() ?: return
+        _uiState.update { it.copy(lastAdded = null) }
         setDraft(previous, newMarkId = null)
     }
 
     /** Throws the session draft away and starts over on the same page. */
     fun onDiscardDraft() {
-        undoTo = null
+        undo.clear()
         drafts.remove(url)
+        _uiState.update { it.copy(lastAdded = null) }
         setDraft(ClipDraft(url), newMarkId = null)
     }
 
@@ -308,8 +385,8 @@ class ClipViewModel @Inject constructor(
         val draft = _uiState.value.draft
         val missing = missing(draft)
         when {
-            missing == null -> _uiState.update { it.copy(reviewing = true, pickingPhoto = false) }
-            !missing.lines -> _uiState.update { it.copy(reviewing = true, pickingPhoto = false, notice = notice(missing)) }
+            missing == null -> _uiState.update { it.copy(reviewing = true, armed = it.armedText) }
+            !missing.lines -> _uiState.update { it.copy(reviewing = true, armed = it.armedText, notice = notice(missing)) }
             else -> _uiState.update { it.copy(notice = notice(missing)) }
         }
     }
@@ -381,26 +458,33 @@ class ClipViewModel @Inject constructor(
 
     // --- Internals ---
 
-    private fun stopPicking() = _uiState.update { it.copy(pickingPhoto = false) }
+    private fun disarm() = _uiState.update { it.copy(armed = null) }
 
+    private fun push(draft: ClipDraft) {
+        undo.addLast(draft)
+        if (undo.size > UNDO_DEPTH) undo.removeAt(0)
+    }
+
+    /**
+     * The add itself. Its words go in the hint bar ([ClipUiState.lastAdded]), with Undo there,
+     * rather than a snackbar. The page drops its selection when it records the new mark.
+     */
     private fun assign(field: ClipField, text: String) {
         val draft = _uiState.value.draft
         val markId = draft.pendingMarkId
         val assigned = draft.assign(field, text)
         if (assigned === draft) return
-        undoTo = draft
+        push(draft)
         selectionText = ""
-        _uiState.update { it.copy(selection = emptyList()) }
-        setDraft(
-            assigned,
-            newMarkId = if (field == ClipField.PHOTO) null else markId,
-            message = ClipMessage.Assigned(field, assigned.count(field))
-        )
+        _uiState.update {
+            it.copy(selection = emptyList(), lastAdded = ClipAdded(field, assigned.mark(markId)?.lines?.size ?: 1))
+        }
+        setDraft(assigned, newMarkId = if (field == ClipField.PHOTO) null else markId)
     }
 
-    /** A hand edit in Review. Not undoable from the snackbar, so it ends any pending Undo. */
+    /** A hand edit in Review. Not undoable, so it ends Undo for what came before. */
     private fun edit(change: (ClipDraft) -> ClipDraft) {
-        undoTo = null
+        undo.clear()
         setDraft(change(_uiState.value.draft), newMarkId = _uiState.value.newMarkId)
     }
 
@@ -462,6 +546,8 @@ class ClipViewModel @Inject constructor(
         private const val KEY_PHOTO = "clip.photo"
         private const val KEY_SERVES = "clip.serves"
         private const val KEY_TOTAL_TIME = "clip.totalTime"
+        /** How many changes Undo can take back. */
+        private const val UNDO_DEPTH = 50
         private val ALL_KEYS = listOf(KEY_NAME, KEY_INGREDIENTS, KEY_STEPS, KEY_PHOTO, KEY_SERVES, KEY_TOTAL_TIME)
     }
 }
