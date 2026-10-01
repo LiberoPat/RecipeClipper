@@ -128,6 +128,9 @@ private const val READ_TEXT = "window.RCReddit ? RCReddit.text() : document.docu
 private fun pageScript(sync: String, picking: Boolean) =
     "window.RC && (RC.sync($sync), RC.pickImage($picking));"
 
+// androidx.webkit's check flags every `WebViewClient()` constructor call, and Kotlin's superclass
+// call is one, though this class implements onRenderProcessGone (its class check passes).
+@SuppressLint("MissingOnRenderProcessGone")
 private class ClipWebViewClient(
     private val pageUrl: String,
     private val latest: LatestPageState
@@ -139,6 +142,18 @@ private class ClipWebViewClient(
     override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
         latest.injected = false
         pendingRead?.let(handler::removeCallbacks)
+    }
+
+    /**
+     * A crashed or reclaimed renderer leaves the page blank rather than taking the app down with
+     * it (true: handled); the cook can still Cancel, or Review what was clipped. Nothing more is
+     * sent to the dead page.
+     */
+    override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+        latest.injected = false
+        latest.readsPage = false
+        pendingRead?.let(handler::removeCallbacks)
+        return true
     }
 
     /** Reddit's prompts are hidden as soon as the page shows, and again once it has loaded. */

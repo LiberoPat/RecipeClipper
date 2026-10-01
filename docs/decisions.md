@@ -4023,6 +4023,11 @@ selection, clear a field through a tag, or set the photo. Now:
 - **What it doesn't stop:** the page's own scripts in the main frame, ads included, can still
   post, as they always could; they can also rewrite the page being clipped. The clip is the
   cook's selection on that page, reviewed before saving.
+- androidx.webkit brings a lint check, `MissingOnRenderProcessGone`, which found that the clip
+  view's `WebViewClient` didn't handle a crashed renderer (the app went down with it). It now
+  returns true and stops talking to the page, which goes blank; the render (#36) already did.
+  The check also flags Kotlin's `WebViewClient()` superclass call itself, so both clients
+  suppress that id, with a comment saying why.
 - Tests: `ClipBridgeTest` and `ClipPageEventTests` (the decision), and the fixture page in
   `ClipScreenTest` and `ClipUITests` now holds an iframe whose button posts a selection, which
   must never show.
