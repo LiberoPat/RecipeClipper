@@ -4,10 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.GroceryRepository
-import com.example.recipeclipper.data.model.DecisionCandidates
-import com.example.recipeclipper.data.model.DecisionQuestion
 import com.example.recipeclipper.data.model.Decisions
-import com.example.recipeclipper.data.model.GroceryDecisions
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.model.Aisle
@@ -17,7 +14,6 @@ import com.example.recipeclipper.data.model.GroceryShareText
 import com.example.recipeclipper.data.model.IngredientName
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.NewGroceryLine
-import com.example.recipeclipper.data.model.NewPantryItem
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryMatch
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,11 +75,11 @@ data class GroceriesUiState(
  * clears the ticked items in one step. A delete or "Done shopping" can be undone from the
  * snackbar, and so can the menu's "Clear ticked items" and "Clear the whole list" (#219).
  *
- * **Ticks stay put** (#219): within a visit, ticking or unticking never re-sorts the list. The
- * order is worked out with each item's tick as it was when the order was last worked out
- * ([orderTicks]), and shown with its tick now. It's worked out afresh when anything but a tick
- * changes (an item added, removed, cleared, or moved to another aisle, here or elsewhere) and
- * when the screen is left ([onLeave]), so ticked rows sink to the bottom of their aisle next time.
+ * **Ticks stay put** (#219): within a visit, ticking or unticking never re-sorts the list
+ * ([VisitOrder]); it's tidied when the screen is left ([onLeave]).
+ *
+ * The ViewModel owns [uiState] and hands the rest on (#234): [VisitOrder] lays the list out,
+ * [GroceryQuestions] asks the on-device model about it, and [GroceryRemovals] keeps the undo.
  *
  * A typed item has no recipe, so it's read with the phone's language when the app has words
  * for it, else English: the one place the phone's language picks the words, since the person
@@ -101,29 +97,20 @@ class GroceriesViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(GroceriesUiState())
     val uiState: StateFlow<GroceriesUiState> = _uiState.asStateFlow()
 
-    private var undo: Undo? = null
-    private var removals = 0L
     private var pantryItems: List<PantryItem> = emptyList()
 
-    /** What the snackbar's Undo puts back: the list's items and, after "Done shopping", the pantry. */
-    private class Undo(
-        val groceries: GroceryRepository.DeletedItems?,
-        val restocked: PantryRepository.Snapshot? = null,
-        val added: List<Long> = emptyList()
-    )
+    // Removals and their one undo.
+    private val removals = GroceryRemovals(repository, pantry)
 
     // Declared before init: a list that is already there is collected during construction.
     private var latestItems: List<GroceryItem> = emptyList()
     private var latestDecisions: Decisions = Decisions.NONE
 
-    // The visit's order (#219): each item's tick when the order was last worked out, and the list
-    // then with its ticks left out; null until worked out, and after the screen is left.
-    private var orderTicks: Map<Long, Boolean>? = null
-    private var orderShape: List<GroceryItem>? = null
+    // The visit's order (#219).
+    private val visitOrder = VisitOrder()
 
-    // Grocery questions and items already asked about in this visit, so each is asked once.
-    private val askedGrocery = mutableSetOf<DecisionQuestion>()
-    private val askedAisles = mutableSetOf<Long>()
+    // The model's questions about the list (#99, #104); none without it.
+    private val questions = decisions?.let { GroceryQuestions(viewModelScope, it, repository) { latestItems } }
 
     init {
         viewModelScope.launch {
@@ -138,8 +125,7 @@ class GroceriesViewModel @Inject constructor(
                 latestItems = items
                 latestDecisions = d
                 show()
-                askAisles(items)
-                askGroceryQuestions(items, d)
+                questions?.ask(items, d)
             }
         }
     }
@@ -147,12 +133,7 @@ class GroceriesViewModel @Inject constructor(
     /** Lays the list out in the visit's order, working it out afresh when more than a tick changed. */
     private fun show() {
         val items = latestItems
-        val shape = items.map { if (it.checked) it.copy(checked = false) else it }
-        val ticks = orderTicks?.takeIf { shape == orderShape } ?: items.associate { it.id to it.checked }.also {
-            orderTicks = it
-            orderShape = shape
-        }
-        val sections = GroceriesOrder.sections(items, latestDecisions, ticks)
+        val sections = visitOrder.sections(items, latestDecisions)
         _uiState.update { state ->
             // A row being moved that has since gone closes the aisle picker.
             val moving = state.moving?.takeIf { row -> row.items.all { i -> items.any { it.id == i.id } } }
@@ -165,56 +146,8 @@ class GroceriesViewModel @Inject constructor(
      * bottom of their aisle. Done now, while nothing is on screen to jump.
      */
     fun onLeave() {
-        orderTicks = null
+        visitOrder.reset()
         if (_uiState.value.sections != null) show()
-    }
-
-    /**
-     * Asks the model about close names and trailing text (#99), in the background. The list
-     * shows today's grouping until an answer lands; then the decisions flow regroups it, and
-     * a fresh answer may file a line out of Other beside its partner ([GroceryDecisions.filing]).
-     */
-    private fun askGroceryQuestions(items: List<GroceryItem>, current: Decisions) {
-        val repo = decisions ?: return
-        val unchecked = items.filter { !it.checked }
-        val open = (
-            GroceryDecisions.ingredientNames(unchecked) + GroceryDecisions.trailingTexts(unchecked, current) +
-                GroceryDecisions.samePairs(unchecked, current)
-            )
-            .filter { !current.isAnswered(it) && askedGrocery.add(it) }
-        if (open.isEmpty()) return
-        viewModelScope.launch {
-            repo.decide(open)
-            val after = repo.current()
-            val fresh = open.filter { after.isAnswered(it) }.toSet()
-            for ((aisle, ids) in GroceryDecisions.filing(latestItems, fresh, after)) {
-                repository.fileFromOther(ids, aisle)
-            }
-        }
-    }
-
-    /**
-     * Asks the model the aisle of each item in Other whose name the keyword table doesn't know
-     * (#104), in the background. Only an answer that lands now files the items, and only those
-     * still in Other: an item in Other whose aisle was already decided was put there by the user.
-     */
-    private fun askAisles(items: List<GroceryItem>) {
-        val repo = decisions ?: return
-        val fresh = items.filter { it.aisle == Aisle.OTHER && !it.checked && askedAisles.add(it.id) }
-        val byQuestion = fresh.mapNotNull { item -> DecisionCandidates.aisle(item.text, item.language)?.let { it to item.id } }
-            .groupBy({ it.first }, { it.second })
-        if (byQuestion.isEmpty()) return
-        viewModelScope.launch {
-            val before = repo.current()
-            val open = byQuestion.filterKeys { !before.isAnswered(it) }
-            if (open.isEmpty()) return@launch
-            repo.decide(open.keys)
-            val after = repo.current()
-            for ((question, ids) in open) {
-                val aisle = after.aisle(question.input, question.language) ?: continue
-                repository.fileFromOther(ids, aisle)
-            }
-        }
     }
 
     fun onDraftChange(text: String) = _uiState.update { it.copy(draft = text) }
@@ -293,14 +226,8 @@ class GroceriesViewModel @Inject constructor(
     private fun putAway(items: List<PutAwayItem>) {
         val today = calendar.today()
         viewModelScope.launch {
-            val restock = items.mapNotNull { it.trackedId }
-            val restocked = if (restock.isEmpty()) null else pantry.snapshot(restock).also { pantry.restock(restock, today) }
-            val added = items.filter { it.trackedId == null }
-                .mapNotNull { pantry.add(NewPantryItem(it.name, it.language, it.aisle, purchasedDay = today)) }
-            val cleared = repository.clearChecked()
-            if (cleared == null && restocked == null && added.isEmpty()) return@launch
-            undo = Undo(cleared, restocked, added)
-            _uiState.update { it.copy(removed = RemovedGroceries(++removals, null, putAway = items.isNotEmpty())) }
+            val removed = removals.putAway(items, today) ?: return@launch
+            _uiState.update { it.copy(removed = removed) }
         }
     }
 
@@ -335,25 +262,20 @@ class GroceriesViewModel @Inject constructor(
     }
 
     private fun removed(deleted: GroceryRepository.DeletedItems, label: String?, all: Boolean = false) {
-        undo = Undo(deleted)
-        _uiState.update { it.copy(removed = RemovedGroceries(++removals, label, all = all)) }
+        val removed = removals.removed(deleted, label, all)
+        _uiState.update { it.copy(removed = removed) }
     }
 
     /** Puts back what the last removal took: the items and, after "Done shopping", the pantry as it was. */
     fun onUndoRemove() {
-        val last = undo ?: return
-        undo = null
+        val last = removals.takeUndo() ?: return
         _uiState.update { it.copy(removed = null) }
-        viewModelScope.launch {
-            last.groceries?.let { repository.restore(it) }
-            last.restocked?.let { pantry.restore(it) }
-            last.added.forEach { pantry.delete(it) }
-        }
+        viewModelScope.launch { removals.restore(last) }
     }
 
     /** The snackbar timed out or was dismissed: the removal stands. */
     fun onSnackbarDismissed() {
-        undo = null
+        removals.settle()
         _uiState.update { it.copy(removed = null) }
     }
 
@@ -366,30 +288,6 @@ class GroceriesViewModel @Inject constructor(
         val sections = state.sections.orEmpty()
         if (sections.none { s -> s.rows.any { r -> r.items.none { it.checked } } }) return null
         return GroceryShareText.format(sections, title, state.recipeTitles, aisleName)
-    }
-}
-
-/**
- * The visit's order (#219): [GroceryCombiner.sections] laid out as if each item were ticked as in
- * [ticks] (an item not in it, as it is), then shown with every item's tick as it is now. A row
- * ticks all its lines, so its lines share one tick and it stays one row.
- */
-internal object GroceriesOrder {
-    fun sections(items: List<GroceryItem>, decisions: Decisions, ticks: Map<Long, Boolean>): List<GroceryCombiner.Section> {
-        val now = items.associate { it.id to it.checked }
-        val asWas = items.map { item -> ticks[item.id]?.let { if (it == item.checked) item else item.copy(checked = it) } ?: item }
-        fun GroceryItem.current() = now[id]?.let { if (it == checked) this else copy(checked = it) } ?: this
-        return GroceryCombiner.sections(asWas, decisions).map { section ->
-            section.copy(
-                rows = section.rows.map { row ->
-                    when (row) {
-                        is GroceryCombiner.Row.Single -> GroceryCombiner.Row.Single(row.item.current())
-                        is GroceryCombiner.Row.Combined -> row.copy(items = row.items.map { it.current() })
-                        is GroceryCombiner.Row.Together -> row.copy(items = row.items.map { it.current() })
-                    }
-                }
-            )
-        }
     }
 }
 
