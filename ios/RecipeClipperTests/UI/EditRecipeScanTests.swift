@@ -148,4 +148,15 @@ final class EditRecipeScanTests: XCTestCase {
         XCTAssertTrue(lines.contains { $0.text.localizedCaseInsensitiveContains("butter") }, "\(lines.map(\.text))")
         XCTAssertNil(ImageLoader.shared.cache.cachedResponse(for: URLRequest(url: card)), "a local page is never cached")
     }
+
+    /// The fraction-glyph cards (#245), read by the real Vision: what it makes of ½ ¼ ¾ ⅓ ⅔ ⅛.
+    func testTheVisionReaderOnFractionGlyphs() async throws {
+        for name in ["card-fractions-print", "card-fractions-hand"] {
+            let card = try XCTUnwrap(Bundle(for: EditRecipeScanTests.self)
+                .url(forResource: name, withExtension: "jpg", subdirectory: "fixtures/reddit/photos"))
+            let result = await VisionPhotoTextReader().read([card.absoluteString])
+            guard case .read(let lines) = result else { return XCTFail("not read: \(result)") }
+            for line in lines { print("FRACTION-OCR \(name)\t\(line.confidence ?? -1)\t\(line.text)") }
+        }
+    }
 }
