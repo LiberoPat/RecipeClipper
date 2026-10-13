@@ -666,9 +666,10 @@ Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported 
 tooltips and "Show tips again", 25 the pantry's three states, 26 "onion" matching "onions" in What I
 need, 27 Reddit posts (from fixtures), 28 "Read the photo" (#198), 29 reading other languages (#208: a
 German post, a French card), 30 "Scan a recipe" (#226: a card's two sides from the library), 31 "Clip it
-yourself" on a live Reddit post (#213, #230: Review asking for the name, then the Text view).
+yourself" on a live Reddit post (#213, #230: Review asking for the name, then the Text view), 32 "Clip it
+yourself" on a live blog page (#37, field first: Name, Ingredients, two Steps blocks, Undo, Photo, with real taps).
 Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
-`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–31 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–31 in `+Features.swift`, 22
+`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–32 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–32 in `+Features.swift`, 22
 in `+MealPlan.swift`). What they need from outside the app:
 
 - **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
@@ -714,8 +715,14 @@ in `+MealPlan.swift`). What they need from outside the app:
   and drops the clip fixture page, and `RC_UITEST_CLIP_SCRIPT` is a script added to every clip page
   (DEBUG, UI-test launches only) that lays unseen spots on the text: XCUITest can't drag a
   selection across a web page, so tapping a spot selects by script. Since #237 (field first) both
-  then arm the field and tap the confirm; the recordings still show the old toolbar until 31 is
-  recorded again.
+  then arm the field and tap the confirm (Android arms it first, iOS after the spot's selection).
+- **The live blog page** (32): `https://based.cooking/stracciatella-soup/`, a recipe with a photo and
+  no recipe data, so the real blog source finds none and offers the clip. Android's stub source
+  hands based.cooking links to the real `BlogRecipeSource`; on iOS `RC_UITEST_LIVE_PAGE=<link>` sends
+  that link to the real source and drops the clip fixture page. Every pick is a real tap (Android:
+  the shell's `input tap` at the element's place on screen, after real swipes; iOS: XCUITest on the
+  page's text and picture). If the page changes or goes, pick another with a photo, one list of
+  ingredients and a steps list with a paragraph under it.
 - **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20, 23, 25 and 26:
   `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
 - **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the

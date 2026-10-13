@@ -1884,9 +1884,8 @@ first flow below replaced its select-then-tag toolbar (#237).
   listener as a tap does), drags a handle with script pointer events, and makes the Text →
   Page check with a real tap through the shell; iOS's `ClipUITests` taps the page's text with
   XCUITest. Either way the app hears the selection through the page's `selectionchange`.
-- **Walkthrough clip 31** (Android and iOS, live Reddit) was recorded with the old flow: select,
-  then a field button. Its code now arms the field and taps the confirm, but the recording
-  still shows the old toolbar until it is recorded again.
+- **Walkthrough clips:** 31 (live Reddit, selected by script) and 32 (a live blog page, real
+  taps) show the field-first flow, recorded 2026-10-13 (#250).
 
 ## Alternatives, second parts and totals after the name (#61, #62, #63)
 

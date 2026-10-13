@@ -468,6 +468,96 @@ extension WalkthroughUITests {
         pause(4.5)
     }
 
+    /// "Clip it yourself" on a blog page (#37, field first since #237), LIVE: a real based.cooking
+    /// page with no recipe data, read by the real blog source (`RC_UITEST_LIVE_PAGE`), so the app
+    /// says it found none and offers Clip it yourself. Every pick is a real tap on the page's text
+    /// or picture, and the page scrolls with the finger: Name, then the title; Ingredients, then
+    /// the list, and its confirm; Steps, then the list, then the paragraph under it (steps add
+    /// up); one Undo, and that paragraph again; Photo, then the photo. The hint names the next
+    /// field after each add, and the field buttons show their checks. Done, Review, Save.
+    func test32_clipItYourself() {
+        let link = "https://based.cooking/stracciatella-soup/"
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue]
+        app.launchEnvironment["RC_UITEST_LIVE_PAGE"] = link
+        app.launch()
+        self.app = app
+        let field = require(app.textFields["Recipe URL"], "Home")
+        mark("START")
+        pause()
+        field.tap()
+        field.typeText(link)
+        pause(0.8)
+        app.scrollViews.firstMatch.buttons["Go"].tap()
+        require(app.buttons["Clip it yourself"], "Clip it yourself", within: 60)
+        pause(3)
+        app.buttons["Clip it yourself"].tap()
+        let page = app.webViews["clip.page"]
+        let photo = require(page.images["Stracciatella soup"], "the page, loaded", within: 60)
+        pause(3)
+
+        func tapOnPage(_ element: XCUIElement, _ what: String) {
+            require(element, what, within: 60)
+            for _ in 0..<5 where !element.isHittable || element.frame.midY > app.frame.height * 0.7 {
+                page.swipeUp(velocity: .slow)
+                pause(1)
+            }
+            element.tap()
+            pause(1.5)
+        }
+        func confirm(_ label: String) {
+            require(app.buttons[label], label)
+            pause(2)
+            app.buttons[label].tap()
+            pause(3)
+        }
+
+        app.buttons["clip.field.NAME"].tap()
+        pause(2)
+        tapOnPage(page.staticTexts["Stracciatella soup"], "the title")
+        confirm("Use as the name")
+
+        app.buttons["clip.field.INGREDIENTS"].tap()
+        pause(2)
+        tapOnPage(page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "500 ml broth")).firstMatch, "an ingredient")
+        confirm("Add 3 lines to Ingredients")
+
+        app.buttons["clip.field.STEPS"].tap()
+        pause(2)
+        tapOnPage(page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Heat broth to boiling")).firstMatch, "a step")
+        confirm("Add 6 lines to Steps")
+        // A second block adds to the first: the line under the list.
+        let after = page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "toasted bread")).firstMatch
+        tapOnPage(after, "the line after the steps")
+        confirm("Add 1 line to Steps")
+        // Undo takes that add back; the line is added again.
+        require(app.buttons["Undo"], "Undo").tap()
+        pause(3)
+        tapOnPage(after, "the line after the steps")
+        confirm("Add 1 line to Steps")
+
+        app.buttons["clip.field.PHOTO"].tap()
+        pause(2)
+        for _ in 0..<5 where !photo.isHittable || photo.frame.minY < app.frame.height * 0.12 {
+            page.swipeDown(velocity: .slow)
+            pause(1)
+        }
+        photo.tap()
+        require(textContaining("Photo added"), "the photo added")
+        pause(3.5)
+
+        require(app.navigationBars.buttons["Done"], "Done").tap()
+        pause(2.5)
+        app.swipeUp()
+        pause(2)
+        require(app.navigationBars.buttons["Save"], "Save").tap()
+        require(bookmark, "the saved recipe", within: 20)
+        require(textContaining("Clipped by you"), "the clip's credit")
+        pause(3)
+        app.swipeUp()
+        pause(4)
+    }
+
     /// Types `link` into Home's field; Reddit refuses the read, and the post opens in the clip
     /// view with the note (after Reddit's own check in the page). Returns the page.
     private func openBlockedPost(_ link: String) -> XCUIElement {
