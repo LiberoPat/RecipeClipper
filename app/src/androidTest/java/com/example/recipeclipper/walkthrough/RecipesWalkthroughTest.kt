@@ -568,7 +568,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
             val (x, y, inner) = js(view, rect).trim('"').split(',').map { it.toDouble() }
             val scale = height / inner
             val screenY = (y * scale).toInt()
-            if (screenY in height / 6..height * 5 / 6) {
+            if (screenY in height / 25..height * 5 / 6) {
                 instrumentation.uiAutomation.executeShellCommand(
                     "input tap ${at[0] + (x * scale).toInt()} ${at[1] + screenY}"
                 ).close()
