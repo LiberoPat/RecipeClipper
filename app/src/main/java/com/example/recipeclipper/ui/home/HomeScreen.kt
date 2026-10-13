@@ -152,7 +152,7 @@ fun HomeScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             TextButton(
                                 onClick = onNewRecipe,
-                                modifier = Modifier.offset(x = (-12).dp).tooltipAnchor(Tooltip.HOME_NEW_RECIPE)
+                                modifier = Modifier.offset(x = (-12).dp)
                             ) {
                                 Text(
                                     stringResource(R.string.action_new_recipe),

@@ -3131,20 +3131,17 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
 - **The tooltips** (`Tooltips` in `data/model` / `Data/Model`, pure, with the same ids on both
   platforms; `shared/tooltips.json` lists them, and `TooltipsTest` / `TooltipsTests` fail if
   either enum differs from it). In this order per screen; a flagged one shows only with its flag:
-  - **Home:** the link field ("Share a recipe link to this app, or paste one here"); "+ New
-    recipe".
+  - **Home:** the link field ("Share a recipe link to this app, or paste one here").
   - **Recipe (reading view):** the units dropdown, explaining "As written" (every amount as
     the recipe gives it; tap for Metric or Ounces; what can't convert exactly stays as written);
-    the bookmark; the share icon; the ⋮ menu (it names Add to plan and Add to groceries); "Start cooking"; "I made this"
+    the ⋮ menu (it names Add to plan and Add to groceries); "Start cooking"; "I made this"
     (the button, or the + tile once there are photos).
   - **Cook mode** (its own screen, though it is the recipe screen's): "Done — next step"; the
-    next step ("tap any step to make it the current one"); the current step's timer; the
-    ingredients bar.
-  - **Week:** the first day's "+ Add"; the Month switch; the ⋮ menu. **Groceries:** "Add an
-    item"; the first row's tick; the first row (long-press); "Done shopping" (while anything is
-    ticked); the ⋮ menu. **Pantry:** the add field; the first row's "Ran out" / "Restock"
-    (#194; it names the long-press's "Running low" too); the ⋮ menu.
-  - **Settings:** the Units choice; "Show tips again".
+    next step ("tap any step to make it the current one"); the current step's timer.
+  - **Week:** the ⋮ menu. **Groceries:** the first row (long-press); "Done shopping" (while
+    anything is ticked); the ⋮ menu. **Pantry:** the first row's "Ran out" / "Restock" (#194;
+    it names the long-press's "Running low" too); the ⋮ menu.
+  - **Settings:** "Show tips again".
 - **No Serves tooltip** (owner, 2026-09-29: "write a tooltip [that] explains the 'As written'
   section; can remove the serving tooltip, it's straightforward"). `recipe_servings` is gone
   from the catalogue, so the units dropdown is the recipe screen's first; a stored
@@ -3154,6 +3151,12 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   iOS put the longer text beside it, over the title. Asking showed that iOS's side was
   inverted: `arrowEdge` is the popover's own edge, so `.bottom` put a bubble above its control
   (cook mode's "below" ones too). Fixed with it; `TooltipsUITests` now checks the side.
+- **Only what isn't self-explanatory** (owner, 2026-10-13, #246): ten tooltips went because
+  they pointed at self-explanatory controls: `recipe_bookmark`, `recipe_share`,
+  `settings_units`, `week_add`, `groceries_add`, `pantry_add`, `home_new_recipe`,
+  `groceries_tick`, `cook_ingredients` and `week_month`. Those left explain a hidden gesture, a
+  menu or a behaviour. A stored `tooltip_<id>` for a removed one is ignored, like
+  `recipe_servings`'s (only the catalogue's keys are read), and costs nothing.
 - **Which one, when** (`Tooltips.current`, the same rule on both platforms): a **visit** is one
   appearance of a screen, from when it shows until it's left (a rotation isn't a new one on
   Android: the visit's token is saved state, and leaving isn't reported while the activity is
@@ -3169,8 +3172,8 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   for good. On iOS a tap outside the popover also closes it, as popovers do; that is "not now",
   not "seen": it shows again on a later visit.
 - **Never over cook mode's current step text:** "Done — next step", the timer and the next step
-  put their bubble below themselves, and the ingredients bar puts its bubble above itself (over
-  the top bar). Android places it itself; iOS 18 and later honour the side asked for, and iOS 17
+  put their bubble below themselves (`TooltipSide.ABOVE` is kept for a control near the bottom;
+  the ingredients bar used it until #246). Android places it itself; iOS 18 and later honour the side asked for, and iOS 17
   picks the side itself.
 - **Android's bubble** is a `Popup` of its own, placed from the control's window bounds
   (`Modifier.tooltipAnchor`, a `Modifier.Node` reporting `onGloballyPositioned` to its screen's
@@ -3193,7 +3196,7 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   the first second and the anchors' visibility, which are ours on both platforms anyway. A popover
   can't show over another presentation, so each screen passes `blocked` for its own sheets,
   dialogs and snackbars, and the host blocks while the keyboard is up. Toolbar items (the recipe's
-  bookmark, share and menu, and the tabs' menus) are anchors too (`inToolbar`: on screen while the
+  menu and the tabs' menus) are anchors too (`inToolbar`: on screen while the
   bar shows), so `.tooltipHost` goes outside `.toolbar`. Anchors are measured in the host's own
   coordinate space against its own bounds (a background's geometry reaches under the bars, and a
   push animation moves everything). A NavigationStack's root doesn't always hear `onDisappear`
@@ -3209,10 +3212,10 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   at a time, as each screen is visited (the Settings screen's own first one can show at once).
 - **Tests:** the rule and the catalogue, pure (`TooltipsTest` / `TooltipsTests`); the ViewModels
   over fakes (`TooltipsViewModelTest(s)`); Android's screens under Robolectric
-  (`TooltipsScreenTest`: Home's first visit shows the first tooltip after its first second, Got
-  it, the next visit the next; Settings' second shows only once scrolled to; the bubble's
+  (`TooltipsScreenTest`: Home's first visit shows its tooltip after its first second, Got
+  it, and a later visit none; Settings' shows only once scrolled to; the bubble's
   placement at its control), and iOS's recipe screen in `TooltipsUITests` (one per visit, at the
-  units dropdown, then the bookmark on the next). Every other screen test, UI test and walkthrough
+  units dropdown, then the ⋮ menu on the next). Every other screen test, UI test and walkthrough
   starts with every tooltip seen: Android's screen tests provide no `LocalTooltips`, iOS's test
   containers use `MemoryTourPreferences`, and `-uiTestTooltips` (iOS) or `firstRun = true`
   (Android's walkthroughs) turns them on. Walkthrough 17 shows the sample on Home and a tooltip

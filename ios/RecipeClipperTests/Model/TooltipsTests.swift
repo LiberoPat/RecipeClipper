@@ -28,17 +28,17 @@ final class TooltipsTests: XCTestCase {
     }
 
     func testTheFirstUnseenTooltipOnScreenShowsOnceTheScreenIsReady() {
-        let home = visit(.home)
-        XCTAssertEqual(Tooltips.current(home, seen: [], visible: everything, ready: true), .homeLink)
-        XCTAssertNil(Tooltips.current(home, seen: [], visible: everything, ready: false))
-        XCTAssertEqual(Tooltips.current(home, seen: [.homeLink], visible: everything, ready: true), .homeNewRecipe)
-        XCTAssertNil(Tooltips.current(home, seen: Set(Tooltips.forScreen(.home)), visible: everything, ready: true))
+        let recipe = visit(.recipe)
+        XCTAssertEqual(Tooltips.current(recipe, seen: [], visible: everything, ready: true), .recipeUnits)
+        XCTAssertNil(Tooltips.current(recipe, seen: [], visible: everything, ready: false))
+        XCTAssertEqual(Tooltips.current(recipe, seen: [.recipeUnits], visible: everything, ready: true), .recipeMenu)
+        XCTAssertNil(Tooltips.current(recipe, seen: Set(Tooltips.forScreen(.recipe)), visible: everything, ready: true))
     }
 
     func testAnAnchorThatIsntOnScreenIsPassedOverForTheNext() {
         let recipe = visit(.recipe)
-        let visible: Set<Tooltip> = [.recipeBookmark, .recipeStartCooking]
-        XCTAssertEqual(Tooltips.current(recipe, seen: [], visible: visible, ready: true), .recipeBookmark)
+        let visible: Set<Tooltip> = [.recipeMenu, .recipeStartCooking]
+        XCTAssertEqual(Tooltips.current(recipe, seen: [], visible: visible, ready: true), .recipeMenu)
         XCTAssertNil(Tooltips.current(recipe, seen: [], visible: [], ready: true))
     }
 
@@ -54,15 +54,15 @@ final class TooltipsTests: XCTestCase {
         let shown = Tooltips.shown(visit(.recipe), .recipeUnits)
         XCTAssertEqual(Tooltips.current(shown, seen: [], visible: everything, ready: true), .recipeUnits)
         XCTAssertNil(Tooltips.current(shown, seen: [], visible: [.recipeStartCooking], ready: true))
-        XCTAssertEqual(Tooltips.shown(shown, .recipeBookmark), shown)
+        XCTAssertEqual(Tooltips.shown(shown, .recipeMenu), shown)
     }
 
     func testDismissedTheScreensNextTooltipWaitsForALaterVisitNeverChained() {
-        let closed = Tooltips.closed(Tooltips.shown(visit(.home), .homeLink))
-        XCTAssertNil(Tooltips.current(closed, seen: [.homeLink], visible: everything, ready: true))
+        let closed = Tooltips.closed(Tooltips.shown(visit(.cook), .cookDoneNext))
+        XCTAssertNil(Tooltips.current(closed, seen: [.cookDoneNext], visible: everything, ready: true))
 
-        let later = Tooltips.visit(Tooltips.leave(closed, token: "t1"), token: "t2", screen: .home)
-        XCTAssertEqual(Tooltips.current(later, seen: [.homeLink], visible: everything, ready: true), .homeNewRecipe)
+        let later = Tooltips.visit(Tooltips.leave(closed, token: "t1"), token: "t2", screen: .cook)
+        XCTAssertEqual(Tooltips.current(later, seen: [.cookDoneNext], visible: everything, ready: true), .cookTapStep)
     }
 
     func testTheSameAppearanceIsTheSameVisit() {

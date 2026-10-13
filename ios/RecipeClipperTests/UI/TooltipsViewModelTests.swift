@@ -6,7 +6,8 @@ import XCTest
 @MainActor
 final class TooltipsViewModelTests: XCTestCase {
     private var preferences: MemoryTourPreferences!
-    private let home: Set<Tooltip> = [.homeLink, .homeNewRecipe]
+    private let home: Set<Tooltip> = [.homeLink]
+    private let recipe: Set<Tooltip> = [.recipeUnits, .recipeMenu]
 
     override func setUp() {
         preferences = MemoryTourPreferences(sampleAdded: true, seen: [])
@@ -33,17 +34,17 @@ final class TooltipsViewModelTests: XCTestCase {
 
     func testGotItMarksItSeenAndTheNextOneWaitsForTheNextVisit() {
         let vm = make()
-        vm.onVisit(token: "a", screen: .home)
-        vm.onReport(token: "a", visible: home, ready: true)
+        vm.onVisit(token: "a", screen: .recipe)
+        vm.onReport(token: "a", visible: recipe, ready: true)
 
-        vm.onDismiss(.homeLink)
-        XCTAssertEqual(preferences.seenTooltips, [.homeLink])
+        vm.onDismiss(.recipeUnits)
+        XCTAssertEqual(preferences.seenTooltips, [.recipeUnits])
         XCTAssertNil(vm.uiState.current, "never chained")
 
         vm.onLeave(token: "a")
-        vm.onVisit(token: "a", screen: .home) // the same view, back on screen: a later visit
-        vm.onReport(token: "a", visible: home, ready: true)
-        XCTAssertEqual(vm.uiState.current, .homeNewRecipe)
+        vm.onVisit(token: "a", screen: .recipe) // the same view, back on screen: a later visit
+        vm.onReport(token: "a", visible: recipe, ready: true)
+        XCTAssertEqual(vm.uiState.current, .recipeMenu)
     }
 
     func testATapOutsideThePopoverClosesItForTheVisitStillUnseen() {
@@ -81,8 +82,8 @@ final class TooltipsViewModelTests: XCTestCase {
         XCTAssertEqual(preferences.seenTooltips, [])
 
         vm.onVisit(token: "a", screen: .settings)
-        vm.onReport(token: "a", visible: [.settingsUnits], ready: true)
-        XCTAssertEqual(vm.uiState.current, .settingsUnits)
+        vm.onReport(token: "a", visible: [.settingsShowTips], ready: true)
+        XCTAssertEqual(vm.uiState.current, .settingsShowTips)
     }
 
     /// A NavigationStack's root may hear neither onDisappear when a screen is pushed over it nor
@@ -92,13 +93,13 @@ final class TooltipsViewModelTests: XCTestCase {
         let vm = make()
         vm.onVisit(token: "home", screen: .home)
         vm.onReport(token: "home", visible: home, ready: true)
-        vm.onDismiss(.homeLink)
+        vm.onClosed(.homeLink) // not now: unseen, so it can show again
         vm.onVisit(token: "recipe", screen: .recipe)
         vm.onLeave(token: "recipe")
         XCTAssertNil(vm.uiState.current, "not in its first second")
 
         try await Task.sleep(for: .seconds(Tooltips.settleSeconds + 0.3))
-        XCTAssertEqual(vm.uiState, TooltipsUiState(current: .homeNewRecipe, token: "home"))
+        XCTAssertEqual(vm.uiState, TooltipsUiState(current: .homeLink, token: "home"))
     }
 
     func testATestContainerSeesNoTooltip() {

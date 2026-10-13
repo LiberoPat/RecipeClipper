@@ -42,7 +42,6 @@ import androidx.core.app.ShareCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.ui.groceries.label
@@ -52,7 +51,6 @@ import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TooltipHost
-import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
  * The Pantry tab (#51): "Add to the pantry", a search field, then everything by aisle (or by
@@ -143,7 +141,7 @@ fun PantryScreen(
                                     TextButton(onClick = viewModel::onAddTyped) { Text(stringResource(R.string.action_add)) }
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth().testTag("pantryDraft").tooltipAnchor(Tooltip.PANTRY_ADD)
+                            modifier = Modifier.fillMaxWidth().testTag("pantryDraft")
                         )
                         if (state.hasItems) {
                             Spacer(Modifier.height(8.dp))

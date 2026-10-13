@@ -125,4 +125,18 @@ final class FirstRunTourTests: XCTestCase {
         defaults.set(true, forKey: "tour_tip_cook_mode")
         XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).seenTooltips, [])
     }
+
+    /// #246 removed ten tooltips; a key someone stored for one before is never read again.
+    func testARemovedTooltipsStoredKeyIsIgnored() throws {
+        let suite = "FirstRunTourTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: "tooltip_recipe_bookmark")
+        defaults.set(true, forKey: "tooltip_home_new_recipe")
+        defaults.set(true, forKey: "tooltip_cook_timer")
+        let prefs = UserDefaultsAppPreferences(defaults: defaults)
+        XCTAssertEqual(prefs.seenTooltips, [.cookTimer])
+        prefs.setTooltipSeen(.homeLink, true)
+        XCTAssertEqual(prefs.seenTooltips, [.cookTimer, .homeLink])
+    }
 }

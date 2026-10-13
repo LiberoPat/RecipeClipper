@@ -11,29 +11,19 @@ enum class TooltipScreen { HOME, RECIPE, COOK, WEEK, GROCERIES, PANTRY, SETTINGS
  */
 enum class Tooltip(val id: String, val screen: TooltipScreen) {
     HOME_LINK("home_link", TooltipScreen.HOME),
-    HOME_NEW_RECIPE("home_new_recipe", TooltipScreen.HOME),
     RECIPE_UNITS("recipe_units", TooltipScreen.RECIPE),
-    RECIPE_BOOKMARK("recipe_bookmark", TooltipScreen.RECIPE),
-    RECIPE_SHARE("recipe_share", TooltipScreen.RECIPE),
     RECIPE_MENU("recipe_menu", TooltipScreen.RECIPE),
     RECIPE_START_COOKING("recipe_start_cooking", TooltipScreen.RECIPE),
     RECIPE_MADE_THIS("recipe_made_this", TooltipScreen.RECIPE),
     COOK_DONE_NEXT("cook_done_next", TooltipScreen.COOK),
     COOK_TAP_STEP("cook_tap_step", TooltipScreen.COOK),
     COOK_TIMER("cook_timer", TooltipScreen.COOK),
-    COOK_INGREDIENTS("cook_ingredients", TooltipScreen.COOK),
-    WEEK_ADD("week_add", TooltipScreen.WEEK),
-    WEEK_MONTH("week_month", TooltipScreen.WEEK),
     WEEK_MENU("week_menu", TooltipScreen.WEEK),
-    GROCERIES_ADD("groceries_add", TooltipScreen.GROCERIES),
-    GROCERIES_TICK("groceries_tick", TooltipScreen.GROCERIES),
     GROCERIES_LONG_PRESS("groceries_long_press", TooltipScreen.GROCERIES),
     GROCERIES_DONE_SHOPPING("groceries_done_shopping", TooltipScreen.GROCERIES),
     GROCERIES_MENU("groceries_menu", TooltipScreen.GROCERIES),
-    PANTRY_ADD("pantry_add", TooltipScreen.PANTRY),
     PANTRY_IN_STOCK("pantry_in_stock", TooltipScreen.PANTRY),
     PANTRY_MENU("pantry_menu", TooltipScreen.PANTRY),
-    SETTINGS_UNITS("settings_units", TooltipScreen.SETTINGS),
     SETTINGS_SHOW_TIPS("settings_show_tips", TooltipScreen.SETTINGS);
 
     /** Its `unit_preferences` / UserDefaults key, true once seen; the same on iOS. */

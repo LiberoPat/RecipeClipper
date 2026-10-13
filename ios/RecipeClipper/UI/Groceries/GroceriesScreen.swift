@@ -29,7 +29,6 @@ struct GroceriesScreen: View {
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),
                         onSubmit: vm.onAddTyped
                     )
-                    .tooltipAnchor(.groceriesAdd)
                     if state.isEmpty {
                         Text(Strings.groceriesEmpty)
                             .textStyle(Typography.bodyMedium)
@@ -280,7 +279,6 @@ private struct CheckLine: View {
         Button { vm.onToggle(row) } label: {
             HStack(spacing: 12) {
                 CheckboxGlyph(checked: checked)
-                    .modifier(FirstRowAnchor(tooltip: .groceriesTick, first: first))
                 VStack(alignment: .leading, spacing: 0) {
                     Text(text)
                         .textStyle(Typography.bodyLarge)

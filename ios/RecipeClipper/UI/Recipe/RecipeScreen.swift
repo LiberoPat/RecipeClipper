@@ -260,7 +260,6 @@ struct RecipeScreen: View {
             }
             .accessibilityLabel(saved ? Strings.inAList : Strings.saveToList)
             .accessibilityIdentifier("recipe.bookmark")
-            .tooltipAnchor(.recipeBookmark, inToolbar: true)
         }
 
         if let text = vm.shareText(labels: Strings.shareTextLabels) {
@@ -268,7 +267,6 @@ struct RecipeScreen: View {
                 Image(systemName: "square.and.arrow.up")
             }
             .accessibilityLabel(Strings.shareRecipe)
-            .tooltipAnchor(.recipeShare, inToolbar: true)
         }
 
         if vm.uiState.updatingFromSource {

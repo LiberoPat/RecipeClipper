@@ -12,29 +12,19 @@ enum TooltipScreen: String, CaseIterable {
 /// differs from it. Seen once dismissed, stored under `key`.
 enum Tooltip: String, CaseIterable {
     case homeLink = "home_link"
-    case homeNewRecipe = "home_new_recipe"
     case recipeUnits = "recipe_units"
-    case recipeBookmark = "recipe_bookmark"
-    case recipeShare = "recipe_share"
     case recipeMenu = "recipe_menu"
     case recipeStartCooking = "recipe_start_cooking"
     case recipeMadeThis = "recipe_made_this"
     case cookDoneNext = "cook_done_next"
     case cookTapStep = "cook_tap_step"
     case cookTimer = "cook_timer"
-    case cookIngredients = "cook_ingredients"
-    case weekAdd = "week_add"
-    case weekMonth = "week_month"
     case weekMenu = "week_menu"
-    case groceriesAdd = "groceries_add"
-    case groceriesTick = "groceries_tick"
     case groceriesLongPress = "groceries_long_press"
     case groceriesDoneShopping = "groceries_done_shopping"
     case groceriesMenu = "groceries_menu"
-    case pantryAdd = "pantry_add"
     case pantryInStock = "pantry_in_stock"
     case pantryMenu = "pantry_menu"
-    case settingsUnits = "settings_units"
     case settingsShowTips = "settings_show_tips"
 
     var id: String { rawValue }
@@ -44,14 +34,13 @@ enum Tooltip: String, CaseIterable {
 
     var screen: TooltipScreen {
         switch self {
-        case .homeLink, .homeNewRecipe: .home
-        case .recipeUnits, .recipeBookmark, .recipeShare, .recipeMenu, .recipeStartCooking,
-             .recipeMadeThis: .recipe
-        case .cookDoneNext, .cookTapStep, .cookTimer, .cookIngredients: .cook
-        case .weekAdd, .weekMonth, .weekMenu: .week
-        case .groceriesAdd, .groceriesTick, .groceriesLongPress, .groceriesDoneShopping, .groceriesMenu: .groceries
-        case .pantryAdd, .pantryInStock, .pantryMenu: .pantry
-        case .settingsUnits, .settingsShowTips: .settings
+        case .homeLink: .home
+        case .recipeUnits, .recipeMenu, .recipeStartCooking, .recipeMadeThis: .recipe
+        case .cookDoneNext, .cookTapStep, .cookTimer: .cook
+        case .weekMenu: .week
+        case .groceriesLongPress, .groceriesDoneShopping, .groceriesMenu: .groceries
+        case .pantryInStock, .pantryMenu: .pantry
+        case .settingsShowTips: .settings
         }
     }
 }
