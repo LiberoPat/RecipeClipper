@@ -147,6 +147,8 @@ class DifferentialCorpusTest {
     private val photoRow = Regex("""^(\s*)Photo\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     // A suspect-amount row (#198, #208): a line read from a photo, optionally its language.
     private val suspectRow = Regex("""^(\s*)Sus\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A fraction row (#245): a line read from a photo, optionally its language.
+    private val fractionRow = Regex("""^(\s*)Frac\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A trailing-text row (#99): a grocery line, optionally its language.
     private val trailRow = Regex("""^(\s*)Trail\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A name-cut row (#99): a grocery line, optionally its language, the model's name for it.
@@ -285,6 +287,13 @@ class DifferentialCorpusTest {
             val language = m.groupValues[3].ifEmpty { "en" }
             val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
             return m.groupValues[1] + "Sus(${q(text)}$lang, ${PhotoTextSorter.suspect(text, LanguageWords.forTag(language)!!)}),"
+        }
+        fractionRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            val language = m.groupValues[3].ifEmpty { "en" }
+            val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+            val fixed = PhotoTextSorter.replaceFraction(text, "½", LanguageWords.forTag(language)!!)
+            return m.groupValues[1] + "Frac(${q(text)}$lang, ${fixed?.let { q(it) } ?: "nil"}),"
         }
         icsRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])

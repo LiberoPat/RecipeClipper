@@ -2,6 +2,8 @@ package com.example.recipeclipper.ui.edit
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -64,6 +66,31 @@ class EditRecipePhotoScreenTest {
 
         assertEquals(listOf("1 cup butter", "1 1/2 cups flour"), repository.saveClipCalls.single().ingredients)
         assertEquals(1L, saved)
+    }
+
+    @Test
+    fun aFractionReadAsALookAlikeIsFixedWithOneTap() {
+        // ML Kit's reading of card-fractions-hand.jpg (#245): "2 % cups oats" was "2 ⅔ cups oats".
+        show(
+            PhotoTextResult.Read(
+                listOf(
+                    PhotoLine("Ingredients"), PhotoLine("2 % cups oats"), PhotoLine("1 cup 2% milk"),
+                    PhotoLine("Directions"), PhotoLine("1. Mix.")
+                )
+            )
+        )
+
+        compose.onNodeWithText("A fraction? Tap the one in the photo:", substring = true).performScrollTo().assertIsDisplayed()
+        // The percentage isn't offered chips: only one line has them.
+        compose.onNodeWithTag("edit.fraction.1.⅔").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Use ⅔ in 2 % cups oats").performScrollTo().performClick()
+
+        compose.onNodeWithText("• 2 ⅔ cups oats", substring = true).assertExists()
+        compose.onNodeWithText("A fraction? Tap the one in the photo:", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Save").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf("2 ⅔ cups oats", "1 cup 2% milk"), repository.saveClipCalls.single().ingredients)
     }
 
     @Test

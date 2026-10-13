@@ -148,4 +148,24 @@ final class EditRecipeScanTests: XCTestCase {
         XCTAssertTrue(lines.contains { $0.text.localizedCaseInsensitiveContains("butter") }, "\(lines.map(\.text))")
         XCTAssertNil(ImageLoader.shared.cache.cachedResponse(for: URLRequest(url: card)), "a local page is never cached")
     }
+
+    /// The fraction-glyph cards (#245), read by the real Vision: what it makes of ½ ¼ ¾ ⅓ ⅔ ⅛ is
+    /// printed (`FRACTION-OCR`, the measurements in docs/decisions.md), and the "%" Vision gave
+    /// for the handwritten ⅔ is listed to check, while the "70%" beside it isn't.
+    func testTheVisionReaderOnFractionGlyphs() async throws {
+        var read: [String] = []
+        for name in ["card-fractions-print", "card-fractions-hand"] {
+            let card = try XCTUnwrap(Bundle(for: EditRecipeScanTests.self)
+                .url(forResource: name, withExtension: "jpg", subdirectory: "fixtures/reddit/photos"))
+            let result = await VisionPhotoTextReader().read([card.absoluteString])
+            guard case .read(let lines) = result else { return XCTFail("not read: \(result)") }
+            for line in lines { print("FRACTION-OCR \(name)\t\(line.confidence ?? -1)\t\(line.text)") }
+            read += lines.map(\.text)
+        }
+        let flagged = read.filter { PhotoTextSorter.suspect($0) }
+        XCTAssertFalse(flagged.contains { $0.contains("70%") }, "\(flagged)")
+        if read.contains(where: { $0.contains("% cups oats") }) {
+            XCTAssertTrue(flagged.contains { $0.contains("% cups oats") }, "\(flagged)")
+        }
+    }
 }

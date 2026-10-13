@@ -13,7 +13,7 @@ struct EditRecipeScreen: View {
                 ScreenTitle(title(state), style: Typography.headlineSmall)
                     .padding(.bottom, 4)
                 if let photo = state.photo {
-                    PhotoReview(post: photo, state: state, onReadAgain: vm.onReadAgain)
+                    PhotoReview(post: photo, state: state, onReadAgain: vm.onReadAgain, onFraction: vm.onFraction)
                 }
                 if state.loading {
                     ProgressView().tint(Palette.primary)
@@ -102,6 +102,7 @@ private struct PhotoReview: View {
     let post: PhotoPost
     let state: EditRecipeUiState
     let onReadAgain: () -> Void
+    let onFraction: (_ line: String, _ fraction: String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -127,20 +128,56 @@ private struct PhotoReview: View {
                     Text(Strings.photoCheckHeading)
                         .textStyle(Typography.titleSmall)
                         .foregroundStyle(Palette.accentText)
-                    ForEach(Array(state.uncertain.enumerated()), id: \.offset) { _, line in
+                    ForEach(Array(state.uncertain.enumerated()), id: \.offset) { index, line in
                         Text("• \(line)")
                             .textStyle(Typography.bodyMedium)
                             .foregroundStyle(Palette.onBackground)
+                        if state.fractionLines.contains(line) {
+                            fractionChips(index, line)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
                 .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.primary, lineWidth: 1))
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("edit.photoCheck")
             }
         }
         .padding(.bottom, 4)
+    }
+
+    /// A line whose amount holds a fraction glyph's look-alike (#245): the fractions as one-tap
+    /// replacements, since "%" can't say whether it was ½, ¼ or ¾. The cook can still type instead.
+    @ViewBuilder
+    private func fractionChips(_ index: Int, _ line: String) -> some View {
+        Text(Strings.photoFractionPrompt)
+            .textStyle(Typography.bodySmall)
+            .foregroundStyle(Palette.muted)
+            .padding(.leading, 12)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { fractionButtons(index, line) }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], alignment: .leading, spacing: 8) {
+                fractionButtons(index, line)
+            }
+        }
+        .padding(.leading, 12)
+        .padding(.bottom, 6)
+    }
+
+    private func fractionButtons(_ index: Int, _ line: String) -> some View {
+        ForEach(state.fractions, id: \.self) { fraction in
+            Button { onFraction(line, fraction) } label: {
+                Text(fraction)
+                    .textStyle(Typography.titleMedium)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .padding(.horizontal, 6)
+            }
+            .buttonStyle(.bordered)
+            .tint(Palette.primary)
+            .accessibilityLabel(Strings.photoFractionChip(fraction, line))
+            .accessibilityIdentifier("edit.fraction.\(index).\(fraction)")
+        }
     }
 
     @ViewBuilder

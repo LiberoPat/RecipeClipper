@@ -46,6 +46,22 @@ final class PhotoTextUITests: RecipeUITestCase {
         require(app.textFields["Recipe URL"], "Home, straight back")
     }
 
+    /// A fraction glyph read as "%" (#245, ML Kit's reading of card-fractions-hand.jpg): the line
+    /// is listed with the fractions to tap, and the one tapped replaces it in place.
+    func testAFractionReadAsALookAlikeIsFixedWithOneTap() throws {
+        try launch(lines: "Ingredients\n2 % cups oats\n1 cup 2% milk\nDirections\n1. Mix.")
+
+        require(textContaining("A fraction? Tap the one in the photo"), "the fraction prompt")
+        XCTAssertFalse(app.buttons["edit.fraction.1.⅔"].exists, "only the look-alike's line has chips")
+        require(app.buttons["edit.fraction.0.⅔"], "the ⅔ chip").tap()
+        require(textContaining("2 ⅔ cups oats"), "the line, fixed")
+        XCTAssertFalse(app.buttons["edit.fraction.0.⅔"].exists, "the chips go once it's fixed")
+
+        require(app.buttons["edit.save"], "Save").tap()
+        require(bookmark, "the saved recipe")
+        require(textContaining("2 ⅔ cups oats"), "the fixed line, saved")
+    }
+
     func testNothingReadOpensTheEditorToFinishByHand() throws {
         try launch(lines: "")
 

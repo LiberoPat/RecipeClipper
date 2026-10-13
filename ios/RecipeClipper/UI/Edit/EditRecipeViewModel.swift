@@ -38,6 +38,10 @@ struct EditRecipeUiState: Equatable {
     var photoOutcome: PhotoOutcome?
     /// Lines the recogniser was unsure of, as they were put in the boxes: "check this".
     var uncertain: [String] = []
+    /// The `uncertain` lines whose amount holds a fraction glyph's look-alike ("2% cups oats",
+    /// #245), each offered the `fractions` as one-tap replacements.
+    var fractionLines: [String] = []
+    var fractions: [String] = PhotoTextSorter.fractions
 
     init(isNew: Bool, photo: PhotoPost? = nil, scan: Bool = false) {
         self.isNew = isNew
@@ -124,6 +128,7 @@ final class EditRecipeViewModel {
         uiState.reading = true
         uiState.photoOutcome = nil
         uiState.uncertain = []
+        uiState.fractionLines = []
         // A post's first picture is its photo; a scan's pages are never kept (#226).
         uiState.draft = RecipeDraft(name: post.title, image: scanPages != nil ? "" : post.imageUrls.first ?? "")
         readTask = Task { [weak self, photoReader] in
@@ -138,6 +143,8 @@ final class EditRecipeViewModel {
                 photoLanguage = reading.language
                 uiState.photoOutcome = reading.sorted ? .read : .notSorted
                 uiState.uncertain = reading.uncertain
+                let words = RecipeTextSplitter.wordsFor(reading.language)
+                uiState.fractionLines = reading.uncertain.filter { PhotoTextSorter.fractionSlot($0, words: words) != nil }
                 uiState.draft.yield = reading.yield ?? ""
                 uiState.draft.prepTime = reading.prepTime ?? ""
                 uiState.draft.cookTime = reading.cookTime ?? ""
@@ -146,6 +153,31 @@ final class EditRecipeViewModel {
                 uiState.draft.instructionsText = reading.instructions.joined(separator: "\n")
             }
         }
+    }
+
+    /// A fraction chip (#245): `line`'s look-alike ("%" in "2% cups oats") becomes `fraction`, the
+    /// cook's reading of the photo, in the box that holds the line and in the list to check. A
+    /// line the cook has since changed in the box is left alone, and its chips go.
+    func onFraction(_ line: String, _ fraction: String) {
+        uiState.fractionLines.removeAll { $0 == line }
+        guard let fixed = PhotoTextSorter.replaceFraction(line, fraction, words: RecipeTextSplitter.wordsFor(photoLanguage))
+        else { return }
+        if let ingredients = Self.replaceLine(uiState.draft.ingredientsText, line, fixed) {
+            uiState.draft.ingredientsText = ingredients
+        } else if let steps = Self.replaceLine(uiState.draft.instructionsText, line, fixed) {
+            uiState.draft.instructionsText = steps
+        } else {
+            return
+        }
+        uiState.uncertain = uiState.uncertain.map { $0 == line ? fixed : $0 }
+    }
+
+    /// `text` with its first line that reads `line` (trimmed) holding `fixed` instead; nil if none does.
+    private static func replaceLine(_ text: String, _ line: String, _ fixed: String) -> String? {
+        var lines = text.components(separatedBy: "\n")
+        guard let i = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == line }) else { return nil }
+        lines[i] = lines[i].replacingOccurrences(of: line, with: fixed)
+        return lines.joined(separator: "\n")
     }
 
     func onDraftChange(_ draft: RecipeDraft) {

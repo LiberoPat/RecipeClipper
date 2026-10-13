@@ -67,6 +67,19 @@ final class IngredientScalerTests: XCTestCase {
         XCTAssertEqual("3 cups flour", scale("1 1/2 cups flour", 2.0))
     }
 
+    func testAPhotosMisreadFractionGlyphStaysAsWritten() {
+        // What ML Kit and Vision gave for ½ ¼ ¾ ⅓ ⅔ ⅛ (#245): never scaled or converted.
+        for line in ["2% cups oats", "2 % cups oats", "1 a cups flour", "1 Y4 cups flour", "/4 tsp salt",
+                     "& tsp nutmeg", "Ys cup milk", "% cup sugar"] {
+            XCTAssertEqual(scale(line, 2.0), line)
+            XCTAssertEqual(UnitConverter.convert(line, system: .metric, includeLiquids: true), line)
+        }
+        // A chip's fraction reads; a percentage is no amount and the line's own amount still scales.
+        XCTAssertEqual("5 1/3 cups oats", scale("2⅔ cups oats", 2.0))
+        XCTAssertEqual("4 oz 70% chocolate", scale("2 oz 70% chocolate", 2.0))
+        XCTAssertEqual("2 cup 2% milk", scale("1 cup 2% milk", 2.0))
+    }
+
     func testEveryReaderOfTheLeadingAmountTakesAHyphenatedMixedNumberWhole() {
         XCTAssertEqual("300 g sugar", UnitConverter.convert("1-1/2 cups sugar", system: .metric, includeLiquids: false))
         XCTAssertEqual("2 cups sugar", GroceryCombiner.combine(["1-1/2 cups sugar", "1/2 cup sugar"], words: .english))

@@ -70,6 +70,8 @@ enum Strings {
     static var photoNotSorted: String { String(localized: "photo_not_sorted") }
     static var photoFailed: String { String(localized: "photo_failed") }
     static var photoCheckHeading: String { String(localized: "photo_check_heading") }
+    static var photoFractionPrompt: String { String(localized: "photo_fraction_prompt") }
+    static func photoFractionChip(_ fraction: String, _ line: String) -> String { String(localized: "photo_fraction_chip \(fraction) \(line)") }
     static func photoImageDescription(_ title: String) -> String { String(localized: "photo_image_description \(title)") }
     // Scan a recipe (#226)
     static var scanRecipe: String { String(localized: "action_scan_recipe") }

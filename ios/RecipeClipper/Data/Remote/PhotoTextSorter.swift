@@ -92,7 +92,9 @@ enum PhotoTextSorter {
     ///   its space lost (and the scaler would read 5½);
     /// - a digit beside a letter that looks like one: "l/2", "O.5", "1/Z", "1O", "35o°F";
     /// - a unit glued to the word after it, where the scaler reads no unit: "1 cupraisins", in
-    ///   `words`' language ("2 ELZucker", "1 tazaharina"); never in one written without spaces.
+    ///   `words`' language ("2 ELZucker", "1 tazaharina"); never in one written without spaces;
+    /// - a fraction glyph read as something else (#245): see `fractionSlot`;
+    /// - a fraction glyph run into a digit or another glyph, "3¾4" or "½⅓" (#245): never written.
     static func suspect(_ line: String, words: LanguageWords = .english) -> Bool {
         let improper = improperFraction.findAll(line).contains { m in
             // The numerator without leading zeros: two digits or more is always above 2 to 8.
@@ -101,7 +103,24 @@ enum PhotoTextSorter {
             return n.count > 1 || (!n.isEmpty && Int(n)! > d)
         }
         return improper || lookAlike.containsMatch(in: line) || gluedUnit(line, words: words)
+            || fractionSlot(line, words: words) != nil || glyphRun.containsMatch(in: line)
     }
+
+    /// The fractions offered to replace a look-alike (#245), in the order shown.
+    static var fractions: [String] { FractionLookAlike.fractions }
+
+    /// Where `line`'s amount holds a fraction glyph's look-alike (#245, `FractionLookAlike`); nil if none.
+    static func fractionSlot(_ line: String, words: LanguageWords = .english) -> NSRange? {
+        FractionLookAlike.slot(line, unitAtStart: IngredientScaler.patterns(words).unitAtStart)
+    }
+
+    /// `line` with its look-alike (`fractionSlot`) replaced by `fraction`, the cook's choice; nil if it has none.
+    static func replaceFraction(_ line: String, _ fraction: String, words: LanguageWords = .english) -> String? {
+        fractionSlot(line, words: words).map { (line as NSString).replacingCharacters(in: $0, with: fraction) }
+    }
+
+    // "3¾4", "½⅓": a fraction glyph with a digit or another glyph straight after it.
+    private static let glyphRun = JRegex(#"[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞][\d¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]"#)
 
     private static func gluedUnit(_ line: String, words: LanguageWords) -> Bool {
         guard words.spaced else { return false }

@@ -9,6 +9,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
@@ -102,7 +108,7 @@ fun EditRecipeScreen(
                     modifier = Modifier.semantics { heading() }
                 )
                 Spacer(Modifier.height(16.dp))
-                state.photo?.let { PhotoReview(it, state, viewModel::onReadAgain) }
+                state.photo?.let { PhotoReview(it, state, viewModel::onReadAgain, viewModel::onFraction) }
                 when {
                     state.loading -> CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     state.missing -> Text(
@@ -159,7 +165,12 @@ private fun EditFields(state: EditRecipeUiState, onChange: (RecipeDraft) -> Unit
  * from where they are, never cached (a reused camera file must not show an earlier picture).
  */
 @Composable
-private fun PhotoReview(post: PhotoPost, state: EditRecipeUiState, onReadAgain: () -> Unit) {
+private fun PhotoReview(
+    post: PhotoPost,
+    state: EditRecipeUiState,
+    onReadAgain: () -> Unit,
+    onFraction: (line: String, fraction: String) -> Unit
+) {
     val context = LocalContext.current
     post.imageUrls.forEachIndexed { index, image ->
         AsyncImage(
@@ -221,11 +232,45 @@ private fun PhotoReview(post: PhotoPost, state: EditRecipeUiState, onReadAgain: 
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(6.dp))
-            state.uncertain.forEach { line ->
+            state.uncertain.forEachIndexed { index, line ->
                 Text("• $line", style = MaterialTheme.typography.bodyMedium)
+                if (line in state.fractionLines) FractionChips(index, line, state.fractions, onFraction)
             }
         }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+/**
+ * A line whose amount holds a fraction glyph's look-alike (#245): the fractions as one-tap
+ * replacements, since "%" can't say whether it was ½, ¼ or ¾. The cook can still type instead.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FractionChips(index: Int, line: String, fractions: List<String>, onFraction: (String, String) -> Unit) {
+    Text(
+        stringResource(R.string.photo_fraction_prompt),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 12.dp, top = 2.dp)
+    )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(start = 12.dp, bottom = 6.dp)
+    ) {
+        fractions.forEach { fraction ->
+            val spoken = stringResource(R.string.photo_fraction_chip, fraction, line)
+            OutlinedButton(
+                onClick = { onFraction(line, fraction) },
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp),
+                modifier = Modifier
+                    .semantics { contentDescription = spoken }
+                    .testTag("edit.fraction.$index.$fraction")
+            ) {
+                Text(fraction, style = MaterialTheme.typography.titleMedium)
+            }
+        }
     }
 }
 

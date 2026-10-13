@@ -127,4 +127,50 @@ final class PhotoTextSorterTests: XCTestCase {
         XCTAssertEqual(reading.ingredients.count, 3)
         XCTAssertEqual(reading.instructions.count, 3)
     }
+
+    // Fraction glyphs (#245): what ML Kit and Vision really gave for ½ ¼ ¾ ⅓ ⅔ ⅛ on the
+    // card-fractions fixtures, and the percentages that must stay unflagged.
+
+    func testAFractionGlyphReadAsALookAlikeInAnAmountsPlaceIsFlagged() {
+        for line in ["2% cups oats", "2 % cups oats", "1 % cups flour", "% cup sugar", "& tsp nutmeg",
+                     "/2 cup sugar", "/4 tsp salt", "1 Y4 cups flour", "Ys cup mik", "Vs tsp nutmeg",
+                     "is tsp nutmeg", "1 a cups flour", "%"] {
+            XCTAssertTrue(PhotoTextSorter.suspect(line), line)
+        }
+    }
+
+    func testARealPercentageOrALookAlikeOutOfAnAmountsPlaceIsNotFlagged() {
+        for line in ["2% milk", "1 cup 2% milk", "70% chocolate", "2 oz 70% chocolate", "200 g 70 % chocolate",
+                     "a cup of milk", "1 apple", "salt & pepper", "Reduce to 50% power.", "2 % Milch",
+                     "1 isn't", "½ cup sugar", "1¼ cups flour", "2 ⅔ cups oats"] {
+            XCTAssertFalse(PhotoTextSorter.suspect(line), line)
+        }
+    }
+
+    func testAFractionGlyphRunIntoADigitOrAnotherGlyphIsFlagged() {
+        XCTAssertTrue(PhotoTextSorter.suspect("3¾4 tsp salt"))
+        XCTAssertTrue(PhotoTextSorter.suspect("½⅓ cup milk"))
+        XCTAssertNil(PhotoTextSorter.fractionSlot("3¾4 tsp salt")) // flagged, but no look-alike to replace
+    }
+
+    func testAChipReplacesTheLookAlikeInPlaceAndNothingElse() {
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("2% cups oats", "⅔"), "2⅔ cups oats")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("2 % cups oats", "⅔"), "2 ⅔ cups oats")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("& tsp nutmeg", "⅛"), "⅛ tsp nutmeg")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("/4 tsp salt", "¾"), "¾ tsp salt")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("1 a cups flour", "¼"), "1 ¼ cups flour")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("Ys cup mik", "⅓"), "⅓ cup mik")
+        XCTAssertNil(PhotoTextSorter.replaceFraction("2% milk", "½"))
+        XCTAssertNil(PhotoTextSorter.replaceFraction("½ cup sugar", "½"))
+        XCTAssertEqual(PhotoTextSorter.fractions, ["½", "¼", "¾", "⅓", "⅔", "⅛"])
+    }
+
+    func testTheFractionCardsLinesAreListedToCheck() {
+        // ML Kit's reading of card-fractions-hand.jpg on the emulator (#245).
+        let reading = PhotoTextSorter.sort(lines([
+            "Oat Cookies", "INGREDIENTS", "½ oup sugar", "1 a cups flour", "4 tsp salt", "Ys cup mik",
+            "2 % cups oats", "& tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients.",
+        ]))
+        XCTAssertEqual(reading.uncertain, ["1 a cups flour", "Ys cup mik", "2 % cups oats", "& tsp nutmeg"])
+    }
 }

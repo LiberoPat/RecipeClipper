@@ -2,6 +2,7 @@ package com.example.recipeclipper.data.remote
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -134,5 +135,50 @@ class PhotoTextSorterTest {
         assertTrue(reading.sorted)
         assertEquals(3, reading.ingredients.size)
         assertEquals(3, reading.instructions.size)
+    }
+    // Fraction glyphs (#245): what ML Kit and Vision really gave for ½ ¼ ¾ ⅓ ⅔ ⅛ on the
+    // card-fractions fixtures, and the percentages that must stay unflagged.
+
+    @Test fun `a fraction glyph read as a look-alike in an amount's place is flagged`() {
+        listOf(
+            "2% cups oats", "2 % cups oats", "1 % cups flour", "% cup sugar", "& tsp nutmeg",
+            "/2 cup sugar", "/4 tsp salt", "1 Y4 cups flour", "Ys cup mik", "Vs tsp nutmeg",
+            "is tsp nutmeg", "1 a cups flour", "%"
+        ).forEach { assertTrue(it, PhotoTextSorter.suspect(it)) }
+    }
+
+    @Test fun `a real percentage, or a look-alike out of an amount's place, is not flagged`() {
+        listOf(
+            "2% milk", "1 cup 2% milk", "70% chocolate", "2 oz 70% chocolate", "200 g 70 % chocolate",
+            "a cup of milk", "1 apple", "salt & pepper", "Reduce to 50% power.", "2 % Milch",
+            "1 isn't", "½ cup sugar", "1¼ cups flour", "2 ⅔ cups oats"
+        ).forEach { assertFalse(it, PhotoTextSorter.suspect(it)) }
+    }
+
+    @Test fun `a fraction glyph run into a digit or another glyph is flagged`() {
+        assertTrue(PhotoTextSorter.suspect("3¾4 tsp salt"))
+        assertTrue(PhotoTextSorter.suspect("½⅓ cup milk"))
+        assertNull(PhotoTextSorter.fractionSlot("3¾4 tsp salt")) // flagged, but no look-alike to replace
+    }
+
+    @Test fun `a chip replaces the look-alike in place and nothing else`() {
+        assertEquals("2⅔ cups oats", PhotoTextSorter.replaceFraction("2% cups oats", "⅔"))
+        assertEquals("2 ⅔ cups oats", PhotoTextSorter.replaceFraction("2 % cups oats", "⅔"))
+        assertEquals("⅛ tsp nutmeg", PhotoTextSorter.replaceFraction("& tsp nutmeg", "⅛"))
+        assertEquals("¾ tsp salt", PhotoTextSorter.replaceFraction("/4 tsp salt", "¾"))
+        assertEquals("1 ¼ cups flour", PhotoTextSorter.replaceFraction("1 a cups flour", "¼"))
+        assertEquals("⅓ cup mik", PhotoTextSorter.replaceFraction("Ys cup mik", "⅓"))
+        assertNull(PhotoTextSorter.replaceFraction("2% milk", "½"))
+        assertNull(PhotoTextSorter.replaceFraction("½ cup sugar", "½"))
+        assertEquals(listOf("½", "¼", "¾", "⅓", "⅔", "⅛"), PhotoTextSorter.FRACTIONS)
+    }
+
+    @Test fun `the fraction cards' lines are listed to check`() {
+        // ML Kit's reading of card-fractions-hand.jpg on the emulator (#245).
+        val reading = PhotoTextSorter.sort(lines(listOf(
+            "Oat Cookies", "INGREDIENTS", "½ oup sugar", "1 a cups flour", "4 tsp salt", "Ys cup mik",
+            "2 % cups oats", "& tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients."
+        )))
+        assertEquals(listOf("1 a cups flour", "Ys cup mik", "2 % cups oats", "& tsp nutmeg"), reading.uncertain)
     }
 }
