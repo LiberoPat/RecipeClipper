@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
@@ -429,8 +430,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
      * #230), LIVE: real r/recipes posts. Reddit refuses the app's `.json` read (403, and again on
      * the one retry), so the post opens in the clip view with the note and no Try again. The
      * whole body shows (no "Read more" fade, no app or sign-in prompt) and scrolls with the
-     * finger. The ingredients and steps are selected by script ([select]: a drag across a web
-     * page can't be scripted, as in ClipScreenTest) and assigned with the toolbar; Done with no
+     * finger. The ingredients and steps are picked field first: the field's button, then
+     * the text selected by script ([pick]: a drag across a web page can't be scripted, as in
+     * ClipScreenTest), then the confirm; Done with no
      * name opens Review, which asks for it; typed, Save opens the recipe. Then a second post in
      * the Text view: its name, and the recipe in the poster's comment, selected there and saved.
      */
@@ -444,10 +446,8 @@ class RecipesWalkthroughTest : WalkthroughBase() {
             pause(1200)
         }
         pause(1500)
-        select(page, "2 pounds bone-in", "Black pepper, to taste")
-        assign("Ingredients")
-        select(page, "Prepare the chicken:", "remaining vinaigrette on the side.")
-        assign("Steps")
+        pick(page, "Ingredients", "2 pounds bone-in", "Black pepper, to taste")
+        pick(page, "Steps", "Prepare the chicken:", "remaining vinaigrette on the side.")
         // No name yet: Done opens Review, which asks for it.
         tap("Done", 3000)
         waitFor(hasText("Type the recipe's name", substring = true))
@@ -466,12 +466,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         val text = waitForWebView { it.url?.contains("reddit.com") != true }
         waitForPage(text, "typeof window.RC == 'object' && document.body.innerText.indexOf('Marinate the beef') >= 0")
         pause(2500)
-        select(text, "Beef Bourguignon", null)
-        assign("Name")
-        select(text, "800g beef chuck", "to serve")
-        assign("Ingredients")
-        select(text, "Marinate the beef overnight", "with parsley on top.")
-        assign("Steps")
+        pick(text, "Name", "Beef Bourguignon", null)
+        pick(text, "Ingredients", "800g beef chuck", "to serve")
+        pick(text, "Steps", "Marinate the beef overnight", "with parsley on top.")
         tap("Done", 3000)
         pause(1500)
         tap("Save", 3000)
@@ -657,20 +654,17 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     }
 
     /**
-     * Brings the text from [from] to [to] (or [from] alone) into view and selects it, as a
-     * finger's drag would; the page reports the selection to the app through `selectionchange`.
+     * Field first (#237): taps [field]'s button to arm it, then brings the text from [from] to
+     * [to] (or [from] alone) into view and selects it, as a finger's drag would (the page reports
+     * it through `selectionchange`), and taps the hint bar's confirm: it goes there, marked on
+     * the page.
      */
-    private fun select(view: WebView, from: String, to: String?) {
+    private fun pick(view: WebView, field: String, from: String, to: String?) {
+        tapTag("clip.field.${field.uppercase()}", 2000)
         val script = SELECT_JS + "(${quote(from)}, ${to?.let(::quote) ?: "null"})"
         compose.waitUntil(15_000) { js(view, script) == "true" }
-        waitFor(hasText("selected", substring = true))
+        waitFor(hasTestTag("clip.confirm"))
         pause(2500)
-    }
-
-    /** Taps the toolbar's [field] button: the selection goes there, and is marked on the page. */
-    /** Field first (#237): the field's button arms it, and the hint bar's confirm adds the selection. */
-    private fun assign(field: String) {
-        tapTag("clip.field.${field.uppercase()}")
         tapTag("clip.confirm", 3000)
     }
 
