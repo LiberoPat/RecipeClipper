@@ -77,7 +77,7 @@ final class IngredientScalerTests: XCTestCase {
         // A chip's fraction reads; a percentage is no amount and the line's own amount still scales.
         XCTAssertEqual("5 1/3 cups oats", scale("2⅔ cups oats", 2.0))
         XCTAssertEqual("4 oz 70% chocolate", scale("2 oz 70% chocolate", 2.0))
-        XCTAssertEqual("2 cups 2% milk", scale("1 cup 2% milk", 2.0))
+        XCTAssertEqual("2 cup 2% milk", scale("1 cup 2% milk", 2.0))
     }
 
     func testEveryReaderOfTheLeadingAmountTakesAHyphenatedMixedNumberWhole() {

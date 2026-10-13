@@ -81,7 +81,7 @@ class IngredientScalerTest {
         // A chip's fraction reads; a percentage is no amount and the line's own amount still scales.
         assertEquals("5 1/3 cups oats", scale("2⅔ cups oats", 2.0))
         assertEquals("4 oz 70% chocolate", scale("2 oz 70% chocolate", 2.0))
-        assertEquals("2 cups 2% milk", scale("1 cup 2% milk", 2.0))
+        assertEquals("2 cup 2% milk", scale("1 cup 2% milk", 2.0))
     }
 
     @Test fun `every reader of the leading amount takes a hyphenated mixed number whole`() {
