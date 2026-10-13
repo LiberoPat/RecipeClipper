@@ -75,7 +75,7 @@ class TooltipsScreenTest {
     private fun seen() = runBlocking { preferences.seenTooltips.first() }
 
     @Test
-    fun theFirstVisitShowsTheFirstTooltipOnceSettledAndTheNextVisitTheNext() {
+    fun theFirstVisitShowsTheTooltipOnceSettledAndGotItEndsItForGood() {
         compose.mainClock.autoAdvance = false
         showHome()
         compose.mainClock.advanceTimeBy(Tooltips.SETTLE_MILLIS / 2)
@@ -92,23 +92,19 @@ class TooltipsScreenTest {
 
         compose.onNodeWithTag("tooltip-home_link").assertDoesNotExist()
         assertEquals(setOf(Tooltip.HOME_LINK), seen())
-        compose.mainClock.advanceTimeBy(Tooltips.SETTLE_MILLIS * 2)
-        compose.onNodeWithTag("tooltip-home_new_recipe").assertDoesNotExist()
 
+        // Home has only the one (#246): a later visit shows nothing.
         homeShown = false
         compose.waitForIdle()
         homeShown = true
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodesWithTagExists("tooltip-home_new_recipe")
-        }
-        compose.onNodeWithText("Or type in a recipe of your own.").assertExists()
+        compose.mainClock.advanceTimeBy(Tooltips.SETTLE_MILLIS * 2)
+        compose.waitForIdle()
         compose.onNodeWithTag("tooltip-home_link").assertDoesNotExist()
     }
 
     @Test
     fun aTooltipShowsOnlyOnceItsControlIsOnScreen() {
-        // Settings' second tooltip points at "Show tips again", far down the list.
-        preferences.setTooltipSeen(Tooltip.SETTINGS_UNITS, true)
+        // Settings' tooltip points at "Show tips again", far down the list.
         var replays = 0
         val settings = SettingsViewModel(FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
         compose.setContent {

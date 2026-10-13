@@ -128,10 +128,7 @@ fun SettingsScreen(
                             modifier = Modifier.padding(top = 4.dp)
                         )
                         Spacer(Modifier.height(12.dp))
-                        SectionHeading(
-                            stringResource(R.string.settings_section_units),
-                            Modifier.tooltipAnchor(Tooltip.SETTINGS_UNITS)
-                        )
+                        SectionHeading(stringResource(R.string.settings_section_units))
                         Spacer(Modifier.height(4.dp))
                     }
 

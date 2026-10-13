@@ -160,7 +160,6 @@ private fun IngredientsBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .tooltipAnchor(Tooltip.COOK_INGREDIENTS, TooltipSide.ABOVE)
                 .clickable(
                     role = Role.Button,
                     onClickLabel = stringResource(

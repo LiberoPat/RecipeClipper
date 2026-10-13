@@ -30,8 +30,6 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.Recipe
-import com.example.recipeclipper.data.model.Tooltip
-import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
  * The reading view's top row: Back, then the bookmark (filled once the recipe is in a list),
@@ -52,10 +50,7 @@ internal fun ReadingTopBar(
         // membership, so the icon is reading the same thing the database is.
         // Lists and the overflow's actions need a saved recipe: not one shown but not
         // kept (#107).
-        if (!state.notKept) IconButton(
-            onClick = actions.onSaveToList,
-            modifier = Modifier.tooltipAnchor(Tooltip.RECIPE_BOOKMARK)
-        ) {
+        if (!state.notKept) IconButton(onClick = actions.onSaveToList) {
             Icon(
                 painter = painterResource(
                     if (isSaved) R.drawable.ic_bookmark else R.drawable.ic_bookmark_border
@@ -70,7 +65,7 @@ internal fun ReadingTopBar(
                 }
             )
         }
-        IconButton(onClick = actions.onShare, modifier = Modifier.tooltipAnchor(Tooltip.RECIPE_SHARE)) {
+        IconButton(onClick = actions.onShare) {
             Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share_recipe))
         }
         if (state.updatingFromSource) {

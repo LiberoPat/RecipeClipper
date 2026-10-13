@@ -73,6 +73,19 @@ class SharedPrefsAppPreferencesTest {
         assertEquals(emptySet<Tooltip>(), SharedPrefsAppPreferences(context).seenTooltips.first())
     }
 
+    @Test fun `a removed tooltip's stored key is ignored`() = runBlocking {
+        // #246 removed ten tooltips; a key someone stored for one before is never read again.
+        file.edit()
+            .putBoolean("tooltip_recipe_bookmark", true)
+            .putBoolean("tooltip_home_new_recipe", true)
+            .putBoolean("tooltip_cook_timer", true)
+            .commit()
+        val preferences = SharedPrefsAppPreferences(context)
+        assertEquals(setOf(Tooltip.COOK_TIMER), preferences.seenTooltips.first())
+        preferences.setTooltipSeen(Tooltip.HOME_LINK, true)
+        assertEquals(setOf(Tooltip.COOK_TIMER, Tooltip.HOME_LINK), preferences.seenTooltips.first())
+    }
+
     @Test fun `the pantry use-up log round-trips under pantry_use_up, skipping what it can't read`() {
         SharedPrefsAppPreferences(context).useUps = mapOf(7L to 1_000L, 12L to 2_000L)
         assertEquals("7:1000,12:2000", file.getString("pantry_use_up", null))

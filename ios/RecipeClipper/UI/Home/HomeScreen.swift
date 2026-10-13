@@ -78,7 +78,6 @@ struct HomeScreen: View {
                 entryLayout {
                     Button(Strings.newRecipe, action: onNewRecipe)
                         .buttonStyle(TextActionStyle())
-                        .tooltipAnchor(.homeNewRecipe)
                         .accessibilityIdentifier("home.newRecipe")
                     if let onScan { ScanRecipeButton(onScan: onScan) }
                 }

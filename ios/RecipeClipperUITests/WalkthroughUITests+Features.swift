@@ -24,12 +24,14 @@ extension WalkthroughUITests {
         require(row("Tomato and White Bean Soup"), "the sample recipe").tap()
         gotIt("recipe_units", "the recipe's first tooltip", hold: 4) // a longer text
         back()
-        gotIt("home_new_recipe", "Home's next tooltip, on a later visit")
+        require(row("Tomato and White Bean Soup"), "the sample recipe").tap()
+        gotIt("recipe_menu", "the recipe's next tooltip, on a later visit")
+        back()
         require(app.buttons["Settings"]).tap()
         pause()
-        let settingsTip = app.buttons["tooltip.settings_units"]
-        if settingsTip.waitForExistence(timeout: 4) { gotIt("settings_units", "Settings' first tooltip") }
         scrollTo(app.buttons["settings.showTips"], "Show tips again")
+        let settingsTip = app.buttons["tooltip.settings_show_tips"]
+        if settingsTip.waitForExistence(timeout: 4) { gotIt("settings_show_tips", "Settings' tooltip, once on screen") }
         pause()
         app.buttons["settings.showTips"].tap()
         pause(1.5)

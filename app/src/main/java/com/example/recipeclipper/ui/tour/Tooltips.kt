@@ -132,29 +132,19 @@ fun Modifier.tooltipAnchor(tooltip: Tooltip, side: TooltipSide = TooltipSide.AUT
 @StringRes
 private fun Tooltip.text(): Int = when (this) {
     Tooltip.HOME_LINK -> R.string.tooltip_home_link
-    Tooltip.HOME_NEW_RECIPE -> R.string.tooltip_home_new_recipe
     Tooltip.RECIPE_UNITS -> R.string.tooltip_recipe_units
-    Tooltip.RECIPE_BOOKMARK -> R.string.tooltip_recipe_bookmark
-    Tooltip.RECIPE_SHARE -> R.string.tooltip_recipe_share
     Tooltip.RECIPE_MENU -> R.string.tooltip_recipe_menu
     Tooltip.RECIPE_START_COOKING -> R.string.tooltip_recipe_start_cooking
     Tooltip.RECIPE_MADE_THIS -> R.string.tooltip_recipe_made_this
     Tooltip.COOK_DONE_NEXT -> R.string.tooltip_cook_done_next
     Tooltip.COOK_TAP_STEP -> R.string.tooltip_cook_tap_step
     Tooltip.COOK_TIMER -> R.string.tooltip_cook_timer
-    Tooltip.COOK_INGREDIENTS -> R.string.tooltip_cook_ingredients
-    Tooltip.WEEK_ADD -> R.string.tooltip_week_add
-    Tooltip.WEEK_MONTH -> R.string.tooltip_week_month
     Tooltip.WEEK_MENU -> R.string.tooltip_week_menu
-    Tooltip.GROCERIES_ADD -> R.string.tooltip_groceries_add
-    Tooltip.GROCERIES_TICK -> R.string.tooltip_groceries_tick
     Tooltip.GROCERIES_LONG_PRESS -> R.string.tooltip_groceries_long_press
     Tooltip.GROCERIES_DONE_SHOPPING -> R.string.tooltip_groceries_done_shopping
     Tooltip.GROCERIES_MENU -> R.string.tooltip_groceries_menu
-    Tooltip.PANTRY_ADD -> R.string.tooltip_pantry_add
     Tooltip.PANTRY_IN_STOCK -> R.string.tooltip_pantry_in_stock
     Tooltip.PANTRY_MENU -> R.string.tooltip_pantry_menu
-    Tooltip.SETTINGS_UNITS -> R.string.tooltip_settings_units
     Tooltip.SETTINGS_SHOW_TIPS -> R.string.tooltip_settings_show_tips
 }
 

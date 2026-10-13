@@ -158,7 +158,6 @@ struct WeekScreen: View {
                 }
                 .buttonStyle(TextActionStyle())
                 .accessibilityIdentifier("toggleMonth")
-                .tooltipAnchor(.weekMonth)
             }
             if let month = state.month {
                 periodNavigation(
@@ -322,8 +321,6 @@ private struct DaySection: View {
             }
             Button(Strings.addMeal) { vm.onAddToDay(day) }
                 .buttonStyle(TextActionStyle())
-                // The tooltip (#190) points at today's, the first day shown.
-                .modifier(TodayAnchor(isToday: isToday))
                 .padding(.leading, -12)
                 .accessibilityIdentifier("addToDay-\(day)")
             Hairline()
@@ -479,14 +476,5 @@ private struct AddToDaySheet: View {
             .scrollDismissesKeyboard(.interactively)
             .presentationBackground(Palette.background)
         }
-    }
-}
-
-/// Today's "+ Add", which the "+ Add" tooltip (#190) points at.
-private struct TodayAnchor: ViewModifier {
-    let isToday: Bool
-
-    func body(content: Content) -> some View {
-        if isToday { content.tooltipAnchor(.weekAdd) } else { content }
     }
 }

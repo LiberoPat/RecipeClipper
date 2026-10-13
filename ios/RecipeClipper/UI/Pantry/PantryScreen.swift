@@ -27,7 +27,6 @@ struct PantryScreen: View {
                         onSubmit: vm.onAddTyped
                     )
                     .accessibilityIdentifier("pantryDraft")
-                    .tooltipAnchor(.pantryAdd)
                     if state.hasItems {
                         OutlinedField(
                             label: Strings.pantrySearchHint,

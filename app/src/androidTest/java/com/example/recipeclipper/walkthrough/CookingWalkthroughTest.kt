@@ -234,14 +234,16 @@ class CookingWalkthroughTest : WalkthroughBase() {
         pause(4000) // a longer text
         tap("Got it", 1500)
         back()
-        waitFor(hasTestTag("tooltip-home_new_recipe")) // the later visit's next one
+        tap("Tomato and White Bean Soup", 2000)
+        waitFor(hasTestTag("tooltip-recipe_menu")) // the later visit's next one
         pause(2500)
         tap("Got it", 1500)
+        back()
         tapDescription("Settings")
-        waitFor(hasTestTag("tooltip-settings_units"))
+        reveal(hasText("Show tips again"))
+        waitFor(hasTestTag("tooltip-settings_show_tips")) // Settings' one, once on screen
         pause(2500)
         tap("Got it", 1500)
-        reveal(hasText("Show tips again"))
         press(hasText("Show tips again"), 2000) // by semantics: the row can sit under the tab bar
         back()
         waitFor(hasTestTag("tooltip-home_link"))

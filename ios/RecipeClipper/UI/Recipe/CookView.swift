@@ -192,8 +192,6 @@ private struct IngredientsBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint(expanded ? Strings.hideIngredients : Strings.showIngredients)
-            // Its tooltip goes above, over the top bar, never over the current step (#190).
-            .tooltipAnchor(.cookIngredients, side: .above)
 
             if expanded {
                 let list = VStack(spacing: 0) {

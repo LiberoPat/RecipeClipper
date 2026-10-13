@@ -29,11 +29,10 @@ final class TooltipsUITests: RecipeUITestCase {
         XCTAssertLessThan(abs(bubble.minY - dropdown.maxY), 60, "bubble \(bubble), dropdown \(dropdown)")
 
         // Never chained: nothing else on this visit.
-        XCTAssertFalse(app.buttons["tooltip.recipe_bookmark"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["tooltip.recipe_menu"].waitForExistence(timeout: 3))
 
         back()
-        gotIt("home_new_recipe", "Home's next tooltip, on its next visit")
         require(row("Chicken Adobo")).tap()
-        gotIt("recipe_bookmark", "the recipe screen's next tooltip, on its next visit")
+        gotIt("recipe_menu", "the recipe screen's next tooltip, on its next visit")
     }
 }

@@ -20,7 +20,6 @@ struct SettingsScreen: View {
                     .padding(.bottom, 12)
 
                 SectionHeading(Strings.settingsSectionUnits)
-                    .tooltipAnchor(.settingsUnits)
                     .padding(.bottom, 4)
                 ForEach(UnitSystem.allCases, id: \.self) { option in
                     RadioRow(

@@ -282,7 +282,7 @@ private fun TitleRow(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.weight(1f)
         )
-        TextButton(onClick = onToggleMonth, modifier = Modifier.testTag("toggleMonth").tooltipAnchor(Tooltip.WEEK_MONTH)) {
+        TextButton(onClick = onToggleMonth, modifier = Modifier.testTag("toggleMonth")) {
             Text(stringResource(if (showingMonth) R.string.action_week_view else R.string.action_month_view))
         }
         WeekMenu(onOpenMealTypes, onOpenWhatINeed, onAddToGroceries, onShareCalendar, canShareCalendar, onSaveMenu, onApplyMenu)
@@ -578,10 +578,7 @@ private fun DaySection(
         }
         TextButton(
             onClick = onAdd,
-            modifier = Modifier.testTag("addToDay-$day").then(
-                // The tooltip (#190) points at today's, the first day shown.
-                if (isToday) Modifier.tooltipAnchor(Tooltip.WEEK_ADD) else Modifier
-            )
+            modifier = Modifier.testTag("addToDay-$day")
         ) {
             Text(stringResource(R.string.action_add_meal))
         }

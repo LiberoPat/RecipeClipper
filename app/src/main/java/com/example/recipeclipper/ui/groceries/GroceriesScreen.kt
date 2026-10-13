@@ -214,7 +214,7 @@ fun GroceriesScreen(
                                     TextButton(onClick = viewModel::onAddTyped) { Text(stringResource(R.string.action_add)) }
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth().testTag("groceryDraft").tooltipAnchor(Tooltip.GROCERIES_ADD)
+                            modifier = Modifier.fillMaxWidth().testTag("groceryDraft")
                         )
                         if (state.isEmpty) {
                             Spacer(Modifier.height(16.dp))
@@ -429,8 +429,7 @@ private fun CheckLine(
         ) {
             Checkbox(
                 checked = checked,
-                onCheckedChange = null,
-                modifier = if (first) Modifier.tooltipAnchor(Tooltip.GROCERIES_TICK) else Modifier
+                onCheckedChange = null
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f).then(if (first) Modifier.tooltipAnchor(Tooltip.GROCERIES_LONG_PRESS) else Modifier)) {

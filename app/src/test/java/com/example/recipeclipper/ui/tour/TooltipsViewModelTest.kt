@@ -21,7 +21,8 @@ class TooltipsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val preferences = FakeTourPreferences()
-    private val home = setOf(Tooltip.HOME_LINK, Tooltip.HOME_NEW_RECIPE)
+    private val home = setOf(Tooltip.HOME_LINK)
+    private val recipe = setOf(Tooltip.RECIPE_UNITS, Tooltip.RECIPE_MENU)
 
     @Test
     fun `a ready screen shows its first tooltip, on that appearance only`() = runTest(mainDispatcherRule.dispatcher) {
@@ -48,20 +49,20 @@ class TooltipsViewModelTest {
     @Test
     fun `Got it marks it seen, and the next one waits for the next visit`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = TooltipsViewModel(preferences)
-        vm.onVisit("a", TooltipScreen.HOME)
-        vm.onReport("a", home, ready = true)
+        vm.onVisit("a", TooltipScreen.RECIPE)
+        vm.onReport("a", recipe, ready = true)
         advanceUntilIdle()
 
-        vm.onDismiss(Tooltip.HOME_LINK)
+        vm.onDismiss(Tooltip.RECIPE_UNITS)
         advanceUntilIdle()
-        assertEquals(setOf(Tooltip.HOME_LINK), preferences.seenTooltips.first())
+        assertEquals(setOf(Tooltip.RECIPE_UNITS), preferences.seenTooltips.first())
         assertNull("never chained", vm.uiState.value.current)
 
         vm.onLeave("a")
-        vm.onVisit("b", TooltipScreen.HOME)
-        vm.onReport("b", home, ready = true)
+        vm.onVisit("b", TooltipScreen.RECIPE)
+        vm.onReport("b", recipe, ready = true)
         advanceUntilIdle()
-        assertEquals(Tooltip.HOME_NEW_RECIPE, vm.uiState.value.current)
+        assertEquals(Tooltip.RECIPE_MENU, vm.uiState.value.current)
     }
 
     @Test
@@ -89,8 +90,8 @@ class TooltipsViewModelTest {
         assertEquals(emptySet<Tooltip>(), preferences.seenTooltips.first())
 
         vm.onVisit("a", TooltipScreen.SETTINGS)
-        vm.onReport("a", setOf(Tooltip.SETTINGS_UNITS), ready = true)
+        vm.onReport("a", setOf(Tooltip.SETTINGS_SHOW_TIPS), ready = true)
         advanceUntilIdle()
-        assertEquals(Tooltip.SETTINGS_UNITS, vm.uiState.value.current)
+        assertEquals(Tooltip.SETTINGS_SHOW_TIPS, vm.uiState.value.current)
     }
 }

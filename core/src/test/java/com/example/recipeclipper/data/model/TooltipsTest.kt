@@ -32,21 +32,21 @@ class TooltipsTest {
 
     @Test
     fun `the first unseen tooltip on screen shows, once the screen is ready`() {
-        val home = visit(TooltipScreen.HOME)
-        assertEquals(Tooltip.HOME_LINK, Tooltips.current(home, emptySet(), everything, ready = true))
-        assertNull("not in the first second, nor under a sheet", Tooltips.current(home, emptySet(), everything, ready = false))
+        val recipe = visit(TooltipScreen.RECIPE)
+        assertEquals(Tooltip.RECIPE_UNITS, Tooltips.current(recipe, emptySet(), everything, ready = true))
+        assertNull("not in the first second, nor under a sheet", Tooltips.current(recipe, emptySet(), everything, ready = false))
         assertEquals(
-            Tooltip.HOME_NEW_RECIPE,
-            Tooltips.current(home, setOf(Tooltip.HOME_LINK), everything, ready = true)
+            Tooltip.RECIPE_MENU,
+            Tooltips.current(recipe, setOf(Tooltip.RECIPE_UNITS), everything, ready = true)
         )
-        assertNull(Tooltips.current(home, Tooltips.forScreen(TooltipScreen.HOME).toSet(), everything, ready = true))
+        assertNull(Tooltips.current(recipe, Tooltips.forScreen(TooltipScreen.RECIPE).toSet(), everything, ready = true))
     }
 
     @Test
     fun `an anchor that isn't on screen is passed over for the next`() {
         val recipe = visit(TooltipScreen.RECIPE)
-        val visible = setOf(Tooltip.RECIPE_BOOKMARK, Tooltip.RECIPE_START_COOKING)
-        assertEquals(Tooltip.RECIPE_BOOKMARK, Tooltips.current(recipe, emptySet(), visible, ready = true))
+        val visible = setOf(Tooltip.RECIPE_MENU, Tooltip.RECIPE_START_COOKING)
+        assertEquals(Tooltip.RECIPE_MENU, Tooltips.current(recipe, emptySet(), visible, ready = true))
         assertNull("none on screen: none this visit, so far", Tooltips.current(recipe, emptySet(), emptySet(), ready = true))
     }
 
@@ -68,17 +68,17 @@ class TooltipsTest {
             "scrolled away, it hides; nothing takes its place",
             Tooltips.current(shown, emptySet(), setOf(Tooltip.RECIPE_START_COOKING), ready = true)
         )
-        assertSame(shown, Tooltips.shown(shown, Tooltip.RECIPE_BOOKMARK))
+        assertSame(shown, Tooltips.shown(shown, Tooltip.RECIPE_MENU))
     }
 
     @Test
     fun `dismissed, the screen's next tooltip waits for a later visit, never chained`() {
-        val closed = Tooltips.closed(Tooltips.shown(visit(TooltipScreen.HOME), Tooltip.HOME_LINK))
-        assertNull(Tooltips.current(closed, setOf(Tooltip.HOME_LINK), everything, ready = true))
+        val closed = Tooltips.closed(Tooltips.shown(visit(TooltipScreen.COOK), Tooltip.COOK_DONE_NEXT))
+        assertNull(Tooltips.current(closed, setOf(Tooltip.COOK_DONE_NEXT), everything, ready = true))
 
         val left = Tooltips.leave(closed, "t1")
-        val later = Tooltips.visit(left, "t2", TooltipScreen.HOME)
-        assertEquals(Tooltip.HOME_NEW_RECIPE, Tooltips.current(later, setOf(Tooltip.HOME_LINK), everything, ready = true))
+        val later = Tooltips.visit(left, "t2", TooltipScreen.COOK)
+        assertEquals(Tooltip.COOK_TAP_STEP, Tooltips.current(later, setOf(Tooltip.COOK_DONE_NEXT), everything, ready = true))
     }
 
     @Test
