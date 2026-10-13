@@ -3859,6 +3859,51 @@ shares into the app. Behind the existing `photoText` flag, on both platforms.
 - **Needs a phone:** the camera itself, the picker's order, sharing from Photos or a gallery,
   ML Kit's model through Play services, and real cards and cookbook pages (docs/testing.md).
 
+## Fraction glyphs read from a photo (#245, 2026-10-13)
+
+The owner's report: a card's fraction symbol came out as "%". Measured first, on two cards drawn
+for it (`shared/fixtures/reddit/photos/card-fractions-print.jpg` in Georgia,
+`card-fractions-hand.jpg` in Noteworthy: ½ cup sugar, 1 ¼ cups flour, ¾ tsp salt, ⅓ cup milk,
+2 ⅔ cups oats, ⅛ tsp nutmeg, and 2 oz 70% chocolate as a real percentage):
+
+| Glyph | Vision, iOS 27 simulator: print / hand | ML Kit (Play services), emulator: print / hand |
+|---|---|---|
+| ½ | ½ / ½ | "/2 cup" / ½ |
+| 1 ¼ | 1¼ / 1¼ | "1 Y4 cups" / "1 a cups" |
+| ¾ | "3¾4 tsp" / "3/4 tsp" | "/4 tsp" / "4 tsp" |
+| ⅓ | "1/3 cup" / "½⅓ cup" | "3 cup" / "Ys cup" |
+| 2 ⅔ | "2 2/3 cups" / "2% cups" | "2 23 cups" / "2 % cups" |
+| ⅛ | "8 tsp" / "is tsp" | "Vs tsp" / "& tsp" |
+| 70% | 70% / 70% | 70% / 70% |
+
+Vision gave every line 1.0 confidence and ML Kit 0.52 to 0.84, so none was under "Check these
+lines" before. macOS Vision differed again ("12 cup" for ½, "34 tsp" for ¾, "&" for ⅛).
+
+- **Nothing is normalised.** No look-alike maps to one glyph: "%" was ⅔ here and is a real
+  percentage elsewhere; "/4" may be ¼ or ¾. CLAUDE.md's rule: never a confident wrong number.
+- **Flagged** (`PhotoTextSorter.suspect`, both platforms): a measured look-alike
+  (`shared/tables/photo-fractions.json`: `%`, `&`, `/2`, `/3`, `/4`, `/8`, `Y4`, `Ys`, `Vs`, `is`,
+  and `a` only after a number) in an amount's place: at the line's start or after a whole number
+  there, and then only before a unit, unless a symbol starts the line. So "2% milk",
+  "70% chocolate", "2 % Milch" and "1/2 cup" aren't flagged. Also a glyph run into a digit or
+  another glyph ("3¾4", "½⅓"), which no recipe writes.
+- **One-tap chips:** under a line with a look-alike, "A fraction? Tap the one in the photo:" and
+  ½ ¼ ¾ ⅓ ⅔ ⅛ (the table's `fractions`), which replace the look-alike in place in the box and in
+  the list ("2 % cups oats" → "2 ⅔ cups oats"); its chips then go. The cook can still type. Each
+  chip is named "Use ⅔ in 2 % cups oats" for TalkBack and VoiceOver.
+- **Never scaled or converted while it holds one:** `IngredientScaler`'s `unreadable` takes
+  `FractionLookAlike.slot`, so "1 a cups flour" isn't doubled to "2 a cups flour" (it was).
+  "2% cups oats" already stayed, through the percentage rule.
+- **Not caught:** a glyph dropped or read as digits alone ("12 cup sugar", "4 tsp salt",
+  "8 tsp nutmeg", "2 23 cups oats") is a plausible amount, so it can't be flagged without
+  guessing; the review's note to check every amount against the photo is the guard. Follow-up:
+  #249.
+- **Tests:** `PhotoTextSorterTest(s)` and `IngredientScalerTest(s)` on both platforms; `Sus`,
+  `Frac` and `Ing` rows in the differential corpus; `EditRecipePhotoScreenTest` and
+  `PhotoTextUITests` tap a chip and save. The engines: `EditRecipeScanTests` runs real Vision over
+  both cards (printing `FRACTION-OCR` lines), and the device-only `MlKitFractionGlyphsTest` runs
+  ML Kit (push the cards to `/data/local/tmp` first; logcat tag `FractionOcr`).
+
 ## Undo snackbars close by themselves (2026-09-29)
 
 The owner saw "Checked items removed" stay on the Groceries screen, and come back after changing
