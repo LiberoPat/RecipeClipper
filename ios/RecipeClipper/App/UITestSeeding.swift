@@ -25,6 +25,8 @@ import UIKit
 ///     from `RC_UITEST_REDDIT_LISTING_<post id>` for that post (walkthrough 29);
 ///   - with `RC_UITEST_LIVE_REDDIT=1`, other Reddit links read from reddit.com itself and clipped
 ///     on the live page, where `RC_UITEST_CLIP_SCRIPT` can select by script (walkthrough 31);
+///   - with `RC_UITEST_LIVE_PAGE` (a link), that page read by the real blog source and clipped
+///     live (walkthrough 32);
 ///   - with `RC_UITEST_SCAN_IMAGES`, a scan (#226) of those local pictures opened at launch;
 ///   - "Read the photo" (#198) answering the lines in `RC_UITEST_PHOTO_LINES` (`UITestPhotoTextReader`),
 ///     or, with `RC_UITEST_PHOTO_VISION=1`, the real Vision reader over the local pictures that
@@ -108,6 +110,10 @@ enum UITestSeeding {
 
     static var liveReddit: Bool { ProcessInfo.processInfo.environment[liveRedditKey] == "1" }
 
+    /// `RC_UITEST_LIVE_PAGE` (walkthrough 32): a link read from the site itself, through the real
+    /// blog source, and clipped on the live page in place of the fixture.
+    static var livePage: String? { ProcessInfo.processInfo.environment["RC_UITEST_LIVE_PAGE"] }
+
     /// `RC_UITEST_CLIP_SCRIPT` (walkthrough 31): a script run in every clip page after
     /// `clipper.js`, under a UI-test launch only. XCUITest can't drag a selection across a live
     /// web page, so the walkthrough's script lays unseen spots on it that select by script when
@@ -183,7 +189,7 @@ enum UITestSeeding {
             backupRepository: backupRepository,
             preferences: preferences,
             clock: clock,
-            clipFixtureHTML: liveReddit ? nil : clipFixtureHTML,
+            clipFixtureHTML: liveReddit || livePage != nil ? nil : clipFixtureHTML,
             featureFlags: flags,
             shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
             decisionRepository: decisions,
@@ -356,6 +362,9 @@ private struct StubRecipeSource: RecipeSource {
         }
         if RedditUrls.isReddit(url), UITestSeeding.liveReddit {
             return await RedditRecipeSource().fetch(url: url)
+        }
+        if let live = UITestSeeding.livePage, url.hasPrefix(live) {
+            return await BlogRecipeSource().fetch(url: url)
         }
         let path = URL(string: url)?.path ?? ""
         if path.hasSuffix("/no-recipe") { return .error(.noRecipeFound) }

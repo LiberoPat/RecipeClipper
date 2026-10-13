@@ -30,6 +30,7 @@ import com.example.recipeclipper.data.StepShortener
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.remote.BlogRecipeSource
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.data.remote.RecipeSource
 import com.example.recipeclipper.data.remote.RedditRecipeParser
@@ -66,7 +67,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     @BindValue @JvmField
     val source: RecipeSource = RoutingRecipeSource(
         blog = object : RecipeSource {
-            override suspend fun fetch(url: String): ParseResult = ParseResult.Success(Recipe(
+            override suspend fun fetch(url: String): ParseResult = if ("based.cooking/" in url) {
+                liveBlog.fetch(url) // clip 32's page, live
+            } else ParseResult.Success(Recipe(
                 name = "Stub Chicken Soup", image = null,
                 ingredients = listOf("1 whole chicken", "2 carrots", "8 cups water"),
                 instructions = listOf("Simmer everything for 1 hour.", "Season and serve."),
@@ -94,11 +97,16 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         }
     )
 
-    /** reddit.com itself, for clip 31's posts: the real source, whose `.json` read Reddit refuses. */
-    private val liveReddit = RedditRecipeSource(object : Connectivity {
+    private val online = object : Connectivity {
         override fun isOnline() = true
         override val online = flowOf(true)
-    })
+    }
+
+    /** reddit.com itself, for clip 31's posts: the real source, whose `.json` read Reddit refuses. */
+    private val liveReddit = RedditRecipeSource(online)
+
+    /** The real blog source, for clip 32's page, which has no recipe data. */
+    private val liveBlog = BlogRecipeSource(online)
 
     /** Local pictures in place of a post's (by post id), for "Read the photo" (28, 29). */
     private var postPictures: Map<String, List<String>> = emptyMap()
@@ -474,6 +482,108 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     }
 
     /**
+     * Walkthrough 32, "Clip it yourself" on a blog page (#37, field first since #237), LIVE: a
+     * real based.cooking page with no recipe data, read by the real blog source, so the app says
+     * it found none and offers Clip it yourself. Every pick is a real tap through the shell, and
+     * the page is scrolled with a finger's swipe: Name, then the title; Ingredients, then the
+     * list, and its confirm; Steps, then the list, then the paragraph under it (steps add up);
+     * one Undo, and that paragraph again; Photo, then the photo. The hint names the next field
+     * after each add, and the field buttons show their checks. Done, Review, Save.
+     */
+    @Test
+    fun test32_clipItYourself() {
+        start()
+        waitFor(field("Recipe URL"))
+        compose.onAllNodes(field("Recipe URL"))[0].performTextInput(CLIP_PAGE)
+        pause(1000)
+        tap("Go", 1000)
+        waitLong(hasText("Clip it yourself"))
+        pause(3000)
+        tap("Clip it yourself", 1000)
+        val page = waitForWebView { it.url?.contains("based.cooking") == true }
+        waitForPage(page, "typeof window.RC == 'object' && !!document.querySelector('article img') && document.querySelector('article img').complete")
+        pause(3000)
+
+        tapTag("clip.field.NAME", 2000)
+        tapOnPage(page, "header h1")
+        waitFor(hasText("Use as the name"))
+        pause(2000)
+        tapTag("clip.confirm", 3000)
+
+        tapTag("clip.field.INGREDIENTS", 2000)
+        tapOnPage(page, "#ingredients + ul li:nth-child(2)")
+        waitFor(hasText("Add 3 lines to Ingredients"))
+        pause(2000)
+        tapTag("clip.confirm", 3000)
+
+        tapTag("clip.field.STEPS", 2000)
+        tapOnPage(page, "#directions + ol li:nth-child(2)")
+        waitFor(hasText("Add 6 lines to Steps"))
+        pause(2000)
+        tapTag("clip.confirm", 3000)
+        // A second block adds to the first: the line under the list.
+        tapOnPage(page, "#directions + ol + p")
+        waitFor(hasText("Add 1 line to Steps"))
+        pause(2000)
+        tapTag("clip.confirm", 3000)
+        // Undo takes that add back; the paragraph is added again.
+        tap("Undo", 3000)
+        tapOnPage(page, "#directions + ol + p")
+        waitFor(hasText("Add 1 line to Steps"))
+        pause(1500)
+        tapTag("clip.confirm", 3000)
+
+        tapTag("clip.field.PHOTO", 2000)
+        tapOnPage(page, "article img")
+        waitFor(hasText("Photo added", substring = true))
+        pause(3500)
+
+        tap("Done", 3000)
+        waitFor(hasText("Review"))
+        swipeUp()
+        pause(2000)
+        tap("Save", 3000)
+        waitLong(hasText("Clipped by you", substring = true))
+        pause(3000)
+        swipeUp()
+        pause(2000)
+    }
+
+    /**
+     * A finger's tap on the page's [selector], after swiping the page until it sits in the
+     * middle of the view: the shell's input, so the page hears a real tap.
+     */
+    private fun tapOnPage(view: WebView, selector: String) {
+        val at = IntArray(2)
+        var height = 0
+        var width = 0
+        instrumentation.runOnMainSync {
+            view.getLocationOnScreen(at)
+            height = view.height
+            width = view.width
+        }
+        val rect = "(function () { var r = document.querySelector(${quote(selector)}).getBoundingClientRect();" +
+            " return [r.left + r.width / 2, r.top + Math.min(r.height / 2, 40), window.innerHeight].join(','); })()"
+        repeat(8) {
+            val (x, y, inner) = js(view, rect).trim('"').split(',').map { it.toDouble() }
+            val scale = height / inner
+            val screenY = (y * scale).toInt()
+            if (screenY in height / 6..height * 5 / 6) {
+                instrumentation.uiAutomation.executeShellCommand(
+                    "input tap ${at[0] + (x * scale).toInt()} ${at[1] + screenY}"
+                ).close()
+                pause(1500)
+                return
+            }
+            val x0 = at[0] + width / 2
+            val (from, to) = if (screenY > height / 2) height * 3 / 4 to height / 3 else height / 3 to height * 3 / 4
+            instrumentation.uiAutomation.executeShellCommand("input swipe $x0 ${at[1] + from} $x0 ${at[1] + to} 600").close()
+            pause(1500)
+        }
+        error("$selector never came into view")
+    }
+
+    /**
      * Types [link] into Home's field and waits for Reddit's refusal to open the clip view, and
      * for the post to load in it (past Reddit's own check); returns the page's web view.
      */
@@ -632,6 +742,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         const val CLIP_POST = "https://www.reddit.com/r/recipes/comments/1wpafnm/braised_chicken_with_white_beans_and_zucchini/"
         const val CLIP_POST_NAME = "Braised Chicken with White Beans and Zucchini"
         const val TEXT_POST = "https://www.reddit.com/r/recipes/comments/1wixh7a/beef_bourguignon/"
+
+        /** Clip 32's page, live: a recipe with a photo and no recipe data (no JSON-LD, no microdata). */
+        const val CLIP_PAGE = "https://based.cooking/stracciatella-soup/"
 
         /**
          * Selects from the first `from` in the page's text to the first `to` after it, after
