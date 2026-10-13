@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "about": "Read the photo (#198, #245): what on-device text recognition gave for a fraction glyph, measured on shared/fixtures/reddit/photos/card-fractions-*.jpg (docs/decisions.md, #245). A look-alike in an amount's place (the start of a line, or after a whole number; one with a letter only before a unit) is listed under Check these lines with the fractions as one-tap replacements, never changed by itself: '%' was 2/3 here and could be 1/2 or 3/4 elsewhere. Exact and case-sensitive; afterNumberOnly is a real word at a line's start ('a cup of milk'), so it counts only after a whole number ('1 a cups flour'). Language-independent.",
+  "fractions": ["½", "¼", "¾", "⅓", "⅔", "⅛"],
+  "lookAlikes": ["%", "&", "/2", "/3", "/4", "/8", "Y4", "Ys", "Vs", "is"],
+  "afterNumberOnly": ["a"]
+}

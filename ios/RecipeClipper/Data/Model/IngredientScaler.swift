@@ -218,7 +218,8 @@ enum IngredientScaler {
         /// words, or where dots mark thousands a number like "1.500,5". It stays as written.
         func unreadable(_ line: String) -> Bool {
             IngredientScaler.ambiguousComma.containsMatch(in: line) || spelledHalf.containsMatch(in: line) ||
-                (thousandsDot && IngredientScaler.ambiguousDot.containsMatch(in: line))
+                (thousandsDot && IngredientScaler.ambiguousDot.containsMatch(in: line)) ||
+                FractionLookAlike.slot(line, unitAtStart: unitAtStart) != nil
         }
 
         /// A quantity this pattern matched, read with this language's thousands separator.

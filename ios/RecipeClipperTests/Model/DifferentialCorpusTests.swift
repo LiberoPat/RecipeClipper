@@ -398,6 +398,12 @@ final class DifferentialCorpusTests: XCTestCase {
         Ing("3 x 400g tins tomatoes", ["1 1/2 x 400g tins tomatoes", "4 1/2 x 400g tins tomatoes", "6 x 400g tins tomatoes", "1 x 400g tins tomatoes"], ["3 x 400g tins tomatoes", "3 x 400g tins tomatoes", "3 x 400g tins tomatoes", "3 x 400g tins tomatoes"], "6 x 400g tins tomatoes", "1 1/2 x 400g tins tomatoes", nil),
         Ing("2 x 250 ml milk", ["1 x 250 ml milk", "3 x 250 ml milk", "4 x 250 ml milk", "2/3 x 250 ml milk"], ["2 x 250 ml milk", "2 x 250 ml milk", "2 x 250 ml milk", "2 x 250 ml milk"], "4 x 250 ml milk", "1 x 250 ml milk", nil),
         Ing("1lb 2oz flour", ["1/2lb 2oz flour", "1 1/2lb 2oz flour", "2lb 2oz flour", "1/3lb 2oz flour"], ["1lb 2oz flour", "1lb 2oz flour", "455 g 2oz flour", "455 g 2oz flour"], "905 g 2oz flour", "1/2lb 2oz flour", nil),
+        Ing("2% cups oats", ["2% cups oats", "2% cups oats", "2% cups oats", "2% cups oats"], ["2% cups oats", "2% cups oats", "2% cups oats", "2% cups oats"], "2% cups oats", "2% cups oats", "oats"),
+        Ing("1 a cups flour", ["1 a cups flour", "1 a cups flour", "1 a cups flour", "1 a cups flour"], ["1 a cups flour", "1 a cups flour", "1 a cups flour", "1 a cups flour"], "1 a cups flour", "1 a cups flour", "flour"),
+        Ing("& tsp nutmeg", ["& tsp nutmeg", "& tsp nutmeg", "& tsp nutmeg", "& tsp nutmeg"], ["& tsp nutmeg", "& tsp nutmeg", "& tsp nutmeg", "& tsp nutmeg"], "& tsp nutmeg", "& tsp nutmeg", nil),
+        Ing("/4 tsp salt", ["/4 tsp salt", "/4 tsp salt", "/4 tsp salt", "/4 tsp salt"], ["/4 tsp salt", "/4 tsp salt", "/4 tsp salt", "/4 tsp salt"], "/4 tsp salt", "/4 tsp salt", nil),
+        Ing("2 oz 70% chocolate", ["1 oz 70% chocolate", "3 oz 70% chocolate", "4 oz 70% chocolate", "2/3 oz 70% chocolate"], ["2 oz 70% chocolate", "2 oz 70% chocolate", "57 g 70% chocolate", "57 g 70% chocolate"], "115 g 70% chocolate", "1 oz 70% chocolate", nil),
+        Ing("1 cup 2% milk", ["1/2 cup 2% milk", "1 1/2 cup 2% milk", "2 cup 2% milk", "1/3 cup 2% milk"], ["1 cup 2% milk", "8 3/4 oz 2% milk", "240 ml 2% milk", "240 ml 2% milk"], "480 ml 2% milk", "4 1/4 oz 2% milk", nil),
         Ing("11/2 cups flour", ["11/2 cups flour", "11/2 cups flour", "11/2 cups flour", "11/2 cups flour"], ["11/2 cups flour", "11/2 cups flour", "11/2 cups flour", "11/2 cups flour"], "11/2 cups flour", "11/2 cups flour", "flour"),
         Ing("1 1/2cups flour", ["3/4cups flour", "2 1/4cups flour", "3cups flour", "1/2cups flour"], ["6 1/4 oz flour", "6 1/4 oz flour", "180 g flour", "180 g flour"], "360 g flour", "3 1/8 oz flour", "flour"),
         Ing("1½cups flour", ["3/4cups flour", "2 1/4cups flour", "3cups flour", "1/2cups flour"], ["6 1/4 oz flour", "6 1/4 oz flour", "180 g flour", "180 g flour"], "360 g flour", "3 1/8 oz flour", "flour"),
@@ -1837,6 +1843,48 @@ final class DifferentialCorpusTests: XCTestCase {
         Sus("2 colheres de sopa de açúcar", lang: "pt", false),
         Sus("砂糖 大さじ2", lang: "ja", false),
         Sus("11/2 カップ", lang: "ja", true),
+        Sus("2% cups oats", true),
+        Sus("2 % cups oats", true),
+        Sus("1 % cups flour", true),
+        Sus("& tsp nutmeg", true),
+        Sus("/4 tsp salt", true),
+        Sus("1 Y4 cups flour", true),
+        Sus("Ys cup mik", true),
+        Sus("is tsp nutmeg", true),
+        Sus("1 a cups flour", true),
+        Sus("3¾4 tsp salt", true),
+        Sus("½⅓ cup milk", true),
+        Sus("2% milk", false),
+        Sus("1 cup 2% milk", false),
+        Sus("70% chocolate", false),
+        Sus("2 oz 70% chocolate", false),
+        Sus("a cup of milk", false),
+        Sus("1/2 cup sugar", false),
+        Sus("2 % Milch", lang: "de", false),
+        Sus("200 g de chocolat noir 70 %", lang: "fr", false),
+        Sus("1 % taza de harina", lang: "es", true),
+    ]
+
+    private struct Frac {
+        let line: String; let words: LanguageWords; let fixed: String?
+        init(_ line: String, lang: String = "en", _ fixed: String?) {
+            self.line = line; self.words = LanguageWords.forTag(lang)!; self.fixed = fixed
+        }
+    }
+
+    // Fraction rows (#245): a line read from a photo, then PhotoTextSorter.replaceFraction with ½
+    // (nil: no look-alike to replace). Write only `Frac("2% cups oats"),`.
+    private static let fractions: [Frac] = [
+        Frac("2% cups oats", "2½ cups oats"),
+        Frac("2 % cups oats", "2 ½ cups oats"),
+        Frac("& tsp nutmeg", "½ tsp nutmeg"),
+        Frac("/4 tsp salt", "½ tsp salt"),
+        Frac("1 a cups flour", "1 ½ cups flour"),
+        Frac("Ys cup mik", "½ cup mik"),
+        Frac("2% milk", nil),
+        Frac("½ cup sugar", nil),
+        Frac("1 % taza de harina", lang: "es", "1 ½ taza de harina"),
+        Frac("2 % EL Zucker", lang: "de", "2 ½ EL Zucker"),
     ]
 
     // Rendering rows (#169): a recipe's yield (or nil), chosen servings (or nil), ingredients and
@@ -1982,6 +2030,9 @@ final class DifferentialCorpusTests: XCTestCase {
         }
         for row in Self.suspects {
             XCTAssertEqual(PhotoTextSorter.suspect(row.line, words: row.words), row.suspect, row.line)
+        }
+        for row in Self.fractions {
+            XCTAssertEqual(PhotoTextSorter.replaceFraction(row.line, "½", words: row.words), row.fixed, row.line)
         }
     }
 

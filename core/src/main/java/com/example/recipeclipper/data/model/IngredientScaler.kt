@@ -91,11 +91,13 @@ object IngredientScaler {
 
         /**
          * A line whose amount can't be read without guessing: "1,500" (1.5 or 1500?), a half in
-         * words, or where dots mark thousands a number like "1.500,5". It stays as written.
+         * words, where dots mark thousands a number like "1.500,5", or a photo's misread fraction
+         * glyph ("1 a cups flour", [FractionLookAlike], #245). It stays as written.
          */
         fun unreadable(line: String): Boolean =
             AMBIGUOUS_COMMA.containsMatchIn(line) || spelledHalf.containsMatchIn(line) ||
-                (thousandsDot && AMBIGUOUS_DOT.containsMatchIn(line))
+                (thousandsDot && AMBIGUOUS_DOT.containsMatchIn(line)) ||
+                FractionLookAlike.slot(line, unitAtStart) != null
 
         /** A quantity this pattern matched, read with this language's thousands separator. */
         fun parse(quantity: String): Double? = IngredientScaler.parse(quantity, thousandsDot)
