@@ -16,6 +16,7 @@ import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.model.SourceType
 import com.example.recipeclipper.data.needsNotice
 import com.example.recipeclipper.data.remote.PhotoTextSorter
+import com.example.recipeclipper.data.remote.RecipeTextSplitter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,7 +66,11 @@ data class EditRecipeUiState(
     val reading: Boolean = false,
     val photoOutcome: PhotoOutcome? = null,
     /** Lines the recogniser was unsure of, as they were put in the boxes: "check this". */
-    val uncertain: List<String> = emptyList()
+    val uncertain: List<String> = emptyList(),
+    /** The [uncertain] lines whose amount holds a fraction glyph's look-alike ("2% cups oats",
+     *  #245), each offered the fractions ([fractions]) as one-tap replacements. */
+    val fractionLines: List<String> = emptyList(),
+    val fractions: List<String> = PhotoTextSorter.FRACTIONS
 )
 
 /**
@@ -147,7 +152,7 @@ class EditRecipeViewModel @Inject constructor(
         photoLanguage = null
         _uiState.update {
             it.copy(
-                reading = true, photoOutcome = null, uncertain = emptyList(),
+                reading = true, photoOutcome = null, uncertain = emptyList(), fractionLines = emptyList(),
                 // A post's first picture is its photo; a scan's pages are never kept (#226).
                 draft = RecipeDraft(
                     name = post.title,
@@ -168,6 +173,9 @@ class EditRecipeViewModel @Inject constructor(
                             reading = false,
                             photoOutcome = if (reading.sorted) PhotoOutcome.READ else PhotoOutcome.NOT_SORTED,
                             uncertain = reading.uncertain,
+                            fractionLines = reading.uncertain.filter {
+                                PhotoTextSorter.fractionSlot(it, RecipeTextSplitter.wordsFor(reading.language)) != null
+                            },
                             draft = state.draft.copy(
                                 yield = reading.yield.orEmpty(),
                                 prepTime = reading.prepTime.orEmpty(),
@@ -181,6 +189,34 @@ class EditRecipeViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * A fraction chip (#245): [line]'s look-alike ("%" in "2% cups oats") becomes [fraction], the
+     * cook's reading of the photo, in the box that holds the line and in the list to check. A
+     * line the cook has since changed in the box is left alone, and its chips go.
+     */
+    fun onFraction(line: String, fraction: String) = _uiState.update { state ->
+        val fixed = PhotoTextSorter.replaceFraction(line, fraction, RecipeTextSplitter.wordsFor(photoLanguage))
+        val draft = state.draft
+        val ingredients = fixed?.let { replaceLine(draft.ingredientsText, line, it) }
+        val steps = if (ingredients == null) fixed?.let { replaceLine(draft.instructionsText, line, it) } else null
+        when {
+            fixed == null || (ingredients == null && steps == null) -> state.copy(fractionLines = state.fractionLines - line)
+            else -> state.copy(
+                draft = if (ingredients != null) draft.copy(ingredientsText = ingredients) else draft.copy(instructionsText = steps!!),
+                uncertain = state.uncertain.map { if (it == line) fixed else it },
+                fractionLines = state.fractionLines - line
+            )
+        }
+    }
+
+    /** [text] with its first line that reads [line] (trimmed) holding [fixed] instead; null if none does. */
+    private fun replaceLine(text: String, line: String, fixed: String): String? {
+        val lines = text.split("\n")
+        val i = lines.indexOfFirst { it.trim() == line }
+        if (i < 0) return null
+        return lines.toMutableList().apply { this[i] = this[i].replace(line, fixed) }.joinToString("\n")
     }
 
     fun onDraftChange(draft: RecipeDraft) =

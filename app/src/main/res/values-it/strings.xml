@@ -229,6 +229,8 @@
     <string name="photo_failed">Impossibile caricare la foto. Controlla la connessione e riprova.</string>
     <string name="photo_not_ready">Il lettore di foto non è ancora pronto su questo telefono: i servizi Google Play lo scaricano una volta, via internet. Riprova tra qualche minuto o completa la ricetta a mano qui sotto.</string>
     <string name="photo_check_heading">Controlla queste righe: lì la foto era difficile da leggere</string>
+    <string name="photo_fraction_prompt">Una frazione? Tocca quella nella foto:</string>
+    <string name="photo_fraction_chip">Usa %1$s in %2$s</string>
     <string name="photo_image_description">Foto di %1$s</string>
 
     <!-- Scan a recipe (#226) -->
