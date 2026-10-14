@@ -21,7 +21,6 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.click
-import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.geometry.Offset
@@ -276,12 +275,8 @@ class CookingWalkthroughTest : WalkthroughBase() {
         waitFor(hasTestTag("onList-$oil"))
         pause(2500)
         swipeRow("garlic", left = false) // Restock (garlic is run out in the seed)
-        scrollTo("pantryList", "pantry-$oil")
-        compose.onNode(hasTestTag("pantry-$oil")).performTouchInput { longClick(Offset(width * 0.3f, centerY)) }
-        waitFor(hasTestTag("stockMenu-IN_STOCK")) // Restock and Ran out: both other states
-        waitFor(hasTestTag("stockMenu-RUN_OUT"))
-        pause(2500)
-        tapTag("stockMenu-IN_STOCK", 2000)
+        // A touch and hold starts selecting since #258; the other states stay on the swipes.
+        swipeRow("olive oil", left = false) // Restock, from running low
         swipeRow("basmati rice", left = true) // Ran out
     }
 

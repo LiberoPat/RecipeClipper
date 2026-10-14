@@ -635,4 +635,24 @@
     <string name="menu_desc_pantry_send_list">O que você tem em casa, como texto</string>
     <string name="menu_desc_clear_run_out">Remove tudo o que está marcado como Acabou</string>
     <string name="menu_desc_share_calendar">Adiciona as refeições da semana ao seu calendário</string>
+    <string name="pantry_select_items">Selecionar itens</string>
+    <string name="pantry_select">Selecionar</string>
+    <string name="action_select_all">Selecionar tudo</string>
+    <string name="pantry_mark_run_out">Marcar que acabou</string>
+    <string name="cd_exit_selection">Parar de selecionar</string>
+    <plurals name="pantry_selected_count">
+        <item quantity="one">%1$d selecionado</item>
+        <item quantity="many">%1$d selecionados</item>
+        <item quantity="other">%1$d selecionados</item>
+    </plurals>
+    <plurals name="snackbar_pantry_removed">
+        <item quantity="one">%1$d item removido</item>
+        <item quantity="many">%1$d de itens removidos</item>
+        <item quantity="other">%1$d itens removidos</item>
+    </plurals>
+    <plurals name="snackbar_pantry_marked_run_out">
+        <item quantity="one">%1$d item marcado que acabou</item>
+        <item quantity="many">%1$d de itens marcados que acabaram</item>
+        <item quantity="other">%1$d itens marcados que acabaram</item>
+    </plurals>
 </resources>

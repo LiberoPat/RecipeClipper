@@ -51,7 +51,27 @@ sealed class PantryMessage {
 
     /** The basket tag took [count] lines off the grocery list (owner, 2026-09-29): offers Undo. */
     data class TakenOffList(override val id: Long, val count: Int) : PantryMessage()
+
+    /** The selection's Remove took [count] items out of the pantry (#258): offers Undo. */
+    data class Removed(override val id: Long, val count: Int) : PantryMessage()
+
+    /** The selection's Mark run out ran [count] items out (#258): offers Undo. */
+    data class MarkedRunOut(override val id: Long, val count: Int) : PantryMessage()
 }
+
+/**
+ * Selecting several items (#258). [ids] are checked. While a drag is under way ([anchor] set),
+ * every row from [anchor] to [current], in the screen's order, is checked ([adding], the drag
+ * began on an unchecked row) or unchecked, on top of [base], the selection when the drag began:
+ * dragging back over rows gives them back their state, as in Google Photos.
+ */
+data class PantrySelection(
+    val ids: Set<Long> = emptySet(),
+    val anchor: Long? = null,
+    val current: Long? = null,
+    val base: Set<Long> = emptySet(),
+    val adding: Boolean = true
+)
 
 /**
  * [sections] is null until the pantry has loaded; [hasItems] says whether it holds anything at
@@ -74,7 +94,9 @@ data class PantryUiState(
     val message: PantryMessage? = null,
     val onList: Set<Long> = emptySet(),
     val hasRunOut: Boolean = false,
-    val confirmClearRunOut: Int? = null
+    val confirmClearRunOut: Int? = null,
+    // Null while not selecting (#258).
+    val selection: PantrySelection? = null
 )
 
 /**
@@ -121,7 +143,15 @@ class PantryViewModel @Inject constructor(
         }
     }
 
-    private fun PantryUiState.arranged() = copy(sections = PantryList.arrange(items, query, sort))
+    private fun PantryUiState.arranged(): PantryUiState {
+        val sections = PantryList.arrange(items, query, sort)
+        // What the search hides, or what has gone, is no longer selected.
+        val shown = sections.flatMap { section -> section.items.map { it.id } }.toSet()
+        return copy(
+            sections = sections,
+            selection = selection?.let { it.copy(ids = it.ids intersect shown, base = it.base intersect shown) }
+        )
+    }
 
     /** What the snackbar's Undo puts back: pantry items, or grocery lines. */
     private sealed class Undo {
@@ -250,6 +280,100 @@ class PantryViewModel @Inject constructor(
             val gone = pantry.deleteRunOut() ?: return@launch
             undo = Undo.Pantry(gone)
             _uiState.update { it.copy(message = PantryMessage.RunOutCleared(++messages)) }
+        }
+    }
+
+    // --- Selecting several items (#258)
+
+    /** The rows' ids, top to bottom, as the screen shows them: what a drag's range runs along. */
+    private fun PantryUiState.order(): List<Long> = sections.orEmpty().flatMap { section -> section.items.map { it.id } }
+
+    private fun PantryUiState.updateSelection(change: (PantrySelection) -> PantrySelection): PantryUiState =
+        selection?.let { copy(selection = change(it)) } ?: this
+
+    /** The ⋮ menu's "Select items": selecting, with nothing checked yet. */
+    fun onStartSelecting() = _uiState.update { it.copy(selection = it.selection ?: PantrySelection()) }
+
+    /** A touch and hold on [id]'s row: starts selecting with it checked, and a drag anchored there. */
+    fun onLongPress(id: Long) {
+        onStartSelecting()
+        onDragStart(id)
+    }
+
+    /** The row's Select action (TalkBack, VoiceOver): starts selecting with [id] checked, or checks it. */
+    fun onSelect(id: Long) = _uiState.update { state ->
+        val selection = state.selection ?: PantrySelection()
+        state.copy(selection = selection.copy(ids = selection.ids + id))
+    }
+
+    /** A tap on a row, or its checkbox, while selecting. */
+    fun onToggle(id: Long) = _uiState.update { state ->
+        state.updateSelection { it.copy(ids = if (id in it.ids) it.ids - id else it.ids + id) }
+    }
+
+    /** A drag from [id]'s checkbox (or after a touch and hold): it checks, or unchecks if [id] was checked. */
+    fun onDragStart(id: Long) = _uiState.update { state ->
+        state.updateSelection { it.copy(anchor = id, current = id, base = it.ids, adding = id !in it.ids).ranged(state.order()) }
+    }
+
+    /** The drag has reached [id]'s row: everything from the anchor to it takes the drag's state. */
+    fun onDragTo(id: Long) = _uiState.update { state ->
+        state.updateSelection { if (it.anchor == null || it.current == id) it else it.copy(current = id).ranged(state.order()) }
+    }
+
+    fun onDragEnd() = _uiState.update { state ->
+        state.updateSelection { it.copy(anchor = null, current = null, base = emptySet()) }
+    }
+
+    private fun PantrySelection.ranged(order: List<Long>): PantrySelection {
+        val from = order.indexOf(anchor)
+        val to = order.indexOf(current)
+        if (from < 0 || to < 0) return this
+        val range = order.subList(minOf(from, to), maxOf(from, to) + 1).toSet()
+        return copy(ids = if (adding) base + range else base - range)
+    }
+
+    /** Checks every row shown. */
+    fun onSelectAll() = _uiState.update { state -> state.updateSelection { it.copy(ids = state.order().toSet()) } }
+
+    /** A section heading's "Select all": checks that section's rows too. */
+    fun onSelectSection(section: PantrySection) = _uiState.update { state ->
+        state.updateSelection { selection -> selection.copy(ids = selection.ids + section.items.map { it.id }) }
+    }
+
+    /** ✕ or Back. */
+    fun onExitSelection() = _uiState.update { it.copy(selection = null) }
+
+    /** Remove: every checked item leaves the pantry in one write, with one Undo for them all. */
+    fun onRemoveSelected() {
+        val ids = _uiState.value.selection?.ids.orEmpty()
+        if (ids.isEmpty()) return
+        _uiState.update { it.copy(selection = null) }
+        viewModelScope.launch {
+            val gone = pantry.delete(ids.toList()) ?: return@launch
+            undo = Undo.Pantry(gone)
+            _uiState.update { it.copy(message = PantryMessage.Removed(++messages, gone.entities.size)) }
+        }
+    }
+
+    /**
+     * Mark run out: every checked item still in stock runs out, as a swipe would (its name goes
+     * on the grocery list unless it's there), with one Undo that puts their stock back. The
+     * grocery lines stay, as they do when an item is restocked.
+     */
+    fun onMarkRunOutSelected() {
+        val ids = _uiState.value.selection?.ids.orEmpty()
+        if (ids.isEmpty()) return
+        _uiState.update { it.copy(selection = null) }
+        val changing = items.filter { it.id in ids && it.inStock }
+        if (changing.isEmpty()) return
+        viewModelScope.launch {
+            val before = pantry.snapshot(changing.map { it.id })
+            pantry.setStock(changing.map { it.id }, PantryStock.RUN_OUT)
+            val missing = changing.filter { linesFor(it).isEmpty() }
+            if (missing.isNotEmpty()) groceries.add(missing.map { NewGroceryLine(it.name, it.language) })
+            undo = Undo.Pantry(before)
+            _uiState.update { it.copy(message = PantryMessage.MarkedRunOut(++messages, changing.size)) }
         }
     }
 

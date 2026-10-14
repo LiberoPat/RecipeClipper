@@ -610,4 +610,21 @@
     <string name="menu_desc_pantry_send_list">Was vorrätig ist, als Text</string>
     <string name="menu_desc_clear_run_out">Entfernt alles, was als Nicht vorrätig markiert ist</string>
     <string name="menu_desc_share_calendar">Die Mahlzeiten der Woche in deinen Kalender</string>
+    <string name="pantry_select_items">Artikel auswählen</string>
+    <string name="pantry_select">Auswählen</string>
+    <string name="action_select_all">Alle auswählen</string>
+    <string name="pantry_mark_run_out">Als aufgebraucht markieren</string>
+    <string name="cd_exit_selection">Auswahl beenden</string>
+    <plurals name="pantry_selected_count">
+        <item quantity="one">%1$d ausgewählt</item>
+        <item quantity="other">%1$d ausgewählt</item>
+    </plurals>
+    <plurals name="snackbar_pantry_removed">
+        <item quantity="one">%1$d Artikel entfernt</item>
+        <item quantity="other">%1$d Artikel entfernt</item>
+    </plurals>
+    <plurals name="snackbar_pantry_marked_run_out">
+        <item quantity="one">%1$d Artikel als aufgebraucht markiert</item>
+        <item quantity="other">%1$d Artikel als aufgebraucht markiert</item>
+    </plurals>
 </resources>

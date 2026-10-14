@@ -635,4 +635,24 @@
     <string name="menu_desc_pantry_send_list">Ce que vous avez, en texte</string>
     <string name="menu_desc_clear_run_out">Retire tout ce qui est marqué Épuisé</string>
     <string name="menu_desc_share_calendar">Ajoute les repas de la semaine à votre agenda</string>
+    <string name="pantry_select_items">Sélectionner des articles</string>
+    <string name="pantry_select">Sélectionner</string>
+    <string name="action_select_all">Tout sélectionner</string>
+    <string name="pantry_mark_run_out">Marquer épuisé</string>
+    <string name="cd_exit_selection">Arrêter la sélection</string>
+    <plurals name="pantry_selected_count">
+        <item quantity="one">%1$d sélectionné</item>
+        <item quantity="many">%1$d sélectionnés</item>
+        <item quantity="other">%1$d sélectionnés</item>
+    </plurals>
+    <plurals name="snackbar_pantry_removed">
+        <item quantity="one">%1$d article retiré</item>
+        <item quantity="many">%1$d d’articles retirés</item>
+        <item quantity="other">%1$d articles retirés</item>
+    </plurals>
+    <plurals name="snackbar_pantry_marked_run_out">
+        <item quantity="one">%1$d article marqué épuisé</item>
+        <item quantity="many">%1$d d’articles marqués épuisés</item>
+        <item quantity="other">%1$d articles marqués épuisés</item>
+    </plurals>
 </resources>

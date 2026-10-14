@@ -16,13 +16,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.data.model.PantrySort
 
 /**
- * "Send list" (the in-stock items as text) and "Send as file" (#149), disabled while nothing is
+ * "Select items" (#258), then "Send list" (the in-stock items as text) and "Send as file" (#149), disabled while nothing is
  * in stock, then the sort, then "Clear run-out items" (#194), disabled while nothing has run out.
  */
 @Composable
@@ -33,7 +34,9 @@ internal fun PantryMenu(
     onShare: () -> Unit,
     onSendFile: (() -> Unit)?,
     canClearRunOut: Boolean,
-    onClearRunOut: () -> Unit
+    onClearRunOut: () -> Unit,
+    canSelect: Boolean = false,
+    onSelectItems: () -> Unit = {}
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -41,6 +44,17 @@ internal fun PantryMenu(
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            // Selecting several (#258); a touch and hold on a row does the same.
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.pantry_select_items)) },
+                enabled = canSelect,
+                onClick = {
+                    expanded = false
+                    onSelectItems()
+                },
+                modifier = Modifier.testTag("selectItems")
+            )
+            HorizontalDivider()
             DropdownMenuItem(
                 text = { MenuItemText(stringResource(R.string.action_share_groceries), stringResource(R.string.menu_desc_pantry_send_list)) },
                 enabled = canSend,

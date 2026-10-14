@@ -2,7 +2,8 @@ import XCTest
 
 /// The Pantry tab (#51): type an item, run it out (#194) and it goes on the
 /// grocery list by itself, with the Groceries tab's basket tag, which takes it off again (#146).
-/// No row button since 2026-09-29: the sheet, the menu and the swipes change the stock.
+/// No row button since 2026-09-29: the sheet and the swipes change the stock. A touch and hold
+/// starts selecting (#258).
 final class PantryUITests: RecipeUITestCase {
 
     private var tabBar: XCUIElement { app.tabBars.firstMatch }
@@ -74,33 +75,44 @@ final class PantryUITests: RecipeUITestCase {
         require(onListTag, "the basket tag")
     }
 
-    /// With no row button (owner, 2026-09-29), the row's menu offers both other states (#194):
-    /// In stock → Running low, Ran out; Running low → Restock, Ran out; Run out → Restock,
-    /// Running low.
-    func testTheRowMenuOffersBothOtherStates() {
-        launch(.empty)
+    // MARK: - Selecting several (#258)
+
+    private var selectedCount: XCUIElement { app.staticTexts["selectedCount"] }
+
+    /// A touch and hold starts selecting with that row checked; taps check two more; Remove takes
+    /// all three with one Undo, which puts them all back.
+    func testSelectThreeRemoveAndUndo() {
+        launch(.walkthroughPantry)
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
-        let field = require(app.textFields["Add to the pantry"], "Add to the pantry")
-        field.tap()
-        field.typeText("garlic\n")
+        require(pantryRow("soy sauce"), "the pantry")
+        reveal(pantryRow("garlic"), "garlic").press(forDuration: 0.8)
+        requireState(selectedCount, "label == '1 selected'", "1 selected")
+        reveal(pantryRow("onions"), "onions").tap()
+        reveal(pantryRow("chicken thighs"), "chicken thighs").tap()
+        requireState(selectedCount, "label == '3 selected'", "3 selected")
+        assertAbsent(app.segmentedControls["pantryEditStock"], "the edit sheet, while selecting")
 
-        require(pantryRow("garlic"), "garlic").press(forDuration: 1.2)
-        let runningLow = require(app.buttons["Running low"], "In stock's menu: Running low")
-        require(app.buttons["Ran out"], "In stock's menu: Ran out")
-        assertAbsent(app.buttons["Restock"], "Restock, while in stock")
-        runningLow.tap()
-        require(lowTag, "the Low tag")
+        require(app.buttons["removeSelected"], "Remove").tap()
+        requireGone(selectedCount, "the selection bar")
+        require(text("3 items removed"), "the snackbar")
+        assertAbsent(pantryRow("onions"), "onions, removed")
+        require(app.buttons["Undo"], "Undo").tap()
+        require(pantryRow("onions"), "onions, back")
+        require(pantryRow("garlic"), "garlic, back")
+        require(pantryRow("chicken thighs"), "chicken thighs, back")
+    }
 
-        require(pantryRow("garlic"), "garlic").press(forDuration: 1.2)
-        require(app.buttons["Restock"], "Running low's menu: Restock")
-        require(app.buttons["Ran out"], "Running low's menu: Ran out").tap()
-        requireGone(lowTag, "the Low tag, once run out")
-        require(pantryRow("garlic", "Run out"), "garlic, run out")
-
-        require(pantryRow("garlic"), "garlic").press(forDuration: 1.2)
-        require(app.buttons["Running low"], "Run out's menu: Running low")
-        require(app.buttons["Restock"], "Run out's menu: Restock").tap()
-        require(pantryRow("garlic", "In stock"), "garlic, back in stock")
+    /// A touch and hold, then a drag down without lifting, checks every row it passes (#258).
+    func testATouchAndHoldThenADragChecksARun() {
+        launch(.walkthroughPantry)
+        require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
+        let first = reveal(pantryRow("chicken thighs"), "chicken thighs")
+        let last = require(pantryRow("onions"), "onions")
+        first.press(forDuration: 0.8, thenDragTo: last)
+        let label = require(selectedCount, "the selection bar").label
+        XCTAssertNotEqual(label, "1 selected", "the drag checked more than the row it began on")
+        require(app.buttons["exitSelection"], "✕").tap()
+        requireGone(selectedCount, "the selection bar")
     }
 
     // MARK: - Moves between sections (#203)
@@ -115,21 +127,23 @@ final class PantryUITests: RecipeUITestCase {
 
     /// Moving a row between sections leaves it under the right heading, with no blank row left
     /// behind and the Run out heading shown while anything has run out (#203): Restock (garlic is
-    /// run out in the seed) and Ran out from the row's menu, Running low from a swipe, and the
-    /// edit sheet's control.
+    /// run out in the seed) and Run out from the edit sheet's control (the row's touch-and-hold
+    /// menu did these until #258), Running low from a swipe, and the sheet again.
     func testMovesBetweenSectionsRedrawTheList() {
         launch(.walkthroughPantry)
         require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
         require(pantryRow("soy sauce"), "the pantry")
         requireLaidOut(["garlic": "Run out", "milk": "Run out", "soy sauce": "Oils, sauces & condiments"])
 
-        reveal(pantryRow("garlic"), "garlic").press(forDuration: 1.2)
-        require(app.buttons["Restock"], "the menu's Restock").tap()
+        reveal(pantryRow("garlic"), "garlic").tap()
+        require(app.segmentedControls["pantryEditStock"], "the sheet's stock control").buttons["In stock"].tap()
+        require(app.buttons["pantryEditSave"], "Save").tap()
         require(pantryRow("garlic", "In stock"), "garlic, back in stock")
         requireLaidOut(["garlic": "Fruit & vegetables", "onions": "Fruit & vegetables", "milk": "Run out"])
 
-        reveal(pantryRow("soy sauce"), "soy sauce").press(forDuration: 1.2)
-        require(app.buttons["Ran out"], "the menu's Ran out").tap()
+        reveal(pantryRow("soy sauce"), "soy sauce").tap()
+        require(app.segmentedControls["pantryEditStock"], "the sheet's stock control").buttons["Run out"].tap()
+        require(app.buttons["pantryEditSave"], "Save").tap()
         require(pantryRow("soy sauce", "Run out"), "soy sauce, run out")
         requireLaidOut(["soy sauce": "Run out", "milk": "Run out", "olive oil": "Oils, sauces & condiments"])
 

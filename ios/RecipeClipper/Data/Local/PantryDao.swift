@@ -55,6 +55,14 @@ struct PantryDao {
         try db.run("DELETE FROM pantry_items WHERE id = ?", id)
     }
 
+    /// The selection's Remove (#258): deletes `ids`, returning them whole for undo. Run inside one
+    /// `write`, so it is one transaction.
+    func deleteAll(_ ids: [Int64]) throws -> [PantryItemRecord] {
+        let gone = try ids.compactMap { try item($0) }.sorted { $0.id < $1.id }
+        for item in gone { try delete(item.id) }
+        return gone
+    }
+
     /// "Clear run-out items" (#194): deletes every item that has run out, returning them whole
     /// for undo. Run inside one `write`, so it is one transaction.
     func deleteRunOut() throws -> [PantryItemRecord] {

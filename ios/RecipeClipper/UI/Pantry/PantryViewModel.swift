@@ -22,6 +22,32 @@ enum PantryMessage: Equatable {
     case runOutCleared(id: Int)
     /// The basket tag took `count` lines off the grocery list (owner, 2026-09-29): offers Undo.
     case takenOffList(id: Int, count: Int)
+    /// The selection's Remove took `count` items out of the pantry (#258): offers Undo.
+    case removed(id: Int, count: Int)
+    /// The selection's Mark run out ran `count` items out (#258): offers Undo.
+    case markedRunOut(id: Int, count: Int)
+}
+
+/// Selecting several items (#258). `ids` are checked. While a drag is under way (`anchor` set),
+/// every row from `anchor` to `current`, in the screen's order, is checked (`adding`, the drag
+/// began on an unchecked row) or unchecked, on top of `base`, the selection when the drag began:
+/// dragging back over rows gives them back their state, as in Google Photos.
+struct PantrySelection: Equatable {
+    var ids: Set<Int64> = []
+    var anchor: Int64?
+    var current: Int64?
+    var base: Set<Int64> = []
+    var adding = true
+
+    func ranged(_ order: [Int64]) -> PantrySelection {
+        guard let anchor, let current, let from = order.firstIndex(of: anchor), let to = order.firstIndex(of: current) else {
+            return self
+        }
+        let range = Set(order[min(from, to)...max(from, to)])
+        var next = self
+        next.ids = adding ? base.union(range) : base.subtracting(range)
+        return next
+    }
 }
 
 /// `sections` is nil until the pantry has loaded; `hasItems` says whether it holds anything at
@@ -44,6 +70,17 @@ struct PantryUiState: Equatable {
     var onList: Set<Int64> = []
     var hasRunOut = false
     var confirmClearRunOut: Int?
+    /// Nil while not selecting (#258).
+    var selection: PantrySelection?
+
+    /// The rows' ids, top to bottom, as the screen shows them: what a drag's range runs along.
+    var order: [Int64] { (sections ?? []).flatMap { $0.items.map(\.id) } }
+
+    /// Select all is done when every row shown is checked.
+    var allSelected: Bool {
+        guard let ids = selection?.ids else { return false }
+        return order.allSatisfy(ids.contains)
+    }
 }
 
 /// The Pantry tab (#51; Android's PantryViewModel): add by typing, search, sort by aisle or
@@ -104,6 +141,12 @@ final class PantryViewModel {
 
     private func arrange() {
         uiState.sections = PantryList.arrange(items, query: uiState.query, sort: uiState.sort)
+        // What the search hides, or what has gone, is no longer selected.
+        if uiState.selection != nil {
+            let shown = Set(uiState.order)
+            uiState.selection?.ids.formIntersection(shown)
+            uiState.selection?.base.formIntersection(shown)
+        }
     }
 
     /// The unticked grocery lines that are `item` itself (`PantryList.ownLines`): what running out checks for.
@@ -235,6 +278,105 @@ final class PantryViewModel {
             undo = .pantry(gone)
             messages += 1
             uiState.message = .runOutCleared(id: messages)
+        }
+    }
+
+    // MARK: Selecting several items (#258)
+
+    /// The ⋮ menu's "Select items": selecting, with nothing checked yet.
+    func onStartSelecting() {
+        if uiState.selection == nil { uiState.selection = PantrySelection() }
+    }
+
+    /// A touch and hold on `id`'s row: starts selecting with it checked, and a drag anchored there.
+    func onLongPress(_ id: Int64) {
+        onStartSelecting()
+        onDragStart(id)
+    }
+
+    /// The row's Select action (VoiceOver, TalkBack): starts selecting with `id` checked, or checks it.
+    func onSelect(_ id: Int64) {
+        onStartSelecting()
+        uiState.selection?.ids.insert(id)
+    }
+
+    /// A tap on a row, or its checkbox, while selecting.
+    func onToggle(_ id: Int64) {
+        guard var selection = uiState.selection else { return }
+        if selection.ids.contains(id) { selection.ids.remove(id) } else { selection.ids.insert(id) }
+        uiState.selection = selection
+    }
+
+    /// A drag from `id`'s checkbox (or after a touch and hold): it checks, or unchecks if `id` was checked.
+    func onDragStart(_ id: Int64) {
+        guard var selection = uiState.selection else { return }
+        selection.anchor = id
+        selection.current = id
+        selection.base = selection.ids
+        selection.adding = !selection.ids.contains(id)
+        uiState.selection = selection.ranged(uiState.order)
+    }
+
+    /// The drag has reached `id`'s row: everything from the anchor to it takes the drag's state.
+    func onDragTo(_ id: Int64) {
+        guard var selection = uiState.selection, selection.anchor != nil, selection.current != id else { return }
+        selection.current = id
+        uiState.selection = selection.ranged(uiState.order)
+    }
+
+    func onDragEnd() {
+        guard uiState.selection != nil else { return }
+        uiState.selection?.anchor = nil
+        uiState.selection?.current = nil
+        uiState.selection?.base = []
+    }
+
+    /// Checks every row shown.
+    func onSelectAll() {
+        guard uiState.selection != nil else { return }
+        let shown = Set(uiState.order)
+        uiState.selection?.ids = shown
+    }
+
+    /// A section heading's "Select all": checks that section's rows too.
+    func onSelectSection(_ section: PantrySection) {
+        guard uiState.selection != nil else { return }
+        uiState.selection?.ids.formUnion(section.items.map(\.id))
+    }
+
+    /// ✕.
+    func onExitSelection() { uiState.selection = nil }
+
+    /// Remove: every checked item leaves the pantry in one write, with one Undo for them all.
+    func onRemoveSelected() {
+        guard let ids = uiState.selection?.ids, !ids.isEmpty else { return }
+        uiState.selection = nil
+        Task {
+            guard let gone = await pantry.delete(Array(ids)) else { return }
+            undo = .pantry(gone)
+            messages += 1
+            uiState.message = .removed(id: messages, count: gone.items.count)
+        }
+    }
+
+    /// Mark run out: every checked item still in stock runs out, as a swipe would (its name goes
+    /// on the grocery list unless it's there), with one Undo that puts their stock back. The
+    /// grocery lines stay, as they do when an item is restocked.
+    func onMarkRunOutSelected() {
+        guard let ids = uiState.selection?.ids, !ids.isEmpty else { return }
+        uiState.selection = nil
+        let changing = items.filter { ids.contains($0.id) && $0.inStock }
+        guard !changing.isEmpty else { return }
+        let missing = changing.filter { lines(for: $0).isEmpty }
+        Task {
+            let before = await pantry.snapshot(changing.map(\.id))
+            await pantry.setStock(changing.map(\.id), stock: .runOut)
+            if !missing.isEmpty {
+                await groceries.add(missing.map { NewGroceryLine(text: $0.name, language: $0.language) })
+            }
+            undo = .pantry(before)
+            messages += 1
+            uiState.message = .markedRunOut(id: messages, count: changing.count)
         }
     }
 

@@ -68,6 +68,33 @@ final class PantryDaoTests: XCTestCase {
         XCTAssertEqual(now, before)
     }
 
+    // #258: the selection's Remove deletes exactly the chosen items in one write, and Undo puts
+    // them back whole: ids, uids and every field.
+    func testDeleteIdsRemovesOnlyThoseAndRestoresThemWhole() async throws {
+        let repository = DefaultPantryRepository(db: db, clock: TestClock(now: 99))
+        var milkRecord = item("milk", inStock: false)
+        milkRecord.quantity = "1 l"
+        milkRecord.alwaysHave = true
+        var saltRecord = item("salt")
+        saltRecord.runningLow = true
+        let oil = try await db.write { try PantryDao(db: $0).insert(self.item("oil")) }
+        let milk = try await db.write { try PantryDao(db: $0).insert(milkRecord) }
+        let salt = try await db.write { try PantryDao(db: $0).insert(saltRecord) }
+        let all = { try await self.db.read { try PantryDao(db: $0).items() } }
+        let before = try await all()
+
+        let gone = await repository.delete([salt, milk, 9_999])
+        XCTAssertEqual(gone?.items.map(\.id), [milk, salt])
+        var now = try await all()
+        XCTAssertEqual(now.map(\.id), [oil])
+        let again = await repository.delete([milk])
+        XCTAssertNil(again)
+
+        await repository.restore(gone!)
+        now = try await all()
+        XCTAssertEqual(now, before)
+    }
+
     // #194: running low is a flag on an in-stock item; a restock clears it.
     func testRunningLowIsKeptUntilARestock() async throws {
         let id = try await db.write { try PantryDao(db: $0).insert(self.item("milk")) }

@@ -40,6 +40,20 @@ abstract class PantryDao {
     @Query("DELETE FROM pantry_items WHERE id = :id")
     abstract suspend fun delete(id: Long)
 
+    @Query("SELECT * FROM pantry_items WHERE id IN (:ids) ORDER BY id ASC")
+    protected abstract suspend fun itemsWithIds(ids: List<Long>): List<PantryItemEntity>
+
+    @Query("DELETE FROM pantry_items WHERE id IN (:ids)")
+    protected abstract suspend fun deleteWithIds(ids: List<Long>)
+
+    /** The selection's Remove (#258): deletes [ids], returning them whole for undo. */
+    @Transaction
+    open suspend fun deleteAll(ids: List<Long>): List<PantryItemEntity> {
+        val gone = itemsWithIds(ids)
+        if (gone.isNotEmpty()) deleteWithIds(gone.map { it.id })
+        return gone
+    }
+
     @Query("SELECT * FROM pantry_items WHERE inStock = 0 ORDER BY id ASC")
     protected abstract suspend fun runOutItems(): List<PantryItemEntity>
 
