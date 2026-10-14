@@ -408,9 +408,12 @@ extension WalkthroughUITests {
     /// whole body shows (no "Read more" fade, no app or sign-in prompt) and scrolls with the
     /// finger. XCUITest can't drag a selection across a web page, so unseen spots the test lays on
     /// it (`RC_UITEST_CLIP_SCRIPT`, `clipSpots`) select by script when tapped, as ClipUITests'
-    /// fixture buttons do; the toolbar assigns each. Done with no name opens Review, which asks
-    /// for it; typed, Save opens the recipe. Then a second post in the Text view: its name, and
-    /// the recipe in the poster's comment, selected there and saved.
+    /// fixture buttons do. It opens on the guided steps (#251): the name is skipped, the
+    /// ingredients and the steps are each selected and added with the step's confirm, which arms
+    /// the next step, and the photo is skipped. Done with no name opens Review, which asks for it;
+    /// typed, Save opens the recipe. Then a second post in the Text view: its name and ingredients
+    /// the same way, and its steps (in the poster's comment) selected first: Steps disarmed, the
+    /// text selected, then Steps' button. Saved.
     func test31_redditClipYourself() {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "reddit"]
@@ -425,14 +428,25 @@ extension WalkthroughUITests {
         let page = openBlockedPost(
             "https://www.reddit.com/r/recipes/comments/1wpafnm/braised_chicken_with_white_beans_and_zucchini/"
         )
+        require(text("Step 1 of 4 · Tap the recipe's name"), "step 1")
+        pause(2.5)
         // The whole post body, scrolled with the finger to its end.
         for _ in 0..<5 {
             page.swipeUp(velocity: .slow)
             pause(1.2)
         }
         pause(1.5)
-        selectAndAssign(in: page, "ingredients", "INGREDIENTS")
-        selectAndAssign(in: page, "steps", "STEPS")
+        require(app.buttons["Skip"].firstMatch, "Skip").tap()
+        require(text("Step 2 of 4 · Tap the ingredients"), "step 2")
+        pause(2)
+        selectAndConfirm(in: page, "ingredients")
+        require(text("Step 3 of 4 · Tap the steps"), "step 3")
+        pause(2)
+        selectAndConfirm(in: page, "steps")
+        require(text("Step 4 of 4 · Tap the recipe's photo"), "step 4")
+        pause(2)
+        app.buttons["Skip"].firstMatch.tap()
+        pause(2.5)
         // No name yet: Done opens Review, which asks for it.
         require(app.navigationBars.buttons["Done"], "Done").tap()
         require(textContaining("Type the recipe"), "Review asking for the name")
@@ -454,9 +468,15 @@ extension WalkthroughUITests {
         let textView = app.webViews["clip.text"]
         let spots = textView.waitForExistence(timeout: 10) ? textView : app.webViews.element(boundBy: 1)
         pause(2.5)
-        selectAndAssign(in: spots, "name", "NAME")
-        selectAndAssign(in: spots, "ingredients", "INGREDIENTS")
-        selectAndAssign(in: spots, "steps", "STEPS")
+        require(text("Step 1 of 4 · Tap the recipe's name"), "step 1")
+        pause(1.5)
+        selectAndConfirm(in: spots, "name")
+        require(text("Step 2 of 4 · Tap the ingredients"), "step 2")
+        pause(2)
+        selectAndConfirm(in: spots, "ingredients")
+        require(text("Step 3 of 4 · Tap the steps"), "step 3")
+        pause(2)
+        selectFirst(in: spots, "steps", "STEPS")
         require(app.navigationBars.buttons["Done"], "Done").tap()
         pause(3)
         require(app.navigationBars.buttons["Save"], "Save").tap()
@@ -519,10 +539,12 @@ extension WalkthroughUITests {
         confirm("Use as the name")
 
         require(text("Step 2 of 4 · Tap the ingredients"), "step 2")
+        pause(1.5)
         tapOnPage(page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "500 ml broth")).firstMatch, "an ingredient")
         confirm("Add 3 lines to Ingredients")
 
         require(text("Step 3 of 4 · Tap the steps"), "step 3")
+        pause(1.5)
         tapOnPage(page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Heat broth to boiling")).firstMatch, "a step")
         confirm("Add 6 lines to Steps")
         require(text("Step 4 of 4 · Tap the recipe's photo"), "step 4")
@@ -579,15 +601,27 @@ extension WalkthroughUITests {
         return page
     }
 
-    /// Taps the unseen spot that selects `spot` (the text scrolls into view, then is selected),
-    /// then the toolbar's button for `field`, which adds the selection straight away (selected
-    /// first, #251): it is marked on the page, and the next step arms. The spots hold no text, so
-    /// a tap on one reaches it whatever step is armed.
-    private func selectAndAssign(in page: XCUIElement, _ spot: String, _ field: String) {
+    /// Guided (#251): taps the unseen spot that selects `spot` (the text scrolls into view, then
+    /// is selected), then the armed step's confirm ("Add 22 lines to Ingredients"): it is marked
+    /// on the page, and the next step arms. The spots hold no text, so a tap on one reaches it
+    /// whatever step is armed.
+    private func selectAndConfirm(in page: XCUIElement, _ spot: String) {
         require(page.buttons["rc-walk-\(spot)"], "the \(spot) spot", within: 60).tap()
         require(app.buttons["clip.confirm"], "the \(spot) selected", within: 15)
         pause(2.5)
+        app.buttons["clip.confirm"].tap()
+        pause(3)
+    }
+
+    /// Selected first (#251): `field`'s button disarms its step, the spot selects the text (the
+    /// hint says "N lines selected · tap the field they go in"), and the button adds it at once.
+    private func selectFirst(in page: XCUIElement, _ spot: String, _ field: String) {
         require(app.buttons["clip.field.\(field)"], field).tap()
+        pause(2)
+        require(page.buttons["rc-walk-\(spot)"], "the \(spot) spot", within: 60).tap()
+        require(textContaining("tap the field they go in"), "the \(spot) selected", within: 15)
+        pause(3)
+        app.buttons["clip.field.\(field)"].tap()
         pause(3)
     }
 
