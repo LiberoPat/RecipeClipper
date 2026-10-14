@@ -36,23 +36,49 @@ object StepAmounts {
         val after = set("after")
         val anyWordAfter = words.table("steps").optBoolean("anyWordAfter", false)
         val splitWords = set("splitWords")
+        // "Unte a forma com manteiga": words saying an ingredient dusts or greases.
+        val dusting = set("dustingWords")
         // "very cold unsalted butter" is still "the butter" (#254); with the names table's
         // modifiers, each word on its own.
         val descriptors = (
             words.strings("steps", "lineDescriptors") + words.strings("names", "matchModifiers") +
                 words.strings("names", "leadingWords")
             ).flatMap { it.lowercase().split(' ') }.toSet()
-        val plurals: List<Pair<String, String>> = words.table("steps").optJSONArray("plurals")
-            ?.let { a -> List(a.length()) { a.getJSONArray(it).getString(0) to a.getJSONArray(it).getString(1) } }
-            ?: emptyList()
-        // "l'huile": an article or part word elided onto the next word.
-        val elisions = (articles + partWords).filter { it.endsWith("'") }.sortedByDescending { it.length }
+        val plurals = pairs(words, "plurals")
+        // Words a line's name may carry after the step's name and still be that ingredient
+        // ("el aceite" for "aceite de oliva virgen extra", "la farine" for "farine de blé"),
+        // compared like the name: without apostrophes. Empty where modifiers come first.
+        val trailing = words.strings("steps", "trailingDescriptors")
+            .flatMap { it.lowercase().replace("'", "").replace("’", "").replace('-', ' ').split(' ') }
+            .filter { it.isNotEmpty() }.toSet()
+        // "nella farina" is "in la farina": the amount takes the article's place after the preposition.
+        val contractions = pairs(words, "contractions").associate { (word, preposition) -> word.lowercase() to preposition }
+        // German compounds that answer their last part ("weizen-mehl": "Weizenmehl" is "das
+        // Mehl"), as [first part, last part]; only these, so "Erdnussbutter" is never "die Butter".
+        val compoundHeads = words.strings("steps", "compoundHeads")
+            .map { it.lowercase().substringBefore('-') to it.lowercase().substringAfter('-') }
+        val compoundParts = compoundHeads.map { it.first }.toSet()
+        // "l'huile", "all'olio": an article, part word or contraction elided onto the next word.
+        val elisions = (articles + partWords + contractions.keys).filter { it.endsWith("'") }.sortedByDescending { it.length }
         // Words that may sit between an article and the mention ("the melted butter").
         val modifiers = (
             words.strings("names", "matchModifiers") + words.strings("names", "leadingWords") +
                 words.strings("names", "trailingWords") + IngredientDensities.trailingModifiers(words)
             ).flatMap { it.lowercase().split(' ') }.toSet()
+        // Where modifiers follow the noun, the words that may follow a mention and still leave
+        // it the whole name: its state ("la mantequilla derretida", "le beurre fondu").
+        val states = if (trailing.isEmpty()) {
+            emptySet()
+        } else {
+            (words.strings("names", "trailingWords") + IngredientDensities.trailingModifiers(words))
+                .flatMap { it.lowercase().split(' ') }.toSet()
+        }
     }
+
+    private fun pairs(words: LanguageWords, key: String): List<Pair<String, String>> =
+        words.table("steps").optJSONArray(key)
+            ?.let { a -> List(a.length()) { a.getJSONArray(it).getString(0) to a.getJSONArray(it).getString(1) } }
+            ?: emptyList()
 
     private fun words(words: LanguageWords): Words = words.compiled(Words::class) { Words(it) }
 
@@ -65,8 +91,19 @@ object StepAmounts {
         val number: Boolean = NUMBER.containsMatchIn(lower)
     }
 
-    /** One ingredient line: its name, its amount as rendered (null: never inserted). */
-    private class Source(val name: String?, val head: String?, val amount: String?, val words: List<String>, val heading: Boolean)
+    /**
+     * One ingredient line: its name, its last word as a step's word, its amount as rendered
+     * (null: never inserted), and (German) the name with its last word split after a listed
+     * first part ("weizen mehl"), else null.
+     */
+    private class Source(
+        val name: String?,
+        val head: String?,
+        val amount: String?,
+        val words: List<String>,
+        val heading: Boolean,
+        val split: String? = null,
+    )
 
     /**
      * [steps] as parts, with amounts from [lines] (the ingredient lines as currently rendered)
@@ -108,28 +145,49 @@ object StepAmounts {
         val tokens = tokens(line, w)
         val bare = tokens.map { it.bare }
         val heading = line.trim().endsWith(":")
-        val name = IngredientName.of(line, words) ?: return Source(null, null, null, bare, heading)
-        return Source(name, name.substringAfterLast(' '), amount(line, name, tokens, words, w), bare, heading)
+        val full = IngredientName.of(line, words) ?: return Source(null, null, null, bare, heading)
+        val lead = IngredientScaler.patterns(words).leading.find(line)
+        val span = span(line, full, tokens, lead?.let { it.range.last + 1 } ?: 0, words)
+            ?: return Source(full, full.substringAfterLast(' '), null, bare, heading, split(full, w))
+        val (j, k) = span
+        // "3 c. à s. d'huile d'olive": the elided "d'" belongs to the amount, as "de" does.
+        val first = if (j < k && tokens[j].lower in w.elisions) j + 1 else j
+        val name = if (first == j) full else IngredientDensities.headPhrase(line.substring(tokens[first].start, tokens[k].end), words)
+        val amount = if (lead == null) null else amount(line, tokens, first, k, words, w)
+        return Source(name, tokens[k].bare, amount, bare, heading, split(name, w))
     }
 
-    // The rendered line's text before its name ("250 g", "2 large", "200 g de"), or null.
-    private fun amount(line: String, name: String, tokens: List<Token>, words: LanguageWords, w: Words): String? {
-        // Only a line the scaler reads, so a line that stays as written never lends a number.
-        if (IngredientScaler.scale(line, 2.0, words) == line) return null
-        val lead = IngredientScaler.patterns(words).leading.find(line) ?: return null
+    // The line's words [j, k] that make its name, the first at or after [from], or null.
+    private fun span(line: String, name: String, tokens: List<Token>, from: Int, words: LanguageWords): Pair<Int, Int>? {
         val size = name.split(' ').size
         for (j in tokens.indices) {
-            if (tokens[j].start <= lead.range.last) continue
+            if (tokens[j].start < from) continue
             for (k in j until minOf(tokens.size, j + size + 2)) {
-                if (IngredientDensities.headPhrase(line.substring(tokens[j].start, tokens[k].end), words) != name) continue
-                val amount = line.substring(0, tokens[j].start).trim()
-                if (amount.isEmpty() || amount.any { it == ',' || it == ';' }) return null
-                // "2 cups flour, divided", "1 tsp salt, plus more to taste": used in parts.
-                if (tokens.drop(k + 1).any { it.bare in w.splitWords }) return null
-                return amount
+                if (IngredientDensities.headPhrase(line.substring(tokens[j].start, tokens[k].end), words) == name) return j to k
             }
         }
         return null
+    }
+
+    // The rendered line's text before its name, words [j, k] ("250 g", "2 large", "200 g de",
+    // "3 c. à s. d'"), or null.
+    private fun amount(line: String, tokens: List<Token>, j: Int, k: Int, words: LanguageWords, w: Words): String? {
+        // Only a line the scaler reads, so a line that stays as written never lends a number.
+        if (IngredientScaler.scale(line, 2.0, words) == line) return null
+        val amount = line.substring(0, tokens[j].start).trim()
+        if (amount.isEmpty() || amount.any { it == ',' || it == ';' }) return null
+        // "2 cups flour, divided", "1 tsp salt, plus more to taste": used in parts.
+        if (tokens.drop(k + 1).any { it.bare in w.splitWords }) return null
+        return amount
+    }
+
+    // "bio gemüsebrühe" as "bio gemüse brühe" when "gemüse-brühe" is listed; else null.
+    private fun split(name: String, w: Words): String? {
+        val last = name.substringAfterLast(' ')
+        val (part, _) = w.compoundHeads.firstOrNull { (part, rest) ->
+            last.startsWith(part) && sameWord(last.substring(part.length), rest, w)
+        } ?: return null
+        return name.dropLast(last.length) + part + " " + last.substring(part.length)
     }
 
     /** True when [a] and [b] are one word, singular or plural ("carrot", "carrots"). */
@@ -154,7 +212,9 @@ object StepAmounts {
     /** The longest run of words ending at [h] that names [s]'s ingredient, or null. */
     private fun run(step: String, tokens: List<Token>, h: Int, i: Int, s: Source, words: LanguageWords, w: Words): Run? {
         val head = s.head ?: return null
-        if (!sameWord(tokens[h].bare, head, w)) return null
+        if (!sameWord(tokens[h].bare, head, w)) {
+            return trailingRun(step, tokens, h, i, s.name!!, words, w) ?: s.split?.let { compoundRun(step, tokens, h, i, it, words, w) }
+        }
         var best: Run? = null
         var start = h
         while (start >= 0 && h - start < 6) {
@@ -176,6 +236,56 @@ object StepAmounts {
         return best
     }
 
+    /**
+     * Where describing words follow the noun: the longest run of words ending at [h] whose words
+     * start [name], the rest of it only `trailingDescriptors` ("el aceite" for "aceite de oliva
+     * virgen extra", never for "aceite de sésamo"), and the mention its whole name.
+     */
+    private fun trailingRun(step: String, tokens: List<Token>, h: Int, i: Int, name: String, words: LanguageWords, w: Words): Run? {
+        if (w.trailing.isEmpty() || !endsName(step, tokens, h, w)) return null
+        val n = keyWords(name, words)
+        return runFrom(step, tokens, h, w) { start ->
+            val p = keyWords(step.substring(tokens[start].start, tokens[h].end), words)
+            startsWith(n, p, w) && n.drop(p.size).all { it in w.trailing }
+        }?.let { Run(i, it, false) }
+    }
+
+    /**
+     * German compounds (`compoundHeads`): "das Mehl" for "Weizenmehl", the words before only
+     * describing words. A compound that isn't listed ("Erdnussbutter") is another ingredient.
+     */
+    private fun compoundRun(step: String, tokens: List<Token>, h: Int, i: Int, split: String, words: LanguageWords, w: Words): Run? {
+        val tail = split.substringAfterLast(' ')
+        if (!sameWord(tokens[h].bare, tail, w)) return null
+        return runFrom(step, tokens, h, w) { start ->
+            val phrase = step.substring(tokens[start].start, tokens[h].start) + tail
+            endsWith(split, phrase, words) { front -> front.all { it in w.descriptors || it in w.compoundParts } }
+        }?.let { Run(i, it, false) }
+    }
+
+    // The first word of the longest run of joined words ending at [h] that [names], or null.
+    private fun runFrom(step: String, tokens: List<Token>, h: Int, w: Words, names: (Int) -> Boolean): Int? {
+        var best: Int? = null
+        var start = h
+        while (start >= 0 && h - start < 6) {
+            if (start < h && !joined(step, tokens[start], tokens[start + 1])) break
+            if (!stops(tokens[start], w) && names(start)) best = start
+            start--
+        }
+        return best
+    }
+
+    private fun keyWords(text: String, words: LanguageWords): List<String> =
+        IngredientName.key(IngredientDensities.headPhrase(text, words), words).split(' ')
+
+    // True when [name]'s words start with [phrase]'s, and it has more.
+    private fun startsWith(name: List<String>, phrase: List<String>, w: Words): Boolean =
+        phrase.size < name.size && phrase.indices.all { sameWord(phrase[it], name[it], w) }
+
+    // True when [word] ends [compound] after a first part of at least three letters ("erdnussbutter").
+    private fun compoundEnds(compound: String, word: String, w: Words): Boolean =
+        (3..compound.length - 3).any { sameWord(compound.substring(it), word, w) }
+
     /** True when [name] ends with [phrase]'s words and [front] accepts the words before them ("olive" oil). */
     private fun endsWith(name: String, phrase: String, words: LanguageWords, front: (List<String>) -> Boolean): Boolean {
         val n = IngredientName.key(IngredientDensities.headPhrase(name, words), words).split(' ')
@@ -192,6 +302,8 @@ object StepAmounts {
         val mentionEnd: Int,
         // A link to these lines, with the mention as its text, instead of an amount.
         val lines: List<Int> = emptyList(),
+        // The preposition a contraction held, written before the amount ("nella" → "in ").
+        val preposition: String? = null,
     )
 
     private fun annotate(step: String, sources: List<Source>, words: LanguageWords, w: Words): List<Part> {
@@ -211,13 +323,19 @@ object StepAmounts {
             val longest = runs.filter { it.start == start }.let { all -> all.filter { it.exact }.ifEmpty { all } }
             val named = longest.map { it.line }.toMutableList()
             // Named only past describing words ("the oil" for "olive oil"): any line ending in
-            // the step's words could be the one ("sesame oil" too).
+            // the step's words could be the one ("sesame oil" too); where describing words follow
+            // the noun, any line starting with them ("aceite de sésamo"); in German, any compound
+            // ending in the word ("Mandelmehl" beside "Weizenmehl").
             if (longest.none { it.strict }) {
                 val front = step.substring(tokens[start].start, tokens[h].start)
+                val phrase = keyWords(step.substring(tokens[start].start, tokens[h].end), words)
                 named += sources.indices.filter { i ->
                     val s = sources[i]
-                    i !in named && s.head != null && sameWord(tokens[h].bare, s.head, w) &&
-                        endsWith(s.name!!, front + s.head, words) { true }
+                    i !in named && s.head != null && (
+                        (sameWord(tokens[h].bare, s.head, w) && endsWith(s.name!!, front + s.head, words) { true }) ||
+                            (w.trailing.isNotEmpty() && startsWith(keyWords(s.name!!, words), phrase, w)) ||
+                            (w.compoundHeads.isNotEmpty() && start == h && compoundEnds(s.head, tokens[h].bare, w))
+                        )
                 }
             }
             // "salt and pepper" has no name but uses the word: the mention could be either line.
@@ -227,8 +345,14 @@ object StepAmounts {
             // Only a line's first mention in the step, whether or not it gets an amount.
             if ((named + nameless).all { it in seen }) continue
             seen += named + nameless
-            // Lines that lend the same amount ("30 g butter" twice) are one answer.
-            val amount = named.map { sources[it].amount }.distinct().singleOrNull()
+            // "Polvilhe a forma com farinha", "Unte a forma com manteiga": flour for dusting or
+            // butter for greasing is some of the line, not its amount, so the sentence stays as is.
+            if (w.dusting.isNotEmpty() && sentence(step, tokens, h).any { it.lower in w.dusting }) continue
+            // The same ingredient lending the same amount ("30 g butter" twice) is one answer; two
+            // ingredients are not, whatever their amounts ("los pimientos" for "1 pimiento verde"
+            // and "1 pimiento rojo" is two peppers).
+            val amount = named.map { sources[it].amount to IngredientName.key(sources[it].name!!, words) }
+                .distinct().singleOrNull()?.first
             if (amount != null && nameless.isEmpty()) {
                 insertion(step, tokens, start, h, amount, w)?.let { insertions += it }
             } else if (named.size + nameless.size > 1) {
@@ -243,6 +367,16 @@ object StepAmounts {
         return parts(step, insertions)
     }
 
+    // The words of the sentence holding word [h].
+    private fun sentence(step: String, tokens: List<Token>, h: Int): List<Token> {
+        fun ends(i: Int) = step.substring(tokens[i].end, tokens[i + 1].start).any { it in ".!?;" }
+        var a = h
+        while (a > 0 && !ends(a - 1)) a--
+        var b = h
+        while (b < tokens.size - 1 && !ends(b)) b++
+        return tokens.subList(a, b + 1)
+    }
+
     // A few words, no sentence end, then a spaced dash.
     private val TITLE = Regex("""^[^.!?:;\n]{1,60}?\s[-–—]\s""")
     private val DASHES = setOf("-", "–", "—")
@@ -250,12 +384,17 @@ object StepAmounts {
     private const val ENDS = ",.;:!?)&–—"
     private const val LIST_OR_CLAUSE = ",;:(.!?&"
 
-    // The mention ends the name: the step ends, or punctuation or an allowed word follows.
+    // The mention ends the name: the step ends, or punctuation or an allowed word follows, there
+    // or after words that give its state ("la mantequilla derretida y").
     private fun endsName(step: String, tokens: List<Token>, h: Int, w: Words): Boolean {
-        val next = tokens.getOrNull(h + 1)
-        val gap = step.substring(tokens[h].end, next?.start ?: step.length).trim()
-        if (gap.isNotEmpty()) return gap[0] in ENDS
-        return next == null || w.anyWordAfter || next.lower in w.after
+        var e = h
+        while (true) {
+            val next = tokens.getOrNull(e + 1)
+            val gap = step.substring(tokens[e].end, next?.start ?: step.length).trim()
+            if (if (gap.isNotEmpty()) gap[0] in ENDS else next == null || w.anyWordAfter || next.lower in w.after) return true
+            if (next == null || next.bare !in w.states || !joined(step, tokens[e], next)) return false
+            e++
+        }
     }
 
     // The token starts its step or sentence, or follows a spaced dash ("Butter - Melt butter"),
@@ -266,11 +405,12 @@ object StepAmounts {
         return gap.any { it in ".!?;:" } || (gap.length >= 3 && gap.first().isWhitespace() && gap.last().isWhitespace() && gap.trim() in DASHES)
     }
 
-    private fun insertion(step: String, tokens: List<Token>, start: Int, h: Int, amount: String, w: Words): Insertion? {
+    private fun insertion(step: String, tokens: List<Token>, start: Int, h: Int, lent: String, w: Words): Insertion? {
         if (!endsName(step, tokens, h, w)) return null
         // "the melted butter": the amount goes before the words that describe it.
         var m = start
         while (m > 0 && joined(step, tokens[m - 1], tokens[m]) && !stops(tokens[m - 1], w) && tokens[m - 1].bare in w.modifiers) m--
+        val amount = trimmed(lent, tokens, m, h, w)
         val apostrophe = amount.endsWith("'") || amount.endsWith("’")
         val at = tokens[m].start
         val insert = Insertion(at, at, amount, !apostrophe, tokens[h].end)
@@ -279,15 +419,30 @@ object StepAmounts {
         val gap = step.substring(p.end, at)
         // After a comma ("the carrots, celery") or a sentence's end.
         if (gap.isNotBlank()) return insert.takeIf { gap.any { it in LIST_OR_CLAUSE } }
-        if (p.lower in w.articles) {
+        val contraction = w.contractions[p.lower]
+        if (p.lower in w.articles || contraction != null) {
             val q = tokens.getOrNull(m - 2)
             if (q != null && step.substring(q.end, p.start).isBlank() && (q.number || q.lower in w.partWords)) return null
-            // The amount takes the article's place: "the carrots" → "2 carrots", "l'huile" → "… huile".
+            // The amount takes the article's place: "the carrots" → "2 carrots", "l'huile" → "… huile",
+            // "nella farina" → "in 250 g di farina".
             val elided = gap.isEmpty()
-            return Insertion(p.start, if (apostrophe) at else p.end, amount, elided && !apostrophe, tokens[h].end)
+            val preposition = contraction?.let { if (step[p.start].isUpperCase()) it.replaceFirstChar { c -> c.uppercaseChar() } else it }
+            return Insertion(p.start, if (apostrophe) at else p.end, amount, elided && !apostrophe, tokens[h].end, preposition = preposition)
         }
         if (p.number || p.lower in w.partWords) return null
         return insert.takeIf { p.lower in w.before || clauseFirst(step, tokens, m - 1) }
+    }
+
+    // "1 diente de" before "el diente de ajo": the words the mention [from, h) repeats leave the
+    // amount, so it reads "1 diente de ajo". Words in parentheses ("Feuille(s)") don't count.
+    private fun trimmed(amount: String, tokens: List<Token>, from: Int, h: Int, w: Words): String {
+        val a = tokens(amount, w).filter { t -> amount.take(t.start).let { it.count { c -> c == '(' } <= it.count { c -> c == ')' } } }
+        for (n in minOf(a.size - 1, h - from) downTo 1) {
+            if ((0 until n).all { sameWord(a[a.size - n + it].bare, tokens[from + it].bare, w) }) {
+                return amount.substring(0, a[a.size - n].start).trim()
+            }
+        }
+        return amount
     }
 
     private fun parts(step: String, insertions: List<Insertion>): List<Part> {
@@ -297,6 +452,7 @@ object StepAmounts {
         for (ins in insertions.sortedBy { it.start }) {
             if (ins.start < covered) continue
             if (ins.start > cursor) out += Part(step.substring(cursor, ins.start))
+            if (ins.preposition != null) out += Part(ins.preposition + " ")
             out += if (ins.lines.isEmpty()) Part(ins.amount, amount = true) else Part(ins.amount, lines = ins.lines)
             val rest = if (ins.space) " " else ""
             cursor = ins.end
