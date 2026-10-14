@@ -169,7 +169,7 @@ struct PantryScreen: View {
                 // What's in stock, as text or as a file (#149); shown only while anything is.
                 if let text = vm.shareText(title: Strings.tabPantry, aisleName: Strings.aisle) {
                     ShareLink(item: text, subject: Text(Strings.tabPantry)) {
-                        Label { Text(Strings.shareGroceries); Text(Strings.menuDescPantrySendList) } icon: { Image(systemName: "square.and.arrow.up") }
+                        Text(Strings.shareGroceries); Text(Strings.menuDescPantrySendList); Image(systemName: "square.and.arrow.up")
                     }
                     if let makeSendFileVM {
                         Button {
@@ -177,7 +177,7 @@ struct PantryScreen: View {
                             sendFileVM = send
                             send.sendPantry(title: Strings.tabPantry)
                         } label: {
-                            Label { Text(Strings.sendFile); Text(Strings.menuDescSendFile) } icon: { Image(systemName: "doc") }
+                            Text(Strings.sendFile); Text(Strings.menuDescSendFile); Image(systemName: "doc")
                         }
                     }
                     Divider()
@@ -188,7 +188,7 @@ struct PantryScreen: View {
                 Divider()
                 // Asks first; the grocery list is left alone, and Undo puts the items back (#194).
                 Button(action: vm.onClearRunOut) {
-                    Label { Text(Strings.clearRunOut); Text(Strings.menuDescClearRunOut) } icon: { Image(systemName: "trash") }
+                    Text(Strings.clearRunOut); Text(Strings.menuDescClearRunOut); Image(systemName: "trash")
                 }
                 .disabled(!state.hasRunOut)
             } label: {

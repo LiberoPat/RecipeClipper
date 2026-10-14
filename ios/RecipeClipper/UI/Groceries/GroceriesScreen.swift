@@ -72,18 +72,18 @@ struct GroceriesScreen: View {
                                 sendFileVM = send
                                 send.sendGroceries(title: Strings.tabGroceries)
                             } label: {
-                                Label { Text(Strings.sendFile); Text(Strings.menuDescSendFile) } icon: { Image(systemName: "doc") }
+                                Text(Strings.sendFile); Text(Strings.menuDescSendFile); Image(systemName: "doc")
                             }
                         }
                     }
                     if let receiveVM {
                         Button { receiveVM.open(UIPasteboard.general.string) } label: {
-                            Label { Text(Strings.pasteList); Text(Strings.menuDescPasteList) } icon: { Image(systemName: "doc.on.clipboard") }
+                            Text(Strings.pasteList); Text(Strings.menuDescPasteList); Image(systemName: "doc.on.clipboard")
                         }
                     }
                     // Clearing without "Done shopping" (#219): the pantry is untouched, and Undo puts it back.
                     Button(action: vm.onClearTicked) {
-                        Label { Text(Strings.clearTicked); Text(Strings.menuDescClearTicked) } icon: { Image(systemName: "xmark.circle") }
+                        Text(Strings.clearTicked); Text(Strings.menuDescClearTicked); Image(systemName: "xmark.circle")
                     }
                     .disabled(!state.hasChecked)
                     Button(action: vm.onClearAll) {
