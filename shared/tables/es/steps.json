@@ -4,25 +4,39 @@
   "about": "StepAmounts (#101): see en/steps.json for what each list does. A qualifier follows the noun ('harina de trigo', 'azúcar glas'), so only the words in after may follow a mention.",
   "articles": ["el", "la", "los", "las"],
   "partWords": [
-    "un", "una", "unos", "unas", "de", "del", "resto", "restante", "restantes", "mitad", "más", "poco", "poca",
-    "algo", "todo", "toda", "todos", "todas", "otro", "otra", "otros", "otras", "demás", "cada", "ambos",
-    "ambas", "dos", "tres", "cuatro"
+    "un", "una", "unos", "unas", "de", "del", "resto", "restante", "restantes", "mitad", "más", "poco", "poca", "algo",
+    "todo", "toda", "todos", "todas", "otro", "otra", "otros", "otras", "demás", "cada", "ambos", "ambas", "dos",
+    "tres", "cuatro", "algunos", "algunas", "suficiente", "bastante"
   ],
-  "before": ["y", "e", "o", "u", "con"],
-  "after": ["y", "e", "o", "u", "con", "en", "a", "al", "hasta", "sobre", "por", "poco", "junto", "juntos"],
+  "before": [
+    "y", "e", "o", "u", "con", "añade", "añadir", "añadimos", "agrega", "agregar", "agregamos", "incorpora",
+    "incorporar", "incorporamos", "mezcla", "mezclar", "mezclamos", "echa", "echar", "echamos", "vierte", "verter",
+    "bate", "batir", "tamiza", "tamizar", "pon", "poner", "usa", "usar", "luego", "después"
+  ],
+  "after": [
+    "y", "e", "o", "u", "en", "a", "al", "hasta", "sobre", "por", "poco", "junto", "juntos", "caliente",
+    "calientes", "tibia", "tibio", "templada", "templado", "durante", "para"
+  ],
   "lineDescriptors": [],
   "trailingDescriptors": [
-    "de oliva", "virgen extra", "suave", "de girasol", "de trigo", "común", "de todo uso", "de fuerza", "de repostería",
-    "sin sal", "con sal", "entera", "desnatada", "semidesnatada", "de pollo", "de carne", "de ternera", "de verduras",
-    "moreno", "morena", "blanco", "blanca", "blancos", "blancas", "rojo", "roja", "rojos", "rojas", "morado", "morada",
-    "morados", "moradas", "amarillo", "amarilla", "amarillos", "amarillas", "verde", "verdes", "negra", "negro",
-    "molido", "molida", "en polvo", "grande", "grandes", "mediano", "mediana", "medianos", "medianas", "pequeño",
-    "pequeña", "pequeños", "pequeñas", "m", "l", "xl", "maduro", "madura", "maduros", "maduras", "frescos", "frescas",
-    "congelado", "congelada", "congelados", "congeladas", "cocido", "cocida", "cocidos", "cocidas", "en conserva",
-    "en lata", "pera", "cherry"
+    "de oliva", "virgen extra", "suave", "de girasol", "de trigo", "común", "de todo uso", "de fuerza",
+    "de repostería", "sin sal", "con sal", "entera", "desnatada", "semidesnatada", "de pollo", "de carne",
+    "de ternera", "de verduras", "moreno", "morena", "blanco", "blanca", "blancos", "blancas", "rojo", "roja", "rojos",
+    "rojas", "morado", "morada", "morados", "moradas", "amarillo", "amarilla", "amarillos", "amarillas", "verde",
+    "verdes", "negra", "negro", "molido", "molida", "en polvo", "grande", "grandes", "mediano", "mediana", "medianos",
+    "medianas", "pequeño", "pequeña", "pequeños", "pequeñas", "m", "l", "xl", "maduro", "madura", "maduros", "maduras",
+    "frescos", "frescas", "congelado", "congelada", "congelados", "congeladas", "cocido", "cocida", "cocidos",
+    "cocidas", "en conserva", "en lata", "pera", "cherry", "de la vera", "crudo", "cruda", "crudos", "crudas",
+    "italiano", "italiana", "picada", "picado", "de cerdo", "neutra", "natural", "gruesa", "fina", "marina",
+    "en escamas"
   ],
-  "contractions": [["al", "a"]],
+  "contractions": [],
   "compoundHeads": [],
+  "dustingWords": [
+    "enharinar", "enharina", "enharinado", "enharinada", "enharinamos", "engrasar", "engrasa", "engrasado",
+    "engrasada", "engrasamos", "untar", "unta", "untado", "untada", "untamos", "espolvorear", "espolvorea",
+    "espolvoreado", "espolvoreada", "espolvoreamos"
+  ],
   "anyWordAfter": false,
   "splitWords": ["más", "dividido", "dividida", "divididos", "divididas"],
   "plurals": [["", "s"], ["", "es"]]

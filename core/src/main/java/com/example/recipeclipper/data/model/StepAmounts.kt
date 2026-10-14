@@ -36,6 +36,8 @@ object StepAmounts {
         val after = set("after")
         val anyWordAfter = words.table("steps").optBoolean("anyWordAfter", false)
         val splitWords = set("splitWords")
+        // "Unte a forma com manteiga": words saying an ingredient dusts or greases.
+        val dusting = set("dustingWords")
         // "very cold unsalted butter" is still "the butter" (#254); with the names table's
         // modifiers, each word on its own.
         val descriptors = (
@@ -343,8 +345,14 @@ object StepAmounts {
             // Only a line's first mention in the step, whether or not it gets an amount.
             if ((named + nameless).all { it in seen }) continue
             seen += named + nameless
-            // Lines that lend the same amount ("30 g butter" twice) are one answer.
-            val amount = named.map { sources[it].amount }.distinct().singleOrNull()
+            // "Polvilhe a forma com farinha", "Unte a forma com manteiga": flour for dusting or
+            // butter for greasing is some of the line, not its amount, so the sentence stays as is.
+            if (w.dusting.isNotEmpty() && sentence(step, tokens, h).any { it.lower in w.dusting }) continue
+            // The same ingredient lending the same amount ("30 g butter" twice) is one answer; two
+            // ingredients are not, whatever their amounts ("los pimientos" for "1 pimiento verde"
+            // and "1 pimiento rojo" is two peppers).
+            val amount = named.map { sources[it].amount to IngredientName.key(sources[it].name!!, words) }
+                .distinct().singleOrNull()?.first
             if (amount != null && nameless.isEmpty()) {
                 insertion(step, tokens, start, h, amount, w)?.let { insertions += it }
             } else if (named.size + nameless.size > 1) {
@@ -357,6 +365,16 @@ object StepAmounts {
             }
         }
         return parts(step, insertions)
+    }
+
+    // The words of the sentence holding word [h].
+    private fun sentence(step: String, tokens: List<Token>, h: Int): List<Token> {
+        fun ends(i: Int) = step.substring(tokens[i].end, tokens[i + 1].start).any { it in ".!?;" }
+        var a = h
+        while (a > 0 && !ends(a - 1)) a--
+        var b = h
+        while (b < tokens.size - 1 && !ends(b)) b++
+        return tokens.subList(a, b + 1)
     }
 
     // A few words, no sentence end, then a spaced dash.
@@ -387,11 +405,12 @@ object StepAmounts {
         return gap.any { it in ".!?;:" } || (gap.length >= 3 && gap.first().isWhitespace() && gap.last().isWhitespace() && gap.trim() in DASHES)
     }
 
-    private fun insertion(step: String, tokens: List<Token>, start: Int, h: Int, amount: String, w: Words): Insertion? {
+    private fun insertion(step: String, tokens: List<Token>, start: Int, h: Int, lent: String, w: Words): Insertion? {
         if (!endsName(step, tokens, h, w)) return null
         // "the melted butter": the amount goes before the words that describe it.
         var m = start
         while (m > 0 && joined(step, tokens[m - 1], tokens[m]) && !stops(tokens[m - 1], w) && tokens[m - 1].bare in w.modifiers) m--
+        val amount = trimmed(lent, tokens, m, h, w)
         val apostrophe = amount.endsWith("'") || amount.endsWith("’")
         val at = tokens[m].start
         val insert = Insertion(at, at, amount, !apostrophe, tokens[h].end)
@@ -412,6 +431,18 @@ object StepAmounts {
         }
         if (p.number || p.lower in w.partWords) return null
         return insert.takeIf { p.lower in w.before || clauseFirst(step, tokens, m - 1) }
+    }
+
+    // "1 diente de" before "el diente de ajo": the words the mention [from, h) repeats leave the
+    // amount, so it reads "1 diente de ajo". Words in parentheses ("Feuille(s)") don't count.
+    private fun trimmed(amount: String, tokens: List<Token>, from: Int, h: Int, w: Words): String {
+        val a = tokens(amount, w).filter { t -> amount.take(t.start).let { it.count { c -> c == '(' } <= it.count { c -> c == ')' } } }
+        for (n in minOf(a.size - 1, h - from) downTo 1) {
+            if ((0 until n).all { sameWord(a[a.size - n + it].bare, tokens[from + it].bare, w) }) {
+                return amount.substring(0, a[a.size - n].start).trim()
+            }
+        }
+        return amount
     }
 
     private fun parts(step: String, insertions: List<Insertion>): List<Part> {

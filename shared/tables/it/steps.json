@@ -8,24 +8,37 @@
     "restante", "restanti", "metà", "poco", "altro", "altra", "altri", "altre", "tutto", "tutta", "tutti",
     "tutte", "ogni", "entrambi", "entrambe", "due", "tre", "quattro"
   ],
-  "before": ["e", "ed", "o", "con"],
-  "after": ["e", "ed", "o", "con", "in", "a", "al", "alla", "nel", "nella", "fino", "poco", "sopra", "per"],
+  "before": [
+    "e", "ed", "o", "con", "unite", "unire", "unisci", "aggiungete", "aggiungere", "aggiungi", "incorporate",
+    "incorporare", "incorpora", "versate", "versare", "versa", "mescolate", "mescolare", "mescola", "setacciate",
+    "setacciare", "amalgamate", "montate", "sbattete", "sciogliete", "mettete", "mettere", "metti", "poi", "quindi",
+    "infine"
+  ],
+  "after": [
+    "e", "ed", "o", "in", "a", "al", "alla", "nel", "nella", "fino", "poco", "sopra", "per", "insieme", "nei",
+    "negli", "nelle", "nello", "sul", "sulla", "sui", "sulle", "durante", "finché"
+  ],
   "lineDescriptors": [],
   "trailingDescriptors": [
     "extravergine", "extra vergine", "di oliva", "d'oliva", "di semi", "di girasole", "di semi di girasole", "intero",
     "parzialmente scremato", "scremato", "di pollo", "di manzo", "di carne", "vegetale", "di verdure", "semolato",
     "di canna", "bianco", "bianca", "bianchi", "bianche", "rosso", "rossa", "rossi", "rosse", "giallo", "gialla",
-    "gialli", "gialle", "verde", "verdi", "macinato", "macinata", "in polvere", "amaro", "fondente", "grande", "grandi",
-    "medio", "media", "medi", "medie", "piccolo", "piccola", "piccoli", "piccole", "maturo", "matura", "maturi",
-    "mature", "secco", "secca", "secchi", "secche", "surgelato", "surgelata", "surgelati", "surgelate", "ciliegino",
-    "ciliegini", "liquida", "fresca", "freschi", "fresche"
+    "gialli", "gialle", "verde", "verdi", "macinato", "macinata", "in polvere", "amaro", "fondente", "grande",
+    "grandi", "medio", "media", "medi", "medie", "piccolo", "piccola", "piccoli", "piccole", "maturo", "matura",
+    "maturi", "mature", "secco", "secca", "secchi", "secche", "surgelato", "surgelata", "surgelati", "surgelate",
+    "ciliegino", "ciliegini", "liquida", "fresca", "freschi", "fresche", "di birra", "vanigliato", "già", "pulita",
+    "pulito", "pulite", "puliti"
   ],
   "contractions": [
-    ["al", "a"], ["allo", "a"], ["alla", "a"], ["ai", "a"], ["agli", "a"], ["alle", "a"], ["all'", "a"],
     ["nel", "in"], ["nello", "in"], ["nella", "in"], ["nei", "in"], ["negli", "in"], ["nelle", "in"], ["nell'", "in"],
     ["sul", "su"], ["sullo", "su"], ["sulla", "su"], ["sui", "su"], ["sugli", "su"], ["sulle", "su"], ["sull'", "su"]
   ],
   "compoundHeads": [],
+  "dustingWords": [
+    "infarinare", "infarinate", "infarina", "infarinata", "infarinato", "imburrare", "imburrate", "imburra",
+    "imburrata", "imburrato", "ungere", "ungete", "ungi", "unta", "unto", "oliare", "oliate", "spolverizzare",
+    "spolverizzate", "spolverizza", "spolverare", "spolverate", "spolvera"
+  ],
   "anyWordAfter": false,
   "splitWords": ["più"],
   "plurals": [["o", "i"], ["a", "e"], ["e", "i"]]

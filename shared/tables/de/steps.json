@@ -25,6 +25,10 @@
     "speise-öl", "baby-spinat", "blatt-spinat", "voll-milch", "kristall-zucker", "rohr-zucker", "gemüse-zwiebel",
     "hokkaido-kürbis", "butternut-kürbis"
   ],
+  "dustingWords": [
+    "bestäuben", "bestäubt", "einfetten", "eingefettet", "fetten", "gefettet", "ausfetten", "ausgefettet", "bemehlen",
+    "bemehlt", "einmehlen", "eingemehlt", "ausstreuen", "ausgestreut", "einpinseln", "ausbuttern", "ausgebuttert"
+  ],
   "anyWordAfter": true,
   "splitWords": ["mehr"],
   "plurals": [["", "n"], ["", "en"], ["", "e"], ["", "er"]]
