@@ -1,9 +1,11 @@
 package com.example.recipeclipper.data.remote
 
 import com.example.recipeclipper.data.model.Durations
+import com.example.recipeclipper.data.model.Recipe
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Unit tests for the pure JSON-LD parser: string in, [com.example.recipeclipper.data.model.Recipe] out. */
@@ -214,5 +216,77 @@ class JsonLdRecipeParserTest {
             ]}
         """.trimIndent()
         assertEquals(listOf("Sauce.", "Crust."), JsonLdRecipeParser.parse(listOf(block), sourceUrl)!!.instructions)
+    }
+
+    // #266: real pages' JSON-LD, trimmed (shared/fixtures/jsonld, which iOS reads too).
+    private fun fixture(name: String): Recipe {
+        val block = javaClass.getResourceAsStream("/jsonld/$name.json")!!.bufferedReader().use { it.readText() }
+        return JsonLdRecipeParser.parse(listOf(block), sourceUrl)!!
+    }
+
+    @Test
+    fun `double-encoded entities are decoded once more (750g, tudogostoso)`() {
+        assertEquals(
+            listOf(
+                "Commencez par battre les jaunes et les œufs ensemble dans un saladier. Ajoutez la crème " +
+                    "liquide à la préparation et mélangez le tout.",
+                "Versez ensuite le lait et assaisonnez la préparation. Ajoutez une petite pincée de noix de muscade."
+            ),
+            fixture("750g-appareil-a-quiche").instructions
+        )
+        assertEquals(
+            listOf(
+                "Em um liquidificador, adicione a cenoura, os ovos e o óleo, depois misture.",
+                "Acrescente o açúcar e bata novamente por 5 minutos.",
+                "Em uma tigela ou na batedeira, adicione a farinha de trigo e depois misture novamente."
+            ),
+            fixture("tudogostoso-bolo-de-cenoura").instructions
+        )
+    }
+
+    @Test
+    fun `the second decode is strict, one level, and never makes markup`() {
+        val block = """
+            {"@type": "Recipe", "name": "R&amp;amp;D &amp;rsquo;s pie",
+             "recipeIngredient": ["Salt &amp;amp pepper", "AT&amp;T &amp;notit; &amp;unknown;", "&amp;#233;t&amp;#xE9;"],
+             "recipeInstructions": ["Keep &amp;lt;b&amp;gt; as text &amp;amp;lt;", "Heat &lt;b&gt;gently&lt;/b&gt;", "Q&amp;A: 1 &amp; 2"],
+             "recipeYield": "4 &amp;ndash; 6"}
+        """.trimIndent()
+        val recipe = JsonLdRecipeParser.parse(listOf(block), sourceUrl)!!
+        assertEquals("R&D ’s pie", recipe.name)
+        // Without its ';' a name isn't decoded again; unknown names stay as written.
+        assertEquals(listOf("Salt &amp pepper", "AT&T &notit; &unknown;", "été"), recipe.ingredients)
+        // '<' and '>' never come from the second decode, and what the first one made is text,
+        // never parsed again: single-encoded markup stays as written, as before.
+        assertEquals(listOf("Keep &lt;b&gt; as text &lt;", "Heat <b>gently</b>", "Q&A: 1 & 2"), recipe.instructions)
+        assertEquals("4 – 6", recipe.yield)
+    }
+
+    @Test
+    fun `a step whose text is an array of strings is one step, its parts joined at commas (einfachbacken)`() {
+        val steps = fixture("einfachbacken-lauchkuchen").instructions
+        assertEquals(3, steps.size)
+        assertEquals(
+            "Für den Teig Mehl, Backpulver und Salz mischen. Weiche Butter und Quark hinzugeben und zu einem " +
+                "geschmeidigen Teig verkneten. Springform einfetten. Teig in die Springform drücken und einen " +
+                "ca. 3 cm hohen Rand hochziehen.",
+            steps[0]
+        )
+        assertTrue(steps[2].startsWith("Schinken in kleine Stücke schneiden. Eier, Crème fraîche, geriebener Gouda und Gewürze"))
+    }
+
+    @Test
+    fun `a step text array holding anything but strings, or only blanks, is not joined`() {
+        val block = """
+            {"@type": "Recipe", "name": "R", "recipeInstructions": [
+              {"@type": "HowToStep", "text": ["", " "], "name": "Named"},
+              {"@type": "HowToStep", "text": ["a", 1]},
+              {"@type": "HowToStep", "text": "[\"not\", \"json\"]"}
+            ]}
+        """.trimIndent()
+        assertEquals(
+            listOf("Named", "[\"a\",1]", "[\"not\", \"json\"]"),
+            JsonLdRecipeParser.parse(listOf(block), sourceUrl)!!.instructions
+        )
     }
 }

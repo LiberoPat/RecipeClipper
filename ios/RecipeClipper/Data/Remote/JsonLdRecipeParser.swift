@@ -228,7 +228,7 @@ enum JsonLdRecipeParser {
     // MARK: - Turning the matched Recipe JSON object into our model
 
     private static func parseRecipeJson(_ json: [String: Any], sourceUrl: String, pageLanguage: String?) -> Recipe? {
-        let name = stripHtml(optString(json, "name"))
+        let name = jsonText(optString(json, "name"))
         if name.kIsBlank { return nil }
         let ingredients = extractStringList(opt(json, "recipeIngredient") ?? opt(json, "ingredients"))
         // The ingredient lines are read the same in any language; the steps, times and yield
@@ -316,11 +316,11 @@ enum JsonLdRecipeParser {
         if let array = node as? [Any] {
             for element in array {
                 guard let s = element as? String else { continue }
-                let text = stripHtml(s).kTrimmed
+                let text = jsonText(s).kTrimmed
                 if !text.isEmpty { result.append(text) }
             }
         } else if let s = node as? String {
-            let text = stripHtml(s).kTrimmed
+            let text = jsonText(s).kTrimmed
             if !text.isEmpty { result.append(text) }
         }
         return result
@@ -349,7 +349,7 @@ enum JsonLdRecipeParser {
 
     private static func isCondensedSection(_ item: Any, _ names: Set<String>) -> Bool {
         guard isHowToSection(item), let object = item as? [String: Any] else { return false }
-        return names.contains(stripHtml(optString(object, "name")).kTrimmed.lowercased())
+        return names.contains(jsonText(optString(object, "name")).kTrimmed.lowercased())
     }
 
     private static func extractInstructions(_ node: Any?, words: LanguageWords?) -> [String] {
@@ -363,7 +363,7 @@ enum JsonLdRecipeParser {
         // section boundaries carried through Recipe rather than dropped here.
         func addStep(_ item: Any) {
             if let s = item as? String {
-                let text = stripHtml(s).kTrimmed
+                let text = jsonText(s).kTrimmed
                 if !text.isEmpty { steps.append(text) }
             } else if let object = item as? [String: Any] {
                 let type = optString(object, "@type")
@@ -372,10 +372,14 @@ enum JsonLdRecipeParser {
                         for element in nested { addStep(element) }
                     }
                 } else {
-                    let text = optString(object, "text")
-                    let raw = text.kIsBlank ? optString(object, "name") : text
-                    let stripped = stripHtml(raw)
-                    if !stripped.kIsBlank { steps.append(stripped.kTrimmed) }
+                    let stepText: String
+                    if let parts = joinedParts(opt(object, "text")) {
+                        stepText = parts.isEmpty ? jsonText(optString(object, "name")) : parts
+                    } else {
+                        let text = optString(object, "text")
+                        stepText = jsonText(text.kIsBlank ? optString(object, "name") : text)
+                    }
+                    if !stepText.kIsBlank { steps.append(stepText.kTrimmed) }
                 }
             }
         }
@@ -394,22 +398,33 @@ enum JsonLdRecipeParser {
             // Strip each line AFTER splitting on the raw string's literal newlines, not
             // before: stripping the whole block first would normalize a <br>-separated set
             // of lines into one collapsed line.
-            steps += s.components(separatedBy: "\n").map { stripHtml($0).kTrimmed }.filter { !$0.isEmpty }
+            steps += s.components(separatedBy: "\n").map { jsonText($0).kTrimmed }.filter { !$0.isEmpty }
         }
         return steps
+    }
+
+    /// A HowToStep's `text` given as an array of strings, as one step (#266): einfachbacken.de
+    /// cuts each step at its commas, `["Für den Teig Mehl", "Backpulver und Salz mischen. …"]`,
+    /// so the parts are joined with ", " again. Nil when `text` isn't an array holding only
+    /// strings (the step is then read as before); empty when every part is blank.
+    private static func joinedParts(_ node: Any?) -> String? {
+        guard let array = node as? [Any], !array.isEmpty else { return nil }
+        let strings = array.compactMap { $0 as? String }
+        guard strings.count == array.count else { return nil }
+        return strings.map { jsonText($0).kTrimmed }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 
     private static func extractYield(_ node: Any?, words: LanguageWords?) -> String? {
         guard let node else { return nil }
         if let s = node as? String {
-            let text = stripHtml(s)
+            let text = jsonText(s)
             return text.kIsBlank ? nil : text
         }
         if let array = node as? [Any] {
             return Servings.pickYield(array.compactMap { $0 is NSNull ? nil : extractYield($0, words: words) }, words: words)
         }
         if let object = node as? [String: Any] {
-            let text = stripHtml(optString(object, "value"))
+            let text = jsonText(optString(object, "value"))
             return text.kIsBlank ? nil : text
         }
         return javaString(node) // e.g. "recipeYield": 6 gives "6"
@@ -533,7 +548,70 @@ enum JsonLdRecipeParser {
             i += 1
         }
 
-        // Normalise whitespace the way Jsoup's text() does.
+        return normalizedText(text)
+    }
+
+    /// `stripHtml`, then one more decode of the character references left in the text (#266).
+    /// Some sites encode their JSON-LD twice: 750g.com writes "&amp;eacute;mincer" and
+    /// tudogostoso "o &amp;oacute;leo", which one decode leaves as "&eacute;mincer". The second
+    /// decode is strict, so text that merely holds an '&' is never changed: only a complete
+    /// reference with its ';' ("&eacute;", "&#233;", "&#xE9;") that the first decode would
+    /// also read, and never one that gives '<' or '>', so a double-encoded "&amp;lt;b&amp;gt;"
+    /// stays "&lt;b&gt;" rather than turning into markup. One level only, and the result is
+    /// never parsed as HTML again. Whitespace is then normalized as `stripHtml` does it (a
+    /// double-encoded "&amp;nbsp;" becomes a plain space). Every string read from JSON-LD
+    /// except the URL goes through this. Android: JsonLdRecipeParser.jsonText.
+    static func jsonText(_ raw: String) -> String { decodeOnceMore(stripHtml(raw)) }
+
+    static func decodeOnceMore(_ text: String) -> String {
+        guard text.contains("&") else { return text }
+        let s = Array(text.unicodeScalars)
+        var out = String.UnicodeScalarView()
+        var changed = false
+        var i = 0
+        func isDigit(_ c: Unicode.Scalar) -> Bool { c >= "0" && c <= "9" }
+        func isAsciiLetter(_ c: Unicode.Scalar) -> Bool { (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") }
+        /// The index after the ';' of a complete reference at `s[at]` ('&'), or nil.
+        func referenceEnd(_ at: Int) -> Int? {
+            var j = at + 1
+            guard j < s.count else { return nil }
+            let start: Int
+            let maxCount: Int
+            let accepts: (Unicode.Scalar) -> Bool
+            if s[j] == "#" {
+                j += 1
+                if j < s.count, s[j] == "x" || s[j] == "X" {
+                    j += 1; maxCount = 6; accepts = { $0.properties.isASCIIHexDigit }
+                } else {
+                    maxCount = 7; accepts = isDigit
+                }
+                start = j
+            } else {
+                guard isAsciiLetter(s[j]) else { return nil }
+                start = j; j += 1; maxCount = 32
+                accepts = { isAsciiLetter($0) || isDigit($0) }
+            }
+            while j < s.count, accepts(s[j]) { j += 1 }
+            let count = j - start
+            guard count >= 1, count <= maxCount, j < s.count, s[j] == ";" else { return nil }
+            return j + 1
+        }
+        while i < s.count {
+            if s[i] == "&", let end = referenceEnd(i),
+               let (value, next) = decodeEntity(s, at: i), next == end, value != "<", value != ">" {
+                out.append(contentsOf: value.unicodeScalars)
+                changed = true
+                i = end
+                continue
+            }
+            out.append(s[i])
+            i += 1
+        }
+        return changed ? normalizedText(out) : text
+    }
+
+    /// Whitespace normalized the way Jsoup's text() does it.
+    private static func normalizedText(_ text: String.UnicodeScalarView) -> String {
         var out = String.UnicodeScalarView()
         var pendingSpace = false
         for c in text {

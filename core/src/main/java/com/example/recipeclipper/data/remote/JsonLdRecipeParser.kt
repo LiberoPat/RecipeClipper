@@ -10,6 +10,7 @@ import org.json.JSONObject
 import org.json.JSONTokener
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.parser.Parser
 
 /**
  * Almost every recipe site embeds a schema.org "Recipe" object as JSON-LD
@@ -31,6 +32,53 @@ internal object JsonLdRecipeParser {
      *  `recipeInstructions.text` of "Mix &amp; pour" or "<p>Preheat the oven.</p>". Parsing a
      *  string (not fetching a URL) does no network I/O, so this keeps the parser pure. */
     private fun stripHtml(raw: String): String = Jsoup.parse(raw).text()
+
+    /**
+     * [stripHtml], then one more decode of the character references left in the text (#266).
+     * Some sites encode their JSON-LD twice: 750g.com writes "&amp;eacute;mincer" and
+     * tudogostoso "o &amp;oacute;leo", which one decode leaves as "&eacute;mincer". The second
+     * decode is strict, so text that merely holds an '&' is never changed: only a complete
+     * reference with its ';' ("&eacute;", "&#233;", "&#xE9;") that the first decode would
+     * also read, and never one that gives '<' or '>', so a double-encoded "&amp;lt;b&amp;gt;"
+     * stays "&lt;b&gt;" rather than turning into markup. One level only, and the result is
+     * never parsed as HTML again. Whitespace is then normalized as [stripHtml] does it (a
+     * double-encoded "&amp;nbsp;" becomes a plain space). Every string read from JSON-LD
+     * except the URL goes through this.
+     */
+    private fun jsonText(raw: String): String = decodeOnceMore(stripHtml(raw))
+
+    private val reference = Regex("""&(?:#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[A-Za-z][A-Za-z0-9]{0,31});""")
+
+    internal fun decodeOnceMore(text: String): String {
+        if ('&' !in text) return text
+        var changed = false
+        val decoded = reference.replace(text) { m ->
+            val value = Parser.unescapeEntities(m.value, false)
+            if (value == m.value || value == "<" || value == ">") {
+                m.value
+            } else {
+                changed = true
+                value
+            }
+        }
+        if (!changed) return text
+        // As Jsoup's text() ends: whitespace runs (a no-break space included) become one
+        // space, zero-width spaces and soft hyphens go, and Java's String.trim() finishes.
+        val out = StringBuilder()
+        var pendingSpace = false
+        for (c in decoded) {
+            when (c) {
+                ' ', '\t', '\n', '\u000C', '\r', ' ' -> pendingSpace = true
+                '​', '­' -> continue
+                else -> {
+                    if (pendingSpace && out.isNotEmpty()) out.append(' ')
+                    pendingSpace = false
+                    out.append(c)
+                }
+            }
+        }
+        return out.toString().trim { it <= ' ' }
+    }
 
     /** The page's declared language, `<html lang>`, which a recipe without `inLanguage` takes. */
     fun pageLanguage(doc: Document): String? = doc.selectFirst("html")?.attr("lang")?.ifBlank { null }
@@ -98,7 +146,7 @@ internal object JsonLdRecipeParser {
     // --- Turning the matched Recipe JSON object into our data class ---
 
     private fun parseRecipeJson(json: JSONObject, sourceUrl: String, pageLanguage: String?): Recipe? {
-        val name = stripHtml(json.optString("name")).ifBlank { return null }
+        val name = jsonText(json.optString("name")).ifBlank { return null }
         val ingredients = extractStringList(json.opt("recipeIngredient") ?: json.opt("ingredients"))
         // The ingredient lines are read the same in any language; the steps, times and yield
         // need the language's words (condensed-section names, duration and range words).
@@ -143,11 +191,11 @@ internal object JsonLdRecipeParser {
         val result = mutableListOf<String>()
         when (node) {
             is JSONArray -> for (i in 0 until node.length()) {
-                (node.opt(i) as? String)?.let { stripHtml(it).trim() }
+                (node.opt(i) as? String)?.let { jsonText(it).trim() }
                     ?.let { if (it.isNotEmpty()) result.add(it) }
             }
 
-            is String -> stripHtml(node).trim().let { if (it.isNotEmpty()) result.add(it) }
+            is String -> jsonText(node).trim().let { if (it.isNotEmpty()) result.add(it) }
         }
         return result
     }
@@ -157,14 +205,14 @@ internal object JsonLdRecipeParser {
      * of the real steps. RecipeTin Eats (WP Recipe Maker) opens with an "Abbreviated Recipe"
      * section holding a one-paragraph summary; kept, it became step 1 in cook mode (with a
      * timer read out of the summary) followed by the same steps again in full. The names are
-     * the language's `sections.json`, compared after [stripHtml], trimmed and lowercased;
+     * the language's `sections.json`, compared after [jsonText], trimmed and lowercased;
      * exact matches only, never a substring, so a real section that merely mentions "summary"
      * is untouched. Add a name only once a real site is seen publishing it.
      */
     private fun isCondensedSection(item: Any?, names: Set<String>): Boolean =
         item is JSONObject &&
             item.optString("@type").equals("HowToSection", ignoreCase = true) &&
-            stripHtml(item.optString("name")).trim().lowercase() in names
+            jsonText(item.optString("name")).trim().lowercase() in names
 
     private fun condensedSectionNames(words: LanguageWords?): Set<String> =
         words?.compiled(CondensedSections::class) { w ->
@@ -184,15 +232,20 @@ internal object JsonLdRecipeParser {
         // section boundaries carried through Recipe rather than dropped here.
         fun addStep(item: Any?) {
             when (item) {
-                is String -> stripHtml(item).trim().let { if (it.isNotEmpty()) steps.add(it) }
+                is String -> jsonText(item).trim().let { if (it.isNotEmpty()) steps.add(it) }
                 is JSONObject -> {
                     val type = item.optString("@type")
                     if (type.equals("HowToSection", ignoreCase = true)) {
                         val nested = item.optJSONArray("itemListElement")
                         if (nested != null) for (i in 0 until nested.length()) addStep(nested.opt(i))
                     } else {
-                        val text = stripHtml(item.optString("text").ifBlank { item.optString("name") })
-                        if (text.isNotBlank()) steps.add(text.trim())
+                        val parts = joinedParts(item.opt("text"))
+                        val stepText = when {
+                            parts == null -> jsonText(item.optString("text").ifBlank { item.optString("name") })
+                            parts.isNotEmpty() -> parts
+                            else -> jsonText(item.optString("name"))
+                        }
+                        if (stepText.isNotBlank()) steps.add(stepText.trim())
                     }
                 }
             }
@@ -217,18 +270,32 @@ internal object JsonLdRecipeParser {
             // Strip each line AFTER splitting on the raw string's literal newlines, not
             // before: running the whole block through Jsoup first would normalize a
             // <br>-separated set of lines into one collapsed line.
-            is String -> steps.addAll(node.split("\n").map { stripHtml(it).trim() }.filter { it.isNotEmpty() })
+            is String -> steps.addAll(node.split("\n").map { jsonText(it).trim() }.filter { it.isNotEmpty() })
         }
         return steps
     }
 
+    /**
+     * A HowToStep's `text` given as an array of strings, as one step (#266): einfachbacken.de
+     * cuts each step at its commas, `["Für den Teig Mehl", "Backpulver und Salz mischen. …"]`,
+     * so the parts are joined with ", " again. Null when `text` isn't an array holding only
+     * strings (the step is then read as before); empty when every part is blank.
+     */
+    private fun joinedParts(node: Any?): String? {
+        if (node !is JSONArray || node.length() == 0) return null
+        if ((0 until node.length()).any { node.opt(it) !is String }) return null
+        return (0 until node.length()).map { jsonText(node.getString(it)).trim() }
+            .filter { it.isNotEmpty() }
+            .joinToString(", ")
+    }
+
     private fun extractYield(node: Any?, words: LanguageWords?): String? = when (node) {
-        is String -> stripHtml(node).ifBlank { null }
+        is String -> jsonText(node).ifBlank { null }
         is JSONArray -> Servings.pickYield(
             (0 until node.length()).mapNotNull { extractYield(node.opt(it), words) },
             words
         )
-        is JSONObject -> stripHtml(node.optString("value")).ifBlank { null }
+        is JSONObject -> jsonText(node.optString("value")).ifBlank { null }
         else -> node?.toString()
     }
 }

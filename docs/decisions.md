@@ -711,6 +711,16 @@ Field rules that real sites forced (same on both platforms, pinned by tests):
   the summary paragraph became step 1 of cook mode with a bogus timer. Section
   names are otherwise still dropped; headers in the reading view would be a
   feature, not a fix.
+- **Double-encoded entities (#266, October 2026).** 750g.com and
+  tudogostoso encode their JSON-LD twice (`&amp;eacute;`, `&amp;oacute;`),
+  so one `stripHtml` showed "&eacute;mincer". Every JSON-LD string (name,
+  ingredients, steps, yield, section names) now gets one more decode
+  (`jsonText`): only a complete reference with its `;`, never one giving `<`
+  or `>`, never re-parsed as HTML. A literal "R&D" or "&amp pepper" stays.
+- **A step's `text` as an array of strings (#266).** einfachbacken.de cuts
+  each HowToStep at its commas (`["Für den Teig Mehl", "Backpulver …"]`),
+  which showed as JSON. Such an array is one step, joined with ", ". Only an
+  array holding nothing but strings; a string that looks like JSON is text.
 
 ## Architecture and conventions (original)
 

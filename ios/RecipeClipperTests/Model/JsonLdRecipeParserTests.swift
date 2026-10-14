@@ -368,6 +368,69 @@ final class JsonLdRecipeParserTests: XCTestCase {
         XCTAssertEqual("", JsonLdRecipeParser.stripHtml(""))
     }
 
+    // MARK: - #266, real pages' JSON-LD (shared/fixtures/jsonld, which Android reads too)
+
+    private func fixture(_ name: String) throws -> Recipe {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: name, withExtension: "json", subdirectory: "fixtures/jsonld"))
+        return try XCTUnwrap(JsonLdRecipeParser.parse([try String(contentsOf: url, encoding: .utf8)], sourceUrl: sourceUrl))
+    }
+
+    func testDoubleEncodedEntitiesAreDecodedOnceMore() throws {
+        XCTAssertEqual([
+            "Commencez par battre les jaunes et les œufs ensemble dans un saladier. Ajoutez la crème "
+                + "liquide à la préparation et mélangez le tout.",
+            "Versez ensuite le lait et assaisonnez la préparation. Ajoutez une petite pincée de noix de muscade.",
+        ], try fixture("750g-appareil-a-quiche").instructions)
+        XCTAssertEqual([
+            "Em um liquidificador, adicione a cenoura, os ovos e o óleo, depois misture.",
+            "Acrescente o açúcar e bata novamente por 5 minutos.",
+            "Em uma tigela ou na batedeira, adicione a farinha de trigo e depois misture novamente.",
+        ], try fixture("tudogostoso-bolo-de-cenoura").instructions)
+    }
+
+    func testTheSecondDecodeIsStrictOneLevelAndNeverMakesMarkup() throws {
+        let block = #"""
+        {"@type": "Recipe", "name": "R&amp;amp;D &amp;rsquo;s pie",
+         "recipeIngredient": ["Salt &amp;amp pepper", "AT&amp;T &amp;notit; &amp;unknown;", "&amp;#233;t&amp;#xE9;"],
+         "recipeInstructions": ["Keep &amp;lt;b&amp;gt; as text &amp;amp;lt;", "Heat &lt;b&gt;gently&lt;/b&gt;", "Q&amp;A: 1 &amp; 2"],
+         "recipeYield": "4 &amp;ndash; 6"}
+        """#
+        let recipe = try XCTUnwrap(JsonLdRecipeParser.parse([block], sourceUrl: sourceUrl))
+        XCTAssertEqual("R&D ’s pie", recipe.name)
+        // Without its ';' a name isn't decoded again; unknown names stay as written.
+        XCTAssertEqual(["Salt &amp pepper", "AT&T &notit; &unknown;", "été"], recipe.ingredients)
+        // '<' and '>' never come from the second decode, and what the first one made is text,
+        // never parsed again: single-encoded markup stays as written, as before.
+        XCTAssertEqual(["Keep &lt;b&gt; as text &lt;", "Heat <b>gently</b>", "Q&A: 1 & 2"], recipe.instructions)
+        XCTAssertEqual("4 – 6", recipe.yield)
+    }
+
+    func testAStepWhoseTextIsAnArrayOfStringsIsOneStepItsPartsJoinedAtCommas() throws {
+        let steps = try fixture("einfachbacken-lauchkuchen").instructions
+        XCTAssertEqual(3, steps.count)
+        XCTAssertEqual(
+            "Für den Teig Mehl, Backpulver und Salz mischen. Weiche Butter und Quark hinzugeben und zu einem "
+                + "geschmeidigen Teig verkneten. Springform einfetten. Teig in die Springform drücken und einen "
+                + "ca. 3 cm hohen Rand hochziehen.",
+            steps[0]
+        )
+        XCTAssertTrue(steps[2].hasPrefix("Schinken in kleine Stücke schneiden. Eier, Crème fraîche, geriebener Gouda und Gewürze"))
+    }
+
+    func testAStepTextArrayHoldingAnythingButStringsOrOnlyBlanksIsNotJoined() throws {
+        let block = #"""
+        {"@type": "Recipe", "name": "R", "recipeInstructions": [
+          {"@type": "HowToStep", "text": ["", " "], "name": "Named"},
+          {"@type": "HowToStep", "text": ["a", 1]},
+          {"@type": "HowToStep", "text": "[\"not\", \"json\"]"}
+        ]}
+        """#
+        XCTAssertEqual(
+            ["Named", #"["a",1]"#, #"["not", "json"]"#],
+            try XCTUnwrap(JsonLdRecipeParser.parse([block], sourceUrl: sourceUrl)).instructions
+        )
+    }
+
     func testStripHtmlLeavesALessThanThatIsNotATagAlone() {
         XCTAssertEqual("1 < 2 and <3", JsonLdRecipeParser.stripHtml("1 < 2 and <3"))
     }

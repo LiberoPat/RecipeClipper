@@ -1,0 +1,47 @@
+{
+  "@type": "Recipe",
+  "name": "Lauchkuchen – nach Elsässer Original-Rezept",
+  "recipeYield": "1 Kuchen",
+  "recipeIngredient": [
+    "200 g Weizenmehl (Type 405)",
+    "1 TL Backpulver",
+    "0.5 TL Salz",
+    "100 g weiche Butter",
+    "100 g Magerquark",
+    "3 Stange Lauch (ca. 1 kg)",
+    "100 g Schinken",
+    "2 Ei (Größe M)",
+    "200 g Crème fraîche",
+    "50 g geriebener Gouda",
+    "1 TL Salz",
+    "etwas gemahlenen Pfeffer",
+    "1 Prise Muskatnuss",
+    "etwas Fett für die Form"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "text": [
+        "Für den Teig Mehl",
+        "Backpulver und Salz mischen. Weiche Butter und Quark hinzugeben und zu einem geschmeidigen Teig verkneten. Springform einfetten. Teig in die Springform drücken und einen ca. 3 cm hohen Rand hochziehen."
+      ]
+    },
+    {
+      "@type": "HowToStep",
+      "text": [
+        "Backofen auf 180 Grad Ober-/Unterhitze (Umluft:160 Grad) vorheizen. Für die Füllung Enden und braune Blätter vom Lauch abschneiden. Lauch längs aufschneiden und einzelne Schichten waschen. Lauch in ca. 1 cm dicke Ringe schneiden",
+        "anschließend in einem Topf mit gesalzenem Wasser aufkochen und 3 Minuten köcheln lassen. Lauch in ein Sieb schütten",
+        "kalt abbrausen und abtropfen lassen."
+      ]
+    },
+    {
+      "@type": "HowToStep",
+      "text": [
+        "Schinken in kleine Stücke schneiden. Eier",
+        "Crème fraîche",
+        "geriebener Gouda und Gewürze in eine Schüssel geben. Lauch und Schinken hinzugeben. Alles gut vermischen. Füllung in die vorbereitete Form geben und Lauchkuchen im vorgeheizten Ofen ca. 50 Minuten backen. Der Lauchkuchen ergibt ca. 12 Stücke und hält sich mindestens 3 Tage im Kühlschrank."
+      ]
+    }
+  ],
+  "@context": "https://schema.org"
+}
