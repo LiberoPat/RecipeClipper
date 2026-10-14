@@ -112,6 +112,51 @@ class StepAmountsTest {
         assertEquals("醤油を加える。", annotate("醤油を加える。", listOf("醤油 大さじ1"), "ja"))
     }
 
+    @Test fun `Spanish names its lines past the words after the noun`() {
+        assertEquals("Añade ⟦100 ml de⟧ aceite de oliva y la sal.", annotate("Añade el aceite de oliva y la sal.", listOf("100 ml de aceite de oliva virgen extra", "sal"), "es"))
+        assertEquals("Incorpora ⟦1⟧ cebolla picada.", annotate("Incorpora la cebolla picada.", listOf("1 cebolla mediana"), "es"))
+        assertEquals("Añade ⟦100 ml de⟧ agua caliente.", annotate("Añade el agua caliente.", listOf("100 ml de agua"), "es"))
+        assertEquals("Pica ⟦1⟧ diente de ajo.", annotate("Pica el diente de ajo.", listOf("1 diente de ajo"), "es"))
+        // Another kind (rice flour, sesame oil) is another ingredient; two of a kind are a link.
+        assertEquals("Añade la harina.", annotate("Añade la harina.", listOf("200 g de harina de arroz"), "es"))
+        assertEquals("Añade el ⟪aceite|0,1⟫.", annotate("Añade el aceite.", listOf("2 cucharadas de aceite de oliva", "1 cucharada de aceite de sésamo"), "es"))
+        assertEquals("Añade los ⟪pimientos|0,1⟫.", annotate("Añade los pimientos.", listOf("1 pimiento verde", "1 pimiento rojo"), "es"))
+        // A dish named after its ingredients, and greasing, stay as written.
+        assertEquals("Refrigera el arroz con leche.", annotate("Refrigera el arroz con leche.", listOf("1 taza de arroz blanco"), "es"))
+        assertEquals("Engrasa el molde con la mantequilla.", annotate("Engrasa el molde con la mantequilla.", listOf("100 g de mantequilla"), "es"))
+    }
+
+    @Test fun `French reads elided names, describing words after the noun and states`() {
+        assertEquals("Faites chauffer ⟦3 cuillères à soupe d'⟧huile d'olive.", annotate("Faites chauffer l'huile d'olive.", listOf("3 cuillères à soupe d'huile d'olive"), "fr"))
+        assertEquals("Ajoutez ⟦90 g de⟧ beurre doux coupé en dés.", annotate("Ajoutez le beurre doux coupé en dés.", listOf("90 g de beurre doux"), "fr"))
+        assertEquals("Versez ⟦120 g de⟧ farine puis ⟦50 g de⟧ beurre fondu.", annotate("Versez la farine puis le beurre fondu.", listOf("120 g de farine de blé", "50 g de beurre"), "fr"))
+        assertEquals("Ajoutez le ⟪beurre|0,1⟫.", annotate("Ajoutez le beurre.", listOf("100 g de beurre doux", "30 g de beurre demi-sel"), "fr"))
+        // "au" also makes dish names ("fenouil au citron"): it is no article.
+        assertEquals("Ajoutez ⟦1⟧ fenouil au citron.", annotate("Ajoutez le fenouil au citron.", listOf("1 fenouil", "1/2 citron"), "fr"))
+        assertEquals("Farinez le plan de travail avec la farine.", annotate("Farinez le plan de travail avec la farine.", listOf("250 g de farine"), "fr"))
+    }
+
+    @Test fun `German compounds answer their last part only when listed`() {
+        assertEquals("⟦250 g⟧ Mehl mit ⟦100 g⟧ Zucker mischen.", annotate("Das Mehl mit dem Zucker mischen.", listOf("250 g Weizenmehl", "100 g Zucker"), "de"))
+        assertEquals("⟦200 ml⟧ Sahne erhitzen und zu ⟦100 g⟧ Mehl geben.", annotate("Die Sahne erhitzen und zum Mehl geben.", listOf("200 ml Schlagsahne", "100 g Mehl"), "de"))
+        assertEquals("⟦1 Stg⟧ Lauch waschen.", annotate("Den Lauch waschen.", listOf("1 Stg Lauch"), "de"))
+        assertEquals("Die Butter schmelzen.", annotate("Die Butter schmelzen.", listOf("100 g Erdnussbutter"), "de"))
+        assertEquals("Die Kerne entfernen.", annotate("Die Kerne entfernen.", listOf("50 g Sonnenblumenkerne"), "de"))
+        assertEquals("Das ⟪Mehl|0,1⟫ sieben.", annotate("Das Mehl sieben.", listOf("200 g Weizenmehl", "50 g Mandelmehl"), "de"))
+        assertEquals("Die Form mit der Butter einfetten.", annotate("Die Form mit der Butter einfetten.", listOf("200 g Butter"), "de"))
+    }
+
+    @Test fun `Italian and Portuguese read contractions that say where, and their verbs`() {
+        assertEquals("Versate ⟦100 ml di⟧ olio e il sale.", annotate("Versate l'olio e il sale.", listOf("100 ml di olio extravergine di oliva", "sale"), "it"))
+        assertEquals("Unite ⟦200 g di⟧ farina, ⟦40 g di⟧ cacao e ⟦1 bustina di⟧ lievito.", annotate("Unite farina, cacao e lievito.", listOf("200 g di farina", "40 g di cacao amaro", "1 bustina di lievito vanigliato"), "it"))
+        assertEquals("Versate ⟦250 ml di⟧ latte in ⟦300 g di⟧ farina.", annotate("Versate il latte nella farina.", listOf("250 ml di latte", "300 g di farina"), "it"))
+        assertEquals("Imburrate la teglia e infarinatela con la farina.", annotate("Imburrate la teglia e infarinatela con la farina.", listOf("300 g di farina"), "it"))
+        assertEquals("Adicione ⟦2 xícaras (chá) de⟧ farinha e misture.", annotate("Adicione a farinha e misture.", listOf("2 xícaras (chá) de farinha de trigo"), "pt"))
+        assertEquals("Dissolva a gelatina em ⟦3 colheres (sopa) de⟧ água fria.", annotate("Dissolva a gelatina na água fria.", listOf("1 colher (chá) de gelatina em pó sem sabor", "3 colheres (sopa) de água fria"), "pt"))
+        assertEquals("Adicione ⟦2 unidades de⟧ ovos.", annotate("Adicione os ovos.", listOf("2 unidades de ovos (tamanho médio)"), "pt"))
+        assertEquals("Unte a forma com manteiga e polvilhe farinha.", annotate("Unte a forma com manteiga e polvilhe farinha.", listOf("100 g de manteiga", "2 xícaras de farinha de trigo"), "pt"))
+    }
+
     @Test fun `no words leave every step as written`() {
         assertEquals(listOf(listOf(StepAmounts.Part("Add the carrots."))), StepAmounts.annotate(listOf("Add the carrots."), listOf("2 carrots"), null))
     }

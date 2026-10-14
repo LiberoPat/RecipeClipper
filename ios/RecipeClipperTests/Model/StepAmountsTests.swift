@@ -110,6 +110,51 @@ final class StepAmountsTests: XCTestCase {
         XCTAssertEqual(annotate("醤油を加える。", ["醤油 大さじ1"], "ja"), "醤油を加える。")
     }
 
+    func testSpanishNamesItsLinesPastTheWordsAfterTheNoun() {
+        XCTAssertEqual(annotate("Añade el aceite de oliva y la sal.", ["100 ml de aceite de oliva virgen extra", "sal"], "es"), "Añade ⟦100 ml de⟧ aceite de oliva y la sal.")
+        XCTAssertEqual(annotate("Incorpora la cebolla picada.", ["1 cebolla mediana"], "es"), "Incorpora ⟦1⟧ cebolla picada.")
+        XCTAssertEqual(annotate("Añade el agua caliente.", ["100 ml de agua"], "es"), "Añade ⟦100 ml de⟧ agua caliente.")
+        XCTAssertEqual(annotate("Pica el diente de ajo.", ["1 diente de ajo"], "es"), "Pica ⟦1⟧ diente de ajo.")
+        // Another kind (rice flour, sesame oil) is another ingredient; two of a kind are a link.
+        XCTAssertEqual(annotate("Añade la harina.", ["200 g de harina de arroz"], "es"), "Añade la harina.")
+        XCTAssertEqual(annotate("Añade el aceite.", ["2 cucharadas de aceite de oliva", "1 cucharada de aceite de sésamo"], "es"), "Añade el ⟪aceite|0,1⟫.")
+        XCTAssertEqual(annotate("Añade los pimientos.", ["1 pimiento verde", "1 pimiento rojo"], "es"), "Añade los ⟪pimientos|0,1⟫.")
+        // A dish named after its ingredients, and greasing, stay as written.
+        XCTAssertEqual(annotate("Refrigera el arroz con leche.", ["1 taza de arroz blanco"], "es"), "Refrigera el arroz con leche.")
+        XCTAssertEqual(annotate("Engrasa el molde con la mantequilla.", ["100 g de mantequilla"], "es"), "Engrasa el molde con la mantequilla.")
+    }
+
+    func testFrenchReadsElidedNamesDescribingWordsAfterTheNounAndStates() {
+        XCTAssertEqual(annotate("Faites chauffer l'huile d'olive.", ["3 cuillères à soupe d'huile d'olive"], "fr"), "Faites chauffer ⟦3 cuillères à soupe d'⟧huile d'olive.")
+        XCTAssertEqual(annotate("Ajoutez le beurre doux coupé en dés.", ["90 g de beurre doux"], "fr"), "Ajoutez ⟦90 g de⟧ beurre doux coupé en dés.")
+        XCTAssertEqual(annotate("Versez la farine puis le beurre fondu.", ["120 g de farine de blé", "50 g de beurre"], "fr"), "Versez ⟦120 g de⟧ farine puis ⟦50 g de⟧ beurre fondu.")
+        XCTAssertEqual(annotate("Ajoutez le beurre.", ["100 g de beurre doux", "30 g de beurre demi-sel"], "fr"), "Ajoutez le ⟪beurre|0,1⟫.")
+        // "au" also makes dish names ("fenouil au citron"): it is no article.
+        XCTAssertEqual(annotate("Ajoutez le fenouil au citron.", ["1 fenouil", "1/2 citron"], "fr"), "Ajoutez ⟦1⟧ fenouil au citron.")
+        XCTAssertEqual(annotate("Farinez le plan de travail avec la farine.", ["250 g de farine"], "fr"), "Farinez le plan de travail avec la farine.")
+    }
+
+    func testGermanCompoundsAnswerTheirLastPartOnlyWhenListed() {
+        XCTAssertEqual(annotate("Das Mehl mit dem Zucker mischen.", ["250 g Weizenmehl", "100 g Zucker"], "de"), "⟦250 g⟧ Mehl mit ⟦100 g⟧ Zucker mischen.")
+        XCTAssertEqual(annotate("Die Sahne erhitzen und zum Mehl geben.", ["200 ml Schlagsahne", "100 g Mehl"], "de"), "⟦200 ml⟧ Sahne erhitzen und zu ⟦100 g⟧ Mehl geben.")
+        XCTAssertEqual(annotate("Den Lauch waschen.", ["1 Stg Lauch"], "de"), "⟦1 Stg⟧ Lauch waschen.")
+        XCTAssertEqual(annotate("Die Butter schmelzen.", ["100 g Erdnussbutter"], "de"), "Die Butter schmelzen.")
+        XCTAssertEqual(annotate("Die Kerne entfernen.", ["50 g Sonnenblumenkerne"], "de"), "Die Kerne entfernen.")
+        XCTAssertEqual(annotate("Das Mehl sieben.", ["200 g Weizenmehl", "50 g Mandelmehl"], "de"), "Das ⟪Mehl|0,1⟫ sieben.")
+        XCTAssertEqual(annotate("Die Form mit der Butter einfetten.", ["200 g Butter"], "de"), "Die Form mit der Butter einfetten.")
+    }
+
+    func testItalianAndPortugueseReadContractionsThatSayWhereAndTheirVerbs() {
+        XCTAssertEqual(annotate("Versate l'olio e il sale.", ["100 ml di olio extravergine di oliva", "sale"], "it"), "Versate ⟦100 ml di⟧ olio e il sale.")
+        XCTAssertEqual(annotate("Unite farina, cacao e lievito.", ["200 g di farina", "40 g di cacao amaro", "1 bustina di lievito vanigliato"], "it"), "Unite ⟦200 g di⟧ farina, ⟦40 g di⟧ cacao e ⟦1 bustina di⟧ lievito.")
+        XCTAssertEqual(annotate("Versate il latte nella farina.", ["250 ml di latte", "300 g di farina"], "it"), "Versate ⟦250 ml di⟧ latte in ⟦300 g di⟧ farina.")
+        XCTAssertEqual(annotate("Imburrate la teglia e infarinatela con la farina.", ["300 g di farina"], "it"), "Imburrate la teglia e infarinatela con la farina.")
+        XCTAssertEqual(annotate("Adicione a farinha e misture.", ["2 xícaras (chá) de farinha de trigo"], "pt"), "Adicione ⟦2 xícaras (chá) de⟧ farinha e misture.")
+        XCTAssertEqual(annotate("Dissolva a gelatina na água fria.", ["1 colher (chá) de gelatina em pó sem sabor", "3 colheres (sopa) de água fria"], "pt"), "Dissolva a gelatina em ⟦3 colheres (sopa) de⟧ água fria.")
+        XCTAssertEqual(annotate("Adicione os ovos.", ["2 unidades de ovos (tamanho médio)"], "pt"), "Adicione ⟦2 unidades de⟧ ovos.")
+        XCTAssertEqual(annotate("Unte a forma com manteiga e polvilhe farinha.", ["100 g de manteiga", "2 xícaras de farinha de trigo"], "pt"), "Unte a forma com manteiga e polvilhe farinha.")
+    }
+
     func testNoWordsLeaveEveryStepAsWritten() {
         XCTAssertEqual(StepAmounts.annotate(["Add the carrots."], lines: ["2 carrots"], words: nil), [[StepAmounts.Part(text: "Add the carrots.")]])
     }

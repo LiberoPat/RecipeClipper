@@ -51,7 +51,7 @@ object StepAmounts {
         val trailing = words.strings("steps", "trailingDescriptors")
             .flatMap { it.lowercase().replace("'", "").replace("’", "").replace('-', ' ').split(' ') }
             .filter { it.isNotEmpty() }.toSet()
-        // "al burro" is "a il burro": the amount takes the article's place after the preposition.
+        // "nella farina" is "in la farina": the amount takes the article's place after the preposition.
         val contractions = pairs(words, "contractions").associate { (word, preposition) -> word.lowercase() to preposition }
         // German compounds that answer their last part ("weizen-mehl": "Weizenmehl" is "das
         // Mehl"), as [first part, last part]; only these, so "Erdnussbutter" is never "die Butter".
@@ -302,7 +302,7 @@ object StepAmounts {
         val mentionEnd: Int,
         // A link to these lines, with the mention as its text, instead of an amount.
         val lines: List<Int> = emptyList(),
-        // The preposition a contraction held, written before the amount ("al" → "a ").
+        // The preposition a contraction held, written before the amount ("nella" → "in ").
         val preposition: String? = null,
     )
 
@@ -424,7 +424,7 @@ object StepAmounts {
             val q = tokens.getOrNull(m - 2)
             if (q != null && step.substring(q.end, p.start).isBlank() && (q.number || q.lower in w.partWords)) return null
             // The amount takes the article's place: "the carrots" → "2 carrots", "l'huile" → "… huile",
-            // "al burro" → "a 100 g di burro".
+            // "nella farina" → "in 250 g di farina".
             val elided = gap.isEmpty()
             val preposition = contraction?.let { if (step[p.start].isUpperCase()) it.replaceFirstChar { c -> c.uppercaseChar() } else it }
             return Insertion(p.start, if (apostrophe) at else p.end, amount, elided && !apostrophe, tokens[h].end, preposition = preposition)
