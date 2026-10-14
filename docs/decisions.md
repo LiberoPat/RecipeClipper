@@ -3203,7 +3203,8 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   rows' menus). Android: `MenuItemText` in the `DropdownMenuItem`'s text slot, the line in
   `bodySmall` and `onSurfaceVariant` (muted, `MutedOnInk` in dark mode), wrapping inside the
   menu's own width cap; the item merges its semantics, so TalkBack reads both. iOS: the native
-  menu subtitle (a label whose title is two `Text`s), which VoiceOver reads with the option. With
+  menu subtitle, from a button label of `Text`, `Text` and, for an icon, `Image` (inside a
+  `Label`'s title the second line is dropped); VoiceOver reads "Title, line". With
   the menus saying it themselves, `recipe_menu`, `week_menu`, `groceries_menu` and
   `pantry_menu` went; their stored keys are ignored like #246's.
 - **Which one, when** (`Tooltips.current`, the same rule on both platforms): a **visit** is one
