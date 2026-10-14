@@ -334,7 +334,8 @@ final class PantryViewModel {
     /// Checks every row shown.
     func onSelectAll() {
         guard uiState.selection != nil else { return }
-        uiState.selection?.ids = Set(uiState.order)
+        let shown = Set(uiState.order)
+        uiState.selection?.ids = shown
     }
 
     /// A section heading's "Select all": checks that section's rows too.

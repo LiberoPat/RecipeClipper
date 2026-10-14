@@ -1751,7 +1751,7 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   out" section last; each row shows its quantity as written on the right (no
   button since 2026-09-29) and a "Low" tag while running low; tap for the edit
   sheet (the stock, quantity as written, "Always have", a use-by date, Delete
-  with undo), with swipes and a touch-and-hold menu as shortcuts. Expired or within 3 days shows a paprika
+  with undo), with swipes as shortcuts; touch and hold selects several (#258). Expired or within 3 days shows a paprika
   badge; an opt-in 9:00 notification lists what expires today or tomorrow
   (Settings → Pantry). Running low or out puts its name on the grocery list
   silently; the row shows the Groceries tab's basket tag whenever a grocery line names the
@@ -3549,7 +3549,8 @@ the cupboard. It is replaced, and a **Running low** state added.
   switch. In its place, on the right, the item's **quantity as written** (muted, cut short with
   an ellipsis, at most 40% of the row on Android; nothing when there is none), and the quantity
   line under the name is gone, so rows are shorter. State shows by section (Run out, dimmed) and
-  the "Low" tag. The shortcuts: the row's menu (touch and hold) offers **both other states**
+  the "Low" tag. The shortcuts: the row's menu (touch and hold, until #258 gave touch and hold
+  to selecting) offered **both other states**
   (while the button existed it offered only the one the button didn't); swipes: leading
   Restock, trailing Ran out, each only where it changes something; iOS adds Running low as a
   second trailing action. Running low is also reached from #147's sheet. TalkBack and VoiceOver
@@ -3592,6 +3593,47 @@ the cupboard. It is replaced, and a **Running low** state added.
   row in the swiped cell's place, and the old cell stayed drawn, dimmed, under Run out; the
   anchor is now a `.background`. Only a screen recording shows it: the accessibility tree and
   XCUITest's screenshots were right.
+
+## Selecting several pantry items (#258)
+
+Owner's call (2026-10-14): "for pantry can we have checkboxes to quickly remove items in pantry, I
+have to hold press each item and its slow. I want to have checkboxes where user can drag their
+finger and clear a lot of it". Both platforms, the same way.
+
+- **Touch and hold now selects** (the Gmail and Photos pattern), with that row checked; the ⋮
+  menu's first item, "Select items", starts it with nothing checked, so it can be found.
+- **What moved off touch and hold:** it opened a menu of the row's two other stock states
+  (#194). Nothing was lost: the same choices are on the edit sheet a tap opens (its stock control,
+  applied at once), the swipes (Restock; Ran out, and iOS's Running low) and the row's TalkBack /
+  VoiceOver actions, which keep both other states and gain **Select**. The walkthroughs and UI
+  tests that used the menu now use the swipes or the sheet.
+- **While selecting:** every row leads with a checkbox and a tap toggles it (no sheet); a bar
+  replaces the title: ✕, "N selected" (announced as it changes), Select all, then Mark run out and
+  Remove (filled, the primary action). Each aisle heading, and Run out, offers its own Select all
+  while not all of it is checked. Back (Android) or ✕ leaves; swipes are off; the tooltips wait. A
+  search narrows the selection to what it shows, so nothing hidden is removed.
+- **Drag to select:** a drag that starts on a checkbox, or a touch and hold that goes on moving,
+  checks every row from where it began to where the finger is; going back over rows gives them
+  their state back (a range from the anchor over the selection as it was, as in Google Photos),
+  and a drag that starts on a checked row unchecks instead. Near the list's top or bottom edge it
+  scrolls on its own. A plain drag elsewhere scrolls. The selection, its anchor and the range are
+  ViewModel state (`PantrySelection`), so it survives rotation; the view only maps the finger to a
+  row: on Android, one `pointerInput` over the `LazyColumn` (Initial pass, so a begun drag takes
+  the moves before the list scrolls and the release before the row counts a tap) reading
+  `LazyListState.layoutInfo`; on iOS, custom gestures: a `LongPressGesture` sequenced before a
+  `DragGesture` on each row, and a `DragGesture` on the checkbox column, in the `List`'s named
+  coordinate space, with the rows' frames kept in an unobserved class and `ScrollViewReader` for
+  the edges. Not `EditMode`'s native multi-select: it can't carry a touch and hold on into a
+  drag, and draws UIKit's own selection. The iOS checkbox is always in the row, zero wide while not
+  selecting, so a row's structure never changes with its state (#203, #216), and the selection
+  bar sits above the `List`, not in it.
+- **Remove** deletes every checked item in one transaction (`PantryRepository.delete(ids)`) and
+  one Undo snackbar ("12 items removed") puts them all back whole, ids and uids included, like
+  "Clear run-out items". **Mark run out** runs out every checked item still in stock, through
+  the same rules as a swipe (its name goes on the grocery list unless it's there), with one Undo
+  ("2 items marked run out") that puts their stock back from a snapshot; the grocery lines it
+  added stay, as they do when an item is restocked. Either ends selecting. Snackbars stay
+  undo-only.
 
 ## The recipe screen's ViewModel, split into collaborators (#169)
 

@@ -16,8 +16,8 @@ struct PantryScreen: View {
     @State private var sendFileVM: SendFileViewModel?
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
     @State private var sideInset = ReadableWidth.gutter
-    /// Where the rows are, for drag to select (#258).
-    @State private var rows = PantryRowFrames()
+    /// Touch and hold, and drag to select (#258).
+    @State private var drag = PantryDragSelect()
 
     var body: some View {
         let state = vm.uiState
@@ -31,9 +31,7 @@ struct PantryScreen: View {
                     onMarkRunOut: vm.onMarkRunOutSelected, onRemove: vm.onRemoveSelected
                 )
             }
-            ScrollViewReader { proxy in
-                list(state, proxy: proxy)
-            }
+            list(state)
         }
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
@@ -75,7 +73,7 @@ struct PantryScreen: View {
         .modifier(SendFileEffect(vm: sendFileVM))
     }
 
-    private func list(_ state: PantryUiState, proxy: ScrollViewProxy) -> some View {
+    private func list(_ state: PantryUiState) -> some View {
         List {
             Group {
                 VStack(alignment: .leading, spacing: 8) {
@@ -101,6 +99,8 @@ struct PantryScreen: View {
                     }
                 }
                 .padding(.top, 4)
+                // Finds the List's scroll view, for the touch and hold and the drags (#258).
+                .background(PantryDragSelect.Installer(controller: drag))
                 .listRowSeparator(.hidden)
                 // One flat ForEach of headings and items, each with its own id ("heading-runOut",
                 // "item-12"), not a ForEach of items nested in a ForEach of sections: nested, an
@@ -112,7 +112,7 @@ struct PantryScreen: View {
                     case .heading(let section):
                         heading(section, state: state)
                     case .item(let item):
-                        itemRow(item, state: state, proxy: proxy)
+                        itemRow(item, state: state)
                     }
                 }
                 Color.clear.frame(height: 32).listRowSeparator(.hidden)
@@ -125,14 +125,13 @@ struct PantryScreen: View {
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
             sideInset = ReadableWidth.inset(in: width)
         }
-        // The part of the List not under the bars, where a drag's edges are.
-        .onGeometryChange(for: ClosedRange<CGFloat>.self, of: { geometry in
-            let top = geometry.safeAreaInsets.top
-            return top...max(top, geometry.size.height - geometry.safeAreaInsets.bottom)
-        }) { visible in
-            rows.visible = visible
+        .onAppear {
+            drag.isSelecting = { [vm] in vm.uiState.selection != nil }
+            drag.onLongPress = { [vm] in vm.onLongPress($0) }
+            drag.onDragStart = { [vm] in vm.onDragStart($0) }
+            drag.onDragTo = { [vm] in vm.onDragTo($0) }
+            drag.onDragEnd = { [vm] in vm.onDragEnd() }
         }
-        .coordinateSpace(.named(PantryRowFrames.space))
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
     }
@@ -167,20 +166,17 @@ struct PantryScreen: View {
         .listRowSeparator(.hidden)
     }
 
-    private func itemRow(_ item: PantryItem, state: PantryUiState, proxy: ScrollViewProxy) -> some View {
+    private func itemRow(_ item: PantryItem, state: PantryUiState) -> some View {
         // The stock tooltip (#190) points at the first row.
         PantryRow(
             item: item, today: state.today, onList: state.onList.contains(item.id),
             first: item.id == state.sections?.first?.items.first?.id, vm: vm,
-            selecting: state.selection != nil, selected: state.selection?.ids.contains(item.id) == true,
-            dragSpace: PantryRowFrames.space,
-            onDragChanged: { y in dragChanged(y, proxy: proxy) },
-            onDragEnded: dragEnded
+            selecting: state.selection != nil, selected: state.selection?.ids.contains(item.id) == true
         )
-        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(PantryRowFrames.space)) }) { frame in
-            rows.frames[item.id] = frame
+        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { frame in
+            drag.frames[item.id] = frame
         }
-        .onDisappear { rows.frames[item.id] = nil }
+        .onDisappear { drag.frames[item.id] = nil }
         .listRowSeparator(.hidden)
         // No swipes while selecting (#258).
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
@@ -213,32 +209,6 @@ struct PantryScreen: View {
     /// belongs) although the tree is right. The menu and sheet change it at once.
     private func afterSwipeCloses(_ change: @escaping () -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: change)
-    }
-
-    // MARK: Drag to select (#258): the finger's height to a row, and scrolling at the edges.
-
-    private func dragChanged(_ y: CGFloat, proxy: ScrollViewProxy) {
-        rows.lastY = y
-        if let id = rows.id(at: y) { vm.onDragTo(id) }
-        guard rows.edgeDirection != 0, rows.scrolling == nil else { return }
-        rows.scrolling = Task { @MainActor in
-            while !Task.isCancelled {
-                let direction = rows.edgeDirection
-                guard direction != 0, let next = rows.next(direction, order: vm.uiState.order) else { break }
-                withAnimation(.linear(duration: 0.1)) {
-                    proxy.scrollTo("item-\(next)", anchor: direction > 0 ? .bottom : .top)
-                }
-                try? await Task.sleep(for: .milliseconds(120))
-                if let id = rows.id(at: rows.lastY) { vm.onDragTo(id) }
-            }
-            rows.scrolling = nil
-        }
-    }
-
-    private func dragEnded() {
-        rows.scrolling?.cancel()
-        rows.scrolling = nil
-        vm.onDragEnd()
     }
 
     @ToolbarContentBuilder

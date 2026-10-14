@@ -342,9 +342,16 @@ items keep their stock; one can then be marked running low) and iOS's
 `PantryViewModelTest(s)` (running low, ran out and restock, each onto the list once);
 `BackupJsonTest(s)` (the key round-trips; the shared fixture, which has none, reads as in stock
 or run out); `PantryScreenTest` (Robolectric: the quantity on the right and no row button, a swipe to Ran
-out and the Run out heading, the basket tag's spoken label and action, the touch-and-hold menu
-with both other states, the row's TalkBack description and custom actions) and `PantryUITests`
-(a swipe to Ran out, the menu both ways, the sheet's control, moves between sections).
+out and the Run out heading, the basket tag's spoken label and action, the row's custom actions
+with both other states, the row's TalkBack description) and `PantryUITests`
+(a swipe to Ran out, the sheet's control, moves between sections).
+
+Selecting several pantry items (#258): `PantrySelectionTest` / `PantrySelectionTests` (enter,
+toggle, a drag's range from its anchor and back, Select all and a section's, Remove and Mark run
+out each with one undo); `PantryDaoTest` / `PantryDaoTests` (`delete(ids)` and its restore);
+`PantryScreenTest` (Robolectric: touch and hold selects, a tap toggles, Remove and Undo, the
+menu's "Select items", Select all and Mark run out); `PantryUITests` (select three, Remove, Undo;
+a touch and hold carried on into a drag).
 
 "Clear run-out items" and the basket tag for any line naming the item (owner, 2026-09-29):
 `PantryDaoTest` / `PantryDaoTests` (`deleteRunOut` through the real repository: only run-out

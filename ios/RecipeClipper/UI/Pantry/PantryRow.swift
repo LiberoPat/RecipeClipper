@@ -5,12 +5,11 @@ import SwiftUI
 /// sheet (its stock control changes the state); swipes are shortcuts. No per-row button (owner,
 /// 2026-09-29: redundant beside tapping the item).
 ///
-/// Selecting (#258): a touch and hold starts it with this row checked, and dragging on checks
-/// every row the finger passes; while `selecting`, the row leads with a checkbox, a tap toggles
-/// it, and a drag that starts on the checkbox checks (or unchecks) a run of rows. The checkbox is
-/// always there, only zero wide while not selecting, so the row's structure never changes with
-/// its state (#203, #216). The drag reports the finger's height in the List's `dragSpace`; the
-/// screen maps it to a row.
+/// Selecting (#258): while `selecting`, the row leads with a checkbox and a tap toggles it. The
+/// touch and hold that starts selecting, and the drags, are the screen's (`PantryDragSelect`):
+/// UIKit recognisers on the List, since a SwiftUI gesture on a row stops the List's swipe actions.
+/// The checkbox is always there, only zero wide while not selecting, so the row's structure never
+/// changes with its state (#203, #216).
 struct PantryRow: View {
     let item: PantryItem
     let today: Int64
@@ -19,13 +18,6 @@ struct PantryRow: View {
     let vm: PantryViewModel
     var selecting = false
     var selected = false
-    var dragSpace = "pantryList"
-    var onDragChanged: (CGFloat) -> Void = { _ in }
-    var onDragEnded: () -> Void = {}
-
-    /// Gesture bookkeeping only: whether this touch has already started selecting or a drag.
-    @State private var held = false
-    @State private var dragging = false
 
     /// VoiceOver's actions: both other states.
     private var others: [PantryStock] { PantryStock.allCases.filter { $0 != item.stock } }
@@ -34,108 +26,71 @@ struct PantryRow: View {
         if selecting { vm.onToggle(item.id) } else { vm.onEdit(item) }
     }
 
-    /// A touch and hold, then a drag: starts selecting, then reaches row after row.
-    private var holdThenDrag: some Gesture {
-        LongPressGesture(minimumDuration: 0.4)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(dragSpace)))
-            .onChanged { value in
-                guard case .second(true, let drag) = value else { return }
-                if !held {
-                    held = true
-                    vm.onLongPress(item.id)
-                }
-                if let drag { onDragChanged(drag.location.y) }
-            }
-            .onEnded { _ in
-                if held { onDragEnded() }
-                held = false
-            }
-    }
-
-    /// From the checkbox: a drag at once (a tap is a drag that goes nowhere, so it toggles).
-    private var checkboxDrag: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(dragSpace))
-            .onChanged { value in
-                if !dragging {
-                    dragging = true
-                    vm.onDragStart(item.id)
-                }
-                onDragChanged(value.location.y)
-            }
-            .onEnded { _ in
-                dragging = false
-                onDragEnded()
-            }
-    }
-
     var body: some View {
         let stock = item.stock
-        HStack(alignment: .center, spacing: 0) {
-            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                .font(.title3)
-                .foregroundStyle(selected ? Palette.primary : Palette.muted)
-                .frame(width: selecting ? 44 : 0, alignment: .leading)
-                .frame(maxHeight: .infinity)
-                .opacity(selecting ? 1 : 0)
-                .contentShape(Rectangle())
-                .highPriorityGesture(checkboxDrag, including: selecting ? .all : .none)
-                .accessibilityHidden(true)
-                .accessibilityIdentifier("check-\(item.id)")
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 0) {
-                    // The name, then its tags; they wrap under a long name or large text rather
-                    // than squeezing it.
-                    TagFlow {
-                        Text(item.name)
-                            .textStyle(Typography.bodyLarge)
-                            .foregroundStyle(item.inStock ? Palette.onBackground : Palette.muted)
-                        if stock == .runningLow {
-                            Text(Strings.pantryLow)
-                                .textStyle(Typography.labelSmall)
-                                .foregroundStyle(Palette.accentText)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .overlay(Capsule().stroke(Palette.hairline, lineWidth: 1))
-                                .accessibilityIdentifier("low-\(item.id)")
+        Button(action: activate) {
+            HStack(alignment: .center, spacing: 0) {
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(selected ? Palette.primary : Palette.muted)
+                    .frame(width: selecting ? 44 : 0, alignment: .leading)
+                    .opacity(selecting ? 1 : 0)
+                    .accessibilityHidden(true)
+                    .accessibilityIdentifier("check-\(item.id)")
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // The name, then its tags; they wrap under a long name or large text rather
+                        // than squeezing it.
+                        TagFlow {
+                            Text(item.name)
+                                .textStyle(Typography.bodyLarge)
+                                .foregroundStyle(item.inStock ? Palette.onBackground : Palette.muted)
+                            if stock == .runningLow {
+                                Text(Strings.pantryLow)
+                                    .textStyle(Typography.labelSmall)
+                                    .foregroundStyle(Palette.accentText)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .overlay(Capsule().stroke(Palette.hairline, lineWidth: 1))
+                                    .accessibilityIdentifier("low-\(item.id)")
+                            }
+                            if onList {
+                                OnListTag()
+                                    .anchorPreference(key: OnListTagBounds.self, value: .bounds) { $0 }
+                            }
                         }
-                        if onList {
-                            OnListTag()
-                                .anchorPreference(key: OnListTagBounds.self, value: .bounds) { $0 }
+                        if item.alwaysHave {
+                            Text(Strings.pantryAlwaysHave).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
+                        }
+                        if let expiry {
+                            Text(expiry.text)
+                                .textStyle(Typography.bodySmall)
+                                .foregroundStyle(expiry.badge != nil ? Palette.accentText : Palette.muted)
+                                .accessibilityIdentifier("expiry-\(item.id)")
                         }
                     }
-                    if item.alwaysHave {
-                        Text(Strings.pantryAlwaysHave).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
-                    }
-                    if let expiry {
-                        Text(expiry.text)
-                            .textStyle(Typography.bodySmall)
-                            .foregroundStyle(expiry.badge != nil ? Palette.accentText : Palette.muted)
-                            .accessibilityIdentifier("expiry-\(item.id)")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    // The quantity as written, in the button's old place; a long one is cut short.
+                    if let quantity = item.quantity {
+                        Text(quantity)
+                            .textStyle(Typography.bodyMedium)
+                            .foregroundStyle(Palette.muted)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .accessibilityIdentifier("quantity-\(item.id)")
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                // The quantity as written, in the button's old place; a long one is cut short.
-                if let quantity = item.quantity {
-                    Text(quantity)
-                        .textStyle(Typography.bodyMedium)
-                        .foregroundStyle(Palette.muted)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .accessibilityIdentifier("quantity-\(item.id)")
-                }
+                .padding(.vertical, 12)
             }
-            .padding(.vertical, 12)
+            .contentShape(Rectangle())
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .contentShape(Rectangle())
-        .gesture(holdThenDrag.exclusively(before: TapGesture().onEnded(activate)))
+        .buttonStyle(.plain)
         // VoiceOver reads the row as one ("Garlic, 1 head, Run out, On your grocery list"), with
         // the other two states and Select as its actions (#194, #258); while selecting, a tap
         // checks it, and a checked row says so.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(description)
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityAction(activate)
         .accessibilityActions {
             if !selecting {
                 ForEach(others, id: \.self) { choice in

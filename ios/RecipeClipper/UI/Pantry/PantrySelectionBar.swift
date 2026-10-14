@@ -57,38 +57,167 @@ struct PantrySelectionBar: View {
     }
 }
 
-/// Drag to select's geometry (#258): where each row is in the List (`space`), the part of the
-/// List not under the bars, and where the finger is. A plain class, not observed, so the frames'
-/// updates while scrolling never redraw the screen; the selection itself is the ViewModel's.
-final class PantryRowFrames {
-    static let space = "pantryList"
-
+/// The touch and hold that starts selecting, and drag to select (#258), as UIKit recognisers on
+/// the List's scroll view: a SwiftUI gesture on a row stopped the List's swipe actions, and
+/// `EditMode`'s own multi-select can't carry a touch and hold on into a drag. A touch and hold on
+/// a row starts selecting ([onLongPress]) and, without lifting, drags; while selecting, a pan
+/// that starts on a row's checkbox column drags at once (the scroll view's pan waits for it to
+/// fail, which it does at once anywhere else, so a plain drag still scrolls). Each move reports
+/// the row under the finger ([onDragTo]); near the top or bottom edge the list scrolls on its
+/// own. Only the geometry lives here: the rows' frames on screen, kept by the screen, in a plain
+/// class so their updates never redraw it. The selection itself is the ViewModel's.
+@MainActor
+final class PantryDragSelect: NSObject, UIGestureRecognizerDelegate {
     var frames: [Int64: CGRect] = [:]
-    var visible: ClosedRange<CGFloat> = 0...0
-    var lastY: CGFloat = 0
-    var scrolling: Task<Void, Never>?
+    var isSelecting: () -> Bool = { false }
+    var onLongPress: (Int64) -> Void = { _ in }
+    var onDragStart: (Int64) -> Void = { _ in }
+    var onDragTo: (Int64) -> Void = { _ in }
+    var onDragEnd: () -> Void = {}
 
-    /// How close to the top or bottom a finger starts the list scrolling.
-    private let edge: CGFloat = 60
+    /// The checkbox column's width, from the row's leading edge.
+    private let checkboxWidth: CGFloat = 44
+    /// How close to the top or bottom a finger starts the list scrolling, and its fastest step.
+    private let edge: CGFloat = 64
+    private let maxStep: CGFloat = 14
 
-    /// The row under `y`; nil over a heading or nothing.
+    private weak var scrollView: UIScrollView?
+    private weak var checkboxPan: UIPanGestureRecognizer?
+    private var panStart: Int64?
+    private var lastY: CGFloat = 0
+    private var timer: Timer?
+
+    /// The row under `y` (window coordinates, as SwiftUI's global space); nil over anything else.
     func id(at y: CGFloat) -> Int64? {
         frames.first { $0.value.minY <= y && y < $0.value.maxY }?.key
     }
 
-    /// -1 near the top, 1 near the bottom, else 0.
-    var edgeDirection: Int {
-        if lastY < visible.lowerBound + edge { return -1 }
-        if lastY > visible.upperBound - edge { return 1 }
+    /// Adds the recognisers to the scroll view holding `view`, once.
+    func attach(to view: UIView) {
+        var candidate = view.superview
+        while let current = candidate, !(current is UIScrollView) { candidate = current.superview }
+        guard let scroll = candidate as? UIScrollView, scroll !== scrollView else { return }
+        scrollView = scroll
+        let hold = UILongPressGestureRecognizer(target: self, action: #selector(held(_:)))
+        hold.minimumPressDuration = 0.4
+        hold.delegate = self
+        scroll.addGestureRecognizer(hold)
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
+        pan.delegate = self
+        scroll.addGestureRecognizer(pan)
+        scroll.panGestureRecognizer.require(toFail: pan)
+        checkboxPan = pan
+    }
+
+    func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+        if recognizer === checkboxPan, let pan = checkboxPan {
+            // Where the finger went down: the pan only begins once it has moved.
+            let now = pan.location(in: nil)
+            let moved = pan.translation(in: nil)
+            let start = CGPoint(x: now.x - moved.x, y: now.y - moved.y)
+            guard isSelecting(), let id = id(at: start.y), let frame = frames[id], start.x <= frame.minX + checkboxWidth else {
+                return false
+            }
+            panStart = id
+            return true
+        }
+        return id(at: recognizer.location(in: nil).y) != nil
+    }
+
+    @objc private func held(_ recognizer: UILongPressGestureRecognizer) {
+        let y = recognizer.location(in: nil).y
+        switch recognizer.state {
+        case .began:
+            guard let id = id(at: y) else { return }
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            lastY = y
+            onLongPress(id)
+        case .changed:
+            track(y)
+        case .ended, .cancelled, .failed:
+            finish()
+        default:
+            break
+        }
+    }
+
+    @objc private func panned(_ recognizer: UIPanGestureRecognizer) {
+        let y = recognizer.location(in: nil).y
+        switch recognizer.state {
+        case .began:
+            guard let id = panStart else { return }
+            onDragStart(id)
+            track(y)
+        case .changed:
+            track(y)
+        case .ended, .cancelled, .failed:
+            finish()
+        default:
+            break
+        }
+    }
+
+    private func track(_ y: CGFloat) {
+        lastY = y
+        if let id = id(at: y) { onDragTo(id) }
+        if step() != 0, timer == nil {
+            timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.tick() }
+            }
+        }
+    }
+
+    private func finish() {
+        timer?.invalidate()
+        timer = nil
+        panStart = nil
+        onDragEnd()
+    }
+
+    /// How far to scroll this frame: faster the nearer the edge, 0 away from both.
+    private func step() -> CGFloat {
+        guard let scroll = scrollView else { return 0 }
+        let frame = scroll.convert(scroll.bounds, to: nil)
+        let top = frame.minY + scroll.adjustedContentInset.top
+        let bottom = frame.maxY - scroll.adjustedContentInset.bottom
+        if lastY < top + edge { return -maxStep * min(1, (top + edge - lastY) / edge) }
+        if lastY > bottom - edge { return maxStep * min(1, (lastY - (bottom - edge)) / edge) }
         return 0
     }
 
-    /// The row just past the last one showing in `direction`, to scroll to; nil at the end.
-    func next(_ direction: Int, order: [Int64]) -> Int64? {
-        let showing = frames.filter { $0.value.maxY > visible.lowerBound && $0.value.minY < visible.upperBound }.keys
-        let indices = showing.compactMap { order.firstIndex(of: $0) }
-        guard let edgeIndex = direction > 0 ? indices.max() : indices.min() else { return nil }
-        let next = edgeIndex + direction
-        return order.indices.contains(next) ? order[next] : nil
+    private func tick() {
+        let step = step()
+        guard let scroll = scrollView, step != 0 else {
+            timer?.invalidate()
+            timer = nil
+            return
+        }
+        let lowest = -scroll.adjustedContentInset.top
+        let highest = max(lowest, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
+        scroll.contentOffset.y = min(highest, max(lowest, scroll.contentOffset.y + step))
+        if let id = id(at: lastY) { onDragTo(id) }
+    }
+
+    /// A zero-size view inside the List that hands its scroll view to the controller.
+    struct Installer: UIViewRepresentable {
+        let controller: PantryDragSelect
+
+        func makeUIView(context: Context) -> InstallerView {
+            let view = InstallerView()
+            view.controller = controller
+            view.isUserInteractionEnabled = false
+            return view
+        }
+
+        func updateUIView(_ view: InstallerView, context: Context) { view.controller = controller }
+    }
+
+    final class InstallerView: UIView {
+        weak var controller: PantryDragSelect?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window != nil { controller?.attach(to: self) }
+        }
     }
 }
