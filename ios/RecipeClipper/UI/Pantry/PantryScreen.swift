@@ -3,8 +3,8 @@ import SwiftUI
 /// The Pantry tab (#51; Android's PantryScreen): "Add to the pantry", a search field, then
 /// everything by aisle (or by expiry, from the menu), and what has run out last (#194). Each row
 /// shows whether it's in stock, running low or run out, and its quantity as written; tapping the
-/// row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes and a
-/// touch-and-hold menu as shortcuts. The menu sends what's in stock, as plain text or as a file (#149), and
+/// row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes as
+/// shortcuts. The menu sends what's in stock, as plain text or as a file (#149), and
 /// clears what has run out after asking, with undo (#194). A `List`, for the
 /// swipe actions, so the readable column is made from the width, as on Recipes. A touch and
 /// hold, or the menu's "Select items", starts selecting (#258): checkboxes, drag to check a run of
@@ -21,18 +21,22 @@ struct PantryScreen: View {
 
     var body: some View {
         let state = vm.uiState
-        // The selection bar sits above the List, not inside it, so the List's identity and rows
-        // never change when selecting starts or stops.
-        VStack(spacing: 0) {
-            if let selection = state.selection {
-                PantrySelectionBar(
-                    count: selection.ids.count, allSelected: state.allSelected,
-                    onExit: vm.onExitSelection, onSelectAll: vm.onSelectAll,
-                    onMarkRunOut: vm.onMarkRunOutSelected, onRemove: vm.onRemoveSelected
-                )
+        // The selection bar lies over the top of the List, not in it or above it: the List's
+        // rows never change, nor move from under the finger that has just started selecting.
+        list(state)
+            .overlay(alignment: .top) {
+                if let selection = state.selection {
+                    PantrySelectionBar(
+                        count: selection.ids.count, allSelected: state.allSelected,
+                        onExit: vm.onExitSelection, onSelectAll: vm.onSelectAll,
+                        onMarkRunOut: vm.onMarkRunOutSelected, onRemove: vm.onRemoveSelected
+                    )
+                    .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).maxY }) { bottom in
+                        drag.coveredTop = bottom
+                    }
+                    .onDisappear { drag.coveredTop = 0 }
+                }
             }
-            list(state)
-        }
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar(state) }
@@ -171,7 +175,8 @@ struct PantryScreen: View {
         PantryRow(
             item: item, today: state.today, onList: state.onList.contains(item.id),
             first: item.id == state.sections?.first?.items.first?.id, vm: vm,
-            selecting: state.selection != nil, selected: state.selection?.ids.contains(item.id) == true
+            selecting: state.selection != nil, selected: state.selection?.ids.contains(item.id) == true,
+            ignoresTap: { [drag] in drag.ignoresTap }
         )
         .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { frame in
             drag.frames[item.id] = frame

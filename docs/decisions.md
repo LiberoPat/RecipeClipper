@@ -3620,10 +3620,14 @@ finger and clear a lot of it". Both platforms, the same way.
   ViewModel state (`PantrySelection`), so it survives rotation; the view only maps the finger to a
   row: on Android, one `pointerInput` over the `LazyColumn` (Initial pass, so a begun drag takes
   the moves before the list scrolls and the release before the row counts a tap) reading
-  `LazyListState.layoutInfo`; on iOS, custom gestures: a `LongPressGesture` sequenced before a
-  `DragGesture` on each row, and a `DragGesture` on the checkbox column, in the `List`'s named
-  coordinate space, with the rows' frames kept in an unobserved class and `ScrollViewReader` for
-  the edges. Not `EditMode`'s native multi-select: it can't carry a touch and hold on into a
+  `LazyListState.layoutInfo`; on iOS, two UIKit recognisers added to the `List`'s scroll view
+  (`PantryDragSelect`): a `UILongPressGestureRecognizer`, which goes on reporting the finger after
+  it fires, and a `UIPanGestureRecognizer` that begins only on a checkbox while selecting, which
+  the scroll view's own pan waits on (it fails at once anywhere else); the rows' on-screen frames
+  are kept in that unobserved class, and it scrolls the scroll view itself at the edges. **Not
+  SwiftUI gestures:** a `LongPressGesture` (sequenced before a `DragGesture`, or simultaneous with
+  the row's Button) on a `List` row stopped the row's swipe actions, and an exclusive one stopped
+  its tap. **Not `EditMode`'s native multi-select:** it can't carry a touch and hold on into a
   drag, and draws UIKit's own selection. The iOS checkbox is always in the row, zero wide while not
   selecting, so a row's structure never changes with its state (#203, #216), and the selection
   bar sits above the `List`, not in it.

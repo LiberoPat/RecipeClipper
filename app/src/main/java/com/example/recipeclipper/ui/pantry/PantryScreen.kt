@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.pantry
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,7 +29,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -64,7 +68,7 @@ private val ListStart = 20.dp
 /**
  * The Pantry tab (#51): "Add to the pantry", a search field, then everything by aisle (or by
  * expiry, from the menu), and what has run out last (#194). Each row shows whether it's in
- * stock, running low or run out, and its quantity as written; tapping the row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes and a touch-and-hold menu as shortcuts. The menu sends what's in stock, as
+ * stock, running low or run out, and its quantity as written; tapping the row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes as shortcuts. The menu sends what's in stock, as
  * plain text or as a file (#149), and clears what has run out after asking, with undo (#194).
  * A touch and hold, or the menu's "Select items", starts selecting (#258): checkboxes, drag to
  * check a run of rows, then Remove or Mark run out for them all, each with one undo.
@@ -108,11 +112,162 @@ fun PantryScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
+    // The bar's height: the drag's top edge sits under it. View geometry only.
+    var barHeight by remember { mutableIntStateOf(0) }
 
     RecipeClipperTheme {
         TooltipHost(TooltipScreen.PANTRY, blocked = snackbarHostState.currentSnackbarData != null || selection != null) {
             Scaffold(
-                topBar = {
+                snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
+                containerColor = MaterialTheme.colorScheme.background,
+                contentWindowInsets = WindowInsets.safeDrawing
+            ) { padding ->
+                // The selection bar lies over the top of the list rather than pushing it down, so
+                // the rows stay under the finger that has just started selecting (#258).
+                Box(Modifier.fillMaxSize().padding(padding)) {
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(start = ListStart, end = 20.dp, top = 4.dp, bottom = 32.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .dragToSelect(
+                                listState = listState,
+                                scope = scope,
+                                checkboxEdge = ListStart + CheckboxColumn,
+                                topCover = { if (selecting) barHeight.toFloat() else 0f },
+                                isSelecting = { selecting },
+                                onLongPress = { id ->
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.onLongPress(id)
+                                },
+                                onDragStart = viewModel::onDragStart,
+                                onDragTo = viewModel::onDragTo,
+                                onDragEnd = viewModel::onDragEnd
+                            )
+                            .testTag("pantryList")
+                    ) {
+                        item(key = "header") {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
+                                Text(
+                                    stringResource(R.string.tab_pantry),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                PantryMenu(
+                                    sort = state.sort,
+                                    onSort = viewModel::onSortChange,
+                                    canSend = state.hasInStock,
+                                    onShare = {
+                                        val title = resources.getString(R.string.tab_pantry)
+                                        viewModel.shareText(title) { resources.getString(it.label()) }?.let { text ->
+                                            ShareCompat.IntentBuilder(context)
+                                                .setType("text/plain")
+                                                .setSubject(title)
+                                                .setText(text)
+                                                .setChooserTitle(title)
+                                                .startChooser()
+                                        }
+                                    },
+                                    onSendFile = sendFileViewModel?.let { vm ->
+                                        { vm.sendPantry(resources.getString(R.string.tab_pantry)) }
+                                    },
+                                    canClearRunOut = state.hasRunOut,
+                                    onClearRunOut = viewModel::onClearRunOut,
+                                    canSelect = state.sections.orEmpty().isNotEmpty(),
+                                    onSelectItems = viewModel::onStartSelecting
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = state.draft,
+                                onValueChange = viewModel::onDraftChange,
+                                label = { Text(stringResource(R.string.pantry_add_hint)) },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { viewModel.onAddTyped() }),
+                                trailingIcon = {
+                                    if (state.draft.isNotBlank()) {
+                                        TextButton(onClick = viewModel::onAddTyped) { Text(stringResource(R.string.action_add)) }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().testTag("pantryDraft")
+                            )
+                            if (state.hasItems) {
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = state.query,
+                                    onValueChange = viewModel::onQueryChange,
+                                    label = { Text(stringResource(R.string.pantry_search_hint)) },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth().testTag("pantrySearch")
+                                )
+                            }
+                            val empty = when {
+                                state.sections == null -> null
+                                !state.hasItems -> stringResource(R.string.pantry_empty)
+                                state.sections.orEmpty().isEmpty() -> stringResource(R.string.pantry_no_results, state.query.trim())
+                                else -> null
+                            }
+                            if (empty != null) {
+                                Spacer(Modifier.height(16.dp))
+                                Text(empty, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        state.sections.orEmpty().forEach { section ->
+                            val sectionKey = if (section.runOut) "runOut" else section.aisle?.key ?: "expiry"
+                            item(key = "aisle-$sectionKey") {
+                                Column(Modifier.padding(top = 18.dp, bottom = 2.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Column(Modifier.weight(1f)) {
+                                            if (section.runOut) {
+                                                // Run out sits last, dimmed (#194).
+                                                Text(
+                                                    stringResource(R.string.pantry_out),
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.semantics { heading() }
+                                                )
+                                                Spacer(Modifier.height(4.dp))
+                                            } else {
+                                                section.aisle?.let {
+                                                    SectionHeading(stringResource(it.label()))
+                                                    Spacer(Modifier.height(4.dp))
+                                                }
+                                            }
+                                        }
+                                        // A section's own Select all, while selecting and not all of it is (#258).
+                                        if (selection != null && (section.runOut || section.aisle != null) &&
+                                            section.items.any { it.id !in selection.ids }
+                                        ) {
+                                            TextButton(
+                                                onClick = { viewModel.onSelectSection(section) },
+                                                modifier = Modifier.testTag("selectSection-$sectionKey")
+                                            ) { Text(stringResource(R.string.action_select_all)) }
+                                        }
+                                    }
+                                    Hairline()
+                                }
+                            }
+                            items(section.items, key = { "item-${it.id}" }) { item ->
+                                PantryRow(
+                                    item = item,
+                                    today = state.today,
+                                    onList = item.id in state.onList,
+                                    // The stock tooltip (#190) points at the first row.
+                                    first = item == state.sections?.firstOrNull()?.items?.firstOrNull(),
+                                    onSetStock = { stock -> viewModel.onSetStock(item, stock) },
+                                    onEdit = { viewModel.onEdit(item) },
+                                    onTakeOffList = { viewModel.onTakeOffList(item) },
+                                    selecting = selection != null,
+                                    selected = selection?.ids?.contains(item.id) == true,
+                                    onToggle = { viewModel.onToggle(item.id) },
+                                    onSelect = { viewModel.onSelect(item.id) }
+                                )
+                            }
+                        }
+                    }
                     if (selection != null) {
                         PantrySelectionBar(
                             count = selection.ids.size,
@@ -120,156 +275,9 @@ fun PantryScreen(
                             onExit = viewModel::onExitSelection,
                             onSelectAll = viewModel::onSelectAll,
                             onMarkRunOut = viewModel::onMarkRunOutSelected,
-                            onRemove = viewModel::onRemoveSelected
+                            onRemove = viewModel::onRemoveSelected,
+                            modifier = Modifier.align(Alignment.TopCenter).onSizeChanged { barHeight = it.height }
                         )
-                    }
-                },
-                snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
-                containerColor = MaterialTheme.colorScheme.background,
-                contentWindowInsets = WindowInsets.safeDrawing
-            ) { padding ->
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(start = ListStart, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .dragToSelect(
-                            listState = listState,
-                            scope = scope,
-                            checkboxEdge = ListStart + CheckboxColumn,
-                            isSelecting = { selecting },
-                            onLongPress = { id ->
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.onLongPress(id)
-                            },
-                            onDragStart = viewModel::onDragStart,
-                            onDragTo = viewModel::onDragTo,
-                            onDragEnd = viewModel::onDragEnd
-                        )
-                        .testTag("pantryList")
-                ) {
-                    item(key = "header") {
-                        // While selecting, the selection bar stands in for the title and its menu.
-                        if (selection == null) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
-                            Text(
-                                stringResource(R.string.tab_pantry),
-                                style = MaterialTheme.typography.headlineMedium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            PantryMenu(
-                                sort = state.sort,
-                                onSort = viewModel::onSortChange,
-                                canSend = state.hasInStock,
-                                onShare = {
-                                    val title = resources.getString(R.string.tab_pantry)
-                                    viewModel.shareText(title) { resources.getString(it.label()) }?.let { text ->
-                                        ShareCompat.IntentBuilder(context)
-                                            .setType("text/plain")
-                                            .setSubject(title)
-                                            .setText(text)
-                                            .setChooserTitle(title)
-                                            .startChooser()
-                                    }
-                                },
-                                onSendFile = sendFileViewModel?.let { vm ->
-                                    { vm.sendPantry(resources.getString(R.string.tab_pantry)) }
-                                },
-                                canClearRunOut = state.hasRunOut,
-                                onClearRunOut = viewModel::onClearRunOut,
-                                canSelect = state.sections.orEmpty().isNotEmpty(),
-                                onSelectItems = viewModel::onStartSelecting
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = state.draft,
-                            onValueChange = viewModel::onDraftChange,
-                            label = { Text(stringResource(R.string.pantry_add_hint)) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            keyboardActions = KeyboardActions(onDone = { viewModel.onAddTyped() }),
-                            trailingIcon = {
-                                if (state.draft.isNotBlank()) {
-                                    TextButton(onClick = viewModel::onAddTyped) { Text(stringResource(R.string.action_add)) }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().testTag("pantryDraft")
-                        )
-                        if (state.hasItems) {
-                            Spacer(Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = state.query,
-                                onValueChange = viewModel::onQueryChange,
-                                label = { Text(stringResource(R.string.pantry_search_hint)) },
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth().testTag("pantrySearch")
-                            )
-                        }
-                        val empty = when {
-                            state.sections == null -> null
-                            !state.hasItems -> stringResource(R.string.pantry_empty)
-                            state.sections.orEmpty().isEmpty() -> stringResource(R.string.pantry_no_results, state.query.trim())
-                            else -> null
-                        }
-                        if (empty != null) {
-                            Spacer(Modifier.height(16.dp))
-                            Text(empty, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    state.sections.orEmpty().forEach { section ->
-                        val sectionKey = if (section.runOut) "runOut" else section.aisle?.key ?: "expiry"
-                        item(key = "aisle-$sectionKey") {
-                            Column(Modifier.padding(top = 18.dp, bottom = 2.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Column(Modifier.weight(1f)) {
-                                        if (section.runOut) {
-                                            // Run out sits last, dimmed (#194).
-                                            Text(
-                                                stringResource(R.string.pantry_out),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.semantics { heading() }
-                                            )
-                                            Spacer(Modifier.height(4.dp))
-                                        } else {
-                                            section.aisle?.let {
-                                                SectionHeading(stringResource(it.label()))
-                                                Spacer(Modifier.height(4.dp))
-                                            }
-                                        }
-                                    }
-                                    // A section's own Select all, while selecting and not all of it is (#258).
-                                    if (selection != null && (section.runOut || section.aisle != null) &&
-                                        section.items.any { it.id !in selection.ids }
-                                    ) {
-                                        TextButton(
-                                            onClick = { viewModel.onSelectSection(section) },
-                                            modifier = Modifier.testTag("selectSection-$sectionKey")
-                                        ) { Text(stringResource(R.string.action_select_all)) }
-                                    }
-                                }
-                                Hairline()
-                            }
-                        }
-                        items(section.items, key = { "item-${it.id}" }) { item ->
-                            PantryRow(
-                                item = item,
-                                today = state.today,
-                                onList = item.id in state.onList,
-                                // The stock tooltip (#190) points at the first row.
-                                first = item == state.sections?.firstOrNull()?.items?.firstOrNull(),
-                                onSetStock = { stock -> viewModel.onSetStock(item, stock) },
-                                onEdit = { viewModel.onEdit(item) },
-                                onTakeOffList = { viewModel.onTakeOffList(item) },
-                                selecting = selection != null,
-                                selected = selection?.ids?.contains(item.id) == true,
-                                onToggle = { viewModel.onToggle(item.id) },
-                                onSelect = { viewModel.onSelect(item.id) }
-                            )
-                        }
                     }
                 }
             }

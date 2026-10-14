@@ -74,6 +74,8 @@ final class PantryDragSelect: NSObject, UIGestureRecognizerDelegate {
     var onDragStart: (Int64) -> Void = { _ in }
     var onDragTo: (Int64) -> Void = { _ in }
     var onDragEnd: () -> Void = {}
+    /// Where the selection bar laid over the List ends, on screen: the drag's top edge is below it.
+    var coveredTop: CGFloat = 0
 
     /// The checkbox column's width, from the row's leading edge.
     private let checkboxWidth: CGFloat = 44
@@ -124,17 +126,29 @@ final class PantryDragSelect: NSObject, UIGestureRecognizerDelegate {
         return id(at: recognizer.location(in: nil).y) != nil
     }
 
+    /// Alongside the rows' own (SwiftUI's) recognisers, which would otherwise keep these from ever
+    /// beginning; never alongside the scroll view's pan, so a drag that has begun doesn't scroll.
+    func gestureRecognizer(_ recognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        other !== scrollView?.panGestureRecognizer
+    }
+
+    /// Whether a row's tap now is the release of a touch and hold, not a tap.
+    var ignoresTap: Bool { Date() < ignoreTapsUntil }
+    private var ignoreTapsUntil = Date.distantPast
+
     @objc private func held(_ recognizer: UILongPressGestureRecognizer) {
         let y = recognizer.location(in: nil).y
         switch recognizer.state {
         case .began:
             guard let id = id(at: y) else { return }
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            ignoreTapsUntil = .distantFuture
             lastY = y
             onLongPress(id)
         case .changed:
             track(y)
         case .ended, .cancelled, .failed:
+            ignoreTapsUntil = Date().addingTimeInterval(0.5)
             finish()
         default:
             break
@@ -178,7 +192,7 @@ final class PantryDragSelect: NSObject, UIGestureRecognizerDelegate {
     private func step() -> CGFloat {
         guard let scroll = scrollView else { return 0 }
         let frame = scroll.convert(scroll.bounds, to: nil)
-        let top = frame.minY + scroll.adjustedContentInset.top
+        let top = max(frame.minY + scroll.adjustedContentInset.top, coveredTop)
         let bottom = frame.maxY - scroll.adjustedContentInset.bottom
         if lastY < top + edge { return -maxStep * min(1, (top + edge - lastY) / edge) }
         if lastY > bottom - edge { return maxStep * min(1, (lastY - (bottom - edge)) / edge) }

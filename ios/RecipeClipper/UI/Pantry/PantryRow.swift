@@ -18,11 +18,14 @@ struct PantryRow: View {
     let vm: PantryViewModel
     var selecting = false
     var selected = false
+    /// True while a touch and hold is being released: the Button's tap then isn't one.
+    var ignoresTap: () -> Bool = { false }
 
     /// VoiceOver's actions: both other states.
     private var others: [PantryStock] { PantryStock.allCases.filter { $0 != item.stock } }
 
     private func activate() {
+        if ignoresTap() { return }
         if selecting { vm.onToggle(item.id) } else { vm.onEdit(item) }
     }
 

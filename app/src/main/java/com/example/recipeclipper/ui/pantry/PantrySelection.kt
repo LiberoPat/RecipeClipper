@@ -6,13 +6,8 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -57,15 +52,12 @@ internal fun PantrySelectionBar(
     onExit: () -> Unit,
     onSelectAll: () -> Unit,
     onMarkRunOut: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Surface(color = MaterialTheme.colorScheme.background) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                .padding(start = 8.dp, end = 12.dp, top = 8.dp)
-        ) {
+    // Inside the screen's safe-drawing padding already, over the top of the list.
+    Surface(color = MaterialTheme.colorScheme.background, modifier = modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onExit, modifier = Modifier.testTag("exitSelection")) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_exit_selection))
@@ -112,7 +104,8 @@ internal fun LazyListState.itemIdAt(y: Float): Long? {
  * Drag to select (#258), over the Pantry's list: a touch and hold on a row starts selecting
  * ([onLongPress]); while [isSelecting], a press on the checkbox column (up to [checkboxEdge] in)
  * that moves starts a drag ([onDragStart]). Either way, moving then reports each row the finger
- * reaches ([onDragTo]), and near the top or bottom edge the list scrolls on its own. Only the
+ * reaches ([onDragTo]), and near the top (under [topCover], the selection bar laid over the
+ * list) or bottom edge the list scrolls on its own. Only the
  * maths of where the finger is lives here; the selection is the ViewModel's.
  *
  * It watches the Initial pass, so once a drag has begun it takes the moves before the list can
@@ -123,6 +116,7 @@ internal fun Modifier.dragToSelect(
     listState: LazyListState,
     scope: CoroutineScope,
     checkboxEdge: Dp,
+    topCover: () -> Float,
     isSelecting: () -> Boolean,
     onLongPress: (Long) -> Unit,
     onDragStart: (Long) -> Unit,
@@ -169,8 +163,8 @@ internal fun Modifier.dragToSelect(
         var y = down.position.y
         // How far to scroll each frame: faster the nearer the edge.
         fun speed(): Float = when {
-            y < edge -> -maxStep * (edge - y) / edge
-            y > size.height - edge -> maxStep * (y - (size.height - edge)) / edge
+            y < topCover() + edge -> -maxStep * minOf(1f, (topCover() + edge - y) / edge)
+            y > size.height - edge -> maxStep * minOf(1f, (y - (size.height - edge)) / edge)
             else -> 0f
         }
         var autoScroll: Job? = null
