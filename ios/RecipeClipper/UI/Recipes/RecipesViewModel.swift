@@ -4,12 +4,15 @@ import Observation
 
 /// `recipes` is nil until the database has answered, to tell "loading" from "nothing
 /// matched". `pendingDeletes` holds the titles swiped away but not yet settled, newest last,
-/// for the undo snackbar. `linkInput` is the "Paste a link" alert's text, shown while
+/// for the undo snackbar, and `deleteBatch` names the burst they belong to (nil when none is
+/// pending): the snackbar's timeout is keyed on it, so further swipes join one snackbar (#268).
+/// `linkInput` is the "Paste a link" alert's text, shown while
 /// `pastingLink`.
 struct RecipesUiState: Equatable {
     var query = ""
     var recipes: [RecipeSummary]?
     var pendingDeletes: [String] = []
+    var deleteBatch: Int?
     var sort: RecipeSort = .recentlyViewed
     var pastingLink = false
     var linkInput = ""
@@ -46,6 +49,7 @@ final class RecipesViewModel {
     // swipe within the snackbar's few seconds cannot overwrite the first and strand it.
     @ObservationIgnored private var captured: [Int64: DeletedRecipe] = [:]
     @ObservationIgnored private var capturedOrder: [Int64] = []
+    @ObservationIgnored private var batches = 0
 
     init(
         repository: RecipeRepository, preferences: AppPreferences, sleep: @escaping Sleep = Sleeps.real,
@@ -169,6 +173,11 @@ final class RecipesViewModel {
             guard let removed = await repository.delete(id: recipe.id) else { return }
             if captured[recipe.id] == nil { capturedOrder.append(recipe.id) }
             captured[recipe.id] = removed
+            // The first of a burst starts a new batch; the rest join it.
+            if uiState.deleteBatch == nil {
+                batches += 1
+                uiState.deleteBatch = batches
+            }
             uiState.pendingDeletes.append(recipe.title)
         }
     }
@@ -198,16 +207,16 @@ final class RecipesViewModel {
         captured.removeAll()
         capturedOrder.removeAll()
         uiState.pendingDeletes = []
+        uiState.deleteBatch = nil
     }
 }
 
 /// How long the undo snackbar stays, and what settles the batch when it goes. Run from the
-/// screen's `.task(id: pendingDeletes)`, so it is restarted by every new delete and cancelled
-/// when the screen goes away; Android's `LaunchedEffect(pendingDeletes)` around
-/// `showSnackbar`.
+/// screen's `.task(id: deleteBatch)`, so it runs once per burst, from its first swipe, and is
+/// cancelled when the screen goes away; Android's `LaunchedEffect(deleteBatch)` around
+/// `showSnackbar` (#268).
 ///
-/// On cancellation neither outcome runs — no undo, no dismissal — so a restart for a second
-/// swipe leaves the first capture for the new snackbar's Undo, and leaving the screen neither
+/// On cancellation neither outcome runs — no undo, no dismissal — so leaving the screen neither
 /// restores anything nor forgets it (coming back re-shows the snackbar, as on Android; popping
 /// History drops the ViewModel and with it the captures, so the deletes stand).
 enum SnackbarTimeout {

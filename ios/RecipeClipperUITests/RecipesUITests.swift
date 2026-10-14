@@ -153,6 +153,33 @@ final class RecipesUITests: RecipeUITestCase {
         require(row("Miso Soup"))
     }
 
+    /// #268: a burst of three shares one snackbar, counting in place, and after Undo it is gone
+    /// for good: the rows come back and stay, and no snackbar returns.
+    func testABurstOfThreeSharesOneSnackbarAndUndoHidesItForGood() {
+        launch()
+        openRecipes()
+
+        row("Banana Bread").swipeLeft()
+        app.buttons["Delete"].tap()
+        row("Miso Soup").swipeLeft()
+        app.buttons["Delete"].tap()
+        row("Chicken Adobo").swipeLeft()
+        app.buttons["Delete"].tap()
+
+        require(text("3 recipes deleted"))
+        XCTAssertEqual(app.buttons.matching(identifier: "Undo").count, 1)
+        app.buttons["Undo"].tap()
+
+        require(row("Banana Bread"))
+        require(row("Miso Soup"))
+        require(row("Chicken Adobo"))
+        // Give a stray snackbar time to come back, then check it didn't.
+        _ = text("never shown").waitForExistence(timeout: 2)
+        assertAbsent(app.buttons["Undo"])
+        assertAbsent(text("3 recipes deleted"))
+        require(row("Chicken Adobo"))
+    }
+
     /// Without Undo the delete stands: the snackbar goes and so does the recipe, from Home too.
     func testADeleteWithoutUndoStands() {
         launch()

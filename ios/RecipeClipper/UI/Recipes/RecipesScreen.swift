@@ -127,10 +127,9 @@ struct RecipesScreen: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: state.pendingDeletes.isEmpty)
-        // Keyed on the whole pending list: a second swipe restarts the timeout for a snackbar
-        // naming the batch. The restart cancels the sleep, so the dismissal below never runs
-        // for the earlier capture, which stays for the new snackbar's Undo.
-        .task(id: state.pendingDeletes) {
+        // Keyed on the burst, as Android's snackbar is (#268): a further swipe joins the batch
+        // and updates the one snackbar's count in place; the window runs from the first swipe.
+        .task(id: state.deleteBatch) {
             await SnackbarTimeout.run(pending: state.pendingDeletes, onTimeout: vm.onSnackbarDismissed)
         }
         .onAppear { now = currentMillis() }

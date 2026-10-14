@@ -156,6 +156,54 @@ final class RecipesViewModelTests: XCTestCase {
         XCTAssertEqual(repository.restoreCalls, [a, b])
     }
 
+    /// #268: a burst keeps one batch while its titles grow; Undo clears it at once, with nothing
+    /// in between, the restore after changes nothing, and the next swipe is a new batch.
+    func testABurstKeepsOneBatchAndUndoClearsItAtOnce() async {
+        let repository = FakeRecipeRepository()
+        repository.deleteResults = [1: deleted(1, "A"), 2: deleted(2, "B"), 3: deleted(3, "C")]
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
+        await settleMain()
+
+        vm.onDelete(testSummary(1, title: "A"))
+        await settleMain()
+        let batch = vm.uiState.deleteBatch
+        XCTAssertNotNil(batch)
+        vm.onDelete(testSummary(2, title: "B"))
+        await settleMain()
+        XCTAssertEqual(vm.uiState.deleteBatch, batch)
+        vm.onDelete(testSummary(3, title: "C"))
+        await settleMain()
+        XCTAssertEqual(vm.uiState.deleteBatch, batch)
+        XCTAssertEqual(vm.uiState.pendingDeletes, ["A", "B", "C"])
+
+        vm.onUndoDelete()
+        XCTAssertEqual(vm.uiState.pendingDeletes, [])
+        XCTAssertNil(vm.uiState.deleteBatch)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.pendingDeletes, [])
+        XCTAssertNil(vm.uiState.deleteBatch)
+        XCTAssertEqual(repository.restoreCalls.count, 3)
+
+        vm.onDelete(testSummary(1, title: "A"))
+        await settleMain()
+        XCTAssertNotNil(vm.uiState.deleteBatch)
+        XCTAssertNotEqual(vm.uiState.deleteBatch, batch)
+    }
+
+    func testDismissingEndsTheBatch() async {
+        let repository = FakeRecipeRepository()
+        repository.deleteResults = [1: deleted(1, "A")]
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
+        await settleMain()
+        vm.onDelete(testSummary(1, title: "A"))
+        await settleMain()
+
+        vm.onSnackbarDismissed()
+
+        XCTAssertNil(vm.uiState.deleteBatch)
+        XCTAssertEqual(vm.uiState.pendingDeletes, [])
+    }
+
     // MARK: - Sort and Paste a link (#102)
 
     private let unsorted = [testSummary(2, title: "Bread"), testSummary(3, title: "apple pie"), testSummary(1, title: "Cake")]
