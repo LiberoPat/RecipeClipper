@@ -65,8 +65,8 @@ final class GroceriesUITests: RecipeUITestCase {
         require(line("milk"), "the typed item")
 
         require(app.buttons["More options"], "the Groceries menu").tap()
-        require(app.buttons["Send list"], "Send list")
-        require(app.buttons["Paste a list"], "Paste a list").tap()
+        require(menuItem("Send list"), "Send list")
+        require(menuItem("Paste a list"), "Paste a list").tap()
         require(text("Add this list"), "the sheet")
         require(line("2 lb chicken thighs (Chicken Adobo)"), "the line, naming its recipe")
         require(line("1 lime"), "the lime").tap() // unticked: stays out

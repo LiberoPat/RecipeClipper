@@ -16,7 +16,7 @@ final class WeekMenusUITests: RecipeUITestCase {
 
     private func weekMenu(_ item: String) {
         require(app.buttons["More options"], "the Week menu").tap()
-        require(app.buttons[item], item).tap()
+        require(menuItem(item), item).tap()
     }
 
     /// Answers the alert showing (titled `alert`), replacing its field's text with `text` first.
@@ -39,12 +39,7 @@ final class WeekMenusUITests: RecipeUITestCase {
         require(app.tabBars.firstMatch.buttons["Week"], "the Week tab").tap()
         require(app.buttons["More options"], "the Week menu").tap()
         let apply = require(app.buttons["applyMenu"], "Apply a menu…")
-        let line = "Add a saved menu's meals to this week"
-        XCTAssertTrue(
-            apply.label.contains(line) || apply.staticTexts[line].exists || (apply.value as? String)?.contains(line) == true,
-            "label \(apply.label), value \(String(describing: apply.value))"
-        )
-    }
+        XCTAssertEqual(apply.label, "Apply a menu…, Add a saved menu's meals to this week")    }
 
     func testSaveApplyRenameAndDeleteAMenu() {
         launch(.standard)

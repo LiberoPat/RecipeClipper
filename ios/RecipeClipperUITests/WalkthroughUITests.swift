@@ -93,7 +93,7 @@ final class WalkthroughUITests: RecipeUITestCase {
     func recipeMenu(_ item: String) {
         require(app.buttons["More options"], "the menu").tap()
         pause(0.8)
-        require(app.buttons[item], item).tap()
+        require(menuItem(item), item).tap()
         pause()
     }
 
