@@ -43,6 +43,8 @@ import XCTest
 // and folded at 75 octets. Write only `Ics("Dinner · Soup"),`.
 // Photo-address rows (#235): an image's address as a page gives it, then WebImageUrl.of (nil: no
 // image). Write only `Img("http://img.example/a.jpg"),`.
+// JSON-LD text rows (#266): one ld+json block, then JsonLdRecipeParser.parse's name (nil: no
+// recipe), ingredients, steps and yield. Write only `Parse("{\"@type\":\"Recipe\", …}"),`.
 // Duration rows (#179): a prep, cook or total time, then Durations.format of it
 // (nil: hidden). Write only `Dur("PT1H30M"),` or `Dur("1 Std. 30 Min.", lang: "de"),`.
 // Chef mode rows (#100): a step, a short version of it, optionally the recipe's ingredient lines
@@ -177,6 +179,13 @@ final class DifferentialCorpusTests: XCTestCase {
     private struct Img {
         let address: String; let kept: String?
         init(_ address: String, _ kept: String?) { self.address = address; self.kept = kept }
+    }
+
+    private struct Parse {
+        let block: String; let name: String?; let ingredients: [String]; let steps: [String]; let yield: String?
+        init(_ block: String, _ name: String?, _ ingredients: [String], _ steps: [String], _ yield: String?) {
+            self.block = block; self.name = name; self.ingredients = ingredients; self.steps = steps; self.yield = yield
+        }
     }
 
     private struct Dur {
@@ -1686,6 +1695,13 @@ final class DifferentialCorpusTests: XCTestCase {
     ]
 
     // Photo-address rows (#235): see the header. Write only the address.
+    private static let parses: [Parse] = [
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Anneaux d&#039;encornets\",\"recipeIngredient\":[\"1 oignon\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Eplucher et &amp;eacute;mincer l&#039;oignon.\\nFaire revenir jusqu&#039;&amp;agrave; ce qu&#039;il devienne transparent.\\n&amp;nbsp;\\nAjouter l&amp;rsquo;eau.\"}]}", "Anneaux d'encornets", ["1 oignon"], ["Eplucher et émincer l'oignon. Faire revenir jusqu'à ce qu'il devienne transparent. Ajouter l’eau."], nil),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Bolo de cenoura\",\"recipeYield\":\"8 por&amp;ccedil;&amp;otilde;es\",\"recipeIngredient\":[\"1/2 x&amp;iacute;cara (ch&amp;aacute;) de &amp;oacute;leo\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"name\":\"Massa\",\"text\":\"Acrescente o a&amp;ccedil;&amp;uacute;car e bata.\"}]}", "Bolo de cenoura", ["1/2 xícara (chá) de óleo"], ["Acrescente o açúcar e bata."], "8 porções"),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"R&amp;amp;D &amp;rsquo;s pie\",\"recipeIngredient\":[\"Salt &amp;amp pepper\",\"AT&amp;T &amp;notit; &amp;unknown;\",\"&amp;#233;t&amp;#xE9; &amp;#9999999; &amp;#x80; &amp;frac12\"],\"recipeInstructions\":[\"Keep &amp;lt;b&amp;gt; and &amp;#60; &amp;#x3E; as text &amp;amp;lt;\",\"Heat &lt;b&gt;gently&lt;/b&gt;\",\"Q&amp;A: 1 &amp; 2 &amp;shy;x&amp;#8203;y\"],\"recipeYield\":\"4 &amp;ndash; 6\"}", "R&D ’s pie", ["Salt &amp pepper", "AT&T &notit; &unknown;", "été � € &frac12"], ["Keep &lt;b&gt; and &#60; &#x3E; as text &lt;", "Heat <b>gently</b>", "Q&A: 1 & 2 xy"], "4 – 6"),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Lauchkuchen\",\"recipeIngredient\":[\"200 g Mehl\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":[\"Für den Teig\\u00a0Mehl\",\"Backpulver und Salz mischen.\"]},{\"@type\":\"HowToStep\",\"text\":[\"\",\" \"],\"name\":\"Named\"},{\"@type\":\"HowToStep\",\"text\":[\"a\",1]},{\"@type\":\"HowToStep\",\"text\":[\"&amp;oacute;leo <b>x</b>\",\"\",\"y\"]},{\"@type\":\"HowToStep\",\"text\":\"[\\\"not\\\", \\\"json\\\"]\"}]}", "Lauchkuchen", ["200 g Mehl"], ["Für den Teig Mehl, Backpulver und Salz mischen.", "Named", "[\"a\",1]", "óleo x, y", "[\"not\", \"json\"]"], nil),
+    ]
+
     private static let images: [Img] = [
         Img("https://img.example/a/cookies.jpg?w=1200&h=800#top", "https://img.example/a/cookies.jpg?w=1200&h=800#top"),
         Img("http://img.example/a.jpg", "https://img.example/a.jpg"),
@@ -2127,6 +2143,16 @@ final class DifferentialCorpusTests: XCTestCase {
     func testCalendarLinesMatchKotlin() {
         for row in Self.ics {
             XCTAssertEqual(MealPlanIcs.contentLine("SUMMARY", row.text), row.line, row.text)
+        }
+    }
+
+    func testJsonLdTextMatchesKotlin() {
+        for row in Self.parses {
+            let recipe = JsonLdRecipeParser.parse([row.block], sourceUrl: "https://src/parse")
+            XCTAssertEqual(recipe?.name, row.name, row.block)
+            XCTAssertEqual(recipe?.ingredients ?? [], row.ingredients, row.block)
+            XCTAssertEqual(recipe?.instructions ?? [], row.steps, row.block)
+            XCTAssertEqual(recipe?.yield, row.yield, row.block)
         }
     }
 

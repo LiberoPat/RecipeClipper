@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.model
 
 import com.example.recipeclipper.data.remote.CardHeadings
+import com.example.recipeclipper.data.remote.JsonLdRecipeParser
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.data.remote.PhotoTextSorter
 import com.example.recipeclipper.data.remote.RecipeTextSplitter
@@ -41,6 +42,9 @@ import java.io.File
  *
  * `Img("address")` rows (#235) pin [WebImageUrl.of]: a photo's address as a page gives it, as
  * the app keeps it (`https`), or nil (no image); write only the address.
+ *
+ * `Parse("block")` rows (#266) pin [JsonLdRecipeParser.parse]'s text: one ld+json block as the
+ * recipe's name (nil: no recipe), ingredients, steps and yield; write only the block.
  *
  * `Dur("time")` rows (#179) pin [Durations.format]: a prep, cook or total time
  * as a site (or the tour's sample) writes it, as the app shows it, or nil (hidden); write only
@@ -124,6 +128,8 @@ class DifferentialCorpusTest {
     private val icsRow = Regex("""^(\s*)Ics\("((?:[^"\\]|\\.)*)"""")
     // A photo-address row (#235): an image's address as a page gives it.
     private val imageRow = Regex("""^(\s*)Img\("((?:[^"\\]|\\.)*)"""")
+    // A JSON-LD text row (#266): one ld+json block.
+    private val parseRow = Regex("""^(\s*)Parse\("((?:[^"\\]|\\.)*)"""")
     // A duration row (#179): a prep, cook or total time, optionally its language.
     private val durationRow = Regex("""^(\s*)Dur\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A Chef mode row (#100): a step, a short version of it, optionally the recipe's ingredient
@@ -197,6 +203,13 @@ class DifferentialCorpusTest {
             }
         }
         renderRow.find(line)?.let { m -> return renderRow(m) }
+        parseRow.find(line)?.let { m ->
+            val block = unescape(m.groupValues[2])
+            val r = JsonLdRecipeParser.parse(listOf(block), "https://src/parse")
+            val parsed = r?.let { "${q(it.name)}, ${list(it.ingredients)}, ${list(it.instructions)}, ${it.yield?.let(::q) ?: "nil"}" }
+                ?: "nil, [], [], nil"
+            return m.groupValues[1] + "Parse(${q(block)}, $parsed),"
+        }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         useUpRow.find(line)?.let { m -> return useUpRow(m) }
