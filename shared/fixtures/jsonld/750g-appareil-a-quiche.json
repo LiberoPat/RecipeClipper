@@ -1,0 +1,25 @@
+{
+  "@context": "http://schema.org/",
+  "@type": "Recipe",
+  "name": "Appareil à quiche",
+  "recipeYield": "4 personnes",
+  "recipeIngredient": [
+    "2 oeufs",
+    "2 jaunes d'oeuf",
+    "25 cl de crème liquide",
+    "25 cl de lait",
+    "Noix de muscade",
+    "Sel ou sel fin",
+    "Poivre du moulin"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "text": "Commencez par battre&amp;nbsp;les jaunes et les &amp;oelig;ufs ensemble dans un saladier. Ajoutez la cr&amp;egrave;me liquide &amp;agrave; la pr&amp;eacute;paration et m&amp;eacute;langez le tout."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Versez ensuite le lait et assaisonnez la pr&amp;eacute;paration. Ajoutez une petite pinc&amp;eacute;e de noix de muscade."
+    }
+  ]
+}
