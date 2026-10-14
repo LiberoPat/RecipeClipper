@@ -666,7 +666,7 @@ Send list, 20 using up the pantry after cooking, 21 Chef mode on an unsupported 
 tooltips and "Show tips again", 25 the pantry's three states, 26 "onion" matching "onions" in What I
 need, 27 Reddit posts (from fixtures), 28 "Read the photo" (#198), 29 reading other languages (#208: a
 German post, a French card), 30 "Scan a recipe" (#226: a card's two sides from the library), 31 "Clip it
-yourself" on a live Reddit post (#213, #230: Review asking for the name, then the Text view), 32 "Clip it
+yourself" on a live Reddit post (#213, #230: the guided steps, Review asking for the name, then the Text view with one field selected first), 32 "Clip it
 yourself" on a live blog page (#37, field first: Name, Ingredients, two Steps blocks, Undo, Photo, with real taps).
 Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
 `SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–32 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–32 in `+Features.swift`, 22
