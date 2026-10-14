@@ -10,6 +10,7 @@
   ],
   "before": ["y", "e", "o", "u", "con"],
   "after": ["y", "e", "o", "u", "con", "en", "a", "al", "hasta", "sobre", "por", "poco", "junto", "juntos"],
+  "lineDescriptors": [],
   "anyWordAfter": false,
   "splitWords": ["más", "dividido", "dividida", "divididos", "divididas"],
   "plurals": [["", "s"], ["", "es"]]

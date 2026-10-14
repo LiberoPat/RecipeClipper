@@ -10,6 +10,7 @@
   ],
   "before": ["und", "oder", "mit", "sowie"],
   "after": [],
+  "lineDescriptors": [],
   "anyWordAfter": true,
   "splitWords": ["mehr"],
   "plurals": [["", "n"], ["", "en"], ["", "e"], ["", "er"]]

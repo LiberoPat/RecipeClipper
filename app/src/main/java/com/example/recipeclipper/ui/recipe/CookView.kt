@@ -31,6 +31,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -183,6 +186,14 @@ private fun IngredientsBar(
             )
         }
         if (expanded) {
+            val jump = state.ingredientJump
+            // A step's ingredient link (#254): its first line scrolled into view.
+            val firstLine = remember { BringIntoViewRequester() }
+            LaunchedEffect(jump?.scrollTo, jump?.lines) {
+                if (jump?.scrollTo != JumpScroll.LINES) return@LaunchedEffect
+                firstLine.bringIntoView()
+                actions.onIngredientJumpScrolled()
+            }
             Column(
                 Modifier
                     .heightIn(max = 260.dp)
@@ -196,10 +207,19 @@ private fun IngredientsBar(
                         IngredientRow(
                             text = ingredient,
                             checked = index in state.checkedIngredients,
-                            onCheckedChange = { actions.onIngredientChecked(index, it) }
+                            onCheckedChange = { actions.onIngredientChecked(index, it) },
+                            highlighted = jump != null && jump.highlighted && index in jump.lines,
+                            modifier = if (index == jump?.lines?.minOrNull()) Modifier.bringIntoViewRequester(firstLine) else Modifier
                         )
                     }
                 }
+            }
+            if (jump != null) {
+                BackToStepChip(
+                    jump.step,
+                    actions.onBackToStep,
+                    Modifier.align(Alignment.CenterHorizontally).padding(vertical = 8.dp)
+                )
             }
         }
         Hairline()
@@ -249,7 +269,12 @@ private fun CookStep(
                 }
             }
             Spacer(Modifier.height(if (shortToggle != null) 0.dp else 8.dp))
-            Text(stepText(text, amounts, colors.tertiary), style = body.copy(fontSize = 21.sp, lineHeight = 30.sp))
+            val onLink = { lines: List<Int> -> actions.onIngredientLink(index, lines) }
+            Text(
+                stepText(text, amounts, colors.tertiary, onLink),
+                style = body.copy(fontSize = 21.sp, lineHeight = 30.sp),
+                modifier = Modifier.stepLinkActions(amounts, onLink)
+            )
             if (timerSeconds != null || timer != null) {
                 Spacer(Modifier.height(16.dp))
                 CurrentTimer(index, timerSeconds, timerWords, timer, actions)
@@ -288,8 +313,9 @@ private fun CookStep(
                 color = if (done) colors.onSurfaceVariant else colors.tertiary,
                 modifier = Modifier.width(32.dp)
             )
+            // A done step is dimmed as a whole; its amounts keep only their weight. Only the
+            // current step's ingredient links open (#254): a tap here makes the step current.
             Text(
-                // A done step is dimmed as a whole; its amounts keep only their weight.
                 stepText(text, amounts, if (done) null else colors.tertiary),
                 style = body.copy(
                     textDecoration = if (done) TextDecoration.LineThrough else TextDecoration.None

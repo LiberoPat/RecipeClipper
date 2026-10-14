@@ -276,6 +276,12 @@ enum Strings {
     static var hideIngredients: String { String(localized: "cd_hide_ingredients") }
     static var showIngredients: String { String(localized: "cd_show_ingredients") }
     static func goToStep(_ n: Int) -> String { String(localized: "cd_go_to_step \(n)") }
+    /// "Back to step 2" (#254), after a step's ingredient link.
+    static func backToStep(_ n: Int) -> String { String(localized: "step_back_to \(n)") }
+    /// A step's ingredient link as VoiceOver offers it: "butter, 2 matching ingredients, show".
+    static func stepLinkLabel(_ name: String, matches: Int) -> String {
+        "\(name), \(String(localized: "step_link_matches \(matches)")), \(String(localized: "step_link_show"))"
+    }
     static func timerStart(_ label: String) -> String { String(localized: "timer_start \(label)") }
     /// Not words, so not in the catalog.
     static func timerRunning(_ clock: String) -> String { "⏱ \(clock)" }

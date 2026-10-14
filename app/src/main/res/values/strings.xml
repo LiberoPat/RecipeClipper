@@ -140,6 +140,12 @@
     <string name="cd_hide_ingredients">Hide ingredients</string>
     <string name="cd_show_ingredients">Show ingredients</string>
     <string name="cd_go_to_step">Go to step %1$d</string>
+    <string name="step_back_to">Back to step %1$d</string>
+    <string name="step_link_show">show</string>
+    <plurals name="step_link_matches">
+        <item quantity="one">%1$d matching ingredient</item>
+        <item quantity="other">%1$d matching ingredients</item>
+    </plurals>
     <string name="timer_start">⏱  Start %1$s timer</string>
     <string name="timer_running" translatable="false">⏱  %1$s</string>
     <string name="timers_up">Time\'s up</string>

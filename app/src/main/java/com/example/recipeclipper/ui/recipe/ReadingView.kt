@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -52,8 +54,24 @@ internal fun ReadingView(
     // Only whether the keyboard is up for the note, so the cooking bar steps aside for it.
     // Focus doesn't survive rotation anyway, so plain remember is right here.
     var editingNotes by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    // The list's items: the top bar, the photo if any, the title block, then one per line.
+    val firstLine = if (recipe.image != null) 3 else 2
+    val firstStep = firstLine + content.ingredients.size + 1
+    val jump = state.ingredientJump
+    // A step's ingredient link (#254): scroll to its lines, or back to the step.
+    LaunchedEffect(jump?.scrollTo, jump?.lines, jump?.step) {
+        val target = when (jump?.scrollTo) {
+            JumpScroll.LINES -> firstLine + (jump.lines.minOrNull() ?: 0)
+            JumpScroll.STEP -> firstStep + jump.step
+            null -> return@LaunchedEffect
+        }
+        listState.animateScrollToItem(target)
+        actions.onIngredientJumpScrolled()
+    }
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 112.dp),
             modifier = Modifier.fillMaxSize()
         ) {
@@ -120,7 +138,8 @@ internal fun ReadingView(
                     IngredientRow(
                         text = ingredient,
                         checked = index in state.checkedIngredients,
-                        onCheckedChange = { actions.onIngredientChecked(index, it) }
+                        onCheckedChange = { actions.onIngredientChecked(index, it) },
+                        highlighted = jump != null && jump.highlighted && index in jump.lines
                     )
                 }
             }
@@ -149,9 +168,12 @@ internal fun ReadingView(
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.width(32.dp)
                     )
+                    val parts = content.shownStepAmounts(index, state.asWrittenSteps)
+                    val onLink = { lines: List<Int> -> actions.onIngredientLink(index, lines) }
                     Text(
-                        stepText(step, content.shownStepAmounts(index, state.asWrittenSteps), MaterialTheme.colorScheme.tertiary),
-                        style = MaterialTheme.typography.bodyLarge
+                        stepText(step, parts, MaterialTheme.colorScheme.tertiary, onLink),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.stepLinkActions(parts, onLink)
                     )
                 }
             }
@@ -176,21 +198,25 @@ internal fun ReadingView(
 
         if (content.instructions.isNotEmpty() && !editingNotes) {
             Column(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .background(MaterialTheme.colorScheme.background)
+                Modifier.align(Alignment.BottomCenter),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Hairline()
-                Button(
-                    onClick = actions.onCookStart,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                        .height(52.dp)
-                        .tooltipAnchor(Tooltip.RECIPE_START_COOKING)
-                ) {
-                    Text(stringResource(R.string.action_start_cooking), style = MaterialTheme.typography.labelLarge)
+                if (jump != null && jump.scrollTo != JumpScroll.STEP) {
+                    BackToStepChip(jump.step, actions.onBackToStep, Modifier.padding(bottom = 10.dp))
+                }
+                Column(Modifier.background(MaterialTheme.colorScheme.background)) {
+                    Hairline()
+                    Button(
+                        onClick = actions.onCookStart,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                            .height(52.dp)
+                            .tooltipAnchor(Tooltip.RECIPE_START_COOKING)
+                    ) {
+                        Text(stringResource(R.string.action_start_cooking), style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
         }

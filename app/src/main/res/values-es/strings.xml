@@ -67,6 +67,13 @@
     <string name="cd_hide_ingredients">Ocultar ingredientes</string>
     <string name="cd_show_ingredients">Mostrar ingredientes</string>
     <string name="cd_go_to_step">Ir al paso %1$d</string>
+    <string name="step_back_to">Volver al paso %1$d</string>
+    <string name="step_link_show">mostrar</string>
+    <plurals name="step_link_matches">
+        <item quantity="one">%1$d ingrediente coincidente</item>
+        <item quantity="many">%1$d de ingredientes coincidentes</item>
+        <item quantity="other">%1$d ingredientes coincidentes</item>
+    </plurals>
     <string name="timer_start">⏱  Temporizador de %1$s</string>
     <string name="timers_up">Se acabó el tiempo</string>
     <string name="home_subtitle">Comparte el enlace de una receta con esta app desde tu navegador, o pégalo aquí.</string>

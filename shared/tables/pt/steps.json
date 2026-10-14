@@ -10,6 +10,7 @@
   ],
   "before": ["e", "ou", "com"],
   "after": ["e", "ou", "com", "em", "no", "na", "nos", "nas", "ao", "aos", "à", "até", "sobre", "por", "pouco"],
+  "lineDescriptors": [],
   "anyWordAfter": false,
   "splitWords": ["mais"],
   "plurals": [["", "s"], ["ão", "ões"]]

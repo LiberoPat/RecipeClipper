@@ -106,8 +106,27 @@ data class RecipeUiState(
      * Cook mode was just finished with ingredients ticked (#147), until the screen has handed
      * them on to use up the pantry.
      */
-    val cookFinished: FinishedCook? = null
+    val cookFinished: FinishedCook? = null,
+    /** A step's ingredient link was tapped (#254): the lines it names, until the cook goes back. */
+    val ingredientJump: IngredientJump? = null
 )
+
+/**
+ * The cook tapped an ingredient link in step [step] (#254): a mention naming several ingredient
+ * [lines] with different amounts. The lines are [highlighted] until the highlight fades, and
+ * "Back to step N" shows until it is tapped. [scrollTo] is a scroll the view still owes: to the
+ * lines, or back to the step. In cook mode the folded ingredients bar opens for it, and folds
+ * back on "Back to step" when [refold].
+ */
+data class IngredientJump(
+    val step: Int,
+    val lines: List<Int>,
+    val highlighted: Boolean = true,
+    val scrollTo: JumpScroll? = JumpScroll.LINES,
+    val refold: Boolean = false
+)
+
+enum class JumpScroll { LINES, STEP }
 
 /**
  * A cook just finished (#147): the ticked ingredient [lines] as the screen showed them (scaled

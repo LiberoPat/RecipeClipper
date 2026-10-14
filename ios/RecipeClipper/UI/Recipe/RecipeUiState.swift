@@ -102,6 +102,20 @@ enum RecipeContent: Equatable {
 /// `unitSystem`, `convertLiquids` and `temperatureUnit` are the user's global defaults (set on
 /// the Settings screen); servings belong to one recipe. `darkWhileCooking` forces ink in cook
 /// mode; off by default, so cook mode follows the system theme.
+/// The cook tapped an ingredient link in step `step` (#254): a mention naming several ingredient
+/// `lines` with different amounts. The lines are `highlighted` until the highlight fades, and
+/// "Back to step N" shows until it is tapped. `scrollTo` is a scroll the view still owes: to the
+/// lines, or back to the step. In cook mode the folded ingredients bar opens for it, and folds
+/// back on "Back to step" when `refold`.
+struct IngredientJump: Equatable {
+    enum Scroll: Equatable { case lines, step }
+    var step: Int
+    var lines: [Int]
+    var highlighted = true
+    var scrollTo: Scroll? = .lines
+    var refold = false
+}
+
 struct RecipeUiState: Equatable {
     var content: RecipeContent = .loading
     var checkedIngredients: Set<Int> = []
@@ -155,6 +169,8 @@ struct RecipeUiState: Equatable {
     /// Cook mode was just finished with ingredients ticked (#147), until the view has handed
     /// them on to use up the pantry.
     var cookFinished: FinishedCook?
+    /// A step's ingredient link was tapped (#254): the lines it names, until the cook goes back.
+    var ingredientJump: IngredientJump?
 
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }
