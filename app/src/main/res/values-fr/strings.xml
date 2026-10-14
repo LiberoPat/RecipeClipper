@@ -67,6 +67,13 @@
     <string name="cd_hide_ingredients">Masquer les ingrédients</string>
     <string name="cd_show_ingredients">Afficher les ingrédients</string>
     <string name="cd_go_to_step">Aller à l\'étape %1$d</string>
+    <string name="step_back_to">Revenir à l\'étape %1$d</string>
+    <string name="step_link_show">afficher</string>
+    <plurals name="step_link_matches">
+        <item quantity="one">%1$d ingrédient correspondant</item>
+        <item quantity="many">%1$d d\'ingrédients correspondants</item>
+        <item quantity="other">%1$d ingrédients correspondants</item>
+    </plurals>
     <string name="timer_start">⏱  Minuteur de %1$s</string>
     <string name="timers_up">Temps écoulé</string>
     <string name="home_subtitle">Partagez le lien d\'une recette avec cette appli depuis votre navigateur, ou collez-le ici.</string>

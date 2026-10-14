@@ -13,10 +13,13 @@ import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -35,14 +38,59 @@ class RecipeStepAmountsTest {
         sourceUrl = "https://example.com/cake", id = 1L
     )
 
-    private fun TestScope.viewModel(preferences: FakeAppPreferences) = RecipeViewModel(
+    private fun TestScope.viewModel(preferences: FakeAppPreferences, opened: Recipe = recipe) = RecipeViewModel(
         SavedStateHandle(mapOf(RecipeViewModel.RECIPE_ID_ARG to 1L)),
-        FakeRecipeRepository().apply { openResult = recipe }, preferences, Clock { testScheduler.currentTime },
+        FakeRecipeRepository().apply { openResult = opened }, preferences, Clock { testScheduler.currentTime },
         FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler()
     )
 
-    private fun RecipeViewModel.step(): String? =
-        (uiState.value.content as RecipeContent.Success).stepAmounts?.single()?.let(StepAmounts::marked)
+    private fun RecipeViewModel.step(index: Int = 0): String? =
+        (uiState.value.content as RecipeContent.Success).stepAmounts?.get(index)?.let(StepAmounts::marked)
+
+    // Two butter lines with different amounts (#254): the step's "butter" is a link, not a number.
+    private val twoButters = recipe.copy(
+        ingredients = listOf("200g butter", "100g butter", "1 cup flour"),
+        instructions = listOf("Melt the butter.", "Stir in the flour.")
+    )
+
+    @Test fun `a link highlights its lines until they fade, then goes back to its step`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel(FakeAppPreferences(amountsInSteps = true), twoButters)
+        advanceUntilIdle()
+        assertEquals("Melt the ⟪butter|0,1⟫.", vm.step(0))
+
+        vm.onIngredientLink(0, listOf(0, 1))
+        assertEquals(IngredientJump(0, listOf(0, 1)), vm.uiState.value.ingredientJump)
+        vm.onIngredientJumpScrolled()
+        assertEquals(IngredientJump(0, listOf(0, 1), scrollTo = null), vm.uiState.value.ingredientJump)
+
+        advanceTimeBy(RecipeViewModel.HIGHLIGHT_MILLIS + 1)
+        assertEquals(false, vm.uiState.value.ingredientJump?.highlighted)
+
+        vm.onBackToStep()
+        assertEquals(JumpScroll.STEP, vm.uiState.value.ingredientJump?.scrollTo)
+        vm.onIngredientJumpScrolled()
+        assertNull(vm.uiState.value.ingredientJump)
+    }
+
+    @Test fun `in cook mode a link opens the folded ingredients, and back folds them again`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel(FakeAppPreferences(amountsInSteps = true), twoButters)
+        advanceUntilIdle()
+        vm.onCookStart()
+
+        vm.onIngredientLink(0, listOf(0, 1))
+        assertTrue(vm.uiState.value.cook.ingredientsExpanded)
+        assertEquals(true, vm.uiState.value.ingredientJump?.refold)
+
+        vm.onBackToStep()
+        assertFalse(vm.uiState.value.cook.ingredientsExpanded)
+        assertNull(vm.uiState.value.ingredientJump)
+
+        // Opened by hand first: back leaves the bar open.
+        vm.onIngredientsToggle()
+        vm.onIngredientLink(0, listOf(0, 1))
+        vm.onBackToStep()
+        assertTrue(vm.uiState.value.cook.ingredientsExpanded)
+    }
 
     @Test fun `the amount follows the servings and the units`() = runTest(mainDispatcherRule.dispatcher) {
         val preferences = FakeAppPreferences(amountsInSteps = true)

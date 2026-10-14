@@ -24,6 +24,7 @@ import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.data.needsNotice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -355,11 +356,76 @@ class RecipeViewModel @Inject constructor(
 
     // --- Cook mode ([CookController]) ---
 
-    fun onCookStart() = cookMode.start()
+    fun onCookStart() {
+        endJump()
+        cookMode.start()
+    }
 
-    fun onCookExit() = cookMode.exit()
+    fun onCookExit() {
+        endJump()
+        cookMode.exit()
+    }
 
-    fun onIngredientsToggle() = cookMode.toggleIngredients()
+    fun onIngredientsToggle() {
+        endJump()
+        cookMode.toggleIngredients()
+    }
+
+    // --- Ingredient links in steps (#254) ---
+
+    private var fadeJob: Job? = null
+
+    /**
+     * A step's link to the ingredient [lines] it may mean was tapped: they are highlighted and
+     * scrolled to (in cook mode, the folded ingredients bar opens), and the highlight fades
+     * after [HIGHLIGHT_MILLIS].
+     */
+    fun onIngredientLink(step: Int, lines: List<Int>) {
+        if (lines.isEmpty()) return
+        _uiState.update { state ->
+            val cook = state.cook
+            // A second tap while the bar is open for the first keeps the first's refold.
+            val refold = cook.active && (!cook.ingredientsExpanded || state.ingredientJump?.refold == true)
+            state.copy(
+                ingredientJump = IngredientJump(step, lines, refold = refold),
+                cook = if (cook.active) cook.copy(ingredientsExpanded = true) else cook
+            )
+        }
+        fadeJob?.cancel()
+        fadeJob = viewModelScope.launch {
+            delay(HIGHLIGHT_MILLIS)
+            _uiState.update { it.copy(ingredientJump = it.ingredientJump?.copy(highlighted = false)) }
+        }
+    }
+
+    /** "Back to step N": the reading view scrolls back to the step; cook mode folds the bar again. */
+    fun onBackToStep() {
+        fadeJob?.cancel()
+        _uiState.update { state ->
+            val jump = state.ingredientJump ?: return@update state
+            if (state.cook.active) {
+                state.copy(
+                    ingredientJump = null,
+                    cook = if (jump.refold) state.cook.copy(ingredientsExpanded = false) else state.cook
+                )
+            } else {
+                state.copy(ingredientJump = jump.copy(highlighted = false, scrollTo = JumpScroll.STEP))
+            }
+        }
+    }
+
+    /** The view has made the scroll [IngredientJump.scrollTo] asked for; back at the step, the jump is over. */
+    fun onIngredientJumpScrolled() {
+        _uiState.update { state ->
+            val jump = state.ingredientJump ?: return@update state
+            state.copy(ingredientJump = if (jump.scrollTo == JumpScroll.STEP) null else jump.copy(scrollTo = null))
+        }
+    }
+
+    private fun endJump() {
+        fadeJob?.cancel()
+        _uiState.update { it.copy(ingredientJump = null) }
+    }
 
     /** Tapping a step makes it current. Only [onStepDone] ever advances or marks progress. */
     fun onStepSelected(index: Int) = cookMode.select(index)
@@ -412,6 +478,9 @@ class RecipeViewModel @Inject constructor(
     companion object {
         const val RECIPE_ID_ARG = "recipeId"
         const val URL_ARG = "url"
+
+        /** How long the lines a step's ingredient link names stay highlighted (#254). */
+        const val HIGHLIGHT_MILLIS = 3_000L
 
         /** True when opened from a timer notification: the recipe opens in cook mode. */
         const val COOK_ARG = "cook"

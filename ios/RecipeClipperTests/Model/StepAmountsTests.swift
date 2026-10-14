@@ -33,9 +33,37 @@ final class StepAmountsTests: XCTestCase {
         XCTAssertEqual(annotate("Whisk in the heavy cream.", lines), "Whisk in ⟦240 ml⟧ heavy cream.")
     }
 
-    func testTheSameIngredientInTwoLinesStaysAsWritten() {
-        XCTAssertEqual(annotate("Add the sugar.", ["1 cup sugar", "For the frosting:", "1/2 cup sugar"]), "Add the sugar.")
-        XCTAssertEqual(annotate("Season with salt.", ["1 tsp salt", "salt and pepper"]), "Season with salt.")
+    func testTheSameIngredientInTwoLinesWithDifferentAmountsIsALinkToBothNeverANumber() {
+        XCTAssertEqual(annotate("Add the sugar.", ["1 cup sugar", "For the frosting:", "1/2 cup sugar"]), "Add the ⟪sugar|0,2⟫.")
+        XCTAssertEqual(annotate("Season with salt.", ["1 tsp salt", "salt and pepper"]), "Season with ⟪salt|0,1⟫.")
+        // "flour for dusting" has no amount: the step can't say which use it means (#254).
+        XCTAssertEqual(annotate("Stir in the flour.", ["2 cups flour", "flour, for dusting"]), "Stir in the ⟪flour|0,1⟫.")
+        let link = StepAmounts.annotate(["Melt the butter."], lines: ["200g butter", "100g butter"], words: .english)[0]
+        XCTAssertEqual(link, [.init(text: "Melt the "), .init(text: "butter", lines: [0, 1]), .init(text: ".")])
+    }
+
+    func testTwoLinesLendingTheSameAmountAreOneAnswer() {
+        XCTAssertEqual(
+            annotate("Add the butter.", ["30g / 2 tbsp unsalted butter", "30g / 2 tbsp unsalted butter, cold and cubed"]),
+            "Add ⟦30g / 2 tbsp⟧ butter."
+        )
+    }
+
+    func testAStepNamesALineByItsLastWordsWhenTheRestOnlyDescribeIt() {
+        XCTAssertEqual(annotate("Heat the oil.", ["1 tbsp. extra-virgin olive oil"]), "Heat ⟦1 tbsp.⟧ oil.")
+        XCTAssertEqual(annotate("Add the stock.", ["2 cups low-sodium beef stock"]), "Add ⟦2 cups⟧ stock.")
+        XCTAssertEqual(annotate("Microwave the butter.", ["8 tablespoons of salted butter"]), "Microwave ⟦8 tablespoons of⟧ butter.")
+        XCTAssertEqual(annotate("Cream together butter and sugar.", ["1/2 cup butter", "1 cup granulated sugar"]), "Cream together ⟦1/2 cup⟧ butter and ⟦1 cup⟧ sugar.")
+        // Another line ending in the same words could be the one; a word that isn't a
+        // describing word makes another ingredient.
+        XCTAssertEqual(annotate("Add the oil.", ["1 tbsp olive oil", "1 tsp toasted sesame oil"]), "Add the ⟪oil|0,1⟫.")
+        for step in ["Spoon the sauce over.", "Add the leaves.", "Beat the butter."] {
+            XCTAssertEqual(annotate(step, ["2 tsp Worcestershire sauce", "2 bay leaves", "1/2 cup peanut butter"]), step)
+        }
+    }
+
+    func testAStepsTitleBeforeADashIsNotItsFirstMention() {
+        XCTAssertEqual(annotate("Onions - Add the onions and stir.", ["2 onions, sliced"]), "Onions - Add ⟦2⟧ onions and stir.")
     }
 
     func testAStepThatAlreadySaysHowMuchStaysAsWritten() {

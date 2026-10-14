@@ -7,10 +7,14 @@ import Foundation
 /// documented there and in docs/decisions.md.
 enum StepAmounts {
 
-    /// A run of a step's text; `amount` marks one inserted from an ingredient line.
+    /// A run of a step's text; `amount` marks one inserted from an ingredient line. A run with
+    /// `lines` is a mention naming several ingredient lines with different amounts (#254): the
+    /// screen shows it as a link to those lines (indexes into the lines given), never a number.
     struct Part: Equatable {
         let text: String
         var amount: Bool = false
+        var lines: [Int] = []
+        var plain: Bool { !amount && lines.isEmpty }
     }
 
     private final class Words {
@@ -20,6 +24,9 @@ enum StepAmounts {
         let after: Set<String>
         let anyWordAfter: Bool
         let splitWords: Set<String>
+        // "very cold unsalted butter" is still "the butter" (#254); with the names table's
+        // modifiers, each word on its own.
+        let descriptors: Set<String>
         let plurals: [(String, String)]
         // "l'huile": an article or part word elided onto the next word.
         let elisions: [String]
@@ -34,6 +41,9 @@ enum StepAmounts {
             after = set("after")
             anyWordAfter = words.table("steps")["anyWordAfter"] as? Bool ?? false
             splitWords = set("splitWords")
+            let described = words.strings("steps", "lineDescriptors") + words.strings("names", "matchModifiers") +
+                words.strings("names", "leadingWords")
+            descriptors = Set(described.flatMap { $0.lowercased().split(separator: " ").map(String.init) })
             plurals = (words.table("steps")["plurals"] as? [[String]] ?? []).map { ($0[0], $0[1]) }
             elisions = articles.union(partWords).filter { $0.hasSuffix("'") }
                 .sorted { $0.u16Count != $1.u16Count ? $0.u16Count > $1.u16Count : $0 < $1 }
@@ -69,7 +79,13 @@ enum StepAmounts {
     }
 
     /// `parts` as one string, each amount in ⟦ ⟧: how the differential corpus pins them.
-    static func marked(_ parts: [Part]) -> String { parts.map { $0.amount ? "⟦\($0.text)⟧" : $0.text }.joined() }
+    static func marked(_ parts: [Part]) -> String {
+        parts.map { part in
+            if part.amount { return "⟦\(part.text)⟧" }
+            if !part.lines.isEmpty { return "⟪\(part.text)|\(part.lines.map(String.init).joined(separator: ","))⟫" }
+            return part.text
+        }.joined()
+    }
 
     private static func tokens(_ text: String, _ w: Words) -> [Token] {
         var out: [Token] = []
@@ -135,48 +151,98 @@ enum StepAmounts {
         return gap.kIsBlank || gap == "-"
     }
 
-    /// The earliest token where a run of words ending at `h` names `s`'s ingredient, or -1.
-    private static func runStart(_ step: String, _ tokens: [Token], _ h: Int, _ s: Source, _ words: LanguageWords, _ w: Words) -> Int {
-        guard let head = s.head, let name = s.name, sameWord(tokens[h].bare, head, w) else { return -1 }
-        var best = -1
+    /// Words from `start` that name line `line`: `strict`ly by `IngredientName.matches`, or past
+    /// its describing words; `exact` when they are the line's whole name.
+    private struct Run { let line: Int; let start: Int; let strict: Bool; var exact = false }
+
+    /// The longest run of words ending at `h` that names `s`'s ingredient, or nil.
+    private static func run(_ step: String, _ tokens: [Token], _ h: Int, _ i: Int, _ s: Source, _ words: LanguageWords, _ w: Words) -> Run? {
+        guard let head = s.head, let name = s.name, sameWord(tokens[h].bare, head, w) else { return nil }
+        var best: Run?
         var start = h
         while start >= 0 && h - start < 6 {
             if start < h && !joined(step, tokens[start], tokens[start + 1]) { break }
             // A run may hold "de" ("farinha de trigo") but never starts on a word that says how
             // much or on the article: "a carrot" is "carrot" after "a".
-            let phrase = step.u16Substring(tokens[start].start, tokens[h].start) + head
-            if !stops(tokens[start], w) && IngredientName.matches(phrase, name, words: words) { best = start }
+            if !stops(tokens[start], w) {
+                let phrase = step.u16Substring(tokens[start].start, tokens[h].start) + head
+                if IngredientName.matches(phrase, name, words: words) {
+                    let exact = IngredientName.key(IngredientDensities.headPhrase(phrase, words: words), words: words) ==
+                        IngredientName.key(IngredientDensities.headPhrase(name, words: words), words: words)
+                    best = Run(line: i, start: start, strict: true, exact: exact)
+                } else if endsWith(name, phrase, words, { front in front.allSatisfy { w.descriptors.contains($0) } }) {
+                    best = Run(line: i, start: start, strict: false)
+                }
+            }
             start -= 1
         }
         return best
     }
 
+    /// True when `name` ends with `phrase`'s words and `front` accepts the words before them ("olive" oil).
+    private static func endsWith(_ name: String, _ phrase: String, _ words: LanguageWords, _ front: ([String]) -> Bool) -> Bool {
+        let n = IngredientName.key(IngredientDensities.headPhrase(name, words: words), words: words).components(separatedBy: " ")
+        let p = IngredientName.key(IngredientDensities.headPhrase(phrase, words: words), words: words).components(separatedBy: " ")
+        return p.count < n.count && Array(n.suffix(p.count)) == p && front(Array(n.dropLast(p.count)))
+    }
+
     /// Replace step[start, end) with `amount`, then a space if `space`; the mention ends at `mentionEnd`.
-    private struct Insertion { let start: Int; let end: Int; let amount: String; let space: Bool; let mentionEnd: Int }
+    /// With `lines`, a link to those lines with the mention as its text, instead of an amount.
+    private struct Insertion { let start: Int; let end: Int; let amount: String; let space: Bool; let mentionEnd: Int; var lines: [Int] = [] }
 
     private static func annotate(_ step: String, _ sources: [Source], _ words: LanguageWords, _ w: Words) -> [Part] {
         let tokens = tokens(step, w)
         var seen = Set<Int>()
         var insertions: [Insertion] = []
-        for h in tokens.indices {
-            let runs: [(Int, Int)] = sources.indices.compactMap { i in
-                let start = runStart(step, tokens, h, sources[i], words, w)
-                return start >= 0 ? (i, start) : nil
+        // "Sauté onion and mushrooms - Turn the heat down…": a step's title names what the step
+        // is about; its words are no mention, so the first mention is the one after it (#254).
+        let title = titlePattern.find(step)?.end ?? 0
+        for h in tokens.indices where tokens[h].start >= title {
+            let runs = sources.indices.compactMap { run(step, tokens, h, $0, sources[$0], words, w) }
+            guard let start = runs.map(\.start).min() else { continue }
+            // The longest run names the mention: "brown sugar" is never "sugar". A line named
+            // exactly by the step's words is the one: "the sugar" beside "brown sugar".
+            let all = runs.filter { $0.start == start }
+            let exact = all.filter(\.exact)
+            let longest = exact.isEmpty ? all : exact
+            var named = longest.map(\.line)
+            // Named only past describing words ("the oil" for "olive oil"): any line ending in
+            // the step's words could be the one ("sesame oil" too).
+            if !longest.contains(where: \.strict) {
+                let front = step.u16Substring(tokens[start].start, tokens[h].start)
+                named += sources.indices.filter { i in
+                    guard !named.contains(i), let head = sources[i].head, let name = sources[i].name else { return false }
+                    return sameWord(tokens[h].bare, head, w) && endsWith(name, front + head, words, { _ in true })
+                }
             }
-            guard let start = runs.map(\.1).min() else { continue }
-            // The longest run names the mention: "brown sugar" is never "sugar".
-            let named = runs.filter { $0.1 == start }.map(\.0)
-            // Only a line's first mention in the step, whether or not it gets an amount.
-            if named.allSatisfy({ seen.contains($0) }) { continue }
-            seen.formUnion(named)
-            if named.count != 1 { continue }
             // "salt and pepper" has no name but uses the word: the mention could be either line.
-            if sources.contains(where: { $0.name == nil && !$0.heading && $0.words.contains { sameWord($0, tokens[h].bare, w) } }) { continue }
-            guard let amount = sources[named[0]].amount else { continue }
-            if let insertion = insertion(step, tokens, start, h, amount, w) { insertions.append(insertion) }
+            let nameless = sources.indices.filter { i in
+                sources[i].name == nil && !sources[i].heading && sources[i].words.contains { sameWord($0, tokens[h].bare, w) }
+            }
+            // Only a line's first mention in the step, whether or not it gets an amount.
+            if (named + nameless).allSatisfy({ seen.contains($0) }) { continue }
+            seen.formUnion(named + nameless)
+            // Lines that lend the same amount ("30 g butter" twice) are one answer.
+            let amounts = named.map { sources[$0].amount }
+            let amount: String? = amounts.allSatisfy({ $0 == amounts.first }) ? amounts.first ?? nil : nil
+            if let amount, nameless.isEmpty {
+                if let insertion = insertion(step, tokens, start, h, amount, w) { insertions.append(insertion) }
+            } else if named.count + nameless.count > 1 {
+                // Lines with different amounts, and the step doesn't say which (#254): no
+                // number, but a link to the lines, where the same rules would place an amount.
+                if insertion(step, tokens, start, h, "", w) == nil { continue }
+                let from = tokens[start].start
+                let to = tokens[h].end
+                insertions.append(Insertion(start: from, end: to, amount: step.u16Substring(from, to), space: false,
+                                            mentionEnd: to, lines: (named + nameless).sorted()))
+            }
         }
         return parts(step, insertions)
     }
+
+    // A few words, no sentence end, then a spaced dash.
+    private static let titlePattern = JRegex(#"^[^.!?:;\n]{1,60}?\s[-–—]\s"#)
+    private static let dashes: Set<String> = ["-", "–", "—"]
 
     private static let ends: Set<Character> = [",", ".", ";", ":", "!", "?", ")", "&", "–", "—"]
     private static let listOrClause: Set<Character> = [",", ";", ":", "(", ".", "!", "?", "&"]
@@ -191,9 +257,14 @@ enum StepAmounts {
         return w.anyWordAfter || w.after.contains(next.lower)
     }
 
-    // The token starts its step or sentence, so it is taken as the verb ("Melt butter").
+    // The token starts its step or sentence, or follows a spaced dash ("Butter - Melt butter"),
+    // so it is taken as the verb ("Melt butter").
     private static func clauseFirst(_ step: String, _ tokens: [Token], _ i: Int) -> Bool {
-        i == 0 || step.u16Substring(tokens[i - 1].end, tokens[i].start).contains { clauseEnds.contains($0) }
+        if i == 0 { return true }
+        let gap = step.u16Substring(tokens[i - 1].end, tokens[i].start)
+        if gap.contains(where: { clauseEnds.contains($0) }) { return true }
+        guard gap.u16Count >= 3, let first = gap.first, let last = gap.last else { return false }
+        return first.isWhitespace && last.isWhitespace && dashes.contains(gap.kTrimmed)
     }
 
     private static func insertion(_ step: String, _ tokens: [Token], _ start: Int, _ h: Int, _ amount: String, _ w: Words) -> Insertion? {
@@ -230,7 +301,7 @@ enum StepAmounts {
         for ins in ordered.map(\.element) {
             if ins.start < covered { continue }
             if ins.start > cursor { out.append(Part(text: step.u16Substring(cursor, ins.start))) }
-            out.append(Part(text: ins.amount, amount: true))
+            out.append(ins.lines.isEmpty ? Part(text: ins.amount, amount: true) : Part(text: ins.amount, lines: ins.lines))
             cursor = ins.end
             if ins.space { out.append(Part(text: " ")) }
             covered = ins.mentionEnd
@@ -239,7 +310,7 @@ enum StepAmounts {
         // Adjacent plain runs as one.
         var merged: [Part] = []
         for part in out {
-            if let last = merged.last, !last.amount, !part.amount {
+            if let last = merged.last, last.plain, part.plain {
                 merged[merged.count - 1] = Part(text: last.text + part.text)
             } else {
                 merged.append(part)
