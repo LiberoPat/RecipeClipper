@@ -3459,7 +3459,8 @@ app main had become:
     name (those classes and the `configured-xpromo` id) and, since Reddit renames these, by what
     it says: any dialog, `aria-modal`, bottom-sheet or xpromo element whose text asks for the app
     ("get the app", "keep using Reddit", "open/use the app"), never one holding the post or the
-    comments, re-checked as the page changes; the scroll lock's class is overridden too.
+    comments, re-checked as the page changes; the scroll lock's class is overridden too. On the
+    emulator the same post showed no sheet with the reader in place (walkthrough 31's run).
 - **A Text view for Reddit** (owner, 2026-09-30: built beside the reader, not as its fallback,
   because Reddit's prompts and markup change often and old.reddit.com now wants a login). A Text
   button in the clip's top bar reads the post as it stands (`RCReddit.text()`: the
