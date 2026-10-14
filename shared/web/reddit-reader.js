@@ -3,7 +3,8 @@
 //
 // 1. Reading mode, like a content blocker. A signed-out reader of a post gets the text body cut
 //    off under a fade to white ("Read more", `.read-more-overflow-cover`), the app and sign-in
-//    prompts (the Open App button, Google's One Tap sign-in, bottom sheets), and scrolling locked
+//    prompts (the Open App button, Google's One Tap sign-in, bottom sheets such as "Get the app
+//    to keep using Reddit", #251, hidden by name and by what they say), and scrolling locked
 //    while a prompt is open. The style below shows the whole body and hides the prompts; the
 //    observer puts the style back and unlocks scrolling whenever the page changes, since Reddit
 //    renders as it goes. Nothing is clicked and nothing is removed from the page, so Reddit's own
@@ -32,11 +33,17 @@
     'xpromo-app-selector, xpromo-bottom-sheet, xpromo-nsfw-blocking-container,' +
     'xpromo-untagged-content-blocking-modal, shreddit-async-loader[bundlename*="xpromo"],' +
     'shreddit-async-loader[bundlename*="bottom_sheet"],' +
+    // "Get the app to keep using Reddit" (#251): a bottom sheet over the lower half of the post,
+    // a modal dialog in the shadow root of a `div.rpl-bottom-sheet.configured-xpromo-bottom-sheet`
+    // (id `configured-xpromo-global_direct_blocking`), seen on the iOS simulator, 2026-10-13.
+    // The script below also hides any such sheet by what it says, whatever it is called.
+    '.configured-xpromo, .configured-xpromo-bottom-sheet, [id^="configured-xpromo"],' +
     // The related posts under the comments.
     '[id$="_related"], reddit-pdp-right-rail-post' +
     '{display:none !important}' +
     // Scrolling, whatever a prompt locked.
     'html, body{overflow-y:auto !important;position:static !important;height:auto !important}' +
+    'body.rpl-scroll-lock{overflow:visible !important;overflow-y:auto !important;touch-action:auto !important;pointer-events:auto !important}' +
     // The header stays over the page: a selection handle dragged up under it took its words.
     'reddit-header-small, reddit-header-large, header{-webkit-user-select:none !important;user-select:none !important}';
 
@@ -44,8 +51,27 @@
   style.id = 'rc-reddit';
   style.textContent = CSS;
 
+  // An app prompt by what it says, not by its name, which Reddit changes: a sheet, dialog or
+  // modal (its role, aria-modal, or a bottom-sheet or xpromo class) whose text asks for the app.
+  // Never one holding the post or the comments, and never Reddit's check page (no such text).
+  var APP_PROMPT = /get the app|keep using reddit|(open|use|download|continue) (in |with )?(the )?(reddit )?app\b/i;
+  var SHEETS = '[role="dialog"], [aria-modal="true"], [class*="bottom-sheet"], [class*="xpromo"], [id*="xpromo"]';
+
+  function hidePrompts() {
+    var sheets = document.querySelectorAll(SHEETS);
+    for (var i = 0; i < sheets.length; i++) {
+      var el = sheets[i];
+      if (el.hasAttribute('data-rc-hidden')) continue;
+      if (el.querySelector('shreddit-post, shreddit-comment-tree')) continue;
+      if (!APP_PROMPT.test(el.textContent || '')) continue;
+      el.style.setProperty('display', 'none', 'important');
+      el.setAttribute('data-rc-hidden', '');
+    }
+  }
+
   function apply() {
     if (!style.isConnected) (document.head || document.documentElement).appendChild(style);
+    if (document.body) hidePrompts();
     [document.documentElement, document.body].forEach(function (el) {
       if (!el) return;
       if (el.style.overflow || el.style.overflowY) { el.style.overflow = ''; el.style.overflowY = ''; }
