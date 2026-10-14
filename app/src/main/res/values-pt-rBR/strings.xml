@@ -576,18 +576,14 @@
     <string name="tooltip_got_it">Entendi</string>
     <string name="tooltip_home_link">Compartilhe o link de uma receita com este app, ou cole-o aqui.</string>
     <string name="tooltip_recipe_units">Como na receita mostra cada quantidade exatamente como a receita dá. Toque para ver todas as receitas em Métrico ou Onças; o que não puder ser convertido com exatidão fica como na receita.</string>
-    <string name="tooltip_recipe_menu">Mais: Adicionar ao plano, Adicionar às compras, Enviar como arquivo e Editar.</string>
     <string name="tooltip_recipe_start_cooking">Modo cozinhar: um passo de cada vez, com timers, e a tela fica ligada.</string>
     <string name="tooltip_recipe_made_this">Fez a receita? Adicione uma foto e uma nota, ou Marcar como feita.</string>
     <string name="tooltip_cook_done_next">Quando terminar um passo, toque aqui para ir ao próximo.</string>
     <string name="tooltip_cook_tap_step">Toque em qualquer passo para torná-lo o atual.</string>
     <string name="tooltip_cook_timer">O timer deste passo. Ele toca mesmo se você sair do app.</string>
-    <string name="tooltip_week_menu">Mais: O que preciso, os ingredientes da semana para as compras, e os cardápios.</string>
     <string name="tooltip_groceries_long_press">Toque e segure um item para movê-lo para outro corredor, ou excluí-lo.</string>
     <string name="tooltip_groceries_done_shopping">De volta em casa? Guarde o que marcou na despensa e tire da lista.</string>
-    <string name="tooltip_groceries_menu">Mais: Enviar lista, ou Colar uma lista.</string>
     <string name="tooltip_pantry_in_stock">Toque em um item para mudar o estoque ou a quantidade; deslize para a esquerda quando acabar. A etiqueta da cesta indica que está na sua lista de compras.</string>
-    <string name="tooltip_pantry_menu">Mais: Enviar lista, e ordenar por corredor ou validade.</string>
     <string name="tooltip_settings_show_tips">Veja cada dica de novo, uma de cada vez.</string>
     <string name="cd_dismiss_tip">Fechar dica</string>
     <string name="settings_section_help">Ajuda</string>
@@ -626,4 +622,17 @@
         <item quantity="many">%1$d de passos removidos</item>
         <item quantity="other">%1$d passos removidos</item>
     </plurals>
+    <!-- The ⋮ menus' second lines (#260). -->
+    <string name="menu_desc_send_file">Uma cópia para abrir no Recipe Clipper</string>
+    <string name="menu_desc_update_from_source">Troca suas edições pela versão atual do site</string>
+    <string name="menu_desc_what_i_need">O que as receitas da semana pedem e a despensa não tem</string>
+    <string name="menu_desc_add_week_to_groceries">Na sua lista de compras, menos o que você já tem</string>
+    <string name="menu_desc_save_week_as_menu">Guarda as refeições da semana para repetir depois</string>
+    <string name="menu_desc_apply_menu">Adiciona as refeições de um cardápio salvo a esta semana</string>
+    <string name="menu_desc_meal_types">Adicione, renomeie ou reordene as refeições do dia</string>
+    <string name="menu_desc_paste_list">Adiciona itens de um texto que você copiou</string>
+    <string name="menu_desc_clear_ticked">Remove os itens marcados sem repor a despensa</string>
+    <string name="menu_desc_pantry_send_list">O que você tem em casa, como texto</string>
+    <string name="menu_desc_clear_run_out">Remove tudo o que está marcado como Acabou</string>
+    <string name="menu_desc_share_calendar">Adiciona as refeições da semana ao seu calendário</string>
 </resources>

@@ -612,18 +612,14 @@
     <string name="tooltip_got_it">Got it</string>
     <string name="tooltip_home_link">Share a recipe link to this app, or paste one here.</string>
     <string name="tooltip_recipe_units">As written shows every amount exactly as the recipe gives it. Tap to show every recipe in Metric or Ounces; anything that can\'t be converted exactly stays as written.</string>
-    <string name="tooltip_recipe_menu">More: Add to plan, Add to groceries, Send as file and Edit.</string>
     <string name="tooltip_recipe_start_cooking">Cook mode: one step at a time, with timers, and the screen stays on.</string>
     <string name="tooltip_recipe_made_this">Made it? Add a photo and a note, or Mark as cooked.</string>
     <string name="tooltip_cook_done_next">When a step is done, tap here to move to the next.</string>
     <string name="tooltip_cook_tap_step">Tap any step to make it the current one.</string>
     <string name="tooltip_cook_timer">This step\'s timer. It still rings if you leave the app.</string>
-    <string name="tooltip_week_menu">More: What I need, this week\'s ingredients for your groceries, and menus.</string>
     <string name="tooltip_groceries_long_press">Touch and hold an item to move it to another aisle, or delete it.</string>
     <string name="tooltip_groceries_done_shopping">Back home? Put what you ticked away in the pantry, and clear it from the list.</string>
-    <string name="tooltip_groceries_menu">More: Send list, or Paste a list.</string>
     <string name="tooltip_pantry_in_stock">Tap an item to change its stock or quantity; swipe left when it runs out. The basket tag means it\'s on your grocery list.</string>
-    <string name="tooltip_pantry_menu">More: Send list, and sort by aisle or use-by date.</string>
     <string name="tooltip_settings_show_tips">See every tip again, one at a time.</string>
     <string name="cd_dismiss_tip">Dismiss tip</string>
     <string name="settings_section_help">Help</string>
@@ -658,4 +654,17 @@
         <item quantity="one">%1$d step removed</item>
         <item quantity="other">%1$d steps removed</item>
     </plurals>
+    <!-- The ⋮ menus' second lines (#260). -->
+    <string name="menu_desc_send_file">A copy someone can open in Recipe Clipper</string>
+    <string name="menu_desc_update_from_source">Replace your edits with the website\'s latest</string>
+    <string name="menu_desc_what_i_need">What this week\'s recipes need that your pantry doesn\'t have</string>
+    <string name="menu_desc_add_week_to_groceries">Onto your grocery list, except what you have</string>
+    <string name="menu_desc_save_week_as_menu">Keep this week\'s meals to reuse later</string>
+    <string name="menu_desc_apply_menu">Add a saved menu\'s meals to this week</string>
+    <string name="menu_desc_meal_types">Add, rename or reorder the day\'s meals</string>
+    <string name="menu_desc_paste_list">Add items from text you copied</string>
+    <string name="menu_desc_clear_ticked">Remove ticked items without restocking the pantry</string>
+    <string name="menu_desc_pantry_send_list">What\'s in stock, as text</string>
+    <string name="menu_desc_clear_run_out">Remove everything marked Run out</string>
+    <string name="menu_desc_share_calendar">Add this week\'s meals to your calendar app</string>
 </resources>

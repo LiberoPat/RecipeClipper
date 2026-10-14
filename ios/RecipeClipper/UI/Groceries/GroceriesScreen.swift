@@ -72,18 +72,18 @@ struct GroceriesScreen: View {
                                 sendFileVM = send
                                 send.sendGroceries(title: Strings.tabGroceries)
                             } label: {
-                                Label(Strings.sendFile, systemImage: "doc")
+                                Text(Strings.sendFile); Text(Strings.menuDescSendFile); Image(systemName: "doc")
                             }
                         }
                     }
                     if let receiveVM {
                         Button { receiveVM.open(UIPasteboard.general.string) } label: {
-                            Label(Strings.pasteList, systemImage: "doc.on.clipboard")
+                            Text(Strings.pasteList); Text(Strings.menuDescPasteList); Image(systemName: "doc.on.clipboard")
                         }
                     }
                     // Clearing without "Done shopping" (#219): the pantry is untouched, and Undo puts it back.
                     Button(action: vm.onClearTicked) {
-                        Label(Strings.clearTicked, systemImage: "xmark.circle")
+                        Text(Strings.clearTicked); Text(Strings.menuDescClearTicked); Image(systemName: "xmark.circle")
                     }
                     .disabled(!state.hasChecked)
                     Button(action: vm.onClearAll) {
@@ -94,7 +94,6 @@ struct GroceriesScreen: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 .accessibilityLabel(Strings.moreOptions)
-                .tooltipAnchor(.groceriesMenu, inToolbar: true)
             }
         }
         // The tooltips (#190); none over this screen's sheets and snackbar. Outside the

@@ -79,6 +79,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryCombiner
 import com.example.recipeclipper.data.model.GroceryCombiner.Row as GroceryRow
@@ -303,7 +304,7 @@ private fun GroceriesMenu(
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }, modifier = Modifier.tooltipAnchor(Tooltip.GROCERIES_MENU)) {
+        IconButton(onClick = { expanded = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -318,7 +319,7 @@ private fun GroceriesMenu(
             // The unticked items and their recipes, as a file for someone else's app (#149).
             if (onSendFile != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_send_file)) },
+                    text = { MenuItemText(stringResource(R.string.action_send_file), stringResource(R.string.menu_desc_send_file)) },
                     enabled = canSendFile,
                     onClick = {
                         expanded = false
@@ -328,7 +329,7 @@ private fun GroceriesMenu(
             }
             if (onPaste != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_paste_list)) },
+                    text = { MenuItemText(stringResource(R.string.action_paste_list), stringResource(R.string.menu_desc_paste_list)) },
                     onClick = {
                         expanded = false
                         onPaste()
@@ -337,7 +338,7 @@ private fun GroceriesMenu(
             }
             // Clearing without "Done shopping" (#219): the pantry is untouched, and Undo puts it back.
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_clear_ticked)) },
+                text = { MenuItemText(stringResource(R.string.action_clear_ticked), stringResource(R.string.menu_desc_clear_ticked)) },
                 enabled = canClearTicked,
                 onClick = {
                     expanded = false

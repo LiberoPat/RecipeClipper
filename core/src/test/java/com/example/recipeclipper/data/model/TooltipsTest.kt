@@ -36,7 +36,7 @@ class TooltipsTest {
         assertEquals(Tooltip.RECIPE_UNITS, Tooltips.current(recipe, emptySet(), everything, ready = true))
         assertNull("not in the first second, nor under a sheet", Tooltips.current(recipe, emptySet(), everything, ready = false))
         assertEquals(
-            Tooltip.RECIPE_MENU,
+            Tooltip.RECIPE_START_COOKING,
             Tooltips.current(recipe, setOf(Tooltip.RECIPE_UNITS), everything, ready = true)
         )
         assertNull(Tooltips.current(recipe, Tooltips.forScreen(TooltipScreen.RECIPE).toSet(), everything, ready = true))
@@ -45,8 +45,8 @@ class TooltipsTest {
     @Test
     fun `an anchor that isn't on screen is passed over for the next`() {
         val recipe = visit(TooltipScreen.RECIPE)
-        val visible = setOf(Tooltip.RECIPE_MENU, Tooltip.RECIPE_START_COOKING)
-        assertEquals(Tooltip.RECIPE_MENU, Tooltips.current(recipe, emptySet(), visible, ready = true))
+        val visible = setOf(Tooltip.RECIPE_START_COOKING, Tooltip.RECIPE_MADE_THIS)
+        assertEquals(Tooltip.RECIPE_START_COOKING, Tooltips.current(recipe, emptySet(), visible, ready = true))
         assertNull("none on screen: none this visit, so far", Tooltips.current(recipe, emptySet(), emptySet(), ready = true))
     }
 
@@ -68,7 +68,7 @@ class TooltipsTest {
             "scrolled away, it hides; nothing takes its place",
             Tooltips.current(shown, emptySet(), setOf(Tooltip.RECIPE_START_COOKING), ready = true)
         )
-        assertSame(shown, Tooltips.shown(shown, Tooltip.RECIPE_MENU))
+        assertSame(shown, Tooltips.shown(shown, Tooltip.RECIPE_MADE_THIS))
     }
 
     @Test

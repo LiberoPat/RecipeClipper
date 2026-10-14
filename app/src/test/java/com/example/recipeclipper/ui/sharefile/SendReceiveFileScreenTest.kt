@@ -7,6 +7,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -74,6 +77,17 @@ class SendReceiveFileScreenTest {
 
         assertSharedFile("${RecipeScreenFixture.testRecipe().name}.recipeclipper")
         assertEquals("{recipe}", files.shared.single().first)
+    }
+
+    /** The menu explains itself (#260): a muted line under the option, read with it as one item. */
+    @Test
+    fun theRecipeMenuSaysWhatSendAsFileDoes() {
+        RecipeScreenFixture(sendFile = SendFileViewModel(share, files)).show(compose)
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNode(hasText("Send as file") and hasText("A copy someone can open in Recipe Clipper"))
+            .assertIsDisplayed()
+        compose.onNode(hasText("Edit") and hasClickAction()).assertTextEquals("Edit") // self-explanatory: one line
     }
 
     @Test

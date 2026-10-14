@@ -3,18 +3,14 @@
   "tooltips": [
     { "id": "home_link", "screen": "home" },
     { "id": "recipe_units", "screen": "recipe" },
-    { "id": "recipe_menu", "screen": "recipe" },
     { "id": "recipe_start_cooking", "screen": "recipe" },
     { "id": "recipe_made_this", "screen": "recipe" },
     { "id": "cook_done_next", "screen": "cook" },
     { "id": "cook_tap_step", "screen": "cook" },
     { "id": "cook_timer", "screen": "cook" },
-    { "id": "week_menu", "screen": "week" },
     { "id": "groceries_long_press", "screen": "groceries" },
     { "id": "groceries_done_shopping", "screen": "groceries" },
-    { "id": "groceries_menu", "screen": "groceries" },
     { "id": "pantry_in_stock", "screen": "pantry" },
-    { "id": "pantry_menu", "screen": "pantry" },
     { "id": "settings_show_tips", "screen": "settings" }
   ]
 }
