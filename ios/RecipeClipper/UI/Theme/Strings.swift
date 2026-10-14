@@ -276,6 +276,12 @@ enum Strings {
     static var hideIngredients: String { String(localized: "cd_hide_ingredients") }
     static var showIngredients: String { String(localized: "cd_show_ingredients") }
     static func goToStep(_ n: Int) -> String { String(localized: "cd_go_to_step \(n)") }
+    /// "Back to step 2" (#254), after a step's ingredient link.
+    static func backToStep(_ n: Int) -> String { String(localized: "step_back_to \(n)") }
+    /// A step's ingredient link as VoiceOver offers it: "butter, 2 matching ingredients, show".
+    static func stepLinkLabel(_ name: String, matches: Int) -> String {
+        "\(name), \(String(localized: "step_link_matches \(matches)")), \(String(localized: "step_link_show"))"
+    }
     static func timerStart(_ label: String) -> String { String(localized: "timer_start \(label)") }
     /// Not words, so not in the catalog.
     static func timerRunning(_ clock: String) -> String { "⏱ \(clock)" }
@@ -522,6 +528,19 @@ enum Strings {
     static var addWeekToGroceries: String { String(localized: "action_add_week_to_groceries") }
     static var groceriesWeekEmpty: String { String(localized: "groceries_week_empty") }
     static var shareGroceries: String { String(localized: "action_share_groceries") }
+    // The ⋮ menus' second lines, under the options that aren't self-explanatory (#260).
+    static var menuDescSendFile: String { String(localized: "menu_desc_send_file") }
+    static var menuDescUpdateFromSource: String { String(localized: "menu_desc_update_from_source") }
+    static var menuDescWhatINeed: String { String(localized: "menu_desc_what_i_need") }
+    static var menuDescAddWeekToGroceries: String { String(localized: "menu_desc_add_week_to_groceries") }
+    static var menuDescShareCalendar: String { String(localized: "menu_desc_share_calendar") }
+    static var menuDescSaveWeekAsMenu: String { String(localized: "menu_desc_save_week_as_menu") }
+    static var menuDescApplyMenu: String { String(localized: "menu_desc_apply_menu") }
+    static var menuDescMealTypes: String { String(localized: "menu_desc_meal_types") }
+    static var menuDescPasteList: String { String(localized: "menu_desc_paste_list") }
+    static var menuDescClearTicked: String { String(localized: "menu_desc_clear_ticked") }
+    static var menuDescPantrySendList: String { String(localized: "menu_desc_pantry_send_list") }
+    static var menuDescClearRunOut: String { String(localized: "menu_desc_clear_run_out") }
     // A list sent from another phone, shared in or pasted (#149).
     static var pasteList: String { String(localized: "action_paste_list") }
     static var receiveListTitle: String { String(localized: "receive_list_title") }
@@ -691,18 +710,14 @@ enum Strings {
         switch tooltip {
         case .homeLink: String(localized: "tooltip_home_link")
         case .recipeUnits: String(localized: "tooltip_recipe_units")
-        case .recipeMenu: String(localized: "tooltip_recipe_menu")
         case .recipeStartCooking: String(localized: "tooltip_recipe_start_cooking")
         case .recipeMadeThis: String(localized: "tooltip_recipe_made_this")
         case .cookDoneNext: String(localized: "tooltip_cook_done_next")
         case .cookTapStep: String(localized: "tooltip_cook_tap_step")
         case .cookTimer: String(localized: "tooltip_cook_timer")
-        case .weekMenu: String(localized: "tooltip_week_menu")
         case .groceriesLongPress: String(localized: "tooltip_groceries_long_press")
         case .groceriesDoneShopping: String(localized: "tooltip_groceries_done_shopping")
-        case .groceriesMenu: String(localized: "tooltip_groceries_menu")
         case .pantryInStock: String(localized: "tooltip_pantry_in_stock")
-        case .pantryMenu: String(localized: "tooltip_pantry_menu")
         case .settingsShowTips: String(localized: "tooltip_settings_show_tips")
         }
     }

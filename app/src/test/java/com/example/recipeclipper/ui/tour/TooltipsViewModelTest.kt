@@ -22,7 +22,7 @@ class TooltipsViewModelTest {
 
     private val preferences = FakeTourPreferences()
     private val home = setOf(Tooltip.HOME_LINK)
-    private val recipe = setOf(Tooltip.RECIPE_UNITS, Tooltip.RECIPE_MENU)
+    private val recipe = setOf(Tooltip.RECIPE_UNITS, Tooltip.RECIPE_START_COOKING)
 
     @Test
     fun `a ready screen shows its first tooltip, on that appearance only`() = runTest(mainDispatcherRule.dispatcher) {
@@ -62,7 +62,7 @@ class TooltipsViewModelTest {
         vm.onVisit("b", TooltipScreen.RECIPE)
         vm.onReport("b", recipe, ready = true)
         advanceUntilIdle()
-        assertEquals(Tooltip.RECIPE_MENU, vm.uiState.value.current)
+        assertEquals(Tooltip.RECIPE_START_COOKING, vm.uiState.value.current)
     }
 
     @Test

@@ -7,7 +7,7 @@ import XCTest
 final class TooltipsViewModelTests: XCTestCase {
     private var preferences: MemoryTourPreferences!
     private let home: Set<Tooltip> = [.homeLink]
-    private let recipe: Set<Tooltip> = [.recipeUnits, .recipeMenu]
+    private let recipe: Set<Tooltip> = [.recipeUnits, .recipeStartCooking]
 
     override func setUp() {
         preferences = MemoryTourPreferences(sampleAdded: true, seen: [])
@@ -44,7 +44,7 @@ final class TooltipsViewModelTests: XCTestCase {
         vm.onLeave(token: "a")
         vm.onVisit(token: "a", screen: .recipe) // the same view, back on screen: a later visit
         vm.onReport(token: "a", visible: recipe, ready: true)
-        XCTAssertEqual(vm.uiState.current, .recipeMenu)
+        XCTAssertEqual(vm.uiState.current, .recipeStartCooking)
     }
 
     func testATapOutsideThePopoverClosesItForTheVisitStillUnseen() {

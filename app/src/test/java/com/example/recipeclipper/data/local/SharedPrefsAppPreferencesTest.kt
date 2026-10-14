@@ -74,10 +74,13 @@ class SharedPrefsAppPreferencesTest {
     }
 
     @Test fun `a removed tooltip's stored key is ignored`() = runBlocking {
-        // #246 removed ten tooltips; a key someone stored for one before is never read again.
+        // #246 removed ten tooltips, #260 the four ⋮ ones; a key someone stored for one before is
+        // never read again.
         file.edit()
             .putBoolean("tooltip_recipe_bookmark", true)
             .putBoolean("tooltip_home_new_recipe", true)
+            .putBoolean("tooltip_recipe_menu", true)
+            .putBoolean("tooltip_pantry_menu", true)
             .putBoolean("tooltip_cook_timer", true)
             .commit()
         val preferences = SharedPrefsAppPreferences(context)

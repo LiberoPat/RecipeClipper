@@ -67,6 +67,13 @@
     <string name="cd_hide_ingredients">Ocultar ingredientes</string>
     <string name="cd_show_ingredients">Mostrar ingredientes</string>
     <string name="cd_go_to_step">Ir al paso %1$d</string>
+    <string name="step_back_to">Volver al paso %1$d</string>
+    <string name="step_link_show">mostrar</string>
+    <plurals name="step_link_matches">
+        <item quantity="one">%1$d ingrediente coincidente</item>
+        <item quantity="many">%1$d de ingredientes coincidentes</item>
+        <item quantity="other">%1$d ingredientes coincidentes</item>
+    </plurals>
     <string name="timer_start">⏱  Temporizador de %1$s</string>
     <string name="timers_up">Se acabó el tiempo</string>
     <string name="home_subtitle">Comparte el enlace de una receta con esta app desde tu navegador, o pégalo aquí.</string>
@@ -569,18 +576,14 @@
     <string name="tooltip_got_it">Entendido</string>
     <string name="tooltip_home_link">Comparte el enlace de una receta con esta app, o pégalo aquí.</string>
     <string name="tooltip_recipe_units">Como en la receta muestra cada cantidad tal como la da la receta. Toca para ver todas las recetas en Métrico u Onzas; lo que no se pueda convertir con exactitud se queda como en la receta.</string>
-    <string name="tooltip_recipe_menu">Más: Añadir al plan, Añadir a la compra, Enviar como archivo y Editar.</string>
     <string name="tooltip_recipe_start_cooking">Modo cocina: un paso cada vez, con temporizadores, y la pantalla sigue encendida.</string>
     <string name="tooltip_recipe_made_this">¿La has hecho? Añade una foto y una nota, o Marcar como cocinada.</string>
     <string name="tooltip_cook_done_next">Cuando termines un paso, toca aquí para pasar al siguiente.</string>
     <string name="tooltip_cook_tap_step">Toca cualquier paso para que sea el actual.</string>
     <string name="tooltip_cook_timer">El temporizador de este paso. Suena aunque salgas de la app.</string>
-    <string name="tooltip_week_menu">Más: Lo que necesito, los ingredientes de la semana para la compra, y los menús.</string>
     <string name="tooltip_groceries_long_press">Mantén pulsado un artículo para moverlo a otro pasillo, o eliminarlo.</string>
     <string name="tooltip_groceries_done_shopping">¿De vuelta en casa? Guarda lo marcado en la despensa y quítalo de la lista.</string>
-    <string name="tooltip_groceries_menu">Más: Enviar lista, o Pegar una lista.</string>
     <string name="tooltip_pantry_in_stock">Toca un artículo para cambiar su estado o cantidad; desliza a la izquierda cuando se acabe. La etiqueta de la cesta indica que está en tu lista de la compra.</string>
-    <string name="tooltip_pantry_menu">Más: Enviar lista, y ordenar por pasillo o fecha de caducidad.</string>
     <string name="tooltip_settings_show_tips">Vuelve a ver cada consejo, de uno en uno.</string>
     <string name="cd_dismiss_tip">Cerrar consejo</string>
     <string name="settings_section_help">Ayuda</string>
@@ -619,6 +622,19 @@
         <item quantity="many">%1$d de pasos quitados</item>
         <item quantity="other">%1$d pasos quitados</item>
     </plurals>
+    <!-- The ⋮ menus' second lines (#260). -->
+    <string name="menu_desc_send_file">Una copia que se puede abrir en Recipe Clipper</string>
+    <string name="menu_desc_update_from_source">Cambia tus ediciones por lo último de la web</string>
+    <string name="menu_desc_what_i_need">Lo que piden las recetas de la semana y no tienes en la despensa</string>
+    <string name="menu_desc_add_week_to_groceries">A tu lista de la compra, salvo lo que ya tienes</string>
+    <string name="menu_desc_save_week_as_menu">Guarda las comidas de la semana para repetirlas</string>
+    <string name="menu_desc_apply_menu">Añade a esta semana las comidas de un menú guardado</string>
+    <string name="menu_desc_meal_types">Añade, renombra u ordena las comidas del día</string>
+    <string name="menu_desc_paste_list">Añade artículos de un texto que copiaste</string>
+    <string name="menu_desc_clear_ticked">Quita lo marcado sin reponer la despensa</string>
+    <string name="menu_desc_pantry_send_list">Lo que tienes, como texto</string>
+    <string name="menu_desc_clear_run_out">Quita todo lo marcado como Agotado</string>
+    <string name="menu_desc_share_calendar">Añade las comidas de la semana a tu calendario</string>
     <string name="pantry_select_items">Seleccionar artículos</string>
     <string name="pantry_select">Seleccionar</string>
     <string name="action_select_all">Seleccionar todo</string>

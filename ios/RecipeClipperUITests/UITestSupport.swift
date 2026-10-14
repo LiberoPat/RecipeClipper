@@ -62,6 +62,10 @@ class RecipeUITestCase: XCTestCase {
         app.buttons.matching(NSPredicate(format: "label == %@ OR label BEGINSWITH %@", title, "\(title),")).firstMatch
     }
 
+    /// A menu option. One with a second line under it (#260) reads "Title, line", so it's
+    /// matched like a row.
+    func menuItem(_ title: String) -> XCUIElement { row(title) }
+
     func rowCount(_ title: String) -> Int {
         app.buttons.matching(NSPredicate(format: "label == %@ OR label BEGINSWITH %@", title, "\(title),")).count
     }

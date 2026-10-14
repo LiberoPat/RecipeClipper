@@ -18,6 +18,8 @@ struct ReadingView: View {
         let recipe = content.recipe
         // Credited only when there is both a domain to name and a link to open.
         let sourceUrl = content.sourceDomain == nil ? nil : URL(string: recipe.sourceUrl)
+        let jump = state.ingredientJump
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let image = recipe.image, let url = URL(string: image) {
@@ -61,8 +63,10 @@ struct ReadingView: View {
                         IngredientRow(
                             text: ingredient,
                             checked: state.checkedIngredients.contains(index),
-                            onCheckedChange: { vm.onIngredientChecked(index, $0) }
+                            onCheckedChange: { vm.onIngredientChecked(index, $0) },
+                            highlighted: jump?.highlighted == true && jump?.lines.contains(index) == true
                         )
+                        .id("line-\(index)")
                     }
                 }
 
@@ -84,11 +88,14 @@ struct ReadingView: View {
                             .textStyle(Typography.titleMedium)
                             .foregroundStyle(Palette.accentText)
                             .frame(width: stacked ? nil : numberColumn, alignment: .leading)
-                        stepText(step, content.shownStepParts(index, asWritten: state.asWrittenSteps), accent: Palette.accentText)
+                        let parts = content.shownStepParts(index, asWritten: state.asWrittenSteps)
+                        stepText(step, parts, accent: Palette.accentText, linked: true)
                             .textStyle(Typography.bodyLarge)
                             .foregroundStyle(Palette.onBackground)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .modifier(StepLinks(parts: parts, onLink: { vm.onIngredientLink(index, $0) }))
                     }
+                    .id("step-\(index)")
                     .padding(.vertical, 8)
                     .contentShape(Rectangle())
                     .modifier(ShortStepToggle(
@@ -119,19 +126,37 @@ struct ReadingView: View {
             .padding(.bottom, 32)
         }
         .scrollDismissesKeyboard(.interactively)
+        // A step's ingredient link (#254): scroll to its lines, or back to the step.
+        .onChange(of: jump?.scrollTo, initial: true) { _, scroll in
+            guard let jump, let scroll else { return }
+            withAnimation {
+                switch scroll {
+                case .lines: proxy.scrollTo("line-\(jump.lines.min() ?? 0)", anchor: .center)
+                case .step: proxy.scrollTo("step-\(jump.step)", anchor: .center)
+                }
+            }
+            vm.onIngredientJumpScrolled()
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !content.instructions.isEmpty && !editingNotes {
                 VStack(spacing: 0) {
-                    Hairline()
-                    Button(Strings.startCooking, action: vm.onCookStart)
-                        .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: true))
-                        .tooltipAnchor(.recipeStartCooking)
-                        .padding(.horizontal, 20)
-                        .readableColumn()
-                        .padding(.vertical, 12)
+                    if let jump, jump.scrollTo != .step {
+                        BackToStepChip(step: jump.step, action: vm.onBackToStep)
+                            .padding(.bottom, 10)
+                    }
+                    VStack(spacing: 0) {
+                        Hairline()
+                        Button(Strings.startCooking, action: vm.onCookStart)
+                            .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: true))
+                            .tooltipAnchor(.recipeStartCooking)
+                            .padding(.horizontal, 20)
+                            .readableColumn()
+                            .padding(.vertical, 12)
+                    }
+                    .background(Palette.background)
                 }
-                .background(Palette.background)
             }
+        }
         }
     }
 }
@@ -304,8 +329,10 @@ private struct ShortStepToggle: ViewModifier {
 
 /// A step's text with the amounts inserted from its ingredient lines (#101) set apart, in
 /// `accent` (nil keeps the text's colour) and a heavier weight, so an insertion never reads as
-/// the site's own words. `parts` nil: the step as written.
-func stepText(_ text: String, _ parts: [StepAmounts.Part]?, accent: Color?) -> Text {
+/// the site's own words. `parts` nil: the step as written. With `linked`, a mention naming
+/// several lines with different amounts (#254) is a link in `accent`, which `StepLinks` opens;
+/// without (a done step) it reads as plain text.
+func stepText(_ text: String, _ parts: [StepAmounts.Part]?, accent: Color?, linked: Bool = false) -> Text {
     guard let parts else { return Text(text) }
     var out = AttributedString()
     for part in parts {
@@ -313,8 +340,66 @@ func stepText(_ text: String, _ parts: [StepAmounts.Part]?, accent: Color?) -> T
         if part.amount {
             run.inlinePresentationIntent = .stronglyEmphasized
             if let accent { run.foregroundColor = accent }
+        } else if linked, !part.lines.isEmpty, let url = StepLinks.url(part.lines) {
+            run.link = url
+            run.underlineStyle = .single
+            if let accent { run.foregroundColor = accent }
         }
         out += run
     }
     return Text(out)
+}
+
+/// A step's ingredient links (#254): a tap on one calls `onLink` with its lines, and VoiceOver
+/// offers each as an action that reads as a button, "butter, 2 matching ingredients, show".
+struct StepLinks: ViewModifier {
+    let parts: [StepAmounts.Part]?
+    let onLink: (([Int]) -> Void)?
+
+    private static let scheme = "recipeclipper-lines"
+
+    static func url(_ lines: [Int]) -> URL? {
+        URL(string: "\(scheme):\(lines.map(String.init).joined(separator: ","))")
+    }
+
+    func body(content: Content) -> some View {
+        let links = (parts ?? []).filter { !$0.lines.isEmpty }
+        if let onLink, !links.isEmpty {
+            content
+                .environment(\.openURL, OpenURLAction { url in
+                    guard url.scheme == Self.scheme else { return .systemAction }
+                    onLink(url.absoluteString.dropFirst(Self.scheme.count + 1).split(separator: ",").compactMap { Int($0) })
+                    return .handled
+                })
+                .accessibilityActions {
+                    ForEach(Array(links.enumerated()), id: \.offset) { _, link in
+                        Button(Strings.stepLinkLabel(link.text, matches: link.lines.count)) { onLink(link.lines) }
+                    }
+                }
+        } else {
+            content
+        }
+    }
+}
+
+/// "Back to step N" (#254), after a step's ingredient link: the way back to the step.
+struct BackToStepChip: View {
+    let step: Int
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(Strings.backToStep(step + 1))
+                .textStyle(Typography.labelLarge)
+                .foregroundStyle(Palette.accentText)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(minHeight: 44)
+                .background(Capsule().fill(Palette.background))
+                .overlay(Capsule().stroke(Palette.hairline, lineWidth: 1))
+                .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("recipe.backToStep")
+    }
 }

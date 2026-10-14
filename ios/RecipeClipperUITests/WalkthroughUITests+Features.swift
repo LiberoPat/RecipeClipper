@@ -25,7 +25,7 @@ extension WalkthroughUITests {
         gotIt("recipe_units", "the recipe's first tooltip", hold: 4) // a longer text
         back()
         require(row("Tomato and White Bean Soup"), "the sample recipe").tap()
-        gotIt("recipe_menu", "the recipe's next tooltip, on a later visit")
+        gotIt("recipe_start_cooking", "the recipe's next tooltip, on a later visit")
         back()
         require(app.buttons["Settings"]).tap()
         pause()

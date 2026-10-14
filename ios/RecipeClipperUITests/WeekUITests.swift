@@ -65,7 +65,7 @@ final class WeekUITests: RecipeUITestCase {
         require(tabBar.buttons["Week"], "the Week tab").tap()
         planToday("Chicken Adobo")
         require(app.buttons["More options"], "the Week menu").tap()
-        require(app.buttons["What I need"], "What I need").tap()
+        require(menuItem("What I need"), "What I need").tap()
         require(app.staticTexts["garlic"], "the first row to buy")
 
         // Top to bottom: To buy, then In your pantry.
@@ -84,7 +84,7 @@ final class WeekUITests: RecipeUITestCase {
         planToday("Chicken Adobo")
         planToday("Spaghetti Carbonara")
         require(app.buttons["More options"], "the Week menu").tap()
-        require(app.buttons["Add this week's ingredients"], "Add this week's ingredients").tap()
+        require(menuItem("Add this week's ingredients"), "Add this week's ingredients").tap()
 
         for text in ["2 lb chicken thighs", "1/2 cup soy sauce", "400 g spaghetti", "4 egg yolks"] {
             let line = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'sheetLine-' AND label CONTAINS %@", text)).firstMatch

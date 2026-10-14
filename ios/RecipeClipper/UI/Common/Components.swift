@@ -101,6 +101,8 @@ struct IngredientRow: View {
     let text: String
     let checked: Bool
     let onCheckedChange: (Bool) -> Void
+    /// A step's ingredient link points here (#254): a paprika wash that fades out.
+    var highlighted = false
 
     var body: some View {
         Button { onCheckedChange(!checked) } label: {
@@ -114,6 +116,12 @@ struct IngredientRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Palette.accentText.opacity(highlighted ? 0.14 : 0))
+                    .padding(.horizontal, -6)
+                    .animation(.easeOut(duration: highlighted ? 0.15 : 0.9), value: highlighted)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

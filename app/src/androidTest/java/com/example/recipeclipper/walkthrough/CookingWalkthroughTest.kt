@@ -234,7 +234,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
         tap("Got it", 1500)
         back()
         tap("Tomato and White Bean Soup", 2000)
-        waitFor(hasTestTag("tooltip-recipe_menu")) // the later visit's next one
+        waitFor(hasTestTag("tooltip-recipe_start_cooking")) // the later visit's next one
         pause(2500)
         tap("Got it", 1500)
         back()

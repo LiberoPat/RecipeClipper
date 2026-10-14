@@ -2296,15 +2296,31 @@ unit menu. It applies to the reading view and cook mode; sharing out keeps steps
 
 A mention gets an amount only when every rule holds; otherwise it stays exactly as written:
 
-- **One line, strictly.** A run of words ending in a line name's last word (singular or plural,
-  per `steps.json` `plurals`) names that line when `IngredientName.matches` says so: the
-  pantry's strict rule (#51), so "rice flour" never takes "flour"'s amount and "the onion" never
-  takes "1 red onion"'s. The longest run wins ("brown sugar" is the brown sugar line, not
-  "sugar"). Two lines matching the mention ("unsalted butter" and "butter, for greasing"; sugar
-  for the cake and for the frosting), or a line with no name that uses the word ("salt and
-  pepper", "juice of 1 lemon"), make it ambiguous. Jev may later resolve those (#99).
+- **One line.** A run of words ending in a line name's last word (singular or plural, per
+  `steps.json` `plurals`) names that line when `IngredientName.matches` says so (the pantry's
+  rule, #51, so "rice flour" never takes "flour"'s amount), or when the line's name is the
+  step's words after describing words only, `steps.json` `lineDescriptors` with the names
+  table's modifiers (#254: "the butter" for "very cold unsalted butter", "the oil" for "olive
+  oil", "the stock" for "low-sodium beef stock", "the onion" for "1 red onion"). Any other word
+  makes another ingredient: "the sauce" never takes "Worcestershire sauce"'s amount, nor "the
+  leaves" "bay leaves"'s, nor "the butter" "peanut butter"'s. A mention named only that way
+  also names every line ending in its words ("the oil" with olive oil and toasted sesame oil
+  names both). The longest run wins ("brown sugar" is the brown sugar line, not "sugar"), and
+  a line named exactly beats one named past its describing words ("the sugar" beside "brown
+  sugar" and "sugar" is the "sugar" line).
+- **Several lines.** The same ingredient lending the same amount ("30g / 2 tbsp unsalted butter"
+  twice, one for searing, one cold to finish) is one answer; two ingredients never are, even
+  with equal amounts ("los pimientos" for "1 pimiento verde" and "1 pimiento rojo" is two
+  peppers, so a link, 2026-10-14). Lines with different amounts, a line
+  with no amount among them ("2 cups flour" and "flour, for dusting"), or a line with no name
+  that uses the word ("salt and pepper") get no number: the mention becomes a link (below).
+  "flour for dusting" stays a link rather than lending the other line's amount: the harness
+  found "1/4 tsp salt" beside "pinch of salt" for the topping, and "Dash of salt" for the
+  frosting, so a line without a number isn't evidence the step means the one with.
 - **First mention only**, once per line per step; later mentions stay as written, whatever
-  became of the first. Each step is read on its own.
+  became of the first. Each step is read on its own. A step's title before a spaced dash
+  (RecipeTin Eats' "Sauté onion and mushrooms - Turn the heat down…") is no mention, so the
+  first mention is the one after it, and the word after the dash counts as a sentence's first.
 - **The line lends its amount only if the scaler reads it** (scaling it changes it), so a line
   that stays as written when scaled ("2 onions (about 300 g)") never lends a number. The amount
   is the rendered line's text before the name ("250 g", "2 large", "3 cloves", "200 g de",
@@ -2315,7 +2331,9 @@ A mention gets an amount only when every rule holds; otherwise it stays exactly 
   keeps it: "half the butter", "1 cup of the flour", "2 tablespoons butter", "a carrot".
 - **The mention is the whole name.** After it: the step's end, punctuation, or a word in
   `after` ("and", "into", "until"…); anything else ("the flour mixture", "the lemon juice",
-  "le beurre fondu") may be a longer name, so it stays. German writes compounds as one word,
+  "la crème anglaise") may be a longer name, so it stays. Where modifiers follow the noun, the
+  words giving its state may come first ("le beurre fondu", "la cebolla picada": the names
+  table's `trailingWords` and the density table's `trailingModifiers`). German writes compounds as one word,
   so any word may follow (`anyWordAfter`). Before it: its article (which the amount replaces),
   a list comma, a word in `before` (a preposition, a conjunction, a common verb: "Stir in flour",
   "Whisk flour"), or a sentence's first word (the imperative verb). Anything else ("Dust with
@@ -2328,12 +2346,114 @@ and a heavier weight (Android SemiBold, iOS strongly emphasised); in a done cook
 keeps only the weight, so the dimmed row stays dim. The screen checks the flag; the ViewModel
 computes the parts only while the switch is on, and again on every servings or units change.
 
-Known limits, left as written on purpose: head-noun mentions of compound lines ("the milk" for
-"whole milk", "the chocolate chips" for "semisweet chocolate chips", "the vanilla" for "vanilla
-extract"); French names with an elided "d'" ("l'huile d'olive" against "3 c. à s. d'huile
-d'olive"), because `IngredientName` keeps the elision in the name; and an ingredient also used
-for greasing or dusting when the list has only one line for it ("grease the pan with butter"
-then gets the batter's butter, since the step's words can't tell the two uses apart).
+**Ingredient links (#254, the owner's call, 2026-10-14).** A mention naming several lines with
+different amounts, where the step doesn't say which, is a link: the mention's own words in the
+paprika text accent, underlined, never a number. `StepAmounts.Part.lines` holds the lines (the
+corpus marks it `⟪butter|0,1⟫`), and which lines match is the core's, pinned by the corpus. A
+tap is `onIngredientLink(step, lines)`; the ViewModel holds `IngredientJump` (the lines, the
+step, whether they are still highlighted, the scroll the view still owes) and fades the
+highlight after 3 s (`HIGHLIGHT_MILLIS`, iOS `highlightDuration`, through the injected sleep).
+The view does the scrolling. Reading view: scroll to the first line, a fading paprika wash on
+the lines, and a "Back to step N" chip above Start cooking that scrolls back and ends the jump.
+Cook mode: the folded ingredients bar opens with the lines highlighted and the chip under them;
+the chip folds it again (only if the link opened it), as do toggling the bar, starting or
+leaving cook mode. In cook mode only the current step's links open: a tap on another step
+makes it current, as before. Accessibility: each link is also an action on the step's text
+that reads as a button, "butter, 2 matching ingredients, show" (Android a custom accessibility
+action, iOS an accessibility action), from `step_link_matches` and `step_link_show`.
+
+**What the harness found (2026-10-14).** The owner reported butter and flour missing their
+amounts. A JVM harness ran 30 real pages (RecipeTin Eats, King Arthur, BBC Good Food, Once Upon
+a Chef, Taste of Home, Pinch of Yum, Bon Appétit, Delish, Food.com, Spend with Pennies, Jamie
+Oliver, Betty Crocker and others) through `BlogPageParser` and `StepAmounts`, counting each
+step's first mention of a line's head word: 362 mentions. Before: 128 got an amount, 234 none.
+After: 201 an amount, 22 a link, 139 none. The causes fixed: the line's describing words ("the
+butter" for "unsalted butter, very cold"; "the oil", "the stock", "the sugar" for "granulated
+sugar"), "8 tablespoons of salted butter" naming "of salted butter" (`of` is now an English
+`leadingWords` entry, which corrects the pantry's name for such lines too), duplicate lines
+with the same amount, "Cream together butter and sugar" (`together` is a `before` word), King
+Arthur's "King Arthur Unbleached All-Purpose Flour", and step titles. What stays as written,
+on purpose: the step already gives the amount ("add 1 tbsp olive oil", BBC Good Food's style:
+about a third of what remains), says how much ("half the butter", "1 tablespoon of the oil"),
+a longer or other name ("the flour mixture", "Cheese Sauce", "lemon juice", "the bay leaves",
+"the cheese" for "mozzarella cheese": cheese, sauce, chocolate and herb varieties aren't
+describing words), a line without an amount to lend ("Kosher salt", "lemon wedges, for
+serving", "pinch of nutmeg"), a line used in parts ("divided", "plus more"), a brand the table
+doesn't list ("Gold Medal™ All Purpose Flour"), and a describing word in the step that isn't on
+the line ("the mashed bananas" for "mashed very ripe bananas"). Every fixed and kept case has a
+corpus `Step` row.
+
+Known limit in English, left as written on purpose: an ingredient also used for greasing or
+dusting when the list has only one line for it ("grease the pan with butter" then gets the
+batter's butter, since the step's words can't tell the two uses apart). The other languages
+now guard it with `dustingWords` (below); English's list is empty, so its results stay as
+measured. (The French elision and the English-only `lineDescriptors` limits noted here before
+are fixed below.)
+
+**Spanish, French, German, Italian and Portuguese (#262, 2026-10-14).** The same harness ran
+101 real pages from native sites (recetasgratis, directoalpaladar, cocinatis; marmiton, 750g,
+cuisineaz; gutekueche, emmikochteinfach, einfachbacken; giallozafferano, cucchiaio, misya;
+tudogostoso, receitasnestle, cozinhatecnica), counting each step's first mention of a line by
+the name's first or last word (German: also a compound's tail). Amount / link / none, before
+→ after: es 108/5/202 → 146/8/161, fr 82/4/175 → 125/6/133, de 60/6/57 → 70/6/47, it
+28/7/125 → 39/12/109, pt 79/8/165 → 111/9/132. English's 30 pages give the same report,
+word for word. Every newly shown amount was checked against its line by hand. What changed,
+all table-driven (`steps.json`, empty lists behave exactly as before):
+
+- **Describing words after the noun** (`trailingDescriptors`): a line's name may be the step's
+  words followed only by these ("el aceite" for "aceite de oliva virgen extra", "a farinha" for
+  "farinha de trigo", "le beurre" for "beurre doux", "lo yogurt" for "yogurt bianco", "a
+  cebola" for "cebola pequena"). The same kinds of words English's `lineDescriptors` holds:
+  oil, flour, sugar and stock kinds, salted or not, colours, sizes, ground, powdered, ripe,
+  frozen, canned. Any other word is another ingredient: "harina de arroz", "aceite de
+  sésamo", "vinagre de Jerez", "azúcar glas", "arroz basmati". Such a mention names every line
+  starting with its words, so two oils are a link.
+- **French elision**: "3 c. à s. d'huile d'olive" lends "3 c. à s. d'", which takes the place
+  of "l'" ("Faites chauffer 3 c. à s. d'huile d'olive"): the line's head word is read from its
+  own words, so "d'olive" is "olive".
+- **States after the mention** (above): "le beurre fondu", "la cebolla picada", and `after`
+  words like "caliente", "coupé", "égouttés", "progressivement", "insieme", "durante".
+- **German compounds** (`compoundHeads`, written "weizen-mehl"): Weizenmehl, Dinkelmehl,
+  Süßrahm- and Sauerrahmbutter, Schlag- and Kochsahne, Gemüse-, Hühner-, Rinder- and
+  Geflügelbrühe, Oliven-, Raps-, Sonnenblumen-, Pflanzen- and Speiseöl, Baby- and Blattspinat,
+  Vollmilch, Kristall- and Rohrzucker, Gemüsezwiebel, Hokkaido- and Butternutkürbis answer
+  their last part. Only listed compounds: a first part alone would let "Sonnenblumenkerne"
+  answer "die Kerne" (fruit pips) and "Meerrettich" "den Rettich", and "Erdnussbutter" never
+  answers "die Butter". A compound mention also names every line whose last word ends in it,
+  so "das Mehl" beside Weizenmehl and Mandelmehl is a link. German's `lineDescriptors` hold
+  the adjectives before a noun ("brauner", "gemahlener", "TK").
+- **Contractions** (`contractions`): only those that say where ("nella farina" → "in 250 g di
+  farina", "na água" → "em 3 colheres de água", "zum Mehl" → "zu 100 g Mehl"). "al", "au",
+  "ao" and "à" stay out: they also make dish names, and the harness found "fenouil au citron",
+  "chocolate ao leite" (milk chocolate) and "garbanzos al curry".
+- **Dusting and greasing** (`dustingWords`): a sentence holding "untar", "polvilhar",
+  "enfarinhar", "engrasar", "fariner", "beurrer", "infarinare", "imburrare", "ungere",
+  "einfetten", "bestäuben"… keeps every mention as written: the harness found "Polvilhar a
+  farinha", "unte a forma com manteiga", "uma assadeira untada e polvilhada com farinha de
+  trigo" lending the dough's whole amount. German lists verbs only, since "in einer gefetteten
+  Auflaufform" describes a tin greased earlier. "mit dem Mehl bestäuben" for a roux loses its
+  amount: the safe side.
+- **Verbs** in `before` (Italian sites write "Unite farina, cacao e lievito"), unit words in the
+  names tables (German "Stg", "Kn", "Zw", "Schuss"; French "pièce(s)", "branche(s)";
+  Portuguese "unidades de"; Italian "bacca"), so those lines have a name.
+- **An amount the mention repeats** is trimmed: "el diente de ajo" with "1 diente de ajo" reads
+  "1 diente de ajo", not "1 diente de diente de ajo" (also "1 Feuille(s) Laurier").
+
+Left as written on purpose: "con", "com" and "se" after a mention ("el arroz con leche", a
+dish; "el curry se cocine", the dish not the powder); produce, rice, ham and vinegar varieties
+("tomate pera" is in, as English's "roma"; "arroz bomba", "jamón serrano", "vinagre de Jerez"
+aren't); "passata di pomodoro" and "salsa" lines (a sauce word is never a describing word); "le
+paprika fumé" for "paprika"; a describing word in the step that isn't on the line ("die
+gelben Bohnen" for "Bohnen, gelb"); and, as in English, a step that gives its own amount (most
+recetasgratis, emmikochteinfach and cozinhatecnica steps).
+
+Remaining gaps: a dish named after its ingredients still takes an amount after a conjunction
+or "con"/"with" before it ("la torta pere e 150 g di cioccolato", "Refrigera el arroz con 1
+litro de leche" when milk has one line); GialloZafferano's name-first lines ("Burro 100 g")
+lend nothing (#15); "farina 00" has no name (a digit in a name); some sites' steps reach the
+app with HTML entities undecoded (750g's "l&rsquo;oignon", tudogostoso's "&oacute;leo") or as a JSON
+array in one string (einfachbacken), which no word table can read; and Japanese stays a no-op
+(it has tables, but no spaces between words to find a mention by).
 
 ## The Recipes screen (#102)
 
@@ -3167,13 +3287,13 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   - **Home:** the link field ("Share a recipe link to this app, or paste one here").
   - **Recipe (reading view):** the units dropdown, explaining "As written" (every amount as
     the recipe gives it; tap for Metric or Ounces; what can't convert exactly stays as written);
-    the ⋮ menu (it names Add to plan and Add to groceries); "Start cooking"; "I made this"
+    "Start cooking"; "I made this"
     (the button, or the + tile once there are photos).
   - **Cook mode** (its own screen, though it is the recipe screen's): "Done — next step"; the
     next step ("tap any step to make it the current one"); the current step's timer.
-  - **Week:** the ⋮ menu. **Groceries:** the first row (long-press); "Done shopping" (while
-    anything is ticked); the ⋮ menu. **Pantry:** the first row's "Ran out" / "Restock" (#194;
-    it names the long-press's "Running low" too); the ⋮ menu.
+  - **Week:** none (its host stays, for a later one). **Groceries:** the first row
+    (long-press); "Done shopping" (while anything is ticked). **Pantry:** the first row's
+    "Ran out" / "Restock" (#194; it names the long-press's "Running low" too).
   - **Settings:** "Show tips again".
 - **No Serves tooltip** (owner, 2026-09-29: "write a tooltip [that] explains the 'As written'
   section; can remove the serving tooltip, it's straightforward"). `recipe_servings` is gone
@@ -3190,6 +3310,23 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   `groceries_tick`, `cook_ingredients` and `week_month`. Those left explain a hidden gesture, a
   menu or a behaviour. A stored `tooltip_<id>` for a removed one is ignored, like
   `recipe_servings`'s (only the catalogue's keys are read), and costs nothing.
+- **Menus explain themselves; the ⋮ tooltips removed** (owner, 2026-10-14, #260: the ⋮ menus
+  hold concepts that confuse first-time users). A muted second line sits under each ⋮ option
+  that isn't self-explanatory, every time the menu opens: at most about eight words, saying what
+  happens. Recipe: Send as file ("A copy someone can open in Recipe Clipper"), Update from
+  source ("Replace your edits with the website's latest"). Week: What I need, Add this week's
+  ingredients, Share as calendar file, Save week as menu, Apply a menu, Meal types. Groceries:
+  Send as file, Paste a list, Clear ticked items ("Remove ticked items without restocking the
+  pantry"). Pantry: Send list ("What's in stock, as text"), Send as file, Clear run-out items.
+  The rest stay one line (Add to plan, Add to groceries, Edit, Delete, Rename, Send list on
+  Groceries, Clear the whole list, the sorts, Select items, the list, meal-type and saved-menu
+  rows' menus). Android: `MenuItemText` in the `DropdownMenuItem`'s text slot, the line in
+  `bodySmall` and `onSurfaceVariant` (muted, `MutedOnInk` in dark mode), wrapping inside the
+  menu's own width cap; the item merges its semantics, so TalkBack reads both. iOS: the native
+  menu subtitle, from a button label of `Text`, `Text` and, for an icon, `Image` (inside a
+  `Label`'s title the second line is dropped); VoiceOver reads "Title, line". With
+  the menus saying it themselves, `recipe_menu`, `week_menu`, `groceries_menu` and
+  `pantry_menu` went; their stored keys are ignored like #246's.
 - **Which one, when** (`Tooltips.current`, the same rule on both platforms): a **visit** is one
   appearance of a screen, from when it shows until it's left (a rotation isn't a new one on
   Android: the visit's token is saved state, and leaving isn't reported while the activity is
@@ -3248,7 +3385,7 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   (`TooltipsScreenTest`: Home's first visit shows its tooltip after its first second, Got
   it, and a later visit none; Settings' shows only once scrolled to; the bubble's
   placement at its control), and iOS's recipe screen in `TooltipsUITests` (one per visit, at the
-  units dropdown, then the ⋮ menu on the next). Every other screen test, UI test and walkthrough
+  units dropdown, then "Start cooking" on the next). Every other screen test, UI test and walkthrough
   starts with every tooltip seen: Android's screen tests provide no `LocalTooltips`, iOS's test
   containers use `MemoryTourPreferences`, and `-uiTestTooltips` (iOS) or `firstRun = true`
   (Android's walkthroughs) turns them on. Walkthrough 17 shows the sample on Home and a tooltip

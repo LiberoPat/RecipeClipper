@@ -67,34 +67,37 @@ struct WeekScreen: View {
                     // The week's own actions act on the week shown, so the month view leaves
                     // them out.
                     if let onOpenWhatINeed, state.month == nil {
-                        Button(Strings.whatINeedTitle) { onOpenWhatINeed(vm.uiState.weekStart) }
+                        Button { onOpenWhatINeed(vm.uiState.weekStart) } label: {
+                            Text(Strings.whatINeedTitle); Text(Strings.menuDescWhatINeed)
+                        }
                     }
                     if let makeGroceriesVM, state.month == nil {
-                        Button(Strings.addWeekToGroceries) {
+                        Button {
                             let groceries = groceriesVM ?? makeGroceriesVM()
                             groceriesVM = groceries
                             groceriesSheet = groceries
                             let start = vm.uiState.weekStart
                             groceries.loadWeek(start)
+                        } label: {
+                            Text(Strings.addWeekToGroceries); Text(Strings.menuDescAddWeekToGroceries)
                         }
                     }
                     if state.month == nil {
-                        Button(Strings.shareCalendar, action: vm.onShareCalendar)
+                        Button(action: vm.onShareCalendar) { Text(Strings.shareCalendar); Text(Strings.menuDescShareCalendar) }
                             .disabled(!state.hasMeals)
                     }
                     if state.month == nil {
-                        Button(Strings.saveWeekAsMenu, action: vm.onSaveMenuStart)
+                        Button(action: vm.onSaveMenuStart) { Text(Strings.saveWeekAsMenu); Text(Strings.menuDescSaveWeekAsMenu) }
                             .disabled(!state.hasMeals)
                             .accessibilityIdentifier("saveWeekAsMenu")
-                        Button(Strings.applyMenu, action: vm.onPickMenuStart)
+                        Button(action: vm.onPickMenuStart) { Text(Strings.applyMenu); Text(Strings.menuDescApplyMenu) }
                             .accessibilityIdentifier("applyMenu")
                     }
-                    Button(Strings.mealTypesTitle, action: onOpenMealTypes)
+                    Button(action: onOpenMealTypes) { Text(Strings.mealTypesTitle); Text(Strings.menuDescMealTypes) }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
                 .accessibilityLabel(Strings.moreOptions)
-                .tooltipAnchor(.weekMenu, inToolbar: true)
             }
         }
         // The tooltips (#190); none over this screen's sheets, dialogs and snackbar. Outside

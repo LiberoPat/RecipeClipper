@@ -16,7 +16,7 @@ final class WeekMenusUITests: RecipeUITestCase {
 
     private func weekMenu(_ item: String) {
         require(app.buttons["More options"], "the Week menu").tap()
-        require(app.buttons[item], item).tap()
+        require(menuItem(item), item).tap()
     }
 
     /// Answers the alert showing (titled `alert`), replacing its field's text with `text` first.
@@ -31,6 +31,15 @@ final class WeekMenusUITests: RecipeUITestCase {
         prompt.buttons[button].tap()
         requireGone(prompt, alert)
     }
+
+    /// The menu explains itself (#260): a second line under an option that isn't
+    /// self-explanatory, read by VoiceOver with it.
+    func testTheWeekMenuSaysWhatApplyAMenuDoes() {
+        launch(.standard)
+        require(app.tabBars.firstMatch.buttons["Week"], "the Week tab").tap()
+        require(app.buttons["More options"], "the Week menu").tap()
+        let apply = require(app.buttons["applyMenu"], "Apply a menu…")
+        XCTAssertEqual(apply.label, "Apply a menu…, Add a saved menu's meals to this week")    }
 
     func testSaveApplyRenameAndDeleteAMenu() {
         launch(.standard)

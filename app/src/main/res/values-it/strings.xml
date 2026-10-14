@@ -67,6 +67,13 @@
     <string name="cd_hide_ingredients">Nascondi gli ingredienti</string>
     <string name="cd_show_ingredients">Mostra gli ingredienti</string>
     <string name="cd_go_to_step">Vai al passaggio %1$d</string>
+    <string name="step_back_to">Torna al passaggio %1$d</string>
+    <string name="step_link_show">mostra</string>
+    <plurals name="step_link_matches">
+        <item quantity="one">%1$d ingrediente corrispondente</item>
+        <item quantity="many">%1$d di ingredienti corrispondenti</item>
+        <item quantity="other">%1$d ingredienti corrispondenti</item>
+    </plurals>
     <string name="timer_start">⏱  Avvia timer di %1$s</string>
     <string name="timers_up">Tempo scaduto</string>
     <string name="home_subtitle">Condividi il link di una ricetta con questa app dal browser, oppure incollalo qui.</string>
@@ -569,18 +576,14 @@
     <string name="tooltip_got_it">Ho capito</string>
     <string name="tooltip_home_link">Condividi il link di una ricetta con questa app, oppure incollalo qui.</string>
     <string name="tooltip_recipe_units">Come nella ricetta mostra ogni quantità esattamente come la dà la ricetta. Tocca per vedere ogni ricetta in Metrico o Once; ciò che non si può convertire con precisione resta come nella ricetta.</string>
-    <string name="tooltip_recipe_menu">Altro: Aggiungi al piano, Aggiungi alla spesa, Invia come file e Modifica.</string>
     <string name="tooltip_recipe_start_cooking">Modalità cucina: un passaggio alla volta, con i timer, e lo schermo resta acceso.</string>
     <string name="tooltip_recipe_made_this">L\'hai fatta? Aggiungi una foto e una nota, oppure Segna come cucinata.</string>
     <string name="tooltip_cook_done_next">Finito un passaggio, tocca qui per andare al successivo.</string>
     <string name="tooltip_cook_tap_step">Tocca un passaggio qualsiasi per renderlo quello attuale.</string>
     <string name="tooltip_cook_timer">Il timer di questo passaggio. Suona anche se esci dall\'app.</string>
-    <string name="tooltip_week_menu">Altro: Cosa mi serve, gli ingredienti della settimana per la spesa, e i menu.</string>
     <string name="tooltip_groceries_long_press">Tieni premuto un articolo per spostarlo in un altro reparto, o eliminarlo.</string>
     <string name="tooltip_groceries_done_shopping">Tornato a casa? Metti in dispensa quello che hai spuntato e toglilo dalla lista.</string>
-    <string name="tooltip_groceries_menu">Altro: Invia la lista, o Incolla una lista.</string>
     <string name="tooltip_pantry_in_stock">Tocca un articolo per cambiarne la scorta o la quantità; scorri a sinistra quando finisce. L\'etichetta col cestino indica che è nella tua lista della spesa.</string>
-    <string name="tooltip_pantry_menu">Altro: Invia la lista, e ordina per reparto o per scadenza.</string>
     <string name="tooltip_settings_show_tips">Rivedi ogni suggerimento, uno alla volta.</string>
     <string name="cd_dismiss_tip">Chiudi suggerimento</string>
     <string name="settings_section_help">Aiuto</string>
@@ -619,6 +622,19 @@
         <item quantity="many">%1$d di passaggi rimossi</item>
         <item quantity="other">%1$d passaggi rimossi</item>
     </plurals>
+    <!-- The ⋮ menus' second lines (#260). -->
+    <string name="menu_desc_send_file">Una copia da aprire in Recipe Clipper</string>
+    <string name="menu_desc_update_from_source">Sostituisce le tue modifiche con l\'ultima versione del sito</string>
+    <string name="menu_desc_what_i_need">Ciò che serve alle ricette della settimana e manca in dispensa</string>
+    <string name="menu_desc_add_week_to_groceries">Nella lista della spesa, tranne ciò che hai già</string>
+    <string name="menu_desc_save_week_as_menu">Conserva i pasti della settimana per riusarli</string>
+    <string name="menu_desc_apply_menu">Aggiunge a questa settimana i pasti di un menu salvato</string>
+    <string name="menu_desc_meal_types">Aggiungi, rinomina o riordina i pasti del giorno</string>
+    <string name="menu_desc_paste_list">Aggiunge articoli da un testo copiato</string>
+    <string name="menu_desc_clear_ticked">Rimuove gli articoli spuntati senza rifornire la dispensa</string>
+    <string name="menu_desc_pantry_send_list">Ciò che hai in casa, come testo</string>
+    <string name="menu_desc_clear_run_out">Rimuove tutto ciò che è segnato come Finito</string>
+    <string name="menu_desc_share_calendar">Aggiunge i pasti della settimana al tuo calendario</string>
     <string name="pantry_select_items">Seleziona articoli</string>
     <string name="pantry_select">Seleziona</string>
     <string name="action_select_all">Seleziona tutto</string>

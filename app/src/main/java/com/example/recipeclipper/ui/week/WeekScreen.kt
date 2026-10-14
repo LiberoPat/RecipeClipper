@@ -86,10 +86,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlannedMeal
-import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
@@ -105,7 +105,6 @@ import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TooltipHost
-import com.example.recipeclipper.ui.tour.tooltipAnchor
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -398,13 +397,13 @@ private fun WeekMenu(
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }, modifier = Modifier.tooltipAnchor(Tooltip.WEEK_MENU)) {
+        IconButton(onClick = { expanded = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             if (onOpenWhatINeed != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.what_i_need_title)) },
+                    text = { MenuItemText(stringResource(R.string.what_i_need_title), stringResource(R.string.menu_desc_what_i_need)) },
                     onClick = {
                         expanded = false
                         onOpenWhatINeed()
@@ -413,7 +412,7 @@ private fun WeekMenu(
             }
             if (onAddToGroceries != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_add_week_to_groceries)) },
+                    text = { MenuItemText(stringResource(R.string.action_add_week_to_groceries), stringResource(R.string.menu_desc_add_week_to_groceries)) },
                     onClick = {
                         expanded = false
                         onAddToGroceries()
@@ -422,7 +421,7 @@ private fun WeekMenu(
             }
             if (onShareCalendar != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_share_calendar)) },
+                    text = { MenuItemText(stringResource(R.string.action_share_calendar), stringResource(R.string.menu_desc_share_calendar)) },
                     enabled = canShareCalendar,
                     onClick = {
                         expanded = false
@@ -432,7 +431,7 @@ private fun WeekMenu(
             }
             if (onSaveMenu != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_save_week_as_menu)) },
+                    text = { MenuItemText(stringResource(R.string.action_save_week_as_menu), stringResource(R.string.menu_desc_save_week_as_menu)) },
                     enabled = canShareCalendar,
                     modifier = Modifier.testTag("saveWeekAsMenu"),
                     onClick = {
@@ -443,7 +442,7 @@ private fun WeekMenu(
             }
             if (onApplyMenu != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_apply_menu)) },
+                    text = { MenuItemText(stringResource(R.string.action_apply_menu), stringResource(R.string.menu_desc_apply_menu)) },
                     modifier = Modifier.testTag("applyMenu"),
                     onClick = {
                         expanded = false
@@ -452,7 +451,7 @@ private fun WeekMenu(
                 )
             }
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.meal_types_title)) },
+                text = { MenuItemText(stringResource(R.string.meal_types_title), stringResource(R.string.menu_desc_meal_types)) },
                 onClick = {
                     expanded = false
                     onOpenMealTypes()

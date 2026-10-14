@@ -133,18 +133,14 @@ fun Modifier.tooltipAnchor(tooltip: Tooltip, side: TooltipSide = TooltipSide.AUT
 private fun Tooltip.text(): Int = when (this) {
     Tooltip.HOME_LINK -> R.string.tooltip_home_link
     Tooltip.RECIPE_UNITS -> R.string.tooltip_recipe_units
-    Tooltip.RECIPE_MENU -> R.string.tooltip_recipe_menu
     Tooltip.RECIPE_START_COOKING -> R.string.tooltip_recipe_start_cooking
     Tooltip.RECIPE_MADE_THIS -> R.string.tooltip_recipe_made_this
     Tooltip.COOK_DONE_NEXT -> R.string.tooltip_cook_done_next
     Tooltip.COOK_TAP_STEP -> R.string.tooltip_cook_tap_step
     Tooltip.COOK_TIMER -> R.string.tooltip_cook_timer
-    Tooltip.WEEK_MENU -> R.string.tooltip_week_menu
     Tooltip.GROCERIES_LONG_PRESS -> R.string.tooltip_groceries_long_press
     Tooltip.GROCERIES_DONE_SHOPPING -> R.string.tooltip_groceries_done_shopping
-    Tooltip.GROCERIES_MENU -> R.string.tooltip_groceries_menu
     Tooltip.PANTRY_IN_STOCK -> R.string.tooltip_pantry_in_stock
-    Tooltip.PANTRY_MENU -> R.string.tooltip_pantry_menu
     Tooltip.SETTINGS_SHOW_TIPS -> R.string.tooltip_settings_show_tips
 }
 

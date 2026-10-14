@@ -7,8 +7,33 @@
     "un", "une", "de", "du", "des", "d'", "reste", "restant", "restante", "restants", "restantes", "moitié",
     "peu", "plus", "tout", "toute", "tous", "toutes", "autre", "autres", "chaque", "deux", "trois", "quatre"
   ],
-  "before": ["et", "ou", "avec"],
-  "after": ["et", "ou", "avec", "dans", "à", "au", "aux", "sur", "en", "puis", "jusqu'à", "petit"],
+  "before": [
+    "et", "ou", "avec", "ajoutez", "ajouter", "ajoute", "incorporez", "incorporer", "versez", "verser", "mélangez",
+    "mélanger", "fouettez", "fouetter", "tamisez", "tamiser", "puis", "ensuite"
+  ],
+  "after": [
+    "et", "ou", "avec", "dans", "à", "au", "aux", "sur", "en", "puis", "jusqu'à", "petit", "coupé", "coupée", "coupés",
+    "coupées", "ciselé", "ciselée", "ciselés", "ciselées", "émincés", "émincées", "égoutté", "égouttée", "égouttés",
+    "égouttées", "progressivement", "doucement", "délicatement", "hors", "pendant", "pour", "chaud", "chaude"
+  ],
+  "lineDescriptors": [],
+  "trailingDescriptors": [
+    "doux", "demi-sel", "salé", "d'olive", "vierge extra", "de tournesol", "de colza", "neutre", "de blé", "en poudre",
+    "semoule", "roux", "fraîche", "épaisse", "liquide", "entière", "entier", "entiers", "demi-écrémé", "écrémé",
+    "de volaille", "de poulet", "de bœuf", "de légumes", "blanc", "blanche", "blancs", "blanches", "rouge", "rouges",
+    "jaune", "jaunes", "vert", "verte", "verts", "vertes", "noir", "moulu", "moulue", "moulus", "moulues", "gros",
+    "grosse", "grosses", "petit", "petite", "petits", "petites", "moyen", "moyenne", "moyens", "moyennes", "mûr",
+    "mûre", "mûrs", "mûres", "surgelé", "surgelée", "surgelés", "surgelées", "nature", "cerise", "cerises", "de dinde",
+    "de veau", "de porc", "noires", "noirs", "dénoyautées", "dénoyautés", "butternut", "spaghetti",
+    "de taille moyenne"
+  ],
+  "contractions": [],
+  "compoundHeads": [],
+  "dustingWords": [
+    "fariner", "farinez", "fariné", "farinée", "farinés", "farinées", "beurrer", "beurrez", "beurré", "beurrée",
+    "beurrés", "beurrées", "graisser", "graissez", "graissé", "graissée", "huiler", "huilez", "huilé", "huilée",
+    "chemiser", "chemisez", "saupoudrer", "saupoudrez", "saupoudré", "saupoudrée", "fleurer", "fleurez"
+  ],
   "anyWordAfter": false,
   "splitWords": ["plus"],
   "plurals": [["", "s"], ["", "x"]]

@@ -34,6 +34,10 @@ internal class RecipeActions(
     val onTimerAlerted: (Int) -> Unit,
     /** Chef mode (#100): a step with a short version shows as written, or short again. */
     val onStepAsWrittenToggle: (Int) -> Unit = {},
+    /** A step's link to the ingredient lines it may mean (#254): step index, then the lines. */
+    val onIngredientLink: (Int, List<Int>) -> Unit = { _, _ -> },
+    val onBackToStep: () -> Unit = {},
+    val onIngredientJumpScrolled: () -> Unit = {},
     val onShare: () -> Unit,
     val onOpenOriginal: (url: String) -> Unit,
     val onSaveToList: () -> Unit,
@@ -107,6 +111,9 @@ internal fun rememberRecipeActions(
             onTimerReset = viewModel::onTimerReset,
             onTimerAlerted = viewModel::onTimerAlerted,
             onStepAsWrittenToggle = viewModel::onStepAsWrittenToggle,
+            onIngredientLink = viewModel::onIngredientLink,
+            onBackToStep = viewModel::onBackToStep,
+            onIngredientJumpScrolled = viewModel::onIngredientJumpScrolled,
             onShare = {
                 viewModel.shareText(shareLabels(resources))?.let { text ->
                     val title = (viewModel.uiState.value.content as? RecipeContent.Success)

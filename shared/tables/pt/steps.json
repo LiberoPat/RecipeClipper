@@ -8,8 +8,33 @@
     "mais", "pouco", "todo", "toda", "todos", "todas", "outro", "outra", "outros", "outras", "cada", "ambos",
     "ambas", "dois", "duas", "três"
   ],
-  "before": ["e", "ou", "com"],
-  "after": ["e", "ou", "com", "em", "no", "na", "nos", "nas", "ao", "aos", "à", "até", "sobre", "por", "pouco"],
+  "before": [
+    "e", "ou", "com", "adicione", "adicionar", "acrescente", "acrescentar", "junte", "juntar", "misture", "misturar",
+    "coloque", "colocar", "bata", "bater", "despeje", "despejar", "peneire", "use", "utilize", "depois"
+  ],
+  "after": [
+    "e", "ou", "em", "no", "na", "nos", "nas", "ao", "aos", "à", "até", "sobre", "por", "pouco", "quente",
+    "morna", "morno", "fria", "frio", "gelada", "gelado", "durante", "para"
+  ],
+  "lineDescriptors": [],
+  "trailingDescriptors": [
+    "de trigo", "de oliva", "extra virgem", "extravirgem", "virgem", "sem sal", "com sal", "em pó", "químico",
+    "biológico", "seco", "seca", "instantâneo", "refinado", "cristal", "demerara", "mascavo", "integral", "desnatado",
+    "semidesnatado", "de galinha", "de frango", "de carne", "de legumes", "branco", "branca", "brancos", "brancas",
+    "vermelho", "vermelha", "vermelhos", "vermelhas", "roxo", "roxa", "roxas", "amarelo", "amarela", "amarelos",
+    "amarelas", "verde", "verdes", "moído", "moída", "grande", "grandes", "médio", "média", "médios", "médias",
+    "pequeno", "pequena", "pequenos", "pequenas", "inteiro", "inteiros", "maduro", "madura", "maduros", "maduras",
+    "bem", "congelado", "congelada", "congelados", "congeladas", "ralados", "raladas", "frescos", "frescas", "vegetal",
+    "neutro"
+  ],
+  "contractions": [
+    ["no", "em"], ["na", "em"], ["nos", "em"], ["nas", "em"]
+  ],
+  "compoundHeads": [],
+  "dustingWords": [
+    "polvilhar", "polvilhe", "polvilhada", "polvilhado", "polvilhadas", "polvilhados", "enfarinhar", "enfarinhe",
+    "enfarinhada", "enfarinhado", "untar", "unte", "untada", "untado", "untadas", "untados", "untem"
+  ],
   "anyWordAfter": false,
   "splitWords": ["mais"],
   "plurals": [["", "s"], ["ão", "ões"]]
