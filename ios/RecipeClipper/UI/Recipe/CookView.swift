@@ -194,6 +194,7 @@ private struct IngredientsBar: View {
             .accessibilityHint(expanded ? Strings.hideIngredients : Strings.showIngredients)
 
             if expanded {
+                let jump = state.ingredientJump
                 let list = VStack(spacing: 0) {
                     ForEach(Array(content.ingredients.enumerated()), id: \.offset) { index, ingredient in
                         if content.isHeading(index) {
@@ -202,8 +203,10 @@ private struct IngredientsBar: View {
                             IngredientRow(
                                 text: ingredient,
                                 checked: state.checkedIngredients.contains(index),
-                                onCheckedChange: { vm.onIngredientChecked(index, $0) }
+                                onCheckedChange: { vm.onIngredientChecked(index, $0) },
+                                highlighted: jump?.highlighted == true && jump?.lines.contains(index) == true
                             )
+                            .id("line-\(index)")
                         }
                     }
                 }
@@ -211,11 +214,23 @@ private struct IngredientsBar: View {
                 .readableColumn()
                 .padding(.bottom, 8)
 
-                ViewThatFits(in: .vertical) {
-                    list
-                    ScrollView { list }
+                ScrollViewReader { proxy in
+                    ViewThatFits(in: .vertical) {
+                        list
+                        ScrollView { list }
+                    }
+                    // A step's ingredient link (#254): its first line scrolled into view.
+                    .onChange(of: jump?.scrollTo, initial: true) { _, scroll in
+                        guard let jump, scroll == .lines else { return }
+                        withAnimation { proxy.scrollTo("line-\(jump.lines.min() ?? 0)", anchor: .center) }
+                        vm.onIngredientJumpScrolled()
+                    }
                 }
                 .frame(maxHeight: listHeight)
+                if let jump {
+                    BackToStepChip(step: jump.step, action: vm.onBackToStep)
+                        .padding(.vertical, 8)
+                }
             }
             Hairline()
         }
@@ -254,10 +269,12 @@ private struct CookStep: View {
                     }
                 }
                 .padding(.bottom, 8)
-                stepText(text, amounts, accent: Palette.accentText)
+                // Only the current step's ingredient links open (#254): a tap elsewhere selects.
+                stepText(text, amounts, accent: Palette.accentText, linked: true)
                     .textStyle(Typography.cookStep)
                     .foregroundStyle(Palette.onBackground)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .modifier(StepLinks(parts: amounts, onLink: { vm.onIngredientLink(index, $0) }))
                 if timerSeconds != nil || timer != nil {
                     // The cook-mode tooltips (#190) go below their controls, never over the step's text.
                     CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)

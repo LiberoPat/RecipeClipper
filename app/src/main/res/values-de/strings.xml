@@ -66,6 +66,12 @@
     <string name="cd_hide_ingredients">Zutaten ausblenden</string>
     <string name="cd_show_ingredients">Zutaten einblenden</string>
     <string name="cd_go_to_step">Zu Schritt %1$d</string>
+    <string name="step_back_to">Zurück zu Schritt %1$d</string>
+    <string name="step_link_show">anzeigen</string>
+    <plurals name="step_link_matches">
+        <item quantity="one">%1$d passende Zutat</item>
+        <item quantity="other">%1$d passende Zutaten</item>
+    </plurals>
     <string name="timer_start">⏱  Timer für %1$s starten</string>
     <string name="timers_up">Zeit ist um</string>
     <string name="home_subtitle">Teile einen Rezeptlink aus deinem Browser mit dieser App oder füge ihn hier ein.</string>
