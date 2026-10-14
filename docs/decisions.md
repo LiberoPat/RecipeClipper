@@ -3167,13 +3167,13 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   - **Home:** the link field ("Share a recipe link to this app, or paste one here").
   - **Recipe (reading view):** the units dropdown, explaining "As written" (every amount as
     the recipe gives it; tap for Metric or Ounces; what can't convert exactly stays as written);
-    the ⋮ menu (it names Add to plan and Add to groceries); "Start cooking"; "I made this"
+    "Start cooking"; "I made this"
     (the button, or the + tile once there are photos).
   - **Cook mode** (its own screen, though it is the recipe screen's): "Done — next step"; the
     next step ("tap any step to make it the current one"); the current step's timer.
-  - **Week:** the ⋮ menu. **Groceries:** the first row (long-press); "Done shopping" (while
-    anything is ticked); the ⋮ menu. **Pantry:** the first row's "Ran out" / "Restock" (#194;
-    it names the long-press's "Running low" too); the ⋮ menu.
+  - **Week:** none (its host stays, for a later one). **Groceries:** the first row
+    (long-press); "Done shopping" (while anything is ticked). **Pantry:** the first row's
+    "Ran out" / "Restock" (#194; it names the long-press's "Running low" too).
   - **Settings:** "Show tips again".
 - **No Serves tooltip** (owner, 2026-09-29: "write a tooltip [that] explains the 'As written'
   section; can remove the serving tooltip, it's straightforward"). `recipe_servings` is gone
@@ -3190,6 +3190,22 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   `groceries_tick`, `cook_ingredients` and `week_month`. Those left explain a hidden gesture, a
   menu or a behaviour. A stored `tooltip_<id>` for a removed one is ignored, like
   `recipe_servings`'s (only the catalogue's keys are read), and costs nothing.
+- **Menus explain themselves; the ⋮ tooltips removed** (owner, 2026-10-14, #260: the ⋮ menus
+  hold concepts that confuse first-time users). A muted second line sits under each ⋮ option
+  that isn't self-explanatory, every time the menu opens: at most about eight words, saying what
+  happens. Recipe: Send as file ("A copy someone can open in Recipe Clipper"), Update from
+  source ("Replace your edits with the website's latest"). Week: What I need, Add this week's
+  ingredients, Share as calendar file, Save week as menu, Apply a menu, Meal types. Groceries:
+  Send as file, Paste a list, Clear ticked items ("Remove ticked items without restocking the
+  pantry"). Pantry: Send list ("What's in stock, as text"), Send as file, Clear run-out items.
+  The rest stay one line (Add to plan, Add to groceries, Edit, Delete, Rename, Send list on
+  Groceries, Clear the whole list, the sorts, Select items, the list, meal-type and saved-menu
+  rows' menus). Android: `MenuItemText` in the `DropdownMenuItem`'s text slot, the line in
+  `bodySmall` and `onSurfaceVariant` (muted, `MutedOnInk` in dark mode), wrapping inside the
+  menu's own width cap; the item merges its semantics, so TalkBack reads both. iOS: the native
+  menu subtitle (a label whose title is two `Text`s), which VoiceOver reads with the option. With
+  the menus saying it themselves, `recipe_menu`, `week_menu`, `groceries_menu` and
+  `pantry_menu` went; their stored keys are ignored like #246's.
 - **Which one, when** (`Tooltips.current`, the same rule on both platforms): a **visit** is one
   appearance of a screen, from when it shows until it's left (a rotation isn't a new one on
   Android: the visit's token is saved state, and leaving isn't reported while the activity is
@@ -3248,7 +3264,7 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   (`TooltipsScreenTest`: Home's first visit shows its tooltip after its first second, Got
   it, and a later visit none; Settings' shows only once scrolled to; the bubble's
   placement at its control), and iOS's recipe screen in `TooltipsUITests` (one per visit, at the
-  units dropdown, then the ⋮ menu on the next). Every other screen test, UI test and walkthrough
+  units dropdown, then "Start cooking" on the next). Every other screen test, UI test and walkthrough
   starts with every tooltip seen: Android's screen tests provide no `LocalTooltips`, iOS's test
   containers use `MemoryTourPreferences`, and `-uiTestTooltips` (iOS) or `firstRun = true`
   (Android's walkthroughs) turns them on. Walkthrough 17 shows the sample on Home and a tooltip
