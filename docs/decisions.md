@@ -2308,8 +2308,10 @@ A mention gets an amount only when every rule holds; otherwise it stays exactly 
   names both). The longest run wins ("brown sugar" is the brown sugar line, not "sugar"), and
   a line named exactly beats one named past its describing words ("the sugar" beside "brown
   sugar" and "sugar" is the "sugar" line).
-- **Several lines.** Lines that all lend the same amount ("30g / 2 tbsp unsalted butter" twice,
-  one for searing, one cold to finish) are one answer. Lines with different amounts, a line
+- **Several lines.** The same ingredient lending the same amount ("30g / 2 tbsp unsalted butter"
+  twice, one for searing, one cold to finish) is one answer; two ingredients never are, even
+  with equal amounts ("los pimientos" for "1 pimiento verde" and "1 pimiento rojo" is two
+  peppers, so a link, 2026-10-14). Lines with different amounts, a line
   with no amount among them ("2 cups flour" and "flour, for dusting"), or a line with no name
   that uses the word ("salt and pepper") get no number: the mention becomes a link (below).
   "flour for dusting" stays a link rather than lending the other line's amount: the harness
@@ -2329,7 +2331,9 @@ A mention gets an amount only when every rule holds; otherwise it stays exactly 
   keeps it: "half the butter", "1 cup of the flour", "2 tablespoons butter", "a carrot".
 - **The mention is the whole name.** After it: the step's end, punctuation, or a word in
   `after` ("and", "into", "until"…); anything else ("the flour mixture", "the lemon juice",
-  "le beurre fondu") may be a longer name, so it stays. German writes compounds as one word,
+  "la crème anglaise") may be a longer name, so it stays. Where modifiers follow the noun, the
+  words giving its state may come first ("le beurre fondu", "la cebolla picada": the names
+  table's `trailingWords` and the density table's `trailingModifiers`). German writes compounds as one word,
   so any word may follow (`anyWordAfter`). Before it: its article (which the amount replaces),
   a list comma, a word in `before` (a preposition, a conjunction, a common verb: "Stir in flour",
   "Whisk flour"), or a sentence's first word (the imperative verb). Anything else ("Dust with
@@ -2379,12 +2383,77 @@ doesn't list ("Gold Medal™ All Purpose Flour"), and a describing word in the s
 the line ("the mashed bananas" for "mashed very ripe bananas"). Every fixed and kept case has a
 corpus `Step` row.
 
-Known limits, left as written on purpose: French names with an elided "d'" ("l'huile d'olive"
-against "3 c. à s. d'huile d'olive"), because `IngredientName` keeps the elision in the name;
-`lineDescriptors` is English only (the other languages put modifiers after the noun, which the
-end-of-name match never read); and an ingredient also used for greasing or dusting when the
-list has only one line for it ("grease the pan with butter" then gets the batter's butter,
-since the step's words can't tell the two uses apart).
+Known limit in English, left as written on purpose: an ingredient also used for greasing or
+dusting when the list has only one line for it ("grease the pan with butter" then gets the
+batter's butter, since the step's words can't tell the two uses apart). The other languages
+now guard it with `dustingWords` (below); English's list is empty, so its results stay as
+measured. (The French elision and the English-only `lineDescriptors` limits noted here before
+are fixed below.)
+
+**Spanish, French, German, Italian and Portuguese (#262, 2026-10-14).** The same harness ran
+101 real pages from native sites (recetasgratis, directoalpaladar, cocinatis; marmiton, 750g,
+cuisineaz; gutekueche, emmikochteinfach, einfachbacken; giallozafferano, cucchiaio, misya;
+tudogostoso, receitasnestle, cozinhatecnica), counting each step's first mention of a line by
+the name's first or last word (German: also a compound's tail). Amount / link / none, before
+→ after: es 108/5/202 → 146/8/161, fr 82/4/175 → 125/6/133, de 60/6/57 → 70/6/47, it
+28/7/125 → 39/12/109, pt 79/8/165 → 111/9/132. English's 30 pages give the same report,
+word for word. Every newly shown amount was checked against its line by hand. What changed,
+all table-driven (`steps.json`, empty lists behave exactly as before):
+
+- **Describing words after the noun** (`trailingDescriptors`): a line's name may be the step's
+  words followed only by these ("el aceite" for "aceite de oliva virgen extra", "a farinha" for
+  "farinha de trigo", "le beurre" for "beurre doux", "lo yogurt" for "yogurt bianco", "a
+  cebola" for "cebola pequena"). The same kinds of words English's `lineDescriptors` holds:
+  oil, flour, sugar and stock kinds, salted or not, colours, sizes, ground, powdered, ripe,
+  frozen, canned. Any other word is another ingredient: "harina de arroz", "aceite de
+  sésamo", "vinagre de Jerez", "azúcar glas", "arroz basmati". Such a mention names every line
+  starting with its words, so two oils are a link.
+- **French elision**: "3 c. à s. d'huile d'olive" lends "3 c. à s. d'", which takes the place
+  of "l'" ("Faites chauffer 3 c. à s. d'huile d'olive"): the line's head word is read from its
+  own words, so "d'olive" is "olive".
+- **States after the mention** (above): "le beurre fondu", "la cebolla picada", and `after`
+  words like "caliente", "coupé", "égouttés", "progressivement", "insieme", "durante".
+- **German compounds** (`compoundHeads`, written "weizen-mehl"): Weizenmehl, Dinkelmehl,
+  Süßrahm- and Sauerrahmbutter, Schlag- and Kochsahne, Gemüse-, Hühner-, Rinder- and
+  Geflügelbrühe, Oliven-, Raps-, Sonnenblumen-, Pflanzen- and Speiseöl, Baby- and Blattspinat,
+  Vollmilch, Kristall- and Rohrzucker, Gemüsezwiebel, Hokkaido- and Butternutkürbis answer
+  their last part. Only listed compounds: a first part alone would let "Sonnenblumenkerne"
+  answer "die Kerne" (fruit pips) and "Meerrettich" "den Rettich", and "Erdnussbutter" never
+  answers "die Butter". A compound mention also names every line whose last word ends in it,
+  so "das Mehl" beside Weizenmehl and Mandelmehl is a link. German's `lineDescriptors` hold
+  the adjectives before a noun ("brauner", "gemahlener", "TK").
+- **Contractions** (`contractions`): only those that say where ("nella farina" → "in 250 g di
+  farina", "na água" → "em 3 colheres de água", "zum Mehl" → "zu 100 g Mehl"). "al", "au",
+  "ao" and "à" stay out: they also make dish names, and the harness found "fenouil au citron",
+  "chocolate ao leite" (milk chocolate) and "garbanzos al curry".
+- **Dusting and greasing** (`dustingWords`): a sentence holding "untar", "polvilhar",
+  "enfarinhar", "engrasar", "fariner", "beurrer", "infarinare", "imburrare", "ungere",
+  "einfetten", "bestäuben"… keeps every mention as written: the harness found "Polvilhar a
+  farinha", "unte a forma com manteiga", "uma assadeira untada e polvilhada com farinha de
+  trigo" lending the dough's whole amount. German lists verbs only, since "in einer gefetteten
+  Auflaufform" describes a tin greased earlier. "mit dem Mehl bestäuben" for a roux loses its
+  amount: the safe side.
+- **Verbs** in `before` (Italian sites write "Unite farina, cacao e lievito"), unit words in the
+  names tables (German "Stg", "Kn", "Zw", "Schuss"; French "pièce(s)", "branche(s)";
+  Portuguese "unidades de"; Italian "bacca"), so those lines have a name.
+- **An amount the mention repeats** is trimmed: "el diente de ajo" with "1 diente de ajo" reads
+  "1 diente de ajo", not "1 diente de diente de ajo" (also "1 Feuille(s) Laurier").
+
+Left as written on purpose: "con", "com" and "se" after a mention ("el arroz con leche", a
+dish; "el curry se cocine", the dish not the powder); produce, rice, ham and vinegar varieties
+("tomate pera" is in, as English's "roma"; "arroz bomba", "jamón serrano", "vinagre de Jerez"
+aren't); "passata di pomodoro" and "salsa" lines (a sauce word is never a describing word); "le
+paprika fumé" for "paprika"; a describing word in the step that isn't on the line ("die
+gelben Bohnen" for "Bohnen, gelb"); and, as in English, a step that gives its own amount (most
+recetasgratis, emmikochteinfach and cozinhatecnica steps).
+
+Remaining gaps: a dish named after its ingredients still takes an amount after a conjunction
+or "con"/"with" before it ("la torta pere e 150 g di cioccolato", "Refrigera el arroz con 1
+litro de leche" when milk has one line); GialloZafferano's name-first lines ("Burro 100 g")
+lend nothing (#15); "farina 00" has no name (a digit in a name); some sites' steps reach the
+app with HTML entities undecoded (750g's "l&rsquo;oignon", tudogostoso's "&oacute;leo") or as a JSON
+array in one string (einfachbacken), which no word table can read; and Japanese stays a no-op
+(it has tables, but no spaces between words to find a mention by).
 
 ## The Recipes screen (#102)
 
