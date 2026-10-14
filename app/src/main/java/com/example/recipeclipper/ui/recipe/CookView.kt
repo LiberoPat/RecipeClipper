@@ -313,11 +313,10 @@ private fun CookStep(
                 color = if (done) colors.onSurfaceVariant else colors.tertiary,
                 modifier = Modifier.width(32.dp)
             )
-            // A done step is dimmed as a whole; its amounts keep only their weight, its links none.
-            val onLink = if (done) null else { lines: List<Int> -> actions.onIngredientLink(index, lines) }
+            // A done step is dimmed as a whole; its amounts keep only their weight. Only the
+            // current step's ingredient links open (#254): a tap here makes the step current.
             Text(
-                stepText(text, amounts, if (done) null else colors.tertiary, onLink),
-                modifier = Modifier.stepLinkActions(amounts, onLink),
+                stepText(text, amounts, if (done) null else colors.tertiary),
                 style = body.copy(
                     textDecoration = if (done) TextDecoration.LineThrough else TextDecoration.None
                 ),

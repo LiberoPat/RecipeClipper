@@ -52,6 +52,8 @@ final class RecipeViewModel {
     @ObservationIgnored private let chef: ChefMode
     // The settings, servings and short steps the recipe is rendered with.
     @ObservationIgnored private let display: RecipeDisplay
+    // The highlight's fade (#254); a test passes its own.
+    @ObservationIgnored private let sleep: Sleep
 
     init(
         recipeId: Int64?,
@@ -71,6 +73,7 @@ final class RecipeViewModel {
         decisions: DecisionRepository? = nil
     ) {
         self.entitlements = entitlements
+        self.sleep = sleep
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         let shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
         self.shareUrl = shareUrl
@@ -359,11 +362,71 @@ final class RecipeViewModel {
 
     // MARK: Cook mode (`CookController`)
 
-    func onCookStart() { cookMode.start() }
+    func onCookStart() {
+        endJump()
+        cookMode.start()
+    }
 
-    func onCookExit() { cookMode.exit() }
+    func onCookExit() {
+        endJump()
+        cookMode.exit()
+    }
 
-    func onIngredientsToggle() { cookMode.toggleIngredients() }
+    func onIngredientsToggle() {
+        endJump()
+        cookMode.toggleIngredients()
+    }
+
+    // MARK: Ingredient links in steps (#254)
+
+    /// How long the lines a step's ingredient link names stay highlighted.
+    static let highlightDuration = Duration.seconds(3)
+    @ObservationIgnored private var fadeTask: Task<Void, Never>?
+
+    /// A step's link to the ingredient `lines` it may mean was tapped: they are highlighted and
+    /// scrolled to (in cook mode, the folded ingredients bar opens), and the highlight fades
+    /// after `highlightDuration`.
+    func onIngredientLink(_ step: Int, _ lines: [Int]) {
+        guard !lines.isEmpty else { return }
+        let cook = uiState.cook
+        // A second tap while the bar is open for the first keeps the first's refold.
+        let refold = cook.active && (!cook.ingredientsExpanded || uiState.ingredientJump?.refold == true)
+        uiState.ingredientJump = IngredientJump(step: step, lines: lines, refold: refold)
+        if cook.active { uiState.cook.ingredientsExpanded = true }
+        fadeTask?.cancel()
+        fadeTask = Task { [weak self, sleep] in
+            do { try await sleep(Self.highlightDuration) } catch { return }
+            self?.uiState.ingredientJump?.highlighted = false
+        }
+    }
+
+    /// "Back to step N": the reading view scrolls back to the step; cook mode folds the bar again.
+    func onBackToStep() {
+        fadeTask?.cancel()
+        guard let jump = uiState.ingredientJump else { return }
+        if uiState.cook.active {
+            uiState.ingredientJump = nil
+            if jump.refold { uiState.cook.ingredientsExpanded = false }
+        } else {
+            uiState.ingredientJump?.highlighted = false
+            uiState.ingredientJump?.scrollTo = .step
+        }
+    }
+
+    /// The view has made the scroll `IngredientJump.scrollTo` asked for; back at the step, the jump is over.
+    func onIngredientJumpScrolled() {
+        guard let jump = uiState.ingredientJump else { return }
+        if jump.scrollTo == .step {
+            uiState.ingredientJump = nil
+        } else {
+            uiState.ingredientJump?.scrollTo = nil
+        }
+    }
+
+    private func endJump() {
+        fadeTask?.cancel()
+        uiState.ingredientJump = nil
+    }
 
     /// Tapping a step makes it current. Only `onStepDone` ever advances or marks progress.
     func onStepSelected(_ index: Int) { cookMode.select(index) }

@@ -2296,15 +2296,29 @@ unit menu. It applies to the reading view and cook mode; sharing out keeps steps
 
 A mention gets an amount only when every rule holds; otherwise it stays exactly as written:
 
-- **One line, strictly.** A run of words ending in a line name's last word (singular or plural,
-  per `steps.json` `plurals`) names that line when `IngredientName.matches` says so: the
-  pantry's strict rule (#51), so "rice flour" never takes "flour"'s amount and "the onion" never
-  takes "1 red onion"'s. The longest run wins ("brown sugar" is the brown sugar line, not
-  "sugar"). Two lines matching the mention ("unsalted butter" and "butter, for greasing"; sugar
-  for the cake and for the frosting), or a line with no name that uses the word ("salt and
-  pepper", "juice of 1 lemon"), make it ambiguous. Jev may later resolve those (#99).
+- **One line.** A run of words ending in a line name's last word (singular or plural, per
+  `steps.json` `plurals`) names that line when `IngredientName.matches` says so (the pantry's
+  rule, #51, so "rice flour" never takes "flour"'s amount), or when the line's name is the
+  step's words after describing words only, `steps.json` `lineDescriptors` with the names
+  table's modifiers (#254: "the butter" for "very cold unsalted butter", "the oil" for "olive
+  oil", "the stock" for "low-sodium beef stock", "the onion" for "1 red onion"). Any other word
+  makes another ingredient: "the sauce" never takes "Worcestershire sauce"'s amount, nor "the
+  leaves" "bay leaves"'s, nor "the butter" "peanut butter"'s. A mention named only that way
+  also names every line ending in its words ("the oil" with olive oil and toasted sesame oil
+  names both). The longest run wins ("brown sugar" is the brown sugar line, not "sugar"), and
+  a line named exactly beats one named past its describing words ("the sugar" beside "brown
+  sugar" and "sugar" is the "sugar" line).
+- **Several lines.** Lines that all lend the same amount ("30g / 2 tbsp unsalted butter" twice,
+  one for searing, one cold to finish) are one answer. Lines with different amounts, a line
+  with no amount among them ("2 cups flour" and "flour, for dusting"), or a line with no name
+  that uses the word ("salt and pepper") get no number: the mention becomes a link (below).
+  "flour for dusting" stays a link rather than lending the other line's amount: the harness
+  found "1/4 tsp salt" beside "pinch of salt" for the topping, and "Dash of salt" for the
+  frosting, so a line without a number isn't evidence the step means the one with.
 - **First mention only**, once per line per step; later mentions stay as written, whatever
-  became of the first. Each step is read on its own.
+  became of the first. Each step is read on its own. A step's title before a spaced dash
+  (RecipeTin Eats' "Sauté onion and mushrooms - Turn the heat down…") is no mention, so the
+  first mention is the one after it, and the word after the dash counts as a sentence's first.
 - **The line lends its amount only if the scaler reads it** (scaling it changes it), so a line
   that stays as written when scaled ("2 onions (about 300 g)") never lends a number. The amount
   is the rendered line's text before the name ("250 g", "2 large", "3 cloves", "200 g de",
@@ -2328,12 +2342,49 @@ and a heavier weight (Android SemiBold, iOS strongly emphasised); in a done cook
 keeps only the weight, so the dimmed row stays dim. The screen checks the flag; the ViewModel
 computes the parts only while the switch is on, and again on every servings or units change.
 
-Known limits, left as written on purpose: head-noun mentions of compound lines ("the milk" for
-"whole milk", "the chocolate chips" for "semisweet chocolate chips", "the vanilla" for "vanilla
-extract"); French names with an elided "d'" ("l'huile d'olive" against "3 c. à s. d'huile
-d'olive"), because `IngredientName` keeps the elision in the name; and an ingredient also used
-for greasing or dusting when the list has only one line for it ("grease the pan with butter"
-then gets the batter's butter, since the step's words can't tell the two uses apart).
+**Ingredient links (#254, the owner's call, 2026-10-14).** A mention naming several lines with
+different amounts, where the step doesn't say which, is a link: the mention's own words in the
+paprika text accent, underlined, never a number. `StepAmounts.Part.lines` holds the lines (the
+corpus marks it `⟪butter|0,1⟫`), and which lines match is the core's, pinned by the corpus. A
+tap is `onIngredientLink(step, lines)`; the ViewModel holds `IngredientJump` (the lines, the
+step, whether they are still highlighted, the scroll the view still owes) and fades the
+highlight after 3 s (`HIGHLIGHT_MILLIS`, iOS `highlightDuration`, through the injected sleep).
+The view does the scrolling. Reading view: scroll to the first line, a fading paprika wash on
+the lines, and a "Back to step N" chip above Start cooking that scrolls back and ends the jump.
+Cook mode: the folded ingredients bar opens with the lines highlighted and the chip under them;
+the chip folds it again (only if the link opened it), as do toggling the bar, starting or
+leaving cook mode. In cook mode only the current step's links open: a tap on another step
+makes it current, as before. Accessibility: each link is also an action on the step's text
+that reads as a button, "butter, 2 matching ingredients, show" (Android a custom accessibility
+action, iOS an accessibility action), from `step_link_matches` and `step_link_show`.
+
+**What the harness found (2026-10-14).** The owner reported butter and flour missing their
+amounts. A JVM harness ran 30 real pages (RecipeTin Eats, King Arthur, BBC Good Food, Once Upon
+a Chef, Taste of Home, Pinch of Yum, Bon Appétit, Delish, Food.com, Spend with Pennies, Jamie
+Oliver, Betty Crocker and others) through `BlogPageParser` and `StepAmounts`, counting each
+step's first mention of a line's head word: 362 mentions. Before: 128 got an amount, 234 none.
+After: 201 an amount, 22 a link, 139 none. The causes fixed: the line's describing words ("the
+butter" for "unsalted butter, very cold"; "the oil", "the stock", "the sugar" for "granulated
+sugar"), "8 tablespoons of salted butter" naming "of salted butter" (`of` is now an English
+`leadingWords` entry, which corrects the pantry's name for such lines too), duplicate lines
+with the same amount, "Cream together butter and sugar" (`together` is a `before` word), King
+Arthur's "King Arthur Unbleached All-Purpose Flour", and step titles. What stays as written,
+on purpose: the step already gives the amount ("add 1 tbsp olive oil", BBC Good Food's style:
+about a third of what remains), says how much ("half the butter", "1 tablespoon of the oil"),
+a longer or other name ("the flour mixture", "Cheese Sauce", "lemon juice", "the bay leaves",
+"the cheese" for "mozzarella cheese": cheese, sauce, chocolate and herb varieties aren't
+describing words), a line without an amount to lend ("Kosher salt", "lemon wedges, for
+serving", "pinch of nutmeg"), a line used in parts ("divided", "plus more"), a brand the table
+doesn't list ("Gold Medal™ All Purpose Flour"), and a describing word in the step that isn't on
+the line ("the mashed bananas" for "mashed very ripe bananas"). Every fixed and kept case has a
+corpus `Step` row.
+
+Known limits, left as written on purpose: French names with an elided "d'" ("l'huile d'olive"
+against "3 c. à s. d'huile d'olive"), because `IngredientName` keeps the elision in the name;
+`lineDescriptors` is English only (the other languages put modifiers after the noun, which the
+end-of-name match never read); and an ingredient also used for greasing or dusting when the
+list has only one line for it ("grease the pan with butter" then gets the batter's butter,
+since the step's words can't tell the two uses apart).
 
 ## The Recipes screen (#102)
 
