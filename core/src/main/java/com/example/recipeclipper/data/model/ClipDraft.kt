@@ -10,10 +10,11 @@ enum class ClipField {
 
 /**
  * One add to a [ClipDraft], and the page mark drawn for it (#37, #237): [id] names the mark,
- * [lines] are what it put into [field] (a name, or a photo's address, as its one line), so
- * removing it takes out exactly those lines.
+ * [lines] are what it put into [field] (a name, or a photo's address, as its one line), from
+ * index [start] of the field's lines, so removing it takes out exactly those lines (#264), never
+ * an equal line another add put there.
  */
-data class ClipMark(val id: String, val field: ClipField, val lines: List<String>)
+data class ClipMark(val id: String, val field: ClipField, val lines: List<String>, val start: Int = 0)
 
 /**
  * A recipe being clipped by hand from a page with no recipe data (#37). Immutable and pure:
@@ -92,7 +93,8 @@ data class ClipDraft(
             ClipField.PHOTO -> copy(photo = lines.single())
         }
         val kept = if (field.replaces) marks.filter { it.field != field } else marks
-        return assigned.copy(marks = kept + ClipMark(pendingMarkId, field, lines), nextMark = nextMark + 1)
+        val start = if (field.replaces) 0 else this.lines(field).size
+        return assigned.copy(marks = kept + ClipMark(pendingMarkId, field, lines, start), nextMark = nextMark + 1)
     }
 
     /** The add a page mark stands for, while this draft still holds it. */
@@ -100,20 +102,22 @@ data class ClipDraft(
 
     /**
      * Takes back one add: a name or a photo empties its field; ingredients or steps lose the
-     * lines that add put there (for each, the first line still equal to it, so a line edited by
-     * hand in Review since then stays). An unknown id changes nothing.
+     * lines that add put there, by position (#264: an equal line another add put there stays),
+     * except a line edited by hand in Review since then, which stays. An unknown id changes
+     * nothing.
      */
     fun removeMark(id: String): ClipDraft {
         val mark = mark(id) ?: return this
-        val removed = when (mark.field) {
-            ClipField.NAME, ClipField.PHOTO -> clear(mark.field)
-            ClipField.INGREDIENTS, ClipField.STEPS -> {
-                val left = lines(mark.field).toMutableList()
-                mark.lines.forEach { line -> left.indexOf(line).takeIf { it >= 0 }?.let { left.removeAt(it) } }
-                withLines(mark.field, left)
-            }
+        if (mark.field.replaces) return clear(mark.field)
+        val current = lines(mark.field)
+        val gone = mark.lines.indices.map { mark.start + it }
+            .filter { it in current.indices && current[it] == mark.lines[it - mark.start] }
+            .toSet()
+        // The adds after this one move up by the lines taken out before them.
+        val left = marks.filter { it.id != id }.map { other ->
+            if (other.field != mark.field) other else other.copy(start = other.start - gone.count { it < other.start })
         }
-        return removed.copy(marks = marks.filter { it.id != id })
+        return withLines(mark.field, current.filterIndexed { i, _ -> i !in gone }).copy(marks = left)
     }
 
     /** Empties [field] and drops its page marks. */
@@ -148,10 +152,22 @@ data class ClipDraft(
         return withLines(field, current.toMutableList().also { it[index] = text })
     }
 
+    /**
+     * Removes line [index] of [field]. The add that put it there loses it (and its page mark
+     * once it has none left); the adds after it move up a line.
+     */
     fun removeLine(field: ClipField, index: Int): ClipDraft {
         val current = lines(field)
         if (index !in current.indices) return this
-        return withLines(field, current.filterIndexed { i, _ -> i != index })
+        val kept = marks.mapNotNull { mark ->
+            when {
+                mark.field != field || index >= mark.start + mark.lines.size -> mark
+                index < mark.start -> mark.copy(start = mark.start - 1)
+                else -> mark.copy(lines = mark.lines.filterIndexed { i, _ -> i != index - mark.start })
+                    .takeIf { it.lines.isNotEmpty() }
+            }
+        }
+        return withLines(field, current.filterIndexed { i, _ -> i != index }).copy(marks = kept)
     }
 
     /** Adds an empty line at the end, for the user to type into. */

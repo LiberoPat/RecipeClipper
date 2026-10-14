@@ -191,7 +191,7 @@ enum class ClipOutline { TEXT, IMAGES }
  * "Clip it yourself" (#37): on a page with no recipe data, the user taps a field (Name,
  * Ingredients, Steps, Photo), then taps or selects its text on the page and confirms (#237).
  * The page itself lives in the view layer; this only hears what happened on it (a selection,
- * a tag or image tapped) and holds the [ClipDraft], the armed field and the undo stack.
+ * a tag or image tapped) and holds the [ClipDraft], the armed field and the last change, for Undo.
  *
  * The draft is kept in [ClipDraftStore] as it changes, so Cancel keeps it for the session, and
  * mirrored into [SavedStateHandle] so it survives the process being killed in the background.
@@ -212,10 +212,12 @@ class ClipViewModel @Inject constructor(
     // The page's selection as given, before splitting: a name joins it rather than splitting it.
     private var selectionText = ""
 
-    // The drafts before each change made on the page (an add, a tag's removal), newest last, for
-    // Undo, each with the field an add filled (null for a removal), which Undo makes the current
-    // step again. A hand edit in Review empties it: Undo never steps over typing.
-    private val undo = ArrayDeque<Pair<ClipDraft, ClipField?>>()
+    // The draft before the last change made on the page (an add, a tag's removal), for Undo, with
+    // the field an add filled (null for a removal), which Undo makes the current step again. One
+    // change only (#264): Undo is offered only for the change just made, by the hint bar while
+    // [ClipUiState.lastAdded] is set, or by a removal's snackbar, which goes at the next change. A
+    // hand edit in Review drops it: Undo never steps over typing.
+    private var undo: Pair<ClipDraft, ClipField?>? = null
 
     private var serial = 0L
 
@@ -430,7 +432,9 @@ class ClipViewModel @Inject constructor(
      * the current step again, to redo it.
      */
     fun onUndo() {
-        val (previous, field) = undo.removeLastOrNull() ?: return
+        val (previous, field) = undo ?: return
+        undo = null
+        dismissRemoved()
         _uiState.update {
             if (field == null) it.copy(lastAdded = null) else it.copy(lastAdded = null, armed = field, skipped = it.skipped - field)
         }
@@ -439,7 +443,7 @@ class ClipViewModel @Inject constructor(
 
     /** Throws the session draft away and starts over on the same page, from the first step. */
     fun onDiscardDraft() {
-        undo.clear()
+        undo = null
         drafts.remove(url)
         _uiState.update { it.copy(lastAdded = null, skipped = emptySet()) }
         setDraft(ClipDraft(url), newMarkId = null)
@@ -537,9 +541,16 @@ class ClipViewModel @Inject constructor(
     private fun disarm() = _uiState.update { it.copy(armed = null) }
 
     private fun push(draft: ClipDraft, field: ClipField?) {
-        undo.addLast(draft to field)
-        if (undo.size > UNDO_DEPTH) undo.removeAt(0)
+        undo = draft to field
+        dismissRemoved()
     }
+
+    /**
+     * A removal's snackbar goes once another change is made (#264): its Undo takes back the
+     * last change, which is then no longer that removal.
+     */
+    private fun dismissRemoved() =
+        _uiState.update { if (it.notice?.message is ClipMessage.Removed) it.copy(notice = null) else it }
 
     /**
      * The add itself. Its words go in the hint bar ([ClipUiState.lastAdded]), with Undo there,
@@ -562,11 +573,15 @@ class ClipViewModel @Inject constructor(
 
     /** A hand edit in Review. Not undoable, so it ends Undo for what came before. */
     private fun edit(change: (ClipDraft) -> ClipDraft) {
-        undo.clear()
+        undo = null
+        dismissRemoved()
+        _uiState.update { it.copy(lastAdded = null) }
         setDraft(change(_uiState.value.draft), newMarkId = _uiState.value.newMarkId)
     }
 
-    private fun setDraft(draft: ClipDraft, newMarkId: String?, message: ClipMessage? = null) {
+    private fun setDraft(changed: ClipDraft, newMarkId: String?, message: ClipMessage? = null) {
+        // Mark ids only ever rise (#264): an undone or discarded draft's ids are on the page.
+        val draft = changed.copy(nextMark = maxOf(changed.nextMark, _uiState.value.draft.nextMark))
         drafts.put(draft)
         saveState(draft)
         _uiState.update {
@@ -596,18 +611,23 @@ class ClipViewModel @Inject constructor(
         ALL_KEYS.forEach { savedStateHandle.remove<Any>(it) }
     }
 
-    /** The draft mirrored before the process died. Its page marks are gone with the page. */
+    /**
+     * The draft mirrored before the process died. Its text marks are gone with the page; the
+     * photo, which the page finds again by its address, gets a mark of its own (#264), so its tag
+     * can still take it back.
+     */
     private fun restoreFrom(handle: SavedStateHandle): ClipDraft? {
         if (!handle.contains(KEY_NAME)) return null
-        return ClipDraft(
+        val draft = ClipDraft(
             sourceUrl = url,
             name = handle.get<String>(KEY_NAME).orEmpty(),
             ingredients = handle.get<ArrayList<String>>(KEY_INGREDIENTS).orEmpty(),
             steps = handle.get<ArrayList<String>>(KEY_STEPS).orEmpty(),
-            photo = handle.get<String>(KEY_PHOTO),
             serves = handle.get<String>(KEY_SERVES).orEmpty(),
             totalTime = handle.get<String>(KEY_TOTAL_TIME).orEmpty()
-        ).takeUnless { it.isEmpty }
+        )
+        val photo = handle.get<String>(KEY_PHOTO)
+        return (if (photo == null) draft else draft.assign(ClipField.PHOTO, photo)).takeUnless { it.isEmpty }
     }
 
     companion object {
@@ -624,8 +644,6 @@ class ClipViewModel @Inject constructor(
         private const val KEY_PHOTO = "clip.photo"
         private const val KEY_SERVES = "clip.serves"
         private const val KEY_TOTAL_TIME = "clip.totalTime"
-        /** How many changes Undo can take back. */
-        private const val UNDO_DEPTH = 50
         private val ALL_KEYS = listOf(KEY_NAME, KEY_INGREDIENTS, KEY_STEPS, KEY_PHOTO, KEY_SERVES, KEY_TOTAL_TIME)
     }
 }
