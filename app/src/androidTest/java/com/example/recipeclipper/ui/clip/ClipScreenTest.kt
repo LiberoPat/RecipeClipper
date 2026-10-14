@@ -28,7 +28,8 @@ import java.util.concurrent.TimeUnit
 
 /**
  * "Clip it yourself" end to end on a real WebView with the real `clipper.js`, over a fixed local
- * page (no network), field first (#237): tap a field, tap its text on the page, confirm. A tap
+ * page (no network), guided (#251, field first since #237): the clip opens on step 1 with Name
+ * armed; tap its text on the page, confirm, and the next step arms by itself. A tap
  * on the page is a script's `click()` on the element, which reaches the page's own listener as
  * a finger's tap does; the page's selection comes back through `selectionchange`, the same path
  * a person's takes. Then the page's own handles, the photo, a tag taking back one add, Review
@@ -93,6 +94,12 @@ class ClipScreenTest {
         if (field != "PHOTO") waitForPage("document.documentElement.getAttribute('data-rc-armed')", "\"$field\"", view)
     }
 
+    /** Text selected first, then [field]'s button: it adds the selection straight away (#251). */
+    private fun addSelectionTo(field: String) {
+        compose.waitUntil(PAGE_WAIT_MS) { compose.onAllNodes(hasTestTag("clip.confirm")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("clip.field.$field").performClick()
+    }
+
     /** The hint bar's confirm, once the page's selection has reached the app. */
     private fun confirm() {
         compose.waitUntil(PAGE_WAIT_MS) { compose.onAllNodes(hasTestTag("clip.confirm")).fetchSemanticsNodes().isNotEmpty() }
@@ -110,26 +117,29 @@ class ClipScreenTest {
     private fun quote(text: String) = "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
     @Test
-    fun clipAPageFieldFirstFromTapsToSave() {
+    fun clipAPageGuidedFromTapsToSave() {
         show()
-        waitForText("Tap Name below, then tap the recipe's name on the page.")
+        // Guided on entry: step 1, Name armed, the page's text outlined.
+        waitForText("Step 1 of 4 · Tap the recipe's name")
+        waitForPage("document.documentElement.getAttribute('data-rc-armed')", "\"NAME\"")
+        waitForPage("document.documentElement.getAttribute('data-rc-outline')", "\"TEXT\"")
+        waitForPage("getComputedStyle(document.getElementById('title')).outlineStyle", "\"dotted\"")
         // Done with nothing yet says what's missing rather than doing nothing (#213).
         compose.onNodeWithText("Done").performClick()
         waitForText("To save, tap Name, then Ingredients or Steps, and pick each one on the page.")
 
-        tapField("NAME")
-        waitForText("Tap the recipe's name on the page.")
         tapOnPage("#title")
         waitForText("Use as the name")
         confirm()
-        waitForText("Name added. Next: tap Ingredients.")
+        waitForText("Step 2 of 4 · Tap the ingredients")
+        waitForText("Name added.")
+        waitForPage("document.documentElement.getAttribute('data-rc-armed')", "\"INGREDIENTS\"")
 
         // A tap on one item takes the whole list.
-        tapField("INGREDIENTS")
         tapOnPage("#ingredients li:nth-child(2)")
         waitForText("Add 3 lines to Ingredients")
         confirm()
-        waitForText("3 ingredients added. Next: tap Steps.")
+        waitForText("Step 3 of 4 · Tap the steps")
         waitForPage("document.querySelectorAll('.rc-marked').length", "4")
         waitForPage("document.querySelector('.rc-tag[data-rc-field=INGREDIENTS]').textContent", "\"Ingredients · 3\"")
 
@@ -140,20 +150,23 @@ class ClipScreenTest {
         compose.onNodeWithText("Undo").performClick()
         waitForPage("document.querySelectorAll('.rc-marked').length", "4")
 
-        // Steps add up: the list, then a paragraph after it.
-        tapField("STEPS")
         tapOnPage("#step1")
         waitForText("Add 2 lines to Steps")
         confirm()
-        waitForText("2 steps added. Next: tap Photo, or Done.")
-        tapOnPage("#cool")
-        waitForText("Add 1 line to Steps")
-        confirm()
-        waitForText("1 step added. Next: tap Photo, or Done.")
+        // The photo step: the page's images are outlined.
+        waitForText("Step 4 of 4 · Tap the recipe's photo")
+        waitForPage("document.documentElement.getAttribute('data-rc-outline')", "\"IMAGES\"")
 
-        // The photo: Photo, then one tap on the picture.
-        tapField("PHOTO")
-        waitForText("Tap the picture to use as the photo.")
+        // Steps add up: Steps' button jumps back to the step; the paragraph after the list,
+        // selected first, goes in with one tap on the field, no confirm.
+        tapField("STEPS")
+        waitForText("Step 3 of 4 · Tap the steps")
+        tapOnPage("#cool")
+        addSelectionTo("STEPS")
+        waitForText("1 step added.")
+        waitForText("Step 4 of 4 · Tap the recipe's photo")
+
+        // One tap on the picture.
         js("document.getElementById('photo').click()")
         waitForText("Photo added. Tap Done to review and save.")
 
@@ -222,7 +235,7 @@ class ClipScreenTest {
         val picking = "document.documentElement.classList.contains('rc-picking')"
 
         tapField("PHOTO")
-        waitForText("Tap the picture to use as the photo.")
+        waitForText("Step 4 of 4 · Tap the recipe's photo")
         waitForPage(picking, "true")
         js("document.getElementById('placeholder').click()")
         waitForText("Couldn't read a picture there. The photo is optional.")
@@ -231,17 +244,21 @@ class ClipScreenTest {
         tapField("NAME")
         tapOnPage("#title")
         confirm()
-        waitForText("Name added. Next: tap Ingredients.")
+        waitForText("Step 2 of 4 · Tap the ingredients")
 
+        // Skip moves on without touching the page; Skip on Photo ends the steps.
+        compose.onNodeWithText("Skip").performClick()
+        waitForText("Step 3 of 4 · Tap the steps")
         tapField("PHOTO")
         waitForPage(picking, "true")
         compose.onNodeWithText("Skip").performClick()
         waitForPage(picking, "false")
+        compose.onNodeWithText("Skip").assertDoesNotExist()
 
         tapField("INGREDIENTS")
         tapOnPage("#ingredients li")
         confirm()
-        waitForText("3 ingredients added. Next: tap Steps.")
+        waitForText("Step 3 of 4 · Tap the steps")
     }
 
     /**
@@ -257,10 +274,9 @@ class ClipScreenTest {
         js("document.getElementById('ad').contentWindow.document.getElementById('post').click()")
         Thread.sleep(1_500)
         compose.onNodeWithText("1 line selected", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("Tap Name below, then tap the recipe's name on the page.").assertExists()
+        compose.onNodeWithText("Step 1 of 4 · Tap the recipe's name").assertExists()
 
         // The page itself is still heard.
-        tapField("NAME")
         tapOnPage("#title")
         waitForText("Use as the name")
     }
@@ -310,12 +326,13 @@ class ClipScreenTest {
         js("Array.from(document.querySelectorAll('p')).find(function(p){return p.textContent=='1 crust'}).click()", text)
         waitForText("Add 2 lines to Ingredients")
         confirm()
-        waitForText("2 ingredients added. Next: tap Name.")
+        waitForText("2 ingredients added.")
+        waitForText("Step 3 of 4 · Tap the steps")
 
         compose.onNodeWithText("Page").performClick()
         waitForText("Text")
         instrumentation.runOnMainSync { assertEquals(View.INVISIBLE, text.visibility) }
-        waitForPage("document.documentElement.getAttribute('data-rc-armed')", "\"INGREDIENTS\"")
+        waitForPage("document.documentElement.getAttribute('data-rc-armed')", "\"STEPS\"")
         // What the screen shows in the middle of the page is the page (its green), not the
         // Text view's last frame.
         val page = webView!!
@@ -332,12 +349,13 @@ class ClipScreenTest {
                 android.graphics.Color.red(pixel) < 80 && android.graphics.Color.blue(pixel) < 80
         }
 
-        // A finger's tap on the page's list, Ingredients still armed.
+        // A finger's tap on the page's list (Steps armed, carried over), then Ingredients' button
+        // adds it there (selected first, #251).
         val (x, y) = screenPoint("#more li")
         instrumentation.uiAutomation.executeShellCommand("input tap $x $y").close()
-        waitForText("Add 2 lines to Ingredients")
-        confirm()
-        waitForText("2 ingredients added. Next: tap Name.")
+        waitForText("Add 2 lines to Steps")
+        addSelectionTo("INGREDIENTS")
+        waitForText("2 ingredients added.")
         waitForPage("document.querySelectorAll('.rc-marked').length", "2")
     }
 

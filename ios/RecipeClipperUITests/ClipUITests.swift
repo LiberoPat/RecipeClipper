@@ -1,11 +1,12 @@
 import XCTest
 
-/// "Clip it yourself" end to end, field first (#237): the no-recipe error offers it, and on the
-/// page (a fixed local one, UITestSeeding.clipFixtureHTML, never the network) each field is a
-/// tap on its button, a tap on its text and a tap on the confirm, with no long press. A list
-/// comes whole, steps add up, a tag takes back its own add and Undo brings it back, the Photo
-/// button picks an image, Review saves, and the saved recipe replaces both the clip and the error
-/// screen. Mirrors Android's ClipScreenTest.
+/// "Clip it yourself" end to end, guided (#251, field first since #237): the no-recipe error
+/// offers it, and on the page (a fixed local one, UITestSeeding.clipFixtureHTML, never the
+/// network) the clip opens on step 1 with Name armed; each step is a tap on its text and a tap on
+/// the confirm, and the next step arms by itself, with no long press. A list comes whole, a tag
+/// takes back its own add and Undo brings it back, a field button jumps back to a step, and text
+/// selected first goes in with one tap on its field. The photo is a tap on it, Review saves, and
+/// the saved recipe replaces both the clip and the error screen. Mirrors Android's ClipScreenTest.
 final class ClipUITests: RecipeUITestCase {
 
     private func importLink(_ link: String) {
@@ -58,19 +59,17 @@ final class ClipUITests: RecipeUITestCase {
         require(app.buttons["Try again"], "Try again")
         require(app.buttons["Report this site"], "Report this site")
         require(app.buttons["Clip it yourself"], "Clip it yourself").tap()
-        require(text("Tap Name below, then tap the recipe's name on the page."), "the first hint")
+        require(text("Step 1 of 4 · Tap the recipe's name"), "guided on entry: step 1, Name armed")
 
-        fieldButton("NAME").tap()
-        require(text("Tap the recipe's name on the page."), "Name armed")
         tapOnPage("Brown Butter Oat Cookies")
         confirm("Use as the name")
-        require(text("Name added. Next: tap Ingredients."), "the next hint")
+        require(text("Step 2 of 4 · Tap the ingredients"), "the next step, armed by itself")
+        require(text("Name added."), "what was added")
 
         // A tap on one item takes the whole list.
-        fieldButton("INGREDIENTS").tap()
         tapOnPage("1 cup packed brown sugar")
         confirm("Add 3 lines to Ingredients")
-        require(text("3 ingredients added. Next: tap Steps."), "the ingredients added")
+        require(text("Step 3 of 4 · Tap the steps"), "the steps step")
 
         // A tag takes back its own add; the snackbar's Undo brings it back.
         onPage(page.buttons["Ingredients · 3"], "the Ingredients tag").tap()
@@ -78,17 +77,20 @@ final class ClipUITests: RecipeUITestCase {
         app.buttons["Undo"].tap()
         onPage(page.buttons["Ingredients · 3"], "the Ingredients tag, back")
 
-        // Steps add up: the list, then a paragraph after it.
-        fieldButton("STEPS").tap()
         tapOnPage("Brown the butter until it smells nutty.")
         confirm("Add 2 lines to Steps")
-        require(text("2 steps added. Next: tap Photo, or Done."), "the steps added")
-        tapOnPage("Cool on the tray.")
-        confirm("Add 1 line to Steps")
-        require(text("1 step added. Next: tap Photo, or Done."), "the step added after")
+        require(text("Step 4 of 4 · Tap the recipe's photo"), "the photo step")
 
-        fieldButton("PHOTO").tap()
-        require(text("Tap the picture to use as the photo."), "photo picking")
+        // Steps add up: Steps' button jumps back to the step; the paragraph after the list,
+        // selected first, goes in with one tap on the field, no confirm.
+        fieldButton("STEPS").tap()
+        require(text("Step 3 of 4 · Tap the steps"), "back on the steps step")
+        tapOnPage("Cool on the tray.")
+        require(app.buttons["Add 1 line to Steps"], "the selection")
+        fieldButton("STEPS").tap()
+        require(text("1 step added."), "the step added after")
+        require(text("Step 4 of 4 · Tap the recipe's photo"), "the photo step again")
+
         onPage(page.images["Cookies photo"], "the photo on the page").tap()
         require(text("Photo added. Tap Done to review and save."), "the photo added")
 
@@ -129,23 +131,26 @@ final class ClipUITests: RecipeUITestCase {
         require(app.buttons["Clip it yourself"], "Clip it yourself").tap()
 
         fieldButton("PHOTO").tap()
-        require(text("Tap the picture to use as the photo."), "photo picking")
+        require(text("Step 4 of 4 · Tap the recipe's photo"), "photo picking")
         onPage(page.staticTexts["Method"], "a heading on the page").tap()
         requireSnackbar("Couldn't read a picture there. The photo is optional.", "the no-picture snackbar")
 
         fieldButton("NAME").tap()
         tapOnPage("Brown Butter Oat Cookies")
         confirm("Use as the name")
-        require(text("Name added. Next: tap Ingredients."), "the name added")
+        require(text("Step 2 of 4 · Tap the ingredients"), "the name added, the next step armed")
 
+        // Skip moves on without touching the page; Skip on Photo ends the steps.
+        require(app.buttons["Skip"], "Skip").tap()
+        require(text("Step 3 of 4 · Tap the steps"), "the steps step")
         fieldButton("PHOTO").tap()
         require(app.buttons["Skip"], "Skip").tap()
-        requireGone(app.buttons["Skip"], "photo picking, over")
+        requireGone(app.buttons["Skip"], "the steps, over")
 
         fieldButton("INGREDIENTS").tap()
         tapOnPage("3 cups rolled oats")
         confirm("Add 3 lines to Ingredients")
-        require(text("3 ingredients added. Next: tap Steps."), "the ingredients added")
+        require(text("Step 3 of 4 · Tap the steps"), "the ingredients added")
     }
 
     /// #235: a frame inside the page (an ad, another site's widget) can reach the `rc` handler,
@@ -163,11 +168,10 @@ final class ClipUITests: RecipeUITestCase {
             textContaining("selected ·").waitForExistence(timeout: 3),
             "a selection posted from a frame inside the page reached the app"
         )
-        require(text("Tap Name below, then tap the recipe's name on the page."), "the first hint, nothing selected")
+        require(text("Step 1 of 4 · Tap the recipe's name"), "the first step, nothing selected")
 
         // The page itself is still heard.
         if !page.staticTexts["Brown Butter Oat Cookies"].isHittable { page.swipeDown() }
-        fieldButton("NAME").tap()
         tapOnPage("Brown Butter Oat Cookies")
         require(app.buttons["Use as the name"], "the page's tap, heard")
     }
@@ -182,7 +186,6 @@ final class ClipUITests: RecipeUITestCase {
 
         require(text("Reddit didn't let the app read this post, so it's open here: select the recipe."), "the note")
         XCTAssertFalse(app.buttons["Try again"].exists)
-        fieldButton("NAME").tap()
         tapOnPage("Brown Butter Oat Cookies")
         require(app.buttons["Use as the name"], "the page, ready to clip")
 

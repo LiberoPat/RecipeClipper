@@ -22,13 +22,16 @@ extension Strings {
     static func clipLinesSelected(_ n: Int) -> String {
         String(localized: "clip_lines_selected \(n)") + " · " + String(localized: "clip_selected_hint")
     }
-    // Field first (#237): the hint bar.
-    static func clipSelect(_ field: ClipField) -> String {
+    // Guided steps (#251): the header, "Step 2 of 4 · Tap the ingredients".
+    static func clipStep(_ number: Int, _ field: ClipField) -> String {
+        let what: String
         switch field {
-        case .name: return String(localized: "clip_select_name")
-        case .ingredients: return String(localized: "clip_select_ingredients")
-        case .steps, .photo: return String(localized: "clip_select_steps")
+        case .name: what = String(localized: "clip_step_name")
+        case .ingredients: what = String(localized: "clip_step_ingredients")
+        case .steps: what = String(localized: "clip_step_steps")
+        case .photo: what = String(localized: "clip_step_photo")
         }
+        return String(localized: "clip_step \(number) \(ClipUiState.steps) \(what)")
     }
     static func clipConfirm(_ field: ClipField, _ n: Int) -> String {
         switch field {
