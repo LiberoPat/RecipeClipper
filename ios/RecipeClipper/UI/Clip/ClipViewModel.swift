@@ -162,12 +162,12 @@ final class ClipViewModel {
     @ObservationIgnored private let entitlements: Entitlements
     // The page's selection as given, before splitting: a name joins it rather than splitting it.
     @ObservationIgnored private var selectionText = ""
-    // The drafts before each change made on the page (an add, a tag's removal), newest last, for
-    // Undo, each with the field an add filled (nil for a removal), which Undo makes the current
-    // step again. A hand edit in Review empties it: Undo never steps over typing.
-    @ObservationIgnored private var undo: [(draft: ClipDraft, field: ClipField?)] = []
-    /// How many changes Undo can take back.
-    private static let undoDepth = 50
+    // The draft before the last change made on the page (an add, a tag's removal), for Undo, with
+    // the field an add filled (nil for a removal), which Undo makes the current step again. One
+    // change only (#264): Undo is offered only for the change just made, by the hint bar while
+    // `lastAdded` is set, or by a removal's snackbar, which goes at the next change. A hand edit
+    // in Review drops it: Undo never steps over typing.
+    @ObservationIgnored private var undo: (draft: ClipDraft, field: ClipField?)?
     @ObservationIgnored private var serial = 0
     // Reading the page the check settled on (#220); a newer page replaces it.
     @ObservationIgnored private var checkTask: Task<Void, Never>?
@@ -383,7 +383,9 @@ final class ClipViewModel {
     /// Takes back the last change from the page (an add, or a tag's removal). An add's field is
     /// the current step again, to redo it.
     func onUndo() {
-        guard let previous = undo.popLast() else { return }
+        guard let previous = undo else { return }
+        undo = nil
+        dismissRemoved()
         var state = uiState
         state.lastAdded = nil
         if let field = previous.field {
@@ -396,7 +398,7 @@ final class ClipViewModel {
 
     /// Throws the session draft away and starts over on the same page, from the first step.
     func onDiscardDraft() {
-        undo.removeAll()
+        undo = nil
         drafts.remove(url)
         uiState.lastAdded = nil
         uiState.skipped = []
@@ -492,8 +494,14 @@ final class ClipViewModel {
     // MARK: Internals
 
     private func push(_ draft: ClipDraft, field: ClipField?) {
-        undo.append((draft, field))
-        if undo.count > Self.undoDepth { undo.removeFirst() }
+        undo = (draft, field)
+        dismissRemoved()
+    }
+
+    /// A removal's snackbar goes once another change is made (#264): its Undo takes back the last
+    /// change, which is then no longer that removal.
+    private func dismissRemoved() {
+        if case .removed = uiState.notice?.message { uiState.notice = nil }
     }
 
     /// The add itself. Its words go in the hint bar (`lastAdded`), with Undo there, rather than
@@ -517,13 +525,18 @@ final class ClipViewModel {
 
     /// A hand edit in Review. Not undoable, so it ends Undo for what came before.
     private func edit(_ change: (inout ClipDraft) -> Void) {
-        undo.removeAll()
+        undo = nil
+        dismissRemoved()
+        uiState.lastAdded = nil
         var draft = uiState.draft
         change(&draft)
         setDraft(draft, newMarkId: uiState.newMarkId)
     }
 
-    private func setDraft(_ draft: ClipDraft, newMarkId: String?, message: ClipMessage? = nil) {
+    private func setDraft(_ changed: ClipDraft, newMarkId: String?, message: ClipMessage? = nil) {
+        // Mark ids only ever rise (#264): an undone or discarded draft's ids are on the page.
+        var draft = changed
+        draft.nextMark = max(changed.nextMark, uiState.draft.nextMark)
         drafts.put(draft)
         var state = uiState
         state.draft = draft

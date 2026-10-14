@@ -101,6 +101,31 @@ final class ClipDraftTests: XCTestCase {
         XCTAssertEqual(twice.removeMark("m1").ingredients, ["salt"])
     }
 
+    // #264: by position, so an equal line another add put there stays where it is.
+    func testRemovingAnAddTakesItsOwnLinesNotAnEqualOneBeforeThem() {
+        let draft = empty.assign(.ingredients, "1 egg\nflour").assign(.ingredients, "sugar\n1 egg")
+        let removed = draft.removeMark("m2")
+        XCTAssertEqual(removed.ingredients, ["1 egg", "flour"])
+        XCTAssertEqual(removed.marks, [ClipMark(id: "m1", field: .ingredients, lines: ["1 egg", "flour"], start: 0)])
+    }
+
+    func testRemovingAnEarlierAddMovesTheLaterOnesUp() {
+        let draft = empty.assign(.steps, "Mix.\nBake.").assign(.steps, "Cool.\nMix.").removeMark("m1")
+        XCTAssertEqual(draft.marks, [ClipMark(id: "m2", field: .steps, lines: ["Cool.", "Mix."], start: 0)])
+        XCTAssertEqual(draft.removeMark("m2").steps, [])
+    }
+
+    func testALineRemovedByHandLeavesItsAddAndTheAddsAfterItMoveUp() {
+        let draft = empty.assign(.ingredients, "a\nb").assign(.ingredients, "c\na").removeLine(.ingredients, 0)
+        XCTAssertEqual(draft.marks, [
+            ClipMark(id: "m1", field: .ingredients, lines: ["b"], start: 0),
+            ClipMark(id: "m2", field: .ingredients, lines: ["c", "a"], start: 1)
+        ])
+        XCTAssertEqual(draft.removeMark("m2").ingredients, ["b"])
+        // Its last line gone, the add has nothing left to take back: its mark goes.
+        XCTAssertEqual(draft.removeLine(.ingredients, 0).marks.map(\.id), ["m2"])
+    }
+
     func testClearingEmptiesOneFieldAndDropsOnlyItsMarks() {
         let draft = empty.assign(.name, "Cookies").assign(.steps, "Mix.\nBake.").assign(.steps, "Cool.").clear(.steps)
         XCTAssertEqual(draft.steps, [])

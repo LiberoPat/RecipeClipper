@@ -40,12 +40,14 @@ enum ClipField: String, CaseIterable, Equatable {
 }
 
 /// One add to a `ClipDraft`, and the page mark drawn for it (#37, #237): `id` names the mark,
-/// `lines` are what it put into `field` (a name, or a photo's address, as its one line), so
-/// removing it takes out exactly those lines.
+/// `lines` are what it put into `field` (a name, or a photo's address, as its one line), from
+/// index `start` of the field's lines, so removing it takes out exactly those lines (#264), never
+/// an equal line another add put there.
 struct ClipMark: Equatable {
     let id: String
     let field: ClipField
-    let lines: [String]
+    var lines: [String]
+    var start: Int = 0
 }
 
 /// A recipe being clipped by hand from a page with no recipe data (Android's ClipDraft). A value
@@ -122,7 +124,8 @@ struct ClipDraft: Equatable {
         case .photo: draft.photo = lines[0]
         }
         if field.replaces { draft.marks.removeAll { $0.field == field } }
-        draft.marks.append(ClipMark(id: pendingMarkId, field: field, lines: lines))
+        let start = field.replaces ? 0 : self.lines(field).count
+        draft.marks.append(ClipMark(id: pendingMarkId, field: field, lines: lines, start: start))
         draft.nextMark += 1
         return draft
     }
@@ -131,22 +134,24 @@ struct ClipDraft: Equatable {
     func mark(_ id: String) -> ClipMark? { marks.first { $0.id == id } }
 
     /// Takes back one add: a name or a photo empties its field; ingredients or steps lose the
-    /// lines that add put there (for each, the first line still equal to it, so a line edited by
-    /// hand in Review since then stays). An unknown id changes nothing.
+    /// lines that add put there, by position (#264: an equal line another add put there stays),
+    /// except a line edited by hand in Review since then, which stays. An unknown id changes
+    /// nothing.
     func removeMark(_ id: String) -> ClipDraft {
         guard let mark = mark(id) else { return self }
-        var draft: ClipDraft
-        switch mark.field {
-        case .name, .photo:
-            draft = clear(mark.field)
-        case .ingredients, .steps:
-            var left = lines(mark.field)
-            for line in mark.lines {
-                if let index = left.firstIndex(of: line) { left.remove(at: index) }
-            }
-            draft = with(mark.field, lines: left)
+        if mark.field.replaces { return clear(mark.field) }
+        let current = lines(mark.field)
+        let gone = Set(mark.lines.indices.map { mark.start + $0 }.filter {
+            current.indices.contains($0) && current[$0] == mark.lines[$0 - mark.start]
+        })
+        var draft = with(mark.field, lines: current.enumerated().filter { !gone.contains($0.offset) }.map(\.element))
+        // The adds after this one move up by the lines taken out before them.
+        draft.marks = marks.filter { $0.id != id }.map { other in
+            guard other.field == mark.field else { return other }
+            var moved = other
+            moved.start -= gone.filter { $0 < other.start }.count
+            return moved
         }
-        draft.marks = marks.filter { $0.id != id }
         return draft
     }
 
@@ -191,11 +196,24 @@ struct ClipDraft: Equatable {
         return with(field, lines: current)
     }
 
+    /// Removes line `index` of `field`. The add that put it there loses it (and its page mark
+    /// once it has none left); the adds after it move up a line.
     func removeLine(_ field: ClipField, _ index: Int) -> ClipDraft {
         var current = lines(field)
         guard current.indices.contains(index) else { return self }
         current.remove(at: index)
-        return with(field, lines: current)
+        var draft = with(field, lines: current)
+        draft.marks = marks.compactMap { mark in
+            guard mark.field == field, index < mark.start + mark.lines.count else { return mark }
+            var changed = mark
+            if index < mark.start {
+                changed.start -= 1
+                return changed
+            }
+            changed.lines.remove(at: index - mark.start)
+            return changed.lines.isEmpty ? nil : changed
+        }
+        return draft
     }
 
     /// Adds an empty line at the end, for the user to type into.
