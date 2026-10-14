@@ -22,8 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.model.Tooltip
-import com.example.recipeclipper.ui.tour.tooltipAnchor
+import com.example.recipeclipper.ui.common.MenuItemText
 
 /**
  * Overflow menu: "Add to plan" (#49) and "Add to groceries" (#50), Edit, "Update from source" for the user's version of a linked recipe (#29),
@@ -47,7 +46,7 @@ internal fun RecipeOverflowMenu(
     var confirming by rememberSaveable { mutableStateOf(false) }
     var confirmingUpdate by rememberSaveable { mutableStateOf(false) }
 
-    IconButton(onClick = { expanded = true }, modifier = Modifier.tooltipAnchor(Tooltip.RECIPE_MENU)) {
+    IconButton(onClick = { expanded = true }) {
         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -74,7 +73,7 @@ internal fun RecipeOverflowMenu(
         // The share icon stays one tap for text; the file is the second way to send it.
         if (onSendFile != null) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_send_file)) },
+                text = { MenuItemText(stringResource(R.string.action_send_file), stringResource(R.string.menu_desc_send_file)) },
                 leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                 onClick = {
                     expanded = false
@@ -92,7 +91,7 @@ internal fun RecipeOverflowMenu(
         )
         if (canUpdateFromSource) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_update_from_source)) },
+                text = { MenuItemText(stringResource(R.string.action_update_from_source), stringResource(R.string.menu_desc_update_from_source)) },
                 leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
                 onClick = {
                     expanded = false

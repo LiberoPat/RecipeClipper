@@ -13,18 +13,14 @@ enum TooltipScreen: String, CaseIterable {
 enum Tooltip: String, CaseIterable {
     case homeLink = "home_link"
     case recipeUnits = "recipe_units"
-    case recipeMenu = "recipe_menu"
     case recipeStartCooking = "recipe_start_cooking"
     case recipeMadeThis = "recipe_made_this"
     case cookDoneNext = "cook_done_next"
     case cookTapStep = "cook_tap_step"
     case cookTimer = "cook_timer"
-    case weekMenu = "week_menu"
     case groceriesLongPress = "groceries_long_press"
     case groceriesDoneShopping = "groceries_done_shopping"
-    case groceriesMenu = "groceries_menu"
     case pantryInStock = "pantry_in_stock"
-    case pantryMenu = "pantry_menu"
     case settingsShowTips = "settings_show_tips"
 
     var id: String { rawValue }
@@ -35,11 +31,10 @@ enum Tooltip: String, CaseIterable {
     var screen: TooltipScreen {
         switch self {
         case .homeLink: .home
-        case .recipeUnits, .recipeMenu, .recipeStartCooking, .recipeMadeThis: .recipe
+        case .recipeUnits, .recipeStartCooking, .recipeMadeThis: .recipe
         case .cookDoneNext, .cookTapStep, .cookTimer: .cook
-        case .weekMenu: .week
-        case .groceriesLongPress, .groceriesDoneShopping, .groceriesMenu: .groceries
-        case .pantryInStock, .pantryMenu: .pantry
+        case .groceriesLongPress, .groceriesDoneShopping: .groceries
+        case .pantryInStock: .pantry
         case .settingsShowTips: .settings
         }
     }

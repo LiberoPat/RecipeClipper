@@ -18,9 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.data.model.PantrySort
-import com.example.recipeclipper.data.model.Tooltip
-import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
  * "Send list" (the in-stock items as text) and "Send as file" (#149), disabled while nothing is
@@ -38,12 +37,12 @@ internal fun PantryMenu(
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }, modifier = Modifier.tooltipAnchor(Tooltip.PANTRY_MENU)) {
+        IconButton(onClick = { expanded = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_share_groceries)) },
+                text = { MenuItemText(stringResource(R.string.action_share_groceries), stringResource(R.string.menu_desc_pantry_send_list)) },
                 enabled = canSend,
                 onClick = {
                     expanded = false
@@ -52,7 +51,7 @@ internal fun PantryMenu(
             )
             if (onSendFile != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_send_file)) },
+                    text = { MenuItemText(stringResource(R.string.action_send_file), stringResource(R.string.menu_desc_send_file)) },
                     enabled = canSend,
                     onClick = {
                         expanded = false
@@ -76,7 +75,7 @@ internal fun PantryMenu(
             HorizontalDivider()
             // Asks first; the grocery list is left alone, and Undo puts the items back (#194).
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_clear_run_out)) },
+                text = { MenuItemText(stringResource(R.string.action_clear_run_out), stringResource(R.string.menu_desc_clear_run_out)) },
                 enabled = canClearRunOut,
                 onClick = {
                     expanded = false

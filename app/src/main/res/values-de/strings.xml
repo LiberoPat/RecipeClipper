@@ -549,18 +549,14 @@
     <string name="tooltip_got_it">Verstanden</string>
     <string name="tooltip_home_link">Teile einen Rezeptlink mit dieser App oder füge ihn hier ein.</string>
     <string name="tooltip_recipe_units">Wie im Rezept zeigt jede Menge genau so, wie das Rezept sie angibt. Tippe hier, um jedes Rezept in Metrisch oder Unzen zu sehen; was sich nicht genau umrechnen lässt, bleibt wie im Rezept.</string>
-    <string name="tooltip_recipe_menu">Mehr: Zum Plan hinzufügen, Zum Einkauf hinzufügen, Als Datei senden und Bearbeiten.</string>
     <string name="tooltip_recipe_start_cooking">Kochmodus: ein Schritt nach dem anderen, mit Timern, und der Bildschirm bleibt an.</string>
     <string name="tooltip_recipe_made_this">Gekocht? Füge ein Foto und eine Notiz hinzu, oder Als gekocht markieren.</string>
     <string name="tooltip_cook_done_next">Ist ein Schritt fertig, tippe hier für den nächsten.</string>
     <string name="tooltip_cook_tap_step">Tippe auf einen Schritt, um ihn zum aktuellen zu machen.</string>
     <string name="tooltip_cook_timer">Der Timer dieses Schritts. Er klingelt auch, wenn du die App verlässt.</string>
-    <string name="tooltip_week_menu">Mehr: Was ich brauche, die Zutaten der Woche für den Einkauf und Menüs.</string>
     <string name="tooltip_groceries_long_press">Halte einen Artikel gedrückt, um ihn in einen anderen Gang zu verschieben oder zu löschen.</string>
     <string name="tooltip_groceries_done_shopping">Wieder zu Hause? Räume Abgehaktes in den Vorrat und entferne es von der Liste.</string>
-    <string name="tooltip_groceries_menu">Mehr: Liste senden oder Liste einfügen.</string>
     <string name="tooltip_pantry_in_stock">Tippe auf einen Eintrag, um Vorrat oder Menge zu ändern; wische nach links, wenn er aufgebraucht ist. Die Korb-Markierung heißt: Er steht auf deiner Einkaufsliste.</string>
-    <string name="tooltip_pantry_menu">Mehr: Liste senden, und nach Gang oder Haltbarkeit sortieren.</string>
     <string name="tooltip_settings_show_tips">Sieh jeden Tipp noch einmal, einen nach dem anderen.</string>
     <string name="cd_dismiss_tip">Tipp schließen</string>
     <string name="settings_section_help">Hilfe</string>
@@ -595,4 +591,17 @@
         <item quantity="one">%1$d Schritt entfernt</item>
         <item quantity="other">%1$d Schritte entfernt</item>
     </plurals>
+    <!-- The ⋮ menus' second lines (#260). -->
+    <string name="menu_desc_send_file">Eine Kopie zum Öffnen in Recipe Clipper</string>
+    <string name="menu_desc_update_from_source">Ersetzt deine Änderungen durch die aktuelle Website</string>
+    <string name="menu_desc_what_i_need">Was die Rezepte der Woche brauchen und dein Vorrat nicht hat</string>
+    <string name="menu_desc_add_week_to_groceries">Auf deine Einkaufsliste, außer was du schon hast</string>
+    <string name="menu_desc_save_week_as_menu">Die Mahlzeiten der Woche für später behalten</string>
+    <string name="menu_desc_apply_menu">Die Mahlzeiten eines gespeicherten Menüs in diese Woche</string>
+    <string name="menu_desc_meal_types">Mahlzeiten des Tages hinzufügen, umbenennen, ordnen</string>
+    <string name="menu_desc_paste_list">Artikel aus kopiertem Text hinzufügen</string>
+    <string name="menu_desc_clear_ticked">Entfernt Abgehaktes, ohne den Vorrat aufzufüllen</string>
+    <string name="menu_desc_pantry_send_list">Was vorrätig ist, als Text</string>
+    <string name="menu_desc_clear_run_out">Entfernt alles, was als Nicht vorrätig markiert ist</string>
+    <string name="menu_desc_share_calendar">Die Mahlzeiten der Woche in deinen Kalender</string>
 </resources>

@@ -305,7 +305,7 @@ struct RecipeScreen: View {
                     sendFileVM = send
                     send.sendRecipe(content.recipe.id, title: content.recipe.name)
                 } label: {
-                    Label(Strings.sendFile, systemImage: "doc")
+                    Label { Text(Strings.sendFile); Text(Strings.menuDescSendFile) } icon: { Image(systemName: "doc") }
                 }
                 .accessibilityIdentifier("recipe.sendFile")
             }
@@ -314,7 +314,7 @@ struct RecipeScreen: View {
             }
             if content.recipe.canUpdateFromSource && !vm.uiState.updatingFromSource {
                 Button { confirmingUpdate = true } label: {
-                    Label(Strings.updateFromSource, systemImage: "arrow.clockwise")
+                    Label { Text(Strings.updateFromSource); Text(Strings.menuDescUpdateFromSource) } icon: { Image(systemName: "arrow.clockwise") }
                 }
             }
             Button(role: .destructive) { confirmingDelete = true } label: {
@@ -323,7 +323,6 @@ struct RecipeScreen: View {
         } label: {
             Image(systemName: "ellipsis.circle")
         }
-        .accessibilityLabel(Strings.moreOptions)
-        .tooltipAnchor(.recipeMenu, inToolbar: true) }
+        .accessibilityLabel(Strings.moreOptions) }
     }
 }
