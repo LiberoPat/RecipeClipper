@@ -430,24 +430,36 @@ class RecipesWalkthroughTest : WalkthroughBase() {
      * #230), LIVE: real r/recipes posts. Reddit refuses the app's `.json` read (403, and again on
      * the one retry), so the post opens in the clip view with the note and no Try again. The
      * whole body shows (no "Read more" fade, no app or sign-in prompt) and scrolls with the
-     * finger. The ingredients and steps are picked selected first (#251): the text selected by
-     * script ([pick]: a drag across a web page can't be scripted, as in ClipScreenTest), then the
-     * field's button, which adds it straight away; Done with no
-     * name opens Review, which asks for it; typed, Save opens the recipe. Then a second post in
-     * the Text view: its name, and the recipe in the poster's comment, selected there and saved.
+     * finger. It opens on the guided steps (#251): the name is skipped, then the ingredients and
+     * the steps are each selected by script ([confirmPick]: a drag across a web page can't be
+     * scripted, as in ClipScreenTest) and added with the step's confirm, which arms the next step;
+     * the photo is skipped. Done with no name opens Review, which asks for it; typed, Save opens
+     * the recipe. Then a second post in the Text view: its name and ingredients the same way, and
+     * its steps (in the poster's comment) selected first ([pickFirst]): Steps disarmed, the text
+     * selected, then Steps' button. Saved.
      */
     @Test
     fun test31_redditClipYourself() {
         start("reddit")
         val page = openBlockedPost(CLIP_POST)
+        waitFor(hasText("Step 1 of 4 · Tap the recipe's name"))
+        pause(2500)
         // The whole post body, scrolled with the finger to its end.
         repeat(5) {
             swipeWeb(page)
             pause(1200)
         }
         pause(1500)
-        pick(page, "Ingredients", "2 pounds bone-in", "Black pepper, to taste")
-        pick(page, "Steps", "Prepare the chicken:", "remaining vinaigrette on the side.")
+        tap("Skip", 1000)
+        waitFor(hasText("Step 2 of 4 · Tap the ingredients"))
+        pause(2000)
+        confirmPick(page, "2 pounds bone-in", "Black pepper, to taste")
+        waitFor(hasText("Step 3 of 4 · Tap the steps"))
+        pause(2000)
+        confirmPick(page, "Prepare the chicken:", "remaining vinaigrette on the side.")
+        waitFor(hasText("Step 4 of 4 · Tap the recipe's photo"))
+        pause(2000)
+        tap("Skip", 2500)
         // No name yet: Done opens Review, which asks for it.
         tap("Done", 3000)
         waitFor(hasText("Type the recipe's name", substring = true))
@@ -466,9 +478,15 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         val text = waitForWebView { it.url?.contains("reddit.com") != true }
         waitForPage(text, "typeof window.RC == 'object' && document.body.innerText.indexOf('Marinate the beef') >= 0")
         pause(2500)
-        pick(text, "Name", "Beef Bourguignon", null)
-        pick(text, "Ingredients", "800g beef chuck", "to serve")
-        pick(text, "Steps", "Marinate the beef overnight", "with parsley on top.")
+        waitFor(hasText("Step 1 of 4 · Tap the recipe's name"))
+        pause(1500)
+        confirmPick(text, "Beef Bourguignon", null)
+        waitFor(hasText("Step 2 of 4 · Tap the ingredients"))
+        pause(2000)
+        confirmPick(text, "800g beef chuck", "to serve")
+        waitFor(hasText("Step 3 of 4 · Tap the steps"))
+        pause(2000)
+        pickFirst(text, "Steps", "Marinate the beef overnight", "with parsley on top.")
         tap("Done", 3000)
         pause(1500)
         tap("Save", 3000)
@@ -510,12 +528,14 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         tapTag("clip.confirm", 3000)
 
         waitFor(hasText("Step 2 of 4 · Tap the ingredients"))
+        pause(1500)
         tapOnPage(page, "#ingredients + ul li:nth-child(2)")
         waitFor(hasText("Add 3 lines to Ingredients"))
         pause(2000)
         tapTag("clip.confirm", 3000)
 
         waitFor(hasText("Step 3 of 4 · Tap the steps"))
+        pause(1500)
         tapOnPage(page, "#directions + ol li:nth-child(2)")
         waitFor(hasText("Add 6 lines to Steps"))
         pause(2000)
@@ -660,17 +680,33 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     }
 
     /**
-     * Selected first (#251): brings the text from [from] to [to] (or [from] alone) into view and
-     * selects it, as a finger's drag would (the page reports it through `selectionchange`), then
-     * taps [field]'s button, which adds it straight away: it goes there, marked on the page, and
-     * the next step arms.
+     * Guided (#251): brings the text from [from] to [to] (or [from] alone) into view and selects
+     * it, as a finger's drag would (the page reports it through `selectionchange`), then taps the
+     * armed step's confirm ("Add 22 lines to Ingredients"): it goes there, marked on the page,
+     * and the next step arms.
      */
-    private fun pick(view: WebView, field: String, from: String, to: String?) {
-        val script = SELECT_JS + "(${quote(from)}, ${to?.let(::quote) ?: "null"})"
-        compose.waitUntil(15_000) { js(view, script) == "true" }
+    private fun confirmPick(view: WebView, from: String, to: String?) {
+        select(view, from, to)
         waitFor(hasTestTag("clip.confirm"))
         pause(2500)
+        tapTag("clip.confirm", 3000)
+    }
+
+    /**
+     * Selected first (#251): [field]'s button disarms its step, the text is selected (the hint
+     * says "N lines selected · tap the field they go in"), and the button adds it straight away.
+     */
+    private fun pickFirst(view: WebView, field: String, from: String, to: String?) {
+        tapTag("clip.field.${field.uppercase()}", 2000)
+        select(view, from, to)
+        waitFor(hasText("tap the field they go in", substring = true))
+        pause(3000)
         tapTag("clip.field.${field.uppercase()}", 3000)
+    }
+
+    private fun select(view: WebView, from: String, to: String?) {
+        val script = SELECT_JS + "(${quote(from)}, ${to?.let(::quote) ?: "null"})"
+        compose.waitUntil(15_000) { js(view, script) == "true" }
     }
 
     private fun quote(text: String) = "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"
