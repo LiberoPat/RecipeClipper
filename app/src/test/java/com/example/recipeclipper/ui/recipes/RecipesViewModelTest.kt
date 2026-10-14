@@ -11,6 +11,8 @@ import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeLibraryPolicy
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -170,6 +172,74 @@ class RecipesViewModelTest {
 
             assertEquals(emptyList<String>(), vm.uiState.value.pendingDeletes)
             assertEquals(setOf(deletedA, deletedB), repository.restoreCalls.toSet())
+        }
+
+    /**
+     * #268: what the snackbar sees over a burst, an undo and the restore. The burst keeps one
+     * batch while its titles grow; Undo goes straight to nothing pending, with no state in
+     * between, and the restore that follows changes nothing; the next swipe is a new batch.
+     */
+    @Test fun `a burst keeps one batch, and undo clears it with nothing in between`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            listOf(1L to "A", 2L to "B", 3L to "C").forEach { (id, title) ->
+                repository.deleteResults[id] = RecipeRepository.DeletedRecipe(entity(id, title), emptyList())
+            }
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
+            val seen = mutableListOf<Pair<List<String>, Int?>>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                vm.uiState.collect { seen += it.pendingDeletes to it.deleteBatch }
+            }
+            advanceUntilIdle()
+
+            listOf(1L to "A", 2L to "B", 3L to "C").forEach { (id, title) ->
+                vm.onDelete(summary(id, title))
+                advanceUntilIdle()
+            }
+            val batch = vm.uiState.value.deleteBatch
+            vm.onUndoDelete()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(
+                    emptyList<String>() to null,
+                    listOf("A") to batch,
+                    listOf("A", "B") to batch,
+                    listOf("A", "B", "C") to batch,
+                    emptyList<String>() to null
+                ),
+                // Each change once: the combine may repeat a state when another source emits.
+                seen.filterIndexed { i, it -> i == 0 || it != seen[i - 1] }
+            )
+            assertEquals(3, repository.restoreCalls.size)
+
+            vm.onDelete(summary(1, "A"))
+            advanceUntilIdle()
+            val next = vm.uiState.value.deleteBatch
+            assertTrue(next != null && next != batch)
+        }
+
+    @Test fun `dismissing ends the batch, and the next swipe starts another`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            repository.deleteResults[1L] = RecipeRepository.DeletedRecipe(entity(1, "A"), emptyList())
+            repository.deleteResults[2L] = RecipeRepository.DeletedRecipe(entity(2, "B"), emptyList())
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+            vm.onDelete(summary(1, "A"))
+            advanceUntilIdle()
+            val first = vm.uiState.value.deleteBatch
+
+            vm.onSnackbarDismissed()
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.deleteBatch)
+            assertEquals(emptyList<String>(), vm.uiState.value.pendingDeletes)
+
+            vm.onDelete(summary(2, "B"))
+            advanceUntilIdle()
+            assertEquals(listOf("B"), vm.uiState.value.pendingDeletes)
+            assertTrue(vm.uiState.value.deleteBatch != null && vm.uiState.value.deleteBatch != first)
         }
 
     @Test fun `recently viewed is the default order, as the repository gives it`() =

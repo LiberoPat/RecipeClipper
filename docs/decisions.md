@@ -210,10 +210,8 @@ Exists today:
   back. One snackbar covers the batch (`Deleted "X"`, or `2 recipes
   deleted`) and its Undo restores all of them, so undo is all-or-nothing by
   design — the alternative, a queue, plays a separate snackbar per delete
-  and feels slow. The `LaunchedEffect` is keyed on the whole pending list so
-  a new delete replaces the snackbar; that restart cancels `showSnackbar`,
-  which is why neither the undo nor the dismissed branch runs and the
-  earlier capture survives. Deliberately a hard delete, not a soft flag: a `deleted`
+  and feels slow. The snackbar is keyed on the burst (`deleteBatch`), so a
+  further swipe updates its count in place (#268, below). Deliberately a hard delete, not a soft flag: a `deleted`
   column would need `cullHistory`, `observeHistory`, `observeRecent`,
   `observeRecentlySaved` and the `upsert` dedupe to all understand it.
   Re-sharing a deleted link after the fact creates a new row with a new id;
@@ -4169,6 +4167,18 @@ the pantry use-up sheet, "Removed from your cooks") goes through `UndoSnackbarEf
 Material's `Long` (about 10 s), and leaving the screen, but not rotating it, settles the removal as
 if it had timed out. iOS's `SnackbarTimeout` already closed them, after 4 s; its undo window is now
 10 s too (`SnackbarTimeout.undo`), while plain notices keep 4 s.
+
+**2026-10-14 (#268).** The owner saw the Recipes snackbar flash and come back after Undo. Two
+causes, both Android. The swipe row's state was `rememberSwipeToDismissBoxState`, which is
+`rememberSaveable`: the lazy list keeps a removed row's saved state under its key, so a row
+put back by Undo came back dismissed, `SwipeToDismissBox` deleted it again and a new snackbar
+popped up. The row now `remember`s a plain `SwipeToDismissBoxState`. And the snackbar was keyed
+on the pending list, so each swipe of a burst took it down and showed another. It is now keyed
+on `deleteBatch`, which the first swipe of a burst sets and Undo or the timeout clears, and
+`UndoSnackbarEffect` reads its message live, so "3 recipes deleted" counts up in the one
+snackbar. The undo window now runs from the burst's first swipe on both platforms (iOS's
+`.task(id: deleteBatch)`; iOS never re-deleted or flashed). The other undo snackbars show one
+removal per key, so they were unaffected.
 
 ## The recipe, groceries and pantry files, split further (#234)
 

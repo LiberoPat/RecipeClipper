@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.recipes
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -24,6 +25,8 @@ import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.passTheSearchDebounce
 import com.example.recipeclipper.ui.assertInAppTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -82,6 +85,8 @@ class RecipesScreenTest {
     private var newRecipe = 0
     private var openedUrl: String? = null
 
+    private val snackbars = SnackbarHostState()
+
     private fun show(vararg recipes: RecipeSummary) {
         repository.history.value = recipes.toList()
         recipes.forEach { repository.deleteResults[it.id] = captured(it) }
@@ -92,7 +97,8 @@ class RecipesScreenTest {
                 onOpenRecipe = { opened = it },
                 onNewRecipe = { newRecipe++ },
                 onOpenUrl = { openedUrl = it },
-                viewModel = viewModel
+                viewModel = viewModel,
+                snackbarHostState = snackbars
             )
         }
     }
@@ -307,5 +313,64 @@ class RecipesScreenTest {
         compose.waitUntil(timeoutMillis = 5_000) { repository.restoreCalls.size == 2 }
         assertEquals(listOf(captured(adobo), captured(carbonara)), repository.restoreCalls)
         assertTrue(bread.id !in repository.deleteCalls)
+    }
+
+    /**
+     * #268: a burst keeps the one snackbar it started with, counting in place, rather than
+     * taking it down and showing another per swipe (which flashed). Undo then hides it for good.
+     */
+    @Test
+    fun aBurstOfThreeKeepsOneSnackbarAndUndoHidesIt() {
+        show(adobo, carbonara, bread)
+        waitFor("Chicken Adobo")
+        swipeAway(adobo)
+        waitFor("Deleted \"Chicken Adobo\"")
+        val first = snackbars.currentSnackbarData
+
+        swipeAway(carbonara)
+        waitFor("2 recipes deleted")
+        assertSame(first, snackbars.currentSnackbarData)
+        swipeAway(bread)
+        waitFor("3 recipes deleted")
+        assertSame(first, snackbars.currentSnackbarData)
+        assertEquals(1, compose.onAllNodesWithText("Undo").fetchSemanticsNodes().size)
+
+        compose.onNodeWithText("Undo").performClick()
+        compose.waitUntil(timeoutMillis = 5_000) { repository.restoreCalls.size == 3 }
+        repository.history.value = listOf(adobo, carbonara, bread)
+        waitFor("Banana Bread")
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+
+        assertNull(snackbars.currentSnackbarData)
+        compose.onNodeWithText("Undo").assertDoesNotExist()
+        compose.onNodeWithText("3 recipes deleted").assertDoesNotExist()
+    }
+
+    /**
+     * #268: the restored rows come back under the same key, and the lazy list used to hand
+     * them the swipe state they were saved with, dismissed: the row deleted itself again and
+     * the snackbar popped back.
+     */
+    @Test
+    fun undoneRowsComeBackAndAreNotDeletedAgain() {
+        show(adobo, carbonara, bread)
+        waitFor("Chicken Adobo")
+        swipeAway(adobo)
+        swipeAway(carbonara)
+        waitFor("2 recipes deleted")
+
+        compose.onNodeWithText("Undo").performClick()
+        compose.waitUntil(timeoutMillis = 5_000) { repository.restoreCalls.size == 2 }
+        // The database would list them again; the fake needs telling.
+        repository.history.value = listOf(adobo, carbonara, bread)
+        waitFor("Chicken Adobo")
+        waitFor("Spaghetti Carbonara")
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+
+        assertEquals(listOf(adobo.id, carbonara.id), repository.deleteCalls)
+        compose.onNodeWithText("Undo").assertDoesNotExist()
+        compose.onNodeWithText("Chicken Adobo").assertIsDisplayed()
     }
 }

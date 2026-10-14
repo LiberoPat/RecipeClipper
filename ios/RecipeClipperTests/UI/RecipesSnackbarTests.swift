@@ -1,7 +1,7 @@
 import XCTest
 @testable import RecipeClipper
 
-/// The snackbar's timeout, as the History screen's `.task(id: pendingDeletes)` runs it, and
+/// The snackbar's timeout, as the Recipes screen's `.task(id: deleteBatch)` runs it, and
 /// what happens to captures when History goes away with the snackbar still up.
 @MainActor
 final class RecipesSnackbarTests: XCTestCase {
@@ -29,8 +29,8 @@ final class RecipesSnackbarTests: XCTestCase {
         XCTAssertEqual(settled, 0)
     }
 
-    /// A second swipe restarts the task (and leaving the screen cancels it): neither Undo nor
-    /// dismissal may run for the cancelled one, or the earlier capture would be dropped.
+    /// Leaving the screen cancels the task: neither Undo nor dismissal may run for the
+    /// cancelled one, or the earlier capture would be dropped.
     func testACancelledTimeoutRunsNeitherOutcome() async {
         var settled = 0
         let task = Task { @MainActor in
@@ -42,8 +42,7 @@ final class RecipesSnackbarTests: XCTestCase {
         XCTAssertEqual(settled, 0)
     }
 
-    /// Cancelled after the wait but before the settle (the restart landed in between): still
-    /// neither outcome.
+    /// Cancelled after the wait but before the settle: still neither outcome.
     func testCancellationThatArrivesAsTheWaitEndsStillSettlesNothing() async {
         var settled = 0
         let task = Task { @MainActor in
@@ -53,8 +52,8 @@ final class RecipesSnackbarTests: XCTestCase {
         XCTAssertEqual(settled, 0)
     }
 
-    /// The restart path end to end: first swipe, its timeout cancelled by a second swipe, then
-    /// Undo restores both.
+    /// A cancelled timeout keeps the capture: first swipe, its timeout cancelled, a second
+    /// swipe, then Undo restores both.
     func testARestartedSnackbarKeepsTheEarlierCaptureForUndo() async {
         let repository = FakeRecipeRepository()
         repository.deleteResults = [1: deleted(1), 2: deleted(2)]
@@ -69,7 +68,7 @@ final class RecipesSnackbarTests: XCTestCase {
         }
         vm.onDelete(testSummary(2, title: "B"))
         await settleMain()
-        first.cancel()          // what `.task(id:)` does when pendingDeletes changes
+        first.cancel()          // what `.task(id:)` does when the screen goes
         await first.value
 
         XCTAssertEqual(vm.uiState.pendingDeletes, ["A", "B"])
