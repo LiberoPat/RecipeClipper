@@ -10,6 +10,16 @@
   "before": ["et", "ou", "avec"],
   "after": ["et", "ou", "avec", "dans", "à", "au", "aux", "sur", "en", "puis", "jusqu'à", "petit"],
   "lineDescriptors": [],
+  "trailingDescriptors": [
+    "doux", "demi-sel", "salé", "d'olive", "vierge extra", "de tournesol", "de colza", "neutre", "de blé", "en poudre",
+    "semoule", "roux", "fraîche", "épaisse", "liquide", "entière", "entier", "entiers", "demi-écrémé", "écrémé",
+    "de volaille", "de poulet", "de bœuf", "de légumes", "blanc", "blanche", "blancs", "blanches", "rouge", "rouges",
+    "jaune", "jaunes", "vert", "verte", "verts", "vertes", "noir", "moulu", "moulue", "moulus", "moulues", "gros",
+    "grosse", "grosses", "petit", "petite", "petits", "petites", "moyen", "moyenne", "moyens", "moyennes", "mûr", "mûre",
+    "mûrs", "mûres", "surgelé", "surgelée", "surgelés", "surgelées", "nature", "cerise", "cerises"
+  ],
+  "contractions": [["au", "à"], ["aux", "à"]],
+  "compoundHeads": [],
   "anyWordAfter": false,
   "splitWords": ["plus"],
   "plurals": [["", "s"], ["", "x"]]

@@ -10,7 +10,21 @@
   ],
   "before": ["und", "oder", "mit", "sowie"],
   "after": [],
-  "lineDescriptors": [],
+  "lineDescriptors": [
+    "brauner", "braunen", "weißer", "weißen", "weiße", "rote", "roten", "roter", "gelbe", "gelben", "grüne", "grünen",
+    "schwarzer", "schwarze", "schwarzen", "gemahlener", "gemahlene", "gemahlenen", "getrocknete", "getrockneten",
+    "getrockneter", "tk", "tiefgekühlte", "tiefgekühlten", "große", "großen", "kleine", "kleinen", "mittelgroße",
+    "mittelgroßen", "reife", "reifen", "frischen", "kalten", "weichen", "zimmerwarme", "zimmerwarmen", "flüssige",
+    "flüssigen", "gekochte", "gekochten", "gekochter", "hokkaido", "butternut"
+  ],
+  "trailingDescriptors": [],
+  "contractions": [["im", "in"], ["ins", "in"], ["zum", "zu"], ["zur", "zu"], ["am", "an"], ["beim", "bei"]],
+  "compoundHeads": [
+    "weizen-mehl", "dinkel-mehl", "süßrahm-butter", "sauerrahm-butter", "schlag-sahne", "koch-sahne", "gemüse-brühe",
+    "hühner-brühe", "rinder-brühe", "geflügel-brühe", "oliven-öl", "raps-öl", "sonnenblumen-öl", "pflanzen-öl",
+    "speise-öl", "baby-spinat", "blatt-spinat", "voll-milch", "kristall-zucker", "rohr-zucker", "gemüse-zwiebel",
+    "hokkaido-kürbis", "butternut-kürbis"
+  ],
   "anyWordAfter": true,
   "splitWords": ["mehr"],
   "plurals": [["", "n"], ["", "en"], ["", "e"], ["", "er"]]

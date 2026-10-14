@@ -11,6 +11,18 @@
   "before": ["y", "e", "o", "u", "con"],
   "after": ["y", "e", "o", "u", "con", "en", "a", "al", "hasta", "sobre", "por", "poco", "junto", "juntos"],
   "lineDescriptors": [],
+  "trailingDescriptors": [
+    "de oliva", "virgen extra", "suave", "de girasol", "de trigo", "común", "de todo uso", "de fuerza", "de repostería",
+    "sin sal", "con sal", "entera", "desnatada", "semidesnatada", "de pollo", "de carne", "de ternera", "de verduras",
+    "moreno", "morena", "blanco", "blanca", "blancos", "blancas", "rojo", "roja", "rojos", "rojas", "morado", "morada",
+    "morados", "moradas", "amarillo", "amarilla", "amarillos", "amarillas", "verde", "verdes", "negra", "negro",
+    "molido", "molida", "en polvo", "grande", "grandes", "mediano", "mediana", "medianos", "medianas", "pequeño",
+    "pequeña", "pequeños", "pequeñas", "m", "l", "xl", "maduro", "madura", "maduros", "maduras", "frescos", "frescas",
+    "congelado", "congelada", "congelados", "congeladas", "cocido", "cocida", "cocidos", "cocidas", "en conserva",
+    "en lata", "pera", "cherry"
+  ],
+  "contractions": [["al", "a"]],
+  "compoundHeads": [],
   "anyWordAfter": false,
   "splitWords": ["más", "dividido", "dividida", "divididos", "divididas"],
   "plurals": [["", "s"], ["", "es"]]

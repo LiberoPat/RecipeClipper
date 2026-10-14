@@ -11,6 +11,21 @@
   "before": ["e", "ed", "o", "con"],
   "after": ["e", "ed", "o", "con", "in", "a", "al", "alla", "nel", "nella", "fino", "poco", "sopra", "per"],
   "lineDescriptors": [],
+  "trailingDescriptors": [
+    "extravergine", "extra vergine", "di oliva", "d'oliva", "di semi", "di girasole", "di semi di girasole", "intero",
+    "parzialmente scremato", "scremato", "di pollo", "di manzo", "di carne", "vegetale", "di verdure", "semolato",
+    "di canna", "bianco", "bianca", "bianchi", "bianche", "rosso", "rossa", "rossi", "rosse", "giallo", "gialla",
+    "gialli", "gialle", "verde", "verdi", "macinato", "macinata", "in polvere", "amaro", "fondente", "grande", "grandi",
+    "medio", "media", "medi", "medie", "piccolo", "piccola", "piccoli", "piccole", "maturo", "matura", "maturi",
+    "mature", "secco", "secca", "secchi", "secche", "surgelato", "surgelata", "surgelati", "surgelate", "ciliegino",
+    "ciliegini", "liquida", "fresca", "freschi", "fresche"
+  ],
+  "contractions": [
+    ["al", "a"], ["allo", "a"], ["alla", "a"], ["ai", "a"], ["agli", "a"], ["alle", "a"], ["all'", "a"],
+    ["nel", "in"], ["nello", "in"], ["nella", "in"], ["nei", "in"], ["negli", "in"], ["nelle", "in"], ["nell'", "in"],
+    ["sul", "su"], ["sullo", "su"], ["sulla", "su"], ["sui", "su"], ["sugli", "su"], ["sulle", "su"], ["sull'", "su"]
+  ],
+  "compoundHeads": [],
   "anyWordAfter": false,
   "splitWords": ["più"],
   "plurals": [["o", "i"], ["a", "e"], ["e", "i"]]

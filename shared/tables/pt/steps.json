@@ -11,6 +11,19 @@
   "before": ["e", "ou", "com"],
   "after": ["e", "ou", "com", "em", "no", "na", "nos", "nas", "ao", "aos", "à", "até", "sobre", "por", "pouco"],
   "lineDescriptors": [],
+  "trailingDescriptors": [
+    "de trigo", "de oliva", "extra virgem", "extravirgem", "virgem", "sem sal", "com sal", "em pó", "químico",
+    "biológico", "seco", "seca", "instantâneo", "refinado", "cristal", "demerara", "mascavo", "integral", "desnatado",
+    "semidesnatado", "de galinha", "de frango", "de carne", "de legumes", "branco", "branca", "brancos", "brancas",
+    "vermelho", "vermelha", "vermelhos", "vermelhas", "roxo", "roxa", "roxas", "amarelo", "amarela", "amarelos",
+    "amarelas", "verde", "verdes", "moído", "moída", "grande", "grandes", "médio", "média", "médios", "médias",
+    "pequeno", "pequena", "pequenos", "pequenas", "inteiro", "inteiros", "maduro", "madura", "maduros", "maduras", "bem",
+    "congelado", "congelada", "congelados", "congeladas", "ralados", "raladas", "frescos", "frescas"
+  ],
+  "contractions": [
+    ["no", "em"], ["na", "em"], ["nos", "em"], ["nas", "em"], ["ao", "a"], ["aos", "a"], ["à", "a"], ["às", "a"]
+  ],
+  "compoundHeads": [],
   "anyWordAfter": false,
   "splitWords": ["mais"],
   "plurals": [["", "s"], ["ão", "ões"]]
