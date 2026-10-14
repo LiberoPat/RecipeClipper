@@ -2,21 +2,85 @@ import SwiftUI
 
 /// One item (#194): its name, a "Low" tag while running low, the basket "Groceries" tag while its
 /// name is on the grocery list, and its quantity as written on the right. Tap the row for the edit
-/// sheet (its stock control changes the state); touch and hold for the other two states; swipes
-/// are shortcuts. No per-row button (owner, 2026-09-29: redundant beside tapping the item).
+/// sheet (its stock control changes the state); swipes are shortcuts. No per-row button (owner,
+/// 2026-09-29: redundant beside tapping the item).
+///
+/// Selecting (#258): a touch and hold starts it with this row checked, and dragging on checks
+/// every row the finger passes; while `selecting`, the row leads with a checkbox, a tap toggles
+/// it, and a drag that starts on the checkbox checks (or unchecks) a run of rows. The checkbox is
+/// always there, only zero wide while not selecting, so the row's structure never changes with
+/// its state (#203, #216). The drag reports the finger's height in the List's `dragSpace`; the
+/// screen maps it to a row.
 struct PantryRow: View {
     let item: PantryItem
     let today: Int64
     let onList: Bool
     let first: Bool
     let vm: PantryViewModel
+    var selecting = false
+    var selected = false
+    var dragSpace = "pantryList"
+    var onDragChanged: (CGFloat) -> Void = { _ in }
+    var onDragEnded: () -> Void = {}
 
-    /// VoiceOver's actions and the context menu: both other states.
+    /// Gesture bookkeeping only: whether this touch has already started selecting or a drag.
+    @State private var held = false
+    @State private var dragging = false
+
+    /// VoiceOver's actions: both other states.
     private var others: [PantryStock] { PantryStock.allCases.filter { $0 != item.stock } }
+
+    private func activate() {
+        if selecting { vm.onToggle(item.id) } else { vm.onEdit(item) }
+    }
+
+    /// A touch and hold, then a drag: starts selecting, then reaches row after row.
+    private var holdThenDrag: some Gesture {
+        LongPressGesture(minimumDuration: 0.4)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(dragSpace)))
+            .onChanged { value in
+                guard case .second(true, let drag) = value else { return }
+                if !held {
+                    held = true
+                    vm.onLongPress(item.id)
+                }
+                if let drag { onDragChanged(drag.location.y) }
+            }
+            .onEnded { _ in
+                if held { onDragEnded() }
+                held = false
+            }
+    }
+
+    /// From the checkbox: a drag at once (a tap is a drag that goes nowhere, so it toggles).
+    private var checkboxDrag: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(dragSpace))
+            .onChanged { value in
+                if !dragging {
+                    dragging = true
+                    vm.onDragStart(item.id)
+                }
+                onDragChanged(value.location.y)
+            }
+            .onEnded { _ in
+                dragging = false
+                onDragEnded()
+            }
+    }
 
     var body: some View {
         let stock = item.stock
-        Button { vm.onEdit(item) } label: {
+        HStack(alignment: .center, spacing: 0) {
+            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                .font(.title3)
+                .foregroundStyle(selected ? Palette.primary : Palette.muted)
+                .frame(width: selecting ? 44 : 0, alignment: .leading)
+                .frame(maxHeight: .infinity)
+                .opacity(selecting ? 1 : 0)
+                .contentShape(Rectangle())
+                .highPriorityGesture(checkboxDrag, including: selecting ? .all : .none)
+                .accessibilityHidden(true)
+                .accessibilityIdentifier("check-\(item.id)")
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
                     // The name, then its tags; they wrap under a long name or large text rather
@@ -61,17 +125,23 @@ struct PantryRow: View {
                 }
             }
             .padding(.vertical, 12)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .fixedSize(horizontal: false, vertical: true)
+        .contentShape(Rectangle())
+        .gesture(holdThenDrag.exclusively(before: TapGesture().onEnded(activate)))
         // VoiceOver reads the row as one ("Garlic, 1 head, Run out, On your grocery list"), with
-        // the other two states as its actions (#194).
+        // the other two states and Select as its actions (#194, #258); while selecting, a tap
+        // checks it, and a checked row says so.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(description)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction(activate)
         .accessibilityActions {
-            ForEach(others, id: \.self) { choice in
-                Button(Self.action(choice)) { vm.onSetStock(item, choice) }
+            if !selecting {
+                ForEach(others, id: \.self) { choice in
+                    Button(Self.action(choice)) { vm.onSetStock(item, choice) }
+                }
+                Button(Strings.pantrySelect) { vm.onSelect(item.id) }
             }
         }
         .accessibilityIdentifier("pantry-\(item.id)")
@@ -92,12 +162,6 @@ struct PantryRow: View {
                     .accessibilityHint(Strings.pantryTakeOffList)
                     .accessibilityIdentifier("onList-\(item.id)")
                 }
-            }
-        }
-        // The row's menu: both other states.
-        .contextMenu {
-            ForEach(others, id: \.self) { choice in
-                Button(Self.action(choice)) { vm.onSetStock(item, choice) }
             }
         }
     }

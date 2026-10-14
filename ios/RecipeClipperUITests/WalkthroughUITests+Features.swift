@@ -88,12 +88,11 @@ extension WalkthroughUITests {
         let lowTag = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'low-'")).firstMatch
         reveal(lowTag, "the Low tag")
         pause(2.5)
-        // The long-press menu offers both other states: Restock and Ran out, while running low.
-        reveal(pantryRow("olive oil"), "olive oil").press(forDuration: 1.2)
-        let restock = require(app.buttons["Restock"], "the menu's Restock")
-        require(app.buttons["Ran out"], "the menu's Ran out")
-        pause(2.5)
-        restock.tap()
+        // Running low, the swipes offer both other states: Restock (a touch and hold starts
+        // selecting since #258).
+        reveal(pantryRow("olive oil"), "olive oil").swipeRight()
+        pause(1.5)
+        require(app.buttons["Restock"], "the swipe's Restock").tap()
         pause(2)
         reveal(pantryRow("basmati rice"), "basmati rice").swipeLeft()
         pause(1.5)

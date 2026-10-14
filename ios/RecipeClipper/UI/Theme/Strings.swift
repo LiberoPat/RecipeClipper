@@ -560,6 +560,15 @@ enum Strings {
     static var clearRunOut: String { String(localized: "action_clear_run_out") }
     static func clearRunOutTitle(_ n: Int) -> String { String(localized: "clear_run_out_title \(n)") }
     static var runOutCleared: String { String(localized: "snackbar_run_out_cleared") }
+    // Selecting several pantry items (#258)
+    static var pantrySelectItems: String { String(localized: "pantry_select_items") }
+    static var pantrySelect: String { String(localized: "pantry_select") }
+    static var selectAll: String { String(localized: "action_select_all") }
+    static var pantryMarkRunOut: String { String(localized: "pantry_mark_run_out") }
+    static var exitSelection: String { String(localized: "cd_exit_selection") }
+    static func pantrySelectedCount(_ n: Int) -> String { String(localized: "pantry_selected_count \(n)") }
+    static func pantryRemoved(_ n: Int) -> String { String(localized: "snackbar_pantry_removed \(n)") }
+    static func pantryMarkedRunOut(_ n: Int) -> String { String(localized: "snackbar_pantry_marked_run_out \(n)") }
     /// The basket tag, tapped: its lines left the grocery list (a count when more than one).
     static func takenOffList(_ n: Int) -> String {
         n > 1 ? String(localized: "snackbar_taken_off_list_count \(n)") : String(localized: "snackbar_taken_off_list")

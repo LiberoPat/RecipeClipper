@@ -6,7 +6,9 @@ import SwiftUI
 /// row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes and a
 /// touch-and-hold menu as shortcuts. The menu sends what's in stock, as plain text or as a file (#149), and
 /// clears what has run out after asking, with undo (#194). A `List`, for the
-/// swipe actions, so the readable column is made from the width, as on Recipes.
+/// swipe actions, so the readable column is made from the width, as on Recipes. A touch and
+/// hold, or the menu's "Select items", starts selecting (#258): checkboxes, drag to check a run of
+/// rows, then Remove or Mark run out for them all, each with one undo.
 struct PantryScreen: View {
     let vm: PantryViewModel
     /// Makes "Send as file" (#149, phase 2); nil leaves it out. Made on first use.
@@ -14,9 +16,66 @@ struct PantryScreen: View {
     @State private var sendFileVM: SendFileViewModel?
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
     @State private var sideInset = ReadableWidth.gutter
+    /// Where the rows are, for drag to select (#258).
+    @State private var rows = PantryRowFrames()
 
     var body: some View {
         let state = vm.uiState
+        // The selection bar sits above the List, not inside it, so the List's identity and rows
+        // never change when selecting starts or stops.
+        VStack(spacing: 0) {
+            if let selection = state.selection {
+                PantrySelectionBar(
+                    count: selection.ids.count, allSelected: state.allSelected,
+                    onExit: vm.onExitSelection, onSelectAll: vm.onSelectAll,
+                    onMarkRunOut: vm.onMarkRunOutSelected, onRemove: vm.onRemoveSelected
+                )
+            }
+            ScrollViewReader { proxy in
+                list(state, proxy: proxy)
+            }
+        }
+        .screenBackground()
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbar(state) }
+        // The tooltips (#190); none over this screen's sheet and snackbar, or while selecting.
+        // Outside the toolbar, whose menu is an anchor too.
+        .tooltipHost(
+            .pantry,
+            blocked: state.editing != nil || state.message != nil || state.confirmClearRunOut != nil || state.selection != nil
+        )
+        .overlay(alignment: .bottom) {
+            if let message = state.message {
+                snackbar(message)
+                    .frame(maxWidth: ReadableWidth.column)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: state.message == nil)
+        .task(id: state.message) {
+            guard state.message != nil else { return }
+            await SnackbarTimeout.run(pending: ["message"], onTimeout: vm.onMessageDismissed)
+        }
+        .sheet(isPresented: Binding(get: { state.editing != nil }, set: { if !$0 { vm.onEditDismissed() } })) {
+            if let editing = vm.uiState.editing {
+                PantryEditSheet(editing: editing, vm: vm)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        .alert(
+            Strings.clearRunOutTitle(state.confirmClearRunOut ?? 0),
+            isPresented: Binding(get: { vm.uiState.confirmClearRunOut != nil }, set: { if !$0 { vm.onClearRunOutDismissed() } })
+        ) {
+            Button(Strings.clear, role: .destructive, action: vm.onClearRunOutConfirm)
+            Button(Strings.cancel, role: .cancel, action: vm.onClearRunOutDismissed)
+        }
+        .modifier(SendFileEffect(vm: sendFileVM))
+    }
+
+    private func list(_ state: PantryUiState, proxy: ScrollViewProxy) -> some View {
         List {
             Group {
                 VStack(alignment: .leading, spacing: 8) {
@@ -51,9 +110,9 @@ struct PantryScreen: View {
                 ForEach(PantryListRow.rows(state.sections ?? [])) { row in
                     switch row {
                     case .heading(let section):
-                        heading(section)
+                        heading(section, state: state)
                     case .item(let item):
-                        itemRow(item, state: state)
+                        itemRow(item, state: state, proxy: proxy)
                     }
                 }
                 Color.clear.frame(height: 32).listRowSeparator(.hidden)
@@ -66,72 +125,66 @@ struct PantryScreen: View {
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
             sideInset = ReadableWidth.inset(in: width)
         }
+        // The part of the List not under the bars, where a drag's edges are.
+        .onGeometryChange(for: ClosedRange<CGFloat>.self, of: { geometry in
+            let top = geometry.safeAreaInsets.top
+            return top...max(top, geometry.size.height - geometry.safeAreaInsets.bottom)
+        }) { visible in
+            rows.visible = visible
+        }
+        .coordinateSpace(.named(PantryRowFrames.space))
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
-        .screenBackground()
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { toolbar(state) }
-        // The tooltips (#190); none over this screen's sheet and snackbar. Outside the toolbar,
-        // whose menu is an anchor too.
-        .tooltipHost(.pantry, blocked: state.editing != nil || state.message != nil || state.confirmClearRunOut != nil)
-        .overlay(alignment: .bottom) {
-            if let message = state.message {
-                snackbar(message)
-                    .frame(maxWidth: ReadableWidth.column)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .animation(.easeOut(duration: 0.2), value: state.message == nil)
-        .task(id: state.message) {
-            guard state.message != nil else { return }
-            await SnackbarTimeout.run(pending: ["message"], onTimeout: vm.onMessageDismissed)
-        }
-        .sheet(isPresented: Binding(get: { state.editing != nil }, set: { if !$0 { vm.onEditDismissed() } })) {
-            if let editing = vm.uiState.editing {
-                PantryEditSheet(editing: editing, vm: vm)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            }
-        }
-        .alert(
-            Strings.clearRunOutTitle(state.confirmClearRunOut ?? 0),
-            isPresented: Binding(get: { vm.uiState.confirmClearRunOut != nil }, set: { if !$0 { vm.onClearRunOutDismissed() } })
-        ) {
-            Button(Strings.clear, role: .destructive, action: vm.onClearRunOutConfirm)
-            Button(Strings.cancel, role: .cancel, action: vm.onClearRunOutDismissed)
-        }
-        .modifier(SendFileEffect(vm: sendFileVM))
     }
 
-    private func heading(_ section: PantrySection) -> some View {
+    private func heading(_ section: PantrySection, state: PantryUiState) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            if section.runOut {
-                // Run out sits last, dimmed (#194).
-                Text(Strings.pantryOut)
-                    .textStyle(Typography.titleMedium)
-                    .foregroundStyle(Palette.muted)
-            } else if let aisle = section.aisle {
-                SectionHeading(Strings.aisle(aisle))
+            HStack(alignment: .firstTextBaseline) {
+                Group {
+                    if section.runOut {
+                        // Run out sits last, dimmed (#194).
+                        Text(Strings.pantryOut)
+                            .textStyle(Typography.titleMedium)
+                            .foregroundStyle(Palette.muted)
+                    } else if let aisle = section.aisle {
+                        SectionHeading(Strings.aisle(aisle))
+                    }
+                }
+                .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                // A section's own Select all, while selecting and not all of it is (#258).
+                if let selection = state.selection, section.runOut || section.aisle != nil,
+                   section.items.contains(where: { !selection.ids.contains($0.id) }) {
+                    Button(Strings.selectAll) { vm.onSelectSection(section) }
+                        .buttonStyle(TextActionStyle())
+                        .accessibilityIdentifier("selectSection-\(section.runOut ? "runOut" : section.aisle?.key ?? "expiry")")
+                }
             }
             Hairline()
         }
         .padding(.top, 18)
         .padding(.bottom, 2)
-        .accessibilityAddTraits(.isHeader)
         .listRowSeparator(.hidden)
     }
 
-    private func itemRow(_ item: PantryItem, state: PantryUiState) -> some View {
+    private func itemRow(_ item: PantryItem, state: PantryUiState, proxy: ScrollViewProxy) -> some View {
         // The stock tooltip (#190) points at the first row.
         PantryRow(
             item: item, today: state.today, onList: state.onList.contains(item.id),
-            first: item.id == state.sections?.first?.items.first?.id, vm: vm
+            first: item.id == state.sections?.first?.items.first?.id, vm: vm,
+            selecting: state.selection != nil, selected: state.selection?.ids.contains(item.id) == true,
+            dragSpace: PantryRowFrames.space,
+            onDragChanged: { y in dragChanged(y, proxy: proxy) },
+            onDragEnded: dragEnded
         )
+        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(PantryRowFrames.space)) }) { frame in
+            rows.frames[item.id] = frame
+        }
+        .onDisappear { rows.frames[item.id] = nil }
         .listRowSeparator(.hidden)
+        // No swipes while selecting (#258).
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            if item.stock != .inStock {
+            if state.selection == nil && item.stock != .inStock {
                 Button { afterSwipeCloses { vm.onSetStock(item, .inStock) } } label: {
                     Label(Strings.pantryRestock, systemImage: "arrow.uturn.backward")
                 }
@@ -139,13 +192,13 @@ struct PantryScreen: View {
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if item.stock != .runOut {
+            if state.selection == nil && item.stock != .runOut {
                 Button { afterSwipeCloses { vm.onSetStock(item, .runOut) } } label: {
                     Label(Strings.pantryRanOut, systemImage: "xmark.circle")
                 }
                 .tint(Palette.muted)
             }
-            if item.stock == .inStock {
+            if state.selection == nil && item.stock == .inStock {
                 Button { afterSwipeCloses { vm.onSetStock(item, .runningLow) } } label: {
                     Label(Strings.pantryRunningLow, systemImage: "gauge.with.dots.needle.33percent")
                 }
@@ -162,10 +215,43 @@ struct PantryScreen: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: change)
     }
 
+    // MARK: Drag to select (#258): the finger's height to a row, and scrolling at the edges.
+
+    private func dragChanged(_ y: CGFloat, proxy: ScrollViewProxy) {
+        rows.lastY = y
+        if let id = rows.id(at: y) { vm.onDragTo(id) }
+        guard rows.edgeDirection != 0, rows.scrolling == nil else { return }
+        rows.scrolling = Task { @MainActor in
+            while !Task.isCancelled {
+                let direction = rows.edgeDirection
+                guard direction != 0, let next = rows.next(direction, order: vm.uiState.order) else { break }
+                withAnimation(.linear(duration: 0.1)) {
+                    proxy.scrollTo("item-\(next)", anchor: direction > 0 ? .bottom : .top)
+                }
+                try? await Task.sleep(for: .milliseconds(120))
+                if let id = rows.id(at: rows.lastY) { vm.onDragTo(id) }
+            }
+            rows.scrolling = nil
+        }
+    }
+
+    private func dragEnded() {
+        rows.scrolling?.cancel()
+        rows.scrolling = nil
+        vm.onDragEnd()
+    }
+
     @ToolbarContentBuilder
     private func toolbar(_ state: PantryUiState) -> some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
+                // Selecting several (#258); a touch and hold on a row does the same.
+                Button(action: vm.onStartSelecting) {
+                    Label(Strings.pantrySelectItems, systemImage: "checkmark.circle")
+                }
+                .disabled(state.order.isEmpty)
+                .accessibilityIdentifier("selectItems")
+                Divider()
                 // What's in stock, as text or as a file (#149); shown only while anything is.
                 if let text = vm.shareText(title: Strings.tabPantry, aisleName: Strings.aisle) {
                     ShareLink(item: text, subject: Text(Strings.tabPantry)) {
@@ -222,6 +308,10 @@ struct PantryScreen: View {
             Snackbar(message: Strings.runOutCleared, actionLabel: Strings.undo, action: vm.onUndoDelete)
         case .takenOffList(_, let count):
             Snackbar(message: Strings.takenOffList(count), actionLabel: Strings.undo, action: vm.onUndoDelete)
+        case .removed(_, let count):
+            Snackbar(message: Strings.pantryRemoved(count), actionLabel: Strings.undo, action: vm.onUndoDelete)
+        case .markedRunOut(_, let count):
+            Snackbar(message: Strings.pantryMarkedRunOut(count), actionLabel: Strings.undo, action: vm.onUndoDelete)
         }
     }
 }
