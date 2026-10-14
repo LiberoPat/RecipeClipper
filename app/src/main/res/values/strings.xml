@@ -43,7 +43,6 @@
     <string name="clip_reddit_blocked_note">Reddit didn\'t let the app read this post, so it\'s open here: select the recipe.</string>
     <string name="clip_human_check_note">This site wants to check you\'re human. Tick the box and the recipe will open.</string>
     <string name="clip_human_check_no_recipe_note">The check passed, but this page has no recipe the app can read, so it\'s open here: select the recipe.</string>
-    <string name="clip_picking_photo">Tap the picture to use as the photo.</string>
     <string name="clip_skip_photo">Skip</string>
     <string name="clip_photo_unreadable">Couldn\'t read a picture there. The photo is optional.</string>
     <string name="clip_review">Review</string>
@@ -625,10 +624,12 @@
     <string name="settings_show_tips">Show tips again</string>
     <string name="settings_show_tips_description">Each tip shows once more, one at a time.</string>
     <string name="clip_hint_start">Tap Name below, then tap the recipe\'s name on the page.</string>
-    <string name="clip_select_name">Tap the recipe\'s name on the page.</string>
-    <string name="clip_select_ingredients">Tap the ingredients on the page: a list comes whole. Drag the handles to adjust.</string>
-    <string name="clip_select_steps">Tap the steps on the page: a list comes whole. Drag the handles to adjust.</string>
     <string name="clip_confirm_name">Use as the name</string>
+    <string name="clip_step">Step %1$d of %2$d · %3$s</string>
+    <string name="clip_step_name">Tap the recipe\'s name</string>
+    <string name="clip_step_ingredients">Tap the ingredients</string>
+    <string name="clip_step_steps">Tap the steps</string>
+    <string name="clip_step_photo">Tap the recipe\'s photo</string>
     <string name="clip_next_name">Next: tap Name.</string>
     <string name="clip_next_ingredients">Next: tap Ingredients.</string>
     <string name="clip_next_steps">Next: tap Steps.</string>

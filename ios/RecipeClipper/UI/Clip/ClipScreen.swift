@@ -30,7 +30,8 @@ struct ClipScreen: View {
                     // The new mark, and taps that select, go to the view showing.
                     syncState: Self.syncJson(
                         state.draft, newMarkId: state.showingText ? nil : state.newMarkId,
-                        armed: state.showingText ? nil : state.armedText, clear: state.clearSelection
+                        armed: state.showingText ? nil : state.armedText,
+                        outline: state.showingText ? nil : state.outline, clear: state.clearSelection
                     ),
                     pickingPhoto: state.pickingPhoto,
                     onEvent: onPageEvent,
@@ -49,7 +50,10 @@ struct ClipScreen: View {
                         textHTML: html,
                         syncState: Self.syncJson(
                             state.draft, newMarkId: state.showingText ? state.newMarkId : nil,
-                            armed: state.showingText ? state.armedText : nil, clear: state.clearSelection
+                            armed: state.showingText ? state.armedText : nil,
+                            // The Text view has no pictures: it outlines text only.
+                            outline: state.showingText && state.outline == .text ? .text : nil,
+                            clear: state.clearSelection
                         ),
                         pickingPhoto: false,
                         onEvent: onPageEvent
@@ -199,14 +203,19 @@ struct ClipScreen: View {
     /// The argument to `RC.sync`: the marks this draft holds, each add with its own tag
     /// ("Ingredients · 3"), the field the page's taps select for (`armed`, #237) and the clear
     /// count.
-    static func syncJson(_ draft: ClipDraft, newMarkId: String?, armed: ClipField? = nil, clear: Int = 0) -> String {
+    static func syncJson(
+        _ draft: ClipDraft, newMarkId: String?, armed: ClipField? = nil, outline: ClipOutline? = nil, clear: Int = 0
+    ) -> String {
         var marks: [[String: String]] = []
         for mark in draft.marks where mark.field != .photo {
             let label = mark.field.replaces
                 ? Strings.clipField(mark.field) : Strings.clipTagCount(Strings.clipField(mark.field), mark.lines.count)
             marks.append(["id": mark.id, "field": mark.field.rawValue, "label": label])
         }
-        var json: [String: Any] = ["marks": marks, "armed": armed?.rawValue ?? NSNull(), "clear": clear]
+        var json: [String: Any] = [
+            "marks": marks, "armed": armed?.rawValue ?? NSNull(), "clear": clear,
+            "outline": outline?.rawValue ?? NSNull()
+        ]
         if let newMarkId { json["newId"] = newMarkId }
         if let photo = draft.photo {
             let id = draft.marks.last { $0.field == .photo }?.id ?? ""
@@ -246,22 +255,27 @@ private struct ClipToolbar: View {
     @ViewBuilder
     private func hintBar(_ state: ClipUiState) -> some View {
         switch state.hint {
-        case .pickPhoto:
-            // The photo is optional: Skip leaves this step without tapping the page.
+        case .step(let field, let number, let added):
+            // Guided steps (#251): "Step 2 of 4 · Tap the ingredients", what the last step added
+            // (with Undo), and Skip, which moves on without tapping the page.
             HStack {
-                Text(Strings.clipPickingPhoto)
-                    .textStyle(Typography.bodyMedium)
-                    .foregroundStyle(Palette.accentText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Button(Strings.clipSkipPhoto, action: vm.onSkipPhoto)
+                VStack(alignment: .leading, spacing: 2) {
+                    if let added {
+                        Text(Strings.clipAdded(added)).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
+                    }
+                    Text(Strings.clipStep(number, field))
+                        .textStyle(Typography.titleSmall)
+                        .foregroundStyle(Palette.accentText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("clip.step")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if added != nil {
+                    Button(Strings.undo, action: vm.onUndo).buttonStyle(TextActionStyle())
+                }
+                Button(Strings.clipSkipPhoto, action: vm.onSkip)
                     .buttonStyle(TextActionStyle())
             }
-        case .select(let field):
-            Text(Strings.clipSelect(field))
-                .textStyle(Typography.bodyMedium)
-                .foregroundStyle(Palette.accentText)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
         case .confirm(let field, let lines):
             VStack(alignment: .leading, spacing: 4) {
                 if let line = state.selection.first {

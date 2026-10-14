@@ -468,13 +468,14 @@ extension WalkthroughUITests {
         pause(4.5)
     }
 
-    /// "Clip it yourself" on a blog page (#37, field first since #237), LIVE: a real based.cooking
-    /// page with no recipe data, read by the real blog source (`RC_UITEST_LIVE_PAGE`), so the app
-    /// says it found none and offers Clip it yourself. Every pick is a real tap on the page's text
-    /// or picture, and the page scrolls with the finger: Name, then the title; Ingredients, then
-    /// the list, and its confirm; Steps, then the list, then the paragraph under it (steps add
-    /// up); one Undo, and that paragraph again; Photo, then the photo. The hint names the next
-    /// field after each add, and the field buttons show their checks. Done, Review, Save.
+    /// "Clip it yourself" on a blog page (#37, guided since #251), LIVE: a real based.cooking page
+    /// with no recipe data, read by the real blog source (`RC_UITEST_LIVE_PAGE`), so the app says
+    /// it found none and offers Clip it yourself. It opens on step 1, Name armed, and each confirm
+    /// arms the next step. Every pick is a real tap on the page's text or picture, and the page
+    /// scrolls with the finger: the title; the ingredients list; the steps list; then Steps' button
+    /// to go back, the paragraph under the list, and Steps' button again to add it (selected
+    /// first); one Undo, and that paragraph again with its confirm; then the photo. Done, Review,
+    /// Save.
     func test32_clipItYourself() {
         let link = "https://based.cooking/stracciatella-soup/"
         let app = XCUIApplication()
@@ -512,32 +513,36 @@ extension WalkthroughUITests {
             pause(3)
         }
 
-        app.buttons["clip.field.NAME"].tap()
-        pause(2)
+        require(text("Step 1 of 4 · Tap the recipe's name"), "step 1")
+        pause(1)
         tapOnPage(page.staticTexts["Stracciatella soup"], "the title")
         confirm("Use as the name")
 
-        app.buttons["clip.field.INGREDIENTS"].tap()
-        pause(2)
+        require(text("Step 2 of 4 · Tap the ingredients"), "step 2")
         tapOnPage(page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "500 ml broth")).firstMatch, "an ingredient")
         confirm("Add 3 lines to Ingredients")
 
-        app.buttons["clip.field.STEPS"].tap()
-        pause(2)
+        require(text("Step 3 of 4 · Tap the steps"), "step 3")
         tapOnPage(page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Heat broth to boiling")).firstMatch, "a step")
         confirm("Add 6 lines to Steps")
-        // A second block adds to the first: the line under the list.
+        require(text("Step 4 of 4 · Tap the recipe's photo"), "step 4")
+        pause(1)
+        // A second block adds to the first: back to Steps, the line under the list, selected
+        // first, then Steps' button adds it straight away.
+        app.buttons["clip.field.STEPS"].tap()
+        pause(2)
         let after = page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "toasted bread")).firstMatch
         tapOnPage(after, "the line after the steps")
-        confirm("Add 1 line to Steps")
-        // Undo takes that add back; the line is added again.
+        require(app.buttons["Add 1 line to Steps"], "the selection")
+        pause(1.5)
+        app.buttons["clip.field.STEPS"].tap()
+        pause(3)
+        // Undo takes that add back (Steps again); the line is added again, with its confirm.
         require(app.buttons["Undo"], "Undo").tap()
         pause(3)
         tapOnPage(after, "the line after the steps")
         confirm("Add 1 line to Steps")
-
-        app.buttons["clip.field.PHOTO"].tap()
-        pause(2)
+        require(text("Step 4 of 4 · Tap the recipe's photo"), "step 4 again")
         for _ in 0..<5 where !photo.isHittable || photo.frame.minY < app.frame.height * 0.12 {
             page.swipeDown(velocity: .slow)
             pause(1)
@@ -575,17 +580,15 @@ extension WalkthroughUITests {
     }
 
     /// Taps the unseen spot that selects `spot` (the text scrolls into view, then is selected),
-    /// then the toolbar's button for `field` and the hint bar's confirm (field first, #237): the
-    /// selection goes there and is marked on the page. A field left armed is disarmed, so the
-    /// next spot's tap reaches the spot rather than selecting it.
+    /// then the toolbar's button for `field`, which adds the selection straight away (selected
+    /// first, #251): it is marked on the page, and the next step arms. The spots hold no text, so
+    /// a tap on one reaches it whatever step is armed.
     private func selectAndAssign(in page: XCUIElement, _ spot: String, _ field: String) {
         require(page.buttons["rc-walk-\(spot)"], "the \(spot) spot", within: 60).tap()
-        require(textContaining("selected ·"), "the \(spot) selected", within: 15)
+        require(app.buttons["clip.confirm"], "the \(spot) selected", within: 15)
         pause(2.5)
         require(app.buttons["clip.field.\(field)"], field).tap()
-        require(app.buttons["clip.confirm"], "the confirm").tap()
         pause(3)
-        if field != "NAME" { app.buttons["clip.field.\(field)"].tap() }
     }
 
     /// Spots down the left edge, clear and unseen, each selecting from its first text to its

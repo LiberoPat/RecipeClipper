@@ -124,6 +124,7 @@ fun ClipScreen(
             state.draft,
             newMarkId = state.newMarkId.takeUnless { state.showingText },
             armed = state.armedText.takeUnless { state.showingText },
+            outline = state.outline.takeUnless { state.showingText },
             clear = state.clearSelection,
             label = tagLabel
         )
@@ -133,6 +134,8 @@ fun ClipScreen(
             state.draft,
             newMarkId = state.newMarkId.takeIf { state.showingText },
             armed = state.armedText.takeIf { state.showingText },
+            // The Text view has no pictures: it outlines text only.
+            outline = state.outline.takeIf { state.showingText && it == ClipOutline.TEXT },
             clear = state.clearSelection,
             label = tagLabel
         )
@@ -249,6 +252,7 @@ private fun syncJson(
     draft: ClipDraft,
     newMarkId: String?,
     armed: ClipField?,
+    outline: ClipOutline?,
     clear: Int,
     label: (ClipField, Int) -> String
 ): String {
@@ -262,6 +266,7 @@ private fun syncJson(
         }
     }
     val json = JSONObject().put("marks", marks).put("armed", armed?.name ?: JSONObject.NULL).put("clear", clear)
+        .put("outline", outline?.name ?: JSONObject.NULL)
     newMarkId?.let { json.put("newId", it) }
     draft.photo?.let { src ->
         val id = draft.marks.lastOrNull { it.field == ClipField.PHOTO }?.id.orEmpty()
@@ -383,27 +388,25 @@ private fun HintBar(state: ClipUiState, viewModel: ClipViewModel) {
         verticalArrangement = Arrangement.Center
     ) {
         when (val hint = state.hint) {
-            // The photo is optional: Skip leaves this step without tapping the page.
-            ClipHint.PickPhoto -> Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.clip_picking_photo),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                TextButton(onClick = viewModel::onSkipPhoto) { Text(stringResource(R.string.clip_skip_photo)) }
-            }
-            is ClipHint.Select -> Text(
-                stringResource(
-                    when (hint.field) {
-                        ClipField.NAME -> R.string.clip_select_name
-                        ClipField.INGREDIENTS -> R.string.clip_select_ingredients
-                        else -> R.string.clip_select_steps
+            // Guided steps (#251): "Step 2 of 4 · Tap the ingredients", what the last step added
+            // (with Undo), and Skip, which moves on without tapping the page.
+            is ClipHint.Step -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    hint.added?.let { added ->
+                        Text(addedText(added), style = MaterialTheme.typography.bodySmall, color = muted)
                     }
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+                    Text(
+                        stringResource(R.string.clip_step, hint.number, ClipUiState.STEPS, stepText(hint.field)),
+                        modifier = Modifier.testTag("clip.step"),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (hint.added != null) {
+                    TextButton(onClick = viewModel::onUndo) { Text(stringResource(R.string.action_undo)) }
+                }
+                TextButton(onClick = viewModel::onSkip) { Text(stringResource(R.string.clip_skip_photo)) }
+            }
             is ClipHint.Confirm -> {
                 state.selection.firstOrNull()?.let { line ->
                     Text(line, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -471,6 +474,16 @@ private fun addedText(added: ClipAdded): String = when (added.field) {
     ClipField.STEPS -> pluralStringResource(R.plurals.clip_added_steps, added.count, added.count)
     ClipField.PHOTO -> stringResource(R.string.clip_added_photo)
 } + "."
+
+@Composable
+private fun stepText(field: ClipField): String = stringResource(
+    when (field) {
+        ClipField.NAME -> R.string.clip_step_name
+        ClipField.INGREDIENTS -> R.string.clip_step_ingredients
+        ClipField.STEPS -> R.string.clip_step_steps
+        ClipField.PHOTO -> R.string.clip_step_photo
+    }
+)
 
 @Composable
 private fun nextText(next: ClipField?, empty: Boolean): String = stringResource(

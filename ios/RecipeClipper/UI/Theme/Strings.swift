@@ -89,7 +89,6 @@ enum Strings {
     static var clipRedditBlockedNote: String { String(localized: "clip_reddit_blocked_note") }
     static var clipHumanCheckNote: String { String(localized: "clip_human_check_note") }
     static var clipHumanCheckNoRecipeNote: String { String(localized: "clip_human_check_no_recipe_note") }
-    static var clipPickingPhoto: String { String(localized: "clip_picking_photo") }
     static var clipSkipPhoto: String { String(localized: "clip_skip_photo") }
     static var clipReview: String { String(localized: "clip_review") }
     static var clipBackToPage: String { String(localized: "clip_back_to_page") }

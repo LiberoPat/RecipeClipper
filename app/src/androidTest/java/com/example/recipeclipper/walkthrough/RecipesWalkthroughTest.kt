@@ -430,9 +430,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
      * #230), LIVE: real r/recipes posts. Reddit refuses the app's `.json` read (403, and again on
      * the one retry), so the post opens in the clip view with the note and no Try again. The
      * whole body shows (no "Read more" fade, no app or sign-in prompt) and scrolls with the
-     * finger. The ingredients and steps are picked field first: the field's button, then
-     * the text selected by script ([pick]: a drag across a web page can't be scripted, as in
-     * ClipScreenTest), then the confirm; Done with no
+     * finger. The ingredients and steps are picked selected first (#251): the text selected by
+     * script ([pick]: a drag across a web page can't be scripted, as in ClipScreenTest), then the
+     * field's button, which adds it straight away; Done with no
      * name opens Review, which asks for it; typed, Save opens the recipe. Then a second post in
      * the Text view: its name, and the recipe in the poster's comment, selected there and saved.
      */
@@ -479,13 +479,14 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     }
 
     /**
-     * Walkthrough 32, "Clip it yourself" on a blog page (#37, field first since #237), LIVE: a
-     * real based.cooking page with no recipe data, read by the real blog source, so the app says
-     * it found none and offers Clip it yourself. Every pick is a real tap through the shell, and
-     * the page is scrolled with a finger's swipe: Name, then the title; Ingredients, then the
-     * list, and its confirm; Steps, then the list, then the paragraph under it (steps add up);
-     * one Undo, and that paragraph again; Photo, then the photo. The hint names the next field
-     * after each add, and the field buttons show their checks. Done, Review, Save.
+     * Walkthrough 32, "Clip it yourself" on a blog page (#37, guided since #251), LIVE: a real
+     * based.cooking page with no recipe data, read by the real blog source, so the app says it
+     * found none and offers Clip it yourself. It opens on step 1, Name armed, and each confirm
+     * arms the next step. Every pick is a real tap through the shell, and the page is scrolled
+     * with a finger's swipe: the title; the ingredients list; the steps list; then Steps' button
+     * to go back, the paragraph under the list, and Steps' button again to add it (selected
+     * first); one Undo, and that paragraph again with its confirm; then the photo. Done, Review,
+     * Save.
      */
     @Test
     fun test32_clipItYourself() {
@@ -501,36 +502,41 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         waitForPage(page, "typeof window.RC == 'object' && !!document.querySelector('article img') && document.querySelector('article img').complete")
         pause(3000)
 
-        tapTag("clip.field.NAME", 2000)
+        waitFor(hasText("Step 1 of 4 · Tap the recipe's name"))
+        pause(1000)
         tapOnPage(page, "header h1")
         waitFor(hasText("Use as the name"))
         pause(2000)
         tapTag("clip.confirm", 3000)
 
-        tapTag("clip.field.INGREDIENTS", 2000)
+        waitFor(hasText("Step 2 of 4 · Tap the ingredients"))
         tapOnPage(page, "#ingredients + ul li:nth-child(2)")
         waitFor(hasText("Add 3 lines to Ingredients"))
         pause(2000)
         tapTag("clip.confirm", 3000)
 
-        tapTag("clip.field.STEPS", 2000)
+        waitFor(hasText("Step 3 of 4 · Tap the steps"))
         tapOnPage(page, "#directions + ol li:nth-child(2)")
         waitFor(hasText("Add 6 lines to Steps"))
         pause(2000)
         tapTag("clip.confirm", 3000)
-        // A second block adds to the first: the line under the list.
+        waitFor(hasText("Step 4 of 4 · Tap the recipe's photo"))
+        pause(1000)
+        // A second block adds to the first: back to Steps, the line under the list, selected
+        // first, then Steps' button adds it straight away.
+        tapTag("clip.field.STEPS", 2000)
         tapOnPage(page, "#directions + ol + p")
         waitFor(hasText("Add 1 line to Steps"))
-        pause(2000)
-        tapTag("clip.confirm", 3000)
-        // Undo takes that add back; the paragraph is added again.
+        pause(1500)
+        tapTag("clip.field.STEPS", 3000)
+        // Undo takes that add back (Steps again); the paragraph is added again, with its confirm.
         tap("Undo", 3000)
         tapOnPage(page, "#directions + ol + p")
         waitFor(hasText("Add 1 line to Steps"))
         pause(1500)
         tapTag("clip.confirm", 3000)
+        waitFor(hasText("Step 4 of 4 · Tap the recipe's photo"))
 
-        tapTag("clip.field.PHOTO", 2000)
         tapOnPage(page, "article img")
         waitFor(hasText("Photo added", substring = true))
         pause(3500)
@@ -654,18 +660,17 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     }
 
     /**
-     * Field first (#237): taps [field]'s button to arm it, then brings the text from [from] to
-     * [to] (or [from] alone) into view and selects it, as a finger's drag would (the page reports
-     * it through `selectionchange`), and taps the hint bar's confirm: it goes there, marked on
-     * the page.
+     * Selected first (#251): brings the text from [from] to [to] (or [from] alone) into view and
+     * selects it, as a finger's drag would (the page reports it through `selectionchange`), then
+     * taps [field]'s button, which adds it straight away: it goes there, marked on the page, and
+     * the next step arms.
      */
     private fun pick(view: WebView, field: String, from: String, to: String?) {
-        tapTag("clip.field.${field.uppercase()}", 2000)
         val script = SELECT_JS + "(${quote(from)}, ${to?.let(::quote) ?: "null"})"
         compose.waitUntil(15_000) { js(view, script) == "true" }
         waitFor(hasTestTag("clip.confirm"))
         pause(2500)
-        tapTag("clip.confirm", 3000)
+        tapTag("clip.field.${field.uppercase()}", 3000)
     }
 
     private fun quote(text: String) = "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"

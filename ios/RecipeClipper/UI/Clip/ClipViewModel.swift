@@ -43,10 +43,10 @@ struct ClipAdded: Equatable {
 
 /// The one line over the field buttons (#237): what to do now. The view picks the words.
 enum ClipHint: Equatable {
-    /// Photo is armed: tap the recipe's photo (or Skip).
-    case pickPhoto
-    /// The field is armed and nothing is selected yet: tap (or select) it on the page.
-    case select(ClipField)
+    /// Guided steps (#251): the field is armed and nothing is selected yet, so the header is
+    /// "Step `number` of `ClipUiState.steps` · Tap the …", with Skip. `added` is the add that just
+    /// armed it, if any, offered for Undo.
+    case step(ClipField, number: Int, added: ClipAdded?)
     /// The field is armed and `lines` are selected: one tap adds them.
     case confirm(ClipField, lines: Int)
     /// Text selected with no field armed (a long press): tap the field it goes in.
@@ -60,12 +60,15 @@ enum ClipHint: Equatable {
 /// `savedRecipeId` is set once Save lands, so the view can open it. Field first (#237): `armed` is
 /// the field the cook tapped, which the page's taps select for; `lastAdded` is the add just made;
 /// `clearSelection` counts the times the page's selection was dropped, so the page clears its own
-/// when it changes.
+/// when it changes. Guided steps (#251): the armed field is the current step, Name → Ingredients →
+/// Steps → Photo; `skipped` holds the steps the cook skipped. The steps are over (`guideDone`) once
+/// each one is filled or skipped.
 struct ClipUiState: Equatable {
     let url: String
     var draft: ClipDraft
     var selection: [String] = []
     var armed: ClipField? = nil
+    var skipped: Set<ClipField> = []
     var lastAdded: ClipAdded? = nil
     var clearSelection = 0
     var newMarkId: String? = nil
@@ -101,14 +104,48 @@ struct ClipUiState: Equatable {
     /// The armed field a page selection goes to, when it is one of the text fields.
     var armedText: ClipField? { armed == .photo ? nil : armed }
 
-    var hint: ClipHint {
-        if pickingPhoto { return .pickPhoto }
-        if let armed, !selection.isEmpty { return .confirm(armed, lines: armed == .name ? 1 : selection.count) }
-        if !selection.isEmpty { return .selected(lines: selection.count) }
-        if let lastAdded { return .next(added: lastAdded, next: draft.nextField) }
-        if let armed { return .select(armed) }
-        return .next(added: nil, next: draft.nextField)
+    /// What the page outlines (#251): what a tap there would take for the armed field.
+    var outline: ClipOutline? {
+        if pickingPhoto { return .images }
+        return armed == nil ? nil : .text
     }
+
+    /// Every step is filled or skipped: the header is the Done prompt.
+    var guideDone: Bool { nextStep(after: nil) == nil }
+
+    /// How many guided steps there are: one a field.
+    static let steps = ClipField.allCases.count
+
+    /// The step after `from` still to do (empty and not skipped), in the steps' order and then
+    /// round from the start, never `from` itself; nil when there is none.
+    func nextStep(after from: ClipField?) -> ClipField? {
+        let order = ClipField.allCases
+        let start = from.flatMap { order.firstIndex(of: $0).map { $0 + 1 } } ?? 0
+        return order.indices.map { order[(start + $0) % order.count] }
+            .first { $0 != from && draft.count($0) == 0 && !skipped.contains($0) }
+    }
+
+    var hint: ClipHint {
+        if let text = armedText, !selection.isEmpty { return .confirm(text, lines: text == .name ? 1 : selection.count) }
+        if !selection.isEmpty { return .selected(lines: selection.count) }
+        if let armed {
+            return .step(armed, number: (ClipField.allCases.firstIndex(of: armed) ?? 0) + 1, added: lastAdded)
+        }
+        return .next(added: lastAdded, next: nextStep(after: nil))
+    }
+
+    /// Guided on entry (#251): the first step still to do arms by itself, so the clip opens on
+    /// "Step 1 of 4 · Tap the recipe's name". Not while the page is Cloudflare's check (#220): a
+    /// tap there must reach the check.
+    mutating func startGuide() {
+        if check != .waiting { armed = nextStep(after: nil) }
+    }
+}
+
+/// What the page outlines while a field is armed (#251): its blocks of text, or its images.
+enum ClipOutline: String, Equatable {
+    case text = "TEXT"
+    case images = "IMAGES"
 }
 
 /// "Clip it yourself" (#37), Android's ClipViewModel. The page itself lives in the view layer;
@@ -126,8 +163,9 @@ final class ClipViewModel {
     // The page's selection as given, before splitting: a name joins it rather than splitting it.
     @ObservationIgnored private var selectionText = ""
     // The drafts before each change made on the page (an add, a tag's removal), newest last, for
-    // Undo. A hand edit in Review empties it: Undo never steps over typing.
-    @ObservationIgnored private var undo: [ClipDraft] = []
+    // Undo, each with the field an add filled (nil for a removal), which Undo makes the current
+    // step again. A hand edit in Review empties it: Undo never steps over typing.
+    @ObservationIgnored private var undo: [(draft: ClipDraft, field: ClipField?)] = []
     /// How many changes Undo can take back.
     private static let undoDepth = 50
     @ObservationIgnored private var serial = 0
@@ -151,6 +189,7 @@ final class ClipViewModel {
             check: check ? .waiting : nil
         )
         if restored != nil { uiState.notice = notice(.draftRestored) }
+        uiState.startGuide()
     }
 
     // MARK: Events from the page
@@ -177,7 +216,7 @@ final class ClipViewModel {
         uiState.lastAdded = nil
         let draft = uiState.draft
         guard let mark = draft.mark(markId) else { return }
-        push(draft)
+        push(draft, field: nil)
         setDraft(draft.removeMark(markId), newMarkId: nil, message: .removed(mark.field, count: mark.lines.count))
     }
 
@@ -188,16 +227,17 @@ final class ClipViewModel {
         guard uiState.pickingPhoto else { return }
         guard let photo = WebImageUrl.of(src) else { return onNoImageTapped() }
         uiState.armed = nil
-        assign(.photo, photo)
+        if assign(.photo, photo) { advance(from: .photo) }
     }
 
     /// While Photo is armed, the tap found no picture with an address the app can read (not an
     /// image, or one drawn some other way). Picking ends and the screen says so: no photo is
-    /// better than a guessed one, and the photo is optional.
+    /// better than a guessed one, and the photo is optional, so the step counts as skipped.
     func onNoImageTapped() {
         guard uiState.pickingPhoto else { return }
         var state = uiState
         state.armed = nil
+        state.skipped.insert(.photo)
         state.notice = notice(.photoUnreadable)
         uiState = state
     }
@@ -223,7 +263,10 @@ final class ClipViewModel {
             case .error(.saveFailed):
                 uiState.notice = notice(.saveFailed)
             case .error:
-                uiState.check = .noRecipe
+                var state = uiState
+                state.check = .noRecipe
+                state.startGuide()
+                uiState = state
             }
         }
     }
@@ -233,37 +276,47 @@ final class ClipViewModel {
 
     // MARK: Events from the toolbar: field first (#237)
 
-    /// A field button: arms `field`, so the page's taps select for it (or, for the photo, the next
-    /// tap picks it); the armed field again disarms it, and another switches. A selection already
-    /// made stays for the field switched to; disarming drops it. The photo is picked on the page,
-    /// so arming it also leaves the Text view.
+    /// A field button. With text already selected (a long press, or a tap) and a text field, the
+    /// selection goes straight into it (#251: choosing the field is the confirm), as the confirm
+    /// would put it, and the next step arms. Otherwise it arms `field` and makes it the current
+    /// step, so the page's taps select for it (or, for the photo, the next tap picks it); the
+    /// armed field again disarms it. The photo is picked on the page, so arming it drops a
+    /// selection and leaves the Text view.
     func onFieldButton(_ field: ClipField) {
-        if uiState.armed == field {
-            if !uiState.selection.isEmpty { clearSelection() }
+        if field != .photo && !uiState.selection.isEmpty {
+            add(field)
+        } else if uiState.armed == field {
             uiState.armed = nil
             uiState.lastAdded = nil
-        } else if field == .photo {
-            if !uiState.selection.isEmpty { clearSelection() }
-            var state = uiState
-            state.armed = field
-            state.lastAdded = nil
-            state.showingText = false
-            uiState = state
         } else {
+            if field == .photo && !uiState.selection.isEmpty { clearSelection() }
             var state = uiState
             state.armed = field
+            state.skipped.remove(field)
             state.lastAdded = nil
+            if field == .photo { state.showingText = false }
             uiState = state
         }
     }
 
     /// The hint bar's confirm ("Add 12 lines to Ingredients"): the selection goes into the armed
-    /// field. A name replaces and disarms; ingredients and steps add, and stay armed for the next
-    /// block.
+    /// field (a name replaces; ingredients and steps add), and the next step still to do arms
+    /// (#251). Another block for the same field is one tap on its button away.
     func onConfirm() {
         guard let field = uiState.armedText, !uiState.selection.isEmpty else { return }
-        assign(field, selectionText)
-        if field == .name { uiState.armed = nil }
+        add(field)
+    }
+
+    private func add(_ field: ClipField) {
+        guard assign(field, selectionText) else { return }
+        uiState.skipped.remove(field)
+        advance(from: field)
+    }
+
+    /// The current step is done: the next one still to do arms, or none, and the steps are over.
+    /// In the Text view the Photo step waits for the page: its photo is picked there.
+    private func advance(from field: ClipField) {
+        uiState.armed = uiState.nextStep(after: field)
     }
 
     /// The hint bar's Clear: drops the selection, keeping the field armed.
@@ -315,22 +368,40 @@ final class ClipViewModel {
         uiState = state
     }
 
-    /// Leaves the photo step without a (new) photo: it's optional.
-    func onSkipPhoto() { uiState.armed = nil }
-
-    /// Takes back the last change from the page (an add, or a tag's removal).
-    func onUndo() {
-        guard let previous = undo.popLast() else { return }
-        uiState.lastAdded = nil
-        setDraft(previous, newMarkId: nil)
+    /// Skip (#251): leaves the current step as it is and arms the next one still to do. Skip on
+    /// Photo, the last and optional step, ends the steps.
+    func onSkip() {
+        guard let field = uiState.armed else { return }
+        if !uiState.selection.isEmpty { clearSelection() }
+        var state = uiState
+        state.skipped.insert(field)
+        state.armed = field == .photo ? nil : state.nextStep(after: field)
+        state.lastAdded = nil
+        uiState = state
     }
 
-    /// Throws the session draft away and starts over on the same page.
+    /// Takes back the last change from the page (an add, or a tag's removal). An add's field is
+    /// the current step again, to redo it.
+    func onUndo() {
+        guard let previous = undo.popLast() else { return }
+        var state = uiState
+        state.lastAdded = nil
+        if let field = previous.field {
+            state.armed = field
+            state.skipped.remove(field)
+        }
+        uiState = state
+        setDraft(previous.draft, newMarkId: nil)
+    }
+
+    /// Throws the session draft away and starts over on the same page, from the first step.
     func onDiscardDraft() {
         undo.removeAll()
         drafts.remove(url)
         uiState.lastAdded = nil
+        uiState.skipped = []
         setDraft(ClipDraft(sourceUrl: url), newMarkId: nil)
+        uiState.startGuide()
     }
 
     func onNoticeShown(_ serial: Int) {
@@ -420,25 +491,28 @@ final class ClipViewModel {
 
     // MARK: Internals
 
-    private func push(_ draft: ClipDraft) {
-        undo.append(draft)
+    private func push(_ draft: ClipDraft, field: ClipField?) {
+        undo.append((draft, field))
         if undo.count > Self.undoDepth { undo.removeFirst() }
     }
 
     /// The add itself. Its words go in the hint bar (`lastAdded`), with Undo there, rather than
-    /// a snackbar. The page drops its selection when it records the new mark.
-    private func assign(_ field: ClipField, _ text: String) {
+    /// a snackbar. The page drops its selection when it records the new mark. False when there
+    /// was nothing to add.
+    @discardableResult
+    private func assign(_ field: ClipField, _ text: String) -> Bool {
         let draft = uiState.draft
         let markId = draft.pendingMarkId
         let assigned = draft.assign(field, text)
-        guard assigned != draft else { return }
-        push(draft)
+        guard assigned != draft else { return false }
+        push(draft, field: field)
         selectionText = ""
         var state = uiState
         state.selection = []
         state.lastAdded = ClipAdded(field: field, count: assigned.mark(markId)?.lines.count ?? 1)
         uiState = state
         setDraft(assigned, newMarkId: field == .photo ? nil : markId)
+        return true
     }
 
     /// A hand edit in Review. Not undoable, so it ends Undo for what came before.

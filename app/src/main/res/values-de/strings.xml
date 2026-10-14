@@ -266,7 +266,6 @@
     <string name="clip_reddit_blocked_note">Reddit hat die App diesen Beitrag nicht lesen lassen, deshalb ist er hier geöffnet: Markiere das Rezept.</string>
     <string name="clip_human_check_note">Diese Website möchte prüfen, ob du ein Mensch bist. Setz das Häkchen, dann öffnet sich das Rezept.</string>
     <string name="clip_human_check_no_recipe_note">Die Prüfung ist bestanden, aber diese Seite hat kein Rezept, das die App lesen kann, deshalb ist sie hier geöffnet: Markiere das Rezept.</string>
-    <string name="clip_picking_photo">Tippe auf das Bild, das du als Foto verwenden willst.</string>
     <string name="clip_skip_photo">Überspringen</string>
     <string name="clip_photo_unreadable">Dort ließ sich kein Bild lesen. Das Foto ist optional.</string>
     <string name="clip_review">Prüfen</string>
@@ -568,10 +567,12 @@
     <string name="settings_show_tips">Tipps erneut zeigen</string>
     <string name="settings_show_tips_description">Jeder Tipp erscheint noch einmal, einer nach dem anderen.</string>
     <string name="clip_hint_start">Tippe unten auf Name und dann auf den Namen des Rezepts auf der Seite.</string>
-    <string name="clip_select_name">Tippe auf der Seite auf den Namen des Rezepts.</string>
-    <string name="clip_select_ingredients">Tippe auf der Seite auf die Zutaten: Eine Liste kommt ganz. Zieh die Griffe, um anzupassen.</string>
-    <string name="clip_select_steps">Tippe auf der Seite auf die Schritte: Eine Liste kommt ganz. Zieh die Griffe, um anzupassen.</string>
     <string name="clip_confirm_name">Als Namen verwenden</string>
+    <string name="clip_step">Schritt %1$d von %2$d · %3$s</string>
+    <string name="clip_step_name">Tippe auf den Namen des Rezepts</string>
+    <string name="clip_step_ingredients">Tippe auf die Zutaten</string>
+    <string name="clip_step_steps">Tippe auf die Schritte</string>
+    <string name="clip_step_photo">Tippe auf das Foto des Rezepts</string>
     <string name="clip_next_name">Als Nächstes: Tippe auf Name.</string>
     <string name="clip_next_ingredients">Als Nächstes: Tippe auf Zutaten.</string>
     <string name="clip_next_steps">Als Nächstes: Tippe auf Schritte.</string>

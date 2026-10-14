@@ -50,23 +50,164 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.selection, ["1 cup flour", "2 eggs"])
     }
 
-    // MARK: Field first (#237)
+    // MARK: Guided steps (#251)
 
-    func testItOpensWithNothingArmedPointingToName() {
-        let vm = viewModel()
-        XCTAssertNil(vm.uiState.armed)
-        XCTAssertEqual(vm.uiState.hint, .next(added: nil, next: .name))
+    func testItOpensOnStep1NameArmedWithThePagesTextOutlined() {
+        let state = viewModel().uiState
+        XCTAssertEqual(state.armed, .name)
+        XCTAssertEqual(state.hint, .step(.name, number: 1, added: nil))
+        XCTAssertEqual(state.outline, .text)
+        XCTAssertFalse(state.guideDone)
     }
 
-    func testAFieldButtonArmsItsFieldAgainDisarmsItAndAnotherSwitches() {
+    func testTheStepsRunInOrderEachConfirmArmingTheNextThenTheDonePrompt() {
         let vm = viewModel()
-        vm.onFieldButton(.ingredients)
+        vm.onSelectionChanged("Cookies")
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.hint, .step(.ingredients, number: 2, added: ClipAdded(field: .name, count: 1)))
+        vm.onSelectionChanged("flour\nsugar")
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.hint, .step(.steps, number: 3, added: ClipAdded(field: .ingredients, count: 2)))
+        vm.onSelectionChanged("Mix.\nBake.")
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.hint, .step(.photo, number: 4, added: ClipAdded(field: .steps, count: 2)))
+        // On Photo, the images are outlined.
+        XCTAssertEqual(vm.uiState.outline, .images)
+        vm.onImageTapped("https://img.example/cookies.jpg")
+
+        let state = vm.uiState
+        XCTAssertNil(state.armed)
+        XCTAssertNil(state.outline)
+        XCTAssertTrue(state.guideDone)
+        XCTAssertEqual(state.hint, .next(added: ClipAdded(field: .photo, count: 1), next: nil))
+    }
+
+    func testSkipMovesToTheNextStepAndSkipOnPhotoEndsTheSteps() {
+        let vm = viewModel()
+        vm.onSkip()
         XCTAssertEqual(vm.uiState.armed, .ingredients)
-        XCTAssertEqual(vm.uiState.hint, .select(.ingredients))
-        vm.onFieldButton(.steps)
-        XCTAssertEqual(vm.uiState.armed, .steps)
-        vm.onFieldButton(.steps)
+        XCTAssertEqual(vm.uiState.skipped, [.name])
+        vm.onSkip()
+        vm.onSkip()
+        XCTAssertEqual(vm.uiState.hint, .step(.photo, number: 4, added: nil))
+        vm.onSkip()
+
         XCTAssertNil(vm.uiState.armed)
+        XCTAssertTrue(vm.uiState.guideDone)
+        // Nothing was added.
+        XCTAssertTrue(vm.uiState.draft.isEmpty)
+        XCTAssertNil(vm.uiState.notice)
+    }
+
+    func testAStepSkippedIsPassedOverWhenTheStepsMoveOn() {
+        let vm = viewModel()
+        vm.onSkip() // Name
+        select(vm, "flour", .ingredients)
+        select(vm, "Bake.", .steps)
+        XCTAssertEqual(vm.uiState.armed, .photo)
+        vm.onSkip()
+        // The name is still empty but was skipped: the steps are over, Done asks for it.
+        XCTAssertNil(vm.uiState.armed)
+        XCTAssertTrue(vm.uiState.guideDone)
+    }
+
+    func testAFieldButtonJumpsThereMakingItTheCurrentStepAndAgainDisarmsIt() {
+        let vm = viewModel()
+        vm.onFieldButton(.steps)
+        XCTAssertEqual(vm.uiState.hint, .step(.steps, number: 3, added: nil))
+        vm.onSelectionChanged("Mix.")
+        vm.onConfirm()
+        // The next step still to do comes round from the start: Photo, then Name.
+        XCTAssertEqual(vm.uiState.armed, .photo)
+        vm.onSkip()
+        XCTAssertNil(vm.uiState.armed)
+        vm.onFieldButton(.name)
+        XCTAssertEqual(vm.uiState.hint, .step(.name, number: 1, added: nil))
+        vm.onSelectionChanged("Cookies")
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.armed, .ingredients)
+
+        vm.onFieldButton(.ingredients)
+        XCTAssertNil(vm.uiState.armed)
+        XCTAssertNil(vm.uiState.outline)
+    }
+
+    func testJumpingToASkippedStepTakesItOffTheSkipped() {
+        let vm = viewModel()
+        vm.onSkip()
+        vm.onFieldButton(.name)
+        XCTAssertEqual(vm.uiState.skipped, [])
+    }
+
+    func testTextSelectedFirstGoesStraightIntoTheFieldTappedWithUndo() {
+        let vm = viewModel()
+        // A long press on the steps while Name is the step.
+        vm.onSelectionChanged("Mix.\nBake.")
+        XCTAssertEqual(vm.uiState.hint, .confirm(.name, lines: 1))
+        vm.onFieldButton(.steps)
+
+        XCTAssertEqual(vm.uiState.draft.steps, ["Mix.", "Bake."])
+        XCTAssertEqual(vm.uiState.draft.name, "")
+        XCTAssertEqual(vm.uiState.newMarkId, "m1")
+        XCTAssertEqual(vm.uiState.selection, [])
+        // Then on, as a confirm: the next step still to do (round from the start).
+        XCTAssertEqual(vm.uiState.armed, .photo)
+        XCTAssertEqual(vm.uiState.hint, .step(.photo, number: 4, added: ClipAdded(field: .steps, count: 2)))
+
+        vm.onUndo()
+        XCTAssertTrue(vm.uiState.draft.isEmpty)
+        XCTAssertEqual(vm.uiState.armed, .steps)
+    }
+
+    func testSelectFirstAppendsIngredientsAndStepsAndReplacesAName() {
+        let vm = viewModel()
+        vm.onSelectionChanged("flour")
+        vm.onFieldButton(.ingredients)
+        vm.onSelectionChanged("sugar\nbutter")
+        vm.onFieldButton(.ingredients)
+        XCTAssertEqual(vm.uiState.draft.ingredients, ["flour", "sugar", "butter"])
+
+        vm.onSelectionChanged("Cookies")
+        vm.onFieldButton(.name)
+        vm.onSelectionChanged("Oat\nCookies")
+        vm.onFieldButton(.name)
+        XCTAssertEqual(vm.uiState.draft.name, "Oat Cookies")
+        XCTAssertEqual(vm.uiState.draft.marks.map(\.id), ["m1", "m2", "m4"])
+    }
+
+    func testSelectFirstOnTheArmedFieldAddsItToo() {
+        let vm = viewModel()
+        vm.onSelectionChanged("Cookies")
+        vm.onFieldButton(.name)
+        XCTAssertEqual(vm.uiState.draft.name, "Cookies")
+        XCTAssertEqual(vm.uiState.armed, .ingredients)
+    }
+
+    func testUndoMakesTheUndoneAddsFieldTheCurrentStepAgain() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        select(vm, "flour", .ingredients)
+        XCTAssertEqual(vm.uiState.armed, .steps)
+        vm.onUndo()
+        XCTAssertEqual(vm.uiState.armed, .ingredients)
+        XCTAssertEqual(vm.uiState.hint, .step(.ingredients, number: 2, added: nil))
+        vm.onUndo()
+        XCTAssertEqual(vm.uiState.armed, .name)
+        XCTAssertTrue(vm.uiState.draft.isEmpty)
+    }
+
+    func testARestoredDraftOpensOnItsFirstEmptyStep() {
+        select(viewModel(), "Cookies", .name)
+        XCTAssertEqual(viewModel(cleaned).uiState.armed, .ingredients)
+    }
+
+    func testDiscardingTheDraftStartsTheStepsOver() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        vm.onSkip()
+        vm.onDiscardDraft()
+        XCTAssertEqual(vm.uiState.armed, .name)
+        XCTAssertEqual(vm.uiState.skipped, [])
     }
 
     func testASelectionWhileArmedOffersTheConfirmAndTheConfirmAddsIt() {
@@ -81,21 +222,20 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.draft.ingredients, ["1 cup flour", "2 eggs", "1 tsp salt"])
         XCTAssertEqual(vm.uiState.newMarkId, "m1")
         XCTAssertEqual(vm.uiState.selection, [])
-        // Ingredients stay armed for the next block; the hint says what was added and what's next.
-        XCTAssertEqual(vm.uiState.armed, .ingredients)
-        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .ingredients, count: 3), next: .name))
+        // The next step arms (Steps), and the header says what was added, with Undo.
+        XCTAssertEqual(vm.uiState.armed, .steps)
+        XCTAssertEqual(vm.uiState.hint, .step(.steps, number: 3, added: ClipAdded(field: .ingredients, count: 3)))
         // The words are in the hint bar, not a snackbar.
         XCTAssertNil(vm.uiState.notice)
     }
 
-    func testANameConfirmsAsOneLineReplacesAndDisarms() {
+    func testANameConfirmsAsOneLineReplacesAndMovesOn() {
         let vm = viewModel()
-        vm.onFieldButton(.name)
         vm.onSelectionChanged("Brown Butter\nOat Cookies")
         XCTAssertEqual(vm.uiState.hint, .confirm(.name, lines: 1))
         vm.onConfirm()
         XCTAssertEqual(vm.uiState.draft.name, "Brown Butter Oat Cookies")
-        XCTAssertNil(vm.uiState.armed)
+        XCTAssertEqual(vm.uiState.armed, .ingredients)
 
         select(vm, "Oat Cookies", .name)
         XCTAssertEqual(vm.uiState.draft.name, "Oat Cookies")
@@ -112,21 +252,10 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.draft.ingredients, ["1 cup flour", "2 eggs", "For the glaze:", "1 cup sugar"])
         XCTAssertEqual(vm.uiState.draft.steps, ["Mix.", "Bake."])
         XCTAssertEqual(vm.uiState.draft.marks.map(\.id), ["m1", "m2", "m3", "m4"])
-        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .steps, count: 1), next: .name))
+        XCTAssertEqual(vm.uiState.hint, .step(.photo, number: 4, added: ClipAdded(field: .steps, count: 1)))
     }
 
-    func testSwitchingFieldsKeepsTheSelectionForTheNewOne() {
-        let vm = viewModel()
-        vm.onFieldButton(.steps)
-        vm.onSelectionChanged("1 cup flour\n2 eggs")
-        vm.onFieldButton(.ingredients)
-        XCTAssertEqual(vm.uiState.hint, .confirm(.ingredients, lines: 2))
-        vm.onConfirm()
-        XCTAssertEqual(vm.uiState.draft.ingredients, ["1 cup flour", "2 eggs"])
-        XCTAssertEqual(vm.uiState.draft.steps, [])
-    }
-
-    func testDisarmingOrClearDropsTheSelectionAndTellsThePage() {
+    func testClearDropsTheSelectionKeepsTheStepAndTellsThePage() {
         let vm = viewModel()
         vm.onFieldButton(.steps)
         vm.onSelectionChanged("Mix.")
@@ -136,26 +265,19 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.selection, [])
         XCTAssertEqual(vm.uiState.armed, .steps)
         XCTAssertEqual(vm.uiState.clearSelection, cleared + 1)
-
-        vm.onSelectionChanged("Bake.")
-        vm.onFieldButton(.steps)
-        XCTAssertNil(vm.uiState.armed)
-        XCTAssertEqual(vm.uiState.selection, [])
-        XCTAssertEqual(vm.uiState.clearSelection, cleared + 2)
         vm.onConfirm()
         XCTAssertTrue(vm.uiState.draft.isEmpty)
     }
 
-    func testTextSelectedWithNothingArmedAsksForTheFieldWhichThenConfirms() {
+    func testTextSelectedWithNothingArmedAsksForTheFieldWhichTakesIt() {
         let vm = viewModel()
+        vm.onFieldButton(.name) // disarmed
         vm.onSelectionChanged("Mix.\nBake.")
         XCTAssertEqual(vm.uiState.hint, .selected(lines: 2))
         vm.onConfirm()
         XCTAssertTrue(vm.uiState.draft.isEmpty)
 
         vm.onFieldButton(.steps)
-        XCTAssertEqual(vm.uiState.hint, .confirm(.steps, lines: 2))
-        vm.onConfirm()
         XCTAssertEqual(vm.uiState.draft.steps, ["Mix.", "Bake."])
     }
 
@@ -178,31 +300,28 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.draft.ingredients, [])
     }
 
-    func testTheHintWalksThroughTheFieldsThenSaysToTapDone() {
+    func testThePhotoFirstThenTheStepsComeRoundFromNameThenTheDonePrompt() {
         let vm = viewModel()
         vm.onFieldButton(.photo)
         vm.onImageTapped("https://img.example/cookies.jpg")
-        // The owner's example: "Photo added. Next: tap Name".
-        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .photo, count: 1), next: .name))
+        XCTAssertEqual(vm.uiState.hint, .step(.name, number: 1, added: ClipAdded(field: .photo, count: 1)))
 
         select(vm, "Cookies", .name)
-        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .name, count: 1), next: .ingredients))
         select(vm, "flour\nsugar", .ingredients)
-        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .ingredients, count: 2), next: .steps))
         select(vm, "Bake.", .steps)
         XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .steps, count: 1), next: nil))
+        XCTAssertTrue(vm.uiState.guideDone)
 
-        // Arming another field moves on from what was added.
+        // Arming a field again moves on from what was added.
         vm.onFieldButton(.name)
-        XCTAssertEqual(vm.uiState.hint, .select(.name))
+        XCTAssertEqual(vm.uiState.hint, .step(.name, number: 1, added: nil))
     }
 
-    func testWithoutAPhotoTheHintPointsToItLast() {
+    func testDisarmedWithStepsStillToDoTheHintNamesTheNextOne() {
         let vm = viewModel()
         select(vm, "Cookies", .name)
-        select(vm, "flour", .ingredients)
-        select(vm, "Bake.", .steps)
-        XCTAssertEqual(vm.uiState.hint, .next(added: ClipAdded(field: .steps, count: 1), next: .photo))
+        vm.onFieldButton(.ingredients)
+        XCTAssertEqual(vm.uiState.hint, .next(added: nil, next: .ingredients))
     }
 
     func testUndoTakesBackEachAddInTurn() {
@@ -255,7 +374,7 @@ final class ClipViewModelTests: XCTestCase {
 
         vm.onFieldButton(.photo)
         XCTAssertTrue(vm.uiState.pickingPhoto)
-        XCTAssertEqual(vm.uiState.hint, .pickPhoto)
+        XCTAssertEqual(vm.uiState.hint, .step(.photo, number: 4, added: nil))
         vm.onImageTapped("https://img.example/cookies.jpg")
         vm.onImageTapped("https://img.example/ad.jpg")
 
@@ -304,7 +423,7 @@ final class ClipViewModelTests: XCTestCase {
         vm.onSelectionChanged("Mix.")
         vm.onFieldButton(.photo)
         XCTAssertEqual(vm.uiState.selection, [])
-        XCTAssertEqual(vm.uiState.hint, .pickPhoto)
+        XCTAssertEqual(vm.uiState.hint, .step(.photo, number: 4, added: nil))
     }
 
     // The owner's "stuck in the photo section": a tap on a picture the page can't give an
@@ -342,7 +461,7 @@ final class ClipViewModelTests: XCTestCase {
     func testSkipLeavesThePhotoStepWithoutAPhoto() {
         let vm = viewModel()
         vm.onFieldButton(.photo)
-        vm.onSkipPhoto()
+        vm.onSkip()
         XCTAssertFalse(vm.uiState.pickingPhoto)
         XCTAssertNil(vm.uiState.draft.photo)
         XCTAssertNil(vm.uiState.notice)
@@ -611,20 +730,22 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.clearSelection, cleared + 1)
         vm.onSelectionChanged("3 apples\n1 crust")
         vm.onConfirm()
+        // The next step (Steps) armed in the Text view, and carries back to the page.
+        XCTAssertEqual(vm.uiState.armed, .steps)
 
         vm.onShowPage()
         let state = vm.uiState
         XCTAssertFalse(state.showingText)
         XCTAssertFalse(state.readingText)
-        XCTAssertEqual(state.armed, .ingredients)
+        XCTAssertEqual(state.armed, .steps)
         XCTAssertEqual(state.selection, [])
         XCTAssertNil(state.newMarkId)
         XCTAssertEqual(state.clearSelection, cleared + 2)
 
-        // The page's next selection goes in as the Text view's did.
+        // The page's next selection goes in as the Text view's did (select first, #251).
         vm.onSelectionChanged("1 tsp cinnamon")
-        XCTAssertEqual(vm.uiState.hint, .confirm(.ingredients, lines: 1))
-        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.hint, .confirm(.steps, lines: 1))
+        vm.onFieldButton(.ingredients)
         XCTAssertEqual(vm.uiState.draft.ingredients, ["3 apples", "1 crust", "1 tsp cinnamon"])
         XCTAssertEqual(vm.uiState.newMarkId, "m2")
     }

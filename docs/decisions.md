@@ -1775,19 +1775,52 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
 
 A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or
 FetchFailed) offers **Clip it yourself** (and a Reddit post Reddit won't let the app read opens in
-it by itself, #213: see "Reddit posts (#11)"): the page opens live in a web view, the cook taps a
-field, then its text on the page, and confirms; then reviews and saves. The first design was
-approved as a mock-up (six frames, the owner's nine decisions in the issue's comments); the field
-first flow below replaced its select-then-tag toolbar (#237).
+it by itself, #213: see "Reddit posts (#11)"): the page opens live in a web view, already on
+step 1 of four guided steps; the cook taps each field's text on the page and confirms (or selects
+first and taps the field), then reviews and saves. The first design was approved as a mock-up (six
+frames, the owner's nine decisions in the issue's comments); the field first flow below replaced
+its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
 
+- **Guided steps, with both orders working (the owner's call, 2026-10-13, #251).** The owner:
+  "some people won't know they can copy text immediately, some will try to click the options to
+  extract like photo or steps and notice nothing happens." So:
+  - **Guided on entry.** The clip opens on "Step 1 of 4 · Tap the recipe's name", Name armed
+    (not while the page is Cloudflare's check, #220: it arms once the check has passed; a
+    restored draft opens on its first empty step). Steps run Name → Ingredients → Steps →
+    Photo; after each add the next step still to do (empty, not skipped) arms by itself, in
+    order and then round from the start ("Step 2 of 4 · Tap the ingredients", with what was
+    just added and Undo above it). Each step has **Skip**; Skip on Photo ends the steps. When
+    every step is filled or skipped, the header is the Done prompt ("7 steps added. Tap Done to
+    review and save.").
+  - **Visible when armed.** While a text step is armed the page outlines what a tap takes, a
+    light dotted paprika outline (`rgba(191,74,43,.55)`, the same on light and dark pages): for
+    Name each paragraph, list item and heading; for Ingredients and Steps each list as a whole
+    (a list comes whole) and the paragraphs and headings. On Photo the images are outlined
+    instead. Tapping a field button changes the header and the outlines at once, so a tap never
+    seems to do nothing.
+  - **Field buttons still jump:** tapping another field arms it and makes it the current step
+    (and takes it off the skipped); the armed one again disarms it, and the header names the
+    next step still to do.
+  - **Select first works too:** with text already selected (a long press, or a tap), tapping a
+    text field's button adds it there at once, as the confirm would (a name replaces;
+    ingredients and steps add; Undo), then the next step arms. Choosing the field is the confirm,
+    so there's no second one. (Photo's button with text selected drops the selection, as
+    before: a photo is picked on the page.)
+  - **A second block for the same field** (a list, then the line under it) is one tap on that
+    field's button away: the steps move on after each add rather than keeping the field armed,
+    which #237 did. Undo of an add makes its field the current step again.
+  - **ViewModel state:** the current step is the armed field; the skipped steps, the outline
+    (`ClipOutline`, from the armed field), the pending selection and the Undo stack (each entry
+    with the field it filled) are the ViewModel's too. The page only reports, and draws the
+    outlines `RC.sync` names (`outline`: TEXT, IMAGES or none).
 - **Field first (the owner's call, 2026-10-01, #237).** The owner: "they're not sure what to do
   next; they'd have to just know to hold long press to extract text. Wouldn't it be better if they
   can press name or ingredients and then all they have to do is drag and extract the text". A
   long press isn't discoverable, and with the photo first the toolbar left people unsure what
   came next. So the field buttons come first: **Name, Ingredients, Steps, Photo**.
-  - **Tapping one arms it:** filled, with the hint bar above saying what to do ("Tap the recipe's
-    name on the page."). Tapping it again disarms; another switches, keeping a selection already
-    made for the new field.
+  - **Tapping one arms it:** filled, with the hint bar above saying what to do (since #251 the
+    step's header). Tapping it again disarms; another switches (with a selection made, since
+    #251 it takes the selection instead: select first, above).
   - **While a text field is armed, a tap selects** (`clipper.js`, in the capture phase, so a
     tapped link or button does nothing else): a paragraph, list item or heading; for Ingredients
     or Steps, the **whole list** the tap landed in. A second tap outside the selection, for
@@ -1809,29 +1842,27 @@ first flow below replaced its select-then-tag toolbar (#237).
     it. One tap adds it. Auto-assigning would have taken partial selections while a handle was
     being dragged, and a wrong grab (a list's container, a heading) would have gone in silently.
   - **Name and photo replace; ingredients and steps add up,** so separate blocks (a list, then
-    the list under "For the glaze:") are added one after the other. Name disarms after its
-    confirm; Ingredients and Steps stay armed for the next block.
+    the list under "For the glaze:") are added one after the other. (Each add moves on to the
+    next step since #251; #237 kept Ingredients and Steps armed for the next block.)
   - **Each add can be taken back:** Undo in the hint bar right after it (a stack: Undo again
     takes the one before), and each add's own tag on the page ("Ingredients · 3", one tag per
     add) takes back just that add, with a snackbar Undo. Taking an add back removes the lines it
     put there (a line edited by hand in Review since stays). A hand edit in Review empties the
     Undo stack.
-  - **Guidance after each step:** the hint bar says what was added and names the next empty
-    field, name, ingredients, steps, then photo ("Photo added. Next: tap Name."; "7 steps added.
-    Tap Done to review and save."). Each field button shows what it holds: a check, with the
-    count for ingredients and steps. Opened empty, the hint says "Tap Name below, then tap the
-    recipe's name on the page."
+  - **Guidance after each step:** the hint bar says what was added, then the next step (#251;
+    with nothing armed, it names the next field still to do: "Next: tap Ingredients."). Each
+    field button shows what it holds: a check, with the count for ingredients and steps.
   - **ViewModel state:** the armed field, the hint (derived from the state), the pending
     selection, the last add and the Undo stack are the ViewModel's; the page only reports
     selections and taps. A count (`clearSelection`) tells the page to drop its selection (a
     disarm, Clear, the other view).
-- **Photo:** Photo arms photo picking ("Tap the picture to use as the photo."), then **one tap**
+- **Photo:** Photo arms photo picking ("Step 4 of 4 · Tap the recipe's photo"), then **one tap**
   on the page. An image with a readable `http(s)` address becomes the photo (kept as `https`,
   and checked natively: `WebImageUrl`, #235): lazy-loading placeholders (`data:` URIs) are skipped for the real address (`data-src`, a `srcset`, the
-  `<picture>`'s sources, inside open shadow roots too). Its thumbnail then shows in the hint bar,
-  which names the next empty field. Anything else ends the step and says "Couldn't read a
-  picture there. The photo is optional." Selecting new text, tapping a tag, or **Skip** (beside
-  the hint) ends it too. Picking used to last until a readable image was tapped: on a Reddit post
+  `<picture>`'s sources, inside open shadow roots too). The next step still to do then arms (or,
+  all done, the hint bar shows its thumbnail and the Done prompt). Anything else ends the step
+  (as skipped) and says "Couldn't read a picture there. The photo is optional." Selecting new
+  text, tapping a tag, or **Skip** (beside the hint) ends it too. Picking used to last until a readable image was tapped: on a Reddit post
   the owner found every other tap swallowed ("stuck in the photo section"), so neither the page
   nor the ViewModel keeps it past one tap. A tag is kept inside the page's width (Reddit's
   backdrop image, drawn wider than the page, put its tag outside and pushed the page's own
@@ -1885,7 +1916,10 @@ first flow below replaced its select-then-tag toolbar (#237).
   Page check with a real tap through the shell; iOS's `ClipUITests` taps the page's text with
   XCUITest. Either way the app hears the selection through the page's `selectionchange`.
 - **Walkthrough clips:** 31 (live Reddit, selected by script) and 32 (a live blog page, real
-  taps) show the field-first flow, recorded 2026-10-13 (#250).
+  taps) show the field-first flow, recorded 2026-10-13 (#250). Their tests follow the guided
+  flow since #251 (31 selects first, 32 goes step by step); the clips weren't re-recorded.
+  `ClipScreenTest` and `ClipUITests` walk the guided steps from step 1, jump back to Steps for a
+  second block added select first, and Skip.
 
 ## Alternatives, second parts and totals after the name (#61, #62, #63)
 
@@ -3416,6 +3450,17 @@ app main had become:
   another page do nothing: Reddit changes post inside the page with its own router, which the
   clip view's navigation rule never sees, and on the emulator a stray tap there swapped the post
   being clipped for another.
+  - **"Get the app to keep using Reddit" (#251, 2026-10-13).** On the iOS simulator Reddit then
+    covered the lower half of the first post with a bottom sheet of that title, over a full-page
+    overlay, and locked scrolling (`body.rpl-scroll-lock`). Its DOM, captured from the live page:
+    a `div#configured-xpromo-global_direct_blocking.rpl-bottom-sheet.configured-xpromo-bottom-sheet`
+    under `shreddit-app`, whose shadow root holds the overlay and a `role="dialog"`
+    `aria-modal="true"` panel, the words slotted in from the light DOM. The reader hides it by
+    name (those classes and the `configured-xpromo` id) and, since Reddit renames these, by what
+    it says: any dialog, `aria-modal`, bottom-sheet or xpromo element whose text asks for the app
+    ("get the app", "keep using Reddit", "open/use the app"), never one holding the post or the
+    comments, re-checked as the page changes; the scroll lock's class is overridden too. On the
+    emulator the same post showed no sheet with the reader in place (walkthrough 31's run).
 - **A Text view for Reddit** (owner, 2026-09-30: built beside the reader, not as its fallback,
   because Reddit's prompts and markup change often and old.reddit.com now wants a login). A Text
   button in the clip's top bar reads the post as it stands (`RCReddit.text()`: the

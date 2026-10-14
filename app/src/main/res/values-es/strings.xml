@@ -276,7 +276,6 @@
     <string name="clip_reddit_blocked_note">Reddit no dejó que la app leyera esta publicación, así que está abierta aquí: selecciona la receta.</string>
     <string name="clip_human_check_note">Este sitio quiere comprobar que eres una persona. Marca la casilla y se abrirá la receta.</string>
     <string name="clip_human_check_no_recipe_note">La comprobación se superó, pero esta página no tiene una receta que la app pueda leer, así que está abierta aquí: selecciona la receta.</string>
-    <string name="clip_picking_photo">Toca la imagen que quieras usar como foto.</string>
     <string name="clip_skip_photo">Omitir</string>
     <string name="clip_photo_unreadable">No se pudo leer ninguna imagen ahí. La foto es opcional.</string>
     <string name="clip_review">Revisar</string>
@@ -588,10 +587,12 @@
     <string name="settings_show_tips">Volver a mostrar los consejos</string>
     <string name="settings_show_tips_description">Cada consejo se muestra una vez más, de uno en uno.</string>
     <string name="clip_hint_start">Toca Nombre abajo y luego el nombre de la receta en la página.</string>
-    <string name="clip_select_name">Toca el nombre de la receta en la página.</string>
-    <string name="clip_select_ingredients">Toca los ingredientes en la página: una lista se toma entera. Arrastra los tiradores para ajustar.</string>
-    <string name="clip_select_steps">Toca los pasos en la página: una lista se toma entera. Arrastra los tiradores para ajustar.</string>
     <string name="clip_confirm_name">Usar como nombre</string>
+    <string name="clip_step">Paso %1$d de %2$d · %3$s</string>
+    <string name="clip_step_name">Toca el nombre de la receta</string>
+    <string name="clip_step_ingredients">Toca los ingredientes</string>
+    <string name="clip_step_steps">Toca los pasos</string>
+    <string name="clip_step_photo">Toca la foto de la receta</string>
     <string name="clip_next_name">Ahora: toca Nombre.</string>
     <string name="clip_next_ingredients">Ahora: toca Ingredientes.</string>
     <string name="clip_next_steps">Ahora: toca Pasos.</string>

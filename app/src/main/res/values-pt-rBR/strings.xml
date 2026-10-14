@@ -276,7 +276,6 @@
     <string name="clip_reddit_blocked_note">O Reddit não deixou o app ler este post, então ele está aberto aqui: selecione a receita.</string>
     <string name="clip_human_check_note">Este site quer confirmar que você é humano. Marque a caixa e a receita vai abrir.</string>
     <string name="clip_human_check_no_recipe_note">A verificação passou, mas esta página não tem uma receita que o app consiga ler, então ela está aberta aqui: selecione a receita.</string>
-    <string name="clip_picking_photo">Toque na imagem que vai ser a foto.</string>
     <string name="clip_skip_photo">Pular</string>
     <string name="clip_photo_unreadable">Não foi possível ler uma imagem ali. A foto é opcional.</string>
     <string name="clip_review">Revisar</string>
@@ -588,10 +587,12 @@
     <string name="settings_show_tips">Mostrar as dicas de novo</string>
     <string name="settings_show_tips_description">Cada dica aparece mais uma vez, uma de cada vez.</string>
     <string name="clip_hint_start">Toque em Nome abaixo e depois no nome da receita na página.</string>
-    <string name="clip_select_name">Toque no nome da receita na página.</string>
-    <string name="clip_select_ingredients">Toque nos ingredientes na página: uma lista vem inteira. Arraste as alças para ajustar.</string>
-    <string name="clip_select_steps">Toque nos passos na página: uma lista vem inteira. Arraste as alças para ajustar.</string>
     <string name="clip_confirm_name">Usar como nome</string>
+    <string name="clip_step">Passo %1$d de %2$d · %3$s</string>
+    <string name="clip_step_name">Toque no nome da receita</string>
+    <string name="clip_step_ingredients">Toque nos ingredientes</string>
+    <string name="clip_step_steps">Toque nos passos</string>
+    <string name="clip_step_photo">Toque na foto da receita</string>
     <string name="clip_next_name">Agora: toque em Nome.</string>
     <string name="clip_next_ingredients">Agora: toque em Ingredientes.</string>
     <string name="clip_next_steps">Agora: toque em Passos.</string>
