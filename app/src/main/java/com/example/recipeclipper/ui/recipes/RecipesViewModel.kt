@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.Collator
 import javax.inject.Inject
@@ -29,12 +30,15 @@ import javax.inject.Inject
  * [recipes] is null until the database has answered, to tell "loading" from "nothing
  * matched". [pendingDeletes] holds the titles swiped away but not yet settled, newest last,
  * for the undo snackbar; it survives rotation because it lives here, not in `remember`.
+ * [deleteBatch] names the burst they belong to, null when none is pending: the snackbar is keyed
+ * on it, so further swipes update one snackbar's count in place instead of replacing it (#268).
  * [linkInput] is the "Paste a link" dialog's text, or null while the dialog is closed.
  */
 data class RecipesUiState(
     val query: String = "",
     val recipes: List<RecipeSummary>? = null,
     val pendingDeletes: List<String> = emptyList(),
+    val deleteBatch: Int? = null,
     val sort: RecipeSort = RecipeSort.RECENTLY_VIEWED,
     val linkInput: String? = null,
     /** The free library's quiet count (#107); null when there is no limit to count against. */
@@ -59,7 +63,8 @@ class RecipesViewModel @Inject constructor(
 
     // The query box's live value. Kept in a StateFlow, not `remember`, so it survives rotation.
     private val query = MutableStateFlow("")
-    private val pendingDeletes = MutableStateFlow<List<String>>(emptyList())
+    private val pendingDeletes = MutableStateFlow(PendingDeletes())
+    private var batches = 0
     // Remembered in AppPreferences, so it survives leaving the screen; the flow keeps the
     // screen in step with what is stored.
     private val sort = preferences.settings
@@ -87,7 +92,7 @@ class RecipesViewModel @Inject constructor(
     val uiState: StateFlow<RecipesUiState> =
         combine(
             combine(query, recipes, pendingDeletes, sort, linkInput) { q, found, pending, order, link ->
-                RecipesUiState(q, found?.let { sorted(it, order) }, pending, order, link)
+                RecipesUiState(q, found?.let { sorted(it, order) }, pending.titles, pending.batch, order, link)
             },
             count
         ) { state, saved -> state.copy(count = saved) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipesUiState())
@@ -125,7 +130,10 @@ class RecipesViewModel @Inject constructor(
         viewModelScope.launch {
             val removed = repository.delete(recipe.id) ?: return@launch
             captured[recipe.id] = removed
-            pendingDeletes.value = pendingDeletes.value + recipe.title
+            // The first of a burst starts a new batch; the rest join it.
+            pendingDeletes.update { pending ->
+                PendingDeletes(pending.batch ?: ++batches, pending.titles + recipe.title)
+            }
         }
     }
 
@@ -137,7 +145,7 @@ class RecipesViewModel @Inject constructor(
         if (captured.isEmpty()) return
         val removed = captured.values.toList()
         captured.clear()
-        pendingDeletes.value = emptyList()
+        pendingDeletes.value = PendingDeletes()
         viewModelScope.launch { removed.forEach { repository.restore(it) } }
     }
 
@@ -145,10 +153,13 @@ class RecipesViewModel @Inject constructor(
     fun onSnackbarDismissed() {
         val settled = captured.values.toList()
         captured.clear()
-        pendingDeletes.value = emptyList()
+        pendingDeletes.value = PendingDeletes()
         // Their photos (#116) were kept only for Undo.
         if (settled.isNotEmpty()) viewModelScope.launch { settled.forEach { repository.forget(it) } }
     }
+
+    /** The burst being deleted: its [batch], null when nothing is pending, and its titles. */
+    private data class PendingDeletes(val batch: Int? = null, val titles: List<String> = emptyList())
 
     companion object {
         /**

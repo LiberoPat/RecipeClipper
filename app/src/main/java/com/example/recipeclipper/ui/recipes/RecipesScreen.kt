@@ -28,11 +28,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxDefaults
 import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,11 +68,12 @@ fun RecipesScreen(
     onOpenUrl: (String) -> Unit = {},
     onScan: (List<String>) -> Unit = {},
     viewModel: RecipesViewModel = hiltViewModel(),
-    scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT)
+    scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
+    // A parameter so a test can watch the one snackbar a burst shares (#268).
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val now = remember { System.currentTimeMillis() }
-    val snackbarHostState = remember { SnackbarHostState() }
 
     // Resolved here, not inside LaunchedEffect below: its block is a suspend lambda, not a
     // composable one, so stringResource cannot be called from it. Resolving the finished
@@ -86,11 +87,11 @@ fun RecipesScreen(
     }
     val undoLabel = stringResource(R.string.action_undo)
 
-    // Keyed on the whole pending list: a second swipe replaces the snackbar with one naming
-    // the batch. The restart cancels showSnackbar, so neither branch below runs and the
-    // earlier capture is left intact for the new snackbar's Undo to restore.
+    // Keyed on the burst, not its list: a further swipe joins the batch and the one snackbar's
+    // message counts it in place. Keyed on the list, each swipe took the snackbar down and
+    // showed another, which flashed (#268).
     UndoSnackbarEffect(
-        state.pendingDeletes.takeIf { it.isNotEmpty() }, deletedMessage, undoLabel, snackbarHostState,
+        state.deleteBatch, deletedMessage, undoLabel, snackbarHostState,
         viewModel::onUndoDelete, viewModel::onSnackbarDismissed
     )
 
@@ -205,7 +206,12 @@ private fun SwipeToDeleteRow(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val dismissState = rememberSwipeToDismissBoxState()
+    // Remembered, not rememberSaveable like rememberSwipeToDismissBoxState: the lazy list keeps a
+    // removed row's saved state under its key, so a row put back by Undo came back dismissed and
+    // SwipeToDismissBox deleted it again, popping the snackbar back up (#268). A row swiped away
+    // is gone, so there is nothing to keep across a rotation either.
+    val threshold = SwipeToDismissBoxDefaults.positionalThreshold
+    val dismissState = remember { SwipeToDismissBoxState(SwipeToDismissBoxValue.Settled, threshold) }
     // SwipeToDismissBox calls onDismiss from an effect keyed on the lambda itself, so the
     // lambda must stay the same instance across recompositions or a recomposition while the
     // row is still settled off-screen would delete it a second time.
