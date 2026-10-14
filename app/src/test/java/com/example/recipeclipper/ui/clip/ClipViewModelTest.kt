@@ -216,9 +216,6 @@ class ClipViewModelTest {
         vm.onUndo()
         assertEquals(ClipField.INGREDIENTS, vm.uiState.value.armed)
         assertEquals(ClipHint.Step(ClipField.INGREDIENTS, 2, null), vm.hint)
-        vm.onUndo()
-        assertEquals(ClipField.NAME, vm.uiState.value.armed)
-        assertTrue(vm.draft.isEmpty)
     }
 
     @Test fun `a restored draft opens on its first empty step`() {
@@ -350,7 +347,8 @@ class ClipViewModelTest {
         assertEquals(ClipHint.Next(null, ClipField.INGREDIENTS), vm.hint)
     }
 
-    @Test fun `undo takes back each add in turn`() {
+    // #264: Undo is offered only for the change just made, so it keeps only that one.
+    @Test fun `undo takes back the last add only`() {
         val vm = viewModel()
         vm.select("Cookies", ClipField.NAME)
         vm.select("flour\nsugar", ClipField.INGREDIENTS)
@@ -363,11 +361,65 @@ class ClipViewModelTest {
         assertNull(vm.uiState.value.lastAdded)
 
         vm.onUndo()
-        assertEquals(emptyList<String>(), vm.draft.ingredients)
+        assertEquals(listOf("flour", "sugar"), vm.draft.ingredients)
+    }
+
+    // #264: the page keeps the marks it recorded, so an undone add's id is never handed out again.
+    @Test fun `after an undo the next add takes a new mark id`() {
+        val vm = viewModel()
+        vm.select("Cookies", ClipField.NAME)
+        vm.select("flour", ClipField.INGREDIENTS)
+        assertEquals("m2", vm.uiState.value.newMarkId)
         vm.onUndo()
-        assertTrue(vm.draft.isEmpty)
+        vm.select("sugar", ClipField.INGREDIENTS)
+        assertEquals("m3", vm.uiState.value.newMarkId)
+        assertEquals(listOf("m1", "m3"), vm.draft.marks.map { it.id })
+    }
+
+    @Test fun `after a discard the next add takes a new mark id`() {
+        val vm = viewModel()
+        vm.select("Cookies", ClipField.NAME)
+        vm.onDiscardDraft()
+        vm.select("Pie", ClipField.NAME)
+        assertEquals("m2", vm.uiState.value.newMarkId)
+    }
+
+    // #264: its Undo would take back the newest change, so the snackbar goes at the next one.
+    @Test fun `a removal's snackbar goes once another change is made`() {
+        val vm = viewModel()
+        vm.select("Cookies", ClipField.NAME)
+        vm.select("Mix.\nBake.", ClipField.STEPS)
+        vm.onTagTapped("m2")
+        assertEquals(ClipMessage.Removed(ClipField.STEPS, 2), vm.message)
+
+        vm.select("Cool.", ClipField.STEPS)
+        assertNull(vm.message)
         vm.onUndo()
-        assertTrue(vm.draft.isEmpty)
+        assertEquals(emptyList<String>(), vm.draft.steps)
+        assertEquals("Cookies", vm.draft.name)
+    }
+
+    @Test fun `the hint bar's undo of a removal takes its snackbar too`() {
+        val vm = viewModel()
+        vm.select("Cookies", ClipField.NAME)
+        vm.onTagTapped("m1")
+        vm.onUndo()
+        assertEquals("Cookies", vm.draft.name)
+        assertNull(vm.message)
+    }
+
+    // #264: a hand edit ends Undo, so the hint bar no longer offers one.
+    @Test fun `an edit in review takes the last add's undo away`() {
+        val vm = viewModel()
+        vm.select("Cookies", ClipField.NAME)
+        vm.select("flour", ClipField.INGREDIENTS)
+        vm.onReview()
+        vm.onLineChange(ClipField.INGREDIENTS, 0, "plain flour")
+        vm.onBackToPage()
+        assertNull(vm.uiState.value.lastAdded)
+        assertTrue(vm.hint.let { it is ClipHint.Step && it.added == null || it is ClipHint.Next && it.added == null })
+        vm.onUndo()
+        assertEquals(listOf("plain flour"), vm.draft.ingredients)
     }
 
     @Test fun `tapping an add's tag takes back just that add, with undo`() {
@@ -851,6 +903,24 @@ class ClipViewModelTest {
         val afterDeath = ClipViewModel(handle, repository, ClipDraftStore())
         assertEquals(ClipDraft(cleaned, name = "Cookies", steps = listOf("Mix.")), afterDeath.draft)
         assertEquals(ClipMessage.DraftRestored, afterDeath.message)
+    }
+
+    // #264: the page finds the photo again by its address, so its tag must name a mark.
+    @Test fun `a photo restored after the process died has a mark its tag takes back`() {
+        val handle = SavedStateHandle(mapOf(ClipViewModel.URL_ARG to shared))
+        viewModel(handle).apply {
+            select("Cookies", ClipField.NAME)
+            onFieldButton(ClipField.PHOTO)
+            onImageTapped("https://img.example/c.jpg")
+        }
+
+        val afterDeath = ClipViewModel(handle, repository, ClipDraftStore())
+        val mark = afterDeath.draft.marks.single()
+        assertEquals(ClipField.PHOTO, mark.field)
+        assertTrue(mark.id.isNotEmpty())
+        afterDeath.onTagTapped(mark.id)
+        assertNull(afterDeath.draft.photo)
+        assertEquals("Cookies", afterDeath.draft.name)
     }
 
     @Test fun `a shown notice is cleared only by its own serial`() {

@@ -191,9 +191,6 @@ final class ClipViewModelTests: XCTestCase {
         vm.onUndo()
         XCTAssertEqual(vm.uiState.armed, .ingredients)
         XCTAssertEqual(vm.uiState.hint, .step(.ingredients, number: 2, added: nil))
-        vm.onUndo()
-        XCTAssertEqual(vm.uiState.armed, .name)
-        XCTAssertTrue(vm.uiState.draft.isEmpty)
     }
 
     func testARestoredDraftOpensOnItsFirstEmptyStep() {
@@ -324,7 +321,8 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.hint, .next(added: nil, next: .ingredients))
     }
 
-    func testUndoTakesBackEachAddInTurn() {
+    // #264: Undo is offered only for the change just made, so it keeps only that one.
+    func testUndoTakesBackTheLastAddOnly() {
         let vm = viewModel()
         select(vm, "Cookies", .name)
         select(vm, "flour\nsugar", .ingredients)
@@ -337,11 +335,64 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertNil(vm.uiState.lastAdded)
 
         vm.onUndo()
-        XCTAssertEqual(vm.uiState.draft.ingredients, [])
+        XCTAssertEqual(vm.uiState.draft.ingredients, ["flour", "sugar"])
+    }
+
+    // #264: the page keeps the marks it recorded, so an undone add's id is never handed out again.
+    func testAfterAnUndoTheNextAddTakesANewMarkId() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        select(vm, "flour", .ingredients)
+        XCTAssertEqual(vm.uiState.newMarkId, "m2")
         vm.onUndo()
-        XCTAssertTrue(vm.uiState.draft.isEmpty)
+        select(vm, "sugar", .ingredients)
+        XCTAssertEqual(vm.uiState.newMarkId, "m3")
+        XCTAssertEqual(vm.uiState.draft.marks.map(\.id), ["m1", "m3"])
+    }
+
+    func testAfterADiscardTheNextAddTakesANewMarkId() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        vm.onDiscardDraft()
+        select(vm, "Pie", .name)
+        XCTAssertEqual(vm.uiState.newMarkId, "m2")
+    }
+
+    // #264: its Undo would take back the newest change, so the snackbar goes at the next one.
+    func testARemovalsSnackbarGoesOnceAnotherChangeIsMade() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        select(vm, "Mix.\nBake.", .steps)
+        vm.onTagTapped("m2")
+        XCTAssertEqual(vm.uiState.notice?.message, .removed(.steps, count: 2))
+
+        select(vm, "Cool.", .steps)
+        XCTAssertNil(vm.uiState.notice)
         vm.onUndo()
-        XCTAssertTrue(vm.uiState.draft.isEmpty)
+        XCTAssertEqual(vm.uiState.draft.steps, [])
+        XCTAssertEqual(vm.uiState.draft.name, "Cookies")
+    }
+
+    func testTheHintBarsUndoOfARemovalTakesItsSnackbarToo() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        vm.onTagTapped("m1")
+        vm.onUndo()
+        XCTAssertEqual(vm.uiState.draft.name, "Cookies")
+        XCTAssertNil(vm.uiState.notice)
+    }
+
+    // #264: a hand edit ends Undo, so the hint bar no longer offers one.
+    func testAnEditInReviewTakesTheLastAddsUndoAway() {
+        let vm = viewModel()
+        select(vm, "Cookies", .name)
+        select(vm, "flour", .ingredients)
+        vm.onReview()
+        vm.onLineChange(.ingredients, 0, "plain flour")
+        vm.onBackToPage()
+        XCTAssertNil(vm.uiState.lastAdded)
+        vm.onUndo()
+        XCTAssertEqual(vm.uiState.draft.ingredients, ["plain flour"])
     }
 
     func testTappingAnAddsTagTakesBackJustThatAddWithUndo() {

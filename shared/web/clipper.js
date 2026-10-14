@@ -66,7 +66,8 @@
     'html[data-rc-outline="TEXT"][data-rc-armed="NAME"] li,' +
     'html[data-rc-outline="TEXT"]:not([data-rc-armed="NAME"]) :is(ul,ol)' +
     '{outline:1.5px dotted rgba(191,74,43,.55);outline-offset:2px}' +
-    'html[data-rc-outline="TEXT"]:not([data-rc-armed="NAME"]) :is(ul,ol) :is(p,ul,ol){outline:none}' +
+    'html[data-rc-outline="TEXT"]:not([data-rc-armed="NAME"]) :is(ul,ol) :is(ul,ol),' +
+    'html[data-rc-outline="TEXT"]:not([data-rc-armed="NAME"]) li > p:only-child{outline:none}' +
     'html[data-rc-outline="IMAGES"] img{outline:2px dotted rgba(191,74,43,.8) !important;outline-offset:-2px;cursor:pointer}';
   (document.head || document.documentElement).appendChild(style);
 
@@ -165,6 +166,16 @@
     });
   }
 
+  // The list a tap on block `el` takes whole for Ingredients or Steps (#264): only when `el` is
+  // one of its items (or all an item holds, as a <p> in an <li>), or the list itself. A paragraph
+  // deep inside a big item, as in a comment thread (<ol class="commentlist">), is its own block.
+  function listOf(el) {
+    if (el.tagName === 'UL' || el.tagName === 'OL') return el;
+    var item = el.closest('li');
+    if (!item || (item !== el && item.textContent.trim() !== el.textContent.trim())) return null;
+    return item.parentElement && item.parentElement.closest('ul, ol');
+  }
+
   // The block a tap on `node` selects for `field`, or null: nothing with text, a label the page
   // keeps out of selections, or the gap between blocks (a container of other blocks).
   function blockFor(node, field) {
@@ -172,7 +183,7 @@
     var el = blockOf(node);
     if (!el || el === document.body || el === document.documentElement) return null;
     if (field !== 'NAME') {
-      var list = el.closest('ul, ol');
+      var list = listOf(el);
       if (list) el = list;
     }
     if (!/\S/.test(el.textContent) || unselectable(el)) return null;

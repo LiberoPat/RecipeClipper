@@ -191,6 +191,32 @@ class ClipScreenTest {
     }
 
     /**
+     * #264: a recipe list still comes whole from a tap on one item, but a paragraph inside one
+     * comment of a comment thread (a list too) is its own block, not the thread. And an add
+     * after an Undo is marked where it was taken from, never on the undone block (its mark id
+     * isn't handed out again).
+     */
+    @Test
+    fun aCommentIsItsOwnBlockAndAnUndoneAddsMarkIsNotReused() {
+        show(page = COMMENTS_PAGE)
+        tapField("INGREDIENTS")
+        tapOnPage("#ingredients li:nth-child(2)")
+        waitForText("Add 2 lines to Ingredients")
+        confirm()
+        waitForPage("document.querySelectorAll('#ingredients .rc-marked').length", "2")
+        compose.onNodeWithText("Undo").performClick()
+        waitForPage("document.querySelectorAll('.rc-marked').length", "0")
+
+        waitForPage("document.documentElement.getAttribute('data-rc-armed')", "\"INGREDIENTS\"")
+        tapOnPage("#c1 .comment-content p")
+        waitForText("Add 1 line to Ingredients")
+        confirm()
+        waitForPage("document.querySelector('#c1 .comment-content p').classList.contains('rc-marked')", "true")
+        assertEquals("0", js("document.querySelectorAll('#ingredients .rc-marked').length"))
+        assertEquals("1", js("document.querySelectorAll('.rc-tag').length"))
+    }
+
+    /**
      * The page's own handles on a selection it made: dragging the end one up to the second item
      * leaves the first two. A second tap below the selection stretches it down instead.
      */
@@ -412,6 +438,21 @@ class ClipScreenTest {
 <p id="cool">Cool on the tray.</p>
 <p><a id="elsewhere" href="https://hearthandcrumb.example/other">Another recipe</a></p>
 <iframe id="ad" title="Ad" width="300" height="50" srcdoc="<button id=&quot;post&quot; onclick=&quot;RCBridge.postMessage(JSON.stringify({type:'selection',text:'Buy now'}))&quot;>Ad: post a selection</button>"></iframe>
+</body></html>"""
+
+        /** A recipe list, then a WordPress-style comment thread, itself a list. */
+        const val COMMENTS_PAGE = """<!doctype html><html><head><meta name="viewport" content="width=device-width">
+<style>body{font:16px sans-serif;margin:16px}</style></head><body>
+<h1 id="title">Lemon Bars</h1>
+<ul id="ingredients"><li>1 cup flour</li><li>2 lemons</li></ul>
+<h2>Comments</h2>
+<ol class="commentlist">
+<li class="comment" id="c1"><article><footer><b>Ann</b> <span>June 3</span></footer>
+<div class="comment-content"><p>Made these twice.</p><p>So good.</p></div></article>
+<ol class="children"><li class="comment" id="c2"><article><footer><b>Bo</b></footer>
+<div class="comment-content"><p>Agreed!</p></div></article></li></ol></li>
+<li class="comment" id="c3"><article><footer><b>Cy</b></footer><div class="comment-content"><p>Too sour.</p></div></article></li>
+</ol>
 </body></html>"""
 
         const val REDDIT_URL = "https://www.reddit.com/r/recipes/comments/1abc01/apple_pie/"

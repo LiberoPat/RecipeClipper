@@ -1854,11 +1854,10 @@ its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
   - **Name and photo replace; ingredients and steps add up,** so separate blocks (a list, then
     the list under "For the glaze:") are added one after the other. (Each add moves on to the
     next step since #251; #237 kept Ingredients and Steps armed for the next block.)
-  - **Each add can be taken back:** Undo in the hint bar right after it (a stack: Undo again
-    takes the one before), and each add's own tag on the page ("Ingredients · 3", one tag per
-    add) takes back just that add, with a snackbar Undo. Taking an add back removes the lines it
-    put there (a line edited by hand in Review since stays). A hand edit in Review empties the
-    Undo stack.
+  - **Each add can be taken back:** Undo in the hint bar right after it (the last change only,
+    since #264), and each add's own tag on the page ("Ingredients · 3", one tag per add) takes
+    back just that add, with a snackbar Undo. Taking an add back removes the lines it put there,
+    by position (a line edited by hand in Review since stays). A hand edit in Review ends Undo.
   - **Guidance after each step:** the hint bar says what was added, then the next step (#251;
     with nothing armed, it names the next field still to do: "Next: tap Ingredients."). Each
     field button shows what it holds: a check, with the count for ingredients and steps.
@@ -1920,6 +1919,22 @@ its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
   say "Clipped by you" (a derived `isClipped` in the summary queries). Update from source is
   always offered for a clip, warning "Replace your clip?"; on failure the clip is kept and the
   snackbar says why. On success it becomes PARSED and the line goes.
+- **Review fixes (#264, 2026-10-14).** Checked against the guided steps (#252), all seven still
+  applied (the restored photo on Android only: iOS has no process-death restore).
+  - **Undo holds one change.** The hint bar offers Undo only for the add just made, so the
+    50-deep stack was unreachable past its top; it is one entry now, the add's or a removal's.
+    A removal's snackbar goes as soon as another change is made (an add, Undo, a hand edit), so
+    its Undo can only take back that removal; a hand edit in Review clears the hint bar's Undo
+    with the entry.
+  - **Mark ids only rise:** an undone or discarded draft no longer rewinds `nextMark`, so an
+    add after an Undo isn't drawn on the undone block (the page keeps every mark it recorded).
+  - **Each add records where its lines start** (`ClipMark.start`): its tag removes those lines,
+    never an equal line another add put earlier; removing a line in Review shrinks its add and
+    moves the later ones up.
+  - **A photo restored after the process died gets a mark**, so its tag can take it back.
+  - **A list is taken whole only from one of its own items** (an `<li>`, or the one block an
+    item holds) or the list itself: a paragraph inside one comment of a comment thread
+    (`<ol class="commentlist">`) is its own block, not the whole thread.
 - **UI tests** use a fixed local page, never the network, and no long press: Android's
   `ClipScreenTest` taps the page's elements by script (`click()`, which reaches the page's own
   listener as a tap does), drags a handle with script pointer events, and makes the Text →

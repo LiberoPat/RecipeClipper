@@ -115,6 +115,30 @@ class ClipDraftTest {
         assertEquals(listOf("salt"), twice.removeMark("m1").ingredients)
     }
 
+    // #264: by position, so an equal line another add put there stays where it is.
+    @Test fun `removing an add takes its own lines, not an equal one before them`() {
+        val draft = empty.assign(ClipField.INGREDIENTS, "1 egg\nflour").assign(ClipField.INGREDIENTS, "sugar\n1 egg")
+        val removed = draft.removeMark("m2")
+        assertEquals(listOf("1 egg", "flour"), removed.ingredients)
+        assertEquals(listOf(ClipMark("m1", ClipField.INGREDIENTS, listOf("1 egg", "flour"), 0)), removed.marks)
+    }
+
+    @Test fun `removing an earlier add moves the later ones up`() {
+        val draft = empty.assign(ClipField.STEPS, "Mix.\nBake.").assign(ClipField.STEPS, "Cool.\nMix.")
+            .removeMark("m1")
+        assertEquals(listOf(ClipMark("m2", ClipField.STEPS, listOf("Cool.", "Mix."), 0)), draft.marks)
+        assertEquals(emptyList<String>(), draft.removeMark("m2").steps)
+    }
+
+    @Test fun `a line removed by hand leaves its add, and the adds after it move up`() {
+        val draft = empty.assign(ClipField.INGREDIENTS, "a\nb").assign(ClipField.INGREDIENTS, "c\na")
+            .removeLine(ClipField.INGREDIENTS, 0)
+        assertEquals(listOf(ClipMark("m1", ClipField.INGREDIENTS, listOf("b"), 0), ClipMark("m2", ClipField.INGREDIENTS, listOf("c", "a"), 1)), draft.marks)
+        assertEquals(listOf("b"), draft.removeMark("m2").ingredients)
+        // Its last line gone, the add has nothing left to take back: its mark goes.
+        assertEquals(listOf("m2"), draft.removeLine(ClipField.INGREDIENTS, 0).marks.map { it.id })
+    }
+
     @Test fun `clearing empties one field and drops only its marks`() {
         val draft = empty.assign(ClipField.NAME, "Cookies").assign(ClipField.STEPS, "Mix.\nBake.")
             .assign(ClipField.STEPS, "Cool.")
