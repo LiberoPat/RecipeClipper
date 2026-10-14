@@ -34,10 +34,40 @@ class StepAmountsTest {
         assertEquals("Whisk in ⟦240 ml⟧ heavy cream.", annotate("Whisk in the heavy cream.", lines))
     }
 
-    @Test fun `the same ingredient in two lines stays as written`() {
+    @Test fun `the same ingredient in two lines with different amounts is a link to both, never a number`() {
         val lines = listOf("1 cup sugar", "For the frosting:", "1/2 cup sugar")
-        assertEquals("Add the sugar.", annotate("Add the sugar.", lines))
-        assertEquals("Season with salt.", annotate("Season with salt.", listOf("1 tsp salt", "salt and pepper")))
+        assertEquals("Add the ⟪sugar|0,2⟫.", annotate("Add the sugar.", lines))
+        assertEquals("Season with ⟪salt|0,1⟫.", annotate("Season with salt.", listOf("1 tsp salt", "salt and pepper")))
+        // "flour for dusting" has no amount: the step can't say which use it means (#254).
+        assertEquals("Stir in the ⟪flour|0,1⟫.", annotate("Stir in the flour.", listOf("2 cups flour", "flour, for dusting")))
+        val link = StepAmounts.annotate(listOf("Melt the butter."), listOf("200g butter", "100g butter"), LanguageWords.ENGLISH).single()
+        assertEquals(listOf(StepAmounts.Part("Melt the "), StepAmounts.Part("butter", lines = listOf(0, 1)), StepAmounts.Part(".")), link)
+    }
+
+    @Test fun `two lines lending the same amount are one answer`() {
+        assertEquals(
+            "Add ⟦30g / 2 tbsp⟧ butter.",
+            annotate("Add the butter.", listOf("30g / 2 tbsp unsalted butter", "30g / 2 tbsp unsalted butter, cold and cubed"))
+        )
+    }
+
+    @Test fun `a step names a line by its last words when the rest only describe it`() {
+        assertEquals("Heat ⟦1 tbsp.⟧ oil.", annotate("Heat the oil.", listOf("1 tbsp. extra-virgin olive oil")))
+        assertEquals("Add ⟦2 cups⟧ stock.", annotate("Add the stock.", listOf("2 cups low-sodium beef stock")))
+        assertEquals("Microwave ⟦8 tablespoons of⟧ butter.", annotate("Microwave the butter.", listOf("8 tablespoons of salted butter")))
+        assertEquals("Cream together ⟦1/2 cup⟧ butter and ⟦1 cup⟧ sugar.", annotate("Cream together butter and sugar.", listOf("1/2 cup butter", "1 cup granulated sugar")))
+        // Another line ending in the same words could be the one; a word that isn't a
+        // describing word makes another ingredient.
+        assertEquals("Add the ⟪oil|0,1⟫.", annotate("Add the oil.", listOf("1 tbsp olive oil", "1 tsp toasted sesame oil")))
+        for (step in listOf("Spoon the sauce over.", "Add the leaves.", "Beat the butter."))
+            assertEquals(step, annotate(step, listOf("2 tsp Worcestershire sauce", "2 bay leaves", "1/2 cup peanut butter")))
+    }
+
+    @Test fun `a step's title before a dash is not its first mention`() {
+        assertEquals(
+            "Onions - Add ⟦2⟧ onions and stir.",
+            annotate("Onions - Add the onions and stir.", listOf("2 onions, sliced"))
+        )
     }
 
     @Test fun `a step that already says how much stays as written`() {

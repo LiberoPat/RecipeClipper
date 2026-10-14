@@ -10,6 +10,7 @@
   ],
   "before": ["e", "ed", "o", "con"],
   "after": ["e", "ed", "o", "con", "in", "a", "al", "alla", "nel", "nella", "fino", "poco", "sopra", "per"],
+  "lineDescriptors": [],
   "anyWordAfter": false,
   "splitWords": ["più"],
   "plurals": [["o", "i"], ["a", "e"], ["e", "i"]]

@@ -9,6 +9,7 @@
   ],
   "before": ["et", "ou", "avec"],
   "after": ["et", "ou", "avec", "dans", "à", "au", "aux", "sur", "en", "puis", "jusqu'à", "petit"],
+  "lineDescriptors": [],
   "anyWordAfter": false,
   "splitWords": ["plus"],
   "plurals": [["", "s"], ["", "x"]]

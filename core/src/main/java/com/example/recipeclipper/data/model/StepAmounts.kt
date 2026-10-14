@@ -7,7 +7,10 @@ package com.example.recipeclipper.data.model
  *
  * A mention gets an amount only when all of these hold, else it stays as written:
  * - It names exactly one ingredient line, by [IngredientName.matches] (so "rice flour" never
- *   takes "flour"'s amount), and no line without a name ("salt and pepper") uses the word too.
+ *   takes "flour"'s amount) or by dropping the line's describing words ("the oil" for "olive
+ *   oil", `lineDescriptors`), and no line without a name ("salt and pepper") uses the word too.
+ *   Lines that all lend the same amount count as one. A mention naming lines with different
+ *   amounts (two butter lines) gets no amount: it becomes a link to those lines (#254).
  * - It is that line's first mention in the step.
  * - The line has an amount the scaler reads and isn't used in parts ("divided", "plus more").
  * - The step doesn't already say how much ("half the butter", "1 cup of the flour", "the
@@ -16,8 +19,14 @@ package com.example.recipeclipper.data.model
  */
 object StepAmounts {
 
-    /** A run of a step's text; [amount] marks one inserted from an ingredient line. */
-    data class Part(val text: String, val amount: Boolean = false)
+    /**
+     * A run of a step's text; [amount] marks one inserted from an ingredient line. A run with
+     * [lines] is a mention naming several ingredient lines with different amounts (#254): the
+     * screen shows it as a link to those lines (indexes into the lines given), never a number.
+     */
+    data class Part(val text: String, val amount: Boolean = false, val lines: List<Int> = emptyList()) {
+        val plain: Boolean get() = !amount && lines.isEmpty()
+    }
 
     private class Words(words: LanguageWords) {
         private val set = { key: String -> words.strings("steps", key).map { it.lowercase() }.toSet() }
@@ -27,6 +36,12 @@ object StepAmounts {
         val after = set("after")
         val anyWordAfter = words.table("steps").optBoolean("anyWordAfter", false)
         val splitWords = set("splitWords")
+        // "very cold unsalted butter" is still "the butter" (#254); with the names table's
+        // modifiers, each word on its own.
+        val descriptors = (
+            words.strings("steps", "lineDescriptors") + words.strings("names", "matchModifiers") +
+                words.strings("names", "leadingWords")
+            ).flatMap { it.lowercase().split(' ') }.toSet()
         val plurals: List<Pair<String, String>> = words.table("steps").optJSONArray("plurals")
             ?.let { a -> List(a.length()) { a.getJSONArray(it).getString(0) to a.getJSONArray(it).getString(1) } }
             ?: emptyList()
@@ -66,7 +81,13 @@ object StepAmounts {
     }
 
     /** [parts] as one string, each amount in ⟦ ⟧: how the differential corpus pins them. */
-    fun marked(parts: List<Part>): String = parts.joinToString("") { if (it.amount) "⟦${it.text}⟧" else it.text }
+    fun marked(parts: List<Part>): String = parts.joinToString("") {
+        when {
+            it.amount -> "⟦${it.text}⟧"
+            it.lines.isNotEmpty() -> "⟪${it.text}|${it.lines.joinToString(",")}⟫"
+            else -> it.text
+        }
+    }
 
     private fun tokens(text: String, w: Words): List<Token> {
         val out = mutableListOf<Token>()
@@ -124,49 +145,107 @@ object StepAmounts {
     // Only spaces, or a hyphen ("all-purpose"), between two words of one name.
     private fun joined(step: String, a: Token, b: Token) = step.substring(a.end, b.start).let { it.isBlank() || it == "-" }
 
-    /** The earliest token where a run of words ending at [h] names [s]'s ingredient, or -1. */
-    private fun runStart(step: String, tokens: List<Token>, h: Int, s: Source, words: LanguageWords, w: Words): Int {
-        val head = s.head ?: return -1
-        if (!sameWord(tokens[h].bare, head, w)) return -1
-        var best = -1
+    /**
+     * Words from [start] that name line [line]: [strict]ly by [IngredientName.matches], or past
+     * its describing words; [exact] when they are the line's whole name.
+     */
+    private class Run(val line: Int, val start: Int, val strict: Boolean, val exact: Boolean = false)
+
+    /** The longest run of words ending at [h] that names [s]'s ingredient, or null. */
+    private fun run(step: String, tokens: List<Token>, h: Int, i: Int, s: Source, words: LanguageWords, w: Words): Run? {
+        val head = s.head ?: return null
+        if (!sameWord(tokens[h].bare, head, w)) return null
+        var best: Run? = null
         var start = h
         while (start >= 0 && h - start < 6) {
             if (start < h && !joined(step, tokens[start], tokens[start + 1])) break
             // A run may hold "de" ("farinha de trigo") but never starts on a word that says how
             // much or on the article: "a carrot" is "carrot" after "a".
-            val phrase = step.substring(tokens[start].start, tokens[h].start) + head
-            if (!stops(tokens[start], w) && IngredientName.matches(phrase, s.name!!, words)) best = start
+            if (!stops(tokens[start], w)) {
+                val phrase = step.substring(tokens[start].start, tokens[h].start) + head
+                if (IngredientName.matches(phrase, s.name!!, words)) {
+                    val exact = IngredientName.key(IngredientDensities.headPhrase(phrase, words), words) ==
+                        IngredientName.key(IngredientDensities.headPhrase(s.name, words), words)
+                    best = Run(i, start, true, exact)
+                } else if (endsWith(s.name, phrase, words) { front -> front.all { it in w.descriptors } }) {
+                    best = Run(i, start, false)
+                }
+            }
             start--
         }
         return best
     }
 
+    /** True when [name] ends with [phrase]'s words and [front] accepts the words before them ("olive" oil). */
+    private fun endsWith(name: String, phrase: String, words: LanguageWords, front: (List<String>) -> Boolean): Boolean {
+        val n = IngredientName.key(IngredientDensities.headPhrase(name, words), words).split(' ')
+        val p = IngredientName.key(IngredientDensities.headPhrase(phrase, words), words).split(' ')
+        return p.size < n.size && n.takeLast(p.size) == p && front(n.dropLast(p.size))
+    }
+
     /** Replace step[start, end) with [amount], then a space if [space]; the mention ends at [mentionEnd]. */
-    private class Insertion(val start: Int, val end: Int, val amount: String, val space: Boolean, val mentionEnd: Int)
+    private class Insertion(
+        val start: Int,
+        val end: Int,
+        val amount: String,
+        val space: Boolean,
+        val mentionEnd: Int,
+        // A link to these lines, with the mention as its text, instead of an amount.
+        val lines: List<Int> = emptyList(),
+    )
 
     private fun annotate(step: String, sources: List<Source>, words: LanguageWords, w: Words): List<Part> {
         val tokens = tokens(step, w)
         val seen = mutableSetOf<Int>()
         val insertions = mutableListOf<Insertion>()
+        // "Sauté onion and mushrooms - Turn the heat down…": a step's title names what the step
+        // is about; its words are no mention, so the first mention is the one after it (#254).
+        val title = TITLE.find(step)?.let { it.range.last + 1 } ?: 0
         for (h in tokens.indices) {
-            val runs = sources.indices.mapNotNull { i ->
-                runStart(step, tokens, h, sources[i], words, w).takeIf { it >= 0 }?.let { i to it }
-            }
+            if (tokens[h].start < title) continue
+            val runs = sources.indices.mapNotNull { i -> run(step, tokens, h, i, sources[i], words, w) }
             if (runs.isEmpty()) continue
             // The longest run names the mention: "brown sugar" is never "sugar".
-            val start = runs.minOf { it.second }
-            val named = runs.filter { it.second == start }.map { it.first }
-            // Only a line's first mention in the step, whether or not it gets an amount.
-            if (named.all { it in seen }) continue
-            seen += named
-            if (named.size != 1) continue
+            val start = runs.minOf { it.start }
+            // A line named exactly by the step's words is the one: "the sugar" beside "brown sugar".
+            val longest = runs.filter { it.start == start }.let { all -> all.filter { it.exact }.ifEmpty { all } }
+            val named = longest.map { it.line }.toMutableList()
+            // Named only past describing words ("the oil" for "olive oil"): any line ending in
+            // the step's words could be the one ("sesame oil" too).
+            if (longest.none { it.strict }) {
+                val front = step.substring(tokens[start].start, tokens[h].start)
+                named += sources.indices.filter { i ->
+                    val s = sources[i]
+                    i !in named && s.head != null && sameWord(tokens[h].bare, s.head, w) &&
+                        endsWith(s.name!!, front + s.head, words) { true }
+                }
+            }
             // "salt and pepper" has no name but uses the word: the mention could be either line.
-            if (sources.any { it.name == null && !it.heading && it.words.any { word -> sameWord(word, tokens[h].bare, w) } }) continue
-            val amount = sources[named[0]].amount ?: continue
-            insertion(step, tokens, start, h, amount, w)?.let { insertions += it }
+            val nameless = sources.indices.filter { i ->
+                sources[i].let { s -> s.name == null && !s.heading && s.words.any { sameWord(it, tokens[h].bare, w) } }
+            }
+            // Only a line's first mention in the step, whether or not it gets an amount.
+            if ((named + nameless).all { it in seen }) continue
+            seen += named + nameless
+            // Lines that lend the same amount ("30 g butter" twice) are one answer.
+            val amount = named.map { sources[it].amount }.distinct().singleOrNull()
+            if (amount != null && nameless.isEmpty()) {
+                insertion(step, tokens, start, h, amount, w)?.let { insertions += it }
+            } else if (named.size + nameless.size > 1) {
+                // Lines with different amounts, and the step doesn't say which (#254): no
+                // number, but a link to the lines, where the same rules would place an amount.
+                if (insertion(step, tokens, start, h, "", w) == null) continue
+                val from = tokens[start].start
+                val to = tokens[h].end
+                insertions += Insertion(from, to, step.substring(from, to), false, to, (named + nameless).sorted())
+            }
         }
         return parts(step, insertions)
     }
+
+    // A few words, no sentence end, then a spaced dash.
+    private val TITLE = Regex("""^[^.!?:;\n]{1,60}?\s[-–—]\s""")
+    private val DASHES = setOf("-", "–", "—")
 
     private const val ENDS = ",.;:!?)&–—"
     private const val LIST_OR_CLAUSE = ",;:(.!?&"
@@ -179,9 +258,13 @@ object StepAmounts {
         return next == null || w.anyWordAfter || next.lower in w.after
     }
 
-    // The token starts its step or sentence, so it is taken as the verb ("Melt butter").
-    private fun clauseFirst(step: String, tokens: List<Token>, i: Int): Boolean =
-        i == 0 || step.substring(tokens[i - 1].end, tokens[i].start).any { it in ".!?;:" }
+    // The token starts its step or sentence, or follows a spaced dash ("Butter - Melt butter"),
+    // so it is taken as the verb ("Melt butter").
+    private fun clauseFirst(step: String, tokens: List<Token>, i: Int): Boolean {
+        if (i == 0) return true
+        val gap = step.substring(tokens[i - 1].end, tokens[i].start)
+        return gap.any { it in ".!?;:" } || (gap.length >= 3 && gap.first().isWhitespace() && gap.last().isWhitespace() && gap.trim() in DASHES)
+    }
 
     private fun insertion(step: String, tokens: List<Token>, start: Int, h: Int, amount: String, w: Words): Insertion? {
         if (!endsName(step, tokens, h, w)) return null
@@ -214,7 +297,7 @@ object StepAmounts {
         for (ins in insertions.sortedBy { it.start }) {
             if (ins.start < covered) continue
             if (ins.start > cursor) out += Part(step.substring(cursor, ins.start))
-            out += Part(ins.amount, amount = true)
+            out += if (ins.lines.isEmpty()) Part(ins.amount, amount = true) else Part(ins.amount, lines = ins.lines)
             val rest = if (ins.space) " " else ""
             cursor = ins.end
             if (rest.isNotEmpty()) out += Part(rest)
@@ -224,7 +307,7 @@ object StepAmounts {
         // Adjacent plain runs as one.
         return out.fold(mutableListOf()) { acc, part ->
             val last = acc.lastOrNull()
-            if (last != null && !last.amount && !part.amount) acc[acc.lastIndex] = Part(last.text + part.text) else acc += part
+            if (last != null && last.plain && part.plain) acc[acc.lastIndex] = Part(last.text + part.text) else acc += part
             acc
         }
     }
