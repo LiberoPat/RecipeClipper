@@ -8,6 +8,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.longClick
@@ -38,6 +42,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /** The Pantry tab (#51), a real PantryViewModel over the fakes. */
+@OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
 class PantryScreenTest {
 
@@ -63,13 +68,11 @@ class PantryScreenTest {
         quantity: String? = null
     ) = PantryItem(id, name, quantity, "en", aisle, inStock, alwaysHave = false, purchasedDay = null, expiresDay = expires)
 
-    /** The row's menu (touch and hold) offers exactly [expected]. */
-    private fun menuOffers(name: String, vararg expected: PantryStock) {
-        compose.onNodeWithText(name).performTouchInput { longClick() }
-        PantryStock.entries.forEach { choice ->
-            val node = compose.onNodeWithTag("stockMenu-${choice.name}")
-            if (choice in expected) node.assertIsDisplayed() else node.assertDoesNotExist()
-        }
+    /** The row's TalkBack actions are exactly [expected], then Select (#258). */
+    private fun actionsOffer(id: Long, vararg expected: String) {
+        compose.onNodeWithTag("pantry-$id").assert(SemanticsMatcher("offers ${expected.toList()}") { node ->
+            node.config.getOrNull(SemanticsActions.CustomActions)?.map { it.label } == expected.toList() + "Select"
+        })
     }
 
     @Test
@@ -132,13 +135,13 @@ class PantryScreenTest {
         compose.runOnIdle { assertTrue(!pantry.items.value.single().inStock) }
     }
 
-    // #194: the row's menu (touch and hold) marks it running low: a "Low" tag, still in its
-    // aisle, onto the list; TalkBack reads the state and the tag, and offers the other states.
+    // #194: the row's action marks it running low: a "Low" tag, still in its aisle, onto the
+    // list; TalkBack reads the state and the tag, and offers the other states. (A touch and hold
+    // opened a menu of these until #258 made it start selecting.)
     @Test
-    fun theRowMenuMarksItRunningLow() {
+    fun theRowActionMarksItRunningLow() {
         val pantry = show(item(1, "garlic", aisle = Aisle.PRODUCE))
-        compose.onNodeWithText("garlic").performTouchInput { longClick() }
-        compose.onNodeWithTag("stockMenu-RUNNING_LOW").performClick()
+        compose.onNodeWithTag("pantry-1").performCustomAccessibilityActionWithLabel("Running low")
 
         compose.waitUntil(5_000) { groceries.items.value.isNotEmpty() }
         compose.runOnIdle { assertEquals(PantryStock.RUNNING_LOW, pantry.items.value.single().stock) }
@@ -146,7 +149,7 @@ class PantryScreenTest {
         compose.onNodeWithText("Fruit & vegetables").assertIsDisplayed()
         compose.onNode(hasContentDescription("garlic, Running low, On your grocery list")).assertIsDisplayed()
             .assert(SemanticsMatcher("offers Restock and Ran out") { node ->
-                node.config.getOrNull(SemanticsActions.CustomActions)?.map { it.label } == listOf("Restock", "Ran out")
+                node.config.getOrNull(SemanticsActions.CustomActions)?.map { it.label } == listOf("Restock", "Ran out", "Select")
             })
     }
 
@@ -171,18 +174,62 @@ class PantryScreenTest {
         compose.runOnIdle { assertEquals(listOf("garlic"), groceries.items.value.map { it.text }) }
     }
 
-    // With no row button (owner, 2026-09-29), the menu offers both other states: In stock →
+    // With no row button (owner, 2026-09-29), the row's actions offer both other states: In stock →
     // Running low, Ran out; Running low → Restock, Ran out; Run out → Restock, Running low.
     @Test
-    fun theRowMenuOffersBothOtherStates() {
+    fun theRowActionsOfferBothOtherStates() {
         val pantry = show(item(1, "garlic", aisle = Aisle.PRODUCE))
-        menuOffers("garlic", PantryStock.RUNNING_LOW, PantryStock.RUN_OUT)
-        compose.onNodeWithTag("stockMenu-RUNNING_LOW").performClick()
+        actionsOffer(1, "Running low", "Ran out")
+        compose.onNodeWithTag("pantry-1").performCustomAccessibilityActionWithLabel("Running low")
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("low-1", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-        menuOffers("garlic", PantryStock.IN_STOCK, PantryStock.RUN_OUT)
-        compose.onNodeWithTag("stockMenu-RUN_OUT").performClick()
+        actionsOffer(1, "Restock", "Ran out")
+        compose.onNodeWithTag("pantry-1").performCustomAccessibilityActionWithLabel("Ran out")
         compose.waitUntil(5_000) { pantry.items.value.single().stock == PantryStock.RUN_OUT }
-        menuOffers("garlic", PantryStock.IN_STOCK, PantryStock.RUNNING_LOW)
+        actionsOffer(1, "Restock", "Running low")
+    }
+
+    // #258: a touch and hold starts selecting with that row checked; a tap then toggles rather
+    // than opening the sheet; Remove takes them all with one Undo that puts them all back.
+    @Test
+    fun aTouchAndHoldSelectsThenRemoveAndUndo() {
+        val pantry = show(item(1, "salt"), item(2, "rice"), item(3, "oats"), item(4, "flour"))
+        val before = compose.runOnIdle { pantry.items.value }
+        compose.onNodeWithText("rice").performTouchInput { longClick() }
+        compose.onNodeWithTag("selectedCount").assertTextEquals("1 selected")
+        compose.onNodeWithTag("pantry-2").assertIsOn()
+        compose.onNodeWithText("salt").performClick()
+        compose.onNodeWithText("oats").performClick()
+        compose.onNodeWithTag("pantry-1").assertIsOn()
+        compose.onNodeWithTag("pantry-4").assertIsOff()
+        compose.onNodeWithTag("selectedCount").assertTextEquals("3 selected")
+        compose.onNodeWithTag("pantryEditName").assertDoesNotExist()
+
+        compose.onNodeWithTag("removeSelected").performClick()
+        compose.waitUntil(5_000) { pantry.items.value.size == 1 }
+        compose.onNodeWithTag("selectedCount").assertDoesNotExist()
+        compose.onNodeWithText("3 items removed").assertIsDisplayed()
+        compose.onNodeWithText("Undo").performClick()
+        compose.waitUntil(5_000) { pantry.items.value == before }
+    }
+
+    // #258: the menu's "Select items", Select all, Mark run out, and ✕.
+    @Test
+    fun theMenuSelectsAllAndMarksThemRunOut() {
+        val pantry = show(item(1, "salt"), item(2, "rice"))
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithTag("selectItems").performClick()
+        compose.onNodeWithTag("selectedCount").assertTextEquals("0 selected")
+        compose.onNodeWithTag("removeSelected").assertIsNotEnabled()
+        compose.onNodeWithTag("selectAll").performClick()
+        compose.onNodeWithTag("selectedCount").assertTextEquals("2 selected")
+        compose.onNodeWithTag("markRunOutSelected").performClick()
+        compose.waitUntil(5_000) { pantry.items.value.none { it.inStock } }
+        compose.onNodeWithText("2 items marked run out").assertIsDisplayed()
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithTag("selectItems").performClick()
+        compose.onNodeWithTag("exitSelection").performClick()
+        compose.onNodeWithTag("selectedCount").assertDoesNotExist()
     }
 
     @Test

@@ -119,4 +119,23 @@ class PantryDaoTest {
         repository.restore(gone)
         assertEquals(before, pantry.items())
     }
+
+    // #258: the selection's Remove deletes exactly the chosen items in one write, and Undo puts
+    // them back whole: ids, uids and every field.
+    @Test
+    fun deleteIdsRemovesOnlyThoseAndRestoresThemWhole() = runBlocking {
+        val repository = DefaultPantryRepository(pantry, { 99L }, ErrorLog { _, e -> throw e })
+        val oil = pantry.insert(item("oil"))
+        val milk = pantry.insert(item("milk", inStock = false).copy(quantity = "1 l", expiresDay = 20_100, alwaysHave = true))
+        val salt = pantry.insert(item("salt").copy(runningLow = true))
+        val before = pantry.items()
+
+        val gone = repository.delete(listOf(milk, salt, 9_999))
+        assertEquals(listOf(milk, salt), gone!!.entities.map { it.id })
+        assertEquals(listOf(oil), pantry.items().map { it.id })
+        assertNull(repository.delete(listOf(milk)))
+
+        repository.restore(gone)
+        assertEquals(before, pantry.items())
+    }
 }

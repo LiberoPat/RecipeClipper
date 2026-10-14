@@ -53,6 +53,12 @@ interface PantryRepository {
     suspend fun delete(id: Long): Snapshot?
 
     /**
+     * The selection's Remove (#258): deletes every item in [ids] in one transaction and returns
+     * them for [restore]; null when none was there (or the write failed).
+     */
+    suspend fun delete(ids: List<Long>): Snapshot?
+
+    /**
      * "Clear run-out items" (#194): deletes every item that has run out, in one transaction, and
      * returns them for [restore]; null when nothing had run out (or the write failed). The grocery
      * list is not touched.
@@ -123,6 +129,10 @@ class DefaultPantryRepository @Inject constructor(
         val entity = dao.item(id) ?: return@guard null
         dao.delete(id)
         PantryRepository.Snapshot(listOf(entity))
+    }
+
+    override suspend fun delete(ids: List<Long>): PantryRepository.Snapshot? = log.guard("deletePantryItems", null) {
+        dao.deleteAll(ids).takeIf { it.isNotEmpty() }?.let { PantryRepository.Snapshot(it) }
     }
 
     override suspend fun deleteRunOut(): PantryRepository.Snapshot? = log.guard("deleteRunOutPantry", null) {

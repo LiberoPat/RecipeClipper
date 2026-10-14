@@ -1,10 +1,8 @@
 package com.example.recipeclipper.ui.pantry
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +13,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,12 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,13 +60,15 @@ import kotlinx.coroutines.launch
 /**
  * One item (#194): its name, a "Low" tag while running low, the basket "Groceries" tag while its
  * name is on the grocery list, and its quantity as written on the right. Tap the row for the edit
- * sheet (its In stock | Running low | Run out control changes the state); touch and hold for the
- * other two states; swipes are shortcuts: towards the end restocks, towards the start runs out.
+ * sheet (its In stock | Running low | Run out control changes the state); swipes are shortcuts:
+ * towards the end restocks, towards the start runs out. Touch and hold starts selecting (#258;
+ * the screen's gesture, which also drags): while [selecting], the row leads with a checkbox, a
+ * tap toggles it and the swipes are off.
  * No per-row button (owner, 2026-09-29: redundant beside tapping the item). TalkBack reads the
- * row as one ("Garlic, 1 head, Run out, On your grocery list"), with the other two states as its
- * actions.
+ * row as one ("Garlic, 1 head, Run out, On your grocery list"), with the other two states and
+ * Select as its actions; while selecting, as a checkbox.
  */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PantryRow(
     item: PantryItem,
@@ -79,7 +77,11 @@ internal fun PantryRow(
     first: Boolean,
     onSetStock: (PantryStock) -> Unit,
     onEdit: () -> Unit,
-    onTakeOffList: () -> Unit
+    onTakeOffList: () -> Unit,
+    selecting: Boolean = false,
+    selected: Boolean = false,
+    onToggle: () -> Unit = {},
+    onSelect: () -> Unit = {}
 ) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val stock = item.stock
@@ -99,10 +101,10 @@ internal fun PantryRow(
             Unit
         }
     }
-    var menu by rememberSaveable { mutableStateOf(false) }
-    // TalkBack's actions and the long-press menu: both other states.
+    // TalkBack's actions: both other states, and Select (#258).
     val otherStates = PantryStock.entries.filter { it != stock }
     val choiceLabels = otherStates.associateWith { stringResource(it.action()) }
+    val selectLabel = stringResource(R.string.pantry_select)
     val alwaysHave = if (item.alwaysHave) stringResource(R.string.pantry_always_have) else null
     val badge = item.expiresDay?.let { PantryList.badge(it, today) }
     val expiry = item.expiresDay?.let { day ->
@@ -116,8 +118,9 @@ internal fun PantryRow(
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = { StockSwipeBackground(dismissState.dismissDirection) },
-        enableDismissFromStartToEnd = stock != PantryStock.IN_STOCK,
-        enableDismissFromEndToStart = stock != PantryStock.RUN_OUT,
+        enableDismissFromStartToEnd = !selecting && stock != PantryStock.IN_STOCK,
+        enableDismissFromEndToStart = !selecting && stock != PantryStock.RUN_OUT,
+        gesturesEnabled = !selecting,
         onDismiss = onDismiss,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -127,12 +130,20 @@ internal fun PantryRow(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .combinedClickable(onLongClick = { menu = true }, onClick = onEdit)
+                        .then(
+                            if (selecting) Modifier.toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle() })
+                            else Modifier.clickable(onClick = onEdit)
+                        )
                         .semantics {
                             contentDescription = description
-                            customActions = otherStates.map { choice ->
-                                CustomAccessibilityAction(choiceLabels.getValue(choice)) {
-                                    onSetStock(choice)
+                            if (!selecting) {
+                                customActions = otherStates.map { choice ->
+                                    CustomAccessibilityAction(choiceLabels.getValue(choice)) {
+                                        onSetStock(choice)
+                                        true
+                                    }
+                                } + CustomAccessibilityAction(selectLabel) {
+                                    onSelect()
                                     true
                                 }
                             }
@@ -141,6 +152,12 @@ internal fun PantryRow(
                         .padding(vertical = 12.dp)
                         .testTag("pantry-${item.id}")
                 ) {
+                    if (selecting) {
+                        // Drawn only: the row is the checkbox, and the screen's gesture drags from here.
+                        Box(Modifier.width(CheckboxColumn), contentAlignment = Alignment.CenterStart) {
+                            Checkbox(checked = selected, onCheckedChange = null, modifier = Modifier.testTag("check-${item.id}"))
+                        }
+                    }
                     Column(Modifier.weight(1f)) {
                         // The name, then its tags; they wrap under a long name or large text
                         // rather than squeezing it.
@@ -193,23 +210,13 @@ internal fun PantryRow(
                         )
                     }
                 }
-                // The row's menu: both other states.
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    otherStates.forEach { choice ->
-                        DropdownMenuItem(
-                            text = { Text(choiceLabels.getValue(choice)) },
-                            onClick = {
-                                menu = false
-                                onSetStock(choice)
-                            },
-                            modifier = Modifier.testTag("stockMenu-${choice.name}")
-                        )
-                    }
-                }
             }
         }
     }
 }
+
+/** The selecting rows' leading checkbox column; a press this far in (after the list's padding) is on it. */
+internal val CheckboxColumn = 44.dp
 
 /** Caps a child's width at [fraction] of what its parent offers; it may be narrower. */
 private fun Modifier.maxWidthFraction(fraction: Float): Modifier = layout { measurable, constraints ->

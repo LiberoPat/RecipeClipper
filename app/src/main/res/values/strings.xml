@@ -652,4 +652,21 @@
         <item quantity="one">%1$d step removed</item>
         <item quantity="other">%1$d steps removed</item>
     </plurals>
+    <string name="pantry_select_items">Select items</string>
+    <string name="pantry_select">Select</string>
+    <string name="action_select_all">Select all</string>
+    <string name="pantry_mark_run_out">Mark run out</string>
+    <string name="cd_exit_selection">Stop selecting</string>
+    <plurals name="pantry_selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <plurals name="snackbar_pantry_removed">
+        <item quantity="one">%1$d item removed</item>
+        <item quantity="other">%1$d items removed</item>
+    </plurals>
+    <plurals name="snackbar_pantry_marked_run_out">
+        <item quantity="one">%1$d item marked run out</item>
+        <item quantity="other">%1$d items marked run out</item>
+    </plurals>
 </resources>

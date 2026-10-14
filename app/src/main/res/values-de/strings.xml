@@ -595,4 +595,21 @@
         <item quantity="one">%1$d Schritt entfernt</item>
         <item quantity="other">%1$d Schritte entfernt</item>
     </plurals>
+    <string name="pantry_select_items">Artikel auswählen</string>
+    <string name="pantry_select">Auswählen</string>
+    <string name="action_select_all">Alle auswählen</string>
+    <string name="pantry_mark_run_out">Als aufgebraucht markieren</string>
+    <string name="cd_exit_selection">Auswahl beenden</string>
+    <plurals name="pantry_selected_count">
+        <item quantity="one">%1$d ausgewählt</item>
+        <item quantity="other">%1$d ausgewählt</item>
+    </plurals>
+    <plurals name="snackbar_pantry_removed">
+        <item quantity="one">%1$d Artikel entfernt</item>
+        <item quantity="other">%1$d Artikel entfernt</item>
+    </plurals>
+    <plurals name="snackbar_pantry_marked_run_out">
+        <item quantity="one">%1$d Artikel als aufgebraucht markiert</item>
+        <item quantity="other">%1$d Artikel als aufgebraucht markiert</item>
+    </plurals>
 </resources>

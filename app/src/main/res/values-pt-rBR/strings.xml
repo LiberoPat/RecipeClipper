@@ -619,4 +619,24 @@
         <item quantity="many">%1$d de passos removidos</item>
         <item quantity="other">%1$d passos removidos</item>
     </plurals>
+    <string name="pantry_select_items">Selecionar itens</string>
+    <string name="pantry_select">Selecionar</string>
+    <string name="action_select_all">Selecionar tudo</string>
+    <string name="pantry_mark_run_out">Marcar que acabou</string>
+    <string name="cd_exit_selection">Parar de selecionar</string>
+    <plurals name="pantry_selected_count">
+        <item quantity="one">%1$d selecionado</item>
+        <item quantity="many">%1$d selecionados</item>
+        <item quantity="other">%1$d selecionados</item>
+    </plurals>
+    <plurals name="snackbar_pantry_removed">
+        <item quantity="one">%1$d item removido</item>
+        <item quantity="many">%1$d de itens removidos</item>
+        <item quantity="other">%1$d itens removidos</item>
+    </plurals>
+    <plurals name="snackbar_pantry_marked_run_out">
+        <item quantity="one">%1$d item marcado que acabou</item>
+        <item quantity="many">%1$d de itens marcados que acabaram</item>
+        <item quantity="other">%1$d itens marcados que acabaram</item>
+    </plurals>
 </resources>
