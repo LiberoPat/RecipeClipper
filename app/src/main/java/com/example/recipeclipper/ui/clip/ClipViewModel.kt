@@ -71,11 +71,12 @@ data class ClipAdded(val field: ClipField, val count: Int)
  * The one line over the field buttons (#237): what to do now. The screen picks the words.
  */
 sealed class ClipHint {
-    /** Photo is armed: tap the recipe's photo (or Skip). */
-    object PickPhoto : ClipHint()
-
-    /** [field] is armed and nothing is selected yet: tap (or select) it on the page. */
-    data class Select(val field: ClipField) : ClipHint()
+    /**
+     * Guided steps (#251): [field] is armed and nothing is selected yet, so the header is "Step
+     * [number] of [ClipUiState.STEPS] · Tap the …", with Skip. [added] is the add that just armed
+     * it, if any, offered for Undo.
+     */
+    data class Step(val field: ClipField, val number: Int, val added: ClipAdded?) : ClipHint()
 
     /** [field] is armed and [lines] are selected: one tap adds them. */
     data class Confirm(val field: ClipField, val lines: Int) : ClipHint()
@@ -95,12 +96,17 @@ sealed class ClipHint {
  * Field first (#237): [armed] is the field the cook tapped, which the page's taps select for;
  * [lastAdded] is the add just made; [clearSelection] counts the times the page's selection was
  * dropped (a disarm, Clear, the other view), so the page clears its own when it changes.
+ *
+ * Guided steps (#251): the armed field is the current step, Name → Ingredients → Steps → Photo;
+ * [skipped] holds the steps the cook skipped. The steps are over ([guideDone]) once each one is
+ * filled or skipped.
  */
 data class ClipUiState(
     val url: String,
     val draft: ClipDraft,
     val selection: List<String> = emptyList(),
     val armed: ClipField? = null,
+    val skipped: Set<ClipField> = emptySet(),
     val lastAdded: ClipAdded? = null,
     val clearSelection: Int = 0,
     val newMarkId: String? = null,
@@ -138,17 +144,48 @@ data class ClipUiState(
     /** The armed field a page selection goes to, when it is one of the text fields. */
     val armedText: ClipField? get() = armed?.takeUnless { it == ClipField.PHOTO }
 
-    val hint: ClipHint
+    /** What the page outlines (#251): what a tap there would take for the armed field. */
+    val outline: ClipOutline?
         get() = when {
-            pickingPhoto -> ClipHint.PickPhoto
-            selection.isNotEmpty() && armed != null ->
-                ClipHint.Confirm(armed, if (armed == ClipField.NAME) 1 else selection.size)
-            selection.isNotEmpty() -> ClipHint.Selected(selection.size)
-            lastAdded != null -> ClipHint.Next(lastAdded, draft.nextField)
-            armed != null -> ClipHint.Select(armed)
-            else -> ClipHint.Next(null, draft.nextField)
+            pickingPhoto -> ClipOutline.IMAGES
+            armed != null -> ClipOutline.TEXT
+            else -> null
         }
+
+    /** Every step is filled or skipped: the header is the Done prompt. */
+    val guideDone: Boolean get() = nextStep(null) == null
+
+    /**
+     * The step after [from] still to do (empty and not skipped), in the steps' order and then
+     * round from the start, never [from] itself; null when there is none.
+     */
+    fun nextStep(from: ClipField?): ClipField? {
+        val order = ClipField.entries
+        val start = from?.let { order.indexOf(it) + 1 } ?: 0
+        return order.indices.map { order[(start + it) % order.size] }
+            .firstOrNull { it != from && draft.count(it) == 0 && it !in skipped }
+    }
+
+    val hint: ClipHint
+        get() {
+            val text = armedText
+            return when {
+                selection.isNotEmpty() && text != null ->
+                    ClipHint.Confirm(text, if (text == ClipField.NAME) 1 else selection.size)
+                selection.isNotEmpty() -> ClipHint.Selected(selection.size)
+                armed != null -> ClipHint.Step(armed, armed.ordinal + 1, lastAdded)
+                else -> ClipHint.Next(lastAdded, nextStep(null))
+            }
+        }
+
+    companion object {
+        /** How many guided steps there are: one a field. */
+        val STEPS = ClipField.entries.size
+    }
 }
+
+/** What the page outlines while a field is armed (#251): its blocks of text, or its images. */
+enum class ClipOutline { TEXT, IMAGES }
 
 /**
  * "Clip it yourself" (#37): on a page with no recipe data, the user taps a field (Name,
@@ -176,8 +213,9 @@ class ClipViewModel @Inject constructor(
     private var selectionText = ""
 
     // The drafts before each change made on the page (an add, a tag's removal), newest last, for
-    // Undo. A hand edit in Review empties it: Undo never steps over typing.
-    private val undo = ArrayDeque<ClipDraft>()
+    // Undo, each with the field an add filled (null for a removal), which Undo makes the current
+    // step again. A hand edit in Review empties it: Undo never steps over typing.
+    private val undo = ArrayDeque<Pair<ClipDraft, ClipField?>>()
 
     private var serial = 0L
 
@@ -198,7 +236,7 @@ class ClipViewModel @Inject constructor(
                 readBlocked = savedStateHandle.get<Boolean>(BLOCKED_ARG) == true,
                 check = ClipCheck.WAITING.takeIf { savedStateHandle.get<Boolean>(CHECK_ARG) == true },
                 offersText = RedditUrls.isReddit(url)
-            )
+            ).startGuide()
         )
         uiState = _uiState.asStateFlow()
     }
@@ -227,7 +265,7 @@ class ClipViewModel @Inject constructor(
         val mark = draft.mark(markId)
         _uiState.update { it.copy(armed = it.armed.takeUnless { a -> a == ClipField.PHOTO }, lastAdded = null) }
         if (mark == null) return
-        push(draft)
+        push(draft, null)
         setDraft(draft.removeMark(markId), newMarkId = null, message = ClipMessage.Removed(mark.field, mark.lines.size))
     }
 
@@ -240,17 +278,19 @@ class ClipViewModel @Inject constructor(
         if (!_uiState.value.pickingPhoto) return
         val photo = WebImageUrl.of(src) ?: return onNoImageTapped()
         disarm()
-        assign(ClipField.PHOTO, photo)
+        if (assign(ClipField.PHOTO, photo)) advanceFrom(ClipField.PHOTO)
     }
 
     /**
      * While Photo is armed, the tap found no picture with an address the app can read (not an
      * image, or one drawn some other way). Picking ends and the screen says so: no photo is
-     * better than a guessed one, and the photo is optional.
+     * better than a guessed one, and the photo is optional, so the step counts as skipped.
      */
     fun onNoImageTapped() {
         if (!_uiState.value.pickingPhoto) return
-        _uiState.update { it.copy(armed = null, notice = notice(ClipMessage.PhotoUnreadable)) }
+        _uiState.update {
+            it.copy(armed = null, skipped = it.skipped + ClipField.PHOTO, notice = notice(ClipMessage.PhotoUnreadable))
+        }
     }
 
     /**
@@ -277,7 +317,7 @@ class ClipViewModel @Inject constructor(
                 result is ParseResult.Error && result.error == ParseError.HumanCheck -> Unit
                 result is ParseResult.Error && result.error == ParseError.SaveFailed ->
                     _uiState.update { it.copy(notice = notice(ClipMessage.SaveFailed)) }
-                else -> _uiState.update { it.copy(check = ClipCheck.NO_RECIPE) }
+                else -> _uiState.update { it.copy(check = ClipCheck.NO_RECIPE).startGuide() }
             }
         }
     }
@@ -285,37 +325,50 @@ class ClipViewModel @Inject constructor(
     // --- Events from the toolbar: field first (#237) ---
 
     /**
-     * A field button: arms [field], so the page's taps select for it (or, for the photo, the
-     * next tap picks it); the armed field again disarms it, and another switches. A selection
-     * already made stays for the field switched to; disarming drops it. The photo is picked on
-     * the page, so arming it also leaves the Text view.
+     * A field button. With text already selected (a long press, or a tap) and a text field, the
+     * selection goes straight into it (#251: choosing the field is the confirm), as the confirm
+     * would put it, and the next step arms. Otherwise it arms [field] and makes it the current
+     * step, so the page's taps select for it (or, for the photo, the next tap picks it); the
+     * armed field again disarms it. The photo is picked on the page, so arming it drops a
+     * selection and leaves the Text view.
      */
     fun onFieldButton(field: ClipField) {
         val state = _uiState.value
         when {
-            state.armed == field -> {
-                if (state.selection.isNotEmpty()) clearSelection()
-                _uiState.update { it.copy(armed = null, lastAdded = null) }
-            }
+            field != ClipField.PHOTO && state.selection.isNotEmpty() -> add(field)
+            state.armed == field -> _uiState.update { it.copy(armed = null, lastAdded = null) }
             field == ClipField.PHOTO -> {
                 if (state.selection.isNotEmpty()) clearSelection()
-                _uiState.update { it.copy(armed = field, lastAdded = null, showingText = false) }
+                _uiState.update {
+                    it.copy(armed = field, skipped = it.skipped - field, lastAdded = null, showingText = false)
+                }
             }
-            else -> _uiState.update { it.copy(armed = field, lastAdded = null) }
+            else -> _uiState.update { it.copy(armed = field, skipped = it.skipped - field, lastAdded = null) }
         }
     }
 
     /**
      * The hint bar's confirm ("Add 12 lines to Ingredients"): the selection goes into the armed
-     * field. A name replaces and disarms; ingredients and steps add, and stay armed for the next
-     * block.
+     * field (a name replaces; ingredients and steps add), and the next step still to do arms
+     * (#251). Another block for the same field is one tap on its button away.
      */
     fun onConfirm() {
         val field = _uiState.value.armedText ?: return
         if (_uiState.value.selection.isEmpty()) return
-        assign(field, selectionText)
-        if (field == ClipField.NAME) disarm()
+        add(field)
     }
+
+    private fun add(field: ClipField) {
+        if (!assign(field, selectionText)) return
+        _uiState.update { it.copy(skipped = it.skipped - field) }
+        advanceFrom(field)
+    }
+
+    /**
+     * The current step is done: the next one still to do arms, or none, and the steps are over.
+     * In the Text view the Photo step waits for the page: its photo is picked there.
+     */
+    private fun advanceFrom(field: ClipField) = _uiState.update { it.copy(armed = it.nextStep(field)) }
 
     /** The hint bar's Clear: drops the selection, keeping the field armed. */
     fun onClearSelection() = clearSelection()
@@ -358,22 +411,39 @@ class ClipViewModel @Inject constructor(
         _uiState.update { it.copy(selection = emptyList(), newMarkId = null, clearSelection = it.clearSelection + 1) }
     }
 
-    /** Leaves the photo step without a (new) photo: it's optional. */
-    fun onSkipPhoto() = disarm()
+    /**
+     * Skip (#251): leaves the current step as it is and arms the next one still to do. Skip on
+     * Photo, the last and optional step, ends the steps.
+     */
+    fun onSkip() {
+        val field = _uiState.value.armed ?: return
+        if (_uiState.value.selection.isNotEmpty()) clearSelection()
+        _uiState.update {
+            val skipped = it.skipped + field
+            val next = if (field == ClipField.PHOTO) null else it.copy(skipped = skipped).nextStep(field)
+            it.copy(skipped = skipped, armed = next, lastAdded = null)
+        }
+    }
 
-    /** Takes back the last change from the page (an add, or a tag's removal). */
+    /**
+     * Takes back the last change from the page (an add, or a tag's removal). An add's field is
+     * the current step again, to redo it.
+     */
     fun onUndo() {
-        val previous = undo.removeLastOrNull() ?: return
-        _uiState.update { it.copy(lastAdded = null) }
+        val (previous, field) = undo.removeLastOrNull() ?: return
+        _uiState.update {
+            if (field == null) it.copy(lastAdded = null) else it.copy(lastAdded = null, armed = field, skipped = it.skipped - field)
+        }
         setDraft(previous, newMarkId = null)
     }
 
-    /** Throws the session draft away and starts over on the same page. */
+    /** Throws the session draft away and starts over on the same page, from the first step. */
     fun onDiscardDraft() {
         undo.clear()
         drafts.remove(url)
-        _uiState.update { it.copy(lastAdded = null) }
+        _uiState.update { it.copy(lastAdded = null, skipped = emptySet()) }
         setDraft(ClipDraft(url), newMarkId = null)
+        _uiState.update { it.startGuide() }
     }
 
     fun onNoticeShown(serial: Long) {
@@ -466,26 +536,28 @@ class ClipViewModel @Inject constructor(
 
     private fun disarm() = _uiState.update { it.copy(armed = null) }
 
-    private fun push(draft: ClipDraft) {
-        undo.addLast(draft)
+    private fun push(draft: ClipDraft, field: ClipField?) {
+        undo.addLast(draft to field)
         if (undo.size > UNDO_DEPTH) undo.removeAt(0)
     }
 
     /**
      * The add itself. Its words go in the hint bar ([ClipUiState.lastAdded]), with Undo there,
-     * rather than a snackbar. The page drops its selection when it records the new mark.
+     * rather than a snackbar. The page drops its selection when it records the new mark. False
+     * when there was nothing to add.
      */
-    private fun assign(field: ClipField, text: String) {
+    private fun assign(field: ClipField, text: String): Boolean {
         val draft = _uiState.value.draft
         val markId = draft.pendingMarkId
         val assigned = draft.assign(field, text)
-        if (assigned === draft) return
-        push(draft)
+        if (assigned === draft) return false
+        push(draft, field)
         selectionText = ""
         _uiState.update {
             it.copy(selection = emptyList(), lastAdded = ClipAdded(field, assigned.mark(markId)?.lines?.size ?: 1))
         }
         setDraft(assigned, newMarkId = if (field == ClipField.PHOTO) null else markId)
+        return true
     }
 
     /** A hand edit in Review. Not undoable, so it ends Undo for what came before. */
@@ -557,3 +629,11 @@ class ClipViewModel @Inject constructor(
         private val ALL_KEYS = listOf(KEY_NAME, KEY_INGREDIENTS, KEY_STEPS, KEY_PHOTO, KEY_SERVES, KEY_TOTAL_TIME)
     }
 }
+
+/**
+ * Guided on entry (#251): the first step still to do arms by itself, so the clip opens on
+ * "Step 1 of 4 · Tap the recipe's name". Not while the page is Cloudflare's check (#220): a tap
+ * there must reach the check.
+ */
+private fun ClipUiState.startGuide(): ClipUiState =
+    if (check == ClipCheck.WAITING) this else copy(armed = nextStep(null))

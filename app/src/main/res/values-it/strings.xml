@@ -276,7 +276,6 @@
     <string name="clip_reddit_blocked_note">Reddit non ha permesso all\'app di leggere questo post, quindi è aperto qui: seleziona la ricetta.</string>
     <string name="clip_human_check_note">Questo sito vuole verificare che tu sia una persona. Spunta la casella e la ricetta si aprirà.</string>
     <string name="clip_human_check_no_recipe_note">Verifica superata, ma questa pagina non ha una ricetta che l\'app sappia leggere, quindi è aperta qui: seleziona la ricetta.</string>
-    <string name="clip_picking_photo">Tocca l\'immagine da usare come foto.</string>
     <string name="clip_skip_photo">Salta</string>
     <string name="clip_photo_unreadable">Impossibile leggere un\'immagine lì. La foto è facoltativa.</string>
     <string name="clip_review">Rivedi</string>
@@ -588,10 +587,12 @@
     <string name="settings_show_tips">Mostra di nuovo i suggerimenti</string>
     <string name="settings_show_tips_description">Ogni suggerimento compare ancora una volta, uno alla volta.</string>
     <string name="clip_hint_start">Tocca Nome qui sotto, poi il nome della ricetta nella pagina.</string>
-    <string name="clip_select_name">Tocca il nome della ricetta nella pagina.</string>
-    <string name="clip_select_ingredients">Tocca gli ingredienti nella pagina: un elenco viene preso intero. Trascina le maniglie per regolare.</string>
-    <string name="clip_select_steps">Tocca i passaggi nella pagina: un elenco viene preso intero. Trascina le maniglie per regolare.</string>
     <string name="clip_confirm_name">Usa come nome</string>
+    <string name="clip_step">Passo %1$d di %2$d · %3$s</string>
+    <string name="clip_step_name">Tocca il nome della ricetta</string>
+    <string name="clip_step_ingredients">Tocca gli ingredienti</string>
+    <string name="clip_step_steps">Tocca i passaggi</string>
+    <string name="clip_step_photo">Tocca la foto della ricetta</string>
     <string name="clip_next_name">Ora: tocca Nome.</string>
     <string name="clip_next_ingredients">Ora: tocca Ingredienti.</string>
     <string name="clip_next_steps">Ora: tocca Passaggi.</string>

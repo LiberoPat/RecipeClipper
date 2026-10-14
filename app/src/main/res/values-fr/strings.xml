@@ -276,7 +276,6 @@
     <string name="clip_reddit_blocked_note">Reddit n\'a pas laissé l\'appli lire cette publication, elle est donc ouverte ici : sélectionnez la recette.</string>
     <string name="clip_human_check_note">Ce site veut vérifier que vous êtes humain. Cochez la case et la recette s\'ouvrira.</string>
     <string name="clip_human_check_no_recipe_note">La vérification est passée, mais cette page n\'a pas de recette que l\'appli sait lire, elle est donc ouverte ici : sélectionnez la recette.</string>
-    <string name="clip_picking_photo">Touchez l\'image à utiliser comme photo.</string>
     <string name="clip_skip_photo">Passer</string>
     <string name="clip_photo_unreadable">Impossible de lire une image à cet endroit. La photo est facultative.</string>
     <string name="clip_review">Vérifier</string>
@@ -588,10 +587,12 @@
     <string name="settings_show_tips">Revoir les astuces</string>
     <string name="settings_show_tips_description">Chaque astuce s\'affiche une fois de plus, une à la fois.</string>
     <string name="clip_hint_start">Touchez Nom ci-dessous, puis le nom de la recette sur la page.</string>
-    <string name="clip_select_name">Touchez le nom de la recette sur la page.</string>
-    <string name="clip_select_ingredients">Touchez les ingrédients sur la page : une liste est prise en entier. Faites glisser les poignées pour ajuster.</string>
-    <string name="clip_select_steps">Touchez les étapes sur la page : une liste est prise en entier. Faites glisser les poignées pour ajuster.</string>
     <string name="clip_confirm_name">Utiliser comme nom</string>
+    <string name="clip_step">Étape %1$d sur %2$d · %3$s</string>
+    <string name="clip_step_name">Touchez le nom de la recette</string>
+    <string name="clip_step_ingredients">Touchez les ingrédients</string>
+    <string name="clip_step_steps">Touchez les étapes</string>
+    <string name="clip_step_photo">Touchez la photo de la recette</string>
     <string name="clip_next_name">Ensuite : touchez Nom.</string>
     <string name="clip_next_ingredients">Ensuite : touchez Ingrédients.</string>
     <string name="clip_next_steps">Ensuite : touchez Étapes.</string>

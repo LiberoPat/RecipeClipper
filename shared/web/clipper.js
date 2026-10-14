@@ -12,6 +12,8 @@
 //     `armed` (#237) is the text field the cook tapped ("NAME", "INGREDIENTS", "STEPS") or null:
 //     while one is armed, a tap on a block of text selects it (see "Field first" below).
 //     `clear` is a count: when it changes, the page drops its selection.
+//     `outline` (#251) is "TEXT", "IMAGES" or null: what the page outlines, lightly, so the cook
+//     sees what a tap would take for the armed step (the native state decides; the page draws).
 //   RC.pickImage(on)
 //     While on, the next tap on the page is swallowed and ends picking: it posts the tapped
 //     image's address, or noImage when there is no image there with one to read. A tap on a
@@ -42,7 +44,6 @@
     '.rc-marked{box-shadow:inset 3px 0 0 ' + PAPRIKA + ' !important;' +
     'background-color:rgba(191,74,43,.08) !important}' +
     '.rc-photo{outline:3px solid ' + PAPRIKA + ' !important;outline-offset:-3px}' +
-    'html.rc-picking img{outline:2px dashed ' + PAPRIKA + ' !important;outline-offset:-2px;cursor:pointer}' +
     '#rc-layer{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:2147483647}' +
     '.rc-tag{position:absolute;transform:translateX(-100%);font:600 12px/1 -apple-system,system-ui,sans-serif;' +
     'color:#fff;background:' + PAPRIKA + ';border-radius:10px;padding:5px 9px;white-space:nowrap;' +
@@ -57,7 +58,16 @@
     'box-shadow:0 1px 3px rgba(0,0,0,.3)}' +
     '.rc-handle-start::after{bottom:4px;border-radius:50% 50% 0 50%}' +
     '.rc-handle-end::after{top:4px;border-radius:0 50% 50% 50%}' +
-    'html.rc-armed{-webkit-tap-highlight-color:rgba(191,74,43,.18)}';
+    'html.rc-armed{-webkit-tap-highlight-color:rgba(191,74,43,.18)}' +
+    // Guided steps (#251): while a field is armed, a light dotted outline on what a tap takes,
+    // so it is plain what to tap. Name: a paragraph, list item or heading. Ingredients or Steps:
+    // a list comes whole, so the list is outlined rather than its items. Photo: the images.
+    'html[data-rc-outline="TEXT"] :is(p,h1,h2,h3,h4,h5,h6,blockquote,dd,dt,pre),' +
+    'html[data-rc-outline="TEXT"][data-rc-armed="NAME"] li,' +
+    'html[data-rc-outline="TEXT"]:not([data-rc-armed="NAME"]) :is(ul,ol)' +
+    '{outline:1.5px dotted rgba(191,74,43,.55);outline-offset:2px}' +
+    'html[data-rc-outline="TEXT"]:not([data-rc-armed="NAME"]) :is(ul,ol) :is(p,ul,ol){outline:none}' +
+    'html[data-rc-outline="IMAGES"] img{outline:2px dotted rgba(191,74,43,.8) !important;outline-offset:-2px;cursor:pointer}';
   (document.head || document.documentElement).appendChild(style);
 
   // --- Selection ---
@@ -458,6 +468,7 @@
         clearSeen = state.clear;
       }
       setArmed(state.armed);
+      document.documentElement.setAttribute('data-rc-outline', state.outline || '');
       current = { marks: state.marks || [], photo: state.photo || null };
       render();
     },
