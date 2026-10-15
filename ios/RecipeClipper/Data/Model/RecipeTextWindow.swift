@@ -82,6 +82,11 @@ enum RecipeTextWindow {
         }
     }
 
+    /// An ingredients heading in any shipped language; `PageRecipeCheck` cuts a page into cards with it (#128).
+    static func isIngredientsHeading(_ line: String) -> Bool { isHeading(line, headings.ingredients) }
+
+    static func isStepsHeading(_ line: String) -> Bool { isHeading(line, headings.steps) }
+
     /// "2 cups flour", "• ½ tsp salt", "Mehl 200 g", "砂糖 大さじ2": an amount first, or a short line with one.
     static func looksLikeIngredient(_ line: String) -> Bool {
         if length(line) > ingredientMax { return false }

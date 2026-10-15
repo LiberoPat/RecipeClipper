@@ -95,6 +95,11 @@ object RecipeTextWindow {
         }
     }
 
+    /** An ingredients heading in any shipped language; [PageRecipeCheck] cuts a page into cards with it (#128). */
+    internal fun isIngredientsHeading(line: String) = isHeading(line, headings.first)
+
+    internal fun isStepsHeading(line: String) = isHeading(line, headings.second)
+
     /** "2 cups flour", "• ½ tsp salt", "Mehl 200 g", "砂糖 大さじ2": an amount first, or a short line with one. */
     internal fun looksLikeIngredient(line: String): Boolean {
         if (line.length > INGREDIENT_MAX) return false

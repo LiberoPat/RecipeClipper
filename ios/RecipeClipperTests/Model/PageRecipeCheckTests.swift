@@ -72,4 +72,86 @@ final class PageRecipeCheckTests: XCTestCase {
         var invented = picked; invented.ingredients = ["2 eggs"]
         XCTAssertNil(PageRecipeCheck.verify(page, invented))
     }
+
+    // MARK: One recipe's lines only (#128)
+
+    /// Delish's card as the #105 evaluation's window read it (trimmed), then another recipe's card.
+    private let delish = """
+        Creamy Tuscan Chicken
+        Download the Delish app for free!
+        Ingredients
+        1 Tbsp. extra-virgin olive oil
+        4 (6- to 8-oz.) boneless, skinless chicken breasts
+        Kosher salt
+        3 Tbsp. unsalted butter
+        1 1/2 cups cherry tomatoes, halved
+        3 cups baby spinach
+        1/2 cup heavy cream
+        Directions
+        Step 1In a large skillet over medium heat, heat oil.
+        Step 2Stir in cream and Parmesan and bring to a simmer.
+        LIKE THIS RECIPE? THEN YOU'LL LOVE:
+        Creamy Tuscan Orzo
+        35 mins
+        Ingredients
+        1 cup orzo
+        2 cups low-sodium chicken broth
+        1/2 cup heavy cream
+        Directions
+        Step 1Bring the broth to a boil and stir in the orzo.
+        """
+
+    private let tuscan = [
+        "1 Tbsp. extra-virgin olive oil", "4 (6- to 8-oz.) boneless, skinless chicken breasts", "Kosher salt",
+        "3 Tbsp. unsalted butter", "1 1/2 cups cherry tomatoes, halved", "3 cups baby spinach", "1/2 cup heavy cream",
+    ]
+    private let tuscanSteps = [
+        "Step 1In a large skillet over medium heat, heat oil.", "Step 2Stir in cream and Parmesan and bring to a simmer.",
+    ]
+
+    func testEveryLineOfTheRecipesOwnCardIsKept() throws {
+        let kept = try XCTUnwrap(PageRecipeCheck.verify(delish, PageSelection(name: "Creamy Tuscan Chicken", ingredients: tuscan, steps: tuscanSteps)))
+        XCTAssertEqual(kept.ingredients, tuscan)
+        XCTAssertEqual(kept.steps, tuscanSteps)
+    }
+
+    func testLinesFoundOnlyInAnotherRecipesCardAreDropped() throws {
+        let picked = PageSelection(
+            name: "Creamy Tuscan Chicken",
+            ingredients: Array(tuscan.prefix(3)) + ["1 cup orzo"] + Array(tuscan.dropFirst(3)) + ["2 cups low-sodium chicken broth"],
+            steps: tuscanSteps + ["Step 1Bring the broth to a boil and stir in the orzo."]
+        )
+        let kept = try XCTUnwrap(PageRecipeCheck.verify(delish, picked))
+        XCTAssertEqual(kept.ingredients, tuscan)
+        XCTAssertEqual(kept.steps, tuscanSteps)
+    }
+
+    func testTheRecipeIsTheCardHoldingMostOfThePickedLines() throws {
+        let orzo = PageSelection(
+            name: "Creamy Tuscan Orzo", ingredients: ["1 cup orzo", "2 cups low-sodium chicken broth", "1/2 cup heavy cream", "Kosher salt"],
+            steps: ["Step 1Bring the broth to a boil and stir in the orzo."]
+        )
+        let kept = try XCTUnwrap(PageRecipeCheck.verify(delish, orzo))
+        XCTAssertEqual(kept.ingredients, ["1 cup orzo", "2 cups low-sodium chicken broth", "1/2 cup heavy cream"])
+        XCTAssertEqual(kept.steps, orzo.steps)
+    }
+
+    func testASecondIngredientsHeadingBeforeTheStepsIsTheSameRecipe() {
+        let cake = """
+            Lemon Cake
+            Ingredients
+            2 cups flour
+            1 cup sugar
+            Ingredients for the glaze
+            1 cup powdered sugar
+            Instructions
+            Mix the flour and sugar.
+            Whisk the powdered sugar with lemon juice.
+            """
+        let picked = PageSelection(
+            name: "Lemon Cake", ingredients: ["2 cups flour", "1 cup sugar", "1 cup powdered sugar"],
+            steps: ["Mix the flour and sugar.", "Whisk the powdered sugar with lemon juice."]
+        )
+        XCTAssertEqual(PageRecipeCheck.verify(cake, picked), picked)
+    }
 }

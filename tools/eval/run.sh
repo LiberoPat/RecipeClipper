@@ -10,7 +10,7 @@ mkdir -p .build
 rm -rf .build/tables && cp -R ../../shared/tables .build/tables
 swiftc -O -o .build/eval \
   "$APP"/Data/Model/*.swift "$APP"/Data/Local/Entities.swift "$APP"/Data/Local/MenuRecords.swift \
-  "$APP"/Data/Local/SQLite.swift "$APP"/Data/Remote/PageTextReader.swift "$APP"/Data/Remote/PageRecipe.swift \
+  "$APP"/Data/Local/SQLite.swift "$APP"/Data/Local/CookedPhotoDao.swift "$APP"/Data/Remote/PageTextReader.swift "$APP"/Data/Remote/PageRecipe.swift \
   "$APP"/Data/Remote/JsonLdRecipeParser.swift "$APP"/Data/Remote/MicrodataRecipeParser.swift \
   Sources/*.swift
 ./.build/eval "$@"

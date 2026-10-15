@@ -11,8 +11,10 @@ Part of #99. Run on 2026-09-25 on the owner's Mac (M1 Pro, 32 GB, macOS 26.6.2) 
   on the same two lines, a real regex bug the evaluation found: "1-1/2 cups" doubled shows
   "2-1 cups" (#125).
 - **Pages with no recipe data: the model helps a lot.** From nothing today to 15 of 16 recipes,
-  84% of the ingredient lines, no invented line (`PageRecipeCheck` held), but 3 real lines from
-  another recipe on the same page slipped in, and one long recipe overflowed 1,024 output tokens.
+  84% of the ingredient lines, no invented line (`PageRecipeCheck` held), and one long recipe
+  overflowed 1,024 output tokens. (The 3 "wrong" Delish lines first read as another recipe's
+  were a scoring artifact; see section 2.) #128 followed up (section 2b): 4,096 reply tokens and
+  a one-card rule; naming runs of line numbers instead of copying lines was tried and dropped.
 - **Decisions: act only on aisles.** With `DecisionRule`, the generative model was confidently
   wrong on 4 of 22 count brackets (a wrong figure on screen); JevK5 was no better there. For
   aisles, JevK5 (open weights, 4B) was right on 20 of 20 names the table can't file, at 0.5 s.
@@ -91,15 +93,63 @@ Every confident wrong, in full:
 - The checker dropped 6 of 136 ingredient strings and 7 of 91 steps the model returned as not on
   the page. No invented line got through.
 - **The 3 wrong lines are all on Delish:** "1 1/2 cups cherry tomatoes, halved", "3 cups baby
-  spinach", "1/2 cup heavy cream", from a Tuscan recipe elsewhere on the cookie page, mixed into
-  the cookies' ingredients. They are on the page, so `PageRecipeCheck` can't catch them. This is
-  the extraction's real risk: never an invented line, but a real line from the wrong recipe.
+  spinach", "1/2 cup heavy cream". They first read as a Tuscan recipe's lines mixed into the
+  cookies', but #128 found the cookie URL then served Creamy Tuscan Chicken: they were its own
+  lines, scored wrong only because its JSON-LD writes "c." where the card writes "cups" (the
+  harness now compares units by meaning). A real line from a second recipe on the page remains
+  the extraction's real risk, which the check can't catch because the line is on the page;
+  #128 added the one-card rule for it.
 - Taste of Home's card words its steps differently from its own JSON-LD. The 7 steps the model
   picked there are the card's, so they're counted right after reading them.
 - One page (RecipeTin Eats, 20 ingredients and 14 steps) failed: the reply was cut off at
   1,024 output tokens and wasn't valid JSON. That is the limit #103 set on Android, so a long
   recipe may not fit.
 - Steps found is the weak number (65%): the model often stops early or merges steps.
+
+### 2b. Page extraction after #128
+
+Run on 2026-10-15 (same Mac, qwen2.5:3b) on the site-check pages fetched that day: 23 pages (22
+that answered plus the fixture), every one with a window. Units now compare by meaning ("c." is
+"cups"). All arms answer on the same windows in one run: #103's one call copying the lines out,
+at 1,024 reply tokens (Android before #128) and at 4,096, each scored from the same replies with
+main's line-by-line check and with the one-card rule; and line runs (the window numbered, the
+model naming runs of line numbers, the lines taken from the window, then the check).
+
+| Approach | Recipes shown | Name right | Gold ingredient lines found | Ingredient lines shown: right / wrong | Gold steps found | Steps shown: right / wrong | Median latency |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Today (parsers only) | 0 | – | 0 / 269 | 0 / 0 | 0 / 133 | 0 / 0 | – |
+| #103 one call, 1,024 reply tokens, line by line (main) | 18 | 17 | 177 / 269 | 177 / 10 | 81 / 133 | 96 / 0 | 8.7 s |
+| #103 one call, 1,024, one-card rule | 18 | 17 | 177 / 269 | 177 / 10 | 81 / 133 | 96 / 0 | 8.7 s |
+| #103 one call, 4,096, line by line | 18 | 17 | 177 / 269 | 177 / 10 | 81 / 133 | 96 / 0 | 8.3 s |
+| **#103 one call, 4,096, one-card rule (shipped)** | 18 | 17 | 177 / 269 | 177 / 10 | 81 / 133 | 96 / 0 | 8.3 s |
+| Line runs, 4,096 (tried, dropped) | 23 | 21 | 131 / 269 | 129 / **24** | 78 / 133 | 78 / **50** | 2.0 s |
+
+- **Line runs lost on the numbers that matter most.** More recipes shown, but more than twice
+  the wrong ingredient lines, 50 wrong steps against none, and a third fewer gold ingredient
+  lines found. A small model counts line numbers badly: runs stop early, or end far too late.
+  On Pinch of Yum's chocolate cake one run of steps ended at the bottom of the window, taking
+  in the nutrition facts and dozens of reader comments. Every such line is on the page, so
+  `PageRecipeCheck` can't catch it. Copying, the model writes out each line it keeps, and in
+  these runs it never wandered into the comments. So the apps keep #103's prompt, and line runs
+  live only in the harness (`PageLines.swift`, to re-measure on the phone models).
+- **4,096 reply tokens and the one-card rule cost nothing** and never added a wrong line. In
+  this run neither changed a page. The 5 unreadable replies (RecipeTin Eats' chow mein, Taste of
+  Home, Love and Lemons, Skinnytaste, Pinch of Yum) were the 3B model repeating one line until
+  the cap ("1/4 cup (65 ml) water" over and over), which no cap rescues. The one-card rule never
+  fired: no window here held a second recipe card. An earlier run the same day (scored with the
+  one-card rule only) showed the copy arms at 21 and 22 recipes for 1,024 and 4,096 (208 and
+  212 gold ingredient lines found, 9 wrong in each, 4 wrong steps in each), and line runs at 23
+  with 25 wrong ingredient lines and 54 wrong steps: 4,096 helped by one page, and line runs lost
+  the same way.
+- **The stand-in isn't deterministic run to run** even at temperature 0 (likely Ollama's
+  prompt-cache reuse), so the copy arms moved by 3 or 4 recipes between the two runs; compare arms
+  within one run.
+- Two calls (the recipe, then its steps), tried earlier in #128 on 17 pages, were worse than
+  one call (13 recipes against 16, 12 wrong ingredient lines against 3) and were dropped too.
+- Choice (the owner's rule: ship line runs only if at least as good as #103's one call, wrong
+  lines weighted most): line runs failed it, so the apps keep one call, at 4,096 reply tokens
+  on Android, with the one-card rule. Gemini Nano and Apple's model still need a supported
+  device to judge (faithfulness, latency, and whether Gemini Nano honours 4,096).
 
 ### 3. Decisions (#104)
 
@@ -301,6 +351,8 @@ changes before turning it on:
    that sit in one run under the chosen ingredients heading in the window, or drop picked lines
    far from the rest. The check can't catch these today because they are on the page.
 
+#128 took both up: 4,096 reply tokens on Android and the one-card rule (section 2b).
+
 **Decisions (#104):**
 
 - **Aisles:** a clear win at no risk (a wrong aisle is a nuisance, not a wrong number). JevK5
@@ -338,6 +390,7 @@ tools/eval/run.sh         # or: run.sh ingredients decisions, or --no-llm for th
 ```
 
 Results land in `tools/eval/results/` (a Markdown summary and one `.tsv` per task with every
-item's output). `EVAL_MODEL=<ollama tag>` swaps the generative model. An Apple Foundation Models
+item's output; the pages task also keeps each unreadable reply). `EVAL_MODEL=<ollama tag>`
+swaps the generative model; `EVAL_ONLY=host,host` limits the pages task to those pages. An Apple Foundation Models
 arm would be a small addition to `Llm.swift` (`LanguageModelSession`, `@Generable`) once Apple
 Intelligence is on.

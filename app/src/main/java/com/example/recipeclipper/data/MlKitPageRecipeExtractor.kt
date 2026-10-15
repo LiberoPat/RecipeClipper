@@ -79,7 +79,13 @@ class MlKitPageRecipeExtractor @Inject constructor() : PageRecipeExtractor {
     private companion object {
         /** The Prompt API takes under 4,000 tokens: this much page text, beside the prompt. */
         const val WINDOW_TOKENS = 3_000
-        const val MAX_OUTPUT_TOKENS = 1_024
+
+        /**
+         * The most the Prompt API takes (`GenerateContentRequest` rejects more than 4,096 in
+         * genai-prompt 1.0.0-beta4). The lines are copied out, so the reply is as long as the
+         * recipe: 1,024 cut off a 20-ingredient recipe in the #105 evaluation (#128).
+         */
+        const val MAX_OUTPUT_TOKENS = 4_096
 
         /** The recipe languages it is offered for: those Google lists for Gemini Nano's text features. */
         val LANGUAGES = setOf("en", "de", "es", "fr", "it", "ja")
