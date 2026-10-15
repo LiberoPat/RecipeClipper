@@ -8,7 +8,6 @@ struct LineRun: Equatable {
 
 /// What the model picked, by line number (#128): the name, yield and times copied as the page
 /// writes them (short), the ingredients and steps as runs of the numbered window's lines.
-/// Android's `PagePick`.
 struct PagePick: Equatable {
     var name: String?
     var ingredients: [LineRun]
@@ -21,8 +20,9 @@ struct PagePick: Equatable {
 
 /// The model names lines, never copies them (#128): the window goes to it with each line numbered
 /// (`numbered`), it answers runs of line numbers, and `selection` takes those lines from the
-/// window as written, so a long recipe's reply stays a few dozen tokens. Pure; Android's
-/// `PageLines`, rule for rule, pinned by the differential corpus's `Lines` rows.
+/// window as written, so a long recipe's reply stays a few dozen tokens. Harness only: #128
+/// measured it and kept the apps copying the lines out (docs/eval/llm-vs-regex.md, section 2b);
+/// it stays here to re-measure on the phone models.
 enum PageLines {
     /// Stripped from the start of a line: list bullets and the checkbox a recipe card prints.
     private static let bullets = Set("•◦▪▫‣⁃●○■□▢☐☑✓✔*·-–—".utf16)
@@ -50,7 +50,7 @@ enum PageLines {
         func text(_ numbers: [Int]) -> [String] {
             numbers.filter { !both.contains($0) }
                 .map { trimmed(lines[$0 - 1]) }
-                .filter { !$0.isEmpty && !RecipeTextWindow.isBareHeading($0) }
+                .filter { !$0.isEmpty && !isBareHeading($0) }
         }
         return PageSelection(
             name: pick.name, ingredients: text(ingredients), steps: text(steps),
@@ -58,7 +58,7 @@ enum PageLines {
         )
     }
 
-    /// Kotlin's `trimStart { it.isWhitespace() || it in BULLETS }.trimEnd()`.
+    /// The line without leading whitespace, bullets or checkboxes, or trailing whitespace.
     private static func trimmed(_ line: String) -> String {
         let units = Array(line.utf16)
         var start = 0
@@ -66,5 +66,18 @@ enum PageLines {
         var end = units.count
         while end > start, PageRecipeCheck.isWhitespace(units[end - 1]) { end -= 1 }
         return String(decoding: units[start..<end], as: UTF16.self)
+    }
+
+    private static let headingWords: [String] = LanguageWords.shipped.compactMap { LanguageWords.forTag($0) }
+        .flatMap { $0.strings("headings", "ingredients") + $0.strings("headings", "steps") }
+
+    /// A line that is only an ingredients or steps heading ("Ingredients:", "INSTRUCTIONS").
+    static func isBareHeading(_ line: String) -> Bool {
+        let units = Array(line.lowercased().utf16)
+        var start = 0, end = units.count
+        while start < end, !PageRecipeCheck.isLetterOrDigit(units[start]) { start += 1 }
+        while end > start, !PageRecipeCheck.isLetterOrDigit(units[end - 1]) { end -= 1 }
+        let text = Array(units[start..<end])
+        return headingWords.contains { Array($0.utf16) == text }
     }
 }

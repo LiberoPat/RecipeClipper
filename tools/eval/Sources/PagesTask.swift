@@ -2,11 +2,12 @@ import Foundation
 
 /// Task 2: a page with no recipe data. Today: `NoRecipeFound`. #103: window → model → PageRecipeCheck.
 /// Three arms on the same windows (#128): #103's one call copying the lines out, with a 1,024-token
-/// reply (Android before #128) and with the apps' 4,096; and #128's line runs, as the apps ask now:
-/// the window numbered, the model naming runs of line numbers, the lines taken from the window
-/// (`PageLines`), then the same check.
+/// reply (Android before #128) and with the apps' 4,096, each scored with main's line-by-line
+/// check and with the one-card rule; and line runs (tried in #128, not shipped): the window
+/// numbered, the model naming runs of line numbers, the lines taken from the window (`PageLines`,
+/// harness only), then the check. `EVAL_ONLY=host,host` limits the pages.
 enum PagesTask {
-    /// #103's iOS instructions (the lines copied out) and its fields as JSON.
+    /// The apps' instructions (FoundationModelsPageRecipeExtractor: the lines copied out) and its fields as JSON.
     static let copyInstructions = """
         You pick a recipe out of a web page's text. Copy every value exactly as it is written on \
         the page, character for character: never write, fix, translate, shorten or summarise. One \
@@ -24,7 +25,7 @@ enum PagesTask {
         ],
     ]
 
-    /// #128's iOS instructions (FoundationModelsPageRecipeExtractor) and its `@Generable` fields as JSON.
+    /// The line-runs instructions #128 tried (as its iOS `@Generable PickedLines` asked) and their fields as JSON.
     static let runInstructions = """
         You find a recipe in a web page's text. Each line of the page starts with its number in \
         brackets, like [12]. Copy the name, the yield and the times exactly as the page writes \
@@ -80,7 +81,7 @@ enum PagesTask {
         switch arm {
         case .copy(let tokens):
             let reply = Llm.chat(system: copyInstructions, user: window, json: copySchema, maxTokens: tokens)
-            guard let o = Llm.object(reply.text) else { return (nil, reply.seconds) }
+            guard let o = Llm.object(reply.text) else { keepUnreadable(arm, reply.text); return (nil, reply.seconds) }
             let picked = PageSelection(
                 name: o["name"] as? String, ingredients: o["ingredients"] as? [String] ?? [], steps: o["steps"] as? [String] ?? [],
                 yield: o["yield"] as? String, prepTime: o["prepTime"] as? String, cookTime: o["cookTime"] as? String,
@@ -88,7 +89,7 @@ enum PagesTask {
             return (picked, reply.seconds)
         case .runs:
             let reply = Llm.chat(system: runInstructions, user: PageLines.numbered(window), json: runSchema)
-            guard let o = Llm.object(reply.text) else { return (nil, reply.seconds) }
+            guard let o = Llm.object(reply.text) else { keepUnreadable(arm, reply.text); return (nil, reply.seconds) }
             func runs(_ key: String) -> [LineRun] {
                 (o[key] as? [[String: Any]] ?? []).compactMap { r in
                     guard let first = r["first"] as? Int, let last = r["last"] as? Int else { return nil }
@@ -104,11 +105,28 @@ enum PagesTask {
         }
     }
 
+    /// An unreadable reply, appended to results/<arm>-unreadable.txt to see why.
+    static func keepUnreadable(_ arm: Arm, _ text: String?) {
+        let path = "results/\(arm.log)-unreadable.txt"
+        let old = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
+        try? (old + "\n=== \(text?.count ?? 0) characters\n" + (text ?? "(no reply)") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    /// Main's check before #128: each line kept if `PageRecipeCheck.find` finds it, with no one-card rule.
+    static func lineByLine(_ window: String, _ picked: PageSelection) -> PageSelection? {
+        guard let name = picked.name.flatMap({ PageRecipeCheck.find(window, $0, kind: .name) }) else { return nil }
+        let ingredients = picked.ingredients.compactMap { PageRecipeCheck.find(window, $0, kind: .ingredient) }
+        let steps = picked.steps.compactMap { PageRecipeCheck.find(window, $0, kind: .step) }
+        if ingredients.isEmpty && steps.isEmpty { return nil }
+        return PageSelection(name: name, ingredients: ingredients, steps: steps)
+    }
+
     static func run(_ dir: String, llm: Bool) -> String {
         let pages = EvalPage.load(dir)
         var windows: [(page: EvalPage, text: PageText, window: String)] = []
         var noWindow = 0
-        for page in pages {
+        let only = ProcessInfo.processInfo.environment["EVAL_ONLY"]?.split(separator: ",").map(String.init)
+        for page in pages where only.map({ $0.contains { page.url.contains($0) } }) ?? true {
             let text = PageTextReader.read(html: page.html, url: page.url)
             guard let window = RecipeTextWindow.window(text, maxChars: windowChars) else { noWindow += 1; continue }
             windows.append((page, text, window))
@@ -122,39 +140,53 @@ enum PagesTask {
         guard llm else { return out }
         var notes = ""
         for arm in arms {
-            var recovered = 0, nameRight = 0, modelFailed = 0
-            var rightIng = 0, wrongIng = 0, pickedIng = 0, rejectedIng = 0, coveredIng = 0
-            var rightSteps = 0, wrongSteps = 0, pickedSteps = 0, rejectedSteps = 0, coveredSteps = 0
-            var seconds: [Double] = [], log: [String] = []
-            for (page, text, window) in windows {
+            var replies: [(page: EvalPage, window: String, picked: PageSelection?)] = []
+            var seconds: [Double] = []
+            for (page, _, window) in windows {
                 let asked = pick(arm, window)
                 seconds.append(asked.seconds)
-                guard let picked = asked.picked else { modelFailed += 1; log.append("\(page.url)\tunreadable reply"); continue }
-                pickedIng += picked.ingredients.count
-                pickedSteps += picked.steps.count
-                guard let recipe = PageRecipe.recipe(window: window, picked: picked, page: text, url: page.url) else {
-                    log.append("\(page.url)\trejected whole (picked \(picked.ingredients.count) ingredients, name \(picked.name ?? "-"))"); continue
-                }
-                recovered += 1
-                if EvalPage.fold(recipe.name) == EvalPage.fold(page.gold.name) || EvalPage.matches(recipe.name, [page.gold.name]) { nameRight += 1 }
-                rejectedIng += picked.ingredients.count - recipe.ingredients.count
-                rejectedSteps += picked.steps.count - recipe.instructions.count
-                let ri = recipe.ingredients.filter { EvalPage.matches($0, page.gold.ingredients) }.count
-                let rs = recipe.instructions.filter { EvalPage.matches($0, page.gold.instructions, step: true) }.count
-                let ci = page.gold.ingredients.filter { EvalPage.matches($0, recipe.ingredients) }.count
-                let cs = page.gold.instructions.filter { EvalPage.matches($0, recipe.instructions, step: true) }.count
-                rightIng += ri; wrongIng += recipe.ingredients.count - ri; coveredIng += ci
-                rightSteps += rs; wrongSteps += recipe.instructions.count - rs; coveredSteps += cs
-                log.append("\(page.url)\tkept \(recipe.ingredients.count)/\(picked.ingredients.count) ing (\(ri) right; \(ci) of \(page.gold.ingredients.count) gold found), "
-                    + "\(recipe.instructions.count)/\(picked.steps.count) steps (\(rs) right; \(cs) of \(page.gold.instructions.count) gold found), \(Int(asked.seconds)) s")
-                for line in recipe.ingredients where !EvalPage.matches(line, page.gold.ingredients) { log.append("\t  not gold ingredient: \(line)") }
-                for line in recipe.instructions where !EvalPage.matches(line, page.gold.instructions, step: true) { log.append("\t  not gold step: \(line.prefix(120))") }
+                replies.append((page, window, asked.picked))
             }
-            try? log.joined(separator: "\n").write(toFile: "results/\(arm.log).tsv", atomically: true, encoding: .utf8)
             let median = seconds.isEmpty ? "–" : String(format: "%.1f s", seconds.sorted()[seconds.count / 2])
-            out += "| \(arm.label) | \(recovered) | \(nameRight) | \(coveredIng) / \(goldIng) | \(rightIng) / \(wrongIng) | \(coveredSteps) / \(goldSteps) | \(rightSteps) / \(wrongSteps) | \(noWindow) | \(median) |\n"
-            notes += "\n\(arm.label): of \(pickedIng) ingredient and \(pickedSteps) step lines picked, the check dropped "
-                + "\(rejectedIng) and \(rejectedSteps) (pages it rejected whole not counted); \(modelFailed) unreadable replies.\n"
+            // A copy arm is scored twice from the same replies: with main's line-by-line check (#103)
+            // and with the one-card rule (#128). Line runs always go through the one-card rule.
+            let checks: [Bool]
+            if case .runs = arm { checks = [true] } else { checks = [false, true] }
+            for oneCard in checks {
+                var recovered = 0, nameRight = 0, modelFailed = 0
+                var rightIng = 0, wrongIng = 0, pickedIng = 0, rejectedIng = 0, coveredIng = 0
+                var rightSteps = 0, wrongSteps = 0, pickedSteps = 0, rejectedSteps = 0, coveredSteps = 0
+                var log: [String] = []
+                for (page, window, picked) in replies {
+                    guard let picked else { modelFailed += 1; log.append("\(page.url)\tunreadable reply"); continue }
+                    pickedIng += picked.ingredients.count
+                    pickedSteps += picked.steps.count
+                    let checked = oneCard ? PageRecipeCheck.verify(window, picked) : lineByLine(window, picked)
+                    guard let kept = checked, let name = kept.name else {
+                        log.append("\(page.url)\trejected whole (picked \(picked.ingredients.count) ingredients, name \(picked.name ?? "-"))"); continue
+                    }
+                    recovered += 1
+                    if EvalPage.fold(name) == EvalPage.fold(page.gold.name) || EvalPage.matches(name, [page.gold.name]) { nameRight += 1 }
+                    rejectedIng += picked.ingredients.count - kept.ingredients.count
+                    rejectedSteps += picked.steps.count - kept.steps.count
+                    let ri = kept.ingredients.filter { EvalPage.matches($0, page.gold.ingredients) }.count
+                    let rs = kept.steps.filter { EvalPage.matches($0, page.gold.instructions, step: true) }.count
+                    let ci = page.gold.ingredients.filter { EvalPage.matches($0, kept.ingredients) }.count
+                    let cs = page.gold.instructions.filter { EvalPage.matches($0, kept.steps, step: true) }.count
+                    rightIng += ri; wrongIng += kept.ingredients.count - ri; coveredIng += ci
+                    rightSteps += rs; wrongSteps += kept.steps.count - rs; coveredSteps += cs
+                    log.append("\(page.url)\tkept \(kept.ingredients.count)/\(picked.ingredients.count) ing (\(ri) right; \(ci) of \(page.gold.ingredients.count) gold found), "
+                        + "\(kept.steps.count)/\(picked.steps.count) steps (\(rs) right; \(cs) of \(page.gold.instructions.count) gold found)")
+                    for line in kept.ingredients where !EvalPage.matches(line, page.gold.ingredients) { log.append("\t  not gold ingredient: \(line)") }
+                    for line in kept.steps where !EvalPage.matches(line, page.gold.instructions, step: true) { log.append("\t  not gold step: \(line.prefix(120))") }
+                }
+                let suffix = checks.count == 1 ? "" : oneCard ? ", one-card rule (#128)" : ", line by line (main)"
+                let file = checks.count == 1 || !oneCard ? arm.log : arm.log + "-onecard"
+                try? log.joined(separator: "\n").write(toFile: "results/\(file).tsv", atomically: true, encoding: .utf8)
+                out += "| \(arm.label)\(suffix) | \(recovered) | \(nameRight) | \(coveredIng) / \(goldIng) | \(rightIng) / \(wrongIng) | \(coveredSteps) / \(goldSteps) | \(rightSteps) / \(wrongSteps) | \(noWindow) | \(median) |\n"
+                notes += "\n\(arm.label)\(suffix): of \(pickedIng) ingredient and \(pickedSteps) step lines picked, the check dropped "
+                    + "\(rejectedIng) and \(rejectedSteps) (pages it rejected whole not counted); \(modelFailed) unreadable replies.\n"
+            }
         }
         return out + notes
     }
