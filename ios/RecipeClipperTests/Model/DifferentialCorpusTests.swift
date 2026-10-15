@@ -64,6 +64,11 @@ import XCTest
 // ingredients, steps and lines to check. Write only `Photo(["ZUTATEN", "2 Eier", …]),`.
 // Suspect rows (#198, #208): a line read from a photo, then PhotoTextSorter.suspect. Write only
 // `Sus("2 ELZucker", lang: "de"),`.
+// Whole-pick rows (#128): a page's text, a picked name, ingredients and steps, then what
+// PageRecipeCheck.verify keeps of them (one recipe's lines only; nil, nil: no recipe). Write only
+// `Verify("Soup\nIngredients\n1 cup water", "Soup", ["1 cup water"], []),`.
+// Line-runs rows (#128): a window's text, the ingredient and step runs the model named by line
+// number, then the lines PageLines.selection takes. Write only `Lines("Soup\n1 cup water", [(2, 2)], []),`.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -2006,6 +2011,41 @@ final class DifferentialCorpusTests: XCTestCase {
         Render("4 Portionen", 5, ["Für den Teig:", "250 g Mehl", "5 g Hefe", "1/2 l Milch", "2 EL Zucker"], ["Den Teig kneten."], lang: "de", [4, 5], ["Für den Teig:", "313 g Mehl", "6,3 g Hefe", "0,63 l Milch", "31 g Zucker"], ["Den Teig kneten."], [nil], ["Den Teig kneten."], [], nil),
     ]
 
+    private struct Verify {
+        let page: String; let name: String; let ingredients: [String]; let steps: [String]
+        let kept: [String]?; let keptSteps: [String]?
+        init(_ page: String, _ name: String, _ ingredients: [String], _ steps: [String], _ kept: [String]?, _ keptSteps: [String]?) {
+            self.page = page; self.name = name; self.ingredients = ingredients; self.steps = steps
+            self.kept = kept; self.keptSteps = keptSteps
+        }
+    }
+
+    private static let verifies: [Verify] = [
+        Verify("Creamy Tuscan Chicken\nIngredients\n1 Tbsp. olive oil\n1/2 cup heavy cream\nDirections\nStep 1Heat the oil.\nLIKE THIS RECIPE?\nCreamy Tuscan Orzo\nIngredients\n1 cup orzo\n1/2 cup heavy cream\nDirections\nStep 1Boil the orzo.", "Creamy Tuscan Chicken", ["1 Tbsp. olive oil", "1 cup orzo", "1/2 cup heavy cream"], ["Step 1Heat the oil.", "Step 1Boil the orzo."], ["1 Tbsp. olive oil", "1/2 cup heavy cream"], ["Step 1Heat the oil."]),
+        Verify("Creamy Tuscan Chicken\nIngredients\n1 Tbsp. olive oil\n1/2 cup heavy cream\nDirections\nStep 1Heat the oil.\nLIKE THIS RECIPE?\nCreamy Tuscan Orzo\nIngredients\n1 cup orzo\n1/2 cup heavy cream\nDirections\nStep 1Boil the orzo.", "Creamy Tuscan Orzo", ["1 cup orzo", "1/2 cup heavy cream", "1 Tbsp. olive oil"], ["Step 1Boil the orzo."], ["1 cup orzo", "1/2 cup heavy cream"], ["Step 1Boil the orzo."]),
+        Verify("Lemon Cake\nIngredients\n2 cups flour\nIngredients for the glaze\n1 cup powdered sugar\nInstructions\nMix the flour.\nWhisk the glaze.", "Lemon Cake", ["2 cups flour", "1 cup powdered sugar"], ["Mix the flour.", "Whisk the glaze."], ["2 cups flour", "1 cup powdered sugar"], ["Mix the flour.", "Whisk the glaze."]),
+        Verify("Apfelkuchen\nZutaten\n200 g Mehl\nZubereitung\nDas Mehl sieben.\nMarmorkuchen\nZutaten\n2 Eier\nZubereitung\nDie Eier schlagen.", "Apfelkuchen", ["200 g Mehl", "2 Eier"], ["Das Mehl sieben.", "Die Eier schlagen."], ["200 g Mehl"], ["Das Mehl sieben."]),
+        Verify("肉じゃが\n材料（2人分）\n砂糖 大さじ2\n作り方\n鍋で煮る。\n材料\n醤油 大さじ1\n醤油 小さじ1\n作り方\n混ぜる。", "肉じゃが", ["砂糖 大さじ2", "醤油 大さじ1", "醤油 小さじ1"], ["鍋で煮る。"], ["砂糖 大さじ2"], ["鍋で煮る。"]),
+        Verify("Soup\nIngredients\n1 cup water", "Stew", ["1 cup water"], [], nil, nil),
+    ]
+
+    private struct Lines {
+        let window: String; let ingredients: [LineRun]; let steps: [LineRun]; let kept: [String]; let keptSteps: [String]
+        init(_ window: String, _ ingredients: [(Int, Int)], _ steps: [(Int, Int)], _ kept: [String], _ keptSteps: [String]) {
+            self.window = window
+            self.ingredients = ingredients.map { LineRun(first: $0.0, last: $0.1) }
+            self.steps = steps.map { LineRun(first: $0.0, last: $0.1) }
+            self.kept = kept; self.keptSteps = keptSteps
+        }
+    }
+
+    private static let lines: [Lines] = [
+        Lines("Banana Bread\nIngredients\n▢ 3 bananas\n▢ ⅓ cup butter\nInstructions\n1. Mash the bananas.\nBake 1 hour.", [(2, 4)], [(5, 7)], ["3 bananas", "⅓ cup butter"], ["1. Mash the bananas.", "Bake 1 hour."]),
+        Lines("Soup\nIngredients\n1 cup water\n1 onion\nMethod:\nBoil.\nServe.", [(3, 4), (9, 12), (4, 2)], [(4, 7), (0, 1)], ["1 cup water"], ["Boil.", "Serve."]),
+        Lines("Apfelkuchen\nZutaten\n• 200 g Mehl\nFür den Guss:\n- 2 Eier\nZubereitung\nDas Mehl sieben.", [(2, 5)], [(6, 7)], ["200 g Mehl", "Für den Guss:", "2 Eier"], ["Das Mehl sieben."]),
+        Lines("肉じゃが\n材料（2人分）\n砂糖 大さじ2\n作り方\n鍋で煮る。", [(3, 3)], [(4, 5)], ["砂糖 大さじ2"], ["鍋で煮る。"]),
+    ]
+
     private static let jsonLd: [(String, [String], Recipe?)] = [
         ("wprm_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Article\",\"@id\":\"https://x.com/#article\",\"headline\":\"Best Brownies\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"}},{\"@type\":\"WebPage\",\"@id\":\"https://x.com/\"},{\"@type\":\"Recipe\",\"name\":\"Fudgy Brownies &amp; Ice Cream\",\"author\":{\"@type\":\"Person\",\"name\":\"Jane\"},\"image\":[\"https://x.com/a-1x1.jpg\",\"https://x.com/a-4x3.jpg\"],\"recipeYield\":[\"16\",\"16 brownies\"],\"prepTime\":\"PT15M\",\"cookTime\":\"PT25M\",\"totalTime\":\"PT40M\",\"recipeIngredient\":[\"1 cup (226g) butter\",\"2 cups (400g) sugar\",\"&frac12; cup cocoa\",\"<strong>3</strong> eggs\",\"\"],\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Batter\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Preheat oven to 350&deg;F.\",\"name\":\"Preheat oven to 350&deg;F.\",\"url\":\"https://x.com/#s1\"},{\"@type\":\"HowToStep\",\"text\":\"Melt butter &amp; sugar.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Bake\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"<p>Bake 25 minutes.</p>\"}]}]}]}"], Recipe(name: "Fudgy Brownies & Ice Cream", image: "https://x.com/a-1x1.jpg", ingredients: ["1 cup (226g) butter", "2 cups (400g) sugar", "½ cup cocoa", "3 eggs"], instructions: ["Preheat oven to 350°F.", "Melt butter & sugar.", "Bake 25 minutes."], prepTime: "15m", cookTime: "25m", totalTime: "40m", yield: "16", sourceUrl: "https://src/wprm_graph")),
         ("yoast_graph", ["{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":[\"WebPage\",\"ItemPage\"],\"@id\":\"https://y.com/p/\"},{\"@type\":[\"Recipe\"],\"name\":\"Chicken Tikka Masala\",\"image\":[{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img1.jpg\",\"width\":1200},{\"@type\":\"ImageObject\",\"url\":\"https://y.com/img2.jpg\"}],\"recipeYield\":\"4\",\"prepTime\":\"PT1H\",\"cookTime\":\"PT1H30M\",\"totalTime\":\"PT2H30M\",\"recipeIngredient\":[\"1 lb chicken\",\"1 cup yogurt\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Marinate.\",\"name\":\"Marinate\"},{\"@type\":\"HowToStep\",\"name\":\"Grill it\"},{\"@type\":\"HowToStep\",\"text\":\"   \"}]}]}"], Recipe(name: "Chicken Tikka Masala", image: "https://y.com/img1.jpg", ingredients: ["1 lb chicken", "1 cup yogurt"], instructions: ["Marinate.", "Grill it"], prepTime: "1h", cookTime: "1h 30m", totalTime: "2h 30m", yield: "4", sourceUrl: "https://src/yoast_graph")),
@@ -2106,6 +2146,16 @@ final class DifferentialCorpusTests: XCTestCase {
     func testPageRecipeCheckMatchesKotlin() {
         for row in Self.picks {
             XCTAssertEqual(PageRecipeCheck.find(row.page, row.picked, kind: row.kind), row.found, row.picked)
+        }
+        for row in Self.verifies {
+            let kept = PageRecipeCheck.verify(row.page, PageSelection(name: row.name, ingredients: row.ingredients, steps: row.steps))
+            XCTAssertEqual(kept?.ingredients, row.kept, row.name)
+            XCTAssertEqual(kept?.steps, row.keptSteps, row.name)
+        }
+        for row in Self.lines {
+            let picked = PageLines.selection(row.window, PagePick(name: "", ingredients: row.ingredients, steps: row.steps))
+            XCTAssertEqual(picked.ingredients, row.kept, row.window)
+            XCTAssertEqual(picked.steps, row.keptSteps, row.window)
         }
     }
 

@@ -40,6 +40,31 @@ extension PageRecipeCheck {
                 out.removeLast(); st.removeLast(); en.removeLast(); br.removeLast()
             }
             text = out; lineBreak = br; starts = st; ends = en
+            var n = 0
+            lines = br.map { b in defer { if b { n += 1 } }; return n }
+        }
+
+        /// The line each folded unit is on, counting only lines that hold more than whitespace.
+        let lines: [Int]
+
+        /// Each line's card (#128): a new one starts at an ingredients heading that follows a
+        /// steps heading, so a second recipe's card further down is apart from the first.
+        func cards() -> [Int] {
+            var lineTexts: [String] = []
+            var start = 0
+            for i in text.indices where lineBreak[i] {
+                lineTexts.append(String(decoding: text[start..<i], as: UTF16.self)); start = i + 1
+            }
+            lineTexts.append(String(decoding: text[start...], as: UTF16.self))
+            var card = 0, steps = false
+            return lineTexts.map { line in
+                if RecipeTextWindow.isIngredientsHeading(line) {
+                    if steps { card += 1; steps = false }
+                } else if RecipeTextWindow.isStepsHeading(line) {
+                    steps = true
+                }
+                return card
+            }
         }
 
         /// The source text behind folded `from` until `to`: trimmed as Kotlin trims, its runs of

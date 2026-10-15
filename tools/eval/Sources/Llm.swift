@@ -21,12 +21,16 @@ enum Llm {
         return result
     }
 
+    /// The most reply tokens the apps allow: Android's `maxOutputTokens` (4,096, the Prompt API's
+    /// maximum, #128). On iOS 26 the reply shares `contextSize` (4,096) with the page.
+    static let appReplyTokens = 4096
+
     /// One chat turn: `system` instructions, `user` text. `json`: ask for a JSON object (Ollama's
-    /// `format`, a schema when given). Returns the reply and the seconds it took.
-    static func chat(system: String, user: String, json: Any? = nil) -> (text: String?, seconds: Double) {
+    /// `format`, a schema when given); `maxTokens` caps the reply. Returns the reply and the seconds it took.
+    static func chat(system: String, user: String, json: Any? = nil, maxTokens: Int = appReplyTokens) -> (text: String?, seconds: Double) {
         var body: [String: Any] = [
             "model": model, "stream": false,
-            "options": ["temperature": 0, "num_ctx": 8192, "num_predict": 1024],
+            "options": ["temperature": 0, "num_ctx": 8192, "num_predict": maxTokens],
             "messages": [["role": "system", "content": system], ["role": "user", "content": user]],
         ]
         if let json { body["format"] = json }
