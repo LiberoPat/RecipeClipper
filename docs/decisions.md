@@ -2606,8 +2606,9 @@ ones).
 
 - **Android: ML Kit GenAI's Prompt API** (`com.google.mlkit:genai-prompt:1.0.0-beta4`,
   `Generation.getClient()`, `checkStatus()`, `download()`, `generateContent(generateContentRequest(
-  TextPart(…)) { temperature = 0f; topK = 1; maxOutputTokens = 1024 })`). Input under 4,000
-  tokens. Rewriting, which Chef mode uses, takes under 256 tokens and only rewrites, so it can't
+  TextPart(…)) { temperature = 0f; topK = 1; maxOutputTokens = 4096 })`). Input under 4,000
+  tokens; 4,096 output tokens is the most `GenerateContentRequest` accepts (#128 raised it from
+  1,024, which cut off a 20-ingredient recipe copied out in the #105 evaluation). Rewriting, which Chef mode uses, takes under 256 tokens and only rewrites, so it can't
   read a page; Summarization writes bullets. The Prompt API's structured output
   (`@Generable` data classes) is alpha and needs the `genai-schema-compiler` KSP processor, so
   instead the reply is one JSON object parsed strictly (`PageSelectionJson`: optionally in one
@@ -2652,14 +2653,35 @@ ones).
   lifted out of "1 cup plus 2 tbsp"; a name, ingredient or step must hold a letter. The name is
   required; the recipe still needs ingredients or steps (the parsers' rule), otherwise it's
   `NoRecipeFound` as before. Times go through `Durations.format`, as the parsers' do.
+- **One recipe's lines only** (#128, pinned by the corpus's `Verify` rows): a page can show a
+  second recipe (a "you'll also love" card), whose lines are on the page too, so the check above
+  passes them. The window's lines are cut into cards at each ingredients heading that follows a
+  steps heading ("Ingredients … Directions … Ingredients", `headings.json`, every shipped
+  language). Each picked ingredient and step counts once in every card it is found in; the card
+  holding the most is the recipe's (a tie goes to the earlier), and only lines found in it are
+  kept, as its own text. Deliberately narrow, because a dropped line is silent: a second
+  "Ingredients for the glaze" heading before the steps is the same recipe; with every pick in
+  one card, the usual case, nothing changes. Yield and times are not lines and aren't checked
+  this way. The #105 evaluation's Delish "second recipe" turned out to be a scoring artifact,
+  and on the #128 run the rule never fired, so it is a guard, not a measured gain.
+- **Copying, not line numbers** (#128, measured in `docs/eval/llm-vs-regex.md` section 2b):
+  asking the model for runs of numbered lines (`{"first": 12, "last": 25}`) instead of copying
+  them out keeps the reply short however long the recipe, but on the harness's 3B stand-in it
+  showed more than twice the wrong ingredient lines and 50 wrong steps against none: runs stop
+  early or end far too late (one took in a page's nutrition facts and reader comments), and
+  every such line is on the page, so the check can't catch it. Dropped by the owner's rule
+  (ship only if at least as good as one call, wrong lines weighted most); it lives on as the
+  harness's `PageLines` arm, to re-measure on the phone models. Two calls (the recipe, then its
+  steps) were tried first and dropped too (fewer recipes, more wrong lines).
 - **Provenance:** `contentOrigin` `EXTRACTED` (no schema change: the column is text). It is the
   source's, like `PARSED`: a re-share fetches and refreshes it, and an edit makes it `EDITED`.
   An older app reads the unknown name as `EDITED`, the safe side. The reading view says, quietly
   under the source credit, "Picked from the page text — check against the source", with Open
   original as usual.
 - **Needs a real phone to judge:** whether the models copy text faithfully enough for the
-  verifier to keep most lines, how long a page takes, and whether 1,024 output tokens hold a long
-  recipe on Android. CI and the tests run the fake model only.
+  verifier to keep most lines, how long a page takes, and whether Gemini Nano honours 4,096
+  output tokens for a long recipe. CI and the tests run the fake model only; `tools/eval`
+  measures a 3B stand-in (`docs/eval/llm-vs-regex.md`).
 
 ## Typed decisions on the device (#104)
 
