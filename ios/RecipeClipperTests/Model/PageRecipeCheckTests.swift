@@ -154,4 +154,30 @@ final class PageRecipeCheckTests: XCTestCase {
         )
         XCTAssertEqual(PageRecipeCheck.verify(cake, picked), picked)
     }
+
+    /// The whole path on a page with two recipe cards (#271, Delish's shape): the page's text, the
+    /// window (it holds both cards), then a pick that strays into the "you'll also love" card.
+    func testOnAPageWithTwoRecipeCardsTheSecondCardsLinesAreDropped() throws {
+        let html = try pageFixture("blog-two-recipe-cards")
+        let window = try XCTUnwrap(RecipeTextWindow.window(PageTextReader.read(html: html, url: "https://blog.example/t"), maxChars: 6_888))
+        let lines = window.components(separatedBy: "\n")
+        XCTAssertTrue(lines.contains("1 cup orzo") && lines.contains("Stir in the cream and spinach until wilted."))
+        let ownIngredients = [
+            "1 Tbsp. extra-virgin olive oil", "Kosher salt", "3 Tbsp. unsalted butter", "3 cloves garlic, minced",
+            "1/2 cup heavy cream",
+        ]
+        let ownSteps = [
+            "Add the spinach and cook until wilted. Stir in the cream and Parmesan and bring to a simmer.",
+            "Return the chicken to the skillet and cook until heated through, 5 to 7 minutes.",
+        ]
+        let picked = PageSelection(
+            name: "Creamy Tuscan Chicken",
+            ingredients: Array(ownIngredients.prefix(4)) + ["1 cup orzo", "2 cups low-sodium chicken broth"]
+                + Array(ownIngredients.dropFirst(4)) + ["2 cups baby spinach"],
+            steps: ownSteps + ["Stir in the cream and spinach until wilted."]
+        )
+        let kept = try XCTUnwrap(PageRecipeCheck.verify(window, picked))
+        XCTAssertEqual(kept.ingredients, ownIngredients)
+        XCTAssertEqual(kept.steps, ownSteps)
+    }
 }
