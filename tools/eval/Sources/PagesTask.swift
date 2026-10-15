@@ -74,7 +74,12 @@ enum PagesTask {
         }
     }
 
-    static let arms: [Arm] = [.copy(replyTokens: 1024), .copy(replyTokens: Llm.appReplyTokens), .runs]
+    /// `EVAL_ARMS=pages-copy-4096,…` (each arm's `log` name) runs only those arms.
+    static let arms: [Arm] = {
+        let all: [Arm] = [.copy(replyTokens: 1024), .copy(replyTokens: Llm.appReplyTokens), .runs]
+        guard let only = ProcessInfo.processInfo.environment["EVAL_ARMS"]?.split(separator: ",").map(String.init) else { return all }
+        return all.filter { only.contains($0.log) }
+    }()
 
     /// What the model picked from `window` in this arm, before the check (nil: an unreadable reply).
     static func pick(_ arm: Arm, _ window: String) -> (picked: PageSelection?, seconds: Double) {
