@@ -59,7 +59,7 @@ enum PageReplyRetry {
 /// `Runaway` rows.
 enum RunawayReply {
     static let maxName = 200
-    static let maxShort = 100
+    static let maxShort = 300
     static let maxLine = 2_000
     static let maxRepeats = 4
 

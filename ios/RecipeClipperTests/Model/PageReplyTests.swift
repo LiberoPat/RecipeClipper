@@ -58,7 +58,7 @@ final class PageReplyTests: XCTestCase {
 
     func testTimePaddedWithProseRunsAway() {
         let reply = "{\"name\": \"Tots\", \"ingredients\": [\"1 egg\"], \"prepTime\": \"30 minutes"
-            + String(repeating: " mins, 30 minutes", count: 10)
+            + String(repeating: " mins, 30 minutes", count: 20)
         XCTAssertTrue(RunawayReply.isRunaway(reply))
         XCTAssertFalse(RunawayReply.isRunaway("{\"name\": \"Tots\", \"prepTime\": \"1 hour 30 minutes, plus overnight soaking\"}"))
     }

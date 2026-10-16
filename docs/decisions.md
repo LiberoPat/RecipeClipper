@@ -2718,10 +2718,12 @@ ones).
   - **The reply streams** (Android `generateContentStream`, checked every 256 characters through
     `RunawayReply.scan`, a lenient reader of the JSON so far; iOS `streamResponse`, each typed
     snapshot) and stops at the first sign of a runaway (`RunawayReply.isRunaway`): a name over
-    200 characters, a yield or time over 100, a line over 2,000, or the same ingredient or step 4
-    times running. Generous on purpose, because a stop throws the reply away: the longest real
-    yields and times seen run to about 45 characters, and a line twice in a recipe (an egg in the
-    cake and the glaze) is never four in a row. The finished reply is checked the same way.
+    200 characters, a yield or time over 300, a line over 2,000, or the same ingredient or step 4
+    times running. Generous on purpose, because a stop throws the reply away: the stand-in
+    sometimes finishes a time with an explanation ("60 minutes (55-65 minutes based on tester
+    method, …)", 105 and 115 characters), a reply that shows today, so a first cut at 100 lost a
+    page in the harness; a runaway runs to thousands. A line twice in a recipe (an egg in the cake
+    and the glaze) is never four in a row. The finished reply is checked the same way.
   - **One retry** (`PageReplyRetry`): on an unreadable reply only (stopped, cut off, or not
     parsing; iOS: also the context's end or a decoding failure), with `PageReplyRetry.REMINDER`
     after the instructions ("Keep the yield and each time short … Copy each line once, then

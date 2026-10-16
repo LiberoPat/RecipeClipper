@@ -62,7 +62,7 @@ object PageReplyRetry {
 object RunawayReply {
 
     const val MAX_NAME = 200
-    const val MAX_SHORT = 100
+    const val MAX_SHORT = 300
     const val MAX_LINE = 2_000
     const val MAX_REPEATS = 4
 

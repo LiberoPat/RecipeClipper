@@ -226,7 +226,7 @@ as one.)
 
 The shipped arm (`pages-copy-4096`) beside `pages-copy-4096-retry`, which decides as the apps
 now do (`docs/decisions.md` under #103): a reply `RunawayReply` flags (a name over 200
-characters, a yield or time over 100, a line over 2,000, one line 4 times running) or that
+characters, a yield or time over 300, a line over 2,000, one line 4 times running) or that
 doesn't parse is asked once more, with `PageReplyRetry`'s reminder after the instructions and a
 2,048-token cap. Ollama doesn't stream here, so the harness checks the whole reply; on a phone the
 same check stops the reply as it streams, so a runaway there costs less than the latency below.

@@ -56,7 +56,7 @@ class PageReplyTest {
     }
 
     @Test fun `a time padded with prose runs away`() {
-        val reply = "{\"name\": \"Tots\", \"ingredients\": [\"1 egg\"], \"prepTime\": \"30 minutes" + " mins, 30 minutes".repeat(10)
+        val reply = "{\"name\": \"Tots\", \"ingredients\": [\"1 egg\"], \"prepTime\": \"30 minutes" + " mins, 30 minutes".repeat(20)
         assertTrue(RunawayReply.isRunaway(reply))
         assertFalse(RunawayReply.isRunaway("{\"name\": \"Tots\", \"prepTime\": \"1 hour 30 minutes, plus overnight soaking\"}"))
     }
