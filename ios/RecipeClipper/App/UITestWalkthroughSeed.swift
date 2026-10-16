@@ -99,14 +99,26 @@ enum UITestWalkthroughSeed {
         ("Buttermilk Pancakes", ["2 cups flour", "2 cups buttermilk", "2 eggs", "2 tbsp sugar"]),
         ("Tomato Basil Soup", ["2 lb tomatoes", "1 onion, chopped", "4 cups vegetable broth", "1 cup basil leaves"]),
         ("Beef Stir-Fry", ["1 lb flank steak", "2 cups broccoli florets", "3 tbsp soy sauce", "1 tbsp cornstarch"]),
-        ("Lemon Garlic Salmon", ["4 salmon fillets", "3 cloves garlic, minced", "1 lemon", "2 tbsp butter"]),
+        (salmon, salmonLines),
         ("Guacamole", ["3 avocados", "1 lime", "1/2 red onion, diced", "1 jalapeño"]),
         ("French Toast", ["8 slices bread", "4 eggs", "1 cup milk", "1 tsp cinnamon"]),
         ("Caprese Salad", ["3 tomatoes", "250 g fresh mozzarella", "1 cup basil leaves", "2 tbsp olive oil"])
     ].map { title, ingredients in
         Seed(title: title, slug: title.lowercased().replacingOccurrences(of: " ", with: "-"), servings: "4",
-             ingredients: ingredients, steps: ["Prepare the ingredients.", "Cook and serve."])
+             ingredients: ingredients,
+             steps: title == salmon ? salmonSteps : ["Prepare the ingredients.", "Cook and serve."])
     }
+
+    /// Clip 07's recipe (#254; Android's `WalkthroughSeed.SALMON`): butter on two lines with
+    /// different amounts, so a step's "the butter" is a link to both.
+    static let salmon = "Lemon Garlic Salmon"
+    private static let salmonLines = ["4 salmon fillets", "2 tbsp butter", "3 cloves garlic, minced", "1 lemon",
+                                      "1 tbsp butter, to finish"]
+    private static let salmonSteps = [
+        "Pat the salmon dry and season it with salt and pepper.",
+        "Melt the butter in a large pan and sear the salmon for 4 minutes a side.",
+        "Lower the heat, add the garlic and the juice of the lemon, then swirl in the butter."
+    ]
 
     static func seed(_ conn: SQLiteConnection, now: Int64) throws {
         let minute: Int64 = 60_000

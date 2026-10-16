@@ -10,6 +10,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.provider.MediaStore
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -21,6 +23,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.geometry.Offset
@@ -40,10 +43,10 @@ import java.io.File
 import java.time.LocalDate
 
 /**
- * Walkthroughs 13, 17, 18, 20, 21 and 23–26 (#106): "I made this" (#116), the first-run tour (#151, #190),
+ * Walkthroughs 13, 17, 18, 20, 21, 23–26 and 33 (#106): "I made this" (#116), the first-run tour (#151, #190),
  * Done shopping and the basket Groceries tag (#146), using up the pantry after cooking (#147), what
  * Settings says about Chef mode on a phone that can't run it (#144), "Mark as cooked" (#173), the
- * tooltips (#190), the pantry's three states (#194) and "onion" matching "onions" (#191). The model supports nothing
+ * tooltips (#190), the pantry's three states (#194), "onion" matching "onions" (#191) and selecting several pantry items (#258). The model supports nothing
  * here: the typed decisions stay out of these clips, and Chef mode's model is "unsupported"
  * (simulated, as an emulator has none).
  */
@@ -252,8 +255,8 @@ class CookingWalkthroughTest : WalkthroughBase() {
     /**
      * The pantry's three states (#194, #199; no row button since 2026-09-29): a swipe towards
      * the start runs a row out, to Run out and onto the list; tapping a row opens its sheet, whose
-     * stock control sets Running low (the Low tag, and on the list); a swipe back restocks; the
-     * long-press menu offers both other states.
+     * stock control sets Running low (the Low tag, and on the list); a swipe back restocks, olive
+     * oil's too (a touch and hold selects since #258), and a swipe runs basmati rice out.
      */
     @Test
     fun test25_pantryStates() {
@@ -278,6 +281,62 @@ class CookingWalkthroughTest : WalkthroughBase() {
         // A touch and hold starts selecting since #258; the other states stay on the swipes.
         swipeRow("olive oil", left = false) // Restock, from running low
         swipeRow("basmati rice", left = true) // Ran out
+    }
+
+    /**
+     * Selecting several (#258): a touch and hold that goes on moving checks every row it passes
+     * ("3 selected"), Mark run out moves them to Run out with one Undo; then a touch and hold,
+     * Select all and Remove empty the Pantry, and one Undo puts every item back.
+     */
+    @Test
+    fun test33_pantryMultiSelect() {
+        start(kitchen = true)
+        tap("Pantry", 2500)
+        val rows = pantryRows()
+        holdAndDrag(rows[0], rows[2])
+        waitFor(hasText("3 selected"))
+        pause(2500)
+        tapTag("markRunOutSelected", 3000)
+        tap("Undo", 3000)
+        compose.onNode(hasTestTag(rows[0])).performTouchInput { longClick(Offset(width * 0.3f, centerY)) }
+        waitFor(hasText("1 selected"))
+        pause(2000)
+        tapTag("selectAll", 2500)
+        tapTag("removeSelected", 3000)
+        tap("Undo", 3000)
+    }
+
+    /** The Pantry's item rows on screen, top to bottom, by tag ("pantry-<id>"). */
+    private fun pantryRows(): List<String> {
+        val isRow = SemanticsMatcher("a pantry row") { node ->
+            node.config.getOrNull(SemanticsProperties.TestTag)?.matches(Regex("pantry-\\d+")) == true
+        }
+        waitFor(isRow)
+        return compose.onAllNodes(isRow).fetchSemanticsNodes()
+            .sortedBy { it.boundsInRoot.top }
+            .map { it.config[SemanticsProperties.TestTag] }
+    }
+
+    /** A touch and hold on the row tagged [from] that goes on moving, slowly, to the row tagged [to]. */
+    private fun holdAndDrag(from: String, to: String) {
+        val list = compose.onNode(hasTestTag("pantryList"))
+        val top = list.fetchSemanticsNode().boundsInRoot.top
+        val a = compose.onNode(hasTestTag(from)).fetchSemanticsNode().boundsInRoot
+        val b = compose.onNode(hasTestTag(to)).fetchSemanticsNode().boundsInRoot
+        list.performTouchInput {
+            val start = Offset(width * 0.3f, a.center.y - top)
+            val end = Offset(width * 0.3f, b.center.y - top)
+            down(start)
+            advanceEventTime(900) // a touch and hold: selecting, with this row checked
+            val steps = 30
+            for (i in 1..steps) {
+                advanceEventTime(50)
+                moveTo(start + (end - start) * (i / steps.toFloat()))
+            }
+            advanceEventTime(400)
+            up()
+        }
+        pause(500)
     }
 
     private fun swipeRow(name: String, left: Boolean) {
