@@ -2710,6 +2710,29 @@ ones).
   (ship only if at least as good as one call, wrong lines weighted most); it lives on as the
   harness's `PageLines` arm, to re-measure on the phone models. Two calls (the recipe, then its
   steps) were tried first and dropped too (fewer recipes, more wrong lines).
+- **A runaway reply is stopped, then asked once more** (#273, both platforms, pure parts in
+  `PageReply`, pinned by the corpus's `Runaway` rows). An unreadable reply is the model padding a
+  field (a time growing into prose: "30 minutes mins, 30 minutes mins, …") or repeating one line
+  ("1/4 cup (65 ml) water" over and over) until the reply cap; the page then showed no recipe (0
+  to 9 of 24 pages a run on the 3B stand-in). Now:
+  - **The reply streams** (Android `generateContentStream`, checked every 256 characters through
+    `RunawayReply.scan`, a lenient reader of the JSON so far; iOS `streamResponse`, each typed
+    snapshot) and stops at the first sign of a runaway (`RunawayReply.isRunaway`): a name over
+    200 characters, a yield or time over 100, a line over 2,000, or the same ingredient or step 4
+    times running. Generous on purpose, because a stop throws the reply away: the longest real
+    yields and times seen run to about 45 characters, and a line twice in a recipe (an egg in the
+    cake and the glaze) is never four in a row. The finished reply is checked the same way.
+  - **One retry** (`PageReplyRetry`): on an unreadable reply only (stopped, cut off, or not
+    parsing; iOS: also the context's end or a decoding failure), with `PageReplyRetry.REMINDER`
+    after the instructions ("Keep the yield and each time short … Copy each line once, then
+    stop.") and a 2,048-token cap, so a deterministic model doesn't loop the same way and a second
+    runaway costs half. Never a second retry: a second failure keeps today's outcome (no recipe,
+    "Clip it yourself"). Never after a failure that isn't the reply's (Android: any exception, so
+    BUSY, the battery quota and background use; iOS: a guardrail, rate limit, unsupported
+    language, timeout): those are `PageReply.Failed`. A retry runs only for a page that would
+    otherwise show nothing, so its lower cap can't cost a recipe that shows today, and it adds
+    latency only on those pages.
+  - **Measured** in `docs/eval/llm-vs-regex.md` section 2d (`pages-copy-4096-retry`).
 - **Provenance:** `contentOrigin` `EXTRACTED` (no schema change: the column is text). It is the
   source's, like `PARSED`: a re-share fetches and refreshes it, and an edit makes it `EDITED`.
   An older app reads the unknown name as `EDITED`, the safe side. The reading view says, quietly
@@ -4322,7 +4345,7 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                LanguageWords (one language's tables, chosen per recipe)
                IngredientName (a line's ingredient name), IngredientRendering (scale+convert),
                TrailingAmount (name-first lines: Japanese), StepAmounts (amounts inside steps, #101),
-               ClipSelection, ClipDraft, PageText, RecipeTextWindow, PageRecipeCheck (#103),
+               ClipSelection, ClipDraft, PageText, RecipeTextWindow, PageRecipeCheck (#103), PageReply (#273),
                PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal), LibraryLimit (#107),
                Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
                Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy),

@@ -222,6 +222,19 @@ as one.)
 - **Still for a supported device:** whether Gemini Nano and Apple's model behave like the
   stand-in on these pages, and how often they give an unreadable reply.
 
+### 2d. Unreadable replies retried once (#273)
+
+The shipped arm (`pages-copy-4096`) beside `pages-copy-4096-retry`, which decides as the apps
+now do (`docs/decisions.md` under #103): a reply `RunawayReply` flags (a name over 200
+characters, a yield or time over 100, a line over 2,000, one line 4 times running) or that
+doesn't parse is asked once more, with `PageReplyRetry`'s reminder after the instructions and a
+2,048-token cap. Ollama doesn't stream here, so the harness checks the whole reply; on a phone the
+same check stops the reply as it streams, so a runaway there costs less than the latency below.
+Both arms answer in the same run on the same windows; the stand-in varies run to run, so the arms
+are compared within a run.
+
+_Measurement pending._
+
 ### 3. Decisions (#104)
 
 Only the items the app would actually send to the model (`run.sh decisions` also prints the tables
