@@ -42,12 +42,15 @@ object PageRecipeCheck {
         val counts = IntArray(card.last() + 1)
         for (found in foundIngredients + foundSteps) found.map { card[it.line] }.distinct().forEach { counts[it]++ }
         val recipe = counts.indices.maxByOrNull { counts[it] } ?: 0
-        val keptIngredients = foundIngredients.mapNotNull { found -> found.firstOrNull { card[it.line] == recipe && !method[it.line] } }
+        // Where a pick is found more than once, a whole line wins ("Zucchini" is the "Zucchini:"
+        // heading, not the start of "Zucchini sweating: 30 minutes"), else the first (#271).
+        fun first(found: List<Span>, ok: (Span) -> Boolean) = found.firstOrNull { ok(it) && it.wholeLine } ?: found.firstOrNull(ok)
+        val keptIngredients = foundIngredients.mapNotNull { found -> first(found) { card[it.line] == recipe && !method[it.line] } }
         // A group heading only directly above an ingredient line.
         val ingredients = keptIngredients.filterIndexed { i, span ->
             !span.heading || keptIngredients.getOrNull(i + 1)?.heading == false
         }.map { it.text }
-        val steps = foundSteps.mapNotNull { found -> found.firstOrNull { card[it.line] == recipe } }.filter { !it.heading }.map { it.text }
+        val steps = foundSteps.mapNotNull { found -> first(found) { card[it.line] == recipe } }.filter { !it.heading }.map { it.text }
         if (ingredients.isEmpty() && steps.isEmpty()) return null
         fun other(s: String?) = s?.let { find(folded, it, Kind.OTHER) }
         return PageSelection(
@@ -62,10 +65,10 @@ object PageRecipeCheck {
     private fun find(page: Folded, picked: String, kind: Kind): String? = spans(page, picked, kind).firstOrNull()?.text
 
     /**
-     * Where [find] finds [picked]: the page's own text, the line it starts on, and whether it is
-     * that whole line and the line ends in a colon (a heading, #271).
+     * Where [find] finds [picked]: the page's own text, the line it starts on, whether it is that
+     * whole line, and whether that line ends in a colon (a heading, #271).
      */
-    private class Span(val text: String, val line: Int, val heading: Boolean = false)
+    private class Span(val text: String, val line: Int, val wholeLine: Boolean = false, val heading: Boolean = false)
 
     /** Every place [picked] is on [page] as a whole span of this [kind], in page order. */
     private fun spans(page: Folded, picked: String, kind: Kind): List<Span> {
@@ -86,7 +89,8 @@ object PageRecipeCheck {
                 val startsLine = kind == Kind.INGREDIENT || at == 0 || page.lineBreak[at - 1]
                 val heading = (kind == Kind.INGREDIENT || kind == Kind.STEP) && startsLine && (colonAfter || colonIn)
                 val to = if (kind == Kind.INGREDIENT && colonAfter) end + 1 else end
-                found += Span(page.original(at, to), page.lineAt(at), heading)
+                val wholeLine = startsLine && (colonAfter || end == text.length || page.lineBreak[end])
+                found += Span(page.original(at, to), page.lineAt(at), wholeLine, heading)
             }
             from = at + 1
         }

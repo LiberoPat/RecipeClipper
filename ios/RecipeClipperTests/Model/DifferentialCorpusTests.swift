@@ -2029,6 +2029,7 @@ final class DifferentialCorpusTests: XCTestCase {
         Verify("Apple Pie Bars:\nIngredients:\nFOR APPLE FILLING:\nFOR CRUST:\n1 1/2 cups flour", "Apple Pie Bars:", ["FOR APPLE FILLING", "FOR CRUST", "1 1/2 cups flour"], [], ["FOR CRUST:", "1 1/2 cups flour"], []),
         Verify("Carbonara\nIngredients\n150g of Parmesan, freshly grated\n6 egg yolks\nMethod\n1\nBeat the egg yolks.\n6 egg yolks\n75g of Parmesan", "Carbonara", ["150g of Parmesan, freshly grated", "6 egg yolks", "75g of Parmesan"], ["Beat the egg yolks."], ["150g of Parmesan, freshly grated", "6 egg yolks"], ["Beat the egg yolks."]),
         Verify("Cake\nDirections\nMix it.\n2 cups flour", "Cake", ["2 cups flour"], ["Mix it."], ["2 cups flour"], ["Mix it."]),
+        Verify("Tots\nZucchini sweating: 30 minutes\nIngredients:\nChow Mein Sauce:\n1 tbsp soy sauce\nZucchini:\n1 lb zucchini\nInstructions:\nSauce:\nMix the sauce.", "Tots", ["Chow Mein Sauce:", "1 tbsp soy sauce", "Zucchini", "1 lb zucchini"], ["Sauce:", "Mix the sauce."], ["Chow Mein Sauce:", "1 tbsp soy sauce", "Zucchini:", "1 lb zucchini"], ["Mix the sauce."]),
     ]
 
     private static let jsonLd: [(String, [String], Recipe?)] = [

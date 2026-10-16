@@ -43,12 +43,15 @@ enum PageRecipeCheck {
         // The first card with the most, as Kotlin's maxByOrNull.
         var recipe = 0
         for c in counts.indices where counts[c] > counts[recipe] { recipe = c }
-        let keptIngredients = foundIngredients.compactMap { found in found.first { card[$0.line] == recipe && !method[$0.line] } }
+        // Where a pick is found more than once, a whole line wins ("Zucchini" is the "Zucchini:"
+        // heading, not the start of "Zucchini sweating: 30 minutes"), else the first (#271).
+        func first(_ found: [Span], _ ok: (Span) -> Bool) -> Span? { found.first { ok($0) && $0.wholeLine } ?? found.first(where: ok) }
+        let keptIngredients = foundIngredients.compactMap { found in first(found) { card[$0.line] == recipe && !method[$0.line] } }
         // A group heading only directly above an ingredient line.
         let ingredients = keptIngredients.indices.filter { i in
             !keptIngredients[i].heading || (i + 1 < keptIngredients.count && !keptIngredients[i + 1].heading)
         }.map { keptIngredients[$0].text }
-        let steps = foundSteps.compactMap { found in found.first { card[$0.line] == recipe } }.filter { !$0.heading }.map(\.text)
+        let steps = foundSteps.compactMap { found in first(found) { card[$0.line] == recipe } }.filter { !$0.heading }.map(\.text)
         if ingredients.isEmpty && steps.isEmpty { return nil }
         func other(_ s: String?) -> String? { s.flatMap { find(folded, $0, .other) } }
         return PageSelection(
@@ -64,9 +67,9 @@ enum PageRecipeCheck {
         spans(page, picked, kind).first?.text
     }
 
-    /// Where `find` finds a pick: the page's own text, the line it starts on, and whether it is
-    /// that whole line and the line ends in a colon (a heading, #271).
-    private struct Span { let text: String; let line: Int; var heading = false }
+    /// Where `find` finds a pick: the page's own text, the line it starts on, whether it is that
+    /// whole line, and whether that line ends in a colon (a heading, #271).
+    private struct Span { let text: String; let line: Int; var wholeLine = false; var heading = false }
 
     /// Every place `picked` is on `page` as a whole span of this `kind`, in page order.
     private static func spans(_ page: Folded, _ picked: String, _ kind: Kind) -> [Span] {
@@ -86,7 +89,8 @@ enum PageRecipeCheck {
                 let startsLine = kind == .ingredient || at == 0 || page.lineBreak[at - 1]
                 let heading = (kind == .ingredient || kind == .step) && startsLine && (colonAfter || colonIn)
                 let to = kind == .ingredient && colonAfter ? end + 1 : end
-                found.append(Span(text: page.original(at, to), line: page.lines[at], heading: heading))
+                let wholeLine = startsLine && (colonAfter || end == text.count || page.lineBreak[end])
+                found.append(Span(text: page.original(at, to), line: page.lines[at], wholeLine: wholeLine, heading: heading))
             }
             at += 1
         }
