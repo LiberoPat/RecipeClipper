@@ -63,11 +63,10 @@ extension WalkthroughUITests {
             pause(0.6)
         }
         pause()
+        // No waits between them: each must land while the snackbar still shows (RecipesUITests).
         for title in ["Banana Bread", "Beef Stir-Fry", "Buttermilk Pancakes"] {
-            require(row(title), title).swipeLeft()
-            let delete = app.buttons["Delete"]
-            if delete.waitForExistence(timeout: 2) { delete.tap() }
-            pause(0.8)
+            row(title).swipeLeft()
+            app.buttons["Delete"].tap()
         }
         require(text("3 recipes deleted"), "the one snackbar")
         pause(2)

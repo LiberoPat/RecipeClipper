@@ -485,9 +485,22 @@ extension WalkthroughUITests {
                 "Use \(fraction) in", lookAlike
             )).firstMatch
             guard chip.waitForExistence(timeout: 1) else { continue }
-            scrollTo(chip, "the \(fraction) chip")
+            // Short drags either way until the chip sits clear of the bars.
+            for _ in 0..<6 {
+                let frame = chip.frame
+                if frame.minY < 140 {
+                    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                        .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)))
+                } else if frame.maxY > app.frame.maxY - 140 {
+                    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                        .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+                } else {
+                    break
+                }
+                pause(0.6)
+            }
             pause(1.2)
-            chip.tap()
+            chip.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
             pause(2.5)
         }
         require(app.buttons["edit.save"], "Save").tap()
