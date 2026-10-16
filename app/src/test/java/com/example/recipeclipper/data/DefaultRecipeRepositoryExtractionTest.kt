@@ -68,7 +68,7 @@ class DefaultRecipeRepositoryExtractionTest {
         assertEquals("en-us", recipe.language)
         assertEquals(ContentOrigin.EXTRACTED, recipe.origin)
         assertEquals(listOf("EXTRACTED"), dao.rows.values.map { it.contentOrigin })
-        assertTrue(model.asked.single().contains("Ingredients\n3 very ripe bananas, mashed"))
+        assertTrue(model.asked.single().contains("Ingredients:\n3 very ripe bananas, mashed"))
     }
 
     @Test fun `lines the model made up are dropped, the rest kept`() = runTest {
