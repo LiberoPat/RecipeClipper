@@ -2639,10 +2639,14 @@ ones).
   The title is the first `<h1>`, else `og:title`, else `<title>`; the photo is `og:image`. Two
   marks (#271): a list item of up to 600 characters is one line even with a `<div>` or `<p>`
   inside it (BBC Good Food writes `100g <a>butter</a><div> softened</div>`, which had become
-  "100g butter" and "softened"), though a list nested in it still breaks; and a section heading
-  (`<h2>`–`<h6>`) ending in a letter, digit or ")" gets a colon, the form the parsers already
-  write a group heading in ("For the filling:"), so the model sees it as a heading and one it
-  picks shows as one.
+  "100g butter" and "softened"), though a list nested in it still breaks; and the section
+  headings' lines (`<h2>`–`<h6>`) are kept apart (`PageText.headings`). The model is given the
+  window as written; `RecipeTextWindow.marked` adds a colon to each heading (ending in a letter,
+  digit or ")") only in the text `PageRecipeCheck` reads, the form the parsers write a group
+  heading in ("For the filling:"). Putting the colon in the model's window was tried first: on
+  RecipeTin Eats' zucchini tots the 3B stand-in then copied ingredient names only or merged
+  "Zucchini:" into the next line (0, 9, 0 and 0 gold lines found over four runs, 2 unreadable
+  replies, against 11, 4 and 16 without it).
 - **The window** (`RecipeTextWindow`, pure, both platforms): the ingredients heading
   (`headings.json`, every shipped language at once) followed, before the next heading, by the
   most ingredient-looking lines (an amount first, or a short line holding a number), with a
@@ -2678,8 +2682,8 @@ ones).
   fixture page in that shape (`shared/fixtures/pages/blog-two-recipe-cards.html`), tested from
   HTML to kept lines on both platforms and read by the harness.
 - **Headings and the method's lists** (#271, pinned by the corpus's `Verify` rows): a pick that
-  is a whole line ending in a colon on the page (a heading, as the page text writes them) is a
-  group heading when picked as an ingredient, shown with its colon (`IngredientHeading`) and
+  is a whole line ending in a colon in the text it is checked against (a heading, as `marked`
+  writes them) is a group heading when picked as an ingredient, shown with its colon (`IngredientHeading`) and
   kept only directly above an ingredient line, so "Method:", "step 1:" or a trailing "Notes:"
   go; picked as a step, it is dropped. An ingredient found only below its card's steps heading
   (after the card's ingredients heading) is dropped: Great British Chefs repeats under each step
@@ -2693,6 +2697,10 @@ ones).
   The headings, step labels and nutrition it was meant for went with the fixes above, and BBC's
   app promo and "Ad" lines stopped being picked once the window started at the ingredients, so
   it wasn't added.
+- **Measured** (#271, `docs/eval/llm-vs-regex.md` section 2c, the 3B stand-in, two runs each
+  way on 24 pages): wrong ingredient lines kept 9 and 33 before, 0 and 0 after; wrong steps 8
+  and 15 before, 8 and 2 after; gold ingredient lines found within the run-to-run noise (on the
+  pages every run answered: 141 and 135 before, 139 and 149 after).
 - **Copying, not line numbers** (#128, measured in `docs/eval/llm-vs-regex.md` section 2b):
   asking the model for runs of numbered lines (`{"first": 12, "last": 25}`) instead of copying
   them out keeps the reply short however long the recipe, but on the harness's 3B stand-in it
