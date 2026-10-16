@@ -188,6 +188,16 @@ enum PagesTask {
                     log.append("\(page.url)\tkept \(kept.ingredients.count)/\(picked.ingredients.count) ing (\(ri) right; \(ci) of \(page.gold.ingredients.count) gold found), "
                         + "\(kept.steps.count)/\(picked.steps.count) steps (\(rs) right; \(cs) of \(page.gold.instructions.count) gold found)")
                     for line in headings { log.append("\t  heading shown: \(line)") }
+                    // Why a picked ingredient line isn't shown (#271): not on the page, or on it but
+                    // dropped by the one-card, method or heading rules.
+                    for line in picked.ingredients {
+                        guard let found = PageRecipeCheck.find(window, line, kind: .ingredient) else {
+                            log.append("\t  picked, not on the page: \(line)"); continue
+                        }
+                        if !kept.ingredients.contains(found) && !kept.ingredients.contains(found + ":") {
+                            log.append("\t  picked, dropped by a rule: \(line)")
+                        }
+                    }
                     for line in lines where !EvalPage.matches(line, page.gold.ingredients) { log.append("\t  not gold ingredient: \(line)") }
                     for line in kept.steps where !EvalPage.matches(line, page.gold.instructions, step: true) { log.append("\t  not gold step: \(line.prefix(120))") }
                 }
