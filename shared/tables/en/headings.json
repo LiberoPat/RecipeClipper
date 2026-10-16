@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "language": "en",
-  "about": "Headings that open a recipe's ingredients or its steps, for a page with no recipe data (#103). They only choose which part of the page's text goes to the on-device model. A line matches when it is short and starts with one of these, lowercased, as whole words.",
+  "about": "Headings that open a recipe's ingredients or its steps, for a page with no recipe data (#103). They only choose which part of the page's text goes to the on-device model. A line matches when it is short and starts with one of these, lowercased, as whole words. A nutrition heading and a nutrient line (a nutrients word, then only a number and maybe g, mg, kcal, kj, cal or %: \"kcal507\", \"Fat: 10g\") are left out of the window (#271): a nutrition box is not the recipe, and its short numeric lines read as ingredients.",
   "ingredients": [
     "ingredients"
   ],
@@ -11,5 +11,28 @@
     "method",
     "preparation",
     "steps"
+  ],
+  "nutrition": [
+    "nutrition"
+  ],
+  "nutrients": [
+    "kcal",
+    "kj",
+    "calories",
+    "cal",
+    "energy",
+    "fat",
+    "saturates",
+    "saturated fat",
+    "carbs",
+    "carbohydrates",
+    "carbohydrate",
+    "sugars",
+    "fibre",
+    "fiber",
+    "protein",
+    "salt",
+    "sodium",
+    "cholesterol"
   ]
 }

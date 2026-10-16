@@ -11,5 +11,20 @@
     "preparo",
     "preparação",
     "instruções"
+  ],
+  "nutrition": [
+    "informação nutricional",
+    "informações nutricionais",
+    "tabela nutricional"
+  ],
+  "nutrients": [
+    "kcal",
+    "kj",
+    "calorias",
+    "gorduras",
+    "carboidratos",
+    "proteínas",
+    "fibras",
+    "sódio"
   ]
 }

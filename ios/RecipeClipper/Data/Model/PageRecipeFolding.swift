@@ -48,23 +48,29 @@ extension PageRecipeCheck {
         let lines: [Int]
 
         /// Each line's card (#128): a new one starts at an ingredients heading that follows a
-        /// steps heading, so a second recipe's card further down is apart from the first.
-        func cards() -> [Int] {
+        /// steps heading, so a second recipe's card further down is apart from the first. And
+        /// whether the line is in its card's method: below a steps heading that follows the
+        /// card's ingredients heading (#271).
+        func cards() -> (cards: [Int], method: [Bool]) {
             var lineTexts: [String] = []
             var start = 0
             for i in text.indices where lineBreak[i] {
                 lineTexts.append(String(decoding: text[start..<i], as: UTF16.self)); start = i + 1
             }
             lineTexts.append(String(decoding: text[start...], as: UTF16.self))
-            var card = 0, steps = false
-            return lineTexts.map { line in
+            var card = 0, steps = false, ingredients = false
+            var cards: [Int] = [], method: [Bool] = []
+            for line in lineTexts {
                 if RecipeTextWindow.isIngredientsHeading(line) {
                     if steps { card += 1; steps = false }
+                    ingredients = true
                 } else if RecipeTextWindow.isStepsHeading(line) {
                     steps = true
                 }
-                return card
+                cards.append(card)
+                method.append(ingredients && steps)
             }
+            return (cards, method)
         }
 
         /// The source text behind folded `from` until `to`: trimmed as Kotlin trims, its runs of
@@ -93,6 +99,7 @@ extension PageRecipeCheck {
     static let hyphen: UInt16 = 0x2D
     static let dot: UInt16 = 0x2E
     static let comma: UInt16 = 0x2C
+    static let colon: UInt16 = 0x3A
     private static let javaSpace: Set<UInt16> = [0x20, 0x09, 0x0A, 0x0B, 0x0C, 0x0D]
 
     private static let punctuation: [UInt16: UInt16] = {

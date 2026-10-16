@@ -75,6 +75,55 @@ final class PageRecipeCheckTests: XCTestCase {
 
     // MARK: One recipe's lines only (#128)
 
+    // MARK: Headings and the method's ingredient lists (#271)
+
+    func testAHeadingPickedAsAnIngredientIsAGroupHeadingKeptOnlyAboveAnIngredientAndNeverAStep() throws {
+        let page = """
+        Apple Pie Bars:
+        Ingredients:
+        FOR APPLE FILLING:
+        2 cups chopped apples
+        1/4 cup sugar
+        FOR CRUST:
+        1 1/2 cups flour
+        Notes:
+        Method:
+        step 1:
+        Mix the apples and sugar.
+        step 2:
+        Press the dough into the pan.
+        """
+        let picked = PageSelection(
+            name: "Apple Pie Bars",
+            ingredients: ["FOR APPLE FILLING", "2 cups chopped apples", "1/4 cup sugar", "FOR CRUST:", "1 1/2 cups flour", "Notes", "Method", "step 1"],
+            steps: ["step 1", "Mix the apples and sugar.", "step 2", "Press the dough into the pan."]
+        )
+        let kept = try XCTUnwrap(PageRecipeCheck.verify(page, picked))
+        XCTAssertEqual(kept.name, "Apple Pie Bars")
+        XCTAssertEqual(kept.ingredients, ["FOR APPLE FILLING:", "2 cups chopped apples", "1/4 cup sugar", "FOR CRUST:", "1 1/2 cups flour"])
+        XCTAssertEqual(kept.steps, ["Mix the apples and sugar.", "Press the dough into the pan."])
+    }
+
+    func testAnIngredientFoundOnlyInTheMethodsListOfWhatAStepUsesIsDropped() throws {
+        let page = """
+        Carbonara
+        Ingredients
+        150g of Parmesan, freshly grated
+        6 egg yolks
+        Method
+        1
+        Beat the egg yolks.
+        6 egg yolks
+        75g of Parmesan
+        """
+        let picked = PageSelection(
+            name: "Carbonara", ingredients: ["150g of Parmesan, freshly grated", "6 egg yolks", "75g of Parmesan"], steps: ["Beat the egg yolks."]
+        )
+        let kept = try XCTUnwrap(PageRecipeCheck.verify(page, picked))
+        XCTAssertEqual(kept.ingredients, ["150g of Parmesan, freshly grated", "6 egg yolks"])
+        XCTAssertEqual(kept.steps, ["Beat the egg yolks."])
+    }
+
     /// Delish's card as the #105 evaluation's window read it (trimmed), then another recipe's card.
     private let delish = """
         Creamy Tuscan Chicken

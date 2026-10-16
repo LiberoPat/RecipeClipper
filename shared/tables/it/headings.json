@@ -9,5 +9,19 @@
     "preparazione",
     "procedimento",
     "istruzioni"
+  ],
+  "nutrition": [
+    "valori nutrizionali",
+    "informazioni nutrizionali"
+  ],
+  "nutrients": [
+    "kcal",
+    "kj",
+    "calorie",
+    "grassi",
+    "carboidrati",
+    "proteine",
+    "fibre",
+    "sodio"
   ]
 }

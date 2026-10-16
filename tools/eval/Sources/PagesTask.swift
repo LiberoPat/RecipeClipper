@@ -159,7 +159,7 @@ enum PagesTask {
             if case .runs = arm { checks = [true] } else { checks = [false, true] }
             for oneCard in checks {
                 var recovered = 0, nameRight = 0, modelFailed = 0
-                var rightIng = 0, wrongIng = 0, pickedIng = 0, rejectedIng = 0, coveredIng = 0
+                var rightIng = 0, wrongIng = 0, pickedIng = 0, rejectedIng = 0, coveredIng = 0, headingsShown = 0
                 var rightSteps = 0, wrongSteps = 0, pickedSteps = 0, rejectedSteps = 0, coveredSteps = 0
                 var log: [String] = []
                 for (page, window, picked) in replies {
@@ -174,15 +174,21 @@ enum PagesTask {
                     if EvalPage.fold(name) == EvalPage.fold(page.gold.name) || EvalPage.matches(name, [page.gold.name]) { nameRight += 1 }
                     rejectedIng += picked.ingredients.count - kept.ingredients.count
                     rejectedSteps += picked.steps.count - kept.steps.count
-                    let ri = kept.ingredients.filter { EvalPage.matches($0, page.gold.ingredients) }.count
+                    // A group heading (#271: "For the filling:") shows as a subheading, not an ingredient
+                    // line, so it is counted apart, neither right nor wrong.
+                    let headings = kept.ingredients.filter { IngredientHeading.isHeading($0) }
+                    let lines = kept.ingredients.filter { !IngredientHeading.isHeading($0) }
+                    headingsShown += headings.count
+                    let ri = lines.filter { EvalPage.matches($0, page.gold.ingredients) }.count
                     let rs = kept.steps.filter { EvalPage.matches($0, page.gold.instructions, step: true) }.count
                     let ci = page.gold.ingredients.filter { EvalPage.matches($0, kept.ingredients) }.count
                     let cs = page.gold.instructions.filter { EvalPage.matches($0, kept.steps, step: true) }.count
-                    rightIng += ri; wrongIng += kept.ingredients.count - ri; coveredIng += ci
+                    rightIng += ri; wrongIng += lines.count - ri; coveredIng += ci
                     rightSteps += rs; wrongSteps += kept.steps.count - rs; coveredSteps += cs
                     log.append("\(page.url)\tkept \(kept.ingredients.count)/\(picked.ingredients.count) ing (\(ri) right; \(ci) of \(page.gold.ingredients.count) gold found), "
                         + "\(kept.steps.count)/\(picked.steps.count) steps (\(rs) right; \(cs) of \(page.gold.instructions.count) gold found)")
-                    for line in kept.ingredients where !EvalPage.matches(line, page.gold.ingredients) { log.append("\t  not gold ingredient: \(line)") }
+                    for line in headings { log.append("\t  heading shown: \(line)") }
+                    for line in lines where !EvalPage.matches(line, page.gold.ingredients) { log.append("\t  not gold ingredient: \(line)") }
                     for line in kept.steps where !EvalPage.matches(line, page.gold.instructions, step: true) { log.append("\t  not gold step: \(line.prefix(120))") }
                 }
                 let suffix = checks.count == 1 ? "" : oneCard ? ", one-card rule (#128)" : ", line by line (main)"
@@ -190,7 +196,7 @@ enum PagesTask {
                 try? log.joined(separator: "\n").write(toFile: "results/\(file).tsv", atomically: true, encoding: .utf8)
                 out += "| \(arm.label)\(suffix) | \(recovered) | \(nameRight) | \(coveredIng) / \(goldIng) | \(rightIng) / \(wrongIng) | \(coveredSteps) / \(goldSteps) | \(rightSteps) / \(wrongSteps) | \(noWindow) | \(median) |\n"
                 notes += "\n\(arm.label)\(suffix): of \(pickedIng) ingredient and \(pickedSteps) step lines picked, the check dropped "
-                    + "\(rejectedIng) and \(rejectedSteps) (pages it rejected whole not counted); \(modelFailed) unreadable replies.\n"
+                    + "\(rejectedIng) and \(rejectedSteps) (pages it rejected whole not counted); \(modelFailed) unreadable replies; \(headingsShown) group headings shown (not counted as ingredient lines).\n"
             }
         }
         return out + notes

@@ -76,6 +76,55 @@ class PageRecipeCheckTest {
         assertNull(PageRecipeCheck.verify(page, picked.copy(ingredients = listOf("2 eggs"))))
     }
 
+    // --- Headings and the method's ingredient lists (#271) ---
+
+    @Test fun `a heading picked as an ingredient is a group heading, kept only above an ingredient, and never a step`() {
+        val page = """
+        Apple Pie Bars:
+        Ingredients:
+        FOR APPLE FILLING:
+        2 cups chopped apples
+        1/4 cup sugar
+        FOR CRUST:
+        1 1/2 cups flour
+        Notes:
+        Method:
+        step 1:
+        Mix the apples and sugar.
+        step 2:
+        Press the dough into the pan.
+        """.trimIndent()
+        val picked = PageSelection(
+            "Apple Pie Bars",
+            listOf("FOR APPLE FILLING", "2 cups chopped apples", "1/4 cup sugar", "FOR CRUST:", "1 1/2 cups flour", "Notes", "Method", "step 1"),
+            listOf("step 1", "Mix the apples and sugar.", "step 2", "Press the dough into the pan.")
+        )
+        val kept = PageRecipeCheck.verify(page, picked)!!
+        assertEquals("Apple Pie Bars", kept.name)
+        assertEquals(listOf("FOR APPLE FILLING:", "2 cups chopped apples", "1/4 cup sugar", "FOR CRUST:", "1 1/2 cups flour"), kept.ingredients)
+        assertEquals(listOf("Mix the apples and sugar.", "Press the dough into the pan."), kept.steps)
+    }
+
+    @Test fun `an ingredient found only in the method's list of what a step uses is dropped`() {
+        val page = """
+        Carbonara
+        Ingredients
+        150g of Parmesan, freshly grated
+        6 egg yolks
+        Method
+        1
+        Beat the egg yolks.
+        6 egg yolks
+        75g of Parmesan
+        """.trimIndent()
+        val picked = PageSelection(
+            "Carbonara", listOf("150g of Parmesan, freshly grated", "6 egg yolks", "75g of Parmesan"), listOf("Beat the egg yolks.")
+        )
+        val kept = PageRecipeCheck.verify(page, picked)!!
+        assertEquals(listOf("150g of Parmesan, freshly grated", "6 egg yolks"), kept.ingredients)
+        assertEquals(listOf("Beat the egg yolks."), kept.steps)
+    }
+
     // --- One recipe's lines only (#128) ---
 
     /** Delish's card as the #105 evaluation's window read it (trimmed), then another recipe's card. */
