@@ -57,11 +57,15 @@ enum PagesTask {
 
     enum Arm {
         case copy(replyTokens: Int)
+        /// #273: the apps' copy arm, with a reply `RunawayReply` flags or that doesn't parse asked
+        /// once more (`PageReplyRetry`: the reminder, a 2,048-token cap).
+        case copyRetry
         case runs
 
         var label: String {
             switch self {
             case .copy(let tokens): return "#103: window + LLM copies the lines (\(tokens) reply tokens) + PageRecipeCheck"
+            case .copyRetry: return "#273: as #103 at \(Llm.appReplyTokens), an unreadable reply retried once"
             case .runs: return "#128: window numbered + LLM names line runs (\(Llm.appReplyTokens) reply tokens) + PageRecipeCheck (one card)"
             }
         }
@@ -69,14 +73,27 @@ enum PagesTask {
         var log: String {
             switch self {
             case .copy(let tokens): return "pages-copy-\(tokens)"
+            case .copyRetry: return "pages-copy-\(Llm.appReplyTokens)-retry"
             case .runs: return "pages-runs"
             }
         }
     }
 
+    /// The copy arm's reply as a pick, or nil when it doesn't read as one.
+    static func selection(_ text: String?) -> PageSelection? {
+        guard let o = Llm.object(text) else { return nil }
+        return PageSelection(
+            name: o["name"] as? String, ingredients: o["ingredients"] as? [String] ?? [], steps: o["steps"] as? [String] ?? [],
+            yield: o["yield"] as? String, prepTime: o["prepTime"] as? String, cookTime: o["cookTime"] as? String,
+            totalTime: o["totalTime"] as? String)
+    }
+
+    /// The retry arm's tally (#273), per run: replies retried, and how many of those the retry read.
+    static var retried: [String] = []
+
     /// `EVAL_ARMS=pages-copy-4096,…` (each arm's `log` name) runs only those arms.
     static let arms: [Arm] = {
-        let all: [Arm] = [.copy(replyTokens: 1024), .copy(replyTokens: Llm.appReplyTokens), .runs]
+        let all: [Arm] = [.copy(replyTokens: 1024), .copy(replyTokens: Llm.appReplyTokens), .copyRetry, .runs]
         guard let only = ProcessInfo.processInfo.environment["EVAL_ARMS"]?.split(separator: ",").map(String.init) else { return all }
         return all.filter { only.contains($0.log) }
     }()
@@ -86,12 +103,26 @@ enum PagesTask {
         switch arm {
         case .copy(let tokens):
             let reply = Llm.chat(system: copyInstructions, user: window, json: copySchema, maxTokens: tokens)
-            guard let o = Llm.object(reply.text) else { keepUnreadable(arm, reply.text); return (nil, reply.seconds) }
-            let picked = PageSelection(
-                name: o["name"] as? String, ingredients: o["ingredients"] as? [String] ?? [], steps: o["steps"] as? [String] ?? [],
-                yield: o["yield"] as? String, prepTime: o["prepTime"] as? String, cookTime: o["cookTime"] as? String,
-                totalTime: o["totalTime"] as? String)
+            guard let picked = selection(reply.text) else { keepUnreadable(arm, reply.text); return (nil, reply.seconds) }
             return (picked, reply.seconds)
+        case .copyRetry:
+            // As the apps decide (#273): no reply at all is a failure, never retried; a runaway
+            // or a reply that doesn't parse is unreadable, asked once more. Ollama doesn't stream
+            // here, so a runaway costs its full reply rather than stopping early as on a phone.
+            var seconds = 0.0
+            let picked = PageReplyRetry.pick { (retry: Bool) -> PageReply in
+                let system = retry ? copyInstructions + " " + PageReplyRetry.reminder : copyInstructions
+                let reply = Llm.chat(
+                    system: system, user: window, json: copySchema,
+                    maxTokens: retry ? PageReplyRetry.retryReplyTokens : Llm.appReplyTokens)
+                seconds += reply.seconds
+                guard let text = reply.text, !text.isEmpty else { return .failed }
+                let read = RunawayReply.isRunaway(text) ? nil : selection(text)
+                if retry { retried.append(read == nil ? "unreadable again" : "read") }
+                guard let read else { keepUnreadable(arm, (retry ? "(retry) " : "") + text); return .unreadable }
+                return .picked(read)
+            }
+            return (picked, seconds)
         case .runs:
             let reply = Llm.chat(system: runInstructions, user: PageLines.numbered(window), json: runSchema)
             guard let o = Llm.object(reply.text) else { keepUnreadable(arm, reply.text); return (nil, reply.seconds) }
@@ -210,6 +241,9 @@ enum PagesTask {
                 out += "| \(arm.label)\(suffix) | \(recovered) | \(nameRight) | \(coveredIng) / \(goldIng) | \(rightIng) / \(wrongIng) | \(coveredSteps) / \(goldSteps) | \(rightSteps) / \(wrongSteps) | \(noWindow) | \(median) |\n"
                 notes += "\n\(arm.label)\(suffix): of \(pickedIng) ingredient and \(pickedSteps) step lines picked, the check dropped "
                     + "\(rejectedIng) and \(rejectedSteps) (pages it rejected whole not counted); \(modelFailed) unreadable replies; \(headingsShown) group headings shown (not counted as ingredient lines).\n"
+                if case .copyRetry = arm, !oneCard {
+                    notes += "\(arm.label): \(retried.count) replies retried, \(retried.filter { $0 == "read" }.count) read on the retry.\n"
+                }
             }
         }
         return out + notes
