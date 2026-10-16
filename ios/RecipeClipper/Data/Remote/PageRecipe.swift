@@ -19,7 +19,7 @@ enum PageRecipe {
     /// only what `PageRecipeCheck` finds there; nil if that leaves no recipe. Marked `.extracted`,
     /// with the page's photo and times read as the parsers read them.
     static func recipe(window: String, picked: PageSelection, page: PageText, url: String) -> Recipe? {
-        guard let kept = PageRecipeCheck.verify(window, picked), let name = kept.name else { return nil }
+        guard let kept = PageRecipeCheck.verify(RecipeTextWindow.marked(window, page), picked), let name = kept.name else { return nil }
         let language = LanguageWords.resolve(declared: nil, page: page.language) {
             LanguageWords.detectionText(name: name, ingredients: kept.ingredients)
         }

@@ -13,7 +13,9 @@ data class PageText(
     /** `<html lang>`, as declared ("en-US"), or null. */
     val language: String? = null,
     /** `og:image` as an absolute link, or null. */
-    val image: String? = null
+    val image: String? = null,
+    /** The lines that are section headings (`<h2>`–`<h6>`), as written (#271): see [RecipeTextWindow.marked]. */
+    val headings: Set<String> = emptySet()
 )
 
 /**

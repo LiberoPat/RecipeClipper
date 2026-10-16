@@ -22,7 +22,7 @@ import java.util.Locale
  * card holding the most of them are kept (a tie goes to the earlier card).
  *
  * Headings and the method's ingredient lists (#271): a picked line that is a whole heading on the
- * page (it ends in a colon there, as `PageTextReader` writes `<h2>`–`<h6>`) is a group heading
+ * page (it ends in a colon there, as [RecipeTextWindow.marked] writes `<h2>`–`<h6>`) is a group heading
  * when picked as an ingredient, kept with its colon and only directly above an ingredient line,
  * and is never a step ("step 1", "Method"). An ingredient found only below the card's steps
  * heading (a "used in this step" list) is dropped.

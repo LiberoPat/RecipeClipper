@@ -12,6 +12,8 @@ struct PageText: Equatable {
     var language: String? = nil
     /// `og:image` as an absolute link, or nil.
     var image: String? = nil
+    /// The lines that are section headings (`<h2>`–`<h6>`), as written (#271): see `RecipeTextWindow.marked`.
+    var headings: Set<String> = []
 }
 
 /// What the model picked out of a page's text, field by field, before `PageRecipeCheck` keeps

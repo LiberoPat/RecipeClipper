@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.RecipeTextWindow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -27,7 +28,7 @@ class PageTextReaderTest {
         assertEquals("de", page.language)
     }
 
-    @Test fun `a short list item is one line, and a section heading ends in a colon (#271)`() {
+    @Test fun `a short list item is one line, and section headings are kept apart (#271)`() {
         val long = "Beat the butter until smooth. ".repeat(12).trim()
         val page = PageTextReader.read(
             """<h1>Victoria sandwich</h1><h3>For the filling</h3>
@@ -37,10 +38,16 @@ class PageTextReaderTest {
             "https://example.com/v"
         )
         assertEquals(
-            listOf("Victoria sandwich", "For the filling:", "100g butter softened", "Beat the butter.", "sub", long, long, "Method:", "step 1:", "Questions?", "Chow Mein Sauce:"),
+            listOf("Victoria sandwich", "For the filling", "100g butter softened", "Beat the butter.", "sub", long, long, "Method", "step 1", "Questions?", "Chow Mein Sauce:"),
             page.lines
         )
         assertEquals("Victoria sandwich", page.title)
+        assertEquals(setOf("For the filling", "Method", "step 1", "Questions?", "Chow Mein Sauce:"), page.headings)
+        // The check reads a heading with a colon; the model is given the window as written.
+        assertEquals(
+            "For the filling:\n100g butter softened\nMethod:\nstep 1:\nQuestions?\nChow Mein Sauce:",
+            RecipeTextWindow.marked("For the filling\n100g butter softened\nMethod\nstep 1\nQuestions?\nChow Mein Sauce:", page)
+        )
     }
 
     @Test fun `the title falls back to og title then the title element, and og image is absolute`() {

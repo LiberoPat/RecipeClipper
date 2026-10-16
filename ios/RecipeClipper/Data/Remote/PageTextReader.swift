@@ -6,8 +6,9 @@ import Foundation
 ///
 /// Two marks for the on-device model and `PageRecipeCheck` (#271): a short list item is one line
 /// even when a `<div>` or `<p>` sits inside it (a card's note: "100g butter" and "softened" are
-/// one ingredient), and a section heading (`<h2>`–`<h6>`) ends in a colon, as the parsers write a
-/// group heading ("For the filling:"), so a heading the model picks shows as one.
+/// one ingredient), and each section heading's line (`<h2>`–`<h6>`) is kept in `PageText.headings`,
+/// so a heading the model picks can show as one. The text itself is left as written: marking
+/// headings in the model's window made the 3B stand-in copy lines worse.
 enum PageTextReader {
 
     /// Elements that end one line and start the next.
@@ -29,7 +30,7 @@ enum PageTextReader {
     /// A list item longer than this is read block by block, as before (#271).
     private static let itemMax = 600
 
-    /// Section headings, whose line ends in a colon (#271); `<h1>` is the page's title.
+    /// Section headings, kept in `PageText.headings` (#271); `<h1>` is the page's title.
     private static let headings: Set<String> = ["h2", "h3", "h4", "h5", "h6"]
 
     /// How deep the walk goes; deeper content is read as one line.
@@ -38,10 +39,14 @@ enum PageTextReader {
     static func read(html: String, url: String) -> PageText {
         let tree = HtmlTree(html)
         var lines: [String] = []
+        var headingLines = Set<String>()
         var run = ""
         func flush(heading: Bool = false) {
             let line = JsonLdRecipeParser.stripHtml(run)
-            if !line.isEmpty { lines.append(heading && endsInWord(line) ? line + ":" : line) }
+            if !line.isEmpty {
+                lines.append(line)
+                if heading { headingLines.insert(line) }
+            }
             run = ""
         }
         func walk(_ index: Int, depth: Int, inItem: Bool) {
@@ -86,13 +91,8 @@ enum PageTextReader {
             title: h1 ?? meta("og:title") ?? titleElement,
             lines: lines,
             language: JsonLdRecipeParser.pageLanguage(html: html),
-            image: image
+            image: image,
+            headings: headingLines
         )
-    }
-
-    /// A heading's text ends in a letter, a digit or a closing bracket, not already in ":" or "?".
-    private static func endsInWord(_ line: String) -> Bool {
-        guard let last = line.utf16.last else { return false }
-        return PageRecipeCheck.isLetterOrDigit(last) || last == 0x29
     }
 }

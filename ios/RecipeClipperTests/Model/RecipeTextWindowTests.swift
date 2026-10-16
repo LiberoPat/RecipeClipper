@@ -21,7 +21,7 @@ final class RecipeTextWindowTests: XCTestCase {
         XCTAssertEqual(page.language, "de")
     }
 
-    func testAShortListItemIsOneLineAndASectionHeadingEndsInAColon() {
+    func testAShortListItemIsOneLineAndSectionHeadingsAreKeptApart() {
         let long = String(repeating: "Beat the butter until smooth. ", count: 12).trimmingCharacters(in: .whitespaces)
         let page = PageTextReader.read(html: """
             <h1>Victoria sandwich</h1><h3>For the filling</h3>
@@ -29,8 +29,14 @@ final class RecipeTextWindowTests: XCTestCase {
             <li><p>\(long)</p><p>\(long)</p></li></ul>
             <h2>Method</h2><h3>step 1</h3><h2>Questions?</h2><h4>Chow Mein Sauce:</h4>
             """, url: "https://example.com/v")
-        XCTAssertEqual(page.lines, ["Victoria sandwich", "For the filling:", "100g butter softened", "Beat the butter.", "sub", long, long, "Method:", "step 1:", "Questions?", "Chow Mein Sauce:"])
+        XCTAssertEqual(page.lines, ["Victoria sandwich", "For the filling", "100g butter softened", "Beat the butter.", "sub", long, long, "Method", "step 1", "Questions?", "Chow Mein Sauce:"])
         XCTAssertEqual(page.title, "Victoria sandwich")
+        XCTAssertEqual(page.headings, ["For the filling", "Method", "step 1", "Questions?", "Chow Mein Sauce:"])
+        // The check reads a heading with a colon; the model is given the window as written.
+        XCTAssertEqual(
+            RecipeTextWindow.marked("For the filling\nMethod\nstep 1\nQuestions?\nChow Mein Sauce:\n100g butter softened", page),
+            "For the filling:\nMethod:\nstep 1:\nQuestions?\nChow Mein Sauce:\n100g butter softened"
+        )
     }
 
     func testTheTitleFallsBackToOgTitleThenTheTitleElementAndOgImageIsAbsolute() {
@@ -120,7 +126,7 @@ final class RecipeTextWindowTests: XCTestCase {
         XCTAssertTrue(lines.contains("Grandma’s Banana Bread"))
         XCTAssertLessThanOrEqual(window.utf16.count, 1_000)
         XCTAssertTrue(lines.contains("Servings: 10 slices"))
-        XCTAssertTrue(lines.contains("Ingredients:") && lines.contains("1 ½ cups all-purpose flour"))
+        XCTAssertTrue(lines.contains("Ingredients") && lines.contains("1 ½ cups all-purpose flour"))
         XCTAssertFalse(lines.contains { $0.hasPrefix("There is something") })
         XCTAssertTrue(try XCTUnwrap(RecipeTextWindow.window(page, maxChars: 4_000)).components(separatedBy: "\n").contains("Mix in the flour."))
     }

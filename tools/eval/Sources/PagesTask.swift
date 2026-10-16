@@ -129,12 +129,14 @@ enum PagesTask {
     static func run(_ dir: String, llm: Bool) -> String {
         let pages = EvalPage.load(dir)
         var windows: [(page: EvalPage, text: PageText, window: String)] = []
+        var marked: [String: String] = [:] // the window as the check reads it (#271), by page
         var noWindow = 0
         let only = ProcessInfo.processInfo.environment["EVAL_ONLY"]?.split(separator: ",").map(String.init)
         for page in pages where only.map({ $0.contains { page.url.contains($0) } }) ?? true {
             let text = PageTextReader.read(html: page.html, url: page.url)
             guard let window = RecipeTextWindow.window(text, maxChars: windowChars) else { noWindow += 1; continue }
             windows.append((page, text, window))
+            marked[page.url] = RecipeTextWindow.marked(window, text)
         }
         let goldIng = pages.reduce(0) { $0 + $1.gold.ingredients.count }
         let goldSteps = pages.reduce(0) { $0 + $1.gold.instructions.count }
@@ -162,7 +164,8 @@ enum PagesTask {
                 var rightIng = 0, wrongIng = 0, pickedIng = 0, rejectedIng = 0, coveredIng = 0, headingsShown = 0
                 var rightSteps = 0, wrongSteps = 0, pickedSteps = 0, rejectedSteps = 0, coveredSteps = 0
                 var log: [String] = []
-                for (page, window, picked) in replies {
+                for (page, modelWindow, picked) in replies {
+                    let window = marked[page.url] ?? modelWindow
                     guard let picked else { modelFailed += 1; log.append("\(page.url)\tunreadable reply"); continue }
                     pickedIng += picked.ingredients.count
                     pickedSteps += picked.steps.count

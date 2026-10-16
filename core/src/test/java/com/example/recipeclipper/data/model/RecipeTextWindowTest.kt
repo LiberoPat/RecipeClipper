@@ -67,7 +67,7 @@ class RecipeTextWindowTest {
         assertTrue("Grandma’s Banana Bread" in lines)
         assertTrue(window.length <= 1_000)
         assertTrue("Servings: 10 slices" in lines)
-        assertTrue("Ingredients:" in lines && "1 ½ cups all-purpose flour" in lines)
+        assertTrue("Ingredients" in lines && "1 ½ cups all-purpose flour" in lines)
         assertFalse(lines.any { it.startsWith("There is something") })
         val wide = RecipeTextWindow.window(page, 4_000)!!
         assertTrue("Mix in the flour." in wide.lines())

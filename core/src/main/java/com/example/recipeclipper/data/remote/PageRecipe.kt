@@ -7,6 +7,7 @@ import com.example.recipeclipper.data.model.PageRecipeCheck
 import com.example.recipeclipper.data.model.PageSelection
 import com.example.recipeclipper.data.model.PageText
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.model.RecipeTextWindow
 
 /**
  * The pure ends of reading a recipe out of a page's text (#103); the model call sits between
@@ -28,7 +29,7 @@ object PageRecipe {
      * [ContentOrigin.EXTRACTED], with the page's photo and times read as the parsers read them.
      */
     fun recipe(window: String, picked: PageSelection, page: PageText, url: String): Recipe? {
-        val kept = PageRecipeCheck.verify(window, picked) ?: return null
+        val kept = PageRecipeCheck.verify(RecipeTextWindow.marked(window, page), picked) ?: return null
         val name = kept.name ?: return null
         val language = LanguageWords.resolve(null, page.language) {
             LanguageWords.detectionText(name, kept.ingredients)

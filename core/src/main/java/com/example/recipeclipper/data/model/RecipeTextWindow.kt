@@ -106,6 +106,17 @@ object RecipeTextWindow {
     }
 
     /**
+     * [window] as [PageRecipeCheck] reads it (#271): each of [page]'s section headings ending in a
+     * letter, a digit or ")" gets a colon, the form a group heading is written in ("For the
+     * filling:"), so a heading the model picks shows as one. The model is given [window] as is.
+     */
+    fun marked(window: String, page: PageText): String =
+        if (page.headings.isEmpty()) window
+        else window.split("\n").joinToString("\n") { line ->
+            if (line in page.headings && line.last().let { it.isLetterOrDigit() || it == ')' }) "$line:" else line
+        }
+
+    /**
      * A nutrition box's line (#271): its heading ("Nutrition: per serving", "Nährwerte"), or a
      * nutrient and its figure alone ("kcal507", "Fat: 10g", "Protein 5 g").
      */

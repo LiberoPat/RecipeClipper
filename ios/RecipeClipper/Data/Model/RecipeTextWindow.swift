@@ -32,6 +32,18 @@ enum RecipeTextWindow {
         return (all.flatMap { $0.strings("headings", "nutrition") }, try! NSRegularExpression(pattern: pattern))
     }()
 
+    /// `window` as `PageRecipeCheck` reads it (#271): each of `page`'s section headings ending in a
+    /// letter, a digit or ")" gets a colon, the form a group heading is written in ("For the
+    /// filling:"), so a heading the model picks shows as one. The model is given `window` as is.
+    static func marked(_ window: String, _ page: PageText) -> String {
+        if page.headings.isEmpty { return window }
+        return window.components(separatedBy: "\n").map { line in
+            guard page.headings.contains(line), let last = line.utf16.last,
+                  PageRecipeCheck.isLetterOrDigit(last) || last == 0x29 else { return line }
+            return line + ":"
+        }.joined(separator: "\n")
+    }
+
     /// A nutrition box's line (#271): its heading ("Nutrition: per serving", "Nährwerte"), or a
     /// nutrient and its figure alone ("kcal507", "Fat: 10g", "Protein 5 g").
     static func isNutrition(_ line: String) -> Bool {

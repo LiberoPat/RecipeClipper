@@ -15,8 +15,9 @@ import org.jsoup.nodes.TextNode
  *
  * Two marks for the on-device model and `PageRecipeCheck` (#271): a short list item is one line
  * even when a `<div>` or `<p>` sits inside it (a card's note: "100g butter" and "softened" are
- * one ingredient), and a section heading (`<h2>`–`<h6>`) ends in a colon, as the parsers write a
- * group heading ("For the filling:"), so a heading the model picks shows as one.
+ * one ingredient), and each section heading's line (`<h2>`–`<h6>`) is kept in [PageText.headings],
+ * so a heading the model picks can show as one. The text itself is left as written: marking
+ * headings in the model's window made the 3B stand-in copy lines worse.
  */
 internal object PageTextReader {
 
@@ -39,7 +40,7 @@ internal object PageTextReader {
     /** A list item longer than this is read block by block, as before (#271). */
     private const val ITEM_MAX = 600
 
-    /** Section headings, whose line ends in a colon (#271); `<h1>` is the page's title. */
+    /** Section headings, kept in [PageText.headings] (#271); `<h1>` is the page's title. */
     private val HEADINGS = setOf("h2", "h3", "h4", "h5", "h6")
 
     /** How deep the walk goes; deeper content is read as one line. */
@@ -49,10 +50,14 @@ internal object PageTextReader {
 
     fun read(doc: Document): PageText {
         val lines = mutableListOf<String>()
+        val headings = mutableSetOf<String>()
         val run = StringBuilder()
         fun flush(heading: Boolean = false) {
             val line = jsoupText(run)
-            if (line.isNotEmpty()) lines += if (heading && endsInWord(line)) "$line:" else line
+            if (line.isNotEmpty()) {
+                lines += line
+                if (heading) headings += line
+            }
             run.setLength(0)
         }
         fun walk(node: Node, depth: Int, inItem: Boolean) {
@@ -83,11 +88,8 @@ internal object PageTextReader {
             ?: doc.selectFirst("meta[property=og:title]")?.attr("content")?.trim()?.ifEmpty { null }
             ?: doc.title().trim().ifEmpty { null }
         val image = WebImageUrl.of(doc.selectFirst("meta[property=og:image]")?.absUrl("content"))
-        return PageText(title, lines, JsonLdRecipeParser.pageLanguage(doc), image)
+        return PageText(title, lines, JsonLdRecipeParser.pageLanguage(doc), image, headings)
     }
-
-    /** A heading's text ends in a letter, a digit or a closing bracket, not already in ":" or "?". */
-    private fun endsInWord(line: String): Boolean = line.last().let { it.isLetterOrDigit() || it == ')' }
 
     /** Decoded text as Jsoup's `text()` gives it: whitespace runs (NBSP too) as one space, no
      *  zero-width space or soft hyphen, trimmed as Java trims. */

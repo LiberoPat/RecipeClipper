@@ -67,7 +67,7 @@ final class DataExtractionTests: XCTestCase {
         XCTAssertEqual(recipe.origin, .extracted)
         let row = try await db.read { try RecipeDao(db: $0).findByUrl(self.url) }
         XCTAssertEqual(row?.contentOrigin, "EXTRACTED")
-        XCTAssertTrue(model.asked.first?.contains("Ingredients:\n3 very ripe bananas, mashed") ?? false)
+        XCTAssertTrue(model.asked.first?.contains("Ingredients\n3 very ripe bananas, mashed") ?? false)
     }
 
     func testLinesTheModelMadeUpAreDroppedTheRestKept() async throws {
