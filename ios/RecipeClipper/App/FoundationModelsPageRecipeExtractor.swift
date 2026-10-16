@@ -6,8 +6,9 @@ import FoundationModels
 /// A recipe picked from a page's text by Apple's on-device Foundation Model (#103): iOS 26 or
 /// later, Apple Intelligence on. Guided generation (`@Generable`) returns the fields typed, so no
 /// reply is parsed; `PageRecipeCheck` then keeps only what is on the page. A fresh session per
-/// page. Any failure (a guardrail, a language it won't read, a page over its context) is nil,
-/// and the page stays "no recipe found" as before.
+/// attempt. Any failure (a guardrail, a language it won't read, a page over its context) is nil,
+/// and the page stays "no recipe found" as before; a reply that runs away or can't be read is
+/// asked for once more (`PageReplyRetry`, #273).
 final class FoundationModelsPageRecipeExtractor: PageRecipeExtractor {
 
     /// The recipe languages the app has words for (shared/tables).
@@ -44,23 +45,57 @@ final class FoundationModelsPageRecipeExtractor: PageRecipeExtractor {
         #if canImport(FoundationModels)
         if #available(iOS 26, *) {
             guard SystemLanguageModel.default.isAvailable else { return nil }
-            let session = LanguageModelSession(instructions: Self.instructions)
-            do {
-                let picked = try await session.respond(
-                    to: text, generating: PickedRecipe.self, options: GenerationOptions(temperature: 0)
-                ).content
-                return PageSelection(
-                    name: picked.name.isEmpty ? nil : picked.name, ingredients: picked.ingredients,
-                    steps: picked.steps, yield: picked.yield, prepTime: picked.prepTime,
-                    cookTime: picked.cookTime, totalTime: picked.totalTime
-                )
-            } catch {
-                return nil
-            }
+            return await PageReplyRetry.pick { retry in await Self.ask(text, retry: retry) }
         }
         #endif
         return nil
     }
+
+    #if canImport(FoundationModels)
+    /// One reply, streamed so a runaway (`RunawayReply`, #273) is stopped as soon as it shows
+    /// rather than at the context's end. A reply cut off or unreadable is `.unreadable`, worth
+    /// one retry; any other error (a guardrail, rate limited, a language it won't read) is
+    /// `.failed`, never retried.
+    @available(iOS 26, *)
+    private static func ask(_ text: String, retry: Bool) async -> PageReply {
+        let session = LanguageModelSession(instructions: retry ? instructions + " " + PageReplyRetry.reminder : instructions)
+        let options = GenerationOptions(
+            temperature: 0, maximumResponseTokens: retry ? PageReplyRetry.retryReplyTokens : nil
+        )
+        do {
+            var last: PageSelection?
+            for try await snapshot in session.streamResponse(to: text, generating: PickedRecipe.self, options: options) {
+                let picked = snapshot.content
+                let selection = PageSelection(
+                    name: picked.name, ingredients: picked.ingredients ?? [], steps: picked.steps ?? [],
+                    yield: picked.yield ?? nil, prepTime: picked.prepTime ?? nil, cookTime: picked.cookTime ?? nil,
+                    totalTime: picked.totalTime ?? nil
+                )
+                if RunawayReply.isRunaway(selection) { return .unreadable }
+                last = selection
+            }
+            guard var selection = last else { return .failed }
+            if selection.name?.isEmpty == true { selection.name = nil }
+            return .picked(selection)
+        } catch {
+            return isUnreadable(error) ? .unreadable : .failed
+        }
+    }
+
+    /// A reply that ran into the context's or the reply cap's end, or that couldn't be decoded.
+    @available(iOS 26, *)
+    private static func isUnreadable(_ error: Error) -> Bool {
+        if #available(iOS 27, *) {
+            if case LanguageModelError.contextSizeExceeded = error { return true }
+            if error is GeneratedContent.ParsingError { return true }
+        }
+        guard let error = error as? LanguageModelSession.GenerationError else { return false }
+        switch error {
+        case .exceededContextWindowSize, .decodingFailure: return true
+        default: return false
+        }
+    }
+    #endif
 }
 
 #if canImport(FoundationModels)

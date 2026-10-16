@@ -120,7 +120,9 @@ object RunawayReply {
                                 'b', 'f' -> {}
                                 'u' -> {
                                     val hex = text.substring(i + 1, minOf(i + 5, text.length))
-                                    hex.takeIf { it.length == 4 }?.toIntOrNull(16)?.let { value.append(it.toChar()) }
+                                    if (hex.length == 4 && hex.all { h -> h in '0'..'9' || h in 'a'..'f' || h in 'A'..'F' }) {
+                                        value.append(hex.toInt(16).toChar())
+                                    }
                                     i += hex.length
                                 }
                                 else -> value.append(c)

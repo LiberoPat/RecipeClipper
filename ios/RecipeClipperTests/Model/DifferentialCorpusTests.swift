@@ -67,6 +67,9 @@ import XCTest
 // Whole-pick rows (#128): a page's text, a picked name, ingredients and steps, then what
 // PageRecipeCheck.verify keeps of them (one recipe's lines only; nil, nil: no recipe). Write only
 // `Verify("Soup\nIngredients\n1 cup water", "Soup", ["1 cup water"], []),`.
+// Runaway rows (#273): a model's JSON reply, perhaps cut off, then what RunawayReply.scan reads of
+// it (name, ingredients, steps, [yield, prep, cook, total]) and whether it has run away. Write only
+// `Runaway("{\"name\": \"Cake\", \"ingredients\": [\"1 egg\""),`.
 final class DifferentialCorpusTests: XCTestCase {
 
     private struct Ing {
@@ -2018,6 +2021,26 @@ final class DifferentialCorpusTests: XCTestCase {
         }
     }
 
+    private struct Runaway {
+        let reply: String; let name: String?; let ingredients: [String]; let steps: [String]
+        let short: [String?]; let runaway: Bool
+        init(_ reply: String, _ name: String?, _ ingredients: [String], _ steps: [String], _ short: [String?], _ runaway: Bool) {
+            self.reply = reply; self.name = name; self.ingredients = ingredients; self.steps = steps
+            self.short = short; self.runaway = runaway
+        }
+    }
+
+    private static let runaways: [Runaway] = [
+        Runaway("{\"name\": \"Chow Mein\", \"ingredients\": [\"1/4 cup (65 ml) water\", \"1/4 cup (65 ml) water\", \"1/4 cup (65 ml) water\", \"1/4 cup (65 ml) water\", \"1/4 cup (6", "Chow Mein", ["1/4 cup (65 ml) water", "1/4 cup (65 ml) water", "1/4 cup (65 ml) water", "1/4 cup (65 ml) water", "1/4 cup (6"], [], [nil, nil, nil, nil], true),
+        Runaway("{\"name\": \"Chow Mein\", \"ingredients\": [\"1/4 cup (65 ml) water\", \"1/4 cup (65 ml) water\", \"1/4 cup (65 ml) water\", \"1 tbsp oil\"], \"steps\": [\"Stir.\"]}", "Chow Mein", ["1/4 cup (65 ml) water", "1/4 cup (65 ml) water", "1/4 cup (65 ml) water", "1 tbsp oil"], ["Stir."], [nil, nil, nil, nil], false),
+        Runaway("{\"steps\": [\"Grate.\"], \"name\": \"Zucchini Tots\", \"prepTime\": \"30 minutes mins, 30 minutes mins, 30 minutes mins, 30 minutes mins, 30 minutes mins, 30 minutes mins, 30 minutes mins, 30", "Zucchini Tots", [], ["Grate."], [nil, "30 minutes mins, 30 minutes mins, 30 minutes mins, 30 minutes mins, 30 minutes mins, 30 minutes mins, 30 minutes mins, 30", nil, nil], true),
+        Runaway("```json\n{\"name\": \"Pie \\\"Classic\\\"\", \"yield\": \"Serves 4 to 6 as a main, or 8 as a side\", \"cookTime\": null, \"totalTime\": \"1 hour 30 minutes, plus overnight soaking\",\n\"extra\": {\"name\": \"no\", \"steps\": [\"no\"]}, \"ingredients\": [\"2 cups flour\", \"1\\u00bd cups sugar\", \"caf\\u00e9 \\\\ noir\\tx\"], \"steps\": [\"Mix.\", \"Bake\"]}\n```", "Pie \"Classic\"", ["2 cups flour", "1½ cups sugar", "café \\ noir\tx"], ["Mix.", "Bake"], ["Serves 4 to 6 as a main, or 8 as a side", nil, nil, "1 hour 30 minutes, plus overnight soaking"], false),
+        Runaway("{\"name\": \"Cake\", \"steps\": [\"Mix\\nwell.\", \"Mix\\nwell.\", \"Mix\\nwell.\", \"Mix\\nwell.\"]}", "Cake", [], ["Mix\nwell.", "Mix\nwell.", "Mix\nwell.", "Mix\nwell."], [nil, nil, nil, nil], true),
+        Runaway("{\"name\": \"Soup\", \"ingredients\": [\"1 egg\", \"salt\", \"1 egg\", \"salt\", \"1 egg\", \"salt\", \"1 egg\"], \"steps\": [\"Cook \\u12", "Soup", ["1 egg", "salt", "1 egg", "salt", "1 egg", "salt", "1 egg"], ["Cook "], [nil, nil, nil, nil], false),
+        Runaway("{}", nil, [], [], [nil, nil, nil, nil], false),
+        Runaway("", nil, [], [], [nil, nil, nil, nil], false),
+    ]
+
     private static let verifies: [Verify] = [
         Verify("Creamy Tuscan Chicken\nIngredients\n1 Tbsp. olive oil\n1/2 cup heavy cream\nDirections\nStep 1Heat the oil.\nLIKE THIS RECIPE?\nCreamy Tuscan Orzo\nIngredients\n1 cup orzo\n1/2 cup heavy cream\nDirections\nStep 1Boil the orzo.", "Creamy Tuscan Chicken", ["1 Tbsp. olive oil", "1 cup orzo", "1/2 cup heavy cream"], ["Step 1Heat the oil.", "Step 1Boil the orzo."], ["1 Tbsp. olive oil", "1/2 cup heavy cream"], ["Step 1Heat the oil."]),
         Verify("Creamy Tuscan Chicken\nIngredients\n1 Tbsp. olive oil\n1/2 cup heavy cream\nDirections\nStep 1Heat the oil.\nLIKE THIS RECIPE?\nCreamy Tuscan Orzo\nIngredients\n1 cup orzo\n1/2 cup heavy cream\nDirections\nStep 1Boil the orzo.", "Creamy Tuscan Orzo", ["1 cup orzo", "1/2 cup heavy cream", "1 Tbsp. olive oil"], ["Step 1Boil the orzo."], ["1 cup orzo", "1/2 cup heavy cream"], ["Step 1Boil the orzo."]),
@@ -2137,6 +2160,17 @@ final class DifferentialCorpusTests: XCTestCase {
             let kept = PageRecipeCheck.verify(row.page, PageSelection(name: row.name, ingredients: row.ingredients, steps: row.steps))
             XCTAssertEqual(kept?.ingredients, row.kept, row.name)
             XCTAssertEqual(kept?.steps, row.keptSteps, row.name)
+        }
+    }
+
+    func testRunawayReplyMatchesKotlin() {
+        for row in Self.runaways {
+            let scanned = RunawayReply.scan(row.reply)
+            XCTAssertEqual(scanned.name, row.name, row.reply)
+            XCTAssertEqual(scanned.ingredients, row.ingredients, row.reply)
+            XCTAssertEqual(scanned.steps, row.steps, row.reply)
+            XCTAssertEqual([scanned.yield, scanned.prepTime, scanned.cookTime, scanned.totalTime], row.short, row.reply)
+            XCTAssertEqual(RunawayReply.isRunaway(row.reply), row.runaway, row.reply)
         }
     }
 
