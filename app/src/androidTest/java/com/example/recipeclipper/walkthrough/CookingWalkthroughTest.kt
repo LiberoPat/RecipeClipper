@@ -293,8 +293,9 @@ class CookingWalkthroughTest : WalkthroughBase() {
         start(kitchen = true)
         tap("Pantry", 2500)
         val rows = pantryRows()
-        holdAndDrag(rows[0], rows[2])
-        waitFor(hasText("3 selected"))
+        // To a row further down: the selection bar takes the title's place as selecting begins.
+        holdAndDrag(rows[0], rows[3])
+        waitFor(hasTestTag("selectedCount"))
         pause(2500)
         tapTag("markRunOutSelected", 3000)
         tap("Undo", 3000)

@@ -472,12 +472,12 @@ extension WalkthroughUITests {
         pause(3)
         let name = require(app.textFields["Name"], "the name field") // none is guessed
         name.tap()
-        name.typeText("Oat Cookies")
+        name.typeText("Oat Cookies\n") // Return puts the keyboard away
         pause(1.5)
         scrollTo(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
         pause(3.5)
         // The chip for the fraction the card shows, under each flagged look-alike it can name.
-        for (fraction, lookAlike) in [("⅔", "%"), ("⅓", "½⅓"), ("⅛", "is tsp")] {
+        for (fraction, lookAlike) in [("¼", " a "), ("⅓", "Ys"), ("⅓", "½⅓"), ("⅔", "%"), ("⅛", "&"), ("⅛", "is tsp")] {
             let chip = app.buttons.matching(NSPredicate(
                 format: "identifier BEGINSWITH 'edit.fraction.' AND label BEGINSWITH %@ AND label CONTAINS %@",
                 "Use \(fraction) in", lookAlike

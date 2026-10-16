@@ -1,7 +1,10 @@
 package com.example.recipeclipper.walkthrough
 
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import com.example.recipeclipper.data.DecisionModel
 import com.example.recipeclipper.data.StepShortener
 import com.example.recipeclipper.di.OnDeviceModelModule
@@ -48,8 +51,12 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
         planToday("Weeknight Chili")
         // One scroll of days (#232): a free swipe, then › snaps to the next 7 days, and "Today"
         // comes back; the month's day scrolls the days to it.
-        swipeUp()
-        swipeUp()
+        repeat(2) {
+            compose.onNode(hasTestTag("weekList")).performTouchInput {
+                swipeUp(startY = bottom * 0.8f, endY = bottom * 0.3f, durationMillis = 700)
+            }
+            pause(1200)
+        }
         tapDescription("Next week")
         tapDescription("Next week")
         tapTag("todayButton", 2000)

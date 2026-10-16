@@ -499,10 +499,11 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         waitForReading()
         pause(2500)
         compose.onAllNodes(field("Name"))[0].performTextInput("Oat Cookies") // none is guessed
+        Espresso.closeSoftKeyboard()
         pause(1200)
         show("Check these lines", 3500)
         // The chip for the fraction the card shows, under each flagged look-alike it can name.
-        for ((fraction, lookAlike) in listOf("⅔" to "%", "¼" to " a ")) {
+        for ((fraction, lookAlike) in listOf("¼" to " a ", "⅓" to "Ys", "⅔" to "%", "⅛" to "&")) {
             val chip = SemanticsMatcher("$fraction for \"$lookAlike\"") { node ->
                 val said = node.config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString().orEmpty()
                 said.startsWith("Use $fraction in") && lookAlike in said

@@ -662,8 +662,9 @@ page-extraction recipe is stored as `EXTRACTED`, so no model runs for it.
   Android script saves the screen at `/tmp/android-NN-name-miss.png`; the iOS log is under
   `$DERIVED_DATA/raw/`.
 
-The clips, the same number on both platforms: 01 tabs and Week, 02 Groceries, 03 Pantry and
-What I need, 04 weekly menus, 05 expiry reminders, 06 the Recipes screen, 07 amounts in steps,
+The clips, the same number on both platforms: 01 tabs and Week (the rolling days, #232), 02 Groceries, 03 Pantry and
+What I need, 04 weekly menus, 05 expiry reminders, 06 the Recipes screen (and a burst of deletes with one Undo, #268), 07 amounts in steps
+(and an ingredient link, #254, on the Lemon Garlic Salmon, seeded with butter on two lines),
 08 Chef mode (stub model), 09 the free tier, 10 the page-extraction line, 11 grocery merging (AI
 answers simulated), 12 junk hidden in Groceries (simulated); 13 "I made this", 14 the automatic
 backup copy and "Restore from a backup file", 15 Send list and Paste a list, 16 Send as file and
@@ -674,9 +675,11 @@ tooltips and "Show tips again", 25 the pantry's three states, 26 "onion" matchin
 need, 27 Reddit posts (from fixtures), 28 "Read the photo" (#198), 29 reading other languages (#208: a
 German post, a French card), 30 "Scan a recipe" (#226: a card's two sides from the library), 31 "Clip it
 yourself" on a live Reddit post (#213, #230: the guided steps, Review asking for the name, then the Text view with one field selected first), 32 "Clip it
-yourself" on a live blog page (#37, field first: Name, Ingredients, two Steps blocks, Undo, Photo, with real taps).
-Android's 13–21 and 23–26 are in `CookingWalkthroughTest` and
-`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–32 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–32 in `+Features.swift`, 22
+yourself" on a live blog page (#37, field first: Name, Ingredients, two Steps blocks, Undo, Photo, with real taps),
+33 selecting several pantry items (#258: touch and hold, a drag, Mark run out, Select all, Remove, one Undo each),
+34 fraction chips (#245: the handwritten fraction card scanned, its look-alikes flagged, a chip tapped).
+Android's 13–21, 23–26 and 33 are in `CookingWalkthroughTest` and
+`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–32 and 34 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–34 in `+Features.swift`, 22
 in `+MealPlan.swift`). What they need from outside the app:
 
 - **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
@@ -704,6 +707,10 @@ in `+MealPlan.swift`). What they need from outside the app:
   fall back to OCR SIMULATED the same way (the card's lines once, then nothing; 29: the `fr`
   fixture's lines) only if the model never arrives. ML Kit's slips differ from Vision's, so each
   test fixes the lines by what they contain, not by an exact reading.
+- **The fraction card** (34): `card-fractions-hand.jpg` from `shared/fixtures/reddit/photos/`, one
+  page, read for real (ML Kit; iOS's Vision, the script adding it to Photos just before the test),
+  with clip 30's fallback to OCR SIMULATED (#245's measured ML Kit reading) on Android. Which
+  look-alikes show depends on the reader, so the test taps the chip for each it can name.
 - **The scan** (30): the pages are `card-front.jpg` and `card-back.jpg` from
   `shared/fixtures/reddit/photos/`. iOS adds them to the simulator's Photos just before the test
   (back, then front, so the front is newest and the picker lists it first), and the test picks both
@@ -730,7 +737,7 @@ in `+MealPlan.swift`). What they need from outside the app:
   the shell's `input tap` at the element's place on screen, after real swipes; iOS: XCUITest on the
   page's text and picture). If the page changes or goes, pick another with a photo, one list of
   ingredients and a steps list with a paragraph under it.
-- **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20, 23, 25 and 26:
+- **The kitchen** (a stocked pantry, the Adobo's lines on the grocery list) for 15, 18–20, 23, 25, 26 and 33:
   `start(kitchen = true)` from `WalkthroughSeed.pantry`, iOS's `walkthroughPantry` scenario.
 - **The share sheet and the system pickers** show, then close with Back (iOS: a tap outside the
   sheet, the picker's Cancel); Android waits for them to take the screen first
