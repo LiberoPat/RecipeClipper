@@ -2636,14 +2636,25 @@ ones).
   that loaded is read: never after a block, offline or a failed fetch.
 - **Page text** (`PageTextReader`, pure, Jsoup / the iOS `HtmlTree`): one line per block, each
   as Jsoup's `text()` gives it; scripts, styles, `nav`, `footer`, buttons and the like left out.
-  The title is the first `<h1>`, else `og:title`, else `<title>`; the photo is `og:image`.
+  The title is the first `<h1>`, else `og:title`, else `<title>`; the photo is `og:image`. Two
+  marks (#271): a list item of up to 600 characters is one line even with a `<div>` or `<p>`
+  inside it (BBC Good Food writes `100g <a>butter</a><div> softened</div>`, which had become
+  "100g butter" and "softened"), though a list nested in it still breaks; and a section heading
+  (`<h2>`–`<h6>`) ending in a letter, digit or ")" gets a colon, the form the parsers already
+  write a group heading in ("For the filling:"), so the model sees it as a heading and one it
+  picks shows as one.
 - **The window** (`RecipeTextWindow`, pure, both platforms): the ingredients heading
   (`headings.json`, every shipped language at once) followed, before the next heading, by the
   most ingredient-looking lines (an amount first, or a short line holding a number), with a
   bonus when the steps heading follows; else the densest run of such lines (three in ten); else
   nothing, and the model isn't asked (a login page or an article costs no model call). Up to 12
   lines before the anchor (a fifth of the budget: the card's title, times and servings), then as
-  many as fit, with the page title first if the window doesn't already hold it.
+  many as fit, with the page title first if the window doesn't already hold it. A nutrition
+  box is left out first (#271, `headings.json`'s `nutrition` and `nutrients`, every shipped
+  language at once): its heading ("Nutrition: per serving") and each line that is only a nutrient
+  and its figure ("kcal507", "Fat: 10g"), never an ingredient line with a unit ("Salt 1 tsp").
+  On BBC Good Food, which has no "Ingredients" heading, the box's short numeric lines were the
+  densest run, so the window started there, after the cake's own ingredients.
 - **The verifier** (`PageRecipeCheck`, pure, both platforms, pinned by the corpus's `Pick`
   rows): each picked string is looked for in the window's text, both folded the same way (NFKC,
   so "½" is "1/2"; typographic quotes, dashes, "⁄" and "×" as ASCII; lowercase; whitespace runs,
@@ -2663,7 +2674,25 @@ ones).
   "Ingredients for the glaze" heading before the steps is the same recipe; with every pick in
   one card, the usual case, nothing changes. Yield and times are not lines and aren't checked
   this way. The #105 evaluation's Delish "second recipe" turned out to be a scoring artifact,
-  and on the #128 run the rule never fired, so it is a guard, not a measured gain.
+  and on the #128 run the rule never fired, so it is a guard, not a measured gain. #271 added a
+  fixture page in that shape (`shared/fixtures/pages/blog-two-recipe-cards.html`), tested from
+  HTML to kept lines on both platforms and read by the harness.
+- **Headings and the method's lists** (#271, pinned by the corpus's `Verify` rows): a pick that
+  is a whole line ending in a colon on the page (a heading, as the page text writes them) is a
+  group heading when picked as an ingredient, shown with its colon (`IngredientHeading`) and
+  kept only directly above an ingredient line, so "Method:", "step 1:" or a trailing "Notes:"
+  go; picked as a step, it is dropped. An ingredient found only below its card's steps heading
+  (after the card's ingredients heading) is dropped: Great British Chefs repeats under each step
+  the lines it uses ("75g of Parmesan" of the recipe's "150g"). Where a pick is on the page more
+  than once, a whole line wins over the start of a longer one ("Zucchini" is the "Zucchini:"
+  heading, not "Zucchini sweating: 30 minutes"). A card title's colon is not the name's.
+- **No ingredient-shape check** (#271, measured offline): keeping only picked lines with an
+  amount, a unit or a known food word (the aisle and density tables) would drop real lines
+  the sites' own JSON-LD lists: "Cooking spray, for pie dish", "Crumbled cannoli shells, for
+  topping", "Lemon wedges, for serving", "Salt and pepper, to taste" (no name the tables read).
+  The headings, step labels and nutrition it was meant for went with the fixes above, and BBC's
+  app promo and "Ad" lines stopped being picked once the window started at the ingredients, so
+  it wasn't added.
 - **Copying, not line numbers** (#128, measured in `docs/eval/llm-vs-regex.md` section 2b):
   asking the model for runs of numbered lines (`{"first": 12, "last": 25}`) instead of copying
   them out keeps the reply short however long the recipe, but on the harness's 3B stand-in it
