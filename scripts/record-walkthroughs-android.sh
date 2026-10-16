@@ -28,7 +28,8 @@ TESTS=("$@")
   CookingWalkthroughTest#test25_pantryStates CookingWalkthroughTest#test26_onionAndOnions
   RecipesWalkthroughTest#test27_redditImport RecipesWalkthroughTest#test28_readThePhoto
   RecipesWalkthroughTest#test29_readingOtherLanguages RecipesWalkthroughTest#test30_scanARecipe
-  RecipesWalkthroughTest#test31_redditClipYourself RecipesWalkthroughTest#test32_clipItYourself)
+  RecipesWalkthroughTest#test31_redditClipYourself RecipesWalkthroughTest#test32_clipItYourself
+  CookingWalkthroughTest#test33_pantryMultiSelect RecipesWalkthroughTest#test34_fractionChips)
 mkdir -p "$OUT"
 export ANDROID_SERIAL=$SERIAL
 adb shell cmd uimode night no >/dev/null
@@ -42,8 +43,8 @@ for f in recipes-self-post old-recipes-card-transcription food-photo-chatter old
   adb push "shared/fixtures/reddit/$f.json" /data/local/tmp/ >/dev/null
 done
 # The recipe cards read from photos (28, 29: in place of the posts' own pictures) and the two
-# sides clip 30 scans (#226).
-for f in card-front card-back card-blurred card-fr; do
+# sides clip 30 scans (#226), and the handwritten fraction card clip 34 scans (#245).
+for f in card-front card-back card-blurred card-fr card-fractions-hand; do
   adb push "shared/fixtures/reddit/photos/$f.jpg" /data/local/tmp/ >/dev/null
 done
 photo=$(mktemp -d)/photo.jpg

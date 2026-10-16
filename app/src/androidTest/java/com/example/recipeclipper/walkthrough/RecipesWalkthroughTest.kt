@@ -10,15 +10,25 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.core.content.FileProvider
 import androidx.test.espresso.Espresso
 import com.example.recipeclipper.data.ChefSupport
@@ -174,8 +184,24 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         compose.onAllNodes(field("Recipe URL"))[0].performTextInput("https://example.com/chicken-soup")
         pause(800)
         tap("Go", 3000)
+        back()
+        // A burst of swipes shares one snackbar, counting in place, and one Undo brings them all
+        // back, with no snackbar after it (#268).
+        for (title in listOf("Banana Bread", "Beef Stir-Fry", "Buttermilk Pancakes")) {
+            waitFor(hasText(title))
+            compose.onAllNodes(hasText(title))[0].performTouchInput { swipeLeft(durationMillis = 500) }
+            pause(900)
+        }
+        waitFor(hasText("3 recipes deleted"))
+        pause(2000)
+        tap("Undo", 3500)
     }
 
+    /**
+     * Amounts in steps (#101, #254): the switch, then the Lemon Garlic Salmon, whose butter is on
+     * two lines ([WalkthroughSeed.SALMON]): "the butter" is a link that shows both lines, with
+     * "Back to step 2"; in cook mode it opens the ingredients bar on them.
+     */
     @Test
     fun test07_amountsInSteps() {
         start()
@@ -183,10 +209,34 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         swipeUp()
         tap("Amounts in steps")
         back()
-        tap("Weeknight Chili")
-        swipeUp()
-        pause(1000)
-        tap("Start cooking", 2500)
+        openRecipes()
+        tapScrolling(WalkthroughSeed.SALMON)
+        show("Melt the", 2500)
+        tapLink("Melt the", "butter")
+        waitFor(hasText("Back to step 2"))
+        pause(3000)
+        tap("Back to step 2", 2500)
+        tap("Start cooking", 2000)
+        tap("Done — next step", 2000)
+        tapLink("Melt the", "butter")
+        waitFor(hasText("Back to step 2"))
+        pause(3000)
+        tap("Back to step 2", 2500)
+    }
+
+    /** A real tap on [word] inside the step that holds [step]: its ingredient link (#254). */
+    private fun tapLink(step: String, word: String) {
+        val matcher = hasText(step, substring = true)
+        waitFor(matcher)
+        val node = compose.onAllNodes(matcher, useUnmergedTree = true)[0]
+        val layouts = mutableListOf<TextLayoutResult>()
+        node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val layout = layouts.first()
+        val at = layout.layoutInput.text.text.indexOf(word)
+        check(at >= 0) { "no \"$word\" in the step" }
+        val box = layout.getBoundingBox(at + word.length / 2)
+        node.performTouchInput { click(box.center) }
+        pause(1500)
     }
 
     @Test
@@ -378,23 +428,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         openRecipes()
         tapDescription("Add a recipe")
         tap("Scan a recipe")
-        val picker = object : Instrumentation.ActivityMonitor() {
-            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
-                if (intent.action != MediaStore.ACTION_PICK_IMAGES && intent.type?.startsWith("image/") != true) return null
-                val uris = pages.map(Uri::parse)
-                val data = Intent().apply {
-                    clipData = ClipData.newRawUri(null, uris[0]).apply { addItem(ClipData.Item(uris[1])) }
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                return Instrumentation.ActivityResult(Activity.RESULT_OK, data)
-            }
-        }
-        instrumentation.addMonitor(picker)
-        try {
-            tap("Choose from library", 2500)
-        } finally {
-            instrumentation.removeMonitor(picker)
-        }
+        chooseFromLibrary(pages)
         waitFor(hasContentDescription("Page 2 of 2"))
         waitForReading()
         pause(3000)
@@ -423,6 +457,66 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         tap("Scan a recipe", 2500)
         Espresso.pressBack()
         pause(1000)
+    }
+
+    /** "Choose from library", with [pages] handed back as the Photo Picker's answer (it can't be driven). */
+    private fun chooseFromLibrary(pages: List<String>) {
+        val picker = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+                if (intent.action != MediaStore.ACTION_PICK_IMAGES && intent.type?.startsWith("image/") != true) return null
+                val uris = pages.map(Uri::parse)
+                val data = Intent().apply {
+                    clipData = ClipData.newRawUri(null, uris[0]).apply { uris.drop(1).forEach { addItem(ClipData.Item(it)) } }
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                return Instrumentation.ActivityResult(Activity.RESULT_OK, data)
+            }
+        }
+        instrumentation.addMonitor(picker)
+        try {
+            tap("Choose from library", 2500)
+        } finally {
+            instrumentation.removeMonitor(picker)
+        }
+    }
+
+    /**
+     * Walkthrough 34, fraction glyphs read from a photo (#245): the handwritten fraction card
+     * (`card-fractions-hand.jpg`) scanned and read by ML Kit ([realOcr]; else OCR SIMULATED, its
+     * measured reading), which gives its ⅔ as "%" and its ¼ as "a". "Check these lines" flags
+     * them with the fraction chips, and a tap puts the fraction in place; Save.
+     */
+    @Test
+    fun test34_fractionChips() {
+        val page = scanPage("card-fractions-hand")
+        useRealOcrIfItReads()
+        cardLines = FRACTION_CARD_LINES
+        start("photoText")
+        openRecipes()
+        tapDescription("Add a recipe")
+        tap("Scan a recipe")
+        chooseFromLibrary(listOf(page))
+        waitForReading()
+        pause(2500)
+        compose.onAllNodes(field("Name"))[0].performTextInput("Oat Cookies") // none is guessed
+        Espresso.closeSoftKeyboard()
+        pause(1200)
+        show("Check these lines", 3500)
+        // The chip for the fraction the card shows, under each flagged look-alike it can name.
+        for ((fraction, lookAlike) in listOf("¼" to " a ", "⅓" to "Ys", "⅔" to "%", "⅛" to "&")) {
+            val chip = SemanticsMatcher("$fraction for \"$lookAlike\"") { node ->
+                val said = node.config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString().orEmpty()
+                said.startsWith("Use $fraction in") && lookAlike in said
+            }
+            if (compose.onAllNodes(chip).fetchSemanticsNodes().isEmpty()) continue
+            compose.onAllNodes(chip)[0].performScrollTo()
+            pause(1200)
+            compose.onAllNodes(chip)[0].performClick()
+            pause(2500)
+        }
+        tap("Save", 3000)
+        waitFor(hasText("Oat Cookies"))
+        pause(2500)
     }
 
     /**
@@ -758,6 +852,13 @@ class RecipesWalkthroughTest : WalkthroughBase() {
             "Directions", "1. Cream the butter and sugar, then beat in the eggs.",
             "2. Stir in the flour, soda, oats and raisins.", "3. Drop by spoonfuls and bake at 350°F for 10 minutes."
         ).map { PhotoLine(it, 0.9f) }
+
+        /** The handwritten fraction card as ML Kit read it on the emulator (#245's measurements). */
+        val FRACTION_CARD_LINES = listOf(
+            "Oat Cookies", "INGREDIENTS", "½ cup sugar", "1 a cups flour", "4 tsp salt", "Ys cup milk",
+            "2 % cups oats", "& tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients.",
+            "Stir in the milk and chocolate.", "Bake 12 minutes at 350°F."
+        ).map { PhotoLine(it, 0.8f) }
 
         const val GERMAN_POST = "https://www.reddit.com/r/Kochen/comments/1f8b4de/omas_pfannkuchen/"
         const val FRENCH_CARD_POST = "https://www.reddit.com/r/cuisine/comments/1f8c5fr/la_fiche_de_crepes_de_ma_grandmere/"

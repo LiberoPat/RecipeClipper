@@ -28,6 +28,18 @@ object WalkthroughSeed {
     const val WHISK = "Whisk the eggs and sugar in a large bowl until pale, thick and doubled in volume, about 8 minutes."
     const val WHISK_SHORT = "Whisk eggs and sugar in a bowl until pale and thick, about 8 minutes."
 
+    /**
+     * Clip 07's recipe (#254): butter on two lines with different amounts, so a step's "the
+     * butter" is a link to both, and amounts for the salmon, garlic and lemon.
+     */
+    const val SALMON = "Lemon Garlic Salmon"
+    val SALMON_LINES = listOf("4 salmon fillets", "2 tbsp butter", "3 cloves garlic, minced", "1 lemon", "1 tbsp butter, to finish")
+    val SALMON_STEPS = listOf(
+        "Pat the salmon dry and season it with salt and pepper.",
+        "Melt the butter in a large pan and sear the salmon for 4 minutes a side.",
+        "Lower the heat, add the garlic and the juice of the lemon, then swirl in the butter."
+    )
+
     /** A line ending in junk, as a site might publish it (#132): hidden in Groceries only. */
     const val JUNK_LINE = "2 eggs dfsafs"
 
@@ -79,12 +91,13 @@ object WalkthroughSeed {
         "Buttermilk Pancakes" to listOf("2 cups flour", "2 cups buttermilk", "2 eggs", "2 tbsp sugar"),
         "Tomato Basil Soup" to listOf("2 lb tomatoes", "1 onion, chopped", "4 cups vegetable broth", "1 cup basil leaves"),
         "Beef Stir-Fry" to listOf("1 lb flank steak", "2 cups broccoli florets", "3 tbsp soy sauce", "1 tbsp cornstarch"),
-        "Lemon Garlic Salmon" to listOf("4 salmon fillets", "3 cloves garlic, minced", "1 lemon", "2 tbsp butter"),
+        SALMON to SALMON_LINES,
         "Guacamole" to listOf("3 avocados", "1 lime", "1/2 red onion, diced", "1 jalapeño"),
         "French Toast" to listOf("8 slices bread", "4 eggs", "1 cup milk", "1 tsp cinnamon"),
         "Caprese Salad" to listOf("3 tomatoes", "250 g fresh mozzarella", "1 cup basil leaves", "2 tbsp olive oil")
     ).map { (title, ingredients) ->
-        Seed(title, title.lowercase().replace(" ", "-"), "4", ingredients, listOf("Prepare the ingredients.", "Cook and serve."))
+        val steps = if (title == SALMON) SALMON_STEPS else listOf("Prepare the ingredients.", "Cook and serve.")
+        Seed(title, title.lowercase().replace(" ", "-"), "4", ingredients, steps)
     }
 
     /**

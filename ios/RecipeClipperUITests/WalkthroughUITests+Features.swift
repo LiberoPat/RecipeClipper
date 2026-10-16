@@ -1,9 +1,10 @@
 import XCTest
 
-// Walkthroughs 24–31: tooltips (#190), the pantry's three states (#194), singular and plural
+// Walkthroughs 24–34: tooltips (#190), the pantry's three states (#194), singular and plural
 // names in What I need (#191), a Reddit post imported (#11) from a fixture listing, its photo
-// read (#198), other languages (#208), a recipe card scanned (#226), and a live Reddit post
-// clipped by hand (#213, #230).
+// read (#198), other languages (#208), a recipe card scanned (#226), a live Reddit post and a
+// live page clipped by hand (#213, #230, #37), selecting several pantry items (#258), and a
+// card's fraction glyphs (#245).
 
 extension WalkthroughUITests {
 
@@ -66,8 +67,8 @@ extension WalkthroughUITests {
     }
 
     /// In stock, Running low, Run out (#194, #199; no row button since 2026-09-29): a swipe runs
-    /// a row out, the edit sheet's stock control, the long-press menu (both other states), and a
-    /// swipe each way. Run out items sit in their own section at the foot of the Pantry.
+    /// a row out, the edit sheet's stock control, and a swipe each way (a touch and hold selects
+    /// since #258). Run out items sit in their own section at the foot of the Pantry.
     func test25_pantryStates() {
         start(scenario: .walkthroughPantry)
         tab("Pantry")
@@ -104,6 +105,42 @@ extension WalkthroughUITests {
         pause()
         reveal(pantryRow("garlic", "In stock"), "garlic, back in stock")
         pause(2.5)
+    }
+
+    /// Selecting several (#258): a touch and hold that goes on moving checks every row it passes,
+    /// Mark run out moves them to Run out with one Undo; then a touch and hold, Select all and
+    /// Remove empty the Pantry, and one Undo puts every item back.
+    func test33_pantryMultiSelect() {
+        start(scenario: .walkthroughPantry)
+        tab("Pantry")
+        pause()
+        let rows = pantryRowsOnScreen()
+        rows[0].press(forDuration: 1.0, thenDragTo: rows[2], withVelocity: .slow, thenHoldForDuration: 0.3)
+        let count = require(app.staticTexts["selectedCount"], "the selection bar")
+        print("WALKTHROUGH-SELECTED \(count.label)")
+        pause(2.5)
+        require(app.buttons["markRunOutSelected"], "Mark run out").tap()
+        pause(3)
+        require(app.buttons["Undo"], "Undo").tap()
+        pause(3)
+        pantryRowsOnScreen()[0].press(forDuration: 1.0)
+        requireState(app.staticTexts["selectedCount"], "label == '1 selected'", "1 selected")
+        pause(2)
+        require(app.buttons["selectAll"], "Select all").tap()
+        pause(2.5)
+        require(app.buttons["removeSelected"], "Remove").tap()
+        pause(3)
+        require(app.buttons["Undo"], "Undo").tap()
+        pause(3)
+    }
+
+    /// The Pantry's item rows on screen, top to bottom.
+    private func pantryRowsOnScreen() -> [XCUIElement] {
+        let query = app.buttons.matching(NSPredicate(format: "identifier MATCHES 'pantry-[0-9]+'"))
+        require(query.firstMatch, "the pantry's rows")
+        return query.allElementsBoundByIndex
+            .filter { $0.isHittable && $0.frame.maxY < tabBar.frame.minY }
+            .sorted { $0.frame.minY < $1.frame.minY }
     }
 
     /// "onions" in the pantry covers the Adobo's "1 onion, sliced" (#191); the Guacamole's red
@@ -400,6 +437,85 @@ extension WalkthroughUITests {
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
         pause()
     }
+
+    /// Fraction glyphs read from a photo (#245), OCR SIMULATED: the handwritten fraction card
+    /// (`card-fractions-hand.jpg`, which the recording script adds to the simulator's Photos just
+    /// before this test) picked in the real photo picker, its reading answered with ML Kit's
+    /// measured one (`fractionCardLines`, as Android's clip reads it for real): Vision on the
+    /// simulator reads this card with no look-alike a chip can name ("23 cups oats", "½⅓ cup
+    /// milk"). "Check these lines" flags the look-alikes with the fraction chips, and a tap puts
+    /// the fraction in place; Save.
+    func test34_fractionChipsSimulated() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "photoText"]
+        app.launchEnvironment["RC_UITEST_PHOTO_LINES"] = Self.fractionCardLines
+        app.launch()
+        self.app = app
+        require(app.textFields["Recipe URL"], "Home")
+        mark("START")
+        pause()
+        openRecipes()
+        pause()
+        require(app.buttons["recipes.add"], "the + menu").tap()
+        pause()
+        require(app.buttons["Scan a recipe"], "Scan a recipe").tap()
+        pause()
+        require(app.buttons["Choose from library"], "the library choice").tap()
+        pause(2.5)
+        // The system's photo picker, newest first: the fraction card.
+        let photos = app.images.matching(identifier: "PXGGridLayout-Info")
+        require(photos.firstMatch, "the photos in the picker")
+        photos.element(boundBy: 0).tap()
+        pause(1.5)
+        require(app.buttons.matching(NSPredicate(format: "label IN %@", ["Add", "Done"])).firstMatch, "the picker's Add").tap()
+
+        require(text("Check the recipe"), "the review")
+        require(textContaining("Read from the photo"), "how the reading went", within: 30)
+        pause(3)
+        let name = require(app.textFields["Name"], "the name field") // none is guessed
+        name.tap()
+        name.typeText("Oat Cookies\n") // Return puts the keyboard away
+        pause(1.5)
+        scrollTo(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
+        pause(3.5)
+        // The chip for the fraction the card shows, under each flagged look-alike it can name.
+        for (fraction, lookAlike) in [("¼", " a "), ("⅓", "Ys"), ("⅓", "½⅓"), ("⅔", "%"), ("⅛", "&"), ("⅛", "is tsp")] {
+            let chip = app.buttons.matching(NSPredicate(
+                format: "identifier BEGINSWITH 'edit.fraction.' AND label BEGINSWITH %@ AND label CONTAINS %@",
+                "Use \(fraction) in", lookAlike
+            )).firstMatch
+            guard chip.waitForExistence(timeout: 1) else { continue }
+            // Short drags either way until the chip sits clear of the bars.
+            for _ in 0..<6 {
+                let frame = chip.frame
+                if frame.minY < 140 {
+                    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                        .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)))
+                } else if frame.maxY > app.frame.maxY - 140 {
+                    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                        .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+                } else {
+                    break
+                }
+                pause(0.6)
+            }
+            pause(1.2)
+            chip.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            pause(2.5)
+        }
+        require(app.buttons["edit.save"], "Save").tap()
+        require(bookmark, "the saved recipe")
+        require(text("Oat Cookies"), "its name")
+        pause(3)
+    }
+
+    /// The handwritten fraction card as ML Kit read it on the emulator (#245's measurements;
+    /// Android's `FRACTION_CARD_LINES`).
+    static let fractionCardLines = [
+        "Oat Cookies", "INGREDIENTS", "½ cup sugar", "1 a cups flour", "4 tsp salt", "Ys cup milk",
+        "2 % cups oats", "& tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients.",
+        "Stir in the milk and chocolate.", "Bake 12 minutes at 350°F."
+    ].joined(separator: "\n")
 
     /// "Clip it yourself" on a Reddit post Reddit won't let the app read (#213, #230), LIVE: real
     /// r/recipes posts through the real source (`RC_UITEST_LIVE_REDDIT`), whose `.json` read

@@ -1,6 +1,6 @@
 import XCTest
 
-// Walkthroughs 06–10: the Recipes screen, amounts in steps, Chef mode (stub model), the free
+// Walkthroughs 06–10: the Recipes screen (and a burst of deletes, #268), amounts in steps (#254), Chef mode (stub model), the free
 // tier and a recipe picked from the page text (seeded as such: no model runs).
 
 /// The seeded step the stub model shortens (UITestSeeding.chefStep, in the app target).
@@ -53,18 +53,57 @@ extension WalkthroughUITests {
         app.alerts.firstMatch.buttons["Go"].tap()
         require(bookmark, "the imported recipe")
         pause(2.5)
+        back()
+        pause()
+        // A burst of swipes shares one snackbar, counting in place, and one Undo brings them all
+        // back, with no snackbar after it (#268).
+        // Back to the top of the list, sorted by name.
+        for _ in 0..<5 where !(row("Banana Bread").exists && row("Banana Bread").isHittable) {
+            app.swipeDown()
+            pause(0.6)
+        }
+        pause()
+        // No waits between them: each must land while the snackbar still shows (RecipesUITests).
+        for title in ["Banana Bread", "Beef Stir-Fry", "Buttermilk Pancakes"] {
+            row(title).swipeLeft()
+            app.buttons["Delete"].tap()
+        }
+        require(text("3 recipes deleted"), "the one snackbar")
+        pause(2)
+        require(app.buttons["Undo"], "Undo").tap()
+        pause(3.5)
     }
 
+    /// Amounts in steps (#101, #254): the switch, then the Lemon Garlic Salmon, whose butter is on
+    /// two lines (`UITestWalkthroughSeed.salmon`): "the butter" is a link that shows both lines,
+    /// with "Back to step 2"; in cook mode it opens the ingredients bar on them.
     func test07_amountsInSteps() {
         startAsShipped()
         require(app.buttons["Settings"]).tap()
         pause()
         flipSwitch("Amounts in steps")
         back()
-        open("Weeknight Chili")
-        app.swipeUp()
+        openRecipes()
+        pause()
+        scrollTo(row("Lemon Garlic Salmon"), "the salmon").tap()
+        require(bookmark, "the salmon")
+        pause()
+        let butter = app.links["butter"].firstMatch
+        scrollTo(butter, "the butter link")
+        pause(2)
+        butter.tap()
+        let chip = require(app.buttons["recipe.backToStep"], "Back to step 2")
+        pause(3)
+        chip.tap()
         pause(2.5)
         require(app.buttons["Start cooking"]).tap()
+        pause(2)
+        require(app.buttons["Done — next step"]).tap()
+        pause(2)
+        require(app.links["butter"].firstMatch, "the current step's butter link").tap()
+        let cookChip = require(app.buttons["recipe.backToStep"], "Back to step 2, in cook mode")
+        pause(3)
+        cookChip.tap()
         pause(2.5)
     }
 
