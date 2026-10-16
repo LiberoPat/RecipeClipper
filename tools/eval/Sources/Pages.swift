@@ -42,6 +42,22 @@ struct EvalPage {
                 sourceUrl: "fixture:blog-no-recipe-data")
             pages.append(EvalPage(file: "fixture", url: "fixture:blog-no-recipe-data", html: html, gold: gold))
         }
+        if let html = try? String(contentsOfFile: "../../shared/fixtures/pages/blog-two-recipe-cards.html", encoding: .utf8) {
+            // Delish's shape (#271): the recipe's card, then a "you'll also love" card. Gold is the first.
+            let gold = Recipe(
+                name: "Creamy Tuscan Chicken",
+                ingredients: ["1 Tbsp. extra-virgin olive oil", "4 (6- to 8-oz.) boneless, skinless chicken breasts", "Kosher salt",
+                              "3 Tbsp. unsalted butter", "3 cloves garlic, minced", "1 1/2 cups cherry tomatoes, halved",
+                              "3 cups baby spinach", "1/2 cup heavy cream", "1/4 cup freshly grated Parmesan"],
+                instructions: [
+                    "In a large skillet over medium heat, heat oil. Season the chicken with salt and cook until golden, 8 minutes per side.",
+                    "Melt the butter in the same skillet and add the garlic. Stir in the tomatoes and cook until they burst.",
+                    "Add the spinach and cook until wilted. Stir in the cream and Parmesan and bring to a simmer.",
+                    "Return the chicken to the skillet and cook until heated through, 5 to 7 minutes.",
+                ],
+                sourceUrl: "fixture:blog-two-recipe-cards")
+            pages.append(EvalPage(file: "fixture", url: "fixture:blog-two-recipe-cards", html: html, gold: gold))
+        }
         return pages
     }
 

@@ -21,6 +21,24 @@ final class RecipeTextWindowTests: XCTestCase {
         XCTAssertEqual(page.language, "de")
     }
 
+    func testAShortListItemIsOneLineAndSectionHeadingsAreKeptApart() {
+        let long = String(repeating: "Beat the butter until smooth. ", count: 12).trimmingCharacters(in: .whitespaces)
+        let page = PageTextReader.read(html: """
+            <h1>Victoria sandwich</h1><h3>For the filling</h3>
+            <ul><li>100g <a>butter</a><div class="note"> softened</div></li><li><p>Beat the butter.</p><ul><li>sub</li></ul></li>
+            <li><p>\(long)</p><p>\(long)</p></li></ul>
+            <h2>Method</h2><h3>step 1</h3><h2>Questions?</h2><h4>Chow Mein Sauce:</h4>
+            """, url: "https://example.com/v")
+        XCTAssertEqual(page.lines, ["Victoria sandwich", "For the filling", "100g butter softened", "Beat the butter.", "sub", long, long, "Method", "step 1", "Questions?", "Chow Mein Sauce:"])
+        XCTAssertEqual(page.title, "Victoria sandwich")
+        XCTAssertEqual(page.headings, ["For the filling", "Method", "step 1", "Questions?", "Chow Mein Sauce:"])
+        // The check reads a heading with a colon; the model is given the window as written.
+        XCTAssertEqual(
+            RecipeTextWindow.marked("For the filling\nMethod\nstep 1\nQuestions?\nChow Mein Sauce:\n100g butter softened", page),
+            "For the filling:\nMethod:\nstep 1:\nQuestions?\nChow Mein Sauce:\n100g butter softened"
+        )
+    }
+
     func testTheTitleFallsBackToOgTitleThenTheTitleElementAndOgImageIsAbsolute() {
         let og = PageTextReader.read(html: """
             <head><title>Site | Soup</title><meta property="og:title" content="Soup">
@@ -80,6 +98,25 @@ final class RecipeTextWindowTests: XCTestCase {
         XCTAssertTrue(RecipeTextWindow.isHeading("Modo de preparo"))
         XCTAssertFalse(RecipeTextWindow.isHeading("Ingredientsnotaword"))
         XCTAssertFalse(RecipeTextWindow.isHeading("The ingredients " + String(repeating: "x", count: 60)))
+    }
+
+    func testANutritionBoxIsLeftOutOfTheWindow() throws {
+        for line in ["Nutrition: per serving", "Nutrition Facts", "kcal507", "fat27.05g", "Protein 5 g", "Calories: 250kcal", "Nährwerte", "Fett: 12 g"] {
+            XCTAssertTrue(RecipeTextWindow.isNutrition(line), line)
+        }
+        for line in ["1 tsp salt", "Salt and pepper to taste", "200g caster sugar", "Salt 1 tsp", "Fat-free yogurt", "Low-fat milk 200ml"] {
+            XCTAssertFalse(RecipeTextWindow.isNutrition(line), line)
+        }
+        // BBC Good Food's shape: no ingredients heading, and the nutrition box was the densest run of short numeric lines.
+        let lines = story + [
+            "Units:", "200g caster sugar", "200g softened butter", "4 eggs beaten", "200g self-raising flour", "1 tsp baking powder",
+            "2 tbsp milk", "For the filling:", "100g butter softened", "Nutrition: per serving", "kcal507", "fat27.05g", "saturates16g",
+            "carbs61.02g", "sugars45g", "low", "fibre0.8g", "protein5g", "salt0.9g", "Method:", "step 1:", "Heat oven to 190C.",
+        ] + story
+        let window = try XCTUnwrap(RecipeTextWindow.window(PageText(title: "Victoria sandwich", lines: lines), maxChars: 1_200))
+            .components(separatedBy: "\n")
+        XCTAssertTrue(window.contains("200g caster sugar") && window.contains("Heat oven to 190C."))
+        XCTAssertFalse(window.contains { $0 == "kcal507" || $0.hasPrefix("Nutrition") })
     }
 
     func testTheWindowKeepsTheCardsLeadLinesAndFitsTheBudget() throws {

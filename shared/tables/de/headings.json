@@ -9,5 +9,20 @@
     "zubereitung",
     "anleitung",
     "arbeitsschritte"
+  ],
+  "nutrition": [
+    "nährwerte",
+    "nährwertangaben"
+  ],
+  "nutrients": [
+    "kcal",
+    "kj",
+    "kalorien",
+    "brennwert",
+    "fett",
+    "kohlenhydrate",
+    "eiweiß",
+    "ballaststoffe",
+    "natrium"
   ]
 }

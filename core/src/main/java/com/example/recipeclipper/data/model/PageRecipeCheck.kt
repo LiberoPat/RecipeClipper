@@ -20,6 +20,12 @@ import java.util.Locale
  * too. The text is cut into cards at each ingredients heading that follows a steps heading
  * ("Ingredients … Directions … Ingredients"), and only the ingredients and steps found in the
  * card holding the most of them are kept (a tie goes to the earlier card).
+ *
+ * Headings and the method's ingredient lists (#271): a picked line that is a whole heading on the
+ * page (it ends in a colon there, as [RecipeTextWindow.marked] writes `<h2>`–`<h6>`) is a group heading
+ * when picked as an ingredient, kept with its colon and only directly above an ingredient line,
+ * and is never a step ("step 1", "Method"). An ingredient found only below the card's steps
+ * heading (a "used in this step" list) is dropped.
  */
 object PageRecipeCheck {
 
@@ -28,16 +34,23 @@ object PageRecipeCheck {
     /** The verified recipe, with the page's own text for every field kept; null if too little is left. */
     fun verify(page: String, picked: PageSelection): PageSelection? {
         val folded = Folded(page)
-        val name = picked.name?.let { find(folded, it, Kind.NAME) } ?: return null
+        // A card's title is a heading, whose colon is the reader's mark, not the name's (#271).
+        val name = picked.name?.let { find(folded, it, Kind.NAME) }?.removeSuffix(":")?.trimEnd(' ')?.ifEmpty { null } ?: return null
         val foundIngredients = picked.ingredients.map { spans(folded, it, Kind.INGREDIENT) }
         val foundSteps = picked.steps.map { spans(folded, it, Kind.STEP) }
-        val card = folded.cards()
+        val (card, method) = folded.cards()
         val counts = IntArray(card.last() + 1)
         for (found in foundIngredients + foundSteps) found.map { card[it.line] }.distinct().forEach { counts[it]++ }
         val recipe = counts.indices.maxByOrNull { counts[it] } ?: 0
-        fun kept(found: List<Span>) = found.firstOrNull { card[it.line] == recipe }?.text
-        val ingredients = foundIngredients.mapNotNull(::kept)
-        val steps = foundSteps.mapNotNull(::kept)
+        // Where a pick is found more than once, a whole line wins ("Zucchini" is the "Zucchini:"
+        // heading, not the start of "Zucchini sweating: 30 minutes"), else the first (#271).
+        fun first(found: List<Span>, ok: (Span) -> Boolean) = found.firstOrNull { ok(it) && it.wholeLine } ?: found.firstOrNull(ok)
+        val keptIngredients = foundIngredients.mapNotNull { found -> first(found) { card[it.line] == recipe && !method[it.line] } }
+        // A group heading only directly above an ingredient line.
+        val ingredients = keptIngredients.filterIndexed { i, span ->
+            !span.heading || keptIngredients.getOrNull(i + 1)?.heading == false
+        }.map { it.text }
+        val steps = foundSteps.mapNotNull { found -> first(found) { card[it.line] == recipe } }.filter { !it.heading }.map { it.text }
         if (ingredients.isEmpty() && steps.isEmpty()) return null
         fun other(s: String?) = s?.let { find(folded, it, Kind.OTHER) }
         return PageSelection(
@@ -51,8 +64,11 @@ object PageRecipeCheck {
 
     private fun find(page: Folded, picked: String, kind: Kind): String? = spans(page, picked, kind).firstOrNull()?.text
 
-    /** Where [find] finds [picked]: the page's own text, and the line it starts on. */
-    private class Span(val text: String, val line: Int)
+    /**
+     * Where [find] finds [picked]: the page's own text, the line it starts on, whether it is that
+     * whole line, and whether that line ends in a colon (a heading, #271).
+     */
+    private class Span(val text: String, val line: Int, val wholeLine: Boolean = false, val heading: Boolean = false)
 
     /** Every place [picked] is on [page] as a whole span of this [kind], in page order. */
     private fun spans(page: Folded, picked: String, kind: Kind): List<Span> {
@@ -66,7 +82,15 @@ object PageRecipeCheck {
             if (at < 0) return found
             val end = at + needle.length
             if (startsCleanly(page, at, needle, kind) && endsCleanly(page, end, needle)) {
-                found += Span(page.original(at, end), page.lineAt(at))
+                // A heading: the whole line, with only its colon after the pick, or in it.
+                val text = page.text
+                val colonAfter = end < text.length && text[end] == ':' && (end + 1 == text.length || page.lineBreak[end + 1])
+                val colonIn = needle.last() == ':' && (end == text.length || page.lineBreak[end])
+                val startsLine = kind == Kind.INGREDIENT || at == 0 || page.lineBreak[at - 1]
+                val heading = (kind == Kind.INGREDIENT || kind == Kind.STEP) && startsLine && (colonAfter || colonIn)
+                val to = if (kind == Kind.INGREDIENT && colonAfter) end + 1 else end
+                val wholeLine = startsLine && (colonAfter || end == text.length || page.lineBreak[end])
+                found += Span(page.original(at, to), page.lineAt(at), wholeLine, heading)
             }
             from = at + 1
         }
@@ -162,23 +186,30 @@ object PageRecipeCheck {
 
         /**
          * Each line's card: a new one starts at an ingredients heading that follows a steps
-         * heading, so a second recipe's card further down is apart from the first.
+         * heading, so a second recipe's card further down is apart from the first. And whether
+         * the line is in its card's method: below a steps heading that follows the card's
+         * ingredients heading (#271).
          */
-        fun cards(): IntArray {
+        fun cards(): Pair<IntArray, BooleanArray> {
             val lines = mutableListOf<String>()
             var start = 0
             for (i in text.indices) if (lineBreak[i]) { lines += text.substring(start, i); start = i + 1 }
             lines += text.substring(start)
             var card = 0
             var steps = false
-            return IntArray(lines.size) { k ->
+            var ingredients = false
+            val method = BooleanArray(lines.size)
+            val cards = IntArray(lines.size) { k ->
                 if (RecipeTextWindow.isIngredientsHeading(lines[k])) {
                     if (steps) { card++; steps = false }
+                    ingredients = true
                 } else if (RecipeTextWindow.isStepsHeading(lines[k])) {
                     steps = true
                 }
+                method[k] = ingredients && steps
                 card
             }
+            return cards to method
         }
     }
 

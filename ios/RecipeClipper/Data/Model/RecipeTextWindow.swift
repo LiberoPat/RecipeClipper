@@ -4,7 +4,8 @@ import Foundation
 /// `RecipeTextWindow`, rule for rule: the ingredients heading followed, before the next heading,
 /// by the most ingredient-looking lines (more if the steps heading follows), else the densest
 /// run of such lines, else nil (the model isn't asked). The window keeps a few lines before the
-/// anchor, then as many after it as fit, and starts with the page's title.
+/// anchor, then as many after it as fit, and starts with the page's title. A nutrition box (its
+/// heading and its nutrient lines, `headings.json`) is left out first (#271).
 enum RecipeTextWindow {
     private static let headingMax = 60
     private static let lookAhead = 40
@@ -18,9 +19,42 @@ enum RecipeTextWindow {
         return (all.flatMap { $0.strings("headings", "ingredients") }, all.flatMap { $0.strings("headings", "steps") })
     }()
 
+    private static let nutrition: (headings: [String], line: NSRegularExpression) = {
+        let all = LanguageWords.shipped.compactMap { LanguageWords.forTag($0) }
+        var seen = Set<String>()
+        let words = all.flatMap { $0.strings("headings", "nutrients") }.filter { seen.insert($0).inserted }
+            .enumerated().sorted { a, b in
+                let (la, lb) = (a.element.utf16.count, b.element.utf16.count)
+                return la != lb ? la > lb : a.offset < b.offset
+            }.map(\.element)
+        let pattern = "^" + SharedTables.alternation(words.map { NSRegularExpression.escapedPattern(for: $0) })
+            + "[ \\t]*:?[ \\t]*[0-9]+(?:[.,][0-9]+)?[ \\t]*(?:g|mg|kcal|kj|cal|%)?$"
+        return (all.flatMap { $0.strings("headings", "nutrition") }, try! NSRegularExpression(pattern: pattern))
+    }()
+
+    /// `window` as `PageRecipeCheck` reads it (#271): each of `page`'s section headings ending in a
+    /// letter, a digit or ")" gets a colon, the form a group heading is written in ("For the
+    /// filling:"), so a heading the model picks shows as one. The model is given `window` as is.
+    static func marked(_ window: String, _ page: PageText) -> String {
+        if page.headings.isEmpty { return window }
+        return window.components(separatedBy: "\n").map { line in
+            guard page.headings.contains(line), let last = line.utf16.last,
+                  PageRecipeCheck.isLetterOrDigit(last) || last == 0x29 else { return line }
+            return line + ":"
+        }.joined(separator: "\n")
+    }
+
+    /// A nutrition box's line (#271): its heading ("Nutrition: per serving", "Nährwerte"), or a
+    /// nutrient and its figure alone ("kcal507", "Fat: 10g", "Protein 5 g").
+    static func isNutrition(_ line: String) -> Bool {
+        if isHeading(line, nutrition.headings) { return true }
+        let lower = line.lowercased()
+        return nutrition.line.firstMatch(in: lower, range: NSRange(lower.startIndex..., in: lower)) != nil
+    }
+
     /// The window's text, lines joined by "\n", at most `maxChars` long; nil if no recipe shows.
     static func window(_ page: PageText, maxChars: Int) -> String? {
-        let lines = page.lines.map { $0.kTrimmed }.filter { !$0.isEmpty }
+        let lines = page.lines.map { $0.kTrimmed }.filter { !$0.isEmpty && !isNutrition($0) }
         guard let anchor = anchor(lines) else { return nil }
         let title = page.title.map { $0.kTrimmed }.flatMap { !$0.isEmpty && length($0) < maxChars / 4 ? $0 : nil }
         var budget = maxChars - (title.map { length($0) + 1 } ?? 0)

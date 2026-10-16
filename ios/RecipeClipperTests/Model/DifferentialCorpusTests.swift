@@ -2025,6 +2025,11 @@ final class DifferentialCorpusTests: XCTestCase {
         Verify("Apfelkuchen\nZutaten\n200 g Mehl\nZubereitung\nDas Mehl sieben.\nMarmorkuchen\nZutaten\n2 Eier\nZubereitung\nDie Eier schlagen.", "Apfelkuchen", ["200 g Mehl", "2 Eier"], ["Das Mehl sieben.", "Die Eier schlagen."], ["200 g Mehl"], ["Das Mehl sieben."]),
         Verify("肉じゃが\n材料（2人分）\n砂糖 大さじ2\n作り方\n鍋で煮る。\n材料\n醤油 大さじ1\n醤油 小さじ1\n作り方\n混ぜる。", "肉じゃが", ["砂糖 大さじ2", "醤油 大さじ1", "醤油 小さじ1"], ["鍋で煮る。"], ["砂糖 大さじ2"], ["鍋で煮る。"]),
         Verify("Soup\nIngredients\n1 cup water", "Stew", ["1 cup water"], [], nil, nil),
+        Verify("Apple Pie Bars:\nIngredients:\nFOR APPLE FILLING:\n2 cups chopped apples\nFOR CRUST:\n1 1/2 cups flour\nNotes:\nMethod:\nstep 1:\nMix the apples.", "Apple Pie Bars", ["FOR APPLE FILLING", "2 cups chopped apples", "FOR CRUST:", "1 1/2 cups flour", "Notes", "step 1"], ["step 1", "Mix the apples."], ["FOR APPLE FILLING:", "2 cups chopped apples", "FOR CRUST:", "1 1/2 cups flour"], ["Mix the apples."]),
+        Verify("Apple Pie Bars:\nIngredients:\nFOR APPLE FILLING:\nFOR CRUST:\n1 1/2 cups flour", "Apple Pie Bars:", ["FOR APPLE FILLING", "FOR CRUST", "1 1/2 cups flour"], [], ["FOR CRUST:", "1 1/2 cups flour"], []),
+        Verify("Carbonara\nIngredients\n150g of Parmesan, freshly grated\n6 egg yolks\nMethod\n1\nBeat the egg yolks.\n6 egg yolks\n75g of Parmesan", "Carbonara", ["150g of Parmesan, freshly grated", "6 egg yolks", "75g of Parmesan"], ["Beat the egg yolks."], ["150g of Parmesan, freshly grated", "6 egg yolks"], ["Beat the egg yolks."]),
+        Verify("Cake\nDirections\nMix it.\n2 cups flour", "Cake", ["2 cups flour"], ["Mix it."], ["2 cups flour"], ["Mix it."]),
+        Verify("Tots\nZucchini sweating: 30 minutes\nIngredients:\nChow Mein Sauce:\n1 tbsp soy sauce\nZucchini:\n1 lb zucchini\nInstructions:\nSauce:\nMix the sauce.", "Tots", ["Chow Mein Sauce:", "1 tbsp soy sauce", "Zucchini", "1 lb zucchini"], ["Sauce:", "Mix the sauce."], ["Chow Mein Sauce:", "1 tbsp soy sauce", "Zucchini:", "1 lb zucchini"], ["Mix the sauce."]),
     ]
 
     private static let jsonLd: [(String, [String], Recipe?)] = [

@@ -44,6 +44,22 @@ class RecipeTextWindowTest {
         assertFalse(RecipeTextWindow.isHeading("The ingredients " + "x".repeat(60)))
     }
 
+    @Test fun `a nutrition box is left out of the window (#271)`() {
+        listOf("Nutrition: per serving", "Nutrition Facts", "kcal507", "fat27.05g", "Protein 5 g", "Calories: 250kcal", "Nährwerte", "Fett: 12 g")
+            .forEach { assertTrue(it, RecipeTextWindow.isNutrition(it)) }
+        listOf("1 tsp salt", "Salt and pepper to taste", "200g caster sugar", "Salt 1 tsp", "Fat-free yogurt", "Low-fat milk 200ml")
+            .forEach { assertFalse(it, RecipeTextWindow.isNutrition(it)) }
+        // BBC Good Food's shape: no ingredients heading, and the nutrition box was the densest run of short numeric lines.
+        val lines = story + listOf(
+            "Units:", "200g caster sugar", "200g softened butter", "4 eggs beaten", "200g self-raising flour", "1 tsp baking powder",
+            "2 tbsp milk", "For the filling:", "100g butter softened", "Nutrition: per serving", "kcal507", "fat27.05g", "saturates16g",
+            "carbs61.02g", "sugars45g", "low", "fibre0.8g", "protein5g", "salt0.9g", "Method:", "step 1:", "Heat oven to 190C."
+        ) + story
+        val window = RecipeTextWindow.window(PageText("Victoria sandwich", lines), 1_200)!!.lines()
+        assertTrue("200g caster sugar" in window && "Heat oven to 190C." in window)
+        assertFalse(window.any { it == "kcal507" || it.startsWith("Nutrition") })
+    }
+
     @Test fun `the window starts with the title, keeps the card's lead lines and fits the budget`() {
         val page = PageTextReader.read(fixture("blog-no-recipe-data.html"), "https://blog.example/b")
         val window = RecipeTextWindow.window(page, 1_000)!!

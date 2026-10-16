@@ -15,6 +15,8 @@ Part of #99. Run on 2026-09-25 on the owner's Mac (M1 Pro, 32 GB, macOS 26.6.2) 
   overflowed 1,024 output tokens. (The 3 "wrong" Delish lines first read as another recipe's
   were a scoring artifact; see section 2.) #128 followed up (section 2b): 4,096 reply tokens and
   a one-card rule; naming runs of line numbers instead of copying lines was tried and dropped.
+  #271 (section 2c) took the wrong ingredient lines from 9 and 33 in two runs to 0 and 0: a
+  nutrition box left out of the window, list items kept whole, and headings read as headings.
 - **Decisions: act only on aisles.** With `DecisionRule`, the generative model was confidently
   wrong on 4 of 22 count brackets (a wrong figure on screen); JevK5 was no better there. For
   aisles, JevK5 (open weights, 4B) was right on 20 of 20 names the table can't file, at 0.5 s.
@@ -150,6 +152,75 @@ model naming runs of line numbers, the lines taken from the window, then the che
   lines weighted most): line runs failed it, so the apps keep one call, at 4,096 reply tokens
   on Android, with the one-card rule. Gemini Nano and Apple's model still need a supported
   device to judge (faithfulness, latency, and whether Gemini Nano honours 4,096).
+
+### 2c. Wrong ingredient lines (#271)
+
+Run on 2026-10-15 (same Mac, qwen2.5:3b), shipped arm only (one call copying the lines, 4,096
+reply tokens, one-card rule; `EVAL_ARMS=pages-copy-4096`), on the same cached pages as 2b plus
+a new fixture with two recipe cards (`blog-two-recipe-cards.html`, Delish's shape): 24 pages.
+Each arm was run twice, because the stand-in varies between runs. A group heading the app shows
+as one (a line ending in a colon, `IngredientHeading`) is now counted apart, neither right nor
+wrong.
+
+**What the wrong lines were.** The two "before" runs kept 9 and 33 wrong ingredient lines, 35
+distinct ones on 5 pages (the full table is on #271):
+
+| Kind | Lines | Pages |
+|---|---:|---|
+| (a) right, but the gold is wrong | 0 | – |
+| (b) real text from elsewhere on the page | 12 | BBC Good Food's nutrition box (9) and its app promo and "Ad" label; Great British Chefs' "used in this step" list under the method |
+| (c) not an ingredient | 17 | group headings without a colon (RecipeTin Eats, TidyMom, BBC: 8), "Method" and "step 1" … "step 8" (BBC) |
+| (d) a second recipe card | 0 | the one-card rule still never fires on a real page |
+| (e) other | 6 | BBC: one ingredient read as two lines ("100g butter" + "softened"), its note being a `<div>` inside the `<li>` |
+
+Most of BBC's came from one cause: with no "Ingredients" heading, the nutrition box's short
+numeric lines were the densest "ingredient-looking" run, so the window started there, after the
+cake's own ingredients (3 of 11 gold lines found in both runs).
+
+**What changed** (both apps, `docs/decisions.md` under #103): the window leaves a nutrition box
+out (`headings.json`'s `nutrition` and `nutrients`); a short list item is one line; headings
+are kept apart in the page text, and the check reads them with a colon, so a heading picked as
+an ingredient shows as a group heading, only directly above an ingredient line, and never as a
+step; an ingredient found only below the card's steps heading is dropped; where a pick is on the
+page twice, a whole line wins.
+
+| Run | Recipes shown | Name right | Gold ingredient lines found | Ingredient lines shown: right / wrong | Group headings shown | Gold steps found | Steps shown: right / wrong | Unreadable replies |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Before, run 1 | 24 | 22 | 222 / 278 | 224 / **9** | – | 105 / 137 | 122 / 8 | 0 |
+| Before, run 2 | 22 | 20 | 224 / 278 | 227 / **33** | – | 79 / 137 | 116 / 15 | 2 |
+| After, run 1 | 24 | 22 | 242 / 278 | 273 / **0** | 4 | 96 / 137 | 134 / 8 | 0 |
+| After, run 2 | 16 | 14 | 157 / 278 | 156 / **0** | 4 | 61 / 137 | 81 / 2 | 8 |
+
+(Before, "Chow Mein Sauce:" counted as one of run 1's 9; it is a heading the app already showed
+as one.)
+
+- **The gate held** (ship only if wrong ingredient lines go down, wrong steps don't go up, and
+  gold lines found don't drop by more than noise): wrong ingredient lines 9 and 33 → 0 and 0;
+  wrong steps 8 and 15 → 8 and 2; gold lines found 222 and 224 → 242 and 157.
+- **How noise was judged.** After run 2 lost 8 pages whole to unreadable replies, so its totals
+  can't be compared as they stand. On the 15 pages every one of the four runs answered, gold
+  ingredient lines found were 141 and 135 before, 139 and 149 after. Two "before" runs with the
+  same code and windows differ by up to 20 lines on one page (Bon Appétit's carrot cake: 4 and
+  24), so anything inside that spread is noise. The unreadable replies (the model padding a time
+  field until the cap, or repeating "1/4 cup (65 ml) water") aren't the change either: the same
+  code and windows gave 1 and 9 in two back-to-back runs, and the no-recipe-data fixture, whose
+  window is identical before and after, failed that way in one "after" run.
+- **Per page:** BBC's Victoria sandwich went from 3 of 11 gold lines (with 6 and 27 wrong) to 6
+  and 11 of 11 with none wrong; RecipeTin Eats' zucchini tots, 16 of 18 with its group headings
+  shown as headings; TidyMom's three group headings now show as headings.
+- **Tried and dropped:** putting the heading colon in the model's own window (the first
+  version). On the zucchini tots page the stand-in then copied names only ("eggs", "dried
+  oregano") or merged "Zucchini:" into the next line, and the check rightly dropped them: 0, 9,
+  0 and 0 gold lines over four runs (2 unreadable), against 11, 4 and 16 without the colon in
+  three one-page runs. So the colon is added only to the text the check reads. An
+  ingredient-shape check (an amount, a unit or a known food word) was measured offline on the
+  pages' and the corpus's gold lines and dropped: it would lose real lines like "Cooking spray,
+  for pie dish" and "Crumbled cannoli shells, for topping".
+- **The two-card fixture:** the stand-in stayed in the first card whenever it answered (8 and 9
+  of 9 gold lines), so the one-card rule still hasn't fired in a harness run; the unit tests on
+  both platforms show it dropping the second card's lines on this page.
+- **Still for a supported device:** whether Gemini Nano and Apple's model behave like the
+  stand-in on these pages, and how often they give an unreadable reply.
 
 ### 3. Decisions (#104)
 
@@ -391,6 +462,9 @@ tools/eval/run.sh         # or: run.sh ingredients decisions, or --no-llm for th
 
 Results land in `tools/eval/results/` (a Markdown summary and one `.tsv` per task with every
 item's output; the pages task also keeps each unreadable reply). `EVAL_MODEL=<ollama tag>`
-swaps the generative model; `EVAL_ONLY=host,host` limits the pages task to those pages. An Apple Foundation Models
+swaps the generative model; `EVAL_ONLY=host,host` limits the pages task to those pages, and
+`EVAL_ARMS=pages-copy-4096,…` (each arm's log name) to those arms. The pages task's `.tsv` lists,
+per page, each kept line that isn't gold, each group heading shown, and why each picked
+ingredient line wasn't shown (#271). An Apple Foundation Models
 arm would be a small addition to `Llm.swift` (`LanguageModelSession`, `@Generable`) once Apple
 Intelligence is on.

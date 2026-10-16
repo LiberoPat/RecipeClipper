@@ -3,6 +3,12 @@ import Foundation
 /// A page's HTML as `PageText` (#103): one line per block, each the Jsoup-compatible text of
 /// what lies between block boundaries, walking the same `HtmlTree` the microdata parser reads.
 /// Pure. Android's `PageTextReader`, element list for element list.
+///
+/// Two marks for the on-device model and `PageRecipeCheck` (#271): a short list item is one line
+/// even when a `<div>` or `<p>` sits inside it (a card's note: "100g butter" and "softened" are
+/// one ingredient), and each section heading's line (`<h2>`–`<h6>`) is kept in `PageText.headings`,
+/// so a heading the model picks can show as one. The text itself is left as written: marking
+/// headings in the model's window made the 3B stand-in copy lines worse.
 enum PageTextReader {
 
     /// Elements that end one line and start the next.
@@ -18,19 +24,32 @@ enum PageTextReader {
         "select", "textarea", "button", "title",
     ]
 
+    /// Inside a list item, these don't end a line (#271).
+    private static let joinedInItem: Set<String> = ["div", "p"]
+
+    /// A list item longer than this is read block by block, as before (#271).
+    private static let itemMax = 600
+
+    /// Section headings, kept in `PageText.headings` (#271); `<h1>` is the page's title.
+    private static let headings: Set<String> = ["h2", "h3", "h4", "h5", "h6"]
+
     /// How deep the walk goes; deeper content is read as one line.
     private static let maxDepth = 200
 
     static func read(html: String, url: String) -> PageText {
         let tree = HtmlTree(html)
         var lines: [String] = []
+        var headingLines = Set<String>()
         var run = ""
-        func flush() {
+        func flush(heading: Bool = false) {
             let line = JsonLdRecipeParser.stripHtml(run)
-            if !line.isEmpty { lines.append(line) }
+            if !line.isEmpty {
+                lines.append(line)
+                if heading { headingLines.insert(line) }
+            }
             run = ""
         }
-        func walk(_ index: Int, depth: Int) {
+        func walk(_ index: Int, depth: Int, inItem: Bool) {
             for child in tree.elements[index].children {
                 switch child {
                 case .text(let start, let end):
@@ -40,15 +59,23 @@ enum PageTextReader {
                     if skipped.contains(name) { continue }
                     if depth >= maxDepth {
                         flush(); run = tree.text(of: c); flush()
+                    } else if inItem && joinedInItem.contains(name) {
+                        run += " "; walk(c, depth: depth + 1, inItem: true); run += " "
                     } else if blocks.contains(name) {
-                        flush(); walk(c, depth: depth + 1); flush()
+                        let item: Bool
+                        switch name {
+                        case "li": item = tree.text(of: c).utf16.count <= itemMax
+                        case "ul", "ol": item = false
+                        default: item = inItem
+                        }
+                        flush(); walk(c, depth: depth + 1, inItem: item); flush(heading: headings.contains(name))
                     } else {
-                        walk(c, depth: depth + 1)
+                        walk(c, depth: depth + 1, inItem: inItem)
                     }
                 }
             }
         }
-        walk(0, depth: 0)
+        walk(0, depth: 0, inItem: false)
         flush()
 
         func first(_ test: (HtmlTree.Element) -> Bool) -> Int? { tree.elements.indices.first { test(tree.elements[$0]) } }
@@ -64,7 +91,8 @@ enum PageTextReader {
             title: h1 ?? meta("og:title") ?? titleElement,
             lines: lines,
             language: JsonLdRecipeParser.pageLanguage(html: html),
-            image: image
+            image: image,
+            headings: headingLines
         )
     }
 }

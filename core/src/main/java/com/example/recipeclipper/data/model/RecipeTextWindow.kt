@@ -9,7 +9,8 @@ package com.example.recipeclipper.data.model
  * ingredient lines, a little more if the steps heading follows. With no such heading, it is the densest run of
  * ingredient-looking lines. With neither, the page has no recipe to find: null, and the model
  * isn't asked. The window keeps a few lines before the anchor (the recipe card's title, times
- * and servings), then as many lines after it as fit, and starts with the page's title.
+ * and servings), then as many lines after it as fit, and starts with the page's title. A
+ * nutrition box (its heading and its nutrient lines, `headings.json`) is left out first (#271).
  */
 object RecipeTextWindow {
     /** A heading is a short line. */
@@ -29,9 +30,18 @@ object RecipeTextWindow {
         all.flatMap { it.strings("headings", "ingredients") } to all.flatMap { it.strings("headings", "steps") }
     }
 
+    private val nutrition: Pair<List<String>, Regex> by lazy {
+        val all = LanguageWords.SHIPPED.mapNotNull { LanguageWords.forTag(it) }
+        val words = all.flatMap { it.strings("headings", "nutrients") }.distinct().sortedByDescending { it.length }
+        all.flatMap { it.strings("headings", "nutrition") } to Regex(
+            "^" + SharedTables.alternation(words.map { Regex.escape(it) }) +
+                "[ \t]*:?[ \t]*[0-9]+(?:[.,][0-9]+)?[ \t]*(?:g|mg|kcal|kj|cal|%)?$"
+        )
+    }
+
     /** The window's text, lines joined by "\n", at most [maxChars] long; null if no recipe shows. */
     fun window(page: PageText, maxChars: Int): String? {
-        val lines = page.lines.map { it.trim() }.filter { it.isNotEmpty() }
+        val lines = page.lines.map { it.trim() }.filter { it.isNotEmpty() && !isNutrition(it) }
         val anchor = anchor(lines) ?: return null
         val title = page.title?.trim()?.takeIf { it.isNotEmpty() && it.length < maxChars / 4 }
         var budget = maxChars - (title?.length?.plus(1) ?: 0)
@@ -94,6 +104,24 @@ object RecipeTextWindow {
             text.startsWith(word) && (text.length == word.length || !text[word.length].isLetterOrDigit())
         }
     }
+
+    /**
+     * [window] as [PageRecipeCheck] reads it (#271): each of [page]'s section headings ending in a
+     * letter, a digit or ")" gets a colon, the form a group heading is written in ("For the
+     * filling:"), so a heading the model picks shows as one. The model is given [window] as is.
+     */
+    fun marked(window: String, page: PageText): String =
+        if (page.headings.isEmpty()) window
+        else window.split("\n").joinToString("\n") { line ->
+            if (line in page.headings && line.last().let { it.isLetterOrDigit() || it == ')' }) "$line:" else line
+        }
+
+    /**
+     * A nutrition box's line (#271): its heading ("Nutrition: per serving", "Nährwerte"), or a
+     * nutrient and its figure alone ("kcal507", "Fat: 10g", "Protein 5 g").
+     */
+    internal fun isNutrition(line: String): Boolean =
+        isHeading(line, nutrition.first) || nutrition.second.matches(line.lowercase())
 
     /** An ingredients heading in any shipped language; [PageRecipeCheck] cuts a page into cards with it (#128). */
     internal fun isIngredientsHeading(line: String) = isHeading(line, headings.first)
