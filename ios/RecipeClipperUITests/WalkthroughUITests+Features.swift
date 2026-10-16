@@ -438,15 +438,17 @@ extension WalkthroughUITests {
         pause()
     }
 
-    /// Fraction glyphs read from a photo (#245), REAL OCR: the handwritten fraction card
+    /// Fraction glyphs read from a photo (#245), OCR SIMULATED: the handwritten fraction card
     /// (`card-fractions-hand.jpg`, which the recording script adds to the simulator's Photos just
-    /// before this test) picked in the real photo picker and read by the real Vision reader, which
-    /// gives look-alikes for some of its fractions ("2% cups oats" for 2 ⅔). "Check these lines"
-    /// flags them with the fraction chips, and a tap puts the fraction in place; Save.
-    func test34_fractionChips() {
+    /// before this test) picked in the real photo picker, its reading answered with ML Kit's
+    /// measured one (`fractionCardLines`, as Android's clip reads it for real): Vision on the
+    /// simulator reads this card with no look-alike a chip can name ("23 cups oats", "½⅓ cup
+    /// milk"). "Check these lines" flags the look-alikes with the fraction chips, and a tap puts
+    /// the fraction in place; Save.
+    func test34_fractionChipsSimulated() {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "photoText"]
-        app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
+        app.launchEnvironment["RC_UITEST_PHOTO_LINES"] = Self.fractionCardLines
         app.launch()
         self.app = app
         require(app.textFields["Recipe URL"], "Home")
@@ -493,6 +495,14 @@ extension WalkthroughUITests {
         require(text("Oat Cookies"), "its name")
         pause(3)
     }
+
+    /// The handwritten fraction card as ML Kit read it on the emulator (#245's measurements;
+    /// Android's `FRACTION_CARD_LINES`).
+    static let fractionCardLines = [
+        "Oat Cookies", "INGREDIENTS", "½ cup sugar", "1 a cups flour", "4 tsp salt", "Ys cup milk",
+        "2 % cups oats", "& tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients.",
+        "Stir in the milk and chocolate.", "Bake 12 minutes at 350°F."
+    ].joined(separator: "\n")
 
     /// "Clip it yourself" on a Reddit post Reddit won't let the app read (#213, #230), LIVE: real
     /// r/recipes posts through the real source (`RC_UITEST_LIVE_REDDIT`), whose `.json` read

@@ -57,6 +57,12 @@ extension WalkthroughUITests {
         pause()
         // A burst of swipes shares one snackbar, counting in place, and one Undo brings them all
         // back, with no snackbar after it (#268).
+        // Back to the top of the list, sorted by name.
+        for _ in 0..<5 where !(row("Banana Bread").exists && row("Banana Bread").isHittable) {
+            app.swipeDown()
+            pause(0.6)
+        }
+        pause()
         for title in ["Banana Bread", "Beef Stir-Fry", "Buttermilk Pancakes"] {
             require(row(title), title).swipeLeft()
             let delete = app.buttons["Delete"]
