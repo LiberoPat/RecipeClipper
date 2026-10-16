@@ -230,10 +230,41 @@ characters, a yield or time over 300, a line over 2,000, one line 4 times runnin
 doesn't parse is asked once more, with `PageReplyRetry`'s reminder after the instructions and a
 2,048-token cap. Ollama doesn't stream here, so the harness checks the whole reply; on a phone the
 same check stops the reply as it streams, so a runaway there costs less than the latency below.
-Both arms answer in the same run on the same windows; the stand-in varies run to run, so the arms
-are compared within a run.
+Both arms answer in the same run on the same windows, but each makes its own model calls, and the
+stand-in varies run to run.
 
-_Measurement pending._
+Run on 2026-10-16 (same Mac, qwen2.5:3b, the 24 pages of 2c), three runs, one-card rule. These
+runs flagged a yield or time over **100** characters (the first cut); the threshold became 300
+because of run 2, and the last columns say what 300 changes, read from the replies each run kept.
+
+| Run | Arm | Recipes shown | Name right | Gold ingredient lines found | Ingredient lines shown: right / wrong | Gold steps found | Steps shown: right / wrong | Unreadable | Retried / read on the retry | Median latency |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | shipped | 24 | 22 | 240 / 278 | 240 / 0 | 105 / 137 | 123 / 6 | 0 | – | 8.8 s |
+| 1 | retry | 24 | 22 | 240 / 278 | 240 / 0 | 105 / 137 | 123 / 6 | 0 | 0 / 0 | 7.3 s |
+| 2 | shipped | 24 | 22 | 240 / 278 | 240 / 0 | 105 / 137 | 123 / 6 | 0 | – | 6.9 s |
+| 2 | retry | 23 | 21 | 232 / 278 | 232 / 0 | 99 / 137 | 116 / 6 | 1 | 2 / 1 | 7.6 s |
+| 3 | shipped | 22 | 20 | 215 / 278 | 214 / 0 | 94 / 137 | 115 / 2 | 2 | – | 7.3 s |
+| 3 | retry | 24 | 22 | 249 / 278 | 248 / 0 | 110 / 137 | 131 / 2 | 0 | 3 / 3 | 7.4 s |
+
+- **The retry recovered every real runaway** and added no wrong line. In run 3 the shipped arm
+  lost 2 pages to unreadable replies; the retry arm's first pass ran away on 2 (RecipeTin Eats'
+  chow mein repeating "1/4 cup (65 ml) water", Bon Appétit's carrot cake cut off at the cap), and
+  the retry read both: 24 recipes against 22, 34 more gold ingredient lines, still 0 wrong
+  ingredient lines and the same 2 wrong steps.
+- **Run 2's loss was the first threshold, not the retry.** Both of its flags were replies that
+  had finished and parsed, with a cook time the model had explained ("60 minutes (55-65 minutes
+  based on tester method, …)", 108 and 129 characters); the retry read one, and the other ran away
+  on the retry, losing a page the shipped arm showed. Run 3's third flag was the same kind (a
+  192-character total time, read on the retry). At 300, none of these three is flagged and each
+  first reply is used as the shipped arm would; the real runaways run to thousands of characters
+  (9,319 and 14,178 here), so 300 still stops them within a few dozen tokens on a phone.
+- **Latency:** the medians barely move, because the retry runs only on the pages that would
+  otherwise be lost; there it roughly doubles the time (here a full 4,096-token runaway plus the
+  retry, as Ollama doesn't stream; on a phone the runaway is stopped early).
+- **How often it matters:** the stand-in ran away far less in these runs (0, 0 and 2 on the shipped
+  arm) than in 2c's (0 to 9). The before/after-#272 A/B (posted on #273) found #272 didn't raise
+  the rate: a mean of 3.75 unreadable replies a run before, 2.5 after. Gemini Nano and Apple's model
+  still need a supported device to judge.
 
 ### 3. Decisions (#104)
 
