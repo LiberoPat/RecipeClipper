@@ -242,7 +242,9 @@ class CookingWalkthroughTest : WalkthroughBase() {
         tap("Got it", 1500)
         back()
         tapDescription("Settings")
-        reveal(hasText("Show tips again"))
+        // To the foot of Settings (longer since the backup rows), so the row is wholly on screen.
+        show("Show tips again", 500)
+        swipeUp()
         waitFor(hasTestTag("tooltip-settings_show_tips")) // Settings' one, once on screen
         pause(2500)
         tap("Got it", 1500)
