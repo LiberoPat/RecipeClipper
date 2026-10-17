@@ -516,7 +516,11 @@ extension WalkthroughUITests {
         pause()
         let typed = box.value as? String ?? ""
         let fixed = typed.split(separator: "\n", omittingEmptySubsequences: false).map { line -> String in
-            Self.fractionCard.first(where: { line.contains($0.key) })?.line ?? String(line)
+            // A line right but for a space ("1¼ cups flour") is left as read.
+            guard let card = Self.fractionCard.first(where: { line.contains($0.key) })?.line,
+                  card.replacingOccurrences(of: " ", with: "") != line.replacingOccurrences(of: " ", with: "")
+            else { return String(line) }
+            return card
         }.joined(separator: "\n")
         print("FRACTION-TYPED \(typed.split(separator: "\n").filter { !fixed.split(separator: "\n").contains($0) }.joined(separator: " | "))")
         if fixed != typed {

@@ -529,7 +529,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         // The slips nothing flags, typed right: each ingredient line the card's, by what it holds.
         val typed = box.fetchSemanticsNode().config[SemanticsProperties.EditableText].text
         val fixed = typed.lines().joinToString("\n") { line ->
-            FRACTION_CARD.entries.firstOrNull { (key, _) -> key in line }?.value?.second ?: line
+            // A line right but for a space ("1¼ cups flour") is left as read.
+            FRACTION_CARD.entries.firstOrNull { (key, _) -> key in line }?.value?.second
+                ?.takeIf { it.replace(" ", "") != line.replace(" ", "") } ?: line
         }
         Log.i("Walkthrough", "FRACTION TYPED ${typed.lines().filter { it !in fixed.lines() }.joinToString(" | ")}")
         if (fixed != typed) {
