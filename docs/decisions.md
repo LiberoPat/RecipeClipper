@@ -4241,6 +4241,31 @@ lines" before. macOS Vision differed again ("12 cup" for ½, "34 tsp" for ¾, "&
   both cards (printing `FRACTION-OCR` lines), and the device-only `MlKitFractionGlyphsTest` runs
   ML Kit (push the cards to `/data/local/tmp` first; logcat tag `FractionOcr`).
 
+**2026-10-16 (#276, after #247 and #249).** Clip 34 showed what was still missing. Vision read the
+handwritten card's ⅓ as "½⅓ cup milk": flagged, but with no chips, since chips replaced only a table
+look-alike. And ML Kit's "½ oup sugar" was saved as read, unflagged.
+
+- **Chips for glyphs run together** (`FractionLookAlike.gluedRun`, both platforms): a fraction glyph
+  straight before a digit or another glyph, and the run is every digit and glyph touching it
+  ("3¾4", "½⅓", "1½⅓4"). A chip replaces the whole run ("3¾4 tsp" → "¾ tsp"); a whole number set apart
+  by a space stays ("2 ½⅔ cups" → "2 ⅔ cups"), but one glued to the run goes with it ("1½⅓" → "⅓"),
+  since "3¾4" shows a glued digit is as likely a stray stroke. `PhotoTextSorter.fractionSlot` is the
+  look-alike slot, else the run. Still never replaced by itself, and the scaler leaves a line with
+  a run as written (it is `unreadable`), as it does a look-alike.
+- **A unit's near-miss is flagged** (`PhotoTextSorter.suspect`): a word straight after a line's
+  leading amount that is in the language's `splitter.json` `unitLookAlikes`, a short curated list
+  ("oup", "cuo", "c up", "tsb", "tps", "tbps", "tbsb", "isp"; "oucharada", "ouillère", "oucchiaino",
+  "oolher", German "e l" and "t l"), never edit distance, so "oz", "g", "ml", "T" and "cupcake" never
+  trip. Flagged only, never corrected, and with no chips.
+- **Still not caught, by decision:** a misspelt ingredient name ("mik") and a lost fraction that
+  reads as a plausible amount ("4 tsp salt" for ¾; Vision's "34 tsp", "23 cups", "18 tsp") are
+  #249's guessing territory.
+- **What the engines read this time** (clip 34): ML Kit on the emulator, "½ oup sugar", "1 a cups
+  flour", "4 tsp salt", "Ys cup mik", "2 % cups oats", "& tsp nutmeg" (chips on four lines, the first
+  flagged too); Vision on the simulator, "½ cup sugar", "1¼ cups flour", "34 tsp salt", "½⅓ cup milk",
+  "23 cups oats", "18 tsp nutmeg" (chips on "½⅓ cup milk" only). Both clips now use the real reader
+  and type the unflagged slips right before saving.
+
 ## Undo snackbars close by themselves (2026-09-29)
 
 The owner saw "Checked items removed" stay on the Groceries screen, and come back after changing

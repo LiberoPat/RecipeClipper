@@ -540,6 +540,16 @@ class RecipesWalkthroughTest : WalkthroughBase() {
             box.performTextReplacement(fixed)
             pause(2500)
         }
+        // And in the steps: ML Kit reads "milk" as "mik" there too.
+        val steps = compose.onAllNodes(field("Steps, one per line"))[0]
+        val stepsTyped = steps.fetchSemanticsNode().config[SemanticsProperties.EditableText].text
+        val stepsFixed = stepsTyped.replace(Regex("""\bmik\b"""), "milk")
+        if (stepsFixed != stepsTyped) {
+            steps.performScrollTo()
+            pause(1200)
+            steps.performTextReplacement(stepsFixed)
+            pause(2500)
+        }
         Espresso.closeSoftKeyboard()
         tap("Save", 3000)
         waitFor(hasText("Oat Cookies"))

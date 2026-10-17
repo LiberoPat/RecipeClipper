@@ -677,7 +677,7 @@ German post, a French card), 30 "Scan a recipe" (#226: a card's two sides from t
 yourself" on a live Reddit post (#213, #230: the guided steps, Review asking for the name, then the Text view with one field selected first), 32 "Clip it
 yourself" on a live blog page (#37, field first: Name, Ingredients, two Steps blocks, Undo, Photo, with real taps),
 33 selecting several pantry items (#258: touch and hold, a drag, Mark run out, Select all, Remove, one Undo each),
-34 fraction chips (#245: the handwritten fraction card scanned, its look-alikes flagged, a chip tapped; OCR simulated on iOS).
+34 fraction chips (#245, #276: the handwritten fraction card scanned with real OCR on both platforms, its look-alikes and glued glyphs flagged with chips, each chip tapped, the other slips typed right).
 Android's 13–21, 23–26 and 33 are in `CookingWalkthroughTest` and
 `SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–32 and 34 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–34 in `+Features.swift`, 22
 in `+MealPlan.swift`). What they need from outside the app:
@@ -708,12 +708,15 @@ in `+MealPlan.swift`). What they need from outside the app:
   fixture's lines) only if the model never arrives. ML Kit's slips differ from Vision's, so each
   test fixes the lines by what they contain, not by an exact reading.
 - **The fraction card** (34): `card-fractions-hand.jpg` from `shared/fixtures/reddit/photos/`, one
-  page. Android reads it for real with ML Kit (clip 30's fallback to OCR SIMULATED, #245's
-  measured ML Kit reading, if the model never arrives). On iOS it is picked in the real picker (the
-  script adds it to Photos just before the test), but the reading is OCR SIMULATED
-  (`test34_fractionChipsSimulated`, `RC_UITEST_PHOTO_LINES` with the same ML Kit reading): the
-  simulator's Vision reads this card with no look-alike a chip can name. The test taps the chip
-  for each look-alike it finds.
+  page, read for real on both platforms: Android with ML Kit (clip 30's fallback to OCR SIMULATED,
+  #245's measured ML Kit reading, if the model never arrives), iOS with Vision
+  (`RC_UITEST_PHOTO_VISION`), the card picked in the real picker (the script adds it to Photos just
+  before the test). The engines read it differently (#245's table), so the test finds each line with
+  chips by its ½ chip's label ("Use ½ in <line>"), taps the card's fraction for it, checks the line
+  changed (tapping once more if not), then types each ingredient line the card's by what it holds
+  (`FRACTION_CARD`, `fractionCard`), as clip 28 does. The test logs the lines with chips and the lines
+  typed (`FRACTION CHIPS`/`FRACTION TYPED` in logcat, `FRACTION-CHIPS`/`FRACTION-TYPED` in the iOS
+  log); iOS fails if Vision's reading offers no chip at all, rather than simulating.
 - **The scan** (30): the pages are `card-front.jpg` and `card-back.jpg` from
   `shared/fixtures/reddit/photos/`. iOS adds them to the simulator's Photos just before the test
   (back, then front, so the front is newest and the picker lists it first), and the test picks both
