@@ -48,15 +48,16 @@ object FractionLookAlike {
     /**
      * Where [line] holds a fraction glyph run into a digit or another glyph (#245, #276): "½⅓",
      * "3¾4", which no recipe writes but a recogniser gives for one glyph with its strokes read
-     * again. The run is every digit and glyph touching it, so a chosen fraction replaces it
-     * whole ("3¾4 tsp" → "¾ tsp"); a whole number set apart by a space isn't part of it
-     * ("2 ½⅓ cups" → "2 ⅓ cups"), nor one before an ordinary glyph ("1¼ cups" is no run). The
-     * first run in the line; null if none.
+     * again. The run is every glyph and digit from its first glyph on, so a chosen fraction
+     * replaces it whole ("½⅓ cup" → "⅓ cup"); the digits before that first glyph are a whole
+     * number and aren't part of it ("1½⅓ cup" → "1 ⅓ cup", the owner's call), nor is one before
+     * an ordinary glyph ("1¼ cups" is no run). The first run in the line; null if none.
      */
-    fun gluedRun(line: String): IntRange? = GLUED_RUN.find(line)?.range
+    fun gluedRun(line: String): IntRange? = GLUED_RUN.find(line)?.groups?.get(1)?.range
 
     private const val GLYPHS = "¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞"
 
-    // Digits and glyphs, with a glyph straight before a digit or another glyph somewhere in them.
-    private val GLUED_RUN = Regex("""(?<![\d$GLYPHS])[\d$GLYPHS]*[$GLYPHS][\d$GLYPHS]+""")
+    // A whole number, then (group 1) a glyph straight before a digit or another glyph, and the
+    // rest of the run.
+    private val GLUED_RUN = Regex("""(?<![\d$GLYPHS])\d*([$GLYPHS][\d$GLYPHS]+)""")
 }

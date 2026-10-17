@@ -120,8 +120,15 @@ enum PhotoTextSorter {
     }
 
     /// `line` with its `fractionSlot` replaced by `fraction`, the cook's choice; nil if it has none.
+    /// A whole number glued before a glyph run is kept and set apart ("1½⅓ cup" → "1 ⅓ cup", #276).
     static func replaceFraction(_ line: String, _ fraction: String, words: LanguageWords = .english) -> String? {
-        fractionSlot(line, words: words).map { (line as NSString).replacingCharacters(in: $0, with: fraction) }
+        let ns = line as NSString
+        if let slot = FractionLookAlike.slot(line, unitAtStart: IngredientScaler.patterns(words).unitAtStart) {
+            return ns.replacingCharacters(in: slot, with: fraction)
+        }
+        guard let run = FractionLookAlike.gluedRun(line) else { return nil }
+        let apart = run.location > 0 && (48...57).contains(ns.character(at: run.location - 1))
+        return ns.replacingCharacters(in: run, with: apart ? " " + fraction : fraction)
     }
 
     private static func gluedUnit(_ line: String, words: LanguageWords) -> Bool {

@@ -162,23 +162,24 @@ class PhotoTextSorterTest {
         assertTrue(PhotoTextSorter.suspect("½⅓ cup milk"))
     }
 
-    @Test fun `a chip replaces a glued glyph run whole, keeping a whole number set apart`() {
-        assertEquals("¾ tsp salt", PhotoTextSorter.replaceFraction("3¾4 tsp salt", "¾"))
+    @Test fun `a chip replaces a glued glyph run whole, keeping the whole number`() {
+        assertEquals("3 ¾ tsp salt", PhotoTextSorter.replaceFraction("3¾4 tsp salt", "¾")) // glued: kept, set apart
         assertEquals("⅓ cup milk", PhotoTextSorter.replaceFraction("½⅓ cup milk", "⅓"))
         assertEquals("2 ⅔ cups oats", PhotoTextSorter.replaceFraction("2 ½⅔ cups oats", "⅔"))
         assertEquals("Add ½ cup milk.", PhotoTextSorter.replaceFraction("Add ½⅓ cup milk.", "½"))
-        assertEquals("⅓ cup milk", PhotoTextSorter.replaceFraction("1½⅓ cup milk", "⅓")) // glued: part of the run
+        assertEquals("1 ⅓ cup milk", PhotoTextSorter.replaceFraction("1½⅓ cup milk", "⅓"))
+        assertEquals("12 ½", PhotoTextSorter.replaceFraction("12½⅓", "½"))
         // No run: an ordinary glyph, a mixed number, a glyph after digits.
         listOf("½ cup sugar", "1¼ cups flour", "2 ⅔ cups oats", "12½ g", "1 ½ cups").forEach {
             assertNull(it, PhotoTextSorter.fractionSlot(it))
         }
     }
 
-    @Test fun `the glued run is every digit and glyph touching it`() {
-        assertEquals(0..2, FractionLookAlike.gluedRun("3¾4 tsp"))
+    @Test fun `the glued run is every glyph and digit from its first glyph on`() {
+        assertEquals(1..2, FractionLookAlike.gluedRun("3¾4 tsp"))
         assertEquals(0..1, FractionLookAlike.gluedRun("½⅓ cup"))
         assertEquals(2..3, FractionLookAlike.gluedRun("2 ½⅓ cups"))
-        assertEquals(0..3, FractionLookAlike.gluedRun("1½⅓4"))
+        assertEquals(1..3, FractionLookAlike.gluedRun("1½⅓4"))
         assertNull(FractionLookAlike.gluedRun("1¼ cups"))
         assertNull(FractionLookAlike.gluedRun("2 ⅔ cups"))
     }

@@ -4248,8 +4248,11 @@ look-alike. And ML Kit's "½ oup sugar" was saved as read, unflagged.
 - **Chips for glyphs run together** (`FractionLookAlike.gluedRun`, both platforms): a fraction glyph
   straight before a digit or another glyph, and the run is every digit and glyph touching it
   ("3¾4", "½⅓", "1½⅓4"). A chip replaces the whole run ("3¾4 tsp" → "¾ tsp"); a whole number set apart
-  by a space stays ("2 ½⅔ cups" → "2 ⅔ cups"), but one glued to the run goes with it ("1½⅓" → "⅓"),
-  since "3¾4" shows a glued digit is as likely a stray stroke. `PhotoTextSorter.fractionSlot` is the
+  by a space stays ("2 ½⅔ cups" → "2 ⅔ cups"), and so does one glued before the run's first glyph,
+  set apart by a space ("1½⅓ cup" → "1 ⅓ cup", "3¾4 tsp" → "3 ¾ tsp"); only those leading digits
+  are a whole number, so the digit after a glyph stays in the run, and none is ever invented.
+  *Owner's call, 2026-10-16: keep the leading number* (#276 first dropped it, as possibly a stray
+  stroke). `PhotoTextSorter.fractionSlot` is the
   look-alike slot, else the run. Still never replaced by itself, and the scaler leaves a line with
   a run as written (it is `unreadable`), as it does a look-alike.
 - **A unit's near-miss is flagged** (`PhotoTextSorter.suspect`): a word straight after a line's
