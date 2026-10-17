@@ -40,4 +40,19 @@ enum FractionLookAlike {
         let symbol = !token.contains { $0.isLetter }
         return unitNext || (symbol && !afterNumber) ? m.ranges[4] : nil
     }
+
+    /// Where `line` holds a fraction glyph run into a digit or another glyph (#245, #276): "½⅓",
+    /// "3¾4", which no recipe writes but a recogniser gives for one glyph with its strokes read
+    /// again. The run is every digit and glyph touching it, so a chosen fraction replaces it
+    /// whole ("3¾4 tsp" → "¾ tsp"); a whole number set apart by a space isn't part of it
+    /// ("2 ½⅓ cups" → "2 ⅓ cups"), nor one before an ordinary glyph ("1¼ cups" is no run). The
+    /// first run in the line; nil if none.
+    static func gluedRun(_ line: String) -> NSRange? { gluedRunPattern.find(line)?.ranges[0] }
+
+    private static let glyphs = "¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞"
+
+    // Digits and glyphs, with a glyph straight before a digit or another glyph somewhere in them.
+    private static let gluedRunPattern = JRegex(
+        #"(?<![\d"# + glyphs + #"])[\d"# + glyphs + #"]*["# + glyphs + #"][\d"# + glyphs + #"]+"#
+    )
 }

@@ -38,5 +38,6 @@
   "amountUnits": ["g", "kg", "ml", "cc", "個", "本", "枚", "片", "かけ", "束", "袋", "缶", "合", "切れ", "房", "丁", "玉", "株"],
   "amountPatterns": ["(?:大さじ|小さじ|大匙|小匙|カップ)\\s*[0-9０-９½]", "[０-９]", "少々", "適量", "ひとつまみ"],
   "gluedUnits": [],
-  "gluedExceptions": []
+  "gluedExceptions": [],
+  "unitLookAlikes": []
 }

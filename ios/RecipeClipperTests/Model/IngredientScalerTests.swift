@@ -70,7 +70,7 @@ final class IngredientScalerTests: XCTestCase {
     func testAPhotosMisreadFractionGlyphStaysAsWritten() {
         // What ML Kit and Vision gave for ½ ¼ ¾ ⅓ ⅔ ⅛ (#245): never scaled or converted.
         for line in ["2% cups oats", "2 % cups oats", "1 a cups flour", "1 Y4 cups flour", "/4 tsp salt",
-                     "& tsp nutmeg", "Ys cup milk", "% cup sugar"] {
+                     "& tsp nutmeg", "Ys cup milk", "% cup sugar", "½⅓ cup milk", "3¾4 tsp salt", "2 ½⅔ cups oats"] {
             XCTAssertEqual(scale(line, 2.0), line)
             XCTAssertEqual(UnitConverter.convert(line, system: .metric, includeLiquids: true), line)
         }

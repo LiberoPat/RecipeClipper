@@ -87,6 +87,7 @@ enum RecipeTextSplitter {
         let amount: JRegex
         /// A unit word run into the next, taken whole (see Android's `Words.glued`).
         let glued: JRegex
+        let unitLookAlike: JRegex
 
         init(_ words: LanguageWords) {
             let table = words.table("splitter")
@@ -147,6 +148,7 @@ enum RecipeTextSplitter {
                 #"^\s*(?!"# + alt(list("gluedExceptions")) + ")(?>" + alt(list("gluedUnits")) + #")\.?\p{L}"#,
                 ignoreCase: true
             )
+            unitLookAlike = JRegex(#"^\s*"# + alt(list("unitLookAlikes")) + #"\.?(?![\p{L}\d])"#, ignoreCase: true)
         }
     }
 
@@ -170,6 +172,12 @@ enum RecipeTextSplitter {
     /// Whether `rest`, a line after its amount, starts with one of `words`' units run into the
     /// next word ("cupraisins"), for `PhotoTextSorter.suspect`.
     static func gluedUnit(_ rest: String, words: LanguageWords) -> Bool { self.words(words).glued.containsMatch(in: rest) }
+
+    /// Whether `rest`, a line after its amount, starts with a near-miss of one of `words`' units
+    /// ("oup sugar", "tbps butter"), for `PhotoTextSorter.suspect` (#276).
+    static func unitLookAlike(_ rest: String, words: LanguageWords) -> Bool {
+        self.words(words).unitLookAlike.containsMatch(in: rest)
+    }
 
     /// "(serves 4)", "<for 3~4 people>", "[metric]", "（2人分）" at the end of a header.
     private static let trailingParenthetical = JRegex(#"\s*[(<\[（【][^)>\]）】]*[)>\]）】]$"#)

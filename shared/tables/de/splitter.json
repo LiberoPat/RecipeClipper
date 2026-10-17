@@ -62,5 +62,6 @@
     "Essl(?:ö|oe)ffel", "Teel(?:ö|oe)ffel", "(?-i:EL)", "(?-i:TL)", "Kilogramm", "Gramm", "Milliliter",
     "Liter", "Tassen?"
   ],
-  "gluedExceptions": []
+  "gluedExceptions": [],
+  "unitLookAlikes": ["e\\s+l", "t\\s+l"]
 }

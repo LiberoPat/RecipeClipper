@@ -1,5 +1,7 @@
 package com.example.recipeclipper.data.remote
 
+import com.example.recipeclipper.data.model.FractionLookAlike
+import com.example.recipeclipper.data.model.LanguageWords
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -158,7 +160,57 @@ class PhotoTextSorterTest {
     @Test fun `a fraction glyph run into a digit or another glyph is flagged`() {
         assertTrue(PhotoTextSorter.suspect("3¾4 tsp salt"))
         assertTrue(PhotoTextSorter.suspect("½⅓ cup milk"))
-        assertNull(PhotoTextSorter.fractionSlot("3¾4 tsp salt")) // flagged, but no look-alike to replace
+    }
+
+    @Test fun `a chip replaces a glued glyph run whole, keeping a whole number set apart`() {
+        assertEquals("¾ tsp salt", PhotoTextSorter.replaceFraction("3¾4 tsp salt", "¾"))
+        assertEquals("⅓ cup milk", PhotoTextSorter.replaceFraction("½⅓ cup milk", "⅓"))
+        assertEquals("2 ⅔ cups oats", PhotoTextSorter.replaceFraction("2 ½⅔ cups oats", "⅔"))
+        assertEquals("Add ½ cup milk.", PhotoTextSorter.replaceFraction("Add ½⅓ cup milk.", "½"))
+        assertEquals("⅓ cup milk", PhotoTextSorter.replaceFraction("1½⅓ cup milk", "⅓")) // glued: part of the run
+        // No run: an ordinary glyph, a mixed number, a glyph after digits.
+        listOf("½ cup sugar", "1¼ cups flour", "2 ⅔ cups oats", "12½ g", "1 ½ cups").forEach {
+            assertNull(it, PhotoTextSorter.fractionSlot(it))
+        }
+    }
+
+    @Test fun `the glued run is every digit and glyph touching it`() {
+        assertEquals(0..2, FractionLookAlike.gluedRun("3¾4 tsp"))
+        assertEquals(0..1, FractionLookAlike.gluedRun("½⅓ cup"))
+        assertEquals(2..3, FractionLookAlike.gluedRun("2 ½⅓ cups"))
+        assertEquals(0..3, FractionLookAlike.gluedRun("1½⅓4"))
+        assertNull(FractionLookAlike.gluedRun("1¼ cups"))
+        assertNull(FractionLookAlike.gluedRun("2 ⅔ cups"))
+    }
+
+    // Unit misspellings (#276): a near-miss of a unit where the unit goes, from splitter.json's
+    // short unitLookAlikes, never edit distance.
+
+    @Test fun `a near-miss of a unit after the amount is flagged`() {
+        listOf(
+            "½ oup sugar", "1 oups flour", "2 cuo milk", "1 c up milk", "1 C UPS milk", "2 tsb salt",
+            "1 tps vanilla", "2 tbps butter", "1 tbsb oil", "1 isp salt", "1 ½ oup sugar", "2 tbps. butter"
+        ).forEach { assertTrue(it, PhotoTextSorter.suspect(it)) }
+        assertTrue(PhotoTextSorter.suspect("2 e l Zucker", LanguageWords.forTag("de")!!))
+        assertTrue(PhotoTextSorter.suspect("1 oucharada de azúcar", LanguageWords.forTag("es")!!))
+        assertTrue(PhotoTextSorter.suspect("2 ouillères de sucre", LanguageWords.forTag("fr")!!))
+        assertTrue(PhotoTextSorter.suspect("1 oucchiaino di sale", LanguageWords.forTag("it")!!))
+        assertTrue(PhotoTextSorter.suspect("2 oolheres de açúcar", LanguageWords.forTag("pt")!!))
+    }
+
+    @Test fun `real units, words and ingredient names are not flagged as misspelt units`() {
+        listOf(
+            "1 cup milk", "2 cups flour", "1 c milk", "1 c. sugar", "2 tsp salt", "1 tbsp oil", "2 tbs butter",
+            "2 T sugar", "1 t salt", "1 oz butter", "2 g salt", "100 ml milk", "1 l water", "1 lb beef",
+            "2 lbs beef", "1 kg flour", "3 teaspoons sugar", "2 tablespoons oil", "1 stick butter",
+            "1 cupcake", "2 c upside-down cakes", "Bake for 1 hour.",
+            "4 tsp salt", "½ cup mik", "2 tsps sugar", "1 oupa", "Add 1 oup sugar" // not after a leading amount
+        ).forEach { assertFalse(it, PhotoTextSorter.suspect(it)) }
+        listOf(
+            "de" to "2 EL Zucker", "de" to "1 TL Salz", "de" to "1 Ei", "es" to "1 cucharada de azúcar",
+            "fr" to "2 cuillères à soupe de sucre", "it" to "1 cucchiaino di sale", "pt" to "2 colheres de açúcar",
+            "es" to "1 taza de harina", "ja" to "大さじ1 砂糖"
+        ).forEach { (lang, line) -> assertFalse(line, PhotoTextSorter.suspect(line, LanguageWords.forTag(lang)!!)) }
     }
 
     @Test fun `a chip replaces the look-alike in place and nothing else`() {
@@ -179,6 +231,17 @@ class PhotoTextSorterTest {
             "Oat Cookies", "INGREDIENTS", "½ oup sugar", "1 a cups flour", "4 tsp salt", "Ys cup mik",
             "2 % cups oats", "& tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients."
         )))
-        assertEquals(listOf("1 a cups flour", "Ys cup mik", "2 % cups oats", "& tsp nutmeg"), reading.uncertain)
+        // "½ oup sugar"'s unit is misspelt (#276); "4 tsp salt" (¾ lost) and "mik" stay #249's.
+        assertEquals(listOf("½ oup sugar", "1 a cups flour", "Ys cup mik", "2 % cups oats", "& tsp nutmeg"), reading.uncertain)
+    }
+
+    @Test fun `Vision's glued reading of the fraction card gets chips`() {
+        // Vision's reading of card-fractions-hand.jpg on the iOS simulator (#245, #276).
+        val reading = PhotoTextSorter.sort(lines(listOf(
+            "Oat Cookies", "INGREDIENTS", "½ cup sugar", "1¼ cups flour", "3/4 tsp salt", "½⅓ cup milk",
+            "23 cups oats", "is tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients."
+        )))
+        assertEquals(listOf("½⅓ cup milk", "is tsp nutmeg"), reading.uncertain)
+        assertEquals(reading.uncertain, reading.uncertain.filter { PhotoTextSorter.fractionSlot(it) != null })
     }
 }

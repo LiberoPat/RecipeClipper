@@ -59,5 +59,6 @@
   ],
   "amountPatterns": [],
   "gluedUnits": ["cucharaditas?", "cucharadas?", "tazas?", "kilogramos?", "gramos?", "mililitros?", "litros?"],
-  "gluedExceptions": []
+  "gluedExceptions": [],
+  "unitLookAlikes": ["oucharad(?:it)?as?"]
 }

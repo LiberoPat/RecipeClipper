@@ -438,17 +438,18 @@ extension WalkthroughUITests {
         pause()
     }
 
-    /// Fraction glyphs read from a photo (#245), OCR SIMULATED: the handwritten fraction card
+    /// Fraction glyphs read from a photo (#245, #276): the handwritten fraction card
     /// (`card-fractions-hand.jpg`, which the recording script adds to the simulator's Photos just
-    /// before this test) picked in the real photo picker, its reading answered with ML Kit's
-    /// measured one (`fractionCardLines`, as Android's clip reads it for real): Vision on the
-    /// simulator reads this card with no look-alike a chip can name ("23 cups oats", "½⅓ cup
-    /// milk"). "Check these lines" flags the look-alikes with the fraction chips, and a tap puts
-    /// the fraction in place; Save.
-    func test34_fractionChipsSimulated() {
+    /// before this test) picked in the real photo picker and read by the real Vision reader, which
+    /// gives its ⅓ as "½⅓" (glyphs run together) and may give others as look-alikes. "Check these
+    /// lines" flags them with the fraction chips: each chip is found by its label and tapped, and
+    /// tapped again if its line didn't change. Then the slips nothing flags are typed right, as
+    /// clip 28 does, so the saved recipe is the card's; Save. It fails, rather than simulating,
+    /// if Vision's reading offers no chip at all.
+    func test34_fractionChips() {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "photoText"]
-        app.launchEnvironment["RC_UITEST_PHOTO_LINES"] = Self.fractionCardLines
+        app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
         app.launch()
         self.app = app
         require(app.textFields["Recipe URL"], "Home")
@@ -478,44 +479,94 @@ extension WalkthroughUITests {
         pause(1.5)
         scrollTo(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
         pause(3.5)
-        // The chip for the fraction the card shows, under each flagged look-alike it can name.
-        for (fraction, lookAlike) in [("¼", " a "), ("⅓", "Ys"), ("⅓", "½⅓"), ("⅔", "%"), ("⅛", "&"), ("⅛", "is tsp")] {
-            let chip = app.buttons.matching(NSPredicate(
-                format: "identifier BEGINSWITH 'edit.fraction.' AND label BEGINSWITH %@ AND label CONTAINS %@",
-                "Use \(fraction) in", lookAlike
-            )).firstMatch
-            guard chip.waitForExistence(timeout: 1) else { continue }
-            // Short drags either way until the chip sits clear of the bars.
-            for _ in 0..<6 {
-                let frame = chip.frame
-                if frame.minY < 140 {
-                    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
-                        .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)))
-                } else if frame.maxY > app.frame.maxY - 140 {
-                    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
-                        .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
-                } else {
-                    break
-                }
-                pause(0.6)
+
+        // Every line with chips has a ½ chip, "Use ½ in <line>".
+        let halves = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'edit.fraction.' AND label BEGINSWITH %@", "Use ½ in "
+        ))
+        let chipLines = halves.allElementsBoundByIndex.map { String($0.label.dropFirst("Use ½ in ".count)) }
+        print("FRACTION-CHIPS \(chipLines.joined(separator: " | "))")
+        XCTAssertFalse(chipLines.isEmpty, "Vision's reading of the card offered no chip")
+        let box = app.descendants(matching: .any).matching(NSPredicate(
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "chocolate"
+        )).firstMatch
+        func boxLines() -> [String] {
+            (box.value as? String ?? "").split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        }
+        for line in chipLines {
+            guard let fraction = Self.fractionCard.first(where: { line.contains($0.key) })?.fraction,
+                  !fraction.isEmpty else { continue }
+            for attempt in 0..<2 where boxLines().contains(line) {
+                if attempt > 0 { print("FRACTION-CHIPS the \(fraction) chip for \"\(line)\" missed; tapping again") }
+                let chip = app.buttons.matching(NSPredicate(
+                    format: "identifier BEGINSWITH 'edit.fraction.' AND label == %@", "Use \(fraction) in \(line)"
+                )).firstMatch
+                guard chip.waitForExistence(timeout: 2) else { break }
+                bringIntoView(chip)
+                pause(1.2)
+                chip.tap()
+                pause(2.5)
             }
-            pause(1.2)
-            chip.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            XCTAssertFalse(boxLines().contains(line), "the \(fraction) chip didn't change \"\(line)\"")
+        }
+
+        // The slips nothing flags, typed right: each ingredient line the card's, by what it holds.
+        scrollTo(box, "the ingredients")
+        pause()
+        let typed = box.value as? String ?? ""
+        let fixed = typed.split(separator: "\n", omittingEmptySubsequences: false).map { line -> String in
+            // A line right but for a space ("1¼ cups flour") is left as read.
+            guard let card = Self.fractionCard.first(where: { line.contains($0.key) })?.line,
+                  card.replacingOccurrences(of: " ", with: "") != line.replacingOccurrences(of: " ", with: "")
+            else { return String(line) }
+            return card
+        }.joined(separator: "\n")
+        print("FRACTION-TYPED \(typed.split(separator: "\n").filter { !fixed.split(separator: "\n").contains($0) }.joined(separator: " | "))")
+        if fixed != typed {
+            for _ in 0..<6 where box.frame.maxY > app.frame.maxY - 140 {
+                app.swipeUp(velocity: .slow)
+            }
+            box.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.97)).tap()
+            pause(0.8)
+            box.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count + 2))
+            pause(0.5)
+            // Emptied, the box no longer matches its query: type into whatever has the focus (it).
+            app.typeText(fixed)
             pause(2.5)
         }
         require(app.buttons["edit.save"], "Save").tap()
         require(bookmark, "the saved recipe")
         require(text("Oat Cookies"), "its name")
         pause(3)
+        app.swipeUp()
+        pause(2)
     }
 
-    /// The handwritten fraction card as ML Kit read it on the emulator (#245's measurements;
-    /// Android's `FRACTION_CARD_LINES`).
-    static let fractionCardLines = [
-        "Oat Cookies", "INGREDIENTS", "½ cup sugar", "1 a cups flour", "4 tsp salt", "Ys cup milk",
-        "2 % cups oats", "& tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients.",
-        "Stir in the milk and chocolate.", "Bake 12 minutes at 350°F."
-    ].joined(separator: "\n")
+    /// Short drags either way until `element` sits clear of the bars.
+    private func bringIntoView(_ element: XCUIElement) {
+        for _ in 0..<6 {
+            let frame = element.frame
+            if frame.minY < 140 {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                    .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)))
+            } else if frame.maxY > app.frame.maxY - 140 {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                    .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+            } else {
+                return
+            }
+            pause(0.6)
+        }
+    }
+
+    /// The fraction card's ingredient lines, by a piece of each that survives the reading ("mi"
+    /// of "mik"): its fraction, then the line as the card has it (Android's `FRACTION_CARD`).
+    static let fractionCard: [(key: String, fraction: String, line: String)] = [
+        ("sug", "½", "½ cup sugar"), ("flo", "¼", "1 ¼ cups flour"), ("salt", "¾", "¾ tsp salt"),
+        ("oat", "⅔", "2 ⅔ cups oats"), ("nut", "⅛", "⅛ tsp nutmeg"), ("choc", "", "2 oz 70% chocolate"),
+        ("mi", "⅓", "⅓ cup milk"),
+    ]
 
     /// "Clip it yourself" on a Reddit post Reddit won't let the app read (#213, #230), LIVE: real
     /// r/recipes posts through the real source (`RC_UITEST_LIVE_REDDIT`), whose `.json` read

@@ -17,7 +17,7 @@ TESTS=("$@")
   test18_doneShoppingAndOnList test19_pantrySendList test20_pantryUseUpAfterCooking test21_chefModeUnsupportedSimulated
   test22_recipeJunkHidden test23_markAsCooked test24_tooltips test25_pantryStates test26_onionPlurals
   test27_redditImport test28_readThePhoto test29_readingOtherLanguages test30_scanARecipe test31_redditClipYourself test32_clipItYourself
-  test33_pantryMultiSelect test34_fractionChipsSimulated)
+  test33_pantryMultiSelect test34_fractionChips)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
 # A new simulator's keyboard shows its slide-to-type introduction once, over the app: mark it seen.
@@ -51,7 +51,7 @@ for t in "${TESTS[@]}"; do
     done
   fi
   # Clip 34 reads the handwritten fraction card (#245): added last, so the picker shows it first.
-  if [ "$t" = test34_fractionChipsSimulated ]; then
+  if [ "$t" = test34_fractionChips ]; then
     card=$(mktemp -d)/card-fractions
     sips -s format bmp "shared/fixtures/reddit/photos/card-fractions-hand.jpg" --out "$card.bmp" >/dev/null 2>&1 &&
       sips -s format png "$card.bmp" --out "$card.png" >/dev/null 2>&1 &&

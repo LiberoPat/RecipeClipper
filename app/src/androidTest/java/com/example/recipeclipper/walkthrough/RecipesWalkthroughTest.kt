@@ -481,10 +481,13 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     }
 
     /**
-     * Walkthrough 34, fraction glyphs read from a photo (#245): the handwritten fraction card
+     * Walkthrough 34, fraction glyphs read from a photo (#245, #276): the handwritten fraction card
      * (`card-fractions-hand.jpg`) scanned and read by ML Kit ([realOcr]; else OCR SIMULATED, its
-     * measured reading), which gives its ⅔ as "%" and its ¼ as "a". "Check these lines" flags
-     * them with the fraction chips, and a tap puts the fraction in place; Save.
+     * measured reading), which gives its fractions as look-alikes ("%", "a", "Ys", "&") and its
+     * cup as "oup". "Check these lines" flags them, the look-alikes with the fraction chips: each
+     * chip is found by its spoken label and tapped, and tapped again if its line didn't change.
+     * Then the slips nothing flags ("mik", "4 tsp salt" for ¾) are typed right, as clip 28 does,
+     * so the saved recipe is the card's; Save.
      */
     @Test
     fun test34_fractionChips() {
@@ -502,21 +505,61 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         Espresso.closeSoftKeyboard()
         pause(1200)
         show("Check these lines", 3500)
-        // The chip for the fraction the card shows, under each flagged look-alike it can name.
-        for ((fraction, lookAlike) in listOf("¼" to " a ", "⅓" to "Ys", "⅔" to "%", "⅛" to "&")) {
-            val chip = SemanticsMatcher("$fraction for \"$lookAlike\"") { node ->
-                val said = node.config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString().orEmpty()
-                said.startsWith("Use $fraction in") && lookAlike in said
+        // Every line with chips has a ½ chip: "Use ½ in <line>".
+        val chipLines = compose.onAllNodes(spokenStartingWith("Use ½ in ")).fetchSemanticsNodes().map {
+            it.config[SemanticsProperties.ContentDescription].joinToString().removePrefix("Use ½ in ")
+        }
+        Log.i("Walkthrough", "FRACTION CHIPS ${chipLines.joinToString(" | ")}")
+        val box = compose.onAllNodes(field("Ingredients, one per line"))[0]
+        fun boxLines() = box.fetchSemanticsNode().config[SemanticsProperties.EditableText].text.lines().map { it.trim() }
+        for (line in chipLines) {
+            val fraction = FRACTION_CARD.entries.firstOrNull { (key, _) -> key in line }?.value?.first?.takeIf(String::isNotEmpty) ?: continue
+            repeat(2) { attempt ->
+                if (line !in boxLines()) return@repeat
+                if (attempt > 0) Log.i("Walkthrough", "chip $fraction for \"$line\" missed; tapping again")
+                val chip = compose.onAllNodes(hasContentDescription("Use $fraction in $line"))
+                if (chip.fetchSemanticsNodes().isEmpty()) return@repeat
+                chip[0].performScrollTo()
+                pause(1200)
+                chip[0].performClick()
+                pause(2500)
             }
-            if (compose.onAllNodes(chip).fetchSemanticsNodes().isEmpty()) continue
-            compose.onAllNodes(chip)[0].performScrollTo()
+            check(line !in boxLines()) { "the $fraction chip didn't change \"$line\"" }
+        }
+        // The slips nothing flags, typed right: each ingredient line the card's, by what it holds.
+        val typed = box.fetchSemanticsNode().config[SemanticsProperties.EditableText].text
+        val fixed = typed.lines().joinToString("\n") { line ->
+            // A line right but for a space ("1¼ cups flour") is left as read.
+            FRACTION_CARD.entries.firstOrNull { (key, _) -> key in line }?.value?.second
+                ?.takeIf { it.replace(" ", "") != line.replace(" ", "") } ?: line
+        }
+        Log.i("Walkthrough", "FRACTION TYPED ${typed.lines().filter { it !in fixed.lines() }.joinToString(" | ")}")
+        if (fixed != typed) {
+            box.performScrollTo()
             pause(1200)
-            compose.onAllNodes(chip)[0].performClick()
+            box.performTextReplacement(fixed)
             pause(2500)
         }
+        // And in the steps: ML Kit reads "milk" as "mik" there too.
+        val steps = compose.onAllNodes(field("Steps, one per line"))[0]
+        val stepsTyped = steps.fetchSemanticsNode().config[SemanticsProperties.EditableText].text
+        val stepsFixed = stepsTyped.replace(Regex("""\bmik\b"""), "milk")
+        if (stepsFixed != stepsTyped) {
+            steps.performScrollTo()
+            pause(1200)
+            steps.performTextReplacement(stepsFixed)
+            pause(2500)
+        }
+        Espresso.closeSoftKeyboard()
         tap("Save", 3000)
         waitFor(hasText("Oat Cookies"))
         pause(2500)
+        swipeUp()
+        pause(2000)
+    }
+
+    private fun spokenStartingWith(prefix: String) = SemanticsMatcher("spoken starts with \"$prefix\"") { node ->
+        node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any { it.startsWith(prefix) }
     }
 
     /**
@@ -855,10 +898,20 @@ class RecipesWalkthroughTest : WalkthroughBase() {
 
         /** The handwritten fraction card as ML Kit read it on the emulator (#245's measurements). */
         val FRACTION_CARD_LINES = listOf(
-            "Oat Cookies", "INGREDIENTS", "½ cup sugar", "1 a cups flour", "4 tsp salt", "Ys cup milk",
+            "Oat Cookies", "INGREDIENTS", "½ oup sugar", "1 a cups flour", "4 tsp salt", "Ys cup mik",
             "2 % cups oats", "& tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients.",
             "Stir in the milk and chocolate.", "Bake 12 minutes at 350°F."
         ).map { PhotoLine(it, 0.8f) }
+
+        /**
+         * The fraction card's ingredient lines, by a piece of each that survives the reading
+         * ("mi" of "mik"): its fraction, then the line as the card has it.
+         */
+        val FRACTION_CARD = linkedMapOf(
+            "sug" to ("½" to "½ cup sugar"), "flo" to ("¼" to "1 ¼ cups flour"), "salt" to ("¾" to "¾ tsp salt"),
+            "oat" to ("⅔" to "2 ⅔ cups oats"), "nut" to ("⅛" to "⅛ tsp nutmeg"), "choc" to ("" to "2 oz 70% chocolate"),
+            "mi" to ("⅓" to "⅓ cup milk")
+        )
 
         const val GERMAN_POST = "https://www.reddit.com/r/Kochen/comments/1f8b4de/omas_pfannkuchen/"
         const val FRENCH_CARD_POST = "https://www.reddit.com/r/cuisine/comments/1f8c5fr/la_fiche_de_crepes_de_ma_grandmere/"

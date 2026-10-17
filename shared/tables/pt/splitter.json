@@ -59,5 +59,6 @@
   ],
   "amountPatterns": [],
   "gluedUnits": ["colher(?:es)?", "xícaras?", "quilogramas?", "quilos?", "gramas?", "mililitros?", "litros?"],
-  "gluedExceptions": []
+  "gluedExceptions": [],
+  "unitLookAlikes": ["oolher(?:es)?"]
 }

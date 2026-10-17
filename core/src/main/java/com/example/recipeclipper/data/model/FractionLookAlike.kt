@@ -44,4 +44,19 @@ object FractionLookAlike {
         val symbol = token.value.none { it.isLetter() }
         return token.range.takeIf { unitNext || (symbol && !afterNumber) }
     }
+
+    /**
+     * Where [line] holds a fraction glyph run into a digit or another glyph (#245, #276): "½⅓",
+     * "3¾4", which no recipe writes but a recogniser gives for one glyph with its strokes read
+     * again. The run is every digit and glyph touching it, so a chosen fraction replaces it
+     * whole ("3¾4 tsp" → "¾ tsp"); a whole number set apart by a space isn't part of it
+     * ("2 ½⅓ cups" → "2 ⅓ cups"), nor one before an ordinary glyph ("1¼ cups" is no run). The
+     * first run in the line; null if none.
+     */
+    fun gluedRun(line: String): IntRange? = GLUED_RUN.find(line)?.range
+
+    private const val GLYPHS = "¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞"
+
+    // Digits and glyphs, with a glyph straight before a digit or another glyph somewhere in them.
+    private val GLUED_RUN = Regex("""(?<![\d$GLYPHS])[\d$GLYPHS]*[$GLYPHS][\d$GLYPHS]+""")
 }
