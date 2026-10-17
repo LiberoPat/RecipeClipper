@@ -147,7 +147,8 @@ private struct PhotoReview: View {
         .padding(.bottom, 4)
     }
 
-    /// A line whose amount holds a fraction glyph's look-alike (#245): the fractions as one-tap
+    /// A line whose amount holds a fraction glyph's look-alike (#245), or glyphs run together (#276,
+    /// "½⅓"): the fractions as one-tap
     /// replacements, since "%" can't say whether it was ½, ¼ or ¾. The cook can still type instead.
     @ViewBuilder
     private func fractionChips(_ index: Int, _ line: String) -> some View {
