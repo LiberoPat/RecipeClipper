@@ -1936,6 +1936,24 @@ final class DifferentialCorpusTests: XCTestCase {
         Sus("2 % Milch", lang: "de", false),
         Sus("200 g de chocolat noir 70 %", lang: "fr", false),
         Sus("1 % taza de harina", lang: "es", true),
+        Sus("½ oup sugar", true),
+        Sus("1 c up milk", true),
+        Sus("2 tbps butter", true),
+        Sus("1 tsb. salt", true),
+        Sus("1 oz butter", false),
+        Sus("2 g salt", false),
+        Sus("100 ml milk", false),
+        Sus("1 c milk", false),
+        Sus("2 T sugar", false),
+        Sus("1 cupcake", false),
+        Sus("4 tsp salt", false),
+        Sus("½ cup mik", false),
+        Sus("½⅓ cup milk", true),
+        Sus("2 e l Zucker", lang: "de", true),
+        Sus("1 oucharada de azúcar", lang: "es", true),
+        Sus("2 ouillères de sucre", lang: "fr", true),
+        Sus("1 oucchiaino di sale", lang: "it", true),
+        Sus("2 oolheres de açúcar", lang: "pt", true),
     ]
 
     private struct Frac {
@@ -1958,6 +1976,14 @@ final class DifferentialCorpusTests: XCTestCase {
         Frac("½ cup sugar", nil),
         Frac("1 % taza de harina", lang: "es", "1 ½ taza de harina"),
         Frac("2 % EL Zucker", lang: "de", "2 ½ EL Zucker"),
+        Frac("½⅓ cup milk", "½ cup milk"),
+        Frac("3¾4 tsp salt", "½ tsp salt"),
+        Frac("2 ½⅔ cups oats", "2 ½ cups oats"),
+        Frac("1½⅓ cup milk", "½ cup milk"),
+        Frac("Add ½⅓ cup milk.", "Add ½ cup milk."),
+        Frac("1¼ cups flour", nil),
+        Frac("2 ⅔ cups oats", nil),
+        Frac("12½ g Butter", lang: "de", nil),
     ]
 
     // Rendering rows (#169): a recipe's yield (or nil), chosen servings (or nil), ingredients and

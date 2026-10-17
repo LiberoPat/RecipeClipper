@@ -96,8 +96,10 @@ object PhotoTextSorter {
      * - a digit beside a letter that looks like one: "l/2", "O.5", "1/Z", "1O", "35o°F";
      * - a unit glued to the word after it, where the scaler reads no unit: "1 cupraisins", in
      *   [words]' language ("2 ELZucker", "1 tazaharina"); never in one written without spaces;
-     * - a fraction glyph read as something else (#245): see [fractionSlot];
-     * - a fraction glyph run into a digit or another glyph, "3¾4" or "½⅓" (#245): never written.
+     * - a fraction glyph read as something else, or run into a digit or another glyph ("3¾4",
+     *   "½⅓", never written) (#245, #276): see [fractionSlot];
+     * - a near-miss of a unit where the unit goes, "1 oup sugar" or "2 tbps butter" (#276): the
+     *   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip.
      */
     internal fun suspect(line: String, words: LanguageWords = LanguageWords.ENGLISH): Boolean =
         IMPROPER.findAll(line).any { m ->
@@ -106,16 +108,20 @@ object PhotoTextSorter {
             val d = m.groupValues[2].toInt()
             d in 2..8 && (n.length > 1 || (n.isNotEmpty() && n.toInt() > d))
         } || LOOK_ALIKE.containsMatchIn(line) || gluedUnit(line, words) ||
-            fractionSlot(line, words) != null || GLYPH_RUN.containsMatchIn(line)
+            fractionSlot(line, words) != null || misspeltUnit(line, words)
 
     /** The fractions offered to replace a look-alike (#245), in the order shown. */
     val FRACTIONS: List<String> get() = FractionLookAlike.FRACTIONS
 
-    /** Where [line]'s amount holds a fraction glyph's look-alike (#245, [FractionLookAlike]); null if none. */
+    /**
+     * What a fraction chip replaces in [line] (#245, #276): its amount's look-alike
+     * ([FractionLookAlike.slot]), else a glyph run into a digit or another glyph
+     * ([FractionLookAlike.gluedRun]). Null if neither.
+     */
     fun fractionSlot(line: String, words: LanguageWords = LanguageWords.ENGLISH): IntRange? =
-        FractionLookAlike.slot(line, IngredientScaler.patterns(words).unitAtStart)
+        FractionLookAlike.slot(line, IngredientScaler.patterns(words).unitAtStart) ?: FractionLookAlike.gluedRun(line)
 
-    /** [line] with its look-alike ([fractionSlot]) replaced by [fraction], the cook's choice; null if it has none. */
+    /** [line] with its [fractionSlot] replaced by [fraction], the cook's choice; null if it has none. */
     fun replaceFraction(line: String, fraction: String, words: LanguageWords = LanguageWords.ENGLISH): String? =
         fractionSlot(line, words)?.let { line.replaceRange(it, fraction) }
 
@@ -127,6 +133,12 @@ object PhotoTextSorter {
         return !p.unitAtStart.containsMatchIn(rest) && RecipeTextSplitter.gluedUnit(rest, words)
     }
 
+    /** A unit's near-miss straight after [line]'s leading amount ("1 oup sugar"), in [words]' language. */
+    private fun misspeltUnit(line: String, words: LanguageWords): Boolean {
+        val lead = IngredientScaler.patterns(words).leading.find(line) ?: return false
+        return RecipeTextSplitter.unitLookAlike(line.substring(lead.range.last + 1), words)
+    }
+
     // "11/2": digits, a slash, one digit, and no more digits or slashes around it.
     private val IMPROPER = Regex("""(?<![\d/⁄.,])(\d+)[/⁄](\d)(?![\d/⁄])""")
 
@@ -136,9 +148,6 @@ object PhotoTextSorter {
     private val LOOK_ALIKE = Regex(
         """(?<![\p{L}\d])[lIOo|][/⁄.,]?\d|\d[/⁄.,][lIOoZS](?!\p{L})|\d[Oo](?!\p{L})"""
     )
-
-    // "3¾4", "½⅓": a fraction glyph with a digit or another glyph straight after it.
-    private val GLYPH_RUN = Regex("""[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞][\d¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]""")
 
     // A unit word run into the next ("cupraisins", "tbspsugar") is the language's splitter.json
     // gluedUnits (RecipeTextSplitter.gluedUnit). Units of one or two letters ("g", "c", "l",

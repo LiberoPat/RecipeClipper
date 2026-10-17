@@ -150,7 +150,57 @@ final class PhotoTextSorterTests: XCTestCase {
     func testAFractionGlyphRunIntoADigitOrAnotherGlyphIsFlagged() {
         XCTAssertTrue(PhotoTextSorter.suspect("3¾4 tsp salt"))
         XCTAssertTrue(PhotoTextSorter.suspect("½⅓ cup milk"))
-        XCTAssertNil(PhotoTextSorter.fractionSlot("3¾4 tsp salt")) // flagged, but no look-alike to replace
+    }
+
+    func testAChipReplacesAGluedGlyphRunWholeKeepingAWholeNumberSetApart() {
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("3¾4 tsp salt", "¾"), "¾ tsp salt")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("½⅓ cup milk", "⅓"), "⅓ cup milk")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("2 ½⅔ cups oats", "⅔"), "2 ⅔ cups oats")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("Add ½⅓ cup milk.", "½"), "Add ½ cup milk.")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("1½⅓ cup milk", "⅓"), "⅓ cup milk") // glued: part of the run
+        // No run: an ordinary glyph, a mixed number, a glyph after digits.
+        for line in ["½ cup sugar", "1¼ cups flour", "2 ⅔ cups oats", "12½ g", "1 ½ cups"] {
+            XCTAssertNil(PhotoTextSorter.fractionSlot(line), line)
+        }
+    }
+
+    func testTheGluedRunIsEveryDigitAndGlyphTouchingIt() {
+        XCTAssertEqual(FractionLookAlike.gluedRun("3¾4 tsp"), NSRange(location: 0, length: 3))
+        XCTAssertEqual(FractionLookAlike.gluedRun("½⅓ cup"), NSRange(location: 0, length: 2))
+        XCTAssertEqual(FractionLookAlike.gluedRun("2 ½⅓ cups"), NSRange(location: 2, length: 2))
+        XCTAssertEqual(FractionLookAlike.gluedRun("1½⅓4"), NSRange(location: 0, length: 4))
+        XCTAssertNil(FractionLookAlike.gluedRun("1¼ cups"))
+        XCTAssertNil(FractionLookAlike.gluedRun("2 ⅔ cups"))
+    }
+
+    // Unit misspellings (#276): a near-miss of a unit where the unit goes, from splitter.json's
+    // short unitLookAlikes, never edit distance.
+
+    func testANearMissOfAUnitAfterTheAmountIsFlagged() {
+        for line in ["½ oup sugar", "1 oups flour", "2 cuo milk", "1 c up milk", "1 C UPS milk", "2 tsb salt",
+                     "1 tps vanilla", "2 tbps butter", "1 tbsb oil", "1 isp salt", "1 ½ oup sugar", "2 tbps. butter"] {
+            XCTAssertTrue(PhotoTextSorter.suspect(line), line)
+        }
+        XCTAssertTrue(PhotoTextSorter.suspect("2 e l Zucker", words: LanguageWords.forTag("de")!))
+        XCTAssertTrue(PhotoTextSorter.suspect("1 oucharada de azúcar", words: LanguageWords.forTag("es")!))
+        XCTAssertTrue(PhotoTextSorter.suspect("2 ouillères de sucre", words: LanguageWords.forTag("fr")!))
+        XCTAssertTrue(PhotoTextSorter.suspect("1 oucchiaino di sale", words: LanguageWords.forTag("it")!))
+        XCTAssertTrue(PhotoTextSorter.suspect("2 oolheres de açúcar", words: LanguageWords.forTag("pt")!))
+    }
+
+    func testRealUnitsWordsAndIngredientNamesAreNotFlaggedAsMisspeltUnits() {
+        for line in ["1 cup milk", "2 cups flour", "1 c milk", "1 c. sugar", "2 tsp salt", "1 tbsp oil", "2 tbs butter",
+                     "2 T sugar", "1 t salt", "1 oz butter", "2 g salt", "100 ml milk", "1 l water", "1 lb beef",
+                     "2 lbs beef", "1 kg flour", "3 teaspoons sugar", "2 tablespoons oil", "1 stick butter",
+                     "1 cupcake", "2 c upside-down cakes", "Bake for 1 hour.",
+                     "4 tsp salt", "½ cup mik", "2 tsps sugar", "1 oupa", "Add 1 oup sugar"] {
+            XCTAssertFalse(PhotoTextSorter.suspect(line), line)
+        }
+        for (lang, line) in [("de", "2 EL Zucker"), ("de", "1 TL Salz"), ("de", "1 Ei"), ("es", "1 cucharada de azúcar"),
+                             ("fr", "2 cuillères à soupe de sucre"), ("it", "1 cucchiaino di sale"),
+                             ("pt", "2 colheres de açúcar"), ("es", "1 taza de harina"), ("ja", "大さじ1 砂糖")] {
+            XCTAssertFalse(PhotoTextSorter.suspect(line, words: LanguageWords.forTag(lang)!), line)
+        }
     }
 
     func testAChipReplacesTheLookAlikeInPlaceAndNothingElse() {
@@ -171,6 +221,17 @@ final class PhotoTextSorterTests: XCTestCase {
             "Oat Cookies", "INGREDIENTS", "½ oup sugar", "1 a cups flour", "4 tsp salt", "Ys cup mik",
             "2 % cups oats", "& tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients.",
         ]))
-        XCTAssertEqual(reading.uncertain, ["1 a cups flour", "Ys cup mik", "2 % cups oats", "& tsp nutmeg"])
+        // "½ oup sugar"'s unit is misspelt (#276); "4 tsp salt" (¾ lost) and "mik" stay #249's.
+        XCTAssertEqual(reading.uncertain, ["½ oup sugar", "1 a cups flour", "Ys cup mik", "2 % cups oats", "& tsp nutmeg"])
+    }
+
+    func testVisionsGluedReadingOfTheFractionCardGetsChips() {
+        // Vision's reading of card-fractions-hand.jpg on the iOS simulator (#245, #276).
+        let reading = PhotoTextSorter.sort(lines([
+            "Oat Cookies", "INGREDIENTS", "½ cup sugar", "1¼ cups flour", "3/4 tsp salt", "½⅓ cup milk",
+            "23 cups oats", "is tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients.",
+        ]))
+        XCTAssertEqual(reading.uncertain, ["½⅓ cup milk", "is tsp nutmeg"])
+        XCTAssertEqual(reading.uncertain, reading.uncertain.filter { PhotoTextSorter.fractionSlot($0) != nil })
     }
 }

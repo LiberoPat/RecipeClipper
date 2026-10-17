@@ -93,8 +93,10 @@ enum PhotoTextSorter {
     /// - a digit beside a letter that looks like one: "l/2", "O.5", "1/Z", "1O", "35o°F";
     /// - a unit glued to the word after it, where the scaler reads no unit: "1 cupraisins", in
     ///   `words`' language ("2 ELZucker", "1 tazaharina"); never in one written without spaces;
-    /// - a fraction glyph read as something else (#245): see `fractionSlot`;
-    /// - a fraction glyph run into a digit or another glyph, "3¾4" or "½⅓" (#245): never written.
+    /// - a fraction glyph read as something else, or run into a digit or another glyph ("3¾4",
+    ///   "½⅓", never written) (#245, #276): see `fractionSlot`;
+    /// - a near-miss of a unit where the unit goes, "1 oup sugar" or "2 tbps butter" (#276): the
+    ///   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip.
     static func suspect(_ line: String, words: LanguageWords = .english) -> Bool {
         let improper = improperFraction.findAll(line).contains { m in
             // The numerator without leading zeros: two digits or more is always above 2 to 8.
@@ -103,24 +105,24 @@ enum PhotoTextSorter {
             return n.count > 1 || (!n.isEmpty && Int(n)! > d)
         }
         return improper || lookAlike.containsMatch(in: line) || gluedUnit(line, words: words)
-            || fractionSlot(line, words: words) != nil || glyphRun.containsMatch(in: line)
+            || fractionSlot(line, words: words) != nil || misspeltUnit(line, words: words)
     }
 
     /// The fractions offered to replace a look-alike (#245), in the order shown.
     static var fractions: [String] { FractionLookAlike.fractions }
 
-    /// Where `line`'s amount holds a fraction glyph's look-alike (#245, `FractionLookAlike`); nil if none.
+    /// What a fraction chip replaces in `line` (#245, #276): its amount's look-alike
+    /// (`FractionLookAlike.slot`), else a glyph run into a digit or another glyph
+    /// (`FractionLookAlike.gluedRun`). Nil if neither.
     static func fractionSlot(_ line: String, words: LanguageWords = .english) -> NSRange? {
         FractionLookAlike.slot(line, unitAtStart: IngredientScaler.patterns(words).unitAtStart)
+            ?? FractionLookAlike.gluedRun(line)
     }
 
-    /// `line` with its look-alike (`fractionSlot`) replaced by `fraction`, the cook's choice; nil if it has none.
+    /// `line` with its `fractionSlot` replaced by `fraction`, the cook's choice; nil if it has none.
     static func replaceFraction(_ line: String, _ fraction: String, words: LanguageWords = .english) -> String? {
         fractionSlot(line, words: words).map { (line as NSString).replacingCharacters(in: $0, with: fraction) }
     }
-
-    // "3¾4", "½⅓": a fraction glyph with a digit or another glyph straight after it.
-    private static let glyphRun = JRegex(#"[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞][\d¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]"#)
 
     private static func gluedUnit(_ line: String, words: LanguageWords) -> Bool {
         guard words.spaced else { return false }
@@ -128,6 +130,12 @@ enum PhotoTextSorter {
         guard let lead = p.leading.find(line) else { return false }
         let rest = line.u16Substring(from: lead.end)
         return !p.unitAtStart.containsMatch(in: rest) && RecipeTextSplitter.gluedUnit(rest, words: words)
+    }
+
+    /// A unit's near-miss straight after `line`'s leading amount ("1 oup sugar"), in `words`' language.
+    private static func misspeltUnit(_ line: String, words: LanguageWords) -> Bool {
+        guard let lead = IngredientScaler.patterns(words).leading.find(line) else { return false }
+        return RecipeTextSplitter.unitLookAlike(line.u16Substring(from: lead.end), words: words)
     }
 
     // "11/2": digits, a slash, one digit, and no more digits or slashes around it.

@@ -172,6 +172,12 @@ object RecipeTextSplitter {
             "^\\s*(?!${alt(list("gluedExceptions"))})(?>${alt(list("gluedUnits"))})\\.?\\p{L}",
             RegexOption.IGNORE_CASE
         )
+
+        /** A unit's near-miss where the unit goes ("oup", "tbps", "c up"), a whole word (#276). */
+        val unitLookAlike = Regex(
+            "^\\s*${alt(list("unitLookAlikes"))}\\.?(?![\\p{L}\\d])",
+            RegexOption.IGNORE_CASE
+        )
     }
 
     private fun words(words: LanguageWords): Words = words.compiled(Words::class) { Words(it) }
@@ -194,6 +200,10 @@ object RecipeTextSplitter {
     /** Whether [rest], a line after its amount, starts with one of [words]' units run into the next
      *  word ("cupraisins"), for [PhotoTextSorter.suspect]. */
     internal fun gluedUnit(rest: String, words: LanguageWords): Boolean = words(words).glued.containsMatchIn(rest)
+
+    /** Whether [rest], a line after its amount, starts with a near-miss of one of [words]' units
+     *  ("oup sugar", "tbps butter"), for [PhotoTextSorter.suspect] (#276). */
+    internal fun unitLookAlike(rest: String, words: LanguageWords): Boolean = words(words).unitLookAlike.containsMatchIn(rest)
 
     /** "(serves 4)", "<for 3~4 people>", "[metric]", "（2人分）" at the end of a header. */
     private val TRAILING_PARENTHETICAL = Regex("\\s*[(<\\[（【][^)>\\]）】]*[)>\\]）】]$")

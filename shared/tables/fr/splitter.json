@@ -64,5 +64,6 @@
     "cuill(?:è|e)res?\\s+à\\s+soupe", "cuill(?:è|e)res?\\s+à\\s+caf(?:é|e)", "cuill(?:è|e)res?",
     "c\\.\\s*à\\s*soupe", "c\\.\\s*à\\s*caf(?:é|e)", "tasses?", "kilogrammes?", "grammes?", "millilitres?", "litres?"
   ],
-  "gluedExceptions": []
+  "gluedExceptions": [],
+  "unitLookAlikes": ["ouill(?:è|e)res?"]
 }

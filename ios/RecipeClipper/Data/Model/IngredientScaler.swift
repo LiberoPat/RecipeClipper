@@ -215,11 +215,13 @@ enum IngredientScaler {
         }
 
         /// A line whose amount can't be read without guessing: "1,500" (1.5 or 1500?), a half in
-        /// words, or where dots mark thousands a number like "1.500,5". It stays as written.
+        /// words, where dots mark thousands a number like "1.500,5", or a photo's misread fraction
+        /// glyph ("1 a cups flour", `FractionLookAlike`, #245) or glyphs run together ("½⅓ cup",
+        /// #276). It stays as written.
         func unreadable(_ line: String) -> Bool {
             IngredientScaler.ambiguousComma.containsMatch(in: line) || spelledHalf.containsMatch(in: line) ||
                 (thousandsDot && IngredientScaler.ambiguousDot.containsMatch(in: line)) ||
-                FractionLookAlike.slot(line, unitAtStart: unitAtStart) != nil
+                FractionLookAlike.slot(line, unitAtStart: unitAtStart) != nil || FractionLookAlike.gluedRun(line) != nil
         }
 
         /// A quantity this pattern matched, read with this language's thousands separator.

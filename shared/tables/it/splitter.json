@@ -60,5 +60,6 @@
   ],
   "amountPatterns": [],
   "gluedUnits": ["cucchiain[oi]", "cucchiai[o]?", "tazz[ae]", "chilogramm[oi]", "grammi", "grammo"],
-  "gluedExceptions": []
+  "gluedExceptions": [],
+  "unitLookAlikes": ["oucchiai(?:n[oi]|o)?"]
 }
