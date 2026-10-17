@@ -96,7 +96,8 @@ enum PhotoTextSorter {
     /// - a fraction glyph read as something else, or run into a digit or another glyph ("3¾4",
     ///   "½⅓", never written) (#245, #276): see `fractionSlot`;
     /// - a near-miss of a unit where the unit goes, "1 oup sugar" or "2 tbps butter" (#276): the
-    ///   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip.
+    ///   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip;
+    /// - an amount too big for its unit, "34 tsp salt" or "23 cups oats" (#249): see `implausible`.
     static func suspect(_ line: String, words: LanguageWords = .english) -> Bool {
         let improper = improperFraction.findAll(line).contains { m in
             // The numerator without leading zeros: two digits or more is always above 2 to 8.
@@ -106,7 +107,37 @@ enum PhotoTextSorter {
         }
         return improper || lookAlike.containsMatch(in: line) || gluedUnit(line, words: words)
             || fractionSlot(line, words: words) != nil || misspeltUnit(line, words: words)
+            || implausible(line, words: words)
     }
+
+    /// True when `line`'s leading amount is more of its unit than a recipe asks for
+    /// (`shared/tables/plausible-amounts.json`, #249): a fraction glyph read as digits, "34 tsp
+    /// salt" for ¾ or "23 cups oats" for 2 ⅔. Read as the scaler reads it (`IngredientScaler`'s
+    /// leading amount and unit); either end of a range counts ("10–14 tbsp"). A whole number then
+    /// another before the unit ("2 23 cups oats", ML Kit's 2 ⅔) is judged by the second. Flagged
+    /// only: nothing is suggested or changed. A bare count ("12 eggs"), a unit the table doesn't
+    /// list, a temperature ("180 C") and a language whose amounts follow the name are never checked.
+    static func implausible(_ line: String, words: LanguageWords = .english) -> Bool {
+        let p = IngredientScaler.patterns(words)
+        guard !p.amountAfterName, let lead = p.leading.find(line) else { return false }
+        var rest = line.u16Substring(from: lead.end)
+        var amounts = [lead[2], lead[4]].filter { !$0.isEmpty }
+        if let second = secondNumber.find(rest) {
+            amounts = [second[1]]
+            rest = rest.u16Substring(from: second.end)
+        }
+        guard let unit = p.unitAtStart.find(rest), !p.temperature(lead, rest),
+              let max = MeasureUnit.fromText(unit[1], words: words).flatMap({ maximums[$0] }) else { return false }
+        return amounts.contains { (p.parse($0) ?? 0) > max }
+    }
+
+    private static let maximums: [MeasureUnit: Double] = {
+        let table = SharedTables.read("plausible-amounts")["maximums"] as? [String: Double] ?? [:]
+        return Dictionary(uniqueKeysWithValues: table.map { (MeasureUnit.byTableName[$0.key]!, $0.value) })
+    }()
+
+    // "2 23 cups": a second whole number straight after the leading one.
+    private static let secondNumber = JRegex(#"^\s+(\d+)(?![\d/⁄.,])"#)
 
     /// The fractions offered to replace a look-alike (#245), in the order shown.
     static var fractions: [String] { FractionLookAlike.fractions }

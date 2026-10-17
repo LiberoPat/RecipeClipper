@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.remote
 
 import com.example.recipeclipper.data.model.FractionLookAlike
+import com.example.recipeclipper.data.model.IngredientScaler
 import com.example.recipeclipper.data.model.LanguageWords
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -242,7 +243,44 @@ class PhotoTextSorterTest {
             "Oat Cookies", "INGREDIENTS", "½ cup sugar", "1¼ cups flour", "3/4 tsp salt", "½⅓ cup milk",
             "23 cups oats", "is tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients."
         )))
-        assertEquals(listOf("½⅓ cup milk", "is tsp nutmeg"), reading.uncertain)
-        assertEquals(reading.uncertain, reading.uncertain.filter { PhotoTextSorter.fractionSlot(it) != null })
+        // "23 cups oats" (2 ⅔) is too many cups (#249): flagged, but with no chips.
+        assertEquals(listOf("½⅓ cup milk", "23 cups oats", "is tsp nutmeg"), reading.uncertain)
+        assertEquals(listOf("½⅓ cup milk", "is tsp nutmeg"), reading.uncertain.filter { PhotoTextSorter.fractionSlot(it) != null })
+    }
+
+    @Test fun `a fraction read as digits is flagged when the amount is implausible for its unit`() {
+        // Vision's readings of ¾, 2 ⅔ and ⅛ (#245, #249), and ML Kit's "2 23" for 2 ⅔.
+        listOf(
+            "34 tsp salt", "23 cups oats", "18 tsp nutmeg", "2 23 cups oats", "14 tsp. cinnamon",
+            "34 Tbsp butter", "13 c milk", "10–14 tsp salt", "12 kg flour", "30 lb potatoes",
+            "6000 g Mehl", "13 sticks butter"
+        ).forEach {
+            assertTrue(it, PhotoTextSorter.implausible(it))
+            assertTrue(it, PhotoTextSorter.suspect(it))
+        }
+        assertTrue(PhotoTextSorter.implausible("34 EL Zucker", LanguageWords.forTag("de")!!))
+        assertTrue(PhotoTextSorter.implausible("18 cucharaditas de sal", LanguageWords.forTag("es")!!))
+    }
+
+    @Test fun `a plausible amount, a count or a temperature is not flagged`() {
+        listOf(
+            // At a unit's maximum, a big batch, decimals, ranges, and misreads too plausible to catch.
+            "12 tsp baking powder", "12 cups chicken stock", "16 tablespoons (227g) unsalted butter",
+            "2–3 tbsp olive oil", "2 to 3 tbsp olive oil", "1.5 cups flour", "0.75 tsp salt", "1 1/2 cups sugar",
+            "4 tsp salt", "12 cup sugar", "8 tsp nutmeg", "32 oz chicken stock", "1000 g flour", "2 14 oz cans tomatoes",
+            // Counts and no units are never checked; a bare Celsius temperature is no amount of cups.
+            "12 eggs", "48 wonton wrappers", "180 C water", "350°F", "Bake for 25 minutes."
+        ).forEach {
+            assertFalse(it, PhotoTextSorter.implausible(it))
+        }
+        assertFalse(PhotoTextSorter.implausible("1,5 kg Mehl", LanguageWords.forTag("de")!!))
+        assertFalse(PhotoTextSorter.implausible("1.500 g Mehl", LanguageWords.forTag("de")!!))
+    }
+
+    @Test fun `an implausible amount is flagged, never changed, and the scaler still reads it`() {
+        val reading = PhotoTextSorter.sort(lines(listOf("INGREDIENTS", "34 tsp salt", "1 cup flour", "METHOD", "1. Mix.")))
+        assertEquals(listOf("34 tsp salt", "1 cup flour"), reading.ingredients)
+        assertEquals(listOf("34 tsp salt"), reading.uncertain)
+        assertEquals("68 tsp salt", IngredientScaler.scale("34 tsp salt", 2.0))
     }
 }

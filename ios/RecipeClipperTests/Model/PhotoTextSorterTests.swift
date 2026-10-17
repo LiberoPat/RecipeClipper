@@ -232,7 +232,44 @@ final class PhotoTextSorterTests: XCTestCase {
             "Oat Cookies", "INGREDIENTS", "½ cup sugar", "1¼ cups flour", "3/4 tsp salt", "½⅓ cup milk",
             "23 cups oats", "is tsp nutmeg", "2 oz 70% chocolate", "METHOD", "Mix the dry ingredients.",
         ]))
-        XCTAssertEqual(reading.uncertain, ["½⅓ cup milk", "is tsp nutmeg"])
-        XCTAssertEqual(reading.uncertain, reading.uncertain.filter { PhotoTextSorter.fractionSlot($0) != nil })
+        // "23 cups oats" (2 ⅔) is too many cups (#249): flagged, but with no chips.
+        XCTAssertEqual(reading.uncertain, ["½⅓ cup milk", "23 cups oats", "is tsp nutmeg"])
+        XCTAssertEqual(reading.uncertain.filter { PhotoTextSorter.fractionSlot($0) != nil }, ["½⅓ cup milk", "is tsp nutmeg"])
+    }
+
+    func testAFractionReadAsDigitsIsFlaggedWhenTheAmountIsImplausibleForItsUnit() {
+        // Vision's readings of ¾, 2 ⅔ and ⅛ (#245, #249), and ML Kit's "2 23" for 2 ⅔.
+        for line in [
+            "34 tsp salt", "23 cups oats", "18 tsp nutmeg", "2 23 cups oats", "14 tsp. cinnamon",
+            "34 Tbsp butter", "13 c milk", "10–14 tsp salt", "12 kg flour", "30 lb potatoes",
+            "6000 g Mehl", "13 sticks butter",
+        ] {
+            XCTAssertTrue(PhotoTextSorter.implausible(line), line)
+            XCTAssertTrue(PhotoTextSorter.suspect(line), line)
+        }
+        XCTAssertTrue(PhotoTextSorter.implausible("34 EL Zucker", words: LanguageWords.forTag("de")!))
+        XCTAssertTrue(PhotoTextSorter.implausible("18 cucharaditas de sal", words: LanguageWords.forTag("es")!))
+    }
+
+    func testAPlausibleAmountACountOrATemperatureIsNotFlagged() {
+        for line in [
+            // At a unit's maximum, a big batch, decimals, ranges, and misreads too plausible to catch.
+            "12 tsp baking powder", "12 cups chicken stock", "16 tablespoons (227g) unsalted butter",
+            "2–3 tbsp olive oil", "2 to 3 tbsp olive oil", "1.5 cups flour", "0.75 tsp salt", "1 1/2 cups sugar",
+            "4 tsp salt", "12 cup sugar", "8 tsp nutmeg", "32 oz chicken stock", "1000 g flour", "2 14 oz cans tomatoes",
+            // Counts and no units are never checked; a bare Celsius temperature is no amount of cups.
+            "12 eggs", "48 wonton wrappers", "180 C water", "350°F", "Bake for 25 minutes.",
+        ] {
+            XCTAssertFalse(PhotoTextSorter.implausible(line), line)
+        }
+        XCTAssertFalse(PhotoTextSorter.implausible("1,5 kg Mehl", words: LanguageWords.forTag("de")!))
+        XCTAssertFalse(PhotoTextSorter.implausible("1.500 g Mehl", words: LanguageWords.forTag("de")!))
+    }
+
+    func testAnImplausibleAmountIsFlaggedNeverChangedAndTheScalerStillReadsIt() {
+        let reading = PhotoTextSorter.sort(lines(["INGREDIENTS", "34 tsp salt", "1 cup flour", "METHOD", "1. Mix."]))
+        XCTAssertEqual(reading.ingredients, ["34 tsp salt", "1 cup flour"])
+        XCTAssertEqual(reading.uncertain, ["34 tsp salt"])
+        XCTAssertEqual(IngredientScaler.scale("34 tsp salt", factor: 2.0), "68 tsp salt")
     }
 }

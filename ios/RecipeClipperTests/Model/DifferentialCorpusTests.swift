@@ -1954,6 +1954,22 @@ final class DifferentialCorpusTests: XCTestCase {
         Sus("2 ouillères de sucre", lang: "fr", true),
         Sus("1 oucchiaino di sale", lang: "it", true),
         Sus("2 oolheres de açúcar", lang: "pt", true),
+        Sus("34 tsp salt", true),
+        Sus("23 cups oats", true),
+        Sus("18 tsp nutmeg", true),
+        Sus("2 23 cups oats", true),
+        Sus("10–14 tsp salt", true),
+        Sus("12 tsp baking powder", false),
+        Sus("12 cups chicken stock", false),
+        Sus("16 tablespoons (227g) unsalted butter", false),
+        Sus("2–3 tbsp olive oil", false),
+        Sus("2 14 oz cans tomatoes", false),
+        Sus("180 C water", false),
+        Sus("48 wonton wrappers", false),
+        Sus("34 EL Zucker", lang: "de", true),
+        Sus("1.500 g Mehl", lang: "de", false),
+        Sus("6000 g Mehl", lang: "de", true),
+        Sus("18 cucharaditas de sal", lang: "es", true),
     ]
 
     private struct Frac {

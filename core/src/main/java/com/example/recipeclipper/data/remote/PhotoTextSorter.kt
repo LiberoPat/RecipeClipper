@@ -3,6 +3,8 @@ package com.example.recipeclipper.data.remote
 import com.example.recipeclipper.data.model.IngredientScaler
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.FractionLookAlike
+import com.example.recipeclipper.data.model.MeasureUnit
+import com.example.recipeclipper.data.model.SharedTables
 
 /**
  * One line of text the device read from a photo (#198), in reading order, with the
@@ -99,7 +101,8 @@ object PhotoTextSorter {
      * - a fraction glyph read as something else, or run into a digit or another glyph ("3¾4",
      *   "½⅓", never written) (#245, #276): see [fractionSlot];
      * - a near-miss of a unit where the unit goes, "1 oup sugar" or "2 tbps butter" (#276): the
-     *   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip.
+     *   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip;
+     * - an amount too big for its unit, "34 tsp salt" or "23 cups oats" (#249): see [implausible].
      */
     internal fun suspect(line: String, words: LanguageWords = LanguageWords.ENGLISH): Boolean =
         IMPROPER.findAll(line).any { m ->
@@ -108,7 +111,39 @@ object PhotoTextSorter {
             val d = m.groupValues[2].toInt()
             d in 2..8 && (n.length > 1 || (n.isNotEmpty() && n.toInt() > d))
         } || LOOK_ALIKE.containsMatchIn(line) || gluedUnit(line, words) ||
-            fractionSlot(line, words) != null || misspeltUnit(line, words)
+            fractionSlot(line, words) != null || misspeltUnit(line, words) || implausible(line, words)
+
+    /**
+     * True when [line]'s leading amount is more of its unit than a recipe asks for
+     * (`shared/tables/plausible-amounts.json`, #249): a fraction glyph read as digits, "34 tsp
+     * salt" for ¾ or "23 cups oats" for 2 ⅔. Read as the scaler reads it ([IngredientScaler]'s
+     * leading amount and unit); either end of a range counts ("10–14 tbsp"). A whole number then
+     * another before the unit ("2 23 cups oats", ML Kit's 2 ⅔) is judged by the second. Flagged
+     * only: nothing is suggested or changed. A bare count ("12 eggs"), a unit the table doesn't
+     * list, a temperature ("180 C") and a language whose amounts follow the name are never checked.
+     */
+    internal fun implausible(line: String, words: LanguageWords = LanguageWords.ENGLISH): Boolean {
+        val p = IngredientScaler.patterns(words)
+        if (p.amountAfterName) return false
+        val lead = p.leading.find(line) ?: return false
+        var rest = line.substring(lead.range.last + 1)
+        var amounts = listOf(lead.groupValues[2], lead.groupValues[4]).filter { it.isNotEmpty() }
+        SECOND_NUMBER.find(rest)?.let {
+            amounts = listOf(it.groupValues[1])
+            rest = rest.substring(it.range.last + 1)
+        }
+        val unit = p.unitAtStart.find(rest) ?: return false
+        if (p.temperature(lead, rest)) return false
+        val max = MeasureUnit.fromText(unit.groupValues[1], words)?.let { MAXIMUMS[it] } ?: return false
+        return amounts.any { (p.parse(it) ?: 0.0) > max }
+    }
+
+    private val MAXIMUMS: Map<MeasureUnit, Double> = SharedTables.read("plausible-amounts").getJSONObject("maximums").let { t ->
+        t.keys().asSequence().associate { MeasureUnit.valueOf(it) to t.getDouble(it) }
+    }
+
+    // "2 23 cups": a second whole number straight after the leading one.
+    private val SECOND_NUMBER = Regex("""^\s+(\d+)(?![\d/⁄.,])""")
 
     /** The fractions offered to replace a look-alike (#245), in the order shown. */
     val FRACTIONS: List<String> get() = FractionLookAlike.FRACTIONS
