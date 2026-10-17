@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "about": "Read the photo (#198, #249): the most of each unit a recipe line plausibly asks for. A photo-read line whose leading amount is above its unit's maximum ('34 tsp salt', '23 cups oats', '18 tsp nutmeg': a fraction glyph read as digits) is listed under Check these lines, flagged only: nothing is suggested or corrected, and the scaler reads the number as written. Keyed by the unit the language's units.json names the unit word as (MeasureUnit), so it is language-independent; a unit not listed (VARIES) and a bare count ('12 eggs') are never checked. Calibrated so no ingredient line in the repo's fixtures and saved pages is flagged (docs/decisions.md, #249). Applies to photo-read lines only, never to a parsed web recipe.",
   "maximums": {
-    "TSP": 12,
+    "TSP": 10,
     "TBSP": 16,
     "CUP": 12,
     "CUP_200": 12,

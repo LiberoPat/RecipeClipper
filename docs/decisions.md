@@ -4283,7 +4283,7 @@ number is still read as written ("34 tsp salt" doubles to "68 tsp salt").
   so "2 14 oz cans" stays fine. A temperature ("180 C water"), Japanese (amounts after the name)
   and a unit the table doesn't list are never checked. The existing heading's wording covers it;
   no new string.
-- **Maximums** (above is flagged): tsp 12, tbsp 16, cup 12 (and the Japanese cups: カップ 12, 合
+- **Maximums** (above is flagged): tsp 10 (12 at first; lowered by the owner on 2026-10-17 so "12 tsp", a ½ read as digits, flags, with no real line hit), tbsp 16, cup 12 (and the Japanese cups: カップ 12, 合
   10), fl oz 64, stick 8, ml 5000, cl 200, dl 40, l 10, g 5000, kg 10, oz 64, lb 25. tbsp started
   at 8 and rose to 16: "16 tablespoons (227g) unsalted butter" (a cup, Sally's) and "10 c. à s. de
   sirop" are real.
@@ -4293,8 +4293,7 @@ number is still read as written ("34 tsp salt" doubles to "68 tsp salt").
   "99999999999 cups flour"). Largest real amounts: 10 cups, 5 tsp, 16 tbsp, 36 oz, 3 lb, 2 kg,
   2000 ml, 1.5 l, 50 cl.
 - **Still not caught, by decision:** a misread that stays plausible: "4 tsp" (¾ lost), "8 tsp"
-  (⅛), and "12 cup" or "12 tsp" (½), since 12 is the maximum; at tsp 10 "12 tsp" would flag with
-  no real line hit, but the owner's generous start was kept. **Bare counts** ("12 eggs", "48
+  (⅛), and "12 cup" (½), since 12 is the cup maximum. **Bare counts** ("12 eggs", "48
   wonton wrappers") are skipped: counts vary too much to call one absurd, and pinch or clove,
   which the unit tables don't read, have no entry.
 - **Tests:** `PhotoTextSorterTest(s)` on both platforms (the misreads caught; a big batch, decimals,
