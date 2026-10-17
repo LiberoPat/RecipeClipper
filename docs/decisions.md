@@ -4269,6 +4269,37 @@ look-alike. And ML Kit's "½ oup sugar" was saved as read, unflagged.
   "23 cups oats", "18 tsp nutmeg" (chips on "½⅓ cup milk" only). Both clips now use the real reader
   and type the unflagged slips right before saving.
 
+**2026-10-17 (#249). Owner's call: flag only, suggest nothing, correct nothing** (option 2). A
+fraction glyph read as plain digits ("34 tsp salt" for ¾, "23 cups oats" for 2 ⅔, "18 tsp nutmeg"
+for ⅛, ML Kit's "2 23 cups oats") is listed under "Check these lines" when the amount is more of
+its unit than a recipe asks for. No chips, no suggestion, no fix, and the scaler is unaffected: the
+number is still read as written ("34 tsp salt" doubles to "68 tsp salt").
+
+- **`PhotoTextSorter.implausible`** (both platforms, part of `suspect`, so photo and scan reviews
+  only, never a parsed web recipe): the line's leading amount and unit, read as `IngredientScaler`
+  reads them (the unit word mapped by the language's `units.json`, so it works in every language
+  with units), against `shared/tables/plausible-amounts.json`. Either end of a range counts
+  ("10–14 tsp"); a whole number then another before the unit ("2 23 cups") is judged by the second,
+  so "2 14 oz cans" stays fine. A temperature ("180 C water"), Japanese (amounts after the name)
+  and a unit the table doesn't list are never checked. The existing heading's wording covers it;
+  no new string.
+- **Maximums** (above is flagged): tsp 12, tbsp 16, cup 12 (and the Japanese cups: カップ 12, 合
+  10), fl oz 64, stick 8, ml 5000, cl 200, dl 40, l 10, g 5000, kg 10, oz 64, lb 25. tbsp started
+  at 8 and rose to 16: "16 tablespoons (227g) unsalted butter" (a cup, Sally's) and "10 c. à s. de
+  sirop" are real.
+- **Calibration:** every ingredient line of the 250 saved pages that parse (the harness pages in
+  English and five other languages, `shared/fixtures/pages/`), plus the corpus `Ing` inputs and the
+  fixtures' amount lines: 3,402 lines, none real flagged (the one hit is the corpus's
+  "99999999999 cups flour"). Largest real amounts: 10 cups, 5 tsp, 16 tbsp, 36 oz, 3 lb, 2 kg,
+  2000 ml, 1.5 l, 50 cl.
+- **Still not caught, by decision:** a misread that stays plausible: "4 tsp" (¾ lost), "8 tsp"
+  (⅛), and "12 cup" or "12 tsp" (½), since 12 is the maximum; at tsp 10 "12 tsp" would flag with
+  no real line hit, but the owner's generous start was kept. **Bare counts** ("12 eggs", "48
+  wonton wrappers") are skipped: counts vary too much to call one absurd, and pinch or clove,
+  which the unit tables don't read, have no entry.
+- **Tests:** `PhotoTextSorterTest(s)` on both platforms (the misreads caught; a big batch, decimals,
+  ranges, counts and temperatures not), and `Sus` rows in the differential corpus.
+
 ## Undo snackbars close by themselves (2026-09-29)
 
 The owner saw "Checked items removed" stay on the Groceries screen, and come back after changing

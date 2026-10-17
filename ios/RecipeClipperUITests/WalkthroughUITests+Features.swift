@@ -443,8 +443,8 @@ extension WalkthroughUITests {
     /// before this test) picked in the real photo picker and read by the real Vision reader, which
     /// gives its ⅓ as "½⅓" (glyphs run together) and may give others as look-alikes. "Check these
     /// lines" flags them with the fraction chips: each chip is found by its label and tapped, and
-    /// tapped again if its line didn't change. Then the slips nothing flags are typed right, as
-    /// clip 28 does, so the saved recipe is the card's; Save. It fails, rather than simulating,
+    /// tapped again if its line didn't change. Then the slips no chip fixes ("34 tsp salt", flagged
+    /// since #249) are typed right, as clip 28 does, so the saved recipe is the card's; Save. It fails, rather than simulating,
     /// if Vision's reading offers no chip at all.
     func test34_fractionChips() {
         let app = XCUIApplication()
@@ -511,7 +511,7 @@ extension WalkthroughUITests {
             XCTAssertFalse(boxLines().contains(line), "the \(fraction) chip didn't change \"\(line)\"")
         }
 
-        // The slips nothing flags, typed right: each ingredient line the card's, by what it holds.
+        // The slips no chip fixes, typed right: each ingredient line the card's, by what it holds.
         scrollTo(box, "the ingredients")
         pause()
         let typed = box.value as? String ?? ""
