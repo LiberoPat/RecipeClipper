@@ -252,7 +252,7 @@ class PhotoTextSorterTest {
         // Vision's readings of ¾, 2 ⅔ and ⅛ (#245, #249), and ML Kit's "2 23" for 2 ⅔.
         listOf(
             "34 tsp salt", "23 cups oats", "18 tsp nutmeg", "2 23 cups oats", "14 tsp. cinnamon",
-            "34 Tbsp butter", "13 c milk", "10–14 tsp salt", "12 kg flour", "30 lb potatoes",
+            "12 tsp sugar", "34 Tbsp butter", "13 c milk", "10–14 tsp salt", "12 kg flour", "30 lb potatoes",
             "6000 g Mehl", "13 sticks butter"
         ).forEach {
             assertTrue(it, PhotoTextSorter.implausible(it))
@@ -265,7 +265,7 @@ class PhotoTextSorterTest {
     @Test fun `a plausible amount, a count or a temperature is not flagged`() {
         listOf(
             // At a unit's maximum, a big batch, decimals, ranges, and misreads too plausible to catch.
-            "12 tsp baking powder", "12 cups chicken stock", "16 tablespoons (227g) unsalted butter",
+            "10 tsp baking powder", "12 cups chicken stock", "16 tablespoons (227g) unsalted butter",
             "2–3 tbsp olive oil", "2 to 3 tbsp olive oil", "1.5 cups flour", "0.75 tsp salt", "1 1/2 cups sugar",
             "4 tsp salt", "12 cup sugar", "8 tsp nutmeg", "32 oz chicken stock", "1000 g flour", "2 14 oz cans tomatoes",
             // Counts and no units are never checked; a bare Celsius temperature is no amount of cups.

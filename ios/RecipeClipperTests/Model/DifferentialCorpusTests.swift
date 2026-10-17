@@ -1959,7 +1959,7 @@ final class DifferentialCorpusTests: XCTestCase {
         Sus("18 tsp nutmeg", true),
         Sus("2 23 cups oats", true),
         Sus("10–14 tsp salt", true),
-        Sus("12 tsp baking powder", false),
+        Sus("12 tsp baking powder", true),
         Sus("12 cups chicken stock", false),
         Sus("16 tablespoons (227g) unsalted butter", false),
         Sus("2–3 tbsp olive oil", false),
