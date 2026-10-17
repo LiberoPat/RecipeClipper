@@ -121,9 +121,16 @@ object PhotoTextSorter {
     fun fractionSlot(line: String, words: LanguageWords = LanguageWords.ENGLISH): IntRange? =
         FractionLookAlike.slot(line, IngredientScaler.patterns(words).unitAtStart) ?: FractionLookAlike.gluedRun(line)
 
-    /** [line] with its [fractionSlot] replaced by [fraction], the cook's choice; null if it has none. */
-    fun replaceFraction(line: String, fraction: String, words: LanguageWords = LanguageWords.ENGLISH): String? =
-        fractionSlot(line, words)?.let { line.replaceRange(it, fraction) }
+    /**
+     * [line] with its [fractionSlot] replaced by [fraction], the cook's choice; null if it has none.
+     * A whole number glued before a glyph run is kept and set apart ("1½⅓ cup" → "1 ⅓ cup", #276).
+     */
+    fun replaceFraction(line: String, fraction: String, words: LanguageWords = LanguageWords.ENGLISH): String? {
+        FractionLookAlike.slot(line, IngredientScaler.patterns(words).unitAtStart)?.let { return line.replaceRange(it, fraction) }
+        val run = FractionLookAlike.gluedRun(line) ?: return null
+        val apart = run.first > 0 && line[run.first - 1] in '0'..'9'
+        return line.replaceRange(run, if (apart) " $fraction" else fraction)
+    }
 
     private fun gluedUnit(line: String, words: LanguageWords): Boolean {
         if (!words.spaced) return false

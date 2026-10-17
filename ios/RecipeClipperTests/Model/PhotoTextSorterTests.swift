@@ -152,23 +152,24 @@ final class PhotoTextSorterTests: XCTestCase {
         XCTAssertTrue(PhotoTextSorter.suspect("½⅓ cup milk"))
     }
 
-    func testAChipReplacesAGluedGlyphRunWholeKeepingAWholeNumberSetApart() {
-        XCTAssertEqual(PhotoTextSorter.replaceFraction("3¾4 tsp salt", "¾"), "¾ tsp salt")
+    func testAChipReplacesAGluedGlyphRunWholeKeepingTheWholeNumber() {
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("3¾4 tsp salt", "¾"), "3 ¾ tsp salt") // glued: kept, set apart
         XCTAssertEqual(PhotoTextSorter.replaceFraction("½⅓ cup milk", "⅓"), "⅓ cup milk")
         XCTAssertEqual(PhotoTextSorter.replaceFraction("2 ½⅔ cups oats", "⅔"), "2 ⅔ cups oats")
         XCTAssertEqual(PhotoTextSorter.replaceFraction("Add ½⅓ cup milk.", "½"), "Add ½ cup milk.")
-        XCTAssertEqual(PhotoTextSorter.replaceFraction("1½⅓ cup milk", "⅓"), "⅓ cup milk") // glued: part of the run
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("1½⅓ cup milk", "⅓"), "1 ⅓ cup milk")
+        XCTAssertEqual(PhotoTextSorter.replaceFraction("12½⅓", "½"), "12 ½")
         // No run: an ordinary glyph, a mixed number, a glyph after digits.
         for line in ["½ cup sugar", "1¼ cups flour", "2 ⅔ cups oats", "12½ g", "1 ½ cups"] {
             XCTAssertNil(PhotoTextSorter.fractionSlot(line), line)
         }
     }
 
-    func testTheGluedRunIsEveryDigitAndGlyphTouchingIt() {
-        XCTAssertEqual(FractionLookAlike.gluedRun("3¾4 tsp"), NSRange(location: 0, length: 3))
+    func testTheGluedRunIsEveryGlyphAndDigitFromItsFirstGlyphOn() {
+        XCTAssertEqual(FractionLookAlike.gluedRun("3¾4 tsp"), NSRange(location: 1, length: 2))
         XCTAssertEqual(FractionLookAlike.gluedRun("½⅓ cup"), NSRange(location: 0, length: 2))
         XCTAssertEqual(FractionLookAlike.gluedRun("2 ½⅓ cups"), NSRange(location: 2, length: 2))
-        XCTAssertEqual(FractionLookAlike.gluedRun("1½⅓4"), NSRange(location: 0, length: 4))
+        XCTAssertEqual(FractionLookAlike.gluedRun("1½⅓4"), NSRange(location: 1, length: 3))
         XCTAssertNil(FractionLookAlike.gluedRun("1¼ cups"))
         XCTAssertNil(FractionLookAlike.gluedRun("2 ⅔ cups"))
     }

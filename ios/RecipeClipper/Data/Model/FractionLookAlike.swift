@@ -43,16 +43,17 @@ enum FractionLookAlike {
 
     /// Where `line` holds a fraction glyph run into a digit or another glyph (#245, #276): "½⅓",
     /// "3¾4", which no recipe writes but a recogniser gives for one glyph with its strokes read
-    /// again. The run is every digit and glyph touching it, so a chosen fraction replaces it
-    /// whole ("3¾4 tsp" → "¾ tsp"); a whole number set apart by a space isn't part of it
-    /// ("2 ½⅓ cups" → "2 ⅓ cups"), nor one before an ordinary glyph ("1¼ cups" is no run). The
-    /// first run in the line; nil if none.
-    static func gluedRun(_ line: String) -> NSRange? { gluedRunPattern.find(line)?.ranges[0] }
+    /// again. The run is every glyph and digit from its first glyph on, so a chosen fraction
+    /// replaces it whole ("½⅓ cup" → "⅓ cup"); the digits before that first glyph are a whole
+    /// number and aren't part of it ("1½⅓ cup" → "1 ⅓ cup", the owner's call), nor is one before
+    /// an ordinary glyph ("1¼ cups" is no run). The first run in the line; nil if none.
+    static func gluedRun(_ line: String) -> NSRange? { gluedRunPattern.find(line)?.ranges[1] }
 
     private static let glyphs = "¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞"
 
-    // Digits and glyphs, with a glyph straight before a digit or another glyph somewhere in them.
+    // A whole number, then (group 1) a glyph straight before a digit or another glyph, and the
+    // rest of the run.
     private static let gluedRunPattern = JRegex(
-        #"(?<![\d"# + glyphs + #"])[\d"# + glyphs + #"]*["# + glyphs + #"][\d"# + glyphs + #"]+"#
+        #"(?<![\d"# + glyphs + #"])\d*(["# + glyphs + #"][\d"# + glyphs + #"]+)"#
     )
 }
