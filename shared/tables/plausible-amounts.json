@@ -1,12 +1,10 @@
 {
   "schemaVersion": 1,
-  "about": "Read the photo (#198, #249): the most of each unit a recipe line plausibly asks for. A photo-read line whose leading amount is above its unit's maximum ('34 tsp salt', '23 cups oats', '18 tsp nutmeg': a fraction glyph read as digits) is listed under Check these lines, flagged only: nothing is suggested or corrected, and the scaler reads the number as written. Keyed by the unit the language's units.json names the unit word as (MeasureUnit), so it is language-independent; a unit not listed (VARIES) and a bare count ('12 eggs') are never checked. Calibrated so no ingredient line in the repo's fixtures and saved pages is flagged (docs/decisions.md, #249). Applies to photo-read lines only, never to a parsed web recipe.",
+  "about": "Read the photo (#198, #249, #281): the most of each unit a recipe line plausibly asks for. A photo-read ingredient line whose leading amount is above its unit's maximum ('34 tsp salt', '23 cups oats': a fraction glyph read as digits) is listed under Check these lines with its own reason ('This amount looks large'), flagged only: nothing is suggested or corrected, and the scaler reads the number as written. Keyed by the unit the language's units.json names the unit word as (MeasureUnit), so it is language-independent; a unit not listed (VARIES) and a bare count ('12 eggs') are never checked, nor is a language whose amounts follow the name (Japanese). fractionShapes are the digits a recipe's fraction glyphs read as when the slash is lost (½ 12, ⅓ 13, ¼ 14, ⅛ 18, ⅔ 23, ¾ 34, ⅜ 38, ⅝ 58, ⅞ 78; fifths and sixths, never written in the calibration pages, are left out, so '16 tablespoons' and '15 g' stay plain numbers). An amount written exactly so is judged by its unit's fractionShapedMaximums, a lower bar, where one is listed ('12 tbsp vinegar' for ½), else by maximums; ounces, grams and millilitres have none, since '12 oz', '14 g' and '15 ml' are everyday amounts. Calibrated so no real ingredient line in the repo's fixtures and saved pages is flagged (docs/decisions.md, #249, #281). Applies to photo-read lines only, never to a parsed web recipe.",
   "maximums": {
     "TSP": 10,
     "TBSP": 16,
     "CUP": 12,
-    "CUP_200": 12,
-    "RICE_CUP": 10,
     "FL_OZ": 64,
     "STICK": 8,
     "ML": 5000,
@@ -17,5 +15,11 @@
     "KG": 10,
     "OZ": 64,
     "LB": 25
+  },
+  "fractionShapes": ["12", "13", "14", "18", "23", "34", "38", "58", "78"],
+  "fractionShapedMaximums": {
+    "TBSP": 10,
+    "CUP": 10,
+    "LB": 10
   }
 }

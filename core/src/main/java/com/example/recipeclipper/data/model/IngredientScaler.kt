@@ -119,9 +119,12 @@ object IngredientScaler {
          * [rest] the text after it; the line stays as written, like a size after [notAnAmount].
          */
         fun temperature(lead: MatchResult, rest: String): Boolean =
-            CELSIUS_AFTER.containsMatchIn(rest) && listOf(lead.groupValues[2], lead.groupValues[4])
-                .filter { it.isNotEmpty() }
-                .all { TEMPERATURE_NUMBER.matches(it) && it.toInt() in TemperatureConverter.PLAUSIBLE_CELSIUS }
+            temperature(listOf(lead.groupValues[2], lead.groupValues[4]).filter { it.isNotEmpty() }, rest)
+
+        /** [temperature] for the [amounts] given, the numbers [rest] follows. */
+        fun temperature(amounts: List<String>, rest: String): Boolean =
+            CELSIUS_AFTER.containsMatchIn(rest) &&
+                amounts.all { TEMPERATURE_NUMBER.matches(it) && it.toInt() in TemperatureConverter.PLAUSIBLE_CELSIUS }
 
         // A quantity followed by a unit. groups: 1 quantity, 2 space, 3 unit
         val qtyUnit = Regex("""($qty)(\s*)${units.captured}""", RegexOption.IGNORE_CASE)
