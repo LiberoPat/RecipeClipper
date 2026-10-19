@@ -275,8 +275,8 @@ struct PlausibleAmounts {
             guard let entries = table[key] as? [String: Any] else { return nil }
             var out: [MeasureUnit: Double] = [:]
             for (name, value) in entries {
-                guard let unit = MeasureUnit.byTableName[name], let number = value as? Double else { return nil }
-                out[unit] = number
+                guard let unit = MeasureUnit.byTableName[name], let number = value as? NSNumber else { return nil }
+                out[unit] = number.doubleValue
             }
             return out
         }
