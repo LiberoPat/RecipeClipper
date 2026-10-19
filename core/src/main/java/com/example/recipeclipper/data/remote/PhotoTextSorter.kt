@@ -131,7 +131,8 @@ object PhotoTextSorter {
      *   "½⅓", never written) (#245, #276): see [fractionSlot];
      * - a near-miss of a unit where the unit goes, "1 oup sugar" or "2 tbps butter" (#276): the
      *   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip;
-     * - an amount too big for its unit, "34 tsp salt" or "23 cups oats" (#249): see [implausible].
+     * - an amount too big for its unit, "34 tsp salt" or "23 cups oats" (#249): see [implausible],
+     *   which [sort] runs on ingredient lines only (#281).
      */
     internal fun suspect(line: String, words: LanguageWords = LanguageWords.ENGLISH): Boolean {
         val lead = Lead(line, words)
