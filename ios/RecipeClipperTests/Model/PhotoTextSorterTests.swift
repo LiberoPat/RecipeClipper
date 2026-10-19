@@ -235,6 +235,8 @@ final class PhotoTextSorterTests: XCTestCase {
         // "23 cups oats" (2 ⅔) is too many cups (#249): flagged, but with no chips.
         XCTAssertEqual(reading.uncertain, ["½⅓ cup milk", "23 cups oats", "is tsp nutmeg"])
         XCTAssertEqual(reading.uncertain.filter { PhotoTextSorter.fractionSlot($0) != nil }, ["½⅓ cup milk", "is tsp nutmeg"])
+        // Only its size is wrong, so it gets its own reason (#281).
+        XCTAssertEqual(reading.large, ["23 cups oats"])
     }
 
     func testAFractionReadAsDigitsIsFlaggedWhenTheAmountIsImplausibleForItsUnit() {
@@ -242,7 +244,7 @@ final class PhotoTextSorterTests: XCTestCase {
         for line in [
             "34 tsp salt", "23 cups oats", "18 tsp nutmeg", "2 23 cups oats", "14 tsp. cinnamon",
             "12 tsp sugar", "34 Tbsp butter", "13 c milk", "10–14 tsp salt", "12 kg flour", "30 lb potatoes",
-            "6000 g Mehl", "13 sticks butter",
+            "6000 g Mehl", "13 sticks butter", "14 cups milk",
         ] {
             XCTAssertTrue(PhotoTextSorter.implausible(line), line)
             XCTAssertTrue(PhotoTextSorter.suspect(line), line)
@@ -254,9 +256,9 @@ final class PhotoTextSorterTests: XCTestCase {
     func testAPlausibleAmountACountOrATemperatureIsNotFlagged() {
         for line in [
             // At a unit's maximum, a big batch, decimals, ranges, and misreads too plausible to catch.
-            "10 tsp baking powder", "12 cups chicken stock", "16 tablespoons (227g) unsalted butter",
+            "10 tsp baking powder", "11 cups chicken stock", "16 tablespoons (227g) unsalted butter",
             "2–3 tbsp olive oil", "2 to 3 tbsp olive oil", "1.5 cups flour", "0.75 tsp salt", "1 1/2 cups sugar",
-            "4 tsp salt", "12 cup sugar", "8 tsp nutmeg", "32 oz chicken stock", "1000 g flour", "2 14 oz cans tomatoes",
+            "4 tsp salt", "8 tsp nutmeg", "32 oz chicken stock", "1000 g flour", "2 14 oz cans tomatoes",
             // Counts and no units are never checked; a bare Celsius temperature is no amount of cups.
             "12 eggs", "48 wonton wrappers", "180 C water", "350°F", "Bake for 25 minutes.",
         ] {
@@ -271,5 +273,78 @@ final class PhotoTextSorterTests: XCTestCase {
         XCTAssertEqual(reading.ingredients, ["34 tsp salt", "1 cup flour"])
         XCTAssertEqual(reading.uncertain, ["34 tsp salt"])
         XCTAssertEqual(IngredientScaler.scale("34 tsp salt", factor: 2.0), "68 tsp salt")
+    }
+
+    func testAnAmountShapedLikeAFractionsDigitsIsHeldToItsUnitsLowerBar() {
+        // ½, ¼ and ⅓ read as digits (#281): under the unit's maximum, over its fraction-shaped bar.
+        for line in [
+            "12 tbsp vinegar", "13 tbsp. honey", "12 cup sugar", "12 cups chicken stock", "12 lb ground beef",
+            "1 12 cups flour", "2 14 tbsp butter", "10–12 cups water",
+        ] {
+            XCTAssertTrue(PhotoTextSorter.implausible(line), line)
+        }
+        // Not shaped like a fraction, or a unit with no lower bar ("12 oz" and "15 g" are everyday).
+        for line in [
+            "16 tablespoons (227g) unsalted butter", "10 tbsp butter", "11 cups water", "10 cups flour",
+            "12 oz spaghetti", "14 oz can coconut milk", "12 fl oz beer", "15 g yeast", "2 14 oz cans tomatoes",
+        ] {
+            XCTAssertFalse(PhotoTextSorter.implausible(line), line)
+        }
+    }
+
+    func testASecondNumberIsJudgedOnlyAfterAPlainWholeOneByItsOwnTemperature() {
+        // After a range, a fraction or a decimal, the lead's amounts aren't dropped for it (#281).
+        for line in ["1–2 34 tsp salt", "½ 34 tsp salt", "1.5 34 tsp salt"] {
+            XCTAssertFalse(PhotoTextSorter.implausible(line), line)
+        }
+        XCTAssertTrue(PhotoTextSorter.implausible("2 34 tsp salt"))
+        // The temperature exemption tests the number judged: 180 is one, 14 isn't.
+        XCTAssertFalse(PhotoTextSorter.implausible("2 180 C water"))
+        XCTAssertTrue(PhotoTextSorter.implausible("180 14 c milk"))
+    }
+
+    func testTheSizeCheckRunsOnIngredientLinesNeverOnSteps() {
+        // Sorted, a step's numbers are never judged: a conversion line isn't a misread (#281).
+        let sorted = PhotoTextSorter.sort(lines(["INGREDIENTS", "1 cup flour", "METHOD", "Mix the flour.", "48 tsp = 1 cup"]))
+        XCTAssertTrue(sorted.sorted)
+        XCTAssertEqual(sorted.instructions, ["Mix the flour.", "48 tsp = 1 cup"])
+        XCTAssertEqual(sorted.uncertain, [])
+    }
+
+    func testUnsortedListMarkupGoesBeforeTheSizeCheckAndStepsAndConversionsAreSkipped() {
+        let reading = PhotoTextSorter.sort(lines([
+            "Grandma's card", "▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg",
+            "48 tsp = 1 cup", "Step 4: 34 tsp salt",
+        ]))
+        XCTAssertFalse(reading.sorted)
+        let flagged = ["▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg"]
+        XCTAssertEqual(reading.uncertain, flagged)
+        XCTAssertEqual(reading.large, flagged)
+    }
+
+    func testALineWithAnotherReasonToCheckItIsntListedAsOnlyLarge() {
+        let reading = PhotoTextSorter.sort(lines(
+            ["INGREDIENTS", "34 tsp salt", "34 tbps sugar", "12 tbsp vinegar", "METHOD", "Mix."],
+            unsure: ["34 tsp salt"]
+        ))
+        XCTAssertEqual(reading.uncertain, ["34 tsp salt", "34 tbps sugar", "12 tbsp vinegar"])
+        XCTAssertEqual(reading.large, ["12 tbsp vinegar"])
+    }
+
+    func testAMalformedPlausibleAmountsTableIsRefusedAsSharedTablesDoes() {
+        // A nil here is the app's fatalError, as SharedTables traps on a malformed table.
+        XCTAssertNotNil(PlausibleAmounts(SharedTables.read("plausible-amounts")))
+        XCTAssertNotNil(PlausibleAmounts(["maximums": ["TSP": 10], "fractionShapedMaximums": [String: Any](), "fractionShapes": ["12"]]))
+        let malformed: [SharedTables.Table] = [
+            ["maximums": ["TSP": "ten"], "fractionShapedMaximums": [String: Any](), "fractionShapes": [String]()],
+            ["maximums": ["TEASPOON": 10], "fractionShapedMaximums": [String: Any](), "fractionShapes": [String]()],
+            ["fractionShapedMaximums": [String: Any](), "fractionShapes": [String]()],
+            ["maximums": ["TSP": 10], "fractionShapes": [String]()],
+            ["maximums": ["TSP": 10], "fractionShapedMaximums": ["TSP": 12], "fractionShapes": [String]()],
+            ["maximums": ["TSP": 10], "fractionShapedMaximums": [String: Any](), "fractionShapes": ["½"]],
+        ]
+        for table in malformed {
+            XCTAssertNil(PlausibleAmounts(table), "\(table)")
+        }
     }
 }

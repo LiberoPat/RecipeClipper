@@ -236,6 +236,7 @@
     <string name="photo_failed">Impossible de charger la photo. Vérifiez la connexion et réessayez.</string>
     <string name="photo_not_ready">Le lecteur de photos n\'est pas encore prêt sur ce téléphone : les services Google Play le téléchargent une fois, par Internet. Réessayez dans quelques minutes, ou terminez la recette à la main ci-dessous.</string>
     <string name="photo_check_heading">Vérifiez ces lignes : la photo y était difficile à lire</string>
+    <string name="photo_check_large">Cette quantité semble grande : vérifiez-la</string>
     <string name="photo_fraction_prompt">Une fraction ? Touchez celle de la photo :</string>
     <string name="photo_fraction_chip">Mettre %1$s dans %2$s</string>
     <string name="photo_image_description">Photo de %1$s</string>

@@ -41,6 +41,9 @@ struct EditRecipeUiState: Equatable {
     /// The `uncertain` lines whose amount holds a fraction glyph's look-alike ("2% cups oats",
     /// #245), each offered the `fractions` as one-tap replacements.
     var fractionLines: [String] = []
+    /// The `uncertain` lines listed only because their amount looks too large (#281), each
+    /// shown with that reason.
+    var largeLines: [String] = []
     var fractions: [String] = PhotoTextSorter.fractions
 
     init(isNew: Bool, photo: PhotoPost? = nil, scan: Bool = false) {
@@ -129,6 +132,7 @@ final class EditRecipeViewModel {
         uiState.photoOutcome = nil
         uiState.uncertain = []
         uiState.fractionLines = []
+        uiState.largeLines = []
         // A post's first picture is its photo; a scan's pages are never kept (#226).
         uiState.draft = RecipeDraft(name: post.title, image: scanPages != nil ? "" : post.imageUrls.first ?? "")
         readTask = Task { [weak self, photoReader] in
@@ -143,6 +147,7 @@ final class EditRecipeViewModel {
                 photoLanguage = reading.language
                 uiState.photoOutcome = reading.sorted ? .read : .notSorted
                 uiState.uncertain = reading.uncertain
+                uiState.largeLines = reading.large
                 let words = RecipeTextSplitter.wordsFor(reading.language)
                 uiState.fractionLines = reading.uncertain.filter { PhotoTextSorter.fractionSlot($0, words: words) != nil }
                 uiState.draft.yield = reading.yield ?? ""

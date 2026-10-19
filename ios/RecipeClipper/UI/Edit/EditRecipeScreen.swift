@@ -125,13 +125,23 @@ private struct PhotoReview: View {
             outcome
             if !state.uncertain.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(Strings.photoCheckHeading)
-                        .textStyle(Typography.titleSmall)
-                        .foregroundStyle(Palette.accentText)
+                    // A line listed only for its size has its own reason, not the photo's (#281).
+                    if state.uncertain.contains(where: { !state.largeLines.contains($0) }) {
+                        Text(Strings.photoCheckHeading)
+                            .textStyle(Typography.titleSmall)
+                            .foregroundStyle(Palette.accentText)
+                    }
                     ForEach(Array(state.uncertain.enumerated()), id: \.offset) { index, line in
                         Text("• \(line)")
                             .textStyle(Typography.bodyMedium)
                             .foregroundStyle(Palette.onBackground)
+                        if state.largeLines.contains(line) {
+                            Text(Strings.photoCheckLarge)
+                                .textStyle(Typography.bodySmall)
+                                .foregroundStyle(Palette.muted)
+                                .padding(.leading, 12)
+                                .padding(.bottom, 4)
+                        }
                         if state.fractionLines.contains(line) {
                             fractionChips(index, line)
                         }

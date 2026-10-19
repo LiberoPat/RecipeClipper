@@ -1876,6 +1876,8 @@ final class DifferentialCorpusTests: XCTestCase {
         Photo(["Pão de queijo", "INGREDIENTES", "500 g de polvilho", "1 xícaraleite", "2 ovos", "200 g de queijo", "Sal a gosto", "MODO DE PREPARO", "Ferva o leite com o sal.", "Junte os ovos e o queijo e asse."], "pt", true, ["500 g de polvilho", "1 xícaraleite", "2 ovos", "200 g de queijo", "Sal a gosto"], ["Ferva o leite com o sal.", "Junte os ovos e o queijo e asse."], ["1 xícaraleite"]),
         Photo(["肉じゃが", "材料", "じゃがいも 3個", "玉ねぎ 1個", "醤油 大さじ3", "砂糖 大さじ2", "作り方", "1. じゃがいもを切る。", "2. 煮る。"], "ja", true, ["じゃがいも 3個", "玉ねぎ 1個", "醤油 大さじ3", "砂糖 大さじ2"], ["じゃがいもを切る。", "煮る。"], []),
         Photo(["Wir haben gestern gebacken.", "Mit Mehl und Zucker und Eiern.", "Es war lecker."], "de", false, ["Wir haben gestern gebacken.", "Mit Mehl und Zucker und Eiern.", "Es war lecker."], [], []),
+        Photo(["INGREDIENTS", "1 cup flour", "METHOD", "Mix the flour.", "48 tsp = 1 cup"], "en", true, ["1 cup flour"], ["Mix the flour.", "48 tsp = 1 cup"], []),
+        Photo(["Grandma's card", "▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg", "48 tsp = 1 cup", "Step 4: 34 tsp salt"], nil, false, ["Grandma's card", "▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg", "48 tsp = 1 cup", "Step 4: 34 tsp salt"], [], ["▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg"]),
     ]
 
     private struct Sus {
@@ -1960,7 +1962,7 @@ final class DifferentialCorpusTests: XCTestCase {
         Sus("2 23 cups oats", true),
         Sus("10–14 tsp salt", true),
         Sus("12 tsp baking powder", true),
-        Sus("12 cups chicken stock", false),
+        Sus("12 cups chicken stock", true),
         Sus("16 tablespoons (227g) unsalted butter", false),
         Sus("2–3 tbsp olive oil", false),
         Sus("2 14 oz cans tomatoes", false),
@@ -1970,6 +1972,16 @@ final class DifferentialCorpusTests: XCTestCase {
         Sus("1.500 g Mehl", lang: "de", false),
         Sus("6000 g Mehl", lang: "de", true),
         Sus("18 cucharaditas de sal", lang: "es", true),
+        Sus("12 tbsp vinegar", true),
+        Sus("14 cups milk", true),
+        Sus("12 cup sugar", true),
+        Sus("1 12 cups flour", true),
+        Sus("12 lb ground beef", true),
+        Sus("12 oz spaghetti", false),
+        Sus("12 fl oz beer", false),
+        Sus("1–2 34 tsp salt", false),
+        Sus("2 180 C water", false),
+        Sus("180 14 c milk", true),
     ]
 
     private struct Frac {

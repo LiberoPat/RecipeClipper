@@ -19523,6 +19523,47 @@
         }
       }
     },
+    "photo_check_large" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Menge wirkt groß: Prüfe sie"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This amount looks large: check it"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cantidad parece grande: revísala"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette quantité semble grande : vérifiez-la"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa quantità sembra grande: controllala"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Essa quantidade parece grande: confira"
+          }
+        }
+      }
+    },
     "photo_failed" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -20,6 +20,9 @@ struct PhotoReading: Equatable {
     let sorted: Bool
     /// The lines shown to check: text the recogniser was unsure of, or an amount shaped like a misreading.
     var uncertain: [String] = []
+    /// The `uncertain` lines listed only because their amount looks too large for its unit
+    /// (`PhotoTextSorter.implausible`, #281): shown with that reason, not the photo's.
+    var large: [String] = []
     /// The language the lines' words clearly say (#208), which they were read in; nil when nothing
     /// was clear and English was used.
     var language: String? = nil
@@ -57,10 +60,20 @@ enum PhotoTextSorter {
         let split = read.isEmpty ? nil : RecipeTextSplitter.split(text, words: words)
         guard let split, !(split.ingredients.isEmpty && split.instructions.isEmpty) else {
             let all = read.map(\.text)
+            // Unsorted, any line may be an ingredient: its list markup goes before the size
+            // check ("▢ 34 tsp salt"), and a step or a conversion ("48 tsp = 1 cup") is skipped.
+            let checked = toCheck(all, unsure: unsure, words: words) { raw in
+                let line = RecipeTextSplitter.line(raw, words: words)
+                return line.step || line.text.contains("=") ? nil : line.text
+            }
             return PhotoReading(
                 ingredients: all, instructions: [], sorted: false,
-                uncertain: toCheck(all, unsure: unsure, words: words), language: language
+                uncertain: checked.uncertain, large: checked.large, language: language
             )
+        }
+        let ingredients = Set(split.ingredients)
+        let checked = toCheck(split.ingredients + split.instructions, unsure: unsure, words: words) {
+            ingredients.contains($0) ? $0 : nil
         }
         return PhotoReading(
             ingredients: split.ingredients,
@@ -70,20 +83,30 @@ enum PhotoTextSorter {
             cookTime: split.cookTime,
             totalTime: split.totalTime,
             sorted: true,
-            uncertain: toCheck(split.ingredients + split.instructions, unsure: unsure, words: words),
+            uncertain: checked.uncertain,
+            large: checked.large,
             language: language
         )
     }
 
     /// The `shown` lines to check: those `marked` from text the recogniser was unsure of, then any
-    /// other whose amount looks misread (`suspect`), however sure the recogniser was.
-    private static func toCheck(_ shown: [String], unsure: [String], words: LanguageWords) -> [String] {
+    /// other whose amount looks misread (`suspect`), however sure the recogniser was. The size
+    /// check (`implausible`) was calibrated on ingredient lines, so it runs only on the text
+    /// `sized` gives for a line, and not where it gives nil (a step); a line only it flags is
+    /// also in `large` (#281).
+    private static func toCheck(
+        _ shown: [String], unsure: [String], words: LanguageWords, sized: (String) -> String?
+    ) -> (uncertain: [String], large: [String]) {
         let low = Set(marked(shown, unsure: unsure))
-        var out: [String] = []
-        for line in shown where !out.contains(line) && (low.contains(line) || suspect(line, words: words)) {
-            out.append(line)
+        var uncertain: [String] = []
+        var large: [String] = []
+        for line in shown where !uncertain.contains(line) {
+            let misread = low.contains(line) || misread(Lead(line, words: words), words: words)
+            let big = !misread && (sized(line).map { implausible($0, words: words) } ?? false)
+            if misread || big { uncertain.append(line) }
+            if big { large.append(line) }
         }
-        return out
+        return (uncertain, large)
     }
 
     /// True when `line`'s amount has a shape a recogniser gives for a misread one (#198), so the
@@ -99,41 +122,79 @@ enum PhotoTextSorter {
     ///   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip;
     /// - an amount too big for its unit, "34 tsp salt" or "23 cups oats" (#249): see `implausible`.
     static func suspect(_ line: String, words: LanguageWords = .english) -> Bool {
+        let lead = Lead(line, words: words)
+        return misread(lead, words: words) || implausible(lead, words: words)
+    }
+
+    /// Every shape `suspect` looks for but the size check.
+    private static func misread(_ lead: Lead, words: LanguageWords) -> Bool {
+        let line = lead.line
         let improper = improperFraction.findAll(line).contains { m in
             // The numerator without leading zeros: two digits or more is always above 2 to 8.
             let n = String(m[1].drop { $0 == "0" })
             guard let d = Int(m[2]), (2...8).contains(d) else { return false }
             return n.count > 1 || (!n.isEmpty && Int(n)! > d)
         }
-        return improper || lookAlike.containsMatch(in: line) || gluedUnit(line, words: words)
-            || fractionSlot(line, words: words) != nil || misspeltUnit(line, words: words)
-            || implausible(line, words: words)
+        if improper || lookAlike.containsMatch(in: line) || fractionSlot(line, words: words) != nil { return true }
+        guard let rest = lead.rest else { return false }
+        return gluedUnit(rest, lead, words: words) || RecipeTextSplitter.unitLookAlike(rest, words: words)
+    }
+
+    /// `line`'s leading amount as `IngredientScaler` reads it (`match`), and the text after it.
+    private struct Lead {
+        let line: String
+        let p: IngredientScaler.Patterns
+        let match: JMatch?
+        let rest: String?
+
+        init(_ line: String, words: LanguageWords) {
+            self.line = line
+            p = IngredientScaler.patterns(words)
+            match = p.leading.find(line)
+            rest = match.map { line.u16Substring(from: $0.end) }
+        }
     }
 
     /// True when `line`'s leading amount is more of its unit than a recipe asks for
     /// (`shared/tables/plausible-amounts.json`, #249): a fraction glyph read as digits, "34 tsp
-    /// salt" for ¾ or "23 cups oats" for 2 ⅔. Read as the scaler reads it (`IngredientScaler`'s
-    /// leading amount and unit); either end of a range counts ("10–14 tbsp"). A whole number then
-    /// another before the unit ("2 23 cups oats", ML Kit's 2 ⅔) is judged by the second. Flagged
+    /// salt" for ¾ or "23 cups oats" for 2 ⅔. The amount and unit are `IngredientScaler`'s
+    /// leading ones; either end of a range counts ("10–14 tsp"). An amount written exactly as a
+    /// fraction's digits ("12" for ½: the table's `fractionShapes`) is held to its unit's lower
+    /// `fractionShapedMaximums` bar where there is one, so "12 tbsp vinegar" is flagged and "16
+    /// tablespoons butter" isn't (#281).
+    ///
+    /// Unlike the scaler, which reads only the first number, a plain whole number then another
+    /// before the unit ("2 23 cups oats", ML Kit's 2 ⅔; "1 12 cups" for 1½) is judged by the
+    /// second alone; after a range, a fraction or a decimal, the second number isn't taken. Flagged
     /// only: nothing is suggested or changed. A bare count ("12 eggs"), a unit the table doesn't
     /// list, a temperature ("180 C") and a language whose amounts follow the name are never checked.
     static func implausible(_ line: String, words: LanguageWords = .english) -> Bool {
-        let p = IngredientScaler.patterns(words)
-        guard !p.amountAfterName, let lead = p.leading.find(line) else { return false }
-        var rest = line.u16Substring(from: lead.end)
-        var amounts = [lead[2], lead[4]].filter { !$0.isEmpty }
-        if let second = secondNumber.find(rest) {
+        implausible(Lead(line, words: words), words: words)
+    }
+
+    private static func implausible(_ lead: Lead, words: LanguageWords) -> Bool {
+        let p = lead.p
+        guard !p.amountAfterName, let match = lead.match, var rest = lead.rest else { return false }
+        var amounts = [match[2], match[4]].filter { !$0.isEmpty }
+        if amounts.count == 1, amounts[0].allSatisfy({ ("0"..."9").contains($0) }), let second = secondNumber.find(rest) {
             amounts = [second[1]]
             rest = rest.u16Substring(from: second.end)
         }
-        guard let unit = p.unitAtStart.find(rest), !p.temperature(lead, rest),
-              let max = MeasureUnit.fromText(unit[1], words: words).flatMap({ maximums[$0] }) else { return false }
-        return amounts.contains { (p.parse($0) ?? 0) > max }
+        guard let unit = p.unitAtStart.find(rest).flatMap({ MeasureUnit.fromText($0[1], words: words) }),
+              !p.temperature(amounts, rest) else { return false }
+        let table = plausible
+        guard let max = table.maximums[unit] else { return false }
+        let shapedMax = table.fractionShaped[unit] ?? max
+        return amounts.contains { (p.parse($0) ?? 0) > (table.shapes.contains($0) ? shapedMax : max) }
     }
 
-    private static let maximums: [MeasureUnit: Double] = {
-        let table = SharedTables.read("plausible-amounts")["maximums"] as? [String: Double] ?? [:]
-        return Dictionary(uniqueKeysWithValues: table.map { (MeasureUnit.byTableName[$0.key]!, $0.value) })
+    /// Read at the first size check (a static is lazy), and a malformed table traps, as
+    /// `SharedTables` does.
+    private static let plausible: PlausibleAmounts = {
+        guard let table = PlausibleAmounts(SharedTables.read("plausible-amounts")) else {
+            fatalError("Malformed shared table tables/plausible-amounts.json")
+        }
+        return table
     }()
 
     // "2 23 cups": a second whole number straight after the leading one.
@@ -162,18 +223,9 @@ enum PhotoTextSorter {
         return ns.replacingCharacters(in: run, with: apart ? " " + fraction : fraction)
     }
 
-    private static func gluedUnit(_ line: String, words: LanguageWords) -> Bool {
-        guard words.spaced else { return false }
-        let p = IngredientScaler.patterns(words)
-        guard let lead = p.leading.find(line) else { return false }
-        let rest = line.u16Substring(from: lead.end)
-        return !p.unitAtStart.containsMatch(in: rest) && RecipeTextSplitter.gluedUnit(rest, words: words)
-    }
-
-    /// A unit's near-miss straight after `line`'s leading amount ("1 oup sugar"), in `words`' language.
-    private static func misspeltUnit(_ line: String, words: LanguageWords) -> Bool {
-        guard let lead = IngredientScaler.patterns(words).leading.find(line) else { return false }
-        return RecipeTextSplitter.unitLookAlike(line.u16Substring(from: lead.end), words: words)
+    /// A unit glued to the next word in `rest`, after the leading amount, where the scaler reads none.
+    private static func gluedUnit(_ rest: String, _ lead: Lead, words: LanguageWords) -> Bool {
+        words.spaced && !lead.p.unitAtStart.containsMatch(in: rest) && RecipeTextSplitter.gluedUnit(rest, words: words)
     }
 
     // "11/2": digits, a slash, one digit, and no more digits or slashes around it.
@@ -206,5 +258,35 @@ enum PhotoTextSorter {
             if hit { out.append(line) }
         }
         return out
+    }
+}
+
+/// `shared/tables/plausible-amounts.json` (#249, #281), read. Nil for a malformed table (no
+/// `maximums`, a unit that isn't a `MeasureUnit`, a value that isn't a number, a fraction-shaped
+/// bar not below its unit's maximum), which `PhotoTextSorter` traps on, as `SharedTables` does.
+/// Android's `PlausibleAmounts` throws.
+struct PlausibleAmounts {
+    let maximums: [MeasureUnit: Double]
+    let fractionShaped: [MeasureUnit: Double]
+    let shapes: Set<String>
+
+    init?(_ table: SharedTables.Table) {
+        func units(_ key: String) -> [MeasureUnit: Double]? {
+            guard let entries = table[key] as? [String: Any] else { return nil }
+            var out: [MeasureUnit: Double] = [:]
+            for (name, value) in entries {
+                guard let unit = MeasureUnit.byTableName[name], let number = value as? Double else { return nil }
+                out[unit] = number
+            }
+            return out
+        }
+        guard let maximums = units("maximums"), let shaped = units("fractionShapedMaximums"),
+              shaped.allSatisfy({ unit, bar in bar < (maximums[unit] ?? 0) }),
+              let shapes = table["fractionShapes"] as? [String],
+              shapes.allSatisfy({ !$0.isEmpty && $0.allSatisfy { ("0"..."9").contains($0) } })
+        else { return nil }
+        self.maximums = maximums
+        fractionShaped = shaped
+        self.shapes = Set(shapes)
     }
 }
