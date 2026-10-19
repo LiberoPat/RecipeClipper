@@ -15,15 +15,21 @@ import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.model.SourceType
 import com.example.recipeclipper.data.needsNotice
+import com.example.recipeclipper.data.remote.CheckReason
+import com.example.recipeclipper.data.remote.LineFlag
 import com.example.recipeclipper.data.remote.PhotoTextSorter
 import com.example.recipeclipper.data.remote.RecipeTextSplitter
+import com.example.recipeclipper.di.DefaultDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /** How reading a post's photo (#198) went, for the line above the editor. */
@@ -65,16 +71,16 @@ data class EditRecipeUiState(
     /** The photos are being fetched and read; the fields wait. */
     val reading: Boolean = false,
     val photoOutcome: PhotoOutcome? = null,
-    /** Lines the recogniser was unsure of, as they were put in the boxes: "check this". */
-    val uncertain: List<String> = emptyList(),
-    /** The [uncertain] lines whose amount holds a fraction glyph's look-alike ("2% cups oats",
-     *  #245), each offered the fractions ([fractions]) as one-tap replacements. */
-    val fractionLines: List<String> = emptyList(),
-    /** The [uncertain] lines listed only because their amount looks too large (#281), each
-     *  shown with that reason. */
-    val largeLines: List<String> = emptyList(),
+    /** The lines to check against the photo, as the sorter listed them (#198, #283), each with
+     *  why: the photo was hard to read there, its amount holds a fraction look-alike (the
+     *  [fractions] as one-tap replacements, #245) or looks too large (#281). */
+    val flags: List<LineFlag> = emptyList(),
     val fractions: List<String> = PhotoTextSorter.FRACTIONS
-)
+) {
+    /** "Check these lines: the photo was hard to read there" heads the list, unless every line
+     *  is listed only because its amount looks too large: each of those says so itself (#281). */
+    val checkHeading: Boolean get() = flags.any { !it.largeOnly }
+}
 
 /**
  * Edits a recipe's content, or types a new one in (#29). Opened with a recipe id from the
@@ -95,7 +101,9 @@ class EditRecipeViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: RecipeRepository,
     private val entitlements: Entitlements = Entitlements.Unavailable,
-    private val photoReader: PhotoTextReader = PhotoTextReader.Unavailable
+    private val photoReader: PhotoTextReader = PhotoTextReader.Unavailable,
+    /** Where the read lines are sorted and checked, off the main thread (#283). */
+    @DefaultDispatcher private val sorting: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -155,7 +163,7 @@ class EditRecipeViewModel @Inject constructor(
         photoLanguage = null
         _uiState.update {
             it.copy(
-                reading = true, photoOutcome = null, uncertain = emptyList(), fractionLines = emptyList(), largeLines = emptyList(),
+                reading = true, photoOutcome = null, flags = emptyList(),
                 // A post's first picture is its photo; a scan's pages are never kept (#226).
                 draft = RecipeDraft(
                     name = post.title,
@@ -165,54 +173,55 @@ class EditRecipeViewModel @Inject constructor(
         }
         readJob = viewModelScope.launch {
             val result = photoReader.read(post.imageUrls)
+            // Sorting and checking a long scan is real work: off the main thread (#283). A read
+            // cancelled meanwhile (Try again, or the screen gone) is dropped here.
+            val reading = (result as? PhotoTextResult.Read)?.let { withContext(sorting) { PhotoTextSorter.sort(it.lines) } }
+            photoLanguage = reading?.language
             _uiState.update { state ->
-                when (result) {
-                    PhotoTextResult.Failed -> state.copy(reading = false, photoOutcome = PhotoOutcome.FAILED)
-                    PhotoTextResult.NotReady -> state.copy(reading = false, photoOutcome = PhotoOutcome.NOT_READY)
-                    is PhotoTextResult.Read -> {
-                        val reading = PhotoTextSorter.sort(result.lines)
-                        photoLanguage = reading.language
-                        state.copy(
-                            reading = false,
-                            photoOutcome = if (reading.sorted) PhotoOutcome.READ else PhotoOutcome.NOT_SORTED,
-                            uncertain = reading.uncertain,
-                            largeLines = reading.large,
-                            fractionLines = reading.uncertain.filter {
-                                PhotoTextSorter.fractionSlot(it, RecipeTextSplitter.wordsFor(reading.language)) != null
-                            },
-                            draft = state.draft.copy(
-                                yield = reading.yield.orEmpty(),
-                                prepTime = reading.prepTime.orEmpty(),
-                                cookTime = reading.cookTime.orEmpty(),
-                                totalTime = reading.totalTime.orEmpty(),
-                                ingredientsText = reading.ingredients.joinToString("\n"),
-                                instructionsText = reading.instructions.joinToString("\n")
-                            )
+                when {
+                    result == PhotoTextResult.NotReady -> state.copy(reading = false, photoOutcome = PhotoOutcome.NOT_READY)
+                    reading == null -> state.copy(reading = false, photoOutcome = PhotoOutcome.FAILED)
+                    else -> state.copy(
+                        reading = false,
+                        photoOutcome = if (reading.sorted) PhotoOutcome.READ else PhotoOutcome.NOT_SORTED,
+                        flags = reading.flags,
+                        draft = state.draft.copy(
+                            yield = reading.yield.orEmpty(),
+                            prepTime = reading.prepTime.orEmpty(),
+                            cookTime = reading.cookTime.orEmpty(),
+                            totalTime = reading.totalTime.orEmpty(),
+                            ingredientsText = reading.ingredients.joinToString("\n"),
+                            instructionsText = reading.instructions.joinToString("\n")
                         )
-                    }
+                    )
                 }
             }
         }
     }
 
     /**
-     * A fraction chip (#245): [line]'s look-alike ("%" in "2% cups oats") becomes [fraction], the
-     * cook's reading of the photo, in the box that holds the line and in the list to check. A
-     * line the cook has since changed in the box is left alone, and its chips go.
+     * A fraction chip (#245): [flag]'s look-alike ("%" in "2% cups oats") becomes [fraction], the
+     * cook's reading of the photo, in the box that holds the line and in its entry in the list to
+     * check, which keeps any markup the line has ("▢ 2⅔ cups oats", #283). A line the cook has
+     * since changed in the box is left alone. Either way the entry's chips go.
      */
-    fun onFraction(line: String, fraction: String) = _uiState.update { state ->
-        val fixed = PhotoTextSorter.replaceFraction(line, fraction, RecipeTextSplitter.wordsFor(photoLanguage))
+    fun onFraction(flag: LineFlag, fraction: String) = _uiState.update { state ->
+        val index = state.flags.indexOf(flag)
+        if (index < 0) return@update state
+        val fixed = PhotoTextSorter.replaceFraction(flag, fraction, RecipeTextSplitter.wordsFor(photoLanguage))
         val draft = state.draft
-        val ingredients = fixed?.let { replaceLine(draft.ingredientsText, line, it) }
-        val steps = if (ingredients == null) fixed?.let { replaceLine(draft.instructionsText, line, it) } else null
-        when {
-            fixed == null || (ingredients == null && steps == null) -> state.copy(fractionLines = state.fractionLines - line)
-            else -> state.copy(
-                draft = if (ingredients != null) draft.copy(ingredientsText = ingredients) else draft.copy(instructionsText = steps!!),
-                uncertain = state.uncertain.map { if (it == line) fixed else it },
-                fractionLines = state.fractionLines - line
-            )
-        }
+        val ingredients = fixed?.let { replaceLine(draft.ingredientsText, flag.raw, it.raw) }
+        val steps = if (ingredients == null) fixed?.let { replaceLine(draft.instructionsText, flag.raw, it.raw) } else null
+        val entry = fixed?.takeIf { ingredients != null || steps != null }
+            ?: flag.copy(reasons = flag.reasons - CheckReason.FRACTION)
+        state.copy(
+            draft = when {
+                ingredients != null -> draft.copy(ingredientsText = ingredients)
+                steps != null -> draft.copy(instructionsText = steps)
+                else -> draft
+            },
+            flags = state.flags.toMutableList().apply { this[index] = entry }
+        )
     }
 
     /** [text] with its first line that reads [line] (trimmed) holding [fixed] instead; null if none does. */

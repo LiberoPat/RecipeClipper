@@ -15,6 +15,38 @@ import org.json.JSONObject
 data class PhotoLine(val text: String, val confidence: Float? = null)
 
 /**
+ * Why a line read from a photo is listed for the cook to check (#198). Flagged only: nothing is
+ * corrected or suggested.
+ */
+enum class CheckReason {
+    /** The recogniser was unsure of the line ([PhotoTextSorter.LOW_CONFIDENCE]). */
+    UNSURE,
+
+    /** Its amount is shaped like a misreading ("11/2", "l/2", "1 cupraisins", "1 oup sugar"). */
+    MISREAD,
+
+    /** Its amount holds a fraction glyph's look-alike, or glyphs run together, which the fraction
+     *  chips replace (#245, #276): always with [MISREAD]. */
+    FRACTION,
+
+    /** Its amount is more of its unit than a recipe asks for ("34 tsp salt", #249, #281). */
+    LARGE
+}
+
+/**
+ * One line listed to check (#198, #283): [raw] as it is in the editor's boxes, which a fraction
+ * chip changes; [shown] as the list shows it, without list markup ("▢", "•", "3)"); and why.
+ */
+data class LineFlag(val raw: String, val shown: String, val reasons: Set<CheckReason>) {
+    /** Listed only because its amount looks too large: the photo was read clearly there, so it
+     *  gets a note of its own rather than the heading (#281). */
+    val largeOnly: Boolean get() = reasons == setOf(CheckReason.LARGE)
+
+    /** Its amount holds a look-alike the fraction chips replace (#245). */
+    val chips: Boolean get() = CheckReason.FRACTION in reasons
+}
+
+/**
  * What [PhotoTextSorter.sort] made of a photo's lines: the recipe editor's content, before the
  * cook checks it. When [sorted] is false the splitter found no recipe, and [ingredients] holds
  * every line read, as read, for the cook to sort by hand.
@@ -27,17 +59,20 @@ data class PhotoReading(
     val cookTime: String? = null,
     val totalTime: String? = null,
     val sorted: Boolean,
-    /** The lines shown to check: text the recogniser was unsure of, or an amount shaped like a misreading. */
-    val uncertain: List<String> = emptyList(),
-    /** The [uncertain] lines listed only because their amount looks too large for its unit
-     *  ([PhotoTextSorter.implausible], #281): shown with that reason, not the photo's. */
-    val large: List<String> = emptyList(),
+    /** The lines to check, each once, in the order shown, with why ([PhotoTextSorter.check]). */
+    val flags: List<LineFlag> = emptyList(),
     /** The language the lines' words clearly say (#208), which they were read in; null when
      *  nothing was clear and English was used. */
     val language: String? = null
 ) {
     /** Nothing at all was read. */
     val isEmpty: Boolean get() = ingredients.isEmpty() && instructions.isEmpty()
+
+    /** The [flags]' lines, as they are in the boxes. */
+    val uncertain: List<String> get() = flags.map { it.raw }
+
+    /** The [flags]' lines listed only because their amount looks too large ([LineFlag.largeOnly]). */
+    val large: List<String> get() = flags.filter { it.largeOnly }.map { it.raw }
 }
 
 /**
@@ -46,12 +81,12 @@ data class PhotoReading(
  *
  * **Nothing is invented or corrected.** Every line is the recogniser's text (only trimmed, and
  * cleaned by the splitter as a typed post's lines are); an amount it misread stays misread, and
- * the lines it was unsure of, or whose amount is shaped like a misreading ("11/2"), are named in
- * [PhotoReading.uncertain] for the cook to check against
- * the photo. When the splitter finds no recipe the lines are returned unsorted, never guessed at.
+ * the lines to check are listed in [PhotoReading.flags] with why: the recogniser was unsure of the
+ * line, or its amount is shaped like a misreading or looks too large ([check]). When the splitter
+ * finds no recipe the lines are returned unsorted, never guessed at.
  *
  * The lines are read in the language their words say (#208, detected as a page's is, #14), else
- * English: that language's headers, and its unit words for [suspect].
+ * English: that language's headers, and its unit words for [check].
  *
  * Pure: lines in, data out. The iOS port (`PhotoTextSorter.swift`) follows it line for line.
  */
@@ -62,84 +97,99 @@ object PhotoTextSorter {
     const val LOW_CONFIDENCE = 0.5f
 
     fun sort(lines: List<PhotoLine>): PhotoReading {
-        val read = lines.map { it.copy(text = it.text.trim()) }.filter { it.text.isNotEmpty() }
-        val unsure = read.filter { (it.confidence ?: 1f) < LOW_CONFIDENCE }.map { it.text }
+        val read = lines.flatMap { line -> line.text.split(LINE_BREAK).map { PhotoLine(it.trim(), line.confidence) } }
+            .filter { it.text.isNotEmpty() }
         val text = read.joinToString("\n") { it.text }
         val language = RecipeTextSplitter.languageOf(text)
         val words = RecipeTextSplitter.wordsFor(language)
-        val split = if (read.isEmpty()) null else RecipeTextSplitter.split(text, words)
+        // Each line cleaned once, as the splitter reads it: the sorting, the checks and the list
+        // all use it (#283). A line read again (a card's two photos) is cleaned once.
+        val clean = HashMap<String, RecipeTextSplitter.Line>()
+        val cleaned = read.map { clean.getOrPut(it.text) { RecipeTextSplitter.line(it.text, words) } }
+        val split = if (read.isEmpty()) null else RecipeTextSplitter.splitLines(cleaned, words)
+        val listed = Listed(read, cleaned, words)
         if (split == null || (split.ingredients.isEmpty() && split.instructions.isEmpty())) {
-            val all = read.map { it.text }
-            // Unsorted, any line may be an ingredient: its list markup goes before the size
-            // check ("▢ 34 tsp salt"), and a step or a conversion ("48 tsp = 1 cup") is skipped.
-            val checked = toCheck(all, unsure, words) { raw ->
-                RecipeTextSplitter.line(raw, words).takeIf { !it.step && '=' !in it.text }?.text
-            }
-            return PhotoReading(
-                all, emptyList(), sorted = false, uncertain = checked.uncertain, large = checked.large, language = language
-            )
+            // Unsorted, each line is checked and shown as the splitter cleans it ("▢ 2% cups oats"
+            // as "2% cups oats"), and stays in the box as read.
+            read.indices.forEach { listed.add(read[it].text, cleaned[it].text, it) }
+            return PhotoReading(read.map { it.text }, emptyList(), sorted = false, flags = listed.flags(), language = language)
         }
-        val ingredients = split.ingredients.toSet()
-        val checked = toCheck(split.ingredients + split.instructions, unsure, words) { it.takeIf { it in ingredients } }
+        (split.ingredients + split.instructions).forEach { listed.add(it.text, it.text, it.source) }
+        val recipe = split.recipe
         return PhotoReading(
-            ingredients = split.ingredients,
-            instructions = split.instructions,
-            yield = split.yield,
-            prepTime = split.prepTime,
-            cookTime = split.cookTime,
-            totalTime = split.totalTime,
+            ingredients = recipe.ingredients,
+            instructions = recipe.instructions,
+            yield = recipe.yield,
+            prepTime = recipe.prepTime,
+            cookTime = recipe.cookTime,
+            totalTime = recipe.totalTime,
             sorted = true,
-            uncertain = checked.uncertain,
-            large = checked.large,
+            flags = listed.flags(),
             language = language
         )
     }
 
-    private class Checked(val uncertain: List<String>, val large: List<String>)
+    /** The lines to list, gathered line by line: each box line ([LineFlag.raw]) once, in the
+     *  order first shown, with the reasons of every copy of it. */
+    private class Listed(
+        val read: List<PhotoLine>, val cleaned: List<RecipeTextSplitter.Line>, val words: LanguageWords
+    ) {
+        private val shown = LinkedHashMap<String, String>()
+        private val reasons = HashMap<String, MutableSet<CheckReason>>()
+        private val checked = HashMap<Pair<String, Boolean>, Set<CheckReason>>()
 
-    /**
-     * The [shown] lines to check: those [marked] from text the recogniser was unsure of, then any
-     * other whose amount looks misread ([suspect]), however sure the recogniser was. The size
-     * check ([implausible]) was calibrated on ingredient lines, so it runs only on the text
-     * [sized] gives for a line, and not where it gives null (a step); a line only it flags is
-     * also [Checked.large] (#281).
-     */
-    private fun toCheck(
-        shown: List<String>, unsure: List<String>, words: LanguageWords, sized: (String) -> String?
-    ): Checked {
-        val low = marked(shown, unsure).toSet()
-        val uncertain = mutableListOf<String>()
-        val large = mutableListOf<String>()
-        for (line in shown.distinct()) {
-            val misread = line in low || misread(Lead(line, words), words)
-            val big = !misread && sized(line)?.let { implausible(it, words) } == true
-            if (misread || big) uncertain += line
-            if (big) large += line
+        /** [raw], a box's line, from read line [source], checked and shown as [text]. Its
+         *  confidence and "Step 3" label are its own line's, never another's that quotes it. */
+        fun add(raw: String, text: String, source: Int) {
+            val show = text.ifEmpty { raw }
+            val labelled = cleaned[source].step
+            // A line read again (a card's two photos) is checked once.
+            val found = checked.getOrPut(text to labelled) { check(text, words, labelled) }.toMutableSet()
+            // A chip replaces the look-alike in the line as shown, so the box's line must hold it.
+            if (show !in raw) found -= CheckReason.FRACTION
+            if ((read[source].confidence ?: 1f) < LOW_CONFIDENCE) found += CheckReason.UNSURE
+            shown.putIfAbsent(raw, show)
+            reasons.getOrPut(raw) { mutableSetOf() } += found
         }
-        return Checked(uncertain, large)
+
+        fun flags(): List<LineFlag> = shown.mapNotNull { (raw, show) ->
+            reasons.getValue(raw).takeIf { it.isNotEmpty() }
+                ?.let { found -> LineFlag(raw, show, found.sortedBy { it.ordinal }.toSet()) }
+        }
     }
 
     /**
-     * True when [line]'s amount has a shape a recogniser gives for a misread one (#198), so the
-     * cook checks it against the photo. The text is never changed:
+     * Why [line], as the splitter cleaned it, is to be checked against the photo however sure the
+     * recogniser was (#198); empty if it isn't. The text is never changed. [CheckReason.MISREAD]:
      * - an improper fraction over 2 to 8, "11/2" or "31/3": most likely "1 1/2" or "3 1/3" with
      *   its space lost (and the scaler would read 5½);
      * - a digit beside a letter that looks like one: "l/2", "O.5", "1/Z", "1O", "35o°F";
      * - a unit glued to the word after it, where the scaler reads no unit: "1 cupraisins", in
      *   [words]' language ("2 ELZucker", "1 tazaharina"); never in one written without spaces;
      * - a fraction glyph read as something else, or run into a digit or another glyph ("3¾4",
-     *   "½⅓", never written) (#245, #276): see [fractionSlot];
+     *   "½⅓", never written) (#245, #276): see [fractionSlot], which is also
+     *   [CheckReason.FRACTION], the chips;
      * - a near-miss of a unit where the unit goes, "1 oup sugar" or "2 tbps butter" (#276): the
-     *   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip;
-     * - an amount too big for its unit, "34 tsp salt" or "23 cups oats" (#249): see [implausible],
-     *   which [sort] runs on ingredient lines only (#281).
+     *   language's splitter.json `unitLookAlikes`, a short list, so "oz", "g" or "ml" never trip.
+     *
+     * [CheckReason.LARGE]: an amount too big for its unit, "34 tsp salt" or "23 cups oats" (#249),
+     * judged by [implausible] only on a line that starts with an amount and its unit, as an
+     * ingredient line does. So it runs on the steps too, where a section after the method lands
+     * ("34 tsp vanilla" under a glaze, #283), and a sentence ("Stir in 34 tsp salt.") is never
+     * judged; never on a line that had a "Step 3" label ([labelled]) or that holds "=" (a
+     * conversion, "48 tsp = 1 cup").
      */
-    internal fun suspect(line: String, words: LanguageWords = LanguageWords.ENGLISH): Boolean {
+    internal fun check(line: String, words: LanguageWords = LanguageWords.ENGLISH, labelled: Boolean = false): Set<CheckReason> {
         val lead = Lead(line, words)
-        return misread(lead, words) || implausible(lead, words)
+        val chips = fractionSlot(line, words) != null
+        return buildSet {
+            if (chips || misread(lead, words)) add(CheckReason.MISREAD)
+            if (chips) add(CheckReason.FRACTION)
+            if (!labelled && '=' !in line && implausible(lead, words)) add(CheckReason.LARGE)
+        }
     }
 
-    /** Every shape [suspect] looks for but the size check. */
+    /** Every misread shape [check] looks for but the fraction look-alikes ([fractionSlot]). */
     private fun misread(lead: Lead, words: LanguageWords): Boolean {
         val line = lead.line
         val rest = lead.rest
@@ -148,7 +198,7 @@ object PhotoTextSorter {
             val n = m.groupValues[1].trimStart('0')
             val d = m.groupValues[2].toInt()
             d in 2..8 && (n.length > 1 || (n.isNotEmpty() && n.toInt() > d))
-        } || LOOK_ALIKE.containsMatchIn(line) || fractionSlot(line, words) != null ||
+        } || LOOK_ALIKE.containsMatchIn(line) ||
             (rest != null && (gluedUnit(rest, lead, words) || RecipeTextSplitter.unitLookAlike(rest, words)))
     }
 
@@ -163,16 +213,19 @@ object PhotoTextSorter {
      * True when [line]'s leading amount is more of its unit than a recipe asks for
      * (`shared/tables/plausible-amounts.json`, #249): a fraction glyph read as digits, "34 tsp
      * salt" for ¾ or "23 cups oats" for 2 ⅔. The amount and unit are [IngredientScaler]'s
-     * leading ones; either end of a range counts ("10–14 tsp"). An amount written exactly as a
-     * fraction's digits ("12" for ½: the table's `fractionShapes`) is held to its unit's lower
-     * `fractionShapedMaximums` bar where there is one, so "12 tbsp vinegar" is flagged and "16
-     * tablespoons butter" isn't (#281).
+     * leading ones, so only a line that starts with an amount and its unit is judged. An amount
+     * written exactly as a fraction's digits ("12" for ½: the table's `fractionShapes`) is held
+     * to its unit's lower `fractionShapedMaximums` bar where there is one, so "12 tbsp vinegar"
+     * is flagged and "16 tablespoons butter" isn't (#281). Either end of a range is held to the
+     * unit's own maximum, never that lower bar ("12–14 lb turkey" is fine, "30–40 lb" isn't:
+     * the owner's call, #283).
      *
      * Unlike the scaler, which reads only the first number, a plain whole number then another
      * before the unit ("2 23 cups oats", ML Kit's 2 ⅔; "1 12 cups" for 1½) is judged by the
      * second alone; after a range, a fraction or a decimal, the second number isn't taken. Flagged
      * only: nothing is suggested or changed. A bare count ("12 eggs"), a unit the table doesn't
-     * list, a temperature ("180 C") and a language whose amounts follow the name are never checked.
+     * list, a temperature ("180 C"; never a fraction's digits, "1 58 C sugar" is 1 ⅝ cups, #283)
+     * and a language whose amounts follow the name are never checked.
      */
     internal fun implausible(line: String, words: LanguageWords = LanguageWords.ENGLISH): Boolean =
         implausible(Lead(line, words), words)
@@ -183,15 +236,16 @@ object PhotoTextSorter {
         val match = lead.match ?: return false
         var rest = lead.rest ?: return false
         var amounts = listOf(match.groupValues[2], match.groupValues[4]).filter { it.isNotEmpty() }
+        val range = amounts.size > 1
         if (amounts.size == 1 && amounts[0].all { it in '0'..'9' }) SECOND_NUMBER.find(rest)?.let {
             amounts = listOf(it.groupValues[1])
             rest = rest.substring(it.range.last + 1)
         }
         val unit = p.unitAtStart.find(rest)?.let { MeasureUnit.fromText(it.groupValues[1], words) } ?: return false
-        if (p.temperature(amounts, rest)) return false
         val table = PLAUSIBLE
+        if (amounts.none { it in table.shapes } && p.temperature(amounts, rest)) return false
         val max = table.maximums[unit] ?: return false
-        val shapedMax = table.fractionShaped[unit] ?: max
+        val shapedMax = if (range) max else table.fractionShaped[unit] ?: max
         return amounts.any { (p.parse(it) ?: 0.0) > if (it in table.shapes) shapedMax else max }
     }
 
@@ -200,6 +254,9 @@ object PhotoTextSorter {
 
     // "2 23 cups": a second whole number straight after the leading one.
     private val SECOND_NUMBER = Regex("""^\s+(\d+)(?![\d/⁄.,])""")
+
+    // A recogniser's line holds no break, but a caller's may: split as the splitter's lines are.
+    private val LINE_BREAK = Regex("\r\n|\r|\n")
 
     /** The fractions offered to replace a look-alike (#245), in the order shown. */
     val FRACTIONS: List<String> get() = FractionLookAlike.FRACTIONS
@@ -223,6 +280,18 @@ object PhotoTextSorter {
         return line.replaceRange(run, if (apart) " $fraction" else fraction)
     }
 
+    /**
+     * [flag] once the cook taps [fraction] (#245): the look-alike replaced in the line as shown,
+     * and so in the box's line, which holds it ("▢ 2% cups oats" → "▢ 2⅔ cups oats"); its chips
+     * go, and it stays listed. Null if it has no chips.
+     */
+    fun replaceFraction(flag: LineFlag, fraction: String, words: LanguageWords = LanguageWords.ENGLISH): LineFlag? {
+        if (!flag.chips) return null
+        val shown = replaceFraction(flag.shown, fraction, words) ?: return null
+        val at = flag.raw.indexOf(flag.shown).takeIf { it >= 0 } ?: return null
+        return LineFlag(flag.raw.replaceRange(at, at + flag.shown.length, shown), shown, flag.reasons - CheckReason.FRACTION)
+    }
+
     /** A unit glued to the next word in [rest], after the leading amount, where the scaler reads none. */
     private fun gluedUnit(rest: String, lead: Lead, words: LanguageWords): Boolean =
         words.spaced && !lead.p.unitAtStart.containsMatchIn(rest) && RecipeTextSplitter.gluedUnit(rest, words)
@@ -240,29 +309,14 @@ object PhotoTextSorter {
     // A unit word run into the next ("cupraisins", "tbspsugar") is the language's splitter.json
     // gluedUnits (RecipeTextSplitter.gluedUnit). Units of one or two letters ("g", "c", "l",
     // "oz") are left out, since "2 green onions" starts with one; "cupcake" is a word of its own.
-
-    /**
-     * The [shown] lines that hold, or are held in, a line the recogniser was unsure of. The
-     * splitter only takes markup off a line ("1." or "•"), so a line shown still contains the
-     * text it came from. A piece shorter than four characters ("1", "Mix") is matched only as
-     * a whole line, so it can't mark every line it happens to appear in.
-     */
-    internal fun marked(shown: List<String>, unsure: List<String>): List<String> {
-        if (unsure.isEmpty()) return emptyList()
-        return shown.filter { line ->
-            unsure.any { u ->
-                line == u || (u.length >= MIN_PART && line.contains(u)) || (line.length >= MIN_PART && u.contains(line))
-            }
-        }.distinct()
-    }
-
-    private const val MIN_PART = 4
 }
 
 /**
- * `shared/tables/plausible-amounts.json` (#249, #281), read. A malformed table (no `maximums`, a
- * unit that isn't a [MeasureUnit], a value that isn't a number, a fraction-shaped bar not below
- * its unit's maximum) throws, as [SharedTables] does for a malformed table.
+ * `shared/tables/plausible-amounts.json` (#249, #281), read strictly, the same on both platforms
+ * (#283): every maximum a JSON number (not a string, not true or false), finite and above zero,
+ * keyed by a [MeasureUnit]; each fraction-shaped bar below its unit's maximum; every fraction
+ * shape a JSON string of digits. Anything else throws, as [SharedTables] does for a malformed
+ * table.
  */
 internal class PlausibleAmounts(
     val maximums: Map<MeasureUnit, Double>,
@@ -272,15 +326,24 @@ internal class PlausibleAmounts(
     companion object {
         fun from(table: JSONObject): PlausibleAmounts {
             fun units(key: String): Map<MeasureUnit, Double> = table.getJSONObject(key).let { t ->
-                t.keys().asSequence().associate { MeasureUnit.valueOf(it) to t.getDouble(it) }
+                t.keys().asSequence().associate { name ->
+                    // getDouble would read "10" and "NaN" too: only a JSON number counts.
+                    val bar = (t.get(name) as? Number)?.toDouble()?.takeIf { it.isFinite() && it > 0 }
+                        ?: throw IllegalArgumentException("plausible-amounts.json: $key.$name isn't a number above 0")
+                    MeasureUnit.valueOf(name) to bar
+                }
             }
             val maximums = units("maximums")
             val shaped = units("fractionShapedMaximums")
             shaped.forEach { (unit, bar) ->
                 require(bar < (maximums[unit] ?: 0.0)) { "plausible-amounts.json: $unit's fraction-shaped bar isn't below its maximum" }
             }
-            val shapes = SharedTables.strings(table.getJSONArray("fractionShapes")).toSet()
-            require(shapes.all { s -> s.isNotEmpty() && s.all { it in '0'..'9' } }) { "plausible-amounts.json: a fraction shape isn't digits" }
+            // Android's getString would give a number as a string: only a JSON string counts.
+            val array = table.getJSONArray("fractionShapes")
+            val shapes = List(array.length()) { i ->
+                (array.get(i) as? String)?.takeIf { s -> s.isNotEmpty() && s.all { it in '0'..'9' } }
+                    ?: throw IllegalArgumentException("plausible-amounts.json: a fraction shape isn't a string of digits")
+            }.toSet()
             return PlausibleAmounts(maximums, shaped, shapes)
         }
     }

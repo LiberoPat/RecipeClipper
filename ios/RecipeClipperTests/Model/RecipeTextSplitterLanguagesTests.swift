@@ -142,38 +142,38 @@ final class RecipeTextSplitterLanguagesTests: XCTestCase {
     }
 
     func testGluedUnitsInEachLanguageAndOnlyThere() {
-        func suspect(_ line: String, _ language: String) -> Bool {
-            PhotoTextSorter.suspect(line, words: LanguageWords.forTag(language)!)
+        func flagged(_ line: String, _ language: String) -> Bool {
+            !PhotoTextSorter.check(line, words: LanguageWords.forTag(language)!).isEmpty
         }
-        XCTAssertTrue(suspect("2 ELZucker", "de"))
-        XCTAssertTrue(suspect("1 TLSalz", "de"))
-        XCTAssertTrue(suspect("2 Esslöffelzucker", "de"))
-        XCTAssertTrue(suspect("1 tazaharina", "es"))
-        XCTAssertTrue(suspect("2 cucharadasazúcar", "es"))
-        XCTAssertTrue(suspect("1 c. à soupesucre", "fr"))
-        XCTAssertTrue(suspect("2 cuillères à soupesucre", "fr"))
-        XCTAssertTrue(suspect("2 cucchiaizucchero", "it"))
-        XCTAssertTrue(suspect("1 xícaraleite", "pt"))
-        XCTAssertTrue(suspect("2 colheresaçúcar", "pt"))
+        XCTAssertTrue(flagged("2 ELZucker", "de"))
+        XCTAssertTrue(flagged("1 TLSalz", "de"))
+        XCTAssertTrue(flagged("2 Esslöffelzucker", "de"))
+        XCTAssertTrue(flagged("1 tazaharina", "es"))
+        XCTAssertTrue(flagged("2 cucharadasazúcar", "es"))
+        XCTAssertTrue(flagged("1 c. à soupesucre", "fr"))
+        XCTAssertTrue(flagged("2 cuillères à soupesucre", "fr"))
+        XCTAssertTrue(flagged("2 cucchiaizucchero", "it"))
+        XCTAssertTrue(flagged("1 xícaraleite", "pt"))
+        XCTAssertTrue(flagged("2 colheresaçúcar", "pt"))
         // Units the scaler reads, ordinary words, and short units left out.
-        XCTAssertFalse(suspect("2 EL Zucker", "de"))
-        XCTAssertFalse(suspect("2 Eier", "de"))
-        XCTAssertFalse(suspect("2 Elche", "de"))
-        XCTAssertFalse(suspect("1 taza de harina", "es"))
-        XCTAssertFalse(suspect("2 cucharaditas de sal", "es"))
-        XCTAssertFalse(suspect("2 cuillères de sucre", "fr"))
-        XCTAssertFalse(suspect("100 g cassonade", "fr"))
-        XCTAssertFalse(suspect("2 cassonade", "fr"))
-        XCTAssertFalse(suspect("1 cucchiaino di sale", "it"))
-        XCTAssertFalse(suspect("1 litro di latte", "it"))
-        XCTAssertFalse(suspect("2 colheres de sopa de açúcar", "pt"))
-        XCTAssertFalse(suspect("2 gramas de sal", "pt"))
+        XCTAssertFalse(flagged("2 EL Zucker", "de"))
+        XCTAssertFalse(flagged("2 Eier", "de"))
+        XCTAssertFalse(flagged("2 Elche", "de"))
+        XCTAssertFalse(flagged("1 taza de harina", "es"))
+        XCTAssertFalse(flagged("2 cucharaditas de sal", "es"))
+        XCTAssertFalse(flagged("2 cuillères de sucre", "fr"))
+        XCTAssertFalse(flagged("100 g cassonade", "fr"))
+        XCTAssertFalse(flagged("2 cassonade", "fr"))
+        XCTAssertFalse(flagged("1 cucchiaino di sale", "it"))
+        XCTAssertFalse(flagged("1 litro di latte", "it"))
+        XCTAssertFalse(flagged("2 colheres de sopa de açúcar", "pt"))
+        XCTAssertFalse(flagged("2 gramas de sal", "pt"))
         // Japanese has no spaces, so no glued-unit check; the other shapes still apply.
-        XCTAssertFalse(suspect("砂糖 大さじ2", "ja"))
-        XCTAssertTrue(suspect("11/2 カップ", "ja"))
+        XCTAssertFalse(flagged("砂糖 大さじ2", "ja"))
+        XCTAssertTrue(flagged("11/2 カップ", "ja"))
         // Languages never merged.
-        XCTAssertFalse(suspect("1 cupraisins", "de"))
-        XCTAssertFalse(suspect("2 ELZucker", "en"))
+        XCTAssertFalse(flagged("1 cupraisins", "de"))
+        XCTAssertFalse(flagged("2 ELZucker", "en"))
     }
 
     func testAGermanPostKeepsGermanAsTheRecipesLanguage() throws {

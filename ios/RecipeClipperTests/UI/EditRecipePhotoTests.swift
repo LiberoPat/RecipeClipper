@@ -28,7 +28,7 @@ final class EditRecipePhotoTests: XCTestCase {
     func testReadsEveryPictureInOrderAndFillsTheEditorSortedWithUnsureLinesMarked() async {
         let reader = FakePhotoTextReader(.read(card))
         let vm = viewModel(reader)
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
         XCTAssertEqual(reader.calls, [[front, back]])
         let state = vm.uiState
@@ -39,24 +39,79 @@ final class EditRecipePhotoTests: XCTestCase {
         XCTAssertEqual(state.draft.image, front)
         XCTAssertEqual(state.draft.ingredientsText, "1 cup butter\n1 1/2 cups flour")
         XCTAssertEqual(state.draft.instructionsText, "Cream the butter.\nStir in the flour.")
-        XCTAssertEqual(state.uncertain, ["1 1/2 cups flour"])
-        XCTAssertEqual(state.largeLines, [])
+        XCTAssertEqual(state.flags, [LineFlag(raw: "1 1/2 cups flour", shown: "1 1/2 cups flour", reasons: [.unsure])])
+        XCTAssertTrue(state.checkHeading)
     }
 
-    func testALineFlaggedOnlyForItsSizeIsNamedAsLarge() async {
+    func testALineFlaggedOnlyForItsSizeIsNamedAsLargeBesideTheHeadingAHardToReadLineBrings() async {
         // #281: "34 tsp salt" for ¾ is read clearly, just too much; "1 1/2 cups flour" was unsure.
         let lines = [PhotoLine(text: "Ingredients"), PhotoLine(text: "34 tsp salt")] + card.dropFirst()
         let vm = viewModel(FakePhotoTextReader(.read(lines)))
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
-        XCTAssertEqual(vm.uiState.uncertain, ["34 tsp salt", "1 1/2 cups flour"])
-        XCTAssertEqual(vm.uiState.largeLines, ["34 tsp salt"])
+        XCTAssertEqual(vm.uiState.flags.map(\.raw), ["34 tsp salt", "1 1/2 cups flour"])
+        XCTAssertEqual(vm.uiState.flags.map(\.largeOnly), [true, false])
+        XCTAssertTrue(vm.uiState.checkHeading)
+    }
+
+    func testNoHeadingWhenEveryLineIsListedOnlyForItsSize() async {
+        let lines = ["Ingredients", "34 tsp salt", "12 tbsp vinegar", "1 cup flour", "Directions", "1. Mix."]
+        let vm = viewModel(FakePhotoTextReader(.read(lines.map { PhotoLine(text: $0, confidence: 1) })))
+        await settleMain(until: { !vm.uiState.reading })
+
+        XCTAssertEqual(vm.uiState.flags.map(\.raw), ["34 tsp salt", "12 tbsp vinegar"])
+        XCTAssertFalse(vm.uiState.checkHeading)
+    }
+
+    func testALineBothMisreadAndTooLargeKeepsTheHeadingAndIsntNamedAsLarge() async {
+        // #283: "11/2" lost its space, and "34 tsp" is too much.
+        let lines = ["Ingredients", "34 tsp salt, 11/2 tsp pepper", "1 cup flour", "Directions", "1. Mix."]
+        let vm = viewModel(FakePhotoTextReader(.read(lines.map { PhotoLine(text: $0, confidence: 1) })))
+        await settleMain(until: { !vm.uiState.reading })
+
+        XCTAssertEqual(vm.uiState.flags.count, 1)
+        XCTAssertEqual(vm.uiState.flags.first?.reasons, [.misread, .large])
+        XCTAssertEqual(vm.uiState.flags.first?.largeOnly, false)
+        XCTAssertTrue(vm.uiState.checkHeading)
+    }
+
+    func testAChipFixesTheLineInTheBoxAndItsOneEntryKeepingTheLinesMarkup() async throws {
+        // #283: nothing sorts, so each line stays as read, "▢" and all, and is listed without it.
+        let lines = ["Grandma's card", "▢ 2% cups oats", "▢ 34 tsp salt"]
+        let vm = viewModel(FakePhotoTextReader(.read(lines.map { PhotoLine(text: $0, confidence: 1) })))
+        await settleMain(until: { !vm.uiState.reading })
+        XCTAssertEqual(vm.uiState.photoOutcome, .notSorted)
+        let oats = try XCTUnwrap(vm.uiState.flags.first)
+        XCTAssertEqual(oats, LineFlag(raw: "▢ 2% cups oats", shown: "2% cups oats", reasons: [.misread, .fraction]))
+
+        vm.onFraction(oats, "⅔")
+
+        XCTAssertEqual(vm.uiState.draft.ingredientsText, "Grandma's card\n▢ 2⅔ cups oats\n▢ 34 tsp salt")
+        XCTAssertEqual(vm.uiState.flags, [
+            LineFlag(raw: "▢ 2⅔ cups oats", shown: "2⅔ cups oats", reasons: [.misread]),
+            LineFlag(raw: "▢ 34 tsp salt", shown: "34 tsp salt", reasons: [.large]),
+        ])
+    }
+
+    func testAChipForALineTheCookHasChangedOnlyTakesItsChipsAway() async throws {
+        let lines = ["Ingredients", "2 % cups oats", "1 cup flour", "Directions", "1. Mix."]
+        let vm = viewModel(FakePhotoTextReader(.read(lines.map { PhotoLine(text: $0, confidence: 1) })))
+        await settleMain(until: { !vm.uiState.reading })
+        let oats = try XCTUnwrap(vm.uiState.flags.first)
+        var draft = vm.uiState.draft
+        draft.ingredientsText = "2 ¼ cups oats\n1 cup flour"
+        vm.onDraftChange(draft)
+
+        vm.onFraction(oats, "⅔")
+
+        XCTAssertEqual(vm.uiState.draft.ingredientsText, "2 ¼ cups oats\n1 cup flour")
+        XCTAssertEqual(vm.uiState.flags, [LineFlag(raw: "2 % cups oats", shown: "2 % cups oats", reasons: [.misread])])
     }
 
     func testNothingIsSavedUntilTheCookSavesThenUnderThePostsLink() async {
         let repository = FakeRecipeRepository()
         let vm = viewModel(FakePhotoTextReader(.read(card)), repository: repository)
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
         XCTAssertTrue(repository.saveClipCalls.isEmpty)
 
         var draft = vm.uiState.draft
@@ -80,7 +135,7 @@ final class EditRecipePhotoTests: XCTestCase {
     func testLinesThatDontSortOpenTheEditorToFinishByHandEveryLineKept() async {
         let lines = [PhotoLine(text: "Cream butter and sugar,"), PhotoLine(text: "add the oats. Bake.")]
         let vm = viewModel(FakePhotoTextReader(.read(lines)))
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
         XCTAssertEqual(vm.uiState.photoOutcome, .notSorted)
         XCTAssertEqual(vm.uiState.draft.ingredientsText, "Cream butter and sugar,\nadd the oats. Bake.")
@@ -92,7 +147,7 @@ final class EditRecipePhotoTests: XCTestCase {
     func testAPhotoWithNoTextLeavesTheTitleAndPhotoToFinishByHand() async {
         let repository = FakeRecipeRepository()
         let vm = viewModel(FakePhotoTextReader(.read([])), repository: repository)
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
         XCTAssertEqual(vm.uiState.photoOutcome, .notSorted)
         XCTAssertEqual(vm.uiState.draft.name, "Aunt June's oatmeal cookies")
@@ -108,13 +163,13 @@ final class EditRecipePhotoTests: XCTestCase {
     func testAPictureThatWontLoadOffersTryAgainWhichReadsAgain() async {
         let reader = FakePhotoTextReader(.failed)
         let vm = viewModel(reader)
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
         XCTAssertEqual(vm.uiState.photoOutcome, .failed)
         XCTAssertEqual(vm.uiState.draft.name, "Aunt June's oatmeal cookies")
 
         reader.result = .read(card)
         vm.onReadAgain()
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
         XCTAssertEqual(reader.calls.count, 2)
         XCTAssertEqual(vm.uiState.photoOutcome, .read)
@@ -144,7 +199,7 @@ final class EditRecipePhotoTests: XCTestCase {
     func testAFullFreeLibraryKeepsTheEditorOpenWithThePrompt() async {
         let repository = FakeRecipeRepository()
         let vm = viewModel(FakePhotoTextReader(.read(card)), repository: repository)
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
         repository.saveClipResult = .notKept(Recipe(
             name: "Aunt June's oatmeal cookies", image: nil, ingredients: ["1 cup butter"], instructions: [],
             prepTime: nil, cookTime: nil, totalTime: nil, yield: nil, sourceUrl: postUrl
@@ -161,7 +216,7 @@ final class EditRecipePhotoTests: XCTestCase {
         let repository = FakeRecipeRepository()
         repository.saveClipResult = .error(.saveFailed)
         let vm = viewModel(FakePhotoTextReader(.read(card)), repository: repository)
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
         vm.onSave()
         await settleMain()

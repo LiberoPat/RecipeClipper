@@ -50,11 +50,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeDraft
+import com.example.recipeclipper.data.remote.LineFlag
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
@@ -169,7 +171,7 @@ private fun PhotoReview(
     post: PhotoPost,
     state: EditRecipeUiState,
     onReadAgain: () -> Unit,
-    onFraction: (line: String, fraction: String) -> Unit
+    onFraction: (flag: LineFlag, fraction: String) -> Unit
 ) {
     val context = LocalContext.current
     post.imageUrls.forEachIndexed { index, image ->
@@ -218,7 +220,7 @@ private fun PhotoReview(
             Spacer(Modifier.height(16.dp))
         }
     }
-    if (state.uncertain.isNotEmpty()) {
+    if (state.flags.isNotEmpty()) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -226,8 +228,7 @@ private fun PhotoReview(
                 .padding(14.dp)
                 .semantics(mergeDescendants = true) {}
         ) {
-            // A line listed only for its size has its own reason, not the photo's (#281).
-            if (state.uncertain.any { it !in state.largeLines }) {
+            if (state.checkHeading) {
                 Text(
                     stringResource(R.string.photo_check_heading),
                     style = MaterialTheme.typography.titleSmall,
@@ -235,17 +236,10 @@ private fun PhotoReview(
                 )
                 Spacer(Modifier.height(6.dp))
             }
-            state.uncertain.forEachIndexed { index, line ->
-                Text("• $line", style = MaterialTheme.typography.bodyMedium)
-                if (line in state.largeLines) {
-                    Text(
-                        stringResource(R.string.photo_check_large),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = 4.dp)
-                    )
-                }
-                if (line in state.fractionLines) FractionChips(index, line, state.fractions, onFraction)
+            state.flags.forEachIndexed { index, flag ->
+                Text("• ${flag.shown}", style = MaterialTheme.typography.bodyMedium)
+                if (flag.largeOnly) LineNote(stringResource(R.string.photo_check_large), bottom = 4.dp)
+                if (flag.chips) FractionChips(index, flag, state.fractions, onFraction)
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -259,21 +253,16 @@ private fun PhotoReview(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FractionChips(index: Int, line: String, fractions: List<String>, onFraction: (String, String) -> Unit) {
-    Text(
-        stringResource(R.string.photo_fraction_prompt),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 12.dp, top = 2.dp)
-    )
+private fun FractionChips(index: Int, flag: LineFlag, fractions: List<String>, onFraction: (LineFlag, String) -> Unit) {
+    LineNote(stringResource(R.string.photo_fraction_prompt))
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(start = 12.dp, bottom = 6.dp)
     ) {
         fractions.forEach { fraction ->
-            val spoken = stringResource(R.string.photo_fraction_chip, fraction, line)
+            val spoken = stringResource(R.string.photo_fraction_chip, fraction, flag.shown)
             OutlinedButton(
-                onClick = { onFraction(line, fraction) },
+                onClick = { onFraction(flag, fraction) },
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 14.dp),
                 modifier = Modifier
@@ -290,6 +279,17 @@ private fun FractionChips(index: Int, line: String, fractions: List<String>, onF
 private fun Note(text: String) {
     Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(12.dp))
+}
+
+/** A muted line under a line to check: why it's listed (#281), or what its chips are for (#245). */
+@Composable
+private fun LineNote(text: String, bottom: Dp = 0.dp) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = bottom)
+    )
 }
 
 @Composable

@@ -7,6 +7,8 @@ import com.example.recipeclipper.data.PhotoTextResult
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.SourceType
+import com.example.recipeclipper.data.remote.CheckReason
+import com.example.recipeclipper.data.remote.LineFlag
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.fake.FakePhotoTextReader
 import com.example.recipeclipper.fake.FakeRecipeRepository
@@ -50,7 +52,7 @@ class EditRecipePhotoViewModelTest {
     )
 
     private fun viewModel(reader: FakePhotoTextReader, repository: FakeRecipeRepository = FakeRecipeRepository()) =
-        EditRecipeViewModel(post(), repository, photoReader = reader)
+        EditRecipeViewModel(post(), repository, photoReader = reader, sorting = mainDispatcherRule.dispatcher)
 
     @Test fun `reads every picture in order and fills the editor, sorted, with unsure lines marked`() =
         runTest(mainDispatcherRule.dispatcher) {
@@ -67,19 +69,81 @@ class EditRecipePhotoViewModelTest {
             assertEquals(front, state.draft.image)
             assertEquals("1 cup butter\n1 1/2 cups flour", state.draft.ingredientsText)
             assertEquals("Cream the butter.\nStir in the flour.", state.draft.instructionsText)
-            assertEquals(listOf("1 1/2 cups flour"), state.uncertain)
-            assertEquals(emptyList<String>(), state.largeLines)
+            assertEquals(listOf(LineFlag("1 1/2 cups flour", "1 1/2 cups flour", setOf(CheckReason.UNSURE))), state.flags)
+            assertTrue(state.checkHeading)
         }
 
-    @Test fun `a line flagged only for its size is named as large`() =
+    @Test fun `a line flagged only for its size is named as large, beside the heading a hard-to-read line brings`() =
         runTest(mainDispatcherRule.dispatcher) {
             // #281: "34 tsp salt" for ¾ is read clearly, just too much; "1 1/2 cups flour" was unsure.
             val lines = listOf(PhotoLine("Ingredients"), PhotoLine("34 tsp salt")) + card.drop(1)
             val vm = viewModel(FakePhotoTextReader(PhotoTextResult.Read(lines)))
             advanceUntilIdle()
 
-            assertEquals(listOf("34 tsp salt", "1 1/2 cups flour"), vm.uiState.value.uncertain)
-            assertEquals(listOf("34 tsp salt"), vm.uiState.value.largeLines)
+            val state = vm.uiState.value
+            assertEquals(listOf("34 tsp salt", "1 1/2 cups flour"), state.flags.map { it.raw })
+            assertEquals(listOf(true, false), state.flags.map { it.largeOnly })
+            assertTrue(state.checkHeading)
+        }
+
+    @Test fun `no heading when every line is listed only for its size`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val lines = listOf("Ingredients", "34 tsp salt", "12 tbsp vinegar", "1 cup flour", "Directions", "1. Mix.")
+            val vm = viewModel(FakePhotoTextReader(PhotoTextResult.Read(lines.map { PhotoLine(it, 1f) })))
+            advanceUntilIdle()
+
+            assertEquals(listOf("34 tsp salt", "12 tbsp vinegar"), vm.uiState.value.flags.map { it.raw })
+            assertFalse(vm.uiState.value.checkHeading)
+        }
+
+    @Test fun `a line both misread and too large keeps the heading and isn't named as large`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            // #283: "11/2" lost its space, and "34 tsp" is too much.
+            val lines = listOf("Ingredients", "34 tsp salt, 11/2 tsp pepper", "1 cup flour", "Directions", "1. Mix.")
+            val vm = viewModel(FakePhotoTextReader(PhotoTextResult.Read(lines.map { PhotoLine(it, 1f) })))
+            advanceUntilIdle()
+
+            val flag = vm.uiState.value.flags.single()
+            assertEquals(setOf(CheckReason.MISREAD, CheckReason.LARGE), flag.reasons)
+            assertFalse(flag.largeOnly)
+            assertTrue(vm.uiState.value.checkHeading)
+        }
+
+    @Test fun `a chip fixes the line in the box and its one entry, keeping the line's markup`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            // #283: nothing sorts, so each line stays as read, "▢" and all, and is listed without it.
+            val lines = listOf("Grandma's card", "▢ 2% cups oats", "▢ 34 tsp salt")
+            val vm = viewModel(FakePhotoTextReader(PhotoTextResult.Read(lines.map { PhotoLine(it, 1f) })))
+            advanceUntilIdle()
+            assertEquals(PhotoOutcome.NOT_SORTED, vm.uiState.value.photoOutcome)
+            val oats = vm.uiState.value.flags.first()
+            assertEquals(LineFlag("▢ 2% cups oats", "2% cups oats", setOf(CheckReason.MISREAD, CheckReason.FRACTION)), oats)
+
+            vm.onFraction(oats, "⅔")
+
+            val state = vm.uiState.value
+            assertEquals("Grandma's card\n▢ 2⅔ cups oats\n▢ 34 tsp salt", state.draft.ingredientsText)
+            assertEquals(
+                listOf(
+                    LineFlag("▢ 2⅔ cups oats", "2⅔ cups oats", setOf(CheckReason.MISREAD)),
+                    LineFlag("▢ 34 tsp salt", "34 tsp salt", setOf(CheckReason.LARGE))
+                ),
+                state.flags
+            )
+        }
+
+    @Test fun `a chip for a line the cook has changed only takes its chips away`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val lines = listOf("Ingredients", "2 % cups oats", "1 cup flour", "Directions", "1. Mix.")
+            val vm = viewModel(FakePhotoTextReader(PhotoTextResult.Read(lines.map { PhotoLine(it, 1f) })))
+            advanceUntilIdle()
+            val oats = vm.uiState.value.flags.single()
+            vm.onDraftChange(vm.uiState.value.draft.copy(ingredientsText = "2 ¼ cups oats\n1 cup flour"))
+
+            vm.onFraction(oats, "⅔")
+
+            assertEquals("2 ¼ cups oats\n1 cup flour", vm.uiState.value.draft.ingredientsText)
+            assertEquals(listOf(LineFlag("2 % cups oats", "2 % cups oats", setOf(CheckReason.MISREAD))), vm.uiState.value.flags)
         }
 
     @Test fun `nothing is saved until the cook saves, then under the post's link`() =

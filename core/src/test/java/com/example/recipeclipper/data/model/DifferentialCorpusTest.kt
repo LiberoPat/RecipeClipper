@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.model
 
 import com.example.recipeclipper.data.remote.CardHeadings
+import com.example.recipeclipper.data.remote.CheckReason
 import com.example.recipeclipper.data.remote.JsonLdRecipeParser
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.data.remote.PhotoTextSorter
@@ -100,8 +101,10 @@ import java.io.File
  * steps (nil: no recipe) and the yield, prep, cook and total times; write only the text.
  *
  * `Photo(["line", ...])` rows (#208) pin [PhotoTextSorter.sort]: a photo's lines as the language
- * they were read in, whether they sorted, the ingredients, steps and lines to check; write only
- * the lines. `Sus("line")` rows pin [PhotoTextSorter.suspect] (optionally `, lang: "de"`).
+ * they were read in, whether they sorted, the ingredients, steps, the lines to check one by one
+ * ([PhotoReading.flags]: the line in the box, as listed, and why) and those listed only as large;
+ * write only the lines. `Check("line")` rows (#283) pin [PhotoTextSorter.check], the per-line
+ * check the sorter runs, on an ingredient line (optionally `, lang: "de"`).
  *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
@@ -163,8 +166,8 @@ class DifferentialCorpusTest {
     private val splitRow = Regex("""^(\s*)Split\("((?:[^"\\]|\\.)*)"""")
     // A photo row (#208): the lines read from a photo.
     private val photoRow = Regex("""^(\s*)Photo\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
-    // A suspect-amount row (#198, #208): a line read from a photo, optionally its language.
-    private val suspectRow = Regex("""^(\s*)Sus\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A per-line check row (#198, #208, #283): a line read from a photo, optionally its language.
+    private val checkRow = Regex("""^(\s*)Check\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A fraction row (#245): a line read from a photo, optionally its language.
     private val fractionRow = Regex("""^(\s*)Frac\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A trailing-text row (#99): a grocery line, optionally its language.
@@ -191,7 +194,7 @@ class DifferentialCorpusTest {
     private val systemsArray = Regex("""^(\s*)(\(\.\w+, (?:true|false)\),\s*)+$""")
 
     @Test fun `the iOS differential corpus matches the Kotlin`() {
-        assumeTrue("no iOS project beside app/", swiftFile.exists())
+        assumeTrue("no iOS project beside core/", swiftFile.exists())
         val original = swiftFile.readText()
         val regenerated = original.lines().joinToString("\n") { regenerate(it) }
         outFile.parentFile?.mkdirs()
@@ -320,14 +323,17 @@ class DifferentialCorpusTest {
             val lines = literal.findAll(m.groupValues[2]).map { unescape(it.groupValues[1]) }.toList()
             val reading = PhotoTextSorter.sort(lines.map { PhotoLine(it) })
             val language = reading.language?.let { q(it) } ?: "nil"
+            val flags = reading.flags.joinToString(", ", "[", "]") {
+                "LineFlag(raw: ${q(it.raw)}, shown: ${q(it.shown)}, reasons: ${reasons(it.reasons)})"
+            }
             return m.groupValues[1] + "Photo(${list(lines)}, $language, ${reading.sorted}, " +
-                "${list(reading.ingredients)}, ${list(reading.instructions)}, ${list(reading.uncertain)}),"
+                "${list(reading.ingredients)}, ${list(reading.instructions)}, $flags, ${list(reading.large)}),"
         }
-        suspectRow.find(line)?.let { m ->
+        checkRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
             val language = m.groupValues[3].ifEmpty { "en" }
             val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
-            return m.groupValues[1] + "Sus(${q(text)}$lang, ${PhotoTextSorter.suspect(text, LanguageWords.forTag(language)!!)}),"
+            return m.groupValues[1] + "Check(${q(text)}$lang, ${reasons(PhotoTextSorter.check(text, LanguageWords.forTag(language)!!))}),"
         }
         fractionRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
@@ -494,6 +500,10 @@ class DifferentialCorpusTest {
             .joinToString("")
 
     private fun list(items: List<String>) = items.joinToString(", ", "[", "]") { q(it) }
+
+    /** A Swift set literal of `CheckReason`s, in their declared order: `[.misread, .fraction]`. */
+    private fun reasons(items: Set<CheckReason>) =
+        items.sortedBy { it.ordinal }.joinToString(", ", "[", "]") { "." + it.name.lowercase() }
 
     /** A Swift string literal. */
     private fun q(s: String): String = buildString {

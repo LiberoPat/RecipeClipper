@@ -36,14 +36,10 @@ struct EditRecipeUiState: Equatable {
     /// The photos are being fetched and read; the fields wait.
     var reading = false
     var photoOutcome: PhotoOutcome?
-    /// Lines the recogniser was unsure of, as they were put in the boxes: "check this".
-    var uncertain: [String] = []
-    /// The `uncertain` lines whose amount holds a fraction glyph's look-alike ("2% cups oats",
-    /// #245), each offered the `fractions` as one-tap replacements.
-    var fractionLines: [String] = []
-    /// The `uncertain` lines listed only because their amount looks too large (#281), each
-    /// shown with that reason.
-    var largeLines: [String] = []
+    /// The lines to check against the photo, as the sorter listed them (#198, #283), each with
+    /// why: the photo was hard to read there, its amount holds a fraction look-alike (the
+    /// `fractions` as one-tap replacements, #245) or looks too large (#281).
+    var flags: [LineFlag] = []
     var fractions: [String] = PhotoTextSorter.fractions
 
     init(isNew: Bool, photo: PhotoPost? = nil, scan: Bool = false) {
@@ -52,6 +48,10 @@ struct EditRecipeUiState: Equatable {
         self.scan = scan
         loading = !isNew
     }
+
+    /// "Check these lines: the photo was hard to read there" heads the list, unless every line is
+    /// listed only because its amount looks too large: each of those says so itself (#281).
+    var checkHeading: Bool { flags.contains { !$0.largeOnly } }
 }
 
 /// Edits a recipe's content, or types a new one in (#29; Android's EditRecipeViewModel).
@@ -130,26 +130,27 @@ final class EditRecipeViewModel {
         photoLanguage = nil
         uiState.reading = true
         uiState.photoOutcome = nil
-        uiState.uncertain = []
-        uiState.fractionLines = []
-        uiState.largeLines = []
+        uiState.flags = []
         // A post's first picture is its photo; a scan's pages are never kept (#226).
         uiState.draft = RecipeDraft(name: post.title, image: scanPages != nil ? "" : post.imageUrls.first ?? "")
         readTask = Task { [weak self, photoReader] in
             let result = await photoReader.read(post.imageUrls)
+            // Sorting and checking a long scan is real work: off the main actor (#283). A read
+            // cancelled meanwhile (Try again, or the screen gone) is dropped below.
+            var sorted: PhotoReading?
+            if case .read(let lines) = result {
+                sorted = await Task.detached(priority: .userInitiated) { PhotoTextSorter.sort(lines) }.value
+            }
             guard let self, !Task.isCancelled else { return }
             uiState.reading = false
             switch result {
             case .failed:
                 uiState.photoOutcome = .failed
-            case .read(let lines):
-                let reading = PhotoTextSorter.sort(lines)
+            case .read:
+                guard let reading = sorted else { return }
                 photoLanguage = reading.language
                 uiState.photoOutcome = reading.sorted ? .read : .notSorted
-                uiState.uncertain = reading.uncertain
-                uiState.largeLines = reading.large
-                let words = RecipeTextSplitter.wordsFor(reading.language)
-                uiState.fractionLines = reading.uncertain.filter { PhotoTextSorter.fractionSlot($0, words: words) != nil }
+                uiState.flags = reading.flags
                 uiState.draft.yield = reading.yield ?? ""
                 uiState.draft.prepTime = reading.prepTime ?? ""
                 uiState.draft.cookTime = reading.cookTime ?? ""
@@ -160,21 +161,22 @@ final class EditRecipeViewModel {
         }
     }
 
-    /// A fraction chip (#245): `line`'s look-alike ("%" in "2% cups oats") becomes `fraction`, the
-    /// cook's reading of the photo, in the box that holds the line and in the list to check. A
-    /// line the cook has since changed in the box is left alone, and its chips go.
-    func onFraction(_ line: String, _ fraction: String) {
-        uiState.fractionLines.removeAll { $0 == line }
-        guard let fixed = PhotoTextSorter.replaceFraction(line, fraction, words: RecipeTextSplitter.wordsFor(photoLanguage))
-        else { return }
-        if let ingredients = Self.replaceLine(uiState.draft.ingredientsText, line, fixed) {
+    /// A fraction chip (#245): `flag`'s look-alike ("%" in "2% cups oats") becomes `fraction`, the
+    /// cook's reading of the photo, in the box that holds the line and in its entry in the list to
+    /// check, which keeps any markup the line has ("▢ 2⅔ cups oats", #283). A line the cook has
+    /// since changed in the box is left alone. Either way the entry's chips go.
+    func onFraction(_ flag: LineFlag, _ fraction: String) {
+        guard let index = uiState.flags.firstIndex(of: flag) else { return }
+        let fixed = PhotoTextSorter.replaceFraction(flag, fraction, words: RecipeTextSplitter.wordsFor(photoLanguage))
+        if let fixed, let ingredients = Self.replaceLine(uiState.draft.ingredientsText, flag.raw, fixed.raw) {
             uiState.draft.ingredientsText = ingredients
-        } else if let steps = Self.replaceLine(uiState.draft.instructionsText, line, fixed) {
+            uiState.flags[index] = fixed
+        } else if let fixed, let steps = Self.replaceLine(uiState.draft.instructionsText, flag.raw, fixed.raw) {
             uiState.draft.instructionsText = steps
+            uiState.flags[index] = fixed
         } else {
-            return
+            uiState.flags[index] = LineFlag(raw: flag.raw, shown: flag.shown, reasons: flag.reasons.subtracting([.fraction]))
         }
-        uiState.uncertain = uiState.uncertain.map { $0 == line ? fixed : $0 }
     }
 
     /// `text` with its first line that reads `line` (trimmed) holding `fixed` instead; nil if none does.
