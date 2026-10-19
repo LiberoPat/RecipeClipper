@@ -94,6 +94,38 @@ class EditRecipePhotoScreenTest {
     }
 
     @Test
+    fun aLineFlaggedOnlyForItsSizeSaysSo() {
+        // Vision's "34 tsp salt" for ¾ (#249) is plainly read, just too much: its own reason (#281).
+        show(
+            PhotoTextResult.Read(
+                listOf(
+                    PhotoLine("Ingredients"), PhotoLine("34 tsp salt"), PhotoLine("1 cup flour"),
+                    PhotoLine("Directions"), PhotoLine("1. Mix.")
+                )
+            )
+        )
+
+        compose.onNodeWithText("• 34 tsp salt", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("This amount looks large: check it").assertExists()
+        compose.onNodeWithText("Check these lines", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun aLargeAmountBesideAHardToReadLineKeepsBothReasons() {
+        show(
+            PhotoTextResult.Read(
+                listOf(
+                    PhotoLine("Ingredients"), PhotoLine("34 tsp salt"), PhotoLine("1 1/2 cups flour", 0.3f),
+                    PhotoLine("Directions"), PhotoLine("1. Mix.")
+                )
+            )
+        )
+
+        compose.onNodeWithText("Check these lines", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("This amount looks large: check it").assertExists()
+    }
+
+    @Test
     fun nothingSortedOpensTheEditorToFinishByHand() {
         show(PhotoTextResult.Read(listOf(PhotoLine("Cream butter and sugar,"), PhotoLine("add the oats. Bake."))))
 

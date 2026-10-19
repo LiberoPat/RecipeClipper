@@ -40,6 +40,17 @@ final class EditRecipePhotoTests: XCTestCase {
         XCTAssertEqual(state.draft.ingredientsText, "1 cup butter\n1 1/2 cups flour")
         XCTAssertEqual(state.draft.instructionsText, "Cream the butter.\nStir in the flour.")
         XCTAssertEqual(state.uncertain, ["1 1/2 cups flour"])
+        XCTAssertEqual(state.largeLines, [])
+    }
+
+    func testALineFlaggedOnlyForItsSizeIsNamedAsLarge() async {
+        // #281: "34 tsp salt" for ¾ is read clearly, just too much; "1 1/2 cups flour" was unsure.
+        let lines = [PhotoLine(text: "Ingredients"), PhotoLine(text: "34 tsp salt")] + card.dropFirst()
+        let vm = viewModel(FakePhotoTextReader(.read(lines)))
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.uncertain, ["34 tsp salt", "1 1/2 cups flour"])
+        XCTAssertEqual(vm.uiState.largeLines, ["34 tsp salt"])
     }
 
     func testNothingIsSavedUntilTheCookSavesThenUnderThePostsLink() async {

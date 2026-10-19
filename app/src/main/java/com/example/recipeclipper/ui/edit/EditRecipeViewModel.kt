@@ -70,6 +70,9 @@ data class EditRecipeUiState(
     /** The [uncertain] lines whose amount holds a fraction glyph's look-alike ("2% cups oats",
      *  #245), each offered the fractions ([fractions]) as one-tap replacements. */
     val fractionLines: List<String> = emptyList(),
+    /** The [uncertain] lines listed only because their amount looks too large (#281), each
+     *  shown with that reason. */
+    val largeLines: List<String> = emptyList(),
     val fractions: List<String> = PhotoTextSorter.FRACTIONS
 )
 
@@ -152,7 +155,7 @@ class EditRecipeViewModel @Inject constructor(
         photoLanguage = null
         _uiState.update {
             it.copy(
-                reading = true, photoOutcome = null, uncertain = emptyList(), fractionLines = emptyList(),
+                reading = true, photoOutcome = null, uncertain = emptyList(), fractionLines = emptyList(), largeLines = emptyList(),
                 // A post's first picture is its photo; a scan's pages are never kept (#226).
                 draft = RecipeDraft(
                     name = post.title,
@@ -173,6 +176,7 @@ class EditRecipeViewModel @Inject constructor(
                             reading = false,
                             photoOutcome = if (reading.sorted) PhotoOutcome.READ else PhotoOutcome.NOT_SORTED,
                             uncertain = reading.uncertain,
+                            largeLines = reading.large,
                             fractionLines = reading.uncertain.filter {
                                 PhotoTextSorter.fractionSlot(it, RecipeTextSplitter.wordsFor(reading.language)) != null
                             },

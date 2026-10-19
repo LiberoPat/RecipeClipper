@@ -92,7 +92,12 @@ enum IngredientScaler {
         /// temperature, then a C, is no amount of cups (#135). `lead` is a `leading` match and
         /// `rest` the text after it; the line stays as written, like a size after `notAnAmount`.
         func temperature(_ lead: JMatch, _ rest: String) -> Bool {
-            IngredientScaler.celsiusAfter.containsMatch(in: rest) && [lead[2], lead[4]].filter { !$0.isEmpty }.allSatisfy {
+            temperature([lead[2], lead[4]].filter { !$0.isEmpty }, rest)
+        }
+
+        /// `temperature` for the `amounts` given, the numbers `rest` follows.
+        func temperature(_ amounts: [String], _ rest: String) -> Bool {
+            IngredientScaler.celsiusAfter.containsMatch(in: rest) && amounts.allSatisfy {
                 IngredientScaler.temperatureNumber.matchEntire($0) != nil && TemperatureConverter.plausibleCelsius.contains(Int($0) ?? -1)
             }
         }

@@ -226,14 +226,25 @@ private fun PhotoReview(
                 .padding(14.dp)
                 .semantics(mergeDescendants = true) {}
         ) {
-            Text(
-                stringResource(R.string.photo_check_heading),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.height(6.dp))
+            // A line listed only for its size has its own reason, not the photo's (#281).
+            if (state.uncertain.any { it !in state.largeLines }) {
+                Text(
+                    stringResource(R.string.photo_check_heading),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(6.dp))
+            }
             state.uncertain.forEachIndexed { index, line ->
                 Text("• $line", style = MaterialTheme.typography.bodyMedium)
+                if (line in state.largeLines) {
+                    Text(
+                        stringResource(R.string.photo_check_large),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = 4.dp)
+                    )
+                }
                 if (line in state.fractionLines) FractionChips(index, line, state.fractions, onFraction)
             }
         }

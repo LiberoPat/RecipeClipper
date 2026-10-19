@@ -68,6 +68,18 @@ class EditRecipePhotoViewModelTest {
             assertEquals("1 cup butter\n1 1/2 cups flour", state.draft.ingredientsText)
             assertEquals("Cream the butter.\nStir in the flour.", state.draft.instructionsText)
             assertEquals(listOf("1 1/2 cups flour"), state.uncertain)
+            assertEquals(emptyList<String>(), state.largeLines)
+        }
+
+    @Test fun `a line flagged only for its size is named as large`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            // #281: "34 tsp salt" for ¾ is read clearly, just too much; "1 1/2 cups flour" was unsure.
+            val lines = listOf(PhotoLine("Ingredients"), PhotoLine("34 tsp salt")) + card.drop(1)
+            val vm = viewModel(FakePhotoTextReader(PhotoTextResult.Read(lines)))
+            advanceUntilIdle()
+
+            assertEquals(listOf("34 tsp salt", "1 1/2 cups flour"), vm.uiState.value.uncertain)
+            assertEquals(listOf("34 tsp salt"), vm.uiState.value.largeLines)
         }
 
     @Test fun `nothing is saved until the cook saves, then under the post's link`() =

@@ -3,9 +3,12 @@ package com.example.recipeclipper.data.remote
 import com.example.recipeclipper.data.model.FractionLookAlike
 import com.example.recipeclipper.data.model.IngredientScaler
 import com.example.recipeclipper.data.model.LanguageWords
+import com.example.recipeclipper.data.model.SharedTables
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -246,6 +249,8 @@ class PhotoTextSorterTest {
         // "23 cups oats" (2 ⅔) is too many cups (#249): flagged, but with no chips.
         assertEquals(listOf("½⅓ cup milk", "23 cups oats", "is tsp nutmeg"), reading.uncertain)
         assertEquals(listOf("½⅓ cup milk", "is tsp nutmeg"), reading.uncertain.filter { PhotoTextSorter.fractionSlot(it) != null })
+        // Only its size is wrong, so it gets its own reason (#281).
+        assertEquals(listOf("23 cups oats"), reading.large)
     }
 
     @Test fun `a fraction read as digits is flagged when the amount is implausible for its unit`() {
@@ -253,7 +258,7 @@ class PhotoTextSorterTest {
         listOf(
             "34 tsp salt", "23 cups oats", "18 tsp nutmeg", "2 23 cups oats", "14 tsp. cinnamon",
             "12 tsp sugar", "34 Tbsp butter", "13 c milk", "10–14 tsp salt", "12 kg flour", "30 lb potatoes",
-            "6000 g Mehl", "13 sticks butter"
+            "6000 g Mehl", "13 sticks butter", "14 cups milk"
         ).forEach {
             assertTrue(it, PhotoTextSorter.implausible(it))
             assertTrue(it, PhotoTextSorter.suspect(it))
@@ -265,9 +270,9 @@ class PhotoTextSorterTest {
     @Test fun `a plausible amount, a count or a temperature is not flagged`() {
         listOf(
             // At a unit's maximum, a big batch, decimals, ranges, and misreads too plausible to catch.
-            "10 tsp baking powder", "12 cups chicken stock", "16 tablespoons (227g) unsalted butter",
+            "10 tsp baking powder", "11 cups chicken stock", "16 tablespoons (227g) unsalted butter",
             "2–3 tbsp olive oil", "2 to 3 tbsp olive oil", "1.5 cups flour", "0.75 tsp salt", "1 1/2 cups sugar",
-            "4 tsp salt", "12 cup sugar", "8 tsp nutmeg", "32 oz chicken stock", "1000 g flour", "2 14 oz cans tomatoes",
+            "4 tsp salt", "8 tsp nutmeg", "32 oz chicken stock", "1000 g flour", "2 14 oz cans tomatoes",
             // Counts and no units are never checked; a bare Celsius temperature is no amount of cups.
             "12 eggs", "48 wonton wrappers", "180 C water", "350°F", "Bake for 25 minutes."
         ).forEach {
@@ -282,5 +287,76 @@ class PhotoTextSorterTest {
         assertEquals(listOf("34 tsp salt", "1 cup flour"), reading.ingredients)
         assertEquals(listOf("34 tsp salt"), reading.uncertain)
         assertEquals("68 tsp salt", IngredientScaler.scale("34 tsp salt", 2.0))
+    }
+
+    @Test fun `an amount shaped like a fraction's digits is held to its unit's lower bar`() {
+        // ½, ¼ and ⅓ read as digits (#281): under the unit's maximum, over its fraction-shaped bar.
+        listOf(
+            "12 tbsp vinegar", "13 tbsp. honey", "12 cup sugar", "12 cups chicken stock", "12 lb ground beef",
+            "1 12 cups flour", "2 14 tbsp butter", "10–12 cups water"
+        ).forEach {
+            assertTrue(it, PhotoTextSorter.implausible(it))
+        }
+        // Not shaped like a fraction, or a unit with no lower bar ("12 oz" and "15 g" are everyday).
+        listOf(
+            "16 tablespoons (227g) unsalted butter", "10 tbsp butter", "11 cups water", "10 cups flour",
+            "12 oz spaghetti", "14 oz can coconut milk", "12 fl oz beer", "15 g yeast", "2 14 oz cans tomatoes"
+        ).forEach {
+            assertFalse(it, PhotoTextSorter.implausible(it))
+        }
+    }
+
+    @Test fun `a second number is judged only after a plain whole one, by its own temperature`() {
+        // After a range, a fraction or a decimal, the lead's amounts aren't dropped for it (#281).
+        listOf("1–2 34 tsp salt", "½ 34 tsp salt", "1.5 34 tsp salt").forEach {
+            assertFalse(it, PhotoTextSorter.implausible(it))
+        }
+        assertTrue(PhotoTextSorter.implausible("2 34 tsp salt"))
+        // The temperature exemption tests the number judged: 180 is one, 14 isn't.
+        assertFalse(PhotoTextSorter.implausible("2 180 C water"))
+        assertTrue(PhotoTextSorter.implausible("180 14 c milk"))
+    }
+
+    @Test fun `the size check runs on ingredient lines, never on steps`() {
+        // Sorted, a step's numbers are never judged: a conversion line isn't a misread (#281).
+        val sorted = PhotoTextSorter.sort(lines(listOf("INGREDIENTS", "1 cup flour", "METHOD", "Mix the flour.", "48 tsp = 1 cup")))
+        assertTrue(sorted.sorted)
+        assertEquals(listOf("Mix the flour.", "48 tsp = 1 cup"), sorted.instructions)
+        assertEquals(emptyList<String>(), sorted.uncertain)
+    }
+
+    @Test fun `unsorted, list markup goes before the size check, and steps and conversions are skipped`() {
+        val reading = PhotoTextSorter.sort(lines(listOf(
+            "Grandma's card", "▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg",
+            "48 tsp = 1 cup", "Step 4: 34 tsp salt"
+        )))
+        assertFalse(reading.sorted)
+        val flagged = listOf("▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg")
+        assertEquals(flagged, reading.uncertain)
+        assertEquals(flagged, reading.large)
+    }
+
+    @Test fun `a line with another reason to check it isn't listed as only large`() {
+        val reading = PhotoTextSorter.sort(lines(
+            listOf("INGREDIENTS", "34 tsp salt", "34 tbps sugar", "12 tbsp vinegar", "METHOD", "Mix."),
+            unsure = setOf("34 tsp salt")
+        ))
+        assertEquals(listOf("34 tsp salt", "34 tbps sugar", "12 tbsp vinegar"), reading.uncertain)
+        assertEquals(listOf("12 tbsp vinegar"), reading.large)
+    }
+
+    @Test fun `a malformed plausible-amounts table throws, as SharedTables does`() {
+        PlausibleAmounts.from(SharedTables.read("plausible-amounts"))
+        PlausibleAmounts.from(JSONObject("""{"maximums": {"TSP": 10}, "fractionShapedMaximums": {}, "fractionShapes": ["12"]}"""))
+        listOf(
+            """{"maximums": {"TSP": "ten"}, "fractionShapedMaximums": {}, "fractionShapes": []}""",
+            """{"maximums": {"TEASPOON": 10}, "fractionShapedMaximums": {}, "fractionShapes": []}""",
+            """{"fractionShapedMaximums": {}, "fractionShapes": []}""",
+            """{"maximums": {"TSP": 10}, "fractionShapes": []}""",
+            """{"maximums": {"TSP": 10}, "fractionShapedMaximums": {"TSP": 12}, "fractionShapes": []}""",
+            """{"maximums": {"TSP": 10}, "fractionShapedMaximums": {}, "fractionShapes": ["½"]}"""
+        ).forEach { json ->
+            assertThrows(json, Exception::class.java) { PlausibleAmounts.from(JSONObject(json)) }
+        }
     }
 }

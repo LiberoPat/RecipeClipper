@@ -197,7 +197,7 @@ class DifferentialCorpusTest {
         outFile.parentFile?.mkdirs()
         outFile.writeText(regenerated)
         assertEquals(
-            "The corpus is stale. Copy app/${outFile.path} over ios/RecipeClipperTests/Model/" +
+            "The corpus is stale. Copy core/${outFile.path} over ios/RecipeClipperTests/Model/" +
                     "DifferentialCorpusTests.swift (it was just generated from the Kotlin).",
             original, regenerated
         )

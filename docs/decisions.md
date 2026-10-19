@@ -4281,10 +4281,9 @@ number is still read as written ("34 tsp salt" doubles to "68 tsp salt").
   with units), against `shared/tables/plausible-amounts.json`. Either end of a range counts
   ("10–14 tsp"); a whole number then another before the unit ("2 23 cups") is judged by the second,
   so "2 14 oz cans" stays fine. A temperature ("180 C water"), Japanese (amounts after the name)
-  and a unit the table doesn't list are never checked. The existing heading's wording covers it;
-  no new string.
-- **Maximums** (above is flagged): tsp 10 (12 at first; lowered by the owner on 2026-10-17 so "12 tsp", a ½ read as digits, flags, with no real line hit), tbsp 16, cup 12 (and the Japanese cups: カップ 12, 合
-  10), fl oz 64, stick 8, ml 5000, cl 200, dl 40, l 10, g 5000, kg 10, oz 64, lb 25. tbsp started
+  and a unit the table doesn't list are never checked. The existing heading's wording covered it,
+  with no new string, until #281 gave it its own (below).
+- **Maximums** (above is flagged): tsp 10 (12 at first; lowered by the owner on 2026-10-17 so "12 tsp", a ½ read as digits, flags, with no real line hit), tbsp 16, cup 12, fl oz 64, stick 8, ml 5000, cl 200, dl 40, l 10, g 5000, kg 10, oz 64, lb 25. tbsp started
   at 8 and rose to 16: "16 tablespoons (227g) unsalted butter" (a cup, Sally's) and "10 c. à s. de
   sirop" are real.
 - **Calibration:** every ingredient line of the 250 saved pages that parse (the harness pages in
@@ -4292,12 +4291,75 @@ number is still read as written ("34 tsp salt" doubles to "68 tsp salt").
   fixtures' amount lines: 3,402 lines, none real flagged (the one hit is the corpus's
   "99999999999 cups flour"). Largest real amounts: 10 cups, 5 tsp, 16 tbsp, 36 oz, 3 lb, 2 kg,
   2000 ml, 1.5 l, 50 cl.
-- **Still not caught, by decision:** a misread that stays plausible: "4 tsp" (¾ lost), "8 tsp"
-  (⅛), and "12 cup" (½), since 12 is the cup maximum. **Bare counts** ("12 eggs", "48
-  wonton wrappers") are skipped: counts vary too much to call one absurd, and pinch or clove,
-  which the unit tables don't read, have no entry.
+- **Still not caught, by decision** (corrected 2026-10-18, #281): a misread that stays
+  plausible: "4 tsp" (¾ lost) and "8 tsp" (⅛); a fraction read as digits where its unit has
+  no lower bar ("12 oz" for ½ oz, "12 fl oz", "14 g"), since those are everyday amounts; and a
+  number after a range, fraction or decimal ("1–2 34 tsp"), which isn't judged. "12 cup" (½)
+  is caught since #281. **Bare counts** ("12 eggs", "48 wonton wrappers") are skipped: counts
+  vary too much to call one absurd, and pinch or clove, which the unit tables don't read, have
+  no entry.
 - **Tests:** `PhotoTextSorterTest(s)` on both platforms (the misreads caught; a big batch, decimals,
   ranges, counts and temperatures not), and `Sus` rows in the differential corpus.
+
+**2026-10-18 (#281): review fixes, and two owner decisions.** A code review of #279 and #280:
+
+- **Ingredient lines only.** The maximums were calibrated on ingredient lines, but the check ran
+  on steps too, and on every line of an unsorted reading, so a conversion line ("48 tsp = 1 cup")
+  was flagged. Sorted, only the ingredient lines are size-checked; unsorted, each line is
+  cleaned by the splitter's own line rule first (`RecipeTextSplitter.line`, so "▢", "•", "-",
+  "3)" go and "▢ 34 tsp salt" is caught), and a "Step 4" line or one holding "=" is skipped.
+  The other shapes (`suspect`'s look-alikes, glued and misspelt units) still run on every line.
+- **The second number** ("2 23 cups") is taken only after a plain whole number, never after a
+  range, fraction or decimal ("1–2 34 tsp" keeps its "1–2" and isn't judged); and the
+  temperature exemption tests the number judged, not the lead ("2 180 C water" is a
+  temperature; "180 14 c milk" isn't). This is where `implausible` reads a line differently
+  from the scaler, which reads only the first number; the KDoc says so.
+- **A malformed table fails on iOS too** (`PlausibleAmounts`, both platforms): iOS fell back to
+  no maximums, switching the check off, where Kotlin threw. It now traps, as `SharedTables`
+  does; Kotlin throws. Both refuse a unit that isn't a `MeasureUnit`, a value that isn't a
+  number, and a fraction-shaped bar not below its maximum.
+- **The table is read at the first size check** (`by lazy`), not when `PhotoTextSorter` loads:
+  the editor reads `PhotoTextSorter.FRACTIONS` on every open, typed-in recipes too.
+- **`CUP_200` and `RICE_CUP` are gone** from the table: only Japanese names them, and Japanese
+  (amounts after the name) is never checked.
+- **`suspect` finds the leading amount once** per line and hands it to every shape.
+
+**Owner's call (A): a reason of its own.** A line listed only because its amount looks too large
+(`PhotoReading.large`; the editor's `largeLines`) shows "This amount looks large: check it" under
+it, a muted note like the chips' prompt, in all six languages on both platforms. The heading
+"Check these lines: the photo was hard to read there" shows only when another line is listed,
+since the photo wasn't hard to read there. A line flagged for a size and another reason (unsure,
+a look-alike, a misspelt unit) keeps the heading and gets no note.
+
+**Owner's call (B): fraction-shaped amounts get a lower bar.** An amount written exactly as a
+fraction glyph's digits (`fractionShapes`: ½ 12, ⅓ 13, ¼ 14, ⅛ 18, ⅔ 23, ¾ 34, ⅜ 38, ⅝ 58,
+⅞ 78) is judged by its unit's `fractionShapedMaximums`: **tbsp 10, cup 10, lb 10**, so "12 tbsp
+vinegar", "12 cup sugar" and "12 lb ground beef" flag, while "16 tablespoons butter" (16 isn't
+a shape) and "10 tbsp" don't. "14 cups milk" already flagged (cup 12). The second number counts
+too ("1 12 cups" for 1½). Fifths and sixths (15, 16, 25, 35, 45, 56) are left out: no
+calibration page writes ⅕ or ⅙ (½ 131 times, ¼ 120, ¾ 85, ⅓ 10, ⅛ 4, ⅔ 2, the others none),
+and 15 and 16 are everyday amounts. Ounces, fluid ounces, grams and millilitres get no lower
+bar ("12 oz spaghetti", "12 fl oz beer", "14 g", "15 ml" are real); tsp and stick need none
+(every shape is above 10 and 8 already). Everything else keeps its maximum.
+
+- **Calibration:** the same 3,402 real ingredient lines (250 parsed pages: the scratchpad's
+  `pages/` and `lpages/` and `shared/fixtures/pages/`, plus the corpus `Ing` inputs and the
+  fixtures' amount lines): **none real flagged**, as before (the one hit is still the corpus's
+  "99999999999 cups flour"). The only amounts in those lines written as one of the nine shapes
+  are "12 oz" (5 lines) and "14 g" (6), on units with no lower bar; counting fifths and sixths
+  would add "15", "16", "35", "45" g, "15", "45" ml, "25 cl", "16 oz" and "16 tablespoons (227g)
+  butter", which is why they're out. The trade-off: a real "12 tablespoons
+  butter" (¾ cup), "12 cups popped popcorn" or "12–14 lb turkey" now gets a "check this"; none
+  is in the calibration lines, and a flag costs only a look at the photo.
+- **Caught:** "34 tsp salt", "23 cups oats", "18 tsp nutmeg", "12 tsp sugar" (as before), and
+  now "12 tbsp vinegar", "12 cup sugar", "1 12 cups flour" and "12 lb ground beef".
+- **Clip 34:** Android's (ML Kit) is unchanged: its reading has no line flagged only for size.
+  iOS's (Vision: "34 tsp salt", "23 cups oats", "18 tsp nutmeg") now shows the new note under
+  those three; "½⅓ cup milk" keeps the heading. Not re-recorded.
+- **Tests:** `PhotoTextSorterTest(s)` (fraction-shaped bars, the second number, ingredient lines
+  only, unsorted markup and skips, `large`, a malformed table), `EditRecipePhotoViewModelTest` /
+  `EditRecipePhotoTests` (`largeLines`), `EditRecipePhotoScreenTest` and `PhotoTextUITests`
+  (the note, and no heading for a size alone); new `Sus` and `Photo` rows in the corpus.
 
 ## Undo snackbars close by themselves (2026-09-29)
 
