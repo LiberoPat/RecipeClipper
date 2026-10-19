@@ -145,7 +145,7 @@ class RecipeTextSplitterLanguagesTest {
     }
 
     @Test fun `glued units in each language, and only there`() {
-        fun suspect(line: String, language: String) = PhotoTextSorter.suspect(line, LanguageWords.forTag(language)!!)
+        fun suspect(line: String, language: String) = PhotoTextSorter.check(line, LanguageWords.forTag(language)!!).isNotEmpty()
         assertTrue(suspect("2 ELZucker", "de"))
         assertTrue(suspect("1 TLSalz", "de"))
         assertTrue(suspect("2 Esslöffelzucker", "de"))

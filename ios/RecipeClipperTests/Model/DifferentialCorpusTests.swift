@@ -61,9 +61,10 @@ import XCTest
 // say (nil: English), RecipeTextSplitter.detectAndSplit's ingredients and steps (nil: no recipe) and
 // [yield, prep, cook, total]. Write only `Split("Zutaten:\n- 2 Eier\n…"),`.
 // Photo rows (#208): a photo's lines, then PhotoTextSorter.sort's language, whether they sorted, the
-// ingredients, steps and lines to check. Write only `Photo(["ZUTATEN", "2 Eier", …]),`.
-// Suspect rows (#198, #208): a line read from a photo, then PhotoTextSorter.suspect. Write only
-// `Sus("2 ELZucker", lang: "de"),`.
+// ingredients, steps, the lines to check one by one (flags: the line in the box, as listed, and
+// why) and those listed only as large. Write only `Photo(["ZUTATEN", "2 Eier", …]),`.
+// Check rows (#198, #208, #283): a line read from a photo, then PhotoTextSorter.check, the per-line
+// check the sorter runs, on an ingredient line. Write only `Check("2 ELZucker", lang: "de"),`.
 // Whole-pick rows (#128): a page's text, a picked name, ingredients and steps, then what
 // PageRecipeCheck.verify keeps of them (one recipe's lines only; nil, nil: no recipe). Write only
 // `Verify("Soup\nIngredients\n1 cup water", "Soup", ["1 cup water"], []),`.
@@ -1859,129 +1860,150 @@ final class DifferentialCorpusTests: XCTestCase {
 
     private struct Photo {
         let lines: [String]; let language: String?; let sorted: Bool
-        let ingredients: [String]; let instructions: [String]; let uncertain: [String]
-        init(_ lines: [String], _ language: String?, _ sorted: Bool, _ ingredients: [String], _ instructions: [String], _ uncertain: [String]) {
+        let ingredients: [String]; let instructions: [String]; let flags: [LineFlag]; let large: [String]
+        init(
+            _ lines: [String], _ language: String?, _ sorted: Bool, _ ingredients: [String], _ instructions: [String],
+            _ flags: [LineFlag], _ large: [String]
+        ) {
             self.lines = lines; self.language = language; self.sorted = sorted
-            self.ingredients = ingredients; self.instructions = instructions; self.uncertain = uncertain
+            self.ingredients = ingredients; self.instructions = instructions; self.flags = flags; self.large = large
         }
     }
 
     // Photo rows (#208): see the header. Write only the lines.
     private static let photos: [Photo] = [
-        Photo(["Banana Bread", "INGREDIENTS", "3 ripe bananas", "1 cupsugar", "11/2 cups flour", "1 large egg", "DIRECTIONS", "Mash the bananas and the sugar.", "Stir in the egg and the flour and bake."], "en", true, ["3 ripe bananas", "1 cupsugar", "11/2 cups flour", "1 large egg"], ["Mash the bananas and the sugar.", "Stir in the egg and the flour and bake."], ["1 cupsugar", "11/2 cups flour"]),
-        Photo(["Omas Apfelkuchen", "ZUTATEN", "200 g Butter", "150 g Zucker", "3 Eier", "2 ELMilch", "300 g Mehl", "ZUBEREITUNG:", "Butter und Zucker schaumig rühren.", "Eier und Mehl unterrühren und backen."], "de", true, ["200 g Butter", "150 g Zucker", "3 Eier", "2 ELMilch", "300 g Mehl"], ["Butter und Zucker schaumig rühren.", "Eier und Mehl unterrühren und backen."], ["2 ELMilch"]),
-        Photo(["TORTILLA", "Ingredientes", "4 patatas", "6 huevos", "1 cebolla", "1 tazaaceite", "Sal al gusto", "Elaboración", "Pelar y cortar las patatas.", "Batir los huevos y cuajar la tortilla con el aceite."], "es", true, ["4 patatas", "6 huevos", "1 cebolla", "1 tazaaceite", "Sal al gusto"], ["Pelar y cortar las patatas.", "Batir los huevos y cuajar la tortilla con el aceite."], ["1 tazaaceite"]),
-        Photo(["Crêpes", "INGRÉDIENTS", "250 g de farine", "4 œufs", "1/2 l de lait", "2 c. à soupesucre", "1 pincée de sel", "PRÉPARATION", "Mettre la farine dans un saladier.", "Ajouter les œufs puis le lait et le sel."], "fr", true, ["250 g de farine", "4 œufs", "1/2 l de lait", "2 c. à soupesucre", "1 pincée de sel"], ["Mettre la farine dans un saladier.", "Ajouter les œufs puis le lait et le sel."], ["2 c. à soupesucre"]),
-        Photo(["Tiramisù", "Ingredienti:", "500 g di mascarpone", "4 uova", "100 g di zucchero", "2 tazzecaffè", "cacao q.b.", "Preparazione:", "Montare le uova e lo zucchero.", "Inzuppare i savoiardi nel caffè."], "it", true, ["500 g di mascarpone", "4 uova", "100 g di zucchero", "2 tazzecaffè", "cacao q.b."], ["Montare le uova e lo zucchero.", "Inzuppare i savoiardi nel caffè."], ["2 tazzecaffè"]),
-        Photo(["Pão de queijo", "INGREDIENTES", "500 g de polvilho", "1 xícaraleite", "2 ovos", "200 g de queijo", "Sal a gosto", "MODO DE PREPARO", "Ferva o leite com o sal.", "Junte os ovos e o queijo e asse."], "pt", true, ["500 g de polvilho", "1 xícaraleite", "2 ovos", "200 g de queijo", "Sal a gosto"], ["Ferva o leite com o sal.", "Junte os ovos e o queijo e asse."], ["1 xícaraleite"]),
-        Photo(["肉じゃが", "材料", "じゃがいも 3個", "玉ねぎ 1個", "醤油 大さじ3", "砂糖 大さじ2", "作り方", "1. じゃがいもを切る。", "2. 煮る。"], "ja", true, ["じゃがいも 3個", "玉ねぎ 1個", "醤油 大さじ3", "砂糖 大さじ2"], ["じゃがいもを切る。", "煮る。"], []),
-        Photo(["Wir haben gestern gebacken.", "Mit Mehl und Zucker und Eiern.", "Es war lecker."], "de", false, ["Wir haben gestern gebacken.", "Mit Mehl und Zucker und Eiern.", "Es war lecker."], [], []),
-        Photo(["INGREDIENTS", "1 cup flour", "METHOD", "Mix the flour.", "48 tsp = 1 cup"], "en", true, ["1 cup flour"], ["Mix the flour.", "48 tsp = 1 cup"], []),
-        Photo(["Grandma's card", "▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg", "48 tsp = 1 cup", "Step 4: 34 tsp salt"], nil, false, ["Grandma's card", "▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg", "48 tsp = 1 cup", "Step 4: 34 tsp salt"], [], ["▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg"]),
+        Photo(["Banana Bread", "INGREDIENTS", "3 ripe bananas", "1 cupsugar", "11/2 cups flour", "1 large egg", "DIRECTIONS", "Mash the bananas and the sugar.", "Stir in the egg and the flour and bake."], "en", true, ["3 ripe bananas", "1 cupsugar", "11/2 cups flour", "1 large egg"], ["Mash the bananas and the sugar.", "Stir in the egg and the flour and bake."], [LineFlag(raw: "1 cupsugar", shown: "1 cupsugar", reasons: [.misread]), LineFlag(raw: "11/2 cups flour", shown: "11/2 cups flour", reasons: [.misread])], []),
+        Photo(["Omas Apfelkuchen", "ZUTATEN", "200 g Butter", "150 g Zucker", "3 Eier", "2 ELMilch", "300 g Mehl", "ZUBEREITUNG:", "Butter und Zucker schaumig rühren.", "Eier und Mehl unterrühren und backen."], "de", true, ["200 g Butter", "150 g Zucker", "3 Eier", "2 ELMilch", "300 g Mehl"], ["Butter und Zucker schaumig rühren.", "Eier und Mehl unterrühren und backen."], [LineFlag(raw: "2 ELMilch", shown: "2 ELMilch", reasons: [.misread])], []),
+        Photo(["TORTILLA", "Ingredientes", "4 patatas", "6 huevos", "1 cebolla", "1 tazaaceite", "Sal al gusto", "Elaboración", "Pelar y cortar las patatas.", "Batir los huevos y cuajar la tortilla con el aceite."], "es", true, ["4 patatas", "6 huevos", "1 cebolla", "1 tazaaceite", "Sal al gusto"], ["Pelar y cortar las patatas.", "Batir los huevos y cuajar la tortilla con el aceite."], [LineFlag(raw: "1 tazaaceite", shown: "1 tazaaceite", reasons: [.misread])], []),
+        Photo(["Crêpes", "INGRÉDIENTS", "250 g de farine", "4 œufs", "1/2 l de lait", "2 c. à soupesucre", "1 pincée de sel", "PRÉPARATION", "Mettre la farine dans un saladier.", "Ajouter les œufs puis le lait et le sel."], "fr", true, ["250 g de farine", "4 œufs", "1/2 l de lait", "2 c. à soupesucre", "1 pincée de sel"], ["Mettre la farine dans un saladier.", "Ajouter les œufs puis le lait et le sel."], [LineFlag(raw: "2 c. à soupesucre", shown: "2 c. à soupesucre", reasons: [.misread])], []),
+        Photo(["Tiramisù", "Ingredienti:", "500 g di mascarpone", "4 uova", "100 g di zucchero", "2 tazzecaffè", "cacao q.b.", "Preparazione:", "Montare le uova e lo zucchero.", "Inzuppare i savoiardi nel caffè."], "it", true, ["500 g di mascarpone", "4 uova", "100 g di zucchero", "2 tazzecaffè", "cacao q.b."], ["Montare le uova e lo zucchero.", "Inzuppare i savoiardi nel caffè."], [LineFlag(raw: "2 tazzecaffè", shown: "2 tazzecaffè", reasons: [.misread])], []),
+        Photo(["Pão de queijo", "INGREDIENTES", "500 g de polvilho", "1 xícaraleite", "2 ovos", "200 g de queijo", "Sal a gosto", "MODO DE PREPARO", "Ferva o leite com o sal.", "Junte os ovos e o queijo e asse."], "pt", true, ["500 g de polvilho", "1 xícaraleite", "2 ovos", "200 g de queijo", "Sal a gosto"], ["Ferva o leite com o sal.", "Junte os ovos e o queijo e asse."], [LineFlag(raw: "1 xícaraleite", shown: "1 xícaraleite", reasons: [.misread])], []),
+        Photo(["肉じゃが", "材料", "じゃがいも 3個", "玉ねぎ 1個", "醤油 大さじ3", "砂糖 大さじ2", "作り方", "1. じゃがいもを切る。", "2. 煮る。"], "ja", true, ["じゃがいも 3個", "玉ねぎ 1個", "醤油 大さじ3", "砂糖 大さじ2"], ["じゃがいもを切る。", "煮る。"], [], []),
+        Photo(["Wir haben gestern gebacken.", "Mit Mehl und Zucker und Eiern.", "Es war lecker."], "de", false, ["Wir haben gestern gebacken.", "Mit Mehl und Zucker und Eiern.", "Es war lecker."], [], [], []),
+        Photo(["INGREDIENTS", "1 cup flour", "METHOD", "Mix the flour.", "48 tsp = 1 cup"], "en", true, ["1 cup flour"], ["Mix the flour.", "48 tsp = 1 cup"], [], []),
+        Photo(["Grandma's card", "▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg", "48 tsp = 1 cup", "Step 4: 34 tsp salt"], nil, false, ["Grandma's card", "▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg", "48 tsp = 1 cup", "Step 4: 34 tsp salt"], [], [LineFlag(raw: "▢ 34 tsp salt", shown: "34 tsp salt", reasons: [.large]), LineFlag(raw: "• 12 tbsp vinegar", shown: "12 tbsp vinegar", reasons: [.large]), LineFlag(raw: "- 23 cups oats", shown: "23 cups oats", reasons: [.large]), LineFlag(raw: "3) 18 tsp nutmeg", shown: "18 tsp nutmeg", reasons: [.large])], ["▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg"]),
+        Photo(["Lemon Loaf", "INGREDIENTS", "1 1/2 cups flour", "1 cup sugar", "DIRECTIONS", "1. Mix and bake 50 minutes.", "GLAZE", "1 cup powdered sugar", "34 tsp vanilla"], "en", true, ["1 1/2 cups flour", "1 cup sugar"], ["Mix and bake 50 minutes.", "GLAZE", "1 cup powdered sugar", "34 tsp vanilla"], [LineFlag(raw: "34 tsp vanilla", shown: "34 tsp vanilla", reasons: [.large])], ["34 tsp vanilla"]),
+        Photo(["INGREDIENTS", "1 cup flour", "2 eggs", "METHOD", "1. Mix and bake.", "For the sauce:", "34 tsp vanilla", "2 cups powdered sugar"], "en", true, ["1 cup flour", "2 eggs"], ["Mix and bake.", "For the sauce:", "34 tsp vanilla", "2 cups powdered sugar"], [LineFlag(raw: "34 tsp vanilla", shown: "34 tsp vanilla", reasons: [.large])], ["34 tsp vanilla"]),
+        Photo(["Grandma's card", "▢ 34 tsp salt", "▢ 2% cups oats", "• 1 oup sugar", "- 1 cupraisins"], nil, false, ["Grandma's card", "▢ 34 tsp salt", "▢ 2% cups oats", "• 1 oup sugar", "- 1 cupraisins"], [], [LineFlag(raw: "▢ 34 tsp salt", shown: "34 tsp salt", reasons: [.large]), LineFlag(raw: "▢ 2% cups oats", shown: "2% cups oats", reasons: [.misread, .fraction]), LineFlag(raw: "• 1 oup sugar", shown: "1 oup sugar", reasons: [.misread]), LineFlag(raw: "- 1 cupraisins", shown: "1 cupraisins", reasons: [.misread])], ["▢ 34 tsp salt"]),
+        Photo(["INGREDIENTS", "1 cup flour", "48 tsp = 1 cup", "METHOD", "Stir in 34 tsp salt.", "Step 3: 34 tsp salt"], nil, true, ["1 cup flour", "48 tsp = 1 cup"], ["Stir in 34 tsp salt.", "34 tsp salt"], [], []),
+        Photo(["INGREDIENTS", "34 tsp salt", "1 cup flour", "34 tsp salt", "METHOD", "34 tsp salt", "Mix."], nil, true, ["34 tsp salt", "1 cup flour", "34 tsp salt"], ["34 tsp salt", "Mix."], [LineFlag(raw: "34 tsp salt", shown: "34 tsp salt", reasons: [.large])], ["34 tsp salt"]),
+        Photo(["INGREDIENTS", "34 tsp salt, 11/2 tsp pepper", "12 tbsp vinegar", "METHOD", "Mix."], nil, true, ["34 tsp salt, 11/2 tsp pepper", "12 tbsp vinegar"], ["Mix."], [LineFlag(raw: "34 tsp salt, 11/2 tsp pepper", shown: "34 tsp salt, 11/2 tsp pepper", reasons: [.misread, .large]), LineFlag(raw: "12 tbsp vinegar", shown: "12 tbsp vinegar", reasons: [.large])], ["12 tbsp vinegar"]),
     ]
 
-    private struct Sus {
-        let line: String; let words: LanguageWords; let suspect: Bool
-        init(_ line: String, lang: String = "en", _ suspect: Bool) {
-            self.line = line; self.words = LanguageWords.forTag(lang)!; self.suspect = suspect
+    private struct Check {
+        let line: String; let words: LanguageWords; let reasons: Set<CheckReason>
+        init(_ line: String, lang: String = "en", _ reasons: Set<CheckReason>) {
+            self.line = line; self.words = LanguageWords.forTag(lang)!; self.reasons = reasons
         }
     }
 
-    // Suspect rows (#198, #208): see the header. Write only the line (and its language).
-    private static let suspects: [Sus] = [
-        Sus("1 cupraisins", true),
-        Sus("2 tbspsugar", true),
-        Sus("2 cupcakes", false),
-        Sus("2 green onions", false),
-        Sus("2 cups flour", false),
-        Sus("11/2 cups flour", true),
-        Sus("2 ELZucker", lang: "de", true),
-        Sus("1 TLSalz", lang: "de", true),
-        Sus("2 Esslöffelzucker", lang: "de", true),
-        Sus("2 EL Zucker", lang: "de", false),
-        Sus("2 Eier", lang: "de", false),
-        Sus("2 Elche", lang: "de", false),
-        Sus("1 cupraisins", lang: "de", false),
-        Sus("1 tazaharina", lang: "es", true),
-        Sus("2 cucharadasazúcar", lang: "es", true),
-        Sus("1 taza de harina", lang: "es", false),
-        Sus("2 cucharaditas de sal", lang: "es", false),
-        Sus("1 c. à soupesucre", lang: "fr", true),
-        Sus("2 cuillères à soupesucre", lang: "fr", true),
-        Sus("2 cuillères de sucre", lang: "fr", false),
-        Sus("2 cassonade", lang: "fr", false),
-        Sus("2 cucchiaizucchero", lang: "it", true),
-        Sus("1 cucchiaino di sale", lang: "it", false),
-        Sus("1 litro di latte", lang: "it", false),
-        Sus("1 xícaraleite", lang: "pt", true),
-        Sus("2 colheresaçúcar", lang: "pt", true),
-        Sus("2 colheres de sopa de açúcar", lang: "pt", false),
-        Sus("砂糖 大さじ2", lang: "ja", false),
-        Sus("11/2 カップ", lang: "ja", true),
-        Sus("2% cups oats", true),
-        Sus("2 % cups oats", true),
-        Sus("1 % cups flour", true),
-        Sus("& tsp nutmeg", true),
-        Sus("/4 tsp salt", true),
-        Sus("1 Y4 cups flour", true),
-        Sus("Ys cup mik", true),
-        Sus("is tsp nutmeg", true),
-        Sus("1 a cups flour", true),
-        Sus("3¾4 tsp salt", true),
-        Sus("½⅓ cup milk", true),
-        Sus("2% milk", false),
-        Sus("1 cup 2% milk", false),
-        Sus("70% chocolate", false),
-        Sus("2 oz 70% chocolate", false),
-        Sus("a cup of milk", false),
-        Sus("1/2 cup sugar", false),
-        Sus("2 % Milch", lang: "de", false),
-        Sus("200 g de chocolat noir 70 %", lang: "fr", false),
-        Sus("1 % taza de harina", lang: "es", true),
-        Sus("½ oup sugar", true),
-        Sus("1 c up milk", true),
-        Sus("2 tbps butter", true),
-        Sus("1 tsb. salt", true),
-        Sus("1 oz butter", false),
-        Sus("2 g salt", false),
-        Sus("100 ml milk", false),
-        Sus("1 c milk", false),
-        Sus("2 T sugar", false),
-        Sus("1 cupcake", false),
-        Sus("4 tsp salt", false),
-        Sus("½ cup mik", false),
-        Sus("½⅓ cup milk", true),
-        Sus("2 e l Zucker", lang: "de", true),
-        Sus("1 oucharada de azúcar", lang: "es", true),
-        Sus("2 ouillères de sucre", lang: "fr", true),
-        Sus("1 oucchiaino di sale", lang: "it", true),
-        Sus("2 oolheres de açúcar", lang: "pt", true),
-        Sus("34 tsp salt", true),
-        Sus("23 cups oats", true),
-        Sus("18 tsp nutmeg", true),
-        Sus("2 23 cups oats", true),
-        Sus("10–14 tsp salt", true),
-        Sus("12 tsp baking powder", true),
-        Sus("12 cups chicken stock", true),
-        Sus("16 tablespoons (227g) unsalted butter", false),
-        Sus("2–3 tbsp olive oil", false),
-        Sus("2 14 oz cans tomatoes", false),
-        Sus("180 C water", false),
-        Sus("48 wonton wrappers", false),
-        Sus("34 EL Zucker", lang: "de", true),
-        Sus("1.500 g Mehl", lang: "de", false),
-        Sus("6000 g Mehl", lang: "de", true),
-        Sus("18 cucharaditas de sal", lang: "es", true),
-        Sus("12 tbsp vinegar", true),
-        Sus("14 cups milk", true),
-        Sus("12 cup sugar", true),
-        Sus("1 12 cups flour", true),
-        Sus("12 lb ground beef", true),
-        Sus("12 oz spaghetti", false),
-        Sus("12 fl oz beer", false),
-        Sus("1–2 34 tsp salt", false),
-        Sus("2 180 C water", false),
-        Sus("180 14 c milk", true),
+    // Check rows (#198, #208, #283): see the header. Write only the line (and its language).
+    private static let checks: [Check] = [
+        Check("1 cupraisins", [.misread]),
+        Check("2 tbspsugar", [.misread]),
+        Check("2 cupcakes", []),
+        Check("2 green onions", []),
+        Check("2 cups flour", []),
+        Check("11/2 cups flour", [.misread]),
+        Check("2 ELZucker", lang: "de", [.misread]),
+        Check("1 TLSalz", lang: "de", [.misread]),
+        Check("2 Esslöffelzucker", lang: "de", [.misread]),
+        Check("2 EL Zucker", lang: "de", []),
+        Check("2 Eier", lang: "de", []),
+        Check("2 Elche", lang: "de", []),
+        Check("1 cupraisins", lang: "de", []),
+        Check("1 tazaharina", lang: "es", [.misread]),
+        Check("2 cucharadasazúcar", lang: "es", [.misread]),
+        Check("1 taza de harina", lang: "es", []),
+        Check("2 cucharaditas de sal", lang: "es", []),
+        Check("1 c. à soupesucre", lang: "fr", [.misread]),
+        Check("2 cuillères à soupesucre", lang: "fr", [.misread]),
+        Check("2 cuillères de sucre", lang: "fr", []),
+        Check("2 cassonade", lang: "fr", []),
+        Check("2 cucchiaizucchero", lang: "it", [.misread]),
+        Check("1 cucchiaino di sale", lang: "it", []),
+        Check("1 litro di latte", lang: "it", []),
+        Check("1 xícaraleite", lang: "pt", [.misread]),
+        Check("2 colheresaçúcar", lang: "pt", [.misread]),
+        Check("2 colheres de sopa de açúcar", lang: "pt", []),
+        Check("砂糖 大さじ2", lang: "ja", []),
+        Check("11/2 カップ", lang: "ja", [.misread]),
+        Check("2% cups oats", [.misread, .fraction]),
+        Check("2 % cups oats", [.misread, .fraction]),
+        Check("1 % cups flour", [.misread, .fraction]),
+        Check("& tsp nutmeg", [.misread, .fraction]),
+        Check("/4 tsp salt", [.misread, .fraction]),
+        Check("1 Y4 cups flour", [.misread, .fraction]),
+        Check("Ys cup mik", [.misread, .fraction]),
+        Check("is tsp nutmeg", [.misread, .fraction]),
+        Check("1 a cups flour", [.misread, .fraction]),
+        Check("3¾4 tsp salt", [.misread, .fraction]),
+        Check("½⅓ cup milk", [.misread, .fraction]),
+        Check("2% milk", []),
+        Check("1 cup 2% milk", []),
+        Check("70% chocolate", []),
+        Check("2 oz 70% chocolate", []),
+        Check("a cup of milk", []),
+        Check("1/2 cup sugar", []),
+        Check("2 % Milch", lang: "de", []),
+        Check("200 g de chocolat noir 70 %", lang: "fr", []),
+        Check("1 % taza de harina", lang: "es", [.misread, .fraction]),
+        Check("½ oup sugar", [.misread]),
+        Check("1 c up milk", [.misread]),
+        Check("2 tbps butter", [.misread]),
+        Check("1 tsb. salt", [.misread]),
+        Check("1 oz butter", []),
+        Check("2 g salt", []),
+        Check("100 ml milk", []),
+        Check("1 c milk", []),
+        Check("2 T sugar", []),
+        Check("1 cupcake", []),
+        Check("4 tsp salt", []),
+        Check("½ cup mik", []),
+        Check("½⅓ cup milk", [.misread, .fraction]),
+        Check("2 e l Zucker", lang: "de", [.misread]),
+        Check("1 oucharada de azúcar", lang: "es", [.misread]),
+        Check("2 ouillères de sucre", lang: "fr", [.misread]),
+        Check("1 oucchiaino di sale", lang: "it", [.misread]),
+        Check("2 oolheres de açúcar", lang: "pt", [.misread]),
+        Check("34 tsp salt", [.large]),
+        Check("23 cups oats", [.large]),
+        Check("18 tsp nutmeg", [.large]),
+        Check("2 23 cups oats", [.large]),
+        Check("10–14 tsp salt", [.large]),
+        Check("12 tsp baking powder", [.large]),
+        Check("12 cups chicken stock", [.large]),
+        Check("16 tablespoons (227g) unsalted butter", []),
+        Check("2–3 tbsp olive oil", []),
+        Check("2 14 oz cans tomatoes", []),
+        Check("180 C water", []),
+        Check("48 wonton wrappers", []),
+        Check("34 EL Zucker", lang: "de", [.large]),
+        Check("1.500 g Mehl", lang: "de", []),
+        Check("6000 g Mehl", lang: "de", [.large]),
+        Check("18 cucharaditas de sal", lang: "es", [.large]),
+        Check("12 tbsp vinegar", [.large]),
+        Check("14 cups milk", [.large]),
+        Check("12 cup sugar", [.large]),
+        Check("1 12 cups flour", [.large]),
+        Check("12 lb ground beef", [.large]),
+        Check("12 oz spaghetti", []),
+        Check("12 fl oz beer", []),
+        Check("1–2 34 tsp salt", []),
+        Check("2 180 C water", []),
+        Check("180 14 c milk", [.large]),
+        Check("1 58 C sugar", [.large]),
+        Check("2 78 c. flour", [.large]),
+        Check("2 78 c flour", [.large]),
+        Check("58 C sugar", [.large]),
+        Check("3 180 c water", []),
+        Check("12–14 lb turkey", []),
+        Check("16–18 lb turkey", []),
+        Check("30–40 lb potatoes", [.large]),
+        Check("10–12 cups water", []),
+        Check("48 tsp = 1 cup", []),
+        Check("Stir in 34 tsp salt.", []),
+        Check("34 tsp salt, 11/2 tsp pepper", [.misread, .large]),
     ]
 
     private struct Frac {
@@ -2198,10 +2220,11 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(reading.sorted, row.sorted, label)
             XCTAssertEqual(reading.ingredients, row.ingredients, label)
             XCTAssertEqual(reading.instructions, row.instructions, label)
-            XCTAssertEqual(reading.uncertain, row.uncertain, label)
+            XCTAssertEqual(reading.flags, row.flags, label)
+            XCTAssertEqual(reading.large, row.large, label)
         }
-        for row in Self.suspects {
-            XCTAssertEqual(PhotoTextSorter.suspect(row.line, words: row.words), row.suspect, row.line)
+        for row in Self.checks {
+            XCTAssertEqual(PhotoTextSorter.check(row.line, words: row.words), row.reasons, row.line)
         }
         for row in Self.fractions {
             XCTAssertEqual(PhotoTextSorter.replaceFraction(row.line, "½", words: row.words), row.fixed, row.line)

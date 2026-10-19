@@ -198,11 +198,11 @@ object RecipeTextSplitter {
     }
 
     /** Whether [rest], a line after its amount, starts with one of [words]' units run into the next
-     *  word ("cupraisins"), for [PhotoTextSorter.suspect]. */
+     *  word ("cupraisins"), for [PhotoTextSorter.check]. */
     internal fun gluedUnit(rest: String, words: LanguageWords): Boolean = words(words).glued.containsMatchIn(rest)
 
     /** Whether [rest], a line after its amount, starts with a near-miss of one of [words]' units
-     *  ("oup sugar", "tbps butter"), for [PhotoTextSorter.suspect] (#276). */
+     *  ("oup sugar", "tbps butter"), for [PhotoTextSorter.check] (#276). */
     internal fun unitLookAlike(rest: String, words: LanguageWords): Boolean = words(words).unitLookAlike.containsMatchIn(rest)
 
     /** "(serves 4)", "<for 3~4 people>", "[metric]", "（2人分）" at the end of a header. */
@@ -379,17 +379,44 @@ object RecipeTextSplitter {
     }
 
     /** [text] split with [words]' language only (English by default); see [detectAndSplit]. */
-    fun split(text: String, words: LanguageWords = LanguageWords.ENGLISH): SplitRecipe? {
+    fun split(text: String, words: LanguageWords = LanguageWords.ENGLISH): SplitRecipe? =
+        splitLines(lines(text, words), words)?.recipe
+
+    /**
+     * One ingredient or step [splitLines] keeps: its [text] as the recipe holds it, and [source],
+     * the index of the line it came from (a group name's is its header's, "Dry ingredients:").
+     */
+    class Kept(val text: String, val source: Int)
+
+    /** What [splitLines] found: [split]'s answer, each ingredient and step with its line. */
+    class SplitLines(
+        val ingredients: List<Kept>,
+        val instructions: List<Kept>,
+        val yield: String?,
+        val prepTime: String?,
+        val cookTime: String?,
+        val totalTime: String?
+    ) {
+        val recipe: SplitRecipe
+            get() = SplitRecipe(ingredients.map { it.text }, instructions.map { it.text }, yield, prepTime, cookTime, totalTime)
+    }
+
+    /**
+     * [split] over [lines] already cleaned ([line]), telling which line each ingredient and step
+     * came from: the photo sorter (#198) cleans each line once, and keys a line's confidence and
+     * "Step 3" label to the line itself.
+     */
+    fun splitLines(lines: List<Line>, words: LanguageWords = LanguageWords.ENGLISH): SplitLines? {
         val w = words(words)
-        val ingredients = mutableListOf<String>()
-        val instructions = mutableListOf<String>()
+        val ingredients = mutableListOf<Kept>()
+        val instructions = mutableListOf<Kept>()
         var yield: String? = null
         var prep: String? = null
         var cook: String? = null
         var total: String? = null
         var state: Section? = null
         // The lines before any section, for an ingredients block with no header.
-        val before = mutableListOf<Line>()
+        val before = mutableListOf<IndexedValue<Line>>()
 
         /** A labelled yield or time, taken; false for any other line. */
         fun labelled(line: String): Boolean {
@@ -418,15 +445,15 @@ object RecipeTextSplitter {
         /** The ingredients with no header: the lines just above the steps, read upwards until
          *  one doesn't read like an ingredient. */
         fun ingredientsAbove(): Boolean {
-            val block = before.asReversed().takeWhile { readsLikeIngredient(it, words) }.asReversed()
-                .dropWhile { !isAmount(it.text, words) && !it.listed }
-            if (block.count { isAmount(it.text, words) } < MIN_AMOUNTS) return false
-            block.mapTo(ingredients) { written(it, words) }
+            val block = before.asReversed().takeWhile { readsLikeIngredient(it.value, words) }.asReversed()
+                .dropWhile { !isAmount(it.value.text, words) && !it.value.listed }
+            if (block.count { isAmount(it.value.text, words) } < MIN_AMOUNTS) return false
+            block.mapTo(ingredients) { Kept(written(it.value, words), it.index) }
             before.clear()
             return true
         }
 
-        for (line in lines(text, words)) {
+        for ((i, line) in lines.withIndex()) {
             if (line.text.isEmpty() && !line.step) continue
             val header = header(line, words)
             if (header != null) {
@@ -434,15 +461,15 @@ object RecipeTextSplitter {
                 state = header.section
                 before.clear()
                 when (header.section) {
-                    Section.INGREDIENTS -> header.label?.let(ingredients::add)
-                    Section.INSTRUCTIONS -> header.label?.let(instructions::add)
+                    Section.INGREDIENTS -> header.label?.let { ingredients.add(Kept(it, i)) }
+                    Section.INSTRUCTIONS -> header.label?.let { instructions.add(Kept(it, i)) }
                     Section.END -> Unit
                 }
                 continue
             }
             // A numbered list starting at 1 (or "Step 1") with no header over it is the steps.
             if (line.number == 1 && !isAmount(line.text, words)) {
-                if (state == Section.INGREDIENTS && ingredients.any { !it.endsWith(":") } ||
+                if (state == Section.INGREDIENTS && ingredients.any { !it.text.endsWith(":") } ||
                     state == null && ingredientsAbove()
                 ) {
                     state = Section.INSTRUCTIONS
@@ -450,13 +477,13 @@ object RecipeTextSplitter {
             }
             if (line.text.isEmpty() || isPointer(line.text)) continue // a bare "Step 2", or a link
             when (state) {
-                Section.INGREDIENTS -> if (!labelled(line.text)) ingredients.add(written(line, words))
-                Section.INSTRUCTIONS -> instructions.add(written(line, words))
+                Section.INGREDIENTS -> if (!labelled(line.text)) ingredients.add(Kept(written(line, words), i))
+                Section.INSTRUCTIONS -> instructions.add(Kept(written(line, words), i))
                 Section.END -> Unit
-                null -> if (!labelled(line.text)) before.add(line)
+                null -> if (!labelled(line.text)) before.add(IndexedValue(i, line))
             }
         }
-        if (ingredients.none { !it.endsWith(":") } || instructions.none { !it.endsWith(":") }) return null
-        return SplitRecipe(ingredients, instructions, yield, prep, cook, total)
+        if (ingredients.none { !it.text.endsWith(":") } || instructions.none { !it.text.endsWith(":") }) return null
+        return SplitLines(ingredients, instructions, yield, prep, cook, total)
     }
 }

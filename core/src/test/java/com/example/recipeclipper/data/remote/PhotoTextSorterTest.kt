@@ -31,6 +31,10 @@ class PhotoTextSorterTest {
     private fun lines(texts: List<String>, unsure: Set<String> = emptySet()) =
         texts.map { PhotoLine(it, if (it in unsure) 0.3f else 1f) }
 
+    /** Whether [PhotoTextSorter.check] lists [line] as an ingredient line, however sure the recogniser was. */
+    private fun flagged(line: String, words: LanguageWords = LanguageWords.ENGLISH) =
+        PhotoTextSorter.check(line, words).isNotEmpty()
+
     @Test fun `a card's lines sort into ingredients and steps like a typed post`() {
         val reading = PhotoTextSorter.sort(lines(card))
 
@@ -83,24 +87,24 @@ class PhotoTextSorterTest {
         )
     }
 
-    @Test fun `amounts shaped like a misreading are suspect`() {
+    @Test fun `amounts shaped like a misreading are flagged`() {
         listOf(
             "11/2 cups flour", "13/4 cups sugar", "21/2 tsp baking soda", "31/3 cups milk",
             "Bake for 11/2 hours.", "3/2 cup water",
             "l/2 cup sugar", "I/4 tsp salt", "O.5 kg potatoes", "1/Z cup milk", "1/S tsp salt",
             "1O eggs", "Bake at 35o°F.", "l2 eggs", "|/2 cup oil",
             "1 cupraisitos", "1 cupraisins", "2 tbspsugar", "1 teaspoonvanilla"
-        ).forEach { assertTrue(it, PhotoTextSorter.suspect(it)) }
+        ).forEach { assertTrue(it, flagged(it)) }
     }
 
-    @Test fun `ordinary amounts are not suspect`() {
+    @Test fun `ordinary amounts are not flagged`() {
         listOf(
             "1 1/2 cups flour", "1/2 cup sugar", "3/4 tsp salt", "2/2 cups", "1-1/2 cups oats",
             "1/2-3/4 cup milk", "11/16 inch", "1 cup raisins", "1cup flour", "2 green onions",
             "3 carrots", "12 cupcake liners", "1oz chocolate", "1l milk", "10 oz spinach",
             "2 lb chicken", "350°F", "Bake at 350°F for 12 minutes.", "Cool for 10 min.Serve.",
             "Aunt June's Oatmeal Cookies", "Stir in 2 eggs", "0.5 kg potatoes", "1,5 kg flour"
-        ).forEach { assertFalse(it, PhotoTextSorter.suspect(it)) }
+        ).forEach { assertFalse(it, flagged(it)) }
     }
 
     @Test fun `no confidence is not low confidence`() {
@@ -150,7 +154,7 @@ class PhotoTextSorterTest {
             "2% cups oats", "2 % cups oats", "1 % cups flour", "% cup sugar", "& tsp nutmeg",
             "/2 cup sugar", "/4 tsp salt", "1 Y4 cups flour", "Ys cup mik", "Vs tsp nutmeg",
             "is tsp nutmeg", "1 a cups flour", "%"
-        ).forEach { assertTrue(it, PhotoTextSorter.suspect(it)) }
+        ).forEach { assertTrue(it, flagged(it)) }
     }
 
     @Test fun `a real percentage, or a look-alike out of an amount's place, is not flagged`() {
@@ -158,12 +162,12 @@ class PhotoTextSorterTest {
             "2% milk", "1 cup 2% milk", "70% chocolate", "2 oz 70% chocolate", "200 g 70 % chocolate",
             "a cup of milk", "1 apple", "salt & pepper", "Reduce to 50% power.", "2 % Milch",
             "1 isn't", "½ cup sugar", "1¼ cups flour", "2 ⅔ cups oats"
-        ).forEach { assertFalse(it, PhotoTextSorter.suspect(it)) }
+        ).forEach { assertFalse(it, flagged(it)) }
     }
 
     @Test fun `a fraction glyph run into a digit or another glyph is flagged`() {
-        assertTrue(PhotoTextSorter.suspect("3¾4 tsp salt"))
-        assertTrue(PhotoTextSorter.suspect("½⅓ cup milk"))
+        assertTrue(flagged("3¾4 tsp salt"))
+        assertTrue(flagged("½⅓ cup milk"))
     }
 
     @Test fun `a chip replaces a glued glyph run whole, keeping the whole number`() {
@@ -195,12 +199,12 @@ class PhotoTextSorterTest {
         listOf(
             "½ oup sugar", "1 oups flour", "2 cuo milk", "1 c up milk", "1 C UPS milk", "2 tsb salt",
             "1 tps vanilla", "2 tbps butter", "1 tbsb oil", "1 isp salt", "1 ½ oup sugar", "2 tbps. butter"
-        ).forEach { assertTrue(it, PhotoTextSorter.suspect(it)) }
-        assertTrue(PhotoTextSorter.suspect("2 e l Zucker", LanguageWords.forTag("de")!!))
-        assertTrue(PhotoTextSorter.suspect("1 oucharada de azúcar", LanguageWords.forTag("es")!!))
-        assertTrue(PhotoTextSorter.suspect("2 ouillères de sucre", LanguageWords.forTag("fr")!!))
-        assertTrue(PhotoTextSorter.suspect("1 oucchiaino di sale", LanguageWords.forTag("it")!!))
-        assertTrue(PhotoTextSorter.suspect("2 oolheres de açúcar", LanguageWords.forTag("pt")!!))
+        ).forEach { assertTrue(it, flagged(it)) }
+        assertTrue(flagged("2 e l Zucker", LanguageWords.forTag("de")!!))
+        assertTrue(flagged("1 oucharada de azúcar", LanguageWords.forTag("es")!!))
+        assertTrue(flagged("2 ouillères de sucre", LanguageWords.forTag("fr")!!))
+        assertTrue(flagged("1 oucchiaino di sale", LanguageWords.forTag("it")!!))
+        assertTrue(flagged("2 oolheres de açúcar", LanguageWords.forTag("pt")!!))
     }
 
     @Test fun `real units, words and ingredient names are not flagged as misspelt units`() {
@@ -210,12 +214,12 @@ class PhotoTextSorterTest {
             "2 lbs beef", "1 kg flour", "3 teaspoons sugar", "2 tablespoons oil", "1 stick butter",
             "1 cupcake", "2 c upside-down cakes", "Bake for 1 hour.",
             "4 tsp salt", "½ cup mik", "2 tsps sugar", "1 oupa", "Add 1 oup sugar" // not after a leading amount
-        ).forEach { assertFalse(it, PhotoTextSorter.suspect(it)) }
+        ).forEach { assertFalse(it, flagged(it)) }
         listOf(
             "de" to "2 EL Zucker", "de" to "1 TL Salz", "de" to "1 Ei", "es" to "1 cucharada de azúcar",
             "fr" to "2 cuillères à soupe de sucre", "it" to "1 cucchiaino di sale", "pt" to "2 colheres de açúcar",
             "es" to "1 taza de harina", "ja" to "大さじ1 砂糖"
-        ).forEach { (lang, line) -> assertFalse(line, PhotoTextSorter.suspect(line, LanguageWords.forTag(lang)!!)) }
+        ).forEach { (lang, line) -> assertFalse(line, flagged(line, LanguageWords.forTag(lang)!!)) }
     }
 
     @Test fun `a chip replaces the look-alike in place and nothing else`() {
@@ -261,7 +265,7 @@ class PhotoTextSorterTest {
             "6000 g Mehl", "13 sticks butter", "14 cups milk"
         ).forEach {
             assertTrue(it, PhotoTextSorter.implausible(it))
-            assertTrue(it, PhotoTextSorter.suspect(it))
+            assertTrue(it, flagged(it))
         }
         assertTrue(PhotoTextSorter.implausible("34 EL Zucker", LanguageWords.forTag("de")!!))
         assertTrue(PhotoTextSorter.implausible("18 cucharaditas de sal", LanguageWords.forTag("es")!!))
@@ -293,7 +297,7 @@ class PhotoTextSorterTest {
         // ½, ¼ and ⅓ read as digits (#281): under the unit's maximum, over its fraction-shaped bar.
         listOf(
             "12 tbsp vinegar", "13 tbsp. honey", "12 cup sugar", "12 cups chicken stock", "12 lb ground beef",
-            "1 12 cups flour", "2 14 tbsp butter", "10–12 cups water"
+            "1 12 cups flour", "2 14 tbsp butter"
         ).forEach {
             assertTrue(it, PhotoTextSorter.implausible(it))
         }
@@ -302,6 +306,26 @@ class PhotoTextSorterTest {
             "16 tablespoons (227g) unsalted butter", "10 tbsp butter", "11 cups water", "10 cups flour",
             "12 oz spaghetti", "14 oz can coconut milk", "12 fl oz beer", "15 g yeast", "2 14 oz cans tomatoes"
         ).forEach {
+            assertFalse(it, PhotoTextSorter.implausible(it))
+        }
+    }
+
+    @Test fun `either end of a range is held to its unit's own maximum, never the fraction-shaped bar`() {
+        // The owner's call (#283): "12–14 lb turkey" is a real range, not ½ and ¼ read as digits.
+        listOf("16–18 lb turkey", "12–14 lb turkey", "10–12 cups water", "12 to 14 tbsp butter", "2 to 3 tbsp olive oil").forEach {
+            assertFalse(it, PhotoTextSorter.implausible(it))
+        }
+        listOf("30–40 lb potatoes", "10–14 tsp salt", "12–14 cups water").forEach {
+            assertTrue(it, PhotoTextSorter.implausible(it))
+        }
+    }
+
+    @Test fun `a fraction's digits are never a temperature`() {
+        // ⅝ and ⅞ read as digits fall in a plausible Celsius range (#283): "1 58 C sugar" is 1 ⅝ cups.
+        listOf("1 58 C sugar", "2 78 c. flour", "2 78 c flour", "58 C sugar", "78 c. milk").forEach {
+            assertTrue(it, PhotoTextSorter.implausible(it))
+        }
+        listOf("180 C water", "2 180 C water", "3 180 c water", "40 C water").forEach {
             assertFalse(it, PhotoTextSorter.implausible(it))
         }
     }
@@ -317,12 +341,35 @@ class PhotoTextSorterTest {
         assertTrue(PhotoTextSorter.implausible("180 14 c milk"))
     }
 
-    @Test fun `the size check runs on ingredient lines, never on steps`() {
-        // Sorted, a step's numbers are never judged: a conversion line isn't a misread (#281).
-        val sorted = PhotoTextSorter.sort(lines(listOf("INGREDIENTS", "1 cup flour", "METHOD", "Mix the flour.", "48 tsp = 1 cup")))
+    @Test fun `a step shaped like an ingredient line is size-checked, as a glaze after the method is`() {
+        // #283: the splitter files a section after the method under the steps.
+        val glaze = PhotoTextSorter.sort(lines(listOf(
+            "Lemon Loaf", "INGREDIENTS", "1 1/2 cups flour", "1 cup sugar", "DIRECTIONS", "1. Mix and bake 50 minutes.",
+            "GLAZE", "1 cup powdered sugar", "34 tsp vanilla"
+        )))
+        assertEquals(listOf("Mix and bake 50 minutes.", "GLAZE", "1 cup powdered sugar", "34 tsp vanilla"), glaze.instructions)
+        assertEquals(listOf("34 tsp vanilla"), glaze.uncertain)
+        assertEquals(listOf("34 tsp vanilla"), glaze.large)
+        listOf("Frosting:", "For the sauce:").forEach { heading ->
+            val reading = PhotoTextSorter.sort(lines(listOf(
+                "INGREDIENTS", "1 cup flour", "2 eggs", "METHOD", "1. Mix and bake.", heading, "34 tsp vanilla", "2 cups powdered sugar"
+            )))
+            assertEquals(heading, listOf("34 tsp vanilla"), reading.large)
+        }
+    }
+
+    @Test fun `a step's amount mid-sentence, a conversion and a Step N line are never size-checked`() {
+        val sorted = PhotoTextSorter.sort(lines(listOf(
+            "INGREDIENTS", "1 cup flour", "48 tsp = 1 cup", "METHOD", "Stir in 34 tsp salt.", "48 tsp = 1 cup",
+            "Step 3: 34 tsp salt"
+        )))
         assertTrue(sorted.sorted)
-        assertEquals(listOf("Mix the flour.", "48 tsp = 1 cup"), sorted.instructions)
+        assertEquals(listOf("1 cup flour", "48 tsp = 1 cup"), sorted.ingredients)
+        assertEquals(listOf("Stir in 34 tsp salt.", "48 tsp = 1 cup", "34 tsp salt"), sorted.instructions)
         assertEquals(emptyList<String>(), sorted.uncertain)
+        assertEquals(emptySet<CheckReason>(), PhotoTextSorter.check("34 tsp salt", labelled = true))
+        assertEquals(setOf(CheckReason.LARGE), PhotoTextSorter.check("34 tsp salt"))
+        assertEquals(emptySet<CheckReason>(), PhotoTextSorter.check("Stir in 34 tsp salt."))
     }
 
     @Test fun `unsorted, list markup goes before the size check, and steps and conversions are skipped`() {
@@ -334,15 +381,61 @@ class PhotoTextSorterTest {
         val flagged = listOf("▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg")
         assertEquals(flagged, reading.uncertain)
         assertEquals(flagged, reading.large)
+        // Listed without their markup, so the list doesn't show "• ▢ 34 tsp salt" (#283).
+        assertEquals(listOf("34 tsp salt", "12 tbsp vinegar", "23 cups oats", "18 tsp nutmeg"), reading.flags.map { it.shown })
+    }
+
+    @Test fun `unsorted, every check runs on the line as cleaned, and a chip keeps the line's markup`() {
+        // #283: the look-alike, glued and misspelt-unit checks start where the amount does.
+        val reading = PhotoTextSorter.sort(lines(listOf(
+            "Grandma's card", "▢ 34 tsp salt", "▢ 2% cups oats", "• 1 oup sugar", "- 1 cupraisins"
+        )))
+        assertFalse(reading.sorted)
+        assertEquals(
+            listOf(
+                LineFlag("▢ 34 tsp salt", "34 tsp salt", setOf(CheckReason.LARGE)),
+                LineFlag("▢ 2% cups oats", "2% cups oats", setOf(CheckReason.MISREAD, CheckReason.FRACTION)),
+                LineFlag("• 1 oup sugar", "1 oup sugar", setOf(CheckReason.MISREAD)),
+                LineFlag("- 1 cupraisins", "1 cupraisins", setOf(CheckReason.MISREAD))
+            ),
+            reading.flags
+        )
+        val oats = reading.flags[1]
+        assertEquals(
+            LineFlag("▢ 2⅔ cups oats", "2⅔ cups oats", setOf(CheckReason.MISREAD)),
+            PhotoTextSorter.replaceFraction(oats, "⅔")
+        )
+        assertNull(PhotoTextSorter.replaceFraction(reading.flags[0], "½"))
+    }
+
+    @Test fun `a line's confidence is its own, never that of a line quoting it`() {
+        // #283: the unsure step quotes the ingredient line, which was read clearly and is only too large.
+        val reading = PhotoTextSorter.sort(lines(
+            listOf("INGREDIENTS", "34 tsp salt", "1 cup flour", "DIRECTIONS", "Stir in 34 tsp salt."),
+            unsure = setOf("Stir in 34 tsp salt.")
+        ))
+        assertEquals(listOf("34 tsp salt", "Stir in 34 tsp salt."), reading.uncertain)
+        assertEquals(listOf("34 tsp salt"), reading.large)
+        assertEquals(setOf(CheckReason.UNSURE), reading.flags[1].reasons)
     }
 
     @Test fun `a line with another reason to check it isn't listed as only large`() {
+        // Both misread ("11/2") and too large ("34 tsp"): listed, but not as only large (#283).
+        assertEquals(setOf(CheckReason.MISREAD, CheckReason.LARGE), PhotoTextSorter.check("34 tsp salt, 11/2 tsp pepper"))
         val reading = PhotoTextSorter.sort(lines(
-            listOf("INGREDIENTS", "34 tsp salt", "34 tbps sugar", "12 tbsp vinegar", "METHOD", "Mix."),
+            listOf("INGREDIENTS", "34 tsp salt", "34 tsp salt, 11/2 tsp pepper", "12 tbsp vinegar", "METHOD", "Mix."),
             unsure = setOf("34 tsp salt")
         ))
-        assertEquals(listOf("34 tsp salt", "34 tbps sugar", "12 tbsp vinegar"), reading.uncertain)
+        assertEquals(listOf("34 tsp salt", "34 tsp salt, 11/2 tsp pepper", "12 tbsp vinegar"), reading.uncertain)
         assertEquals(listOf("12 tbsp vinegar"), reading.large)
+        assertEquals(setOf(CheckReason.UNSURE, CheckReason.LARGE), reading.flags[0].reasons)
+    }
+
+    @Test fun `a line read twice is listed once`() {
+        val reading = PhotoTextSorter.sort(lines(listOf(
+            "INGREDIENTS", "34 tsp salt", "1 cup flour", "34 tsp salt", "METHOD", "34 tsp salt", "Mix."
+        )))
+        assertEquals(listOf("34 tsp salt"), reading.uncertain)
     }
 
     @Test fun `a malformed plausible-amounts table throws, as SharedTables does`() {
@@ -354,7 +447,16 @@ class PhotoTextSorterTest {
             """{"fractionShapedMaximums": {}, "fractionShapes": []}""",
             """{"maximums": {"TSP": 10}, "fractionShapes": []}""",
             """{"maximums": {"TSP": 10}, "fractionShapedMaximums": {"TSP": 12}, "fractionShapes": []}""",
-            """{"maximums": {"TSP": 10}, "fractionShapedMaximums": {}, "fractionShapes": ["½"]}"""
+            """{"maximums": {"TSP": 10}, "fractionShapedMaximums": {}, "fractionShapes": ["½"]}""",
+            // Strict, as iOS reads it (#283): a number written as a string, NaN, a boolean, nothing
+            // above zero, and a fraction shape written as a number are all refused.
+            """{"maximums": {"TSP": "10"}, "fractionShapedMaximums": {}, "fractionShapes": ["12"]}""",
+            """{"maximums": {"TSP": "NaN"}, "fractionShapedMaximums": {}, "fractionShapes": ["12"]}""",
+            """{"maximums": {"TSP": true}, "fractionShapedMaximums": {}, "fractionShapes": ["12"]}""",
+            """{"maximums": {"TSP": 0}, "fractionShapedMaximums": {}, "fractionShapes": ["12"]}""",
+            """{"maximums": {"TSP": -1}, "fractionShapedMaximums": {}, "fractionShapes": ["12"]}""",
+            """{"maximums": {"TBSP": 16}, "fractionShapedMaximums": {"TBSP": "10"}, "fractionShapes": ["12"]}""",
+            """{"maximums": {"TSP": 10}, "fractionShapedMaximums": {}, "fractionShapes": [12]}"""
         ).forEach { json ->
             assertThrows(json, Exception::class.java) { PlausibleAmounts.from(JSONObject(json)) }
         }
