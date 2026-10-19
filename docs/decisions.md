@@ -4459,6 +4459,14 @@ potatoes" still is (lb 25), as are "10–14 tsp" (tsp 10) and "12–14 cups" (cu
   `EditRecipePhotoTests` (the heading, alone, mixed and misread-and-large; a chip on one entry,
   keeping its markup), `EditRecipePhotoScreenTest` (no double bullets); `Photo` rows for each
   case and `Check` rows in the corpus.
+- **Clip 34**, re-recorded on 2026-10-18 with real OCR on both platforms. iOS (Vision read "34
+  tsp salt", "½⅓ cup milk", "23 cups oats" and "18 tsp nutmeg"): the heading over the four lines,
+  "This amount looks large: check it" under the three amounts read as digits, and the chips under
+  "½⅓ cup milk", whose ⅓ makes it "⅓ cup milk"; the walkthrough types the three amounts right.
+  Android (ML Kit read the card as on 2026-10-16): the heading, "½ oup sugar" with no chips, and
+  chips under "1 a cups flour", "Ys cup mik", "2 % cups oats" and "& tsp nutmeg"; no line is
+  listed only for its size ("4 tsp salt" stays unflagged, a plausible amount). Clips: iOS 70 s,
+  Android 67 s.
 
 ## Undo snackbars close by themselves (2026-09-29)
 
