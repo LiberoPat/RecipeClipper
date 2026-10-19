@@ -444,7 +444,7 @@ extension WalkthroughUITests {
     /// gives its ⅓ as "½⅓" (glyphs run together) and may give others as look-alikes. "Check these
     /// lines" flags them with the fraction chips: each chip is found by its label and tapped, and
     /// tapped again if its line didn't change. Then the slips no chip fixes ("34 tsp salt", flagged
-    /// since #249) are typed right, as clip 28 does, so the saved recipe is the card's; Save. It fails, rather than simulating,
+    /// since #249, with "This amount looks large: check it" under it since #281) are typed right, as clip 28 does, so the saved recipe is the card's; Save. It fails, rather than simulating,
     /// if Vision's reading offers no chip at all.
     func test34_fractionChips() {
         let app = XCUIApplication()

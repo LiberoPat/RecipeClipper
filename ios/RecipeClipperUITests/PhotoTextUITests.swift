@@ -46,6 +46,17 @@ final class PhotoTextUITests: RecipeUITestCase {
         require(app.textFields["Recipe URL"], "Home, straight back")
     }
 
+    /// Vision's "34 tsp salt" for ¾ (#249): read plainly, just too much, so it has its own reason
+    /// and the photo's heading doesn't show (#281).
+    func testALineFlaggedOnlyForItsSizeSaysSo() throws {
+        try launch(lines: "Ingredients\n34 tsp salt\n1 cup flour\nDirections\n1. Mix.")
+
+        require(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
+        require(textContaining("34 tsp salt"), "the large line")
+        require(text("This amount looks large: check it"), "its reason")
+        XCTAssertFalse(textContaining("Check these lines").exists, "no photo heading for a size alone")
+    }
+
     /// A fraction glyph read as "%" (#245, ML Kit's reading of card-fractions-hand.jpg): the line
     /// is listed with the fractions to tap, and the one tapped replaces it in place.
     func testAFractionReadAsALookAlikeIsFixedWithOneTap() throws {
