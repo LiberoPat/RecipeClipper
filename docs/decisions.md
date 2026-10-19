@@ -4040,7 +4040,7 @@ never save what it reads without the cook checking it, and fall back to typing i
   0.3 when unsure) are listed under **"Check these lines"**; a piece under four characters
   marks only a line that is exactly it.
 - **An amount shaped like a misreading is listed too, however sure the recogniser was**
-  (`PhotoTextSorter.suspect`, the same rules on both platforms). Found on a real card: Vision
+  (`PhotoTextSorter.check`, the same rules on both platforms). Found on a real card: Vision
   read "1 1/2 cups flour" as "11/2 cups flour" at full confidence, which the scaler read as
   5½ cups. Listed, never corrected: an improper fraction over 2 to 8 ("11/2", "13/4",
   "31/3", "3/2"); a digit beside a look-alike letter at a slash or point ("l/2", "O.5", "1/Z",
@@ -4118,7 +4118,7 @@ to "finish it by hand", and "2 ELZucker" wasn't flagged.
   Its amounts come after the name, so `amountPatterns` says what one looks like. A script without
   case is never "in capitals" now (it had counted every kanji line as capitals; only
   headerLike read it, and Japanese has no keyword rules).
-- **Glued units** (`PhotoTextSorter.suspect`, #198) use the language's `gluedUnits`: unit words
+- **Glued units** (`PhotoTextSorter.check`, #198) use the language's `gluedUnits`: unit words
   the scaler reads, long or distinct enough to flag when run into the next word. Short ones that
   start ordinary words are left out, as English's "g" and "can" are: French "cas"/"càs"
   ("cassonade"); Italian "litri?" (the scaler doesn't read "litro", so "1 litro" would be
@@ -4129,7 +4129,7 @@ to "finish it by hand", and "2 ELZucker" wasn't flagged.
   requests and prose in each language's fixture split to nothing.
 - **Tests:** `shared/fixtures/languages/<language>.json` (a Reddit-style post, a photo's lines,
   negatives) read by `RecipeTextSplitterLanguagesTest(s)` on both platforms with the same
-  expectations, and `Split`, `Photo` and `Sus` rows in the differential corpus. The words are
+  expectations, and `Split`, `Photo` and `Check` (`Sus` until #283) rows in the differential corpus. The words are
   drafts: a native speaker should check each table's headers, verbs and step labels, and which
   unit words are safe to flag.
 
@@ -4218,7 +4218,7 @@ lines" before. macOS Vision differed again ("12 cup" for ½, "34 tsp" for ¾, "&
 
 - **Nothing is normalised.** No look-alike maps to one glyph: "%" was ⅔ here and is a real
   percentage elsewhere; "/4" may be ¼ or ¾. CLAUDE.md's rule: never a confident wrong number.
-- **Flagged** (`PhotoTextSorter.suspect`, both platforms): a measured look-alike
+- **Flagged** (`PhotoTextSorter.check`, both platforms): a measured look-alike
   (`shared/tables/photo-fractions.json`: `%`, `&`, `/2`, `/3`, `/4`, `/8`, `Y4`, `Ys`, `Vs`, `is`,
   and `a` only after a number) in an amount's place: at the line's start or after a whole number
   there, and then only before a unit, unless a symbol starts the line. So "2% milk",
@@ -4235,7 +4235,7 @@ lines" before. macOS Vision differed again ("12 cup" for ½, "34 tsp" for ¾, "&
   "8 tsp nutmeg", "2 23 cups oats") is a plausible amount, so it can't be flagged without
   guessing; the review's note to check every amount against the photo is the guard. Follow-up:
   #249.
-- **Tests:** `PhotoTextSorterTest(s)` and `IngredientScalerTest(s)` on both platforms; `Sus`,
+- **Tests:** `PhotoTextSorterTest(s)` and `IngredientScalerTest(s)` on both platforms; `Check` (`Sus` until #283),
   `Frac` and `Ing` rows in the differential corpus; `EditRecipePhotoScreenTest` and
   `PhotoTextUITests` tap a chip and save. The engines: `EditRecipeScanTests` runs real Vision over
   both cards (printing `FRACTION-OCR` lines), and the device-only `MlKitFractionGlyphsTest` runs
@@ -4255,7 +4255,7 @@ look-alike. And ML Kit's "½ oup sugar" was saved as read, unflagged.
   stroke). `PhotoTextSorter.fractionSlot` is the
   look-alike slot, else the run. Still never replaced by itself, and the scaler leaves a line with
   a run as written (it is `unreadable`), as it does a look-alike.
-- **A unit's near-miss is flagged** (`PhotoTextSorter.suspect`): a word straight after a line's
+- **A unit's near-miss is flagged** (`PhotoTextSorter.check`): a word straight after a line's
   leading amount that is in the language's `splitter.json` `unitLookAlikes`, a short curated list
   ("oup", "cuo", "c up", "tsb", "tps", "tbps", "tbsb", "isp"; "oucharada", "ouillère", "oucchiaino",
   "oolher", German "e l" and "t l"), never edit distance, so "oz", "g", "ml", "T" and "cupcake" never
@@ -4275,7 +4275,7 @@ for ⅛, ML Kit's "2 23 cups oats") is listed under "Check these lines" when the
 its unit than a recipe asks for. No chips, no suggestion, no fix, and the scaler is unaffected: the
 number is still read as written ("34 tsp salt" doubles to "68 tsp salt").
 
-- **`PhotoTextSorter.implausible`** (both platforms, part of `suspect`, so photo and scan reviews
+- **`PhotoTextSorter.implausible`** (both platforms, part of `check`, `suspect` until #283, so photo and scan reviews
   only, never a parsed web recipe): the line's leading amount and unit, read as `IngredientScaler`
   reads them (the unit word mapped by the language's `units.json`, so it works in every language
   with units), against `shared/tables/plausible-amounts.json`. Either end of a range counts
@@ -4299,7 +4299,7 @@ number is still read as written ("34 tsp salt" doubles to "68 tsp salt").
   vary too much to call one absurd, and pinch or clove, which the unit tables don't read, have
   no entry.
 - **Tests:** `PhotoTextSorterTest(s)` on both platforms (the misreads caught; a big batch, decimals,
-  ranges, counts and temperatures not), and `Sus` rows in the differential corpus.
+  ranges, counts and temperatures not), and `Check` rows (`Sus` until #283) in the differential corpus.
 
 **2026-10-18 (#281): review fixes, and two owner decisions.** A code review of #279 and #280:
 
@@ -4308,7 +4308,9 @@ number is still read as written ("34 tsp salt" doubles to "68 tsp salt").
   was flagged. Sorted, only the ingredient lines are size-checked; unsorted, each line is
   cleaned by the splitter's own line rule first (`RecipeTextSplitter.line`, so "▢", "•", "-",
   "3)" go and "▢ 34 tsp salt" is caught), and a "Step 4" line or one holding "=" is skipped.
-  The other shapes (`suspect`'s look-alikes, glued and misspelt units) still run on every line.
+  The other shapes (look-alikes, glued and misspelt units) still ran on every line as read;
+  since #283 every check runs on the cleaned line, and steps shaped like an ingredient line are
+  size-checked too (below).
 - **The second number** ("2 23 cups") is taken only after a plain whole number, never after a
   range, fraction or decimal ("1–2 34 tsp" keeps its "1–2" and isn't judged); and the
   temperature exemption tests the number judged, not the lead ("2 180 C water" is a
@@ -4322,14 +4324,16 @@ number is still read as written ("34 tsp salt" doubles to "68 tsp salt").
   the editor reads `PhotoTextSorter.FRACTIONS` on every open, typed-in recipes too.
 - **`CUP_200` and `RICE_CUP` are gone** from the table: only Japanese names them, and Japanese
   (amounts after the name) is never checked.
-- **`suspect` finds the leading amount once** per line and hands it to every shape.
+- **`suspect` (`check` since #283) finds the leading amount once** per line and hands it to every shape.
 
 **Owner's call (A): a reason of its own.** A line listed only because its amount looks too large
-(`PhotoReading.large`; the editor's `largeLines`) shows "This amount looks large: check it" under
-it, a muted note like the chips' prompt, in all six languages on both platforms. The heading
-"Check these lines: the photo was hard to read there" shows only when another line is listed,
-since the photo wasn't hard to read there. A line flagged for a size and another reason (unsure,
-a look-alike, a misspelt unit) keeps the heading and gets no note.
+(`PhotoReading.large`; since #283 a `LineFlag` whose only reason is `LARGE`) shows "This amount
+looks large: check it" under it, a muted note like the chips' prompt, in all six languages on
+both platforms. The heading "Check these lines: the photo was hard to read there" shows only
+when another line is listed, since the photo wasn't hard to read there. A line flagged for a size
+and another reason (unsure, or misread elsewhere on the line: "34 tsp salt, 11/2 tsp pepper")
+keeps the heading and gets no note. (Corrected by #283: this said "a misspelt unit", which can't
+be both, since a misspelt unit leaves the scaler no unit to judge the amount by.)
 
 **Owner's call (B): fraction-shaped amounts get a lower bar.** An amount written exactly as a
 fraction glyph's digits (`fractionShapes`: ½ 12, ⅓ 13, ¼ 14, ⅛ 18, ⅔ 23, ¾ 34, ⅜ 38, ⅝ 58,
@@ -4349,8 +4353,9 @@ bar ("12 oz spaghetti", "12 fl oz beer", "14 g", "15 ml" are real); tsp and stic
   are "12 oz" (5 lines) and "14 g" (6), on units with no lower bar; counting fifths and sixths
   would add "15", "16", "35", "45" g, "15", "45" ml, "25 cl", "16 oz" and "16 tablespoons (227g)
   butter", which is why they're out. The trade-off: a real "12 tablespoons
-  butter" (¾ cup), "12 cups popped popcorn" or "12–14 lb turkey" now gets a "check this"; none
-  is in the calibration lines, and a flag costs only a look at the photo.
+  butter" (¾ cup) or "12 cups popped popcorn" now gets a "check this" ("12–14 lb turkey" did
+  too, until the owner's range decision in #283); none is in the calibration lines, and a flag
+  costs only a look at the photo.
 - **Caught:** "34 tsp salt", "23 cups oats", "18 tsp nutmeg", "12 tsp sugar" (as before), and
   now "12 tbsp vinegar", "12 cup sugar", "1 12 cups flour" and "12 lb ground beef".
 - **Clip 34:** Android's (ML Kit) is unchanged: its reading has no line flagged only for size.
@@ -4359,7 +4364,101 @@ bar ("12 oz spaghetti", "12 fl oz beer", "14 g", "15 ml" are real); tsp and stic
 - **Tests:** `PhotoTextSorterTest(s)` (fraction-shaped bars, the second number, ingredient lines
   only, unsorted markup and skips, `large`, a malformed table), `EditRecipePhotoViewModelTest` /
   `EditRecipePhotoTests` (`largeLines`), `EditRecipePhotoScreenTest` and `PhotoTextUITests`
-  (the note, and no heading for a size alone); new `Sus` and `Photo` rows in the corpus.
+  (the note, and no heading for a size alone); new `Sus` (now `Check`) and `Photo` rows in the corpus.
+
+**2026-10-18 (#283): a second review, and one owner decision.** A second code review of #281
+(PR #282) found fifteen problems, each now a test on both platforms:
+
+- **One list, built by the sorter.** Each line's reasons travelled as parallel lists matched by
+  text (`uncertain`, `large`/`largeLines`, `fractionLines`), which both ViewModels rebuilt.
+  `PhotoReading.flags` is now one list of `LineFlag(raw, shown, reasons)`: the line as it is in
+  the box (which a chip changes), as the list shows it, and why (`UNSURE`, `MISREAD`, `FRACTION`
+  for the chips, always with `MISREAD`, and `LARGE`). The editor's state holds that list as it
+  is, and derives the heading (`checkHeading`: some line isn't only large) in its UiState, not in
+  the views; a line's note shows when `LARGE` is its only reason (`largeOnly`), its chips when
+  it has `FRACTION` (`chips`). A chip (`onFraction`) updates that one entry: its look-alike
+  replaced, its chips gone. `uncertain` and `large` stay as read-only views of the list.
+- **One per-line check, the one production runs.** `suspect`, which production no longer called
+  and which disagreed with `sort`, is gone: `PhotoTextSorter.check(line, words, labelled)`
+  returns a line's reasons, and the corpus's `Check` rows (`Sus` before) pin it; `Photo` rows
+  pin the whole list, reasons and `large` included.
+- **Sub-recipes after the method are size-checked again.** #281 size-checked only `split()`'s
+  ingredient lines, so a "GLAZE", "Frosting:" or "For the sauce:" section after the directions
+  (which the splitter files under the steps) lost the flag: "34 tsp vanilla" there went
+  unlisted. The size check now runs on steps too, and judges only a line that starts with an
+  amount and its unit, as an ingredient line does ("Stir in 34 tsp salt." is never judged).
+  A "Step 4" line and a line holding "=" ("48 tsp = 1 cup") are skipped on both paths, so a
+  conversion under the ingredients isn't flagged either.
+- **Every check runs on the line as cleaned, unsorted too.** List markup was taken off only for
+  the size check, so "▢ 2% cups oats", "• 1 oup sugar" and "- 1 cupraisins" went unlisted. Each
+  line is now cleaned once (the splitter's own `line`, kept by `RecipeTextSplitter.splitLines`,
+  which also says which line each ingredient and step came from) and every check runs on that;
+  the box keeps the line as read, and a chip replaces the look-alike inside it
+  ("▢ 2% cups oats" → "▢ 2⅔ cups oats"). The list shows the cleaned text, so no more
+  "• ▢ 34 tsp salt" or "• • 12 tbsp vinegar".
+- **A line's confidence is its own.** `marked()` matched unsure text by substring (written for
+  the splitter's markup-free text, "3. Bake…" shown as "Bake…"), so a clearly read
+  "34 tsp salt" counted as unsure whenever an unsure step quoted it ("Stir in 34 tsp salt.") and
+  lost its note. The splitter now says which read line each line came from, so the confidence,
+  and a "Step 3" label, are keyed to the line itself, and `marked()` is gone.
+- **A fraction's digits are never a temperature.** The Celsius exemption tested the judged
+  number, and ⅝ and ⅞ read as 58 and 78 fall in a plausible Celsius range, so "1 58 C sugar"
+  and "2 78 c. flour" went unflagged. A number in `fractionShapes` never counts as a
+  temperature, alone or second ("58 C sugar" flags; "180 C water" and "2 180 C water" don't).
+- **The table is read strictly, the same on both platforms.** Kotlin's `getDouble` took numeric
+  strings, "NaN" included (tsp then never flagged on Android); Swift's `NSNumber` took `true`
+  (a bar of 1); Android's `getString` took a numeric shape. Now a maximum must be a JSON number,
+  finite and above zero, and a shape a JSON string of digits, or the table is refused (Kotlin
+  throws, iOS traps), as any malformed table is.
+- **iOS lists a line read twice once**, as Android did (Swift skipped only lines already flagged).
+- **Off the main thread.** The sort ran on the main thread in both ViewModels. Android now sorts
+  on an injected `@DefaultDispatcher` (`Dispatchers.Default`; tests pass theirs), iOS in a
+  detached task; the state is written back on the main thread, and a read cancelled meanwhile
+  (Try again, or the screen gone) is dropped. Each line is cleaned (Jsoup) once instead of
+  twice, a repeated line is cleaned and checked once, and the leading amount is read once per
+  line. Measured on the JVM, a 300-line unsorted scan, `main` against this change in one JVM:
+  every line different, 8.0 ms → 7.3 ms (and 120 lines listed rather than 98: the markup lines
+  now caught); 20 lines read 15 times each, 4.1 ms → 3.3 ms. What's left is mostly language
+  detection (about 2.2 ms) and the cleaning (1.2 ms), now off the main thread.
+- **One helper for the muted notes** (`LineNote` / `lineNote`) beside the screen's `Note` and
+  `Message`, used by the size note and the chips' prompt alike.
+- **Stale text:** `plausible-amounts.json`'s `about` (a line listed only for its size shows its
+  own note, not the heading), `DifferentialCorpusTest`'s skip message (core/, not app/), and the
+  KDocs, which described `suspect`.
+- **A test that couldn't fail.** "A line with another reason isn't listed as only large" used
+  "34 tbps sugar", which the size check can never judge (its unit is misspelt), so the guard
+  was untested. It now uses "34 tsp salt, 11/2 tsp pepper", both misread and too large: listed,
+  not as only large, with the heading (checked at ViewModel level on both platforms).
+
+**Owner's call (2026-10-18): ranges skip the fraction-shaped rule.** Either end of a range
+("16–18 lb", "12–14 lb", "2 to 3 tbsp") is judged against its unit's own maximum, never the lower
+fraction-shaped bar, so "16–18 lb turkey" and "12–14 lb turkey" aren't flagged, while "30–40 lb
+potatoes" still is (lb 25), as are "10–14 tsp" (tsp 10) and "12–14 cups" (cup 12).
+
+- **Calibration** (the same pages and lines as #281, now with their steps): 250 parsed pages,
+  3,402 real ingredient lines and 1,931 instruction lines. **None real flagged on either side**:
+  the one ingredient hit is still the corpus's "99999999999 cups flour", and no instruction line
+  is size-checked into a flag (none starts with an amount over its bar). No page line is
+  flagged as misread either; the 23 misread hits are the fixtures' deliberate misreads. A
+  stress test, taking every amount inside a step as the start of a wrapped card line (1,715 of
+  them), flags one: "12 cups of water to a boil…" (Minimalist Baker's rice), a real 12 cups
+  that a card would have to wrap right before. Caught, each checked: "34 tsp salt", "23 cups
+  oats", "18 tsp nutmeg", "12 tsp sugar", "12 tbsp vinegar", "1 12 cups flour", "14 cups milk",
+  "1 58 C sugar", "2 78 c. flour", "34 tsp vanilla" in a glaze after the method, and
+  "▢ 2% cups oats" (with chips).
+- **Still not caught, by decision:** a misread that stays plausible ("4 tsp" for ¾, "8 tsp" for
+  ⅛); a fraction read as digits where its unit has no lower bar ("12 oz" for ½ oz, "12 fl oz",
+  "14 g"), since those are everyday amounts; a number after a range, fraction or decimal
+  ("1–2 34 tsp"), which isn't judged; a fraction's digits as either end of a range ("12–14 lb",
+  the owner's call above); an amount that doesn't start its line ("Stir in 34 tsp salt."); a
+  "Step 4" line or one holding "="; bare counts ("12 eggs"); and a misspelt ingredient name
+  ("mik").
+- **Tests:** `PhotoTextSorterTest(s)` (each finding's reproduction: the glaze, frosting and
+  sauce sections, markup on every check, the line's own confidence, ⅝ and ⅞, ranges, a line
+  read twice, the strict table with "NaN", "10" and `true`), `EditRecipePhotoViewModelTest` /
+  `EditRecipePhotoTests` (the heading, alone, mixed and misread-and-large; a chip on one entry,
+  keeping its markup), `EditRecipePhotoScreenTest` (no double bullets); `Photo` rows for each
+  case and `Check` rows in the corpus.
 
 ## Undo snackbars close by themselves (2026-09-29)
 

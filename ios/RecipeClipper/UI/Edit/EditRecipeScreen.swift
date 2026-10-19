@@ -102,7 +102,7 @@ private struct PhotoReview: View {
     let post: PhotoPost
     let state: EditRecipeUiState
     let onReadAgain: () -> Void
-    let onFraction: (_ line: String, _ fraction: String) -> Void
+    let onFraction: (_ flag: LineFlag, _ fraction: String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -123,27 +123,23 @@ private struct PhotoReview: View {
                 }
             }
             outcome
-            if !state.uncertain.isEmpty {
+            if !state.flags.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    // A line listed only for its size has its own reason, not the photo's (#281).
-                    if state.uncertain.contains(where: { !state.largeLines.contains($0) }) {
+                    if state.checkHeading {
                         Text(Strings.photoCheckHeading)
                             .textStyle(Typography.titleSmall)
                             .foregroundStyle(Palette.accentText)
                     }
-                    ForEach(Array(state.uncertain.enumerated()), id: \.offset) { index, line in
-                        Text("• \(line)")
+                    ForEach(Array(state.flags.enumerated()), id: \.offset) { index, flag in
+                        Text("• \(flag.shown)")
                             .textStyle(Typography.bodyMedium)
                             .foregroundStyle(Palette.onBackground)
-                        if state.largeLines.contains(line) {
-                            Text(Strings.photoCheckLarge)
-                                .textStyle(Typography.bodySmall)
-                                .foregroundStyle(Palette.muted)
-                                .padding(.leading, 12)
+                        if flag.largeOnly {
+                            lineNote(Strings.photoCheckLarge)
                                 .padding(.bottom, 4)
                         }
-                        if state.fractionLines.contains(line) {
-                            fractionChips(index, line)
+                        if flag.chips {
+                            fractionChips(index, flag)
                         }
                     }
                 }
@@ -161,24 +157,21 @@ private struct PhotoReview: View {
     /// "½⅓"): the fractions as one-tap
     /// replacements, since "%" can't say whether it was ½, ¼ or ¾. The cook can still type instead.
     @ViewBuilder
-    private func fractionChips(_ index: Int, _ line: String) -> some View {
-        Text(Strings.photoFractionPrompt)
-            .textStyle(Typography.bodySmall)
-            .foregroundStyle(Palette.muted)
-            .padding(.leading, 12)
+    private func fractionChips(_ index: Int, _ flag: LineFlag) -> some View {
+        lineNote(Strings.photoFractionPrompt)
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) { fractionButtons(index, line) }
+            HStack(spacing: 8) { fractionButtons(index, flag) }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], alignment: .leading, spacing: 8) {
-                fractionButtons(index, line)
+                fractionButtons(index, flag)
             }
         }
         .padding(.leading, 12)
         .padding(.bottom, 6)
     }
 
-    private func fractionButtons(_ index: Int, _ line: String) -> some View {
+    private func fractionButtons(_ index: Int, _ flag: LineFlag) -> some View {
         ForEach(state.fractions, id: \.self) { fraction in
-            Button { onFraction(line, fraction) } label: {
+            Button { onFraction(flag, fraction) } label: {
                 Text(fraction)
                     .textStyle(Typography.titleMedium)
                     .frame(minWidth: 44, minHeight: 44)
@@ -186,9 +179,17 @@ private struct PhotoReview: View {
             }
             .buttonStyle(.bordered)
             .tint(Palette.primary)
-            .accessibilityLabel(Strings.photoFractionChip(fraction, line))
+            .accessibilityLabel(Strings.photoFractionChip(fraction, flag.shown))
             .accessibilityIdentifier("edit.fraction.\(index).\(fraction)")
         }
+    }
+
+    /// A muted line under a line to check: why it's listed (#281), or what its chips are for (#245).
+    private func lineNote(_ text: String) -> some View {
+        Text(text)
+            .textStyle(Typography.bodySmall)
+            .foregroundStyle(Palette.muted)
+            .padding(.leading, 12)
     }
 
     @ViewBuilder

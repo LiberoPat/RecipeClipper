@@ -42,7 +42,7 @@ final class EditRecipeScanTests: XCTestCase {
     func testReadsThePagesInOrderSortedWithSuspectAmountsAndUnsureLinesListed() async {
         let reader = FakePhotoTextReader(.read(card))
         let vm = viewModel(reader, pages: [front, back])
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
         XCTAssertEqual(reader.calls, [[front, back]])
         let state = vm.uiState
@@ -55,14 +55,14 @@ final class EditRecipeScanTests: XCTestCase {
         XCTAssertEqual(state.draft.image, "")
         XCTAssertEqual(state.draft.ingredientsText, "1 cup butter\n11/2 cups flour")
         XCTAssertEqual(state.draft.instructionsText, "Cream the butter.\nStir in the flour.")
-        XCTAssertEqual(state.uncertain, ["11/2 cups flour", "Stir in the flour."])
+        XCTAssertEqual(state.flags.map(\.raw), ["11/2 cups flour", "Stir in the flour."])
     }
 
     func testNothingIsSavedUntilTheCookSavesThenAsATypedInRecipeWithNoPicture() async {
         let repository = FakeRecipeRepository()
         repository.addManualResult = saved(7)
         let vm = viewModel(FakePhotoTextReader(.read(card)), pages: [front], repository: repository)
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
         XCTAssertTrue(repository.addManualCalls.isEmpty)
 
         var draft = vm.uiState.draft
@@ -85,7 +85,7 @@ final class EditRecipeScanTests: XCTestCase {
         let repository = FakeRecipeRepository()
         repository.addManualResult = saved(3)
         let vm = viewModel(FakePhotoTextReader(.read(germanCard)), pages: [front], repository: repository)
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
         XCTAssertEqual(vm.uiState.photoOutcome, .read)
 
         var draft = vm.uiState.draft
@@ -101,7 +101,7 @@ final class EditRecipeScanTests: XCTestCase {
         let repository = FakeRecipeRepository()
         let lines = [PhotoLine(text: "Cream butter and sugar,"), PhotoLine(text: "add the oats. Bake.")]
         let vm = viewModel(FakePhotoTextReader(.read(lines)), pages: [front], repository: repository)
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
         XCTAssertEqual(vm.uiState.photoOutcome, .notSorted)
         XCTAssertEqual(vm.uiState.draft.ingredientsText, "Cream butter and sugar,\nadd the oats. Bake.")
@@ -116,12 +116,12 @@ final class EditRecipeScanTests: XCTestCase {
     func testAPageThatWontOpenFailsAndTryAgainReadsTheSamePages() async {
         let reader = FakePhotoTextReader(.failed)
         let vm = viewModel(reader, pages: [front, back])
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
         XCTAssertEqual(vm.uiState.photoOutcome, .failed)
 
         reader.result = .read(card)
         vm.onReadAgain()
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
         XCTAssertEqual(reader.calls, [[front, back], [front, back]])
         XCTAssertEqual(vm.uiState.photoOutcome, .read)
@@ -130,7 +130,7 @@ final class EditRecipeScanTests: XCTestCase {
     func testNoPagesIsAPlainNewRecipe() async {
         let reader = FakePhotoTextReader()
         let vm = viewModel(reader, pages: [])
-        await settleMain()
+        await settleMain(until: { !vm.uiState.reading })
 
         XCTAssertFalse(vm.uiState.scan)
         XCTAssertNil(vm.uiState.photo)
