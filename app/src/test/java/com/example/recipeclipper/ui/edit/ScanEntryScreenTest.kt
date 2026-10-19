@@ -24,6 +24,7 @@ import com.example.recipeclipper.ui.home.HomeScreen
 import com.example.recipeclipper.ui.home.HomeViewModel
 import com.example.recipeclipper.ui.recipes.RecipesScreen
 import com.example.recipeclipper.ui.recipes.RecipesViewModel
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -140,7 +141,9 @@ class ScanEntryScreenTest {
         val viewModel = EditRecipeViewModel(
             SavedStateHandle(mapOf(EditRecipeViewModel.SCAN_PAGES_ARG to pages.joinToString("\n"))),
             repository,
-            photoReader = FakePhotoTextReader(result)
+            photoReader = FakePhotoTextReader(result),
+            // Sorted where the read finishes, so the compose rule's idling sees it.
+            sorting = Dispatchers.Unconfined
         )
         compose.setContent { EditRecipeScreen(onBack = {}, onSaved = onSaved, viewModel = viewModel) }
     }

@@ -143,7 +143,7 @@ final class RecipeTextSplitterLanguagesTests: XCTestCase {
 
     func testGluedUnitsInEachLanguageAndOnlyThere() {
         func suspect(_ line: String, _ language: String) -> Bool {
-            PhotoTextSorter.suspect(line, words: LanguageWords.forTag(language)!)
+            !PhotoTextSorter.check(line, words: LanguageWords.forTag(language)!).isEmpty
         }
         XCTAssertTrue(suspect("2 ELZucker", "de"))
         XCTAssertTrue(suspect("1 TLSalz", "de"))

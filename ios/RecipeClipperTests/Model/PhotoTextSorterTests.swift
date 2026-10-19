@@ -20,6 +20,11 @@ final class PhotoTextSorterTests: XCTestCase {
         texts.map { PhotoLine(text: $0, confidence: unsure.contains($0) ? Float(0.3) : Float(1)) }
     }
 
+    /// Whether `PhotoTextSorter.check` lists `line` as an ingredient line, however sure the recogniser was.
+    private func flagged(_ line: String, words: LanguageWords = .english) -> Bool {
+        !PhotoTextSorter.check(line, words: words).isEmpty
+    }
+
     func testACardsLinesSortIntoIngredientsAndStepsLikeATypedPost() {
         let reading = PhotoTextSorter.sort(lines(card))
 
@@ -66,7 +71,7 @@ final class PhotoTextSorterTests: XCTestCase {
         XCTAssertEqual(reading.uncertain, ["1 cupbutter", "2 cups rolled oats", "Bake at 35O°F for 12 minutes."])
     }
 
-    func testAmountsShapedLikeAMisreadingAreSuspect() {
+    func testAmountsShapedLikeAMisreadingAreFlagged() {
         for line in [
             "11/2 cups flour", "13/4 cups sugar", "21/2 tsp baking soda", "31/3 cups milk",
             "Bake for 11/2 hours.", "3/2 cup water",
@@ -74,11 +79,11 @@ final class PhotoTextSorterTests: XCTestCase {
             "1O eggs", "Bake at 35o°F.", "l2 eggs", "|/2 cup oil",
             "1 cupraisitos", "1 cupraisins", "2 tbspsugar", "1 teaspoonvanilla",
         ] {
-            XCTAssertTrue(PhotoTextSorter.suspect(line), line)
+            XCTAssertTrue(flagged(line), line)
         }
     }
 
-    func testOrdinaryAmountsAreNotSuspect() {
+    func testOrdinaryAmountsAreNotFlagged() {
         for line in [
             "1 1/2 cups flour", "1/2 cup sugar", "3/4 tsp salt", "2/2 cups", "1-1/2 cups oats",
             "1/2-3/4 cup milk", "11/16 inch", "1 cup raisins", "1cup flour", "2 green onions",
@@ -86,7 +91,7 @@ final class PhotoTextSorterTests: XCTestCase {
             "2 lb chicken", "350°F", "Bake at 350°F for 12 minutes.", "Cool for 10 min.Serve.",
             "Aunt June's Oatmeal Cookies", "Stir in 2 eggs", "0.5 kg potatoes", "1,5 kg flour",
         ] {
-            XCTAssertFalse(PhotoTextSorter.suspect(line), line)
+            XCTAssertFalse(flagged(line), line)
         }
     }
 
@@ -135,7 +140,7 @@ final class PhotoTextSorterTests: XCTestCase {
         for line in ["2% cups oats", "2 % cups oats", "1 % cups flour", "% cup sugar", "& tsp nutmeg",
                      "/2 cup sugar", "/4 tsp salt", "1 Y4 cups flour", "Ys cup mik", "Vs tsp nutmeg",
                      "is tsp nutmeg", "1 a cups flour", "%"] {
-            XCTAssertTrue(PhotoTextSorter.suspect(line), line)
+            XCTAssertTrue(flagged(line), line)
         }
     }
 
@@ -143,13 +148,13 @@ final class PhotoTextSorterTests: XCTestCase {
         for line in ["2% milk", "1 cup 2% milk", "70% chocolate", "2 oz 70% chocolate", "200 g 70 % chocolate",
                      "a cup of milk", "1 apple", "salt & pepper", "Reduce to 50% power.", "2 % Milch",
                      "1 isn't", "½ cup sugar", "1¼ cups flour", "2 ⅔ cups oats"] {
-            XCTAssertFalse(PhotoTextSorter.suspect(line), line)
+            XCTAssertFalse(flagged(line), line)
         }
     }
 
     func testAFractionGlyphRunIntoADigitOrAnotherGlyphIsFlagged() {
-        XCTAssertTrue(PhotoTextSorter.suspect("3¾4 tsp salt"))
-        XCTAssertTrue(PhotoTextSorter.suspect("½⅓ cup milk"))
+        XCTAssertTrue(flagged("3¾4 tsp salt"))
+        XCTAssertTrue(flagged("½⅓ cup milk"))
     }
 
     func testAChipReplacesAGluedGlyphRunWholeKeepingTheWholeNumber() {
@@ -180,13 +185,13 @@ final class PhotoTextSorterTests: XCTestCase {
     func testANearMissOfAUnitAfterTheAmountIsFlagged() {
         for line in ["½ oup sugar", "1 oups flour", "2 cuo milk", "1 c up milk", "1 C UPS milk", "2 tsb salt",
                      "1 tps vanilla", "2 tbps butter", "1 tbsb oil", "1 isp salt", "1 ½ oup sugar", "2 tbps. butter"] {
-            XCTAssertTrue(PhotoTextSorter.suspect(line), line)
+            XCTAssertTrue(flagged(line), line)
         }
-        XCTAssertTrue(PhotoTextSorter.suspect("2 e l Zucker", words: LanguageWords.forTag("de")!))
-        XCTAssertTrue(PhotoTextSorter.suspect("1 oucharada de azúcar", words: LanguageWords.forTag("es")!))
-        XCTAssertTrue(PhotoTextSorter.suspect("2 ouillères de sucre", words: LanguageWords.forTag("fr")!))
-        XCTAssertTrue(PhotoTextSorter.suspect("1 oucchiaino di sale", words: LanguageWords.forTag("it")!))
-        XCTAssertTrue(PhotoTextSorter.suspect("2 oolheres de açúcar", words: LanguageWords.forTag("pt")!))
+        XCTAssertTrue(flagged("2 e l Zucker", words: LanguageWords.forTag("de")!))
+        XCTAssertTrue(flagged("1 oucharada de azúcar", words: LanguageWords.forTag("es")!))
+        XCTAssertTrue(flagged("2 ouillères de sucre", words: LanguageWords.forTag("fr")!))
+        XCTAssertTrue(flagged("1 oucchiaino di sale", words: LanguageWords.forTag("it")!))
+        XCTAssertTrue(flagged("2 oolheres de açúcar", words: LanguageWords.forTag("pt")!))
     }
 
     func testRealUnitsWordsAndIngredientNamesAreNotFlaggedAsMisspeltUnits() {
@@ -195,12 +200,12 @@ final class PhotoTextSorterTests: XCTestCase {
                      "2 lbs beef", "1 kg flour", "3 teaspoons sugar", "2 tablespoons oil", "1 stick butter",
                      "1 cupcake", "2 c upside-down cakes", "Bake for 1 hour.",
                      "4 tsp salt", "½ cup mik", "2 tsps sugar", "1 oupa", "Add 1 oup sugar"] {
-            XCTAssertFalse(PhotoTextSorter.suspect(line), line)
+            XCTAssertFalse(flagged(line), line)
         }
         for (lang, line) in [("de", "2 EL Zucker"), ("de", "1 TL Salz"), ("de", "1 Ei"), ("es", "1 cucharada de azúcar"),
                              ("fr", "2 cuillères à soupe de sucre"), ("it", "1 cucchiaino di sale"),
                              ("pt", "2 colheres de açúcar"), ("es", "1 taza de harina"), ("ja", "大さじ1 砂糖")] {
-            XCTAssertFalse(PhotoTextSorter.suspect(line, words: LanguageWords.forTag(lang)!), line)
+            XCTAssertFalse(flagged(line, words: LanguageWords.forTag(lang)!), line)
         }
     }
 
@@ -247,7 +252,7 @@ final class PhotoTextSorterTests: XCTestCase {
             "6000 g Mehl", "13 sticks butter", "14 cups milk",
         ] {
             XCTAssertTrue(PhotoTextSorter.implausible(line), line)
-            XCTAssertTrue(PhotoTextSorter.suspect(line), line)
+            XCTAssertTrue(flagged(line), line)
         }
         XCTAssertTrue(PhotoTextSorter.implausible("34 EL Zucker", words: LanguageWords.forTag("de")!))
         XCTAssertTrue(PhotoTextSorter.implausible("18 cucharaditas de sal", words: LanguageWords.forTag("es")!))
@@ -279,7 +284,7 @@ final class PhotoTextSorterTests: XCTestCase {
         // ½, ¼ and ⅓ read as digits (#281): under the unit's maximum, over its fraction-shaped bar.
         for line in [
             "12 tbsp vinegar", "13 tbsp. honey", "12 cup sugar", "12 cups chicken stock", "12 lb ground beef",
-            "1 12 cups flour", "2 14 tbsp butter", "10–12 cups water",
+            "1 12 cups flour", "2 14 tbsp butter",
         ] {
             XCTAssertTrue(PhotoTextSorter.implausible(line), line)
         }
@@ -288,6 +293,26 @@ final class PhotoTextSorterTests: XCTestCase {
             "16 tablespoons (227g) unsalted butter", "10 tbsp butter", "11 cups water", "10 cups flour",
             "12 oz spaghetti", "14 oz can coconut milk", "12 fl oz beer", "15 g yeast", "2 14 oz cans tomatoes",
         ] {
+            XCTAssertFalse(PhotoTextSorter.implausible(line), line)
+        }
+    }
+
+    func testEitherEndOfARangeIsHeldToItsUnitsOwnMaximumNeverTheFractionShapedBar() {
+        // The owner's call (#283): "12–14 lb turkey" is a real range, not ½ and ¼ read as digits.
+        for line in ["16–18 lb turkey", "12–14 lb turkey", "10–12 cups water", "12 to 14 tbsp butter", "2 to 3 tbsp olive oil"] {
+            XCTAssertFalse(PhotoTextSorter.implausible(line), line)
+        }
+        for line in ["30–40 lb potatoes", "10–14 tsp salt", "12–14 cups water"] {
+            XCTAssertTrue(PhotoTextSorter.implausible(line), line)
+        }
+    }
+
+    func testAFractionsDigitsAreNeverATemperature() {
+        // ⅝ and ⅞ read as digits fall in a plausible Celsius range (#283): "1 58 C sugar" is 1 ⅝ cups.
+        for line in ["1 58 C sugar", "2 78 c. flour", "2 78 c flour", "58 C sugar", "78 c. milk"] {
+            XCTAssertTrue(PhotoTextSorter.implausible(line), line)
+        }
+        for line in ["180 C water", "2 180 C water", "3 180 c water", "40 C water"] {
             XCTAssertFalse(PhotoTextSorter.implausible(line), line)
         }
     }
@@ -303,12 +328,35 @@ final class PhotoTextSorterTests: XCTestCase {
         XCTAssertTrue(PhotoTextSorter.implausible("180 14 c milk"))
     }
 
-    func testTheSizeCheckRunsOnIngredientLinesNeverOnSteps() {
-        // Sorted, a step's numbers are never judged: a conversion line isn't a misread (#281).
-        let sorted = PhotoTextSorter.sort(lines(["INGREDIENTS", "1 cup flour", "METHOD", "Mix the flour.", "48 tsp = 1 cup"]))
+    func testAStepShapedLikeAnIngredientLineIsSizeCheckedAsAGlazeAfterTheMethodIs() {
+        // #283: the splitter files a section after the method under the steps.
+        let glaze = PhotoTextSorter.sort(lines([
+            "Lemon Loaf", "INGREDIENTS", "1 1/2 cups flour", "1 cup sugar", "DIRECTIONS", "1. Mix and bake 50 minutes.",
+            "GLAZE", "1 cup powdered sugar", "34 tsp vanilla",
+        ]))
+        XCTAssertEqual(glaze.instructions, ["Mix and bake 50 minutes.", "GLAZE", "1 cup powdered sugar", "34 tsp vanilla"])
+        XCTAssertEqual(glaze.uncertain, ["34 tsp vanilla"])
+        XCTAssertEqual(glaze.large, ["34 tsp vanilla"])
+        for heading in ["Frosting:", "For the sauce:"] {
+            let reading = PhotoTextSorter.sort(lines([
+                "INGREDIENTS", "1 cup flour", "2 eggs", "METHOD", "1. Mix and bake.", heading, "34 tsp vanilla", "2 cups powdered sugar",
+            ]))
+            XCTAssertEqual(reading.large, ["34 tsp vanilla"], heading)
+        }
+    }
+
+    func testAStepsAmountMidSentenceAConversionAndAStepNLineAreNeverSizeChecked() {
+        let sorted = PhotoTextSorter.sort(lines([
+            "INGREDIENTS", "1 cup flour", "48 tsp = 1 cup", "METHOD", "Stir in 34 tsp salt.", "48 tsp = 1 cup",
+            "Step 3: 34 tsp salt",
+        ]))
         XCTAssertTrue(sorted.sorted)
-        XCTAssertEqual(sorted.instructions, ["Mix the flour.", "48 tsp = 1 cup"])
+        XCTAssertEqual(sorted.ingredients, ["1 cup flour", "48 tsp = 1 cup"])
+        XCTAssertEqual(sorted.instructions, ["Stir in 34 tsp salt.", "48 tsp = 1 cup", "34 tsp salt"])
         XCTAssertEqual(sorted.uncertain, [])
+        XCTAssertEqual(PhotoTextSorter.check("34 tsp salt", labelled: true), [])
+        XCTAssertEqual(PhotoTextSorter.check("34 tsp salt"), [.large])
+        XCTAssertEqual(PhotoTextSorter.check("Stir in 34 tsp salt."), [])
     }
 
     func testUnsortedListMarkupGoesBeforeTheSizeCheckAndStepsAndConversionsAreSkipped() {
@@ -320,15 +368,58 @@ final class PhotoTextSorterTests: XCTestCase {
         let flagged = ["▢ 34 tsp salt", "• 12 tbsp vinegar", "- 23 cups oats", "3) 18 tsp nutmeg"]
         XCTAssertEqual(reading.uncertain, flagged)
         XCTAssertEqual(reading.large, flagged)
+        // Listed without their markup, so the list doesn't show "• ▢ 34 tsp salt" (#283).
+        XCTAssertEqual(reading.flags.map(\.shown), ["34 tsp salt", "12 tbsp vinegar", "23 cups oats", "18 tsp nutmeg"])
+    }
+
+    func testUnsortedEveryCheckRunsOnTheLineAsCleanedAndAChipKeepsTheLinesMarkup() {
+        // #283: the look-alike, glued and misspelt-unit checks start where the amount does.
+        let reading = PhotoTextSorter.sort(lines([
+            "Grandma's card", "▢ 34 tsp salt", "▢ 2% cups oats", "• 1 oup sugar", "- 1 cupraisins",
+        ]))
+        XCTAssertFalse(reading.sorted)
+        XCTAssertEqual(reading.flags, [
+            LineFlag(raw: "▢ 34 tsp salt", shown: "34 tsp salt", reasons: [.large]),
+            LineFlag(raw: "▢ 2% cups oats", shown: "2% cups oats", reasons: [.misread, .fraction]),
+            LineFlag(raw: "• 1 oup sugar", shown: "1 oup sugar", reasons: [.misread]),
+            LineFlag(raw: "- 1 cupraisins", shown: "1 cupraisins", reasons: [.misread]),
+        ])
+        XCTAssertEqual(
+            PhotoTextSorter.replaceFraction(reading.flags[1], "⅔"),
+            LineFlag(raw: "▢ 2⅔ cups oats", shown: "2⅔ cups oats", reasons: [.misread])
+        )
+        XCTAssertNil(PhotoTextSorter.replaceFraction(reading.flags[0], "½"))
+    }
+
+    func testALinesConfidenceIsItsOwnNeverThatOfALineQuotingIt() {
+        // #283: the unsure step quotes the ingredient line, which was read clearly and is only too large.
+        let reading = PhotoTextSorter.sort(lines(
+            ["INGREDIENTS", "34 tsp salt", "1 cup flour", "DIRECTIONS", "Stir in 34 tsp salt."],
+            unsure: ["Stir in 34 tsp salt."]
+        ))
+        XCTAssertEqual(reading.uncertain, ["34 tsp salt", "Stir in 34 tsp salt."])
+        XCTAssertEqual(reading.large, ["34 tsp salt"])
+        XCTAssertEqual(reading.flags[1].reasons, [.unsure])
     }
 
     func testALineWithAnotherReasonToCheckItIsntListedAsOnlyLarge() {
+        // Both misread ("11/2") and too large ("34 tsp"): listed, but not as only large (#283).
+        XCTAssertEqual(PhotoTextSorter.check("34 tsp salt, 11/2 tsp pepper"), [.misread, .large])
         let reading = PhotoTextSorter.sort(lines(
-            ["INGREDIENTS", "34 tsp salt", "34 tbps sugar", "12 tbsp vinegar", "METHOD", "Mix."],
+            ["INGREDIENTS", "34 tsp salt", "34 tsp salt, 11/2 tsp pepper", "12 tbsp vinegar", "METHOD", "Mix."],
             unsure: ["34 tsp salt"]
         ))
-        XCTAssertEqual(reading.uncertain, ["34 tsp salt", "34 tbps sugar", "12 tbsp vinegar"])
+        XCTAssertEqual(reading.uncertain, ["34 tsp salt", "34 tsp salt, 11/2 tsp pepper", "12 tbsp vinegar"])
         XCTAssertEqual(reading.large, ["12 tbsp vinegar"])
+        XCTAssertEqual(reading.flags[0].reasons, [.unsure, .large])
+    }
+
+    func testALineReadTwiceIsListedOnce() {
+        // #283: Swift skipped only lines already flagged; a line is listed once, as on Android.
+        let reading = PhotoTextSorter.sort(lines([
+            "INGREDIENTS", "34 tsp salt", "1 cup flour", "34 tsp salt", "METHOD", "34 tsp salt", "Mix.",
+        ]))
+        XCTAssertEqual(reading.uncertain, ["34 tsp salt"])
     }
 
     func testAMalformedPlausibleAmountsTableIsRefusedAsSharedTablesDoes() {
@@ -342,9 +433,29 @@ final class PhotoTextSorterTests: XCTestCase {
             ["maximums": ["TSP": 10], "fractionShapes": [String]()],
             ["maximums": ["TSP": 10], "fractionShapedMaximums": ["TSP": 12], "fractionShapes": [String]()],
             ["maximums": ["TSP": 10], "fractionShapedMaximums": [String: Any](), "fractionShapes": ["½"]],
+            // Strict, as Android reads it (#283): a number written as a string, NaN, a boolean,
+            // nothing above zero, and a fraction shape written as a number are all refused.
+            ["maximums": ["TSP": "10"], "fractionShapedMaximums": [String: Any](), "fractionShapes": ["12"]],
+            ["maximums": ["TSP": "NaN"], "fractionShapedMaximums": [String: Any](), "fractionShapes": ["12"]],
+            ["maximums": ["TSP": true], "fractionShapedMaximums": [String: Any](), "fractionShapes": ["12"]],
+            ["maximums": ["TSP": Double.nan], "fractionShapedMaximums": [String: Any](), "fractionShapes": ["12"]],
+            ["maximums": ["TSP": 0], "fractionShapedMaximums": [String: Any](), "fractionShapes": ["12"]],
+            ["maximums": ["TSP": -1], "fractionShapedMaximums": [String: Any](), "fractionShapes": ["12"]],
+            ["maximums": ["TBSP": 16], "fractionShapedMaximums": ["TBSP": "10"], "fractionShapes": ["12"]],
+            ["maximums": ["TSP": 10], "fractionShapedMaximums": [String: Any](), "fractionShapes": [12]],
         ]
         for table in malformed {
             XCTAssertNil(PlausibleAmounts(table), "\(table)")
+        }
+        // The same as JSON, as the app reads it: JSONSerialization gives true as an NSNumber.
+        for json in [
+            #"{"maximums": {"TSP": true}, "fractionShapedMaximums": {}, "fractionShapes": ["12"]}"#,
+            #"{"maximums": {"TSP": "10"}, "fractionShapedMaximums": {}, "fractionShapes": ["12"]}"#,
+            #"{"maximums": {"TSP": 10}, "fractionShapedMaximums": {}, "fractionShapes": [12]}"#,
+        ] {
+            let table = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? SharedTables.Table
+            XCTAssertNotNil(table, json)
+            XCTAssertNil(table.flatMap(PlausibleAmounts.init), json)
         }
     }
 }

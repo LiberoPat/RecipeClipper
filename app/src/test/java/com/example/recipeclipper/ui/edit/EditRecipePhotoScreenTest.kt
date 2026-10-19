@@ -13,6 +13,7 @@ import com.example.recipeclipper.data.PhotoTextResult
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.fake.FakePhotoTextReader
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -38,7 +39,9 @@ class EditRecipePhotoScreenTest {
                 )
             ),
             repository,
-            photoReader = FakePhotoTextReader(result)
+            photoReader = FakePhotoTextReader(result),
+            // Sorted where the read finishes, so the compose rule's idling sees it.
+            sorting = Dispatchers.Unconfined
         )
         compose.setContent { EditRecipeScreen(onBack = {}, onSaved = onSaved, viewModel = viewModel) }
     }
@@ -123,6 +126,17 @@ class EditRecipePhotoScreenTest {
 
         compose.onNodeWithText("Check these lines", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("This amount looks large: check it").assertExists()
+    }
+
+    @Test
+    fun aLineIsListedWithoutItsListMarkup() {
+        // #283: the review listed "• ▢ 34 tsp salt"; the box keeps the line as read.
+        show(PhotoTextResult.Read(listOf(PhotoLine("Grandma's card"), PhotoLine("▢ 34 tsp salt"), PhotoLine("• 1 oup sugar"))))
+
+        compose.onNodeWithText("• 34 tsp salt", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("• ▢", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("• •", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("▢ 34 tsp salt", substring = true, useUnmergedTree = true).assertExists()
     }
 
     @Test

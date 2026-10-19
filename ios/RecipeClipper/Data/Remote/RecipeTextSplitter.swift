@@ -170,11 +170,11 @@ enum RecipeTextSplitter {
     }
 
     /// Whether `rest`, a line after its amount, starts with one of `words`' units run into the
-    /// next word ("cupraisins"), for `PhotoTextSorter.suspect`.
+    /// next word ("cupraisins"), for `PhotoTextSorter.check`.
     static func gluedUnit(_ rest: String, words: LanguageWords) -> Bool { self.words(words).glued.containsMatch(in: rest) }
 
     /// Whether `rest`, a line after its amount, starts with a near-miss of one of `words`' units
-    /// ("oup sugar", "tbps butter"), for `PhotoTextSorter.suspect` (#276).
+    /// ("oup sugar", "tbps butter"), for `PhotoTextSorter.check` (#276).
     static func unitLookAlike(_ rest: String, words: LanguageWords) -> Bool {
         self.words(words).unitLookAlike.containsMatch(in: rest)
     }
@@ -367,16 +367,47 @@ enum RecipeTextSplitter {
 
     /// `text` split with `words`' language only (English by default); see `detectAndSplit`.
     static func split(_ text: String, words: LanguageWords = .english) -> SplitRecipe? {
+        splitLines(lines(text, words: words), words: words)?.recipe
+    }
+
+    /// One ingredient or step `splitLines` keeps: its `text` as the recipe holds it, and `source`,
+    /// the index of the line it came from (a group name's is its header's, "Dry ingredients:").
+    struct Kept {
+        let text: String
+        let source: Int
+    }
+
+    /// What `splitLines` found: `split`'s answer, each ingredient and step with its line.
+    struct SplitLines {
+        let ingredients: [Kept]
+        let instructions: [Kept]
+        let yield: String?
+        let prepTime: String?
+        let cookTime: String?
+        let totalTime: String?
+
+        var recipe: SplitRecipe {
+            SplitRecipe(
+                ingredients: ingredients.map(\.text), instructions: instructions.map(\.text), yield: yield,
+                prepTime: prepTime, cookTime: cookTime, totalTime: totalTime
+            )
+        }
+    }
+
+    /// `split` over `lines` already cleaned (`line`), telling which line each ingredient and step
+    /// came from: the photo sorter (#198) cleans each line once, and keys a line's confidence and
+    /// "Step 3" label to the line itself.
+    static func splitLines(_ lines: [Line], words: LanguageWords = .english) -> SplitLines? {
         let w = self.words(words)
-        var ingredients: [String] = []
-        var instructions: [String] = []
+        var ingredients: [Kept] = []
+        var instructions: [Kept] = []
         var yield: String?
         var prep: String?
         var cook: String?
         var total: String?
         var state: Section?
         // The lines before any section, for an ingredients block with no header.
-        var before: [Line] = []
+        var before: [(index: Int, line: Line)] = []
 
         /// A labelled yield or time, taken; false for any other line.
         func labelled(_ line: String) -> Bool {
@@ -407,46 +438,46 @@ enum RecipeTextSplitter {
         /// The ingredients with no header: the lines just above the steps, read upwards until
         /// one doesn't read like an ingredient.
         func ingredientsAbove() -> Bool {
-            let block = Array(before.reversed().prefix(while: { readsLikeIngredient($0, words) }).reversed())
-                .drop { !isAmount($0.text, words: words) && !$0.listed }
-            if block.filter({ isAmount($0.text, words: words) }).count < minAmounts { return false }
-            ingredients += block.map { written($0, words) }
+            let block = Array(before.reversed().prefix(while: { readsLikeIngredient($0.line, words) }).reversed())
+                .drop { !isAmount($0.line.text, words: words) && !$0.line.listed }
+            if block.filter({ isAmount($0.line.text, words: words) }).count < minAmounts { return false }
+            ingredients += block.map { Kept(text: written($0.line, words), source: $0.index) }
             before.removeAll()
             return true
         }
 
-        for line in lines(text, words: words) {
+        for (i, line) in lines.enumerated() {
             if line.text.isEmpty && !line.step { continue }
             if let header = header(line, words: words) {
                 if header.section == .instructions && ingredients.isEmpty { _ = ingredientsAbove() }
                 state = header.section
                 before.removeAll()
                 switch header.section {
-                case .ingredients: if let label = header.label { ingredients.append(label) }
-                case .instructions: if let label = header.label { instructions.append(label) }
+                case .ingredients: if let label = header.label { ingredients.append(Kept(text: label, source: i)) }
+                case .instructions: if let label = header.label { instructions.append(Kept(text: label, source: i)) }
                 case .end: break
                 }
                 continue
             }
             // A numbered list starting at 1 (or "Step 1") with no header over it is the steps.
             if line.number == 1 && !isAmount(line.text, words: words) {
-                if (state == .ingredients && ingredients.contains { !$0.hasSuffix(":") })
+                if (state == .ingredients && ingredients.contains { !$0.text.hasSuffix(":") })
                     || (state == nil && ingredientsAbove()) {
                     state = .instructions
                 }
             }
             if line.text.isEmpty || isPointer(line.text) { continue } // a bare "Step 2", or a link
             switch state {
-            case .ingredients: if !labelled(line.text) { ingredients.append(written(line, words)) }
-            case .instructions: instructions.append(written(line, words))
+            case .ingredients: if !labelled(line.text) { ingredients.append(Kept(text: written(line, words), source: i)) }
+            case .instructions: instructions.append(Kept(text: written(line, words), source: i))
             case .end: break
-            case nil: if !labelled(line.text) { before.append(line) }
+            case nil: if !labelled(line.text) { before.append((i, line)) }
             }
         }
-        if !ingredients.contains(where: { !$0.hasSuffix(":") }) || !instructions.contains(where: { !$0.hasSuffix(":") }) {
+        if !ingredients.contains(where: { !$0.text.hasSuffix(":") }) || !instructions.contains(where: { !$0.text.hasSuffix(":") }) {
             return nil
         }
-        return SplitRecipe(
+        return SplitLines(
             ingredients: ingredients, instructions: instructions, yield: yield,
             prepTime: prep, cookTime: cook, totalTime: total
         )

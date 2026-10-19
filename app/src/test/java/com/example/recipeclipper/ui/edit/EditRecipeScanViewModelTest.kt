@@ -55,7 +55,7 @@ class EditRecipeScanViewModelTest {
     @Test fun `reads the pages in order, sorted, with suspect amounts and unsure lines listed`() =
         runTest(mainDispatcherRule.dispatcher) {
             val reader = FakePhotoTextReader(PhotoTextResult.Read(card))
-            val vm = EditRecipeViewModel(scan(front, back), FakeRecipeRepository(), photoReader = reader)
+            val vm = EditRecipeViewModel(scan(front, back), FakeRecipeRepository(), photoReader = reader, sorting = mainDispatcherRule.dispatcher)
             advanceUntilIdle()
 
             assertEquals(listOf(listOf(front, back)), reader.calls)
@@ -69,13 +69,13 @@ class EditRecipeScanViewModelTest {
             assertEquals("", state.draft.image)
             assertEquals("1 cup butter\n11/2 cups flour", state.draft.ingredientsText)
             assertEquals("Cream the butter.\nStir in the flour.", state.draft.instructionsText)
-            assertEquals(listOf("11/2 cups flour", "Stir in the flour."), state.uncertain)
+            assertEquals(listOf("11/2 cups flour", "Stir in the flour."), state.flags.map { it.raw })
         }
 
     @Test fun `nothing is saved until the cook saves, then as a typed-in recipe with no picture`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = FakeRecipeRepository().apply { addManualResult = saved(7) }
-            val vm = EditRecipeViewModel(scan(front), repository, photoReader = FakePhotoTextReader(PhotoTextResult.Read(card)))
+            val vm = EditRecipeViewModel(scan(front), repository, photoReader = FakePhotoTextReader(PhotoTextResult.Read(card)), sorting = mainDispatcherRule.dispatcher)
             advanceUntilIdle()
             assertTrue(repository.addManualCalls.isEmpty())
 
@@ -94,7 +94,7 @@ class EditRecipeScanViewModelTest {
 
     @Test fun `a German card is saved in German, as its words say`() = runTest(mainDispatcherRule.dispatcher) {
         val repository = FakeRecipeRepository().apply { addManualResult = saved(3) }
-        val vm = EditRecipeViewModel(scan(front), repository, photoReader = FakePhotoTextReader(PhotoTextResult.Read(germanCard)))
+        val vm = EditRecipeViewModel(scan(front), repository, photoReader = FakePhotoTextReader(PhotoTextResult.Read(germanCard)), sorting = mainDispatcherRule.dispatcher)
         advanceUntilIdle()
         assertEquals(PhotoOutcome.READ, vm.uiState.value.photoOutcome)
 
@@ -108,7 +108,7 @@ class EditRecipeScanViewModelTest {
     @Test fun `nothing read opens the review to finish by hand`() = runTest(mainDispatcherRule.dispatcher) {
         val repository = FakeRecipeRepository()
         val lines = listOf(PhotoLine("Cream butter and sugar,"), PhotoLine("add the oats. Bake."))
-        val vm = EditRecipeViewModel(scan(front), repository, photoReader = FakePhotoTextReader(PhotoTextResult.Read(lines)))
+        val vm = EditRecipeViewModel(scan(front), repository, photoReader = FakePhotoTextReader(PhotoTextResult.Read(lines)), sorting = mainDispatcherRule.dispatcher)
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -125,7 +125,7 @@ class EditRecipeScanViewModelTest {
     @Test fun `the reader not ready says so, and Try again reads the same pages`() =
         runTest(mainDispatcherRule.dispatcher) {
             val reader = FakePhotoTextReader(PhotoTextResult.NotReady)
-            val vm = EditRecipeViewModel(scan(front, back), FakeRecipeRepository(), photoReader = reader)
+            val vm = EditRecipeViewModel(scan(front, back), FakeRecipeRepository(), photoReader = reader, sorting = mainDispatcherRule.dispatcher)
             advanceUntilIdle()
             assertEquals(PhotoOutcome.NOT_READY, vm.uiState.value.photoOutcome)
             assertFalse(vm.uiState.value.reading)
@@ -139,7 +139,7 @@ class EditRecipeScanViewModelTest {
         }
 
     @Test fun `a page that can't be opened fails, with Try again`() = runTest(mainDispatcherRule.dispatcher) {
-        val vm = EditRecipeViewModel(scan(front), FakeRecipeRepository(), photoReader = FakePhotoTextReader(PhotoTextResult.Failed))
+        val vm = EditRecipeViewModel(scan(front), FakeRecipeRepository(), photoReader = FakePhotoTextReader(PhotoTextResult.Failed), sorting = mainDispatcherRule.dispatcher)
         advanceUntilIdle()
         assertEquals(PhotoOutcome.FAILED, vm.uiState.value.photoOutcome)
         assertTrue(vm.uiState.value.scan)
@@ -147,7 +147,7 @@ class EditRecipeScanViewModelTest {
 
     @Test fun `no pages is a plain new recipe`() = runTest(mainDispatcherRule.dispatcher) {
         val reader = FakePhotoTextReader()
-        val vm = EditRecipeViewModel(scan(), FakeRecipeRepository(), photoReader = reader)
+        val vm = EditRecipeViewModel(scan(), FakeRecipeRepository(), photoReader = reader, sorting = mainDispatcherRule.dispatcher)
         advanceUntilIdle()
         assertFalse(vm.uiState.value.scan)
         assertNull(vm.uiState.value.photo)

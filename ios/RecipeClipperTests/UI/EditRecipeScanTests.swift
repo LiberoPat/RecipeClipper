@@ -162,7 +162,7 @@ final class EditRecipeScanTests: XCTestCase {
             for line in lines { print("FRACTION-OCR \(name)\t\(line.confidence ?? -1)\t\(line.text)") }
             read += lines.map(\.text)
         }
-        let flagged = read.filter { PhotoTextSorter.suspect($0) }
+        let flagged = read.filter { !PhotoTextSorter.check($0).isEmpty }
         XCTAssertFalse(flagged.contains { $0.contains("70%") }, "\(flagged)")
         if read.contains(where: { $0.contains("% cups oats") }) {
             XCTAssertTrue(flagged.contains { $0.contains("% cups oats") }, "\(flagged)")
