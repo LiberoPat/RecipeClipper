@@ -53,6 +53,7 @@ class DatabaseErrorTest {
     private class ThrowingRecipeDao(private val throwable: () -> Throwable = { Boom() }) : RecipeDao() {
         override suspend fun get(id: Long): RecipeEntity? = throw throwable()
         override suspend fun findByUrl(url: String): RecipeEntity? = throw throwable()
+        override fun observe(id: Long): Flow<RecipeEntity?> = flow { throw throwable() }
         override suspend fun insert(recipe: RecipeEntity): Long = throw throwable()
         override suspend fun update(recipe: RecipeEntity) = throw throwable()
         override suspend fun touch(id: Long, now: Long) = throw throwable()
@@ -165,6 +166,14 @@ class DatabaseErrorTest {
         assertEquals(listOf(emptyList<Any>()), repository.observeHistory("").toList())
         assertEquals(listOf(emptyList<Any>()), repository.observeRecent(5).toList())
         assertEquals(listOf("observeHistory failed", "observeRecent failed"), log.messages)
+    }
+
+    @Test fun `a failing recipe query emits null and completes`() = runTest {
+        val log = RecordingLog()
+        val repository = recipes(ParseResult.Error(ParseError.NoRecipeFound), log)
+
+        assertEquals(listOf(null), repository.observeRecipe(1).toList())
+        assertEquals(listOf("observeRecipe failed"), log.messages)
     }
 
     @Test fun `cancellation is never swallowed as a database error`() = runTest {

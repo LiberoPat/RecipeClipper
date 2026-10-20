@@ -119,21 +119,24 @@ class ScanEntryScreenTest {
         compose.onNodeWithText("Scan a recipe").assertDoesNotExist()
     }
 
+    /** Home's three tiles (#286): Scan a recipe sits between Paste a link and Type a recipe. */
     @Test
-    fun homeOffersTheScanBesideNewRecipe() {
+    fun homeOffersTheScanAmongItsTiles() {
         showHome(scanEnabled = true)
 
-        compose.onNodeWithText("+ New recipe").assertIsDisplayed()
+        compose.onNodeWithText("Paste a link").assertIsDisplayed()
+        compose.onNodeWithText("Type a recipe").assertIsDisplayed()
         compose.onNodeWithText("Scan a recipe").performClick()
         compose.onNodeWithText("Take a photo").assertIsDisplayed()
         compose.onNodeWithText("Choose from library").assertIsDisplayed()
     }
 
     @Test
-    fun homeWithTheFlagOffHasNoScan() {
+    fun homeWithTheFlagOffHasTwoTiles() {
         showHome(scanEnabled = false)
 
-        compose.onNodeWithText("+ New recipe").assertIsDisplayed()
+        compose.onNodeWithText("Paste a link").assertIsDisplayed()
+        compose.onNodeWithText("Type a recipe").assertIsDisplayed()
         compose.onNodeWithText("Scan a recipe").assertDoesNotExist()
     }
 

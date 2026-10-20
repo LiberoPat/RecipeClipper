@@ -1,13 +1,16 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Home: the link field (kept so the app can be tried without the share sheet), then whatever
-/// there is to pick up again. Sections with nothing in them don't appear, but the Recipes /
-/// Lists block always does. Settings is the gear beside the title.
+/// Home (#286): Continue cooking as a photo card with where the cook stopped, then the three ways
+/// in (Paste a link, Scan a recipe, Type a recipe), Recently viewed as a row of photos, and the
+/// Recipes / Lists rows with their counts. Sections with nothing in them don't appear, but the
+/// Recipes / Lists block always does. Settings is the gear beside the title.
 struct HomeScreen: View {
     let vm: HomeViewModel
     let onOpenUrl: (String) -> Void
     let onOpenRecipe: (Int64) -> Void
+    /// "Resume cooking" (#286): the recipe, opened in cook mode.
+    var onResumeCooking: (Int64) -> Void = { _ in }
     let onOpenRecipes: () -> Void
     let onOpenLists: () -> Void
     let onOpenSettings: () -> Void
@@ -15,7 +18,6 @@ struct HomeScreen: View {
     /// "Scan a recipe" (#226): the pictures taken or picked, in order; nil hides it (flag off).
     var onScan: (([Data]) -> Void)? = nil
 
-    @State private var now = currentMillis()
     @State private var restoring = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// The gear grows a little with the title beside it, capped: it is chrome.
@@ -44,55 +46,26 @@ struct HomeScreen: View {
                     .offset(x: 10) // optical edge, past the icon's own padding
                     .accessibilityLabel(Strings.navSettings)
                 }
-                Text(Strings.homeSubtitle)
-                    .textStyle(Typography.bodyLarge)
-                    .foregroundStyle(Palette.muted)
-                    .padding(.top, 6)
 
-                // Side by side normally; at the accessibility sizes the field gets the whole
-                // width and Go sits under it, rather than the URL showing a few characters.
-                let urlLayout = dynamicTypeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-                    : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
-                urlLayout {
-                    OutlinedField(
-                        label: Strings.labelRecipeUrl,
-                        text: Binding(get: { vm.uiState.urlInput }, set: vm.onUrlChange),
-                        isError: state.urlError,
-                        errorText: Strings.errorInvalidUrl,
-                        keyboard: .URL,
-                        onSubmit: go
-                    )
-                    .tooltipAnchor(.homeLink)
-                    Button(Strings.go, action: go)
-                        .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: dynamicTypeSize.isAccessibilitySize))
-                }
-                .padding(.top, 20)
-
-                // Typing a recipe in by hand (#29): a small way in, not a section. Beside it,
-                // scanning one from photos (#226, the photoText flag); under it at the
-                // accessibility sizes.
-                let entryLayout = dynamicTypeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                    : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
-                entryLayout {
-                    Button(Strings.newRecipe, action: onNewRecipe)
-                        .buttonStyle(TextActionStyle())
-                        .accessibilityIdentifier("home.newRecipe")
-                    if let onScan { ScanRecipeButton(onScan: onScan) }
-                }
-                .padding(.top, 8)
-
+                // Continue cooking (#286): a photo card with where the cook stopped.
                 if let latest = state.continueCooking {
-                    SectionHeading(Strings.sectionContinueCooking).padding(.top, 24)
-                    RecipeRow(recipe: latest, now: now) { onOpenRecipe(latest.id) }
+                    ResumeCard(
+                        recipe: latest, resume: state.resume,
+                        onResume: { onResumeCooking(latest.id) },
+                        onOpen: { onOpenRecipe(latest.id) }
+                    )
+                    .padding(.top, 16)
                 }
+
+                // The three ways in (#286): Paste a link, Scan a recipe (the photoText flag,
+                // #226) and Type a recipe (#29), as equal tiles.
+                AddRecipeBlock(onPasteLink: vm.onPasteLink, onScan: onScan, onTypeRecipe: onNewRecipe)
+                    .padding(.top, 20)
 
                 if !state.recent.isEmpty {
                     SectionHeading(Strings.sectionRecentlyViewed).padding(.top, 24)
-                    ForEach(state.recent) { recipe in
-                        RecipeRow(recipe: recipe, now: now) { onOpenRecipe(recipe.id) }
-                    }
+                    RecentlyViewedRow(recipes: state.recent, onOpenRecipe: onOpenRecipe)
+                        .padding(.top, 10)
                 }
 
                 if state.loaded && state.continueCooking == nil {
@@ -123,9 +96,9 @@ struct HomeScreen: View {
                 // that changes shape with what is in the database.
                 VStack(spacing: 0) {
                     Hairline()
-                    NavRow(title: Strings.recipesTitle, action: onOpenRecipes)
+                    NavRow(title: Strings.recipesTitle, detail: state.recipeCount.map { "\($0)" }, action: onOpenRecipes)
                         .accessibilityIdentifier("home.nav.recipes")
-                    NavRow(title: Strings.navLists, action: onOpenLists)
+                    NavRow(title: Strings.navLists, detail: state.listCount.map { "\($0)" }, action: onOpenLists)
                         .accessibilityIdentifier("home.nav.lists")
                 }
                 .padding(.top, 20)
@@ -135,12 +108,23 @@ struct HomeScreen: View {
             .padding(.top, 12)
             .padding(.bottom, 32)
         }
-        .scrollDismissesKeyboard(.interactively)
         .screenBackground()
         // The tooltips (#190); none while the file picker is up.
         .tooltipHost(.home, blocked: restoring)
         .toolbar(.hidden, for: .navigationBar)
-        .onAppear { now = currentMillis() }
+        // The Recipes screen's "Paste a link" (#286): Go only for what reads as a link.
+        .alert(Strings.pasteLink, isPresented: Binding(
+            get: { vm.uiState.pastingLink },
+            set: { presented in if !presented { vm.onLinkDismissed() } }
+        )) {
+            TextField(Strings.labelRecipeUrl, text: Binding(get: { vm.uiState.linkInput }, set: vm.onLinkChange))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+            Button(Strings.cancel, role: .cancel, action: vm.onLinkDismissed)
+            Button(Strings.go) { if let url = vm.onOpenLink() { onOpenUrl(url) } }
+                .disabled(!vm.uiState.canOpenLink)
+        }
         // The same picker as Settings' Import.
         .fileImporter(isPresented: $restoring, allowedContentTypes: [.json, .plainText, .zip]) { result in
             switch result {
@@ -148,9 +132,5 @@ struct HomeScreen: View {
             case .failure: vm.onRestorePickFailed()
             }
         }
-    }
-
-    private func go() {
-        if let url = vm.onGo() { onOpenUrl(url) }
     }
 }

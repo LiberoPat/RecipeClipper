@@ -1,0 +1,15 @@
+<!-- Home's Type a recipe tile (#286): a pen. Drawn here for the same reason as the bookmark icons: a
+     glyph or two doesn't justify material-icons-extended. Stroked, like its SF Symbol on iOS;
+     the Icon composable applies the tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4,20h4L19,9a2.8,2.8 0,0 0,-4 -4L4,16zM13.5,6.5l4,4" />
+</vector>

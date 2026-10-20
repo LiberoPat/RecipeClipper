@@ -10,10 +10,7 @@ import XCTest
 final class ClipUITests: RecipeUITestCase {
 
     private func importLink(_ link: String) {
-        let field = app.textFields["Recipe URL"]
-        field.tap()
-        field.typeText(link)
-        app.scrollViews.firstMatch.buttons["Go"].tap()
+        pasteLink(link)
     }
 
     private var page: XCUIElement { app.webViews.firstMatch }
@@ -110,7 +107,7 @@ final class ClipUITests: RecipeUITestCase {
 
         // Back goes where the share came from, not to the clip or the error.
         back()
-        require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
 
         openRecipes()
         require(
@@ -190,7 +187,7 @@ final class ClipUITests: RecipeUITestCase {
         require(app.buttons["Use as the name"], "the page, ready to clip")
 
         app.navigationBars.buttons["Cancel"].tap()
-        require(app.textFields["Recipe URL"], "Home, not an error screen")
+        require(homePasteLink, "Home, not an error screen")
     }
 
     /// The Text view, line by line (#286): on a Reddit post, Text lists the post's lines (the

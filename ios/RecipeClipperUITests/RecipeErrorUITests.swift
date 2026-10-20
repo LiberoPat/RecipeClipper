@@ -7,10 +7,7 @@ import XCTest
 final class RecipeErrorUITests: RecipeUITestCase {
 
     private func importLink(_ link: String) {
-        let field = app.textFields["Recipe URL"]
-        field.tap()
-        field.typeText(link)
-        app.scrollViews.firstMatch.buttons["Go"].tap()
+        pasteLink(link)
     }
 
     func testAPageWithNoRecipeStillOffersTryAgain() {

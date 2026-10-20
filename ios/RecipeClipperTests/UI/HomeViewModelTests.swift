@@ -35,40 +35,62 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertTrue(vm.uiState.loaded)
     }
 
-    func testOnGoReturnsTheNormalisedUrlAndClearsTheInput() async {
+    // "Paste a link" (#286): the Recipes screen's alert, opened from Home's tile.
+
+    func testThePasteTileOpensTheAlertEmptyAndGoReturnsTheNormalisedLink() async {
         let vm = HomeViewModel(repository: FakeRecipeRepository())
         await settleMain()
+        XCTAssertFalse(vm.uiState.pastingLink)
 
-        vm.onUrlChange("example.com/recipe")
-        let result = vm.onGo()
+        vm.onPasteLink()
+        XCTAssertTrue(vm.uiState.pastingLink)
+        XCTAssertEqual(vm.uiState.linkInput, "")
+        XCTAssertFalse(vm.uiState.canOpenLink)
 
-        XCTAssertEqual(result, "https://example.com/recipe")
-        XCTAssertEqual(vm.uiState.urlInput, "")
-        XCTAssertFalse(vm.uiState.urlError)
+        vm.onLinkChange("example.com/recipe")
+        XCTAssertTrue(vm.uiState.canOpenLink)
+        XCTAssertEqual(vm.onOpenLink(), "https://example.com/recipe")
+        XCTAssertFalse(vm.uiState.pastingLink, "the alert closes")
+        XCTAssertEqual(vm.uiState.linkInput, "")
     }
 
-    func testOnGoReturnsNilAndSetsUrlErrorOnRubbishInput() async {
+    func testWhatIsNotALinkCannotBeOpenedAndTheAlertStays() async {
         let vm = HomeViewModel(repository: FakeRecipeRepository())
         await settleMain()
 
-        vm.onUrlChange("not a url")
-        let result = vm.onGo()
+        vm.onPasteLink()
+        vm.onLinkChange("not a link")
 
-        XCTAssertNil(result)
-        XCTAssertTrue(vm.uiState.urlError)
-        XCTAssertEqual(vm.uiState.urlInput, "not a url")
+        XCTAssertFalse(vm.uiState.canOpenLink)
+        XCTAssertNil(vm.onOpenLink())
+        XCTAssertTrue(vm.uiState.pastingLink)
+        XCTAssertEqual(vm.uiState.linkInput, "not a link")
+
+        vm.onLinkDismissed()
+        XCTAssertFalse(vm.uiState.pastingLink)
     }
 
-    func testOnUrlChangeClearsAPreviousError() async {
+    // The Recipes and Lists rows' counts (#286).
+
+    func testTheCountsAreWhatRecipesListsAndHowManyListsThereAre() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send((1 ... 3).map { testSummary(Int64($0)) })
+        let lists = FakeListRepository()
+        lists.lists.send((1 ... 6).map {
+            RecipeList(id: Int64($0), name: "List \($0)", isBuiltIn: true, isFavorites: $0 == 1, recipeCount: 0)
+        })
+        let vm = HomeViewModel(repository: repository, lists: lists)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.recipeCount, 3)
+        XCTAssertEqual(vm.uiState.listCount, 6)
+    }
+
+    func testWithNoListRepositoryThereIsNoListCount() async {
         let vm = HomeViewModel(repository: FakeRecipeRepository())
         await settleMain()
 
-        vm.onUrlChange("not a url")
-        _ = vm.onGo()
-        XCTAssertTrue(vm.uiState.urlError)
-
-        vm.onUrlChange("something else")
-
-        XCTAssertFalse(vm.uiState.urlError)
+        XCTAssertEqual(vm.uiState.recipeCount, 0)
+        XCTAssertNil(vm.uiState.listCount)
     }
 }

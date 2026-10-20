@@ -86,6 +86,7 @@ struct RootView: View {
                     vm: vm,
                     onOpenUrl: { router.push(.importUrl($0)) },
                     onOpenRecipe: { router.push(.recipe(id: $0)) },
+                    onResumeCooking: { router.push(.cookRecipe(id: $0)) },
                     onOpenRecipes: { router.push(.recipes) },
                     onOpenLists: { router.push(.lists) },
                     onOpenSettings: { router.push(.settings) },

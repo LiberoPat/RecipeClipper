@@ -26,7 +26,7 @@ final class TabShellUITests: RecipeUITestCase {
         let xs = labels.map { require(tab($0), $0).frame.minX }
         XCTAssertEqual(xs, xs.sorted())
         XCTAssertTrue(tab("Recipes").isSelected)
-        require(app.textFields["Recipe URL"], "Home under Recipes")
+        require(homePasteLink, "Home under Recipes")
     }
 
     func testTheOtherTabsShowTheirScreens() {
@@ -77,7 +77,7 @@ final class TabShellUITests: RecipeUITestCase {
 
         tab("Recipes").tap()
 
-        require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
     }
 
     func testAShareFromAnotherTabLandsInRecipes() {
@@ -90,7 +90,7 @@ final class TabShellUITests: RecipeUITestCase {
         require(textContaining("Couldn't find recipe data"), "the import, in Recipes")
         requireGone(tabBar, "the tab bar on the import")
         back()
-        require(app.textFields["Recipe URL"], "Home, under the import")
+        require(homePasteLink, "Home, under the import")
         XCTAssertTrue(tab("Recipes").isSelected)
     }
 

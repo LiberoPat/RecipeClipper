@@ -44,7 +44,7 @@ data class RecipesUiState(
     /** The free library's quiet count (#107); null when there is no limit to count against. */
     val count: LibraryCount? = null
 ) {
-    /** The dialog's Open is enabled only for what Home's link field would open. */
+    /** The dialog's Open is enabled only for what reads as a link (`UrlInput`). */
     val canOpenLink: Boolean get() = linkInput?.let(UrlInput::normalize) != null
 
     /** How many rows are listed (the matches, while searching); null until the database answers. */

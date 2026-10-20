@@ -134,11 +134,13 @@ struct IngredientRow: View {
     }
 }
 
-/// A label, a chevron, and a hairline under it: Home's History / Lists block and the Lists rows.
+/// A label, a chevron, and a hairline under it: Home's Recipes / Lists block and the Lists rows.
+/// `detail` sits muted before the chevron (Home's counts, #286).
 struct NavRow<Subtitle: View>: View {
     let title: String
     let action: () -> Void
     @ViewBuilder var subtitle: () -> Subtitle
+    var detail: String? = nil
 
     var body: some View {
         Button(action: action) {
@@ -149,6 +151,10 @@ struct NavRow<Subtitle: View>: View {
                         subtitle()
                     }
                     Spacer()
+                    if let detail {
+                        Text(detail).textStyle(Typography.bodyMedium).foregroundStyle(Palette.muted)
+                            .padding(.trailing, 6)
+                    }
                     Text("›").textStyle(Typography.titleLarge).foregroundStyle(Palette.muted)
                 }
                 .padding(.vertical, 14)
@@ -161,8 +167,8 @@ struct NavRow<Subtitle: View>: View {
 }
 
 extension NavRow where Subtitle == EmptyView {
-    init(title: String, action: @escaping () -> Void) {
-        self.init(title: title, action: action, subtitle: { EmptyView() })
+    init(title: String, detail: String? = nil, action: @escaping () -> Void) {
+        self.init(title: title, action: action, subtitle: { EmptyView() }, detail: detail)
     }
 }
 

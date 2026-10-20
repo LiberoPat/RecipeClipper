@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
@@ -64,18 +65,21 @@ fun RecipeRow(recipe: RecipeSummary, now: Long, onClick: () -> Unit, modifier: M
     }
 }
 
-/** A row's photo, or a plain tile when it has none. Shared with the Recipes library (#286). */
+/**
+ * A row's photo, or a plain tile when it has none. Shared with the Recipes library and Home's
+ * Recently viewed (#286).
+ */
 @Composable
-internal fun RecipeThumbnail(imageUrl: String?) {
+internal fun RecipeThumbnail(imageUrl: String?, size: Dp = 64.dp) {
     val shape = RoundedCornerShape(10.dp)
     if (imageUrl != null) {
         AsyncImage(
             model = imageUrl,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.size(64.dp).clip(shape)
+            modifier = Modifier.size(size).clip(shape)
         )
     } else {
-        Box(Modifier.size(64.dp).clip(shape).background(MaterialTheme.colorScheme.outlineVariant))
+        Box(Modifier.size(size).clip(shape).background(MaterialTheme.colorScheme.outlineVariant))
     }
 }

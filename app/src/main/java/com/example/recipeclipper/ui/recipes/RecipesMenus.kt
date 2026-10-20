@@ -125,7 +125,7 @@ private val SORT_LABELS = linkedMapOf(
     RecipeSort.RECENTLY_COOKED to R.string.sort_recently_cooked
 )
 
-/** "Paste a link": one field, opened only when it reads as a link (as Home's field would). */
+/** "Paste a link" (here and on Home, #286): one field, opened only when it reads as a link. */
 @Composable
 internal fun PasteLinkDialog(
     value: String,

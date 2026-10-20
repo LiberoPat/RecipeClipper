@@ -61,7 +61,7 @@ object Routes {
     fun edit(id: Long) ="edit?${EditRecipeViewModel.RECIPE_ID_ARG}=$id"
     const val NEW_RECIPE = "edit"
 
-    // From a timer notification: the recipe, opened in cook mode.
+    // From a timer notification or Home's "Resume cooking" (#286): the recipe, in cook mode.
     fun cookRecipe(id: Long) = "recipe/$id?${RecipeViewModel.COOK_ARG}=true"
 
     // "Clip it yourself" (#37), from a page with no recipe data, or opened by itself in the
@@ -98,6 +98,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         HomeScreen(
             onOpenUrl = { navController.navigate(Routes.import(it)) },
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
+            onResumeCooking = { navController.navigate(Routes.cookRecipe(it)) },
             onOpenRecipes = { navController.navigate(Routes.RECIPES) },
             onOpenLists = { navController.navigate(Routes.LISTS) },
             onOpenSettings = { navController.navigate(Routes.SETTINGS) },

@@ -1,11 +1,12 @@
 import Foundation
 
 /// Every destination above Home. Mirrors Android's nav graph: `recipe/{recipeId}`,
-/// `recipe/import?url={url}` (Home's link field and the deep link), `recipes`, `settings` (from Home's gear), `lists`,
+/// `recipe/import?url={url}` (Paste a link and the deep link), `recipes`, `settings` (from Home's gear), `lists`,
 /// `lists/{listId}`, `clip?url={url}`.
 enum Route: Hashable {
     case recipe(id: Int64)
-    /// From a timer notification: the recipe, opened in cook mode (Android's `recipe/{id}?cook=true`).
+    /// From a timer notification or Home's "Resume cooking" (#286): the recipe, in cook mode
+    /// (Android's `recipe/{id}?cook=true`).
     case cookRecipe(id: Int64)
     case importUrl(String)
     /// The library of every recipe (#102); it replaced History (`history`).

@@ -188,6 +188,11 @@ class FakeRecipeRepository : RecipeRepository {
     override fun observeRecent(limit: Int): Flow<List<RecipeSummary>> =
         recent.map { it.take(limit) }
 
+    /** What [observeRecipe] emits, by id (#286); an id not here emits null. */
+    val recipes = MutableStateFlow<Map<Long, Recipe>>(emptyMap())
+
+    override fun observeRecipe(id: Long): Flow<Recipe?> = recipes.map { it[id] }
+
     /** What [observeCount] emits (#107). */
     val count = MutableStateFlow(0)
 

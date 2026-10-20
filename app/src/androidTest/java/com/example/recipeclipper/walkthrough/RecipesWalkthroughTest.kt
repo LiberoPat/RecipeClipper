@@ -159,6 +159,13 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     /** Home's "Recipes ›" row, below the fold: not the Recipes tab, which is Home itself (#152). */
     private fun openRecipes() = tapScrolling(hasText("Recipes") and hasText("›"))
 
+    /** Home's "Paste a link" tile (#286), then the link typed into its dialog; Go is the caller's. */
+    private fun pasteLink(link: String) {
+        tap("Paste a link")
+        waitFor(field("Recipe URL"))
+        compose.onAllNodes(field("Recipe URL"))[0].performTextInput(link)
+    }
+
     private fun typeARecipe() {
         tapDescription("Add a recipe")
         tap("Type a recipe")
@@ -286,8 +293,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     fun test27_redditImport() {
         start("reddit")
         for (post in listOf(SELF_POST, CARD_POST, PHOTO_POST)) {
-            waitFor(field("Recipe URL"))
-            compose.onAllNodes(field("Recipe URL"))[0].performTextInput(post)
+            pasteLink(post)
             pause(1000)
             tap("Go", 3500)
             if (post != PHOTO_POST) {
@@ -372,8 +378,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         useRealOcrIfItReads()
         postPictures = mapOf("1f8c5fr" to listOf(scanPage("card-fr")))
         start("reddit", "photoText")
-        waitFor(field("Recipe URL"))
-        compose.onAllNodes(field("Recipe URL"))[0].performTextInput(GERMAN_POST)
+        pasteLink(GERMAN_POST)
         pause(1000)
         tap("Go", 2500)
         waitFor(hasText("Omas Pfannkuchen"))
@@ -451,7 +456,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         pause(2500)
         back()
         back()
-        // Home, still scrolled down to its Recipes row: back up to the link field.
+        // Home, still scrolled down to its Recipes row: back up to the Scan a recipe tile.
         waitFor(hasScrollAction())
         compose.onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Scan a recipe"))
         pause(1000)
@@ -647,8 +652,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     @Test
     fun test32_clipItYourself() {
         start()
-        waitFor(field("Recipe URL"))
-        compose.onAllNodes(field("Recipe URL"))[0].performTextInput(CLIP_PAGE)
+        pasteLink(CLIP_PAGE)
         pause(1000)
         tap("Go", 1000)
         waitLong(hasText("Clip it yourself"))
@@ -749,8 +753,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
      * for the post to load in it (past Reddit's own check); returns the page's web view.
      */
     private fun openBlockedPost(link: String): WebView {
-        waitFor(field("Recipe URL"))
-        compose.onAllNodes(field("Recipe URL"))[0].performTextInput(link)
+        pasteLink(link)
         pause(1000)
         tap("Go", 1000)
         waitLong(hasText("Reddit didn't let the app read this post", substring = true))
@@ -897,8 +900,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     }
 
     private fun openPost(link: String) {
-        waitFor(field("Recipe URL"))
-        compose.onAllNodes(field("Recipe URL"))[0].performTextInput(link)
+        pasteLink(link)
         pause(1000)
         tap("Go", 3500)
         waitFor(hasText("Read the photo"))

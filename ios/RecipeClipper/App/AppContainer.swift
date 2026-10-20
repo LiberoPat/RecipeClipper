@@ -244,7 +244,10 @@ final class AppContainer {
     }
 
     func makeHomeViewModel() -> HomeViewModel {
-        HomeViewModel(repository: recipeRepository, backups: backupRepository, files: backupFiles)
+        HomeViewModel(
+            repository: recipeRepository, backups: backupRepository, files: backupFiles,
+            lists: listRepository, clock: clock
+        )
     }
 
     func makeRecipesViewModel() -> RecipesViewModel {

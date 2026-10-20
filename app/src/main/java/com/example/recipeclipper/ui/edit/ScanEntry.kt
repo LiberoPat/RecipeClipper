@@ -4,9 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,19 +50,20 @@ internal fun ScanChoices(sources: PhotoSources, close: () -> Unit) {
     )
 }
 
-/** Home's "Scan a recipe" (#226), beside "+ New recipe": opens the camera-or-library choice. */
+/**
+ * Home's "Scan a recipe" (#226; a tile since #286): [content] is the control, and the `open` it
+ * is given opens the camera-or-library choice under it.
+ */
 @Composable
-fun ScanRecipeButton(onScan: (List<String>) -> Unit, modifier: Modifier = Modifier) {
+fun ScanRecipeButton(
+    onScan: (List<String>) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable (open: () -> Unit) -> Unit
+) {
     val sources = rememberScanSources(onScan)
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box(modifier) {
-        TextButton(onClick = { expanded = true }) {
-            Text(
-                stringResource(R.string.action_scan_recipe),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.tertiary
-            )
-        }
+        content { expanded = true }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             ScanChoices(sources) { expanded = false }
         }

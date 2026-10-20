@@ -43,7 +43,6 @@ enum Strings {
     static var edit: String { String(localized: "action_edit") }
     static var updateFromSource: String { String(localized: "action_update_from_source") }
     static var update: String { String(localized: "action_update") }
-    static var newRecipe: String { String(localized: "action_new_recipe") }
     static var updateFromSourceTitle: String { String(localized: "update_from_source_title") }
     static var updateFromSourceBody: String { String(localized: "update_from_source_body") }
     static func updateFromSourceFailed(_ reason: String) -> String {
@@ -127,7 +126,6 @@ enum Strings {
     static var errorSaveFailed: String { String(localized: "error_save_failed") }
     static var errorNotSaved: String { String(localized: "error_not_saved") }
     static var errorNothingToShow: String { String(localized: "error_nothing_to_show") }
-    static var errorInvalidUrl: String { String(localized: "error_invalid_url") }
 
     // Settings → Your recipes: export and import (#26)
     static var settingsSectionYourRecipes: String { String(localized: "settings_section_your_recipes") }
@@ -301,11 +299,18 @@ enum Strings {
     // Home
     /// The app's name, not translated.
     static let homeTitle = "Recipe Clipper"
-    static var homeSubtitle: String { String(localized: "home_subtitle") }
     static var labelRecipeUrl: String { String(localized: "label_recipe_url") }
     static var sectionContinueCooking: String { String(localized: "section_continue_cooking") }
     static var sectionRecentlyViewed: String { String(localized: "section_recently_viewed") }
     static var homeEmptyHint: String { String(localized: "home_empty_hint") }
+    // Home (#286): the resume card and the Add a recipe tiles
+    static var homePasteLinkHint: String { String(localized: "home_paste_link_hint") }
+    static var homeScanHint: String { String(localized: "home_scan_hint") }
+    static var homeTypeHint: String { String(localized: "home_type_hint") }
+    static var homeShareHint: String { String(localized: "home_share_hint") }
+    static var homeResumeCooking: String { String(localized: "home_resume_cooking") }
+    static var homeOpenRecipe: String { String(localized: "home_open_recipe") }
+    static func homeTimerLeft(_ clock: String) -> String { String(localized: "home_timer_left \(clock)") }
 
     // Recipes (#102; it replaced History)
     static var recipesTitle: String { String(localized: "recipes_title") }
