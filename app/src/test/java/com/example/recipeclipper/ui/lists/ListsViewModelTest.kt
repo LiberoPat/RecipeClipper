@@ -48,6 +48,20 @@ class ListsViewModelTest {
     }
 
     @Test
+    fun `each list's cover photos arrive with it, four at most`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = repositoryWithBuiltIns()
+            repository.coverPhotos.value = mapOf(2L to (1..5).map { "https://img/$it.jpg" })
+            val viewModel = ListsViewModel(repository)
+            collectEagerly(viewModel.uiState)
+            advanceUntilIdle()
+
+            val covers = viewModel.uiState.value.coverPhotos
+            assertEquals((1..4).map { "https://img/$it.jpg" }, covers[2L])
+            assertEquals(null, covers[1L]) // no photo: a plain tile
+        }
+
+    @Test
     fun `nothing here is ticked, since no recipe is in hand`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = repositoryWithBuiltIns()

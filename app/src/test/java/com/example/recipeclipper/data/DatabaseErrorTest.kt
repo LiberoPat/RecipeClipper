@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.local.dao.CookStateRow
+import com.example.recipeclipper.data.local.dao.ListCoverPhotoRow
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.ListRow
 import com.example.recipeclipper.data.local.dao.MealPlanDao
@@ -90,6 +91,7 @@ class DatabaseErrorTest {
     private class ThrowingListDao : ListDao() {
         override fun observeLists(recipeId: Long): Flow<List<ListRow>> = flow { throw Boom() }
         override fun observeRecipesIn(listId: Long): Flow<List<RecipeSummaryRow>> = flow { throw Boom() }
+        override fun observeCoverPhotos(): Flow<List<ListCoverPhotoRow>> = flow { throw Boom() }
         override suspend fun addToList(crossRef: RecipeListCrossRef) = throw Boom()
         override suspend fun removeFromList(recipeId: Long, listId: Long) = throw Boom()
         override suspend fun insert(list: ListEntity): Long = throw Boom()
@@ -188,12 +190,14 @@ class DatabaseErrorTest {
         assertEquals(listOf(emptyList<Any>()), lists.observeLists().toList())
         assertEquals(listOf(emptyList<Any>()), lists.observeListsFor(1).toList())
         assertEquals(listOf(emptyList<Any>()), lists.observeRecipesIn(2).toList())
+        assertEquals(listOf(emptyMap<Long, List<String>>()), lists.observeCoverPhotos().toList())
 
         assertEquals(
             listOf(
                 "setMembership failed", "setMembership failed", "createList failed",
                 "rename failed", "deleteList failed",
-                "observeLists failed", "observeListsFor failed", "observeRecipesIn failed"
+                "observeLists failed", "observeListsFor failed", "observeRecipesIn failed",
+                "observeCoverPhotos failed"
             ),
             log.messages
         )

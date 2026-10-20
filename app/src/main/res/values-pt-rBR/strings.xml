@@ -184,6 +184,7 @@
     <string name="nav_lists">Listas</string>
     <string name="lists_title">Listas</string>
     <string name="action_new_list">+  Nova lista</string>
+    <string name="lists_new_list_tile">Nova lista</string>
     <string name="action_create">Criar</string>
     <string name="action_rename">Renomear</string>
     <string name="action_save">Salvar</string>

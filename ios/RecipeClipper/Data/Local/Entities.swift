@@ -340,6 +340,22 @@ struct ListRecord: Equatable {
     }
 }
 
+/// One photo on a list's cover (#286): a recipe in `listId` that has an `imageUrl`.
+struct ListCoverPhotoRecord: Equatable {
+    let listId: Int64
+    let imageUrl: String
+
+    init(listId: Int64, imageUrl: String) {
+        self.listId = listId
+        self.imageUrl = imageUrl
+    }
+
+    init(row: SQLiteRow) {
+        listId = row.int64(0)
+        imageUrl = row.string(1)
+    }
+}
+
 extension ListMembership {
     init(row: SQLiteRow) {
         self.init(recipeId: row.int64(0), listId: row.int64(1), addedAt: row.int64(2))

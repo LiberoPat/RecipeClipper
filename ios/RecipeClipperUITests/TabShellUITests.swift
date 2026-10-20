@@ -68,7 +68,7 @@ final class TabShellUITests: RecipeUITestCase {
         require(app.staticTexts["weekRange"], "the Week")
         tab("Recipes").tap()
 
-        require(app.buttons["+ New list"], "Lists, still open under Recipes")
+        require(app.buttons["lists.newList"], "Lists, still open under Recipes")
     }
 
     func testChoosingRecipesAgainGoesBackToHome() {

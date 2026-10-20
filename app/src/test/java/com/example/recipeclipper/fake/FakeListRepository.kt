@@ -30,6 +30,9 @@ class FakeListRepository : ListRepository {
     /** What [observeRecipesIn] emits, regardless of the list asked for. */
     val recipesIn = MutableStateFlow<List<RecipeSummary>>(emptyList())
 
+    /** What [observeCoverPhotos] emits: list id to its cover photos, as the SQL groups them. */
+    val coverPhotos = MutableStateFlow<Map<Long, List<String>>>(emptyMap())
+
     /** Name and the recipe to add (or null), for every [createList] call, in order. */
     val createCalls = mutableListOf<Pair<String, Long?>>()
 
@@ -54,6 +57,8 @@ class FakeListRepository : ListRepository {
         recipesInQueries += listId
         return recipesIn.map { it }
     }
+
+    override fun observeCoverPhotos(): Flow<Map<Long, List<String>>> = coverPhotos
 
     override suspend fun setMembership(recipeId: Long, listId: Long, inList: Boolean) {
         membership.value = if (inList) {
