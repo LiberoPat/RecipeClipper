@@ -186,6 +186,7 @@ struct WeekScreen: View {
                     onNext: vm.onNextWeek,
                     onBack: vm.onToday
                 )
+                DayStripRow(days: state.strip, onSelect: vm.onStripDaySelected)
             }
             Hairline()
         }
@@ -227,6 +228,48 @@ struct WeekScreen: View {
     }
 }
 
+/// The day strip (#286; Android's DayStripRow): the seven days the header names, each a short
+/// weekday over its date with a paprika dot under a day that has meals; today is filled in
+/// paprika. A tap brings that day to the top of the list. VoiceOver reads the full date, and
+/// "meals planned" as the month says it.
+private struct DayStripRow: View {
+    let days: [StripDay]
+    let onSelect: (Int64) -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(days) { cell in
+                Button { onSelect(cell.day) } label: {
+                    VStack(spacing: 2) {
+                        Text(PlanDayFormat.shortWeekday(cell.day))
+                            .textStyle(Typography.labelMedium)
+                            .foregroundStyle(cell.isToday ? Palette.onPrimary : Palette.muted)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Text(PlanDayFormat.dayOfMonth(cell.day))
+                            .textStyle(Typography.titleMedium)
+                            .foregroundStyle(cell.isToday ? Palette.onPrimary : Palette.onBackground)
+                            .lineLimit(1)
+                        Circle()
+                            .fill(!cell.hasMeals ? Color.clear : cell.isToday ? Palette.onPrimary : Palette.primary)
+                            .frame(width: 5, height: 5)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .background(cell.isToday ? Palette.primary : Color.clear, in: RoundedRectangle(cornerRadius: 12))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    cell.hasMeals ? Strings.monthDayPlanned(PlanDayFormat.fullTitle(cell.day)) : PlanDayFormat.fullTitle(cell.day)
+                )
+                .accessibilityIdentifier("stripDay-\(cell.day)")
+            }
+        }
+        .padding(.bottom, 2)
+    }
+}
+
 /// Every day the ViewModel holds, one section each (#232; Android's DayList), keyed by its epoch
 /// day: the stack's one `ForEach`, so its ids are unique (#185). Free scrolling tells the
 /// ViewModel the day at the top; a `scrollTo` from an arrow, "Today", a new day or the month is
@@ -252,7 +295,7 @@ private struct DayList: View {
                     ForEach(state.allDays, id: \.self) { day in
                         DaySection(
                             vm: vm, day: day, isToday: day == state.today, meals: state.mealsOn(day),
-                            typeNames: typeNames, onOpenRecipe: onOpenRecipe
+                            nothingPlanned: state.isNothingPlanned(day), typeNames: typeNames, onOpenRecipe: onOpenRecipe
                         )
                     }
                 }
@@ -291,12 +334,13 @@ private struct DayList: View {
     }
 }
 
-/// One day: its heading, its meals, then its "+ Add".
+/// One day: its heading, its meals (or "Nothing planned", #286), then its "+ Add".
 private struct DaySection: View {
     let vm: WeekViewModel
     let day: Int64
     let isToday: Bool
     let meals: [PlannedMeal]
+    let nothingPlanned: Bool
     let typeNames: [Int64: String]
     let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
 
@@ -321,6 +365,13 @@ private struct DaySection: View {
                         Label(Strings.removeFromPlan, systemImage: "minus.circle")
                     }
                 }
+            }
+            if nothingPlanned {
+                Text(Strings.nothingPlanned)
+                    .textStyle(Typography.bodyMedium)
+                    .foregroundStyle(Palette.muted)
+                    .padding(.vertical, 4)
+                    .accessibilityIdentifier("nothingPlanned-\(day)")
             }
             Button(Strings.addMeal) { vm.onAddToDay(day) }
                 .buttonStyle(TextActionStyle())

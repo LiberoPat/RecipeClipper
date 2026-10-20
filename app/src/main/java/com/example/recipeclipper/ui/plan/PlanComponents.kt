@@ -54,6 +54,9 @@ private fun format(day: Long, skeleton: String): String {
 /** "Monday 23", in the locale's order. */
 internal fun dayTitle(day: Long): String = format(day, "EEEEd")
 
+/** "Monday, October 19", in the locale's order: a Week day strip button, read aloud (#286). */
+internal fun fullDayTitle(day: Long): String = format(day, "EEEEMMMMd")
+
 /** "Mon" */
 internal fun shortWeekday(day: Long): String = format(day, "EEE")
 

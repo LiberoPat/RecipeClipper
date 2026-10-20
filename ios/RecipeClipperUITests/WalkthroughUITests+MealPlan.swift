@@ -26,6 +26,9 @@ extension WalkthroughUITests {
         pause()
         require(app.buttons["todayButton"], "Today").tap()
         pause(2)
+        // The day strip scrolls to the day tapped (#286).
+        require(app.buttons["stripDay-\(today + 3)"], "a day in the strip").tap()
+        pause(2)
         require(app.buttons["toggleMonth"], "the Month switch").tap()
         pause(2.5)
         require(app.buttons["monthDay-\(today + 6)"], "a day in the grid").tap()

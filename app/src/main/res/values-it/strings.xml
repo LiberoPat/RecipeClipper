@@ -281,6 +281,8 @@
     <string name="action_move_up">Sposta su</string>
     <string name="action_move_down">Sposta giù</string>
     <string name="label_meal_type_name">Nome del tipo di pasto</string>
+    <!-- Week: day strip (#286) -->
+    <string name="week_nothing_planned">Niente in programma</string>
 
     <!-- Clip it yourself (#37) -->
     <string name="clip_offer">Apri la pagina, poi tocca Nome, Ingredienti e Passaggi e scegli ciascuno nella pagina.</string>

@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -97,6 +98,7 @@ import com.example.recipeclipper.ui.plan.MealTypeChoices
 import com.example.recipeclipper.ui.plan.PlanSheetContent
 import com.example.recipeclipper.ui.plan.dayOfMonth
 import com.example.recipeclipper.ui.plan.dayTitle
+import com.example.recipeclipper.ui.plan.fullDayTitle
 import com.example.recipeclipper.ui.plan.monthTitle
 import com.example.recipeclipper.ui.plan.rememberDayTitle
 import com.example.recipeclipper.ui.plan.shortWeekday
@@ -114,7 +116,8 @@ import kotlinx.coroutines.flow.filterNotNull
  * The Week tab (#49): ‹ week › over one scroll of days that opens with today at the top, each
  * day with its meals and a "+ Add" (#232). The weeks are seven-day blocks from today; the label
  * names the block at the top, the arrows snap to the block before or after, and "Today", away
- * from this week, scrolls back. Tapping a recipe opens it at the planned
+ * from this week, scrolls back. Under the label, a strip of the block's seven days (#286) marks
+ * the planned ones and scrolls to the one tapped. Tapping a recipe opens it at the planned
  * servings; long-pressing a meal offers Move and Remove (Remove can be undone). The menu's "Add
  * this week's ingredients" (#50) opens the grocery sheet over every recipe planned in the week
  * shown; [groceriesViewModel] null leaves it out. "What I need" (#51) opens the week against the
@@ -204,6 +207,7 @@ fun WeekScreen(
                                 onNext = viewModel::onNextWeek,
                                 onBack = viewModel::onToday
                             )
+                            DayStripRow(days = state.strip, onSelect = viewModel::onStripDaySelected)
                         } else {
                             PeriodNavigation(
                                 label = remember(month.monthStart) { monthTitle(month.monthStart) },
@@ -322,6 +326,60 @@ private fun PeriodNavigation(
         }
         if (backLabel != null) {
             TextButton(onClick = onBack, modifier = Modifier.testTag(backTag)) { Text(backLabel) }
+        }
+    }
+}
+
+/**
+ * The day strip (#286): the seven days the header names, each a short weekday over its date with
+ * a paprika dot under a day that has meals; today is filled in paprika. A tap brings that day to
+ * the top of the list. Screen readers hear the full date, and "meals planned" as the month says it.
+ */
+@Composable
+private fun DayStripRow(days: List<StripDay>, onSelect: (Long) -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 10.dp).testTag("dayStrip")
+    ) {
+        days.forEach { cell ->
+            key(cell.day) {
+                val date = remember(cell.day) { fullDayTitle(cell.day) }
+                val description = if (cell.hasMeals) stringResource(R.string.cd_month_day_planned, date) else date
+                val colors = MaterialTheme.colorScheme
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (cell.isToday) colors.primary else Color.Transparent)
+                        .clickable(role = Role.Button) { onSelect(cell.day) }
+                        .testTag("stripDay-${cell.day}")
+                        .clearAndSetSemantics { contentDescription = description }
+                        .padding(vertical = 7.dp)
+                ) {
+                    Text(
+                        remember(cell.day) { shortWeekday(cell.day) },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (cell.isToday) colors.onPrimary else colors.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                    Text(
+                        remember(cell.day) { dayOfMonth(cell.day) },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (cell.isToday) colors.onPrimary else colors.onBackground
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Box(
+                        Modifier.size(5.dp).clip(CircleShape).background(
+                            when {
+                                !cell.hasMeals -> Color.Transparent
+                                cell.isToday -> colors.onPrimary
+                                else -> colors.primary
+                            }
+                        )
+                    )
+                }
+            }
         }
     }
 }
@@ -540,6 +598,7 @@ private fun DayList(
                 day = day,
                 isToday = day == state.today,
                 meals = state.mealsOn(day),
+                nothingPlanned = state.isNothingPlanned(day),
                 typeNames = typeNames,
                 onOpenRecipe = onOpenRecipe,
                 onAdd = { viewModel.onAddToDay(day) },
@@ -550,12 +609,13 @@ private fun DayList(
     }
 }
 
-/** One day: its heading, its meals, then its "+ Add". */
+/** One day: its heading, its meals (or "Nothing planned", #286), then its "+ Add". */
 @Composable
 private fun DaySection(
     day: Long,
     isToday: Boolean,
     meals: List<PlannedMeal>,
+    nothingPlanned: Boolean,
     typeNames: Map<Long, String>,
     onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit,
     onAdd: () -> Unit,
@@ -574,6 +634,14 @@ private fun DaySection(
                     onRemove = { onRemove(meal) }
                 )
             }
+        }
+        if (nothingPlanned) {
+            Text(
+                stringResource(R.string.week_nothing_planned),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 4.dp).testTag("nothingPlanned-$day")
+            )
         }
         TextButton(
             onClick = onAdd,

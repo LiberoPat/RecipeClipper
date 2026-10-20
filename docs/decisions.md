@@ -1521,6 +1521,19 @@ The first real tab of #46, still behind the #47 flag.
   view's own state; the ViewModel owns the days, the window, the block math and one-shot
   `scrollTo` requests (an arrow, "Today", a new day, a month tap), and ignores the days a
   requested scroll passes until it lands.
+- **The day strip** (#286, the owner's pick V2 "Day strip", 2026-10-19; both platforms). Under
+  ‹ range ›, a row of the seven days the header names: the same block ‹ › move, so it follows
+  free scrolling too. Each is a short weekday over its date; today, when it's among them, is
+  filled in paprika, and a paprika dot (white on today) sits under each day with something
+  planned. A tap brings that day to the top through the same `scrollTo` as an arrow or the month
+  (`onStripDaySelected`). The two can't fight: the strip only asks for scrolls and never follows
+  the list itself (it is `WeekUiState.strip`, from the block at the top), and the tapped day is in
+  the block already shown, so neither the header nor the strip moves. Screen readers hear the
+  full date ("Monday, October 19") and, as the month says it, "meals planned". The month view
+  hides it.
+- **An empty day says "Nothing planned"** (#286), above its "+ Add", which stays where it was
+  (the mockup put "+ Add" beside the heading). Only once the day's meals have loaded
+  (`isNothingPlanned`), so a day outside the window of meals never claims to be empty.
 - **Meal types are a table** (`meal_types`, owner's call): Breakfast, Lunch,
   Dinner and Snack are seeded with a `builtInKey` that survives a rename, as
   `isFavorites` does for lists. Any type can be renamed and reordered; only
@@ -1560,9 +1573,10 @@ The first real tab of #46, still behind the #47 flag.
 - **The screen in short** (CLAUDE.md's summary until September 2026, #52's
   extras included; rolling since #232): a fixed header, ‹ range › naming the
   seven days from today (or the block at the top), and "Today" when away from
-  them; under it one scroll of day sections, opening on today, from a year back
+  them, over a strip of those seven days (#286: dots on planned days, today
+  filled, a tap scrolls to the day); under it one scroll of day sections, opening on today, from a year back
   to two ahead; ‹ › snap to the previous or next block. Meal rows (type,
-  thumbnail, title, servings, or a note), "+ Add" per day (a meal type, then a
+  thumbnail, title, servings, or a note) or "Nothing planned", "+ Add" per day (a meal type, then a
   recipe from history or the typed text as a note). Long-press: Move (the day
   strip and meal types) or Remove (undo snackbar). A tapped recipe opens at its
   planned servings, for that visit only. "Month" beside the title swaps in a

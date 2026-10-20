@@ -377,6 +377,8 @@
     <string name="action_move_up">Move up</string>
     <string name="action_move_down">Move down</string>
     <string name="label_meal_type_name">Meal type name</string>
+    <!-- Week: day strip (#286) -->
+    <string name="week_nothing_planned">Nothing planned</string>
 
     <!-- Groceries (#50) -->
     <string name="action_add">Add</string>
