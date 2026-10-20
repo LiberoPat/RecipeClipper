@@ -225,17 +225,7 @@ final class PantryUITests: RecipeUITestCase {
             if pass == 1 { for _ in 0..<3 { app.swipeDown() } } else if pass > 1 { app.swipeUp() }
             // Let the move's animation and the scroll settle.
             _ = app.staticTexts["#203 settle"].waitForExistence(timeout: 1.5)
-            let screen = app.frame
-            var visible: [(name: String, heading: Bool, frame: CGRect)] = []
-            for heading in headings {
-                let element = app.staticTexts[heading].firstMatch
-                if element.exists, screen.contains(element.frame) { visible.append((heading, true, element.frame)) }
-            }
-            for item in items {
-                let element = pantryRow(item)
-                if element.exists, screen.contains(element.frame) { visible.append((item, false, element.frame)) }
-            }
-            visible.sort { $0.frame.minY < $1.frame.minY }
+            let visible = onScreen().sorted { $0.frame.minY < $1.frame.minY }
             for (a, b) in zip(visible, visible.dropFirst()) {
                 XCTAssertLessThan(b.frame.minY - a.frame.maxY, 30, "a blank row between \(a.name) and \(b.name)", file: file, line: line)
             }
@@ -246,7 +236,35 @@ final class PantryUITests: RecipeUITestCase {
             }
         }
         XCTAssertEqual(placed, Set(expected.keys), "the rows seen under a heading", file: file, line: line)
-        if expected.values.contains("Run out") { reveal(text("Run out"), "the Run out heading") }
+        if expected.values.contains("Run out") {
+            // The heading itself, not the Run out count box over the list (#286).
+            let shown = { self.onScreen().contains { $0.heading && $0.name == "Run out" } }
+            for _ in 0..<4 where !shown() { app.swipeUp() }
+            XCTAssertTrue(shown(), "the Run out heading", file: file, line: line)
+        }
+    }
+
+    /// The headings and rows fully on screen, from one snapshot of the tree. Asking each element
+    /// for `exists` and `frame` costs a round trip to the app every time: about a hundred per
+    /// check, which took each test above to nine minutes on CI (#296).
+    private func onScreen() -> [(name: String, heading: Bool, frame: CGRect)] {
+        guard let root = try? app.snapshot() else { return [] }
+        var found: [(name: String, heading: Bool, frame: CGRect)] = []
+        var seen = Set<String>()
+        func visit(_ node: XCUIElementSnapshot) {
+            // The count boxes over the list (#286) read "Run out" too: not a heading.
+            if node.identifier.hasPrefix("pantryCount-") { return }
+            // The first match of each, in tree order, as `firstMatch` took it.
+            if node.elementType == .staticText, headings.contains(node.label), seen.insert(node.label).inserted {
+                if root.frame.contains(node.frame) { found.append((node.label, true, node.frame)) }
+            } else if node.elementType == .button,
+                      let item = items.first(where: { node.label.hasPrefix("\($0), ") }), seen.insert(item).inserted {
+                if root.frame.contains(node.frame) { found.append((item, false, node.frame)) }
+            }
+            node.children.forEach(visit)
+        }
+        visit(root)
+        return found
     }
 }
 

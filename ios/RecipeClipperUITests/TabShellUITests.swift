@@ -102,10 +102,11 @@ final class TabShellUITests: RecipeUITestCase {
         require(app.buttons["Clip it yourself"], "Clip it yourself").tap()
 
         requireGone(tabBar, "the tab bar on the clip page")
-        app.buttons["clip.field.NAME"].tap()
+        // The guided steps (#251) arm Name on entry: a tap on its button would disarm it.
+        require(text("Step 1 of 4 · Tap the recipe's name"), "guided on entry, Name armed")
         require(app.webViews.firstMatch.staticTexts["Brown Butter Oat Cookies"], "the page", within: 60).tap()
         require(app.buttons["Use as the name"], "the tap, heard by the app").tap()
-        require(text("Name added. Next: tap Ingredients."), "the name added")
+        require(text("Step 2 of 4 · Tap the ingredients"), "the name added, the next step armed")
         app.buttons["clip.field.PHOTO"].tap()
         require(app.webViews.firstMatch.images["Cookies photo"], "the photo").tap()
         require(textContaining("Photo added."), "the image tap, heard by the app")

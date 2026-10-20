@@ -1,7 +1,7 @@
 name: iOS UI tests
 
-# About 18 minutes, so not on every pull request: nightly, and on demand from
-# the Actions tab (Run workflow).
+# About an hour, so not on every pull request: nightly, and on demand from the
+# Actions tab (Run workflow) or `gh workflow run ios-ui-tests.yml --ref <branch>`.
 on:
   workflow_dispatch:
   schedule:
@@ -21,7 +21,7 @@ jobs:
   ios-ui:
     name: iOS UI tests
     runs-on: xcode-27
-    timeout-minutes: 75
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
 
@@ -33,19 +33,60 @@ jobs:
           brew install xcodegen
           cd ios && xcodegen generate
 
-      - name: UI tests
+      - name: Build for testing
         working-directory: ios
         run: |
-          xcodebuild test \
+          xcodebuild build-for-testing \
             -project RecipeClipper.xcodeproj -scheme RecipeClipper \
-            -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' \
-            -only-testing:RecipeClipperUITests \
-            -resultBundlePath build/RecipeClipperUITests.xcresult
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/DerivedData
+
+      # A fresh simulator, fully booted before the run: the shared one hung at bootstrap and
+      # crashed the test runner before any test ran (#296).
+      - name: Boot a fresh simulator
+        id: sim
+        run: |
+          udid=$(xcrun simctl create rc-ui-tests "iPhone 17" com.apple.CoreSimulator.SimRuntime.iOS-27-0)
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+
+      # Each test gets five minutes (ten at most), so one stuck test fails alone instead of
+      # running the job into its timeout. No diagnostics from the simulator: collecting them
+      # after a failure timed out at ten minutes every time.
+      - name: UI tests
+        working-directory: ios
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          run_tests() {
+            xcodebuild test-without-building \
+              -project RecipeClipper.xcodeproj -scheme RecipeClipper \
+              -destination "id=$UDID" -derivedDataPath build/DerivedData \
+              -only-testing:RecipeClipperUITests -parallel-testing-enabled NO \
+              -test-timeouts-enabled YES -collect-test-diagnostics never \
+              -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
+              -resultBundlePath "build/RecipeClipperUITests$1.xcresult" 2>&1 | tee "build/ui-tests$1.log"
+            return "${PIPESTATUS[0]}"
+          }
+          run_tests "" && exit 0
+          # The runner crashing before any test ran is the simulator, not a test: once more,
+          # on the simulator rebooted.
+          grep -q "never finished bootstrapping" build/ui-tests.log || exit 1
+          echo "The test runner never started: rebooting the simulator and running once more."
+          xcrun simctl shutdown "$UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          run_tests "-retry"
 
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: ios-ui-test-results
-          path: ios/build/RecipeClipperUITests.xcresult
+          path: ios/build/*.xcresult
           if-no-files-found: ignore
+
+      - name: Delete the simulator
+        if: always() && steps.sim.outputs.udid != ''
+        run: xcrun simctl delete "${{ steps.sim.outputs.udid }}"
