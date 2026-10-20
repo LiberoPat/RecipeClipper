@@ -1895,12 +1895,29 @@ its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
   #213; an app's own `intent:` or `reddit:` link never loads), so a clip is always saved under
   the page it came from.
 - **The Reddit Text view (#230) works the same way:** the armed field carries between Page and
-  Text, and taps select there too. **Text, then Page, left the page dead on Android (#237):** the
-  hidden Text view was shrunk to no size, and its last frame stayed on the screen over the page,
-  which answered underneath (it scrolled by script, a tap reached it) while the screen showed
-  the text, frozen. Now the hidden Text view keeps its full size, isn't drawn
-  (`View.INVISIBLE`) and sits under the page. `ClipScreenTest` checks the screen's pixels after
-  Text, then Page. iOS hides it with opacity and no hit testing, which never showed this.
+  Text, and the guided steps, the confirm, Skip and Undo are the same there. **Text, then Page,
+  left the page dead on Android (#237):** the hidden Text view (then a web view) was shrunk to
+  no size, and its last frame stayed on the screen over the page. `ClipScreenTest` still checks
+  the screen's pixels after Text, then Page.
+- **Text view, line by line (the owner's pick, #286, V4).** The Text view lists the post's lines
+  as rows, each with a checkbox (the whole row ticks it; a checkbox to TalkBack and the tests, a
+  selected button to VoiceOver, as every tick in the app): native rows now (`ClipTextRow`,
+  `ClipTextView`), not a web page, so the ticks are the ViewModel's (`ticked`) and survive
+  rotation, where a web view's selection was lost with its reload.
+  - **Ticked lines are the selection,** washed in paprika (the app's 14% wash, as #254's), and
+    the dock says "3 lines selected · tap the field they go in" (the count in ink, the rest
+    muted, over the field buttons). Both orders work as on the page: armed, the step's confirm
+    adds them; with nothing armed, a field's button does (#251). The page under the Text view
+    isn't heard while it shows (it only ever reports dropping its own selection).
+  - **A run in two taps:** with lines ticked, a tap on a line past them ticks every line up to
+    it, as a second tap stretched a selection (#237); a tap in a gap ticks that line, a ticked
+    line unticks. Not for Name, where each tap ticks its own line.
+  - **Adds stay marked:** a line an add took has a paprika bar, and the add's first line its tag
+    ("Ingredients · 3"), which takes the add back as the page's tag does. New text (more
+    comments loaded) is new rows, with the old marks dropped, as a page loses its marks on a reload.
+  - **The dotted outlines aren't drawn in the Text view:** the checkboxes already show what a tap
+    takes. Unchanged from the mockup's other differences: the Text view is Reddit's only, and Text
+    and Page stay one text button in the top bar (the mockup draws two pills).
 - **Save** upserts on the cleaned URL like an import (same id, note and list membership) with
   `contentOrigin` CLIPPED (#29's column; no schema change), replacing whatever the row held,
   then the recipe replaces both the clip and the error screen in the back stack.
@@ -1937,10 +1954,13 @@ its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
   `ClipScreenTest` taps the page's elements by script (`click()`, which reaches the page's own
   listener as a tap does), drags a handle with script pointer events, and makes the Text →
   Page check with a real tap through the shell; iOS's `ClipUITests` taps the page's text with
-  XCUITest. Either way the app hears the selection through the page's `selectionchange`.
+  XCUITest. Either way the app hears the selection through the page's `selectionchange`. The
+  Text view's rows are ticked as any Compose or SwiftUI row is (#286); iOS's fixture page holds a
+  hidden `shreddit-post` for it to read.
 - **Walkthrough clips:** 31 (live Reddit, selected by script) and 32 (a live blog page, real
   taps) show the field-first flow, recorded 2026-10-13 (#250). Their tests follow the guided
   flow since #251 (31 selects first, 32 goes step by step); the clips weren't re-recorded.
+  Since #286, 31's second post ticks the Text view's rows with real taps; 31 needs re-recording.
   `ClipScreenTest` and `ClipUITests` walk the guided steps from step 1, jump back to Steps for a
   second block added select first, and Skip.
 
@@ -3709,12 +3729,12 @@ app main had become:
   because Reddit's prompts and markup change often and old.reddit.com now wants a login). A Text
   button in the clip's top bar reads the post as it stands (`RCReddit.text()`: the
   `shreddit-post` and the comment tree, from the DOM, so it works under any overlay) and shows its
-  title, body and loaded comments as plain paragraphs in a second web view with `clipper.js`, so
-  selecting, assigning, marks, Review and Save are the same; Page goes back, the page kept under
-  it. What counts as the text is decided natively and tested (`RedditPageText`, a block a line,
-  a comment's own text without its replies'; `RedditTextPage` builds the escaped page, its labels
-  unselectable). **Only the comments Reddit has loaded are there** (deeper threads load as the
-  page scrolls), which the view says; the post body and top comments are what matter. A page
+  title, body and loaded comments a line a row, each with a checkbox (#286; at first a second web
+  view with `clipper.js`), so assigning, marks, Review and Save are the same; Page goes back, the
+  page kept under it. What counts as the text is decided natively and tested (`RedditPageText`, a
+  block a line, a comment's own text without its replies'; `ClipTextRow` makes the rows, its
+  labels without a checkbox). **Only the comments Reddit has loaded are there** (deeper
+  threads load as the page scrolls), which the view says; the post body and top comments are what matter. A page
   with no post yet (still loading, or the check) says to wait. The photo is still picked on the
   page: Photo goes back to it.
 - **Not old.reddit.com.** Its plain HTML would suit clipping, but since September 2026 it answers

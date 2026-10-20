@@ -57,13 +57,13 @@ enum ClipHint: Equatable {
 }
 
 /// Android's ClipUiState. `selection` is the page's current selection (or the Text view's ticked
-/// lines) split the way it would be assigned. `newMarkId` is the mark the page should take from its current selection.
-/// `savedRecipeId` is set once Save lands, so the view can open it. Field first (#237): `armed` is
-/// the field the cook tapped, which the page's taps select for; `lastAdded` is the add just made;
-/// `clearSelection` counts the times the page's selection was dropped, so the page clears its own
-/// when it changes. Guided steps (#251): the armed field is the current step, Name → Ingredients →
-/// Steps → Photo; `skipped` holds the steps the cook skipped. The steps are over (`guideDone`) once
-/// each one is filled or skipped.
+/// lines) split the way it would be assigned. `newMarkId` is the mark the page should take from
+/// its current selection. `savedRecipeId` is set once Save lands, so the view can open it. Field
+/// first (#237): `armed` is the field the cook tapped, which the page's taps select for;
+/// `lastAdded` is the add just made; `clearSelection` counts the times the page's selection was
+/// dropped, so the page clears its own when it changes. Guided steps (#251): the armed field is
+/// the current step, Name → Ingredients → Steps → Photo; `skipped` holds the steps the cook
+/// skipped. The steps are over (`guideDone`) once each one is filled or skipped.
 struct ClipUiState: Equatable {
     let url: String
     var draft: ClipDraft

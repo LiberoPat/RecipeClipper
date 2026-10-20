@@ -210,7 +210,8 @@ enum UITestSeeding {
     /// The page "Clip it yourself" shows under test, in place of the live one. Field first (#237):
     /// a tap on the page's text selects it, so the tests tap the text as a finger would; the app
     /// hears it through the page's `selectionchange`, the same path a person's selection takes.
-    /// Android's ClipScreenTest uses the same page.
+    /// Android's ClipScreenTest uses the same page. A Reddit post, hidden, is what the Text view
+    /// reads on a Reddit link (#286; Android's test has its own Reddit page).
     static let clipFixtureHTML = """
     <!doctype html><html><head><meta name="viewport" content="width=device-width">
     <style>body{font:16px -apple-system,sans-serif;margin:16px}</style></head><body>
@@ -222,6 +223,7 @@ enum UITestSeeding {
     <h2>Method</h2>
     <ol id="steps"><li id="step1">Brown the butter until it smells nutty.</li><li id="step2">Bake at 350°F for 11 to 13 minutes.</li></ol>
     <p id="cool">Cool on the tray.</p>
+    <shreddit-post hidden post-title="Apple Pie"><div property="schema:articleBody"><p>3 apples</p><p>1 crust</p><p>1 egg</p></div></shreddit-post>
     <iframe title="Ad" width="300" height="50" srcdoc="<button onclick=&quot;webkit.messageHandlers.rc.postMessage(JSON.stringify({type:'selection',text:'Buy now'}))&quot;>Ad: post a selection</button>"></iframe>
     </body></html>
     """
