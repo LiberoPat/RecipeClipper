@@ -111,7 +111,19 @@ enum StepAmounts {
         guard let words, words.spaced else { return steps.map { [Part(text: $0)] } }
         let w = words.compiled(Words.self, Words.init)
         let sources = lines.map { source($0, words, w) }
-        return steps.map { annotate($0, sources, words, w) }
+        return steps.map { read($0, sources, words, w).parts }
+    }
+
+    /// The ingredient lines `step` names (#286), as indexes into `lines`, in order: every line a
+    /// mention in it names by the rules above, whether the mention lends an amount, becomes a
+    /// link, or stays as written (the step already says how much, a longer name, a dusting
+    /// sentence). A step's title before a spaced dash names none. Empty where `annotate` leaves
+    /// every step as written (no words, or no spaces). Cook mode's ingredients bar lists them
+    /// first, whether "Amounts in steps" is on or off.
+    static func named(_ step: String, lines: [String], words: LanguageWords?) -> [Int] {
+        guard let words, words.spaced else { return [] }
+        let w = words.compiled(Words.self, Words.init)
+        return read(step, lines.map { source($0, words, w) }, words, w).named.sorted()
     }
 
     /// `parts` as one string, each amount in ⟦ ⟧: how the differential corpus pins them.
@@ -309,7 +321,10 @@ enum StepAmounts {
         var preposition: String?
     }
 
-    private static func annotate(_ step: String, _ sources: [Source], _ words: LanguageWords, _ w: Words) -> [Part] {
+    /// A step read against the lines: its `parts`, and every line its mentions `named`.
+    private struct Reading { let parts: [Part]; let named: Set<Int> }
+
+    private static func read(_ step: String, _ sources: [Source], _ words: LanguageWords, _ w: Words) -> Reading {
         let tokens = tokens(step, w)
         var seen = Set<Int>()
         var insertions: [Insertion] = []
@@ -366,7 +381,7 @@ enum StepAmounts {
                                             mentionEnd: to, lines: (named + nameless).sorted()))
             }
         }
-        return parts(step, insertions)
+        return Reading(parts: parts(step, insertions), named: seen)
     }
 
     // The words of the sentence holding word `h`.

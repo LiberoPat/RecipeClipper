@@ -40,6 +40,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.StepAmounts
@@ -150,10 +151,20 @@ internal fun IngredientRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     // A step's ingredient link points here (#254): a paprika wash that fades out.
-    highlighted: Boolean = false
+    highlighted: Boolean = false,
+    // Cook mode's "In this step" (#286): a lighter paprika wash that stays.
+    washed: Boolean = false,
+    // Room between the wash's edge and the checkbox and text.
+    inset: Dp = 0.dp
 ) {
+    val paprika = MaterialTheme.colorScheme.tertiary
     val wash by animateColorAsState(
-        if (highlighted) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f) else Color.Transparent,
+        when {
+            // Stronger on a washed row, so the link's lines still stand out.
+            highlighted -> paprika.copy(alpha = if (washed) 0.3f else 0.14f)
+            washed -> paprika.copy(alpha = 0.12f)
+            else -> Color.Transparent
+        },
         animationSpec = tween(if (highlighted) 150 else 900),
         label = "highlight"
     )
@@ -164,7 +175,7 @@ internal fun IngredientRow(
             .clip(RoundedCornerShape(8.dp))
             .background(wash)
             .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange)
-            .padding(vertical = 6.dp)
+            .padding(vertical = 6.dp, horizontal = inset)
     ) {
         Checkbox(checked = checked, onCheckedChange = null)
         Spacer(Modifier.width(12.dp))

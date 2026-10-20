@@ -157,6 +157,20 @@ class StepAmountsTest {
         assertEquals("Unte a forma com manteiga e polvilhe farinha.", annotate("Unte a forma com manteiga e polvilhe farinha.", listOf("100 g de manteiga", "2 xícaras de farinha de trigo"), "pt"))
     }
 
+    // Cook mode's ingredients bar lists these first (#286): every line a mention names.
+    @Test fun `named lists every line the step names, with or without an amount`() {
+        fun named(step: String, vararg lines: String, lang: String = "en") =
+            StepAmounts.named(step, lines.toList(), LanguageWords.forTag(lang))
+        assertEquals(listOf(0), named("Add the carrots.", "2 carrots", "1 onion"))
+        // A link names both lines; a step that says how much still names its lines.
+        assertEquals(listOf(0, 1), named("Melt the butter.", "200g butter", "100g butter", "1 cup flour"))
+        assertEquals(listOf(0, 1), named("Add 2 tablespoons butter and half the sugar.", "4 tbsp butter", "1 cup sugar", "2 eggs"))
+        // A title before a spaced dash names nothing; a heading is never named.
+        assertEquals(listOf(2), named("Sauté onion - Then stir in the garlic.", "1 onion", "For the sauce:", "2 cloves garlic"))
+        assertEquals(emptyList<Int>(), named("Preheat the oven.", "2 cups flour"))
+        assertEquals(emptyList<Int>(), named("Add the carrots.", "2 carrots", lang = "xx"))
+    }
+
     @Test fun `no words leave every step as written`() {
         assertEquals(listOf(listOf(StepAmounts.Part("Add the carrots."))), StepAmounts.annotate(listOf("Add the carrots."), listOf("2 carrots"), null))
     }

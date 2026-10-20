@@ -103,6 +103,11 @@ struct IngredientRow: View {
     let onCheckedChange: (Bool) -> Void
     /// A step's ingredient link points here (#254): a paprika wash that fades out.
     var highlighted = false
+    /// Cook mode's "In this step" (#286): a lighter paprika wash that stays.
+    var washed = false
+
+    // Stronger on a washed row, so a link's lines still stand out.
+    private var wash: Double { highlighted ? (washed ? 0.3 : 0.14) : washed ? 0.12 : 0 }
 
     var body: some View {
         Button { onCheckedChange(!checked) } label: {
@@ -118,7 +123,7 @@ struct IngredientRow: View {
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Palette.accentText.opacity(highlighted ? 0.14 : 0))
+                    .fill(Palette.accentText.opacity(wash))
                     .padding(.horizontal, -6)
                     .animation(.easeOut(duration: highlighted ? 0.15 : 0.9), value: highlighted)
             )

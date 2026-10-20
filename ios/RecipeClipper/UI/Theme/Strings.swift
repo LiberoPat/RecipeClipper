@@ -276,6 +276,9 @@ enum Strings {
     static func cookIngredientsCountOwnLine(_ n: Int) -> String { String(localized: "cook_items \(n)") }
     static var hideIngredients: String { String(localized: "cd_hide_ingredients") }
     static var showIngredients: String { String(localized: "cd_show_ingredients") }
+    /// The ingredients bar's groups in cook mode (#286).
+    static var cookInThisStep: String { String(localized: "cook_in_this_step") }
+    static var cookLater: String { String(localized: "cook_later") }
     static func goToStep(_ n: Int) -> String { String(localized: "cd_go_to_step \(n)") }
     /// "Back to step 2" (#254), after a step's ingredient link.
     static func backToStep(_ n: Int) -> String { String(localized: "step_back_to \(n)") }

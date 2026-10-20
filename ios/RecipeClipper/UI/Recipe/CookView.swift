@@ -195,19 +195,18 @@ private struct IngredientsBar: View {
 
             if expanded {
                 let jump = state.ingredientJump
+                // The current step's lines first, then the rest (#286); every line as written
+                // when it names none.
                 let list = VStack(spacing: 0) {
-                    ForEach(Array(content.ingredients.enumerated()), id: \.offset) { index, ingredient in
-                        if content.isHeading(index) {
-                            IngredientHeadingRow(text: ingredient)
-                        } else {
-                            IngredientRow(
-                                text: ingredient,
-                                checked: state.checkedIngredients.contains(index),
-                                onCheckedChange: { vm.onIngredientChecked(index, $0) },
-                                highlighted: jump?.highlighted == true && jump?.lines.contains(index) == true
-                            )
-                            .id("line-\(index)")
+                    if let groups = state.stepIngredients {
+                        GroupLabel(text: Strings.cookInThisStep).padding(.top, 4)
+                        lines(groups.now, washed: true, jump: jump)
+                        if !groups.later.isEmpty {
+                            GroupLabel(text: Strings.cookLater).padding(.top, 12)
+                            lines(groups.later, washed: false, jump: jump)
                         }
+                    } else {
+                        lines(Array(content.ingredients.indices), washed: false, jump: jump)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -234,6 +233,43 @@ private struct IngredientsBar: View {
             }
             Hairline()
         }
+    }
+
+    /// The bar's ingredient `indices`: a heading as a subheading, any other line a row to tick,
+    /// `washed` in paprika for "In this step" (#286). Identified by line index, which is unique
+    /// across both groups, so each line keeps its own row as the groups change.
+    private func lines(_ indices: [Int], washed: Bool, jump: IngredientJump?) -> some View {
+        ForEach(indices, id: \.self) { index in
+            let ingredient = content.ingredients[index]
+            if content.isHeading(index) {
+                IngredientHeadingRow(text: ingredient)
+            } else {
+                IngredientRow(
+                    text: ingredient,
+                    checked: state.checkedIngredients.contains(index),
+                    onCheckedChange: { vm.onIngredientChecked(index, $0) },
+                    highlighted: jump?.highlighted == true && jump?.lines.contains(index) == true,
+                    washed: washed
+                )
+                .id("line-\(index)")
+            }
+        }
+    }
+}
+
+/// "In this step" or "Later" over the ingredients bar's groups (#286): small capitals, a header
+/// for VoiceOver, read in sentence case.
+private struct GroupLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text.uppercased())
+            .textStyle(Typography.labelSmall)
+            .foregroundStyle(Palette.muted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 4)
+            .accessibilityLabel(text)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

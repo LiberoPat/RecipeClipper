@@ -65,6 +65,9 @@
     <string name="cook_done_finish">Fertig – beenden</string>
     <string name="cd_hide_ingredients">Zutaten ausblenden</string>
     <string name="cd_show_ingredients">Zutaten einblenden</string>
+    <!-- The ingredients bar's groups in cook mode (#286) -->
+    <string name="cook_in_this_step">In diesem Schritt</string>
+    <string name="cook_later">Später</string>
     <string name="cd_go_to_step">Zu Schritt %1$d</string>
     <string name="step_back_to">Zurück zu Schritt %1$d</string>
     <string name="step_link_show">anzeigen</string>

@@ -66,6 +66,9 @@
     <string name="cook_done_finish">Terminé — finir</string>
     <string name="cd_hide_ingredients">Masquer les ingrédients</string>
     <string name="cd_show_ingredients">Afficher les ingrédients</string>
+    <!-- The ingredients bar's groups in cook mode (#286) -->
+    <string name="cook_in_this_step">Pour cette étape</string>
+    <string name="cook_later">Plus tard</string>
     <string name="cd_go_to_step">Aller à l\'étape %1$d</string>
     <string name="step_back_to">Revenir à l\'étape %1$d</string>
     <string name="step_link_show">afficher</string>

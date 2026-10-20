@@ -117,7 +117,7 @@ struct IngredientJump: Equatable {
 }
 
 struct RecipeUiState: Equatable {
-    var content: RecipeContent = .loading
+    var content: RecipeContent = .loading { didSet { regroup() } }
     var checkedIngredients: Set<Int> = []
     /// The user's note as typed; empty when there is none. Saved by the ViewModel.
     var notes = ""
@@ -127,7 +127,9 @@ struct RecipeUiState: Equatable {
     var darkWhileCooking = false
     /// The Settings switch (#101), behind the `amountsInSteps` flag, which the view checks.
     var amountsInSteps = false
-    var cook = CookState()
+    var cook = CookState() {
+        didSet { if cook.active != oldValue.active || cook.currentStep != oldValue.currentStep { regroup() } }
+    }
     /// Set once the recipe has been deleted, so the screen can navigate back.
     var deleted = false
     /// The prefilled "Report this site" issue link. Non-nil only while a shared link's
@@ -160,7 +162,7 @@ struct RecipeUiState: Equatable {
     var photoPost: PhotoPost?
 
     /// Chef mode (#100): the steps the cook tapped to see as written, not short.
-    var asWrittenSteps: Set<Int> = []
+    var asWrittenSteps: Set<Int> = [] { didSet { regroup() } }
     /// The free library is full and every recipe in it is protected (#107): this one is shown
     /// but wasn't saved, so the screen offers Unlock and hides what needs a saved recipe.
     var notKept = false
@@ -171,6 +173,15 @@ struct RecipeUiState: Equatable {
     var cookFinished: FinishedCook?
     /// A step's ingredient link was tapped (#254): the lines it names, until the cook goes back.
     var ingredientJump: IngredientJump?
+
+    /// Cook mode's opened ingredients bar for the current step (#286): its lines first, then the
+    /// rest; nil lists every line as written. Derived from `content`, `cook` and `asWrittenSteps`
+    /// as each changes, so it never goes stale and the view only draws it.
+    private(set) var stepIngredients: StepIngredients?
+
+    private mutating func regroup() {
+        stepIngredients = StepIngredients.of(content, cook: cook, asWritten: asWrittenSteps)
+    }
 
     /// In cook mode with a recipe to cook.
     var cooking: Bool { content.success != nil && cook.active }

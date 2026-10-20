@@ -55,6 +55,9 @@ import java.io.File
  * ⟦ ⟧, once against the lines as given and once against them doubled in Metric; write only the
  * step and the lines (optionally `, lang: "fr"`).
  *
+ * `Named("step", [lines])` rows (#286) pin [StepAmounts.named]: the lines the step names, as
+ * indexes; write only the step and the lines (optionally `, lang: "fr"`).
+ *
  * `Trail("line")` rows (#99) pin [GroceryDecisions.split]: the line's core and the trailing text
  * the model may be asked about, or nil; write only the line (optionally `, lang: "fr"`).
  *
@@ -135,6 +138,8 @@ class DifferentialCorpusTest {
     // A calendar-file row (#52): one summary's text.
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
+    // A step-lines row (#286): one step, the ingredient lines, optionally their language.
+    private val namedRow = Regex("""^(\s*)Named\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
     private val icsRow = Regex("""^(\s*)Ics\("((?:[^"\\]|\\.)*)"""")
     // A photo-address row (#235): an image's address as a page gives it.
     private val imageRow = Regex("""^(\s*)Img\("((?:[^"\\]|\\.)*)"""")
@@ -304,6 +309,14 @@ class DifferentialCorpusTest {
             return s.groupValues[1] + "Short(${q(step)}, ${q(short)}$given$lang, $accepted),"
         }
         stepRow.find(line)?.let { m -> return stepRow(m) }
+        namedRow.find(line)?.let { m ->
+            val step = unescape(m.groupValues[2])
+            val lines = literal.findAll(m.groupValues[3]).map { unescape(it.groupValues[1]) }.toList()
+            val language = m.groupValues[4].ifEmpty { null }
+            val words = if (language == null) LanguageWords.ENGLISH else LanguageWords.forTag(language)!!
+            val lang = if (language == null) "" else ", lang: ${q(language)}"
+            return m.groupValues[1] + "Named(${q(step)}, ${list(lines)}$lang, ${StepAmounts.named(step, lines, words)}),"
+        }
         durationRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
             val language = m.groupValues[3].ifEmpty { "en" }

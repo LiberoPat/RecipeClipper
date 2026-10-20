@@ -139,6 +139,9 @@
     <string name="cook_ingredients_count" translatable="false">  ·  %1$d</string>
     <string name="cd_hide_ingredients">Hide ingredients</string>
     <string name="cd_show_ingredients">Show ingredients</string>
+    <!-- The ingredients bar's groups in cook mode (#286) -->
+    <string name="cook_in_this_step">In this step</string>
+    <string name="cook_later">Later</string>
     <string name="cd_go_to_step">Go to step %1$d</string>
     <string name="step_back_to">Back to step %1$d</string>
     <string name="step_link_show">show</string>
