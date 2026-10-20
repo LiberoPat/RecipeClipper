@@ -2559,6 +2559,26 @@ array in one string (einfachbacken), which no word table can read; and Japanese 
   by name, default Recently viewed, an unknown name read as the default.
   It is a view preference, so it is not in the export file and not in
   Settings.
+- **The tidy list (#286, the owner's pick V1).** Each row is the photo, the
+  title, then the site and total time ("sundaysupper.blog · 1h 15m"), with a
+  filled paprika bookmark for a recipe in any list instead of the word
+  "Saved" (its spoken label is "Saved to a list"). The site is credited as
+  the reading view credits it, through one helper on each platform
+  (`sourceCreditText`, `Strings.sourceCredit`): the domain, "Clipped by you ·
+  domain" for a clip, and nothing for a typed or scanned recipe, whose
+  `manual:` key is never read as a site. A long site is cut short, never the
+  time. "1 min ago" left the row with the mockup; the day headings the owner
+  also picked (V3's, in the Recently viewed sort) are a later step. The
+  summary queries now select `sourceUrl` (a query change, no migration);
+  `RecipeSummary.sourceDomain` reads it. The row is `LibraryRow`, Recipes
+  only: Home and List detail keep `RecipeRow` until their own redesigns.
+- **The sort is a quiet line under search** (#286): the count on the left
+  ("4 recipes", the matches while searching, or the free tier's "12 of 20
+  recipes" when it shows) and the current order on the right, which opens
+  the same radio menu. The header's ⋮ (⋯ on iOS) held only the sort, so it
+  went. The line hides when there is nothing to order, unless the free
+  tier's count is showing. Photos stayed 64: the mockup's 56 would have made
+  them smaller, not bigger.
 
 ## The free tier and the unlock (#107)
 

@@ -12,7 +12,8 @@ struct RecipeDao {
         id, title, imageUrl, totalTime, lastViewedAt,
         EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
         contentOrigin = 'CLIPPED' AS isClipped,
-        (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
+        (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
+        sourceUrl
         """
 
     func get(_ id: Int64) throws -> RecipeRecord? {

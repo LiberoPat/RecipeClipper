@@ -98,6 +98,12 @@
         <item quantity="one">%1$d Rezept gelöscht</item>
         <item quantity="other">%1$d Rezepte gelöscht</item>
     </plurals>
+    <!-- Recipes: the tidy list (#286) -->
+    <plurals name="recipes_listed">
+        <item quantity="one">%1$d Rezept</item>
+        <item quantity="other">%1$d Rezepte</item>
+    </plurals>
+    <string name="cd_sort">Sortieren</string>
     <string name="tag_saved">Gespeichert</string>
     <string name="time_just_now">Gerade eben</string>
     <string name="time_yesterday">Gestern</string>

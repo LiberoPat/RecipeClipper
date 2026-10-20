@@ -18,7 +18,7 @@ struct RecipeRow: View {
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
                 : AnyLayout(HStackLayout(spacing: 14))
             layout {
-                Thumbnail(url: recipe.imageUrl)
+                RecipeThumbnail(url: recipe.imageUrl)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(recipe.title)
                         .textStyle(Typography.bodyLargeBold)
@@ -49,7 +49,8 @@ struct RecipeRow: View {
     }
 }
 
-private struct Thumbnail: View {
+/// A row's photo, or a plain tile when it has none. Shared with the Recipes library (#286).
+struct RecipeThumbnail: View {
     let url: String?
     /// Grows a little with the text, capped: it is decoration, the title is the content.
     @ScaledMetric(relativeTo: .body) private var scaledSize: CGFloat = 64

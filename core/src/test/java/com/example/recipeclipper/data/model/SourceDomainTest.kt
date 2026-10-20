@@ -71,4 +71,13 @@ class SourceDomainTest {
         assertNull(of("https:///recipe"))
         assertNull(of("https://www./recipe"))
     }
+
+    /** #286: the Recipes row credits a summary's site the same way, never a typed one's key. */
+    @Test fun `a summary credits its link's site, and a typed or scanned recipe none`() {
+        fun summary(url: String) = RecipeSummary(1, "Adobo", null, null, 0, isSaved = false, sourceUrl = url)
+        assertEquals("sundaysupper.blog", summary("https://www.sundaysupper.blog/adobo/").sourceDomain)
+        assertNull(summary(ManualRecipe.newSourceUrl("6f1c0d2e-1b7a-4f4e-9a55-0d3c1a2b3c4d")).sourceDomain)
+        assertNull(summary("manual://not-a-site").sourceDomain)
+        assertNull(summary("").sourceDomain)
+    }
 }

@@ -101,6 +101,13 @@
         <item quantity="many">%1$d de receitas excluídas</item>
         <item quantity="other">%1$d receitas excluídas</item>
     </plurals>
+    <!-- Recipes: the tidy list (#286) -->
+    <plurals name="recipes_listed">
+        <item quantity="one">%1$d receita</item>
+        <item quantity="many">%1$d de receitas</item>
+        <item quantity="other">%1$d receitas</item>
+    </plurals>
+    <string name="cd_sort">Ordenar</string>
     <string name="tag_saved">Salva</string>
     <string name="time_just_now">Agora mesmo</string>
     <string name="time_yesterday">Ontem</string>

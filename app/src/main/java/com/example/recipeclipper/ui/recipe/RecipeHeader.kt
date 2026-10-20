@@ -92,6 +92,18 @@ internal fun ReadingTopBar(
 }
 
 /**
+ * The site credited under a title: its [domain], or "Clipped by you · domain" for a clip (#37),
+ * which says whose selection it is. Null for a recipe with no site (typed or scanned in). The
+ * reading view and the Recipes rows (#286) both say it this way.
+ */
+@Composable
+internal fun sourceCreditText(domain: String?, clipped: Boolean): String? = when {
+    domain == null -> if (clipped) stringResource(R.string.clipped_by_you) else null
+    clipped -> stringResource(R.string.clipped_by_you_on, domain)
+    else -> domain
+}
+
+/**
  * Credits the site under the title: its domain in muted text, then "Open original" as a quiet
  * paprika link to the page in the browser. Reading view only; cook mode has no room for it.
  */
@@ -101,7 +113,7 @@ internal fun SourceCredit(domain: String, clipped: Boolean, onOpen: () -> Unit) 
         // A clip (#37) says whose selection it is, so a difference from the page, and a
         // re-share that doesn't refresh it, both make sense.
         Text(
-            if (clipped) stringResource(R.string.clipped_by_you_on, domain) else domain,
+            sourceCreditText(domain, clipped) ?: domain,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,

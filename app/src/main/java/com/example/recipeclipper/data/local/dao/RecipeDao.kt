@@ -25,7 +25,9 @@ data class RecipeSummaryRow(
     /** Picked from the page by hand (#37): History says so. */
     val isClipped: Boolean = false,
     /** The latest day of the user's own photos (#116), or null for none. */
-    val lastCookedDay: Long? = null
+    val lastCookedDay: Long? = null,
+    /** Its link, for the site the Recipes row credits (#286). */
+    val sourceUrl: String = ""
 )
 
 /** A recipe's saved cook progress, with what a timer alert needs to name it. */
@@ -164,7 +166,8 @@ abstract class RecipeDao {
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
-               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
+               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
+               sourceUrl
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         """
@@ -185,7 +188,8 @@ abstract class RecipeDao {
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
-               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
+               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
+               sourceUrl
         FROM recipes
         WHERE :query = ''
            OR instr(lower(title), lower(:query)) > 0
@@ -200,7 +204,8 @@ abstract class RecipeDao {
         SELECT id, title, imageUrl, totalTime, lastViewedAt,
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
-               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay
+               (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
+               sourceUrl
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         LIMIT :limit

@@ -181,6 +181,12 @@
         <item quantity="one">%1$d recipe deleted</item>
         <item quantity="other">%1$d recipes deleted</item>
     </plurals>
+    <!-- Recipes: the tidy list (#286). The count left of the sort, under search. -->
+    <plurals name="recipes_listed">
+        <item quantity="one">%1$d recipe</item>
+        <item quantity="other">%1$d recipes</item>
+    </plurals>
+    <string name="cd_sort">Sort</string>
 
     <!-- Shared -->
     <string name="tag_saved">Saved</string>

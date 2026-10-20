@@ -105,8 +105,14 @@ data class RecipeSummary(
     /** Picked from the page by hand (#37, origin CLIPPED): the row says "Clipped by you". */
     val isClipped: Boolean = false,
     /** The latest day (epoch day) of the user's own photos of it (#116); null for none. */
-    val lastCookedDay: Long? = null
-)
+    val lastCookedDay: Long? = null,
+    /** Its link, for the site credited under the title (#286); `manual:` for a typed one. */
+    val sourceUrl: String = ""
+) {
+    /** The site, as the reading view credits it; null for a typed or scanned recipe. */
+    val sourceDomain: String?
+        get() = if (ManualRecipe.isManual(sourceUrl)) null else SourceDomain.of(sourceUrl)
+}
 
 /**
  * How the Recipes screen orders its rows (#102). Remembered in `AppPreferences` by name, so

@@ -1,13 +1,17 @@
 package com.example.recipeclipper.ui.recipes
 
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -140,6 +144,50 @@ class RecipesScreenTest {
         }
     }
 
+    /** #286: the site and total time under the name, credited as the reading view credits it. */
+    @Test
+    fun aRowCreditsItsSiteAndTotalTime() {
+        show(
+            adobo.copy(sourceUrl = "https://www.sundaysupper.blog/adobo/", totalTime = "1h 15m"),
+            carbonara.copy(sourceUrl = "https://cucinafacile.net/carbonara", isClipped = true),
+            bread.copy(sourceUrl = "manual:6f1c0d2e-1b7a-4f4e-9a55-0d3c1a2b3c4d", totalTime = "1h")
+        )
+
+        waitFor("Chicken Adobo")
+        compose.onNodeWithText("sundaysupper.blog").assertIsDisplayed()
+        compose.onNodeWithText(" · 1h 15m").assertIsDisplayed()
+        compose.onNodeWithText("Clipped by you · cucinafacile.net").assertIsDisplayed()
+        // A typed recipe has no site: only its time, and never its manual: key.
+        compose.onNodeWithText("1h").assertIsDisplayed()
+        compose.onAllNodes(hasText("manual", substring = true)).assertCountEquals(0)
+        compose.onAllNodes(hasText("ago", substring = true)).assertCountEquals(0)
+    }
+
+    /** #286: a filled bookmark, not the word "Saved", and only on a recipe in a list. */
+    @Test
+    fun aSavedRecipeShowsTheBookmarkInsteadOfTheWord() {
+        show(adobo.copy(isSaved = true), carbonara)
+
+        waitFor("Chicken Adobo")
+        compose.onAllNodesWithContentDescription("Saved to a list").assertCountEquals(1)
+        compose.onNodeWithText("Saved").assertDoesNotExist()
+    }
+
+    /** #286: the count on the left of the line under search, the order on the right. */
+    @Test
+    fun theLineUnderSearchCountsTheRecipesBesideTheSort() {
+        show(adobo, carbonara, bread)
+
+        waitFor("3 recipes")
+        compose.onNodeWithContentDescription("Sort").assert(hasText("Recently viewed"))
+        compose.onNodeWithContentDescription("Sort").performClick()
+        compose.onNodeWithText("Date added").performClick()
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasContentDescription("Sort") and hasText("Date added"))
+                .fetchSemanticsNodes().size == 1
+        }
+    }
+
     @Test
     fun anEmptyLibrarySaysSo() {
         show()
@@ -196,8 +244,10 @@ class RecipesScreenTest {
         show(carbonara, adobo) // carbonara was viewed last, so it leads
 
         waitFor("Chicken Adobo")
-        compose.onNodeWithContentDescription("More options").performClick()
+        // #286: the sort is the quiet control under search, naming the order it is in.
+        compose.onNodeWithContentDescription("Sort").assertIsDisplayed().performClick()
         compose.onNodeWithText("Name").performClick()
+        compose.onNodeWithContentDescription("More options").assertDoesNotExist()
 
         compose.waitUntil(timeoutMillis = 5_000) {
             compose.onAllNodes(hasText("Chicken Adobo") or hasText("Spaghetti Carbonara"))

@@ -46,6 +46,15 @@ data class RecipesUiState(
 ) {
     /** The dialog's Open is enabled only for what Home's link field would open. */
     val canOpenLink: Boolean get() = linkInput?.let(UrlInput::normalize) != null
+
+    /** How many rows are listed (the matches, while searching); null until the database answers. */
+    val listed: Int? get() = recipes?.size
+
+    /**
+     * The line under search, with the count and the sort (#286): shown once there is a row to
+     * order, or on the free tier, whose count shows even for an empty library.
+     */
+    val showsSortLine: Boolean get() = count != null || !recipes.isNullOrEmpty()
 }
 
 /** [recipes] saved of the free tier's [max]; a library from before the limit can be over it. */

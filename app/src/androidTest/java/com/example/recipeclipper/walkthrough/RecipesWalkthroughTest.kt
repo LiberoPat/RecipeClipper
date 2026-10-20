@@ -174,7 +174,8 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     fun test06_recipesScreen() {
         start()
         openRecipes()
-        menu("Name")
+        tapTag("recipes.sort") // the quiet line under search (#286)
+        tap("Name")
         typeARecipe()
         back()
         tapDescription("Add a recipe")

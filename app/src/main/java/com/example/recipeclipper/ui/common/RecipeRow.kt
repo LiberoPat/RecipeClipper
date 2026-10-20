@@ -35,17 +35,7 @@ fun RecipeRow(recipe: RecipeSummary, now: Long, onClick: () -> Unit, modifier: M
             .clickable(role = Role.Button, onClick = onClick)
             .padding(vertical = 10.dp)
     ) {
-        val shape = RoundedCornerShape(10.dp)
-        if (recipe.imageUrl != null) {
-            AsyncImage(
-                model = recipe.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(64.dp).clip(shape)
-            )
-        } else {
-            Box(Modifier.size(64.dp).clip(shape).background(MaterialTheme.colorScheme.outlineVariant))
-        }
+        RecipeThumbnail(recipe.imageUrl)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(
                 recipe.title,
@@ -71,5 +61,21 @@ fun RecipeRow(recipe: RecipeSummary, now: Long, onClick: () -> Unit, modifier: M
                 )
             }
         }
+    }
+}
+
+/** A row's photo, or a plain tile when it has none. Shared with the Recipes library (#286). */
+@Composable
+internal fun RecipeThumbnail(imageUrl: String?) {
+    val shape = RoundedCornerShape(10.dp)
+    if (imageUrl != null) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(64.dp).clip(shape)
+        )
+    } else {
+        Box(Modifier.size(64.dp).clip(shape).background(MaterialTheme.colorScheme.outlineVariant))
     }
 }
