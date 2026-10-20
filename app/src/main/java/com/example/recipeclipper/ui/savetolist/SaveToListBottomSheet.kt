@@ -88,6 +88,7 @@ fun SaveToListBottomSheet(viewModel: SaveToListViewModel, onDismiss: () -> Unit)
             if (state.creatingList) {
                 NewListField(
                     value = state.newListName,
+                    recipeTitle = state.recipeTitle,
                     onValueChange = viewModel::onNewListNameChange,
                     onConfirm = viewModel::onCreateList,
                     onCancel = viewModel::onCancelCreating
@@ -130,9 +131,11 @@ private fun ListCheckRow(list: RecipeList, onToggle: (Boolean) -> Unit) {
     }
 }
 
+/** The open "+ New list" field, with a muted line under it naming the recipe it takes (#286). */
 @Composable
 private fun NewListField(
     value: String,
+    recipeTitle: String,
     onValueChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
@@ -146,6 +149,14 @@ private fun NewListField(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         )
+        if (recipeTitle.isNotEmpty()) {
+            Text(
+                stringResource(R.string.save_to_list_new_list_note, recipeTitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+        }
         Row(
             horizontalArrangement = Arrangement.End,
             modifier = Modifier.fillMaxWidth()

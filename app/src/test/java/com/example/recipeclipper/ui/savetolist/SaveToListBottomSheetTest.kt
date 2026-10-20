@@ -43,7 +43,7 @@ class SaveToListBottomSheetTest {
 
     private fun show(): SaveToListViewModel {
         val viewModel = SaveToListViewModel(repository)
-        viewModel.setRecipe(recipeId)
+        viewModel.setRecipe(recipeId, TITLE)
         compose.setContent { SaveToListBottomSheet(viewModel, onDismiss = {}) }
         // ModalBottomSheet slides in, and until it settles its lower rows are composed but not
         // placed on screen — the top list rows were tappable while "+ New list" at the bottom
@@ -129,6 +129,19 @@ class SaveToListBottomSheetTest {
         compose.onNodeWithText("Create").assertIsDisplayed()
     }
 
+    /** #286: one muted line under the open field says the recipe goes into the new list. */
+    @Test
+    fun theOpenFieldSaysTheRecipeGoesIntoTheNewList() {
+        show()
+        compose.onNodeWithText(NOTE).assertDoesNotExist()
+
+        compose.onNodeWithText(NEW_LIST).performClick()
+        compose.onNodeWithText(NOTE).assertIsDisplayed()
+
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText(NOTE).assertDoesNotExist()
+    }
+
     @Test
     fun createIsRefusedUntilSomethingIsTyped() {
         show()
@@ -181,5 +194,7 @@ class SaveToListBottomSheetTest {
          * never reaches the screen. Matching on the XML spelling finds nothing.
          */
         const val NEW_LIST = "+ New list"
+        const val TITLE = "Test Stew"
+        const val NOTE = "$TITLE goes into the new list."
     }
 }

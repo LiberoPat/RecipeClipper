@@ -54,6 +54,8 @@ struct RecipeScreen: View {
         // The id isn't known until the parse finishes on the import route, and a recipe shown
         // but not kept (#107) has none.
         let recipeId = state.notKept ? nil : content?.recipe.id
+        // The sheet names the recipe under "+ New list" (#286), so an edited title follows too.
+        let recipeTitle = content?.recipe.name ?? ""
 
         Group {
             switch state.content {
@@ -111,7 +113,7 @@ struct RecipeScreen: View {
         .modifier(SendFileEffect(vm: sendFileVM))
         .task(id: recipeId) {
             if let recipeId {
-                saveVM.setRecipe(recipeId)
+                saveVM.setRecipe(recipeId, title: recipeTitle)
                 VisibleRecipe.id = recipeId
                 if photosVM == nil { photosVM = makePhotosVM?() }
                 photosVM?.setRecipe(recipeId)
@@ -121,6 +123,9 @@ struct RecipeScreen: View {
             #endif
         }
         // While this recipe is on screen its timers beep here instead of showing a banner.
+        .onChange(of: recipeTitle) { _, title in
+            if let recipeId { saveVM.setRecipe(recipeId, title: title) }
+        }
         .onAppear { if let recipeId { VisibleRecipe.id = recipeId } }
         .onDisappear { if let recipeId { VisibleRecipe.clear(recipeId) } }
         // The recipe is gone the moment the delete lands; leave the screen.

@@ -239,10 +239,12 @@ struct OutlinedField: View {
 }
 
 /// "+ New list" expanding inline to a field with Cancel / Create — never a dialog stacked on
-/// a sheet. Shared by the Lists screen and the save-to-list sheet.
+/// a sheet. Shared by the Lists screen and the save-to-list sheet, whose `note` (#286) is a
+/// muted line under the open field naming the recipe that goes into the new list.
 struct NewListControl: View {
     let creating: Bool
     let name: String
+    var note: String? = nil
     let onStart: () -> Void
     let onNameChange: (String) -> Void
     let onCancel: () -> Void
@@ -256,6 +258,14 @@ struct NewListControl: View {
                     text: Binding(get: { name }, set: onNameChange),
                     onSubmit: onCreate
                 )
+                if let note {
+                    Text(note)
+                        .textStyle(Typography.bodySmall)
+                        .foregroundStyle(Palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 2)
+                        .accessibilityIdentifier("saveToList.newListNote")
+                }
                 // Side by side when they fit; stacked at the accessibility sizes, where two
                 // words at ~50pt no longer share a line.
                 ViewThatFits(in: .horizontal) {
