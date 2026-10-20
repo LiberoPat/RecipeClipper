@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// The three counts under the title (#286; Android's PantryCounts): In stock, Running low and Run
-/// out, each a box whose tap jumps to its first row (`onJump`, with that row's id). A zero does
-/// nothing, and while selecting (#258) the boxes stay where they are, dimmed and off, so the
-/// rows don't move from under the finger. Read as one each: "2, Run out".
+/// out, each a box whose tap jumps to its first row (`onJump`, with that row's id). A zero is
+/// off, and while selecting (#258) every box stays where it is but off, so the rows don't move
+/// from under the finger; a box that is off is dimmed. Read as one each: "2, Run out".
 struct PantryCounts: View {
     let counts: [PantryCount]
     let enabled: Bool
@@ -28,14 +28,13 @@ struct PantryCounts: View {
                     .background(RoundedRectangle(cornerRadius: 14).fill(Palette.surfaceContainer))
                     .contentShape(RoundedRectangle(cornerRadius: 14))
                 }
-                // Plain, so in the List's row each box takes only its own taps.
-                .buttonStyle(.plain)
+                // Not the default style, so in the List's row each box takes only its own taps.
+                .buttonStyle(CountBoxStyle())
                 .disabled(target == nil)
                 .accessibilityIdentifier("pantryCount-\(count.stock)")
             }
         }
         .fixedSize(horizontal: false, vertical: true)
-        .opacity(enabled ? 1 : 0.5)
     }
 
     /// As the list shows each: Running low's Low tag, Run out's dimmed section.
@@ -45,6 +44,15 @@ struct PantryCounts: View {
         case .runningLow: return Palette.accentText
         case .runOut: return Palette.muted
         }
+    }
+}
+
+/// A box that is off (a zero, or while selecting) is drawn at half strength, as on Android.
+private struct CountBoxStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.opacity(!isEnabled ? 0.5 : configuration.isPressed ? 0.7 : 1)
     }
 }
 

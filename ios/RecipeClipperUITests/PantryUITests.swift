@@ -87,8 +87,8 @@ final class PantryUITests: RecipeUITestCase {
         XCTAssertTrue(require(app.buttons["pantryCount-inStock"], "the In stock count").label.hasSuffix("In stock"))
         XCTAssertTrue(require(app.buttons["pantryCount-runningLow"], "the Running low count").label.hasSuffix("Running low"))
         runOut.tap()
-        let heading = requireState(text("Run out"), "isHittable == true", "the Run out heading, scrolled to")
-        XCTAssertLessThan(heading.frame.maxY, tabBar.frame.minY, "the Run out heading, above the tab bar")
+        requireState(text("Run out"), "isHittable == true", "the Run out heading, scrolled to")
+        XCTAssertLessThan(text("Run out").frame.maxY, tabBar.frame.minY, "the Run out heading, above the tab bar")
         require(pantryRow("garlic", "Run out"), "garlic, run out")
 
         for _ in 0..<3 { app.swipeDown() }

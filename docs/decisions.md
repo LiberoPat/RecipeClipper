@@ -1786,7 +1786,7 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   so every count matches rows below it. The ViewModel computes them (`PantryCount`: stock,
   count, the first row's id). A tap scrolls to that first row, or to its section's heading
   when the row heads the section (Run out always does), so the heading shows too; a zero is
-  off. Hidden while the pantry is empty. **While selecting (#258) they stay, dimmed and off,
+  off, and a box that is off is drawn at half strength. Hidden while the pantry is empty. **While selecting (#258) they stay, dimmed and off,
   rather than hiding,** so the rows never move under the finger that has just started
   selecting. The colours are the theme's: In stock ink, Running low the Low tag's paprika text
   (the mockup's amber isn't a theme token), Run out muted like its section, on the

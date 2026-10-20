@@ -26,15 +26,15 @@ import com.example.recipeclipper.data.model.PantryStock
 
 /**
  * The three counts under the title (#286): In stock, Running low and Run out, each a box whose
- * tap jumps to its first row ([onJump], with that row's id). A zero does nothing, and while
- * selecting (#258) the boxes stay where they are, dimmed and off, so the rows don't move from
- * under the finger. Read as one each: "2, Run out".
+ * tap jumps to its first row ([onJump], with that row's id). A zero is off, and while selecting
+ * (#258) every box stays where it is but off, so the rows don't move from under the finger; a
+ * box that is off is dimmed. Read as one each: "2, Run out".
  */
 @Composable
 internal fun PantryCounts(counts: List<PantryCount>, enabled: Boolean, onJump: (Long) -> Unit) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).alpha(if (enabled) 1f else 0.5f)
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
     ) {
         counts.forEach { count ->
             val target = count.firstId.takeIf { enabled }
@@ -42,6 +42,8 @@ internal fun PantryCounts(counts: List<PantryCount>, enabled: Boolean, onJump: (
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    // Off (a zero, or while selecting): drawn at half strength, as on iOS.
+                    .alpha(if (target != null) 1f else 0.5f)
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer)
                     .clickable(enabled = target != null, role = Role.Button) { target?.let(onJump) }
