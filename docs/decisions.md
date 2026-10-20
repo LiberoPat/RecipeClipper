@@ -1770,7 +1770,7 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     week's dinner. A recipe planned only in the past is ordinary history: it
     takes a free place or is skipped, and its meal is dropped with it.
 - **The screen in short** (CLAUDE.md's summary until September 2026, with
-  #52, #146, #147, #149 and #194): "Add to the pantry", search, then items by
+  #52, #146, #147, #149 and #194): three counts (#286), "Add to the pantry", search, then items by
   aisle (menu: by expiry, radio glyphs), with what has run out in a dimmed "Run
   out" section last; each row shows its quantity as written on the right (no
   button since 2026-09-29) and a "Low" tag while running low; tap for the edit
@@ -1794,6 +1794,19 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   need" (Week menu): the shown week's lines at planned servings, grouped by
   ingredient, "To buy" then "In your pantry", with a note that having some
   isn't having enough; "Add to groceries" adds the To buy lines.
+- **Counts at the top** (#286, the owner's pick of the redesign, V3; both platforms): three
+  boxes under the title, In stock, Running low and Run out, each a number in the display face
+  over its label (the stock control's own strings). They count items by the three states the
+  list already shows, so they are disjoint (In stock is plain in stock; Running low is the
+  "Low" tag; Run out the dimmed section) and sum to the rows shown: a search narrows them too,
+  so every count matches rows below it. The ViewModel computes them (`PantryCount`: stock,
+  count, the first row's id). A tap scrolls to that first row, or to its section's heading
+  when the row heads the section (Run out always does), so the heading shows too; a zero is
+  off, and a box that is off is drawn at half strength. Hidden while the pantry is empty. **While selecting (#258) they stay, dimmed and off,
+  rather than hiding,** so the rows never move under the finger that has just started
+  selecting. The colours are the theme's: In stock ink, Running low the Low tag's paprika text
+  (the mockup's amber isn't a theme token), Run out muted like its section, on the
+  `surfaceContainer` fill. The add and search fields and the list are unchanged.
 
 ## Clip it yourself (#37)
 

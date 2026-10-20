@@ -154,6 +154,52 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertEqual(pantry.items.value[0].purchasedDay, calendar.today())
     }
 
+    /// #286: the counts under the title, one per state, each with the first of its rows as the
+    /// screen shows them; a search narrows them; none while the pantry is empty.
+    func testTheCountsAreEachStatesRowsAsShownWithTheFirstOfEach() async {
+        let pantry = FakePantryRepository()
+        let vm = await viewModel(pantry)
+        XCTAssertEqual(vm.uiState.counts, [])
+
+        var rice = item(3, "rice", aisle: .grains)
+        rice.runningLow = true
+        var pears = item(5, "pears", aisle: .produce)
+        pears.runningLow = true
+        pantry.items.value = [
+            item(1, "milk", aisle: .dairy), item(2, "apples", aisle: .produce), rice,
+            item(4, "oats", inStock: false, aisle: .grains), pears,
+        ]
+        await settleMain { vm.uiState.counts.count == 3 }
+        // Fruit & vegetables comes first: apples, then pears, running low, ahead of the rice.
+        XCTAssertEqual(vm.uiState.counts, [
+            PantryCount(stock: .inStock, count: 2, firstId: 2),
+            PantryCount(stock: .runningLow, count: 2, firstId: 5),
+            PantryCount(stock: .runOut, count: 1, firstId: 4),
+        ])
+
+        vm.onQueryChange("rice")
+        XCTAssertEqual(vm.uiState.counts.map(\.count), [0, 1, 0])
+        XCTAssertEqual(vm.uiState.counts.map(\.firstId), [nil, 3, nil])
+        vm.onQueryChange("nothing like it")
+        XCTAssertEqual(vm.uiState.counts.map(\.count), [0, 0, 0])
+
+        pantry.items.value = []
+        await settleMain { vm.uiState.counts.isEmpty }
+        XCTAssertEqual(vm.uiState.counts, [])
+    }
+
+    /// #286: a count's tap scrolls to its first row, or to the heading of the section it heads.
+    func testACountScrollsToItsRowOrTheHeadingOfTheSectionItHeads() {
+        let sections = PantryList.arrange(
+            [item(1, "garlic", aisle: .produce), item(2, "onions", aisle: .produce), item(3, "milk", inStock: false, aisle: .dairy)],
+            query: "", sort: .aisle
+        )
+        XCTAssertEqual(PantryListRow.scrollTarget(1, in: sections), "heading-aisle-produce")
+        XCTAssertEqual(PantryListRow.scrollTarget(2, in: sections), "item-2")
+        XCTAssertEqual(PantryListRow.scrollTarget(3, in: sections), "heading-runOut")
+        XCTAssertNil(PantryListRow.scrollTarget(9, in: sections))
+    }
+
     func testRestockingARunningLowItemMakesItPlainInStock() async {
         var milk = item(1, "milk")
         milk.runningLow = true

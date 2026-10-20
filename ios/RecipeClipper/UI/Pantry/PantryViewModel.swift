@@ -50,6 +50,15 @@ struct PantrySelection: Equatable {
     }
 }
 
+/// One of the three counts under the title (#286): how many of the rows shown are `stock` (in
+/// stock, running low with its Low tag, or in the Run out section), and `firstId`, the first of
+/// them top to bottom, where a tap scrolls; nil when there are none.
+struct PantryCount: Equatable {
+    let stock: PantryStock
+    let count: Int
+    let firstId: Int64?
+}
+
 /// `sections` is nil until the pantry has loaded; `hasItems` says whether it holds anything at
 /// all (a search can find nothing in a full pantry), and `hasInStock` whether anything is in
 /// stock, which is what "Send list" and "Send as file" send (#149). `onList` holds the items that
@@ -57,8 +66,11 @@ struct PantrySelection: Equatable {
 /// basket Groceries tag (#146).
 /// `hasRunOut` says whether anything has run out, what "Clear run-out items" needs, and
 /// `confirmClearRunOut` is how many items its dialog asks about, while it's open (#194).
+/// `counts` are In stock, Running low and Run out, counting what the list shows (a search
+/// narrows them too), or empty while the pantry is, which hides them (#286).
 struct PantryUiState: Equatable {
     var sections: [PantrySection]?
+    var counts: [PantryCount] = []
     var hasItems = false
     var hasInStock = false
     var query = ""
@@ -140,7 +152,13 @@ final class PantryViewModel {
     }
 
     private func arrange() {
-        uiState.sections = PantryList.arrange(items, query: uiState.query, sort: uiState.sort)
+        let sections = PantryList.arrange(items, query: uiState.query, sort: uiState.sort)
+        uiState.sections = sections
+        let rows = sections.flatMap(\.items)
+        uiState.counts = items.isEmpty ? [] : PantryStock.allCases.map { stock in
+            let those = rows.filter { $0.stock == stock }
+            return PantryCount(stock: stock, count: those.count, firstId: those.first?.id)
+        }
         // What the search hides, or what has gone, is no longer selected.
         if uiState.selection != nil {
             let shown = Set(uiState.order)

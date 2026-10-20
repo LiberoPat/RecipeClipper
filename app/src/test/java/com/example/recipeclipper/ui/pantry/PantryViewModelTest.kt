@@ -179,6 +179,42 @@ class PantryViewModelTest {
             assertEquals(calendar.today(), pantry.items.value.first().purchasedDay)
         }
 
+    // #286: the counts under the title, one per state, each with the first of its rows as the
+    // screen shows them; a search narrows them; none while the pantry is empty.
+    @Test
+    fun `the counts are each state's rows as shown, with the first of each`() = runTest(mainDispatcherRule.dispatcher) {
+        val pantry = FakePantryRepository()
+        val vm = PantryViewModel(pantry, groceries, calendar)
+        advanceUntilIdle()
+        assertEquals(emptyList<PantryCount>(), vm.uiState.value.counts)
+
+        pantry.items.value = listOf(
+            item(1, "milk", aisle = Aisle.DAIRY), item(2, "apples", aisle = Aisle.PRODUCE),
+            item(3, "rice", aisle = Aisle.GRAINS).copy(runningLow = true), item(4, "oats", inStock = false, aisle = Aisle.GRAINS),
+            item(5, "pears", aisle = Aisle.PRODUCE).copy(runningLow = true)
+        )
+        advanceUntilIdle()
+        // Fruit & vegetables comes first: apples, then pears, running low, ahead of the rice.
+        assertEquals(
+            listOf(
+                PantryCount(PantryStock.IN_STOCK, 2, 2),
+                PantryCount(PantryStock.RUNNING_LOW, 2, 5),
+                PantryCount(PantryStock.RUN_OUT, 1, 4)
+            ),
+            vm.uiState.value.counts
+        )
+
+        vm.onQueryChange("rice")
+        assertEquals(listOf(0, 1, 0), vm.uiState.value.counts.map { it.count })
+        assertEquals(listOf(null, 3L, null), vm.uiState.value.counts.map { it.firstId })
+        vm.onQueryChange("nothing like it")
+        assertEquals(listOf(0, 0, 0), vm.uiState.value.counts.map { it.count })
+
+        pantry.items.value = emptyList()
+        advanceUntilIdle()
+        assertEquals(emptyList<PantryCount>(), vm.uiState.value.counts)
+    }
+
     @Test
     fun `restocking a running-low item makes it plain in stock`() = runTest(mainDispatcherRule.dispatcher) {
         val pantry = FakePantryRepository(listOf(item(1, "milk").copy(runningLow = true)))
